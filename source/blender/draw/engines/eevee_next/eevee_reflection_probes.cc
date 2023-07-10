@@ -45,20 +45,16 @@ void ReflectionProbeModule::init()
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
-
-    /* Cube-map is half of the resolution of the octahedral map. */
-    cubemap_tx_.ensure_cube(
-        GPU_RGBA16F, max_resolution_ / 2, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr, 9999);
-    GPU_texture_mipmap_mode(cubemap_tx_, true, true);
   }
 
   {
     PassSimple &pass = remap_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
-    pass.bind_texture("cubemap_tx", cubemap_tx_);
+    pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_image("octahedral_img", probes_tx_);
     pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass.push_constant("reflection_probe_index", &reflection_probe_index_);
     pass.dispatch(&dispatch_probe_pack_);
   }
 }
@@ -501,15 +497,45 @@ void ReflectionProbeModule::upload_dummy_texture(const ReflectionProbe &probe)
 
 /** \} */
 
-void ReflectionProbeModule::remap_to_octahedral_projection()
+std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop()
 {
-  const ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
-  const ReflectionProbeData &probe_data = data_buf_[world_probe.index];
+  const int max_shift = int(log2(max_resolution_));
+  if (do_world_update_get()) {
+    do_world_update_set(false);
+    ReflectionProbe &probe = probes_.lookup(world_object_key_);
+    ReflectionProbeData &probe_data = data_buf_[probe.index];
+    ReflectionProbeUpdateInfo info = {};
+    info.probe_type = probe.type;
+    info.object_key = world_object_key_;
+    info.resolution = 1 << (max_shift - probe_data.layer_subdivision - 1);
+    return info;
+  }
+  return std::nullopt;
+}
+
+void ReflectionProbeModule::remap_to_octahedral_projection(Texture &cubemap_tx,
+                                                           uint64_t object_key)
+{
+  BLI_assert(cubemap_tx_ == nullptr);
+  BLI_assert(cubemap_tx != nullptr);
+
+  const ReflectionProbe &probe = probes_.lookup(object_key);
+  const ReflectionProbeData &probe_data = data_buf_[probe.index];
+
+  /* Update shader parameters that change per dispatch. */
+  cubemap_tx_ = cubemap_tx;
+  reflection_probe_index_ = probe.index;
   dispatch_probe_pack_ = int3(int2(ceil_division(max_resolution_ >> probe_data.layer_subdivision,
                                                  REFLECTION_PROBE_GROUP_SIZE)),
                               1);
+
   instance_.manager->submit(remap_ps_);
-  /* TODO: Performance - Should only update the area that has changed. */
+
+  cubemap_tx_ = nullptr;
+}
+
+void ReflectionProbeModule::update_probes_texture_mipmaps()
+{
   GPU_texture_update_mipmap_chain(probes_tx_);
 }
 

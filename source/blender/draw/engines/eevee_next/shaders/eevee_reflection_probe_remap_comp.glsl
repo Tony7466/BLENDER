@@ -5,7 +5,7 @@
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[0];
+  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
 
   ivec3 texture_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 texture_size = imageSize(octahedral_img);
@@ -25,7 +25,6 @@ void main()
   vec3 R = octahedral_uv_to_direction(octahedral_uv);
 
   vec4 col = textureLod(cubemap_tx, R, float(probe_data.layer_subdivision));
-  // col.xy = octahedral_uv;
 
   int probes_per_dimension = 1 << probe_data.layer_subdivision;
   ivec2 area_coord = ivec2(probe_data.area_index % probes_per_dimension,

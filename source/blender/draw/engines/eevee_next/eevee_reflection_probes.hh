@@ -22,9 +22,10 @@ class Instance;
 struct ObjectHandle;
 struct WorldHandle;
 class CaptureView;
+struct ReflectionProbeUpdateInfo;
 
 /* -------------------------------------------------------------------- */
-/** \name Reflection Probes
+/** \name Reflection Probe
  * \{ */
 
 struct ReflectionProbe {
@@ -67,6 +68,12 @@ struct ReflectionProbe {
   }
 };
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Reflection Probe Module
+ * \{ */
+
 class ReflectionProbeModule {
  private:
   /** The max number of probes to initially allocate. */
@@ -85,8 +92,6 @@ class ReflectionProbeModule {
   ReflectionProbeDataBuf data_buf_;
   Map<uint64_t, ReflectionProbe> probes_;
 
-  /** Texture containing a cubemap used as input for updating #probes_tx_. */
-  Texture cubemap_tx_ = {"Probe.Cubemap"};
   /** Probes texture stored in octahedral mapping. */
   Texture probes_tx_ = {"Probes"};
 
@@ -95,6 +100,14 @@ class ReflectionProbeModule {
   bool do_world_update_ = false;
 
   int3 dispatch_probe_pack_ = int3(0);
+  /**
+   * Texture containing a cubemap used as input for updating #probes_tx_.
+   *
+   * Is set and reset during `remap_to_octahedral_projection`. All other occasions should contain
+   * nullptr.
+   */
+  GPUTexture *cubemap_tx_ = nullptr;
+  int reflection_probe_index_ = 0;
 
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
@@ -151,7 +164,12 @@ class ReflectionProbeModule {
     return do_world_update_;
   }
 
-  void remap_to_octahedral_projection();
+  /**
+   * Pop the next reflection probe that requires to be updated.
+   */
+  std::optional<ReflectionProbeUpdateInfo> update_info_pop();
+  void remap_to_octahedral_projection(Texture &cubemap_tx, uint64_t object_key);
+  void update_probes_texture_mipmaps();
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
@@ -160,5 +178,23 @@ class ReflectionProbeModule {
 std::ostream &operator<<(std::ostream &os, const ReflectionProbeModule &module);
 std::ostream &operator<<(std::ostream &os, const ReflectionProbeData &probe_data);
 std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Reflection Probe Update Info
+ * \{ */
+
+struct ReflectionProbeUpdateInfo {
+  float3 probe_pos;
+  ReflectionProbe::Type probe_type;
+  /**
+   * Resolution of the cubemap to be rendered.
+   */
+  int resolution;
+  uint64_t object_key;
+};
+
+/** \} */
 
 }  // namespace blender::eevee
