@@ -37,7 +37,7 @@ set(SRC
   image_ops.cc
   image_sequence.cc
   image_undo.cc
-  space_image.c
+  space_image.cc
 
   image_intern.h
 )
