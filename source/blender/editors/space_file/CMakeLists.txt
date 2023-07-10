@@ -33,7 +33,7 @@ set(SRC
   asset_catalog_tree_view.cc
   file_draw.cc
   file_indexer.cc
-  file_ops.c
+  file_ops.cc
   file_panels.c
   file_utils.c
   filelist.cc
