@@ -52,19 +52,19 @@
 
 /* ******************** default callbacks for ipo space ***************** */
 
-static SpaceLink *graph_create(const ScrArea *UNUSED(area), const Scene *scene)
+static SpaceLink *graph_create(const ScrArea * /*area*/, const Scene *scene)
 {
   ARegion *region;
   SpaceGraph *sipo;
 
   /* Graph Editor - general stuff */
-  sipo = MEM_callocN(sizeof(SpaceGraph), "init graphedit");
+  sipo = static_cast<SpaceGraph *>(MEM_callocN(sizeof(SpaceGraph), "init graphedit"));
   sipo->spacetype = SPACE_GRAPH;
 
   sipo->autosnap = SACTSNAP_FRAME;
 
   /* allocate DopeSheet data for Graph Editor */
-  sipo->ads = MEM_callocN(sizeof(bDopeSheet), "GraphEdit DopeSheet");
+  sipo->ads = static_cast<bDopeSheet *>(MEM_callocN(sizeof(bDopeSheet), "GraphEdit DopeSheet"));
   sipo->ads->source = (ID *)scene;
 
   /* settings for making it easier by default to just see what you're interested in tweaking */
@@ -72,14 +72,14 @@ static SpaceLink *graph_create(const ScrArea *UNUSED(area), const Scene *scene)
   sipo->flag |= SIPO_SHOW_MARKERS;
 
   /* header */
-  region = MEM_callocN(sizeof(ARegion), "header for graphedit");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "header for graphedit"));
 
   BLI_addtail(&sipo->regionbase, region);
   region->regiontype = RGN_TYPE_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
 
   /* channels */
-  region = MEM_callocN(sizeof(ARegion), "channels region for graphedit");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "channels region for graphedit"));
 
   BLI_addtail(&sipo->regionbase, region);
   region->regiontype = RGN_TYPE_CHANNELS;
@@ -88,14 +88,14 @@ static SpaceLink *graph_create(const ScrArea *UNUSED(area), const Scene *scene)
   region->v2d.scroll = (V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM);
 
   /* ui buttons */
-  region = MEM_callocN(sizeof(ARegion), "buttons region for graphedit");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "buttons region for graphedit"));
 
   BLI_addtail(&sipo->regionbase, region);
   region->regiontype = RGN_TYPE_UI;
   region->alignment = RGN_ALIGN_RIGHT;
 
   /* main region */
-  region = MEM_callocN(sizeof(ARegion), "main region for graphedit");
+  region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "main region for graphedit"));
 
   BLI_addtail(&sipo->regionbase, region);
   region->regiontype = RGN_TYPE_WINDOW;
@@ -142,10 +142,10 @@ static void graph_init(wmWindowManager *wm, ScrArea *area)
   SpaceGraph *sipo = (SpaceGraph *)area->spacedata.first;
 
   /* init dopesheet data if non-existent (i.e. for old files) */
-  if (sipo->ads == NULL) {
+  if (sipo->ads == nullptr) {
     wmWindow *win = WM_window_find_by_area(wm, area);
-    sipo->ads = MEM_callocN(sizeof(bDopeSheet), "GraphEdit DopeSheet");
-    sipo->ads->source = win ? (ID *)WM_window_get_active_scene(win) : NULL;
+    sipo->ads = static_cast<bDopeSheet *>(MEM_callocN(sizeof(bDopeSheet), "GraphEdit DopeSheet"));
+    sipo->ads->source = win ? (ID *)WM_window_get_active_scene(win) : nullptr;
   }
 
   /* force immediate init of any invalid F-Curve colors */
@@ -158,13 +158,13 @@ static void graph_init(wmWindowManager *wm, ScrArea *area)
 
 static SpaceLink *graph_duplicate(SpaceLink *sl)
 {
-  SpaceGraph *sipon = MEM_dupallocN(sl);
+  SpaceGraph *sipon = static_cast<SpaceGraph *>(MEM_dupallocN(sl));
 
   memset(&sipon->runtime, 0x0, sizeof(sipon->runtime));
 
   /* clear or remove stuff from old */
   BLI_duplicatelist(&sipon->runtime.ghost_curves, &((SpaceGraph *)sl)->runtime.ghost_curves);
-  sipon->ads = MEM_dupallocN(sipon->ads);
+  sipon->ads = static_cast<bDopeSheet *>(MEM_dupallocN(sipon->ads));
 
   return (SpaceLink *)sipon;
 }
@@ -335,7 +335,7 @@ static void graph_main_region_draw_overlay(const bContext *C, ARegion *region)
 
   /* scrollers */
   /* FIXME: args for scrollers depend on the type of data being shown. */
-  UI_view2d_scrollers_draw(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, nullptr);
 
   /* scale numbers */
   {
@@ -390,11 +390,11 @@ static void graph_channel_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, nullptr);
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
-static void graph_header_region_init(wmWindowManager *UNUSED(wm), ARegion *region)
+static void graph_header_region_init(wmWindowManager * /*wm*/, ARegion *region)
 {
   ED_region_header_init(region);
 }
@@ -497,11 +497,10 @@ static void graph_region_message_subscribe(const wmRegionMessageSubscribeParams 
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, area->spacedata.first, &ptr);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
-      .owner = region,
-      .user_data = region,
-      .notify = ED_region_do_msg_notify_tag_redraw,
-  };
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
+  msg_sub_value_region_tag_redraw.owner = region;
+  msg_sub_value_region_tag_redraw.user_data = region;
+  msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   /* Timeline depends on scene properties. */
   {
@@ -640,7 +639,7 @@ static void graph_refresh_fcurve_colors(const bContext *C)
 {
   bAnimContext ac;
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   size_t items;
   int filter;
@@ -657,10 +656,11 @@ static void graph_refresh_fcurve_colors(const bContext *C)
    *   mismatch between channel-colors and the drawn curves
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
-  items = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  items = ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* loop over F-Curves, assigning colors */
-  for (ale = anim_data.first, i = 0; ale; ale = ale->next, i++) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first), i = 0; ale; ale = ale->next, i++) {
     FCurve *fcu = (FCurve *)ale->data;
 
     /* set color of curve here */
@@ -791,7 +791,7 @@ static void graph_refresh(const bContext *C, ScrArea *area)
   if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR) {
     sipo->runtime.flag &= ~SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR;
 #if 0 /* Done below. */
-    graph_refresh_fcurve_colors(C);
+graph_refresh_fcurve_colors(C);
 #endif
     ED_area_tag_redraw(area);
   }
@@ -803,9 +803,7 @@ static void graph_refresh(const bContext *C, ScrArea *area)
   graph_refresh_fcurve_colors(C);
 }
 
-static void graph_id_remap(ScrArea *UNUSED(area),
-                           SpaceLink *slink,
-                           const struct IDRemapper *mappings)
+static void graph_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct IDRemapper *mappings)
 {
   SpaceGraph *sgraph = (SpaceGraph *)slink;
   if (!sgraph->ads) {
@@ -818,17 +816,17 @@ static void graph_id_remap(ScrArea *UNUSED(area),
 
 static int graph_space_subtype_get(ScrArea *area)
 {
-  SpaceGraph *sgraph = area->spacedata.first;
+  SpaceGraph *sgraph = static_cast<SpaceGraph *>(area->spacedata.first);
   return sgraph->mode;
 }
 
 static void graph_space_subtype_set(ScrArea *area, int value)
 {
-  SpaceGraph *sgraph = area->spacedata.first;
+  SpaceGraph *sgraph = static_cast<SpaceGraph *>(area->spacedata.first);
   sgraph->mode = value;
 }
 
-static void graph_space_subtype_item_extend(bContext *UNUSED(C),
+static void graph_space_subtype_item_extend(bContext * /*C*/,
                                             EnumPropertyItem **item,
                                             int *totitem)
 {
@@ -873,7 +871,7 @@ static void graph_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_ipo(void)
 {
-  SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype ipo");
+  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype ipo"));
   ARegionType *art;
 
   st->spaceid = SPACE_GRAPH;
@@ -896,7 +894,7 @@ void ED_spacetype_ipo(void)
   st->blend_write = graph_space_blend_write;
 
   /* regions: main window */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype graphedit region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype graphedit region"));
   art->regionid = RGN_TYPE_WINDOW;
   art->init = graph_main_region_init;
   art->draw = graph_main_region_draw;
@@ -908,7 +906,7 @@ void ED_spacetype_ipo(void)
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype graphedit region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype graphedit region"));
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
@@ -919,7 +917,7 @@ void ED_spacetype_ipo(void)
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: channels */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype graphedit region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype graphedit region"));
   art->regionid = RGN_TYPE_CHANNELS;
   /* 200 is the 'standard', but due to scrollers, we want a bit more to fit the lock icons in */
   art->prefsizex = 200 + V2D_SCROLL_WIDTH;
@@ -932,7 +930,7 @@ void ED_spacetype_ipo(void)
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: UI buttons */
-  art = MEM_callocN(sizeof(ARegionType), "spacetype graphedit region");
+  art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype graphedit region"));
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
