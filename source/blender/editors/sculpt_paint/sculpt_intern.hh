@@ -555,7 +555,7 @@ struct StrokeCache {
   float mouse_event[2];
 
   float (*prev_colors)[4];
-  void *prev_colors_vpaint;
+  GArray<> prev_colors_vpaint;
 
   /* Multires Displacement Smear. */
   float (*prev_displacement)[3];
