@@ -282,8 +282,7 @@ ReflectionProbeData ReflectionProbeModule::find_empty_reflection_probe_data(
   {
     location_finder.mark_space_used(data);
   }
-  ReflectionProbeData free_spot = location_finder.first_free_spot();
-  return free_spot;
+  return location_finder.first_free_spot();
 }
 
 void ReflectionProbeModule::end_sync()
