@@ -501,7 +501,7 @@ typedef enum ClosureType {
 #define CLOSURE_IS_PRINCIPLED(type) (type == CLOSURE_BSDF_PRINCIPLED_ID)
 
 #define CLOSURE_WEIGHT_CUTOFF 1e-5f
-/* Treat closure as singular if roughness is below this threshold. */
-#define BSDF_ROUGHNESS_THRESH 5e-7f
+/* Treat closure as singular if the squared roughness is below this threshold. */
+#define BSDF_ROUGHNESS_SQ_THRESH 5e-7f
 
 CCL_NAMESPACE_END

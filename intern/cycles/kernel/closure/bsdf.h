@@ -398,8 +398,8 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID: {
       ccl_private const MicrofacetBsdf *bsdf = (ccl_private const MicrofacetBsdf *)sc;
       label = ((bsdf_is_transmission(sc, wo)) ? LABEL_TRANSMIT : LABEL_REFLECT) |
-              ((bsdf->alpha_x * bsdf->alpha_y <= BSDF_ROUGHNESS_THRESH) ? LABEL_SINGULAR :
-                                                                          LABEL_GLOSSY);
+              ((bsdf->alpha_x * bsdf->alpha_y <= BSDF_ROUGHNESS_SQ_THRESH) ? LABEL_SINGULAR :
+                                                                             LABEL_GLOSSY);
       break;
     }
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
