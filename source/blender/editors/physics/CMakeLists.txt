@@ -26,7 +26,7 @@ set(SRC
   dynamicpaint_ops.cc
   particle_boids.cc
   particle_edit.c
-  particle_edit_undo.c
+  particle_edit_undo.cc
   particle_object.c
   physics_fluid.c
   physics_ops.c
