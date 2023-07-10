@@ -1179,7 +1179,7 @@ static void vwpaint_init_stroke(Depsgraph *depsgraph, Object *ob)
    * vwpaint_update_cache_invariants and vwpaint_update_cache_variants.
    */
   if (!ss->cache) {
-    ss->cache = (StrokeCache *)MEM_callocN(sizeof(StrokeCache), "stroke cache");
+    ss->cache = MEM_new<StrokeCache>(__func__);
   }
 }
 
@@ -1582,7 +1582,7 @@ static void vwpaint_update_cache_invariants(
 
   /* VW paint needs to allocate stroke cache before update is called. */
   if (!ss->cache) {
-    cache = (StrokeCache *)MEM_callocN(sizeof(StrokeCache), "stroke cache");
+    cache = MEM_new<StrokeCache>(__func__);
     ss->cache = cache;
   }
   else {
@@ -2795,10 +2795,10 @@ static void to_static_color_type(const eCustomDataType type, const Func &func)
 {
   switch (type) {
     case CD_PROP_COLOR:
-      func(ColorPaint4f());
+      func(ColorGeometry4f());
       break;
     case CD_PROP_BYTE_COLOR:
-      func(ColorPaint4b());
+      func(ColorGeometry4b());
       break;
     default:
       BLI_assert_unreachable();
@@ -2923,6 +2923,25 @@ static void do_vpaint_brush_blur_loops(bContext *C,
   const Brush *brush = ob->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
 
+  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
+  const bool has_grids = (pbvh_type == PBVH_GRIDS);
+
+  const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
+  const StrokeCache *cache = ss->cache;
+  float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
+  get_brush_alpha_data(
+      scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
+  const bool use_normal = vwpaint_use_normal(vp);
+  const bool use_vert_sel = (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) !=
+                            0;
+  const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
+
+  SculptBrushTest test_init;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test_init, brush->falloff_shape);
+  const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
+      ss, brush->falloff_shape);
+
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
@@ -2931,26 +2950,8 @@ static void do_vpaint_brush_blur_loops(bContext *C,
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
   blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
+    SculptBrushTest test = test_init;
     for (int n : range) {
-      const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-      const bool has_grids = (pbvh_type == PBVH_GRIDS);
-
-      const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
-      const StrokeCache *cache = ss->cache;
-      float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
-      get_brush_alpha_data(
-          scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
-      const bool use_normal = vwpaint_use_normal(vp);
-      const bool use_vert_sel = (me->editflag &
-                                 (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
-      const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-
-      SculptBrushTest test;
-      SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-          ss, &test, brush->falloff_shape);
-      const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-          ss, brush->falloff_shape);
-
       /* For each vertex */
       PBVHVertexIter vd;
       BKE_pbvh_vertex_iter_begin (ss->pbvh, nodes[n], vd, PBVH_ITER_UNIQUE) {
@@ -2980,11 +2981,13 @@ static void do_vpaint_brush_blur_loops(bContext *C,
         const float brush_fade = BKE_brush_curve_strength(brush, sqrtf(test.dist), cache->radius);
 
         to_static_color_type(vpd->type, [&](auto dummy) {
-          using Color = decltype(dummy);
+          using T = decltype(dummy);
+          using Color =
+              std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
           using Traits = color::Traits<Color>;
           using Blend = typename Traits::BlendType;
-          MutableSpan<Color> previous_color = g_previous_color.typed<Color>();
-          MutableSpan<Color> colors = attribute.typed<Color>();
+          MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
+          MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
           /* Get the average poly color */
           Color color_final(0, 0, 0, 0);
 
@@ -3070,6 +3073,25 @@ static void do_vpaint_brush_blur_verts(bContext *C,
   const Brush *brush = ob->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
 
+  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
+  const bool has_grids = (pbvh_type == PBVH_GRIDS);
+
+  const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
+  const StrokeCache *cache = ss->cache;
+  float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
+  get_brush_alpha_data(
+      scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
+  const bool use_normal = vwpaint_use_normal(vp);
+  const bool use_vert_sel = (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) !=
+                            0;
+  const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
+
+  SculptBrushTest test_init;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test_init, brush->falloff_shape);
+  const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
+      ss, brush->falloff_shape);
+
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
@@ -3078,26 +3100,8 @@ static void do_vpaint_brush_blur_verts(bContext *C,
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
   blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
+    SculptBrushTest test = test_init;
     for (int n : range) {
-      const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-      const bool has_grids = (pbvh_type == PBVH_GRIDS);
-
-      const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
-      const StrokeCache *cache = ss->cache;
-      float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
-      get_brush_alpha_data(
-          scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
-      const bool use_normal = vwpaint_use_normal(vp);
-      const bool use_vert_sel = (me->editflag &
-                                 (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
-      const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-
-      SculptBrushTest test;
-      SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-          ss, &test, brush->falloff_shape);
-      const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-          ss, brush->falloff_shape);
-
       /* For each vertex */
       PBVHVertexIter vd;
       BKE_pbvh_vertex_iter_begin (ss->pbvh, nodes[n], vd, PBVH_ITER_UNIQUE) {
@@ -3127,11 +3131,13 @@ static void do_vpaint_brush_blur_verts(bContext *C,
 
         /* Get the average poly color */
         to_static_color_type(vpd->type, [&](auto dummy) {
-          using Color = decltype(dummy);
+          using T = decltype(dummy);
+          using Color =
+              std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
           using Traits = color::Traits<Color>;
           using Blend = typename Traits::BlendType;
-          MutableSpan<Color> previous_color = g_previous_color.typed<Color>();
-          MutableSpan<Color> colors = attribute.typed<Color>();
+          MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
+          MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
           Color color_final(0, 0, 0, 0);
 
           int total_hit_loops = 0;
@@ -3230,9 +3236,9 @@ static void do_vpaint_brush_smear(bContext *C,
     return;
   }
 
-  SculptBrushTest test;
+  SculptBrushTest test_init;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush->falloff_shape);
+      ss, &test_init, brush->falloff_shape);
   const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
       ss, brush->falloff_shape);
 
@@ -3242,6 +3248,7 @@ static void do_vpaint_brush_smear(bContext *C,
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
   blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
+    SculptBrushTest test = test_init;
     for (int n : range) {
       /* For each vertex */
       PBVHVertexIter vd;
@@ -3281,12 +3288,15 @@ static void do_vpaint_brush_smear(bContext *C,
         /* Get the color of the loop in the opposite
          * direction of the brush movement */
         to_static_color_type(vpd->type, [&](auto dummy) {
-          using Color = decltype(dummy);
+          using T = decltype(dummy);
+          using Color =
+              std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
           using Traits = color::Traits<Color>;
-          MutableSpan<Color> color_curr = g_color_curr.typed<Color>();
-          MutableSpan<Color> color_prev_smear = g_color_prev_smear.typed<Color>();
-          MutableSpan<Color> color_prev = g_color_prev.typed<Color>();
-          MutableSpan<Color> colors = attribute.typed<Color>();
+          MutableSpan<Color> color_curr = g_color_curr.typed<T>().template cast<Color>();
+          MutableSpan<Color> color_prev_smear =
+              g_color_prev_smear.typed<T>().template cast<Color>();
+          MutableSpan<Color> color_prev = g_color_prev.typed<T>().template cast<Color>();
+          MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
 
           Color color_final(0, 0, 0, 0);
 
@@ -3399,21 +3409,24 @@ static void calculate_average_color(VPaintData *vpd,
   const bool use_vert_sel = (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) !=
                             0;
 
-  SculptBrushTest test;
+  SculptBrushTest test_init;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush->falloff_shape);
+      ss, &test_init, brush->falloff_shape);
 
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
 
   to_static_color_type(vpd->type, [&](auto dummy) {
-    using Color = decltype(dummy);
+    using T = decltype(dummy);
+    using Color =
+        std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
     using Traits = color::Traits<Color>;
     using Blend = typename Traits::BlendType;
-    const Span<Color> colors = attribute.typed<Color>();
+    const Span<Color> colors = attribute.typed<T>().template cast<Color>();
 
     Array<VPaintAverageAccum<Blend>> accum(nodes.size());
     blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
+      SculptBrushTest test = test_init;
       for (int n : range) {
         VPaintAverageAccum<Blend> &accum2 = accum[n];
         accum2.len = 0;
@@ -3525,13 +3538,11 @@ static void vpaint_do_draw(bContext *C,
                             0;
   const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
 
-  SculptBrushTest test;
+  SculptBrushTest test_init;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush->falloff_shape);
+      ss, &test_init, brush->falloff_shape);
   const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
       ss, brush->falloff_shape);
-
-  const ColorPaint4f paintcol = vpd->paintcol;
 
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
@@ -3542,6 +3553,7 @@ static void vpaint_do_draw(bContext *C,
 
   blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
+      SculptBrushTest test = test_init;
       /* For each vertex */
       PBVHVertexIter vd;
       BKE_pbvh_vertex_iter_begin (ss->pbvh, nodes[n], vd, PBVH_ITER_UNIQUE) {
@@ -3573,11 +3585,13 @@ static void vpaint_do_draw(bContext *C,
         const float brush_fade = BKE_brush_curve_strength(brush, sqrtf(test.dist), cache->radius);
 
         to_static_color_type(vpd->type, [&](auto dummy) {
-          using Color = decltype(dummy);
+          using T = decltype(dummy);
+          using Color =
+              std::conditional_t<std::is_same_v<T, ColorGeometry4f>, ColorPaint4f, ColorPaint4b>;
           using Traits = color::Traits<Color>;
-          MutableSpan<Color> colors = attribute.typed<Color>();
-          MutableSpan<Color> previous_color = g_previous_color.typed<Color>();
-          Color color_final = fromFloat<Color>(paintcol);
+          MutableSpan<Color> colors = attribute.typed<T>().template cast<Color>();
+          MutableSpan<Color> previous_color = g_previous_color.typed<T>().template cast<Color>();
+          Color color_final = fromFloat<Color>(vpd->paintcol);
 
           /* If we're painting with a texture, sample the texture color and alpha. */
           float tex_alpha = 1.0;
@@ -3849,7 +3863,7 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   SculptSession *ss = ob->sculpt;
 
-  if (ss->cache->alt_smooth) {
+  if (ss->cache && ss->cache->alt_smooth) {
     ToolSettings *ts = CTX_data_tool_settings(C);
     VPaint *vp = ts->vpaint;
     smooth_brush_toggle_off(C, &vp->paint, ss->cache);
