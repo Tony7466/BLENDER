@@ -38,8 +38,10 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
-  bf_io_common
+  PRIVATE bf::dna
   PRIVATE bf::extern::nanosvg
+  PRIVATE bf::intern::guardedalloc
+  bf_io_common
 )
 
 if(WITH_PUGIXML)
