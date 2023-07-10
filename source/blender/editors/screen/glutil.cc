@@ -48,10 +48,10 @@ IMMDrawPixelsTexState immDrawPixelsTexSetup(int builtin)
   IMMDrawPixelsTexState state;
   immDrawPixelsTexSetupAttributes(&state);
 
-  state.shader = GPU_shader_get_builtin_shader(builtin);
+  state.shader = GPU_shader_get_builtin_shader(eGPUBuiltinShader(builtin));
 
   /* Shader will be unbind by immUnbindProgram in a `immDrawPixelsTex` function. */
-  immBindBuiltinProgram(builtin);
+  immBindBuiltinProgram(eGPUBuiltinShader(builtin));
   immUniform1i("image", 0);
   state.do_shader_unbind = true;
 
@@ -82,7 +82,7 @@ void immDrawPixelsTexScaledFullSize(const IMMDrawPixelsTexState *state,
   const int mip_len = use_mipmap ? 9999 : 1;
 
   GPUTexture *tex = GPU_texture_create_2d(
-      "immDrawPixels", img_w, img_h, mip_len, gpu_format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+      "immDrawPixels", img_w, img_h, mip_len, gpu_format, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
 
   const bool use_float_data = ELEM(gpu_format, GPU_RGBA16F, GPU_RGB16F, GPU_R16F);
   eGPUDataFormat gpu_data_format = (use_float_data) ? GPU_DATA_FLOAT : GPU_DATA_UBYTE;
@@ -101,7 +101,7 @@ void immDrawPixelsTexScaledFullSize(const IMMDrawPixelsTexState *state,
   /* NOTE: Shader could be null for GLSL OCIO drawing, it is fine, since
    * it does not need color.
    */
-  if (state->shader != NULL && GPU_shader_get_uniform(state->shader, "color") != -1) {
+  if (state->shader != nullptr && GPU_shader_get_uniform(state->shader, "color") != -1) {
     immUniformColor4fv((color) ? color : white);
   }
 
@@ -183,7 +183,7 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
   size_t stride = components * ((use_float_data) ? sizeof(float) : sizeof(uchar));
 
   GPUTexture *tex = GPU_texture_create_2d(
-      "immDrawPixels", tex_w, tex_h, 1, gpu_format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+      "immDrawPixels", tex_w, tex_h, 1, gpu_format, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
 
   GPU_texture_filter_mode(tex, use_filter);
   GPU_texture_extend_mode(tex, GPU_SAMPLER_EXTEND_MODE_EXTEND);
@@ -203,7 +203,7 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
   /* NOTE: Shader could be null for GLSL OCIO drawing, it is fine, since
    * it does not need color.
    */
-  if (state->shader != NULL && GPU_shader_get_uniform(state->shader, "color") != -1) {
+  if (state->shader != nullptr && GPU_shader_get_uniform(state->shader, "color") != -1) {
     immUniformColor4fv((color) ? color : white);
   }
 
@@ -290,10 +290,10 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
       immVertex2f(pos, rast_x + offset_left * xzoom, rast_y + top * yzoom * scaleY);
       immEnd();
 
-      /* NOTE: Weirdly enough this is only required on macOS. Without this there is some sort of
-       * bleeding of data is happening from tiles which are drawn later on.
-       * This doesn't seem to be too slow,
-       * but still would be nice to have fast and nice solution. */
+/* NOTE: Weirdly enough this is only required on macOS. Without this there is some sort of
+ * bleeding of data is happening from tiles which are drawn later on.
+ * This doesn't seem to be too slow,
+ * but still would be nice to have fast and nice solution. */
 #ifdef __APPLE__
       if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
         GPU_flush();
@@ -431,7 +431,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
   bool need_fallback = true;
 
   /* Early out */
-  if (ibuf->byte_buffer.data == NULL && ibuf->float_buffer.data == NULL) {
+  if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
     return;
   }
 
@@ -475,7 +475,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
 
     if (ok) {
       if (ibuf->float_buffer.data) {
-        eGPUTextureFormat format = 0;
+        eGPUTextureFormat format = eGPUTextureFormat(0);
 
         if (ibuf->channels == 3) {
           format = GPU_RGB16F;
@@ -502,7 +502,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
                                          clip_max_y,
                                          zoom_x,
                                          zoom_y,
-                                         NULL);
+                                         nullptr);
         }
       }
       else if (ibuf->byte_buffer.data) {
@@ -521,7 +521,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
                                        clip_max_y,
                                        zoom_x,
                                        zoom_y,
-                                       NULL);
+                                       nullptr);
       }
 
       IMB_colormanagement_finish_glsl_draw();
@@ -554,7 +554,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
                                      clip_max_y,
                                      zoom_x,
                                      zoom_y,
-                                     NULL);
+                                     nullptr);
     }
 
     IMB_display_buffer_release(cache_handle);

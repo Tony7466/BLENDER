@@ -111,7 +111,7 @@ static WorkSpaceLayout *workspace_layout_delete_find_new(const WorkSpaceLayout *
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_old, bContext *C)
@@ -139,7 +139,7 @@ bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_ol
   return false;
 }
 
-static bool workspace_change_find_new_layout_cb(const WorkSpaceLayout *layout, void *UNUSED(arg))
+static bool workspace_change_find_new_layout_cb(const WorkSpaceLayout *layout, void * /*arg*/)
 {
   /* return false to stop the iterator if we've found a layout that can be activated */
   return workspace_layout_set_poll(layout) ? false : true;
@@ -149,7 +149,7 @@ static bScreen *screen_fullscreen_find_associated_normal_screen(const Main *bmai
 {
   LISTBASE_FOREACH (bScreen *, screen_iter, &bmain->screens) {
     if ((screen_iter != screen) && ELEM(screen_iter->state, SCREENMAXIMIZED, SCREENFULL)) {
-      ScrArea *area = screen_iter->areabase.first;
+      ScrArea *area = static_cast<ScrArea *>(screen_iter->areabase.first);
       if (area && area->full == screen) {
         return screen_iter;
       }
@@ -180,8 +180,8 @@ WorkSpaceLayout *ED_workspace_screen_change_ensure_unused_layout(
   if (screen_is_used_by_other_window(win, screen_temp)) {
     /* Screen is already used, try to find a free one. */
     layout_temp = BKE_workspace_layout_iter_circular(
-        workspace, layout_new, workspace_change_find_new_layout_cb, NULL, false);
-    screen_temp = layout_temp ? BKE_workspace_layout_screen_get(layout_temp) : NULL;
+        workspace, layout_new, workspace_change_find_new_layout_cb, nullptr, false);
+    screen_temp = layout_temp ? BKE_workspace_layout_screen_get(layout_temp) : nullptr;
 
     if (!layout_temp || screen_is_used_by_other_window(win, screen_temp)) {
       /* Fallback solution: duplicate layout. */
@@ -192,7 +192,7 @@ WorkSpaceLayout *ED_workspace_screen_change_ensure_unused_layout(
   return layout_temp;
 }
 
-static bool workspace_layout_cycle_iter_cb(const WorkSpaceLayout *layout, void *UNUSED(arg))
+static bool workspace_layout_cycle_iter_cb(const WorkSpaceLayout *layout, void * /*arg*/)
 {
   /* return false to stop iterator when we have found a layout to activate */
   return !workspace_layout_set_poll(layout);
@@ -213,7 +213,7 @@ bool ED_workspace_layout_cycle(WorkSpace *workspace, const short direction, bCon
   WorkSpaceLayout *new_layout = BKE_workspace_layout_iter_circular(workspace,
                                                                    old_layout,
                                                                    workspace_layout_cycle_iter_cb,
-                                                                   NULL,
+                                                                   nullptr,
                                                                    (direction == -1) ? true :
                                                                                        false);
 

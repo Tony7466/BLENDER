@@ -140,7 +140,7 @@ bool ED_region_contains_xy(const ARegion *region, const int event_xy[2])
         /* Header. */
         rcti rect;
         BLI_rcti_init_pt_radius(&rect, event_xy, overlap_margin);
-        if (UI_region_but_find_rect_over(region, &rect) == NULL) {
+        if (UI_region_but_find_rect_over(region, &rect) == nullptr) {
           return false;
         }
       }
@@ -182,7 +182,7 @@ ARegion *ED_area_find_region_xy_visual(const ScrArea *area,
                                        const int event_xy[2])
 {
   if (!area) {
-    return NULL;
+    return nullptr;
   }
 
   /* Check overlapped regions first. */
@@ -208,5 +208,5 @@ ARegion *ED_area_find_region_xy_visual(const ScrArea *area,
     }
   }
 
-  return NULL;
+  return nullptr;
 }

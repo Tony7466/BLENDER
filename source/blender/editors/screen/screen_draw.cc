@@ -17,6 +17,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
 #include "WM_api.h"
@@ -52,20 +53,20 @@ static void do_vert_pair(GPUVertBuf *vbo, uint pos, uint *vidx, int corner, int 
 
   switch (corner) {
     case 0:
-      add_v2_v2(inter, (float[2]){-1.0f, -1.0f});
-      add_v2_v2(exter, (float[2]){-1.0f, -1.0f});
+      add_v2_v2(inter, blender::float2{-1.0f, -1.0f});
+      add_v2_v2(exter, blender::float2{-1.0f, -1.0f});
       break;
     case 1:
-      add_v2_v2(inter, (float[2]){1.0f, -1.0f});
-      add_v2_v2(exter, (float[2]){1.0f, -1.0f});
+      add_v2_v2(inter, blender::float2{1.0f, -1.0f});
+      add_v2_v2(exter, blender::float2{1.0f, -1.0f});
       break;
     case 2:
-      add_v2_v2(inter, (float[2]){1.0f, 1.0f});
-      add_v2_v2(exter, (float[2]){1.0f, 1.0f});
+      add_v2_v2(inter, blender::float2{1.0f, 1.0f});
+      add_v2_v2(exter, blender::float2{1.0f, 1.0f});
       break;
     case 3:
-      add_v2_v2(inter, (float[2]){-1.0f, 1.0f});
-      add_v2_v2(exter, (float[2]){-1.0f, 1.0f});
+      add_v2_v2(inter, blender::float2{-1.0f, 1.0f});
+      add_v2_v2(exter, blender::float2{-1.0f, 1.0f});
       break;
   }
 
@@ -75,9 +76,9 @@ static void do_vert_pair(GPUVertBuf *vbo, uint pos, uint *vidx, int corner, int 
 
 static GPUBatch *batch_screen_edges_get(int *corner_len)
 {
-  static GPUBatch *screen_edges_batch = NULL;
+  static GPUBatch *screen_edges_batch = nullptr;
 
-  if (screen_edges_batch == NULL) {
+  if (screen_edges_batch == nullptr) {
     GPUVertFormat format = {0};
     uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
@@ -93,7 +94,7 @@ static GPUBatch *batch_screen_edges_get(int *corner_len)
     /* close the loop */
     do_vert_pair(vbo, pos, &vidx, 0, 0);
 
-    screen_edges_batch = GPU_batch_create_ex(GPU_PRIM_TRI_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
+    screen_edges_batch = GPU_batch_create_ex(GPU_PRIM_TRI_STRIP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
     gpu_batch_presets_register(screen_edges_batch);
   }
 
@@ -131,7 +132,7 @@ static void drawscredge_area_draw(
     rect.ymin -= edge_thickness * 0.5f;
   }
 
-  GPUBatch *batch = batch_screen_edges_get(NULL);
+  GPUBatch *batch = batch_screen_edges_get(nullptr);
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_AREA_BORDERS);
   GPU_batch_uniform_4fv(batch, "rect", (float *)&rect);
   GPU_batch_draw(batch);
@@ -171,8 +172,8 @@ void ED_screen_draw_edges(wmWindow *win)
   rcti scissor_rect;
   BLI_rcti_init_minmax(&scissor_rect);
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    BLI_rcti_do_minmax_v(&scissor_rect, (int[2]){area->v1->vec.x, area->v1->vec.y});
-    BLI_rcti_do_minmax_v(&scissor_rect, (int[2]){area->v3->vec.x, area->v3->vec.y});
+    BLI_rcti_do_minmax_v(&scissor_rect, blender::int2{area->v1->vec.x, area->v1->vec.y});
+    BLI_rcti_do_minmax_v(&scissor_rect, blender::int2{area->v3->vec.x, area->v3->vec.y});
   }
 
   if (GPU_type_matches_ex(GPU_DEVICE_INTEL_UHD, GPU_OS_UNIX, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
@@ -225,16 +226,15 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
 
   /* Rect of the combined areas. */
   const bool vertical = SCREEN_DIR_IS_VERTICAL(dir);
-  const rctf combined = {
-      .xmin = vertical ? MAX2(sa1->totrct.xmin, sa2->totrct.xmin) :
-                         MIN2(sa1->totrct.xmin, sa2->totrct.xmin),
-      .xmax = vertical ? MIN2(sa1->totrct.xmax, sa2->totrct.xmax) :
-                         MAX2(sa1->totrct.xmax, sa2->totrct.xmax),
-      .ymin = vertical ? MIN2(sa1->totrct.ymin, sa2->totrct.ymin) :
-                         MAX2(sa1->totrct.ymin, sa2->totrct.ymin),
-      .ymax = vertical ? MAX2(sa1->totrct.ymax, sa2->totrct.ymax) :
-                         MIN2(sa1->totrct.ymax, sa2->totrct.ymax),
-  };
+  rctf combined{};
+  combined.xmin = vertical ? MAX2(sa1->totrct.xmin, sa2->totrct.xmin) :
+                             MIN2(sa1->totrct.xmin, sa2->totrct.xmin);
+  combined.xmax = vertical ? MIN2(sa1->totrct.xmax, sa2->totrct.xmax) :
+                             MAX2(sa1->totrct.xmax, sa2->totrct.xmax);
+  combined.ymin = vertical ? MIN2(sa1->totrct.ymin, sa2->totrct.ymin) :
+                             MAX2(sa1->totrct.ymin, sa2->totrct.ymin);
+  combined.ymax = vertical ? MAX2(sa1->totrct.ymax, sa2->totrct.ymax) :
+                             MIN2(sa1->totrct.ymax, sa2->totrct.ymax);
 
   uint pos_id = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -298,7 +298,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
 
   /* Outline the combined area. */
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&combined, false, 7 * U.pixelsize, (float[4]){1.0f, 1.0f, 1.0f, 0.8f});
+  UI_draw_roundbox_4fv(&combined, false, 7 * U.pixelsize, blender::float4{1.0f, 1.0f, 1.0f, 0.8f});
 }
 
 void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const float fac)
@@ -386,12 +386,11 @@ static void screen_preview_draw_areas(const bScreen *screen,
   immUniformColor4fv(col);
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    rctf rect = {
-        .xmin = area->totrct.xmin * scale[0] + ofs_h,
-        .xmax = area->totrct.xmax * scale[0] - ofs_h,
-        .ymin = area->totrct.ymin * scale[1] + ofs_h,
-        .ymax = area->totrct.ymax * scale[1] - ofs_h,
-    };
+    rctf rect{};
+    rect.xmin = area->totrct.xmin * scale[0] + ofs_h;
+    rect.xmax = area->totrct.xmax * scale[0] - ofs_h;
+    rect.ymin = area->totrct.ymin * scale[1] + ofs_h;
+    rect.ymax = area->totrct.ymax * scale[1] - ofs_h;
 
     immBegin(GPU_PRIM_TRI_FAN, 4);
     immVertex2f(pos, rect.xmin, rect.ymin);

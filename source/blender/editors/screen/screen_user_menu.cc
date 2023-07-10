@@ -61,22 +61,23 @@ bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
 
-  if (sl == NULL) {
+  if (sl == nullptr) {
     *r_len = 0;
-    return NULL;
+    return nullptr;
   }
 
   const char *context_mode = CTX_data_mode_string(C);
   const char *context = screen_menu_context_string(C, sl);
   uint array_len = 3;
-  bUserMenu **um_array = MEM_calloc_arrayN(array_len, sizeof(*um_array), __func__);
+  bUserMenu **um_array = static_cast<bUserMenu **>(
+      MEM_calloc_arrayN(array_len, sizeof(*um_array), __func__));
   um_array[0] = BKE_blender_user_menu_find(&U.user_menus, sl->spacetype, context);
   um_array[1] = (sl->spacetype != SPACE_TOPBAR) ?
                     BKE_blender_user_menu_find(&U.user_menus, SPACE_TOPBAR, context_mode) :
-                    NULL;
+                    nullptr;
   um_array[2] = (sl->spacetype == SPACE_VIEW3D) ?
                     BKE_blender_user_menu_find(&U.user_menus, SPACE_PROPERTIES, context_mode) :
-                    NULL;
+                    nullptr;
 
   *r_len = array_len;
   return um_array;
@@ -115,7 +116,7 @@ bUserMenuItem_Op *ED_screen_user_menu_item_find_operator(ListBase *lb,
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 bUserMenuItem_Menu *ED_screen_user_menu_item_find_menu(ListBase *lb, const MenuType *mt)
@@ -128,7 +129,7 @@ bUserMenuItem_Menu *ED_screen_user_menu_item_find_menu(ListBase *lb, const MenuT
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 bUserMenuItem_Prop *ED_screen_user_menu_item_find_prop(ListBase *lb,
@@ -146,7 +147,7 @@ bUserMenuItem_Prop *ED_screen_user_menu_item_find_prop(ListBase *lb,
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void ED_screen_user_menu_item_add_operator(ListBase *lb,
@@ -164,7 +165,7 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
   }
   STRNCPY(umi_op->op_idname, ot->idname);
   STRNCPY(umi_op->op_prop_enum, op_prop_enum);
-  umi_op->prop = prop ? IDP_CopyProperty(prop) : NULL;
+  umi_op->prop = prop ? IDP_CopyProperty(prop) : nullptr;
 }
 
 void ED_screen_user_menu_item_add_menu(ListBase *lb, const char *ui_name, const MenuType *mt)
@@ -214,25 +215,25 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
   bool is_empty = true;
   for (int um_index = 0; um_index < um_array_len; um_index++) {
     bUserMenu *um = um_array[um_index];
-    if (um == NULL) {
+    if (um == nullptr) {
       continue;
     }
     LISTBASE_FOREACH (bUserMenuItem *, umi, &um->items) {
-      const char *ui_name = umi->ui_name[0] ? umi->ui_name : NULL;
+      const char *ui_name = umi->ui_name[0] ? umi->ui_name : nullptr;
       if (umi->type == USER_MENU_TYPE_OPERATOR) {
         bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
         wmOperatorType *ot = WM_operatortype_find(umi_op->op_idname, false);
-        if (ot != NULL) {
+        if (ot != nullptr) {
           if (umi_op->op_prop_enum[0] == '\0') {
-            IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
+            IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : nullptr;
             uiItemFullO_ptr(menu->layout,
                             ot,
                             CTX_IFACE_(ot->translation_context, ui_name),
                             ICON_NONE,
                             prop,
-                            umi_op->opcontext,
+                            wmOperatorCallContext(umi_op->opcontext),
                             0,
-                            NULL);
+                            nullptr);
           }
           else {
             /* umi_op->prop could be used to set other properties but it's currently unsupported.
@@ -243,7 +244,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
                                     umi_op->op_prop_enum,
                                     CTX_IFACE_(ot->translation_context, ui_name),
                                     ICON_NONE,
-                                    NULL);
+                                    nullptr);
           }
           is_empty = false;
         }
@@ -257,7 +258,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
       else if (umi->type == USER_MENU_TYPE_MENU) {
         bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
         MenuType *mt = WM_menutype_find(umi_mt->mt_idname, false);
-        if (mt != NULL) {
+        if (mt != nullptr) {
           uiItemM_ptr(menu->layout, mt, ui_name, ICON_NONE);
           is_empty = false;
         }
@@ -276,11 +277,12 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
           *data_path = '\0';
         }
         PointerRNA ptr = CTX_data_pointer_get(C, umi_pr->context_data_path);
-        if (ptr.type == NULL) {
+        if (ptr.type == nullptr) {
           PointerRNA ctx_ptr;
-          RNA_pointer_create(NULL, &RNA_Context, (void *)C, &ctx_ptr);
-          if (!RNA_path_resolve_full(&ctx_ptr, umi_pr->context_data_path, &ptr, NULL, NULL)) {
-            ptr.type = NULL;
+          RNA_pointer_create(nullptr, &RNA_Context, (void *)C, &ctx_ptr);
+          if (!RNA_path_resolve_full(&ctx_ptr, umi_pr->context_data_path, &ptr, nullptr, nullptr))
+          {
+            ptr.type = nullptr;
           }
         }
         if (data_path) {
@@ -289,11 +291,11 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
         }
 
         bool ok = false;
-        if (ptr.type != NULL) {
-          PropertyRNA *prop = NULL;
+        if (ptr.type != nullptr) {
+          PropertyRNA *prop = nullptr;
           PointerRNA prop_ptr = ptr;
-          if ((data_path == NULL) || RNA_path_resolve_full(&ptr, data_path, &prop_ptr, NULL, NULL))
-          {
+          if ((data_path == nullptr) ||
+              RNA_path_resolve_full(&ptr, data_path, &prop_ptr, nullptr, nullptr)) {
             prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
             if (prop) {
               ok = true;
@@ -327,7 +329,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
 
 void ED_screen_user_menu_register(void)
 {
-  MenuType *mt = MEM_callocN(sizeof(MenuType), __func__);
+  MenuType *mt = static_cast<MenuType *>(MEM_callocN(sizeof(MenuType), __func__));
   STRNCPY(mt->idname, "SCREEN_MT_user_menu");
   STRNCPY(mt->label, N_("Quick Favorites"));
   STRNCPY(mt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);

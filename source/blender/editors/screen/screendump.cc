@@ -43,14 +43,14 @@
 
 #include "screen_intern.h"
 
-typedef struct ScreenshotData {
+struct ScreenshotData {
   uint8_t *dumprect;
   int dumpsx, dumpsy;
   rcti crop;
   bool use_crop;
 
   ImageFormatData im_format;
-} ScreenshotData;
+};
 
 /* call from both exec and invoke */
 static int screenshot_data_create(bContext *C, wmOperator *op, ScrArea *area)
@@ -65,7 +65,8 @@ static int screenshot_data_create(bContext *C, wmOperator *op, ScrArea *area)
   uint8_t *dumprect = WM_window_pixels_read(C, win, dumprect_size);
 
   if (dumprect) {
-    ScreenshotData *scd = MEM_callocN(sizeof(ScreenshotData), "screenshot");
+    ScreenshotData *scd = static_cast<ScreenshotData *>(
+        MEM_callocN(sizeof(ScreenshotData), "screenshot"));
 
     scd->dumpsx = dumprect_size[0];
     scd->dumpsy = dumprect_size[1];
@@ -80,33 +81,33 @@ static int screenshot_data_create(bContext *C, wmOperator *op, ScrArea *area)
 
     return true;
   }
-  op->customdata = NULL;
+  op->customdata = nullptr;
   return false;
 }
 
 static void screenshot_data_free(wmOperator *op)
 {
-  ScreenshotData *scd = op->customdata;
+  ScreenshotData *scd = static_cast<ScreenshotData *>(op->customdata);
 
   if (scd) {
     if (scd->dumprect) {
       MEM_freeN(scd->dumprect);
     }
     MEM_freeN(scd);
-    op->customdata = NULL;
+    op->customdata = nullptr;
   }
 }
 
 static int screenshot_exec(bContext *C, wmOperator *op)
 {
   const bool use_crop = STREQ(op->idname, "SCREEN_OT_screenshot_area");
-  ScreenshotData *scd = op->customdata;
+  ScreenshotData *scd = static_cast<ScreenshotData *>(op->customdata);
   bool ok = false;
 
-  if (scd == NULL) {
+  if (scd == nullptr) {
     /* when running exec directly */
-    screenshot_data_create(C, op, use_crop ? CTX_wm_area(C) : NULL);
-    scd = op->customdata;
+    screenshot_data_create(C, op, use_crop ? CTX_wm_area(C) : nullptr);
+    scd = static_cast<ScreenshotData *>(op->customdata);
   }
 
   if (scd) {
@@ -152,12 +153,12 @@ static int screenshot_exec(bContext *C, wmOperator *op)
 static int screenshot_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool use_crop = STREQ(op->idname, "SCREEN_OT_screenshot_area");
-  ScrArea *area = NULL;
+  ScrArea *area = nullptr;
   if (use_crop) {
     area = CTX_wm_area(C);
     bScreen *screen = CTX_wm_screen(C);
     ScrArea *area_test = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
-    if (area_test != NULL) {
+    if (area_test != nullptr) {
       area = area_test;
     }
   }
@@ -187,42 +188,47 @@ static int screenshot_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_CANCELLED;
 }
 
-static bool screenshot_check(bContext *UNUSED(C), wmOperator *op)
+static bool screenshot_check(bContext * /*C*/, wmOperator *op)
 {
-  ScreenshotData *scd = op->customdata;
+  ScreenshotData *scd = static_cast<ScreenshotData *>(op->customdata);
   return WM_operator_filesel_ensure_ext_imtype(op, &scd->im_format);
 }
 
-static void screenshot_cancel(bContext *UNUSED(C), wmOperator *op)
+static void screenshot_cancel(bContext * /*C*/, wmOperator *op)
 {
   screenshot_data_free(op);
 }
 
-static bool screenshot_draw_check_prop(PointerRNA *UNUSED(ptr),
+static bool screenshot_draw_check_prop(PointerRNA * /*ptr*/,
                                        PropertyRNA *prop,
-                                       void *UNUSED(user_data))
+                                       void * /*user_data*/)
 {
   const char *prop_id = RNA_property_identifier(prop);
 
   return !STREQ(prop_id, "filepath");
 }
 
-static void screenshot_draw(bContext *UNUSED(C), wmOperator *op)
+static void screenshot_draw(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
-  ScreenshotData *scd = op->customdata;
+  ScreenshotData *scd = static_cast<ScreenshotData *>(op->customdata);
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   /* image template */
   PointerRNA ptr;
-  RNA_pointer_create(NULL, &RNA_ImageFormatSettings, &scd->im_format, &ptr);
+  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &scd->im_format, &ptr);
   uiTemplateImageSettings(layout, &ptr, false);
 
   /* main draw call */
-  uiDefAutoButsRNA(
-      layout, op->ptr, screenshot_draw_check_prop, NULL, NULL, UI_BUT_LABEL_ALIGN_NONE, false);
+  uiDefAutoButsRNA(layout,
+                   op->ptr,
+                   screenshot_draw_check_prop,
+                   nullptr,
+                   nullptr,
+                   UI_BUT_LABEL_ALIGN_NONE,
+                   false);
 }
 
 static bool screenshot_poll(bContext *C)
