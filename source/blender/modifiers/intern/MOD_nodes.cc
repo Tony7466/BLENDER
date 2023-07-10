@@ -1423,6 +1423,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
   nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
+  nmd->runtime->simulation_cache = std::make_shared<bke::sim::ModifierSimulationCache>();
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
