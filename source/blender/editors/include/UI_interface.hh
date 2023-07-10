@@ -160,10 +160,6 @@ class DropTargetInterface {
   virtual bool on_drop(bContext *C, const DragInfo &drag) const = 0;
 };
 
-bool drop_target_can_drop(const DropTargetInterface &drop_target,
-                          const wmDrag &drag,
-                          const char **r_disabled_hint);
-
 /**
  * Let a drop target handle a drop event.
  * \return True if the dropping was successful.

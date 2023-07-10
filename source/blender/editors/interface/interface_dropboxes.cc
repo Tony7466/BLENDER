@@ -45,7 +45,7 @@ static bool ui_view_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
   }
   drag->drop_state.free_disabled_info = false;
 
-  return drop_target_can_drop(*drop_target, *drag, &drag->drop_state.disabled_info);
+  return drop_target->can_drop(*drag, &drag->drop_state.disabled_info);
 }
 
 static char *ui_view_drop_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropBox * /*drop*/)
