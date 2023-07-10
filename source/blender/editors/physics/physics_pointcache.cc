@@ -36,7 +36,7 @@
 
 static bool ptcache_bake_all_poll(bContext *C)
 {
-  return CTX_data_scene(C) != NULL;
+  return CTX_data_scene(C) != nullptr;
 }
 
 static bool ptcache_poll(bContext *C)
@@ -44,9 +44,9 @@ static bool ptcache_poll(bContext *C)
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
 
   ID *id = ptr.owner_id;
-  PointCache *point_cache = ptr.data;
+  PointCache *point_cache = static_cast<PointCache *>(ptr.data);
 
-  if (id == NULL || point_cache == NULL) {
+  if (id == nullptr || point_cache == nullptr) {
     return false;
   }
 
@@ -69,9 +69,9 @@ static bool ptcache_add_remove_poll(bContext *C)
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
 
   ID *id = ptr.owner_id;
-  PointCache *point_cache = ptr.data;
+  PointCache *point_cache = static_cast<PointCache *>(ptr.data);
 
-  if (id == NULL || point_cache == NULL) {
+  if (id == nullptr || point_cache == nullptr) {
     return false;
   }
 
@@ -84,25 +84,25 @@ static bool ptcache_add_remove_poll(bContext *C)
   return true;
 }
 
-typedef struct PointCacheJob {
+struct PointCacheJob {
   wmWindowManager *wm;
   void *owner;
   bool *stop, *do_update;
   float *progress;
 
   PTCacheBaker *baker;
-} PointCacheJob;
+};
 
 static void ptcache_job_free(void *customdata)
 {
-  PointCacheJob *job = customdata;
+  PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
   MEM_freeN(job->baker);
   MEM_freeN(job);
 }
 
 static int ptcache_job_break(void *customdata)
 {
-  PointCacheJob *job = customdata;
+  PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
 
   if (G.is_break) {
     return 1;
@@ -117,7 +117,7 @@ static int ptcache_job_break(void *customdata)
 
 static void ptcache_job_update(void *customdata, float progress, int *cancel)
 {
-  PointCacheJob *job = customdata;
+  PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
 
   if (ptcache_job_break(job)) {
     *cancel = 1;
@@ -129,7 +129,7 @@ static void ptcache_job_update(void *customdata, float progress, int *cancel)
 
 static void ptcache_job_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
 {
-  PointCacheJob *job = customdata;
+  PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
 
   job->stop = stop;
   job->do_update = do_update;
@@ -150,7 +150,7 @@ static void ptcache_job_startjob(void *customdata, bool *stop, bool *do_update, 
 
 static void ptcache_job_endjob(void *customdata)
 {
-  PointCacheJob *job = customdata;
+  PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
   Scene *scene = job->baker->scene;
 
   WM_set_locked_interface(job->wm, false);
@@ -164,7 +164,7 @@ static void ptcache_free_bake(PointCache *cache)
   if (cache->edit) {
     if (!cache->edit->edited || 1) {  // XXX okee("Lose changes done in particle mode?")) {
       PE_free_ptcache_edit(cache->edit);
-      cache->edit = NULL;
+      cache->edit = nullptr;
       cache->flag &= ~PTCACHE_BAKED;
     }
   }
@@ -175,7 +175,8 @@ static void ptcache_free_bake(PointCache *cache)
 
 static PTCacheBaker *ptcache_baker_create(bContext *C, wmOperator *op, bool all)
 {
-  PTCacheBaker *baker = MEM_callocN(sizeof(PTCacheBaker), "PTCacheBaker");
+  PTCacheBaker *baker = static_cast<PTCacheBaker *>(
+      MEM_callocN(sizeof(PTCacheBaker), "PTCacheBaker"));
 
   baker->bmain = CTX_data_main(C);
   baker->scene = CTX_data_scene(C);
@@ -190,8 +191,8 @@ static PTCacheBaker *ptcache_baker_create(bContext *C, wmOperator *op, bool all)
   if (!all) {
     PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
     ID *id = ptr.owner_id;
-    Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : NULL;
-    PointCache *cache = ptr.data;
+    Object *ob = (GS(id->name) == ID_OB) ? (Object *)id : nullptr;
+    PointCache *cache = static_cast<PointCache *>(ptr.data);
     baker->pid = BKE_ptcache_id_find(ob, baker->scene, cache);
   }
 
@@ -209,11 +210,12 @@ static int ptcache_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int ptcache_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int ptcache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   bool all = STREQ(op->type->idname, "PTCACHE_OT_bake_all");
 
-  PointCacheJob *job = MEM_mallocN(sizeof(PointCacheJob), "PointCacheJob");
+  PointCacheJob *job = static_cast<PointCacheJob *>(
+      MEM_mallocN(sizeof(PointCacheJob), "PointCacheJob"));
   job->wm = CTX_wm_manager(C);
   job->baker = ptcache_baker_create(C, op, all);
   job->baker->bake_job = job;
@@ -228,7 +230,7 @@ static int ptcache_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 
   WM_jobs_customdata_set(wm_job, job, ptcache_job_free);
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_POINTCACHE, NC_OBJECT | ND_POINTCACHE);
-  WM_jobs_callbacks(wm_job, ptcache_job_startjob, NULL, NULL, ptcache_job_endjob);
+  WM_jobs_callbacks(wm_job, ptcache_job_startjob, nullptr, nullptr, ptcache_job_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
@@ -242,7 +244,7 @@ static int ptcache_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int ptcache_bake_modal(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+static int ptcache_bake_modal(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Scene *scene = (Scene *)op->customdata;
 
@@ -263,7 +265,7 @@ static void ptcache_bake_cancel(bContext *C, wmOperator *op)
   WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_POINTCACHE);
 }
 
-static int ptcache_free_bake_all_exec(bContext *C, wmOperator *UNUSED(op))
+static int ptcache_free_bake_all_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   PTCacheID *pid;
@@ -272,7 +274,7 @@ static int ptcache_free_bake_all_exec(bContext *C, wmOperator *UNUSED(op))
   FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
     BKE_ptcache_ids_from_object(&pidlist, ob, scene, MAX_DUPLI_RECUR);
 
-    for (pid = pidlist.first; pid; pid = pid->next) {
+    for (pid = static_cast<PTCacheID *>(pidlist.first); pid; pid = pid->next) {
       ptcache_free_bake(pid->cache);
     }
 
@@ -321,10 +323,10 @@ void PTCACHE_OT_free_bake_all(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int ptcache_free_bake_exec(bContext *C, wmOperator *UNUSED(op))
+static int ptcache_free_bake_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
-  PointCache *cache = ptr.data;
+  PointCache *cache = static_cast<PointCache *>(ptr.data);
   Object *ob = (Object *)ptr.owner_id;
 
   ptcache_free_bake(cache);
@@ -333,10 +335,10 @@ static int ptcache_free_bake_exec(bContext *C, wmOperator *UNUSED(op))
 
   return OPERATOR_FINISHED;
 }
-static int ptcache_bake_from_cache_exec(bContext *C, wmOperator *UNUSED(op))
+static int ptcache_bake_from_cache_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
-  PointCache *cache = ptr.data;
+  PointCache *cache = static_cast<PointCache *>(ptr.data);
   Object *ob = (Object *)ptr.owner_id;
 
   cache->flag |= PTCACHE_BAKED;
@@ -393,12 +395,12 @@ void PTCACHE_OT_bake_from_cache(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int ptcache_add_new_exec(bContext *C, wmOperator *UNUSED(op))
+static int ptcache_add_new_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
   Object *ob = (Object *)ptr.owner_id;
-  PointCache *cache = ptr.data;
+  PointCache *cache = static_cast<PointCache *>(ptr.data);
   PTCacheID pid = BKE_ptcache_id_find(ob, scene, cache);
 
   if (pid.cache) {
@@ -413,19 +415,19 @@ static int ptcache_add_new_exec(bContext *C, wmOperator *UNUSED(op))
 
   return OPERATOR_FINISHED;
 }
-static int ptcache_remove_exec(bContext *C, wmOperator *UNUSED(op))
+static int ptcache_remove_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "point_cache", &RNA_PointCache);
   Scene *scene = CTX_data_scene(C);
   Object *ob = (Object *)ptr.owner_id;
-  PointCache *cache = ptr.data;
+  PointCache *cache = static_cast<PointCache *>(ptr.data);
   PTCacheID pid = BKE_ptcache_id_find(ob, scene, cache);
 
   /* don't delete last cache */
   if (pid.cache && pid.ptcaches->first != pid.ptcaches->last) {
     BLI_remlink(pid.ptcaches, pid.cache);
     BKE_ptcache_free(pid.cache);
-    *(pid.cache_ptr) = pid.ptcaches->first;
+    *(pid.cache_ptr) = static_cast<PointCache *>(pid.ptcaches->first);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
     WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, ob);

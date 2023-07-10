@@ -30,7 +30,7 @@ set(SRC
   particle_object.cc
   physics_fluid.cc
   physics_ops.cc
-  physics_pointcache.c
+  physics_pointcache.cc
   rigidbody_constraint.c
   rigidbody_object.c
   rigidbody_world.c
