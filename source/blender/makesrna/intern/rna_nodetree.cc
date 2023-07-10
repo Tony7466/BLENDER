@@ -328,6 +328,15 @@ const EnumPropertyItem rna_enum_node_vec_math_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_node_quaternion_math_items[] = {
+    {NODE_QUATERNION_MATH_DOT_PRODUCT, "DOT_PRODUCT", 0, "Dot Product", "A dot B"},
+    {NODE_QUATERNION_MATH_INVERT, "INVERT", 0, "Invert", "Inverse of A"},
+    {NODE_QUATERNION_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A cross B"},
+    {NODE_QUATERNION_MATH_NEGATE, "NEGATE", 0, "Negate", "-A"},
+    {NODE_QUATERNION_MATH_ROTATION_DIFFERENCE, "ROTATION_DIFFERENCE", 0, "Rotation Difference", "The rotational difference between A and B"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_node_boolean_math_items[] = {
     {NODE_BOOLEAN_MATH_AND, "AND", 0, "And", "True when both inputs are true"},
     {NODE_BOOLEAN_MATH_OR, "OR", 0, "Or", "True when at least one input is true"},
@@ -5194,6 +5203,17 @@ static void def_boolean_math(StructRNA *srna)
   prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_boolean_math_items);
+  RNA_def_property_ui_text(prop, "Operation", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_quaternion_math(StructRNA* srna)
+{
+  PropertyRNA* prop;
+
+  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_node_quaternion_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }

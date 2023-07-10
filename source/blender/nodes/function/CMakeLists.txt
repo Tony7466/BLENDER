@@ -32,6 +32,7 @@ set(SRC
   nodes/node_fn_input_special_characters.cc
   nodes/node_fn_input_string.cc
   nodes/node_fn_input_vector.cc
+  nodes/node_fn_quaternion_math.cc
   nodes/node_fn_random_value.cc
   nodes/node_fn_replace_string.cc
   nodes/node_fn_rotate_euler.cc

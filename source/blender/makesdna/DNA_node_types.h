@@ -2129,6 +2129,14 @@ typedef enum NodeBooleanMathOperation {
   NODE_BOOLEAN_MATH_NIMPLY = 8,
 } NodeBooleanMathOperation;
 
+typedef enum NodeQuaternionMathOperation {
+  NODE_QUATERNION_MATH_DOT_PRODUCT = 0,
+  NODE_QUATERNION_MATH_INVERT = 1,
+  NODE_QUATERNION_MATH_MULTIPLY = 2,
+  NODE_QUATERNION_MATH_NEGATE = 3,
+  NODE_QUATERNION_MATH_ROTATION_DIFFERENCE = 4,
+} NodeQuaternionMathOperation;
+
 typedef enum NodeShaderMixMode {
   NODE_MIX_MODE_UNIFORM = 0,
   NODE_MIX_MODE_NON_UNIFORM = 1,

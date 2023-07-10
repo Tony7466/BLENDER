@@ -265,6 +265,7 @@ DefNode(TextureNode,    TEX_NODE_PROC+TEX_DISTNOISE, 0,                  "TEX_DI
 
 DefNode(FunctionNode, FN_NODE_ALIGN_EULER_TO_VECTOR, def_fn_align_euler_to_vector, "ALIGN_EULER_TO_VECTOR", AlignEulerToVector, "Align Euler to Vector", "")
 DefNode(FunctionNode, FN_NODE_BOOLEAN_MATH, def_boolean_math,  "BOOLEAN_MATH", BooleanMath, "Boolean Math", "")
+DefNode(FunctionNode, FN_NODE_QUATERNION_MATH, def_quaternion_math, "QUATERNION_MATH", QuaternionMath, "Quaternion Math", "")
 DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, def_fn_combsep_color, "COMBINE_COLOR", CombineColor, "Combine Color", "")
 DefNode(FunctionNode, FN_NODE_COMPARE, def_compare, "COMPARE", Compare, "Compare", "")
 DefNode(FunctionNode, FN_NODE_FLOAT_TO_INT, def_float_to_int, "FLOAT_TO_INT", FloatToInt, "Float to Integer", "")
