@@ -162,10 +162,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
     LISTBASE_FOREACH_MUTABLE (PreviewJobAudio *, previewjb, &pj->previews) {
       push_preview_job_audio_task(task_pool, pj, previewjb, stop);
 
-      PreviewJobAudio *next_previewjb = previewjb->next;
       BLI_remlink(&pj->previews, previewjb);
-
-      previewjb = next_previewjb;
     }
 
     BLI_mutex_unlock(pj->mutex);
