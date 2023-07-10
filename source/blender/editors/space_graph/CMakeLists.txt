@@ -29,7 +29,7 @@ set(SRC
   graph_draw.cc
   graph_edit.cc
   graph_ops.cc
-  graph_select.c
+  graph_select.cc
   graph_slider_ops.c
   graph_utils.c
   graph_view.c

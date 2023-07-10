@@ -47,7 +47,7 @@
  * \{ */
 
 /* temp info for caching handle vertices close */
-typedef struct tNearestVertInfo {
+struct tNearestVertInfo {
   struct tNearestVertInfo *next, *prev;
 
   FCurve *fcu; /* F-Curve that keyframe comes from */
@@ -62,14 +62,14 @@ typedef struct tNearestVertInfo {
   eAnim_ChannelType ctype; /* type of animation channel this FCurve comes from */
 
   float frame; /* frame that point was on when it matched (global time) */
-} tNearestVertInfo;
+};
 
 /* Tags for the type of graph vert that we have */
-typedef enum eGraphVertIndex {
+enum eGraphVertIndex {
   NEAREST_HANDLE_LEFT = -1,
   NEAREST_HANDLE_KEY,
   NEAREST_HANDLE_RIGHT,
-} eGraphVertIndex;
+};
 
 /* Tolerance for absolute radius (in pixels) of the vert from the cursor to use */
 /* TODO: perhaps this should depend a bit on the size that the user set the vertices to be? */
@@ -131,7 +131,8 @@ static void nearest_fcurve_vert_store(ListBase *matches,
       }
       /* add new if not replacing... */
       if (replace == 0) {
-        nvi = MEM_callocN(sizeof(tNearestVertInfo), "Nearest Graph Vert Info - Bezt");
+        nvi = static_cast<tNearestVertInfo *>(
+            MEM_callocN(sizeof(tNearestVertInfo), "Nearest Graph Vert Info - Bezt"));
       }
 
       /* store values */
@@ -161,7 +162,7 @@ static void nearest_fcurve_vert_store(ListBase *matches,
 /* helper for find_nearest_fcurve_vert() - build the list of nearest matches */
 static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], ListBase *matches)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -180,9 +181,10 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
     filter |= ANIMFILTER_SEL;
   }
   mapping_flag |= ANIM_get_normalization_flags(ac);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
     float offset;
@@ -191,11 +193,11 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 
     /* apply NLA mapping to all the keyframes */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
     }
 
     if (fcu->bezt) {
-      BezTriple *bezt1 = fcu->bezt, *prevbezt = NULL;
+      BezTriple *bezt1 = fcu->bezt, *prevbezt = nullptr;
       int i;
 
       for (i = 0; i < fcu->totvert; i++, prevbezt = bezt1, bezt1++) {
@@ -203,9 +205,9 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
         nearest_fcurve_vert_store(matches,
                                   v2d,
                                   fcu,
-                                  ale->type,
+                                  eAnim_ChannelType(ale->type),
                                   bezt1,
-                                  NULL,
+                                  nullptr,
                                   NEAREST_HANDLE_KEY,
                                   mval,
                                   unit_scale,
@@ -219,9 +221,9 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
             nearest_fcurve_vert_store(matches,
                                       v2d,
                                       fcu,
-                                      ale->type,
+                                      eAnim_ChannelType(ale->type),
                                       bezt1,
-                                      NULL,
+                                      nullptr,
                                       NEAREST_HANDLE_LEFT,
                                       mval,
                                       unit_scale,
@@ -233,9 +235,9 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
             nearest_fcurve_vert_store(matches,
                                       v2d,
                                       fcu,
-                                      ale->type,
+                                      eAnim_ChannelType(ale->type),
                                       bezt1,
-                                      NULL,
+                                      nullptr,
                                       NEAREST_HANDLE_RIGHT,
                                       mval,
                                       unit_scale,
@@ -250,7 +252,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 
     /* un-apply NLA mapping from all the keyframes */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
     }
   }
 
@@ -263,13 +265,13 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 {
   /* abort if list is empty */
   if (BLI_listbase_is_empty(matches)) {
-    return NULL;
+    return nullptr;
   }
 
   /* if list only has 1 item, remove it from the list and return */
   if (BLI_listbase_is_single(matches)) {
     /* need to remove from the list, otherwise it gets freed and then we can't return it */
-    return BLI_pophead(matches);
+    return static_cast<tNearestVertInfo *>(BLI_pophead(matches));
   }
 
   /* The goal of the remaining code below is to prioritize selecting verts on
@@ -279,7 +281,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   /* Try to find the first selected vert in `matches`.  Additionally, if
    * one exists, rotate `matches` to put it last in the list and the vert
    * following it first, since that's the order we'll want to scan in. */
-  tNearestVertInfo *nvi_first_selected = NULL;
+  tNearestVertInfo *nvi_first_selected = nullptr;
   LISTBASE_FOREACH (tNearestVertInfo *, nvi, matches) {
     if (nvi->sel) {
       nvi_first_selected = nvi;
@@ -290,7 +292,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 
   /* Try to find the next vert that's on the active fcurve, falling back
    * to the next vert on any selected fcurve if that's not found. */
-  tNearestVertInfo *nvi_to_select = NULL;
+  tNearestVertInfo *nvi_to_select = nullptr;
   LISTBASE_FOREACH (tNearestVertInfo *, nvi, matches) {
     if (nvi == nvi_first_selected) {
       continue;
@@ -315,7 +317,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   /* If we're still here, that means we didn't find any verts on selected
    * fcurves.  So return the head (which is also the item following
    * `nvi_first_selected` if that was found). */
-  return BLI_pophead(matches);
+  return static_cast<tNearestVertInfo *>(BLI_pophead(matches));
 }
 
 /**
@@ -326,7 +328,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
  */
 static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mval[2])
 {
-  ListBase matches = {NULL, NULL};
+  ListBase matches = {nullptr, nullptr};
   tNearestVertInfo *nvi;
 
   /* step 1: get the nearest verts */
@@ -354,11 +356,11 @@ static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mv
 
 void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channels)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc test_cb, sel_cb;
 
   /* determine type-based settings */
@@ -366,15 +368,18 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
             ANIMFILTER_NODUPLIS);
 
   /* filter data */
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* init BezTriple looping data */
   test_cb = ANIM_editkeyframes_ok(BEZT_OK_SELECTED);
 
   /* See if we should be selecting or deselecting */
   if (test) {
-    for (ale = anim_data.first; ale; ale = ale->next) {
-      if (ANIM_fcurve_keyframes_loop(&ked, ale->key_data, NULL, test_cb, NULL)) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+      if (ANIM_fcurve_keyframes_loop(
+              &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr))
+      {
         sel = SELECT_SUBTRACT;
         break;
       }
@@ -385,11 +390,12 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
   sel_cb = ANIM_editkeyframes_select(sel);
 
   /* Now set the flags */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* Keyframes First */
-    ANIM_fcurve_keyframes_loop(&ked, ale->key_data, NULL, sel_cb, NULL);
+    ANIM_fcurve_keyframes_loop(
+        &ked, static_cast<FCurve *>(ale->key_data), nullptr, sel_cb, nullptr);
 
     /* affect channel selection status? */
     if (do_channels) {
@@ -421,7 +427,7 @@ void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channel
 static int graphkeys_deselectall_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
-  bAnimListElem *ale_active = NULL;
+  bAnimListElem *ale_active = nullptr;
 
   /* get editor data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -464,11 +470,11 @@ static int graphkeys_deselectall_exec(bContext *C, wmOperator *op)
     fcu->flag |= (FCURVE_SELECTED | FCURVE_ACTIVE);
 
     MEM_freeN(ale_active);
-    ale_active = NULL;
+    ale_active = nullptr;
   }
 
   /* set notifier that things have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -529,8 +535,9 @@ static int initialize_animdata_selection_filter(void)
 
 static ListBase initialize_box_select_anim_data(const int filter, bAnimContext *ac)
 {
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ListBase anim_data = {nullptr, nullptr};
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
   return anim_data;
 }
 
@@ -545,13 +552,13 @@ static void initialize_box_select_key_editing_data(const bool incl_handles,
   memset(r_ked, 0, sizeof(KeyframeEditData));
   switch (mode) {
     case BEZT_OK_REGION_LASSO: {
-      KeyframeEdit_LassoData *data_lasso = data;
+      KeyframeEdit_LassoData *data_lasso = static_cast<KeyframeEdit_LassoData *>(data);
       data_lasso->rectf_scaled = scaled_rectf;
       r_ked->data = data_lasso;
       break;
     }
     case BEZT_OK_REGION_CIRCLE: {
-      KeyframeEdit_CircleData *data_circle = data;
+      KeyframeEdit_CircleData *data_circle = static_cast<KeyframeEdit_CircleData *>(data);
       data_circle->rectf_scaled = scaled_rectf;
       r_ked->data = data_circle;
       break;
@@ -607,13 +614,13 @@ static bool box_select_graphkeys(bAnimContext *ac,
   const KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(mode);
 
   /* Try selecting the keyframes. */
-  bAnimListElem *ale = NULL;
+  bAnimListElem *ale = nullptr;
 
   /* This variable will be set to true if any key is selected or deselected. */
   bool any_key_selection_changed = false;
 
   /* First loop over data, doing box select. try selecting keys only. */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
     float offset;
@@ -624,7 +631,8 @@ static bool box_select_graphkeys(bAnimContext *ac,
      * guess when a callback might use something different.
      */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, incl_handles == 0);
+      ANIM_nla_mapping_apply_fcurve(
+          adt, static_cast<FCurve *>(ale->key_data), 0, incl_handles == 0);
     }
 
     scaled_rectf.xmin = rectf.xmin;
@@ -646,9 +654,9 @@ static bool box_select_graphkeys(bAnimContext *ac,
     }
 
     /* Firstly, check if any keyframes will be hit by this. */
-    if (ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, ok_cb, NULL)) {
+    if (ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, ok_cb, nullptr)) {
       /* select keyframes that are in the appropriate places */
-      ANIM_fcurve_keyframes_loop(&ked, fcu, ok_cb, select_cb, NULL);
+      ANIM_fcurve_keyframes_loop(&ked, fcu, ok_cb, select_cb, nullptr);
       any_key_selection_changed = true;
       /* Only change selection of channel when the visibility of keyframes
        * doesn't depend on this. */
@@ -662,7 +670,8 @@ static bool box_select_graphkeys(bAnimContext *ac,
 
     /* Un-apply NLA mapping from all the keyframes. */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, incl_handles == 0);
+      ANIM_nla_mapping_apply_fcurve(
+          adt, static_cast<FCurve *>(ale->key_data), 1, incl_handles == 0);
     }
   }
 
@@ -676,7 +685,7 @@ static bool box_select_graphkeys(bAnimContext *ac,
  * This function is used to set all the keyframes of a given curve as selectable
  * by the "select_cb" function inside of "box_select_graphcurves".
  */
-static short ok_bezier_always_ok(KeyframeEditData *UNUSED(ked), BezTriple *UNUSED(bezt))
+static short ok_bezier_always_ok(KeyframeEditData * /*ked*/, BezTriple * /*bezt*/)
 {
   return KEYFRAME_OK_KEY | KEYFRAME_OK_H1 | KEYFRAME_OK_H2;
 }
@@ -760,7 +769,7 @@ static void box_select_graphcurves(bAnimContext *ac,
   initialize_box_select_key_editing_data(
       incl_handles, mode, ac, data, &scaled_rectf, &ked, &mapping_flag);
 
-  FCurve *last_selected_curve = NULL;
+  FCurve *last_selected_curve = nullptr;
 
   /* Go through all the curves and try selecting them. This function is only called
    * if no keyframe is in the selection area, so we only have to check if the curve
@@ -795,14 +804,18 @@ static void box_select_graphcurves(bAnimContext *ac,
       else {
         fcu->flag &= ~FCURVE_SELECTED;
       }
-      ANIM_fcurve_keyframes_loop(&ked, fcu, ok_bezier_always_ok, select_cb, NULL);
+      ANIM_fcurve_keyframes_loop(&ked, fcu, ok_bezier_always_ok, select_cb, nullptr);
     }
   }
 
   /* Make sure that one of the selected curves is active in the end. */
-  if (last_selected_curve != NULL) {
-    ANIM_set_active_channel(
-        ac, ac->data, ac->datatype, filter, last_selected_curve, ANIMTYPE_FCURVE);
+  if (last_selected_curve != nullptr) {
+    ANIM_set_active_channel(ac,
+                            ac->data,
+                            eAnimCont_Types(ac->datatype),
+                            eAnimFilter_Flags(filter),
+                            last_selected_curve,
+                            ANIMTYPE_FCURVE);
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -821,7 +834,7 @@ static int graphkeys_box_select_invoke(bContext *C, wmOperator *op, const wmEven
     int mval[2];
     WM_event_drag_start_mval(event, ac.region, mval);
     tNearestVertInfo *under_mouse = find_nearest_fcurve_vert(&ac, mval);
-    bool mouse_is_over_element = under_mouse != NULL;
+    bool mouse_is_over_element = under_mouse != nullptr;
     if (under_mouse) {
       MEM_freeN(under_mouse);
     }
@@ -846,7 +859,7 @@ static int graphkeys_box_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+  const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
   const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, 1, SELECT_SUBTRACT, true);
@@ -882,13 +895,13 @@ static int graphkeys_box_select_exec(bContext *C, wmOperator *op)
 
   /* Apply box_select action. */
   const bool any_key_selection_changed = box_select_graphkeys(
-      &ac, &rect_fl, mode, selectmode, incl_handles, NULL);
+      &ac, &rect_fl, mode, selectmode, incl_handles, nullptr);
   const bool use_curve_selection = RNA_boolean_get(op->ptr, "use_curve_selection");
   if (use_curve_selection && !any_key_selection_changed) {
-    box_select_graphcurves(&ac, &rect_fl, mode, selectmode, incl_handles, NULL);
+    box_select_graphcurves(&ac, &rect_fl, mode, selectmode, incl_handles, nullptr);
   }
   /* Send notifier that keyframe selection has changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -958,11 +971,11 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 
   data_lasso.rectf_view = &rect_fl;
   data_lasso.mcoords = WM_gesture_lasso_path_to_array(C, op, &data_lasso.mcoords_len);
-  if (data_lasso.mcoords == NULL) {
+  if (data_lasso.mcoords == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+  const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
   const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, 0, SELECT_SUBTRACT, true);
@@ -994,7 +1007,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
   MEM_freeN((void *)data_lasso.mcoords);
 
   /* Send notifier that keyframe selection has changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1047,8 +1060,9 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const eSelectOp sel_op = ED_select_op_modal(RNA_enum_get(op->ptr, "mode"),
-                                              WM_gesture_is_modal_first(op->customdata));
+  const eSelectOp sel_op = ED_select_op_modal(
+      eSelectOp(RNA_enum_get(op->ptr, "mode")),
+      WM_gesture_is_modal_first(static_cast<const wmGesture *>(op->customdata)));
   const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, 0, SELECT_SUBTRACT, true);
@@ -1089,7 +1103,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Send notifier that keyframe selection has changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1144,7 +1158,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
      0,
      "Between Min/Max Selected Markers",
      ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* ------------------- */
@@ -1154,12 +1168,12 @@ static const EnumPropertyItem prop_column_select_types[] = {
  * action_select.c should de-duplicate. */
 static void markers_selectkeys_between(bAnimContext *ac)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
   KeyframeEditFunc ok_cb, select_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   float min, max;
 
   /* get extreme markers */
@@ -1177,19 +1191,22 @@ static void markers_selectkeys_between(bAnimContext *ac)
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* select keys in-between */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 1);
-      ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 1);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 1);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 1);
     }
     else {
-      ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
     }
   }
 
@@ -1200,7 +1217,7 @@ static void markers_selectkeys_between(bAnimContext *ac)
 /* Selects all visible keyframes in the same frames as the specified elements */
 static void columnselect_graph_keys(bAnimContext *ac, short mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -1217,10 +1234,12 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
     case GRAPHKEYS_COLUMNSEL_KEYS: /* list of selected keys */
       filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
                 ANIMFILTER_NODUPLIS);
-      ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+      ANIM_animdata_filter(
+          ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-      for (ale = anim_data.first; ale; ale = ale->next) {
-        ANIM_fcurve_keyframes_loop(&ked, ale->key_data, NULL, bezt_to_cfraelem, NULL);
+      for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+        ANIM_fcurve_keyframes_loop(
+            &ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_to_cfraelem, nullptr);
       }
 
       ANIM_animdata_freelist(&anim_data);
@@ -1228,7 +1247,7 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
 
     case GRAPHKEYS_COLUMNSEL_CFRA: /* current frame */
       /* make a single CfraElem for storing this */
-      ce = MEM_callocN(sizeof(CfraElem), "cfraElem");
+      ce = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "cfraElem"));
       BLI_addtail(&ked.list, ce);
 
       ce->cfra = (float)scene->r.cfra;
@@ -1251,20 +1270,22 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* loop over cfraelems (stored in the KeyframeEditData->list)
      * - we need to do this here, as we can apply fewer NLA-mapping conversions
      */
-    for (ce = ked.list.first; ce; ce = ce->next) {
+    for (ce = static_cast<CfraElem *>(ked.list.first); ce; ce = ce->next) {
       /* set frame for validation callback to refer to */
       ked.f1 = BKE_nla_tweakedit_remap(adt, ce->cfra, NLATIME_CONVERT_UNMAP);
 
       /* select elements with frame number matching cfraelem */
-      ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
     }
   }
 
@@ -1296,7 +1317,7 @@ static int graphkeys_columnselect_exec(bContext *C, wmOperator *op)
   }
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1326,11 +1347,11 @@ void GRAPH_OT_select_column(wmOperatorType *ot)
 /** \name Select Linked Operator
  * \{ */
 
-static int graphkeys_select_linked_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -1345,15 +1366,16 @@ static int graphkeys_select_linked_exec(bContext *C, wmOperator *UNUSED(op))
   /* loop through all of the keys and select additional keyframes based on these */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* check if anything selected? */
-    if (ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, ok_cb, NULL)) {
+    if (ANIM_fcurve_keyframes_loop(nullptr, fcu, nullptr, ok_cb, nullptr)) {
       /* select every keyframe in this curve then */
-      ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, sel_cb, NULL);
+      ANIM_fcurve_keyframes_loop(nullptr, fcu, nullptr, sel_cb, nullptr);
     }
   }
 
@@ -1361,7 +1383,7 @@ static int graphkeys_select_linked_exec(bContext *C, wmOperator *UNUSED(op))
   ANIM_animdata_freelist(&anim_data);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1390,7 +1412,7 @@ void GRAPH_OT_select_linked(wmOperatorType *ot)
 /* Common code to perform selection */
 static void select_moreless_graph_keys(bAnimContext *ac, short mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -1404,26 +1426,27 @@ static void select_moreless_graph_keys(bAnimContext *ac, short mode)
   /* loop through all of the keys and select additional keyframes based on these */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* only continue if F-Curve has keyframes */
-    if (fcu->bezt == NULL) {
+    if (fcu->bezt == nullptr) {
       continue;
     }
 
     /* build up map of whether F-Curve's keyframes should be selected or not */
     ked.data = MEM_callocN(fcu->totvert, "selmap graphEdit");
-    ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, build_cb, NULL);
+    ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, build_cb, nullptr);
 
     /* based on this map, adjust the selection status of the keyframes */
-    ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_selmap_flush, NULL);
+    ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, bezt_selmap_flush, nullptr);
 
     /* free the selmap used here */
     MEM_freeN(ked.data);
-    ked.data = NULL;
+    ked.data = nullptr;
   }
 
   /* Cleanup */
@@ -1432,7 +1455,7 @@ static void select_moreless_graph_keys(bAnimContext *ac, short mode)
 
 /* ----------------- */
 
-static int graphkeys_select_more_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_select_more_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
@@ -1445,7 +1468,7 @@ static int graphkeys_select_more_exec(bContext *C, wmOperator *UNUSED(op))
   select_moreless_graph_keys(&ac, SELMAP_MORE);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1467,7 +1490,7 @@ void GRAPH_OT_select_more(wmOperatorType *ot)
 
 /* ----------------- */
 
-static int graphkeys_select_less_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_select_less_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
@@ -1480,7 +1503,7 @@ static int graphkeys_select_less_exec(bContext *C, wmOperator *UNUSED(op))
   select_moreless_graph_keys(&ac, SELMAP_LESS);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1513,19 +1536,19 @@ static const EnumPropertyItem prop_graphkeys_leftright_select_types[] = {
     {GRAPHKEYS_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
     {GRAPHKEYS_LRSEL_LEFT, "LEFT", 0, "Before Current Frame", ""},
     {GRAPHKEYS_LRSEL_RIGHT, "RIGHT", 0, "After Current Frame", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* --------------------------------- */
 
 static void graphkeys_select_leftright(bAnimContext *ac, short leftright, short select_mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
   KeyframeEditFunc ok_cb, select_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   Scene *scene = ac->scene;
 
   /* if select mode is replace, deselect all keyframes (and channels) first */
@@ -1553,19 +1576,22 @@ static void graphkeys_select_leftright(bAnimContext *ac, short leftright, short 
 
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* select keys */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 1);
-      ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 1);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 1);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 1);
     }
     else {
-      ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
     }
   }
 
@@ -1603,8 +1629,8 @@ static int graphkeys_select_leftright_exec(bContext *C, wmOperator *op)
   graphkeys_select_leftright(&ac, leftright, selectmode);
 
   /* set notifier that keyframe selection (and channels too) have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1690,7 +1716,7 @@ static int mouse_graph_keys(bAnimContext *ac,
 {
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
   tNearestVertInfo *nvi;
-  BezTriple *bezt = NULL;
+  BezTriple *bezt = nullptr;
   bool run_modal = false;
 
   /* find the beztriple that we're selecting, and the handle that was clicked on */
@@ -1706,9 +1732,9 @@ static int mouse_graph_keys(bAnimContext *ac,
                           SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT);
 
   const bool already_selected =
-      (nvi != NULL) && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
-                        ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
-                        ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
+      (nvi != nullptr) && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
+                           ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
+                           ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
 
   if (wait_to_deselect_others && nvi && already_selected) {
     run_modal = true;
@@ -1716,7 +1742,7 @@ static int mouse_graph_keys(bAnimContext *ac,
   /* For replacing selection, if we have something to select, we have to clear existing selection.
    * The same goes if we found nothing to select, and deselect_all is true
    * (deselect on nothing behavior). */
-  else if ((nvi != NULL && select_mode == SELECT_REPLACE) || (nvi == NULL && deselect_all)) {
+  else if ((nvi != nullptr && select_mode == SELECT_REPLACE) || (nvi == nullptr && deselect_all)) {
     /* reset selection mode */
     select_mode = SELECT_ADD;
 
@@ -1730,7 +1756,7 @@ static int mouse_graph_keys(bAnimContext *ac,
     }
   }
 
-  if (nvi == NULL) {
+  if (nvi == nullptr) {
     return deselect_all ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   }
 
@@ -1794,7 +1820,7 @@ static int mouse_graph_keys(bAnimContext *ac,
     select_cb = ANIM_editkeyframes_select(select_mode);
 
     /* select all keyframes */
-    ANIM_fcurve_keyframes_loop(&ked, nvi->fcu, NULL, select_cb, NULL);
+    ANIM_fcurve_keyframes_loop(&ked, nvi->fcu, nullptr, select_cb, nullptr);
   }
 
   /* only change selection of channel when the visibility of keyframes doesn't depend on this */
@@ -1830,7 +1856,12 @@ static int mouse_graph_keys(bAnimContext *ac,
     /* NOTE: Sync the filter flags with findnearest_fcurve_vert. */
     int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
                   ANIMFILTER_NODUPLIS);
-    ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
+    ANIM_set_active_channel(ac,
+                            ac->data,
+                            eAnimCont_Types(ac->datatype),
+                            eAnimFilter_Flags(filter),
+                            nvi->fcu,
+                            nvi->ctype);
   }
 
   if (nvi->hpoint == NEAREST_HANDLE_LEFT) {
@@ -1856,7 +1887,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
                                     eEditKeyframes_Select select_mode,
                                     bool wait_to_deselect_others)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
   bool run_modal = false;
@@ -1869,7 +1900,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   nvi = find_nearest_fcurve_vert(ac, mval);
 
   /* check if anything to select */
-  if (nvi == NULL) {
+  if (nvi == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1907,9 +1938,10 @@ static int graphkeys_mselect_column(bAnimContext *ac,
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* set frame for validation callback to refer to */
@@ -1921,7 +1953,8 @@ static int graphkeys_mselect_column(bAnimContext *ac,
     }
 
     /* select elements with frame number matching cfra */
-    ANIM_fcurve_keyframes_loop(&ked, ale->key_data, ok_cb, select_cb, NULL);
+    ANIM_fcurve_keyframes_loop(
+        &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
   }
 
   /* free elements */
@@ -1962,22 +1995,28 @@ static int graphkeys_clickselect_exec(bContext *C, wmOperator *op)
   /* figure out action to take */
   if (RNA_boolean_get(op->ptr, "column")) {
     /* select all keyframes in the same frame as the one that was under the mouse */
-    ret_val = graphkeys_mselect_column(&ac, mval, selectmode, wait_to_deselect_others);
+    ret_val = graphkeys_mselect_column(
+        &ac, mval, eEditKeyframes_Select(selectmode), wait_to_deselect_others);
   }
   else if (RNA_boolean_get(op->ptr, "curves")) {
     /* select all keyframes in the same F-Curve as the one under the mouse */
-    ret_val = mouse_graph_keys(&ac, mval, selectmode, deselect_all, true, wait_to_deselect_others);
+    ret_val = mouse_graph_keys(
+        &ac, mval, eEditKeyframes_Select(selectmode), deselect_all, true, wait_to_deselect_others);
   }
   else {
     /* select keyframe under mouse */
-    ret_val = mouse_graph_keys(
-        &ac, mval, selectmode, deselect_all, false, wait_to_deselect_others);
+    ret_val = mouse_graph_keys(&ac,
+                               mval,
+                               eEditKeyframes_Select(selectmode),
+                               deselect_all,
+                               false,
+                               wait_to_deselect_others);
   }
 
   /* set notifier that keyframe selection (and also channel selection in some cases) has
    * changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
 
   /* for tweak grab to work */
   return ret_val | OPERATOR_PASS_THROUGH;
