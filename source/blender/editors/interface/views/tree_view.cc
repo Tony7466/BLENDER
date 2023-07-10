@@ -263,7 +263,7 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
     const wmEvent &event) const
 {
   if (behavior_ == DropBehavior::Insert) {
-    return DROP_INTO;
+    return DropLocation::Into;
   }
 
   const AbstractTreeViewItem *hovered_item = view_.find_hovered(event.xy);
@@ -287,7 +287,7 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
   const float segment_height = item_height / segment_count;
 
   if (event.xy[1] - but_win_rect.ymin > (item_height - segment_height)) {
-    return DROP_BEFORE;
+    return DropLocation::Before;
   }
   if (event.xy[1] - but_win_rect.ymin <= segment_height) {
     if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item->is_collapsible() &&
@@ -295,13 +295,13 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
     {
       /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
        * after. */
-      return DROP_INTO;
+      return DropLocation::Into;
     }
-    return DROP_AFTER;
+    return DropLocation::After;
   }
 
   BLI_assert(behavior_ == DropBehavior::Reorder_and_Insert);
-  return DROP_INTO;
+  return DropLocation::Into;
 }
 
 /* ---------------------------------------------------------------------- */

@@ -18,7 +18,7 @@ DragInfo::DragInfo(const wmDrag &drag, const wmEvent &event, const DropLocation 
 std::optional<DropLocation> DropTargetInterface::determine_drop_location(
     const wmEvent & /*event*/) const
 {
-  return DROP_INTO;
+  return DropLocation::Into;
 }
 
 bool drop_target_apply_drop(bContext &C,

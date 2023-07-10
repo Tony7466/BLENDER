@@ -176,8 +176,6 @@ class AbstractGridViewItemDropTarget : public DropTargetInterface {
  public:
   AbstractGridViewItemDropTarget(AbstractGridView &view);
 
-  std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
-
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */
   template<class ViewType> inline ViewType &get_view() const;

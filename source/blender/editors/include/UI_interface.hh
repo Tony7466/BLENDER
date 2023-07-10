@@ -69,10 +69,34 @@ void attribute_search_add_items(StringRefNull str,
                                 uiSearchItems *items,
                                 bool is_first);
 
-enum DropLocation {
-  DROP_INTO,
-  DROP_BEFORE,
-  DROP_AFTER,
+/**
+ * Some drop targets simply allow dropping onto/into them, others support dragging in-between them.
+ * Classes implementing the drop-target interface can use this type to control the behavior by
+ * letting it influence the result of #determine_drop_location().
+ */
+enum class DropBehavior {
+  /**
+   * Enable dropping before (#DropLocation::Before) and after (#DropLocation::After) the
+   * drop target. Typically used for reordering items.
+   */
+  Reorder,
+  /** Only enable dropping onto/into the drop target (#DropLocation::Into). */
+  Insert,
+  /**
+   * Enable dropping onto/into (#DropLocation::Into), before (#DropLocation::Before) and after
+   * (#DropLocation::After) the drop target. Typically used for reordering items with nesting
+   * support. */
+  Reorder_and_Insert,
+};
+
+/**
+ * Information on how dragged data should be inserted on drop, as determined through
+ * #DropTargetInterface::determine_drop_location(). Also see #DropBehavior.
+ */
+enum class DropLocation {
+  Into,
+  Before,
+  After,
 };
 
 /**
@@ -84,26 +108,6 @@ struct DragInfo {
   const DropLocation drop_location;
 
   DragInfo(const wmDrag &drag, const wmEvent &event, DropLocation drop_location);
-};
-
-/**
- * Some drop targets simply allow dropping onto/into them, others support dragging in-between them.
- * Classes implementing the drop-target interface can use this type to control the behavior by
- * letting it influence the result of #determine_drop_location(). Additional feedback can be drawn
- * then while dragging, to indicate where/how the item will be inserted on drop.
- */
-enum class DropBehavior {
-  /**
-   * Enable dropping before (#DROP_BEFORE) and after (#DROP_AFTER) the drop target. Typically used
-   * for reordering items.
-   */
-  Reorder,
-  /** Only enable dropping onto/into the drop target (#DROP_INTO). */
-  Insert,
-  /**
-   * Enable dropping onto/into (#DROP_INTO), before (#DROP_BEFORE) and after (#DROP_AFTER) the drop
-   * target. Typically used for reordering items with nesting support. */
-  Reorder_and_Insert,
 };
 
 /**
@@ -143,7 +147,7 @@ class DropTargetInterface {
    * which locations may be returned.
    *
    * If the returned optional is unset, dropping will be disabled. The default implementation
-   * returns #DROP_INTO.
+   * returns #DropLocation::Into.
    */
   virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
   /**
