@@ -2617,12 +2617,11 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
     /* If Invariance is available, utilise this to consistently mitigate depth fighting artifacts
      * by ensuring that vertex position is consistently calculated between subsequent passes
      * with maximum precision. */
+    out << "\tfloat4 _default_position_ [[position]]";
     if (@available(macos 11.0, *)) {
-      out << "\tfloat4 _default_position_ [[position]] [[invariant]];" << std::endl;
+      out << " [[invariant]]";
     }
-    else {
-      out << "\tfloat4 _default_position_ [[position]];" << std::endl;
-    }
+    out << ";" << std::endl;
   }
   else {
     if (!this->uses_transform_feedback) {
@@ -2631,14 +2630,11 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
       BLI_assert(this->vertex_output_varyings[0].type == "vec4");
 
       /* Use invariance if available. See above for detail. */
+      out << "\tfloat4 " << this->vertex_output_varyings[0].name << " [[position]];";
       if (@available(macos 11.0, *)) {
-        out << "\tfloat4 " << this->vertex_output_varyings[0].name
-            << " [[position]] [[invariant]];" << std::endl;
+        out << " [[invariant]]";
       }
-      else {
-        out << "\tfloat4 " << this->vertex_output_varyings[0].name << " [[position]];"
-            << std::endl;
-      }
+      out << ";" << std::endl;
       first_attr_is_position = true;
     }
   }
