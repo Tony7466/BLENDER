@@ -183,7 +183,7 @@ class AbstractViewItem {
   virtual std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const;
   /**
    * If an item wants to support dropping data into it, it has to return a drop target here.
-   * That is an object implementing #AbstractViewItemDropTarget.
+   * That is an object implementing #DropTargetInterface.
    *
    * \note This drop target may be requested for each event. The view doesn't keep a drop target
    *       around currently. So it can not contain persistent state.
