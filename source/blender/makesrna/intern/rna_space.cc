@@ -2504,7 +2504,7 @@ static PointerRNA rna_SpaceNode_overlay_get(PointerRNA *ptr)
 
 static bool rna_SpaceNode_supports_previews(PointerRNA *ptr)
 {
-  return ED_node_supports_preview((SpaceNode *)ptr->data);
+  return ED_node_supports_preview(static_cast<SpaceNode *>(ptr->data));
 }
 
 static char *rna_SpaceNodeOverlay_path(const PointerRNA * /*ptr*/)

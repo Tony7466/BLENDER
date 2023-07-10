@@ -2168,7 +2168,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
       node_draw_preview(preview, &preview_rect);
     }
 
-    /* resize the rect to draw the textual infos on top of the preview. */
+    /* Resize the rect to draw the textual infos on top of the preview. */
     extra_info_rect.ymin += preview_height;
   }
 
@@ -2188,7 +2188,7 @@ static void node_draw_basis(const bContext &C,
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
   bNodeInstanceHash *previews =
-      (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
+      static_cast<bNodeInstanceHash *>(CTX_data_pointer_get(&C, "node_previews").data);
 
   /* Skip if out of view. */
   rctf rect_with_preview = node.runtime->totr;
@@ -2213,7 +2213,7 @@ static void node_draw_basis(const bContext &C,
 
   bNodePreview *preview = nullptr;
   if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
-    preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
+    preview = static_cast<bNodePreview *>(BKE_node_instance_hash_lookup(previews, key));
     if (!preview || !(preview->xsize && preview->ysize)) {
       preview = nullptr;
     }
