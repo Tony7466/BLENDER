@@ -37,7 +37,7 @@ void main()
     return;
   }
 
-  vec2 uv = vec2(texel_fullres + 0.5) / vec2(textureSize(stencil_tx, 0).xy);
+  vec2 uv = (vec2(texel_fullres) + 0.5) / vec2(textureSize(stencil_tx, 0).xy);
   vec3 V = transform_direction(ViewMatrixInverse, get_view_vector_from_screen_uv(uv));
   vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).rg;
 

@@ -117,7 +117,7 @@ void main()
   const uint tile_size = RAYTRACE_GROUP_SIZE;
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
-  vec2 uv = vec2(texel_fullres) * raytrace_buf.full_resolution_inv;
+  vec2 uv = (vec2(texel_fullres) + 0.5) * raytrace_buf.full_resolution_inv;
 
   float in_variance = imageLoad(in_variance_img, texel_fullres).r;
   vec3 in_radiance = imageLoad(in_radiance_img, texel_fullres).rgb;
