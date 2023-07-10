@@ -32,7 +32,7 @@ set(INC_SYS
 
 set(SRC
   image_buttons.cc
-  image_draw.c
+  image_draw.cc
   image_edit.c
   image_ops.c
   image_sequence.c

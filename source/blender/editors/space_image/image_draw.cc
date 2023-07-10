@@ -70,7 +70,7 @@ static void draw_render_info(
 {
   Render *re = RE_GetSceneRender(scene);
   Scene *stats_scene = ED_render_job_get_scene(C);
-  if (stats_scene == NULL) {
+  if (stats_scene == nullptr) {
     stats_scene = CTX_data_scene(C);
   }
 
@@ -139,8 +139,8 @@ void ED_image_draw_info(Scene *scene,
   const int ymin = rect->ymin;
   const int dy = ymin + 0.3f * UI_UNIT_Y;
 
-  /* text colors */
-  /* XXX colored text not allowed in Blender UI */
+/* text colors */
+/* XXX colored text not allowed in Blender UI */
 #if 0
   uchar red[3] = {255, 50, 50};
   uchar green[3] = {0, 255, 0};
@@ -175,11 +175,11 @@ void ED_image_draw_info(Scene *scene,
   BLF_draw(blf_mono_font, str, sizeof(str));
   dx += BLF_width(blf_mono_font, str, sizeof(str));
 
-  if (channels == 1 && (cp != NULL || fp != NULL)) {
-    if (fp != NULL) {
+  if (channels == 1 && (cp != nullptr || fp != nullptr)) {
+    if (fp != nullptr) {
       SNPRINTF(str, " Val:%-.3f |", fp[0]);
     }
-    else if (cp != NULL) {
+    else if (cp != nullptr) {
       SNPRINTF(str, " Val:%-.3f |", cp[0] / 255.0f);
     }
     BLF_color3ub(blf_mono_font, 255, 255, 255);
@@ -259,7 +259,8 @@ void ED_image_draw_info(Scene *scene,
       }
 
       if (use_default_view) {
-        IMB_colormanagement_pixel_to_display_space_v4(rgba, rgba, NULL, &scene->display_settings);
+        IMB_colormanagement_pixel_to_display_space_v4(
+            rgba, rgba, nullptr, &scene->display_settings);
       }
       else {
         IMB_colormanagement_pixel_to_display_space_v4(
@@ -300,7 +301,8 @@ void ED_image_draw_info(Scene *scene,
 
   if (color_manage) {
     if (use_default_view) {
-      IMB_colormanagement_pixel_to_display_space_v4(finalcol, col, NULL, &scene->display_settings);
+      IMB_colormanagement_pixel_to_display_space_v4(
+          finalcol, col, nullptr, &scene->display_settings);
     }
     else {
       IMB_colormanagement_pixel_to_display_space_v4(
@@ -350,7 +352,7 @@ void ED_image_draw_info(Scene *scene,
     immRecti(pos, color_quater_x, color_quater_y, color_rect_half.xmax, color_rect_half.ymax);
     immRecti(pos, color_rect_half.xmin, color_rect_half.ymin, color_quater_x, color_quater_y);
 
-    if (fp != NULL || cp != NULL) {
+    if (fp != nullptr || cp != nullptr) {
       GPU_blend(GPU_BLEND_ALPHA);
       immUniformColor3fvAlpha(finalcol, fp ? fp[3] : (cp[3] / 255.0f));
       immRecti(pos, color_rect.xmin, color_rect.ymin, color_rect.xmax, color_rect.ymax);
@@ -471,14 +473,14 @@ void draw_image_main_helpers(const bContext *C, ARegion *region)
 bool ED_space_image_show_cache(const SpaceImage *sima)
 {
   Image *image = ED_space_image(sima);
-  Mask *mask = NULL;
+  Mask *mask = nullptr;
   if (sima->mode == SI_MODE_MASK) {
     mask = ED_space_image_get_mask(sima);
   }
-  if (image == NULL && mask == NULL) {
+  if (image == nullptr && mask == nullptr) {
     return false;
   }
-  if (mask == NULL) {
+  if (mask == nullptr) {
     return ELEM(image->source, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE);
   }
   return true;
@@ -502,7 +504,7 @@ void draw_image_cache(const bContext *C, ARegion *region)
   Image *image = ED_space_image(sima);
   float x, cfra = scene->r.cfra, sfra = scene->r.sfra, efra = scene->r.efra,
            framelen = region->winx / (efra - sfra + 1);
-  Mask *mask = NULL;
+  Mask *mask = nullptr;
 
   if (!ED_space_image_show_cache(sima)) {
     return;
@@ -522,14 +524,15 @@ void draw_image_cache(const bContext *C, ARegion *region)
   ED_region_cache_draw_background(region);
 
   /* Draw cached segments. */
-  if (image != NULL && image->cache != NULL &&
-      ELEM(image->source, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE)) {
+  if (image != nullptr && image->cache != nullptr &&
+      ELEM(image->source, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE))
+  {
     int num_segments = 0;
-    int *points = NULL;
+    int *points = nullptr;
 
-    BLI_mutex_lock(image->runtime.cache_mutex);
+    BLI_mutex_lock(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
     IMB_moviecache_get_cache_segments(image->cache, IMB_PROXY_NONE, 0, &num_segments, &points);
-    BLI_mutex_unlock(image->runtime.cache_mutex);
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
 
     ED_region_cache_draw_cached_segments(
         region, num_segments, points, sfra + sima->iuser.offset, efra + sima->iuser.offset);
@@ -549,7 +552,7 @@ void draw_image_cache(const bContext *C, ARegion *region)
 
   ED_region_cache_draw_curfra_label(cfra, x, region_bottom + 8.0f * UI_SCALE_FAC);
 
-  if (mask != NULL) {
+  if (mask != nullptr) {
     ED_mask_draw_frames(mask, region, cfra, sfra, efra);
   }
 }
@@ -574,7 +577,8 @@ void ED_space_image_grid_steps(SpaceImage *sima,
                                float grid_steps_y[SI_GRID_STEPS_LEN],
                                const int grid_dimension)
 {
-  const eSpaceImage_GridShapeSource grid_shape_source = sima->grid_shape_source;
+  const eSpaceImage_GridShapeSource grid_shape_source = eSpaceImage_GridShapeSource(
+      sima->grid_shape_source);
   for (int step = 0; step < SI_GRID_STEPS_LEN; step++) {
     switch (grid_shape_source) {
       case SI_GRID_SHAPE_DYNAMIC:
