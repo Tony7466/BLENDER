@@ -11,9 +11,14 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
+//#include "DNA_point_cloud_types.h"
+
+#include "BLI_bounds.hh"
+#include "BLI_generic_pointer.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
+#include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
@@ -21,6 +26,7 @@
 #include "BKE_object_deform.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
+#include "BKE_type_conversions.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -41,6 +47,83 @@
 #include "geometry_intern.hh"
 
 namespace blender::ed::geometry {
+
+static GPointer default_selection()
+{
+  static const bool default_unselected = false;
+  return GPointer(&default_unselected);
+}
+
+static const VArray<bool> typed_selection(GVArray selection)
+{
+  BLI_assert(ELEM(&selection.type(), &CPPType::get<float>(), &CPPType::get<bool>()));
+  const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+  return conversions.try_convert(std::move(selection), CPPType::get<bool>()).typed<bool>();
+}
+
+static GVArray selection_for_read(const bke::AttributeAccessor attributes,
+                                  const GPointer default_value)
+{
+  if (attributes.contains(".selection")) {
+    bke::GAttributeReader selection_attr = attributes.lookup(".selection");
+    return attributes.adapt_domain(
+        selection_attr.varray, selection_attr.domain, ATTR_DOMAIN_POINT);
+  }
+  const int domain_size = attributes.domain_size(ATTR_DOMAIN_POINT);
+  return GVArray::ForSingle(*default_value.type(), domain_size, default_value.get());
+}
+
+static std::optional<Bounds<float3>> selection_bounds_for_curves(const bke::CurvesGeometry &curves)
+{
+  const bke::AttributeAccessor attributes = curves.attributes();
+  GVArray selection = selection_for_read(attributes, default_selection());
+  const VArray<bool> boolean_selection = typed_selection(std::move(selection));
+  IndexMaskMemory memory;
+  const IndexMask selection_mask = IndexMask::from_bools(std::move(boolean_selection), memory);
+  return bounds::min_max(selection_mask, curves.positions());
+}
+
+static std::optional<Bounds<float3>> selection_bounds_for_mesh(const Mesh & /*mesh*/)
+{
+
+  return {};
+}
+
+static std::optional<Bounds<float3>> selection_bounds_for_points(const PointCloud & /*points*/)
+{
+
+  return {};
+}
+
+std::optional<Bounds<float3>> selection_bounds_for_geometry(const bke::GeometrySet &geometry)
+{
+  Vector<Bounds<float3>> bounds_list;
+
+  if (geometry.has_curves()) {
+    const Curves &curves_id = *geometry.get_curves_for_read();
+    const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+    const std::optional<Bounds<float3>> bounds = selection_bounds_for_curves(curves);
+    if (bounds.has_value()) {
+      bounds_list.append(*bounds);
+    }
+  }
+  if (geometry.has_mesh()) {
+    const Mesh &mesh = *geometry.get_mesh_for_read();
+    const std::optional<Bounds<float3>> bounds = selection_bounds_for_mesh(mesh);
+    if (bounds.has_value()) {
+      bounds_list.append(*bounds);
+    }
+  }
+  if (geometry.has_pointcloud()) {
+    const PointCloud &points = *geometry.get_pointcloud_for_read();
+    const std::optional<Bounds<float3>> bounds = selection_bounds_for_points(points);
+    if (bounds.has_value()) {
+      bounds_list.append(*bounds);
+    }
+  }
+
+  return bounds::merge(bounds_list.as_span());
+}
 
 /*********************** Attribute Operators ************************/
 

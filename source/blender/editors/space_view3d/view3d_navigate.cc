@@ -18,6 +18,7 @@
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
+#include "BKE_curves.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
@@ -28,6 +29,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "ED_geometry.h"
 #include "ED_mesh.h"
 #include "ED_particle.h"
 #include "ED_screen.h"
@@ -1355,6 +1357,21 @@ static int viewselected_exec(bContext *C, wmOperator *op)
   }
   else if (ob_eval && (ob_eval->mode & OB_MODE_PARTICLE_EDIT)) {
     ok = PE_minmax(depsgraph, scene, CTX_data_view_layer(C), min, max);
+  }
+  else if (ob_eval && (ob_eval->mode & OB_MODE_SCULPT_CURVES)) {
+    BLI_assert(ob_eval->type == OB_CURVES);
+    BLI_assert(ob_eval->data != nullptr);
+    using namespace blender;
+    const bke::GeometrySet *runtime_curve_geometry = ob_eval->runtime.geometry_set_eval;
+    if (runtime_curve_geometry != nullptr) {
+      const std::optional<Bounds<blender::float3>> curves_bounds =
+          ed::geometry::selection_bounds_for_geometry(*runtime_curve_geometry);
+      if (curves_bounds.has_value()) {
+        ok = true;
+        copy_v3_v3(min, curves_bounds->min);
+        copy_v3_v3(max, curves_bounds->max);
+      }
+    }
   }
   else if (ob_eval && (ob_eval->mode & (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT |
                                         OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)))

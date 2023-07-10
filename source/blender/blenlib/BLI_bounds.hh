@@ -15,12 +15,33 @@
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
+#include "BLI_virtual_array.hh"
 
 namespace blender::bounds {
 
 template<typename T> [[nodiscard]] inline Bounds<T> merge(const Bounds<T> &a, const Bounds<T> &b)
 {
   return {math::min(a.min, b.min), math::max(a.max, b.max)};
+}
+
+template<typename T>
+[[nodiscard]] inline std::optional<Bounds<T>> merge(const Span<Bounds<T>> values)
+{
+  if (values.is_empty()) {
+    return std::nullopt;
+  }
+  return threading::parallel_reduce(
+      values.index_range().drop_front(1),
+      512,
+      values.first(),
+      [&](const IndexRange range, const Bounds<T> &init) {
+        Bounds<T> result = init;
+        for (const int i : range) {
+          result = merge(values[i], result);
+        }
+        return result;
+      },
+      [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
 }
 
 template<typename T>
@@ -56,6 +77,62 @@ template<typename T> [[nodiscard]] inline std::optional<Bounds<T>> min_max(const
         Bounds<T> result = init;
         for (const int i : range) {
           math::min_max(values[i], result.min, result.max);
+        }
+        return result;
+      },
+      [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
+}
+
+template<typename T>
+[[nodiscard]] inline std::optional<Bounds<T>> min_max(const IndexMask &mask, const Span<T> values)
+{
+  if (values.is_empty() || mask.is_empty()) {
+    return std::nullopt;
+  }
+  if (mask.size() == values.size()) {
+    /* To avoid mask slice/lookup. */
+    return min_max(values);
+  }
+  const Bounds<T> init{values.first(), values.first()};
+  return threading::parallel_reduce(
+      mask.index_range(),
+      1024,
+      init,
+      [&](const IndexRange range, const Bounds<T> &init) {
+        Bounds<T> result = init;
+        mask.slice(range).foreach_index_optimized<int>(
+            [&](const int i) { math::min_max(values[i], result.min, result.max); });
+        return result;
+      },
+      [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
+}
+
+template<typename T>
+[[nodiscard]] inline std::optional<Bounds<T>> min_max_selected(const Span<T> values,
+                                                               const VArray<bool> selections)
+{
+  if (values.is_empty()) {
+    return std::nullopt;
+  }
+  if (std::optional<bool> selection = selections.get_if_single()) {
+    if (selection) {
+      return min_max(values);
+    }
+    else {
+      return std::nullopt;
+    }
+  }
+  const Bounds<T> init{values.first(), values.first()};
+  return threading::parallel_reduce(
+      values.index_range(),
+      1024,
+      init,
+      [&](const IndexRange range, const Bounds<T> &init) {
+        Bounds<T> result = init;
+        for (const int i : range) {
+          if (selections[i]) {
+            math::min_max(values[i], result.min, result.max);
+          }
         }
         return result;
       },
