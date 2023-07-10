@@ -32,7 +32,7 @@ set(SRC
   graph_select.cc
   graph_slider_ops.cc
   graph_utils.cc
-  graph_view.c
+  graph_view.cc
   space_graph.c
 
   graph_intern.h

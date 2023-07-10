@@ -51,7 +51,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
 {
   Scene *scene = ac->scene;
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -62,7 +62,8 @@ void get_graph_keyframe_extents(bAnimContext *ac,
     filter |= ANIMFILTER_SEL;
   }
 
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* Set large values initial values that will be easy to override. */
   if (xmin) {
@@ -83,14 +84,14 @@ void get_graph_keyframe_extents(bAnimContext *ac,
     bool foundBounds = false;
 
     /* Go through channels, finding max extents. */
-    for (ale = anim_data.first; ale; ale = ale->next) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       AnimData *adt = ANIM_nla_mapping_get(ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
       rctf bounds;
       float unitFac, offset;
 
       /* Get range. */
-      if (BKE_fcurve_calc_bounds(fcu, do_sel_only, include_handles, NULL, &bounds)) {
+      if (BKE_fcurve_calc_bounds(fcu, do_sel_only, include_handles, nullptr, &bounds)) {
         short mapping_flag = ANIM_get_normalization_flags(ac);
 
         /* Apply NLA scaling. */
@@ -188,7 +189,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
 /** \name Automatic Preview-Range Operator
  * \{ */
 
-static int graphkeys_previewrange_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_previewrange_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   Scene *scene;
@@ -198,14 +199,14 @@ static int graphkeys_previewrange_exec(bContext *C, wmOperator *UNUSED(op))
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return OPERATOR_CANCELLED;
   }
-  if (ac.scene == NULL) {
+  if (ac.scene == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
   scene = ac.scene;
 
   /* Set the range directly. */
-  get_graph_keyframe_extents(&ac, &min, &max, NULL, NULL, true, false);
+  get_graph_keyframe_extents(&ac, &min, &max, nullptr, nullptr, true, false);
   scene->r.flag |= SCER_PRV_RANGE;
   scene->r.psfra = round_fl_to_int(min);
   scene->r.pefra = round_fl_to_int(max);
@@ -384,7 +385,7 @@ void GRAPH_OT_view_frame(wmOperatorType *ot)
 static void create_ghost_curves(bAnimContext *ac, int start, int end)
 {
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -400,10 +401,11 @@ static void create_ghost_curves(bAnimContext *ac, int start, int end)
   /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
             ANIMFILTER_SEL | ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
     FCurve *gcu = BKE_fcurve_create();
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -414,7 +416,7 @@ static void create_ghost_curves(bAnimContext *ac, int start, int end)
     short mapping_flag = ANIM_get_normalization_flags(ac);
 
     /* Disable driver so that it don't muck up the sampling process. */
-    fcu->driver = NULL;
+    fcu->driver = nullptr;
 
     /* Calculate unit-mapping factor. */
     unitFac = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
@@ -422,7 +424,8 @@ static void create_ghost_curves(bAnimContext *ac, int start, int end)
     /* Create samples, but store them in a new curve
      * - we cannot use fcurve_store_samples() as that will only overwrite the original curve.
      */
-    gcu->fpt = fpt = MEM_callocN(sizeof(FPoint) * (end - start + 1), "Ghost FPoint Samples");
+    gcu->fpt = fpt = static_cast<FPoint *>(
+        MEM_callocN(sizeof(FPoint) * (end - start + 1), "Ghost FPoint Samples"));
     gcu->totvert = end - start + 1;
 
     /* Use the sampling callback at 1-frame intervals from start to end frames. */
@@ -430,7 +433,7 @@ static void create_ghost_curves(bAnimContext *ac, int start, int end)
       float cfrae = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
       fpt->vec[0] = cfrae;
-      fpt->vec[1] = (fcurve_samplingcb_evalcurve(fcu, NULL, cfrae) + offset) * unitFac;
+      fpt->vec[1] = (fcurve_samplingcb_evalcurve(fcu, nullptr, cfrae) + offset) * unitFac;
     }
 
     /* Set color of ghost curve
@@ -453,7 +456,7 @@ static void create_ghost_curves(bAnimContext *ac, int start, int end)
 
 /* ------------------- */
 
-static int graphkeys_create_ghostcurves_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_create_ghostcurves_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   View2D *v2d;
@@ -505,7 +508,7 @@ void GRAPH_OT_ghost_curves_create(wmOperatorType *ot)
  * This operator clears the 'ghost curves' for the active Graph Editor.
  * \{ */
 
-static int graphkeys_clear_ghostcurves_exec(bContext *C, wmOperator *UNUSED(op))
+static int graphkeys_clear_ghostcurves_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   SpaceGraph *sipo;
