@@ -40,7 +40,7 @@ set(SRC
   filesel.cc
   folder_history.cc
   fsmenu.cc
-  space_file.c
+  space_file.cc
 
   file_indexer.h
   file_intern.h
