@@ -58,14 +58,15 @@ void main()
   interp.P = point_cloud_interp.position + interp.N * radius;
 
 #ifdef MAT_VELOCITY
+  vec3 lP = point_world_to_object(point_cloud_interp.position);
   vec3 prv, nxt;
-  velocity_local_pos_get(point_cloud_interp.position, point_cloud_interp.ID, prv, nxt);
+  velocity_local_pos_get(lP, point_cloud_interp.ID, prv, nxt);
   /* FIXME(fclem): Evaluating before displacement avoid displacement being treated as motion but
    * ignores motion from animated displacement. Supporting animated displacement motion vectors
    * would require evaluating the nodetree multiple time with different nodetree UBOs evaluated at
    * different times, but also with different attributes (maybe we could assume static attribute at
    * least). */
-  velocity_vertex(prv, point_cloud_interp.position, nxt, motion.prev, motion.next);
+  velocity_vertex(prv, lP, nxt, motion.prev, motion.next);
 #endif
 
   init_globals();
