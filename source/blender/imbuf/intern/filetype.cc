@@ -162,7 +162,7 @@ const ImFileType IMB_FILE_TYPES[] = {
     },
 #endif
     {
-        /*init*/ nullptr,
+        /*init*/ imb_init_dds,
         /*exit*/ nullptr,
         /*is_a*/ imb_is_a_dds,
         /*load*/ imb_load_dds,
@@ -235,7 +235,7 @@ const ImFileType *IMB_file_type_from_ibuf(const ImBuf *ibuf)
   return IMB_file_type_from_ftype(ibuf->ftype);
 }
 
-void imb_filetypes_init(void)
+void imb_filetypes_init()
 {
   const ImFileType *type;
 
@@ -246,7 +246,7 @@ void imb_filetypes_init(void)
   }
 }
 
-void imb_filetypes_exit(void)
+void imb_filetypes_exit()
 {
   const ImFileType *type;
 
