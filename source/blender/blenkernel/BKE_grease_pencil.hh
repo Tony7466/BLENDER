@@ -14,6 +14,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_shared_cache.hh"
 #include "BLI_utility_mixins.hh"
+#include "BLI_virtual_array.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
@@ -80,13 +81,13 @@ class Drawing : public ::GreasePencilDrawing {
   /**
    * Per-point opacity value
    */
-  Span<float> opacities() const;
+  const VArray<float> opacities() const;
   MutableSpan<float> opacities_for_write();
 
   /**
    * Per-point radius value
    */
-  Span<float> radii() const;
+  const VArray<float> radii() const;
   MutableSpan<float> radii_for_write();
 };
 

@@ -29,6 +29,7 @@
 #include "BLI_string_ref.hh"
 #include "BLI_string_utils.h"
 #include "BLI_vector_set.hh"
+#include "BLI_virtual_array.hh"
 
 #include "BLO_read_write.h"
 
@@ -258,31 +259,10 @@ static int domain_num(const CurvesGeometry &curves, const eAttrDomain domain)
 {
   return domain == ATTR_DOMAIN_POINT ? curves.points_num() : curves.curves_num();
 }
-static const CustomData &domain_custom_data(const CurvesGeometry &curves, const eAttrDomain domain)
-{
-  return domain == ATTR_DOMAIN_POINT ? curves.point_data : curves.curve_data;
-}
 static CustomData &domain_custom_data(CurvesGeometry &curves, const eAttrDomain domain)
 {
   return domain == ATTR_DOMAIN_POINT ? curves.point_data : curves.curve_data;
 }
-
-template<typename T>
-static Span<T> get_span_attribute(const CurvesGeometry &curves,
-                                  const eAttrDomain domain,
-                                  const StringRefNull name)
-{
-  const int num = domain_num(curves, domain);
-  const CustomData &custom_data = domain_custom_data(curves, domain);
-  const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
-
-  T *data = (T *)CustomData_get_layer_named(&custom_data, type, name.c_str());
-  if (data == nullptr) {
-    return {};
-  }
-  return {data, num};
-}
-
 template<typename T>
 static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const eAttrDomain domain,
@@ -395,9 +375,9 @@ bke::CurvesGeometry &Drawing::strokes_for_write()
   return this->geometry.wrap();
 }
 
-Span<float> Drawing::opacities() const
+const VArray<float> Drawing::opacities() const
 {
-  return get_span_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
+  return *strokes().attributes().lookup_or_default<float>(ATTR_OPACITY, ATTR_DOMAIN_POINT, 1.0f);
 }
 
 MutableSpan<float> Drawing::opacities_for_write()
@@ -405,9 +385,9 @@ MutableSpan<float> Drawing::opacities_for_write()
   return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
 }
 
-Span<float> Drawing::radii() const
+const VArray<float> Drawing::radii() const
 {
-  return get_span_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_RADIUS);
+  return *strokes().attributes().lookup_or_default<float>(ATTR_RADIUS, ATTR_DOMAIN_POINT, 1.0f);
 }
 
 MutableSpan<float> Drawing::radii_for_write()
