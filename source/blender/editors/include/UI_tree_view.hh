@@ -18,6 +18,7 @@
 #include "DNA_defs.h"
 
 #include "BLI_function_ref.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "UI_abstract_view.hh"
@@ -32,7 +33,7 @@ namespace blender::ui {
 
 class AbstractTreeView;
 class AbstractTreeViewItem;
-class AbstractTreeViewItemDropTarget;
+class TreeViewItemDropTarget;
 
 /* ---------------------------------------------------------------------- */
 /** \name Tree-View Item Container
@@ -115,7 +116,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
 
   friend class AbstractTreeViewItem;
   friend class TreeViewBuilder;
-  friend class AbstractTreeViewItemDropTarget;
+  friend class TreeViewItemDropTarget;
 
  public:
   virtual ~AbstractTreeView() = default;
@@ -127,7 +128,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   /**
    * \param xy: The mouse coordinates in window space.
    */
-  AbstractTreeViewItem *find_hovered(const int xy[2]);
+  AbstractTreeViewItem *find_hovered(const int2 &xy);
 
   /** Visual feature: Define a number of item rows the view will always show at minimum. If there
    * are fewer items, empty dummy items will be added. These contribute to the view bounds, so the
@@ -190,9 +191,14 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual void build_row(uiLayout &row) = 0;
 
   virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
-  virtual std::unique_ptr<AbstractTreeViewItemDropTarget> create_drop_target();
+  virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
 
   AbstractTreeView &get_tree_view() const;
+  /**
+   * Calculate the view item rectangle from its view-item button, converted to window space.
+   * Returns an unset optional if there is no view item button for this item.
+   */
+  std::optional<rctf> get_win_rect() const;
 
   void begin_renaming();
   void toggle_collapsed();
@@ -338,14 +344,13 @@ class BasicTreeViewItem : public AbstractTreeViewItem {
  * inserting/reordering behavior, where dropping before or after the drop-target is supported, pass
  * a different #DropBehavior to the constructor.
  */
-class AbstractTreeViewItemDropTarget : public DropTargetInterface {
+class TreeViewItemDropTarget : public DropTargetInterface {
  protected:
   AbstractTreeView &view_;
   const DropBehavior behavior_;
 
  public:
-  AbstractTreeViewItemDropTarget(AbstractTreeView &view,
-                                 DropBehavior behavior = DropBehavior::Insert);
+  TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior = DropBehavior::Insert);
 
   std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
 
@@ -382,7 +387,7 @@ inline ItemT &TreeViewItemContainer::add_tree_item(Args &&...args)
       add_tree_item(std::make_unique<ItemT>(std::forward<Args>(args)...)));
 }
 
-template<class ViewType> ViewType &AbstractTreeViewItemDropTarget::get_view() const
+template<class ViewType> ViewType &TreeViewItemDropTarget::get_view() const
 {
   static_assert(std::is_base_of<AbstractTreeView, ViewType>::value,
                 "Type must derive from and implement the ui::AbstractTreeView interface");

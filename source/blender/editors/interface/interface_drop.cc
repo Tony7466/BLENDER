@@ -33,7 +33,7 @@ bool drop_target_apply_drop(bContext &C,
       return false;
     }
 
-    std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+    const std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
     if (!drop_location) {
       return false;
     }
@@ -54,7 +54,7 @@ char *drop_target_tooltip(const DropTargetInterface &drop_target,
     return nullptr;
   }
 
-  std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+  const std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
   if (!drop_location) {
     return nullptr;
   }

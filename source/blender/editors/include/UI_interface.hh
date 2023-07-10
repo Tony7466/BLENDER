@@ -86,7 +86,7 @@ enum class DropBehavior {
    * Enable dropping onto/into (#DropLocation::Into), before (#DropLocation::Before) and after
    * (#DropLocation::After) the drop target. Typically used for reordering items with nesting
    * support. */
-  Reorder_and_Insert,
+  ReorderAndInsert,
 };
 
 /**

@@ -78,23 +78,18 @@ void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) con
   foreach_item_recursive(iter_fn, options);
 }
 
-AbstractTreeViewItem *AbstractTreeView::find_hovered(const int xy[2])
+AbstractTreeViewItem *AbstractTreeView::find_hovered(const int2 &xy)
 {
   AbstractTreeViewItem *hovered_item = nullptr;
   foreach_item_recursive(
-      [&, this](const AbstractTreeViewItem &item) {
+      [&](AbstractTreeViewItem &item) {
         if (hovered_item) {
           return;
         }
 
-        uiButViewItem *but = item.view_item_button();
-        if (!but) {
-          return;
-        }
-        rctf win_rect;
-        ui_block_to_window_rctf(region_, block_, &win_rect, &but->rect);
-        if (BLI_rctf_isect_y(&win_rect, xy[1])) {
-          hovered_item = reinterpret_cast<AbstractTreeViewItem *>(but->view_item);
+        std::optional<rctf> win_rect = item.get_win_rect();
+        if (win_rect && BLI_rctf_isect_y(&*win_rect, xy[1])) {
+          hovered_item = &item;
         }
       },
       IterOptions::SkipCollapsed | IterOptions::SkipFiltered);
@@ -253,13 +248,12 @@ void AbstractTreeView::change_state_delayed()
 
 /* ---------------------------------------------------------------------- */
 
-AbstractTreeViewItemDropTarget::AbstractTreeViewItemDropTarget(AbstractTreeView &view,
-                                                               DropBehavior behavior)
+TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior)
     : view_(view), behavior_(behavior)
 {
 }
 
-std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_location(
+std::optional<DropLocation> TreeViewItemDropTarget::determine_drop_location(
     const wmEvent &event) const
 {
   if (behavior_ == DropBehavior::Insert) {
@@ -270,13 +264,11 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
   if (!hovered_item) {
     return std::nullopt;
   }
-  uiButViewItem *hovered_but = hovered_item->view_item_button();
+  std::optional<rctf> win_rect = hovered_item->get_win_rect();
+  BLI_assert(win_rect.has_value());
+  const float item_height = BLI_rctf_size_y(&*win_rect);
 
-  rctf but_win_rect;
-  ui_block_to_window_rctf(view_.region_, view_.block_, &but_win_rect, &hovered_but->rect);
-  const float item_height = BLI_rctf_size_y(&but_win_rect);
-
-  BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::Reorder_and_Insert));
+  BLI_assert(ELEM(behavior_, DropBehavior::Reorder, DropBehavior::ReorderAndInsert));
 
   const int segment_count =
       (behavior_ == DropBehavior::Reorder) ?
@@ -286,11 +278,11 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
           3;
   const float segment_height = item_height / segment_count;
 
-  if (event.xy[1] - but_win_rect.ymin > (item_height - segment_height)) {
+  if (event.xy[1] - win_rect->ymin > (item_height - segment_height)) {
     return DropLocation::Before;
   }
-  if (event.xy[1] - but_win_rect.ymin <= segment_height) {
-    if (behavior_ == DropBehavior::Reorder_and_Insert && hovered_item->is_collapsible() &&
+  if (event.xy[1] - win_rect->ymin <= segment_height) {
+    if (behavior_ == DropBehavior::ReorderAndInsert && hovered_item->is_collapsible() &&
         !hovered_item->is_collapsed())
     {
       /* Special case: Dropping at the lower 3rd of an uncollapsed item should insert into it, not
@@ -300,7 +292,7 @@ std::optional<DropLocation> AbstractTreeViewItemDropTarget::determine_drop_locat
     return DropLocation::After;
   }
 
-  BLI_assert(behavior_ == DropBehavior::Reorder_and_Insert);
+  BLI_assert(behavior_ == DropBehavior::ReorderAndInsert);
   return DropLocation::Into;
 }
 
@@ -470,7 +462,7 @@ std::unique_ptr<DropTargetInterface> AbstractTreeViewItem::create_item_drop_targ
   return create_drop_target();
 }
 
-std::unique_ptr<AbstractTreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
+std::unique_ptr<TreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
 {
   return nullptr;
 }
@@ -478,6 +470,22 @@ std::unique_ptr<AbstractTreeViewItemDropTarget> AbstractTreeViewItem::create_dro
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
 {
   return dynamic_cast<AbstractTreeView &>(get_view());
+}
+
+std::optional<rctf> AbstractTreeViewItem::get_win_rect() const
+{
+  uiButViewItem *item_but = view_item_button();
+  if (!item_but) {
+    return std::nullopt;
+  }
+
+  const uiBlock *block = item_but->block;
+  const ARegion *region = CTX_wm_region(static_cast<bContext *>(block->evil_C));
+
+  rctf win_rect;
+  ui_block_to_window_rctf(region, item_but->block, &win_rect, &item_but->rect);
+
+  return win_rect;
 }
 
 int AbstractTreeViewItem::count_parents() const
