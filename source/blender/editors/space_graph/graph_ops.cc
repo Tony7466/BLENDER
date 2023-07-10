@@ -116,7 +116,7 @@ static void graphview_cursor_setprops(bContext *C, wmOperator *op, const wmEvent
   float viewx, viewy;
 
   /* abort if not active region (should not really be possible) */
-  if (region == NULL) {
+  if (region == nullptr) {
     return;
   }
 
@@ -221,8 +221,8 @@ static void GRAPH_OT_cursor_set(wmOperatorType *ot)
 static int graphview_curves_hide_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
-  ListBase anim_data = {NULL, NULL};
-  ListBase all_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
+  ListBase all_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
   const bool unselected = RNA_boolean_get(op->ptr, "unselected");
@@ -237,7 +237,8 @@ static int graphview_curves_hide_exec(bContext *C, wmOperator *op)
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FCURVESONLY | ANIMFILTER_LIST_CHANNELS |
             ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(&ac, &all_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &all_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* filter data
    * - of the remaining visible curves, we want to hide the ones that are
@@ -252,9 +253,10 @@ static int graphview_curves_hide_exec(bContext *C, wmOperator *op)
     filter |= ANIMFILTER_SEL;
   }
 
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     /* hack: skip object channels for now, since flushing those will always flush everything,
      * but they are always included */
     /* TODO: find out why this is the case, and fix that */
@@ -282,9 +284,10 @@ static int graphview_curves_hide_exec(bContext *C, wmOperator *op)
              ANIMFILTER_FCURVESONLY;
 
     /* flushing has been done */
-    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+    ANIM_animdata_filter(
+        &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-    for (ale = anim_data.first; ale; ale = ale->next) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       /* hack: skip object channels for now, since flushing those
        * will always flush everything, but they are always included */
 
@@ -305,7 +308,7 @@ static int graphview_curves_hide_exec(bContext *C, wmOperator *op)
   }
 
   /* send notifier that things have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -334,8 +337,8 @@ static void GRAPH_OT_hide(wmOperatorType *ot)
 static int graphview_curves_reveal_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
-  ListBase anim_data = {NULL, NULL};
-  ListBase all_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
+  ListBase all_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
   const bool select = RNA_boolean_get(op->ptr, "select");
@@ -350,16 +353,18 @@ static int graphview_curves_reveal_exec(bContext *C, wmOperator *op)
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_CHANNELS | ANIMFILTER_NODUPLIS |
             ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(&ac, &all_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &all_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* filter data
    * - just go through all visible channels, ensuring that everything is set to be curve-visible
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS |
             ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     /* hack: skip object channels for now, since flushing those will always flush everything,
      * but they are always included. */
     /* TODO: find out why this is the case, and fix that */
@@ -379,7 +384,8 @@ static int graphview_curves_reveal_exec(bContext *C, wmOperator *op)
     ANIM_channel_setting_set(&ac, ale, ACHANNEL_SETTING_VISIBLE, ACHANNEL_SETFLAG_ADD);
 
     /* now, also flush selection status up/down as appropriate */
-    ANIM_flush_setting_anim_channels(&ac, &all_data, ale, ACHANNEL_SETTING_VISIBLE, true);
+    ANIM_flush_setting_anim_channels(
+        &ac, &all_data, ale, ACHANNEL_SETTING_VISIBLE, eAnimChannels_SetFlag(true));
   }
 
   /* cleanup */
@@ -387,7 +393,7 @@ static int graphview_curves_reveal_exec(bContext *C, wmOperator *op)
   BLI_freelistN(&all_data);
 
   /* send notifier that things have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
