@@ -7,7 +7,6 @@ set(INC
   ../../blenkernel
   ../../blenlib
   ../../depsgraph
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../windowmanager
@@ -20,15 +19,16 @@ set(INC_SYS
 )
 
 set(SRC
-  editlattice_select.c
-  editlattice_tools.c
-  editlattice_undo.c
-  lattice_ops.c
+  editlattice_select.cc
+  editlattice_tools.cc
+  editlattice_undo.cc
+  lattice_ops.cc
 
   lattice_intern.h
 )
 
 set(LIB
+  PRIVATE bf::dna
 )
 
 blender_add_lib(bf_editor_lattice "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

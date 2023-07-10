@@ -8,10 +8,10 @@ set(INC
   ../../blenlib
   ../../blentranslation
   ../../depsgraph
-  ../../makesdna
   ../../makesrna
   ../../sequencer
   ../../windowmanager
+  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -19,12 +19,13 @@ set(INC_SYS
 )
 
 set(SRC
-  scene_edit.c
+  scene_edit.cc
 )
 
 set(LIB
   bf_blenkernel
   bf_blenlib
+  PRIVATE bf::dna
 )
 
 
