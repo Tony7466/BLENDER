@@ -31,5 +31,5 @@ void main()
                            probe_data.area_index / probes_per_dimension);
   ivec2 area_offset = area_coord * octahedral_size;
 
-  imageStore(octahedral_img, octahedral_coord + ivec3(area_offset, 0), col);
+  imageStore(octahedral_img, octahedral_coord + ivec3(area_offset, probe_data.layer), col);
 }

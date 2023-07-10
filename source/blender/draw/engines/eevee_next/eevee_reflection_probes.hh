@@ -33,7 +33,8 @@ struct ReflectionProbe {
 
   Type type = Type::Unused;
 
-  /* Probe data needs to be updated. */
+  /* Probe data needs to be updated.
+   * TODO: Remove this flag? */
   bool do_update_data = false;
   /* Should the area in the probes_tx_ be updated? */
   bool do_render = false;
@@ -132,7 +133,6 @@ class ReflectionProbeModule {
   void debug_print() const;
 
  private:
-  void sync(const ReflectionProbe &cubemap);
   ReflectionProbe &find_or_insert(ObjectHandle &ob_handle, int subdivision_level);
 
   /** Get the number of layers that is needed to store probes. */
@@ -156,8 +156,6 @@ class ReflectionProbeModule {
    * hold a texture with the given subdivision_level.
    */
   ReflectionProbeData find_empty_reflection_probe_data(int subdivision_level) const;
-
-  void upload_dummy_texture(const ReflectionProbe &probe);
 
   bool do_world_update_get() const
   {

@@ -197,6 +197,7 @@ void ShadingView::update_view()
 
 void CaptureView::render()
 {
+  GPU_debug_capture_begin();
   Texture cubemap_tx;
   View view = {"Capture.View"};
   bool do_update_mipmap_chain = false;
@@ -204,32 +205,39 @@ void CaptureView::render()
              inst_.reflection_probes.update_info_pop())
   {
     do_update_mipmap_chain = true;
-    if (update_info->probe_type == ReflectionProbe::Type::World) {
-      GPU_debug_group_begin("World.Capture");
 
-      /* Cube-map is half of the resolution of the octahedral map. */
-      cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT);
-      GPU_texture_mipmap_mode(cubemap_tx, false, true);
+    cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT);
+    GPU_texture_mipmap_mode(cubemap_tx, false, true);
 
-      for (int face : IndexRange(6)) {
-        capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
-        GPU_framebuffer_bind(capture_fb_);
+    GPU_debug_group_begin("Probe.Capture");
 
-        float4x4 view_m4 = cubeface_mat(face);
-        float4x4 win_m4 = math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f);
-        view.sync(view_m4, win_m4);
+    for (int face : IndexRange(6)) {
+      capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
+      GPU_framebuffer_bind(capture_fb_);
+
+      float4x4 view_m4 = cubeface_mat(face);
+      view_m4 = math::translate(view_m4, update_info->probe_pos);
+      float4x4 win_m4 = math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f);
+      view.sync(view_m4, win_m4);
+
+      if (update_info->probe_type == ReflectionProbe::Type::World) {
         inst_.pipelines.world.render(view);
       }
-      inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
+      else if (update_info->probe_type == ReflectionProbe::Type::Probe) {
+        /* TODO: create new pipeline for probe rendering. */
+        inst_.pipelines.world.render(view);
+      }
     }
-
     GPU_debug_group_end();
+    inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
   }
 
   if (do_update_mipmap_chain) {
-    /* TODO only update the regions that have been updated. */
+    /* TODO: only update the regions that have been updated. */
+    /* TODO: Composite world into the probes. */
     inst_.reflection_probes.update_probes_texture_mipmaps();
   }
+  GPU_debug_capture_end();
 }
 
 /** \} */
