@@ -294,7 +294,16 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, is_multiggx);
 
           /* Attenuate lower layer */
-          Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+          float mu = dot(sd->wi, bsdf->N);
+          float z = sqrtf(fabsf((eta - 1.0f) / (eta + 1.0f)));
+
+          float f0_fac = lookup_table_read_3D(
+              kg, roughness, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f0, 16, 16, 16);
+          float f90_fac = lookup_table_read_3D(
+              kg, roughness, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f90, 16, 16, 16);
+          Spectrum albedo = bsdf->weight * bsdf->energy_scale *
+                            (fresnel->f0 * f0_fac + fresnel->f90 * f90_fac) *
+                            fresnel->reflection_tint;
           weight *= 1.0f - reduce_max(albedo / weight);
         }
       }

@@ -86,6 +86,49 @@ static float precompute_ggx_glass_E(float rough, float mu, float eta, float3 ran
   return 0.0f;
 }
 
+static float precompute_ggx_gen_schlick_ior_E(
+    float rough, float mu, float eta, float3 rand, bool is_f90)
+{
+  MicrofacetBsdf bsdf;
+  bsdf.weight = one_float3();
+  bsdf.sample_weight = 1.0f;
+  bsdf.N = make_float3(0.0f, 0.0f, 1.0f);
+  bsdf.alpha_x = bsdf.alpha_y = sqr(rough);
+  bsdf.ior = eta;
+  bsdf.T = make_float3(1.0f, 0.0f, 0.0f);
+
+  bsdf_microfacet_ggx_setup(&bsdf);
+
+  FresnelGeneralizedSchlick fresnel;
+  fresnel.reflection_tint = one_float3();
+  fresnel.transmission_tint = one_float3();
+  fresnel.f0 = is_f90 ? zero_float3() : one_float3();
+  fresnel.f90 = is_f90 ? one_float3() : zero_float3();
+  fresnel.exponent = -eta;
+
+  bsdf.fresnel_type = MicrofacetFresnel::GENERALIZED_SCHLICK;
+  bsdf.fresnel = &fresnel;
+
+  float3 omega_in;
+  Spectrum eval;
+  float pdf = 0.0f, sampled_eta;
+  float2 sampled_roughness;
+  bsdf_microfacet_ggx_sample((ShaderClosure *)&bsdf,
+                             0,
+                             make_float3(0.0f, 0.0f, 1.0f),
+                             make_float3(sqrtf(1.0f - sqr(mu)), 0.0f, mu),
+                             rand,
+                             &eval,
+                             &omega_in,
+                             &pdf,
+                             &sampled_roughness,
+                             &sampled_eta);
+  if (pdf != 0.0f) {
+    return average(eval) / pdf;
+  }
+  return 0.0f;
+}
+
 struct PrecomputeTerm {
   int samples;
   int nx, ny, nz;
@@ -118,6 +161,14 @@ static bool cycles_precompute(std::string name)
   precompute_terms["ggx_glass_inv_Eavg"] = {
       1 << 26, 16, 1, 16, [](float rough, float mu, float ior, float3 rand) {
         return 2.0f * mu * precompute_ggx_glass_E(rough, mu, 1.0f / ior, rand);
+      }};
+  precompute_terms["ggx_gen_schlick_ior_f0"] = {
+      1 << 20, 16, 16, 16, [](float rough, float mu, float ior, float3 rand) {
+        return precompute_ggx_gen_schlick_ior_E(rough, mu, ior, rand, false);
+      }};
+  precompute_terms["ggx_gen_schlick_ior_f90"] = {
+      1 << 20, 16, 16, 16, [](float rough, float mu, float ior, float3 rand) {
+        return precompute_ggx_gen_schlick_ior_E(rough, mu, ior, rand, true);
       }};
 
   if (precompute_terms.count(name) == 0) {

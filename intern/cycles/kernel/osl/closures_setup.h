@@ -375,8 +375,24 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL && has_reflection && !has_transmission) {
-    *layer_albedo = bsdf->energy_scale *
-                    bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    if (closure->exponent < 0.0f) {
+      float mu = dot(sd->wi, bsdf->N);
+      float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
+      float eta = -closure->exponent;
+      float z = sqrtf(fabsf((eta - 1.0f) / (eta + 1.0f)));
+
+      float f0_fac = lookup_table_read_3D(
+          kg, rough, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f0, 16, 16, 16);
+      float f90_fac = lookup_table_read_3D(
+          kg, rough, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f90, 16, 16, 16);
+      *layer_albedo = bsdf->weight * bsdf->energy_scale *
+                      (closure->f0 * f0_fac + closure->f90 * f90_fac) * closure->reflection_tint;
+    }
+    else {
+      /* TODO: Precomputed table for the general case. This approximation isn't very accurate... */
+      *layer_albedo = bsdf->energy_scale *
+                      bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    }
   }
 }
 
