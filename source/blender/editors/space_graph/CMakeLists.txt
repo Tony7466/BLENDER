@@ -25,7 +25,7 @@ set(INC_SYS
 )
 
 set(SRC
-  graph_buttons.c
+  graph_buttons.cc
   graph_draw.c
   graph_edit.c
   graph_ops.c

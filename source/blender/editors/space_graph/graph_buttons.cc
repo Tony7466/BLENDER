@@ -64,7 +64,7 @@
 static bool graph_panel_context(const bContext *C, bAnimListElem **ale, FCurve **fcu)
 {
   bAnimContext ac;
-  bAnimListElem *elem = NULL;
+  bAnimListElem *elem = nullptr;
 
   /* For now, only draw if we could init the anim-context info
    * (necessary for all animation-related tools)
@@ -77,7 +77,7 @@ static bool graph_panel_context(const bContext *C, bAnimListElem **ale, FCurve *
 
   /* try to find 'active' F-Curve */
   elem = get_active_fcurve_channel(&ac);
-  if (elem == NULL) {
+  if (elem == nullptr) {
     return false;
   }
 
@@ -97,16 +97,16 @@ static bool graph_panel_context(const bContext *C, bAnimListElem **ale, FCurve *
 FCurve *ANIM_graph_context_fcurve(const bContext *C)
 {
   FCurve *fcu;
-  if (!graph_panel_context(C, NULL, &fcu)) {
-    return NULL;
+  if (!graph_panel_context(C, nullptr, &fcu)) {
+    return nullptr;
   }
 
   return fcu;
 }
 
-static bool graph_panel_poll(const bContext *C, PanelType *UNUSED(pt))
+static bool graph_panel_poll(const bContext *C, PanelType * /*pt*/)
 {
-  return graph_panel_context(C, NULL, NULL);
+  return graph_panel_context(C, nullptr, nullptr);
 }
 
 /** \} */
@@ -223,7 +223,7 @@ static void graph_panel_properties(const bContext *C, Panel *panel)
   col = uiLayoutColumn(layout, false);
   uiLayoutSetEnabled(col, (fcu->flag & FCURVE_DISABLED) != 0);
   uiItemR(col, &fcu_ptr, "data_path", 0, "", ICON_RNA);
-  uiItemR(col, &fcu_ptr, "array_index", 0, NULL, ICON_NONE);
+  uiItemR(col, &fcu_ptr, "array_index", 0, nullptr, ICON_NONE);
 
   /* color settings */
   col = uiLayoutColumn(layout, true);
@@ -252,7 +252,7 @@ static bool get_active_fcurve_keyframe_edit(const FCurve *fcu,
                                             BezTriple **r_prevbezt)
 {
   /* zero the pointers */
-  *r_bezt = *r_prevbezt = NULL;
+  *r_bezt = *r_prevbezt = nullptr;
 
   const int active_keyframe_index = BKE_fcurve_active_keyframe_index(fcu);
   if (active_keyframe_index == FCURVE_ACTIVE_KEYFRAME_NONE) {
@@ -271,9 +271,7 @@ static bool get_active_fcurve_keyframe_edit(const FCurve *fcu,
 }
 
 /* update callback for active keyframe properties - base updates stuff */
-static void graphedit_activekey_update_cb(bContext *UNUSED(C),
-                                          void *fcu_ptr,
-                                          void *UNUSED(bezt_ptr))
+static void graphedit_activekey_update_cb(bContext * /*C*/, void *fcu_ptr, void * /*bezt_ptr*/)
 {
   FCurve *fcu = (FCurve *)fcu_ptr;
 
@@ -365,14 +363,14 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
   }
 
   block = uiLayoutGetBlock(layout);
-  // UI_block_func_handle_set(block, do_graph_region_buttons, NULL);
+  // UI_block_func_handle_set(block, do_graph_region_buttons, nullptr);
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
   /* only show this info if there are keyframes to edit */
   if (get_active_fcurve_keyframe_edit(fcu, &bezt, &prevbezt)) {
     PointerRNA bezt_ptr, id_ptr, fcu_prop_ptr;
-    PropertyRNA *fcu_prop = NULL;
+    PropertyRNA *fcu_prop = nullptr;
     uiBut *but;
     int unit = B_UNIT_NONE;
 
@@ -394,24 +392,24 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
       uiItemL(split, IFACE_("None for Enum/Boolean"), ICON_IPO_CONSTANT);
     }
     else {
-      uiItemR(col, &bezt_ptr, "interpolation", 0, NULL, ICON_NONE);
+      uiItemR(col, &bezt_ptr, "interpolation", 0, nullptr, ICON_NONE);
     }
 
     /* easing type */
     if (bezt->ipo > BEZT_IPO_BEZ) {
-      uiItemR(col, &bezt_ptr, "easing", 0, NULL, 0);
+      uiItemR(col, &bezt_ptr, "easing", 0, nullptr, 0);
     }
 
     /* easing extra */
     switch (bezt->ipo) {
       case BEZT_IPO_BACK:
         col = uiLayoutColumn(layout, 1);
-        uiItemR(col, &bezt_ptr, "back", 0, NULL, 0);
+        uiItemR(col, &bezt_ptr, "back", 0, nullptr, 0);
         break;
       case BEZT_IPO_ELASTIC:
         col = uiLayoutColumn(layout, 1);
-        uiItemR(col, &bezt_ptr, "amplitude", 0, NULL, 0);
-        uiItemR(col, &bezt_ptr, "period", 0, NULL, 0);
+        uiItemR(col, &bezt_ptr, "amplitude", 0, nullptr, 0);
+        uiItemR(col, &bezt_ptr, "period", 0, nullptr, 0);
         break;
       default:
         break;
@@ -440,7 +438,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_update_cb, fcu, bezt);
 
       uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
@@ -459,7 +457,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_update_cb, fcu, bezt);
       UI_but_unit_type_set(but, unit);
     }
@@ -472,7 +470,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
       but = uiDefButR(block,
                       UI_BTYPE_MENU,
                       B_REDR,
-                      NULL,
+                      nullptr,
                       0,
                       0,
                       but_max_width,
@@ -503,7 +501,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_left_handle_coord_cb, fcu, bezt);
 
       uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
@@ -522,7 +520,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_left_handle_coord_cb, fcu, bezt);
       UI_but_unit_type_set(but, unit);
     }
@@ -536,7 +534,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
       but = uiDefButR(block,
                       UI_BTYPE_MENU,
                       B_REDR,
-                      NULL,
+                      nullptr,
                       0,
                       0,
                       but_max_width,
@@ -567,7 +565,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_right_handle_coord_cb, fcu, bezt);
 
       uiItemL_respect_property_split(col, IFACE_("Value"), ICON_NONE);
@@ -586,13 +584,13 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
                       0,
                       0,
                       0,
-                      NULL);
+                      nullptr);
       UI_but_func_set(but, graphedit_activekey_right_handle_coord_cb, fcu, bezt);
       UI_but_unit_type_set(but, unit);
     }
   }
   else {
-    if ((fcu->bezt == NULL) && (fcu->modifiers.first)) {
+    if ((fcu->bezt == nullptr) && (fcu->modifiers.first)) {
       /* modifiers only - so no keyframes to be active */
       uiItemL(layout, TIP_("F-Curve only has F-Modifiers"), ICON_NONE);
       uiItemL(layout, TIP_("See Modifiers panel below"), ICON_INFO);
@@ -626,12 +624,12 @@ static void do_graph_region_driver_buttons(bContext *C, void *id_v, int event)
 
   switch (event) {
     case B_IPO_DEPCHANGE: {
-      /* Was not actually run ever (NULL always passed as arg to this callback).
-       * If needed again, will need to check how to pass both fcurve and ID... :/ */
+/* Was not actually run ever (nullptr always passed as arg to this callback).
+ * If needed again, will need to check how to pass both fcurve and ID... :/ */
 #if 0
       /* force F-Curve & Driver to get re-evaluated (same as the old Update Dependencies) */
       FCurve *fcu = (FCurve *)fcu_v;
-      ChannelDriver *driver = (fcu) ? fcu->driver : NULL;
+      ChannelDriver *driver = (fcu) ? fcu->driver : nullptr;
 
       /* clear invalid flags */
       if (fcu) {
@@ -639,17 +637,17 @@ static void do_graph_region_driver_buttons(bContext *C, void *id_v, int event)
         driver->flag &= ~DRIVER_FLAG_INVALID;
       }
 #endif
-      ID *id = id_v;
+      ID *id = static_cast<ID *>(id_v);
       AnimData *adt = BKE_animdata_from_id(id);
 
       /* Rebuild depsgraph for the new dependencies, and ensure COW copies get flushed. */
       DEG_relations_tag_update(bmain);
       DEG_id_tag_update_ex(bmain, id, ID_RECALC_COPY_ON_WRITE);
-      if (adt != NULL) {
-        if (adt->action != NULL) {
+      if (adt != nullptr) {
+        if (adt->action != nullptr) {
           DEG_id_tag_update_ex(bmain, &adt->action->id, ID_RECALC_COPY_ON_WRITE);
         }
-        if (adt->tmpact != NULL) {
+        if (adt->tmpact != nullptr) {
           DEG_id_tag_update_ex(bmain, &adt->tmpact->id, ID_RECALC_COPY_ON_WRITE);
         }
       }
@@ -663,7 +661,7 @@ static void do_graph_region_driver_buttons(bContext *C, void *id_v, int event)
 }
 
 /* callback to add a target variable to the active driver */
-static void driver_add_var_cb(bContext *C, void *driver_v, void *UNUSED(arg))
+static void driver_add_var_cb(bContext *C, void *driver_v, void * /*arg*/)
 {
   ChannelDriver *driver = (ChannelDriver *)driver_v;
 
@@ -684,7 +682,7 @@ static void driver_delete_var_cb(bContext *C, void *driver_v, void *dvar_v)
 }
 
 /* callback to report why a driver variable is invalid */
-static void driver_dvar_invalid_name_query_cb(bContext *C, void *dvar_v, void *UNUSED(arg))
+static void driver_dvar_invalid_name_query_cb(bContext *C, void *dvar_v, void * /*arg*/)
 {
   uiPopupMenu *pup = UI_popup_menu_begin(
       C, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Invalid Variable Name"), ICON_NONE);
@@ -723,7 +721,7 @@ static void driver_dvar_invalid_name_query_cb(bContext *C, void *dvar_v, void *U
 }
 
 /* callback to reset the driver's flags */
-static void driver_update_flags_cb(bContext *UNUSED(C), void *fcu_v, void *UNUSED(arg))
+static void driver_update_flags_cb(bContext * /*C*/, void *fcu_v, void * /*arg*/)
 {
   return;
 
@@ -736,7 +734,7 @@ static void driver_update_flags_cb(bContext *UNUSED(C), void *fcu_v, void *UNUSE
 }
 
 /* drivers panel poll */
-static bool graph_panel_drivers_poll(const bContext *C, PanelType *UNUSED(pt))
+static bool graph_panel_drivers_poll(const bContext *C, PanelType * /*pt*/)
 {
   SpaceGraph *sipo = CTX_wm_space_graph(C);
 
@@ -744,7 +742,7 @@ static bool graph_panel_drivers_poll(const bContext *C, PanelType *UNUSED(pt))
     return false;
   }
 
-  return graph_panel_context(C, NULL, NULL);
+  return graph_panel_context(C, nullptr, nullptr);
 }
 
 /* settings for 'single property' driver variable type */
@@ -850,7 +848,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
   /* we can clear it again now - it's only needed when creating the ID/Bone fields */
   uiLayoutSetRedAlert(col, false);
 
-  uiItemR(col, &dtar_ptr, "transform_space", 0, NULL, ICON_NONE);
+  uiItemR(col, &dtar_ptr, "transform_space", 0, nullptr, ICON_NONE);
 
   /* Object 2 */
   col = uiLayoutColumn(layout, true);
@@ -868,7 +866,7 @@ static void graph_panel_driverVar__locDiff(uiLayout *layout, ID *id, DriverVar *
   /* we can clear it again now - it's only needed when creating the ID/Bone fields */
   uiLayoutSetRedAlert(col, false);
 
-  uiItemR(col, &dtar2_ptr, "transform_space", 0, NULL, ICON_NONE);
+  uiItemR(col, &dtar2_ptr, "transform_space", 0, nullptr, ICON_NONE);
 }
 
 /* settings for 'transform channel' driver variable type */
@@ -896,7 +894,7 @@ static void graph_panel_driverVar__transChan(uiLayout *layout, ID *id, DriverVar
   }
 
   sub = uiLayoutColumn(layout, true);
-  uiItemR(sub, &dtar_ptr, "transform_type", 0, NULL, ICON_NONE);
+  uiItemR(sub, &dtar_ptr, "transform_type", 0, nullptr, ICON_NONE);
 
   if (ELEM(dtar->transChan,
            DTAR_TRANSCHAN_ROTX,
@@ -922,15 +920,18 @@ static void graph_panel_driverVar__contextProp(uiLayout *layout, ID *id, DriverV
   /* Target Property. */
   {
     uiLayout *row = uiLayoutRow(layout, false);
-    uiItemR(row, &dtar_ptr, "context_property", 0, NULL, ICON_NONE);
+    uiItemR(row, &dtar_ptr, "context_property", 0, nullptr, ICON_NONE);
   }
 
   /* Target Path */
   {
     uiLayout *col = uiLayoutColumn(layout, true);
     uiLayoutSetRedAlert(col, (dtar->flag & DTAR_FLAG_INVALID));
-    uiTemplatePathBuilder(
-        col, &dtar_ptr, "data_path", NULL, CTX_IFACE_(BLT_I18NCONTEXT_EDITOR_FILEBROWSER, "Path"));
+    uiTemplatePathBuilder(col,
+                          &dtar_ptr,
+                          "data_path",
+                          nullptr,
+                          CTX_IFACE_(BLT_I18NCONTEXT_EDITOR_FILEBROWSER, "Path"));
   }
 }
 
@@ -1027,7 +1028,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 
   col = uiLayoutColumn(layout, true);
   block = uiLayoutGetBlock(col);
-  uiItemR(col, &driver_ptr, "type", 0, NULL, ICON_NONE);
+  uiItemR(col, &driver_ptr, "type", 0, nullptr, ICON_NONE);
 
   {
     char valBuf[32];
@@ -1045,8 +1046,8 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
   /* show expression box if doing scripted drivers,
    * and/or error messages when invalid drivers exist */
   if (driver->type == DRIVER_TYPE_PYTHON) {
-    bool bpy_data_expr_error = (strstr(driver->expression, "bpy.data.") != NULL);
-    bool bpy_ctx_expr_error = (strstr(driver->expression, "bpy.context.") != NULL);
+    bool bpy_data_expr_error = (strstr(driver->expression, "bpy.data.") != nullptr);
+    bool bpy_ctx_expr_error = (strstr(driver->expression, "bpy.context.") != nullptr);
 
     /* expression */
     /* TODO: "Show syntax hints" button */
@@ -1055,7 +1056,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
 
     uiItemL(col, IFACE_("Expression:"), ICON_NONE);
     uiItemR(col, &driver_ptr, "expression", 0, "", ICON_NONE);
-    uiItemR(col, &driver_ptr, "use_self", 0, NULL, ICON_NONE);
+    uiItemR(col, &driver_ptr, "use_self", 0, nullptr, ICON_NONE);
 
     /* errors? */
     col = uiLayoutColumn(layout, true);
@@ -1130,13 +1131,13 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
       0,
       10 * UI_UNIT_X,
       UI_UNIT_Y,
-      NULL,
+      nullptr,
       0.0,
       0.0,
       0,
       0,
       TIP_("Add a Driver Variable to keep track of an input used by the driver"));
-  UI_but_func_set(but, driver_add_var_cb, driver, NULL);
+  UI_but_func_set(but, driver_add_var_cb, driver, nullptr);
 
   if (is_popover) {
     /* add driver variable - add using eyedropper */
@@ -1152,7 +1153,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
   uiItemO(row, "", ICON_PASTEDOWN, "GRAPH_OT_driver_variables_paste");
 
   /* loop over targets, drawing them */
-  for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
+  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
     PointerRNA dvar_ptr;
     uiLayout *box;
     uiLayout *subrow, *sub;
@@ -1202,13 +1203,13 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
                          0,
                          UI_UNIT_X,
                          UI_UNIT_Y,
-                         NULL,
+                         nullptr,
                          0.0,
                          0.0,
                          0.0,
                          0.0,
                          TIP_("Invalid variable name, click here for details"));
-      UI_but_func_set(but, driver_dvar_invalid_name_query_cb, dvar, NULL); /* XXX: reports? */
+      UI_but_func_set(but, driver_dvar_invalid_name_query_cb, dvar, nullptr); /* XXX: reports? */
     }
 
     /* 1.3) remove button */
@@ -1220,7 +1221,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
                        0,
                        UI_UNIT_X,
                        UI_UNIT_Y,
-                       NULL,
+                       nullptr,
                        0.0,
                        0.0,
                        0.0,
@@ -1294,13 +1295,13 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
       0,
       10 * UI_UNIT_X,
       UI_UNIT_Y,
-      NULL,
+      nullptr,
       0.0,
       0.0,
       0,
       0,
       TIP_("Force updates of dependencies - Only use this if drivers are not updating correctly"));
-  UI_but_func_set(but, driver_update_flags_cb, fcu, NULL);
+  UI_but_func_set(but, driver_update_flags_cb, fcu, nullptr);
 }
 
 /* ----------------------------------------------------------------- */
@@ -1343,7 +1344,7 @@ static void graph_panel_drivers(const bContext *C, Panel *panel)
 
 /* Poll to make this not show up in the graph editor,
  * as this is only to be used as a popup elsewhere. */
-static bool graph_panel_drivers_popover_poll(const bContext *C, PanelType *UNUSED(pt))
+static bool graph_panel_drivers_popover_poll(const bContext *C, PanelType * /*pt*/)
 {
   return ED_operator_graphedit_active((bContext *)C) == false;
 }
@@ -1353,10 +1354,10 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr = {NULL};
-  PropertyRNA *prop = NULL;
+  PointerRNA ptr = {nullptr};
+  PropertyRNA *prop = nullptr;
   int index = -1;
-  uiBut *but = NULL;
+  uiBut *but = nullptr;
 
   /* Get active property to show driver properties for */
   but = UI_region_active_but_prop_get(CTX_wm_region(C), &ptr, &prop, &index);
@@ -1365,7 +1366,7 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
     bool driven, special;
 
     fcu = BKE_fcurve_find_by_rna_context_ui(
-        (bContext *)C, &ptr, prop, index, NULL, NULL, &driven, &special);
+        (bContext *)C, &ptr, prop, index, nullptr, nullptr, &driven, &special);
 
     /* Hack: Force all buttons in this panel to be able to know the driver button
      * this panel is getting spawned from, so that things like the "Open Drivers Editor"
@@ -1414,17 +1415,17 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
 static void graph_fmodifier_panel_id(void *fcm_link, char *r_name)
 {
   FModifier *fcm = (FModifier *)fcm_link;
-  eFModifier_Types type = fcm->type;
+  eFModifier_Types type = eFModifier_Types(fcm->type);
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(type);
   BLI_snprintf(r_name, BKE_ST_MAXNAME, "%s_PT_%s", GRAPH_FMODIFIER_PANEL_PREFIX, fmi->name);
 }
 
-static void do_graph_region_modifier_buttons(bContext *C, void *UNUSED(arg), int event)
+static void do_graph_region_modifier_buttons(bContext *C, void * /*arg*/, int event)
 {
   switch (event) {
     case B_FMODIFIER_REDRAW: /* XXX this should send depsgraph updates too */
       /* XXX: need a notifier specially for F-Modifiers */
-      WM_event_add_notifier(C, NC_ANIMATION, NULL);
+      WM_event_add_notifier(C, NC_ANIMATION, nullptr);
       break;
   }
 }
@@ -1441,7 +1442,7 @@ static void graph_panel_modifiers(const bContext *C, Panel *panel)
   }
 
   block = uiLayoutGetBlock(panel->layout);
-  UI_block_func_handle_set(block, do_graph_region_modifier_buttons, NULL);
+  UI_block_func_handle_set(block, do_graph_region_modifier_buttons, nullptr);
 
   /* 'add modifier' button at top of panel */
   {
@@ -1473,7 +1474,8 @@ void graph_buttons_register(ARegionType *art)
 {
   PanelType *pt;
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel properties");
+  pt = static_cast<PanelType *>(
+      MEM_callocN(sizeof(PanelType), "spacetype graph panel properties"));
   STRNCPY(pt->idname, "GRAPH_PT_properties");
   STRNCPY(pt->label, N_("Active F-Curve"));
   STRNCPY(pt->category, "F-Curve");
@@ -1482,7 +1484,8 @@ void graph_buttons_register(ARegionType *art)
   pt->poll = graph_panel_poll;
   BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel properties");
+  pt = static_cast<PanelType *>(
+      MEM_callocN(sizeof(PanelType), "spacetype graph panel properties"));
   STRNCPY(pt->idname, "GRAPH_PT_key_properties");
   STRNCPY(pt->label, N_("Active Keyframe"));
   STRNCPY(pt->category, "F-Curve");
@@ -1491,7 +1494,8 @@ void graph_buttons_register(ARegionType *art)
   pt->poll = graph_panel_poll;
   BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers driven");
+  pt = static_cast<PanelType *>(
+      MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers driven"));
   STRNCPY(pt->idname, "GRAPH_PT_driven_property");
   STRNCPY(pt->label, N_("Driven Property"));
   STRNCPY(pt->category, "Drivers");
@@ -1500,7 +1504,7 @@ void graph_buttons_register(ARegionType *art)
   pt->poll = graph_panel_drivers_poll;
   BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers");
+  pt = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers"));
   STRNCPY(pt->idname, "GRAPH_PT_drivers");
   STRNCPY(pt->label, N_("Driver"));
   STRNCPY(pt->category, "Drivers");
@@ -1510,7 +1514,8 @@ void graph_buttons_register(ARegionType *art)
   pt->poll = graph_panel_drivers_poll;
   BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers popover");
+  pt = static_cast<PanelType *>(
+      MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers popover"));
   STRNCPY(pt->idname, "GRAPH_PT_drivers_popover");
   STRNCPY(pt->label, N_("Add/Edit Driver"));
   STRNCPY(pt->category, "Drivers");
@@ -1522,7 +1527,7 @@ void graph_buttons_register(ARegionType *art)
    * Add explicitly to global list (so popovers work). */
   WM_paneltype_add(pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel modifiers");
+  pt = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), "spacetype graph panel modifiers"));
   STRNCPY(pt->idname, "GRAPH_PT_modifiers");
   STRNCPY(pt->label, N_("Modifiers"));
   STRNCPY(pt->category, "Modifiers");
@@ -1535,7 +1540,7 @@ void graph_buttons_register(ARegionType *art)
   ANIM_modifier_panels_register_graph_and_NLA(art, GRAPH_FMODIFIER_PANEL_PREFIX, graph_panel_poll);
   ANIM_modifier_panels_register_graph_only(art, GRAPH_FMODIFIER_PANEL_PREFIX, graph_panel_poll);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel view");
+  pt = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), "spacetype graph panel view"));
   STRNCPY(pt->idname, "GRAPH_PT_view");
   STRNCPY(pt->label, N_("Show Cursor"));
   STRNCPY(pt->category, "View");
