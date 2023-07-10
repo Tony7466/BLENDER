@@ -31,7 +31,7 @@ set(SRC
   graph_ops.cc
   graph_select.cc
   graph_slider_ops.cc
-  graph_utils.c
+  graph_utils.cc
   graph_view.c
   space_graph.c
 
