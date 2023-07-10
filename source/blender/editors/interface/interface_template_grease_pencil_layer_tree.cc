@@ -62,9 +62,9 @@ class LayerNodeDropTarget : public AbstractTreeViewItemDropTarget {
       case DROP_INTO:
         return fmt::format(TIP_("Move layer {} into {}"), drag_name, drop_name);
       case DROP_BEFORE:
-        return fmt::format(TIP_("Move layer {} before {}"), drag_name, drop_name);
+        return fmt::format(TIP_("Move layer {} above {}"), drag_name, drop_name);
       case DROP_AFTER:
-        return fmt::format(TIP_("Move layer {} after {}"), drag_name, drop_name);
+        return fmt::format(TIP_("Move layer {} below {}"), drag_name, drop_name);
       default:
         BLI_assert_unreachable();
         break;
