@@ -935,7 +935,7 @@ static void fullscreen_azone_init(ScrArea *area, ARegion *region)
  * less than 50 on a [0-255] scale (rather arbitrary threshold). Assumes the region uses #TH_BACK
  * for its background.
  */
-static bool region_back_is_barely_visible(const ScrArea *area, const ARegion *region)
+static bool region_background_is_transparent(const ScrArea *area, const ARegion *region)
 {
   /* Ensure the right theme is active, may not be the case on startup, for example. */
   bThemeState theme_state;
@@ -957,10 +957,11 @@ static void region_azone_edge(const ScrArea *area, AZone *az, const ARegion *reg
   /* If there is no visible region background, users typically expect the #AZone to be closer to
    * the content, so move it a bit. */
   const int overlap_padding =
-      (region->overlap && region_back_is_barely_visible(area, region) &&
-       /* Header-like regions are usually thin and there's not much padding around them, applying
-        * an offset would make the edge overlap buttons.*/
-       !RGN_TYPE_IS_HEADER_ANY(region->regiontype)) ?
+      /* Header-like regions are usually thin and there's not much padding around them,
+       * applying an offset would make the edge overlap buttons.*/
+      (!RGN_TYPE_IS_HEADER_ANY(region->regiontype) &&
+       /* Is the region background transparent? */
+       region->overlap && region_background_is_transparent(area, region)) ?
           /* Note that this is an arbitrary amount that matches nicely with numbers elsewhere. */
           int(0.4f * U.widget_unit) :
           0;
