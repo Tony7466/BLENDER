@@ -615,11 +615,17 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
         if context.preferences.experimental.use_new_volume_nodes:
             layout.separator()
+            node_add_menu.add_node_type(layout, "GeometryNodeVolumeInfo")
+            node_add_menu.add_node_type(layout, "GeometryNodeInputVolumeCoordinate")
+            node_add_menu.add_node_type(layout, "GeometryNodeInputVolumeValue")
+            node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSDFVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeOffsetSDFVolume")
-            node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeSDFVolumeSphere")
             node_add_menu.add_node_type(layout, "GeometryNodeInputSignedDistance")
+            node_add_menu.add_node_type(layout, "GeometryNodeVolumeDivergence")
+            node_add_menu.add_node_type(layout, "GeometryNodeVolumeGradient")
+            node_add_menu.add_node_type(layout, "GeometryNodeVolumeSolvePoisson")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
