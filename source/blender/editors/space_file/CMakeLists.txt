@@ -35,7 +35,7 @@ set(SRC
   file_indexer.cc
   file_ops.cc
   file_panels.cc
-  file_utils.c
+  file_utils.cc
   filelist.cc
   filesel.cc
   folder_history.cc
