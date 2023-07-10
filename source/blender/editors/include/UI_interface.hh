@@ -75,6 +75,9 @@ enum DropLocation {
   DROP_AFTER,
 };
 
+/**
+ * Information passed to drop targets while dragging over them.
+ */
 struct DragInfo {
   const wmDrag &drag_data;
   const wmEvent &event;
@@ -84,13 +87,22 @@ struct DragInfo {
 };
 
 /**
- * Drop targets sometimes want to support multiple behaviors (e.g. inserting into vs. inserting
- * before/after). This can be used to toggle that, #DropTargetInterface::determine_drop_location()
- * can then use this to return the wanted drop location (before, into or after).
+ * Some drop targets simply allow dropping onto/into them, others support dragging in-between them.
+ * Classes implementing the drop-target interface can use this type to control the behavior by
+ * letting it influence the result of #determine_drop_location(). Additional feedback can be drawn
+ * then while dragging, to indicate where/how the item will be inserted on drop.
  */
 enum class DropBehavior {
+  /**
+   * Enable dropping before (#DROP_BEFORE) and after (#DROP_AFTER) the drop target. Typically used
+   * for reordering items.
+   */
   Reorder,
+  /** Only enable dropping onto/into the drop target (#DROP_INTO). */
   Insert,
+  /**
+   * Enable dropping onto/into (#DROP_INTO), before (#DROP_BEFORE) and after (#DROP_AFTER) the drop
+   * target. Typically used for reordering items with nesting support. */
   Reorder_and_Insert,
 };
 
@@ -123,6 +135,16 @@ class DropTargetInterface {
    */
   virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
 
+  /**
+   * Once the drop target validated that it can receive the dragged data using #can_drop(), this
+   * method can determine where/how the data should be dropped exactly: before, after or into the
+   * drop target. Additional feedback can be drawn then while dragging, and the #on_drop() function
+   * should operate accordingly. Implementations of this interface can use #DropBehavior to control
+   * which locations may be returned.
+   *
+   * If the returned optional is unset, dropping will be disabled. The default implementation
+   * returns #DROP_INTO.
+   */
   virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
   /**
    * Custom text to display when dragging over the element using this drop target. Should

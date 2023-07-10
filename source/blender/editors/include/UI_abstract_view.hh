@@ -65,6 +65,8 @@ class AbstractView {
   std::optional<rcti> bounds_;
 
  protected:
+  /* Not too great to have these here, but makes things a bit simpler. Views are recreated on
+   * redraws, so saving these pointers should be save. */
   const ARegion *region_ = nullptr;
   const uiBlock *block_ = nullptr;
 
@@ -140,7 +142,7 @@ class AbstractViewItem {
    * If this wasn't done, the behavior of items is undefined.
    */
   AbstractView *view_ = nullptr;
-  /** Every visible item gets a button of type #UI_BTYPE_VIEW_ITEM during the layout building. */
+  /** See #view_item_button() */
   uiButViewItem *view_item_but_ = nullptr;
   bool is_activatable_ = true;
   bool is_interactive_ = true;
@@ -195,6 +197,11 @@ class AbstractViewItem {
   /** Get the view this item is registered for using #AbstractView::register_item(). */
   AbstractView &get_view() const;
 
+  /**
+   * Get the view item button (button of type #UI_BTYPE_VIEW_ITEM) created for this item. Every
+   * visible item gets one during the layout building. Items that are not visible may not have one,
+   * so null is a valid return value.
+   */
   uiButViewItem *view_item_button() const;
 
   /** Disable the interacting with this item, meaning the buttons drawn will be disabled and there
