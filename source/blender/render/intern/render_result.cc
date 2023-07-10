@@ -842,7 +842,7 @@ bool render_result_exr_file_read_path(RenderResult *rr,
   if (rectx != expected_rectx || recty != expected_recty) {
     BKE_reportf(reports,
                 RPT_ERROR,
-                "reading render result: dimensions don't match, expected %dx%d",
+                "Reading render result: dimensions don't match, expected %dx%d",
                 expected_rectx,
                 expected_recty);
     IMB_exr_close(exrhandle);
@@ -877,7 +877,7 @@ bool render_result_exr_file_read_path(RenderResult *rr,
           else {
             BKE_reportf(nullptr,
                         RPT_WARNING,
-                        "reading render result: expected channel \"%s.%s\" or \"%s\" not found",
+                        "Reading render result: expected channel \"%s.%s\" or \"%s\" not found",
                         rl->name,
                         fullname,
                         fullname);
@@ -886,7 +886,7 @@ bool render_result_exr_file_read_path(RenderResult *rr,
         else {
           BKE_reportf(nullptr,
                       RPT_WARNING,
-                      "reading render result: expected channel \"%s.%s\" not found",
+                      "Reading render result: expected channel \"%s.%s\" not found",
                       rl->name,
                       fullname);
         }

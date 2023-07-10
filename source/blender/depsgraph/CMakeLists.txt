@@ -9,7 +9,6 @@ set(INC
   ../bmesh
   ../draw
   ../functions
-  ../makesdna
   ../makesrna
   ../modifiers
   ../sequencer
@@ -155,7 +154,8 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  PRIVATE bf_intern_atomic
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_PYTHON)
