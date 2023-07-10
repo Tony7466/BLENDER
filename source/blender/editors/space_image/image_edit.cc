@@ -53,7 +53,7 @@ void ED_space_image_set(Main *bmain, SpaceImage *sima, Image *ima, bool automati
 
   sima->image = ima;
 
-  if (ima == NULL || ima->type == IMA_TYPE_R_RESULT || ima->type == IMA_TYPE_COMPOSITE) {
+  if (ima == nullptr || ima->type == IMA_TYPE_R_RESULT || ima->type == IMA_TYPE_COMPOSITE) {
     if (sima->mode == SI_MODE_PAINT) {
       sima->mode = SI_MODE_VIEW;
     }
@@ -65,7 +65,7 @@ void ED_space_image_set(Main *bmain, SpaceImage *sima, Image *ima, bool automati
 
   id_us_ensure_real((ID *)sima->image);
 
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, NULL);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, nullptr);
 }
 
 void ED_space_image_sync(Main *bmain, Image *image, bool ignore_render_viewer)
@@ -108,12 +108,12 @@ void ED_space_image_auto_set(const bContext *C, SpaceImage *sima)
   BMEditMesh *em = BKE_editmesh_from_object(ob);
   BMesh *bm = em->bm;
   BMFace *efa = BM_mesh_active_face_get(bm, true, false);
-  if (efa == NULL) {
+  if (efa == nullptr) {
     return;
   }
 
-  Image *ima = NULL;
-  ED_object_get_active_image(ob, efa->mat_nr + 1, &ima, NULL, NULL, NULL);
+  Image *ima = nullptr;
+  ED_object_get_active_image(ob, efa->mat_nr + 1, &ima, nullptr, nullptr, nullptr);
 
   if (ima != sima->image) {
     sima->image = ima;
@@ -172,14 +172,14 @@ ImBuf *ED_space_image_acquire_buffer(SpaceImage *sima, void **r_lock, int tile)
         return ibuf;
       }
       BKE_image_release_ibuf(sima->image, ibuf, *r_lock);
-      *r_lock = NULL;
+      *r_lock = nullptr;
     }
   }
   else {
-    *r_lock = NULL;
+    *r_lock = nullptr;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void ED_space_image_release_buffer(SpaceImage *sima, ImBuf *ibuf, void *lock)
@@ -219,7 +219,7 @@ bool ED_space_image_has_buffer(SpaceImage *sima)
   bool has_buffer;
 
   ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
-  has_buffer = (ibuf != NULL);
+  has_buffer = (ibuf != nullptr);
   ED_space_image_release_buffer(sima, ibuf, lock);
 
   return has_buffer;
@@ -263,7 +263,7 @@ void ED_space_image_get_size_fl(SpaceImage *sima, float r_size[2])
 void ED_space_image_get_aspect(SpaceImage *sima, float *r_aspx, float *r_aspy)
 {
   Image *ima = sima->image;
-  if ((ima == NULL) || (ima->aspx == 0.0f || ima->aspy == 0.0f)) {
+  if ((ima == nullptr) || (ima->aspx == 0.0f || ima->aspy == 0.0f)) {
     *r_aspx = *r_aspy = 1.0;
   }
   else {
@@ -434,14 +434,14 @@ void ED_space_image_scopes_update(const bContext *C,
   /* We also don't update scopes of render result during render. */
   if (G.is_rendering) {
     const Image *image = sima->image;
-    if (image != NULL && ELEM(image->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
+    if (image != nullptr && ELEM(image->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE)) {
       return;
     }
   }
 
   BKE_scopes_update(&sima->scopes,
                     ibuf,
-                    use_view_settings ? &scene->view_settings : NULL,
+                    use_view_settings ? &scene->view_settings : nullptr,
                     &scene->display_settings);
 }
 
@@ -536,7 +536,7 @@ bool ED_space_image_maskedit_mask_poll(bContext *C)
 {
   if (ED_space_image_maskedit_poll(C)) {
     SpaceImage *sima = CTX_wm_space_image(C);
-    return sima->mask_info.mask != NULL;
+    return sima->mask_info.mask != nullptr;
   }
 
   return false;
