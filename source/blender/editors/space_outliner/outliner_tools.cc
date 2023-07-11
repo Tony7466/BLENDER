@@ -696,8 +696,10 @@ static bool outliner_do_scene_operation(
   tree_iterator::all_open(*space_outliner, [&](TreeElement *te) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (tselem->flag & TSE_SELECTED) {
-      if (operation_fn(C, event, te, tselem)) {
-        success = true;
+      if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) {
+        if (operation_fn(C, event, te, tselem)) {
+          success = true;
+        }
       }
     }
   });
