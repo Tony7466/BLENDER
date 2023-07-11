@@ -72,18 +72,19 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(user_data, output_node_id_);
 
-    /* If there is a state from the last frame, output that directly. */
-    if (const auto *state = modifier_data.prev_simulation_state) {
-      if (const bke::sim::SimulationZoneState *zone = state->get_zone_state(zone_id)) {
-        this->output_simulation_state_copy(params, user_data, *zone);
-        return;
-      }
-    }
     /* When caching is turned off and the old state doesn't need to persist, moving data
      * from the last state instead of copying it can avoid copies of geometry data arrays. */
     if (auto *state = modifier_data.prev_simulation_state_mutable) {
       if (bke::sim::SimulationZoneState *zone = state->get_zone_state(zone_id)) {
         this->output_simulation_state_move(params, user_data, *zone);
+        return;
+      }
+    }
+
+    /* If there is a read-only state from the last frame, output that directly. */
+    if (const auto *state = modifier_data.prev_simulation_state) {
+      if (const bke::sim::SimulationZoneState *zone = state->get_zone_state(zone_id)) {
+        this->output_simulation_state_copy(params, user_data, *zone);
         return;
       }
     }
