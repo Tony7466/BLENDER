@@ -5,12 +5,10 @@
 set(INC
   .
   ../blenkernel
-  ../blenlib
   ../blenloader
   ../gpu
   ../makesrna
   ../sequencer
-  ../../../intern/guardedalloc
   ../../../intern/memutil
 )
 
@@ -76,11 +74,11 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
   bf_blenloader
   PRIVATE bf::dna
   bf_imbuf_openimageio
-  bf_intern_guardedalloc
+  PRIVATE bf::intern::guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
 

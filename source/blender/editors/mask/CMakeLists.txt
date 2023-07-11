@@ -5,12 +5,10 @@
 set(INC
   ../include
   ../../blenkernel
-  ../../blenlib
   ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -31,7 +29,9 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 

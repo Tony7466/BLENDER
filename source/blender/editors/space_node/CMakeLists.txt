@@ -7,7 +7,6 @@ set(INC
   ../../asset_system
   ../../blenfont
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../compositor
@@ -21,7 +20,6 @@ set(INC
   ../../nodes
   ../../render
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../extern/fmtlib/include
 
   # RNA_prototypes.h
@@ -54,9 +52,10 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_screen
+  PRIVATE bf::intern::guardedalloc
   extern_fmtlib
 )
 

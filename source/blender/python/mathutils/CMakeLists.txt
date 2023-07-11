@@ -5,11 +5,9 @@
 set(INC
   .
   ../../blenkernel
-  ../../blenlib
   ../../bmesh
   ../../depsgraph
   ../../imbuf
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -43,9 +41,10 @@ set(SRC
 )
 
 set(LIB
-  bf_blenlib
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_imbuf
+  PRIVATE bf::intern::guardedalloc
   bf_python_ext
 
   ${PYTHON_LINKFLAGS}
