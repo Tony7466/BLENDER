@@ -381,22 +381,26 @@ bke::CurvesGeometry &Drawing::strokes_for_write()
 
 VArray<float> Drawing::radii() const
 {
-  return *this->strokes().attributes().lookup_or_default<float>(ATTR_RADIUS, ATTR_DOMAIN_POINT, 0.01f);
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_RADIUS, ATTR_DOMAIN_POINT, 0.01f);
 }
 
 MutableSpan<float> Drawing::radii_for_write()
 {
-  return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_RADIUS);
+  return get_mutable_attribute<float>(
+      this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_RADIUS, 0.01f);
 }
 
 VArray<float> Drawing::opacities() const
 {
-  return *this->strokes().attributes().lookup_or_default<float>(ATTR_OPACITY, ATTR_DOMAIN_POINT, 1.0f);
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_OPACITY, ATTR_DOMAIN_POINT, 1.0f);
 }
 
 MutableSpan<float> Drawing::opacities_for_write()
 {
-  return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
+  return get_mutable_attribute<float>(
+      this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY, 1.0f);
 }
 
 void Drawing::tag_positions_changed()
