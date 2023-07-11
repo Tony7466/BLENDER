@@ -379,7 +379,7 @@ bke::CurvesGeometry &Drawing::strokes_for_write()
   return this->geometry.wrap();
 }
 
-const VArray<float> Drawing::opacities() const
+VArray<float> Drawing::opacities() const
 {
   return *strokes().attributes().lookup_or_default<float>(ATTR_OPACITY, ATTR_DOMAIN_POINT, 1.0f);
 }
@@ -389,7 +389,7 @@ MutableSpan<float> Drawing::opacities_for_write()
   return get_mutable_attribute<float>(this->geometry.wrap(), ATTR_DOMAIN_POINT, ATTR_OPACITY);
 }
 
-const VArray<float> Drawing::radii() const
+VArray<float> Drawing::radii() const
 {
   return *strokes().attributes().lookup_or_default<float>(ATTR_RADIUS, ATTR_DOMAIN_POINT, 1.0f);
 }
