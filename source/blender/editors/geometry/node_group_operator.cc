@@ -341,12 +341,6 @@ static asset::AssetItemTree &get_static_item_tree()
   return tree;
 }
 
-static bool all_loading_finished()
-{
-  AssetLibraryReference all_library_ref = asset_system::all_library_reference();
-  return ED_assetlist_is_loaded(&all_library_ref);
-}
-
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
   AssetFilterSettings type_filter{};
@@ -506,13 +500,8 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   }
   asset::AssetItemTree &tree = get_static_item_tree();
   tree = build_catalog_tree(C);
-
-  const bool loading_finished = all_loading_finished();
-  if (tree.catalogs.is_empty() && loading_finished) {
+  if (tree.catalogs.is_empty()) {
     return;
-  }
-  if (!loading_finished) {
-    uiItemL(&layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
