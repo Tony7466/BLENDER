@@ -152,6 +152,175 @@ static void VIEW3D_OT_pastebuffer(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Navigation Operators
+ * \{ */
+
+static void VIEW3D_OT_rotate(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Rotate View";
+  ot->description = "Rotate the view";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_ROTATE);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_ROTATE);
+  };
+
+  ot->modal = view3d_navigate_modal_fn;
+  ot->poll = view3d_rotation_poll;
+  ot->cancel = view3d_navigate_cancel_fn;
+
+  /* flags */
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
+
+  view3d_operator_properties_common(ot, V3D_OP_PROP_USE_MOUSE_INIT);
+}
+
+static void VIEW3D_OT_move(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Pan View";
+  ot->description = "Move the view";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_MOVE);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_MOVE);
+  };
+
+  ot->modal = view3d_navigate_modal_fn;
+  ot->poll = view3d_location_poll;
+  ot->cancel = view3d_navigate_cancel_fn;
+
+  /* flags */
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
+
+  /* properties */
+  view3d_operator_properties_common(ot, V3D_OP_PROP_USE_MOUSE_INIT);
+}
+
+static void VIEW3D_OT_view_pan(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Pan View Direction";
+  ot->description = "Pan the view in a given direction";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_VIEW_PAN);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_VIEW_PAN);
+  };
+
+  ot->poll = view3d_location_poll;
+
+  /* flags */
+  ot->flag = 0;
+
+  /* Properties */
+  static const EnumPropertyItem prop_view_pan_items[] = {
+      {V3D_VIEW_PANLEFT, "PANLEFT", 0, "Pan Left", "Pan the view to the left"},
+      {V3D_VIEW_PANRIGHT, "PANRIGHT", 0, "Pan Right", "Pan the view to the right"},
+      {V3D_VIEW_PANUP, "PANUP", 0, "Pan Up", "Pan the view up"},
+      {V3D_VIEW_PANDOWN, "PANDOWN", 0, "Pan Down", "Pan the view down"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "type", prop_view_pan_items, 0, "Pan", "Direction of View Pan");
+}
+
+#ifdef WITH_INPUT_NDOF
+
+static void VIEW3D_OT_ndof_orbit(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "NDOF Orbit View";
+  ot->description = "Orbit the view using the 3D mouse";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_NDOF_ORBIT);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    if (event->type != NDOF_MOTION) {
+      return OPERATOR_CANCELLED;
+    }
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_NDOF_ORBIT);
+  };
+
+  ot->poll = ED_operator_view3d_active;
+
+  /* flags */
+  ot->flag = 0;
+}
+
+static void VIEW3D_OT_ndof_orbit_zoom(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "NDOF Orbit View with Zoom";
+  ot->description = "Orbit and zoom the view using the 3D mouse";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_NDOF_ORBIT_ZOOM);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    if (event->type != NDOF_MOTION) {
+      return OPERATOR_CANCELLED;
+    }
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_NDOF_ORBIT_ZOOM);
+  };
+
+  ot->poll = ED_operator_view3d_active;
+
+  /* flags */
+  ot->flag = 0;
+}
+
+static void VIEW3D_OT_ndof_pan(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "NDOF Pan View";
+  ot->description = "Pan the view with the 3D mouse";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_NDOF_PAN);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    if (event->type != NDOF_MOTION) {
+      return OPERATOR_CANCELLED;
+    }
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_NDOF_PAN);
+  };
+
+  ot->poll = ED_operator_view3d_active;
+
+  /* flags */
+  ot->flag = 0;
+}
+
+static void VIEW3D_OT_ndof_all(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "NDOF Transform View";
+  ot->description = "Pan and rotate the view with the 3D mouse";
+  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_NDOF_ALL);
+
+  /* api callbacks */
+  ot->invoke = [](bContext *C, wmOperator *op, const wmEvent *event) -> int {
+    if (event->type != NDOF_MOTION) {
+      return OPERATOR_CANCELLED;
+    }
+    return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_NDOF_ALL);
+  };
+
+  ot->poll = ED_operator_view3d_active;
+
+  /* flags */
+  ot->flag = 0;
+}
+
+#endif /* WITH_INPUT_NDOF */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Registration
  * \{ */
 

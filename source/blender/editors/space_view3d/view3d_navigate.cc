@@ -1969,21 +1969,6 @@ void VIEW3D_OT_view_orbit(wmOperatorType *ot)
  * Move (pan) in incremental steps. For interactive pan see #VIEW3D_OT_move.
  * \{ */
 
-enum {
-  V3D_VIEW_PANLEFT = 1,
-  V3D_VIEW_PANRIGHT,
-  V3D_VIEW_PANDOWN,
-  V3D_VIEW_PANUP,
-};
-
-static const EnumPropertyItem prop_view_pan_items[] = {
-    {V3D_VIEW_PANLEFT, "PANLEFT", 0, "Pan Left", "Pan the view to the left"},
-    {V3D_VIEW_PANRIGHT, "PANRIGHT", 0, "Pan Right", "Pan the view to the right"},
-    {V3D_VIEW_PANUP, "PANUP", 0, "Pan Up", "Pan the view up"},
-    {V3D_VIEW_PANDOWN, "PANDOWN", 0, "Pan Down", "Pan the view down"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 static int viewpan_invoke_impl(ViewOpsData *vod, PointerRNA *ptr)
 {
   int x = 0, y = 0;
@@ -2005,30 +1990,6 @@ static int viewpan_invoke_impl(ViewOpsData *vod, PointerRNA *ptr)
   viewmove_apply(vod, vod->prev.event_xy[0] + x, vod->prev.event_xy[1] + y);
 
   return OPERATOR_FINISHED;
-}
-
-static int viewpan_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_VIEW_PAN);
-}
-
-void VIEW3D_OT_view_pan(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Pan View Direction";
-  ot->description = "Pan the view in a given direction";
-  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_VIEW_PAN);
-
-  /* api callbacks */
-  ot->invoke = viewpan_invoke;
-  ot->poll = view3d_location_poll;
-
-  /* flags */
-  ot->flag = 0;
-
-  /* Properties */
-  ot->prop = RNA_def_enum(
-      ot->srna, "type", prop_view_pan_items, 0, "Pan", "Direction of View Pan");
 }
 
 /** \} */

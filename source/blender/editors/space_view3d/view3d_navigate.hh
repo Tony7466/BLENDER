@@ -100,6 +100,13 @@ enum eViewOpsFlag {
 };
 ENUM_OPERATORS(eViewOpsFlag, VIEWOPS_FLAG_ZOOM_TO_MOUSE);
 
+enum {
+  V3D_VIEW_PANLEFT = 1,
+  V3D_VIEW_PANRIGHT,
+  V3D_VIEW_PANDOWN,
+  V3D_VIEW_PANUP,
+};
+
 /** Generic View Operator Custom-Data */
 struct ViewOpsData {
   /** Context pointers (assigned by #viewops_data_create). */
@@ -247,7 +254,6 @@ void VIEW3D_OT_view_center_pick(wmOperatorType *ot);
 void VIEW3D_OT_view_axis(wmOperatorType *ot);
 void VIEW3D_OT_view_camera(wmOperatorType *ot);
 void VIEW3D_OT_view_orbit(wmOperatorType *ot);
-void VIEW3D_OT_view_pan(wmOperatorType *ot);
 
 /* view3d_navigate_dolly.cc */
 
@@ -268,7 +274,6 @@ int viewmove_modal_impl(bContext *C,
                         const int xy[2]);
 int viewmove_invoke_impl(ViewOpsData *vod, const wmEvent *event);
 void viewmove_modal_keymap(wmKeyConfig *keyconf);
-void VIEW3D_OT_move(wmOperatorType *ot);
 
 /* view3d_navigate_ndof.cc */
 
@@ -290,10 +295,6 @@ void view3d_ndof_fly(const wmNDOFMotionData *ndof,
                      short protectflag,
                      bool *r_has_translate,
                      bool *r_has_rotate);
-void VIEW3D_OT_ndof_orbit(wmOperatorType *ot);
-void VIEW3D_OT_ndof_orbit_zoom(wmOperatorType *ot);
-void VIEW3D_OT_ndof_pan(wmOperatorType *ot);
-void VIEW3D_OT_ndof_all(wmOperatorType *ot);
 #endif /* WITH_INPUT_NDOF */
 
 /* view3d_navigate_roll.cc */
@@ -308,7 +309,6 @@ int viewrotate_modal_impl(bContext *C,
                           const int xy[2]);
 int viewrotate_invoke_impl(ViewOpsData *vod, const wmEvent *event);
 void viewrotate_modal_keymap(wmKeyConfig *keyconf);
-void VIEW3D_OT_rotate(wmOperatorType *ot);
 
 /* view3d_navigate_smoothview.cc */
 

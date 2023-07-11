@@ -360,28 +360,4 @@ int viewrotate_invoke_impl(ViewOpsData *vod, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int viewrotate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_ROTATE);
-}
-
-void VIEW3D_OT_rotate(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Rotate View";
-  ot->description = "Rotate the view";
-  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_ROTATE);
-
-  /* api callbacks */
-  ot->invoke = viewrotate_invoke;
-  ot->modal = view3d_navigate_modal_fn;
-  ot->poll = view3d_rotation_poll;
-  ot->cancel = view3d_navigate_cancel_fn;
-
-  /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
-
-  view3d_operator_properties_common(ot, V3D_OP_PROP_USE_MOUSE_INIT);
-}
-
 /** \} */

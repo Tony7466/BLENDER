@@ -103,29 +103,4 @@ int viewmove_invoke_impl(ViewOpsData *vod, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  return view3d_navigate_invoke_impl(C, op, event, V3D_OP_MODE_MOVE);
-}
-
-void VIEW3D_OT_move(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Pan View";
-  ot->description = "Move the view";
-  ot->idname = viewops_operator_idname_get(V3D_OP_MODE_MOVE);
-
-  /* api callbacks */
-  ot->invoke = viewmove_invoke;
-  ot->modal = view3d_navigate_modal_fn;
-  ot->poll = view3d_location_poll;
-  ot->cancel = view3d_navigate_cancel_fn;
-
-  /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
-
-  /* properties */
-  view3d_operator_properties_common(ot, V3D_OP_PROP_USE_MOUSE_INIT);
-}
-
 /** \} */
