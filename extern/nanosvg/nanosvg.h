@@ -1299,7 +1299,7 @@ static const char *nsvg__getNextPathItem(const char *s, char *it, char cmd, int 
     return s;
 
   /* Blender: Special case for arc command's 4th and 5th arguments. */
-  if (ELEM(cmd, 'a', 'A') && ELEM(nargs, 3, 4)) {
+  if (((cmd == 'a') || (cmd == 'A')) && ((nargs == 3) || (nargs == 4))) {
     it[0] = s[0];
     it[1] = '\0';
     s++;
