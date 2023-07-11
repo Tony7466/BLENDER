@@ -530,7 +530,9 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_python_mathutils
 
   ${PYTHON_LINKFLAGS}
@@ -540,7 +542,6 @@ set(LIB
 set(INC
   .
   ../blenkernel
-  ../blenlib
   ../blentranslation
   ../depsgraph
   ../imbuf
@@ -549,7 +550,6 @@ set(INC
   ../python/intern
   ../render
   ../render/intern
-  ../../../intern/guardedalloc
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna

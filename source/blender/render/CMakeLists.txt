@@ -7,7 +7,6 @@ set(INC
   .
   intern
   ../blenkernel
-  ../blenlib
   ../blentranslation
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/cached_resources
@@ -21,7 +20,6 @@ set(INC
   ../sequencer
   ../simulation
   ../windowmanager
-  ../../../intern/guardedalloc
   ../../../intern/mikktspace
   ../../../intern/mantaflow/extern
 )
@@ -59,7 +57,9 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
   PRIVATE bf::intern::atomic
 )

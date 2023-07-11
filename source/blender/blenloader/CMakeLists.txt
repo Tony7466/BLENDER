@@ -6,7 +6,6 @@ set(INC
   .
   ../blenfont
   ../blenkernel
-  ../blenlib
   ../blentranslation
   ../depsgraph
   ../draw
@@ -19,7 +18,6 @@ set(INC
   ../sequencer
   ../windowmanager
   ../../../intern/clog
-  ../../../intern/guardedalloc
   ../bmesh
 
   # RNA_prototypes.h
@@ -63,8 +61,9 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_BUILDINFO)

@@ -9,13 +9,11 @@ set(INC
   intern
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../bmesh
   ../../depsgraph
   ../../geometry
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -55,7 +53,9 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
   extern_fmtlib
 )

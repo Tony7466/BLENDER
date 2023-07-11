@@ -6,13 +6,11 @@ set(INC
   .
   intern
   ../blenkernel
-  ../blenlib
   ../depsgraph
   ../functions
   ../imbuf
   ../makesrna
   ../nodes
-  ../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -34,7 +32,9 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_OPENMP_STATIC)
