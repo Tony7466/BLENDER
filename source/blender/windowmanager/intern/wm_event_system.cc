@@ -29,7 +29,6 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_dynstr.h"
 #include "BLI_ghash.h"
 #include "BLI_math.h"
 #include "BLI_timer.h"
@@ -498,7 +497,7 @@ void wm_event_do_refresh_wm_and_depsgraph(bContext *C)
   CTX_wm_window_set(C, nullptr);
 }
 
-static void wm_event_execute_timers(bContext *C)
+static void wm_event_timers_execute(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   if (UNLIKELY(wm == nullptr)) {
@@ -519,7 +518,7 @@ void wm_event_do_notifiers(bContext *C)
   GPU_render_begin();
 
   /* Run the timer before assigning `wm` in the unlikely case a timer loads a file, see #80028. */
-  wm_event_execute_timers(C);
+  wm_event_timers_execute(C);
 
   wmWindowManager *wm = CTX_wm_manager(C);
   if (wm == nullptr) {
@@ -883,16 +882,17 @@ static void wm_event_handler_ui_cancel(bContext *C)
  * Access to #wmWindowManager.reports
  * \{ */
 
-void WM_report_banner_show(void)
+void WM_report_banner_show()
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+  wmWindow *win = wm->winactive ? wm->winactive : static_cast<wmWindow *>(wm->windows.first);
   ReportList *wm_reports = &wm->reports;
 
   /* After adding reports to the global list, reset the report timer. */
-  WM_event_remove_timer(wm, nullptr, wm_reports->reporttimer);
+  WM_event_timer_remove(wm, nullptr, wm_reports->reporttimer);
 
   /* Records time since last report was added. */
-  wm_reports->reporttimer = WM_event_add_timer(wm, wm->winactive, TIMERREPORT, 0.05);
+  wm_reports->reporttimer = WM_event_timer_add(wm, win, TIMERREPORT, 0.05);
 
   ReportTimerInfo *rti = MEM_cnew<ReportTimerInfo>(__func__);
   wm_reports->reporttimer->customdata = rti;
@@ -902,7 +902,7 @@ void WM_report_banners_cancel(Main *bmain)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   BKE_reports_clear(&wm->reports);
-  WM_event_remove_timer(wm, nullptr, wm->reports.reporttimer);
+  WM_event_timer_remove(wm, nullptr, wm->reports.reporttimer);
 }
 
 #ifdef WITH_INPUT_NDOF
@@ -942,17 +942,10 @@ void WM_reportf(eReportType type, const char *format, ...)
   va_list args;
 
   format = TIP_(format);
-
-  DynStr *ds = BLI_dynstr_new();
   va_start(args, format);
-  BLI_dynstr_vappendf(ds, format, args);
-  va_end(args);
-
-  char *str = BLI_dynstr_get_cstring(ds);
+  char *str = BLI_vsprintfN(format, args);
   WM_report(type, str);
   MEM_freeN(str);
-
-  BLI_dynstr_free(ds);
 }
 
 /** \} */
