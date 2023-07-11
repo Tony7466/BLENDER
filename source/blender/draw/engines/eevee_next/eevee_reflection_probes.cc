@@ -433,6 +433,7 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.probe_type = item.value.type;
     info.object_key = item.key;
     info.resolution = 1 << (max_shift - probe_data.layer_subdivision - 1);
+    info.probe_pos = probe_data.pos;
 
     return info;
   }

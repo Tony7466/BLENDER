@@ -31,5 +31,8 @@ void main()
                            probe_data.area_index / probes_per_dimension);
   ivec2 area_offset = area_coord * octahedral_size;
 
+  /* Convert transmittance to transparency. */
+  col.a = 1.0 - col.a;
+
   imageStore(octahedral_img, octahedral_coord + ivec3(area_offset, probe_data.layer), col);
 }
