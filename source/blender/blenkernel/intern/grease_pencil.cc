@@ -47,9 +47,6 @@ using blender::Span;
 using blender::uint3;
 using blender::VectorSet;
 
-static const std::string ATTR_OPACITY = "opacity";
-static const std::string ATTR_RADIUS = "radius";
-
 static void grease_pencil_init_data(ID *id)
 {
   using namespace blender::bke;
@@ -253,6 +250,9 @@ IDTypeInfo IDType_ID_GP = {
 };
 
 namespace blender::bke::greasepencil {
+
+static const std::string ATTR_OPACITY = "opacity";
+static const std::string ATTR_RADIUS = "radius";
 
 /* Curves attributes getters */
 static int domain_num(const CurvesGeometry &curves, const eAttrDomain domain)
