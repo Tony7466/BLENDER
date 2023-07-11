@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "DNA_modifier_types.h"
-
 struct NodesModifierData;
 struct Object;
 
