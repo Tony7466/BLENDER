@@ -72,7 +72,7 @@ void attribute_search_add_items(StringRefNull str,
 /**
  * Some drop targets simply allow dropping onto/into them, others support dragging in-between them.
  * Classes implementing the drop-target interface can use this type to control the behavior by
- * letting it influence the result of #determine_drop_location().
+ * letting it influence the result of #choose_drop_location().
  */
 enum class DropBehavior {
   /**
@@ -91,7 +91,7 @@ enum class DropBehavior {
 
 /**
  * Information on how dragged data should be inserted on drop, as determined through
- * #DropTargetInterface::determine_drop_location(). Also see #DropBehavior.
+ * #DropTargetInterface::choose_drop_location(). Also see #DropBehavior.
  */
 enum class DropLocation {
   Into,
@@ -116,7 +116,7 @@ struct DragInfo {
  * onto itself, provide feedback while dragging and run custom code for the dropping.
  *
  * By default the drop target behaves so that data can be dragged into or onto it.
- * #determine_drop_location() can be overridden to change that.
+ * #choose_drop_location() can be overridden to change that.
  *
  * Note that this is just an interface (not in the strict sense of a Java/C# interface though). A
  * #wmDropBox is needed to request instances of it from a UI element and call its functions. For
@@ -143,13 +143,14 @@ class DropTargetInterface {
    * Once the drop target validated that it can receive the dragged data using #can_drop(), this
    * method can determine where/how the data should be dropped exactly: before, after or into the
    * drop target. Additional feedback can be drawn then while dragging, and the #on_drop() function
-   * should operate accordingly. Implementations of this interface can use #DropBehavior to control
-   * which locations may be returned.
+   * should operate accordingly. Implementations of this function may want to use #DropBehavior to
+   * control which locations may be returned here.
    *
    * If the returned optional is unset, dropping will be disabled. The default implementation
    * returns #DropLocation::Into.
    */
-  virtual std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
+  virtual std::optional<DropLocation> choose_drop_location(const ARegion &region,
+                                                           const wmEvent &event) const;
   /**
    * Custom text to display when dragging over the element using this drop target. Should
    * explain what happens when dropping the data onto this UI element. Will only be used if
@@ -169,6 +170,7 @@ class DropTargetInterface {
  * \return True if the dropping was successful.
  */
 bool drop_target_apply_drop(bContext &C,
+                            const ARegion &region,
                             const wmEvent &event,
                             const DropTargetInterface &drop_target,
                             const ListBase &drags);
@@ -176,7 +178,8 @@ bool drop_target_apply_drop(bContext &C,
  * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
  * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
  */
-char *drop_target_tooltip(const DropTargetInterface &drop_target,
+char *drop_target_tooltip(const ARegion &region,
+                          const DropTargetInterface &drop_target,
                           const wmDrag &drag,
                           const wmEvent &event);
 

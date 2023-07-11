@@ -2409,7 +2409,7 @@ static int ui_view_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
                                                                                       event->xy);
 
   if (!drop_target_apply_drop(
-          *C, *event, *drop_target, *static_cast<const ListBase *>(event->customdata)))
+          *C, *region, *event, *drop_target, *static_cast<const ListBase *>(event->customdata)))
   {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }

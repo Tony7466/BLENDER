@@ -78,7 +78,7 @@ void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) con
   foreach_item_recursive(iter_fn, options);
 }
 
-AbstractTreeViewItem *AbstractTreeView::find_hovered(const int2 &xy)
+AbstractTreeViewItem *AbstractTreeView::find_hovered(const ARegion &region, const int2 &xy)
 {
   AbstractTreeViewItem *hovered_item = nullptr;
   foreach_item_recursive(
@@ -87,7 +87,7 @@ AbstractTreeViewItem *AbstractTreeView::find_hovered(const int2 &xy)
           return;
         }
 
-        std::optional<rctf> win_rect = item.get_win_rect();
+        std::optional<rctf> win_rect = item.get_win_rect(region);
         if (win_rect && BLI_rctf_isect_y(&*win_rect, xy[1])) {
           hovered_item = &item;
         }
@@ -253,18 +253,18 @@ TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeView &view, DropBehav
 {
 }
 
-std::optional<DropLocation> TreeViewItemDropTarget::determine_drop_location(
-    const wmEvent &event) const
+std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
+    const ARegion &region, const wmEvent &event) const
 {
   if (behavior_ == DropBehavior::Insert) {
     return DropLocation::Into;
   }
 
-  const AbstractTreeViewItem *hovered_item = view_.find_hovered(event.xy);
+  const AbstractTreeViewItem *hovered_item = view_.find_hovered(region, event.xy);
   if (!hovered_item) {
     return std::nullopt;
   }
-  std::optional<rctf> win_rect = hovered_item->get_win_rect();
+  std::optional<rctf> win_rect = hovered_item->get_win_rect(region);
   BLI_assert(win_rect.has_value());
   const float item_height = BLI_rctf_size_y(&*win_rect);
 
@@ -472,18 +472,15 @@ AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
   return dynamic_cast<AbstractTreeView &>(get_view());
 }
 
-std::optional<rctf> AbstractTreeViewItem::get_win_rect() const
+std::optional<rctf> AbstractTreeViewItem::get_win_rect(const ARegion &region) const
 {
   uiButViewItem *item_but = view_item_button();
   if (!item_but) {
     return std::nullopt;
   }
 
-  const uiBlock *block = item_but->block;
-  const ARegion *region = CTX_wm_region(static_cast<bContext *>(block->evil_C));
-
   rctf win_rect;
-  ui_block_to_window_rctf(region, item_but->block, &win_rect, &item_but->rect);
+  ui_block_to_window_rctf(&region, item_but->block, &win_rect, &item_but->rect);
 
   return win_rect;
 }

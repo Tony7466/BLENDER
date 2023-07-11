@@ -15,25 +15,26 @@ DragInfo::DragInfo(const wmDrag &drag, const wmEvent &event, const DropLocation 
 {
 }
 
-std::optional<DropLocation> DropTargetInterface::determine_drop_location(
-    const wmEvent & /*event*/) const
+std::optional<DropLocation> DropTargetInterface::choose_drop_location(
+    const ARegion & /*region*/, const wmEvent & /*event*/) const
 {
   return DropLocation::Into;
 }
 
 bool drop_target_apply_drop(bContext &C,
+                            const ARegion &region,
                             const wmEvent &event,
                             const DropTargetInterface &drop_target,
                             const ListBase &drags)
 {
-
   const char *disabled_hint_dummy = nullptr;
   LISTBASE_FOREACH (const wmDrag *, drag, &drags) {
     if (!drop_target.can_drop(*drag, &disabled_hint_dummy)) {
       return false;
     }
 
-    const std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+    const std::optional<DropLocation> drop_location = drop_target.choose_drop_location(region,
+                                                                                       event);
     if (!drop_location) {
       return false;
     }
@@ -45,7 +46,8 @@ bool drop_target_apply_drop(bContext &C,
   return false;
 }
 
-char *drop_target_tooltip(const DropTargetInterface &drop_target,
+char *drop_target_tooltip(const ARegion &region,
+                          const DropTargetInterface &drop_target,
                           const wmDrag &drag,
                           const wmEvent &event)
 {
@@ -54,7 +56,8 @@ char *drop_target_tooltip(const DropTargetInterface &drop_target,
     return nullptr;
   }
 
-  const std::optional<DropLocation> drop_location = drop_target.determine_drop_location(event);
+  const std::optional<DropLocation> drop_location = drop_target.choose_drop_location(region,
+                                                                                     event);
   if (!drop_location) {
     return nullptr;
   }
