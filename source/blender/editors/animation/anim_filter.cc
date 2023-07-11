@@ -968,18 +968,18 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GPLAYER: {
-        bGPDlayer *layer = (bGPDlayer *)data;
+        bGPDlayer *gpl = (bGPDlayer *)data;
 
-        ale->flag = layer->flag;
+        ale->flag = gpl->flag;
 
         ale->key_data = nullptr;
         ale->datatype = ALE_GPFRAME;
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *gpl = (GreasePencilLayer *)data;
+        GreasePencilLayer *layer = (GreasePencilLayer *)data;
 
-        ale->flag = gpl->base.flag;
+        ale->flag = layer->base.flag;
 
         ale->key_data = nullptr;
         ale->datatype = ALE_GREASE_PENCIL_CELS;
