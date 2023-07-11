@@ -1409,46 +1409,41 @@ static void customdata_weld(
   }
 }
 
-static void merge_final_index_map_create(Span<int> dest_map,
-                                         const int dest_size,
-                                         Array<int> &r_final_map)
+static Array<int> merge_final_index_map_create(Span<int> dest_map)
 {
-  UNUSED_VARS_NDEBUG(dest_size);
-
-  r_final_map.reinitialize(dest_map.size());
+  Array<int> final_index_map(dest_map.size());
 
   bool finalize_map = false;
   int final_index = 0;
   for (const int source : dest_map.index_range()) {
     const int target = dest_map[source];
     if (ELEM(target, source, OUT_OF_CONTEXT)) {
-      r_final_map[source] = final_index++;
+      final_index_map[source] = final_index++;
     }
     else if (target == ELEM_COLLAPSED) {
       /* Any value will do. This field must not be accessed anymore. */
-      r_final_map[source] = 0;
+      final_index_map[source] = 0;
     }
     else if (target < source) {
-      r_final_map[source] = r_final_map[target];
+      final_index_map[source] = final_index_map[target];
     }
     else {
       /* Mark as negative to set at the end. */
-      r_final_map[source] = -target;
+      final_index_map[source] = -target;
       finalize_map = true;
     }
   }
 
   if (finalize_map) {
-    for (const int i : r_final_map.index_range()) {
-      if (r_final_map[i] < 0) {
-        r_final_map[i] = r_final_map[-r_final_map[i]];
-        BLI_assert(r_final_map[i] < dest_size);
+    for (const int i : final_index_map.index_range()) {
+      if (final_index_map[i] < 0) {
+        final_index_map[i] = final_index_map[-final_index_map[i]];
       }
-      BLI_assert(r_final_map[i] >= 0);
+      BLI_assert(final_index_map[i] >= 0);
     }
   }
 
-  BLI_assert(final_index == dest_size);
+  return final_index_map;
 }
 
 /**
@@ -1460,22 +1455,19 @@ static void merge_final_index_map_create(Span<int> dest_map,
  *
  * \param dest_map: Map that defines the source and target elements. The source elements will be
  *                  merged into the target. Each target corresponds to a group.
+ * \param final_map: Map showing which index an element in the original source corresponds to in
+ *                   the resulting destination data.
  * \param double_elems: Source and target elements in `dest_map`. For quick access.
  * \param do_mix_data: If true the target element will have the custom data interpolated with all
  *                     sources pointing to it.
- *
- * \return r_final_map: Array indicating the new indices of the elements.
  */
 static void merge_customdata_all(const CustomData *source,
                                  CustomData *dest,
                                  Span<int> dest_map,
+                                 Span<int> final_map,
                                  Span<int> double_elems,
-                                 const int dest_size,
-                                 const bool do_mix_data,
-                                 Array<int> &r_final_map)
+                                 const bool do_mix_data)
 {
-  merge_final_index_map_create(dest_map, dest_size, r_final_map);
-
   Array<int> groups_offs_, groups_buffer;
   if (do_mix_data) {
     merge_groups_create(dest_map, double_elems, groups_offs_, groups_buffer);
@@ -1491,7 +1483,7 @@ static void merge_customdata_all(const CustomData *source,
     }
     const int count = i - source_index;
     if (count) {
-      CustomData_copy_data(source, dest, source_index, r_final_map[source_index], count);
+      CustomData_copy_data(source, dest, source_index, final_map[source_index], count);
     }
     if (i == source_size) {
       break;
@@ -1503,10 +1495,10 @@ static void merge_customdata_all(const CustomData *source,
                         dest,
                         &groups_buffer[grp_buffer_range.start()],
                         grp_buffer_range.size(),
-                        r_final_map[i]);
+                        final_map[i]);
       }
       else {
-        CustomData_copy_data(source, dest, i, r_final_map[i], 1);
+        CustomData_copy_data(source, dest, i, final_map[i], 1);
       }
     }
   }
@@ -1550,27 +1542,23 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
 
   /* Vertices. */
 
-  Array<int> vert_final_map;
-
+  Array<int> vert_final_map = merge_final_index_map_create(vert_dest_map);
   merge_customdata_all(&mesh.vdata,
                        &result->vdata,
                        vert_dest_map,
+                       vert_final_map,
                        weld_mesh.double_verts,
-                       result_nverts,
-                       do_mix_data,
-                       vert_final_map);
+                       do_mix_data);
 
   /* Edges. */
 
-  Array<int> edge_final_map;
-
+  Array<int> edge_final_map = merge_final_index_map_create(weld_mesh.edge_dest_map);
   merge_customdata_all(&mesh.edata,
                        &result->edata,
                        weld_mesh.edge_dest_map,
+                       edge_final_map,
                        weld_mesh.double_edges,
-                       result_nedges,
-                       do_mix_data,
-                       edge_final_map);
+                       do_mix_data);
 
   for (int2 &edge : dst_edges) {
     edge[0] = vert_final_map[edge[0]];
