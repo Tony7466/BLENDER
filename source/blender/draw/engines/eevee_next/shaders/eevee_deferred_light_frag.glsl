@@ -55,6 +55,8 @@ void main()
   vec3 reflection_light = imageLoad(indirect_reflection_img, texel).rgb;
   float shadow = 1.0;
 
+  lightprobe_eval(diffuse_data, reflection_data, P, Ng, V, diffuse_light, reflection_light);
+
   light_eval(diffuse_data,
              reflection_data,
              P,

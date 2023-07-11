@@ -77,7 +77,8 @@ void main()
   else {
     /* Fallback to nearest lightprobe. */
     // radiance = lightprobe_cubemap_eval(ray.origin, ray.direction, roughness, rand_probe);
-    radiance = light_world_sample(ray.direction, 0.0);
+    ReflectionProbeData world_probe = reflection_probe_buf[0];
+    radiance = reflection_probes_sample(ray.direction, 0.0, world_probe).rgb;
     hit_time = 10000.0;
   }
 

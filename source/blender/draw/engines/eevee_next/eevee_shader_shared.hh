@@ -1013,7 +1013,7 @@ BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Ambient Occlussion
+/** \name Ambient Occlusion
  * \{ */
 
 struct AOData {
@@ -1050,6 +1050,45 @@ struct SubsurfaceData {
   int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Reflection Probes
+ * \{ */
+
+/** Mapping data to locate a reflection probe in texture. */
+struct ReflectionProbeData {
+  /**
+   * Position of the light probe in world space.
+   * World probe uses origin.
+   */
+  packed_float3 pos;
+
+  /** On which layer of the texture array is this reflection probe stored. */
+  int layer;
+
+  /**
+   * Subdivision of the layer. 0 = no subdivision and resolution would be
+   * ReflectionProbeModule::MAX_RESOLUTION.
+   */
+  int layer_subdivision;
+
+  /**
+   * Which area of the subdivided layer is the reflection probe located.
+   *
+   * A layer has (2^layer_subdivision)^2 areas.
+   */
+  int area_index;
+
+  /**
+   * LOD factor for mipmap selection.
+   */
+  float lod_factor;
+
+  int _pad[1];
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
 /** \} */
 
@@ -1112,6 +1151,8 @@ using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using RayTraceDataBuf = draw::UniformBuffer<RayTraceData>;
+using ReflectionProbeDataBuf =
+    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

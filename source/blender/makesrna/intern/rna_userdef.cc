@@ -169,7 +169,6 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 #  include "BKE_mesh_runtime.h"
 #  include "BKE_object.h"
 #  include "BKE_paint.h"
-#  include "BKE_pbvh.h"
 #  include "BKE_preferences.h"
 #  include "BKE_screen.h"
 
@@ -1116,6 +1115,11 @@ static const EnumPropertyItem *rna_preference_gpu_backend_itemf(bContext * /*C*/
   EnumPropertyItem *result = nullptr;
   for (int i = 0; rna_enum_preference_gpu_backend_items[i].identifier != nullptr; i++) {
     const EnumPropertyItem *item = &rna_enum_preference_gpu_backend_items[i];
+#  ifndef WITH_OPENGL_BACKEND
+    if (item->value == GPU_BACKEND_OPENGL) {
+      continue;
+    }
+#  endif
 #  ifndef WITH_METAL_BACKEND
     if (item->value == GPU_BACKEND_METAL) {
       continue;

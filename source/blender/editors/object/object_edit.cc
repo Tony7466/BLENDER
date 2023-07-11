@@ -1760,7 +1760,7 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
 
   /* by default the operator assume is a mesh, but if gp object change mode */
   if ((ob->type == OB_GPENCIL_LEGACY) && (mode == OB_MODE_EDIT)) {
-    mode = OB_MODE_EDIT_GPENCIL;
+    mode = OB_MODE_EDIT_GPENCIL_LEGACY;
   }
 
   if (!ED_object_mode_compat_test(ob, mode)) {
@@ -1936,8 +1936,9 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (ID_IS_OVERRIDE_LIBRARY(collection)) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot add objects to a library override collection");
+  if (ID_IS_LINKED(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
+    BKE_report(
+        op->reports, RPT_ERROR, "Cannot add objects to a library override or linked collection");
     return OPERATOR_CANCELLED;
   }
 

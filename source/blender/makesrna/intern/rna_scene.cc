@@ -5907,13 +5907,6 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
                            "100 = maximum lossless compression with slow file output");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  /* flag */
-  prop = RNA_def_property(srna, "use_zbuffer", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", R_IMF_FLAG_ZBUF);
-  RNA_def_property_ui_text(
-      prop, "Z Buffer", "Save the z-depth per pixel (32-bit unsigned integer z-buffer)");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
   prop = RNA_def_property(srna, "use_preview", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", R_IMF_FLAG_PREVIEW_JPG);
   RNA_def_property_ui_text(
@@ -5993,7 +5986,7 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
   /* multiview */
   prop = RNA_def_property(srna, "views_format", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "views_format");
-  RNA_def_property_enum_items(prop, rna_enum_views_format_items);
+  RNA_def_property_enum_items(prop, rna_enum_views_format_multiview_items);
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_ImageFormatSettings_views_format_itemf");
   RNA_def_property_ui_text(prop, "Views Format", "Format of multiview media");
