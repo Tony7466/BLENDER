@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "BLI_set.hh"
+#include "BKE_bake_id_mapping.hh"
 
 struct NodesModifierData;
 struct Object;
@@ -37,6 +37,8 @@ struct NodesModifierRuntime {
    * used by the evaluated modifier.
    */
   std::shared_ptr<bke::sim::ModifierSimulationCache> simulation_cache;
+
+  bke::BakeIDMappingIssuesLog id_mapping_issues;
 };
 
 }  // namespace blender

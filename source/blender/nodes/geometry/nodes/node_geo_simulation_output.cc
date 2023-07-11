@@ -200,7 +200,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                                 const Object &self_object,
                                 const ComputeContext &compute_context,
                                 const bNode &node,
-                                const Map<bke::BakeIDMappingKey, ID *> &id_mapping,
+                                const bke::BakeIDMapping &id_mapping,
+                                bke::BakeIDMappingIssuesLog *id_mapping_issues,
                                 Span<void *> r_output_values)
 {
   /* Some attributes stored in the simulation state become anonymous attributes in geometry nodes.
@@ -247,10 +248,12 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                       key.lib_name = IDP_String(lib_name_prop);
                     }
                   }
-                  ID *id = id_mapping.lookup_default(key, nullptr);
-                  if (id && GS(id->name) == ID_MA) {
-                    Material *material = reinterpret_cast<Material *>(id);
+                  Material *material = reinterpret_cast<Material *>(id_mapping.get(key, ID_MA));
+                  if (material) {
                     mesh->mat[i] = material;
+                  }
+                  else if (id_mapping_issues && !key.id_name.is_empty()) {
+                    id_mapping_issues->add(key, ID_MA);
                   }
                 }
               }
@@ -825,6 +828,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                *user_data.compute_context,
                                node_,
                                user_data.modifier_data->id_mapping,
+                               user_data.modifier_data->id_mapping_issues,
                                output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i);
@@ -847,6 +851,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                *user_data.compute_context,
                                node_,
                                user_data.modifier_data->id_mapping,
+                               user_data.modifier_data->id_mapping_issues,
                                output_values);
 
     Array<void *> next_values(simulation_items_.size());
@@ -861,6 +866,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                *user_data.compute_context,
                                node_,
                                user_data.modifier_data->id_mapping,
+                               user_data.modifier_data->id_mapping_issues,
                                next_values);
 
     for (const int i : simulation_items_.index_range()) {

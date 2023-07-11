@@ -3726,6 +3726,32 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 /** \name Update id mapping in geometry nodes modifier
  * \{ */
 
+static ID *find_id_by_names(Main &bmain,
+                            const blender::StringRef &id_name,
+                            const blender::StringRef lib_name)
+{
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (&bmain, id) {
+    if (id->name + 2 != id_name) {
+      continue;
+    }
+    if (lib_name.is_empty()) {
+      if (id->lib == nullptr) {
+        return id;
+      }
+      continue;
+    }
+    if (id->lib == nullptr) {
+      continue;
+    }
+    if (id->lib->id.name + 2 == lib_name) {
+      return id;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+  return nullptr;
+};
+
 static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
@@ -3738,125 +3764,41 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
   if (!(md && md->type == eModifierType_Nodes)) {
     return OPERATOR_CANCELLED;
   }
+
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  if (!nmd.runtime->simulation_cache) {
-    return OPERATOR_CANCELLED;
-  }
-  ModifierSimulationCache &sim_cache = *nmd.runtime->simulation_cache;
-  Set<std::pair<StringRefNull, StringRefNull>> used_ids;
-  for (std::unique_ptr<ModifierSimulationStateAtFrame> &state_at_frame :
-       sim_cache.states_at_frames_) {
-    for (const std::unique_ptr<SimulationZoneState> &zone_state :
-         state_at_frame->state.zone_states_.values())
-    {
-      for (const std::unique_ptr<SimulationStateItem> &item :
-           zone_state->item_by_identifier.values()) {
-        if (const auto *geo_item = dynamic_cast<const GeometrySimulationStateItem *>(item.get())) {
-          const GeometrySet &geometry = geo_item->geometry;
-          if (const Mesh *mesh = geometry.get_mesh_for_read()) {
-            if (mesh->id.properties) {
-              IDProperty *materials_prop = IDP_GetPropertyFromGroup(mesh->id.properties,
-                                                                    ".materials");
-              for (const int i : IndexRange(materials_prop->len)) {
-                IDProperty *material_prop = IDP_GetIndexArray(materials_prop, i);
-                StringRefNull id_name, lib_name;
-                if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(material_prop, "id_name"))
-                {
-                  if (id_name_prop->type == IDP_STRING) {
-                    id_name = IDP_String(id_name_prop);
-                  }
-                }
-                if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(material_prop,
-                                                                         "lib_name")) {
-                  if (lib_name_prop->type == IDP_STRING) {
-                    lib_name = IDP_String(lib_name_prop);
-                  }
-                }
-                if (!id_name.is_empty()) {
-                  used_ids.add({id_name, lib_name});
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  if (nmd.runtime->id_mapping_issues.missing_mappings.is_empty()) {
+    return OPERATOR_FINISHED;
   }
 
-  const auto has_existing_mapping = [&](const StringRef id_name, const StringRef lib_name) {
-    for (const int i : IndexRange(nmd.id_mappings_num)) {
-      const NodesModifierIDMapping &mapping = nmd.id_mappings[i];
-      if (mapping.id_name == id_name && mapping.lib_name == lib_name) {
-        return true;
-      }
-      if (mapping.id) {
-        if (mapping.id->name + 2 == id_name) {
-          if (mapping.id->lib) {
-            if (mapping.id->lib->id.name + 2 == lib_name) {
-              return true;
-            }
-          }
-          else {
-            return true;
-          }
-        }
-      }
+  const int new_mappings_num = nmd.id_mappings_num +
+                               nmd.runtime->id_mapping_issues.missing_mappings.size();
+  nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
+      MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
+
+  NodesModifierIDMapping *new_mappings = nmd.id_mappings + nmd.id_mappings_num;
+  for (const auto &item : nmd.runtime->id_mapping_issues.missing_mappings) {
+    ID *id = find_id_by_names(*bmain, item.first.id_name, item.first.lib_name);
+    NodesModifierIDMapping &mapping = *(new_mappings++);
+    memset(&mapping, 0, sizeof(NodesModifierIDMapping));
+    if (!item.first.id_name.is_empty()) {
+      mapping.id_name = BLI_strdupn(item.first.id_name.data(), item.first.id_name.size());
     }
-    return false;
-  };
-
-  const auto find_id = [&](const StringRef &id_name, const StringRef lib_name) -> ID * {
-    ID *id;
-    FOREACH_MAIN_ID_BEGIN (bmain, id) {
-      if (id->name + 2 != id_name) {
-        continue;
-      }
-      if (lib_name.is_empty()) {
-        if (id->lib == nullptr) {
-          return id;
-        }
-        continue;
-      }
-      if (id->lib == nullptr) {
-        continue;
-      }
-      if (id->lib->id.name + 2 == lib_name) {
-        return id;
-      }
+    if (!item.first.lib_name.is_empty()) {
+      mapping.lib_name = BLI_strdupn(item.first.lib_name.data(), item.first.lib_name.size());
     }
-    FOREACH_MAIN_ID_END;
-    return nullptr;
-  };
-
-  for (const std::pair<StringRefNull, StringRefNull> &used_id : used_ids) {
-    const StringRefNull id_name = used_id.first;
-    const StringRefNull lib_name = used_id.second;
-
-    if (!has_existing_mapping(id_name, lib_name)) {
-      ID *id = find_id(id_name, lib_name);
-
-      const int new_mappings_num = nmd.id_mappings_num + 1;
-      nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
-          MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
-      NodesModifierIDMapping &new_mapping = nmd.id_mappings[nmd.id_mappings_num];
-      memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
-      nmd.id_mappings_num = new_mappings_num;
-
-      new_mapping.id_type = ID_MA;
-      if (id == nullptr) {
-        new_mapping.id_name = BLI_strdup(id_name.c_str());
-        if (!lib_name.is_empty()) {
-          new_mapping.lib_name = BLI_strdup(lib_name.c_str());
-        }
-      }
-      else {
-        new_mapping.id = id;
-        id_us_plus(id);
-      }
-    }
+    mapping.id_type = item.second;
+    mapping.id = id;
+    id_us_plus(id);
   }
+
+  nmd.runtime->id_mapping_issues.missing_mappings.clear();
+  nmd.id_mappings_num = new_mappings_num;
 
   CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
+
+  if (nmd.runtime->simulation_cache) {
+    nmd.runtime->simulation_cache->invalidate();
+  }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);

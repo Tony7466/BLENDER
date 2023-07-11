@@ -73,7 +73,9 @@ struct GeoNodesModifierData {
    * If this is null, all socket values will be logged.
    */
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
-  Map<bke::BakeIDMappingKey, ID *> id_mapping;
+
+  bke::BakeIDMapping id_mapping;
+  bke::BakeIDMappingIssuesLog *id_mapping_issues = nullptr;
 };
 
 struct GeoNodesOperatorData {

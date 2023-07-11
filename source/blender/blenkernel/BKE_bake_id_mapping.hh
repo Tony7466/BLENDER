@@ -4,10 +4,14 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "BLI_hash.hh"
+#include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "DNA_ID.h"
 #include "DNA_ID_enums.h"
 
 namespace blender::bke {
@@ -27,9 +31,34 @@ struct BakeIDMappingKey {
   }
 };
 
+struct BakeIDMapping {
+  Map<BakeIDMappingKey, ID *> mappings;
+
+  ID *get(const BakeIDMappingKey &key, const ID_Type type) const
+  {
+    ID *id = this->mappings.lookup_default(key, nullptr);
+    if (id == nullptr) {
+      return nullptr;
+    }
+    if (GS(id->name) != type) {
+      return nullptr;
+    }
+    return id;
+  }
+};
+
 struct BakeIDMappingIssuesLog {
   std::mutex mutex;
+  LinearAllocator<> allocator;
   Set<std::pair<BakeIDMappingKey, ID_Type>> missing_mappings;
+
+  void add(const BakeIDMappingKey &key, ID_Type type)
+  {
+    std::lock_guard lock{this->mutex};
+    missing_mappings.add(
+        {{this->allocator.copy_string(key.id_name), this->allocator.copy_string(key.lib_name)},
+         type});
+  }
 };
 
 }  // namespace blender::bke

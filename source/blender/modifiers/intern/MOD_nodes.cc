@@ -862,7 +862,7 @@ static void modifyGeometry(ModifierData *md,
       continue;
     }
     const bke::BakeIDMappingKey key = {mapping.id_name, mapping.lib_name};
-    modifier_eval_data.id_mapping.add(key, mapping.id);
+    modifier_eval_data.id_mapping.mappings.add(key, mapping.id);
   }
   /* Then insert all IDs with their actual name (unless the same name is used by another mapping
    * already). */
@@ -877,7 +877,10 @@ static void modifyGeometry(ModifierData *md,
       key.lib_name = mapping.id->lib->id.name + 2;
     }
     /* Only added when the key does not exist already. */
-    modifier_eval_data.id_mapping.add(key, mapping.id);
+    modifier_eval_data.id_mapping.mappings.add(key, mapping.id);
+  }
+  if (logging_enabled(ctx)) {
+    modifier_eval_data.id_mapping_issues = &nmd_orig->runtime->id_mapping_issues;
   }
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
@@ -1420,6 +1423,7 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+  const bool has_missing_mappings = !nmd->runtime->id_mapping_issues.missing_mappings.is_empty();
 
   PointerRNA mappings_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd, &mappings_ptr);
@@ -1441,7 +1445,9 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
   uiLayout *ops_col = uiLayoutColumn(list_row, true);
-  uiItemO(ops_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
+  uiLayout *ops_subcol = uiLayoutColumn(ops_col, true);
+  uiLayoutSetActive(ops_subcol, has_missing_mappings);
+  uiItemO(ops_subcol, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
   uiItemO(ops_col, "", ICON_X, "OBJECT_OT_geometry_nodes_id_mapping_remove");
 
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
