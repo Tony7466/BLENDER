@@ -23,6 +23,6 @@ namespace blender::ed::asset {
  * If the asset already has a corresponding local #ID, return it. Otherwise, link or append the
  * asset's data-block, using "Append & Reuse" if the method is unspecified.
  */
-ID *ensure_asset_local_id(Main &bmain, const asset_system::AssetRepresentation &asset);
+ID *asset_local_id_ensure_imported(Main &bmain, const asset_system::AssetRepresentation &asset);
 
 }  // namespace blender::ed::asset

@@ -20,7 +20,7 @@ using namespace blender;
 
 namespace blender::ed::asset {
 
-ID *ensure_asset_local_id(Main &bmain, const asset_system::AssetRepresentation &asset)
+ID *asset_local_id_ensure_imported(Main &bmain, const asset_system::AssetRepresentation &asset)
 {
   if (ID *local_id = asset.local_id()) {
     return local_id;

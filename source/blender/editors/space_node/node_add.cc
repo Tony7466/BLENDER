@@ -387,7 +387,7 @@ static bool add_node_group_asset(const bContext &C,
   bNodeTree &edit_tree = *snode.edittree;
 
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      asset::ensure_asset_local_id(bmain, asset));
+      asset::asset_local_id_ensure_imported(bmain, asset));
   if (!node_group) {
     return false;
   }
