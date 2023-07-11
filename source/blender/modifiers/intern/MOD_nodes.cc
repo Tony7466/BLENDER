@@ -861,7 +861,7 @@ static void modifyGeometry(ModifierData *md,
     if (StringRef(mapping.id_name).is_empty()) {
       continue;
     }
-    const nodes::IDMappingKey key = {mapping.id_name, mapping.lib_name};
+    const bke::BakeIDMappingKey key = {mapping.id_name, mapping.lib_name};
     modifier_eval_data.id_mapping.add(key, mapping.id);
   }
   /* Then insert all IDs with their actual name (unless the same name is used by another mapping
@@ -871,7 +871,7 @@ static void modifyGeometry(ModifierData *md,
     if (mapping.id == nullptr) {
       continue;
     }
-    nodes::IDMappingKey key;
+    bke::BakeIDMappingKey key;
     key.id_name = mapping.id->name + 2;
     if (mapping.id->lib) {
       key.lib_name = mapping.id->lib->id.name + 2;

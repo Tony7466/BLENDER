@@ -200,7 +200,7 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                                 const Object &self_object,
                                 const ComputeContext &compute_context,
                                 const bNode &node,
-                                const Map<IDMappingKey, ID *> &id_mapping,
+                                const Map<bke::BakeIDMappingKey, ID *> &id_mapping,
                                 Span<void *> r_output_values)
 {
   /* Some attributes stored in the simulation state become anonymous attributes in geometry nodes.
@@ -236,7 +236,7 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
                 mesh->mat = MEM_cnew_array<Material *>(mesh->totcol, __func__);
                 for (const int i : IndexRange(array_prop->len)) {
                   IDProperty *mat_prop = IDP_GetIndexArray(array_prop, i);
-                  IDMappingKey key;
+                  bke::BakeIDMappingKey key;
                   if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(mat_prop, "id_name")) {
                     if (id_name_prop->type == IDP_STRING) {
                       key.id_name = IDP_String(id_name_prop);

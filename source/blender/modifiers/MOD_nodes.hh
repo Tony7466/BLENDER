@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_set.hh"
+
 struct NodesModifierData;
 struct Object;
 
