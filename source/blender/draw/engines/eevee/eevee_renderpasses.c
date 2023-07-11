@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -36,7 +37,7 @@ typedef enum eRenderPassPostProcessType {
 #define EEVEE_RENDERPASSES_WITH_POST_PROCESSING \
   (EEVEE_RENDER_PASS_Z | EEVEE_RENDER_PASS_MIST | EEVEE_RENDER_PASS_NORMAL | \
    EEVEE_RENDER_PASS_AO | EEVEE_RENDER_PASS_BLOOM | EEVEE_RENDER_PASS_VOLUME_LIGHT | \
-   EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDERPASSES_MATERIAL)
+   EEVEE_RENDER_PASS_TRANSPARENT | EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDERPASSES_MATERIAL)
 
 #define EEVEE_RENDERPASSES_ALL \
   (EEVEE_RENDERPASSES_WITH_POST_PROCESSING | EEVEE_RENDER_PASS_COMBINED)
@@ -130,6 +131,7 @@ void EEVEE_renderpasses_init(EEVEE_Data *vedata)
                             EEVEE_RENDER_PASS_COMBINED;
   }
   EEVEE_material_renderpasses_init(vedata);
+  EEVEE_material_transparent_output_init(vedata);
   EEVEE_cryptomatte_renderpasses_init(vedata);
 }
 
@@ -356,6 +358,11 @@ void EEVEE_renderpasses_postprocess(EEVEE_ViewLayerData *UNUSED(sldata),
       g_data->renderpass_input = txl->aov_surface_accum[aov_index];
       break;
     }
+    case EEVEE_RENDER_PASS_TRANSPARENT: {
+      g_data->renderpass_postprocess = PASS_POST_ACCUMULATED_COLOR_ALPHA;
+      g_data->renderpass_input = txl->transparent_accum;
+      break;
+    }
     case EEVEE_RENDER_PASS_BLOOM: {
       g_data->renderpass_postprocess = PASS_POST_ACCUMULATED_COLOR;
       g_data->renderpass_input = txl->bloom_accum;
@@ -424,7 +431,7 @@ void EEVEE_renderpasses_draw(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   bool is_valid = (render_pass & EEVEE_RENDERPASSES_ALL) != 0;
   bool needs_color_transfer = (render_pass & EEVEE_RENDERPASSES_COLOR_PASS) != 0 &&
-                              DRW_state_is_opengl_render();
+                              DRW_state_is_viewport_image_render();
   UNUSED_VARS(needs_color_transfer);
 
   if ((render_pass & EEVEE_RENDER_PASS_BLOOM) != 0 &&

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -18,7 +19,7 @@
 #include "BLI_timeit.hh"
 
 #include "BKE_bvhutils.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
@@ -34,23 +35,6 @@ using blender::Span;
  * \{ */
 
 namespace blender::bke {
-
-static void edit_data_reset(EditMeshData &edit_data)
-{
-  MEM_SAFE_FREE(edit_data.polyCos);
-  MEM_SAFE_FREE(edit_data.polyNos);
-  MEM_SAFE_FREE(edit_data.vertexCos);
-  MEM_SAFE_FREE(edit_data.vertexNos);
-}
-
-static void free_edit_data(MeshRuntime &mesh_runtime)
-{
-  if (mesh_runtime.edit_data) {
-    edit_data_reset(*mesh_runtime.edit_data);
-    MEM_freeN(mesh_runtime.edit_data);
-    mesh_runtime.edit_data = nullptr;
-  }
-}
 
 static void free_mesh_eval(MeshRuntime &mesh_runtime)
 {
@@ -99,7 +83,6 @@ MeshRuntime::~MeshRuntime()
   free_mesh_eval(*this);
   free_subdiv_ccg(*this);
   free_bvh_cache(*this);
-  free_edit_data(*this);
   free_batch_cache(*this);
   if (this->shrinkwrap_data) {
     BKE_shrinkwrap_boundary_data_free(this->shrinkwrap_data);
@@ -190,7 +173,7 @@ void Mesh::tag_loose_verts_none() const
   try_tag_verts_no_face_none(*this);
 }
 
-void Mesh::loose_edges_tag_none() const
+void Mesh::tag_loose_edges_none() const
 {
   using namespace blender::bke;
   this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
@@ -260,20 +243,20 @@ void BKE_mesh_runtime_verttri_from_looptri(MVertTri *r_verttri,
   }
 }
 
-bool BKE_mesh_runtime_ensure_edit_data(struct Mesh *mesh)
+bool BKE_mesh_runtime_ensure_edit_data(Mesh *mesh)
 {
   if (mesh->runtime->edit_data != nullptr) {
     return false;
   }
-  mesh->runtime->edit_data = MEM_cnew<EditMeshData>(__func__);
+  mesh->runtime->edit_data = MEM_new<blender::bke::EditMeshData>(__func__);
   return true;
 }
 
 void BKE_mesh_runtime_reset_edit_data(Mesh *mesh)
 {
   using namespace blender::bke;
-  if (EditMeshData *edit_data = mesh->runtime->edit_data) {
-    edit_data_reset(*edit_data);
+  if (blender::bke::EditMeshData *edit_data = mesh->runtime->edit_data) {
+    *edit_data = {};
   }
 }
 
@@ -282,7 +265,8 @@ void BKE_mesh_runtime_clear_cache(Mesh *mesh)
   using namespace blender::bke;
   free_mesh_eval(*mesh->runtime);
   free_batch_cache(*mesh->runtime);
-  free_edit_data(*mesh->runtime);
+  MEM_delete(mesh->runtime->edit_data);
+  mesh->runtime->edit_data = nullptr;
   BKE_mesh_runtime_clear_geometry(mesh);
 }
 
@@ -306,7 +290,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   }
 }
 
-void BKE_mesh_tag_edges_split(struct Mesh *mesh)
+void BKE_mesh_tag_edges_split(Mesh *mesh)
 {
   /* Triangulation didn't change because vertex positions and loop vertex indices didn't change.
    * Face normals didn't change either, but tag those anyway, since there is no API function to
@@ -314,9 +298,21 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   free_bvh_cache(*mesh->runtime);
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
-  mesh->runtime->loose_edges_cache.tag_dirty();
-  mesh->runtime->loose_verts_cache.tag_dirty();
-  mesh->runtime->verts_no_face_cache.tag_dirty();
+  if (mesh->runtime->loose_edges_cache.is_cached() &&
+      mesh->runtime->loose_edges_cache.data().count != 0)
+  {
+    mesh->runtime->loose_edges_cache.tag_dirty();
+  }
+  if (mesh->runtime->loose_verts_cache.is_cached() &&
+      mesh->runtime->loose_verts_cache.data().count != 0)
+  {
+    mesh->runtime->loose_verts_cache.tag_dirty();
+  }
+  if (mesh->runtime->verts_no_face_cache.is_cached() &&
+      mesh->runtime->verts_no_face_cache.data().count != 0)
+  {
+    mesh->runtime->verts_no_face_cache.tag_dirty();
+  }
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
   if (mesh->runtime->shrinkwrap_data) {
@@ -347,7 +343,7 @@ void BKE_mesh_tag_positions_changed_uniformly(Mesh *mesh)
   mesh->runtime->bounds_cache.tag_dirty();
 }
 
-void BKE_mesh_tag_topology_changed(struct Mesh *mesh)
+void BKE_mesh_tag_topology_changed(Mesh *mesh)
 {
   BKE_mesh_runtime_clear_geometry(mesh);
 }
@@ -357,7 +353,7 @@ bool BKE_mesh_is_deformed_only(const Mesh *mesh)
   return mesh->runtime->deformed_only;
 }
 
-eMeshWrapperType BKE_mesh_wrapper_type(const struct Mesh *mesh)
+eMeshWrapperType BKE_mesh_wrapper_type(const Mesh *mesh)
 {
   return mesh->runtime->wrapper_type;
 }

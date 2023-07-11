@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -106,7 +107,7 @@ static SpaceLink *file_create(const ScrArea *UNUSED(area), const Scene *UNUSED(s
   return (SpaceLink *)sfile;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void file_free(SpaceLink *sl)
 {
   SpaceFile *sfile = (SpaceFile *)sl;
@@ -151,7 +152,7 @@ static void file_exit(wmWindowManager *wm, ScrArea *area)
   SpaceFile *sfile = (SpaceFile *)area->spacedata.first;
 
   if (sfile->previews_timer) {
-    WM_event_remove_timer_notifier(wm, NULL, sfile->previews_timer);
+    WM_event_timer_remove_notifier(wm, NULL, sfile->previews_timer);
     sfile->previews_timer = NULL;
   }
 
@@ -274,7 +275,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
   else {
     filelist_cache_previews_set(sfile->files, false);
     if (sfile->previews_timer) {
-      WM_event_remove_timer_notifier(wm, win, sfile->previews_timer);
+      WM_event_timer_remove_notifier(wm, win, sfile->previews_timer);
       sfile->previews_timer = NULL;
     }
   }
@@ -619,7 +620,7 @@ static void file_operatortypes(void)
 }
 
 /* NOTE: do not add .blend file reading on this level */
-static void file_keymap(struct wmKeyConfig *keyconf)
+static void file_keymap(wmKeyConfig *keyconf)
 {
   /* keys for all regions */
   WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, 0);

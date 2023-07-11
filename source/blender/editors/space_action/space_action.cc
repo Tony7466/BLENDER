@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -126,7 +127,7 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   return (SpaceLink *)saction;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void action_free(SpaceLink * /*sl*/)
 {
   //  SpaceAction *saction = (SpaceAction *) sl;
@@ -865,11 +866,11 @@ static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, S
   bDopeSheet *ads = &saction->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id->lib, &ads->source);
-    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id, &ads->source);
+    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
   }
 
-  BLO_read_id_address(reader, parent_id->lib, &saction->action);
+  BLO_read_id_address(reader, parent_id, &saction->action);
 }
 
 static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -884,7 +885,7 @@ static void action_main_region_view2d_changed(const bContext * /*C*/, ARegion *r
   action_clamp_scroll(region);
 }
 
-void ED_spacetype_action(void)
+void ED_spacetype_action()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype action");
   ARegionType *art;

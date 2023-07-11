@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -383,7 +384,7 @@ static void translate_snap_grid_apply(TransInfo *t,
 
   float in[3];
   if (t->con.mode & CON_APPLY) {
-    BLI_assert(t->tsnap.snapElem == SCE_SNAP_MODE_NONE);
+    BLI_assert(t->tsnap.target_type == SCE_SNAP_TO_NONE);
     t->con.applyVec(t, NULL, NULL, loc, in);
   }
   else {
@@ -402,7 +403,7 @@ static bool translate_snap_grid(TransInfo *t, float *val)
     return false;
   }
 
-  if (!(t->tsnap.mode & SCE_SNAP_MODE_GRID) || validSnap(t)) {
+  if (!(t->tsnap.mode & SCE_SNAP_TO_GRID) || validSnap(t)) {
     /* Don't do grid snapping if there is a valid snap point. */
     return false;
   }
@@ -428,7 +429,7 @@ static bool translate_snap_grid(TransInfo *t, float *val)
   }
 
   translate_snap_grid_apply(t, t->idx_max, grid_dist, val, val);
-  t->tsnap.snapElem = SCE_SNAP_MODE_GRID;
+  t->tsnap.target_type = SCE_SNAP_TO_GRID;
   return true;
 }
 
@@ -626,7 +627,7 @@ static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
 
       /* Test for mixed snap with grid. */
       float snap_dist_sq = FLT_MAX;
-      if (t->tsnap.snapElem != SCE_SNAP_MODE_NONE) {
+      if (t->tsnap.target_type != SCE_SNAP_TO_NONE) {
         snap_dist_sq = len_squared_v3v3(t->values, global_dir);
       }
       if ((snap_dist_sq == FLT_MAX) || (len_squared_v3v3(global_dir, incr_dir) < snap_dist_sq)) {
@@ -665,7 +666,7 @@ static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])
   add_v3_v3(mat_xform[3], delta);
 }
 
-void initTranslation(TransInfo *t)
+static void initTranslation(TransInfo *t, wmOperator *UNUSED(op))
 {
   if (t->spacetype == SPACE_ACTION) {
     /* this space uses time translate */
@@ -674,12 +675,8 @@ void initTranslation(TransInfo *t)
                "Use 'Time_Translate' transform mode instead of 'Translation' mode "
                "for translating keyframes in Dope Sheet Editor");
     t->state = TRANS_CANCEL;
+    return;
   }
-
-  t->transform = applyTranslation;
-  t->transform_matrix = applyTranslationMatrix;
-  t->tsnap.snap_mode_apply_fn = ApplySnapTranslation;
-  t->tsnap.snap_mode_distance_fn = transform_snap_distance_len_squared_fn;
 
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);
 
@@ -715,3 +712,14 @@ void initTranslation(TransInfo *t)
 }
 
 /** \} */
+
+TransModeInfo TransMode_translate = {
+    /*flags*/ 0,
+    /*init_fn*/ initTranslation,
+    /*transform_fn*/ applyTranslation,
+    /*transform_matrix_fn*/ applyTranslationMatrix,
+    /*handle_event_fn*/ NULL,
+    /*snap_distance_fn*/ transform_snap_distance_len_squared_fn,
+    /*snap_apply_fn*/ ApplySnapTranslation,
+    /*draw_fn*/ NULL,
+};

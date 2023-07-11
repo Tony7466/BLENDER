@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -30,9 +31,11 @@
 
 #include "RE_pipeline.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "eevee_private.h"
 
-bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, struct Depsgraph *depsgraph)
+bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgraph)
 {
   EEVEE_Data *vedata = (EEVEE_Data *)ved;
   EEVEE_StorageList *stl = vedata->stl;
@@ -116,16 +119,14 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, struct Depsgraph *
   return true;
 }
 
-void EEVEE_render_modules_init(EEVEE_Data *vedata,
-                               RenderEngine *engine,
-                               struct Depsgraph *depsgraph)
+void EEVEE_render_modules_init(EEVEE_Data *vedata, RenderEngine *engine, Depsgraph *depsgraph)
 {
   EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_PrivateData *g_data = vedata->stl->g_data;
   EEVEE_FramebufferList *fbl = vedata->fbl;
   /* TODO(sergey): Shall render hold pointer to an evaluated camera instead? */
-  struct Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, g_data->cam_original_ob);
+  Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, g_data->cam_original_ob);
   EEVEE_render_view_sync(vedata, engine, depsgraph);
 
   /* `EEVEE_renderpasses_init` will set the active render passes used by `EEVEE_effects_init`.
@@ -137,14 +138,14 @@ void EEVEE_render_modules_init(EEVEE_Data *vedata,
   EEVEE_lightprobes_init(sldata, vedata);
 }
 
-void EEVEE_render_view_sync(EEVEE_Data *vedata, RenderEngine *engine, struct Depsgraph *depsgraph)
+void EEVEE_render_view_sync(EEVEE_Data *vedata, RenderEngine *engine, Depsgraph *depsgraph)
 {
   EEVEE_PrivateData *g_data = vedata->stl->g_data;
 
   /* Set the perspective & view matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4];
   /* TODO(sergey): Shall render hold pointer to an evaluated camera instead? */
-  struct Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, g_data->cam_original_ob);
+  Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, g_data->cam_original_ob);
 
   RE_GetCameraWindow(engine->re, ob_camera_eval, winmat);
   RE_GetCameraWindowWithOverscan(engine->re, g_data->overscan, winmat);
@@ -176,10 +177,7 @@ void EEVEE_render_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   EEVEE_cryptomatte_cache_init(sldata, vedata);
 }
 
-void EEVEE_render_cache(void *vedata,
-                        struct Object *ob,
-                        struct RenderEngine *engine,
-                        struct Depsgraph *depsgraph)
+void EEVEE_render_cache(void *vedata, Object *ob, RenderEngine *engine, Depsgraph *depsgraph)
 {
   EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
   EEVEE_Data *data = vedata;
@@ -271,7 +269,7 @@ static void eevee_render_color_result(RenderLayer *rl,
                              num_channels,
                              0,
                              GPU_DATA_FLOAT,
-                             rp->rect);
+                             rp->ibuf->float_buffer.data);
 }
 
 static void eevee_render_result_combined(RenderLayer *rl,
@@ -378,6 +376,19 @@ static void eevee_render_result_bloom(RenderLayer *rl,
     EEVEE_renderpasses_postprocess(sldata, vedata, EEVEE_RENDER_PASS_BLOOM, 0);
     eevee_render_color_result(
         rl, viewname, rect, RE_PASSNAME_BLOOM, 3, vedata->fbl->renderpass_fb, vedata);
+  }
+}
+
+static void eevee_render_result_transparent(RenderLayer *rl,
+                                            const char *viewname,
+                                            const rcti *rect,
+                                            EEVEE_Data *vedata,
+                                            EEVEE_ViewLayerData *sldata)
+{
+  if ((vedata->stl->g_data->render_passes & EEVEE_RENDER_PASS_TRANSPARENT) != 0) {
+    EEVEE_renderpasses_postprocess(sldata, vedata, EEVEE_RENDER_PASS_TRANSPARENT, 0);
+    eevee_render_color_result(
+        rl, viewname, rect, RE_PASSNAME_TRANSPARENT, 4, vedata->fbl->renderpass_fb, vedata);
   }
 }
 
@@ -631,6 +642,7 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     /* Subsurface output, Occlusion output, Mist output */
     EEVEE_renderpasses_output_accumulate(sldata, vedata, false);
     /* Transparent */
+    EEVEE_material_transparent_output_accumulate(vedata);
     GPU_framebuffer_texture_attach(fbl->main_color_fb, dtxl->depth, 0, 0);
     GPU_framebuffer_bind(fbl->main_color_fb);
     DRW_draw_pass(psl->transparent_pass);
@@ -641,8 +653,10 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     /* Post Process */
     EEVEE_draw_effects(sldata, vedata);
 
-    /* XXX Seems to fix TDR issue with NVidia drivers on linux. */
-    GPU_finish();
+    /* NOTE(@fclem): Seems to fix TDR issue with NVidia drivers. */
+    if (GPU_type_matches_ex(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
+      GPU_finish();
+    }
 
     /* Perform render step between samples to allow
      * flushing of freed GPUBackend resources. */
@@ -672,6 +686,7 @@ void EEVEE_render_read_result(EEVEE_Data *vedata,
   eevee_render_result_environment(rl, viewname, rect, vedata, sldata);
   eevee_render_result_bloom(rl, viewname, rect, vedata, sldata);
   eevee_render_result_volume_light(rl, viewname, rect, vedata, sldata);
+  eevee_render_result_transparent(rl, viewname, rect, vedata, sldata);
   eevee_render_result_aovs(rl, viewname, rect, vedata, sldata);
   eevee_render_result_cryptomatte(rl, viewname, rect, vedata, sldata);
 }
@@ -706,6 +721,7 @@ void EEVEE_render_update_passes(RenderEngine *engine, Scene *scene, ViewLayer *v
   CHECK_PASS_LEGACY(SHADOW, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(AO, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_EEVEE(BLOOM, SOCK_RGBA, 3, "RGB");
+  CHECK_PASS_EEVEE(TRANSPARENT, SOCK_RGBA, 4, "RGBA");
 
   LISTBASE_FOREACH (ViewLayerAOV *, aov, &view_layer->aovs) {
     if ((aov->flag & AOV_CONFLICT) != 0) {

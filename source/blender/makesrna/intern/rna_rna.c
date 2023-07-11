@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -1453,6 +1455,7 @@ static int rna_property_override_diff_propptr(Main *bmain,
                                                                       rna_itemindex_a,
                                                                       true,
                                                                       NULL);
+              opop->tag &= ~LIBOVERRIDE_PROP_OP_TAG_UNUSED;
               BLI_assert(opop != NULL);
             }
 
@@ -2942,7 +2945,7 @@ static void rna_def_property(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  EnumPropertyItem dummy_prop_tags[] = {
+  static const EnumPropertyItem dummy_prop_tags[] = {
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -3159,7 +3162,7 @@ static void rna_def_function(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "No Self",
-      "Function does not pass itself as an argument (becomes a static method in python)");
+      "Function does not pass itself as an argument (becomes a static method in Python)");
 
   prop = RNA_def_property(srna, "use_self_type", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -3167,7 +3170,7 @@ static void rna_def_function(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Use Self Type",
                            "Function passes itself type as an argument (becomes a class method "
-                           "in python if use_self is false)");
+                           "in Python if use_self is false)");
 }
 
 static void rna_def_number_property(StructRNA *srna, PropertyType type)

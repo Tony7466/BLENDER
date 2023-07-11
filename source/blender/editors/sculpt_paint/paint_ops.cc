@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -14,6 +16,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
+
+#include "BLT_translation.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -86,7 +90,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
                                                            enum eContextObjectMode mode)
 {
   switch (mode) {
-    case CTX_MODE_PAINT_GPENCIL: {
+    case CTX_MODE_PAINT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_PENCIL;
       }
@@ -101,7 +105,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_SCULPT_GPENCIL: {
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "SMOOTH")) {
         return GP_BRUSH_PRESET_SMOOTH_STROKE;
       }
@@ -131,7 +135,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_WEIGHT_GPENCIL: {
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_WEIGHT_DRAW;
       }
@@ -146,7 +150,7 @@ static eGPBrush_Presets gpencil_get_brush_preset_from_tool(bToolRef *tool,
       }
       break;
     }
-    case CTX_MODE_VERTEX_GPENCIL: {
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY: {
       if (STREQ(tool->runtime->data_block, "DRAW")) {
         return GP_BRUSH_PRESET_VERTEX_DRAW;
       }
@@ -204,19 +208,19 @@ static int brush_add_gpencil_exec(bContext *C, wmOperator * /*op*/)
 
     /* Get Brush mode base on context mode. */
     const enum eContextObjectMode mode = CTX_data_mode_enum(C);
-    eObjectMode obmode = OB_MODE_PAINT_GPENCIL;
+    eObjectMode obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
     switch (mode) {
-      case CTX_MODE_PAINT_GPENCIL:
-        obmode = OB_MODE_PAINT_GPENCIL;
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
+        obmode = OB_MODE_PAINT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_SCULPT_GPENCIL:
-        obmode = OB_MODE_SCULPT_GPENCIL;
+      case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+        obmode = OB_MODE_SCULPT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_WEIGHT_GPENCIL:
-        obmode = OB_MODE_WEIGHT_GPENCIL;
+      case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
+        obmode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
         break;
-      case CTX_MODE_VERTEX_GPENCIL:
-        obmode = OB_MODE_VERTEX_GPENCIL;
+      case CTX_MODE_VERTEX_GPENCIL_LEGACY:
+        obmode = OB_MODE_VERTEX_GPENCIL_LEGACY;
         break;
       default:
         return OPERATOR_CANCELLED;
@@ -472,7 +476,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
 
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-  if (ibuf && ibuf->rect) {
+  if (ibuf && ibuf->byte_buffer.data) {
     /* Extract all colors. */
     const int range = int(pow(10.0f, threshold));
     for (int row = 0; row < ibuf->y; row++) {
@@ -1009,6 +1013,8 @@ static void PAINT_OT_brush_select(wmOperatorType *ot)
     const char *prop_id = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
     prop = RNA_def_enum(
         ot->srna, prop_id, BKE_paint_get_tool_enum_from_paintmode(paint_mode), 0, prop_id, "");
+    RNA_def_property_translation_context(
+        prop, BKE_paint_get_tool_enum_translation_context_from_paintmode(paint_mode));
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
 
@@ -1436,7 +1442,7 @@ static void BRUSH_OT_stencil_reset_transform(wmOperatorType *ot)
 
 /**************************** registration **********************************/
 
-void ED_operatormacros_paint(void)
+void ED_operatormacros_paint()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -1452,7 +1458,7 @@ void ED_operatormacros_paint(void)
   RNA_boolean_set(otmacro->ptr, "select", false);
 }
 
-void ED_operatortypes_paint(void)
+void ED_operatortypes_paint()
 {
   /* palette */
   WM_operatortype_append(PALETTE_OT_new);
@@ -1538,6 +1544,7 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(PAINT_OT_face_select_more);
   WM_operatortype_append(PAINT_OT_face_select_less);
   WM_operatortype_append(PAINT_OT_face_select_hide);
+  WM_operatortype_append(PAINT_OT_face_select_loop);
 
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -109,9 +111,7 @@ extern "C" char build_hash[];
 
 #include <cerrno>
 
-const char *bc_CustomData_get_layer_name(const struct CustomData *data,
-                                         const eCustomDataType type,
-                                         int n)
+const char *bc_CustomData_get_layer_name(const CustomData *data, const eCustomDataType type, int n)
 {
   int layer_index = CustomData_get_layer_index(data, type);
   if (layer_index < 0) {
@@ -302,7 +302,7 @@ int DocumentExporter::exportCurrentScene()
 
   /* Finally move the created document into place */
   fprintf(stdout, "Collada export to: %s\n", this->export_settings.get_filepath());
-  int status = BLI_rename(native_filename.c_str(), this->export_settings.get_filepath());
+  int status = BLI_rename_overwrite(native_filename.c_str(), this->export_settings.get_filepath());
   if (status != 0) {
     status = BLI_copy(native_filename.c_str(), this->export_settings.get_filepath());
     BLI_delete(native_filename.c_str(), false, false);

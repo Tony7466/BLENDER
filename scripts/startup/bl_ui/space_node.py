@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Header, Menu, Panel
 from bpy.app.translations import (
@@ -136,25 +139,29 @@ class NODE_HT_header(Header):
                 layout.prop(snode_id, "use_nodes")
 
         elif snode.tree_type == 'GeometryNodeTree':
+            if context.preferences.experimental.use_node_group_operators:
+                layout.prop(snode, "geometry_nodes_type", text="")
             NODE_MT_editor_menus.draw_collapsible(context, layout)
             layout.separator_spacer()
 
-            ob = context.object
+            if snode.geometry_nodes_type == 'MODIFIER':
+                ob = context.object
 
-            row = layout.row()
-            if snode.pin:
-                row.enabled = False
-                row.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
-            elif ob:
-                active_modifier = ob.modifiers.active
-                if active_modifier and active_modifier.type == 'NODES':
-                    if active_modifier.node_group:
-                        row.template_ID(active_modifier, "node_group", new="object.geometry_node_tree_copy_assign")
+                row = layout.row()
+                if snode.pin:
+                    row.enabled = False
+                    row.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
+                elif ob:
+                    active_modifier = ob.modifiers.active
+                    if active_modifier and active_modifier.type == 'NODES':
+                        if active_modifier.node_group:
+                            row.template_ID(active_modifier, "node_group", new="object.geometry_node_tree_copy_assign")
+                        else:
+                            row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
                     else:
-                        row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
-                else:
-                    row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
-
+                        row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
+            else:
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -764,20 +771,26 @@ class NODE_PT_quality(bpy.types.Panel):
         tree = snode.node_tree
         prefs = bpy.context.preferences
 
+        use_realtime = False
         col = layout.column()
-        if prefs.experimental.use_full_frame_compositor:
+        if prefs.experimental.use_experimental_compositors:
             col.prop(tree, "execution_mode")
+            use_realtime = tree.execution_mode == 'REALTIME'
 
+        col = layout.column()
+        col.active = not use_realtime
         col.prop(tree, "render_quality", text="Render")
         col.prop(tree, "edit_quality", text="Edit")
         col.prop(tree, "chunk_size")
 
         col = layout.column()
+        col.active = not use_realtime
         col.prop(tree, "use_opencl")
         col.prop(tree, "use_groupnode_buffer")
         col.prop(tree, "use_two_pass")
         col.prop(tree, "use_viewer_border")
-        col.separator()
+
+        col = layout.column()
         col.prop(snode, "use_auto_render")
 
 
@@ -886,7 +899,8 @@ class NodeTreeInterfacePanel(Panel):
             props = property_row.operator_menu_enum(
                 "node.tree_socket_change_type",
                 "socket_type",
-                text=active_socket.bl_label if active_socket.bl_label else active_socket.bl_idname,
+                text=(iface_(active_socket.bl_label) if active_socket.bl_label
+                      else iface_(active_socket.bl_idname)),
             )
             props.in_out = in_out
 
@@ -904,10 +918,8 @@ class NodeTreeInterfacePanel(Panel):
                     props = property_row.operator_menu_enum(
                         "node.tree_socket_change_subtype",
                         "socket_subtype",
-                        text=(
-                            active_socket.bl_subtype_label if active_socket.bl_subtype_label else
-                            active_socket.bl_idname
-                        ),
+                        text=(iface_(active_socket.bl_subtype_label) if active_socket.bl_subtype_label
+                              else iface_(active_socket.bl_idname)),
                     )
 
             layout.use_property_split = True
@@ -953,6 +965,67 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
 
     def draw(self, context):
         self.draw_socket_list(context, "OUT", "outputs", "active_output")
+
+
+class NODE_UL_panels(bpy.types.UIList):
+    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        row = layout.row(align=True)
+        row.prop(item, "name", text="", emboss=False, icon_value=icon)
+
+
+class NODE_PT_panels(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Group"
+    bl_label = "Node Panels"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.preferences.experimental.use_node_panels:
+            return False
+
+        snode = context.space_data
+        if snode is None:
+            return False
+        tree = snode.edit_tree
+        if tree is None:
+            return False
+        if tree.is_embedded_data:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        snode = context.space_data
+        tree = snode.edit_tree
+
+        split = layout.row()
+
+        split.template_list(
+            "NODE_UL_panels",
+            "",
+            tree,
+            "panels",
+            tree.panels,
+            "active_index")
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.panel_add", icon='ADD', text="")
+        add_remove_col.operator("node.panel_remove", icon='REMOVE', text="")
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.panel_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.panel_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
+
+        active_panel = tree.panels.active
+        if active_panel is not None:
+            layout.prop(active_panel, "name")
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
@@ -1088,7 +1161,6 @@ classes = (
     NODE_PT_node_color_presets,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
-    NODE_PT_active_node_properties,
     NODE_PT_texture_mapping,
     NODE_PT_active_tool,
     NODE_PT_backdrop,
@@ -1098,8 +1170,11 @@ classes = (
     NODE_UL_interface_sockets,
     NODE_PT_node_tree_interface_inputs,
     NODE_PT_node_tree_interface_outputs,
+    NODE_UL_panels,
+    NODE_PT_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
+    NODE_PT_active_node_properties,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
     node_panel(MATERIAL_PT_viewport),

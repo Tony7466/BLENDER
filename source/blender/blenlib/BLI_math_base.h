@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -113,7 +114,7 @@ MINLINE float scalenorm(float a, float b, float x);
  */
 MINLINE double scalenormd(double a, double b, double x);
 
-/* NOTE: Compilers will upcast all types smaller than int to int when performing arithmetic
+/* NOTE: Compilers will up-cast all types smaller than int to int when performing arithmetic
  * operation. */
 
 MINLINE int square_s(short a);
@@ -241,6 +242,15 @@ MINLINE uint64_t ceil_to_multiple_ul(uint64_t a, uint64_t b);
  * modulo that handles negative numbers, works the same as Python's.
  */
 MINLINE int mod_i(int i, int n);
+
+/**
+ * Modulo that returns a positive result, regardless of the sign of \a f.
+ *
+ * For example, mod_f_positive(-0.1, 1.0) => 0.9.
+ *
+ * \returns a float in the interval [0, n).
+ */
+MINLINE float mod_f_positive(float f, float n);
 
 /**
  * Round to closest even number, halfway cases are rounded away from zero.

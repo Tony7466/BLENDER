@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -361,6 +362,7 @@ struct MultiresBakeThread {
   MultiresBakeRender *bkr;
   Image *image;
   void *bake_data;
+  int num_total_faces;
 
   /* thread-specific data */
   MBakeRast bake_rast;
@@ -420,7 +422,7 @@ static void *do_multires_bake_thread(void *data_v)
     bake_rasterize(bake_rast, uv[0], uv[1], uv[2]);
 
     /* tag image buffer for refresh */
-    if (data->ibuf->rect_float) {
+    if (data->ibuf->float_buffer.data) {
       data->ibuf->userflags |= IB_RECT_INVALID;
     }
 
@@ -436,7 +438,7 @@ static void *do_multires_bake_thread(void *data_v)
 
     if (bkr->progress) {
       *bkr->progress = (float(bkr->baked_objects) +
-                        float(bkr->baked_faces) / handle->queue->tot_tri) /
+                        float(bkr->baked_faces) / handle->num_total_faces) /
                        bkr->tot_obj;
     }
     BLI_spin_unlock(&handle->queue->spin);
@@ -565,6 +567,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
 
     handle->bkr = bkr;
     handle->image = ima;
+    handle->num_total_faces = queue.tot_tri * BLI_listbase_count(&ima->tiles);
     handle->queue = &queue;
 
     handle->data.vert_positions = positions;
@@ -608,11 +611,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     do_multires_bake_thread(&handles[0]);
   }
 
-  /* construct bake result */
-  result->height_min = handles[0].height_min;
-  result->height_max = handles[0].height_max;
-
-  for (i = 1; i < tot_thread; i++) {
+  for (i = 0; i < tot_thread; i++) {
     result->height_min = min_ff(result->height_min, handles[i].height_min);
     result->height_max = max_ff(result->height_max, handles[i].height_max);
   }
@@ -922,13 +921,13 @@ static void apply_heights_callback(const blender::Span<blender::float3> vert_pos
   thread_data->height_min = min_ff(thread_data->height_min, len);
   thread_data->height_max = max_ff(thread_data->height_max, len);
 
-  if (ibuf->rect_float) {
-    float *rrgbf = ibuf->rect_float + pixel * 4;
+  if (ibuf->float_buffer.data) {
+    float *rrgbf = ibuf->float_buffer.data + pixel * 4;
     rrgbf[0] = rrgbf[1] = rrgbf[2] = len;
     rrgbf[3] = 1.0f;
   }
   else {
-    char *rrgb = (char *)ibuf->rect + pixel * 4;
+    uchar *rrgb = ibuf->byte_buffer.data + pixel * 4;
     rrgb[0] = rrgb[1] = rrgb[2] = unit_float_to_uchar_clamp(len);
     rrgb[3] = 255;
   }
@@ -1016,15 +1015,15 @@ static void apply_tangmat_callback(const blender::Span<blender::float3> /*vert_p
   normalize_v3_length(vec, 0.5);
   add_v3_v3(vec, tmp);
 
-  if (ibuf->rect_float) {
-    float *rrgbf = ibuf->rect_float + pixel * 4;
+  if (ibuf->float_buffer.data) {
+    float *rrgbf = ibuf->float_buffer.data + pixel * 4;
     rrgbf[0] = vec[0];
     rrgbf[1] = vec[1];
     rrgbf[2] = vec[2];
     rrgbf[3] = 1.0f;
   }
   else {
-    uchar *rrgb = (uchar *)ibuf->rect + pixel * 4;
+    uchar *rrgb = ibuf->byte_buffer.data + pixel * 4;
     rgb_float_to_uchar(rrgb, vec);
     rrgb[3] = 255;
   }
@@ -1040,7 +1039,7 @@ static void apply_tangmat_callback(const blender::Span<blender::float3> /*vert_p
 static ushort ao_random_table_1[MAX_NUMBER_OF_AO_RAYS];
 static ushort ao_random_table_2[MAX_NUMBER_OF_AO_RAYS];
 
-static void init_ao_random(void)
+static void init_ao_random()
 {
   int i;
 
@@ -1110,7 +1109,7 @@ static void create_ao_raytree(MultiresBakeRender *bkr, MAOBakeData *ao_data)
   grid_data = hidm->getGridData(hidm);
   hidm->getGridKey(hidm, &key);
 
-  /* face_side = (grid_size << 1) - 1; */ /* UNUSED */
+  // face_side = (grid_size << 1) - 1; /* UNUSED */
   faces_num = grids_num * (grid_size - 1) * (grid_size - 1);
 
   raytree = ao_data->raytree = RE_rayobject_create(
@@ -1412,15 +1411,15 @@ static void bake_ibuf_normalize_displacement(ImBuf *ibuf,
         normalized_displacement = 0.5f;
       }
 
-      if (ibuf->rect_float) {
+      if (ibuf->float_buffer.data) {
         /* currently baking happens to RGBA only */
-        float *fp = ibuf->rect_float + i * 4;
+        float *fp = ibuf->float_buffer.data + i * 4;
         fp[0] = fp[1] = fp[2] = normalized_displacement;
         fp[3] = 1.0f;
       }
 
-      if (ibuf->rect) {
-        uchar *cp = (uchar *)(ibuf->rect + i);
+      if (ibuf->byte_buffer.data) {
+        uchar *cp = ibuf->byte_buffer.data + 4 * i;
         cp[0] = cp[1] = cp[2] = unit_float_to_uchar_clamp(normalized_displacement);
         cp[3] = 255;
       }
@@ -1468,6 +1467,10 @@ static void count_images(MultiresBakeRender *bkr)
 static void bake_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
 {
   LinkData *link;
+
+  /* construct bake result */
+  result->height_min = FLT_MAX;
+  result->height_max = -FLT_MAX;
 
   for (link = static_cast<LinkData *>(bkr->image.first); link; link = link->next) {
     Image *ima = (Image *)link->data;
@@ -1564,7 +1567,7 @@ static void finish_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
       ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
       BKE_image_mark_dirty(ima, ibuf);
 
-      if (ibuf->rect_float) {
+      if (ibuf->float_buffer.data) {
         ibuf->userflags |= IB_RECT_INVALID;
       }
 

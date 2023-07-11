@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spimage
@@ -48,7 +49,7 @@
 #define B_NOP -1
 #define MAX_IMAGE_INFO_LEN 128
 
-struct ImageUser *ntree_get_active_iuser(bNodeTree *ntree)
+ImageUser *ntree_get_active_iuser(bNodeTree *ntree)
 {
   bNode *node;
 
@@ -127,10 +128,14 @@ static bool ui_imageuser_slot_menu_step(bContext *C, int direction, void *image_
 static const char *ui_imageuser_layer_fake_name(RenderResult *rr)
 {
   RenderView *rv = RE_RenderViewGetById(rr, 0);
-  if (rv->rectf) {
+  ImBuf *ibuf = rv->ibuf;
+  if (!ibuf) {
+    return NULL;
+  }
+  if (ibuf->float_buffer.data) {
     return IFACE_("Composite");
   }
-  if (rv->rect32) {
+  if (ibuf->byte_buffer.data) {
     return IFACE_("Sequence");
   }
   return NULL;
@@ -946,7 +951,7 @@ void uiTemplateImage(uiLayout *layout,
           void *lock;
           ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
 
-          if (ibuf && ibuf->rect_float && (ibuf->flags & IB_halffloat) == 0) {
+          if (ibuf && ibuf->float_buffer.data && (ibuf->flags & IB_halffloat) == 0) {
             uiItemR(col, &imaptr, "use_half_precision", 0, NULL, ICON_NONE);
           }
           BKE_image_release_ibuf(ima, ibuf, lock);
@@ -1011,10 +1016,6 @@ void uiTemplateImageSettings(uiLayout *layout, PointerRNA *imfptr, bool color_ma
 
   if (ELEM(imf->imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
     uiItemR(col, imfptr, "exr_codec", 0, NULL, ICON_NONE);
-  }
-
-  if (BKE_imtype_supports_zbuf(imf->imtype)) {
-    uiItemR(col, imfptr, "use_zbuffer", 0, NULL, ICON_NONE);
   }
 
   if (is_render_out && ELEM(imf->imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
@@ -1198,9 +1199,9 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
     const int len = MAX_IMAGE_INFO_LEN;
     int ofs = 0;
 
-    ofs += BLI_snprintf_rlen(str + ofs, len - ofs, TIP_("%d x %d, "), ibuf->x, ibuf->y);
+    ofs += BLI_snprintf_rlen(str + ofs, len - ofs, TIP_("%d \u00D7 %d, "), ibuf->x, ibuf->y);
 
-    if (ibuf->rect_float) {
+    if (ibuf->float_buffer.data) {
       if (ibuf->channels != 4) {
         ofs += BLI_snprintf_rlen(
             str + ofs, len - ofs, TIP_("%d float channel(s)"), ibuf->channels);
@@ -1219,9 +1220,6 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
       else {
         ofs += BLI_strncpy_rlen(str + ofs, TIP_(" RGB byte"), len - ofs);
       }
-    }
-    if (ibuf->zbuf || ibuf->zbuf_float) {
-      ofs += BLI_strncpy_rlen(str + ofs, TIP_(" + Z"), len - ofs);
     }
 
     eGPUTextureFormat texture_format = IMB_gpu_get_texture_format(
@@ -1253,8 +1251,7 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
     }
     else if (ima->source == IMA_SRC_SEQUENCE && ibuf) {
       /* Image sequence frame number + filename */
-      const char *filename = BLI_path_slash_rfind(ibuf->filepath);
-      filename = (filename == NULL) ? ibuf->filepath : filename + 1;
+      const char *filename = BLI_path_basename(ibuf->filepath);
       SNPRINTF(str, TIP_("Frame %d: %s"), framenr, filename);
     }
     else {
@@ -1293,10 +1290,10 @@ void image_buttons_register(ARegionType *art)
   PanelType *pt;
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype image panel metadata");
-  strcpy(pt->idname, "IMAGE_PT_metadata");
-  strcpy(pt->label, N_("Metadata"));
-  strcpy(pt->category, "Image");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "IMAGE_PT_metadata");
+  STRNCPY(pt->label, N_("Metadata"));
+  STRNCPY(pt->category, "Image");
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->order = 10;
   pt->poll = metadata_panel_context_poll;
   pt->draw = metadata_panel_context_draw;

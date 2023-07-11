@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -55,7 +56,7 @@
  */
 
 struct wmJob {
-  struct wmJob *next, *prev;
+  wmJob *next, *prev;
 
   /** Job originating from, keep track of this when deleting windows */
   wmWindow *win;
@@ -479,11 +480,11 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
 
       /* restarted job has timer already */
       if (wm_job->wt && (wm_job->wt->timestep > timestep)) {
-        WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
-        wm_job->wt = WM_event_add_timer(wm, wm_job->win, TIMERJOBS, timestep);
+        WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
+        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
       }
       if (wm_job->wt == NULL) {
-        wm_job->wt = WM_event_add_timer(wm, wm_job->win, TIMERJOBS, timestep);
+        wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
       }
 
       wm_job->start_time = PIL_check_seconds_timer();
@@ -536,7 +537,7 @@ static void wm_jobs_kill_job(wmWindowManager *wm, wmJob *wm_job)
   }
 
   if (wm_job->wt) {
-    WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
+    WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
   }
   if (wm_job->customdata) {
     wm_job->free(wm_job->customdata);
@@ -575,7 +576,7 @@ void WM_jobs_kill_all_except(wmWindowManager *wm, const void *owner)
   }
 }
 
-void WM_jobs_kill_type(struct wmWindowManager *wm, const void *owner, int job_type)
+void WM_jobs_kill_type(wmWindowManager *wm, const void *owner, int job_type)
 {
   LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
     if (owner && wm_job->owner != owner) {
@@ -688,7 +689,7 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
           WM_jobs_start(wm, wm_job);
         }
         else {
-          WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
+          WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
           wm_job->wt = NULL;
 
           /* remove wm_job */
@@ -716,7 +717,7 @@ bool WM_jobs_has_running(const wmWindowManager *wm)
   return false;
 }
 
-bool WM_jobs_has_running_type(const struct wmWindowManager *wm, int job_type)
+bool WM_jobs_has_running_type(const wmWindowManager *wm, int job_type)
 {
   LISTBASE_FOREACH (wmJob *, wm_job, &wm->jobs) {
     if (wm_job->running && wm_job->job_type == job_type) {

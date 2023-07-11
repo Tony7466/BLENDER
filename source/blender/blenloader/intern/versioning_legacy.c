@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -60,14 +61,13 @@
 #include "BKE_mesh.h" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_modifier.h"
+#include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
-
-#include "NOD_socket.h"
 
 #include "BLO_readfile.h"
 
@@ -199,7 +199,7 @@ static void ntree_version_242(bNodeTree *ntree)
   }
 }
 
-static void ntree_version_245(FileData *fd, Library *lib, bNodeTree *ntree)
+static void ntree_version_245(FileData *fd, Library *UNUSED(lib), bNodeTree *ntree)
 {
   bNode *node;
   NodeTwoFloats *ntf;
@@ -220,7 +220,7 @@ static void ntree_version_245(FileData *fd, Library *lib, bNodeTree *ntree)
       }
 
       /* fix for temporary flag changes during 245 cycle */
-      nodeid = blo_do_versions_newlibadr(fd, lib, node->id);
+      nodeid = blo_do_versions_newlibadr(fd, &ntree->id, ID_IS_LINKED(ntree), node->id);
       if (node->storage && nodeid && GS(nodeid->name) == ID_IM) {
         image = (Image *)nodeid;
         iuser = node->storage;
@@ -323,7 +323,7 @@ static void customdata_version_242(Mesh *me)
     if (layer->type == CD_MTFACE) {
       if (layer->name[0] == 0) {
         if (mtfacen == 0) {
-          strcpy(layer->name, "UVMap");
+          STRNCPY(layer->name, "UVMap");
         }
         else {
           SNPRINTF(layer->name, "UVMap.%.3d", mtfacen);
@@ -334,7 +334,7 @@ static void customdata_version_242(Mesh *me)
     else if (layer->type == CD_MCOL) {
       if (layer->name[0] == 0) {
         if (mcoln == 0) {
-          strcpy(layer->name, "Col");
+          STRNCPY(layer->name, "Col");
         }
         else {
           SNPRINTF(layer->name, "Col.%.3d", mcoln);
@@ -841,8 +841,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 223) {
     VFont *vf;
     for (vf = bmain->fonts.first; vf; vf = vf->id.next) {
-      if (STREQ(vf->filepath + strlen(vf->filepath) - 6, ".Bfont")) {
-        strcpy(vf->filepath, FO_BUILTIN_NAME);
+      if (BLI_str_endswith(vf->filepath, ".Bfont")) {
+        STRNCPY(vf->filepath, FO_BUILTIN_NAME);
       }
     }
   }
@@ -1076,7 +1076,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 230) {
     bScreen *screen;
 
-    /* new variable blockscale, for panels in any area */
+    /* New variable block-scale, for panels in any area. */
     for (screen = bmain->screens.first; screen; screen = screen->id.next) {
       ScrArea *area;
 
@@ -1286,7 +1286,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->parent) {
-        Object *parent = blo_do_versions_newlibadr(fd, lib, ob->parent);
+        Object *parent = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), ob->parent);
         if (parent && parent->type == OB_LATTICE) {
           ob->partype = PARSKEL;
         }
@@ -1302,14 +1302,14 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         ob->id.recalc |= ID_RECALC_ALL;
 
         /* New generic X-ray option. */
-        arm = blo_do_versions_newlibadr(fd, lib, ob->data);
+        arm = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), ob->data);
         enum { ARM_DRAWXRAY = (1 << 1) };
         if (arm->flag & ARM_DRAWXRAY) {
           ob->dtx |= OB_DRAW_IN_FRONT;
         }
       }
       else if (ob->type == OB_MESH) {
-        Mesh *me = blo_do_versions_newlibadr(fd, lib, ob->data);
+        Mesh *me = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), ob->data);
 
         enum {
           ME_SUBSURF = (1 << 7),
@@ -1346,10 +1346,10 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       for (con = ob->constraints.first; con; con = con->next) {
         if (con->type == CONSTRAINT_TYPE_FOLLOWPATH) {
           bFollowPathConstraint *data = con->data;
-          Object *obc = blo_do_versions_newlibadr(fd, lib, data->tar);
+          Object *obc = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), data->tar);
 
           if (obc && obc->type == OB_CURVES_LEGACY) {
-            Curve *cu = blo_do_versions_newlibadr(fd, lib, obc->data);
+            Curve *cu = blo_do_versions_newlibadr(fd, &obc->id, ID_IS_LINKED(obc), obc->data);
             if (cu) {
               cu->flag |= CU_PATH;
             }
@@ -1369,7 +1369,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
     while (sce) {
       if (sce->toolsettings == NULL) {
-        sce->toolsettings = MEM_callocN(sizeof(struct ToolSettings), "Tool Settings Struct");
+        sce->toolsettings = MEM_callocN(sizeof(ToolSettings), "Tool Settings Struct");
         sce->toolsettings->doublimit = 0.001f;
       }
       sce = sce->id.next;
@@ -1475,7 +1475,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       for (kb = key->block.first; kb; kb = kb->next) {
         if (kb == key->refkey) {
           if (kb->name[0] == 0) {
-            strcpy(kb->name, "Basis");
+            STRNCPY(kb->name, "Basis");
           }
         }
         else {
@@ -1503,15 +1503,14 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         if (md->type == eModifierType_Armature) {
           ArmatureModifierData *amd = (ArmatureModifierData *)md;
           if (amd->object && amd->deformflag == 0) {
-            Object *oba = blo_do_versions_newlibadr(fd, lib, amd->object);
-            arm = blo_do_versions_newlibadr(fd, lib, oba->data);
+            Object *oba = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), amd->object);
+            arm = blo_do_versions_newlibadr(fd, &oba->id, ID_IS_LINKED(oba), oba->data);
             amd->deformflag = arm->deformflag;
           }
         }
       }
     }
 
-    /* updating stepsize for ghost drawing */
     for (arm = bmain->armatures.first; arm; arm = arm->id.next) {
       bone_version_239(&arm->bonebase);
       if (arm->layer == 0) {
@@ -1546,7 +1545,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 241) {
     Object *ob;
     Scene *sce;
-    Light *la;
     bArmature *arm;
     bNodeTree *ntree;
 
@@ -1591,12 +1589,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       ntree_version_241(ntree);
     }
 
-    for (la = bmain->lights.first; la; la = la->id.next) {
-      if (la->buffers == 0) {
-        la->buffers = 1;
-      }
-    }
-
     /* for empty drawsize and drawtype */
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->empty_drawsize == 0.0f) {
@@ -1610,8 +1602,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       Image *ima;
       for (ima = bmain->images.first; ima; ima = ima->id.next) {
         if (STREQ(ima->filepath, "Compositor")) {
-          strcpy(ima->id.name + 2, "Viewer Node");
-          strcpy(ima->filepath, "Viewer Node");
+          BLI_strncpy(ima->id.name + 2, "Viewer Node", sizeof(ima->id.name) - 2);
+          STRNCPY(ima->filepath, "Viewer Node");
         }
       }
     }
@@ -1807,7 +1799,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         };
 
         if (tex->type == TEX_IMAGE && tex->ima) {
-          ima = blo_do_versions_newlibadr(fd, lib, tex->ima);
+          ima = blo_do_versions_newlibadr(fd, &tex->id, ID_IS_LINKED(tex), tex->ima);
           if (tex->imaflag & TEX_ANIM5) {
             ima->source = IMA_SRC_MOVIE;
           }
@@ -1922,7 +1914,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     Scene *sce;
     Object *ob;
     Image *ima;
-    Light *la;
     Material *ma;
     ParticleSettings *part;
     bNodeTree *ntree;
@@ -2039,17 +2030,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       }
     }
 
-    if (bmain->versionfile != 245 || bmain->subversionfile < 1) {
-      for (la = bmain->lights.first; la; la = la->id.next) {
-        la->falloff_type = LA_FALLOFF_INVLINEAR;
-
-        if (la->curfalloff == NULL) {
-          la->curfalloff = BKE_curvemapping_add(1, 0.0f, 1.0f, 1.0f, 0.0f);
-          BKE_curvemapping_init(la->curfalloff);
-        }
-      }
-    }
-
     for (ma = bmain->materials.first; ma; ma = ma->id.next) {
       if (ma->gloss_mir == 0.0f) {
         ma->gloss_mir = 1.0f;
@@ -2090,7 +2070,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         tex->iuser.flag &= ~IMA_OLD_PREMUL;
       }
 
-      ima = blo_do_versions_newlibadr(fd, lib, tex->ima);
+      ima = blo_do_versions_newlibadr(fd, &tex->id, ID_IS_LINKED(tex), tex->ima);
       if (ima && (tex->iuser.flag & IMA_DO_PREMUL)) {
         ima->flag &= ~IMA_OLD_PREMUL;
         ima->alpha_mode = IMA_ALPHA_STRAIGHT;
@@ -2291,7 +2271,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
           Object *dup = bmain->objects.first;
 
           for (; dup; dup = dup->id.next) {
-            if (ob == blo_do_versions_newlibadr(fd, lib, dup->parent)) {
+            if (ob == blo_do_versions_newlibadr(fd, &dup->id, ID_IS_LINKED(dup), dup->parent)) {
               part->instance_object = dup;
               ob->transflag |= OB_DUPLIPARTS;
               ob->transflag &= ~OB_DUPLIVERTS;
@@ -2433,7 +2413,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
         MEM_freeN(fluidmd->fss);
         fluidmd->fss = MEM_dupallocN(ob->fluidsimSettings);
-        fluidmd->fss->ipo = blo_do_versions_newlibadr(fd, ob->id.lib, ob->fluidsimSettings->ipo);
+        fluidmd->fss->ipo = blo_do_versions_newlibadr(
+            fd, &ob->id, ID_IS_LINKED(ob), ob->fluidsimSettings->ipo);
         MEM_freeN(ob->fluidsimSettings);
 
         fluidmd->fss->lastgoodframe = INT_MAX;

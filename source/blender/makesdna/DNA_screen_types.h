@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -180,8 +181,8 @@ typedef struct Panel {
  * There are 16 defines because the expansion data is typically stored in a short.
  *
  * \note Expansion for instanced panels is stored in depth first order. For example, the value of
- * UI_SUBPANEL_DATA_EXPAND_2 correspond to mean the expansion of the second subpanel or the first
- * subpanel's first subpanel.
+ * UI_SUBPANEL_DATA_EXPAND_2 correspond to mean the expansion of the second sub-panel or the first
+ * sub-panel's first sub-panel.
  */
 typedef enum uiPanelDataExpansion {
   UI_PANEL_DATA_EXPAND_ROOT = (1 << 0),
@@ -200,7 +201,6 @@ typedef enum uiPanelDataExpansion {
   UI_SUBPANEL_DATA_EXPAND_13 = (1 << 13),
   UI_SUBPANEL_DATA_EXPAND_14 = (1 << 14),
   UI_SUBPANEL_DATA_EXPAND_15 = (1 << 15),
-  UI_SUBPANEL_DATA_EXPAND_16 = (1 << 16),
 } uiPanelDataExpansion;
 
 /**
@@ -237,7 +237,7 @@ typedef struct PanelCategoryStack {
 typedef void (*uiListFreeRuntimeDataFunc)(struct uiList *ui_list);
 
 /* uiList dynamic data... */
-/* These two Lines with # tell makesdna this struct can be excluded. */
+/* These two lines with # tell `makesdna` this struct can be excluded. */
 #
 #
 typedef struct uiListDyn {
@@ -572,6 +572,7 @@ typedef enum eScreen_Redraws_Flag {
   // TIME_CONTINUE_PHYSICS  = (1 << 7), /* UNUSED */
   TIME_NODES = (1 << 8),
   TIME_CLIPS = (1 << 9),
+  TIME_SPREADSHEETS = (1 << 10),
 
   TIME_FOLLOW = (1 << 15),
 } eScreen_Redraws_Flag;
@@ -702,7 +703,7 @@ enum {
   RGN_FLAG_HIDDEN = (1 << 0),
   RGN_FLAG_TOO_SMALL = (1 << 1),
   /**
-   * Force delayed reinit of region size data, so that region size is calculated
+   * Force delayed re-initialization of region size data, so that region size is calculated
    * just big enough to show all its content (if enough space is available).
    * Note that only ED_region_header supports this right now.
    */

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -45,6 +46,8 @@
 
 #include "ED_anim_api.h"
 #include "ED_keyframes_draw.h"
+
+#include "MOD_nodes.hh"
 
 #include "action_intern.hh"
 
@@ -694,7 +697,7 @@ static void timeline_cache_draw_simulation_nodes(
 
   float color[4];
   UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
-  switch (cache.cache_state()) {
+  switch (cache.cache_state) {
     case blender::bke::sim::CacheState::Invalid: {
       color[3] = 0.4f;
       break;
@@ -767,14 +770,14 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       if (nmd->node_group == nullptr) {
         continue;
       }
-      if (nmd->simulation_cache == nullptr) {
+      if (!nmd->runtime->simulation_cache) {
         continue;
       }
       if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
         continue;
       }
       timeline_cache_draw_simulation_nodes(
-          *scene, *nmd->simulation_cache, y_offset, cache_draw_height, pos_id);
+          *scene, *nmd->runtime->simulation_cache, y_offset, cache_draw_height, pos_id);
       y_offset += cache_draw_height;
     }
   }

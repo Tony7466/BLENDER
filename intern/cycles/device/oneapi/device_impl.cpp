@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
 
@@ -122,10 +123,12 @@ bool OneapiDevice::check_peer_access(Device * /*peer_device*/)
 
 bool OneapiDevice::can_use_hardware_raytracing_for_features(uint requested_features) const
 {
-  /* MNEE and Raytrace kernels work correctly with Hardware Raytracing starting with Embree 4.1. */
+  /* MNEE and Ray-trace kernels work correctly with Hardware Ray-tracing starting with Embree 4.1.
+   */
 #  if defined(RTC_VERSION) && RTC_VERSION < 40100
   return !(requested_features & (KERNEL_FEATURE_MNEE | KERNEL_FEATURE_NODE_RAYTRACE));
 #  else
+  (void)requested_features;
   return true;
 #  endif
 }
@@ -134,14 +137,14 @@ BVHLayoutMask OneapiDevice::get_bvh_layout_mask(uint requested_features) const
 {
   return (use_hardware_raytracing &&
           can_use_hardware_raytracing_for_features(requested_features)) ?
-             BVH_LAYOUT_EMBREE :
+             BVH_LAYOUT_EMBREEGPU :
              BVH_LAYOUT_BVH2;
 }
 
 #  ifdef WITH_EMBREE_GPU
 void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 {
-  if (embree_device && bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
+  if (embree_device && bvh->params.bvh_layout == BVH_LAYOUT_EMBREEGPU) {
     BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
     if (refit) {
       bvh_embree->refit(progress);
@@ -259,6 +262,11 @@ SyclQueue *OneapiDevice::sycl_queue()
 string OneapiDevice::oneapi_error_message()
 {
   return string(oneapi_error_string_);
+}
+
+int OneapiDevice::scene_max_shaders()
+{
+  return scene_max_shaders_;
 }
 
 void *OneapiDevice::kernel_globals_device_pointer()
@@ -429,12 +437,15 @@ void OneapiDevice::const_copy_to(const char *name, void *host, size_t size)
              << string_human_readable_size(size) << ")";
 
 #  ifdef WITH_EMBREE_GPU
-  if (strcmp(name, "data") == 0) {
+  if (embree_scene != nullptr && strcmp(name, "data") == 0) {
     assert(size <= sizeof(KernelData));
 
     /* Update scene handle(since it is different for each device on multi devices) */
     KernelData *const data = (KernelData *)host;
     data->device_bvh = embree_scene;
+
+    /* We need this number later for proper local memory allocation. */
+    scene_max_shaders_ = data->max_shaders;
   }
 #  endif
 
@@ -748,10 +759,10 @@ bool OneapiDevice::enqueue_kernel(KernelContext *kernel_context,
 
 /* Compute-runtime (ie. NEO) version is what gets returned by sycl/L0 on Windows
  * since Windows driver 101.3268. */
-/* The same min compute-runtime version is currently required across Windows and Linux.
- * For Windows driver 101.4032, compute-runtime version is 24931. */
-static const int lowest_supported_driver_version_win = 1014032;
-static const int lowest_supported_driver_version_neo = 24931;
+/* The same min compute-runtime version is currently used across Windows and Linux.
+ * For Windows driver 101.4314, compute-runtime version is 25977. */
+static const int lowest_supported_driver_version_win = 1014314;
+static const int lowest_supported_driver_version_neo = 25812;
 
 int OneapiDevice::parse_driver_build_version(const sycl::device &device)
 {

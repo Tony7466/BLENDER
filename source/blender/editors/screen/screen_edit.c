@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edscr
@@ -559,7 +560,7 @@ int screen_area_join(bContext *C, bScreen *screen, ScrArea *sa1, ScrArea *sa2)
   return screen_area_join_ex(C, screen, sa1, sa2, false);
 }
 
-bool screen_area_close(struct bContext *C, bScreen *screen, ScrArea *area)
+bool screen_area_close(bContext *C, bScreen *screen, ScrArea *area)
 {
   if (area == NULL) {
     return false;
@@ -715,7 +716,10 @@ void ED_screens_init(Main *bmain, wmWindowManager *wm)
   }
 }
 
-static bool region_poll(const bScreen *screen, const ScrArea *area, const ARegion *region)
+static bool region_poll(const bContext *C,
+                        const bScreen *screen,
+                        const ScrArea *area,
+                        const ARegion *region)
 {
   if (!region->type || !region->type->poll) {
     /* Show region by default. */
@@ -726,20 +730,27 @@ static bool region_poll(const bScreen *screen, const ScrArea *area, const ARegio
   params.screen = screen;
   params.area = area;
   params.region = region;
+  params.context = C;
 
   return region->type->poll(&params);
 }
 
 static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *screen)
 {
+  ScrArea *prev_area = CTX_wm_area(C);
+  ARegion *prev_region = CTX_wm_region(C);
+
   bool any_changed = false;
   ED_screen_areas_iter (win, screen, area) {
+    CTX_wm_area_set(C, area);
+
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       const int old_region_flag = region->flag;
 
       region->flag &= ~RGN_FLAG_POLL_FAILED;
 
-      if (region_poll(screen, area, region) == false) {
+      CTX_wm_region_set(C, region);
+      if (region_poll(C, screen, area, region) == false) {
         region->flag |= RGN_FLAG_POLL_FAILED;
       }
 
@@ -756,6 +767,9 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
   if (any_changed) {
     screen->do_refresh = true;
   }
+
+  CTX_wm_area_set(C, prev_area);
+  CTX_wm_region_set(C, prev_region);
 }
 
 void ED_screen_ensure_updated(bContext *C, wmWindowManager *wm, wmWindow *win, bScreen *screen)
@@ -794,7 +808,7 @@ void ED_region_exit(bContext *C, ARegion *region)
   MEM_SAFE_FREE(region->headerstr);
 
   if (region->regiontimer) {
-    WM_event_remove_timer(wm, win, region->regiontimer);
+    WM_event_timer_remove(wm, win, region->regiontimer);
     region->regiontimer = NULL;
   }
 
@@ -833,7 +847,7 @@ void ED_screen_exit(bContext *C, wmWindow *window, bScreen *screen)
   CTX_wm_window_set(C, window);
 
   if (screen->animtimer) {
-    WM_event_remove_timer(wm, window, screen->animtimer);
+    WM_event_timer_remove(wm, window, screen->animtimer);
 
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     Scene *scene = WM_window_get_active_scene(prevwin);
@@ -1517,7 +1531,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       UI_blocklist_free(C, region);
       if (region->regiontimer) {
-        WM_event_remove_timer(wm, NULL, region->regiontimer);
+        WM_event_timer_remove(wm, NULL, region->regiontimer);
         region->regiontimer = NULL;
       }
     }
@@ -1695,14 +1709,14 @@ void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)
   bScreen *stopscreen = ED_screen_animation_playing(wm);
 
   if (stopscreen) {
-    WM_event_remove_timer(wm, win, stopscreen->animtimer);
+    WM_event_timer_remove(wm, win, stopscreen->animtimer);
     stopscreen->animtimer = NULL;
   }
 
   if (enable) {
     ScreenAnimData *sad = MEM_callocN(sizeof(ScreenAnimData), "ScreenAnimData");
 
-    screen->animtimer = WM_event_add_timer(wm, win, TIMER0, (1.0 / FPS));
+    screen->animtimer = WM_event_timer_add(wm, win, TIMER0, (1.0 / FPS));
 
     sad->region = CTX_wm_region(C);
     /* If start-frame is larger than current frame, we put current-frame on start-frame.
@@ -1886,7 +1900,7 @@ bool ED_screen_stereo3d_required(const bScreen *screen, const Scene *scene)
 
 Scene *ED_screen_scene_find_with_window(const bScreen *screen,
                                         const wmWindowManager *wm,
-                                        struct wmWindow **r_window)
+                                        wmWindow **r_window)
 {
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (WM_window_get_active_screen(win) == screen) {

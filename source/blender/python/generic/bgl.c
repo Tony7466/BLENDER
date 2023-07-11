@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pygen
@@ -38,6 +40,7 @@ static CLG_LogRef LOG = {"bgl"};
 /** \name Local utility defines for wrapping OpenGL
  * \{ */
 
+#ifdef WITH_OPENGL_BACKEND
 static void report_deprecated_call(const char *function_name)
 {
   /* Only report first 10 deprecated calls. BGL is typically used inside an handler that is
@@ -65,6 +68,7 @@ static void report_deprecated_call_to_user(void)
   G.opengl_deprecation_usage_detected = true;
   PyC_FileAndNum(&G.opengl_deprecation_usage_filename, &G.opengl_deprecation_usage_lineno);
 }
+#endif
 
 /** \} */
 
@@ -711,6 +715,7 @@ Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuf
   return buffer;
 }
 
+#ifdef WITH_OPENGL_BACKEND
 /* Custom converter function so we can support a buffer, an integer or NULL.
  * Many OpenGL API functions can accept both an actual pointer or an offset
  * into a buffer that is already bound. */
@@ -740,6 +745,7 @@ static int BGL_BufferOrOffsetConverter(PyObject *object, BufferOrOffset *buffer)
   PyErr_SetString(PyExc_TypeError, "expected a bgl.Buffer or None");
   return 0;
 }
+#endif
 
 #define MAX_DIMENSIONS 256
 static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
@@ -1119,7 +1125,7 @@ static PyObject *Buffer_repr(Buffer *self)
 /** \name OpenGL API Wrapping
  * \{ */
 
-#ifdef WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
 #  define BGL_Wrap(funcname, ret, arg_list) \
     static PyObject *Method_##funcname(PyObject *UNUSED(self), PyObject *args) \
     { \
@@ -1436,7 +1442,7 @@ BGL_Wrap(TexImage3DMultisample,
 /** \name Module Definition
  * \{ */
 
-static struct PyModuleDef BGL_module_def = {
+static PyModuleDef BGL_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bgl",
     /*m_doc*/ NULL,
@@ -1483,7 +1489,7 @@ static void py_module_dict_add_method(PyObject *submodule,
 #  pragma GCC diagnostic ignored "-Waddress"
 #endif
 
-#ifdef WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
 #  define PY_MOD_ADD_METHOD(func) \
     { \
       static PyMethodDef method_def = {"gl" #func, Method_##func, METH_VARARGS}; \
@@ -2651,11 +2657,17 @@ PyObject *BPyInit_bgl(void)
     return NULL; /* should never happen */
   }
 
+  /* Building as a Python module loads all modules
+   * (see code comment around #PyImport_ExtendInittab usage).
+   * The result of this is the `bgl` warning would always show when importing `bpy`.
+   * In the case of Blender as a Python module, suppress the warning. */
+#ifndef WITH_PYTHON_MODULE
   if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     CLOG_WARN(&LOG,
               "'bgl' imported without an OpenGL backend. Please update your add-ons to use the "
               "'gpu' module. In Blender 4.0 'bgl' will be removed.");
   }
+#endif
 
   PyModule_AddObject(submodule, "Buffer", (PyObject *)&BGL_bufferType);
   Py_INCREF((PyObject *)&BGL_bufferType);

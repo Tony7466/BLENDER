@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -16,9 +17,12 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
+
+#include "PIL_time.h"
 
 #include "BLT_translation.h"
 
@@ -50,9 +54,9 @@
 
 #include "NOD_common.h"
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 
 #include "node_intern.hh" /* own include */
@@ -236,6 +240,30 @@ static void animation_basepath_change_free(AnimationBasePathChange *basepath_cha
   MEM_freeN(basepath_change);
 }
 
+static void update_nested_node_refs_after_ungroup(bNodeTree &ntree,
+                                                  const bNodeTree &ngroup,
+                                                  const bNode &gnode,
+                                                  const Map<int32_t, int32_t> &node_identifier_map)
+{
+  for (bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
+    if (ref.path.node_id != gnode.identifier) {
+      continue;
+    }
+    const bNestedNodeRef *child_ref = ngroup.find_nested_node_ref(ref.path.id_in_node);
+    if (!child_ref) {
+      continue;
+    }
+    constexpr int32_t missing_id = -1;
+    const int32_t new_node_id = node_identifier_map.lookup_default(child_ref->path.node_id,
+                                                                   missing_id);
+    if (new_node_id == missing_id) {
+      continue;
+    }
+    ref.path.node_id = new_node_id;
+    ref.path.id_in_node = child_ref->path.id_in_node;
+  }
+}
+
 /**
  * \return True if successful.
  */
@@ -250,7 +278,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
    * - `ngroup` (i.e. the source NodeTree) is left unscathed.
    * - Temp copy. do change ID user-count for the copies.
    */
-  bNodeTree *wgroup = ntreeCopyTree(bmain, ngroup);
+  bNodeTree *wgroup = bke::ntreeCopyTree(bmain, ngroup);
 
   /* Add the nodes into the `ntree`. */
   Vector<bNode *> new_nodes;
@@ -420,6 +448,8 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
   /* delete the group instance and dereference group tree */
   nodeRemoveNode(bmain, ntree, gnode, true);
 
+  update_nested_node_refs_after_ungroup(*ntree, *ngroup, *gnode, node_identifier_map);
+
   return true;
 }
 
@@ -529,7 +559,7 @@ static bool node_group_separate_selected(
     }
   }
   if (!make_copy) {
-    nodeRebuildIDVector(&ngroup);
+    bke::nodeRebuildIDVector(&ngroup);
   }
 
   /* add internal links to the ntree */
@@ -562,7 +592,7 @@ static bool node_group_separate_selected(
   remap_pairing(ntree, nodes_to_move, node_identifier_map);
 
   for (bNode *node : node_map.values()) {
-    nodeDeclarationEnsure(&ntree, node);
+    bke::nodeDeclarationEnsure(&ntree, node);
   }
 
   /* and copy across the animation,
@@ -697,7 +727,7 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   /* make a local pseudo node tree to pass to the node poll functions */
   bNodeTree *ngroup = ntreeAddTree(nullptr, "Pseudo Node Group", ntree_idname);
   BLI_SCOPED_DEFER([&]() {
-    ntreeFreeTree(ngroup);
+    bke::ntreeFreeTree(ngroup);
     MEM_freeN(ngroup);
   });
 
@@ -790,8 +820,8 @@ static void get_min_max_of_nodes(const Span<bNode *> nodes,
 
   INIT_MINMAX2(min, max);
   for (const bNode *node : nodes) {
-    float2 loc;
-    nodeToView(node, node->offsetx, node->offsety, &loc.x, &loc.y);
+    const float2 node_offset = {node->offsetx, node->offsety};
+    float2 loc = bke::nodeToView(node, node_offset);
     math::min_max(loc, min, max);
     if (use_size) {
       loc.x += node->width;
@@ -844,11 +874,59 @@ static bNodeSocket *add_interface_from_socket(const bNodeTree &original_tree,
   const bNodeSocket &socket_for_name = prefer_node_for_interface_name(socket.owner_node()) ?
                                            socket :
                                            socket_for_io;
-  return ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
-                                                   &node_for_io,
-                                                   &socket_for_io,
-                                                   socket_for_io.idname,
-                                                   socket_for_name.name);
+  return bke::ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
+                                                        &node_for_io,
+                                                        &socket_for_io,
+                                                        socket_for_io.idname,
+                                                        socket_for_name.name);
+}
+
+static void update_nested_node_refs_after_moving_nodes_into_group(
+    bNodeTree &ntree,
+    bNodeTree &group,
+    bNode &gnode,
+    const Map<int32_t, int32_t> &node_identifier_map)
+{
+  /* Update nested node references in the parent and child node tree. */
+  RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+  Vector<bNestedNodeRef> new_nested_node_refs;
+  /* Keep all nested node references that were in the group before. */
+  for (const bNestedNodeRef &state_id : group.nested_node_refs_span()) {
+    new_nested_node_refs.append(state_id);
+  }
+  Set<int32_t> used_nested_node_ref_ids;
+  for (const bNestedNodeRef &ref : group.nested_node_refs_span()) {
+    used_nested_node_ref_ids.add(ref.id);
+  }
+  Map<bNestedNodePath, int32_t> new_id_by_old_path;
+  for (bNestedNodeRef &state_id : ntree.nested_node_refs_span()) {
+    const int32_t new_node_id = node_identifier_map.lookup_default(state_id.path.node_id, -1);
+    if (new_node_id == -1) {
+      /* The node was not moved between node groups. */
+      continue;
+    }
+    bNestedNodeRef new_state_id = state_id;
+    new_state_id.path.node_id = new_node_id;
+    /* Find new unique identifier for the nested node ref. */
+    while (true) {
+      const int32_t new_id = rng.get_int32(INT32_MAX);
+      if (used_nested_node_ref_ids.add(new_id)) {
+        new_state_id.id = new_id;
+        break;
+      }
+    }
+    new_id_by_old_path.add_new(state_id.path, new_state_id.id);
+    new_nested_node_refs.append(new_state_id);
+    /* Updated the nested node ref in the parent so that it points to the same node that is now
+     * inside of a nested group. */
+    state_id.path.node_id = gnode.identifier;
+    state_id.path.id_in_node = new_state_id.id;
+  }
+  MEM_SAFE_FREE(group.nested_node_refs);
+  group.nested_node_refs = static_cast<bNestedNodeRef *>(
+      MEM_malloc_arrayN(new_nested_node_refs.size(), sizeof(bNestedNodeRef), __func__));
+  uninitialized_copy_n(
+      new_nested_node_refs.data(), new_nested_node_refs.size(), group.nested_node_refs);
 }
 
 static void node_group_make_insert_selected(const bContext &C,
@@ -913,16 +991,19 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
           continue;
         }
+        if (link->fromnode == gnode) {
+          links_to_remove.add(link);
+          continue;
+        }
         if (nodes_to_move.contains(link->fromnode)) {
           internal_links_to_move.add(link);
+          continue;
         }
-        else {
-          InputSocketInfo &info = input_links.lookup_or_add_default(link->fromsock);
-          info.from_node = link->fromnode;
-          info.links.append(link);
-          if (!info.interface_socket) {
-            info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
-          }
+        InputSocketInfo &info = input_links.lookup_or_add_default(link->fromsock);
+        info.from_node = link->fromnode;
+        info.links.append(link);
+        if (!info.interface_socket) {
+          info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
       }
     }
@@ -932,12 +1013,15 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
           continue;
         }
+        if (link->tonode == gnode) {
+          links_to_remove.add(link);
+          continue;
+        }
         if (nodes_to_move.contains(link->tonode)) {
           internal_links_to_move.add(link);
+          continue;
         }
-        else {
-          output_links.append({link, add_interface_from_socket(ntree, group, *link->fromsock)});
-        }
+        output_links.append({link, add_interface_from_socket(ntree, group, *link->fromsock)});
       }
     }
   }
@@ -960,7 +1044,8 @@ static void node_group_make_insert_selected(const bContext &C,
           if (socket->is_directly_linked()) {
             continue;
           }
-          const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(&group, node, socket);
+          const bNodeSocket *io_socket = bke::ntreeAddSocketInterfaceFromSocket(
+              &group, node, socket);
           new_internal_links.append({node, socket, io_socket});
         }
       };
@@ -1012,7 +1097,7 @@ static void node_group_make_insert_selected(const bContext &C,
     BKE_ntree_update_tag_node_removed(&ntree);
     BKE_ntree_update_tag_node_new(&group, node);
   }
-  nodeRebuildIDVector(&ntree);
+  bke::nodeRebuildIDVector(&ntree);
 
   /* Update input and output node first, since the group node declaration can depend on them. */
   nodes::update_node_declaration_and_sockets(group, *input_node);
@@ -1094,6 +1179,8 @@ static void node_group_make_insert_selected(const bContext &C,
     info.link->fromnode = gnode;
     info.link->fromsock = node_group_find_output_socket(gnode, info.interface_socket->identifier);
   }
+
+  update_nested_node_refs_after_moving_nodes_into_group(ntree, group, *gnode, node_identifier_map);
 
   ED_node_tree_propagate_change(&C, bmain, nullptr);
 }

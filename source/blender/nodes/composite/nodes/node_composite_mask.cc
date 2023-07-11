@@ -1,11 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
  */
-
-#include "BLT_translation.h"
 
 #include "BLI_string_utf8.h"
 
@@ -28,7 +27,7 @@ NODE_STORAGE_FUNCS(NodeMask)
 
 static void cmp_node_mask_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Mask"));
+  b.add_output<decl::Float>("Mask");
 }
 
 static void node_composit_init_mask(bNodeTree * /*ntree*/, bNode *node)

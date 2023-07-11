@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spview3d
@@ -75,9 +76,7 @@ void ED_view3d_project_float_v3_m4(const ARegion *region,
 /* Clipping Projection Functions
  * ***************************** */
 
-eV3DProjStatus ED_view3d_project_base(const struct ARegion *region,
-                                      struct Base *base,
-                                      float r_co[2])
+eV3DProjStatus ED_view3d_project_base(const ARegion *region, Base *base, float r_co[2])
 {
   eV3DProjStatus ret = ED_view3d_project_float_global(
       region, base->object->object_to_world[3], r_co, V3D_PROJ_TEST_CLIP_DEFAULT);
@@ -109,7 +108,7 @@ static eV3DProjStatus ed_view3d_project__internal(const ARegion *region,
   BLI_assert((flag & V3D_PROJ_TEST_ALL) == flag);
 
   if (flag & V3D_PROJ_TEST_CLIP_BB) {
-    RegionView3D *rv3d = region->regiondata;
+    const RegionView3D *rv3d = region->regiondata;
     if (rv3d->rflag & RV3D_CLIPPING) {
       if (ED_view3d_clipping_test(rv3d, co, is_local)) {
         return V3D_PROJ_RET_CLIP_BB;
@@ -327,7 +326,7 @@ static void view3d_win_to_ray_segment(const struct Depsgraph *depsgraph,
                                       float r_ray_start[3],
                                       float r_ray_end[3])
 {
-  RegionView3D *rv3d = region->regiondata;
+  const RegionView3D *rv3d = region->regiondata;
   float _ray_co[3], _ray_dir[3], start_offset, end_offset;
 
   if (!r_ray_co) {
@@ -704,7 +703,7 @@ void ED_view3d_ob_project_mat_get_from_obmat(const RegionView3D *rv3d,
   mul_m4_m4m4(r_pmat, rv3d->winmat, vmat);
 }
 
-void ED_view3d_project_v3(const struct ARegion *region, const float world[3], float r_region_co[3])
+void ED_view3d_project_v3(const ARegion *region, const float world[3], float r_region_co[3])
 {
   /* Viewport is set up to make coordinates relative to the region, not window. */
   RegionView3D *rv3d = region->regiondata;
@@ -712,7 +711,7 @@ void ED_view3d_project_v3(const struct ARegion *region, const float world[3], fl
   GPU_matrix_project_3fv(world, rv3d->viewmat, rv3d->winmat, viewport, r_region_co);
 }
 
-void ED_view3d_project_v2(const struct ARegion *region, const float world[3], float r_region_co[2])
+void ED_view3d_project_v2(const ARegion *region, const float world[3], float r_region_co[2])
 {
   /* Viewport is set up to make coordinates relative to the region, not window. */
   RegionView3D *rv3d = region->regiondata;
@@ -721,7 +720,7 @@ void ED_view3d_project_v2(const struct ARegion *region, const float world[3], fl
 }
 
 bool ED_view3d_unproject_v3(
-    const struct ARegion *region, float regionx, float regiony, float regionz, float world[3])
+    const ARegion *region, float regionx, float regiony, float regionz, float world[3])
 {
   RegionView3D *rv3d = region->regiondata;
   const int viewport[4] = {0, 0, region->winx, region->winy};

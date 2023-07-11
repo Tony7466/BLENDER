@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -57,6 +59,7 @@
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
+#include "BKE_node.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -65,8 +68,6 @@
 #include "BKE_texture.h"
 
 #include "SEQ_iterator.h"
-
-#include "NOD_socket.h"
 
 #include "BLO_readfile.h"
 
@@ -631,10 +632,11 @@ static bool seq_sound_proxy_update_cb(Sequence *seq, void *user_data)
 {
   Main *bmain = (Main *)user_data;
   if (seq->type == SEQ_TYPE_SOUND_HD) {
-    char str[FILE_MAX];
-    BLI_path_join(str, sizeof(str), seq->strip->dirpath, seq->strip->stripdata->filename);
-    BLI_path_abs(str, BKE_main_blendfile_path(bmain));
-    seq->sound = BKE_sound_new_file(bmain, str);
+    char filepath_abs[FILE_MAX];
+    BLI_path_join(
+        filepath_abs, sizeof(filepath_abs), seq->strip->dirpath, seq->strip->stripdata->filename);
+    BLI_path_abs(filepath_abs, BKE_main_blendfile_path(bmain));
+    seq->sound = BKE_sound_new_file(bmain, filepath_abs);
   }
 #define SEQ_USE_PROXY_CUSTOM_DIR (1 << 19)
 #define SEQ_USE_PROXY_CUSTOM_FILE (1 << 21)
@@ -668,7 +670,7 @@ static bool seq_set_pitch_cb(Sequence *seq, void *UNUSED(user_data))
 }
 
 /* NOLINTNEXTLINE: readability-function-size */
-void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
+void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
 {
   /* WATCH IT!!!: pointers from libdata have not been converted */
 
@@ -713,7 +715,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
      */
     for (ma = bmain->materials.first; ma; ma = ma->id.next) {
       if (ma->nodetree && ma->nodetree->id.name[0] == '\0') {
-        strcpy(ma->nodetree->id.name, "NTShader Nodetree");
+        STRNCPY(ma->nodetree->id.name, "NTShader Nodetree");
       }
     }
 
@@ -721,16 +723,16 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
       enum { R_PANORAMA = (1 << 10) };
       if (sce->nodetree && sce->nodetree->id.name[0] == '\0') {
-        strcpy(sce->nodetree->id.name, "NTCompositing Nodetree");
+        STRNCPY(sce->nodetree->id.name, "NTCompositing Nodetree");
       }
 
       /* move to cameras */
       if (sce->r.mode & R_PANORAMA) {
         for (base = sce->base.first; base; base = base->next) {
-          ob = blo_do_versions_newlibadr(fd, lib, base->object);
+          ob = blo_do_versions_newlibadr(fd, &sce->id, ID_IS_LINKED(sce), base->object);
 
           if (ob->type == OB_CAMERA && !ob->id.lib) {
-            cam = blo_do_versions_newlibadr(fd, lib, ob->data);
+            cam = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), ob->data);
             cam->flag |= CAM_PANORAMA;
           }
         }
@@ -745,7 +747,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
       if (tx->nodetree) {
         if (tx->nodetree->id.name[0] == '\0') {
-          strcpy(tx->nodetree->id.name, "NTTexture Nodetree");
+          STRNCPY(tx->nodetree->id.name, "NTTexture Nodetree");
         }
 
         /* which_output 0 is now "not specified" */
@@ -996,7 +998,8 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
      * to the evaluated #Mesh, so here we ensure that the basis
      * shape key is always set in the mesh coordinates. */
     for (me = bmain->meshes.first; me; me = me->id.next) {
-      if ((key = blo_do_versions_newlibadr(fd, lib, me->key)) && key->refkey) {
+      if ((key = blo_do_versions_newlibadr(fd, &me->id, ID_IS_LINKED(me), me->key)) && key->refkey)
+      {
         data = key->refkey->data;
         tot = MIN2(me->totvert, key->refkey->totelem);
         MVert *verts = (MVert *)CustomData_get_layer_for_write(&me->vdata, CD_MVERT, me->totvert);
@@ -1007,7 +1010,8 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     }
 
     for (lt = bmain->lattices.first; lt; lt = lt->id.next) {
-      if ((key = blo_do_versions_newlibadr(fd, lib, lt->key)) && key->refkey) {
+      if ((key = blo_do_versions_newlibadr(fd, &lt->id, ID_IS_LINKED(lt), lt->key)) && key->refkey)
+      {
         data = key->refkey->data;
         tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
 
@@ -1018,7 +1022,8 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     }
 
     for (cu = bmain->curves.first; cu; cu = cu->id.next) {
-      if ((key = blo_do_versions_newlibadr(fd, lib, cu->key)) && key->refkey) {
+      if ((key = blo_do_versions_newlibadr(fd, &cu->id, ID_IS_LINKED(cu), cu->key)) && key->refkey)
+      {
         data = key->refkey->data;
 
         for (nu = cu->nurb.first; nu; nu = nu->next) {
@@ -1294,7 +1299,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
        * performing initialization where appropriate
        */
       if (ob->pose && ob->data) {
-        bArmature *arm = blo_do_versions_newlibadr(fd, lib, ob->data);
+        bArmature *arm = blo_do_versions_newlibadr(fd, &ob->id, ID_IS_LINKED(ob), ob->data);
         if (arm) { /* XXX: why does this fail in some cases? */
           bAnimVizSettings *avs = &ob->pose->avs;
 
@@ -1628,12 +1633,14 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     /* parent type to modifier */
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->parent) {
-        Object *parent = (Object *)blo_do_versions_newlibadr(fd, lib, ob->parent);
+        Object *parent = (Object *)blo_do_versions_newlibadr(
+            fd, &ob->id, ID_IS_LINKED(ob), ob->parent);
         if (parent) { /* parent may not be in group */
           enum { PARCURVE = 1 };
           if (parent->type == OB_ARMATURE && ob->partype == PARSKEL) {
             ArmatureModifierData *amd;
-            bArmature *arm = (bArmature *)blo_do_versions_newlibadr(fd, lib, parent->data);
+            bArmature *arm = (bArmature *)blo_do_versions_newlibadr(
+                fd, &parent->id, ID_IS_LINKED(parent), parent->data);
 
             amd = (ArmatureModifierData *)BKE_modifier_new(eModifierType_Armature);
             amd->object = ob->parent;
@@ -2307,7 +2314,7 @@ static void lib_node_do_versions_group_indices(bNode *gnode)
 
     for (link = ngroup->links.first; link; link = link->next) {
       if (link->tonode == NULL && link->fromsock->own_index == old_index) {
-        strcpy(sock->identifier, link->fromsock->identifier);
+        STRNCPY(sock->identifier, link->fromsock->identifier);
         /* deprecated */
         sock->own_index = link->fromsock->own_index;
         sock->to_index = 0;
@@ -2319,7 +2326,7 @@ static void lib_node_do_versions_group_indices(bNode *gnode)
 
     for (link = ngroup->links.first; link; link = link->next) {
       if (link->fromnode == NULL && link->tosock->own_index == old_index) {
-        strcpy(sock->identifier, link->tosock->identifier);
+        STRNCPY(sock->identifier, link->tosock->identifier);
         /* deprecated */
         sock->own_index = link->tosock->own_index;
         sock->to_index = 0;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -37,7 +39,7 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_override.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
@@ -62,7 +64,7 @@ const PointerRNA PointerRNA_NULL = {nullptr};
 
 /* Init/Exit */
 
-void RNA_init(void)
+void RNA_init()
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -89,7 +91,7 @@ void RNA_init(void)
   }
 }
 
-void RNA_exit(void)
+void RNA_exit()
 {
   StructRNA *srna;
 
@@ -6982,7 +6984,7 @@ void RNA_struct_state_owner_set(const char *name)
   }
 }
 
-const char *RNA_struct_state_owner_get(void)
+const char *RNA_struct_state_owner_get()
 {
   if (rna_struct_state_owner[0]) {
     return rna_struct_state_owner;

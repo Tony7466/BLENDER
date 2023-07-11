@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -329,7 +330,7 @@ void BKE_keyingsets_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *lis
 {
   LISTBASE_FOREACH (KeyingSet *, ks, list) {
     LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
-      BLO_read_id_address(reader, id->lib, &ksp->id);
+      BLO_read_id_address(reader, id, &ksp->id);
     }
   }
 }
@@ -641,8 +642,8 @@ static int animsys_quaternion_evaluate_fcurves(PathResolvedRNA quat_rna,
   }
 
   if (fcurve_offset < 4) {
-    /* This quaternion was incompletely keyed, so the result is a mixture of the unit quaterion and
-     * values from FCurves. This means that it's almost certainly no longer of unit length. */
+    /* This quaternion was incompletely keyed, so the result is a mixture of the unit quaternion
+     * and values from FCurves. This means that it's almost certainly no longer of unit length. */
     normalize_qt(r_quaternion);
   }
 
@@ -754,8 +755,7 @@ static void animsys_blend_in_fcurves(PointerRNA *ptr,
 /* ***************************************** */
 /* Driver Evaluation */
 
-AnimationEvalContext BKE_animsys_eval_context_construct(struct Depsgraph *depsgraph,
-                                                        float eval_time)
+AnimationEvalContext BKE_animsys_eval_context_construct(Depsgraph *depsgraph, float eval_time)
 {
   AnimationEvalContext ctx = {
       .depsgraph = depsgraph,
@@ -2490,7 +2490,8 @@ static void nlaevalchan_combine_quaternion_get_inverted_lower_evalchan(
   BLI_bitmap_set_all(r_lower_necs->remap_domain.ptr, true, 4);
 }
 
-/** Based on blendmode and mix mode, solve for the lower values such that when lower blended or
+/**
+ * Based on blendmode and mix mode, solve for the lower values such that when lower blended or
  * combined with upper then we get blended values as a result.
  *
  * Only processes blended values in the remap domain. Successfully remapped lower values are placed
@@ -3002,7 +3003,7 @@ void nlasnapshot_blend_strip(PointerRNA *ptr,
                              ListBase *modifiers,
                              NlaEvalStrip *nes,
                              NlaEvalSnapshot *snapshot,
-                             const struct AnimationEvalContext *anim_eval_context,
+                             const AnimationEvalContext *anim_eval_context,
                              const bool flush_to_original)
 {
   nlastrip_evaluate(STRIP_EVAL_BLEND,
@@ -3021,7 +3022,7 @@ void nlasnapshot_blend_strip_get_inverted_lower_snapshot(
     ListBase *modifiers,
     NlaEvalStrip *nes,
     NlaEvalSnapshot *snapshot,
-    const struct AnimationEvalContext *anim_eval_context)
+    const AnimationEvalContext *anim_eval_context)
 {
   nlastrip_evaluate(STRIP_EVAL_BLEND_GET_INVERTED_LOWER_SNAPSHOT,
                     ptr,
@@ -3038,7 +3039,7 @@ void nlasnapshot_blend_strip_no_blend(PointerRNA *ptr,
                                       ListBase *modifiers,
                                       NlaEvalStrip *nes,
                                       NlaEvalSnapshot *snapshot,
-                                      const struct AnimationEvalContext *anim_eval_context)
+                                      const AnimationEvalContext *anim_eval_context)
 {
   nlastrip_evaluate(
       STRIP_EVAL_NOBLEND, ptr, channels, modifiers, nes, snapshot, anim_eval_context, false);
@@ -3236,7 +3237,8 @@ static void animsys_create_action_track_strip(const AnimData *adt,
 
   /* Action range is calculated taking F-Modifiers into account
    * (which making new strips doesn't do due to the troublesome nature of that). */
-  calc_action_range(r_action_strip->act, &r_action_strip->actstart, &r_action_strip->actend, 1);
+  BKE_action_frame_range_calc(
+      r_action_strip->act, true, &r_action_strip->actstart, &r_action_strip->actend);
   r_action_strip->start = r_action_strip->actstart;
   r_action_strip->end = IS_EQF(r_action_strip->actstart, r_action_strip->actend) ?
                             (r_action_strip->actstart + 1.0f) :
@@ -3250,8 +3252,8 @@ static void animsys_create_action_track_strip(const AnimData *adt,
    * and this setting doesn't work. */
   r_action_strip->flag |= NLASTRIP_FLAG_USR_INFLUENCE;
 
-  /* Unless extendmode is Nothing (might be useful for flattening NLA evaluation), disable range.
-   * Extendmode Nothing and Hold will behave as normal. Hold Forward will behave just like Hold.
+  /* Unless `extendmode` is Nothing (might be useful for flattening NLA evaluation), disable range.
+   * Extend-mode Nothing and Hold will behave as normal. Hold Forward will behave just like Hold.
    */
   if (r_action_strip->extendmode != NLASTRIP_EXTEND_NOTHING) {
     r_action_strip->flag |= NLASTRIP_FLAG_NO_TIME_MAP;
@@ -3496,10 +3498,9 @@ static void animsys_evaluate_nla_for_keyframing(PointerRNA *ptr,
     }
   }
 
-  /** NOTE: Although we early out, we can still keyframe to the non-pushed action since the
+  /* NOTE: Although we early out, we can still keyframe to the non-pushed action since the
    * keyframe remap function detects (r_context->strip.act == NULL) and will keyframe without
-   * remapping.
-   */
+   * remapping. */
   if (is_action_track_evaluated_without_nla(adt, has_strips)) {
     BLI_freelistN(&lower_estrips);
     return;
@@ -3693,10 +3694,7 @@ void nlasnapshot_blend_get_inverted_lower_snapshot(NlaEvalData *eval_data,
 /* ---------------------- */
 
 NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
-    struct ListBase *cache,
-    struct PointerRNA *ptr,
-    struct AnimData *adt,
-    const AnimationEvalContext *anim_eval_context)
+    ListBase *cache, PointerRNA *ptr, AnimData *adt, const AnimationEvalContext *anim_eval_context)
 {
   /* No remapping needed if NLA is off or no action. */
   if ((adt == NULL) || (adt->action == NULL) || (adt->nla_tracks.first == NULL) ||
@@ -3732,13 +3730,13 @@ NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
   return ctx;
 }
 
-void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
-                                           struct PointerRNA *prop_ptr,
-                                           struct PropertyRNA *prop,
+void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
+                                           PointerRNA *prop_ptr,
+                                           PropertyRNA *prop,
                                            float *values,
                                            int count,
                                            int index,
-                                           const struct AnimationEvalContext *anim_eval_context,
+                                           const AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,
                                            BLI_bitmap *r_successful_remaps)
 {
@@ -3860,7 +3858,7 @@ void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
   MEM_freeN(remap_domain);
 }
 
-void BKE_animsys_free_nla_keyframing_context_cache(struct ListBase *cache)
+void BKE_animsys_free_nla_keyframing_context_cache(ListBase *cache)
 {
   LISTBASE_FOREACH (NlaKeyframingContext *, ctx, cache) {
     MEM_SAFE_FREE(ctx->eval_strip);
@@ -4005,11 +4003,11 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
   } \
   (void)0
 
-  /* another macro for the "embedded" nodetree cases
-   * - this is like EVAL_ANIM_IDS, but this handles the case "embedded nodetrees"
-   *   (i.e. scene/material/texture->nodetree) which we need a special exception
-   *   for, otherwise they'd get skipped
-   * - 'ntp' stands for "node tree parent" = data-block where node tree stuff resides
+  /* Another macro for the "embedded" node-tree cases
+   * - This is like #EVAL_ANIM_IDS, but this handles the case "embedded node-trees"
+   *   (i.e. `scene/material/texture->nodetree`) which we need a special exception
+   *   for, otherwise they'd get skipped.
+   * - `ntp` stands for "node tree parent" = data-block where node tree stuff resides.
    */
 #define EVAL_ANIM_NODETREE_IDS(first, NtId_Type, aflag) \
   for (id = first; id; id = id->next) { \
@@ -4104,9 +4102,6 @@ void BKE_animsys_evaluate_all_animation(Main *main, Depsgraph *depsgraph, float 
 
   /* volumes */
   EVAL_ANIM_IDS(main->volumes.first, ADT_RECALC_ANIM);
-
-  /* simulations */
-  EVAL_ANIM_IDS(main->simulations.first, ADT_RECALC_ANIM);
 
   /* objects */
   /* ADT_RECALC_ANIM doesn't need to be supplied here, since object AnimData gets

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "MEM_guardedalloc.h"
 
@@ -60,7 +61,7 @@ void DespeckleOperation::execute_pixel(float output[4], int x, int y, void * /*d
   input_operation_->read(color_org, x2, y2, nullptr);
 
 #define TOT_DIV_ONE 1.0f
-#define TOT_DIV_CNR (float)M_SQRT1_2
+#define TOT_DIV_CNR float(M_SQRT1_2)
 
 #define WTOT (TOT_DIV_ONE * 4 + TOT_DIV_CNR * 4)
 
@@ -176,7 +177,7 @@ void DespeckleOperation::update_memory_buffer_partial(MemoryBuffer *output,
     const float *in1 = nullptr;
 
 #define TOT_DIV_ONE 1.0f
-#define TOT_DIV_CNR (float)M_SQRT1_2
+#define TOT_DIV_CNR float(M_SQRT1_2)
 
 #define WTOT (TOT_DIV_ONE * 4 + TOT_DIV_CNR * 4)
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -33,9 +34,9 @@ NODE_STORAGE_FUNCS(NodeTrackPosData)
 
 static void cmp_node_trackpos_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("X"));
-  b.add_output<decl::Float>(N_("Y"));
-  b.add_output<decl::Vector>(N_("Speed")).subtype(PROP_VELOCITY);
+  b.add_output<decl::Float>("X");
+  b.add_output<decl::Float>("Y");
+  b.add_output<decl::Vector>("Speed").subtype(PROP_VELOCITY);
 }
 
 static void init(const bContext *C, PointerRNA *ptr)

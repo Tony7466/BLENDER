@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -143,12 +145,11 @@ class DiskBDataWriter : public BDataWriter {
 };
 
 /**
- * Get the directory that contains all baked simulation data for the given modifier. This is a
- * parent directory of the two directories below.
+ * Get the directory that contains all baked simulation data for the given modifier.
  */
-std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md);
-std::string get_bdata_directory(const Main &bmain, const Object &object, const ModifierData &md);
-std::string get_meta_directory(const Main &bmain, const Object &object, const ModifierData &md);
+std::string get_default_modifier_bake_directory(const Main &bmain,
+                                                const Object &object,
+                                                const ModifierData &md);
 
 /**
  * Encode the simulation state in a #DictionaryValue which also contains references to external
@@ -162,7 +163,8 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
  * Fill the simulation state by parsing the provided #DictionaryValue which also contains
  * references to external binary data that is read using #bdata_reader.
  */
-void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
+void deserialize_modifier_simulation_state(const bNodeTree &ntree,
+                                           const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state);

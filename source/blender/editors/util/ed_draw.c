@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edutil
@@ -55,13 +56,14 @@
 
 #define SLIDE_PIXEL_DISTANCE (300.0f * UI_SCALE_FAC)
 #define OVERSHOOT_RANGE_DELTA 0.2f
+#define SLIDER_UNIT_STRING_SIZE 64
 
 typedef struct tSlider {
-  struct Scene *scene;
-  struct ScrArea *area;
+  Scene *scene;
+  ScrArea *area;
 
   /** Header of the region used for drawing the slider. */
-  struct ARegion *region_header;
+  ARegion *region_header;
 
   /** Draw callback handler. */
   void *draw_handle;
@@ -77,6 +79,12 @@ typedef struct tSlider {
 
   /** Range of the slider without overshoot. */
   float factor_bounds[2];
+
+  /* How the factor number is drawn. When drawing percent it is factor*100. */
+  SliderMode slider_mode;
+
+  /* What unit to add to the slider. */
+  char unit_string[SLIDER_UNIT_STRING_SIZE];
 
   /** Enable range beyond factor_bounds.
    * This is set by the code that uses the slider, as not all operations support
@@ -243,7 +251,7 @@ static void draw_backdrop(const int fontid,
 /**
  * Draw an on screen Slider for a Pose Slide Operator.
  */
-static void slider_draw(const struct bContext *UNUSED(C), ARegion *region, void *arg)
+static void slider_draw(const bContext *UNUSED(C), ARegion *region, void *arg)
 {
   tSlider *slider = arg;
 
@@ -327,8 +335,6 @@ static void slider_draw(const struct bContext *UNUSED(C), ARegion *region, void 
     }
   }
 
-  char percentage_string[256];
-
   /* Draw handle indicating current factor. */
   const rctf handle_rect = {
       .xmin = handle_pos_x - (line_width),
@@ -338,26 +344,39 @@ static void slider_draw(const struct bContext *UNUSED(C), ARegion *region, void 
   };
 
   UI_draw_roundbox_3ub_alpha(&handle_rect, true, 1, color_handle, 255);
-  SNPRINTF(percentage_string, "%.0f%%", slider->factor * 100);
 
-  /* Draw percentage string. */
-  float percentage_string_pixel_size[2];
+  char factor_string[256];
+  switch (slider->slider_mode) {
+    case SLIDER_MODE_PERCENT:
+      SNPRINTF(factor_string, "%.0f %s", slider->factor * 100, slider->unit_string);
+      break;
+    case SLIDER_MODE_FLOAT:
+      SNPRINTF(factor_string, "%.1f %s", slider->factor, slider->unit_string);
+      break;
+  }
+
+  /* Draw factor string. */
+  float factor_string_pixel_size[2];
   BLF_width_and_height(fontid,
-                       percentage_string,
-                       sizeof(percentage_string),
-                       &percentage_string_pixel_size[0],
-                       &percentage_string_pixel_size[1]);
+                       factor_string,
+                       sizeof(factor_string),
+                       &factor_string_pixel_size[0],
+                       &factor_string_pixel_size[1]);
 
   BLF_position(fontid,
-               main_line_rect.xmin - 24.0 * U.pixelsize - percentage_string_pixel_size[0] / 2,
-               (region->winy / 2) - percentage_string_pixel_size[1] / 2,
+               main_line_rect.xmin - 24.0 * U.pixelsize - factor_string_pixel_size[0] / 2,
+               (region->winy / 2) - factor_string_pixel_size[1] / 2,
                0.0f);
-  BLF_draw(fontid, percentage_string, sizeof(percentage_string));
+  BLF_draw(fontid, factor_string, sizeof(factor_string));
 }
 
 static void slider_update_factor(tSlider *slider, const wmEvent *event)
 {
-  const float factor_delta = (event->xy[0] - slider->last_cursor[0]) / SLIDE_PIXEL_DISTANCE;
+  /* Normalize so no matter the factor bounds, the mouse distance traveled from min to max is
+   * constant. */
+  const float slider_range = slider->factor_bounds[1] - slider->factor_bounds[0];
+  const float factor_delta = (event->xy[0] - slider->last_cursor[0]) /
+                             (SLIDE_PIXEL_DISTANCE / slider_range);
   /* Reduced factor delta in precision mode (shift held). */
   slider->raw_factor += slider->precision ? (factor_delta / 8) : factor_delta;
   slider->factor = slider->raw_factor;
@@ -380,7 +399,7 @@ static void slider_update_factor(tSlider *slider, const wmEvent *event)
   }
 }
 
-tSlider *ED_slider_create(struct bContext *C)
+tSlider *ED_slider_create(bContext *C)
 {
   tSlider *slider = MEM_callocN(sizeof(tSlider), "tSlider");
   slider->scene = CTX_data_scene(C);
@@ -394,6 +413,10 @@ tSlider *ED_slider_create(struct bContext *C)
 
   slider->factor_bounds[0] = 0;
   slider->factor_bounds[1] = 1;
+
+  slider->unit_string[0] = '%';
+
+  slider->slider_mode = SLIDER_MODE_PERCENT;
 
   /* Set initial factor. */
   slider->raw_factor = 0.5f;
@@ -416,7 +439,7 @@ tSlider *ED_slider_create(struct bContext *C)
   return slider;
 }
 
-void ED_slider_init(struct tSlider *slider, const wmEvent *event)
+void ED_slider_init(tSlider *slider, const wmEvent *event)
 {
   copy_v2fl_v2i(slider->last_cursor, event->xy);
 }
@@ -454,7 +477,7 @@ bool ED_slider_modal(tSlider *slider, const wmEvent *event)
   return event_handled;
 }
 
-void ED_slider_status_string_get(const struct tSlider *slider,
+void ED_slider_status_string_get(const tSlider *slider,
                                  char *status_string,
                                  const size_t size_of_status_string)
 {
@@ -502,7 +525,7 @@ void ED_slider_status_string_get(const struct tSlider *slider,
                increments_str);
 }
 
-void ED_slider_destroy(struct bContext *C, tSlider *slider)
+void ED_slider_destroy(bContext *C, tSlider *slider)
 {
   /* Remove draw callback. */
   if (slider->draw_handle) {
@@ -515,12 +538,12 @@ void ED_slider_destroy(struct bContext *C, tSlider *slider)
 
 /* Setters & Getters */
 
-float ED_slider_factor_get(struct tSlider *slider)
+float ED_slider_factor_get(tSlider *slider)
 {
   return slider->factor;
 }
 
-void ED_slider_factor_set(struct tSlider *slider, const float factor)
+void ED_slider_factor_set(tSlider *slider, const float factor)
 {
   slider->raw_factor = factor;
   slider->factor = factor;
@@ -529,28 +552,38 @@ void ED_slider_factor_set(struct tSlider *slider, const float factor)
   }
 }
 
-void ED_slider_allow_overshoot_set(struct tSlider *slider, const bool lower, const bool upper)
+void ED_slider_allow_overshoot_set(tSlider *slider, const bool lower, const bool upper)
 {
   slider->allow_overshoot_lower = lower;
   slider->allow_overshoot_upper = upper;
 }
 
-bool ED_slider_allow_increments_get(struct tSlider *slider)
+bool ED_slider_allow_increments_get(tSlider *slider)
 {
   return slider->allow_increments;
 }
 
-void ED_slider_allow_increments_set(struct tSlider *slider, const bool value)
+void ED_slider_allow_increments_set(tSlider *slider, const bool value)
 {
   slider->allow_increments = value;
 }
 
-void ED_slider_factor_bounds_set(struct tSlider *slider,
+void ED_slider_factor_bounds_set(tSlider *slider,
                                  float factor_bound_lower,
                                  float factor_bound_upper)
 {
   slider->factor_bounds[0] = factor_bound_lower;
   slider->factor_bounds[1] = factor_bound_upper;
+}
+
+void ED_slider_mode_set(tSlider *slider, SliderMode mode)
+{
+  slider->slider_mode = mode;
+}
+
+void ED_slider_unit_set(tSlider *slider, const char *unit)
+{
+  BLI_strncpy(slider->unit_string, unit, SLIDER_UNIT_STRING_SIZE);
 }
 
 /** \} */

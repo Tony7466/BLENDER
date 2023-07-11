@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spimage
@@ -231,7 +232,7 @@ static bool image_from_context_has_data_poll(bContext *C)
 
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
-  const bool has_buffer = (ibuf && (ibuf->rect || ibuf->rect_float));
+  const bool has_buffer = (ibuf && (ibuf->byte_buffer.data || ibuf->float_buffer.data));
   BKE_image_release_ibuf(ima, ibuf, lock);
   return has_buffer;
 }
@@ -254,7 +255,7 @@ static bool image_not_packed_poll(bContext *C)
   return (ima && BLI_listbase_is_empty(&ima->packedfiles));
 }
 
-static void image_view_all(struct SpaceImage *sima, struct ARegion *region, struct wmOperator *op)
+static void image_view_all(SpaceImage *sima, ARegion *region, wmOperator *op)
 {
   float aspx, aspy, zoomx, zoomy, w, h;
   int width, height;
@@ -536,7 +537,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
 
   if (U.viewzoom == USER_ZOOM_CONTINUE) {
     /* needs a timer to continue redrawing */
-    vpd->timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
+    vpd->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
     vpd->timer_lastdraw = PIL_check_seconds_timer();
   }
 
@@ -557,7 +558,7 @@ static void image_view_zoom_exit(bContext *C, wmOperator *op, bool cancel)
   }
 
   if (vpd->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), vpd->timer->win, vpd->timer);
+    WM_event_timer_remove(CTX_wm_manager(C), vpd->timer->win, vpd->timer);
   }
 
   if (vpd->own_cursor) {
@@ -1736,23 +1737,23 @@ static int image_replace_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceImage *sima = CTX_wm_space_image(C);
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
 
   if (!sima->image) {
     return OPERATOR_CANCELLED;
   }
 
-  RNA_string_get(op->ptr, "filepath", str);
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  /* we can't do much if the str is longer than FILE_MAX :/ */
-  STRNCPY(sima->image->filepath, str);
+  /* we can't do much if the filepath is longer than FILE_MAX :/ */
+  STRNCPY(sima->image->filepath, filepath);
 
   if (sima->image->source == IMA_SRC_GENERATED) {
     sima->image->source = IMA_SRC_FILE;
     BKE_image_signal(bmain, sima->image, &sima->iuser, IMA_SIGNAL_SRC_CHANGE);
   }
 
-  if (BLI_path_extension_check_array(str, imb_ext_movie)) {
+  if (BLI_path_extension_check_array(filepath, imb_ext_movie)) {
     sima->image->source = IMA_SRC_MOVIE;
   }
   else {
@@ -2257,7 +2258,7 @@ static int image_save_sequence_exec(bContext *C, wmOperator *op)
     ibuf = IMB_moviecacheIter_getImBuf(iter);
 
     if (ibuf != NULL && ibuf->userflags & IB_BITMAPDIRTY) {
-      if (0 == IMB_saveiff(ibuf, ibuf->filepath, IB_rect | IB_zbuf | IB_zbuffloat)) {
+      if (0 == IMB_saveiff(ibuf, ibuf->filepath, IB_rect)) {
         BKE_reportf(op->reports, RPT_ERROR, "Could not write image: %s", strerror(errno));
         break;
       }
@@ -2743,8 +2744,8 @@ static int image_flip_exec(bContext *C, wmOperator *op)
   const int size_x = ibuf->x;
   const int size_y = ibuf->y;
 
-  if (ibuf->rect_float) {
-    float *float_pixels = (float *)ibuf->rect_float;
+  if (ibuf->float_buffer.data) {
+    float *float_pixels = ibuf->float_buffer.data;
 
     float *orig_float_pixels = MEM_dupallocN(float_pixels);
     for (int x = 0; x < size_x; x++) {
@@ -2761,23 +2762,23 @@ static int image_flip_exec(bContext *C, wmOperator *op)
     }
     MEM_freeN(orig_float_pixels);
 
-    if (ibuf->rect) {
+    if (ibuf->byte_buffer.data) {
       IMB_rect_from_float(ibuf);
     }
   }
-  else if (ibuf->rect) {
-    char *char_pixels = (char *)ibuf->rect;
-    char *orig_char_pixels = MEM_dupallocN(char_pixels);
+  else if (ibuf->byte_buffer.data) {
+    uchar *char_pixels = ibuf->byte_buffer.data;
+    uchar *orig_char_pixels = MEM_dupallocN(char_pixels);
     for (int x = 0; x < size_x; x++) {
       const int source_pixel_x = use_flip_x ? size_x - x - 1 : x;
       for (int y = 0; y < size_y; y++) {
         const int source_pixel_y = use_flip_y ? size_y - y - 1 : y;
 
-        const char *source_pixel =
+        const uchar *source_pixel =
             &orig_char_pixels[4 * (source_pixel_x + source_pixel_y * size_x)];
-        char *target_pixel = &char_pixels[4 * (x + y * size_x)];
+        uchar *target_pixel = &char_pixels[4 * (x + y * size_x)];
 
-        copy_v4_v4_char(target_pixel, source_pixel);
+        copy_v4_v4_uchar(target_pixel, source_pixel);
       }
     }
     MEM_freeN(orig_char_pixels);
@@ -2981,9 +2982,9 @@ static int image_invert_exec(bContext *C, wmOperator *op)
   }
 
   /* TODO: make this into an IMB_invert_channels(ibuf,r,g,b,a) method!? */
-  if (ibuf->rect_float) {
+  if (ibuf->float_buffer.data) {
 
-    float *fp = (float *)ibuf->rect_float;
+    float *fp = ibuf->float_buffer.data;
     for (i = ((size_t)ibuf->x) * ibuf->y; i > 0; i--, fp += 4) {
       if (r) {
         fp[0] = 1.0f - fp[0];
@@ -2999,13 +3000,13 @@ static int image_invert_exec(bContext *C, wmOperator *op)
       }
     }
 
-    if (ibuf->rect) {
+    if (ibuf->byte_buffer.data) {
       IMB_rect_from_float(ibuf);
     }
   }
-  else if (ibuf->rect) {
+  else if (ibuf->byte_buffer.data) {
 
-    char *cp = (char *)ibuf->rect;
+    uchar *cp = ibuf->byte_buffer.data;
     for (i = ((size_t)ibuf->x) * ibuf->y; i > 0; i--, cp += 4) {
       if (r) {
         cp[0] = 255 - cp[0];
@@ -3179,7 +3180,7 @@ static bool image_pack_test(bContext *C, wmOperator *op)
 
 static int image_pack_exec(bContext *C, wmOperator *op)
 {
-  struct Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main(C);
   Image *ima = image_from_context(C);
 
   if (!image_pack_test(C, op)) {
@@ -3322,10 +3323,7 @@ void IMAGE_OT_unpack(wmOperatorType *ot)
 /** \name Sample Image Operator
  * \{ */
 
-bool ED_space_image_get_position(SpaceImage *sima,
-                                 struct ARegion *region,
-                                 int mval[2],
-                                 float fpos[2])
+bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2], float fpos[2])
 {
   void *lock;
   ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &lock, 0);
@@ -3371,15 +3369,15 @@ bool ED_space_image_color_sample(
     CLAMP(x, 0, ibuf->x - 1);
     CLAMP(y, 0, ibuf->y - 1);
 
-    if (ibuf->rect_float) {
-      fp = (ibuf->rect_float + (ibuf->channels) * (y * ibuf->x + x));
+    if (ibuf->float_buffer.data) {
+      fp = (ibuf->float_buffer.data + (ibuf->channels) * (y * ibuf->x + x));
       copy_v3_v3(r_col, fp);
       ret = true;
     }
-    else if (ibuf->rect) {
-      cp = (uchar *)(ibuf->rect + y * ibuf->x + x);
+    else if (ibuf->byte_buffer.data) {
+      cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
       rgb_uchar_to_float(r_col, cp);
-      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->rect_colorspace);
+      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->byte_buffer.colorspace);
       ret = true;
     }
   }
@@ -4024,7 +4022,7 @@ static void tile_fill_init(PointerRNA *ptr, Image *ima, ImageTile *tile)
     /* Initialize properties from reference tile. */
     RNA_int_set(ptr, "width", ibuf->x);
     RNA_int_set(ptr, "height", ibuf->y);
-    RNA_boolean_set(ptr, "float", ibuf->rect_float != NULL);
+    RNA_boolean_set(ptr, "float", ibuf->float_buffer.data != NULL);
     RNA_boolean_set(ptr, "alpha", ibuf->planes > 24);
 
     BKE_image_release_ibuf(ima, ibuf, NULL);

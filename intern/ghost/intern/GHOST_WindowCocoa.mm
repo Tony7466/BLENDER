@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_WindowCocoa.hh"
 #include "GHOST_ContextNone.hh"
@@ -828,8 +829,14 @@ GHOST_Context *GHOST_WindowCocoa::newDrawingContext(GHOST_TDrawingContextType ty
   }
 #endif
 
-  if (type == GHOST_kDrawingContextTypeOpenGL || type == GHOST_kDrawingContextTypeMetal) {
-
+  if (true
+#if defined(WITH_OPENGL_BACKEND)
+      || type == GHOST_kDrawingContextTypeOpenGL
+#elif defined(WITH_METAL_BACKEND)
+      || type == GHOST_kDrawingContextTypeMetal
+#endif
+  )
+  {
     GHOST_Context *context = new GHOST_ContextCGL(
         m_wantStereoVisual, m_metalView, m_metalLayer, m_openGLView, type);
 

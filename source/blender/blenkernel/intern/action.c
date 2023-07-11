@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -107,7 +108,7 @@ static void action_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src, 
   for (fcurve_src = action_src->curves.first; fcurve_src; fcurve_src = fcurve_src->next) {
     /* Duplicate F-Curve. */
 
-    /* XXX TODO: pass subdata flag?
+    /* XXX TODO: pass sub-data flag?
      * But surprisingly does not seem to be doing any ID reference-counting. */
     fcurve_dst = BKE_fcurve_copy(fcurve_src);
 
@@ -141,7 +142,7 @@ static void action_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src, 
 }
 
 /** Free (or release) any data used by this action (does not free the action itself). */
-static void action_free_data(struct ID *id)
+static void action_free_data(ID *id)
 {
   bAction *action = (bAction *)id;
   /* No animdata here. */
@@ -222,7 +223,7 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
 static void blend_read_lib_constraint_channels(BlendLibReader *reader, ID *id, ListBase *chanbase)
 {
   LISTBASE_FOREACH (bConstraintChannel *, chan, chanbase) {
-    BLO_read_id_address(reader, id->lib, &chan->ipo);
+    BLO_read_id_address(reader, id, &chan->ipo);
   }
 }
 
@@ -232,16 +233,16 @@ static void action_blend_read_lib(BlendLibReader *reader, ID *id)
 
   /* XXX deprecated - old animation system <<< */
   LISTBASE_FOREACH (bActionChannel *, chan, &act->chanbase) {
-    BLO_read_id_address(reader, act->id.lib, &chan->ipo);
+    BLO_read_id_address(reader, id, &chan->ipo);
     blend_read_lib_constraint_channels(reader, &act->id, &chan->constraintChannels);
   }
   /* >>> XXX deprecated - old animation system */
 
-  BKE_fcurve_blend_read_lib(reader, &act->id, &act->curves);
+  BKE_fcurve_blend_read_lib(reader, id, &act->curves);
 
   LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     if (marker->camera) {
-      BLO_read_id_address(reader, act->id.lib, &marker->camera);
+      BLO_read_id_address(reader, id, &marker->camera);
     }
   }
 }
@@ -285,7 +286,7 @@ static IDProperty *action_asset_type_property(const bAction *action)
   return property;
 }
 
-static void action_asset_pre_save(void *asset_ptr, struct AssetMetaData *asset_data)
+static void action_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
 {
   bAction *action = (bAction *)asset_ptr;
   BLI_assert(GS(action->id.name) == ID_AC);
@@ -718,12 +719,12 @@ bPoseChannel *BKE_pose_channel_active(Object *ob, const bool check_arm_layer)
   return NULL;
 }
 
-bPoseChannel *BKE_pose_channel_active_if_layer_visible(struct Object *ob)
+bPoseChannel *BKE_pose_channel_active_if_layer_visible(Object *ob)
 {
   return BKE_pose_channel_active(ob, true);
 }
 
-bPoseChannel *BKE_pose_channel_active_or_first_selected(struct Object *ob)
+bPoseChannel *BKE_pose_channel_active_or_first_selected(Object *ob)
 {
   bArmature *arm = (ob) ? ob->data : NULL;
 
@@ -1333,7 +1334,7 @@ void BKE_pose_remove_group_index(bPose *pose, const int index)
 
 /* ************** F-Curve Utilities for Actions ****************** */
 
-bool action_has_motion(const bAction *act)
+bool BKE_action_has_motion(const bAction *act)
 {
   FCurve *fcu;
 
@@ -1350,7 +1351,7 @@ bool action_has_motion(const bAction *act)
   return false;
 }
 
-bool BKE_action_has_single_frame(const struct bAction *act)
+bool BKE_action_has_single_frame(const bAction *act)
 {
   if (act == NULL || BLI_listbase_is_empty(&act->curves)) {
     return false;
@@ -1391,7 +1392,10 @@ bool BKE_action_has_single_frame(const struct bAction *act)
   return found_key;
 }
 
-void calc_action_range(const bAction *act, float *start, float *end, short incl_modifiers)
+void BKE_action_frame_range_calc(const bAction *act,
+                                 bool include_modifiers,
+                                 float *r_start,
+                                 float *r_end)
 {
   FCurve *fcu;
   float min = 999999999.0f, max = -999999999.0f;
@@ -1418,10 +1422,10 @@ void calc_action_range(const bAction *act, float *start, float *end, short incl_
         foundvert = 1;
       }
 
-      /* if incl_modifiers is enabled, need to consider modifiers too
+      /* if include_modifiers is enabled, need to consider modifiers too
        * - only really care about the last modifier
        */
-      if ((incl_modifiers) && (fcu->modifiers.last)) {
+      if ((include_modifiers) && (fcu->modifiers.last)) {
         FModifier *fcm = fcu->modifiers.last;
 
         /* only use the maximum sensible limits of the modifiers if they are more extreme */
@@ -1469,23 +1473,23 @@ void calc_action_range(const bAction *act, float *start, float *end, short incl_
       max += 1.0f;
     }
 
-    *start = min;
-    *end = max;
+    *r_start = max_ff(min, MINAFRAMEF);
+    *r_end = min_ff(max, MAXFRAMEF);
   }
   else {
-    *start = 0.0f;
-    *end = 1.0f;
+    *r_start = 0.0f;
+    *r_end = 1.0f;
   }
 }
 
-void BKE_action_get_frame_range(const struct bAction *act, float *r_start, float *r_end)
+void BKE_action_frame_range_get(const bAction *act, float *r_start, float *r_end)
 {
   if (act && (act->flag & ACT_FRAME_RANGE)) {
     *r_start = act->frame_start;
     *r_end = act->frame_end;
   }
   else {
-    calc_action_range(act, r_start, r_end, false);
+    BKE_action_frame_range_calc(act, r_start, r_end, false);
   }
 
   /* Ensure that action is at least 1 frame long (for NLA strips to have a valid length). */
@@ -1494,12 +1498,15 @@ void BKE_action_get_frame_range(const struct bAction *act, float *r_start, float
   }
 }
 
-bool BKE_action_is_cyclic(const struct bAction *act)
+bool BKE_action_is_cyclic(const bAction *act)
 {
   return act && (act->flag & ACT_FRAME_RANGE) && (act->flag & ACT_CYCLIC);
 }
 
-short action_get_item_transforms(bAction *act, Object *ob, bPoseChannel *pchan, ListBase *curves)
+eAction_TransformFlags BKE_action_get_item_transform_flags(bAction *act,
+                                                           Object *ob,
+                                                           bPoseChannel *pchan,
+                                                           ListBase *curves)
 {
   PointerRNA ptr;
   FCurve *fcu;
@@ -1809,7 +1816,7 @@ void BKE_pose_check_uuids_unique_and_report(const bPose *pose)
     return;
   }
 
-  struct GSet *used_uuids = BLI_gset_new(
+  GSet *used_uuids = BLI_gset_new(
       BLI_session_uuid_ghash_hash, BLI_session_uuid_ghash_compare, "sequencer used uuids");
 
   LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
@@ -1851,7 +1858,7 @@ void BKE_pose_blend_write(BlendWriter *writer, bPose *pose, bArmature *arm)
 
     animviz_motionpath_blend_write(writer, chan->mpath);
 
-    /* Prevent crashes with autosave,
+    /* Prevent crashes with auto-save,
      * when a bone duplicated in edit-mode has not yet been assigned to its pose-channel.
      * Also needed with memundo, in some cases we can store a step before pose has been
      * properly rebuilt from previous undo step. */
@@ -1952,9 +1959,9 @@ void BKE_pose_blend_read_lib(BlendLibReader *reader, Object *ob, bPose *pose)
 
     pchan->bone = BKE_armature_find_bone_name(arm, pchan->name);
 
-    IDP_BlendReadLib(reader, ob->id.lib, pchan->prop);
+    IDP_BlendReadLib(reader, &ob->id, pchan->prop);
 
-    BLO_read_id_address(reader, ob->id.lib, &pchan->custom);
+    BLO_read_id_address(reader, &ob->id, &pchan->custom);
     if (UNLIKELY(pchan->bone == NULL)) {
       rebuild = true;
     }

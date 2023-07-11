@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -104,11 +105,20 @@ typedef enum eWinOverrideFlag {
  * These values are typically set by command line arguments.
  */
 static struct WMInitStruct {
-  /* window geometry */
+  /**
+   * Window geometry:
+   * - Defaults to the main screen-size.
+   * - May be set by the `--window-geometry` argument,
+   *   which also forces these values to be used by setting #WIN_OVERRIDE_GEOM.
+   * - When #wmWindow::size_x is zero, these values are used as a fallback,
+   *   needed so the #BLENDER_STARTUP_FILE loads at the size of the users main-screen
+   *   instead of the size stored in the factory startup.
+   *   Otherwise the window geometry saved in the blend-file is used and these values are ignored.
+   */
   int size_x, size_y;
   int start_x, start_y;
 
-  int windowstate;
+  GHOST_TWindowState windowstate;
   eWinOverrideFlag override_flag;
 
   bool window_focus;
@@ -154,7 +164,7 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timer(const bContext *C);
+static bool wm_window_timers_process(const bContext *C);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
 void wm_get_screensize(int *r_width, int *r_height)
@@ -206,7 +216,7 @@ static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
     wm->winactive = NULL;
   }
 
-  /* We need this window's opengl context active to discard it. */
+  /* We need this window's GPU context active to discard it. */
   GHOST_ActivateWindowDrawingContext(win->ghostwin);
   GPU_context_active_set(win->gpuctx);
 
@@ -248,10 +258,10 @@ void wm_window_free(bContext *C, wmWindowManager *wm, wmWindow *win)
       continue;
     }
     if (wt->win == win) {
-      WM_event_remove_timer(wm, win, wt);
+      WM_event_timer_remove(wm, win, wt);
     }
   }
-  wm_window_delete_removed_timers(wm);
+  wm_window_timers_delete_removed(wm);
 
   if (win->eventstate) {
     MEM_freeN(win->eventstate);
@@ -660,17 +670,17 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                       bool is_dialog)
 {
   /* A new window is created when page-flip mode is required for a window. */
-  GHOST_GLSettings glSettings = {0};
+  GHOST_GPUSettings gpuSettings = {0};
   if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP) {
-    glSettings.flags |= GHOST_glStereoVisual;
+    gpuSettings.flags |= GHOST_gpuStereoVisual;
   }
 
   if (G.debug & G_DEBUG_GPU) {
-    glSettings.flags |= GHOST_glDebugContext;
+    gpuSettings.flags |= GHOST_gpuDebugContext;
   }
 
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
   int scr_w, scr_h;
   wm_get_desktopsize(&scr_w, &scr_h);
@@ -689,7 +699,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                                    win->sizey,
                                                    (GHOST_TWindowState)win->windowstate,
                                                    is_dialog,
-                                                   glSettings);
+                                                   gpuSettings);
 
   if (ghostwin) {
     win->gpuctx = GPU_context_create(ghostwin, NULL);
@@ -734,7 +744,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     /* Clear double buffer to avoids flickering of new windows on certain drivers. (See #97600) */
     GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
 
-    // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
     GPU_render_end();
   }
   else {
@@ -793,14 +802,14 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
   keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
   WM_event_add_keymap_handler(&win->modalhandlers, keymap);
 
-  /* add drop boxes */
+  /* Add drop boxes. */
   {
     ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
     WM_event_add_dropbox_handler(&win->handlers, lb);
   }
   wm_window_title(wm, win);
 
-  /* add topbar */
+  /* Add top-bar. */
   ED_screen_global_areas_refresh(win);
 }
 
@@ -1234,7 +1243,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
     /* Ghost now can call this function for life resizes,
      * but it should return if WM didn't initialize yet.
      * Can happen on file read (especially full size window). */
-    if ((wm->initialized & WM_WINDOW_IS_INIT) == 0) {
+    if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
       return true;
     }
     if (!ghostwin) {
@@ -1398,8 +1407,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
             WM_event_add_notifier(C, NC_WINDOW | NA_EDITED, NULL);
 
 #if defined(__APPLE__) || defined(WIN32)
-            /* OSX and Win32 don't return to the mainloop while resize */
-            wm_window_timer(C);
+            /* MACOS and WIN32 don't return to the main-loop while resize. */
+            wm_window_timers_process(C);
             wm_event_do_handlers(C);
             wm_event_do_notifiers(C);
             wm_draw_update(C);
@@ -1563,7 +1572,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
  * Timer handlers should check for delta to decide if they just update, or follow real time.
  * Timer handlers can also set duration to match frames passed
  */
-static bool wm_window_timer(const bContext *C)
+static bool wm_window_timers_process(const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -1618,12 +1627,12 @@ static bool wm_window_timer(const bContext *C)
   }
 
   /* Effectively delete all timers marked for removal. */
-  wm_window_delete_removed_timers(wm);
+  wm_window_timers_delete_removed(wm);
 
   return has_event;
 }
 
-void wm_window_process_events(const bContext *C)
+void wm_window_events_process(const bContext *C)
 {
   BLI_assert(BLI_thread_is_main());
   GPU_render_begin();
@@ -1633,7 +1642,7 @@ void wm_window_process_events(const bContext *C)
   if (has_event) {
     GHOST_DispatchEvents(g_system);
   }
-  has_event |= wm_window_timer(C);
+  has_event |= wm_window_timers_process(C);
 #ifdef WITH_XR_OPENXR
   /* XR events don't use the regular window queues. So here we don't only trigger
    * processing/dispatching but also handling. */
@@ -1677,7 +1686,7 @@ void wm_ghost_init(bContext *C)
     /* GHOST will have reported the back-ends that failed to load. */
     fprintf(stderr, "GHOST: unable to initialize, exiting!\n");
     /* This will leak memory, it's preferable to crashing. */
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 #if !(defined(WIN32) || defined(__APPLE__))
   g_system_backend_id = GHOST_SystemBackend();
@@ -1747,7 +1756,11 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
       return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_ANY:
     case GPU_BACKEND_OPENGL:
+#ifdef WITH_OPENGL_BACKEND
       return GHOST_kDrawingContextTypeOpenGL;
+#endif
+      BLI_assert_unreachable();
+      return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
       return GHOST_kDrawingContextTypeVulkan;
@@ -1757,10 +1770,9 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
     case GPU_BACKEND_METAL:
 #ifdef WITH_METAL_BACKEND
       return GHOST_kDrawingContextTypeMetal;
-#else
+#endif
       BLI_assert_unreachable();
       return GHOST_kDrawingContextTypeNone;
-#endif
   }
 
   /* Avoid control reaches end of non-void function compilation warning, which could be promoted
@@ -1769,9 +1781,7 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
   return GHOST_kDrawingContextTypeNone;
 }
 
-static uiBlock *block_create_opengl_usage_warning(struct bContext *C,
-                                                  struct ARegion *region,
-                                                  void *UNUSED(arg1))
+static uiBlock *block_create_opengl_usage_warning(bContext *C, ARegion *region, void *UNUSED(arg1))
 {
   uiBlock *block = UI_block_begin(C, region, "autorun_warning_popup", UI_EMBOSS);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
@@ -1888,7 +1898,7 @@ void WM_event_timer_sleep(wmWindowManager *wm,
   }
 }
 
-wmTimer *WM_event_add_timer(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
+wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
 {
   wmTimer *wt = MEM_callocN(sizeof(wmTimer), "window timer");
   BLI_assert(timestep >= 0.0f);
@@ -1905,7 +1915,7 @@ wmTimer *WM_event_add_timer(wmWindowManager *wm, wmWindow *win, int event_type, 
   return wt;
 }
 
-wmTimer *WM_event_add_timer_notifier(wmWindowManager *wm,
+wmTimer *WM_event_timer_add_notifier(wmWindowManager *wm,
                                      wmWindow *win,
                                      uint type,
                                      double timestep)
@@ -1927,7 +1937,7 @@ wmTimer *WM_event_add_timer_notifier(wmWindowManager *wm,
   return wt;
 }
 
-void wm_window_delete_removed_timers(wmWindowManager *wm)
+void wm_window_timers_delete_removed(wmWindowManager *wm)
 {
   LISTBASE_FOREACH_MUTABLE (wmTimer *, wt, &wm->timers) {
     if ((wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) == 0) {
@@ -1940,10 +1950,29 @@ void wm_window_delete_removed_timers(wmWindowManager *wm)
   }
 }
 
-void WM_event_remove_timer(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *timer)
+void WM_event_timer_free_data(wmTimer *timer)
+{
+  if (timer->customdata != NULL && (timer->flags & WM_TIMER_NO_FREE_CUSTOM_DATA) == 0) {
+    MEM_freeN(timer->customdata);
+    timer->customdata = NULL;
+  }
+}
+
+void WM_event_timers_free_all(wmWindowManager *wm)
+{
+  BLI_assert_msg(BLI_listbase_is_empty(&wm->windows),
+                 "This should only be called when freeing the window-manager");
+  wmTimer *timer;
+  while ((timer = BLI_pophead(&wm->timers))) {
+    WM_event_timer_free_data(timer);
+    MEM_freeN(timer);
+  }
+}
+
+void WM_event_timer_remove(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *timer)
 {
   /* Extra security check. */
-  if (BLI_findindex(&wm->timers, timer) < 0) {
+  if (BLI_findindex(&wm->timers, timer) == -1) {
     return;
   }
 
@@ -1963,18 +1992,15 @@ void WM_event_remove_timer(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *
     }
   }
 
-  /* Immediately free customdata if requested, so that invalid usages of that data after
-   * calling `WM_event_remove_timer` can be easily spotted (through ASAN errors e.g.). */
-  if (timer->customdata != NULL && (timer->flags & WM_TIMER_NO_FREE_CUSTOM_DATA) == 0) {
-    MEM_freeN(timer->customdata);
-    timer->customdata = NULL;
-  }
+  /* Immediately free `customdata` if requested, so that invalid usages of that data after
+   * calling `WM_event_timer_remove` can be easily spotted (through ASAN errors e.g.). */
+  WM_event_timer_free_data(timer);
 }
 
-void WM_event_remove_timer_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer)
+void WM_event_timer_remove_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer)
 {
   timer->customdata = NULL;
-  WM_event_remove_timer(wm, win, timer);
+  WM_event_timer_remove(wm, win, timer);
 }
 
 /** \} */
@@ -1983,7 +2009,10 @@ void WM_event_remove_timer_notifier(wmWindowManager *wm, wmWindow *win, wmTimer 
 /** \name Clipboard
  * \{ */
 
-static char *wm_clipboard_text_get_ex(bool selection, int *r_len, bool firstline)
+static char *wm_clipboard_text_get_ex(bool selection,
+                                      int *r_len,
+                                      const bool ensure_utf8,
+                                      const bool firstline)
 {
   if (G.background) {
     *r_len = 0;
@@ -1996,8 +2025,18 @@ static char *wm_clipboard_text_get_ex(bool selection, int *r_len, bool firstline
     return NULL;
   }
 
+  int buf_len = strlen(buf);
+
+  if (ensure_utf8) {
+    /* TODO(@ideasman42): It would be good if unexpected byte sequences could be interpreted
+     * instead of stripped - so mixed in characters (typically Latin1) aren't ignored.
+     * Check on how Python bytes this, see: #PyC_UnicodeFromBytesAndSize,
+     * there are clever ways to handle this although they increase the size of the buffer. */
+    buf_len -= BLI_str_utf8_invalid_strip(buf, buf_len);
+  }
+
   /* always convert from \r\n to \n */
-  char *newbuf = MEM_mallocN(strlen(buf) + 1, __func__);
+  char *newbuf = MEM_mallocN(buf_len + 1, __func__);
   char *p2 = newbuf;
 
   if (firstline) {
@@ -2028,14 +2067,14 @@ static char *wm_clipboard_text_get_ex(bool selection, int *r_len, bool firstline
   return newbuf;
 }
 
-char *WM_clipboard_text_get(bool selection, int *r_len)
+char *WM_clipboard_text_get(bool selection, bool ensure_utf8, int *r_len)
 {
-  return wm_clipboard_text_get_ex(selection, r_len, false);
+  return wm_clipboard_text_get_ex(selection, r_len, ensure_utf8, false);
 }
 
-char *WM_clipboard_text_get_firstline(bool selection, int *r_len)
+char *WM_clipboard_text_get_firstline(bool selection, bool ensure_utf8, int *r_len)
 {
-  return wm_clipboard_text_get_ex(selection, r_len, true);
+  return wm_clipboard_text_get_ex(selection, r_len, ensure_utf8, true);
 }
 
 void WM_clipboard_text_set(const char *buf, bool selection)
@@ -2093,7 +2132,7 @@ ImBuf *WM_clipboard_image_get(void)
 
   int width, height;
 
-  uint *rgba = GHOST_getClipboardImage(&width, &height);
+  uint8_t *rgba = (uint8_t *)GHOST_getClipboardImage(&width, &height);
   if (!rgba) {
     return NULL;
   }
@@ -2111,13 +2150,13 @@ bool WM_clipboard_image_set(ImBuf *ibuf)
   }
 
   bool free_byte_buffer = false;
-  if (ibuf->rect == NULL) {
+  if (ibuf->byte_buffer.data == NULL) {
     /* Add a byte buffer if it does not have one. */
     IMB_rect_from_float(ibuf);
     free_byte_buffer = true;
   }
 
-  bool success = (bool)GHOST_putClipboardImage(ibuf->rect, ibuf->x, ibuf->y);
+  bool success = (bool)GHOST_putClipboardImage((uint *)ibuf->byte_buffer.data, ibuf->x, ibuf->y);
 
   if (free_byte_buffer) {
     /* Remove the byte buffer if we added it. */
@@ -2230,7 +2269,7 @@ wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mv
   return win_other;
 }
 
-wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area)
+wmWindow *WM_window_find_by_area(wmWindowManager *wm, const ScrArea *area)
 {
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     bScreen *sc = WM_window_get_active_screen(win);
@@ -2612,10 +2651,10 @@ void wm_window_IME_end(wmWindow *win)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Direct OpenGL Context Management
+/** \name Direct GPU Context Management
  * \{ */
 
-void *WM_opengl_context_create(void)
+void *WM_system_gpu_context_create(void)
 {
   /* On Windows there is a problem creating contexts that share resources (almost any object,
    * including legacy display lists, but also textures) with a context which is current in another
@@ -2629,31 +2668,31 @@ void *WM_opengl_context_create(void)
   BLI_assert(BLI_thread_is_main());
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
 
-  GHOST_GLSettings glSettings = {0};
+  GHOST_GPUSettings gpuSettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
-  glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   if (G.debug & G_DEBUG_GPU) {
-    glSettings.flags |= GHOST_glDebugContext;
+    gpuSettings.flags |= GHOST_gpuDebugContext;
   }
-  return GHOST_CreateOpenGLContext(g_system, glSettings);
+  return GHOST_CreateGPUContext(g_system, gpuSettings);
 }
 
-void WM_opengl_context_dispose(void *context)
+void WM_system_gpu_context_dispose(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_DisposeOpenGLContext(g_system, (GHOST_ContextHandle)context);
+  GHOST_DisposeGPUContext(g_system, (GHOST_ContextHandle)context);
 }
 
-void WM_opengl_context_activate(void *context)
+void WM_system_gpu_context_activate(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_ActivateOpenGLContext((GHOST_ContextHandle)context);
+  GHOST_ActivateGPUContext((GHOST_ContextHandle)context);
 }
 
-void WM_opengl_context_release(void *context)
+void WM_system_gpu_context_release(void *context)
 {
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
-  GHOST_ReleaseOpenGLContext((GHOST_ContextHandle)context);
+  GHOST_ReleaseGPUContext((GHOST_ContextHandle)context);
 }
 
 void WM_ghost_show_message_box(const char *title,
