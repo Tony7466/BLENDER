@@ -5592,7 +5592,7 @@ static int clear_edited_exec(bContext *C, wmOperator * /*op*/)
   ParticleSystem *psys = psys_get_current(ob);
 
   if (psys->edit) {
-    if (psys->edit->edited || 1) {
+    if (/*psys->edit->edited ||*/ 1) {
       PE_free_ptcache_edit(psys->edit);
 
       psys->edit = nullptr;

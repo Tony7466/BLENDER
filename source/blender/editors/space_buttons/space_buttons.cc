@@ -394,7 +394,7 @@ static void property_search_all_tabs(const bContext *C,
   /* Use local copies of the area and duplicate the region as a mainly-paranoid protection
    * against changing any of the space / region data while running the search. */
   ScrArea *area_original = CTX_wm_area(C);
-  ScrArea area_copy = *area_original;
+  ScrArea area_copy = blender::dna::shallow_copy(*area_original);
   ARegion *region_copy = BKE_area_region_copy(area_copy.type, region_original);
   /* Set the region visible field. Otherwise some layout code thinks we're drawing in a popup.
    * This likely isn't necessary, but it's nice to emulate a "real" region where possible. */
@@ -402,7 +402,7 @@ static void property_search_all_tabs(const bContext *C,
   CTX_wm_area_set((bContext *)C, &area_copy);
   CTX_wm_region_set((bContext *)C, region_copy);
 
-  SpaceProperties sbuts_copy = *sbuts;
+  SpaceProperties sbuts_copy = blender::dna::shallow_copy(*sbuts);
   sbuts_copy.path = nullptr;
   sbuts_copy.texuser = nullptr;
   sbuts_copy.runtime = static_cast<SpaceProperties_Runtime *>(MEM_dupallocN(sbuts->runtime));
@@ -617,11 +617,10 @@ static void buttons_navigation_bar_region_message_subscribe(
   struct wmMsgBus *mbus = params->message_bus;
   ARegion *region = params->region;
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
-      .owner = region,
-      .user_data = region,
-      .notify = ED_region_do_msg_notify_tag_redraw,
-  };
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
+  msg_sub_value_region_tag_redraw.owner = region;
+  msg_sub_value_region_tag_redraw.user_data = region;
+  msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   WM_msg_subscribe_rna_anon_prop(mbus, Window, view_layer, &msg_sub_value_region_tag_redraw);
 }
