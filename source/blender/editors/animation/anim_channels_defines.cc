@@ -3509,6 +3509,7 @@ static int acf_gpd_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
 
     default:
       /* This shouldn't happen */
+      BLI_assert_msg(true, "Unexpected channel flag");
       return 0;
   }
 }
