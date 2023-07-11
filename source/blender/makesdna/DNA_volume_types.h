@@ -58,14 +58,14 @@ typedef struct VolumeRender {
   float clipping;
 } VolumeRender;
 
-typedef struct VolumeGeometry {
-  struct VolumeGeometryGrid *grid;
-
-#ifdef __cplusplus
-  blender::bke::VolumeGeometry &wrap();
-  const blender::bke::VolumeGeometry &wrap() const;
-#endif
-} VolumeGeometry;
+// typedef struct VolumeGeometry {
+//   struct VolumeGeometryGrid *grid;
+//
+// #ifdef __cplusplus
+//   blender::bke::VolumeGeometry &wrap();
+//   const blender::bke::VolumeGeometry &wrap() const;
+// #endif
+// } VolumeGeometry;
 
 typedef struct Volume {
   ID id;
@@ -111,7 +111,7 @@ typedef struct Volume {
   float velocity_scale;
 
   /* Grid geometry */
-  VolumeGeometry geometry;
+  // VolumeGeometry geometry;
 
   /* Draw Cache */
   void *batch_cache;

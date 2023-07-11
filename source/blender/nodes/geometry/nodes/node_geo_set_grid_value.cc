@@ -5,9 +5,12 @@
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_type_conversions.hh"
-#include "BKE_volume.h"
+#include "BKE_volume_attribute.hh"
+#include "BKE_volume_geometry.hh"
 
 #include "BLI_virtual_array.hh"
+
+#include "DNA_volume_types.h"
 
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
@@ -16,6 +19,9 @@
 
 #include "UI_interface.h"
 #include "UI_resources.h"
+
+/* XXX bad include, don't care, just make it work. */
+#include "intern/volume_grids.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -29,14 +35,16 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
       .translation_context(BLT_I18NCONTEXT_ID_ID)
       .supported_type(GeometryComponent::Type::Volume);
-  b.add_input<decl::Vector>(N_("Value"), "Value_Vector").supports_field();
-  b.add_input<decl::Float>(N_("Value"), "Value_Float").supports_field();
-  b.add_input<decl::Bool>(N_("Value"), "Value_Bool").supports_field();
-  b.add_input<decl::Int>(N_("Value"), "Value_Int").supports_field();
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Vector>(N_("Value"), "Value_Vector").field_on_all();
+  b.add_input<decl::Float>(N_("Value"), "Value_Float").field_on_all();
+  b.add_input<decl::Bool>(N_("Value"), "Value_Bool").field_on_all();
+  b.add_input<decl::Int>(N_("Value"), "Value_Int").field_on_all();
 
   b.add_output<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
       .translation_context(BLT_I18NCONTEXT_ID_ID)
-      .supported_type(GeometryComponent::Type::Volume);
+      .supported_type(GeometryComponent::Type::Volume)
+      .propagate_all();
 }
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
@@ -72,7 +80,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const eCustomDataType data_type = eCustomDataType(node->custom1);
 
   bNodeSocket *socket_geometry = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *socket_value_vector = socket_geometry->next;
+  bNodeSocket *socket_selection = socket_geometry->next;
+  bNodeSocket *socket_value_vector = socket_selection->next;
   bNodeSocket *socket_value_float = socket_value_vector->next;
   bNodeSocket *socket_value_boolean = socket_value_float->next;
   bNodeSocket *socket_value_int32 = socket_value_boolean->next;
@@ -211,13 +220,13 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
 {
   switch (data_type) {
     case CD_PROP_FLOAT:
-      return params.extract_input<Field<float>>("Grid_Float");
+      return params.extract_input<Field<float>>("Value_Float");
     case CD_PROP_FLOAT3:
-      return params.extract_input<Field<float3>>("Grid_Vector");
+      return params.extract_input<Field<float3>>("Value_Vector");
     case CD_PROP_BOOL:
-      return params.extract_input<Field<bool>>("Grid_Bool");
+      return params.extract_input<Field<bool>>("Value_Bool");
     case CD_PROP_INT32:
-      return params.extract_input<Field<int>>("Grid_Int");
+      return params.extract_input<Field<int>>("Value_Int");
     default:
       BLI_assert_unreachable();
   }
@@ -244,64 +253,88 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
   }
 }
 
+// static void set_computed_value(bke::VolumeGeometry &volume,
+//                                const GVArray &in_values,
+//                                const IndexMask &selection)
+//{
+//   MutableAttributeAccessor attributes = volume.attributes_for_write();
+//
+//   // const CPPType &cpptype = bke::volume_grid_type_to_cpp_type(volume.grid->type());
+//   // values.varray.type().to_static_type_tag([&](auto tag) {
+//   bke::volume_grid_to_static_type_tag(volume.grid->type(), [&](auto tag) {
+//     using GridType = typename decltype(tag)::type;
+//     using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
+//     using AttributeType = typename Converter::AttributeType;
+//
+//     AttributeWriter<AttributeType> writer = attributes.lookup_for_write("value");
+//     // VMutableArray<AttributeType> values_typed = writer.varray.typed<AttributeType>();
+//     //VArray<AttributeType> in_values_typed = in_values.typed<AttributeType>();
+//     //in_values.try_assign_GVMutableArray(writer.varray);
+//     //AttributeWriter<int> id_attribute = attributes.lookup_or_add_for_write<int>("id", domain);
+//     evaluator.add_with_destination(id_field, id_attribute.varray);
+//     evaluator.evaluate();
+//     id_attribute.finish();
+//   });
+//   writer.finish();
+// }
+
+static void set_value_in_volume(GeometrySet &geometry,
+                                const Field<bool> &selection_field,
+                                const GField &value_field)
+{
+  VolumeGridVector &grids = *geometry.get_volume_for_write()->runtime.grids;
+  if (grids.empty()) {
+    return;
+  }
+  openvdb::GridBase &grid = *grids.front().grid();
+
+  const eAttrDomain domain = ATTR_DOMAIN_POINT;
+  const int domain_size = grid.activeVoxelCount();
+  if (domain_size == 0) {
+    return;
+  }
+
+  bke::volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(grid), [&](auto tag) {
+    using GridType = typename decltype(tag)::type;
+    using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
+    using AttributeType = typename Converter::AttributeType;
+
+    MutableAttributeAccessor attributes = grids.attributes_for_write();
+    AttributeWriter<AttributeType> value_attribute = attributes.lookup_for_write<AttributeType>(
+        "value");
+    bke::GeometryFieldContext field_context{*geometry.get_component_for_read<VolumeComponent>(),
+                                            domain};
+    fn::FieldEvaluator evaluator{field_context, domain_size};
+
+    evaluator.set_selection(selection_field);
+    evaluator.add_with_destination(value_field, value_attribute.varray);
+    evaluator.evaluate();
+
+    // const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+    // if (selection.is_empty()) {
+    //   return;
+    // }
+
+    value_attribute.finish();
+  });
+}
+
 #endif /* WITH_OPENVDB */
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  // GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");
-  // if (!geometry_set.has_volume()) {
-  //   params.set_default_remaining_outputs();
-  //   return;
-  // }
-  // const NodeGeometrySampleVolume &storage = node_storage(params.node());
-  // const eCustomDataType output_field_type = eCustomDataType(storage.grid_type);
-  // auto interpolation_mode =
-  // GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
+  GeometrySet geometry = params.extract_input<GeometrySet>("Volume");
+  Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
-  // GField grid_field = get_input_attribute_field(params, output_field_type);
-  // const StringRefNull grid_name = get_grid_name(grid_field);
-  // if (grid_name == "") {
-  //   params.error_message_add(NodeWarningType::Error, TIP_("Grid name needs to be specified"));
-  //   params.set_default_remaining_outputs();
-  //   return;
-  // }
+  const eCustomDataType data_type = eCustomDataType(params.node().custom1);
+  GField value_field = get_input_attribute_field(params, data_type);
 
-  // const VolumeComponent *component = geometry_set.get_component_for_read<VolumeComponent>();
-  // const Volume *volume = component->get_for_read();
-  // BKE_volume_load(volume, DEG_get_bmain(params.depsgraph()));
-  // const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, grid_name.c_str());
-  // if (volume_grid == nullptr) {
-  //   params.set_default_remaining_outputs();
-  //   return;
-  // }
-  // openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
-  // const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
+  if (geometry.has_volume()) {
+    set_value_in_volume(geometry, selection_field, value_field);
+  }
 
-  ///* Check that the grid type is supported. */
-  // const CPPType *grid_cpp_type = vdb_grid_type_to_cpp_type(grid_type);
-  // if (grid_cpp_type == nullptr) {
-  //   params.set_default_remaining_outputs();
-  //   params.error_message_add(NodeWarningType::Error, TIP_("The grid type is unsupported"));
-  //   return;
-  // }
-
-  ///* Use to the Nearest Neighbor sampler for Bool grids (no interpolation). */
-  // if (grid_type == VOLUME_GRID_BOOLEAN &&
-  //     interpolation_mode != GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST)
-  //{
-  //   interpolation_mode = GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST;
-  // }
-
-  // Field<float3> position_field = params.extract_input<Field<float3>>("Position");
-  // auto fn = std::make_shared<SampleVolumeFunction>(std::move(base_grid), interpolation_mode);
-  // auto op = FieldOperation::Create(std::move(fn), {position_field});
-  // GField output_field = GField(std::move(op));
-
-  // output_field = bke::get_implicit_type_conversions().try_convert(
-  //     output_field, *bke::custom_data_type_to_cpp_type(output_field_type));
-
-  // output_attribute_field(params, std::move(output_field));
+  params.set_output("Volume", std::move(geometry));
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,

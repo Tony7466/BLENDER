@@ -82,164 +82,24 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 #ifdef WITH_OPENVDB
 
-/* -------------------------------------------------------------------- */
-/** \name Volume Attribute Virtual Array
- * \{ */
-
-template<typename _GridType>
-class VArrayImpl_For_VolumeGridValue final
-    : public VMutableArrayImpl<
-          typename bke::GridValueConverter<typename _GridType::ValueType>::AttributeType> {
- protected:
-  using GridType = typename std::remove_cv<_GridType>::type;
-  using TreeType = typename GridType::TreeType;
-  using ValueType = typename GridType::ValueType;
-  using Converter = bke::GridValueConverter<ValueType>;
-  using AttributeType = typename Converter::AttributeType;
-  using Accessor = typename GridType::Accessor;
-  using ConstAccessor = typename GridType::ConstAccessor;
-  using LeafNodeType = typename TreeType::LeafNodeType;
-  using LeafManager = openvdb::tree::LeafManager<TreeType>;
-  using LeafRange = typename LeafManager::LeafRange;
-
-  GridType &grid_;
-
- public:
-  VArrayImpl_For_VolumeGridValue(GridType &grid)
-      : VMutableArrayImpl<AttributeType>(grid.activeVoxelCount()), grid_(grid)
-  {
-  }
-
-  VArrayImpl_For_VolumeGridValue(const GridType &grid)
-      : VMutableArrayImpl<AttributeType>(grid.activeVoxelCount()),
-        grid_(const_cast<GridType &>(grid))
-  {
-  }
-
-  AttributeType get(const int64_t index) const override
-  {
-    /* XXX It is recommended that each thread gets its own accessor.
-     * https://www.openvdb.org/documentation/doxygen/overview.html#subsecValueAccessor
-     * This could significantly improve threading performance,
-     * but the VArray does not know about threaded access itself.
-     */
-    ConstAccessor accessor = grid_.getConstAccessor();
-    openvdb::Coord coord = LeafNodeType::offsetToLocalCoord(index);
-    return Converter::to_attribute(accessor.getValue(coord));
-  }
-
-  void set(const int64_t index, const AttributeType value) override
-  {
-    Accessor accessor = grid_.getAccessor();
-    openvdb::Coord coord = LeafNodeType::offsetToLocalCoord(index);
-    accessor.setValueOnly(coord, Converter::to_grid(value));
-  }
-
-  void set_all(Span<AttributeType> src) override
-  {
-    LeafManager leaf_mgr(*grid_.treePtr());
-
-    /* Offset indices for leaf node buffers. */
-    Array<size_t> prefix_sum(leaf_mgr.activeLeafVoxelCount());
-    size_t *prefix_sum_data = prefix_sum.data();
-    size_t prefix_sum_size = prefix_sum.size();
-    leaf_mgr.getPrefixSum(prefix_sum_data, prefix_sum_size);
-
-    const LeafRange leaf_range = leaf_mgr.leafRange();
-    tbb::parallel_for(leaf_range, [&](const LeafRange &range) {
-      for (auto leaf_iter = range.begin(); leaf_iter; ++leaf_iter) {
-        const size_t leaf_index = leaf_iter.pos();
-        const IndexRange leaf_buffer_range(prefix_sum[leaf_index], leaf_iter->onVoxelCount());
-
-        auto iter = leaf_iter->beginValueOn();
-        for (const int src_i : leaf_buffer_range) {
-          iter.setValue(Converter::to_grid(src[src_i]));
-        }
-      }
-    });
-  }
-
-  void materialize(const IndexMask &mask, AttributeType *dst) const override
-  {
-    LeafManager leaf_mgr(*grid_.treePtr());
-
-    /* Offset indices for leaf node buffers. */
-    Array<size_t> prefix_sum(leaf_mgr.activeLeafVoxelCount());
-    size_t *prefix_sum_data = prefix_sum.data();
-    size_t prefix_sum_size = prefix_sum.size();
-    leaf_mgr.getPrefixSum(prefix_sum_data, prefix_sum_size);
-
-    const LeafRange leaf_range = leaf_mgr.leafRange();
-    // int64_t segment_start = 0;
-    // int64_t leaf_start = 0;
-    // for (const int64_t segment_i : IndexRange(segments_num_)) {
-    //   const IndexMaskSegment segment = mask->segment(segment_i);
-    mask.foreach_range([&](IndexRange segment, const int64_t segment_pos) {
-      if (segment.is_empty()) {
-        return;
-      }
-      threading::parallel_for(segment, 4096, [&](const IndexRange range) {
-        const int leaf_begin = *std::lower_bound(
-            prefix_sum.begin(), prefix_sum.end(), segment.first());
-        const int leaf_end = *std::upper_bound(
-            prefix_sum.begin(), prefix_sum.end(), segment.last());
-        tbb::parallel_for(leaf_range, [&](const LeafRange &leaf_range) {
-          UNUSED_VARS(dst, leaf_begin, leaf_end, segment_pos, range, leaf_range);
-          // for (auto leaf_iter = range.begin(); leaf_iter; ++leaf_iter) {
-          //   const size_t leaf_index = leaf_iter.pos();
-          //   const IndexRange leaf_buffer_range(prefix_sum[leaf_index],
-          //   leaf_iter->onVoxelCount());
-
-          //  auto iter = leaf_iter->beginValueOn();
-          //  for (const int src_i : leaf_buffer_range) {
-          //    iter.setValue(Converter::to_grid(src[src_i]));
-          //  }
-          //}
-        });
-
-        // segment_start += segment.size();
-      });
-    });
-
-    // mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
-    //   if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-    //     dst[i] = weight->weight;
-    //   }
-    //   else {
-    //     dst[i] = 0.0f;
-    //   }
-    // });
-  }
-
-  // void materialize_to_uninitialized(const IndexMask &mask, AttributeType *dst) const override
-  // {
-  //   this->materialize(mask, dst);
-  // }
-};
-
-/** \} */
-
+#  if 0
 class VolumeGridValueFieldInput final : public bke::VolumeFieldInput {
- private:
-  const openvdb::GridBase &grid_;
-
  public:
-  VolumeGridValueFieldInput(const openvdb::GridBase &grid)
-      : bke::VolumeFieldInput(
-            bke::volume_grid_type_to_cpp_type(BKE_volume_grid_type_openvdb(grid)),
-            "Grid Value node"),
-        grid_(grid)
+  VolumeGridValueFieldInput()
+      : bke::VolumeFieldInput(CPPType::get<void>()
+            bke::volume_grid_type_to_cpp_type(BKE_volume_grid_type_openvdb()),
+            "Grid Value node")
   {
     category_ = Category::Generated;
   }
 
-  GVArray get_varray_for_context(const bke::VolumeGeometry & /*volume*/,
+  GVArray get_varray_for_context(const Volume *volume,
                                  const eAttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
     switch (domain) {
       case ATTR_DOMAIN_POINT:
-        return bke::get_volume_varray<VArrayImpl_For_VolumeGridValue>(grid_);
+        return bke::get_volume_varray<bke::VArrayImpl_For_VolumeGridValue>(volume->);
       default:
         BLI_assert_unreachable();
         return {};
@@ -256,6 +116,7 @@ class VolumeGridValueFieldInput final : public bke::VolumeFieldInput {
     return dynamic_cast<const VolumeGridValueFieldInput *>(&other) != nullptr;
   }
 };
+#  endif
 
 static const StringRefNull get_grid_name(GField &field)
 {

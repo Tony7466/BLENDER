@@ -10,6 +10,9 @@
 
 #include "attribute_access_volume.hh"
 
+#include "intern/volume_grids.hh"
+
+#if 0
 /* -------------------------------------------------------------------- */
 /** \name Volume Geometry Grid
  * \{ */
@@ -58,14 +61,15 @@ VolumeGridType VolumeGeometryGrid::type() const
 
 int64_t VolumeGeometryGrid::active_voxel_num() const
 {
-#ifdef WITH_OPENVDB
+#  ifdef WITH_OPENVDB
   return grid_->activeVoxelCount();
-#else
+#  else
   return 0;
-#endif
+#  endif
 }
 
 /** \} */
+#endif
 
 #ifdef WITH_OPENVDB
 
@@ -75,62 +79,60 @@ namespace blender::bke {
 /** \name Attribute Provider Declaration
  * \{ */
 
-// GAttributeReader BuiltinVolumeAttributeProvider::try_get_for_read(const void *owner) const
-//{
-//   const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
-//   GVArray varray = blender::bke::get_volume_varray(*grid.grid_);
-//   return {varray, domain_, nullptr};
-// }
-//
-// GAttributeWriter BuiltinVolumeAttributeProvider::try_get_for_write(void *owner) const
-//{
-//   VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
-//   MakeGridVMutableArrayOp op{*grid.grid_};
-//   grid.grid_type_operation(op);
-//   return {op.result_, domain_, nullptr};
-// }
-//
-// bool BuiltinVolumeAttributeProvider::try_delete(void * /*owner*/) const
-//{
-//   if (deletable_ != Deletable) {
-//     return false;
-//   }
-//   /* Not supported. */
-//   //  VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
-//   //  if (grid.remove_attribute(???)) {
-//   //    if (update_on_change_ != nullptr) {
-//   //      update_on_change_(owner);
-//   //    }
-//   //  }
-//   //  return true;
-//   return false;
-// }
-//
-// bool BuiltinVolumeAttributeProvider::try_create(void * /*owner*/,
-//                                                 const AttributeInit & /*initializer*/) const
-//{
-//   if (createable_ != Creatable) {
-//     return false;
-//   }
-//   /* Not supported. */
-//   //  VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
-//   //  if (grid.add_attribute(???)) {
-//   //    if (update_on_change_ != nullptr) {
-//   //      update_on_change_(owner);
-//   //    }
-//   //    return true;
-//   //  }
-//   return false;
-// }
-//
-// bool BuiltinVolumeAttributeProvider::exists(const void * /*owner*/) const
-//{
-//   /* Not supported. */
-//   return false;
-//   //  const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
-//   //  return grid->has_attribute(???);
-// }
-//
+GAttributeReader VolumeGridValueAttributeProvider::try_get_for_read(const void *owner) const
+{
+  // const VolumeGeometryGrid &grid = grid_access_.get_const_grid(owner);
+  const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
+  GVArray varray = get_volume_varray<VArrayImpl_For_VolumeGridValue>(grids);
+  return {varray, domain_, nullptr};
+}
+
+GAttributeWriter VolumeGridValueAttributeProvider::try_get_for_write(void *owner) const
+{
+  // VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
+  VolumeGridVector &grids = grid_access_.get_grids(owner);
+  GVMutableArray varray = get_volume_vmutablearray<VArrayImpl_For_VolumeGridValue>(grids);
+  return {varray, domain_, nullptr};
+}
+
+bool VolumeGridValueAttributeProvider::try_delete(void * /*owner*/) const
+{
+  if (deletable_ != Deletable) {
+    return false;
+  }
+  /* Not supported. */
+  //  VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
+  //  if (grid.remove_attribute(???)) {
+  //    if (update_on_change_ != nullptr) {
+  //      update_on_change_(owner);
+  //    }
+  //  }
+  //  return true;
+  return false;
+}
+
+bool VolumeGridValueAttributeProvider::try_create(void * /*owner*/,
+                                                  const AttributeInit & /*initializer*/) const
+{
+  if (createable_ != Creatable) {
+    return false;
+  }
+  /* Not supported. */
+  //  VolumeGeometryGrid &grid = grid_access_.get_grid(owner);
+  //  if (grid.add_attribute(???)) {
+  //    if (update_on_change_ != nullptr) {
+  //      update_on_change_(owner);
+  //    }
+  //    return true;
+  //  }
+  return false;
+}
+
+bool VolumeGridValueAttributeProvider::exists(const void * /*owner*/) const
+{
+  return true;
+}
+
 // GAttributeReader VolumeAttributeProvider::try_get_for_read(
 //     const void *owner, const AttributeIDRef & /*attribute_id*/) const
 //{

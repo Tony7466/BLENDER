@@ -79,7 +79,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
     case GeometryComponent::Type::Volume: {
       const VolumeComponent &volume_component = static_cast<const VolumeComponent &>(component);
       const Volume *volume = volume_component.get_for_read();
-      geometry_ = volume ? &volume->geometry.wrap() : nullptr;
+      geometry_ = volume ? volume->runtime.grids : nullptr;
       break;
     }
     case GeometryComponent::Type::Edit:
@@ -104,6 +104,10 @@ GeometryFieldContext::GeometryFieldContext(const Instances &instances)
     : geometry_(&instances),
       type_(GeometryComponent::Type::Instance),
       domain_(ATTR_DOMAIN_INSTANCE)
+{
+}
+GeometryFieldContext::GeometryFieldContext(const VolumeGridVector &grids)
+    : geometry_(&grids), type_(GeometryComponent::Type::Volume), domain_(ATTR_DOMAIN_POINT)
 {
 }
 
@@ -148,10 +152,10 @@ const Instances *GeometryFieldContext::instances() const
              nullptr;
 }
 
-const VolumeGeometry *GeometryFieldContext::volume() const
+const VolumeGridVector *GeometryFieldContext::grids() const
 {
   return this->type() == GeometryComponent::Type::Volume ?
-             static_cast<const VolumeGeometry *>(geometry_) :
+             static_cast<const VolumeGridVector *>(geometry_) :
              nullptr;
 }
 
@@ -282,15 +286,14 @@ GVArray VolumeFieldInput::get_varray_for_context(const fn::FieldContext &context
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
   {
-    if (const VolumeGeometry *volume = geometry_context->volume()) {
-      return this->get_varray_for_context(*volume, geometry_context->domain() , mask);
+    if (const VolumeGridVector *grids = geometry_context->grids()) {
+      return this->get_varray_for_context(*grids, geometry_context->domain(), mask);
     }
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
           &context))
   {
-    return this->get_varray_for_context(
-        volume_context->volume(), volume_context->domain(), mask);
+    return this->get_varray_for_context(volume_context->grids(), volume_context->domain(), mask);
   }
   return {};
 }

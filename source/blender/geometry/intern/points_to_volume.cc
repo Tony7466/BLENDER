@@ -5,6 +5,9 @@
 #include "BLI_math_matrix.hh"
 
 #include "BKE_volume.h"
+#include "BKE_volume_geometry.hh"
+
+#include "DNA_volume_types.h"
 
 #include "GEO_points_to_volume.hh"
 
@@ -94,5 +97,6 @@ VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
 
   return BKE_volume_grid_add_vdb(*volume, name, std::move(new_grid));
 }
+
 }  // namespace blender::geometry
 #endif

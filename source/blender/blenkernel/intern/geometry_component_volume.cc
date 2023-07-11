@@ -2,9 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-// !!! DEBUGGING !!!
-// #define WITH_OPENVDB
-
 #include <cstdint>
 
 #include "DNA_volume_types.h"
@@ -16,6 +13,8 @@
 #include "BKE_volume_geometry.hh"
 
 #include "attribute_access_volume.hh"
+
+#include "intern/volume_grids.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/Grid.h>
@@ -113,95 +112,15 @@ void VolumeComponent::ensure_owns_direct_data()
 
 #ifdef WITH_OPENVDB
 
-/* -------------------------------------------------------------------- */
-/** \name Attribute Access Helper Functions
- * \{ */
-
-// static void tag_component_radii_changed(void *owner)
-//{
-//   CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
-//   curves.tag_radii_changed();
-// }
-
-/** \} */
-
-/**
- * In this function all the attribute providers for a volume component are created.
- * Most data in this function is statically allocated, because it does not change over time.
- */
-static ComponentAttributeProviders create_attribute_providers_for_volume()
-{
-  static VolumeGridAccessInfo grid_access = {
-      [](void *owner) -> VolumeGeometryGrid & {
-        return *static_cast<VolumeGeometryGrid *>(owner);
-      },
-      [](const void *owner) -> const VolumeGeometryGrid & {
-        return *static_cast<const VolumeGeometryGrid *>(owner);
-      },
-  };
-
-  static auto update_on_change = [](void * /*owner*/) {};
-
-  // static BuiltinVolumeAttributeProvider position("position",
-  //                                                ATTR_DOMAIN_POINT,
-  //                                                CD_PROP_FLOAT3,
-  //                                                BuiltinAttributeProvider::NonCreatable,
-  //                                                BuiltinAttributeProvider::NonDeletable,
-  //                                                grid_access,
-  //                                                update_on_change);
-
-  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_POINT, grid_access);
-
-  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
-  return ComponentAttributeProviders({}, {});
-}
-
-static AttributeAccessorFunctions get_volume_accessor_functions()
-{
-  static const ComponentAttributeProviders providers = create_attribute_providers_for_volume();
-  AttributeAccessorFunctions fn =
-      attribute_accessor_functions::accessor_functions_for_providers<providers>();
-  /* Set domain callbacks that are not defined yet. */
-  fn.domain_size = [](const void *owner, const eAttrDomain domain) {
-    if (owner == nullptr) {
-      return 0;
-    }
-    const VolumeGeometry &geometry = *static_cast<const VolumeGeometry *>(owner);
-    return geometry.domain_size(domain);
-  };
-  fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
-    return ELEM(domain, ATTR_DOMAIN_POINT);
-  };
-  fn.adapt_domain = [](const void *owner,
-                       const GVArray &varray,
-                       const eAttrDomain from_domain,
-                       const eAttrDomain to_domain) -> GVArray {
-    if (owner == nullptr) {
-      return {};
-    }
-    const VolumeGeometry &geometry = *static_cast<const VolumeGeometry *>(owner);
-    return geometry.adapt_domain(varray, from_domain, to_domain);
-  };
-  return fn;
-}
-
-static const AttributeAccessorFunctions &get_volume_accessor_functions_ref()
-{
-  static const AttributeAccessorFunctions fn = get_volume_accessor_functions();
-  return fn;
-}
-
 std::optional<AttributeAccessor> VolumeComponent::attributes() const
 {
-  return AttributeAccessor(volume_ ? &volume_->geometry.grid : nullptr,
-                           blender::bke::get_volume_accessor_functions_ref());
+  return volume_ ? volume_->runtime.grids->attributes() : std::optional<AttributeAccessor>{};
 }
 
 std::optional<MutableAttributeAccessor> VolumeComponent::attributes_for_write()
 {
-  Volume *volume = this->get_for_write();
-  return MutableAttributeAccessor(volume ? &volume->geometry.grid : nullptr,
-                                  blender::bke::get_volume_accessor_functions_ref());
+  return volume_ ? volume_->runtime.grids->attributes_for_write() :
+                   std::optional<MutableAttributeAccessor>{};
 }
 
 #else

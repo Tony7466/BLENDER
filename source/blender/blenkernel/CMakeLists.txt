@@ -314,6 +314,7 @@ set(SRC
   intern/volume.cc
   intern/volume_attribute.cc
   intern/volume_geometry.cc
+  intern/volume_grids.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
@@ -534,6 +535,7 @@ set(SRC
   intern/pbvh_uv_islands.hh
   intern/subdiv_converter.h
   intern/subdiv_inline.h
+  intern/volume_grids.hh
 )
 
 set(LIB

@@ -16,12 +16,13 @@
 
 struct Mesh;
 struct PointCloud;
+struct VolumeGridVector;
 
 namespace blender::bke {
 
 class CurvesGeometry;
 class GeometryFieldInput;
-class VolumeGeometry;
+// class VolumeGeometry;
 
 class MeshFieldContext : public fn::FieldContext {
  private:
@@ -88,18 +89,18 @@ class InstancesFieldContext : public fn::FieldContext {
 
 class VolumeFieldContext : public fn::FieldContext {
  private:
-  const VolumeGeometry &volume_;
+  const VolumeGridVector &grids_;
   const eAttrDomain domain_;
 
  public:
-  VolumeFieldContext(const VolumeGeometry &volume, const eAttrDomain domain)
-      : volume_(volume), domain_(domain)
+  VolumeFieldContext(const VolumeGridVector &grids, const eAttrDomain domain)
+      : grids_(grids), domain_(domain)
   {
   }
 
-  const VolumeGeometry &volume() const
+  const VolumeGridVector &grids() const
   {
-    return volume_;
+    return grids_;
   }
 
   eAttrDomain domain() const
@@ -149,14 +150,14 @@ class GeometryFieldContext : public fn::FieldContext {
   const CurvesGeometry *curves() const;
   const PointCloud *pointcloud() const;
   const Instances *instances() const;
-  const VolumeGeometry *volume() const;
+  const VolumeGridVector *grids() const;
 
  private:
   GeometryFieldContext(const Mesh &mesh, eAttrDomain domain);
   GeometryFieldContext(const CurvesGeometry &curves, eAttrDomain domain);
   GeometryFieldContext(const PointCloud &points);
   GeometryFieldContext(const Instances &instances);
-  GeometryFieldContext(const VolumeGeometry &volume);
+  GeometryFieldContext(const VolumeGridVector &grids);
 };
 
 class GeometryFieldInput : public fn::FieldInput {
@@ -220,7 +221,7 @@ class VolumeFieldInput : public fn::FieldInput {
   GVArray get_varray_for_context(const fn::FieldContext &context,
                                  const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const VolumeGeometry &instances,
+  virtual GVArray get_varray_for_context(const VolumeGridVector &grids,
                                          eAttrDomain domain,
                                          const IndexMask &mask) const = 0;
 };

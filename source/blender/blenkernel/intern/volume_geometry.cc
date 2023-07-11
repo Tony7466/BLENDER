@@ -6,11 +6,13 @@
  * \ingroup bke
  */
 
-#include "DNA_volume_types.h"
+#if 0
 
-#include "BKE_volume_geometry.hh"
+#  include "DNA_volume_types.h"
 
-#include "attribute_access_volume.hh"
+#  include "BKE_volume_geometry.hh"
+
+#  include "attribute_access_volume.hh"
 
 namespace blender::bke {
 
@@ -78,6 +80,95 @@ int VolumeGeometry::domain_size(eAttrDomain domain) const
   }
 }
 
+#  ifdef WITH_OPENVDB
+void VolumeGeometry::set_grid(const openvdb::GridBase::Ptr &grid_ptr)
+{
+  if (grid == nullptr) {
+    grid = MEM_new<VolumeGeometryGrid>(__func__);
+  }
+  grid->grid_ = grid_ptr;
+}
+#  endif
+
+/**
+ * In this function all the attribute providers for a volume component are created.
+ * Most data in this function is statically allocated, because it does not change over time.
+ */
+static ComponentAttributeProviders create_attribute_providers_for_volume()
+{
+  static VolumeGridAccessInfo grid_access = {
+      [](void *owner) -> VolumeGeometryGrid & {
+        return *static_cast<VolumeGeometryGrid *>(owner);
+      },
+      [](const void *owner) -> const VolumeGeometryGrid & {
+        return *static_cast<const VolumeGeometryGrid *>(owner);
+      },
+  };
+
+  static auto update_on_change = [](void * /*owner*/) {};
+
+  // static BuiltinVolumeAttributeProvider position("position",
+  //                                                ATTR_DOMAIN_POINT,
+  //                                                CD_PROP_FLOAT3,
+  //                                                BuiltinAttributeProvider::NonCreatable,
+  //                                                BuiltinAttributeProvider::NonDeletable,
+  //                                                grid_access,
+  //                                                update_on_change);
+
+  static VolumeGridValueAttributeProvider value(
+      "value", ATTR_DOMAIN_POINT, grid_access, update_on_change);
+
+  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_POINT, grid_access);
+
+  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
+  return ComponentAttributeProviders({&value}, {});
+}
+
+static AttributeAccessorFunctions get_volume_accessor_functions()
+{
+  static const ComponentAttributeProviders providers = create_attribute_providers_for_volume();
+  AttributeAccessorFunctions fn =
+      attribute_accessor_functions::accessor_functions_for_providers<providers>();
+  /* Set domain callbacks that are not defined yet. */
+  fn.domain_size = [](const void *owner, const eAttrDomain domain) {
+    if (owner == nullptr) {
+      return 0;
+    }
+    const VolumeGeometry &geometry = *static_cast<const VolumeGeometry *>(owner);
+    return geometry.domain_size(domain);
+  };
+  fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
+    return ELEM(domain, ATTR_DOMAIN_POINT);
+  };
+  fn.adapt_domain = [](const void *owner,
+                       const GVArray &varray,
+                       const eAttrDomain from_domain,
+                       const eAttrDomain to_domain) -> GVArray {
+    if (owner == nullptr) {
+      return {};
+    }
+    const VolumeGeometry &geometry = *static_cast<const VolumeGeometry *>(owner);
+    return geometry.adapt_domain(varray, from_domain, to_domain);
+  };
+  return fn;
+}
+
+static const AttributeAccessorFunctions &get_volume_accessor_functions_ref()
+{
+  static const AttributeAccessorFunctions fn = get_volume_accessor_functions();
+  return fn;
+}
+
+AttributeAccessor VolumeGeometry::attributes() const
+{
+  return AttributeAccessor(grid, get_volume_accessor_functions_ref());
+}
+
+MutableAttributeAccessor VolumeGeometry::attributes_for_write()
+{
+  return MutableAttributeAccessor(grid, get_volume_accessor_functions_ref());
+}
+
 GVArray VolumeGeometry::adapt_domain(const GVArray &varray, eAttrDomain from, eAttrDomain to) const
 {
   if (from == to) {
@@ -96,3 +187,5 @@ void VolumeGeometry::blend_write(BlendWriter & /*writer*/, ID & /*id*/) {}
 /** \} */
 
 }  // namespace blender::bke
+
+#endif

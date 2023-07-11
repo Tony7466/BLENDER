@@ -13,20 +13,6 @@
 #  include <openvdb/openvdb.h>
 #endif
 
-struct VolumeGeometryGrid {
- public:
-  VolumeGeometryGrid();
-  ~VolumeGeometryGrid();
-
-  VolumeGridType type() const;
-
-  int64_t active_voxel_num() const;
-
-#ifdef WITH_OPENVDB
-  openvdb::GridBase::Ptr grid_;
-#endif
-};
-
 namespace blender::bke {
 
 /**
@@ -34,41 +20,44 @@ namespace blender::bke {
  * components in a generic way.
  */
 struct VolumeGridAccessInfo {
-  using GridGetter = VolumeGeometryGrid &(*)(void *owner);
-  using ConstGridGetter = const VolumeGeometryGrid &(*)(const void *owner);
+  // using GridGetter = VolumeGeometryGrid &(*)(void *owner);
+  // using ConstGridGetter = const VolumeGeometryGrid &(*)(const void *owner);
+  using GridGetter = VolumeGridVector &(*)(void *owner);
+  using ConstGridGetter = const VolumeGridVector &(*)(const void *owner);
 
-  GridGetter get_grid;
-  ConstGridGetter get_const_grid;
+  GridGetter get_grids;
+  ConstGridGetter get_const_grids;
 };
-//
-// class BuiltinVolumeAttributeProvider final : public BuiltinAttributeProvider {
-//  using UpdateOnChange = void (*)(void *owner);
-//  const VolumeGridAccessInfo grid_access_;
-//  const UpdateOnChange update_on_change_;
-//
-// public:
-//  BuiltinVolumeAttributeProvider(std::string attribute_name,
-//                                 const eAttrDomain domain,
-//                                 const eCustomDataType attribute_type,
-//                                 const CreatableEnum creatable,
-//                                 const DeletableEnum deletable,
-//                                 const VolumeGridAccessInfo grid_access,
-//                                 const UpdateOnChange update_on_write,
-//                                 const AttributeValidator validator = {})
-//      : BuiltinAttributeProvider(
-//            std::move(attribute_name), domain, attribute_type, creatable, deletable, validator),
-//        grid_access_(grid_access),
-//        update_on_change_(update_on_write)
-//  {
-//  }
-//
-//  GAttributeReader try_get_for_read(const void *owner) const final;
-//  GAttributeWriter try_get_for_write(void *owner) const final;
-//  bool try_delete(void *owner) const final;
-//  bool try_create(void *owner, const AttributeInit &initializer) const final;
-//  bool exists(const void *owner) const final;
-//};
-//
+
+class VolumeGridValueAttributeProvider final : public BuiltinAttributeProvider {
+  using UpdateOnChange = void (*)(void *owner);
+  const VolumeGridAccessInfo grid_access_;
+  const UpdateOnChange update_on_change_;
+
+ public:
+  VolumeGridValueAttributeProvider(std::string attribute_name,
+                                   const eAttrDomain domain,
+                                   const VolumeGridAccessInfo grid_access,
+                                   const UpdateOnChange update_on_write,
+                                   const AttributeValidator validator = {})
+      : BuiltinAttributeProvider(std::move(attribute_name),
+                                 domain,
+                                 CD_AUTO_FROM_NAME,
+                                 NonCreatable,
+                                 NonDeletable,
+                                 validator),
+        grid_access_(grid_access),
+        update_on_change_(update_on_write)
+  {
+  }
+
+  GAttributeReader try_get_for_read(const void *owner) const final;
+  GAttributeWriter try_get_for_write(void *owner) const final;
+  bool try_delete(void *owner) const final;
+  bool try_create(void *owner, const AttributeInit &initializer) const final;
+  bool exists(const void *owner) const final;
+};
+
 ///**
 // * An attribute provider for custom volume grids.
 // */
