@@ -3639,7 +3639,7 @@ static void widget_progress_determinate_ring(uiButProgressbar *but,
                                              rcti *rect,
                                              const float ring_width)
 {
-  float outer_rad = (rect->xmax - rect->xmin) / 2.0f;
+  float outer_rad = (rect->ymax - rect->ymin) / 2.0f;
   float inner_rad = outer_rad * ring_width;
   float x = rect->xmin + outer_rad;
   float y = rect->ymin + outer_rad;
@@ -3651,6 +3651,10 @@ static void widget_progress_determinate_ring(uiButProgressbar *but,
   immUniformColor4ubv(wcol->item);
   imm_draw_disk_partial_fill_2d(pos, x, y, inner_rad, outer_rad, 48, start, end);
   immUnbindProgram();
+
+  if (but->drawstr && but->drawstr[0]) {
+    rect->xmin += UI_UNIT_X;
+  }
 }
 
 static void widget_progressbar(uiBut *but,

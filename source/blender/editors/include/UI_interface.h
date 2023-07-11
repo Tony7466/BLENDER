@@ -2888,7 +2888,10 @@ void uiItemS_ex(uiLayout *layout, float factor);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
 
-void uiItemProgressBar(uiLayout *layout, float progress, int progress_type);
+void uiItemProgressIndicator(uiLayout *layout,
+                             const char *text,
+                             float progress,
+                             int progress_type);
 
 /* popover */
 void uiItemPopoverPanel_ptr(

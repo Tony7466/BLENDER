@@ -15,9 +15,9 @@ class CONSOLE_HT_header(Header):
 
         CONSOLE_MT_editor_menus.draw_collapsible(context, layout)
 
-        layout.progress_bar(progress = 0.5)
-        layout.progress_bar(progress = 0.8, progress_type = 'RING')
-        layout.progress_bar(progress = 0.7, progress_type = 'PIE')
+        layout.progress_indicator(progress = 0.5, text="50%")
+        layout.progress_indicator(progress = 0.8, progress_type = 'RING')
+        layout.progress_indicator(progress = 0.7, progress_type = 'PIE', text = "Downloading...")
 
 
 class CONSOLE_MT_editor_menus(Menu):

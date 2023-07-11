@@ -3475,16 +3475,23 @@ void uiItemS(uiLayout *layout)
   uiItemS_ex(layout, 1.0f);
 }
 
-void uiItemProgressBar(uiLayout *layout, float progress, int progress_type)
+void uiItemProgressIndicator(uiLayout *layout, const char *text, float progress, int progress_type)
 {
   uiBlock *block = layout->root->block;
-  const short width = short(UI_UNIT_X *
-                            ((progress_type == UI_PROGRESS_DETERMINATE_LINEAR) ? 5.0f : 1.0f));
+  short width = UI_UNIT_X;
+
+  if (progress_type == UI_PROGRESS_DETERMINATE_LINEAR) {
+    width = UI_UNIT_X * 5.0f;
+  }
+  else if (text && text[0]) {
+    width = UI_UNIT_X * 8.0f;
+  }
+
   UI_block_layout_set_current(block, layout);
   uiBut *but = uiDefBut(block,
                         UI_BTYPE_PROGRESS_BAR,
                         0,
-                        "",
+                        (text) ? text : "",
                         0,
                         0,
                         width,
@@ -3495,6 +3502,11 @@ void uiItemProgressBar(uiLayout *layout, float progress, int progress_type)
                         0,
                         0,
                         "");
+
+  if (text && text[0] && (progress_type != UI_PROGRESS_DETERMINATE_LINEAR)) {
+    /* Default centered is okay for linear, left aligned for others. */
+    but->drawflag |= UI_BUT_TEXT_LEFT;
+  }
 
   uiButProgressbar *progress_bar = static_cast<uiButProgressbar *>(but);
   progress_bar->progress_type = static_cast<uiButProgressType>(progress_type);

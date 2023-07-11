@@ -470,6 +470,20 @@ static void rna_uiItemPopoverPanelFromGroup(uiLayout *layout,
   uiItemPopoverPanelFromGroup(layout, C, space_id, region_id, context, category);
 }
 
+static void rna_uiItemProgressIndicator(struct uiLayout *layout,
+                                          const char *text,
+                                          const char *text_ctxt,
+                                          bool translate,
+                                          float progress,
+                                          int progress_type)
+{
+  if (translate && BLT_translate_iface()) {
+    text = BLT_pgettext((text_ctxt && text_ctxt[0]) ? text_ctxt : BLT_I18NCONTEXT_DEFAULT, text);
+  }
+
+  uiItemProgressIndicator(layout, text, progress, progress_type);
+}
+
 static void rna_uiTemplateID(uiLayout *layout,
                              bContext *C,
                              PointerRNA *ptr,
@@ -1338,8 +1352,9 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(
       func, "Item. Inserts horizontal spacing empty space into the layout between items");
 
-  func = RNA_def_function(srna, "progress_bar", "uiItemProgressBar");
+  func = RNA_def_function(srna, "progress_indicator", "rna_uiItemProgressIndicator");
   RNA_def_function_ui_description(func, "Progress indicator");
+  api_ui_item_common_text(func);
   RNA_def_float(func,
                 "progress",
                 0.0f,
