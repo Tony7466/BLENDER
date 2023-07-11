@@ -129,6 +129,9 @@ typedef struct GreasePencilDrawingReference {
  */
 typedef enum GreasePencilFrameFlag {
   GP_FRAME_SELECTED = (1 << 0),
+  /* When set, the frame is implicitly held until the next frame. E.g. it doesn't have a fixed
+   * duration. */
+  GP_FRAME_IMPLICIT_HOLD = (1 << 1),
 } GreasePencilFrameFlag;
 
 /**
@@ -152,6 +155,7 @@ typedef struct GreasePencilFrame {
 #ifdef __cplusplus
   static GreasePencilFrame null();
   bool is_null() const;
+  bool is_implicit_hold() const;
 #endif
 } GreasePencilFrame;
 
@@ -455,7 +459,7 @@ typedef struct GreasePencil {
                                                blender::StringRefNull name);
   blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
   blender::bke::greasepencil::Layer &add_layer_after(blender::bke::greasepencil::LayerGroup &group,
-                                                     blender::bke::greasepencil::Layer *layer,
+                                                     blender::bke::greasepencil::TreeNode *link,
                                                      blender::StringRefNull name);
 
   blender::bke::greasepencil::LayerGroup &add_layer_group(
