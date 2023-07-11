@@ -16,9 +16,12 @@
 namespace blender::bke::sim {
 struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCachePtrHandle = blender::bke::sim::ModifierSimulationCachePtr;
+namespace blender {
+struct NodesModifierRuntime;
+}
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCachePtrHandle ModifierSimulationCachePtrHandle;
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 #ifdef __cplusplus
@@ -2344,18 +2347,7 @@ typedef struct NodesModifierData {
   int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
 
-  /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
-   */
-  void *runtime_eval_log;
-
-  /**
-   * Simulation cache that is shared between original and evaluated modifiers. This allows the
-   * original modifier to be removed, without also removing the simulation state which may still be
-   * used by the evaluated modifier.
-   */
-  ModifierSimulationCachePtrHandle *simulation_cache;
+  NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

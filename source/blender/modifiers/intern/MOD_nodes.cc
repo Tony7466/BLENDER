@@ -103,13 +103,6 @@ namespace geo_log = blender::nodes::geo_eval_log;
 
 namespace blender {
 
-static blender::bke::sim::ModifierSimulationCachePtr *new_simulation_cache()
-{
-  auto *simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCachePtr>(__func__);
-  simulation_cache->ptr = std::make_shared<blender::bke::sim::ModifierSimulationCache>();
-  return simulation_cache;
-}
-
 static void initData(ModifierData *md)
 {
   NodesModifierData *nmd = (NodesModifierData *)md;
@@ -117,8 +110,8 @@ static void initData(ModifierData *md)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(nmd, modifier));
 
   MEMCPY_STRUCT_AFTER(nmd, DNA_struct_default_get(NodesModifierData), modifier);
-
-  nmd->simulation_cache = new_simulation_cache();
+  nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
+  nmd->runtime->simulation_cache = std::make_shared<blender::bke::sim::ModifierSimulationCache>();
 }
 
 static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
@@ -603,14 +596,6 @@ static void find_socket_log_contexts(const NodesModifierData &nmd,
   }
 }
 
-static void clear_runtime_data(NodesModifierData *nmd)
-{
-  if (nmd->runtime_eval_log != nullptr) {
-    delete static_cast<geo_log::GeoModifierLog *>(nmd->runtime_eval_log);
-    nmd->runtime_eval_log = nullptr;
-  }
-}
-
 /**
  * \note This could be done in #initialize_group_input, though that would require adding the
  * the object as a parameter, so it's likely better to this check as a separate step.
@@ -665,7 +650,7 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
   const bool is_start_frame = current_frame == start_frame;
 
   /* This cache may be shared between original and evaluated modifiers. */
-  blender::bke::sim::ModifierSimulationCache &simulation_cache = *nmd.simulation_cache->ptr;
+  blender::bke::sim::ModifierSimulationCache &simulation_cache = *nmd.runtime->simulation_cache;
 
   {
     /* Try to use baked data. */
@@ -907,8 +892,7 @@ static void modifyGeometry(ModifierData *md,
       });
 
   if (logging_enabled(ctx)) {
-    delete static_cast<geo_log::GeoModifierLog *>(nmd_orig->runtime_eval_log);
-    nmd_orig->runtime_eval_log = eval_log.release();
+    nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
   if (use_orig_index_verts || use_orig_index_edges || use_orig_index_polys) {
@@ -985,12 +969,11 @@ static NodesModifierData *get_modifier_data(Main &bmain,
 
 static geo_log::GeoTreeLog *get_root_tree_log(const NodesModifierData &nmd)
 {
-  if (nmd.runtime_eval_log == nullptr) {
+  if (!nmd.runtime->eval_log) {
     return nullptr;
   }
-  auto &modifier_log = *static_cast<geo_log::GeoModifierLog *>(nmd.runtime_eval_log);
   bke::ModifierComputeContext compute_context{nullptr, nmd.modifier.name};
-  return &modifier_log.get_tree_log(compute_context.hash());
+  return &nmd.runtime->eval_log->get_tree_log(compute_context.hash());
 }
 
 static void attribute_search_update_fn(
@@ -1077,7 +1060,7 @@ static void add_attribute_search_button(const bContext &C,
                                         const bNodeSocket &socket,
                                         const bool is_output)
 {
-  if (nmd.runtime_eval_log == nullptr) {
+  if (!nmd.runtime->eval_log) {
     uiItemR(layout, md_ptr, rna_path_attribute_name.c_str(), 0, "", ICON_NONE);
     return;
   }
@@ -1561,16 +1544,14 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     BLO_read_data_address(reader, &nmd->settings.properties);
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
-
   BLO_read_data_address(reader, &nmd->id_mappings);
   for (const int i : IndexRange(nmd->id_mappings_num)) {
     NodesModifierIDMapping &mapping = nmd->id_mappings[i];
     BLO_read_data_address(reader, &mapping.id_name);
     BLO_read_data_address(reader, &mapping.lib_name);
   }
-
-  nmd->runtime_eval_log = nullptr;
-  nmd->simulation_cache = new_simulation_cache();
+  nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
+  nmd->runtime->simulation_cache = std::make_shared<bke::sim::ModifierSimulationCache>();
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
@@ -1593,18 +1574,18 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
     }
   }
 
-  tnmd->runtime_eval_log = nullptr;
+  tnmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
+
   if (flag & LIB_ID_COPY_SET_COPIED_ON_WRITE) {
     /* Share the simulation cache between the original and evaluated modifier. */
-    tnmd->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCachePtr>(
-        __func__, *nmd->simulation_cache);
+    tnmd->runtime->simulation_cache = nmd->runtime->simulation_cache;
     /* Keep bake path in the evaluated modifier. */
     tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
                                           BLI_strdup(nmd->simulation_bake_directory) :
                                           nullptr;
   }
   else {
-    tnmd->simulation_cache = new_simulation_cache();
+    tnmd->runtime->simulation_cache = std::make_shared<bke::sim::ModifierSimulationCache>();
     /* Clear the bake path when duplicating. */
     tnmd->simulation_bake_directory = nullptr;
   }
@@ -1629,10 +1610,8 @@ static void freeData(ModifierData *md)
   }
   MEM_SAFE_FREE(nmd->id_mappings);
 
-  MEM_delete(nmd->simulation_cache);
   MEM_SAFE_FREE(nmd->simulation_bake_directory);
-
-  clear_runtime_data(nmd);
+  MEM_delete(nmd->runtime);
 }
 
 static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cddata_masks)
