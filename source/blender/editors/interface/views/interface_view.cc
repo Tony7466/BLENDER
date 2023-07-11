@@ -52,7 +52,7 @@ struct ViewLink : public Link {
 };
 
 template<class T>
-static T *block_add_view_impl(uiBlock &block, StringRef idname, std::unique_ptr<AbstractView> view)
+static T *ui_block_add_view_impl(uiBlock &block, StringRef idname, std::unique_ptr<AbstractView> view)
 {
   ViewLink *view_link = MEM_new<ViewLink>(__func__);
   BLI_addtail(&block.views, view_link);
@@ -67,14 +67,14 @@ AbstractGridView *UI_block_add_view(uiBlock &block,
                                     StringRef idname,
                                     std::unique_ptr<AbstractGridView> grid_view)
 {
-  return block_add_view_impl<AbstractGridView>(block, idname, std::move(grid_view));
+  return ui_block_add_view_impl<AbstractGridView>(block, idname, std::move(grid_view));
 }
 
 AbstractTreeView *UI_block_add_view(uiBlock &block,
                                     StringRef idname,
                                     std::unique_ptr<AbstractTreeView> tree_view)
 {
-  return block_add_view_impl<AbstractTreeView>(block, idname, std::move(tree_view));
+  return ui_block_add_view_impl<AbstractTreeView>(block, idname, std::move(tree_view));
 }
 
 void ui_block_free_views(uiBlock *block)
