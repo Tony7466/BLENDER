@@ -340,10 +340,10 @@ float *SCULPT_brush_deform_target_vertex_co_get(SculptSession *ss,
   return iter->co;
 }
 
-ePaintSymmetryFlags SCULPT_mesh_symmetry_xyz_get(Object *object)
+eMeshSymmetryType SCULPT_mesh_symmetry_xyz_get(Object *object)
 {
   const Mesh *mesh = BKE_mesh_from_object(object);
-  return ePaintSymmetryFlags(mesh->symmetry);
+  return eMeshSymmetryType(mesh->symmetry & ME_SYMMETRY_ANY);
 }
 
 /* Sculpt Face Sets and Visibility. */
@@ -1147,12 +1147,12 @@ bool SCULPT_is_vertex_inside_brush_radius_symm(const float vertex[3],
                                                float radius,
                                                char symm)
 {
-  for (char i = 0; i <= symm; ++i) {
-    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+  for (ePaintSymmetryFlags symmpass = PAINT_SYMM_NONE; symmpass <= symm; symmpass++) {
+    if (!SCULPT_is_symmetry_iteration_valid(symmpass, symm)) {
       continue;
     }
     float location[3];
-    flip_v3_v3(location, br_co, ePaintSymmetryFlags(i));
+    flip_v3_v3(location, br_co, symmpass);
     if (len_squared_v3v3(location, vertex) < radius * radius) {
       return true;
     }
@@ -1213,19 +1213,19 @@ void SCULPT_floodfill_add_initial_with_symmetry(Sculpt *sd,
 {
   /* Add active vertex and symmetric vertices to the queue. */
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
-  for (char i = 0; i <= symm; ++i) {
-    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+  for (ePaintSymmetryFlags symmpass = PAINT_SYMM_NONE; symmpass <= symm; symmpass++) {
+    if (!SCULPT_is_symmetry_iteration_valid(symmpass, symm)) {
       continue;
     }
     PBVHVertRef v = {PBVH_REF_NONE};
 
-    if (i == 0) {
+    if (symmpass == PAINT_SYMM_NONE) {
       v = vertex;
     }
     else if (radius > 0.0f) {
       float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
       float location[3];
-      flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
+      flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), symmpass);
       v = SCULPT_nearest_vertex_get(sd, ob, location, radius_squared, false);
     }
 
@@ -1240,19 +1240,20 @@ void SCULPT_floodfill_add_active(
 {
   /* Add active vertex and symmetric vertices to the queue. */
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
-  for (char i = 0; i <= symm; ++i) {
-    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+
+  for (ePaintSymmetryFlags symmpass = PAINT_SYMM_NONE; symmpass <= symm; symmpass++) {
+    if (!SCULPT_is_symmetry_iteration_valid(symmpass, symm)) {
       continue;
     }
 
     PBVHVertRef v = {PBVH_REF_NONE};
 
-    if (i == 0) {
+    if (symmpass == PAINT_SYMM_NONE) {
       v = SCULPT_active_vertex_get(ss);
     }
     else if (radius > 0.0f) {
       float location[3];
-      flip_v3_v3(location, SCULPT_active_vertex_co_get(ss), ePaintSymmetryFlags(i));
+      flip_v3_v3(location, SCULPT_active_vertex_co_get(ss), symmpass);
       v = SCULPT_nearest_vertex_get(sd, ob, location, radius, false);
     }
 
@@ -1972,40 +1973,40 @@ static float calc_overlap(StrokeCache *cache,
   return 0.0f;
 }
 
-static float calc_radial_symmetry_feather(Sculpt *sd,
+static float calc_radial_symmetry_feather(Mesh *me,
                                           StrokeCache *cache,
                                           const ePaintSymmetryFlags symm,
                                           const char axis)
 {
   float overlap = 0.0f;
 
-  for (int i = 1; i < sd->radial_symm[axis - 'X']; i++) {
-    const float angle = 2.0f * M_PI * i / sd->radial_symm[axis - 'X'];
+  for (int i = 1; i < me->radial_symmetry[axis - 'X']; i++) {
+    const float angle = 2.0f * M_PI * i / me->radial_symmetry[axis - 'X'];
     overlap += calc_overlap(cache, symm, axis, angle);
   }
 
   return overlap;
 }
 
-static float calc_symmetry_feather(Sculpt *sd, StrokeCache *cache)
+static float calc_symmetry_feather(Mesh *me, StrokeCache *cache)
 {
-  if (!(sd->paint.symmetry_flags & PAINT_SYMMETRY_FEATHER)) {
+  if (!(me->symmetry & PAINT_SYMMETRY_FEATHER)) {
     return 1.0f;
   }
   float overlap;
   const int symm = cache->symmetry;
 
   overlap = 0.0f;
-  for (int i = 0; i <= symm; i++) {
-    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+  for (ePaintSymmetryFlags symmpass = PAINT_SYMM_NONE; symmpass <= symm; symmpass++) {
+    if (!SCULPT_is_symmetry_iteration_valid(symmpass, symm)) {
       continue;
     }
 
-    overlap += calc_overlap(cache, ePaintSymmetryFlags(i), 0, 0);
+    overlap += calc_overlap(cache, symmpass, 0, 0);
 
-    overlap += calc_radial_symmetry_feather(sd, cache, ePaintSymmetryFlags(i), 'X');
-    overlap += calc_radial_symmetry_feather(sd, cache, ePaintSymmetryFlags(i), 'Y');
-    overlap += calc_radial_symmetry_feather(sd, cache, ePaintSymmetryFlags(i), 'Z');
+    overlap += calc_radial_symmetry_feather(me, cache, symmpass, 'X');
+    overlap += calc_radial_symmetry_feather(me, cache, symmpass, 'Y');
+    overlap += calc_radial_symmetry_feather(me, cache, symmpass, 'Z');
   }
   return 1.0f / overlap;
 }
@@ -3190,7 +3191,7 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
                                    const float pivot[3])
 {
   for (int i = 0; i < 3; i++) {
-    ePaintSymmetryFlags symm_it = ePaintSymmetryFlags(1 << i);
+    ePaintSymmetryFlags symm_it =ePaintSymmetryFlags(1 << i);
     if (!(symm & symm_it)) {
       continue;
     }
@@ -4102,11 +4103,12 @@ static void do_tiled(Sculpt *sd,
 {
   SculptSession *ss = ob->sculpt;
   StrokeCache *cache = ss->cache;
+  Mesh *me = static_cast<Mesh *>(ob->data);
   const float radius = cache->radius;
   const BoundBox *bb = BKE_object_boundbox_get(ob);
   const float *bbMin = bb->vec[0];
   const float *bbMax = bb->vec[6];
-  const float *step = sd->paint.tile_offset;
+  const float *step = me->tile_offset;
 
   /* These are integer locations, for real location: multiply with step and add orgLoc.
    * So 0,0,0 is at orgLoc. */
@@ -4121,7 +4123,7 @@ static void do_tiled(Sculpt *sd,
   copy_v3_v3(original_initial_location, cache->initial_location);
 
   for (int dim = 0; dim < 3; dim++) {
-    if ((sd->paint.symmetry_flags & (PAINT_TILE_X << dim)) && step[dim] > 0) {
+    if ((me->symmetry & (ME_TILE_X << dim)) && step[dim] > 0) {
       start[dim] = (bbMin[dim] - orgLoc[dim] - radius) / step[dim];
       end[dim] = (bbMax[dim] - orgLoc[dim] + radius) / step[dim];
     }
@@ -4168,9 +4170,10 @@ static void do_radial_symmetry(Sculpt *sd,
                                const float /*feather*/)
 {
   SculptSession *ss = ob->sculpt;
+  Mesh *me = static_cast<Mesh *>(ob->data);
 
-  for (int i = 1; i < sd->radial_symm[axis - 'X']; i++) {
-    const float angle = 2.0f * M_PI * i / sd->radial_symm[axis - 'X'];
+  for (int i = 1; i < me->radial_symmetry[axis - 'X']; i++) {
+    const float angle = 2.0f * M_PI * i / me->radial_symmetry[axis - 'X'];
     ss->cache->radial_symmetry_pass = i;
     SCULPT_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
     do_tiled(sd, ob, brush, ups, paint_mode_settings, action);
@@ -4199,11 +4202,13 @@ static void do_symmetrical_brush_actions(Sculpt *sd,
                                          PaintModeSettings *paint_mode_settings)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
+
   SculptSession *ss = ob->sculpt;
   StrokeCache *cache = ss->cache;
-  const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  Mesh *me = static_cast<Mesh *>(ob->data);
 
-  float feather = calc_symmetry_feather(sd, ss->cache);
+  const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  float feather = calc_symmetry_feather(me, ss->cache);
 
   cache->bstrength = brush_strength(sd, cache, feather, ups, paint_mode_settings);
   cache->symmetry = symm;

@@ -5,6 +5,7 @@
  * \ingroup edsculpt
  */
 
+#include "DNA_scene_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
@@ -182,7 +183,7 @@ static void sculpt_transform_task_cb(void *__restrict userdata,
 static void sculpt_transform_all_vertices(Sculpt *sd, Object *ob)
 {
   SculptSession *ss = ob->sculpt;
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  const ePaintSymmetryFlags symm = ePaintSymmetryFlags(SCULPT_mesh_symmetry_xyz_get(ob));
 
   SculptThreadedTaskData data{};
   data.sd = sd;
@@ -258,7 +259,7 @@ static void sculpt_transform_radius_elastic(Sculpt *sd, Object *ob, const float 
   BLI_assert(ss->filter_cache->transform_displacement_mode ==
              SCULPT_TRANSFORM_DISPLACEMENT_INCREMENTAL);
 
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  const ePaintSymmetryFlags symm = ePaintSymmetryFlags(SCULPT_mesh_symmetry_xyz_get(ob));
 
   SculptThreadedTaskData data{};
   data.sd = sd;

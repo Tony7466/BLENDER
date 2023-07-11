@@ -5,6 +5,7 @@
  * \ingroup edsculpt
  */
 
+#include "DNA_mesh_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
@@ -656,7 +657,7 @@ static void do_boundary_brush_bend_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;
@@ -715,7 +716,7 @@ static void do_boundary_brush_slide_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;
@@ -766,7 +767,7 @@ static void do_boundary_brush_inflate_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;
@@ -817,7 +818,7 @@ static void do_boundary_brush_grab_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;
@@ -865,7 +866,7 @@ static void do_boundary_brush_twist_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;
@@ -924,7 +925,7 @@ static void do_boundary_brush_smooth_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const int symmetry_pass = ss->cache->mirror_symmetry_pass;
   const SculptBoundary *boundary = ss->cache->boundaries[symmetry_pass];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
+  const eMeshSymmetryType symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
   const Brush *brush = data->brush;
 
   const float strength = ss->cache->bstrength;

@@ -170,8 +170,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
-  const Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   PBVH *pbvh = ss->pbvh;
   const float dist = RNA_float_get(op->ptr, "merge_tolerance");
 
@@ -197,7 +197,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
       BMO_op_callf(ss->bm,
                    (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),
                    "symmetrize input=%avef direction=%i dist=%f use_shapekey=%b",
-                   sd->symmetrize_direction,
+                   mesh->symmetrize_direction,
                    dist,
                    true);
       SCULPT_dynamic_topology_triangulate(ss->bm);
@@ -216,9 +216,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
     case PBVH_FACES: {
       /* Mesh Symmetrize. */
       ED_sculpt_undo_geometry_begin(ob, op);
-      Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-      BKE_mesh_mirror_apply_mirror_on_axis(bmain, mesh, sd->symmetrize_direction, dist);
+      BKE_mesh_mirror_apply_mirror_on_axis(bmain, mesh, mesh->symmetrize_direction, dist);
 
       ED_sculpt_undo_geometry_end(ob);
       BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);

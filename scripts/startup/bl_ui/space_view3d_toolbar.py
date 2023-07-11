@@ -100,7 +100,7 @@ def draw_vpaint_symmetry(layout, vpaint, obj):
 
     col = layout.column()
     col.active = not obj.data.use_mirror_vertex_groups
-    col.prop(vpaint, "radial_symmetry", text="Radial")
+    col.prop(obj, "radial_symmetry", text="Radial")
 
 
 # Most of these panels should not be visible in GP edit modes
@@ -1001,9 +1001,9 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
         layout.use_property_decorate = False
 
         sculpt = context.tool_settings.sculpt
+        mesh = context.object.data
 
         row = layout.row(align=True, heading="Mirror")
-        mesh = context.object.data
         row.prop(mesh, "use_mirror_x", text="X", toggle=True)
         row.prop(mesh, "use_mirror_y", text="Y", toggle=True)
         row.prop(mesh, "use_mirror_z", text="Z", toggle=True)
@@ -1014,17 +1014,18 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
         row.prop(mesh, "lock_z", text="Z", toggle=True)
 
         row = layout.row(align=True, heading="Tiling")
-        row.prop(sculpt, "tile_x", text="X", toggle=True)
-        row.prop(sculpt, "tile_y", text="Y", toggle=True)
-        row.prop(sculpt, "tile_z", text="Z", toggle=True)
+        row.prop(mesh, "tile_x", text="X", toggle=True)
+        row.prop(mesh, "tile_y", text="Y", toggle=True)
+        row.prop(mesh, "tile_z", text="Z", toggle=True)
 
-        layout.prop(sculpt, "use_symmetry_feather", text="Feather")
-        layout.prop(sculpt, "radial_symmetry", text="Radial")
-        layout.prop(sculpt, "tile_offset", text="Tile Offset")
+        layout.prop(mesh, "use_symmetry_feather", text="Feather")
+
+        layout.prop(mesh, "radial_symmetry", text="Radial")
+        layout.prop(mesh, "tile_offset", text="Tile Offset")
 
         layout.separator()
 
-        layout.prop(sculpt, "symmetrize_direction")
+        layout.prop(mesh, "symmetrize_direction")
         layout.operator("sculpt.symmetrize")
         layout.prop(WindowManager.operator_properties_last("sculpt.symmetrize"), "merge_tolerance")
 

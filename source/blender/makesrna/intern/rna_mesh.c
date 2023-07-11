@@ -3737,7 +3737,54 @@ static void rna_def_mesh(BlenderRNA *brna)
                            "Mirror the left/right vertex groups when painting. The symmetry axis "
                            "is determined by the symmetry settings");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "radial_symmetry", PROP_INT, PROP_XYZ);
+  RNA_def_property_int_sdna(prop, NULL, "radial_symmetry");
+  RNA_def_property_int_default(prop, 1);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 1, 64);
+  RNA_def_property_ui_range(prop, 1, 32, 1, 1);
+  RNA_def_property_ui_text(prop,
+                           "Radial Symmetry Count",
+                           "Number of times to copy strokes across the surface about each axis");
+
+  prop = RNA_def_property(srna, "symmetrize_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_symmetrize_direction_items);
+  RNA_def_property_ui_text(prop, "Direction", "Source and destination for symmetrize operator");
+
+  prop = RNA_def_property(srna, "use_symmetry_feather", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "symmetry", ME_SYMMETRY_FEATHER);
+  RNA_def_property_ui_text(prop,
+                           "Symmetry Feathering",
+                           "Reduce the strength where it overlaps with symmetric daubs");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, "rna_Mesh_update_draw");
   /* End Symmetry */
+
+  /* Deform Tiling */
+  prop = RNA_def_property(srna, "tile_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "symmetry", ME_TILE_X);
+  RNA_def_property_ui_text(prop, "X", "Tile deformation along the X axis");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "tile_y", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "symmetry", ME_TILE_Y);
+  RNA_def_property_ui_text(prop, "Y", "Tile deformation along the Y axis");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "tile_z", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "symmetry", ME_TILE_Z);
+  RNA_def_property_ui_text(prop, "Z", "Tile deformation along the Z axis");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "tile_offset", PROP_FLOAT, PROP_XYZ_LENGTH);
+  RNA_def_property_float_sdna(prop, NULL, "tile_offset");
+  RNA_def_property_float_default(prop, 1);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_range(prop, 0.01, 100, 1 * 100, 2);
+  RNA_def_property_range(prop, 0.01, FLT_MAX);
+  RNA_def_property_ui_text(
+      prop, "Tiling offset along each axis", "Stride at which tiled strokes are copied");
+  /* End Tiling */
 
   /* Deform Axis Lock */
   prop = RNA_def_property(srna, "lock_x", PROP_BOOLEAN, PROP_NONE);

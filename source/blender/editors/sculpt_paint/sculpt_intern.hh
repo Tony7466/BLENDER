@@ -11,6 +11,7 @@
 #include "DNA_key_types.h"
 #include "DNA_listBase.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
@@ -939,7 +940,7 @@ float SCULPT_raycast_init(ViewContext *vc,
                           bool original);
 
 /* Symmetry */
-ePaintSymmetryFlags SCULPT_mesh_symmetry_xyz_get(Object *object);
+eMeshSymmetryType SCULPT_mesh_symmetry_xyz_get(Object *object);
 
 /**
  * Returns true when the step belongs to the stroke that is directly performed by the brush and

@@ -219,12 +219,26 @@ typedef struct Mesh {
   int totface;
 
   /**
+   * User-defined symmetrize direction, one of the directions itemized in rna_enum_symmetrize_direction_items.
+   */
+  int symmetrize_direction;
+
+  /**
+   * User-defined radial symmetry that causes edit operations to be repeated around the given axis.
+   */
+  int radial_symmetry[3];
+
+  /**
+   * User-defined stride at which strokes are applied in paint modes for the given axis.
+   */
+  float tile_offset[3];
+
+  /**
    * User-defined lock flag (#eMeshLockType) that causes editing operations to be restricted from
    * transforming along locked axes. Supported by operations such as transform.
    */
   char lock;
-
-  char _pad1[3];
+  char _pad1[7];
 
   /**
    * Data that isn't saved in files, including caches of derived data, temporary data to improve
@@ -438,12 +452,21 @@ enum {
   ME_SIMPLE_SUBSURF = 1,
 };
 
-/** #Mesh.symmetry */
+/** #Mesh.symmetry
+ *  replicates paint and sculpt symmetry flags
+ */
 typedef enum eMeshSymmetryType {
-  ME_SYMMETRY_X = 1 << 0,
-  ME_SYMMETRY_Y = 1 << 1,
-  ME_SYMMETRY_Z = 1 << 2,
+  ME_SYMMETRY_NONE = 0,
+  ME_SYMMETRY_X = (1 << 0),
+  ME_SYMMETRY_Y = (1 << 1),
+  ME_SYMMETRY_Z = (1 << 2),
+  ME_SYMMETRY_FEATHER = (1 << 3),
+  ME_TILE_X = (1 << 4),
+  ME_TILE_Y = (1 << 5),
+  ME_TILE_Z = (1 << 6),
 } eMeshSymmetryType;
+
+#define ME_SYMMETRY_ANY (ME_SYMMETRY_X | ME_SYMMETRY_Y | ME_SYMMETRY_Z)
 
  /** #Mesh.lock */
 typedef enum eMeshLockType {

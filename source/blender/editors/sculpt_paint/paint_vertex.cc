@@ -2419,8 +2419,8 @@ static void wpaint_do_radial_symmetry(bContext *C,
                                       const ePaintSymmetryFlags symm,
                                       const int axis)
 {
-  for (int i = 1; i < wp->radial_symm[axis - 'X']; i++) {
-    const float angle = (2.0 * M_PI) * i / wp->radial_symm[axis - 'X'];
+  for (int i = 1; i < me->radial_symmetry[axis - 'X']; i++) {
+    const float angle = (2.0 * M_PI) * i / me->radial_symmetry[axis - 'X'];
     wpaint_do_paint(C, ob, wp, sd, wpd, wpi, me, brush, symm, axis, i, angle);
   }
 }
@@ -3763,8 +3763,8 @@ static void vpaint_do_radial_symmetry(bContext *C,
                                       const ePaintSymmetryFlags symm,
                                       const int axis)
 {
-  for (int i = 1; i < vp->radial_symm[axis - 'X']; i++) {
-    const float angle = (2.0 * M_PI) * i / vp->radial_symm[axis - 'X'];
+  for (int i = 1; i < me->radial_symmetry[axis - 'X']; i++) {
+    const float angle = (2.0 * M_PI) * i / me->radial_symmetry[axis - 'X'];
     vpaint_do_paint<Color, Traits, domain>(C, sd, vp, vpd, ob, me, brush, symm, axis, i, angle);
   }
 }

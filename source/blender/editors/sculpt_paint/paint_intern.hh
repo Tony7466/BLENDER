@@ -16,6 +16,7 @@
 #include "ED_select_utils.h"
 
 #include "DNA_scene_types.h"
+#include "DNA_mesh_types.h"
 
 struct ARegion;
 struct Brush;

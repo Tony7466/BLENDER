@@ -1128,7 +1128,7 @@ void SCULPT_do_pose_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  const ePaintSymmetryFlags symm = ePaintSymmetryFlags(SCULPT_mesh_symmetry_xyz_get(ob));
 
   /* The pose brush applies all enabled symmetry axis in a single iteration, so the rest can be
    * ignored. */

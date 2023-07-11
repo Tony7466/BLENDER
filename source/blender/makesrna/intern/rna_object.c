@@ -2321,6 +2321,11 @@ static void rna_Object_mesh_symmetry_z_set(PointerRNA *ptr, bool value)
   mesh_symmetry_set_common(ptr, value, ME_SYMMETRY_Z);
 }
 
+static void rna_Object_mesh_symmetry_feather_set(PointerRNA *ptr, bool value)
+{
+  mesh_symmetry_set_common(ptr, value, ME_SYMMETRY_FEATHER);
+}
+
 static bool mesh_lock_get_common(PointerRNA *ptr, const eMeshLockType lock)
 {
   const Object *ob = (Object *)ptr->owner_id;
@@ -3919,7 +3924,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Line Art", "Line art settings for the object");
 
   /* Mesh Symmetry Settings */
-
   prop = RNA_def_property(srna, "use_mesh_mirror_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_Object_mesh_symmetry_x_get", "rna_Object_mesh_symmetry_x_set");

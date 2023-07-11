@@ -1069,11 +1069,13 @@ static void cursor_draw_tiling_preview(const uint gpuattr,
   int cur[3];
   const float *bbMin = bb->vec[0];
   const float *bbMax = bb->vec[6];
-  const float *step = sd->paint.tile_offset;
+
+  Mesh *me = static_cast<Mesh *>(ob->data);
+  const float *step = me->tile_offset;
 
   copy_v3_v3(orgLoc, true_location);
   for (int dim = 0; dim < 3; dim++) {
-    if ((sd->paint.symmetry_flags & (PAINT_TILE_X << dim)) && step[dim] > 0) {
+    if ((me->symmetry & (ME_TILE_X << dim)) && step[dim] > 0) {
       start[dim] = (bbMin[dim] - orgLoc[dim] - radius) / step[dim];
       end[dim] = (bbMax[dim] - orgLoc[dim] + radius) / step[dim];
     }
@@ -1107,14 +1109,16 @@ static void cursor_draw_point_with_symmetry(const uint gpuattr,
                                             Object *ob,
                                             const float radius)
 {
+  Mesh *me = static_cast<Mesh *>(ob->data);
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
+  const int *radsymm = me->radial_symmetry;
+
   float location[3], symm_rot_mat[4][4];
 
-  for (int i = 0; i <= symm; i++) {
-    if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || !ELEM(i, 3, 5)))) {
-
+  for (ePaintSymmetryFlags symmpass = PAINT_SYMM_NONE; symmpass <= symm; symmpass++) {
+    if (SCULPT_is_symmetry_iteration_valid(symmpass, symm)) {
       /* Axis Symmetry. */
-      flip_v3_v3(location, true_location, ePaintSymmetryFlags(i));
+      flip_v3_v3(location, true_location, symmpass);
       cursor_draw_point_screen_space(gpuattr, region, location, ob->object_to_world, 3);
 
       /* Tiling. */
@@ -1122,9 +1126,9 @@ static void cursor_draw_point_with_symmetry(const uint gpuattr,
 
       /* Radial Symmetry. */
       for (char raxis = 0; raxis < 3; raxis++) {
-        for (int r = 1; r < sd->radial_symm[raxis]; r++) {
-          float angle = 2 * M_PI * r / sd->radial_symm[int(raxis)];
-          flip_v3_v3(location, true_location, ePaintSymmetryFlags(i));
+        for (int r = 1; r < radsymm[raxis]; r++) {
+          float angle = 2 * M_PI * r / radsymm[int(raxis)];
+          flip_v3_v3(location, true_location, symmpass);
           unit_m4(symm_rot_mat);
           rotate_m4(symm_rot_mat, raxis + 'X', angle);
           mul_m4_v3(symm_rot_mat, location);
