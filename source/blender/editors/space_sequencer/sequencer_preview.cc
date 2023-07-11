@@ -207,8 +207,6 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
       WM_event_add_notifier(C, NC_SCENE | ND_SPACE_SEQUENCER, CTX_data_scene(C));
       return;
     }
-
-    BLI_mutex_unlock(pj->mutex);
   }
   else { /* There's no existig preview job. */
     pj = MEM_cnew<PreviewJob>("preview rebuild job");
@@ -217,6 +215,7 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
     BLI_condition_init(&pj->preview_suspend_cond);
     pj->scene = CTX_data_scene(C);
     pj->running = true;
+    BLI_mutex_lock(pj->mutex);
 
     WM_jobs_customdata_set(wm_job, pj, free_preview_job);
     WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
@@ -226,7 +225,6 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
   audiojob->bmain = CTX_data_main(C);
   audiojob->sound = seq->sound;
 
-  BLI_mutex_lock(pj->mutex);
   BLI_addtail(&pj->previews, audiojob);
   pj->total++;
   BLI_mutex_unlock(pj->mutex);
