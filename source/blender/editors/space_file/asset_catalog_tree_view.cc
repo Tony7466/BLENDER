@@ -583,8 +583,7 @@ void AssetCatalogTreeViewAllItem::build_row(uiLayout &row)
   RNA_string_set(props, "parent_path", nullptr);
 }
 
-std::unique_ptr<ui::TreeViewItemDropTarget> AssetCatalogTreeViewAllItem::
-    create_drop_target()
+std::unique_ptr<ui::TreeViewItemDropTarget> AssetCatalogTreeViewAllItem::create_drop_target()
 {
   return std::make_unique<AssetCatalogTreeViewAllItem::DropTarget>(
       static_cast<AssetCatalogTreeView &>(get_tree_view()));

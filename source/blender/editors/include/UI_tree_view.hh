@@ -128,7 +128,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   /**
    * \param xy: The mouse coordinates in window space.
    */
-  AbstractTreeViewItem *find_hovered(const int2 &xy);
+  AbstractTreeViewItem *find_hovered(const ARegion &region, const int2 &xy);
 
   /** Visual feature: Define a number of item rows the view will always show at minimum. If there
    * are fewer items, empty dummy items will be added. These contribute to the view bounds, so the
@@ -198,7 +198,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * Calculate the view item rectangle from its view-item button, converted to window space.
    * Returns an unset optional if there is no view item button for this item.
    */
-  std::optional<rctf> get_win_rect() const;
+  std::optional<rctf> get_win_rect(const ARegion &region) const;
 
   void begin_renaming();
   void toggle_collapsed();
@@ -352,7 +352,8 @@ class TreeViewItemDropTarget : public DropTargetInterface {
  public:
   TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior = DropBehavior::Insert);
 
-  std::optional<DropLocation> determine_drop_location(const wmEvent &event) const;
+  std::optional<DropLocation> choose_drop_location(const ARegion &region,
+                                                   const wmEvent &event) const;
 
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */
