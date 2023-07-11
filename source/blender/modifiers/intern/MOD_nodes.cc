@@ -1483,7 +1483,7 @@ static void panelRegister(ARegionType *region_type)
       panel_type);
   modifier_subpanel_register(region_type,
                              "id_mappings",
-                             N_("ID Mappings"),
+                             N_("Data Block Mappings"),
                              nullptr,
                              id_mappings_panel_draw,
                              internal_dependencies_panel);

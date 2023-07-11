@@ -3808,8 +3808,8 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
 
 void OBJECT_OT_geometry_nodes_id_mapping_update(wmOperatorType *ot)
 {
-  ot->name = "Update Geometry Nodes ID Mapping";
-  ot->description = "Find IDs used by cached data and make sure that a mapping exists";
+  ot->name = "Update Geometry Nodes Data Block Mapping";
+  ot->description = "Create mappings for data blocks that failed to be mapped in the past";
   ot->idname = __func__;
 
   ot->exec = geometry_nodes_id_mapping_update_exec;
@@ -3861,8 +3861,8 @@ static int geometry_nodes_id_mapping_remove_exec(bContext *C, wmOperator * /*op*
 
 void OBJECT_OT_geometry_nodes_id_mapping_remove(wmOperatorType *ot)
 {
-  ot->name = "Remove Geometry Nodes ID Mapping";
-  ot->description = "Remove active id mapping from geometry nodes modifier";
+  ot->name = "Remove Geometry Nodes Data Block Mapping";
+  ot->description = "Remove active data block mapping from geometry nodes modifier";
   ot->idname = __func__;
 
   ot->exec = geometry_nodes_id_mapping_remove_exec;
