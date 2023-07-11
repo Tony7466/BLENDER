@@ -3647,14 +3647,14 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
 /* Name property for grease pencil layer entries */
 static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
-  if (ale->data) {
-    RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, r_ptr);
-    *r_prop = RNA_struct_name_property(r_ptr->type);
-
-    return (*r_prop != nullptr);
+  if (ale->data == nullptr) {
+    return false;
   }
 
-  return false;
+  RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, r_ptr);
+  *r_prop = RNA_struct_name_property(r_ptr->type);
+
+  return (*r_prop != nullptr);
 }
 
 /* Get pointer to the setting */
