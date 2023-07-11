@@ -720,7 +720,7 @@ static const EnumPropertyItem snap_to_items[] = {
 #  include "BKE_pointcache.h"
 #  include "BKE_scene.h"
 #  include "BKE_screen.h"
-#  include "BKE_simulation.h"
+#  include "BKE_simulation_state.hh"
 #  include "BKE_unit.h"
 
 #  include "NOD_composite.h"
@@ -945,7 +945,7 @@ static void rna_Scene_fps_update(Main *bmain, Scene * /*active_scene*/, PointerR
    * so this we take care about here. */
   SEQ_sound_update_length(bmain, scene);
   /* Reset simulation states because new frame interval doesn't apply anymore. */
-  BKE_simulation_reset_scene(scene);
+  blender::bke::sim::scene_simulation_states_reset(*scene);
 }
 
 static void rna_Scene_listener_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -5986,7 +5986,7 @@ static void rna_def_scene_image_format_data(BlenderRNA *brna)
   /* multiview */
   prop = RNA_def_property(srna, "views_format", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "views_format");
-  RNA_def_property_enum_items(prop, rna_enum_views_format_items);
+  RNA_def_property_enum_items(prop, rna_enum_views_format_multiview_items);
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_ImageFormatSettings_views_format_itemf");
   RNA_def_property_ui_text(prop, "Views Format", "Format of multiview media");

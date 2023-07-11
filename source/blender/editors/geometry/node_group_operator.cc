@@ -75,8 +75,9 @@ static const bNodeTree *get_node_group(const bContext &C)
   if (!asset) {
     return nullptr;
   }
+  Main &bmain = *CTX_data_main(&C);
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      ED_asset_get_local_id_from_asset_or_append_and_reuse(CTX_data_main(&C), *asset, ID_NT));
+      asset::asset_local_id_ensure_imported(bmain, *asset));
   if (!node_group) {
     return nullptr;
   }
@@ -408,12 +409,6 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
   }
 }
 
-static bool all_loading_finished()
-{
-  AssetLibraryReference all_library_ref = asset_system::all_library_reference();
-  return ED_assetlist_is_loaded(&all_library_ref);
-}
-
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
@@ -582,13 +577,8 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
     return;
   }
   *tree = build_catalog_tree(C);
-
-  const bool loading_finished = all_loading_finished();
-  if (tree->catalogs.is_empty() && loading_finished) {
+  if (tree->catalogs.is_empty()) {
     return;
-  }
-  if (!loading_finished) {
-    uiItemL(&layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
