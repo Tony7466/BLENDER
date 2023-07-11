@@ -52,7 +52,9 @@ struct ViewLink : public Link {
 };
 
 template<class T>
-static T *ui_block_add_view_impl(uiBlock &block, StringRef idname, std::unique_ptr<AbstractView> view)
+static T *ui_block_add_view_impl(uiBlock &block,
+                                 StringRef idname,
+                                 std::unique_ptr<AbstractView> view)
 {
   ViewLink *view_link = MEM_new<ViewLink>(__func__);
   BLI_addtail(&block.views, view_link);

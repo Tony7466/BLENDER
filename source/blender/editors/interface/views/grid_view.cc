@@ -236,10 +236,7 @@ std::unique_ptr<GridViewItemDropTarget> AbstractGridViewItem::create_drop_target
   return nullptr;
 }
 
-GridViewItemDropTarget::GridViewItemDropTarget(AbstractGridView &view)
-    : view_(view)
-{
-}
+GridViewItemDropTarget::GridViewItemDropTarget(AbstractGridView &view) : view_(view) {}
 
 /* ---------------------------------------------------------------------- */
 
