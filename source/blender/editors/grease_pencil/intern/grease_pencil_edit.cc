@@ -289,18 +289,18 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         /* Position */
         Array<float3> curves_positions_copy;
-        if (smooth_position) {
+        if (smooth_position && !curves.positions().is_empty()) {
           curves_positions_copy = curves.positions();
         }
         /* Opacity */
-        Array<float3> curves_opacities_copy;
-        if (smooth_opacity) {
-          curves_opacities_copy = drawing.opacities();
+        Array<float> curves_opacities_copy;
+        if (smooth_opacity && drawing.opacities().is_span()) {
+          curves_opacities_copy = drawing.opacities().get_internal_span();
         }
         /* Radius */
-        Array<float3> curves_radii_copy;
-        if (smooth_radius) {
-          curves_radii_copy = drawing.radii();
+        Array<float> curves_radii_copy;
+        if (smooth_radius && drawing.radii().is_span()) {
+          curves_radii_copy = drawing.radii().get_internal_span();
         }
         /* Cyclic */
         const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -310,7 +310,10 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
         bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
-        if (!ed::curves::has_anything_selected(selection_attribute.varray, curves.points_range()))
+        if (!ed::curves::has_anything_selected(selection_attribute.varray,
+                                               curves.points_range()) ||
+            (curves_positions_copy.is_empty() && curves_opacities_copy.is_empty() &&
+             curves_radii_copy.is_empty()))
         {
           return;
         }
@@ -326,7 +329,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
             const IndexMask curve_mask = IndexMask::from_bools(
                 points, selection_attribute.varray, memory);
 
-            if (smooth_position) {
+            if (!curves_positions_copy.is_empty()) {
               gaussian_blur_1D_float3(is_cyclic,
                                       points,
                                       iterations,
@@ -338,7 +341,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
                                       curve_mask);
             }
 
-            if (smooth_opacity) {
+            if (!curves_opacities_copy.is_empty()) {
               gaussian_blur_1D_float(is_cyclic,
                                      points,
                                      iterations,
@@ -350,7 +353,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
                                      curve_mask);
             }
 
-            if (smooth_radius) {
+            if (!curves_radii_copy.is_empty()) {
               gaussian_blur_1D_float(is_cyclic,
                                      points,
                                      iterations,
