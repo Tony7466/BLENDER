@@ -377,7 +377,7 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
         nodes,
         true,
         nullptr,
-        [&](auto &range) {
+        [&](auto range) {
           const int thread_id = BLI_task_parallel_thread_id(nullptr);
           for (auto &vd : range) {
             const float fade = bstrength * vd.falloff;
