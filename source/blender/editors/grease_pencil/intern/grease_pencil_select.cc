@@ -320,66 +320,70 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
               INT32_MAX);
 }
 
-static void select_convert_selection_domain(bContext *C)
+static int select_set_mode_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
 
-  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
+  /* Set new selection mode. */
+  const int mode_new = RNA_enum_get(op->ptr, "mode");
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  ts->gpencil_selectmode_edit = mode_new;
 
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  /* Convert all drawings of the active GP to the new selection domain. */
+  const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
   bool changed = false;
 
-  Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
   for (const int index : drawings.index_range()) {
     GreasePencilDrawingBase *drawing_base = drawings[index];
-
-    if (drawing_base->type == GP_DRAWING) {
-      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-
-      bke::CurvesGeometry &curves = drawing->wrap().strokes_for_write();
-      if (curves.points_num() == 0) {
-        continue;
-      }
-
-      /* Skip curve when the selection domain already matches, or when there is no selection
-       * at all. */
-      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-      const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
-          ".selection");
-      if ((!meta_data) || (meta_data->domain == domain)) {
-        continue;
-      }
-
-      /* When the new selection domain is 'curve', ensure all curves with a point selection
-       * are selected. */
-      if (domain == ATTR_DOMAIN_CURVE) {
-        blender::ed::curves::select_linked(curves);
-      }
-
-      /* Convert selection domain. */
-      const GVArray src = *attributes.lookup(".selection", domain);
-      if (src) {
-        const CPPType &type = src.type();
-        void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-        src.materialize(dst);
-
-        attributes.remove(".selection");
-        if (!attributes.add(".selection",
-                            domain,
-                            bke::cpp_type_to_custom_data_type(type),
-                            bke::AttributeInitMoveArray(dst)))
-        {
-          MEM_freeN(dst);
-        }
-
-        changed = true;
-
-        /* TODO: expand point selection to segments when in 'segment' mode. */
-      }
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
     }
-    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO */
+
+    GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+    bke::CurvesGeometry &curves = drawing->wrap().strokes_for_write();
+    if (curves.points_num() == 0) {
+      continue;
+    }
+
+    /* Skip curve when the selection domain already matches, or when there is no selection
+     * at all. */
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
+        ".selection");
+    if ((!meta_data) || (meta_data->domain == domain)) {
+      continue;
+    }
+
+    /* When the new selection domain is 'curve', ensure all curves with a point selection
+     * are selected. */
+    if (domain == ATTR_DOMAIN_CURVE) {
+      blender::ed::curves::select_linked(curves);
+    }
+
+    /* Convert selection domain. */
+    const GVArray src = *attributes.lookup(".selection", domain);
+    if (src) {
+      const CPPType &type = src.type();
+      void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
+      src.materialize(dst);
+
+      attributes.remove(".selection");
+      if (!attributes.add(".selection",
+                          domain,
+                          bke::cpp_type_to_custom_data_type(type),
+                          bke::AttributeInitMoveArray(dst)))
+      {
+        MEM_freeN(dst);
+      }
+
+      changed = true;
+
+      /* TODO: expand point selection to segments when in 'segment' mode. */
     }
   }
 
@@ -389,19 +393,6 @@ static void select_convert_selection_domain(bContext *C)
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
   }
-}
-
-static int select_set_mode_exec(bContext *C, wmOperator *op)
-{
-  /* Set new selection mode. */
-  const int mode_new = RNA_enum_get(op->ptr, "mode");
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  ts->gpencil_selectmode_edit = mode_new;
-
-  /* Convert all drawings of the active GP to the new selection domain. */
-  select_convert_selection_domain(C);
-
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   return OPERATOR_FINISHED;
 }
