@@ -261,7 +261,6 @@ void CaptureView::render_probes()
       const float clip_distance = 0.1f;
       float4x4 win_m4 = math::projection::perspective(
           -clip_distance, clip_distance, -clip_distance, clip_distance, clip_distance, 10.0f);
-      std::cout << view_m4 << "\n";
       view.sync(view_m4, win_m4);
 
       capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),

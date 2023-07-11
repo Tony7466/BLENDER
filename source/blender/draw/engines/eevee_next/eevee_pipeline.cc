@@ -708,26 +708,7 @@ void DeferredProbeLayer::render(View &view,
   inst_.manager->submit(gbuffer_ps_, view);
 
   inst_.manager->submit(eval_light_ps_, view);
-#if 0
 
-
-
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  /* no need to use diffuse/specular tx here as we don't do anything with it. */
-  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  diffuse_light_tx_.clear(float4(0.0f));
-  specular_light_tx_.clear(float4(0.0f));
-
-
-  if (closure_bits_ & CLOSURE_SSS) {
-    inst_.subsurface.render(view, combined_fb, diffuse_light_tx_);
-  }
-
-  diffuse_light_tx_.release();
-  specular_light_tx_.release();
-
-#endif
   inst_.gbuffer.release();
 }
 
@@ -741,21 +722,18 @@ void DeferredProbeLayer::render(View &view,
 
 void DeferredProbePipeline::begin_sync()
 {
-  std::cout << __func__ << "\n";
   opaque_layer_.begin_sync();
   refraction_layer_.begin_sync();
 }
 
 void DeferredProbePipeline::end_sync()
 {
-  std::cout << __func__ << "\n";
   opaque_layer_.end_sync();
   refraction_layer_.end_sync();
 }
 
 PassMain::Sub *DeferredProbePipeline::prepass_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  std::cout << __func__ << "\n";
   if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
     return refraction_layer_.prepass_add(blender_mat, gpumat);
   }
@@ -766,7 +744,6 @@ PassMain::Sub *DeferredProbePipeline::prepass_add(::Material *blender_mat, GPUMa
 
 PassMain::Sub *DeferredProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  std::cout << __func__ << "\n";
   if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
     return refraction_layer_.material_add(blender_mat, gpumat);
   }
@@ -780,7 +757,6 @@ void DeferredProbePipeline::render(View &view,
                                    Framebuffer &combined_fb,
                                    int2 extent)
 {
-  std::cout << __func__ << "\n";
   GPU_debug_group_begin("Probe.Render");
 
   DRW_stats_group_start("Deferred.Opaque");

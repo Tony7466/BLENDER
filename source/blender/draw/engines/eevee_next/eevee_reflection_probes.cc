@@ -89,7 +89,6 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
-  std::cout << __func__ << "\n";
   const ::LightProbe *light_probe = (::LightProbe *)ob->data;
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
