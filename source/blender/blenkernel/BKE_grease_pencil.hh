@@ -79,16 +79,16 @@ class Drawing : public ::GreasePencilDrawing {
   void tag_positions_changed();
 
   /**
-   * Per-point opacity value.
-   */
-  VArray<float> opacities() const;
-  MutableSpan<float> opacities_for_write();
-
-  /**
    * Per-point radius value.
    */
   VArray<float> radii() const;
   MutableSpan<float> radii_for_write();
+
+  /**
+   * Per-point opacity value.
+   */
+  VArray<float> opacities() const;
+  MutableSpan<float> opacities_for_write();
 };
 
 class LayerGroup;
