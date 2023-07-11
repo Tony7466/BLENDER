@@ -79,13 +79,14 @@ class Drawing : public ::GreasePencilDrawing {
   void tag_positions_changed();
 
   /**
-   * Per-point radius value.
+   * Radii of the points. Values are expected to be in blender units.
    */
   VArray<float> radii() const;
   MutableSpan<float> radii_for_write();
 
   /**
-   * Per-point opacity value.
+   * Opacities for the points. Used by the render engine as an alpha value so they are expected to
+   * be between 0 and 1 inclusive.
    */
   VArray<float> opacities() const;
   MutableSpan<float> opacities_for_write();
