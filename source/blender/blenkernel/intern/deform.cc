@@ -703,27 +703,28 @@ static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, ID *id)
 
 bool BKE_defgroup_unique_name_check(void *arg, const char *name)
 {
-  DeformGroupUniqueNameData *data = static_cast<DeformGroupUniqueNameData *>(arg);
+  AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
+      arg);
   return defgroup_find_name_dupe(name, data->dg, data->id);
 }
 
 void BKE_object_defgroup_unique_name(bDeformGroup *dg, Object *ob)
 {
-  /* Correct name name collisions with vertex groups. */
-  DeformGroupUniqueNameData data{&ob->id, dg};
-  BLI_uniquename_cb(
-      BKE_defgroup_unique_name_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
-
-  /* Also correct name name collisions with (mesh) attributes. */
+  /* Avoid name collisions with other vertex groups and (mesh) attributes. */
   if (ob->type == OB_MESH) {
     Mesh *me = static_cast<Mesh *>(ob->data);
-    AttrUniqueData data_attr{&me->id};
-    BLI_uniquename_cb(BKE_id_attribute_unique_name_check,
-                      &data_attr,
+    AttributeAndDefgroupUniqueNameData data{&me->id, dg};
+    BLI_uniquename_cb(BKE_id_attribute_and_defgroup_unique_name_check,
+                      &data,
                       DATA_("Group"),
                       '.',
                       dg->name,
                       sizeof(dg->name));
+  }
+  else {
+    AttributeAndDefgroupUniqueNameData data{&ob->id, dg};
+    BLI_uniquename_cb(
+        BKE_defgroup_unique_name_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
   }
 }
 
