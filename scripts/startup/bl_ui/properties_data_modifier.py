@@ -45,8 +45,10 @@ class DATA_UL_nodes_modifier_id_mappings(UIList):
         if item.id:
             icon = item.bl_rna.properties["id_type"].enum_items.get(item.id_type).icon
             layout.label(text=item.id.name, icon=icon)
-        else:
+        elif item.id_name:
             layout.label(text="Missing '%s'" % item.id_name, icon='ERROR')
+        else:
+            layout.label(text="Empty", icon='INFO')
 
 
 classes = (

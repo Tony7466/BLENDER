@@ -3872,3 +3872,50 @@ void OBJECT_OT_geometry_nodes_id_mapping_remove(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Add id mapping in geometry nodes modifier
+ * \{ */
+
+static int geometry_nodes_id_mapping_add_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  Main *bmain = CTX_data_main(C);
+  Object *ob = ED_object_active_context(C);
+  ModifierData *md = BKE_object_active_modifier(ob);
+  if (!(md && md->type == eModifierType_Nodes)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+
+  nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
+      MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * (nmd.id_mappings_num + 1)));
+  NodesModifierIDMapping &new_mapping = nmd.id_mappings[nmd.id_mappings_num];
+  memset(&new_mapping, 0, sizeof(NodesModifierIDMapping));
+  new_mapping.id_type = ID_MA;
+
+  nmd.active_id_mapping = nmd.id_mappings_num;
+  nmd.id_mappings_num++;
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_geometry_nodes_id_mapping_add(wmOperatorType *ot)
+{
+  ot->name = "Add Geometry Nodes Data Block Mapping";
+  ot->description = "Add data block mapping to geometry nodes modifier";
+  ot->idname = __func__;
+
+  ot->exec = geometry_nodes_id_mapping_add_exec;
+  ot->poll = ED_operator_object_active;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */

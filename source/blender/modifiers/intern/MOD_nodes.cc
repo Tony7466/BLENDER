@@ -1444,11 +1444,15 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
                  UILST_LAYOUT_DEFAULT,
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
-  uiLayout *ops_col = uiLayoutColumn(list_row, true);
-  uiLayout *ops_subcol = uiLayoutColumn(ops_col, true);
-  uiLayoutSetActive(ops_subcol, has_missing_mappings);
-  uiItemO(ops_subcol, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
-  uiItemO(ops_col, "", ICON_X, "OBJECT_OT_geometry_nodes_id_mapping_remove");
+  uiLayout *ops_col = uiLayoutColumn(list_row, false);
+  {
+    uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+    uiItemO(add_remove_col, "", ICON_ADD, "OBJECT_OT_geometry_nodes_id_mapping_add");
+    uiItemO(add_remove_col, "", ICON_REMOVE, "OBJECT_OT_geometry_nodes_id_mapping_remove");
+  }
+  uiLayout *update_col = uiLayoutColumn(ops_col, false);
+  uiLayoutSetActive(update_col, has_missing_mappings);
+  uiItemO(update_col, "", ICON_FILE_REFRESH, "OBJECT_OT_geometry_nodes_id_mapping_update");
 
   if (nmd->active_id_mapping < 0 || nmd->active_id_mapping >= nmd->id_mappings_num) {
     return;
