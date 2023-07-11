@@ -381,7 +381,7 @@ bke::CurvesGeometry &Drawing::strokes_for_write()
 
 VArray<float> Drawing::radii() const
 {
-  return *this->strokes().attributes().lookup_or_default<float>(ATTR_RADIUS, ATTR_DOMAIN_POINT, 1.0f);
+  return *this->strokes().attributes().lookup_or_default<float>(ATTR_RADIUS, ATTR_DOMAIN_POINT, 0.01f);
 }
 
 MutableSpan<float> Drawing::radii_for_write()
