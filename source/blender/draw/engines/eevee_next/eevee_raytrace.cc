@@ -46,7 +46,6 @@ void RayTraceModule::init()
   data_.quality = 1.0f;
   data_.brightness_clamp = 1.0f;
   data_.max_roughness = 1.0f;
-  data_.pool_offset = 0;
 }
 
 void RayTraceModule::sync()
@@ -105,7 +104,9 @@ void RayTraceModule::sync()
     pass.shader_set(inst_.shaders.static_shader_get((type == 0) ? RAY_DENOISE_SPATIAL_REFLECT :
                                                                   RAY_DENOISE_SPATIAL_REFRACT));
     pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
+    pass.bind_texture("stencil_tx", &renderbuf_stencil_view_);
     pass.bind_image("ray_data_img", &ray_data_tx_);
     pass.bind_image("ray_time_img", &ray_time_tx_);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);

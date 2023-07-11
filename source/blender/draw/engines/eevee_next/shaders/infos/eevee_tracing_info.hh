@@ -58,8 +58,13 @@ EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_trace_screen)
 
 GPU_SHADER_CREATE_INFO(eevee_ray_denoise_spatial)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
-    .additional_info("eevee_shared", "draw_view", "eevee_hiz_data")
+    .additional_info("eevee_shared",
+                     "eevee_sampling_data",
+                     "draw_view",
+                     "eevee_hiz_data",
+                     "eevee_utility_texture")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
+    .sampler(1, ImageType::UINT_2D, "stencil_tx")
     .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "ray_data_img")
     .image(1, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "ray_time_img")
     .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "ray_radiance_img")

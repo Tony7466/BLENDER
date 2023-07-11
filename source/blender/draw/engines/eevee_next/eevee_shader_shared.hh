@@ -999,12 +999,11 @@ struct RayTraceData {
   float brightness_clamp;
   /** Maximum roughness for which we will trace a ray. */
   float max_roughness;
-  /** Resolve sample pool offset, based on scene current sample. */
-  int pool_offset;
   /** If set to true will bypass spatial denoising. */
   bool1 skip_denoise;
   /** Closure being ray-traced. */
   eClosureBits closure_active;
+  int _pad0;
   int _pad1;
   int _pad2;
 };
