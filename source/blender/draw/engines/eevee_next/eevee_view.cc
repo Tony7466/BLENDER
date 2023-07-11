@@ -195,39 +195,81 @@ void ShadingView::update_view()
 /** \name Capture View
  * \{ */
 
-void CaptureView::render()
+void CaptureView::render_world()
+{
+  const std::optional<ReflectionProbeUpdateInfo> update_info =
+      inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::World);
+  if (!update_info.has_value()) {
+    return;
+  }
+
+  Texture cubemap_tx;
+  View view = {"Capture.View"};
+  GPU_debug_group_begin("World.Capture");
+
+  cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT);
+  GPU_texture_mipmap_mode(cubemap_tx, false, true);
+
+  for (int face : IndexRange(6)) {
+    float4x4 view_m4 = cubeface_mat(face);
+    float4x4 win_m4 = math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f);
+    view.sync(view_m4, win_m4);
+
+    capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
+    GPU_framebuffer_bind(capture_fb_);
+    inst_.pipelines.world.render(view);
+  }
+
+  inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
+  inst_.reflection_probes.update_probes_texture_mipmaps();
+
+  GPU_debug_group_end();
+}
+
+void CaptureView::render_probes()
 {
   GPU_debug_capture_begin();
   Texture cubemap_tx;
+  TextureFromPool depth_tx;
+  TextureFromPool vector_tx;
+
+  Framebuffer prepass_fb;
   View view = {"Capture.View"};
   bool do_update_mipmap_chain = false;
   while (const std::optional<ReflectionProbeUpdateInfo> update_info =
-             inst_.reflection_probes.update_info_pop())
+             inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::Probe))
   {
+    GPU_debug_group_begin("Probe.Capture");
     do_update_mipmap_chain = true;
 
-    cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT);
-    GPU_texture_mipmap_mode(cubemap_tx, false, true);
+    int2 extent = int2(update_info->resolution);
 
-    GPU_debug_group_begin("Probe.Capture");
+    if (cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT))
+    {
+      GPU_texture_mipmap_mode(cubemap_tx, false, true);
+    }
+
+    inst_.render_buffers.acquire(extent);
+
+    inst_.render_buffers.vector_tx.clear(float4(0.0f));
+    prepass_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.vector_tx));
 
     for (int face : IndexRange(6)) {
-      capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
-      GPU_framebuffer_bind(capture_fb_);
-
       float4x4 view_m4 = cubeface_mat(face);
       view_m4 = math::translate(view_m4, update_info->probe_pos);
       float4x4 win_m4 = math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f);
       view.sync(view_m4, win_m4);
 
-      if (update_info->probe_type == ReflectionProbe::Type::World) {
-        inst_.pipelines.world.render(view);
-      }
-      else if (update_info->probe_type == ReflectionProbe::Type::Probe) {
-        /* TODO: create new pipeline for probe rendering. */
-        inst_.pipelines.world.render(view);
-      }
+      capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                         GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
+
+      GPU_framebuffer_bind(capture_fb_);
+      GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f), 1.0f);
+      inst_.pipelines.probe.render(view, prepass_fb, capture_fb_, extent);
     }
+
+    inst_.render_buffers.release();
     GPU_debug_group_end();
     inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
   }

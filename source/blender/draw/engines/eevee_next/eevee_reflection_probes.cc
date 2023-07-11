@@ -89,6 +89,7 @@ void ReflectionProbeModule::sync_world(::World *world, WorldHandle & /*ob_handle
 
 void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
 {
+  std::cout << __func__ << "\n";
   const ::LightProbe *light_probe = (::LightProbe *)ob->data;
   if (light_probe->type != LIGHTPROBE_TYPE_CUBE) {
     return;
@@ -406,11 +407,23 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
 
 /** \} */
 
-std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop()
+std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
+    const ReflectionProbe::Type probe_type)
 {
+  const bool do_probe_sync = instance_.sampling.do_probe_sync();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
     if (!item.value.do_render) {
+      continue;
+    }
+    if (probe_type == ReflectionProbe::Type::World && item.value.type != probe_type) {
+      return std::nullopt;
+    }
+    if (probe_type == ReflectionProbe::Type::Probe && item.value.type != probe_type) {
+      continue;
+    }
+    /* Do not update this probe during this sample. */
+    if (item.value.type == ReflectionProbe::Type::Probe && !do_probe_sync) {
       continue;
     }
     probes_.lookup(item.key).do_render = false;

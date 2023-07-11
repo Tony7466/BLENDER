@@ -297,8 +297,12 @@ void Instance::render_sample()
 
   sampling.step();
 
-  capture_view.render();
+  capture_view.render_world();
   main_view.render();
+  /* Rendering of probes depends on main view resources. The rendered probes will be applied to the
+   * next sample. */
+  // TODO: Not sure how to incorporate this during image rendering.
+  capture_view.render_probes();
 
   motion_blur.step();
 }
@@ -523,7 +527,7 @@ void Instance::light_bake_irradiance(
     render_sync();
     manager->end_sync();
 
-    capture_view.render();
+    capture_view.render_world();
 
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();

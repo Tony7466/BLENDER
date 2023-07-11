@@ -156,7 +156,7 @@ class ReflectionProbeModule {
   /**
    * Pop the next reflection probe that requires to be updated.
    */
-  std::optional<ReflectionProbeUpdateInfo> update_info_pop();
+  std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
   void remap_to_octahedral_projection(Texture &cubemap_tx, uint64_t object_key);
   void update_probes_texture_mipmaps();
 
