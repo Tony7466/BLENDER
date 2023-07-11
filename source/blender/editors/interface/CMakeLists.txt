@@ -8,7 +8,6 @@ set(INC
   ../../asset_system
   ../../blenfont
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../depsgraph
@@ -16,14 +15,12 @@ set(INC
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../python
   ../../render
   ../../windowmanager
   ../../../../intern/ghost
-  ../../../../intern/guardedalloc
   ../../../../extern/fmtlib/include
   ../../bmesh
   # RNA_prototypes.h
@@ -99,8 +96,10 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_editor_datafiles
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_INTERNATIONAL)
