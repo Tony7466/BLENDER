@@ -23,6 +23,8 @@
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
 
+#include "DNA_particle_types.h"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -193,9 +195,24 @@ void Instance::object_sync(Object *ob)
   ObjectHandle &ob_handle = sync.sync_object(ob);
 
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
+    int sub_key = 1;
     LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
       if (md->type == eModifierType_ParticleSystem) {
-        sync.sync_curves(ob, ob_handle, res_handle, md);
+        ParticleSystem *particle_sys = reinterpret_cast<ParticleSystemModifierData *>(md)->psys;
+        ParticleSettings *part_settings = particle_sys->part;
+        const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
+                                                                         part_settings->draw_as;
+        if (draw_as != PART_DRAW_PATH ||
+            !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
+          continue;
+        }
+
+        ObjectHandle _ob_handle = {0};
+        _ob_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
+        _ob_handle.recalc = particle_sys->recalc;
+        ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
+
+        sync.sync_curves(ob, _ob_handle, _res_handle, md, particle_sys);
       }
     }
   }

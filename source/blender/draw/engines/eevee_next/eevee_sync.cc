@@ -298,43 +298,32 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 void SyncModule::sync_curves(Object *ob,
                              ObjectHandle &ob_handle,
                              ResourceHandle res_handle,
-                             ModifierData *modifier_data)
+                             ModifierData *modifier_data,
+                             ParticleSystem *particle_sys)
 {
   int mat_nr = CURVES_MATERIAL_NR;
-
-  ParticleSystem *part_sys = nullptr;
-  if (modifier_data != nullptr) {
-    part_sys = reinterpret_cast<ParticleSystemModifierData *>(modifier_data)->psys;
-    ParticleSettings *part_settings = part_sys->part;
-    const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
-                                                                     part_settings->draw_as;
-    if (draw_as != PART_DRAW_PATH || !DRW_object_is_visible_psys_in_active_context(ob, part_sys)) {
-      return;
-    }
-
-    /* TODO(Miguel Pozo):
-     * This should use its own resource handle, with a correct bounding box
-     * or with frustum culling disabled. */
-    mat_nr = part_settings->omat;
+  if (particle_sys != nullptr) {
+    mat_nr = particle_sys->part->omat;
   }
 
   bool has_motion = inst_.velocity.step_object_sync(
-      ob, ob_handle.object_key, res_handle, ob_handle.recalc);
+      ob, ob_handle.object_key, res_handle, ob_handle.recalc, modifier_data, particle_sys);
   Material &material = inst_.materials.material_get(ob, has_motion, mat_nr - 1, MAT_GEOM_CURVES);
 
   auto drawcall_add = [&](MaterialPass &matpass) {
     if (matpass.sub_pass == nullptr) {
       return;
     }
-    if (part_sys != nullptr) {
+    if (particle_sys != nullptr) {
+      PassMain::Sub &sub_pass = matpass.sub_pass->sub("Hair SubPass");
       GPUBatch *geometry = hair_sub_pass_setup(
-          *matpass.sub_pass, inst_.scene, ob, part_sys, modifier_data, matpass.gpumat);
-      matpass.sub_pass->draw(geometry, res_handle);
+          sub_pass, inst_.scene, ob, particle_sys, modifier_data, matpass.gpumat);
+      sub_pass.draw(geometry, res_handle);
     }
     else {
-      GPUBatch *geometry = curves_sub_pass_setup(
-          *matpass.sub_pass, inst_.scene, ob, matpass.gpumat);
-      matpass.sub_pass->draw(geometry, res_handle);
+      PassMain::Sub &sub_pass = matpass.sub_pass->sub("Curves SubPass");
+      GPUBatch *geometry = curves_sub_pass_setup(sub_pass, inst_.scene, ob, matpass.gpumat);
+      sub_pass.draw(geometry, res_handle);
     }
   };
 
