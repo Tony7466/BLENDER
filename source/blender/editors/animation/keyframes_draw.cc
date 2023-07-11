@@ -709,8 +709,8 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
 void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
                                      bDopeSheet * /*ads*/,
                                      GreasePencilLayer *layer,
-                                     float ypos,
-                                     float yscale_fac,
+                                     const float ypos,
+                                     const float yscale_fac,
                                      int saction_flag)
 {
   AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
