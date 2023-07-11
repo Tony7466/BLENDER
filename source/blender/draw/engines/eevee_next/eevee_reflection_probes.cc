@@ -63,6 +63,7 @@ void ReflectionProbeModule::begin_sync()
   if (update_probes_next_sample_) {
     if (instance_.materials.queued_shaders_count == 0) {
       update_probes_this_sample_ = true;
+      instance_.sampling.reset();
     }
   }
 }
