@@ -329,8 +329,6 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = CTX_data_tool_settings(C);
   ts->gpencil_selectmode_edit = mode_new;
 
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, nullptr);
-
   /* Convert all drawings of the active GP to the new selection domain. */
   const eAttrDomain domain = ED_grease_pencil_selection_domain_get(C);
   Object *object = CTX_data_active_object(C);
@@ -387,11 +385,13 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
-   * attribute for now. */
   if (changed) {
+    /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
+     * attribute for now. */
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+    WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D, nullptr);
   }
 
   return OPERATOR_FINISHED;
