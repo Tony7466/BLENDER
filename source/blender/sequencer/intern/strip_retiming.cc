@@ -88,7 +88,7 @@ int SEQ_retiming_handles_count(const Sequence *seq)
   return seq->retiming_handle_num;
 }
 
-void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
+void SEQ_retiming_ensure_first_last_handle(const Scene *scene, Sequence *seq)
 {
   if (!SEQ_retiming_is_allowed(seq)) {
     return;
@@ -96,8 +96,16 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
 
   if (seq->retiming_handles != nullptr) {
     SEQ_retiming_add_handle(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
+  }
+}
+
+void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
+{
+  if (!SEQ_retiming_is_allowed(seq)) {
     return;
   }
+
+  SEQ_retiming_ensure_first_last_handle(scene, seq);
 
   seq->retiming_handles = (SeqRetimingHandle *)MEM_calloc_arrayN(
       2, sizeof(SeqRetimingHandle), __func__);
@@ -300,8 +308,6 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
                                               SeqRetimingHandle *handle,
                                               const int offset)
 {
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-
   handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
 
   /* Handle affected transitions: remove and re-create transition. This way transition won't change
@@ -386,20 +392,6 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   const int retiming_handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
   const int strip_handle_frame = SEQ_time_right_handle_frame_get(scene, seq);
 
-  int offset_min = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_handle) + 1 -
-                   retiming_handle_frame;
-  int offset_max;
-  if (seq_retiming_is_last_handle(seq, handle)) {
-    offset_max = INT_MAX;
-  }
-  else {
-    SeqRetimingHandle *next_handle = handle + 1;
-    offset_max = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle) - 1 -
-                 retiming_handle_frame;
-  }
-  corrected_offset = max_ii(corrected_offset, offset_min);
-  corrected_offset = min_ii(corrected_offset, offset_max);
-
   if (SEQ_retiming_handle_is_transition_type(handle) ||
       SEQ_retiming_handle_is_transition_type(prev_handle))
   {
@@ -408,10 +400,6 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   }
   else {
     seq_retiming_offset_linear_handle(scene, seq, handle, corrected_offset);
-  }
-
-  if (strip_handle_frame == retiming_handle_frame) {
-    SEQ_time_right_handle_frame_set(scene, seq, strip_handle_frame + offset);
   }
 }
 
@@ -507,7 +495,8 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
   }
 
   if (SEQ_retiming_handle_is_freeze_frame(handle) ||
-      SEQ_retiming_handle_is_freeze_frame(handle - 1)) {
+      SEQ_retiming_handle_is_freeze_frame(handle - 1))
+  {
     return nullptr;
   }
 
@@ -816,12 +805,41 @@ float SEQ_retiming_handle_timeline_frame_get(const Scene *scene,
 }
 
 void SEQ_retiming_handle_timeline_frame_set(const Scene *scene,
-                                            const Sequence *seq,
+                                            Sequence *seq,
                                             SeqRetimingHandle *handle,
                                             const int timeline_frame)
 {
-  handle->strip_frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
-                              seq_time_media_playback_rate_factor_get(scene, seq);
+  SeqRetimingHandle *prev_handle = handle - 1;
+  const int prev_handle_timeline_frame = SEQ_retiming_handle_timeline_frame_get(
+      scene, seq, prev_handle);
+  int next_handle_timeline_frame = MAXFRAME;
+
+  if (!seq_retiming_is_last_handle(seq, handle)) {
+    SeqRetimingHandle *next_handle = handle + 1;
+    next_handle_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle);
+  }
+
+  const int orig_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  int clamped_timeline_frame = timeline_frame;
+
+  if (timeline_frame < orig_timeline_frame) {
+    clamped_timeline_frame = max_ii(timeline_frame, prev_handle_timeline_frame + 1);
+  }
+  else if (timeline_frame > orig_timeline_frame) {
+    clamped_timeline_frame = min_ii(timeline_frame, next_handle_timeline_frame - 1);
+  }
+
+  if (orig_timeline_frame == SEQ_time_right_handle_frame_get(scene, seq)) {
+    const int offset = timeline_frame - orig_timeline_frame;
+    MutableSpan handles = SEQ_retiming_handles_get(seq);
+    for (handle; handle < handles.end(); handle++) {
+      SEQ_retiming_offset_handle(scene, seq, handle, offset);
+    }
+  }
+  else {
+    handle->strip_frame_index = (clamped_timeline_frame - SEQ_time_start_frame_get(seq)) *
+                                seq_time_media_playback_rate_factor_get(scene, seq);
+  }
 }
 
 bool SEQ_retiming_selection_clear(Editing *ed)

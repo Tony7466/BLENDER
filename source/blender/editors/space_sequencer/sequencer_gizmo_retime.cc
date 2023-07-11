@@ -40,11 +40,6 @@ typedef struct GizmoGroup_retime {
 
 static bool gizmogroup_retime_poll(const bContext *C, wmGizmoGroupType *gzgt)
 {
-  /* Needed to prevent drawing gizmos when retiming tool is not activated. */
-  // if (!ED_gizmo_poll_or_unlink_delayed_from_tool(C, gzgt)) {
-  //     return false;
-  //}
-
   if ((U.gizmo_flag & USER_GIZMO_DRAW) == 0) {
     return false;
   }
@@ -62,7 +57,7 @@ static bool gizmogroup_retime_poll(const bContext *C, wmGizmoGroupType *gzgt)
   Editing *ed = SEQ_editing_get(CTX_data_scene(C));
   Sequence *seq = ed->act_seq;
 
-  if (ed == nullptr || seq == nullptr || !SEQ_retiming_is_allowed(seq)) {
+  if (ed == nullptr || seq == nullptr) {
     return false;
   }
 

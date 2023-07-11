@@ -62,12 +62,8 @@ using blender::MutableSpan;
 #define RETIME_HANDLE_MOUSEOVER_THRESHOLD (16.0f * UI_SCALE_FAC)
 /** Factor based on icon size. */
 #define RETIME_BUTTON_SIZE 0.6f
-
-static float remove_gizmo_height_get(const View2D *v2d)
-{
-  const float max_size = (SEQ_STRIP_OFSTOP - SEQ_STRIP_OFSBOTTOM) * UI_view2d_scale_get_y(v2d);
-  return min_ff(14.0f * UI_SCALE_FAC, max_size * 0.4f);
-}
+#define KEY_SIZE (10 * U.pixelsize)
+#define KEY_CENTER (UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + KEY_SIZE / 2)
 
 static float strip_y_rescale(const Sequence *seq, const float y_value)
 {
@@ -125,11 +121,12 @@ static rctf strip_box_get(const bContext *C, const Sequence *seq)
   return rect;
 }
 
-static rctf remove_box_get(const bContext *C, const Sequence *seq)
+static rctf handles_box_get(const bContext *C, const Sequence *seq)
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
   rctf rect = strip_box_get(C, seq);
-  rect.ymax = rect.ymin + remove_gizmo_height_get(v2d);
+  rect.ymax = KEY_CENTER + KEY_SIZE / 2;
+  rect.ymin = KEY_CENTER - KEY_SIZE / 2;
   return rect;
 }
 
@@ -175,7 +172,7 @@ static const SeqRetimingHandle *mouse_over_handle_get_from_strip(bContext *C,
   Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  rctf box = strip_box_get(C, seq);
+  rctf box = handles_box_get(C, seq);
   box.xmax += RETIME_HANDLE_MOUSEOVER_THRESHOLD; /* Fix selecting last handle. */
   if (!mouse_is_inside_box(&box, mval)) {
     return nullptr;
@@ -203,7 +200,6 @@ const SeqRetimingHandle *mousover_handle_get(bContext *C, const int mval[2], Seq
 
   Scene *scene = CTX_data_scene(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    SEQ_retiming_data_ensure(scene, seq);
     const SeqRetimingHandle *handle = mouse_over_handle_get_from_strip(C, seq, mval);
 
     if (handle == nullptr) {
@@ -229,22 +225,6 @@ const SeqRetimingHandle *mousover_handle_get(bContext *C, const int mval[2], Seq
 /* -------------------------------------------------------------------- */
 /** \name Retiming Move Handle Gizmo
  * \{ */
-
-enum eHandleMoveOperation {
-  DEFAULT_MOVE,
-  MAKE_TRANSITION,
-  MAKE_FREEZE_FRAME,
-};
-
-typedef struct RetimeHandleMoveGizmo {
-  wmGizmo gizmo;
-  const SeqRetimingHandle *mouse_over_handle;
-  int mouse_over_handle_x;
-  eHandleMoveOperation operation;
-} RetimeHandleMoveGizmo;
-
-#define KEY_SIZE (10 * U.pixelsize)
-#define KEY_CENTER (UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + KEY_SIZE / 2)
 
 static void draw_half_keyframe(
     const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle, float size, bool sel)
@@ -290,7 +270,6 @@ static void draw_half_keyframe(
 }
 
 static void retime_handle_draw(const bContext *C,
-                               const RetimeHandleMoveGizmo *gizmo,
                                const Sequence *seq,
                                const SeqRetimingHandle *handle)
 {
@@ -343,8 +322,6 @@ static void retime_handle_draw(const bContext *C,
 
   const int size = KEY_SIZE;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
-  const float prev_handle_position = UI_view2d_view_to_region_x(
-      v2d, handle_x_get(scene, seq, handle - 1));
   const float bottom = KEY_CENTER;
 
   GPUVertFormat *format = immVertexFormat();
@@ -397,9 +374,18 @@ const void draw_continuity(const bContext *C, const Sequence *seq, const SeqReti
   const Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
 
-  const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle));
-  const float prev_handle_position = UI_view2d_view_to_region_x(
+  float retiming_handle_position = UI_view2d_view_to_region_x(v2d,
+                                                              handle_x_get(scene, seq, handle));
+  float prev_retiming_handle_position = UI_view2d_view_to_region_x(
       v2d, handle_x_get(scene, seq, handle - 1));
+
+  const float left_handle_position = UI_view2d_view_to_region_x(
+      v2d, SEQ_time_left_handle_frame_get(scene, seq));
+  const float right_handle_position = UI_view2d_view_to_region_x(
+      v2d, SEQ_time_right_handle_frame_get(scene, seq));
+
+  prev_retiming_handle_position = max_ff(prev_retiming_handle_position, left_handle_position);
+  retiming_handle_position = min_ff(retiming_handle_position, right_handle_position);
 
   const int size = KEY_SIZE;
   const float y_center = KEY_CENTER;
@@ -420,7 +406,7 @@ const void draw_continuity(const bContext *C, const Sequence *seq, const SeqReti
   else {
     immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
   }
-  immRectf(pos, prev_handle_position, bottom, handle_position, top);
+  immRectf(pos, prev_retiming_handle_position, bottom, retiming_handle_position, top);
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
 }
@@ -449,42 +435,14 @@ static void draw_backdrop(const bContext *C, const Sequence *seq)
   immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.3f);
   immRectf(pos, start, bottom, end, top);
   immUnbindProgram();
-
-  /* immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immBegin(GPU_PRIM_LINES, 2);
-  immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.3f);
-  immVertex2f(pos, start, y_center);
-  immVertex2f(pos, end, y_center);
-  immEnd();
-  immUnbindProgram();*/
   GPU_blend(GPU_BLEND_NONE);
 }
 
 static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
 {
-  RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
-  const View2D *v2d = UI_view2d_fromcontext(C);
-
-  /* TODO: This is hard-coded behavior, same as pre-select gizmos in 3D view.
-   * Better solution would be to check operator keymap and display this information in status bar
-   * and tool-tip. */
-  wmEvent *event = CTX_wm_window(C)->eventstate;
-
-  if ((event->modifier & KM_SHIFT) != 0) {
-    gizmo->operation = MAKE_TRANSITION;
-  }
-  else if ((event->modifier & KM_CTRL) != 0) {
-    gizmo->operation = MAKE_FREEZE_FRAME;
-  }
-  else {
-    gizmo->operation = DEFAULT_MOVE;
-  }
-
   wmOrtho2_region_pixelspace(CTX_wm_region(C));
 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-
     draw_backdrop(C, seq);
 
     MutableSpan handles = SEQ_retiming_handles_get(seq);
@@ -498,27 +456,13 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
       if (&handle == handles.begin()) {
         continue; /* Ignore first handle. */
       }
-      retime_handle_draw(C, gizmo, seq, &handle);
+      retime_handle_draw(C, seq, &handle);
     }
   }
 }
 
 static int gizmo_retime_handle_test_select(bContext *C, wmGizmo *gz, const int mval[2])
 {
-  RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
-  // const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
-
-  /* gizmo->mouse_over_handle = handle;
-   if (gizmo->mouse_over_handle != handle)
-{
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
-}*/
-
-  /* if (!sequencer_retiming_tool_is_active(C) && handle != nullptr)
-  {
-    return 0;
-  }*/
-
   return -1;
 }
 
@@ -536,7 +480,7 @@ void GIZMO_GT_retime_handle(wmGizmoType *gzt)
   gzt->setup = gizmo_retime_handle_setup;
   gzt->draw = gizmo_retime_handle_draw;
   gzt->test_select = gizmo_retime_handle_test_select;
-  gzt->struct_size = sizeof(RetimeHandleMoveGizmo);
+  gzt->struct_size = sizeof(wmGizmo);
 }
 
 /** \} */
@@ -586,7 +530,7 @@ static bool label_rect_get(const bContext *C,
   rect->ymin = strip_y_rescale(seq, 0) + pixels_to_view_height(C, 5);
   rect->ymax = rect->ymin + height;
 
-  return width < xmax - xmin;
+  return width < xmax - xmin - pixels_to_view_width(C, KEY_SIZE);
 }
 
 static void label_rect_apply_mouseover_offset(const View2D *v2d, rctf *rect)
@@ -645,7 +589,6 @@ static void gizmo_retime_speed_set_draw(const bContext *C, wmGizmo * /* gz */)
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
     for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
       retime_speed_text_draw(C, seq, &handle);
     }
@@ -660,57 +603,7 @@ static void gizmo_retime_speed_set_draw(const bContext *C, wmGizmo * /* gz */)
 
 static int gizmo_retime_speed_set_test_select(bContext *C, wmGizmo *gz, const int mval[2])
 {
-  return -1;  //
-
-  if (!sequencer_retiming_tool_is_active(C)) {
-    return -1;
-  }
-
-  Scene *scene = CTX_data_scene(C);
-  wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
-  const View2D *v2d = UI_view2d_fromcontext(C);
-
-  for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    SEQ_retiming_data_ensure(scene, seq);
-
-    for (const SeqRetimingHandle &handle : SEQ_retiming_handles_get(seq)) {
-      if (SEQ_retiming_handle_is_transition_type(&handle)) {
-        continue;
-      }
-
-      char label_str[40];
-      rctf label_rect;
-      size_t label_len = label_str_get(seq, &handle, sizeof(label_str), label_str);
-
-      if (!label_rect_get(C, seq, &handle, label_str, label_len, &label_rect)) {
-        continue;
-      }
-
-      // label_rect_apply_mouseover_offset(v2d, &label_rect);
-
-      float mouse_view[2];
-      UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_view[0], &mouse_view[1]);
-
-      if (!BLI_rctf_isect_pt(&label_rect, mouse_view[0], mouse_view[1])) {
-        continue;
-      }
-
-      /* Store next handle in RNA property, since label rect uses first handle as reference. */
-      const int handle_index = SEQ_retiming_handle_index_get(seq, &handle) + 1;
-      RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return 0;
-    }
-  }
   return -1;
-}
-
-static int gizmo_retime_speed_set_cursor_get(wmGizmo *gz)
-{
-  if (RNA_boolean_get(gz->ptr, "show_drag")) {
-    return WM_CURSOR_TEXT_EDIT;
-  }
-  return WM_CURSOR_DEFAULT;
 }
 
 void GIZMO_GT_speed_set_remove(wmGizmoType *gzt)
@@ -721,11 +614,7 @@ void GIZMO_GT_speed_set_remove(wmGizmoType *gzt)
   /* Api callbacks. */
   gzt->draw = gizmo_retime_speed_set_draw;
   gzt->test_select = gizmo_retime_speed_set_test_select;
-  gzt->cursor_get = gizmo_retime_speed_set_cursor_get;
   gzt->struct_size = sizeof(wmGizmo);
-
-  /* Currently only used for cursor display. */
-  RNA_def_boolean(gzt->srna, "show_drag", true, "Show Drag", "");
 }
 
 /** \} */

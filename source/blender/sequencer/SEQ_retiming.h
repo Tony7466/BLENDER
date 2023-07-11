@@ -18,6 +18,7 @@ struct SeqRetimingHandle;
 
 int SEQ_retiming_handles_count(const struct Sequence *seq);
 bool SEQ_retiming_is_active(const struct Sequence *seq);
+void SEQ_retiming_ensure_first_last_handle(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_ensure(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_clear(struct Sequence *seq);
 bool SEQ_retiming_is_allowed(const struct Sequence *seq);
@@ -59,7 +60,7 @@ float SEQ_retiming_handle_timeline_frame_get(const struct Scene *scene,
                                              const struct Sequence *seq,
                                              const struct SeqRetimingHandle *handle);
 void SEQ_retiming_handle_timeline_frame_set(const struct Scene *scene,
-                                            const struct Sequence *seq,
+                                            struct Sequence *seq,
                                             struct SeqRetimingHandle *handle,
                                             const int timeline_frame);
 const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Sequence *seq,

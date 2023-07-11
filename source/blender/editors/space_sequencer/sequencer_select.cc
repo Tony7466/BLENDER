@@ -30,6 +30,7 @@
 #include "SEQ_channels.h"
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
+#include "SEQ_retiming.h"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
@@ -272,13 +273,15 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq)) {
+              SEQ_time_right_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq)) {
+              SEQ_time_left_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
@@ -972,6 +975,12 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   if (seq && handle && !wait_to_deselect_others) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
+    /* Ensure retiming handles at strip handles before switching tool. */
+    Sequence *seq;
+    SEQ_ITERATOR_FOREACH (seq, SEQ_query_all_strips(ed->seqbasep)) {
+      SEQ_retiming_ensure_first_last_handle(scene, seq);
+    }
+
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 

@@ -569,7 +569,7 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
     SEQ_retiming_selection_append(ed, seq_handle_owner, handle);
   }
 
-  WM_toolsystem_ref_set_by_id(C, "builtin.retime");
+  WM_toolsystem_ref_set_by_id(C, "builtin.retime"); /* Switch to retiming tool. */
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
