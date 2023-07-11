@@ -5455,7 +5455,7 @@ static void region_blend_end(bContext *C, ARegion *region, const bool is_running
     /* area decoration needs redraw in end */
     ED_area_tag_redraw(rgi->area);
   }
-  WM_event_remove_timer(CTX_wm_manager(C), nullptr, region->regiontimer); /* frees rgi */
+  WM_event_timer_remove(CTX_wm_manager(C), nullptr, region->regiontimer); /* frees rgi */
   region->regiontimer = nullptr;
 }
 void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARegion *region)
@@ -5491,7 +5491,7 @@ void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARe
   }
 
   /* new timer */
-  region->regiontimer = WM_event_add_timer(wm, win, TIMERREGION, TIMESTEP);
+  region->regiontimer = WM_event_timer_add(wm, win, TIMERREGION, TIMESTEP);
   region->regiontimer->customdata = rgi;
 }
 
