@@ -145,8 +145,8 @@ struct EraseOperationExecutor {
     int points_to_add = 0;
     int points_to_remove = 0;
     int curve_count = 0;
-    Array<int> cuts_count(src.points_num() + src.curves_num(), 0);
-    Array<float> segment_intersections(MAX_NB_CUTS * src.points_range().size(), -1.0f);
+    Array<int> points_in_dst(src.points_num() + src.curves_num(), 0);
+    Array<float> dst_factors(MAX_NB_CUTS * src.points_range().size(), -1.0f);
     Array<bool> keep_point(src.points_num(), true);
 
     /* Compute intersection points with the eraser */
@@ -165,7 +165,7 @@ struct EraseOperationExecutor {
 
       for (const int segment_i : points.drop_back(1)) {
         const float3 pos = deformation.positions[segment_i];
-        int intersection_index = MAX_NB_CUTS * segment_i;
+        int intersection_index = MAX_NB_CUTS * segment_i - 1;
 
         /* Compute screen space point position */
         float2 pos_view{};
@@ -183,11 +183,10 @@ struct EraseOperationExecutor {
           if (segment_i == points.first()) {
             first_point_trimmed = true;
           }
-          segment_intersections[intersection_index] = -1.0;
-          intersection_index++;
         }
         else {
-          cuts_count[segment_i + curve_i]++;
+          points_in_dst[segment_i + curve_i]++;
+          dst_factors[++intersection_index] = 0.0;
         }
 
         /* Compute intersections between the current segment and the eraser's area */
@@ -206,14 +205,13 @@ struct EraseOperationExecutor {
                         -1.0;
 
         if (IN_RANGE(mu0, 0, 1)) {
-          cuts_count[segment_i + curve_i]++;
-          segment_intersections[intersection_index] = mu0;
-          intersection_index++;
+          points_in_dst[segment_i + curve_i]++;
+          dst_factors[++intersection_index] = mu0;
           points_to_add++;
         }
         if (IN_RANGE(mu1, 0, 1)) {
-          cuts_count[segment_i + curve_i]++;
-          segment_intersections[intersection_index] = mu1;
+          points_in_dst[segment_i + curve_i]++;
+          dst_factors[++intersection_index] = mu1;
           points_to_add++;
         }
 
@@ -224,8 +222,8 @@ struct EraseOperationExecutor {
             keep_point[segment_i + 1] = false;
           }
           else {
-            cuts_count[segment_i + curve_i + 1]++;
-            segment_intersections[MAX_NB_CUTS * (segment_i + 1)] = 0.0;
+            points_in_dst[segment_i + curve_i + 1]++;
+            dst_factors[MAX_NB_CUTS * (segment_i + 1)] = 0.0;
           }
         }
       }
@@ -239,7 +237,7 @@ struct EraseOperationExecutor {
 
     /* Compute the accumulated offset */
     OffsetIndices<int> acc_offsets = blender::offset_indices::accumulate_counts_to_offsets(
-        cuts_count);
+        points_in_dst);
 
     std::cout << "acc_offsets: " << std::endl;
     for (const int i : acc_offsets.index_range()) {
@@ -279,15 +277,15 @@ struct EraseOperationExecutor {
 
         src_curves_range.foreach_index(GrainSize(512), [&](const int curve_i) {
           /* Copy/Interpolate point data of a single curve */
-          const IndexRange src_points = src_points_by_curve[curve_i];
-          const IndexRange src_segments = bke::curves::per_curve_point_offsets_range(src_points,
-                                                                                     curve_i);
+          const IndexRange src_points_range = src_points_by_curve[curve_i];
+          const IndexRange src_offset_range = bke::curves::per_curve_point_offsets_range(
+              src_points_range, curve_i);
 
-          OffsetIndices<int> dst_offset = acc_offsets.slice(src_segments);
-          const IndexRange dst_points = dst_points_by_curve[curve_i];
+          OffsetIndices<int> dst_offset = acc_offsets.slice(src_offset_range);
+          const IndexRange dst_points_range = dst_points_by_curve[curve_i];
 
-          const Span<T> src_attr = attribute.src.typed<T>().slice(src_points);
-          MutableSpan<T> dst_attr = attribute.dst.span.typed<T>().slice(dst_points);
+          const Span<T> src_attr = attribute.src.typed<T>().slice(src_points_range);
+          MutableSpan<T> dst_attr = attribute.dst.span.typed<T>().slice(dst_points_range);
 
           threading::parallel_for(
               src_attr.index_range().drop_back(1), 1024, [&](IndexRange range) {
@@ -297,8 +295,8 @@ struct EraseOperationExecutor {
                     continue;
                   }
 
-                  Span<float> factors = segment_intersections.as_span().slice(
-                      IndexRange(3 * src_point_index, segment_points.size()));
+                  Span<float> factors = dst_factors.as_span().slice(
+                      IndexRange(MAX_NB_CUTS * src_point_index, segment_points.size()));
 
                   // dst_factors.slice(segment_points)
 
