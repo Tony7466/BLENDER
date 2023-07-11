@@ -96,6 +96,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "MOD_nodes.hh"
+
 #include "object_intern.h"
 
 using blender::float3;
@@ -3737,10 +3739,10 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
     return OPERATOR_CANCELLED;
   }
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  if (!nmd.simulation_cache->ptr) {
+  if (!nmd.runtime->simulation_cache) {
     return OPERATOR_CANCELLED;
   }
-  ModifierSimulationCache &sim_cache = *nmd.simulation_cache->ptr;
+  ModifierSimulationCache &sim_cache = *nmd.runtime->simulation_cache;
   Set<std::pair<StringRefNull, StringRefNull>> used_ids;
   for (std::unique_ptr<ModifierSimulationStateAtFrame> &state_at_frame :
        sim_cache.states_at_frames_) {

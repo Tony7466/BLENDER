@@ -2347,6 +2347,7 @@ typedef struct NodesModifierData {
   int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
 
+  void *_pad;
   NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
 

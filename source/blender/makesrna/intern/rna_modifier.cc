@@ -1699,10 +1699,7 @@ static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
   return &settings->properties;
 }
 
-static NodesModifierIDMapping *rna_NodesModifier_id_mappings_new(ID *id,
-                                                                 NodesModifierData *nmd,
-                                                                 Main *bmain,
-                                                                 ReportList *reports)
+static NodesModifierIDMapping *rna_NodesModifier_id_mappings_new(NodesModifierData *nmd)
 {
   const int old_num = nmd->id_mappings_num;
   NodesModifierIDMapping *new_mappings = MEM_cnew_array<NodesModifierIDMapping>(old_num + 1,
@@ -7137,7 +7134,6 @@ static void rna_def_modifier_nodes_id_mappings(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "new", "rna_NodesModifier_id_mappings_new");
   RNA_def_function_ui_description(func, "Add an id mapping to this modifier");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   /* Return value. */
   parm = RNA_def_pointer(
       func, "id_mapping", "NodesModifierIDMapping", "ID Mapping", "Newly created mapping");
