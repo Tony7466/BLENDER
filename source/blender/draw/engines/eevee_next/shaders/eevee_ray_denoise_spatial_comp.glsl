@@ -146,7 +146,7 @@ void main()
       if (tile_is_unused) {
         ivec2 texel_fullres_neighbor = texel_fullres + ivec2(x, y) * int(tile_size);
 
-        imageStore(out_radiance_img, texel_fullres_neighbor, vec4(0.0));
+        imageStore(out_radiance_img, texel_fullres_neighbor, vec4(FLT_11_11_10_MAX, 0.0));
         imageStore(out_variance_img, texel_fullres_neighbor, vec4(0.0));
         imageStore(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
       }
@@ -156,7 +156,7 @@ void main()
   bool valid_texel = in_texture_range(texel_fullres, stencil_tx);
   uint closure_bits = (!valid_texel) ? 0u : texelFetch(stencil_tx, texel_fullres, 0).r;
   if (!flag_test(closure_bits, CLOSURE_ACTIVE)) {
-    imageStore(out_radiance_img, texel_fullres, vec4(0.0));
+    imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
     imageStore(out_variance_img, texel_fullres, vec4(0.0));
     imageStore(out_hit_depth_img, texel_fullres, vec4(0.0));
     return;

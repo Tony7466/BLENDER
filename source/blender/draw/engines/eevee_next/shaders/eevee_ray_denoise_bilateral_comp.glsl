@@ -12,6 +12,7 @@
  * https://www.ea.com/seed/news/seed-dd18-presentation-slides-raytracing
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -128,6 +129,12 @@ void main()
   float filter_size = mix(1.0, 3.0, roughness * 8.0);
   uint sample_count = uint(is_high_variance ? 10u : 5u);
 
+#if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_REFLECT)
+  if (roughness <= 1e-3) {
+    sample_count = 1;
+  }
+#endif
+
   if (is_smooth || is_background || is_low_variance) {
     /* Early out cases. */
     imageStore(out_radiance_img, texel_fullres, vec4(in_radiance, 0.0));
@@ -163,10 +170,13 @@ void main()
     float spatial_weight = bilateral_spatial_weight(filter_size, vec2(offset));
     float normal_weight = bilateral_normal_weight(center_closure.N, sample_closure.N);
 
-    // float weight = depth_weight * spatial_weight * normal_weight;
-    float weight = 1.0;
+    float weight = depth_weight * spatial_weight * normal_weight;
 
     vec3 radiance = imageLoad(in_radiance_img, sample_texel).rgb;
+    /* Do not gather unprocessed pixels. */
+    if (all(equal(in_radiance, FLT_11_11_10_MAX))) {
+      continue;
+    }
     accum_radiance += to_accumulation_space(radiance) * weight;
     accum_weight += weight;
   }

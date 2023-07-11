@@ -189,7 +189,8 @@ class DeferredLayer {
   PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
 
-  void render(View &view,
+  void render(View &main_view,
+              View &render_view,
               Framebuffer &prepass_fb,
               Framebuffer &combined_fb,
               int2 extent,
@@ -214,7 +215,8 @@ class DeferredPipeline {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(View &view,
+  void render(View &main_view,
+              View &render_view,
               Framebuffer &prepass_fb,
               Framebuffer &combined_fb,
               int2 extent,

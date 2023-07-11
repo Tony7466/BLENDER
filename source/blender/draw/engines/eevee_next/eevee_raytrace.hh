@@ -166,11 +166,14 @@ class RayTraceModule {
    *
    * \arg active_closures is a mask of all active closures in a deferred layer.
    * \arg raytrace_closure is type of closure the rays are to be casted for.
+   * \arg main_view is the un-jittered view.
+   * \arg render_view is the TAA jittered view.
    */
   RayTraceResult trace(RayTraceBuffer &rt_buffer,
                        eClosureBits active_closures,
                        eClosureBits raytrace_closure,
-                       View &view);
+                       View &main_view,
+                       View &render_view);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);

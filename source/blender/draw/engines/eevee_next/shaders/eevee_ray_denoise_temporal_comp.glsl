@@ -47,6 +47,15 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
         continue;
       }
       vec3 radiance = imageLoad(in_radiance_img, neighbor_texel).rgb;
+      /* Exclude unprocessed pixels. */
+      if (all(equal(radiance, FLT_11_11_10_MAX))) {
+        continue;
+      }
+
+      /* Weight corners less to avoid box artifacts.
+       * Same idea as in "High Quality Temporal Supersampling" by Brian Karis at Siggraph 2014
+       * (Slide 32) Simple clamp to min/max of 8 neighbors results in 3x3 box artifacts. */
+      float weight = (x == y) ? 0.25 : 1.0;
       result.mean += radiance.rgb;
       result.moment += square_f(radiance.rgb);
       weight_accum += 1.0;
@@ -121,6 +130,12 @@ void main()
 
   float in_variance = imageLoad(in_variance_img, texel_fullres).r;
   vec3 in_radiance = imageLoad(in_radiance_img, texel_fullres).rgb;
+
+  if (all(equal(in_radiance, FLT_11_11_10_MAX))) {
+    imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
+    imageStore(out_variance_img, texel_fullres, vec4(0.0));
+    return;
+  }
 
   LocalStatistics local = local_statistics_get(texel_fullres, in_radiance);
 

@@ -165,7 +165,9 @@ void RayTraceModule::debug_draw(View & /* view */, GPUFrameBuffer * /* view_fb *
 RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
                                      eClosureBits active_closures,
                                      eClosureBits raytrace_closure,
-                                     View &view)
+                                     /* TODO(fclem): Maybe wrap these two in some other class. */
+                                     View &main_view,
+                                     View &render_view)
 {
   BLI_assert_msg(count_bits_i(raytrace_closure) == 1,
                  "Only one closure type can be raytraced at a time.");
@@ -229,7 +231,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
   /* Ray setup. */
   GPU_storagebuf_clear_to_zero(ray_dispatch_buf_);
-  inst_.manager->submit(tile_classify_ps_, view);
+  inst_.manager->submit(tile_classify_ps_, render_view);
 
   {
     /* Tracing rays. */
@@ -237,8 +239,8 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     ray_time_tx_.acquire(tracing_res, GPU_R32F);
     ray_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
 
-    inst_.manager->submit(*generate_ray_ps, view);
-    inst_.manager->submit(*trace_ray_ps, view);
+    inst_.manager->submit(*generate_ray_ps, render_view);
+    inst_.manager->submit(*trace_ray_ps, render_view);
   }
 
   RayTraceResult result;
@@ -251,7 +253,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     hit_depth_tx_.acquire(use_temporal_denoise_ ? extent : dummy_extent, GPU_R32F);
     denoised_spatial_tx_ = denoise_buf->denoised_spatial_tx;
 
-    inst_.manager->submit(*denoise_spatial_ps, view);
+    inst_.manager->submit(*denoise_spatial_ps, render_view);
 
     result = {denoise_buf->denoised_spatial_tx};
   }
@@ -278,12 +280,12 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     tilemask_history_tx_ = denoise_buf->tilemask_history_tx;
     denoised_temporal_tx_ = denoise_buf->denoised_temporal_tx;
 
-    inst_.manager->submit(denoise_temporal_ps_, view);
+    inst_.manager->submit(denoise_temporal_ps_, render_view);
 
     /* Swap after last use. */
     TextureFromPool::swap(tile_mask_tx_, denoise_buf->tilemask_history_tx);
     /* Save view-projection matrix for next reprojection. */
-    denoise_buf->history_persmat = view.persmat();
+    denoise_buf->history_persmat = main_view.persmat();
     /* Radiance will be swapped with history in RayTraceResult::release().
      * Variance is swapped with history after bilateral denoise.
      * It keeps dataflow easier to follow. */
@@ -299,7 +301,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_bilateral_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
     denoised_bilateral_tx_ = denoise_buf->denoised_bilateral_tx;
 
-    inst_.manager->submit(*denoise_bilateral_ps, view);
+    inst_.manager->submit(*denoise_bilateral_ps, render_view);
 
     /* Swap after last use. */
     TextureFromPool::swap(denoise_buf->denoised_temporal_tx, denoise_buf->radiance_history_tx);

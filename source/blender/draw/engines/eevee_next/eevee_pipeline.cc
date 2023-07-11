@@ -464,30 +464,31 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   return pass;
 }
 
-void DeferredLayer::render(View &view,
+void DeferredLayer::render(View &main_view,
+                           View &render_view,
                            Framebuffer &prepass_fb,
                            Framebuffer &combined_fb,
                            int2 extent,
                            RayTraceBuffer &rt_buffer)
 {
   GPU_framebuffer_bind(prepass_fb);
-  inst_.manager->submit(prepass_ps_, view);
+  inst_.manager->submit(prepass_ps_, render_view);
 
   inst_.hiz_buffer.set_dirty();
-  inst_.shadows.set_view(view);
-  inst_.irradiance_cache.set_view(view);
+  inst_.shadows.set_view(render_view);
+  inst_.irradiance_cache.set_view(render_view);
 
   inst_.gbuffer.acquire(extent, closure_bits_);
 
   GPU_framebuffer_bind(combined_fb);
-  inst_.manager->submit(gbuffer_ps_, view);
+  inst_.manager->submit(gbuffer_ps_, render_view);
 
   RayTraceResult refract_result = inst_.raytracing.trace(
-      rt_buffer, closure_bits_, CLOSURE_REFRACTION, view);
+      rt_buffer, closure_bits_, CLOSURE_REFRACTION, main_view, render_view);
   indirect_refraction_tx_ = refract_result.get();
 
   RayTraceResult reflect_result = inst_.raytracing.trace(
-      rt_buffer, closure_bits_, CLOSURE_REFLECTION, view);
+      rt_buffer, closure_bits_, CLOSURE_REFLECTION, main_view, render_view);
   indirect_reflection_tx_ = reflect_result.get();
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
@@ -496,13 +497,13 @@ void DeferredLayer::render(View &view,
   specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   specular_light_tx_.clear(float4(0.0f));
 
-  inst_.manager->submit(eval_light_ps_, view);
+  inst_.manager->submit(eval_light_ps_, render_view);
 
   refract_result.release();
   reflect_result.release();
 
   if (closure_bits_ & CLOSURE_SSS) {
-    inst_.subsurface.render(view, combined_fb, diffuse_light_tx_);
+    inst_.subsurface.render(render_view, combined_fb, diffuse_light_tx_);
   }
 
   diffuse_light_tx_.release();
@@ -553,7 +554,8 @@ PassMain::Sub *DeferredPipeline::material_add(::Material *blender_mat, GPUMateri
   }
 }
 
-void DeferredPipeline::render(View &view,
+void DeferredPipeline::render(View &main_view,
+                              View &render_view,
                               Framebuffer &prepass_fb,
                               Framebuffer &combined_fb,
                               int2 extent,
@@ -561,11 +563,13 @@ void DeferredPipeline::render(View &view,
                               RayTraceBuffer &rt_buffer_refract_layer)
 {
   DRW_stats_group_start("Deferred.Opaque");
-  opaque_layer_.render(view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer);
+  opaque_layer_.render(
+      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer);
   DRW_stats_group_end();
 
   DRW_stats_group_start("Deferred.Refract");
-  refraction_layer_.render(view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer);
+  refraction_layer_.render(
+      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer);
   DRW_stats_group_end();
 }
 
