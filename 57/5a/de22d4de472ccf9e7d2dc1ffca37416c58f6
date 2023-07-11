@@ -4,3 +4,4 @@ Referenced by issue #97489, Unify Interpolation In Vertex Paint And Sculpt Mode
 Referenced by issue #97183, Regression: Vertex paint mode (old style) work only with 1st attribute layer, no matter what selected is
 Referenced by issue #69760, Undo/Adjust Last Operation: vertex and weightpaint operators/strokes undo more then they should (change back any setting changed prior to execution)
 Referenced by issue #107845, Vertex paint mode breaks permanently under certain conditions (Global undo involved)
+Referenced by pull request #109971, Fix #109822: Average Brush in Vertex Paint Mode is broken
