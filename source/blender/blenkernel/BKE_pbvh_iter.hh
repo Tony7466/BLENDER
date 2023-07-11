@@ -53,14 +53,16 @@ namespace blender::bke::pbvh {
 
 struct FilterResultAbstract {
   bool in_range;
+
+  FilterResultAbstract(bool in_range_) : in_range(in_range_) {}
 };
 
-/* PBVHNode vertex iterator. */
+/** PBVHNode vertex iterator. */
 template<typename NodeData,
          PBVHType pbvh_type,
-         typename FilterResult = void,
+         typename FilterResult = void, /* struct { bool in_range; } */
          typename FilterFunc = void *> /* (PBVHVertRef vertex, const float *co, const float *no)
-                                          Should return a FilterResult if set. */
+                                           Should return a FilterResult if set. */
 struct PBVHNodeVertRange {
   struct iterator {
     PBVHVertRef vertex;
@@ -69,7 +71,7 @@ struct PBVHNodeVertRange {
     float *co;
     float *no;
     float *mask;
-    int vertex_node_index;
+    int vertex_node_index; /* Index of vertex within the node. */
 
     PBVHNode *node;
     NodeData *node_data;
@@ -299,6 +301,10 @@ struct PBVHNodeVertRange {
   iterator end_;
 };
 
+/** Vertex list range.
+ *
+ * See foreach_brush_flatlist.
+ */
 template<typename NodeData, PBVHType pbvh_type, typename FilterResult = FilterResultAbstract>
 struct VertexListRange {
   struct VertTriplet {
@@ -555,12 +561,11 @@ void foreach_brush_verts_simple(
   }
 }
 
-/* NodeData is per-node data provided by the client. */
 template<typename NodeData,
          PBVHType pbvh_type,
          typename ExecFunc,
          typename FilterFunc = blender::bke::pbvh::PBVHVertexFilter>
-ATTR_NO_OPT void foreach_brush_verts_intern(
+ATTR_NO_OPT void foreach_brush_verts_flatlist_intern(
     PBVH *pbvh,
     Span<PBVHNode *> nodes,
     bool threaded,
@@ -650,10 +655,20 @@ ATTR_NO_OPT void foreach_brush_verts_intern(
   }
 }
 
+/**
+ *
+ * PBVHNodes make a poor boundary for parallel task execution due to
+ * their large size, which is done for GPU bandwidth reasons.
+ *
+ * This version of foreach_brush_verts puts the filtered vertex list
+ * into a flat array and feeds that to parallel_for with a finer grain size.
+ *
+ * NodeData is per-node data provided by the client.
+ */
 template<typename NodeData,
          typename ExecFunc,
          typename FilterFunc = blender::bke::pbvh::PBVHVertexFilter>
-void foreach_brush_verts(
+void foreach_brush_verts_flatlist(
     PBVH *pbvh,
     Span<PBVHNode *> nodes,
     bool threaded,
@@ -663,17 +678,9 @@ void foreach_brush_verts(
     std::function<void(PBVHNode *node, NodeData *node_data)> node_visit_post,
     int repeat = 0) /* Visit nodes after exec. */ noexcept
 {
-
-  printf("limit count: %d\n", int(pbvh->leaf_limit * nodes.size()));
-  if (pbvh->leaf_limit * nodes.size() > 70000) {
-    foreach_brush_verts_simple<NodeData>(
-        pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
-    return;
-  }
-
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES:
-      foreach_brush_verts_intern<NodeData, PBVH_FACES, ExecFunc, FilterFunc>(
+      foreach_brush_verts_flatlist_intern<NodeData, PBVH_FACES, ExecFunc, FilterFunc>(
           pbvh,
           nodes,
           threaded,
@@ -684,13 +691,76 @@ void foreach_brush_verts(
           repeat);
       break;
     case PBVH_BMESH:
-      foreach_brush_verts_intern<NodeData, PBVH_BMESH, ExecFunc, FilterFunc>(
+      foreach_brush_verts_flatlist_intern<NodeData, PBVH_BMESH, ExecFunc, FilterFunc>(
           pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
       break;
     case PBVH_GRIDS:
-      foreach_brush_verts_intern<NodeData, PBVH_GRIDS, ExecFunc, FilterFunc>(
+      foreach_brush_verts_flatlist_intern<NodeData, PBVH_GRIDS, ExecFunc, FilterFunc>(
           pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
       break;
+  }
+}
+
+/** Parallelized interface for executing a task over PBVH node vertices.
+ *  For a higher-level version of this API see blender::editors::sculpt::exec_brush
+ *
+ * To maximize CPU saturation one of two different implementations will be
+ * used, foreach_brush_simple (which splits tasks by node)
+ * or foreach_brush_flatlist (which builds a flat, filtered list of vertices
+ * to feed to parallel_for).
+ *
+ * Example:
+ *
+ * struct NodeTaskData {
+ *   // put any per-node data this task needs here.
+ * };
+ * foreach_brush_verts<NodeTaskData>(
+ *                     pbvh,
+ *                     nodes,
+ *                     true,
+ *                     [](PBVHVertex vertex, float *co, float *no) {
+ *                       // Filter verts here.  Return a
+ *                       // struct with an in_range bool.
+ *                       // This design is necassary for blender::editors::exec_brush
+ *
+ *                      },
+ *                     [](PBVHNode *node) {
+ *                       return NodeTaskData();
+ *                     },
+ *                     [](auto &range) {
+ *                        for (auto &vd : range) {
+ *                          // do something with vd.co, vd.no, vd.vertex, etc.
+ *                        }
+ *                     },
+ *                     [](PBVHNode *node, MyNodeData *data) {
+ *                       //post-execution per-node callback.
+ *                     });
+ *
+ */
+template<typename NodeData,
+         typename ExecFunc,
+         typename FilterFunc = blender::bke::pbvh::PBVHVertexFilter>
+void foreach_brush_verts(
+    PBVH *pbvh,
+    Span<PBVHNode *> nodes,
+    bool threaded,
+    FilterFunc filter_func, /* Apply brush radius test here, r_dist_squared must be set. */
+    std::function<NodeData(PBVHNode *node)> node_visit_pre, /* Visit nodes before exec.*/
+    ExecFunc exec, /* Main execution function. [&](auto range) { for (auto &vd : range) {} } */
+    std::function<void(PBVHNode *node, NodeData *node_data)>
+        node_visit_post, /* Visit nodes after exec. */
+    int repeat = 0)
+{
+
+  printf("limit count: %d\n", int(pbvh->leaf_limit * nodes.size()));
+
+  if (pbvh->leaf_limit * nodes.size() > 70000) {
+    foreach_brush_verts_simple<NodeData>(
+        pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
+  }
+  else {
+    foreach_brush_verts_flatlist<NodeData>(
+        pbvh, nodes, threaded, filter_func, node_visit_pre, exec, node_visit_post, repeat);
   }
 }
 
