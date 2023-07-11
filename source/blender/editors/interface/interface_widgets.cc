@@ -3648,8 +3648,19 @@ static void widget_progress_determinate_ring(uiButProgressbar *but,
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4ubv(wcol->item);
-  imm_draw_disk_partial_fill_2d(pos, x, y, inner_rad, outer_rad, 48, start, end);
+  immUniformColor3ubvAlpha(wcol->item, 255 / UI_PIXEL_AA_JITTER * 2);
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  for (int i = 0; i < UI_PIXEL_AA_JITTER; i++) {
+    imm_draw_disk_partial_fill_2d(pos,
+                                  x + ui_pixel_jitter[i][0],
+                                  y + ui_pixel_jitter[i][1],
+                                  inner_rad,
+                                  outer_rad,
+                                  48,
+                                  start,
+                                  end);
+  }
   immUnbindProgram();
 
   if (but->drawstr && but->drawstr[0]) {
@@ -3657,22 +3668,22 @@ static void widget_progress_determinate_ring(uiButProgressbar *but,
   }
 }
 
-static void widget_progressbar(uiBut *but,
-                               uiWidgetColors *wcol,
-                               rcti *rect,
-                               const uiWidgetStateInfo * /*state*/,
-                               int roundboxalign,
-                               const float zoom)
+static void widget_progress_indicator(uiBut *but,
+                                      uiWidgetColors *wcol,
+                                      rcti *rect,
+                                      const uiWidgetStateInfo * /*state*/,
+                                      int roundboxalign,
+                                      const float zoom)
 {
-  uiButProgressbar *but_progressbar = (uiButProgressbar *)but;
-  if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_LINEAR) {
-    widget_progress_determinate_bar(but_progressbar, wcol, rect, roundboxalign, zoom);
+  uiButProgressbar *but_progress = static_cast<uiButProgressbar *>(but);
+  if (but_progress->progress_type == UI_PROGRESS_DETERMINATE_LINEAR) {
+    widget_progress_determinate_bar(but_progress, wcol, rect, roundboxalign, zoom);
   }
-  else if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_RING) {
-    widget_progress_determinate_ring(but_progressbar, wcol, rect, 0.6f);
+  else if (but_progress->progress_type == UI_PROGRESS_DETERMINATE_RING) {
+    widget_progress_determinate_ring(but_progress, wcol, rect, 0.6f);
   }
-  else if (but_progressbar->progress_type == UI_PROGRESS_DETERMINATE_PIE) {
-    widget_progress_determinate_ring(but_progressbar, wcol, rect, 0.0f);
+  else if (but_progress->progress_type == UI_PROGRESS_DETERMINATE_PIE) {
+    widget_progress_determinate_ring(but_progress, wcol, rect, 0.0f);
   }
 }
 
@@ -4595,7 +4606,7 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
 
     case UI_WTYPE_PROGRESSBAR:
       wt.wcol_theme = &btheme->tui.wcol_progress;
-      wt.custom = widget_progressbar;
+      wt.custom = widget_progress_indicator;
       break;
 
     case UI_WTYPE_VIEW_ITEM:
