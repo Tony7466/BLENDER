@@ -24,6 +24,8 @@
  *
  * Bounding box calculation based on http://blog.hackers-cafe.net/2009/06/how-to-calculate-bezier-curves-bounding.html
  *
+ * This is a modified version for Blender used by importers.
+ *
  */
 
 #ifndef NANOSVG_H
@@ -139,6 +141,7 @@ typedef struct NSVGpath
 typedef struct NSVGshape
 {
 	char id[64];				// Optional 'id' attr of the shape or its group
+  char id_parent[64];   // Blender: Parent ID used for layer creation.
 	NSVGpaint fill;				// Fill paint
 	NSVGpaint stroke;			// Stroke paint
 	float opacity;				// Opacity of the shape.
@@ -360,6 +363,7 @@ int nsvg__parseXML(char* input,
 /* Simple SVG parser. */
 
 #define NSVG_MAX_ATTR 128
+#define NSVG_MAX_BREADCRUMB 5
 
 enum NSVGgradientUnits {
 	NSVG_USER_SPACE = 0,
@@ -455,6 +459,10 @@ typedef struct NSVGparser
 	float dpi;
 	char pathFlag;
 	char defsFlag;
+  /** Blender breadcrumb for layers. */
+  char breadcrumb[NSVG_MAX_BREADCRUMB][64];
+  /** Blender number of elements in breadcrumb. */
+  int breadcrumb_len;
 } NSVGparser;
 
 static void nsvg__xformIdentity(float* t)
@@ -957,6 +965,14 @@ static void nsvg__addShape(NSVGparser* p)
 	if (shape == NULL) goto error;
 	memset(shape, 0, sizeof(NSVGshape));
 
+  /* Copy parent id from breadcrumb. */
+  if (p->breadcrumb_len > 0) {
+    memcpy(shape->id_parent, p->breadcrumb[0], sizeof shape->id_parent);
+  }
+  else {
+    memcpy(shape->id_parent, attr->id, sizeof shape->id_parent);
+  }
+
 	memcpy(shape->id, attr->id, sizeof shape->id);
 	memcpy(shape->fillGradient, attr->fillGradient, sizeof shape->fillGradient);
 	memcpy(shape->strokeGradient, attr->strokeGradient, sizeof shape->strokeGradient);
@@ -1202,12 +1218,21 @@ static const char* nsvg__getNextPathItemWhenArcFlag(const char* s, char* it)
 	return s;
 }
 
-static const char* nsvg__getNextPathItem(const char* s, char* it)
+static const char* nsvg__getNextPathItem(const char* s, char* it, char cmd, int nargs)
 {
 	it[0] = '\0';
 	// Skip white spaces and commas
 	while (*s && (nsvg__isspace(*s) || *s == ',')) s++;
 	if (!*s) return s;
+
+  /* Blender: Special case for arc command's 4th and 5th arguments. */
+  if ((cmd == 'a' || cmd == 'A') && (nargs ==  3 || nargs == 4)) {
+    it[0] = s[0];
+    it[1] = '\0';
+    s++;
+    return s;
+  }
+
 	if (*s == '-' || *s == '+' || *s == '.' || nsvg__isdigit(*s)) {
 		s = nsvg__parseNumber(s, it, 64);
 	} else {
@@ -2291,7 +2316,7 @@ static void nsvg__parsePath(NSVGparser* p, const char** attr)
 			if ((cmd == 'A' || cmd == 'a') && (nargs == 3 || nargs == 4))
 				s = nsvg__getNextPathItemWhenArcFlag(s, item);
 			if (!*item)
-				s = nsvg__getNextPathItem(s, item);
+				s = nsvg__getNextPathItem(s, item, cmd, nargs);
 			if (!*item) break;
 			if (cmd != '\0' && nsvg__isCoordinate(item)) {
 				if (nargs < 10)
@@ -2561,7 +2586,7 @@ static void nsvg__parsePoly(NSVGparser* p, const char** attr, int closeFlag)
 				s = attr[i + 1];
 				nargs = 0;
 				while (*s) {
-					s = nsvg__getNextPathItem(s, item);
+					s = nsvg__getNextPathItem(s, item, '\0', nargs);
 					args[nargs++] = (float)nsvg__atof(item);
 					if (nargs >= 2) {
 						if (npts == 0)
@@ -2767,6 +2792,14 @@ static void nsvg__startElement(void* ud, const char* el, const char** attr)
 	if (strcmp(el, "g") == 0) {
 		nsvg__pushAttr(p);
 		nsvg__parseAttribs(p, attr);
+
+    /* Save the breadcrumb of groups. */
+    if (p->breadcrumb_len < NSVG_MAX_BREADCRUMB) {
+      NSVGattrib *attr_id = nsvg__getAttr(p);
+      memcpy(
+          p->breadcrumb[p->breadcrumb_len], attr_id->id, sizeof(p->breadcrumb[p->breadcrumb_len]));
+      p->breadcrumb_len++;
+    }
 	} else if (strcmp(el, "path") == 0) {
 		if (p->pathFlag)	// Do not allow nested paths.
 			return;
@@ -2815,6 +2848,12 @@ static void nsvg__endElement(void* ud, const char* el)
 	NSVGparser* p = (NSVGparser*)ud;
 
 	if (strcmp(el, "g") == 0) {
+    /* Remove the breadcrumb level. */
+    if (p->breadcrumb_len > 0) {
+      p->breadcrumb[p->breadcrumb_len - 1][0] = '\0';
+      p->breadcrumb_len--;
+    }
+
 		nsvg__popAttr(p);
 	} else if (strcmp(el, "path") == 0) {
 		p->pathFlag = 0;
