@@ -165,8 +165,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
                          blender_mat->nodetree :
                          default_surface_ntree_.nodetree_get(blender_mat);
 
-  // TODO: Deferred compilation currently unsupported for probe_capturing.
-  bool use_deferred_compilation = false;  // inst_.is_viewport();
+  bool use_deferred_compilation = inst_.is_viewport();
 
   MaterialPass matpass = MaterialPass();
   matpass.gpumat = inst_.shaders.material_shader_get(

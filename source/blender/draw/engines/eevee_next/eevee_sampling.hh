@@ -145,17 +145,8 @@ class Sampling {
 
   /**
    * Return true when probe pipeline is used during this sample.
-   *
-   * TODO: only return true when during the previous sample a probe was detected that needed to be
-   * re-rendered.
-   * TODO: only return true when not playing back (perhaps even when not navigating) Might become
-   * probe options.
-   * TODO: only return true when all shaders have been compiled.
    */
-  bool do_probe_sync() const
-  {
-    return true;
-  }
+  bool do_probe_sync() const;
 
   /**
    * Special ball distribution:

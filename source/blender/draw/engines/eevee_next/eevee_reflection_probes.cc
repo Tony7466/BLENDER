@@ -58,6 +58,13 @@ void ReflectionProbeModule::begin_sync()
       reflection_probe.is_probe_used = false;
     }
   }
+
+  update_probes_this_sample_ = false;
+  if (update_probes_next_sample_) {
+    if (instance_.materials.queued_shaders_count == 0) {
+      update_probes_this_sample_ = true;
+    }
+  }
 }
 
 int ReflectionProbeModule::needed_layers_get() const
@@ -98,11 +105,16 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
       max_resolution_, static_cast<eLightProbeResolution>(light_probe->resolution));
   ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
   probe.do_update_data |= is_dirty;
+  probe.do_render |= is_dirty;
   probe.is_probe_used = true;
 
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
   probe_data.layer_subdivision = subdivision;
+
+  if (probe.do_render && update_probes_this_sample_ == false) {
+    update_probes_next_sample_ = true;
+  }
 }
 
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,

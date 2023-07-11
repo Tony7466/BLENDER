@@ -162,6 +162,19 @@ void Sampling::step()
   reset_ = false;
 }
 
+bool Sampling::do_probe_sync() const
+{
+  /* TODO: only return true when not playing back (perhaps even when not navigating) Might become
+   * probe options. */
+  if (inst_.materials.queued_shaders_count != 0) {
+    return false;
+  }
+  if (!inst_.reflection_probes.update_probes_this_sample_) {
+    return false;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

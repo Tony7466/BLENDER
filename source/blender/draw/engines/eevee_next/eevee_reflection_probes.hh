@@ -22,6 +22,7 @@ class Instance;
 struct ObjectHandle;
 struct WorldHandle;
 class CaptureView;
+class Sampling;
 struct ReflectionProbeUpdateInfo;
 
 /* -------------------------------------------------------------------- */
@@ -108,6 +109,9 @@ class ReflectionProbeModule {
   GPUTexture *cubemap_tx_ = nullptr;
   int reflection_probe_index_ = 0;
 
+  bool update_probes_next_sample_ = false;
+  bool update_probes_this_sample_ = false;
+
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
 
@@ -162,6 +166,7 @@ class ReflectionProbeModule {
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
+  friend class Sampling;
 };
 
 std::ostream &operator<<(std::ostream &os, const ReflectionProbeModule &module);
