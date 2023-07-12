@@ -971,14 +971,19 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, nullptr);
-  if (seq && handle && !wait_to_deselect_others) {
+  Sequence *handle_test_seq = nullptr;
+  bool retiming_handle_clicked = mousover_handle_get(C, mval, &handle_test_seq) != nullptr;
+  if (handle_test_seq != nullptr) {
+    retiming_handle_clicked |= last_handle_is_clicked(C, handle_test_seq, mval);
+  }
+
+  if (handle_test_seq && retiming_handle_clicked && !wait_to_deselect_others) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
     /* Ensure retiming handles at strip handles before switching tool. */
     Sequence *seq;
     SEQ_ITERATOR_FOREACH (seq, SEQ_query_all_strips(ed->seqbasep)) {
-      SEQ_retiming_ensure_first_last_handle(scene, seq);
+      SEQ_retiming_data_ensure(scene, seq);
     }
 
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;

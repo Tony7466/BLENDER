@@ -318,6 +318,7 @@ class SEQUENCER_PT_sequencer_overlay(Panel):
         layout.prop(overlay_settings, "show_fcurves", text="F-Curves")
         layout.prop(overlay_settings, "show_thumbnails", text="Thumbnails")
         layout.prop(overlay_settings, "show_grid", text="Grid")
+        layout.prop(overlay_settings, "show_strip_retiming", text="Retiming")
 
         layout.separator()
 

@@ -1539,7 +1539,8 @@ static void rna_3DViewShading_render_pass_set(PointerRNA *ptr, int value)
     STRNCPY(shading->aov_name, aov->name);
   }
   else if (value == EEVEE_RENDER_PASS_BLOOM &&
-           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0)) {
+           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0))
+  {
     shading->render_pass = EEVEE_RENDER_PASS_COMBINED;
   }
   else {
@@ -3294,7 +3295,8 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
                 ATTR_DOMAIN_CORNER,
                 ATTR_DOMAIN_EDGE,
                 ATTR_DOMAIN_POINT,
-                ATTR_DOMAIN_FACE)) {
+                ATTR_DOMAIN_FACE))
+      {
         continue;
       }
     }
@@ -5803,6 +5805,11 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
   RNA_def_property_ui_text(
       prop, "Show Color Tags", "Display the strip color tags in the sequencer");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_strip_retiming", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_RETIMING);
+  RNA_def_property_ui_text(prop, "Show Retiming Keys", "Display retiming keys on top of strips");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 }
 

@@ -101,7 +101,7 @@ int SEQ_retiming_handles_count(const Sequence *seq)
   return seq->retiming_handle_num;
 }
 
-void SEQ_retiming_ensure_first_last_handle(const Scene *scene, Sequence *seq)
+void SEQ_retiming_ensure_last_handle(const Scene *scene, Sequence *seq)
 {
   if (!SEQ_retiming_is_allowed(seq)) {
     return;
@@ -118,7 +118,10 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
     return;
   }
 
-  SEQ_retiming_ensure_first_last_handle(scene, seq);
+  if (SEQ_retiming_is_active(seq)) {
+    SEQ_retiming_ensure_last_handle(scene, seq);
+    return;
+  }
 
   seq->retiming_handles = (SeqRetimingHandle *)MEM_calloc_arrayN(
       2, sizeof(SeqRetimingHandle), __func__);
@@ -126,6 +129,8 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
   handle->strip_frame_index = seq->len;
   handle->retiming_factor = 1.0f;
   seq->retiming_handle_num = 2;
+
+  SEQ_retiming_ensure_last_handle(scene, seq);
 }
 
 void SEQ_retiming_data_clear(Sequence *seq)
@@ -272,14 +277,18 @@ SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
 {
   float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
                       seq_time_media_playback_rate_factor_get(scene, seq);
+
+  const SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
+
+  if (frame_index >= last_handle->strip_frame_index) {
+    return nullptr; /* Can not create handle beyond last handle. */
+  }
+
   float value = seq_retiming_evaluate(seq, frame_index);
 
   const SeqRetimingHandle *start_handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
-  const SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
 
-  if (start_handle->strip_frame_index == frame_index ||
-      last_handle->strip_frame_index == frame_index)
-  {
+  if (start_handle->strip_frame_index == frame_index) {
     return nullptr; /* Retiming handle already exists. */
   }
 

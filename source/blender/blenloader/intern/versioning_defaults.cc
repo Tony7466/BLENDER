@@ -166,7 +166,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       seq->render_size = SEQ_RENDER_SIZE_PROXY_100;
       seq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_SOURCE | SEQ_TIMELINE_SHOW_STRIP_NAME |
                                     SEQ_TIMELINE_SHOW_STRIP_DURATION | SEQ_TIMELINE_SHOW_GRID |
-                                    SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG;
+                                    SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG |
+                                    SEQ_TIMELINE_SHOW_STRIP_RETIMING;
       seq->preview_overlay.flag |= SEQ_PREVIEW_SHOW_OUTLINE_SELECTED;
     }
     else if (area->spacetype == SPACE_TEXT) {
@@ -218,7 +219,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       LISTBASE_FOREACH (ARegion *, region, regionbase) {
         if (region->regiontype == RGN_TYPE_TOOL_HEADER) {
           if (((sl->spacetype == SPACE_IMAGE) && hide_image_tool_header) ||
-              sl->spacetype == SPACE_SEQ) {
+              sl->spacetype == SPACE_SEQ)
+          {
             region->flag |= RGN_FLAG_HIDDEN;
           }
           else {

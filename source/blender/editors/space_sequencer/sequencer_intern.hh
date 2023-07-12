@@ -15,6 +15,8 @@ struct Sequence;
 struct SeqRetimingHandle;
 
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
+bool last_handle_is_clicked(struct bContext *C, const struct Sequence *seq, const int mval[2]);
+
 const struct SeqRetimingHandle *mousover_handle_get(struct bContext *C,
                                                     const int mval[2],
                                                     Sequence **r_seq);
