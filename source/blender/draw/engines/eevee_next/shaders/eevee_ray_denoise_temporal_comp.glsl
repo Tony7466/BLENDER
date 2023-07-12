@@ -66,8 +66,9 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
   result.moment *= inv_weight;
   result.variance = abs(result.moment - square_f(result.mean));
   result.deviation = sqrt(result.variance);
-  result.clamp_min = result.mean - result.deviation;
-  result.clamp_max = result.mean + result.deviation;
+  /* Allow more ghosting (and more stable reflections) by taking 2 standard deviations. */
+  result.clamp_min = result.mean - result.deviation * 2.0;
+  result.clamp_max = result.mean + result.deviation * 2.0;
   return result;
 }
 
@@ -160,7 +161,7 @@ void main()
   /* Blend history with new radiance. */
   float mix_fac = (history_radiance.w == 0.0) ? 0.0 : 0.97;
   /* Reduce blend factor to improve low rougness reflections. Use variance instead of roughness. */
-  mix_fac *= mix(0.75, 1.0, saturate(in_variance / 1e-3));
+  mix_fac *= mix(0.75, 1.0, saturate(in_variance * 20.0));
   vec3 out_radiance = mix(safe_color(in_radiance), safe_color(history_radiance.rgb), mix_fac);
   /* This is feedback next frame as radiance_history_tx. */
   imageStore(out_radiance_img, texel_fullres, vec4(out_radiance, 0.0));
