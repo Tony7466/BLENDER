@@ -3797,7 +3797,7 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
   CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
 
   if (nmd.runtime->simulation_cache) {
-    nmd.runtime->simulation_cache->invalidate();
+    nmd.runtime->simulation_cache->reset();
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

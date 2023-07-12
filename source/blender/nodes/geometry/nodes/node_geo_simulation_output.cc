@@ -196,6 +196,67 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
   });
 }
 
+static void restore_materials(ID &id,
+                              const bke::BakeIDMapping &id_mapping,
+                              bke::BakeIDMappingIssuesLog *id_mapping_issues)
+{
+  if (id.properties == nullptr) {
+    return;
+  }
+  Material ***materials = BKE_id_material_array_p(&id);
+  short *materials_num = BKE_id_material_len_p(&id);
+
+  IDProperty *materials_prop = IDP_GetPropertyFromGroup(id.properties, ".materials");
+  if (materials_prop->type != IDP_IDPARRAY) {
+    return;
+  }
+  *materials_num = materials_prop->len;
+  *materials = MEM_cnew_array<Material *>(*materials_num, __func__);
+  for (const int i : IndexRange(materials_prop->len)) {
+    IDProperty *material_prop = IDP_GetIndexArray(materials_prop, i);
+    bke::BakeIDMappingKey key;
+    if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(material_prop, "id_name")) {
+      if (id_name_prop->type == IDP_STRING) {
+        key.id_name = IDP_String(id_name_prop);
+      }
+    }
+    if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(material_prop, "lib_name")) {
+      if (lib_name_prop->type == IDP_STRING) {
+        key.lib_name = IDP_String(lib_name_prop);
+      }
+    }
+    if (key.id_name.is_empty()) {
+      continue;
+    }
+    Material *material = reinterpret_cast<Material *>(id_mapping.get(key, ID_MA));
+    if (material) {
+      (*materials)[i] = material;
+    }
+    else if (id_mapping_issues) {
+      id_mapping_issues->add(key, ID_MA);
+    }
+  }
+  IDP_RemoveFromGroup(id.properties, materials_prop);
+  IDP_FreeArray(materials_prop);
+}
+
+static void restore_geometry_set_materials(GeometrySet &geometry_set,
+                                           const bke::BakeIDMapping &id_mapping,
+                                           bke::BakeIDMappingIssuesLog *id_mapping_issues)
+{
+  geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
+    if (Mesh *mesh = geometry.get_mesh_for_write()) {
+      restore_materials(mesh->id, id_mapping, id_mapping_issues);
+    }
+    if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
+      restore_materials(pointcloud->id, id_mapping, id_mapping_issues);
+    }
+    if (Curves *curves = geometry.get_curves_for_write()) {
+      restore_materials(curves->id, id_mapping, id_mapping_issues);
+    }
+  });
+}
+
 /**
  * Some attributes stored in the simulation state become anonymous attributes in geometry nodes.
  * This maps attribute names to their corresponding anonymous attribute ids.
@@ -239,6 +300,8 @@ static bool copy_value_or_field_simulation_state_to_value(
     const NodeSimulationItem &sim_item,
     const CPPType &cpp_type,
     const bke::sim::SimulationStateItem &state_item,
+    const bke::BakeIDMapping &id_mapping,
+    bke::BakeIDMappingIssuesLog *id_mapping_issues,
     Vector<GeometrySet *> &r_geometries,
     Map<std::string, AnonymousAttributeIDPtr> &r_attribute_map,
     void *r_output_value)
@@ -248,6 +311,7 @@ static bool copy_value_or_field_simulation_state_to_value(
       if (const auto *item = dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(
               &state_item)) {
         GeometrySet *geometry = new (r_output_value) GeometrySet(item->geometry);
+        restore_geometry_set_materials(*geometry, id_mapping, id_mapping_issues);
         r_geometries.append(geometry);
         return true;
       }
@@ -325,6 +389,7 @@ void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
     if (socket_type == SOCK_GEOMETRY) {
       if (auto *item = dynamic_cast<bke::sim::GeometrySimulationStateItem *>(state_item->get())) {
         GeometrySet *geometry = new (r_output_values[i]) GeometrySet(std::move(item->geometry));
+        restore_geometry_set_materials(*geometry, id_mapping, id_mapping_issues);
         geometries.append(geometry);
       }
       else {
@@ -338,6 +403,8 @@ void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
                                                          sim_item,
                                                          cpp_type,
                                                          *state_item->get(),
+                                                         id_mapping,
+                                                         id_mapping_issues,
                                                          geometries,
                                                          attribute_map,
                                                          r_output_values[i]))
@@ -378,6 +445,8 @@ void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
                                                        sim_item,
                                                        cpp_type,
                                                        *state_item->get(),
+                                                       id_mapping,
+                                                       id_mapping_issues,
                                                        geometries,
                                                        attribute_map,
                                                        r_output_values[i]))
