@@ -633,15 +633,15 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
     use_custom_normals = true;
   }
 
-  for (const int poly_index : faces.index_range()) {
-    const IndexRange poly = faces[poly_index];
-    bool use_vert_normals = use_custom_normals || !sharp_faces[poly_index];
+  for (const int face_index : faces.index_range()) {
+    const IndexRange face = faces[face_index];
+    bool use_vert_normals = use_custom_normals || !sharp_faces[face_index];
 
     if (!use_vert_normals) {
       /* For flat faces use face normal as vertex normal: */
 
       const float3 vector = blender::bke::mesh::face_normal_calc(positions,
-                                                                 corner_verts.slice(poly));
+                                                                 corner_verts.slice(face));
 
       Normal n = {vector[0], vector[1], vector[2]};
       normals.push_back(n);
@@ -649,7 +649,7 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
     }
 
     BCPolygonNormalsIndices poly_indices;
-    for (const int corner : poly) {
+    for (const int corner : face) {
       if (use_vert_normals) {
         float normalized[3];
 

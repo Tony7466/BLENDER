@@ -46,7 +46,7 @@ static void extract_orco_init(const MeshRenderData *mr,
   BLI_assert(data->orco);
 }
 
-static void extract_orco_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_orco_iter_face_bm(const MeshRenderData * /*mr*/,
                                       const BMFace *f,
                                       const int /*f_index*/,
                                       void *data)
@@ -77,7 +77,7 @@ constexpr MeshExtract create_extractor_orco()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_orco_init;
-  extractor.iter_poly_bm = extract_orco_iter_poly_bm;
+  extractor.iter_face_bm = extract_orco_iter_face_bm;
   extractor.iter_face_mesh = extract_orco_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_Orco_Data);

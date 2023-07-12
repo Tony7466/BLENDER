@@ -126,7 +126,7 @@ static void extract_edit_data_init(const MeshRenderData *mr,
   *(EditLoopData **)tls_data = vbo_data;
 }
 
-static void extract_edit_data_iter_poly_bm(const MeshRenderData *mr,
+static void extract_edit_data_iter_face_bm(const MeshRenderData *mr,
                                            const BMFace *f,
                                            const int /*f_index*/,
                                            void *_data)
@@ -342,7 +342,7 @@ constexpr MeshExtract create_extractor_edit_data()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edit_data_init;
-  extractor.iter_poly_bm = extract_edit_data_iter_poly_bm;
+  extractor.iter_face_bm = extract_edit_data_iter_face_bm;
   extractor.iter_face_mesh = extract_edit_data_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_edit_data_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_edit_data_iter_loose_edge_mesh;

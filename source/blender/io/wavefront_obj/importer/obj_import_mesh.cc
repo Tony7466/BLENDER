@@ -196,21 +196,21 @@ void MeshFromGeometry::create_faces_loops(Mesh *mesh, bool use_vertex_groups)
   const int64_t tot_face_elems{mesh->faces_num};
   int tot_loop_idx = 0;
 
-  for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const PolyElem &curr_face = mesh_geometry_.face_elements_[poly_idx];
+  for (int face_idx = 0; face_idx < tot_face_elems; ++face_idx) {
+    const PolyElem &curr_face = mesh_geometry_.face_elements_[face_idx];
     if (curr_face.corner_count_ < 3) {
       /* Don't add single vertex face, or edges. */
       std::cerr << "Face with less than 3 vertices found, skipping." << std::endl;
       continue;
     }
 
-    face_offsets[poly_idx] = tot_loop_idx;
-    sharp_faces.span[poly_idx] = !curr_face.shaded_smooth;
-    material_indices.span[poly_idx] = curr_face.material_index;
+    face_offsets[face_idx] = tot_loop_idx;
+    sharp_faces.span[face_idx] = !curr_face.shaded_smooth;
+    material_indices.span[face_idx] = curr_face.material_index;
     /* Importing obj files without any materials would result in negative indices, which is not
      * supported. */
-    if (material_indices.span[poly_idx] < 0) {
-      material_indices.span[poly_idx] = 0;
+    if (material_indices.span[face_idx] < 0) {
+      material_indices.span[face_idx] = 0;
     }
 
     for (int idx = 0; idx < curr_face.corner_count_; ++idx) {

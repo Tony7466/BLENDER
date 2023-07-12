@@ -633,7 +633,7 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   //  Data copy
   ////////////////////
 
-  int vertex_index = 0, edge_index = 0, loop_index = 0, poly_index = 0;
+  int vertex_index = 0, edge_index = 0, loop_index = 0, face_index = 0;
   int visible_faces, visible_segments;
   bool visible;
   Strip::vertex_container::iterator v[3];
@@ -712,10 +712,10 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
           ++edge_index;
 
           // poly
-          face_offsets[poly_index] = loop_index;
+          face_offsets[face_index] = loop_index;
           *material_indices = matnr;
           ++material_indices;
-          ++poly_index;
+          ++face_index;
 
           // Even and odd loops connect triangles vertices differently
           bool is_odd = n % 2;

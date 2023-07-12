@@ -186,7 +186,7 @@ BLI_INLINE void edituv_edge_add(
   }
 }
 
-static void extract_edituv_lines_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_edituv_lines_iter_face_bm(const MeshRenderData * /*mr*/,
                                               const BMFace *f,
                                               const int /*f_index*/,
                                               void *_data)
@@ -331,7 +331,7 @@ constexpr MeshExtract create_extractor_edituv_lines()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edituv_lines_init;
-  extractor.iter_poly_bm = extract_edituv_lines_iter_poly_bm;
+  extractor.iter_face_bm = extract_edituv_lines_iter_face_bm;
   extractor.iter_face_mesh = extract_edituv_lines_iter_face_mesh;
   extractor.finish = extract_edituv_lines_finish;
   extractor.init_subdiv = extract_edituv_lines_init_subdiv;
@@ -371,7 +371,7 @@ BLI_INLINE void edituv_point_add(MeshExtract_EditUvElem_Data *data,
   }
 }
 
-static void extract_edituv_points_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_edituv_points_iter_face_bm(const MeshRenderData * /*mr*/,
                                                const BMFace *f,
                                                const int /*f_index*/,
                                                void *_data)
@@ -485,7 +485,7 @@ constexpr MeshExtract create_extractor_edituv_points()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edituv_points_init;
-  extractor.iter_poly_bm = extract_edituv_points_iter_poly_bm;
+  extractor.iter_face_bm = extract_edituv_points_iter_face_bm;
   extractor.iter_face_mesh = extract_edituv_points_iter_face_mesh;
   extractor.finish = extract_edituv_points_finish;
   extractor.init_subdiv = extract_edituv_points_init_subdiv;
@@ -528,7 +528,7 @@ BLI_INLINE void edituv_facedot_add(MeshExtract_EditUvElem_Data *data,
   }
 }
 
-static void extract_edituv_fdots_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_edituv_fdots_iter_face_bm(const MeshRenderData * /*mr*/,
                                               const BMFace *f,
                                               const int f_index,
                                               void *_data)
@@ -581,7 +581,7 @@ constexpr MeshExtract create_extractor_edituv_fdots()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edituv_fdots_init;
-  extractor.iter_poly_bm = extract_edituv_fdots_iter_poly_bm;
+  extractor.iter_face_bm = extract_edituv_fdots_iter_face_bm;
   extractor.iter_face_mesh = extract_edituv_fdots_iter_face_mesh;
   extractor.finish = extract_edituv_fdots_finish;
   extractor.data_type = MR_DATA_NONE;

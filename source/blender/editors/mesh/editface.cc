@@ -110,9 +110,9 @@ void paintface_flush_flags(bContext *C,
             attributes_eval.lookup_or_add_for_write_only_span<bool>(".hide_poly",
                                                                     ATTR_DOMAIN_FACE);
         for (const int i : IndexRange(me_eval->faces_num)) {
-          const int orig_poly_index = index_array[i];
-          if (orig_poly_index != ORIGINDEX_NONE) {
-            hide_poly_eval.span[i] = hide_poly_orig[orig_poly_index];
+          const int orig_face_index = index_array[i];
+          if (orig_face_index != ORIGINDEX_NONE) {
+            hide_poly_eval.span[i] = hide_poly_orig[orig_face_index];
           }
         }
         hide_poly_eval.finish();
@@ -124,9 +124,9 @@ void paintface_flush_flags(bContext *C,
             attributes_eval.lookup_or_add_for_write_only_span<bool>(".select_poly",
                                                                     ATTR_DOMAIN_FACE);
         for (const int i : IndexRange(me_eval->faces_num)) {
-          const int orig_poly_index = index_array[i];
-          if (orig_poly_index != ORIGINDEX_NONE) {
-            select_poly_eval.span[i] = select_poly_orig[orig_poly_index];
+          const int orig_face_index = index_array[i];
+          if (orig_face_index != ORIGINDEX_NONE) {
+            select_poly_eval.span[i] = select_poly_orig[orig_face_index];
           }
         }
         select_poly_eval.finish();
@@ -399,53 +399,53 @@ static int get_opposing_edge_index(const blender::IndexRange face,
  * Follow quads around the mesh by finding opposing edges.
  * \return True if the search has looped back on itself, finding the same index twice.
  */
-static bool follow_face_loop(const int poly_start_index,
+static bool follow_face_loop(const int face_start_index,
                              const int edge_start_index,
                              const blender::OffsetIndices<int> faces,
                              const blender::VArray<bool> &hide_poly,
                              const blender::Span<int> corner_edges,
                              const blender::GroupedSpan<int> edge_to_face_map,
-                             blender::VectorSet<int> &r_loop_polys)
+                             blender::VectorSet<int> &r_loop_faces)
 {
   using namespace blender;
-  int current_poly_index = poly_start_index;
+  int current_face_index = face_start_index;
   int current_edge_index = edge_start_index;
 
   while (current_edge_index > 0) {
-    int next_poly_index = -1;
+    int next_face_index = -1;
 
     for (const int face_index : edge_to_face_map[current_edge_index]) {
-      if (face_index != current_poly_index) {
-        next_poly_index = face_index;
+      if (face_index != current_face_index) {
+        next_face_index = face_index;
         break;
       }
     }
 
     /* Edge might only have 1 face connected. */
-    if (next_poly_index == -1) {
+    if (next_face_index == -1) {
       return false;
     }
 
     /* Only works on quads. */
-    if (faces[next_poly_index].size() != 4) {
+    if (faces[next_face_index].size() != 4) {
       return false;
     }
 
     /* Happens if we looped around the mesh. */
-    if (r_loop_polys.contains(next_poly_index)) {
+    if (r_loop_faces.contains(next_face_index)) {
       return true;
     }
 
-    /* Hidden polygons stop selection. */
-    if (hide_poly[next_poly_index]) {
+    /* Hidden faces stop selection. */
+    if (hide_poly[next_face_index]) {
       return false;
     }
 
-    r_loop_polys.add(next_poly_index);
+    r_loop_faces.add(next_face_index);
 
-    const IndexRange next_poly = faces[next_poly_index];
-    current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
-    current_poly_index = next_poly_index;
+    const IndexRange next_face = faces[next_face_index];
+    current_edge_index = get_opposing_edge_index(next_face, corner_edges, current_edge_index);
+    current_face_index = next_face_index;
   }
   return false;
 }

@@ -34,7 +34,7 @@ static void extract_tris_init(const MeshRenderData *mr,
   GPU_indexbuf_init(elb, GPU_PRIM_TRIS, mr->face_sorted->visible_tri_len, mr->loop_len);
 }
 
-static void extract_tris_iter_poly_bm(const MeshRenderData *mr,
+static void extract_tris_iter_face_bm(const MeshRenderData *mr,
                                       const BMFace *f,
                                       const int f_index,
                                       void *_data)
@@ -142,7 +142,7 @@ constexpr MeshExtract create_extractor_tris()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_tris_init;
   extractor.init_subdiv = extract_tris_init_subdiv;
-  extractor.iter_poly_bm = extract_tris_iter_poly_bm;
+  extractor.iter_face_bm = extract_tris_iter_face_bm;
   extractor.iter_face_mesh = extract_tris_iter_face_mesh;
   extractor.task_reduce = extract_tris_mat_task_reduce;
   extractor.finish = extract_tris_finish;

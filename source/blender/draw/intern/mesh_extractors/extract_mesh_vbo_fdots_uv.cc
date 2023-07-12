@@ -54,7 +54,7 @@ static void extract_fdots_uv_init(const MeshRenderData *mr,
   }
 }
 
-static void extract_fdots_uv_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_fdots_uv_iter_face_bm(const MeshRenderData * /*mr*/,
                                           const BMFace *f,
                                           const int /*f_index*/,
                                           void *_data)
@@ -94,7 +94,7 @@ constexpr MeshExtract create_extractor_fdots_uv()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_fdots_uv_init;
-  extractor.iter_poly_bm = extract_fdots_uv_iter_poly_bm;
+  extractor.iter_face_bm = extract_fdots_uv_iter_face_bm;
   extractor.iter_face_mesh = extract_fdots_uv_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_FdotUV_Data);

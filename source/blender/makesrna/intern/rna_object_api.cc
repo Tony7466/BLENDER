@@ -550,7 +550,7 @@ static void rna_Mesh_assign_verts_to_group(
 #  endif
 
 /* don't call inside a loop */
-static int mesh_looptri_to_poly_index(Mesh *me_eval, const int tri_index)
+static int mesh_looptri_to_face_index(Mesh *me_eval, const int tri_index)
 {
   const int *looptri_faces = BKE_mesh_runtime_looptri_faces_ensure(me_eval);
   const int face_i = looptri_faces[tri_index];
@@ -644,7 +644,7 @@ static void rna_Object_ray_cast(Object *ob,
 
           copy_v3_v3(r_location, hit.co);
           copy_v3_v3(r_normal, hit.no);
-          *r_index = mesh_looptri_to_poly_index(mesh_eval, hit.index);
+          *r_index = mesh_looptri_to_face_index(mesh_eval, hit.index);
         }
       }
 
@@ -702,7 +702,7 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
 
       copy_v3_v3(r_location, nearest.co);
       copy_v3_v3(r_normal, nearest.no);
-      *r_index = mesh_looptri_to_poly_index(mesh_eval, nearest.index);
+      *r_index = mesh_looptri_to_face_index(mesh_eval, nearest.index);
 
       goto finally;
     }

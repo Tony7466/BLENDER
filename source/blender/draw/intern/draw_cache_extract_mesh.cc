@@ -70,7 +70,7 @@ class ExtractorRunDatas : public Vector<ExtractorRunData> {
         result.append(data);
         continue;
       }
-      if ((iter_type & MR_ITER_POLY) && *(&extractor->iter_poly_bm + is_mesh)) {
+      if ((iter_type & MR_ITER_POLY) && *(&extractor->iter_face_bm + is_mesh)) {
         result.append(data);
         continue;
       }
@@ -281,7 +281,7 @@ static void extract_range_iter_looptri_mesh(void *__restrict userdata,
   }
 }
 
-static void extract_range_iter_poly_bm(void *__restrict userdata,
+static void extract_range_iter_face_bm(void *__restrict userdata,
                                        const int iter,
                                        const TaskParallelTLS *__restrict tls)
 {
@@ -291,7 +291,7 @@ static void extract_range_iter_poly_bm(void *__restrict userdata,
   const MeshRenderData *mr = data->mr;
   const BMFace *f = ((const BMFace **)data->elems)[iter];
   for (const ExtractorRunData &run_data : data->extractors) {
-    run_data.extractor->iter_poly_bm(
+    run_data.extractor->iter_face_bm(
         mr, f, iter, POINTER_OFFSET(extract_data, run_data.data_offset));
   }
 }
@@ -391,7 +391,7 @@ BLI_INLINE void extract_task_range_run_iter(const MeshRenderData *mr,
       break;
     case MR_ITER_POLY:
       range_data.elems = is_mesh ? mr->faces.data() : (void *)mr->bm->ftable;
-      func = is_mesh ? extract_range_iter_face_mesh : extract_range_iter_poly_bm;
+      func = is_mesh ? extract_range_iter_face_mesh : extract_range_iter_face_bm;
       stop = mr->face_len;
       break;
     case MR_ITER_LOOSE_EDGE:
@@ -630,7 +630,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
   EXTRACT_ADD_REQUESTED(vbo, fdots_nor);
   EXTRACT_ADD_REQUESTED(vbo, fdots_uv);
   EXTRACT_ADD_REQUESTED(vbo, fdots_edituv_data);
-  EXTRACT_ADD_REQUESTED(vbo, poly_idx);
+  EXTRACT_ADD_REQUESTED(vbo, face_idx);
   EXTRACT_ADD_REQUESTED(vbo, edge_idx);
   EXTRACT_ADD_REQUESTED(vbo, vert_idx);
   EXTRACT_ADD_REQUESTED(vbo, fdot_idx);
@@ -835,7 +835,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
   EXTRACT_ADD_REQUESTED(ibo, edituv_lines);
   EXTRACT_ADD_REQUESTED(vbo, vert_idx);
   EXTRACT_ADD_REQUESTED(vbo, edge_idx);
-  EXTRACT_ADD_REQUESTED(vbo, poly_idx);
+  EXTRACT_ADD_REQUESTED(vbo, face_idx);
   EXTRACT_ADD_REQUESTED(vbo, edge_fac);
   EXTRACT_ADD_REQUESTED(ibo, points);
   EXTRACT_ADD_REQUESTED(vbo, edit_data);

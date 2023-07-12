@@ -608,7 +608,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
 
   MutableSpan<int> face_offsets = me->face_offsets_for_write();
   MutableSpan<int> corner_verts = me->corner_verts_for_write();
-  int poly_index = 0;
+  int face_index = 0;
   int loop_index = 0;
 
   MaterialIdPrimitiveArrayMap mat_prim_map;
@@ -639,7 +639,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
     int collada_meshtype = mp->getPrimitiveType();
 
     /* Since we cannot set `poly->mat_nr` here, we store a portion of `me->mpoly` in Primitive. */
-    Primitive prim = {poly_index, &material_indices[poly_index], 0};
+    Primitive prim = {face_index, &material_indices[face_index], 0};
 
     /* If MeshPrimitive is TRIANGLE_FANS we split it into triangles
      * The first triangle-fan vertex will be the first vertex in every triangle
@@ -657,17 +657,17 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
           /* For each triangle store indices of its 3 vertices */
           uint triangle_vertex_indices[3] = {
               first_vertex, position_indices[1], position_indices[2]};
-          face_offsets[poly_index] = loop_index;
+          face_offsets[face_index] = loop_index;
           set_poly_indices(&corner_verts[loop_index], loop_index, triangle_vertex_indices, 3);
 
           if (mp_has_normals) { /* vertex normals, same implementation as for the triangles */
             /* The same for vertices normals. */
             uint vertex_normal_indices[3] = {first_normal, normal_indices[1], normal_indices[2]};
-            sharp_faces[poly_index] = is_flat_face(vertex_normal_indices, nor, 3);
+            sharp_faces[face_index] = is_flat_face(vertex_normal_indices, nor, 3);
             normal_indices++;
           }
 
-          poly_index++;
+          face_index++;
           loop_index += 3;
           prim.faces_num++;
         }
@@ -701,7 +701,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
           continue; /* TODO: add support for holes */
         }
 
-        face_offsets[poly_index] = loop_index;
+        face_offsets[face_index] = loop_index;
         bool broken_loop = set_poly_indices(
             &corner_verts[loop_index], loop_index, position_indices, vcount);
         if (broken_loop) {
@@ -732,7 +732,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
         if (mp_has_normals) {
           /* If it turns out that we have complete custom normals for each poly
            * and we want to use custom normals, this will be overridden. */
-          sharp_faces[poly_index] = is_flat_face(normal_indices, nor, vcount);
+          sharp_faces[face_index] = is_flat_face(normal_indices, nor, vcount);
 
           if (use_custom_normals) {
             /* Store the custom normals for later application. */
@@ -767,7 +767,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
           }
         }
 
-        poly_index++;
+        face_index++;
         loop_index += vcount;
         start_index += vcount;
         prim.faces_num++;

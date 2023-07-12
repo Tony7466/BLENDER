@@ -43,7 +43,7 @@ static void extract_select_idx_init(const MeshRenderData *mr,
  * index VBO's. We could upload the p/e/v_origindex as a buffer texture and sample it inside the
  * shader to output original index. */
 
-static void extract_poly_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_face_idx_iter_face_bm(const MeshRenderData * /*mr*/,
                                           const BMFace *f,
                                           const int f_index,
                                           void *data)
@@ -56,7 +56,7 @@ static void extract_poly_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_edge_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_edge_idx_iter_face_bm(const MeshRenderData * /*mr*/,
                                           const BMFace *f,
                                           const int /*f_index*/,
                                           void *data)
@@ -69,7 +69,7 @@ static void extract_edge_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_vert_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_vert_idx_iter_face_bm(const MeshRenderData * /*mr*/,
                                           const BMFace *f,
                                           const int /*f_index*/,
                                           void *data)
@@ -110,7 +110,7 @@ static void extract_vert_idx_iter_loose_vert_bm(const MeshRenderData *mr,
   (*(int32_t **)data)[offset + loose_vert_i] = BM_elem_index_get(eve);
 }
 
-static void extract_poly_idx_iter_face_mesh(const MeshRenderData *mr,
+static void extract_face_idx_iter_face_mesh(const MeshRenderData *mr,
                                             const int face_index,
                                             void *data)
 {
@@ -284,7 +284,7 @@ static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
   }
 }
 
-static void extract_poly_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
+static void extract_face_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                          const MeshRenderData *mr,
                                          MeshBatchCache * /*cache*/,
                                          void *buf,
@@ -311,9 +311,9 @@ constexpr MeshExtract create_extractor_poly_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.iter_poly_bm = extract_poly_idx_iter_poly_bm;
-  extractor.iter_face_mesh = extract_poly_idx_iter_face_mesh;
-  extractor.init_subdiv = extract_poly_idx_init_subdiv;
+  extractor.iter_face_bm = extract_face_idx_iter_face_bm;
+  extractor.iter_face_mesh = extract_face_idx_iter_face_mesh;
+  extractor.init_subdiv = extract_face_idx_init_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(int32_t *);
   extractor.use_threading = true;
@@ -325,7 +325,7 @@ constexpr MeshExtract create_extractor_edge_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.iter_poly_bm = extract_edge_idx_iter_poly_bm;
+  extractor.iter_face_bm = extract_edge_idx_iter_face_bm;
   extractor.iter_face_mesh = extract_edge_idx_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_edge_idx_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_edge_idx_iter_loose_edge_mesh;
@@ -342,7 +342,7 @@ constexpr MeshExtract create_extractor_vert_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.iter_poly_bm = extract_vert_idx_iter_poly_bm;
+  extractor.iter_face_bm = extract_vert_idx_iter_face_bm;
   extractor.iter_face_mesh = extract_vert_idx_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_vert_idx_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_vert_idx_iter_loose_edge_mesh;
@@ -365,7 +365,7 @@ static void extract_fdot_idx_init(const MeshRenderData *mr,
   extract_select_idx_init_impl(mr, mr->face_len, buf, tls_data);
 }
 
-static void extract_fdot_idx_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_fdot_idx_iter_face_bm(const MeshRenderData * /*mr*/,
                                           const BMFace * /*f*/,
                                           const int f_index,
                                           void *data)
@@ -389,7 +389,7 @@ constexpr MeshExtract create_extractor_fdot_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_fdot_idx_init;
-  extractor.iter_poly_bm = extract_fdot_idx_iter_poly_bm;
+  extractor.iter_face_bm = extract_fdot_idx_iter_face_bm;
   extractor.iter_face_mesh = extract_fdot_idx_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(int32_t *);
@@ -402,7 +402,7 @@ constexpr MeshExtract create_extractor_fdot_idx()
 
 }  // namespace blender::draw
 
-const MeshExtract extract_poly_idx = blender::draw::create_extractor_poly_idx();
+const MeshExtract extract_face_idx = blender::draw::create_extractor_poly_idx();
 const MeshExtract extract_edge_idx = blender::draw::create_extractor_edge_idx();
 const MeshExtract extract_vert_idx = blender::draw::create_extractor_vert_idx();
 const MeshExtract extract_fdot_idx = blender::draw::create_extractor_fdot_idx();

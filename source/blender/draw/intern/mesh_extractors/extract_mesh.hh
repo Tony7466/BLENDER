@@ -85,7 +85,7 @@ struct MeshRenderData {
   BMEdge *eed_act;
   BMFace *efa_act;
   BMFace *efa_act_uv;
-  /* The triangulation of #Mesh polygons, owned by the mesh. */
+  /* The triangulation of #Mesh faces, owned by the mesh. */
   blender::Span<MLoopTri> looptris;
   blender::Span<int> looptri_faces;
   const int *material_indices;
@@ -102,7 +102,7 @@ struct MeshRenderData {
 
   blender::Span<int> loose_verts;
   blender::Span<int> loose_edges;
-  const SortedPolyData *face_sorted;
+  const SortedFaceData *face_sorted;
 
   const char *active_color_name;
   const char *default_color_name;
@@ -242,11 +242,11 @@ using ExtractTriMeshFn = void(const MeshRenderData *mr,
                               const MLoopTri *mlt,
                               int elt_index,
                               void *data);
-using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
+using ExtractFaceBMeshFn = void(const MeshRenderData *mr,
                                 const BMFace *f,
                                 int f_index,
                                 void *data);
-using ExtractPolyMeshFn = void(const MeshRenderData *mr, int poly_index, void *data);
+using ExtractFaceMeshFn = void(const MeshRenderData *mr, int face_index, void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
                                  int loose_edge_i,
@@ -301,8 +301,8 @@ struct MeshExtract {
   /** Executed on one (or more if use_threading) worker thread(s). */
   ExtractTriBMeshFn *iter_looptri_bm;
   ExtractTriMeshFn *iter_looptri_mesh;
-  ExtractPolyBMeshFn *iter_poly_bm;
-  ExtractPolyMeshFn *iter_face_mesh;
+  ExtractFaceBMeshFn *iter_face_bm;
+  ExtractFaceMeshFn *iter_face_mesh;
   ExtractLEdgeBMeshFn *iter_loose_edge_bm;
   ExtractLEdgeMeshFn *iter_loose_edge_mesh;
   ExtractLVertBMeshFn *iter_loose_vert_bm;
@@ -426,7 +426,7 @@ extern const MeshExtract extract_fdots_nor_hq;
 extern const MeshExtract extract_fdots_uv;
 extern const MeshExtract extract_fdots_edituv_data;
 extern const MeshExtract extract_skin_roots;
-extern const MeshExtract extract_poly_idx;
+extern const MeshExtract extract_face_idx;
 extern const MeshExtract extract_edge_idx;
 extern const MeshExtract extract_vert_idx;
 extern const MeshExtract extract_fdot_idx;

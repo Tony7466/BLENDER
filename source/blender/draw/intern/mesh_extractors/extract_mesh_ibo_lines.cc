@@ -62,7 +62,7 @@ static void extract_lines_init(const MeshRenderData *mr,
   }
 }
 
-static void extract_lines_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_lines_iter_face_bm(const MeshRenderData * /*mr*/,
                                        const BMFace *f,
                                        const int /*f_index*/,
                                        void *tls_data)
@@ -279,7 +279,7 @@ constexpr MeshExtract create_extractor_lines()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
-  extractor.iter_poly_bm = extract_lines_iter_poly_bm;
+  extractor.iter_face_bm = extract_lines_iter_face_bm;
   extractor.iter_face_mesh = extract_lines_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_lines_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_lines_iter_loose_edge_mesh;
@@ -341,7 +341,7 @@ constexpr MeshExtract create_extractor_lines_with_lines_loose()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
-  extractor.iter_poly_bm = extract_lines_iter_poly_bm;
+  extractor.iter_face_bm = extract_lines_iter_face_bm;
   extractor.iter_face_mesh = extract_lines_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_lines_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_lines_iter_loose_edge_mesh;

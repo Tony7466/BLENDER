@@ -87,7 +87,7 @@ static void extract_edge_fac_init(const MeshRenderData *mr,
   data->vbo_data = static_cast<uchar *>(GPU_vertbuf_get_data(vbo));
 }
 
-static void extract_edge_fac_iter_poly_bm(const MeshRenderData *mr,
+static void extract_edge_fac_iter_face_bm(const MeshRenderData *mr,
                                           const BMFace *f,
                                           const int /*f_index*/,
                                           void *_data)
@@ -136,8 +136,8 @@ static void extract_edge_fac_iter_face_mesh(const MeshRenderData *mr,
         }
         else if (corner_count == 1) {
           /* Calculate the factor for both corners. */
-          const int poly_index_a = medata->data;
-          uint8_t fac = loop_edge_factor_get(float3(mr->face_normals[poly_index_a]),
+          const int face_index_a = medata->data;
+          uint8_t fac = loop_edge_factor_get(float3(mr->face_normals[face_index_a]),
                                              float3(mr->face_normals[face_index]));
           data->vbo_data[medata->corner_a] = fac;
           data->vbo_data[ml_index] = fac;
@@ -334,7 +334,7 @@ constexpr MeshExtract create_extractor_edge_fac()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edge_fac_init;
-  extractor.iter_poly_bm = extract_edge_fac_iter_poly_bm;
+  extractor.iter_face_bm = extract_edge_fac_iter_face_bm;
   extractor.iter_face_mesh = extract_edge_fac_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_edge_fac_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_edge_fac_iter_loose_edge_mesh;

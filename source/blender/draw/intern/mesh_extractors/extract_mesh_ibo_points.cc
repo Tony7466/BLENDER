@@ -54,7 +54,7 @@ BLI_INLINE void vert_set_mesh(GPUIndexBufBuilder *elb,
   }
 }
 
-static void extract_points_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_points_iter_face_bm(const MeshRenderData * /*mr*/,
                                         const BMFace *f,
                                         const int /*f_index*/,
                                         void *_userdata)
@@ -292,7 +292,7 @@ constexpr MeshExtract create_extractor_points()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_points_init;
-  extractor.iter_poly_bm = extract_points_iter_poly_bm;
+  extractor.iter_face_bm = extract_points_iter_face_bm;
   extractor.iter_face_mesh = extract_points_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_points_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_points_iter_loose_edge_mesh;

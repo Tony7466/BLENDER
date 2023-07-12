@@ -112,7 +112,7 @@ static void extract_weights_init(const MeshRenderData *mr,
   }
 }
 
-static void extract_weights_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_weights_iter_face_bm(const MeshRenderData * /*mr*/,
                                          const BMFace *f,
                                          const int /*f_index*/,
                                          void *_data)
@@ -180,7 +180,7 @@ static void extract_weights_init_subdiv(const DRWSubdivCache *subdiv_cache,
     BMFace *efa;
     int face_index = 0;
     BM_ITER_MESH_INDEX (efa, &f_iter, mr->bm, BM_FACES_OF_MESH, face_index) {
-      extract_weights_iter_poly_bm(mr, efa, face_index, _data);
+      extract_weights_iter_face_bm(mr, efa, face_index, _data);
     }
   }
 
@@ -194,7 +194,7 @@ constexpr MeshExtract create_extractor_weights()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_weights_init;
   extractor.init_subdiv = extract_weights_init_subdiv;
-  extractor.iter_poly_bm = extract_weights_iter_poly_bm;
+  extractor.iter_face_bm = extract_weights_iter_face_bm;
   extractor.iter_face_mesh = extract_weights_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_Weight_Data);

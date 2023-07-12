@@ -33,7 +33,7 @@ static void extract_lnor_init(const MeshRenderData *mr,
   *(GPUPackedNormal **)tls_data = static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo));
 }
 
-static void extract_lnor_iter_poly_bm(const MeshRenderData *mr,
+static void extract_lnor_iter_face_bm(const MeshRenderData *mr,
                                       const BMFace *f,
                                       const int /*f_index*/,
                                       void *data)
@@ -119,7 +119,7 @@ constexpr MeshExtract create_extractor_lnor()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lnor_init;
   extractor.init_subdiv = extract_lnor_init_subdiv;
-  extractor.iter_poly_bm = extract_lnor_iter_poly_bm;
+  extractor.iter_face_bm = extract_lnor_iter_face_bm;
   extractor.iter_face_mesh = extract_lnor_iter_face_mesh;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(GPUPackedNormal *);
@@ -155,7 +155,7 @@ static void extract_lnor_hq_init(const MeshRenderData *mr,
   *(gpuHQNor **)tls_data = static_cast<gpuHQNor *>(GPU_vertbuf_get_data(vbo));
 }
 
-static void extract_lnor_hq_iter_poly_bm(const MeshRenderData *mr,
+static void extract_lnor_hq_iter_face_bm(const MeshRenderData *mr,
                                          const BMFace *f,
                                          const int /*f_index*/,
                                          void *data)
@@ -218,7 +218,7 @@ constexpr MeshExtract create_extractor_lnor_hq()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lnor_hq_init;
   extractor.init_subdiv = extract_lnor_init_subdiv;
-  extractor.iter_poly_bm = extract_lnor_hq_iter_poly_bm;
+  extractor.iter_face_bm = extract_lnor_hq_iter_face_bm;
   extractor.iter_face_mesh = extract_lnor_hq_iter_face_mesh;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(gpuHQNor *);

@@ -52,7 +52,7 @@ static void extract_edituv_data_init(const MeshRenderData *mr,
   extract_edituv_data_init_common(mr, vbo, data, mr->loop_len);
 }
 
-static void extract_edituv_data_iter_poly_bm(const MeshRenderData *mr,
+static void extract_edituv_data_iter_face_bm(const MeshRenderData *mr,
                                              const BMFace *f,
                                              const int /*f_index*/,
                                              void *_data)
@@ -178,7 +178,7 @@ constexpr MeshExtract create_extractor_edituv_data()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edituv_data_init;
-  extractor.iter_poly_bm = extract_edituv_data_iter_poly_bm;
+  extractor.iter_face_bm = extract_edituv_data_iter_face_bm;
   extractor.iter_face_mesh = extract_edituv_data_iter_face_mesh;
   extractor.init_subdiv = extract_edituv_data_init_subdiv;
   extractor.iter_subdiv_bm = extract_edituv_data_iter_subdiv_bm;

@@ -24,7 +24,7 @@ static void extract_fdots_init(const MeshRenderData *mr,
   GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->face_len, mr->face_len);
 }
 
-static void extract_fdots_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_fdots_iter_face_bm(const MeshRenderData * /*mr*/,
                                        const BMFace *f,
                                        const int f_index,
                                        void *_userdata)
@@ -81,7 +81,7 @@ constexpr MeshExtract create_extractor_fdots()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_fdots_init;
-  extractor.iter_poly_bm = extract_fdots_iter_poly_bm;
+  extractor.iter_face_bm = extract_fdots_iter_face_bm;
   extractor.iter_face_mesh = extract_fdots_iter_face_mesh;
   extractor.finish = extract_fdots_finish;
   extractor.data_type = MR_DATA_NONE;

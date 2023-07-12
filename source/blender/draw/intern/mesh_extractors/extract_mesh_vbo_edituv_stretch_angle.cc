@@ -105,7 +105,7 @@ static void extract_edituv_stretch_angle_init(const MeshRenderData *mr,
   }
 }
 
-static void extract_edituv_stretch_angle_iter_poly_bm(const MeshRenderData *mr,
+static void extract_edituv_stretch_angle_iter_face_bm(const MeshRenderData *mr,
                                                       const BMFace *f,
                                                       const int /*f_index*/,
                                                       void *_data)
@@ -280,7 +280,7 @@ constexpr MeshExtract create_extractor_edituv_edituv_stretch_angle()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edituv_stretch_angle_init;
-  extractor.iter_poly_bm = extract_edituv_stretch_angle_iter_poly_bm;
+  extractor.iter_face_bm = extract_edituv_stretch_angle_iter_face_bm;
   extractor.iter_face_mesh = extract_edituv_stretch_angle_iter_face_mesh;
   extractor.init_subdiv = extract_edituv_stretch_angle_init_subdiv;
   extractor.data_type = MR_DATA_NONE;

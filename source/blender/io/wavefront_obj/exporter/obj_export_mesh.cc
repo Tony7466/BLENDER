@@ -157,7 +157,7 @@ int OBJMesh::tot_vertices() const
   return export_mesh_->totvert;
 }
 
-int OBJMesh::tot_polygons() const
+int OBJMesh::tot_faces() const
 {
   return export_mesh_->faces_num;
 }

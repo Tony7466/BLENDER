@@ -200,7 +200,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   ScrewModifierData *ltmd = (ScrewModifierData *)md;
   const bool use_render_params = (ctx->flag & MOD_APPLY_RENDER) != 0;
 
-  int mpoly_index = 0;
+  int face_index = 0;
   uint step;
   uint j;
   uint i1, i2;
@@ -836,8 +836,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   for (uint i = 0; i < totedge; i++, med_new_firstloop++) {
     const uint step_last = step_tot - (close ? 1 : 2);
-    const uint mpoly_index_orig = faces_num ? edge_face_map[i] : UINT_MAX;
-    const bool has_mpoly_orig = (mpoly_index_orig != UINT_MAX);
+    const uint face_index_orig = faces_num ? edge_face_map[i] : UINT_MAX;
+    const bool has_mpoly_orig = (face_index_orig != UINT_MAX);
     float uv_v_offset_a, uv_v_offset_b;
 
     const uint mloop_index_orig[2] = {
@@ -853,7 +853,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     i2 = uint((*med_new_firstloop)[1]);
 
     if (has_mpoly_orig) {
-      mat_nr = src_material_index == nullptr ? 0 : src_material_index[mpoly_index_orig];
+      mat_nr = src_material_index == nullptr ? 0 : src_material_index[face_index_orig];
     }
     else {
       mat_nr = 0;
@@ -874,15 +874,15 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       /* Polygon */
       if (has_mpoly_orig) {
         CustomData_copy_data(
-            &mesh->pdata, &result->pdata, int(mpoly_index_orig), int(mpoly_index), 1);
-        origindex[mpoly_index] = int(mpoly_index_orig);
+            &mesh->pdata, &result->pdata, int(face_index_orig), int(face_index), 1);
+        origindex[face_index] = int(face_index_orig);
       }
       else {
-        origindex[mpoly_index] = ORIGINDEX_NONE;
-        dst_material_index[mpoly_index] = mat_nr;
-        sharp_faces.span[mpoly_index] = use_flat_shading;
+        origindex[face_index] = ORIGINDEX_NONE;
+        dst_material_index[face_index] = mat_nr;
+        sharp_faces.span[face_index] = use_flat_shading;
       }
-      face_offests_new[mpoly_index] = mpoly_index * 4;
+      face_offests_new[face_index] = face_index * 4;
 
       /* Loop-Custom-Data */
       if (has_mloop_orig) {
@@ -965,7 +965,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       }
 
       new_loop_index += 4;
-      mpoly_index++;
+      face_index++;
     }
 
     /* new vertical edge */

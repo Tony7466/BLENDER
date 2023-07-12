@@ -49,7 +49,7 @@ static void extract_fdots_pos_init(const MeshRenderData *mr,
   *(float(**)[3])tls_data = static_cast<float(*)[3]>(vbo_data);
 }
 
-static void extract_fdots_pos_iter_poly_bm(const MeshRenderData *mr,
+static void extract_fdots_pos_iter_face_bm(const MeshRenderData *mr,
                                            const BMFace *f,
                                            const int f_index,
                                            void *data)
@@ -122,7 +122,7 @@ constexpr MeshExtract create_extractor_fdots_pos()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_fdots_pos_init;
   extractor.init_subdiv = extract_fdots_init_subdiv;
-  extractor.iter_poly_bm = extract_fdots_pos_iter_poly_bm;
+  extractor.iter_face_bm = extract_fdots_pos_iter_face_bm;
   extractor.iter_face_mesh = extract_fdots_pos_iter_face_mesh;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(float(*)[3]);
