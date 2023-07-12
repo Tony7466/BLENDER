@@ -13,6 +13,7 @@ void register_node_type_geo_attribute_capture();
 void register_node_type_geo_attribute_domain_size();
 void register_node_type_geo_attribute_separate_xyz();
 void register_node_type_geo_attribute_statistic();
+void register_node_type_geo_bake();
 void register_node_type_geo_blur_attribute();
 void register_node_type_geo_boolean();
 void register_node_type_geo_bounding_box();

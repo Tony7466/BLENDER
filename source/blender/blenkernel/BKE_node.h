@@ -1365,6 +1365,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
  * the repeat zone. */
 #define GEO_NODE_REPEAT_INPUT 2107
 #define GEO_NODE_REPEAT_OUTPUT 2108
+#define GEO_NODE_BAKE 2109
 
 /** \} */
 
