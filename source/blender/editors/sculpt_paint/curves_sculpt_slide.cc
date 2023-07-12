@@ -48,7 +48,7 @@ using geometry::ReverseUVSampler;
 
 struct SlideCurveInfo {
   /** Index of the curve to slide. */
-  int curve_i;
+  size_t curve_i;
   /** A weight based on the initial distance to the brush. */
   float radius_falloff;
   /**
@@ -272,7 +272,7 @@ struct SlideOperationExecutor {
 
     const Span<int> offsets = curves_orig_->offsets();
     curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const int first_point_i = offsets[curve_i];
         const float3 old_pos_cu = self_->initial_deformed_positions_cu_[first_point_i];
         const float dist_to_brush_sq_cu = math::distance_squared(old_pos_cu, brush_pos_cu);
@@ -339,7 +339,7 @@ struct SlideOperationExecutor {
       for (const SlideCurveInfo &slide_curve_info : slide_curves.slice(range)) {
         const int curve_i = slide_curve_info.curve_i;
         const IndexRange points = points_by_curve[curve_i];
-        const int first_point_i = points[0];
+        const size_t first_point_i = points[0];
 
         const float3 old_first_pos_eval_cu = self_->initial_deformed_positions_cu_[first_point_i];
         const float3 old_first_symm_pos_eval_cu = math::transform_point(brush_transform_inv,

@@ -247,7 +247,7 @@ void CustomData_free_temporary(struct CustomData *data, int totelem);
 void *CustomData_add_layer(struct CustomData *data,
                            eCustomDataType type,
                            eCDAllocType alloctype,
-                           int totelem);
+                           size_t totelem);
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the

@@ -720,8 +720,8 @@ static char *rna_path_rename_fix(ID *owner_id,
 {
   char *prefixPtr = strstr(oldpath, prefix);
   char *oldNamePtr = strstr(oldpath, oldName);
-  int prefixLen = strlen(prefix);
-  int oldNameLen = strlen(oldName);
+  size_t prefixLen = strlen(prefix);
+  size_t oldNameLen = strlen(oldName);
 
   /* only start fixing the path if the prefix and oldName feature in the path,
    * and prefix occurs immediately before oldName

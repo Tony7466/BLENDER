@@ -330,7 +330,7 @@ Sound_buffer(PyTypeObject* type, PyObject* args)
 	if(PyArray_NDIM(array) == 2)
 		specs.channels = static_cast<Channels>(PyArray_DIM(array, 1));
 
-	int size = PyArray_DIM(array, 0) * AUD_SAMPLE_SIZE(specs);
+	size_t size = PyArray_DIM(array, 0) * AUD_SAMPLE_SIZE(specs);
 
 	std::shared_ptr<Buffer> buffer = std::make_shared<Buffer>(size);
 

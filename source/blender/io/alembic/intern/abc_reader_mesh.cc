@@ -283,8 +283,8 @@ static void process_loop_normals(CDStreamConfig &config, const N3fArraySamplePtr
   for (int i = 0, e = mesh->faces_num; i < e; i++) {
     const IndexRange face = faces[i];
     /* As usual, ABC orders the loops in reverse. */
-    for (int j = face.size() - 1; j >= 0; j--, abc_index++) {
-      int blender_index = face[j];
+    for (size_t j = face.size(); j > 0; j--, abc_index++) {
+      int64_t blender_index = face[j - 1];
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
   }
@@ -600,8 +600,8 @@ static bool has_animated_geom_params(const ICompoundProperty arbGeomParams)
     return false;
   }
 
-  const int num_props = arbGeomParams.getNumProperties();
-  for (int i = 0; i < num_props; i++) {
+  const size_t num_props = arbGeomParams.getNumProperties();
+  for (size_t i = 0; i < num_props; i++) {
     const PropertyHeader &prop_header = arbGeomParams.getPropertyHeader(i);
 
     /* These are interpreted as vertex colors later (see 'read_custom_data'). */
@@ -775,8 +775,8 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
   const Alembic::Abc::Int32ArraySamplePtr &face_counts = sample.getFaceCounts();
 
   /* Do some very minimal mesh validation. */
-  const int poly_count = face_counts->size();
-  const int loop_count = face_indices->size();
+  const size_t poly_count = face_counts->size();
+  const size_t loop_count = face_indices->size();
   /* This is the same test as in poly_to_tri_count(). */
   if (poly_count > 0 && loop_count < poly_count * 2) {
     if (err_str != nullptr) {

@@ -941,7 +941,7 @@ AviError AVI_write_frame(AviMovie *movie, int frame_num, ...)
     BLI_fseek(movie->fp, 0L, SEEK_END);
 
     chunk.fcc = avi_get_data_id(format, stream);
-    chunk.size = size;
+    chunk.size = (int)size;
 
     if (size % 4) {
       chunk.size += 4 - size % 4;
@@ -958,7 +958,7 @@ AviError AVI_write_frame(AviMovie *movie, int frame_num, ...)
     movie->entries[frame_num * (movie->header->Streams + 1) + stream + 1].Size = chunk.size;
 
     /* Write the chunk */
-    awrite(movie, buffer, 1, size, movie->fp, AVI_RAW);
+    awrite(movie, buffer, 1, (int)size, movie->fp, AVI_RAW);
     MEM_freeN(buffer);
 
     if (size % 4) {

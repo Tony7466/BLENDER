@@ -13,7 +13,7 @@ using libmv::Feature;
 using libmv::FloatImage;
 
 struct libmv_Features {
-  int count;
+  size_t count;
   Feature* features;
 };
 
@@ -22,10 +22,10 @@ namespace {
 libmv_Features* libmv_featuresFromVector(
     const libmv::vector<Feature>& features) {
   libmv_Features* libmv_features = LIBMV_STRUCT_NEW(libmv_Features, 1);
-  int count = features.size();
+  size_t count = features.size();
   if (count) {
     libmv_features->features = LIBMV_STRUCT_NEW(Feature, count);
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
       libmv_features->features[i] = features.at(i);
     }
   } else {
@@ -108,12 +108,12 @@ void libmv_featuresDestroy(libmv_Features* libmv_features) {
   LIBMV_STRUCT_DELETE(libmv_features);
 }
 
-int libmv_countFeatures(const libmv_Features* libmv_features) {
+size_t libmv_countFeatures(const libmv_Features* libmv_features) {
   return libmv_features->count;
 }
 
 void libmv_getFeature(const libmv_Features* libmv_features,
-                      int number,
+                      size_t number,
                       double* x,
                       double* y,
                       double* score,

@@ -4429,7 +4429,7 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
               bool culled = true;
               const blender::IndexRange poly = ps->faces_eval[looptri_faces[tri_index]];
               prev_poly = looptri_faces[tri_index];
-              for (const int corner : poly) {
+              for (const size_t corner : poly) {
                 if (!(ps->vertFlags[ps->corner_verts_eval[corner]] & PROJ_VERT_CULL)) {
                   culled = false;
                   break;
@@ -4439,7 +4439,7 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
               if (culled) {
                 /* poly loops - 2 is number of triangles for poly,
                  * but counter gets incremented when continuing, so decrease by 3 */
-                int poly_tri = poly.size() - 3;
+                size_t poly_tri = poly.size() - 3;
                 tri_index += poly_tri;
                 continue;
               }

@@ -176,11 +176,11 @@ void AbcCurveReader::read_curve_sample(Curve *cu,
        * overlapping points is equal to the order/degree of the curve.
        */
 
-      const int start = idx;
-      const int end = idx + num_verts;
+      const size_t start = idx;
+      const size_t end = idx + num_verts;
       int overlap = 0;
 
-      for (int j = start, k = end - nu->orderu; j < nu->orderu; j++, k++) {
+      for (size_t j = start, k = end - nu->orderu; j < nu->orderu; j++, k++) {
         const Imath::V3f &p1 = (*positions)[j];
         const Imath::V3f &p2 = (*positions)[k];
 

@@ -267,7 +267,7 @@ void mid_v3_v3v3v3v3(
   v[2] = (v1[2] + v2[2] + v3[2] + v4[2]) / 4.0f;
 }
 
-void mid_v3_v3_array(float r[3], const float (*vec_arr)[3], const uint vec_arr_num)
+void mid_v3_v3_array(float r[3], const float (*vec_arr)[3], const size_t vec_arr_num)
 {
   const float factor = 1.0f / (float)vec_arr_num;
   zero_v3(r);
@@ -1265,7 +1265,7 @@ void copy_vn_uchar(uchar *array_tar, const int size, const uchar val)
   }
 }
 
-void copy_vn_fl(float *array_tar, const int size, const float val)
+void copy_vn_fl(float *array_tar, const size_t size, const float val)
 {
   float *tar = array_tar + (size - 1);
   int i = size;

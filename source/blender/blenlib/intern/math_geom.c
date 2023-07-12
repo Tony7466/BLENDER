@@ -74,7 +74,7 @@ float normal_quad_v3(
   return normalize_v3(n);
 }
 
-float normal_poly_v3(float n[3], const float verts[][3], uint nr)
+float normal_poly_v3(float n[3], const float verts[][3], size_t nr)
 {
   cross_poly_v3(n, verts, nr);
   return normalize_v3(n);
@@ -128,14 +128,14 @@ float area_tri_signed_v3(const float v1[3],
   return area;
 }
 
-float area_poly_v3(const float verts[][3], uint nr)
+float area_poly_v3(const float verts[][3], size_t nr)
 {
   float n[3];
   cross_poly_v3(n, verts, nr);
   return len_v3(n) * 0.5f;
 }
 
-float area_squared_poly_v3(const float verts[][3], uint nr)
+float area_squared_poly_v3(const float verts[][3], size_t nr)
 {
   float n[3];
 
@@ -144,7 +144,7 @@ float area_squared_poly_v3(const float verts[][3], uint nr)
   return len_squared_v3(n);
 }
 
-float cross_poly_v2(const float verts[][2], uint nr)
+float cross_poly_v2(const float verts[][2], size_t nr)
 {
   uint a;
   float cross;
@@ -163,7 +163,7 @@ float cross_poly_v2(const float verts[][2], uint nr)
   return cross;
 }
 
-void cross_poly_v3(float n[3], const float verts[][3], uint nr)
+void cross_poly_v3(float n[3], const float verts[][3], size_t nr)
 {
   const float *v_prev = verts[nr - 1];
   const float *v_curr = verts[0];
@@ -177,17 +177,17 @@ void cross_poly_v3(float n[3], const float verts[][3], uint nr)
   }
 }
 
-float area_poly_v2(const float verts[][2], uint nr)
+float area_poly_v2(const float verts[][2], size_t nr)
 {
   return fabsf(0.5f * cross_poly_v2(verts, nr));
 }
 
-float area_poly_signed_v2(const float verts[][2], uint nr)
+float area_poly_signed_v2(const float verts[][2], size_t nr)
 {
   return (0.5f * cross_poly_v2(verts, nr));
 }
 
-float area_squared_poly_v2(const float verts[][2], uint nr)
+float area_squared_poly_v2(const float verts[][2], size_t nr)
 {
   float area = area_poly_signed_v2(verts, nr);
   return area * area;

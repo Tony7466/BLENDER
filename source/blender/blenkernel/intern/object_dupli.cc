@@ -1110,7 +1110,7 @@ static void get_dupliface_transform_from_coords(Span<float3> coords,
   /* Scale. */
   float scale;
   if (use_scale) {
-    const float area = area_poly_v3((const float(*)[3])coords.data(), uint(coords.size()));
+    const float area = area_poly_v3((const float(*)[3])coords.data(), coords.size());
     scale = sqrtf(area) * scale_fac;
   }
   else {

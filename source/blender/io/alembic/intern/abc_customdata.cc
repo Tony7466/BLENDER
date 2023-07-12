@@ -66,7 +66,7 @@ static void get_uvs(const CDStreamConfig &config,
     uvs.resize(config.totloop);
 
     /* Iterate in reverse order to match exported polygons. */
-    for (const int i : faces.index_range()) {
+    for (const int64_t i : faces.index_range()) {
       const IndexRange face = faces[i];
       const float2 *loopuv = mloopuv_array + face.start() + face.size();
 
@@ -84,7 +84,7 @@ static void get_uvs(const CDStreamConfig &config,
     std::vector<std::vector<uint32_t>> idx_map(config.totvert);
     int idx_count = 0;
 
-    for (const int i : faces.index_range()) {
+    for (const int64_t i : faces.index_range()) {
       const IndexRange face = faces[i];
       int *face_verts = corner_verts + face.start() + face.size();
       const float2 *loopuv = mloopuv_array + face.start() + face.size();
@@ -180,7 +180,7 @@ static void get_cols(const CDStreamConfig &config,
 
   Imath::C4f col;
 
-  for (const int i : faces.index_range()) {
+  for (const size_t i : faces.index_range()) {
     const IndexRange face = faces[i];
     const MCol *cface = &cfaces[face.start() + face.size()];
 
@@ -193,7 +193,7 @@ static void get_cols(const CDStreamConfig &config,
       col[3] = cface->b * cscale;
 
       buffer.push_back(col);
-      uvidx.push_back(buffer.size() - 1);
+      uvidx.push_back(static_cast<uint32_t>(buffer.size()) - 1);
     }
   }
 }
@@ -319,12 +319,12 @@ static void read_uvs(const CDStreamConfig &config,
   const int *corner_verts = config.corner_verts;
   float2 *mloopuvs = static_cast<float2 *>(data);
 
-  uint uv_index, loop_index, rev_loop_index;
+  size_t uv_index, loop_index, rev_loop_index;
 
   BLI_assert(uv_scope != ABC_UV_SCOPE_NONE);
   const bool do_uvs_per_loop = (uv_scope == ABC_UV_SCOPE_LOOP);
 
-  for (const int i : faces.index_range()) {
+  for (const size_t i : faces.index_range()) {
     const IndexRange face = faces[i];
     uint rev_loop_offset = face.start() + face.size() - 1;
 
@@ -424,7 +424,7 @@ static void read_custom_data_mcols(const std::string &iobject_full_name,
    * is why we have to check for indices->size() > 0 */
   bool use_dual_indexing = is_facevarying && indices->size() > 0;
 
-  for (const int i : faces.index_range()) {
+  for (const size_t i : faces.index_range()) {
     const IndexRange face = faces[i];
     MCol *cface = &cfaces[face.start() + face.size()];
     const int *face_verts = &corner_verts[face.start() + face.size()];

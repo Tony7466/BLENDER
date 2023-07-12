@@ -291,7 +291,7 @@ void BKE_subdiv_ccg_neighbor_coords_get(const SubdivCCG *subdiv_ccg,
                                         bool include_duplicates,
                                         SubdivCCGNeighbors *r_neighbors);
 
-int BKE_subdiv_ccg_grid_to_face_index(const SubdivCCG *subdiv_ccg, int grid_index);
+long BKE_subdiv_ccg_grid_to_face_index(const SubdivCCG *subdiv_ccg, int grid_index);
 void BKE_subdiv_ccg_eval_limit_point(const SubdivCCG *subdiv_ccg,
                                      const SubdivCCGCoord *coord,
                                      float r_point[3]);
@@ -322,5 +322,5 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
 const int *BKE_subdiv_ccg_start_face_grid_index_ensure(SubdivCCG *subdiv_ccg);
 const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG *subdiv_ccg);
 
-void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int grid_index);
-void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG *subdiv_ccg, int grid_index);
+void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int64_t grid_index);
+void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG *subdiv_ccg, int64_t grid_index);

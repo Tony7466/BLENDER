@@ -93,7 +93,7 @@ static void print_default_info(const PropertyDefRNA *dp)
 #ifndef NDEBUG
 #  define DESCR_CHECK(description, id1, id2) \
     if (description && (description)[0]) { \
-      int i = strlen(description); \
+      const size_t i = strlen(description); \
       if (i > 3 && (description)[i - 1] == '.' && (description)[i - 3] != '.') { \
         CLOG_WARN(&LOG, \
                   "'%s' description from '%s' '%s' ends with a '.' !", \

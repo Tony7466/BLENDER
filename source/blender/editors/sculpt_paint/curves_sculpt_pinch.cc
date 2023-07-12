@@ -177,9 +177,9 @@ struct PinchOperationExecutor {
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
     curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
-        for (const int point_i : points.drop_front(1)) {
+        for (const size_t point_i : points.drop_front(1)) {
           const float3 old_pos_cu = deformation.positions[point_i];
           const float3 old_symm_pos_cu = math::transform_point(brush_transform_inv, old_pos_cu);
           float2 old_symm_pos_re;
@@ -250,9 +250,9 @@ struct PinchOperationExecutor {
     const OffsetIndices points_by_curve = curves_->points_by_curve();
 
     curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
-        for (const int point_i : points.drop_front(1)) {
+        for (const size_t point_i : points.drop_front(1)) {
           const float3 old_pos_cu = deformation.positions[point_i];
 
           const float dist_to_brush_sq_cu = math::distance_squared(old_pos_cu, brush_pos_cu);

@@ -195,7 +195,7 @@ void Shader::print_log(Span<const char *> sources,
     if (source_index <= 0) {
       for (auto i : sources_end_line.index_range()) {
         if (log_item.cursor.row <= sources_end_line[i]) {
-          source_index = i;
+          source_index = int(i);
           break;
         }
       }

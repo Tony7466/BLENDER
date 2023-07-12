@@ -52,7 +52,7 @@ char *BLI_string_replaceN(const char *__restrict str,
     if (str != match) {
       /* Add the segment of the string from `str` to match to the buffer,
        * then restore the value at match. */
-      BLI_dynstr_nappend(ds, str, (match - str));
+      BLI_dynstr_nappend(ds, str, (size_t)(match - str));
 
       /* now our current position should be set on the start of the match */
       str = match;

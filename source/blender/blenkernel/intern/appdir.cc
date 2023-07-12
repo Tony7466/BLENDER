@@ -1127,14 +1127,14 @@ static void tempdir_session_create(char *tempdir_session,
 {
   tempdir_session[0] = '\0';
 
-  const int tempdir_len = strlen(tempdir);
+  const size_t tempdir_len = strlen(tempdir);
   /* 'XXXXXX' is kind of tag to be replaced by `mktemp-family` by an UUID. */
   const char *session_name = "blender_XXXXXX";
-  const int session_name_len = strlen(session_name);
+  const size_t session_name_len = strlen(session_name);
 
   /* +1 as a slash is added,
    * #_mktemp_s also requires the last null character is included. */
-  const int tempdir_session_len_required = tempdir_len + session_name_len + 1;
+  const size_t tempdir_session_len_required = tempdir_len + session_name_len + 1;
 
   if (tempdir_session_len_required <= tempdir_session_maxncpy) {
     /* No need to use path joining utility as we know the last character of #tempdir is a slash. */

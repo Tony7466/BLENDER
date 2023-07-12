@@ -128,6 +128,6 @@
   (!getenv(envname) ? (dflt) : memchr("tTyY1\0", getenv(envname)[0], 6) != NULL)
 
 #define EnvToInt(envname, dflt)  \
-  (!getenv(envname) ? (dflt) : strtol(getenv(envname), NULL, 10))
+  (!getenv(envname) ? (dflt) : atoi(getenv(envname)))
 
 #endif  // BASE_COMMANDLINEFLAGS_H__

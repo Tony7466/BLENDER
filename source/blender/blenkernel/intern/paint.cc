@@ -2018,7 +2018,7 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
 
     /* If vertices already have mask, copy into multires data. */
     if (paint_mask) {
-      for (const int i : faces.index_range()) {
+      for (const int64_t i : faces.index_range()) {
         const blender::IndexRange face = faces[i];
 
         /* Mask center. */
@@ -2029,7 +2029,7 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
         avg /= float(face.size());
 
         /* Fill in multires mask corner. */
-        for (const int corner : face) {
+        for (const int64_t corner : face) {
           GridPaintMask *gpm = &gmask[corner];
           const int vert = corner_verts[corner];
           const int prev = corner_verts[blender::bke::mesh::face_corner_prev(face, vert)];
@@ -2143,7 +2143,7 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
   if (hide_poly.is_single() && !hide_poly.get_internal_single()) {
     /* Nothing is hidden, so we can just remove all visibility bitmaps. */
-    for (const int i : IndexRange(subdiv_ccg->num_grids)) {
+    for (const int64_t i : IndexRange(subdiv_ccg->num_grids)) {
       BKE_subdiv_ccg_grid_hidden_free(subdiv_ccg, i);
     }
     return;

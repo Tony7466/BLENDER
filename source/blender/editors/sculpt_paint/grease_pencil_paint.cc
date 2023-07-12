@@ -112,9 +112,9 @@ void PaintOperation::on_stroke_done(const bContext &C)
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float> radii = drawing_orig.radii_for_write();
   MutableSpan<float> opacities = drawing_orig.opacities_for_write();
-  for (const int i : IndexRange(stroke_points.size())) {
+  for (const size_t i : IndexRange(stroke_points.size())) {
     const bke::greasepencil::StrokePoint &point = stroke_points[i];
-    const int point_i = new_points_range[i];
+    const size_t point_i = new_points_range[i];
     positions[point_i] = point.position;
     radii[point_i] = point.radius;
     opacities[point_i] = point.opacity;

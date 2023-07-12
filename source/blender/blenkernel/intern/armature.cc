@@ -740,7 +740,7 @@ bool BKE_armature_bone_flag_test_recursive(const Bone *bone, int flag)
 bool bone_autoside_name(
     char name[MAXBONENAME], int /*strip_number*/, short axis, float head, float tail)
 {
-  uint len;
+  size_t len;
   char basename[MAXBONENAME] = "";
   const char *extension = nullptr;
 

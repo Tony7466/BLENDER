@@ -143,7 +143,7 @@ struct SmoothOperationExecutor {
 
     curve_selection_.foreach_index(GrainSize(256), [&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
-      for (const int point_i : points) {
+      for (const size_t point_i : points) {
         const float3 &pos_cu = math::transform_point(brush_transform_inv,
                                                      deformation.positions[point_i]);
         float2 pos_re;
@@ -201,7 +201,7 @@ struct SmoothOperationExecutor {
 
     curve_selection_.foreach_index(GrainSize(256), [&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
-      for (const int point_i : points) {
+      for (const size_t point_i : points) {
         const float3 &pos_cu = deformation.positions[point_i];
         const float dist_to_brush_sq_cu = math::distance_squared(pos_cu, brush_pos_cu);
         if (dist_to_brush_sq_cu > brush_radius_sq_cu) {
@@ -228,12 +228,12 @@ struct SmoothOperationExecutor {
 
     curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
       Vector<float3> old_positions;
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         old_positions.clear();
         old_positions.extend(positions.slice(points));
-        for (const int i : IndexRange(points.size()).drop_front(1).drop_back(1)) {
-          const int point_i = points[i];
+        for (const size_t i : IndexRange(points.size()).drop_front(1).drop_back(1)) {
+          const size_t point_i = points[i];
           const float smooth_factor = point_smooth_factors[point_i];
           if (smooth_factor == 0.0f) {
             continue;

@@ -834,7 +834,7 @@ void BKE_defvert_add_index_notest(MDeformVert *dvert, const int defgroup, const 
 void BKE_defvert_remove_group(MDeformVert *dvert, MDeformWeight *dw)
 {
   if (dvert && dw) {
-    int i = dw - dvert->dw;
+    auto i = dw - dvert->dw;
 
     /* Security check! */
     if (i < 0 || i >= dvert->totweight) {
@@ -1125,7 +1125,7 @@ void BKE_defvert_extract_vgroup_to_faceweights(const MDeformVert *dvert,
                                                float *r_weights)
 {
   if (dvert && defgroup != -1) {
-    int i = faces.size();
+    auto i = faces.size();
     float *tmp_weights = static_cast<float *>(
         MEM_mallocN(sizeof(*tmp_weights) * size_t(verts_num), __func__));
 
@@ -1135,7 +1135,7 @@ void BKE_defvert_extract_vgroup_to_faceweights(const MDeformVert *dvert,
     while (i--) {
       const blender::IndexRange face = faces[i];
       const int *corner_vert = &corner_verts[face.start()];
-      int j = face.size();
+      auto j = face.size();
       float w = 0.0f;
 
       for (; j--; corner_vert++) {

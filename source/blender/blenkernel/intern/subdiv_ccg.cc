@@ -1922,11 +1922,11 @@ static void adjacent_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_c
 
   const int corner = blender::bke::mesh::face_find_corner_from_vert(face, corner_verts, *r_v1);
   if (coord->x == grid_size_1) {
-    const int next = blender::bke::mesh::face_corner_next(face, corner);
+    const int64_t next = blender::bke::mesh::face_corner_next(face, corner);
     *r_v2 = corner_verts[next];
   }
   if (coord->y == grid_size_1) {
-    const int prev = blender::bke::mesh::face_corner_prev(face, corner);
+    const int64_t prev = blender::bke::mesh::face_corner_prev(face, corner);
     *r_v2 = corner_verts[prev];
   }
 }
@@ -1967,7 +1967,7 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
   return SUBDIV_CCG_ADJACENT_NONE;
 }
 
-void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int grid_index)
+void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int64_t grid_index)
 {
   if (subdiv_ccg->grid_hidden[grid_index] != nullptr) {
     return;
@@ -1978,7 +1978,7 @@ void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int grid_index)
   subdiv_ccg->grid_hidden[grid_index] = BLI_BITMAP_NEW(key.grid_area, __func__);
 }
 
-void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG *subdiv_ccg, int grid_index)
+void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG *subdiv_ccg, int64_t grid_index)
 {
   MEM_SAFE_FREE(subdiv_ccg->grid_hidden[grid_index]);
 }
@@ -1997,7 +1997,7 @@ static void subdiv_ccg_coord_to_ptex_coord(const SubdivCCG *subdiv_ccg,
   const float grid_u = coord->x * grid_size_1_inv;
   const float grid_v = coord->y * grid_size_1_inv;
 
-  const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, coord->grid_index);
+  const long face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, coord->grid_index);
   const SubdivCCGFace *faces = subdiv_ccg->faces;
   const SubdivCCGFace *face = &faces[face_index];
   const int *face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);

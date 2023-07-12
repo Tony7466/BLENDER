@@ -291,12 +291,12 @@ static void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
-  for (const int face_index : faces.index_range()) {
+  for (const int64_t face_index : faces.index_range()) {
     const IndexRange face = faces[face_index];
 
     /* For every edge, mix values from the two adjacent corners (the current and next corner). */
-    for (const int corner : face) {
-      const int next_corner = mesh::face_corner_next(face, corner);
+    for (const int64_t corner : face) {
+      const int64_t next_corner = mesh::face_corner_next(face, corner);
       const int edge_index = corner_edges[corner];
       mixer.mix_in(edge_index, old_values[corner]);
       mixer.mix_in(edge_index, old_values[next_corner]);
@@ -317,11 +317,11 @@ void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
   const Span<int> corner_edges = mesh.corner_edges();
 
   r_values.fill(true);
-  for (const int face_index : faces.index_range()) {
+  for (const int64_t face_index : faces.index_range()) {
     const IndexRange face = faces[face_index];
 
-    for (const int corner : face) {
-      const int next_corner = mesh::face_corner_next(face, corner);
+    for (const int64_t corner : face) {
+      const int64_t next_corner = mesh::face_corner_next(face, corner);
       const int edge_index = corner_edges[corner];
       if (!old_values[corner] || !old_values[next_corner]) {
         r_values[edge_index] = false;
@@ -333,7 +333,7 @@ void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
   if (loose_edges.count > 0) {
     /* Deselect loose edges without corners that are still selected from the 'true' default. */
     threading::parallel_for(IndexRange(mesh.totedge), 2048, [&](const IndexRange range) {
-      for (const int edge_index : range) {
+      for (const int64_t edge_index : range) {
         if (loose_edges.is_loose_bits[edge_index]) {
           r_values[edge_index] = false;
         }
@@ -584,8 +584,8 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
     const IndexRange face = faces[face_index];
 
     /* For every corner, mix the values from the adjacent edges on the face. */
-    for (const int loop_index : face) {
-      const int loop_index_prev = mesh::face_corner_prev(face, loop_index);
+    for (const int64_t loop_index : face) {
+      const int64_t loop_index_prev = mesh::face_corner_prev(face, loop_index);
       const int edge = corner_edges[loop_index];
       const int edge_prev = corner_edges[loop_index_prev];
       mixer.mix_in(loop_index, old_values[edge]);
@@ -609,10 +609,10 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
   r_values.fill(false);
 
   threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
-    for (const int face_index : range) {
+    for (const int64_t face_index : range) {
       const IndexRange face = faces[face_index];
-      for (const int loop_index : face) {
-        const int loop_index_prev = mesh::face_corner_prev(face, loop_index);
+      for (const int64_t loop_index : face) {
+        const int64_t loop_index_prev = mesh::face_corner_prev(face, loop_index);
         const int edge = corner_edges[loop_index];
         const int edge_prev = corner_edges[loop_index_prev];
         if (old_values[edge] && old_values[edge_prev]) {
@@ -646,7 +646,7 @@ static void adapt_mesh_domain_edge_to_point_impl(const Mesh &mesh,
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
-  for (const int edge_index : IndexRange(mesh.totedge)) {
+  for (const int64_t edge_index : IndexRange(mesh.totedge)) {
     const int2 &edge = edges[edge_index];
     const T value = old_values[edge_index];
     mixer.mix_in(edge[0], value);
@@ -669,7 +669,7 @@ void adapt_mesh_domain_edge_to_point_impl(const Mesh &mesh,
    * writing true, and writing to single bytes is expected to be threadsafe. */
   r_values.fill(false);
   threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
-    for (const int edge_index : range) {
+    for (const int64_t edge_index : range) {
       if (old_values[edge_index]) {
         const int2 &edge = edges[edge_index];
         r_values[edge[0]] = true;

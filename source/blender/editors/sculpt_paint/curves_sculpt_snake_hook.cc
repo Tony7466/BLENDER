@@ -191,9 +191,9 @@ struct SnakeHookOperatorExecutor {
 
     curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
       MoveAndResampleBuffers resample_buffer;
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
-        const int last_point_i = points.last();
+        const size_t last_point_i = points.last();
         const float3 old_pos_cu = deformation.positions[last_point_i];
         const float3 old_symm_pos_cu = math::transform_point(brush_transform_inv, old_pos_cu);
 
@@ -277,9 +277,9 @@ struct SnakeHookOperatorExecutor {
 
     curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
       MoveAndResampleBuffers resample_buffer;
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
-        const int last_point_i = points.last();
+        const size_t last_point_i = points.last();
         const float3 old_pos_cu = deformation.positions[last_point_i];
 
         const float distance_to_brush_sq_cu = dist_squared_to_line_segment_v3(

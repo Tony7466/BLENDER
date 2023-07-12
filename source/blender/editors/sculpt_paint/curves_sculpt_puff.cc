@@ -204,7 +204,7 @@ struct PuffOperationExecutor {
       float2 prev_pos_re;
       ED_view3d_project_float_v2_m4(ctx_.region, first_pos_cu, prev_pos_re, projection.ptr());
       float max_weight = 0.0f;
-      for (const int point_i : points.drop_front(1)) {
+      for (const size_t point_i : points.drop_front(1)) {
         const float3 pos_cu = math::transform_point(brush_transform_inv,
                                                     deformation.positions[point_i]);
         float2 pos_re;
@@ -262,7 +262,7 @@ struct PuffOperationExecutor {
     curve_selection_.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       float max_weight = 0.0f;
-      for (const int point_i : points.drop_front(1)) {
+      for (const size_t point_i : points.drop_front(1)) {
         const float3 &prev_pos_cu = deformation.positions[point_i - 1];
         const float3 &pos_cu = deformation.positions[point_i];
         const float dist_to_brush_sq_cu = dist_squared_to_line_segment_v3(
@@ -287,9 +287,9 @@ struct PuffOperationExecutor {
 
     selection.foreach_segment(GrainSize(256), [&](IndexMaskSegment segment) {
       Vector<float> accumulated_lengths_cu;
-      for (const int curve_i : segment) {
+      for (const size_t curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
-        const int first_point_i = points[0];
+        const size_t first_point_i = points[0];
         const float3 first_pos_cu = positions_cu[first_point_i];
         const float3 first_pos_su = math::transform_point(transforms_.curves_to_surface,
                                                           first_pos_cu);
@@ -322,8 +322,8 @@ struct PuffOperationExecutor {
 
         /* Align curve to the surface normal while making sure that the curve does not fold up much
          * in the process (e.g. when the curve was pointing in the opposite direction before). */
-        for (const int i : IndexRange(points.size()).drop_front(1)) {
-          const int point_i = points[i];
+        for (const size_t i : IndexRange(points.size()).drop_front(1)) {
+          const size_t point_i = points[i];
           const float3 old_pos_cu = positions_cu[point_i];
 
           /* Compute final position of the point. */

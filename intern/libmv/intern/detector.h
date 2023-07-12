@@ -5,6 +5,8 @@
 #ifndef LIBMV_C_API_DETECTOR_H_
 #define LIBMV_C_API_DETECTOR_H_
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,9 +42,9 @@ libmv_Features* libmv_detectFeaturesFloat(const float* image_buffer,
                                           libmv_DetectOptions* options);
 
 void libmv_featuresDestroy(libmv_Features* libmv_features);
-int libmv_countFeatures(const libmv_Features* libmv_features);
+size_t libmv_countFeatures(const libmv_Features* libmv_features);
 void libmv_getFeature(const libmv_Features* libmv_features,
-                      int number,
+                      size_t number,
                       double* x,
                       double* y,
                       double* score,

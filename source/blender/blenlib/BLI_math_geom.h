@@ -10,6 +10,7 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_math_inline.h"
+#include <stddef.h>
 
 #ifdef BLI_MATH_GCC_WARN_PRAGMA
 #  pragma GCC diagnostic push
@@ -30,7 +31,7 @@ float normal_quad_v3(
 /**
  * Computes the normal of a planar polygon See Graphics Gems for computing newell normal.
  */
-float normal_poly_v3(float n[3], const float verts[][3], unsigned int nr);
+float normal_poly_v3(float n[3], const float verts[][3], size_t nr);
 
 MINLINE float area_tri_v2(const float v1[2], const float v2[2], const float v3[2]);
 MINLINE float area_squared_tri_v2(const float v1[2], const float v2[2], const float v3[2]);
@@ -49,23 +50,23 @@ float area_squared_quad_v3(const float v1[3],
                            const float v2[3],
                            const float v3[3],
                            const float v4[3]);
-float area_poly_v3(const float verts[][3], unsigned int nr);
-float area_poly_v2(const float verts[][2], unsigned int nr);
-float area_squared_poly_v3(const float verts[][3], unsigned int nr);
-float area_squared_poly_v2(const float verts[][2], unsigned int nr);
-float area_poly_signed_v2(const float verts[][2], unsigned int nr);
+float area_poly_v3(const float verts[][3], size_t nr);
+float area_poly_v2(const float verts[][2], size_t nr);
+float area_squared_poly_v3(const float verts[][3], size_t nr);
+float area_squared_poly_v2(const float verts[][2], size_t nr);
+float area_poly_signed_v2(const float verts[][2], size_t nr);
 float cotangent_tri_weight_v3(const float v1[3], const float v2[3], const float v3[3]);
 
 void cross_tri_v3(float n[3], const float v1[3], const float v2[3], const float v3[3]);
 MINLINE float cross_tri_v2(const float v1[2], const float v2[2], const float v3[2]);
-void cross_poly_v3(float n[3], const float verts[][3], unsigned int nr);
+void cross_poly_v3(float n[3], const float verts[][3], size_t nr);
 /**
  * Scalar cross product of a 2d polygon.
  *
  * - equivalent to `area * 2`
  * - useful for checking polygon winding (a positive value is clockwise).
  */
-float cross_poly_v2(const float verts[][2], unsigned int nr);
+float cross_poly_v2(const float verts[][2], size_t nr);
 
 /** \} */
 

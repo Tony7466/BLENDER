@@ -383,16 +383,16 @@ static int select_random_exec(bContext *C, wmOperator *op)
       case ATTR_DOMAIN_POINT: {
         if (partial) {
           if (constant_per_curve) {
-            for (const int curve_i : curves.curves_range()) {
+            for (const size_t curve_i : curves.curves_range()) {
               const float random_value = next_partial_random_value();
               const IndexRange points = points_by_curve[curve_i];
-              for (const int point_i : points) {
+              for (const size_t point_i : points) {
                 selection[point_i] *= random_value;
               }
             }
           }
           else {
-            for (const int point_i : selection.index_range()) {
+            for (const size_t point_i : selection.index_range()) {
               const float random_value = next_partial_random_value();
               selection[point_i] *= random_value;
             }
@@ -400,7 +400,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
         }
         else {
           if (constant_per_curve) {
-            for (const int curve_i : curves.curves_range()) {
+            for (const size_t curve_i : curves.curves_range()) {
               const bool random_value = next_bool_random_value();
               const IndexRange points = points_by_curve[curve_i];
               if (!random_value) {
@@ -409,7 +409,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
             }
           }
           else {
-            for (const int point_i : selection.index_range()) {
+            for (const size_t point_i : selection.index_range()) {
               const bool random_value = next_bool_random_value();
               if (!random_value) {
                 selection[point_i] = 0.0f;
@@ -421,13 +421,13 @@ static int select_random_exec(bContext *C, wmOperator *op)
       }
       case ATTR_DOMAIN_CURVE: {
         if (partial) {
-          for (const int curve_i : curves.curves_range()) {
+          for (const size_t curve_i : curves.curves_range()) {
             const float random_value = next_partial_random_value();
             selection[curve_i] *= random_value;
           }
         }
         else {
-          for (const int curve_i : curves.curves_range()) {
+          for (const size_t curve_i : curves.curves_range()) {
             const bool random_value = next_bool_random_value();
             if (!random_value) {
               selection[curve_i] = 0.0f;
@@ -594,7 +594,7 @@ static int select_grow_update(bContext *C, wmOperator *op, const float mouse_dif
         update_points_selection(*curve_op_data, distance, new_points_selection);
         /* Propagate grown point selection to the curve selection. */
         MutableSpan<float> curves_selection = selection.span;
-        for (const int curve_i : curves.curves_range()) {
+        for (const size_t curve_i : curves.curves_range()) {
           const IndexRange points = points_by_curve[curve_i];
           const Span<float> points_selection = new_points_selection.as_span().slice(points);
           const float max_selection = *std::max_element(points_selection.begin(),
@@ -656,8 +656,8 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
         curve_op_data.distances_to_selected.reinitialize(curve_op_data.unselected_points.size());
         threading::parallel_for(
             curve_op_data.unselected_points.index_range(), 256, [&](const IndexRange range) {
-              for (const int i : range) {
-                const int point_i = curve_op_data.unselected_points[i];
+              for (const size_t i : range) {
+                const size_t point_i = curve_op_data.unselected_points[i];
                 const float3 &position = positions[point_i];
                 KDTreeNearest_3d nearest;
                 BLI_kdtree_3d_find_nearest(kdtree, position, &nearest);
@@ -679,8 +679,8 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
         curve_op_data.distances_to_unselected.reinitialize(curve_op_data.selected_points.size());
         threading::parallel_for(
             curve_op_data.selected_points.index_range(), 256, [&](const IndexRange range) {
-              for (const int i : range) {
-                const int point_i = curve_op_data.selected_points[i];
+              for (const size_t i : range) {
+                const size_t point_i = curve_op_data.selected_points[i];
                 const float3 &position = positions[point_i];
                 KDTreeNearest_3d nearest;
                 BLI_kdtree_3d_find_nearest(kdtree, position, &nearest);
@@ -702,8 +702,8 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
       256,
       FLT_MAX,
       [&](const IndexRange range, float pixel_to_distance_factor) {
-        for (const int i : range) {
-          const int point_i = curve_op_data.selected_points[i];
+        for (const size_t i : range) {
+          const size_t point_i = curve_op_data.selected_points[i];
           const float3 &pos_cu = positions[point_i];
 
           float2 pos_re;
@@ -926,8 +926,8 @@ static void min_distance_edit_draw(bContext *C, int /*x*/, int /*y*/, void *cust
   const int points_per_axis_num = 2 * points_per_side + 1;
 
   Vector<float3> points_wo;
-  for (const int x_i : IndexRange(points_per_axis_num)) {
-    for (const int y_i : IndexRange(points_per_axis_num)) {
+  for (const size_t x_i : IndexRange(points_per_axis_num)) {
+    for (const size_t y_i : IndexRange(points_per_axis_num)) {
       const float x_iter = min_distance * (x_i - (points_per_axis_num - 1) / 2.0f);
       const float y_iter = min_distance * (y_i - (points_per_axis_num - 1) / 2.0f);
 

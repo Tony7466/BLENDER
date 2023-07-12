@@ -171,7 +171,7 @@ struct SelectionPaintOperationExecutor {
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
     threading::parallel_for(curves_->points_range(), 1024, [&](const IndexRange point_range) {
-      for (const int point_i : point_range) {
+      for (const size_t point_i : point_range) {
         const float3 pos_cu = math::transform_point(brush_transform_inv,
                                                     deformation.positions[point_i]);
 
@@ -229,7 +229,7 @@ struct SelectionPaintOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
     threading::parallel_for(curves_->points_range(), 1024, [&](const IndexRange point_range) {
-      for (const int i : point_range) {
+      for (const size_t i : point_range) {
         const float3 pos_old_cu = deformation.positions[i];
 
         /* Compute distance to the brush. */
@@ -277,14 +277,14 @@ struct SelectionPaintOperationExecutor {
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
     threading::parallel_for(curves_->curves_range(), 1024, [&](const IndexRange curves_range) {
-      for (const int curve_i : curves_range) {
+      for (const size_t curve_i : curves_range) {
         const float max_weight = threading::parallel_reduce(
             points_by_curve[curve_i].drop_back(1),
             1024,
             0.0f,
             [&](const IndexRange segment_range, const float init) {
               float max_weight = init;
-              for (const int segment_i : segment_range) {
+              for (const size_t segment_i : segment_range) {
                 const float3 pos1_cu = math::transform_point(brush_transform_inv,
                                                              deformation.positions[segment_i]);
                 const float3 pos2_cu = math::transform_point(brush_transform_inv,
@@ -346,14 +346,14 @@ struct SelectionPaintOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
     threading::parallel_for(curves_->curves_range(), 1024, [&](const IndexRange curves_range) {
-      for (const int curve_i : curves_range) {
+      for (const size_t curve_i : curves_range) {
         const float max_weight = threading::parallel_reduce(
             points_by_curve[curve_i].drop_back(1),
             1024,
             0.0f,
             [&](const IndexRange segment_range, const float init) {
               float max_weight = init;
-              for (const int segment_i : segment_range) {
+              for (const size_t segment_i : segment_range) {
                 const float3 &pos1_cu = deformation.positions[segment_i];
                 const float3 &pos2_cu = deformation.positions[segment_i + 1];
 

@@ -218,7 +218,7 @@ void edges_sharp_from_angle_set(OffsetIndices<int> faces,
  * Find the index of the next corner in the face, looping to the start if necessary.
  * The indices are into the entire corners array, not just the face's corners.
  */
-inline int face_corner_prev(const IndexRange face, const int corner)
+inline int64_t face_corner_prev(const IndexRange face, const int64_t corner)
 {
   return corner - 1 + (corner == face.start()) * face.size();
 }
@@ -227,7 +227,7 @@ inline int face_corner_prev(const IndexRange face, const int corner)
  * Find the index of the previous corner in the face, looping to the end if necessary.
  * The indices are into the entire corners array, not just the face's corners.
  */
-inline int face_corner_next(const IndexRange face, const int corner)
+inline int64_t face_corner_next(const IndexRange face, const int64_t corner)
 {
   if (corner == face.last()) {
     return face.start();
@@ -239,9 +239,9 @@ inline int face_corner_next(const IndexRange face, const int corner)
  * Find the index of the corner in the face that uses the given vertex.
  * The index is into the entire corners array, not just the face's corners.
  */
-inline int face_find_corner_from_vert(const IndexRange face,
-                                      const Span<int> corner_verts,
-                                      const int vert)
+inline int64_t face_find_corner_from_vert(const IndexRange face,
+                                          const Span<int> corner_verts,
+                                          const size_t vert)
 {
   return face[corner_verts.slice(face).first_index(vert)];
 }
@@ -252,7 +252,7 @@ inline int face_find_corner_from_vert(const IndexRange face,
  */
 inline int2 face_find_adjecent_verts(const IndexRange face,
                                      const Span<int> corner_verts,
-                                     const int vert)
+                                     const size_t vert)
 {
   const int corner = face_find_corner_from_vert(face, corner_verts, vert);
   return {corner_verts[face_corner_prev(face, corner)],

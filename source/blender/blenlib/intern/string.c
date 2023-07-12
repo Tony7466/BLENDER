@@ -1006,7 +1006,7 @@ int BLI_str_rstrip_float_zero(char *str, const char pad)
 int BLI_str_rstrip_digits(char *str)
 {
   int totstrip = 0;
-  int str_len = strlen(str);
+  size_t str_len = strlen(str);
   while (str_len > 0 && isdigit(str[--str_len])) {
     str[str_len] = '\0';
     totstrip++;
@@ -1121,7 +1121,7 @@ int BLI_string_find_split_words(
 /** \name String Formatting (Numeric)
  * \{ */
 
-static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, int num_len)
+static size_t BLI_str_format_int_grouped_ex(char *src, char *dst, size_t num_len)
 {
   char *p_src = src;
   char *p_dst = dst;
@@ -1152,7 +1152,7 @@ size_t BLI_str_format_int_grouped(char dst[BLI_STR_FORMAT_INT32_GROUPED_SIZE], i
   UNUSED_VARS_NDEBUG(dst_maxncpy);
 
   char src[BLI_STR_FORMAT_INT32_GROUPED_SIZE];
-  const int num_len = SNPRINTF(src, "%d", num);
+  const size_t num_len = SNPRINTF(src, "%d", num);
 
   return BLI_str_format_int_grouped_ex(src, dst, num_len);
 }
@@ -1164,7 +1164,7 @@ size_t BLI_str_format_uint64_grouped(char dst[BLI_STR_FORMAT_UINT64_GROUPED_SIZE
   UNUSED_VARS_NDEBUG(dst_maxncpy);
 
   char src[BLI_STR_FORMAT_UINT64_GROUPED_SIZE];
-  const int num_len = SNPRINTF(src, "%" PRIu64 "", num);
+  const size_t num_len = SNPRINTF(src, "%" PRIu64 "", num);
 
   return BLI_str_format_int_grouped_ex(src, dst, num_len);
 }

@@ -78,10 +78,10 @@ void BLI_dynstr_append(DynStr *__restrict ds, const char *cstr)
   ds->curlen += cstrlen;
 }
 
-void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, int len)
+void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, size_t len)
 {
   DynStrElem *dse = dynstr_alloc(ds, sizeof(*dse));
-  int cstrlen = BLI_strnlen(cstr, len);
+  size_t cstrlen = BLI_strnlen(cstr, len);
 
   dse->str = dynstr_alloc(ds, cstrlen + 1);
   memcpy(dse->str, cstr, cstrlen);

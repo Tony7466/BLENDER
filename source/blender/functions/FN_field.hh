@@ -655,7 +655,7 @@ inline const mf::MultiFunction &FieldOperation::multi_function() const
 inline const CPPType &FieldOperation::output_cpp_type(int output_index) const
 {
   int output_counter = 0;
-  for (const int param_index : function_->param_indices()) {
+  for (const size_t param_index : function_->param_indices()) {
     mf::ParamType param_type = function_->param_type(param_index);
     if (param_type.is_output()) {
       if (output_counter == output_index) {

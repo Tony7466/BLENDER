@@ -627,9 +627,9 @@ inline void LogDestination::RemoveLogSink(LogSink *destination) {
   MutexLock l(&sink_mutex_);
   // This doesn't keep the sinks in order, but who cares?
   if (sinks_) {
-    for (int i = sinks_->size() - 1; i >= 0; i--) {
-      if ((*sinks_)[i] == destination) {
-        (*sinks_)[i] = (*sinks_)[sinks_->size() - 1];
+    for (size_t i = sinks_->size(); i > 0; i--) {
+      if ((*sinks_)[i - 1] == destination) {
+        (*sinks_)[i - 1] = (*sinks_)[sinks_->size() - 1];
         sinks_->pop_back();
         break;
       }
@@ -785,8 +785,8 @@ inline void LogDestination::LogToSinks(LogSeverity severity,
                                        size_t message_len) {
   ReaderMutexLock l(&sink_mutex_);
   if (sinks_) {
-    for (int i = sinks_->size() - 1; i >= 0; i--) {
-      (*sinks_)[i]->send(severity, full_filename, base_filename,
+    for (size_t i = sinks_->size(); i > 0; i--) {
+      (*sinks_)[i - 1]->send(severity, full_filename, base_filename,
                          line, tm_time, message, message_len);
     }
   }
@@ -795,8 +795,8 @@ inline void LogDestination::LogToSinks(LogSeverity severity,
 inline void LogDestination::WaitForSinks(LogMessage::LogMessageData* data) {
   ReaderMutexLock l(&sink_mutex_);
   if (sinks_) {
-    for (int i = sinks_->size() - 1; i >= 0; i--) {
-      (*sinks_)[i]->WaitTillSent();
+    for (size_t i = sinks_->size(); i > 0; i--) {
+      (*sinks_)[i - 1]->WaitTillSent();
     }
   }
   const bool send_to_sink =
@@ -1080,7 +1080,7 @@ void LogFileObject::Write(bool force_flush,
                        << "threadid file:line] msg" << '\n';
     const string& file_header_string = file_header_stream.str();
 
-    const int header_len = file_header_string.size();
+    const size_t header_len = file_header_string.size();
     fwrite(file_header_string.data(), 1, header_len, file_);
     file_length_ += header_len;
     bytes_since_flush_ += header_len;
@@ -1392,7 +1392,7 @@ static char fatal_message[256];
 
 void ReprintFatalMessage() {
   if (fatal_message[0]) {
-    const int n = strlen(fatal_message);
+    const size_t n = strlen(fatal_message);
     if (!FLAGS_logtostderr) {
       // Also write to stderr (don't color to avoid terminal checks)
       WriteToStderr(fatal_message, n);
@@ -1464,7 +1464,7 @@ void LogMessage::SendToLog() EXCLUSIVE_LOCKS_REQUIRED(log_mutex) {
       SetCrashReason(&crash_reason);
 
       // Store shortened fatal message for other logs and GWQ status
-      const int copy = min<int>(data_->num_chars_to_log_,
+      const size_t copy = min<size_t>(data_->num_chars_to_log_,
                                 sizeof(fatal_message)-1);
       memcpy(fatal_message, data_->message_text_, copy);
       fatal_message[copy] = '\0';
@@ -1562,7 +1562,7 @@ void LogMessage::SaveOrSendToLog() EXCLUSIVE_LOCKS_REQUIRED(log_mutex) {
                data_->message_text_[data_->num_chars_to_log_-1] == '\n', "");
     // Omit prefix of message and trailing newline when recording in outvec_.
     const char *start = data_->message_text_ + data_->num_prefix_chars_;
-    int len = data_->num_chars_to_log_ - data_->num_prefix_chars_ - 1;
+    size_t len = data_->num_chars_to_log_ - data_->num_prefix_chars_ - 1;
     data_->outvec_->push_back(string(start, len));
   } else {
     SendToLog();
@@ -1575,7 +1575,7 @@ void LogMessage::WriteToStringAndLog() EXCLUSIVE_LOCKS_REQUIRED(log_mutex) {
                data_->message_text_[data_->num_chars_to_log_-1] == '\n', "");
     // Omit prefix of message and trailing newline when writing to message_.
     const char *start = data_->message_text_ + data_->num_prefix_chars_;
-    int len = data_->num_chars_to_log_ - data_->num_prefix_chars_ - 1;
+    size_t len = data_->num_chars_to_log_ - data_->num_prefix_chars_ - 1;
     data_->message_->assign(start, len);
   }
   SendToLog();

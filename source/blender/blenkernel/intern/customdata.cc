@@ -2158,7 +2158,7 @@ static CustomDataLayer *customData_add_layer__internal(
     std::optional<eCDAllocType> alloctype,
     void *layer_data_to_assign,
     const ImplicitSharingInfo *sharing_info_to_assign,
-    int totelem,
+    size_t totelem,
     const char *name);
 
 void CustomData_update_typemap(CustomData *data)
@@ -2863,7 +2863,7 @@ static CustomDataLayer *customData_add_layer__internal(
     const std::optional<eCDAllocType> alloctype,
     void *layer_data_to_assign,
     const ImplicitSharingInfo *sharing_info_to_assign,
-    const int totelem,
+    const size_t totelem,
     const char *name)
 {
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
@@ -2978,7 +2978,7 @@ static CustomDataLayer *customData_add_layer__internal(
 void *CustomData_add_layer(CustomData *data,
                            const eCustomDataType type,
                            eCDAllocType alloctype,
-                           const int totelem)
+                           const size_t totelem)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -3905,14 +3905,14 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
 
   BitVector<> copied_layers(dest->totlayer);
 
-  for (int layer_src_i : IndexRange(source->totlayer)) {
+  for (auto layer_src_i : IndexRange(source->totlayer)) {
     const CustomDataLayer &layer_src = source->layers[layer_src_i];
 
     if (CD_TYPE_AS_MASK(layer_src.type) & mask_exclude) {
       continue;
     }
 
-    for (int layer_dst_i : IndexRange(dest->totlayer)) {
+    for (auto layer_dst_i : IndexRange(dest->totlayer)) {
       CustomDataLayer &layer_dst = dest->layers[layer_dst_i];
 
       if (!customdata_layer_copy_check(layer_src, layer_dst)) {

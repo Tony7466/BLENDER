@@ -54,7 +54,7 @@ void BLI_dynstr_append(DynStr *__restrict ds, const char *cstr) ATTR_NONNULL();
  * \param cstr: The c-string to append.
  * \param len: The maximum length of the c-string to copy.
  */
-void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, int len) ATTR_NONNULL();
+void BLI_dynstr_nappend(DynStr *__restrict ds, const char *cstr, size_t len) ATTR_NONNULL();
 
 /**
  * Append a c-string to a #DynStr, but with formatting like `printf`.

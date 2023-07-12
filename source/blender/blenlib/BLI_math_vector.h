@@ -399,7 +399,7 @@ void mid_v3_v3v3v3(float v[3], const float v1[3], const float v2[3], const float
 void mid_v2_v2v2v2(float v[2], const float v1[2], const float v2[2], const float v3[2]);
 void mid_v3_v3v3v3v3(
     float v[3], const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
-void mid_v3_v3_array(float r[3], const float (*vec_arr)[3], unsigned int vec_arr_num);
+void mid_v3_v3_array(float r[3], const float (*vec_arr)[3], size_t vec_arr_num);
 
 /**
  * Specialized function for calculating normals.
@@ -727,7 +727,7 @@ void copy_vn_i(int *array_tar, int size, int val);
 void copy_vn_short(short *array_tar, int size, short val);
 void copy_vn_ushort(unsigned short *array_tar, int size, unsigned short val);
 void copy_vn_uchar(unsigned char *array_tar, int size, unsigned char val);
-void copy_vn_fl(float *array_tar, int size, float val);
+void copy_vn_fl(float *array_tar, size_t size, float val);
 
 void add_vn_vn_d(double *array_tar, const double *array_src, int size);
 void add_vn_vnvn_d(double *array_tar,

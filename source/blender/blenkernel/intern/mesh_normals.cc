@@ -822,8 +822,8 @@ static void loop_manifold_fan_around_vert_next(const Span<int> corner_verts,
                                                const Span<int> loop_to_face,
                                                const int2 e2lfan_curr,
                                                const int vert_pivot,
-                                               int *r_mlfan_curr_index,
-                                               int *r_mlfan_vert_index)
+                                               int64_t *r_mlfan_curr_index,
+                                               int64_t *r_mlfan_vert_index)
 {
   const int mlfan_curr_orig = *r_mlfan_curr_index;
   const int vert_fan_orig = corner_verts[mlfan_curr_orig];
@@ -876,7 +876,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
     float3 vec_curr;
     float3 vec_prev;
     const int face_index = loop_to_face[ml_curr_index];
-    const int ml_prev_index = mesh::face_corner_prev(faces[face_index], ml_curr_index);
+    const int64_t ml_prev_index = mesh::face_corner_prev(faces[face_index], ml_curr_index);
 
     /* The vertex we are "fanning" around. */
     const int vert_pivot = corner_verts[ml_curr_index];
@@ -922,7 +922,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<short2> clnors_data = common_data->clnors_data;
 
   const int face_index = loop_to_face[ml_curr_index];
-  const int ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
+  const int64_t ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
 
   /* Sigh! we have to fan around current vertex, until we find the other non-smooth edge,
    * and accumulate face normals into the vertex!
@@ -946,8 +946,8 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
   /* `mlfan_vert_index` the loop of our current edge might not be the loop of our current vertex!
    */
-  int mlfan_curr_index = ml_prev_index;
-  int mlfan_vert_index = ml_curr_index;
+  int64_t mlfan_curr_index = ml_prev_index;
+  int64_t mlfan_vert_index = ml_curr_index;
 
   BLI_assert(mlfan_curr_index >= 0);
   BLI_assert(mlfan_vert_index >= 0);
@@ -1062,8 +1062,8 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
                                                          const Span<int> loop_to_face,
                                                          const int2 e2l_prev,
                                                          MutableBitSpan skip_loops,
-                                                         const int ml_curr_index,
-                                                         const int ml_prev_index)
+                                                         const int64_t ml_curr_index,
+                                                         const int64_t ml_prev_index)
 {
   /* The vertex we are "fanning" around. */
   const int vert_pivot = corner_verts[ml_curr_index];
@@ -1076,8 +1076,8 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
 
   /* `mlfan_vert_index` the loop of our current edge might not be the loop of our current vertex!
    */
-  int mlfan_curr_index = ml_prev_index;
-  int mlfan_vert_index = ml_curr_index;
+  int64_t mlfan_curr_index = ml_prev_index;
+  int64_t mlfan_vert_index = ml_curr_index;
 
   BLI_assert(mlfan_curr_index >= 0);
   BLI_assert(mlfan_vert_index >= 0);
@@ -1136,11 +1136,11 @@ static void loop_split_generator(LoopSplitTaskDataCommon *common_data,
   /* We now know edges that can be smoothed (with their vector, and their two loops),
    * and edges that will be hard! Now, time to generate the normals.
    */
-  for (const int face_index : faces.index_range()) {
+  for (const int64_t face_index : faces.index_range()) {
     const IndexRange face = faces[face_index];
 
-    for (const int ml_curr_index : face) {
-      const int ml_prev_index = mesh::face_corner_prev(face, ml_curr_index);
+    for (const int64_t ml_curr_index : face) {
+      const int64_t ml_prev_index = mesh::face_corner_prev(face, ml_curr_index);
 
 #if 0
       printf("Checking loop %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)",

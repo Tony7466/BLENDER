@@ -2288,7 +2288,7 @@ void BKE_mesh_remap_calc_faces_from_mesh(const int mode,
         }
         tot_rays *= tot_rays;
 
-        face_area_2d_inv = area_poly_v2(face_vcos_2d, uint(face.size()));
+        face_area_2d_inv = area_poly_v2(face_vcos_2d, face.size());
         /* In case we have a null-area degenerated face... */
         face_area_2d_inv = 1.0f / max_ff(face_area_2d_inv, 1e-9f);
 

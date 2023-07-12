@@ -82,7 +82,7 @@ void AnimateableProperty::write(const float* data, int position, int count)
 {
 	std::lock_guard<std::recursive_mutex> lock(m_mutex);
 
-	int pos = getSize() / (sizeof(float) * m_count);
+	size_t pos = getSize() / (sizeof(float) * m_count);
 
 	if(!m_isAnimated)
 		pos = 0;

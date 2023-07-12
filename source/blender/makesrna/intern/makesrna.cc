@@ -4022,7 +4022,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
   bool freenest = false;
 
   if (nest != nullptr) {
-    int len = strlen(nest);
+    size_t len = strlen(nest);
 
     strnest = static_cast<char *>(
         MEM_mallocN(sizeof(char) * len + 2, "rna_generate_property -> strnest"));
@@ -5624,12 +5624,12 @@ static int rna_preprocess(const char *outfile, const char *public_header_outfile
   /* Create `rna_gen_*.c` & `rna_gen_*.cc` files. */
   for (i = 0; PROCESS_ITEMS[i].filename; i++) {
     const bool is_cc = BLI_str_endswith(PROCESS_ITEMS[i].filename, ".cc");
-    const int ext_len = is_cc ? 3 : 2;
-    const int filename_len = strlen(PROCESS_ITEMS[i].filename);
+    const size_t ext_len = is_cc ? 3 : 2;
+    const size_t filename_len = strlen(PROCESS_ITEMS[i].filename);
     SNPRINTF(deffile,
              "%s%.*s%s" TMP_EXT,
              outfile,
-             (filename_len - ext_len),
+             (int)(filename_len - ext_len),
              PROCESS_ITEMS[i].filename,
              is_cc ? "_gen.cc" : "_gen.c");
     if (status != EXIT_SUCCESS) {
