@@ -25,7 +25,7 @@ set(INC_SYS
 
 set(SRC
   ed_draw.cc
-  ed_transverts.c
+  ed_transverts.cc
   ed_util.cc
   ed_util_imbuf.c
   ed_util_ops.cc
