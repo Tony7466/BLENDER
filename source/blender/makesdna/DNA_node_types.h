@@ -689,8 +689,9 @@ typedef struct bNodeTree {
   const bNestedNodeRef *find_nested_node_ref(int32_t nested_node_id) const;
   /** Conversions between node id paths and their corresponding nested node ref. */
   const bNestedNodeRef *nested_node_ref_from_node_id_path(blender::Span<int> node_ids) const;
-  [[nodiscard]] bool node_id_path_from_nested_node_ref(const int32_t nested_node_id,
+  [[nodiscard]] bool node_id_path_from_nested_node_ref(int32_t nested_node_id,
                                                        blender::Vector<int32_t> &r_node_ids) const;
+  const bNode *find_nested_node(int32_t nested_node_id) const;
 
   /**
    * Update a run-time cache for the node tree based on it's current state. This makes many methods

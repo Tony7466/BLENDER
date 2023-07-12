@@ -2326,6 +2326,12 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+typedef struct NodesModifierBakeSettings {
+  int id;
+  char _pad[4];
+  char *directory;
+} NodesModifierBakeSettings;
+
 typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
@@ -2334,7 +2340,13 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
+
+  char _pad[4];
+  int bake_settings_num;
+  NodesModifierBakeSettings *bake_settings;
+
   NodesModifierRuntimeHandle *runtime;
+  void *_pad2;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

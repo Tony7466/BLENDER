@@ -411,6 +411,14 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
     IDP_FreeProperty(old_properties);
   }
 
+  std::cout << "\n";
+  for (const bNestedNodeRef &ref : nmd->node_group->nested_node_refs_span()) {
+    const bNode *node = nmd->node_group->find_nested_node(ref.id);
+    if (node && node->type == GEO_NODE_BAKE) {
+      std::cout << node->name << "\n";
+    }
+  }
+
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
 
