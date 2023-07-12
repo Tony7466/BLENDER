@@ -59,7 +59,7 @@ set(SRC
   view3d_navigate_zoom_border.cc
   view3d_ops.cc
   view3d_placement.cc
-  view3d_project.c
+  view3d_project.cc
   view3d_select.cc
   view3d_snap.c
   view3d_utils.c
