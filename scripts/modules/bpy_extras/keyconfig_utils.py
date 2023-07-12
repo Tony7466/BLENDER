@@ -296,6 +296,9 @@ class PyKeyMapItem:
             return
 
         check_keymap_name(keymap_name)
+        is_conflict = self.check_conflicts(keymap_name, context, raise_error=(not cancel_on_key_conflict))
+        if is_conflict and cancel_on_key_conflict:
+            return
 
         # If this KeyMap already exists, new() will return the existing one,
         # which is confusing, but ideal.
@@ -306,26 +309,38 @@ class PyKeyMapItem:
 
         self.register_in_keymap(addon_km, cancel_on_key_conflict=cancel_on_key_conflict)
 
+    def check_conflicts(self, keymap_name: str, context=None, *, raise_error=True) -> bool:
+        """Return whether there are existing conflicting keymaps, or raise an error."""
+        if not context:
+            context = bpy.context
+        wm = context.window_manager
+        space_type, region_type = get_ui_types_of_keymap(keymap_name)
+        for kconf in (wm.keyconfigs.addon, wm.keyconfigs.user):
+            keymap = kconf.keymaps.find(keymap_name, space_type=space_type, region_type=region_type)
+            if not keymap:
+                continue
+
+            kmi_conflicting = self.find_in_keymap_conflicts(keymap)
+            if kmi_conflicting:
+                if not raise_error:
+                    return True
+                else:
+                    conflict_info = "\n".join([
+                        str(PyKeyMapItem.new_from_keymap_item(kmi))
+                        for kmi in kmi_conflicting
+                    ])
+                    raise KeyMapException(
+                        "Failed to register KeyMapItem: There is a key conflict:\n"
+                        + keymap.name
+                        + ": "
+                        + conflict_info
+                    )
+        return False
+
     def register_in_keymap(
         self, keymap: KeyMap, *, cancel_on_key_conflict=False
     ) -> Optional[KeyMapItem]:
         """Lower-level function, for registering in a specific KeyMap."""
-
-        kmi_conflicting = self.find_in_keymap_conflicts(keymap)
-        if kmi_conflicting:
-            if cancel_on_key_conflict:
-                return
-            else:
-                conflict_info = "\n".join(
-                    str(PyKeyMapItem.new_from_keymap_item(kmi))
-                    for kmi in kmi_conflicting
-                )
-                raise KeyMapException(
-                    "Failed to register KeyMapItem: There is a key conflict:\n"
-                    + keymap.name
-                    + ": "
-                    + conflict_info
-                )
 
         kmi = keymap.keymap_items.new(
             self.op_idname,
