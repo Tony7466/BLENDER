@@ -692,7 +692,8 @@ bool ED_view3d_camera_lock_autokey(
 bool ED_view3d_camera_lock_undo_test(const View3D *v3d, const RegionView3D *rv3d, bContext *C)
 {
   if (ED_view3d_camera_lock_check(v3d, rv3d)) {
-    if (ED_undo_is_memfile_compatible(C)) {
+    Object *object = CTX_data_active_object(C);
+    if (object != NULL && object->mode != OB_MODE_EDIT) {
       return true;
     }
   }

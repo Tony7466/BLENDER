@@ -60,8 +60,6 @@ void ED_undo_operator_repeat_cb_evt(struct bContext *C, void *arg_op, int arg_un
  */
 bool ED_undo_is_valid(const struct bContext *C, const char *undoname);
 
-bool ED_undo_is_memfile_compatible(const struct bContext *C);
-
 /* Unfortunate workaround for limits mixing undo systems. */
 
 /**

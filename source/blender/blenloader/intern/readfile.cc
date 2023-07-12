@@ -2705,13 +2705,6 @@ static void read_libblock_undo_restore_identical(
   oldnewmap_lib_insert(fd, bhead->old, id_old, bhead->code);
 
   BKE_main_idmap_insert_id(fd->new_idmap_uuid, id_old);
-
-  if (GS(id_old->name) == ID_OB) {
-    Object *ob = (Object *)id_old;
-    /* For undo we stay in object mode during undo presses, so keep editmode disabled for re-used
-     * data-blocks too. */
-    ob->mode &= ~OB_MODE_EDIT;
-  }
 }
 
 /* For undo, store changed datablock at old address. */
@@ -2828,6 +2821,13 @@ static bool read_libblock_undo_restore(
               id->session_uuid);
 
     read_libblock_undo_restore_identical(fd, main, id, id_old, bhead, id_tag);
+
+    /* For objects, restore the mode. */
+    if (GS(id->name) == ID_OB && GS(id_old->name) == ID_OB) {
+      const Object *object = reinterpret_cast<const Object *>(id);
+      Object *object_old = reinterpret_cast<Object *>(id_old);
+      object_old->mode = object->mode;
+    }
 
     *r_id_old = id_old;
     return true;

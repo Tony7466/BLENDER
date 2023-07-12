@@ -549,16 +549,8 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Object *ob = (Object *)id;
 
-  const bool is_undo = BLO_write_is_undo(writer);
-
   /* Clean up, important in undo case to reduce false detection of changed data-blocks. */
   BKE_object_runtime_reset(ob);
-
-  if (is_undo) {
-    /* For undo we stay in object mode during undo presses, so keep edit-mode disabled on save as
-     * well, can help reducing false detection of changed data-blocks. */
-    ob->mode &= ~OB_MODE_EDIT;
-  }
 
   /* write LibData */
   BLO_write_id_struct(writer, Object, id_address, &ob->id);
