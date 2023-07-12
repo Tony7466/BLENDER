@@ -9,6 +9,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_volume.h"
 
 #ifdef WITH_OPENVDB
@@ -80,10 +81,12 @@ template<typename Fn> auto volume_grid_to_static_type(const VolumeGridType grid_
       return fn.template operator()<openvdb::Vec3IGrid>();
     case VOLUME_GRID_VECTOR_DOUBLE:
       return fn.template operator()<openvdb::Vec3dGrid>();
-    // case VOLUME_GRID_MASK:
-    //   return fn.template operator()<openvdb::MaskGrid>();
-    //  case VOLUME_GRID_POINTS:
-    //    return fn.template operator()<openvdb::points::PointDataGrid>();
+    case VOLUME_GRID_MASK:
+      //   return fn.template operator()<openvdb::MaskGrid>();
+      break;
+    case VOLUME_GRID_POINTS:
+      //    return fn.template operator()<openvdb::points::PointDataGrid>();
+      break;
     case VOLUME_GRID_UNKNOWN:
       break;
   }
@@ -211,53 +214,75 @@ template<> struct GridValueConverter<openvdb::PointDataIndex32> {
 /** \} */
 
 template<template<typename> typename VArrayImplT>
-GVArray get_volume_varray(const VolumeGridVector &grids)
+GVArray get_volume_varray(const openvdb::GridBase &vdb_grid, VolumeGridType grid_type)
 {
-  if (grids.empty()) {
-    return {};
-  }
-  const openvdb::GridBase &grid = *grids.front().grid();
   GVArray result;
-  volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(grid), [&grid, &result](auto tag) {
+  volume_grid_to_static_type_tag(grid_type, [&](auto tag) {
     using GridType = typename decltype(tag)::type;
     using VArrayImplType = VArrayImplT<GridType>;
-    using ValueType = typename GridType::ValueType;
-    using AttributeType = typename GridValueConverter<ValueType>::AttributeType;
+    using AttributeType = typename VArrayImplType::AttributeType;
 
-    result = VArray<AttributeType>::For<VArrayImplType>(static_cast<const GridType &>(grid));
+    result = VArray<AttributeType>::For<VArrayImplType>(static_cast<const GridType &>(vdb_grid));
   });
   return result;
 }
 
 template<template<typename> typename VArrayImplT>
-GVMutableArray get_volume_vmutablearray(const VolumeGridVector &grids)
+GVArray get_volume_varray(const VolumeGridVector &grids,
+                          const AttributeIDRef &attribute_id,
+                          bool use_first_grid)
 {
   if (grids.empty()) {
     return {};
   }
-  openvdb::GridBase &grid = *grids.front().grid();
+  const VolumeGrid *grid = use_first_grid ? (grids.empty() ? nullptr : &grids.front()) :
+                                            grids.find_grid(attribute_id);
+  if (grid == nullptr) {
+    return {};
+  }
+
+  return get_volume_varray<VArrayImplT>(*grid->grid(), grid->grid_type());
+}
+
+template<template<typename> typename VArrayImplT>
+GVMutableArray get_volume_vmutablearray(openvdb::GridBase &vdb_grid, VolumeGridType grid_type)
+{
   GVMutableArray result;
-  volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(grid), [&grid, &result](auto tag) {
+  volume_grid_to_static_type_tag(grid_type, [&](auto tag) {
     using GridType = typename decltype(tag)::type;
     using VArrayImplType = VArrayImplT<GridType>;
-    using ValueType = typename GridType::ValueType;
-    using AttributeType = typename GridValueConverter<ValueType>::AttributeType;
+    using AttributeType = typename VArrayImplType::AttributeType;
 
     result = VMutableArray<AttributeType>::For<VArrayImplType>(
-        static_cast<const GridType &>(grid));
+        static_cast<const GridType &>(vdb_grid));
   });
   return result;
 }
 
+template<template<typename> typename VArrayImplT>
+GVMutableArray get_volume_vmutablearray(VolumeGridVector &grids,
+                                        const AttributeIDRef &attribute_id)
+{
+  if (grids.empty()) {
+    return {};
+  }
+  VolumeGrid *grid = grids.find_grid(attribute_id);
+  if (grid == nullptr) {
+    return {};
+  }
+
+  return get_volume_vmutablearray<VArrayImplT>(*grid->grid(), grid->grid_type());
+}
+
 /* -------------------------------------------------------------------- */
-/** \name Volume Attribute Virtual Array
+/** \name Grid Value Virtual Array
  * \{ */
 
 template<typename _GridType>
 class VArrayImpl_For_VolumeGridValue final
     : public VMutableArrayImpl<
           typename bke::GridValueConverter<typename _GridType::ValueType>::AttributeType> {
- protected:
+ public:
   using GridType = typename std::remove_cv<_GridType>::type;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
@@ -268,6 +293,7 @@ class VArrayImpl_For_VolumeGridValue final
   using LeafRange = typename LeafManager::LeafRange;
   using BufferType = typename LeafManager::BufferType;
 
+ protected:
   GridType &grid_;
   LeafManager leaf_manager_;
   /* Offset indices for leaf node buffers. */
@@ -317,6 +343,7 @@ class VArrayImpl_For_VolumeGridValue final
         return Converter::to_attribute(iter.getValue());
       }
     }
+    return AttributeType{0};
   }
 
   void set(const int64_t index, const AttributeType value) override
@@ -418,10 +445,127 @@ class VArrayImpl_For_VolumeGridValue final
     // });
   }
 
-  // void materialize_to_uninitialized(const IndexMask &mask, AttributeType *dst) const override
-  // {
-  //   this->materialize(mask, dst);
-  // }
+  void materialize_to_uninitialized(const IndexMask &mask, AttributeType *dst) const override
+  {
+    this->materialize(mask, dst);
+  }
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Grid Position Virtual Array
+ * \{ */
+
+template<typename _GridType>
+class VArrayImpl_For_VolumeGridPosition final : public VArrayImpl<float3> {
+ public:
+  using AttributeType = float3;
+  using Converter = bke::GridValueConverter<openvdb::Vec3d>;
+  using GridType = typename std::remove_cv<_GridType>::type;
+  using TreeType = typename GridType::TreeType;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+  using LeafManager = openvdb::tree::LeafManager<TreeType>;
+  using LeafRange = typename LeafManager::LeafRange;
+
+ protected:
+  GridType &grid_;
+  LeafManager leaf_manager_;
+  /* Offset indices for leaf node buffers. */
+  /* XXX this should be shared between VArrays accessing the same grid. */
+  Array<size_t> prefix_sum_;
+
+ public:
+  VArrayImpl_For_VolumeGridPosition(const GridType &grid)
+      : VArrayImpl<float3>(grid.activeVoxelCount()),
+        grid_(const_cast<GridType &>(grid)),
+        leaf_manager_(*grid_.treePtr()),
+        prefix_sum_(leaf_manager_.leafCount())
+  {
+    size_t *prefix_data = prefix_sum_.data();
+    size_t prefix_size = prefix_sum_.size();
+    leaf_manager_.getPrefixSum(prefix_data, prefix_size);
+  }
+
+  float3 get(const int64_t index) const override
+  {
+    /**
+     * TODO Index-based access is very inefficient for leaf node buffers,
+     * since linear search through active voxels is needed per leaf.
+     * Implement all available alternative access methods to avoid
+     * this as much as possible.
+     */
+    const size_t *buffer_index_ptr = std::upper_bound(
+                                         prefix_sum_.begin(), prefix_sum_.end(), index) -
+                                     1;
+    const size_t leaf_index = buffer_index_ptr - prefix_sum_.begin();
+    BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
+    const LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
+    int64_t i = *buffer_index_ptr;
+    for (LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
+      if (i == index) {
+        return Converter::to_attribute(grid_.indexToWorld(iter.getCoord()));
+      }
+    }
+    return AttributeType{0};
+  }
+
+  void materialize(const IndexMask &mask, float3 *dst) const override
+  {
+    LeafManager leaf_mgr(*grid_.treePtr());
+
+    /* Offset indices for leaf node buffers. */
+    Array<size_t> prefix_sum(leaf_mgr.activeLeafVoxelCount());
+    size_t *prefix_sum_data = prefix_sum.data();
+    size_t prefix_sum_size = prefix_sum.size();
+    leaf_mgr.getPrefixSum(prefix_sum_data, prefix_sum_size);
+
+    const LeafRange leaf_range = leaf_mgr.leafRange();
+    // int64_t segment_start = 0;
+    // int64_t leaf_start = 0;
+    // for (const int64_t segment_i : IndexRange(segments_num_)) {
+    //   const IndexMaskSegment segment = mask->segment(segment_i);
+    mask.foreach_range([&](IndexRange segment, const int64_t segment_pos) {
+      if (segment.is_empty()) {
+        return;
+      }
+      threading::parallel_for(segment, 4096, [&](const IndexRange range) {
+        const int leaf_begin = *std::lower_bound(
+            prefix_sum.begin(), prefix_sum.end(), segment.first());
+        const int leaf_end = *std::upper_bound(
+            prefix_sum.begin(), prefix_sum.end(), segment.last());
+        tbb::parallel_for(leaf_range, [&](const LeafRange &leaf_range) {
+          UNUSED_VARS(dst, leaf_begin, leaf_end, segment_pos, range, leaf_range);
+          // for (auto leaf_iter = range.begin(); leaf_iter; ++leaf_iter) {
+          //   const size_t leaf_index = leaf_iter.pos();
+          //   const IndexRange leaf_buffer_range(prefix_sum[leaf_index],
+          //   leaf_iter->onVoxelCount());
+
+          //  auto iter = leaf_iter->beginValueOn();
+          //  for (const int src_i : leaf_buffer_range) {
+          //    iter.setValue(Converter::to_grid(src[src_i]));
+          //  }
+          //}
+        });
+
+        // segment_start += segment.size();
+      });
+    });
+
+    // mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
+    //   if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
+    //     dst[i] = weight->weight;
+    //   }
+    //   else {
+    //     dst[i] = 0.0f;
+    //   }
+    // });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, float3 *dst) const override
+  {
+    this->materialize(mask, dst);
+  }
 };
 
 /** \} */

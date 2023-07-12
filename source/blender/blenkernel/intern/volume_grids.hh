@@ -13,6 +13,7 @@
 #include "BLI_path_util.h"
 
 #include "BKE_attribute.h"
+#include "BKE_volume.h"
 
 #include "DNA_volume_types.h"
 
@@ -27,6 +28,7 @@
 namespace blender::bke {
 class AttributeAccessor;
 class MutableAttributeAccessor;
+class AttributeIDRef;
 }  // namespace blender::bke
 
 /* Global Volume File Cache
@@ -136,6 +138,7 @@ struct VolumeGrid {
   const char *name() const;
   const char *error_message() const;
   bool grid_is_loaded() const;
+  VolumeGridType grid_type() const;
   openvdb::GridBase::Ptr grid() const;
 
   void set_simplify_level(const int simplify_level);
@@ -175,6 +178,9 @@ struct VolumeGridVector : public std::list<VolumeGrid> {
   void clear_all();
 
   int domain_size(eAttrDomain domain) const;
+
+  VolumeGrid *find_grid(const blender::bke::AttributeIDRef &attribute_id);
+  const VolumeGrid *find_grid(const blender::bke::AttributeIDRef &attribute_id) const;
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();

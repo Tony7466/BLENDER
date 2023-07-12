@@ -293,6 +293,11 @@ bool VolumeGrid::grid_is_loaded() const
   return is_loaded;
 }
 
+VolumeGridType VolumeGrid::grid_type() const
+{
+  return BKE_volume_grid_type(this);
+}
+
 openvdb::GridBase::Ptr VolumeGrid::grid() const
 {
   if (entry) {
@@ -353,21 +358,16 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
-  // static BuiltinVolumeAttributeProvider position("position",
-  //                                                ATTR_DOMAIN_VOXEL,
-  //                                                CD_PROP_FLOAT3,
-  //                                                BuiltinAttributeProvider::NonCreatable,
-  //                                                BuiltinAttributeProvider::NonDeletable,
-  //                                                grid_access,
-  //                                                update_on_change);
+  static VolumeGridPositionAttributeProvider position(
+      "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  static VolumeGridValueAttributeProvider value(
-      "value", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
+  // static VolumeGridValueAttributeProvider value(
+  //     "value", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_VOXEL, grid_access);
+  static VolumeCustomAttributeProvider voxel_custom_data(
+      ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
-  return ComponentAttributeProviders({&value}, {});
+  return ComponentAttributeProviders({&position}, {&voxel_custom_data});
 }
 
 static AttributeAccessorFunctions get_volume_accessor_functions()
@@ -417,6 +417,29 @@ int VolumeGridVector::domain_size(eAttrDomain domain) const
     default:
       return 0;
   }
+}
+
+VolumeGrid *VolumeGridVector::find_grid(const blender::bke::AttributeIDRef &attribute_id)
+{
+  if (!attribute_id) {
+    return nullptr;
+  }
+  auto result = std::find_if(begin(), end(), [attribute_id](VolumeGrid &grid) {
+    return grid.name() == attribute_id.name();
+  });
+  return result != end() ? &*result : nullptr;
+}
+
+const VolumeGrid *VolumeGridVector::find_grid(
+    const blender::bke::AttributeIDRef &attribute_id) const
+{
+  if (!attribute_id) {
+    return nullptr;
+  }
+  auto result = std::find_if(begin(), end(), [attribute_id](const VolumeGrid &grid) {
+    return grid.name() == attribute_id.name();
+  });
+  return result != end() ? &*result : nullptr;
 }
 
 blender::bke::AttributeAccessor VolumeGridVector::attributes() const

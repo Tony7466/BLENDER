@@ -20,6 +20,8 @@
 
 #include "BLT_translation.h"
 
+#include "volume_grids.hh"
+
 #include <fmt/format.h>
 
 namespace blender::bke {
@@ -124,6 +126,9 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
   }
   if (const Instances *instances = this->instances()) {
     return instances->attributes();
+  }
+  if (const VolumeGridVector *grids = this->grids()) {
+    return grids->attributes();
   }
   return {};
 }

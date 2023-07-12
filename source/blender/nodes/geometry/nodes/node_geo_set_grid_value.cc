@@ -299,6 +299,11 @@ static void set_value_in_volume(GeometrySet &geometry,
     using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
     using AttributeType = typename Converter::AttributeType;
 
+    /* Type mismatch (XXX this will be solved when  grids become generic attributes) */
+    if (value_field.cpp_type() != CPPType::get<AttributeType>()) {
+      return;
+    }
+
     MutableAttributeAccessor attributes = grids.attributes_for_write();
     AttributeWriter<AttributeType> value_attribute = attributes.lookup_for_write<AttributeType>(
         "value");
