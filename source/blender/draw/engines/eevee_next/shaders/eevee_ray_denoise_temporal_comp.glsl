@@ -16,6 +16,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
@@ -56,9 +57,10 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
        * Same idea as in "High Quality Temporal Supersampling" by Brian Karis at Siggraph 2014
        * (Slide 32) Simple clamp to min/max of 8 neighbors results in 3x3 box artifacts. */
       float weight = (x == y) ? 0.25 : 1.0;
-      /* TODO(fclem): YCoCg space. */
-      result.mean += radiance.rgb;
-      result.moment += square_f(radiance.rgb);
+      /* Use YCoCg for clamping and accumulation to avoid color shift artifacts. */
+      vec3 radiance_YCoCg = colorspace_YCoCg_from_scene_linear(radiance.rgb);
+      result.mean += radiance_YCoCg;
+      result.moment += square_f(radiance_YCoCg);
       weight_accum += 1.0;
     }
   }
@@ -67,9 +69,8 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
   result.moment *= inv_weight;
   result.variance = abs(result.moment - square_f(result.mean));
   result.deviation = sqrt(result.variance);
-  /* Allow more ghosting (and more stable reflections) by taking 2 standard deviations. */
-  result.clamp_min = result.mean - result.deviation * 2.0;
-  result.clamp_max = result.mean + result.deviation * 2.0;
+  result.clamp_min = result.mean - result.deviation;
+  result.clamp_max = result.mean + result.deviation;
   return result;
 }
 
@@ -89,8 +90,11 @@ vec4 radiance_history_sample(vec3 P, LocalStatistics local)
     return vec4(0.0);
   }
 
+  /* Use YCoCg for clamping and accumulation to avoid color shift artifacts. */
+  vec3 history_radiance_YCoCg = colorspace_YCoCg_from_scene_linear(history_radiance.rgb);
+
   /* Weighted contribution (slide 46). */
-  vec3 dist = abs(history_radiance - local.mean) / local.deviation;
+  vec3 dist = abs(history_radiance_YCoCg - local.mean) / local.deviation;
   float weight = exp2(-10.0 * dot(dist, vec3(1.0 / 3.0)));
 
   ivec2 history_texel = ivec2(floor(uv * vec2(textureSize(radiance_history_tx, 0).xy)));
@@ -101,9 +105,9 @@ vec4 radiance_history_sample(vec3 P, LocalStatistics local)
   weight = is_valid_history ? weight : 0.0;
 
   /* Clamp resulting history radiance (slide 47). */
-  history_radiance = clamp(history_radiance, local.clamp_min, local.clamp_max);
+  history_radiance_YCoCg = clamp(history_radiance_YCoCg, local.clamp_min, local.clamp_max);
 
-  return vec4(history_radiance * weight, weight);
+  return vec4(history_radiance_YCoCg * weight, weight);
 }
 
 vec2 variance_history_sample(vec3 P)
@@ -159,6 +163,7 @@ void main()
   history_radiance += radiance_history_sample(P_hit, local);
   /* Finalize accumulation. */
   history_radiance *= safe_rcp(history_radiance.w);
+  history_radiance.rgb = colorspace_scene_linear_from_YCoCg(history_radiance.rgb);
   /* Blend history with new radiance. */
   float mix_fac = (history_radiance.w == 0.0) ? 0.0 : 0.97;
   /* Reduce blend factor to improve low rougness reflections. Use variance instead of roughness. */
