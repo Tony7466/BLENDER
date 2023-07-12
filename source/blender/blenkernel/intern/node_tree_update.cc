@@ -1134,6 +1134,10 @@ class NodeTreeMainUpdater {
       for (const bNode *node : ntree.nodes_by_type("GeometryNodeSimulationOutput")) {
         nested_node_paths.append({node->identifier, -1});
       }
+      /* Create references for bake nodes. */
+      for (const bNode *node : ntree.nodes_by_type("GeometryNodeBake")) {
+        nested_node_paths.append({node->identifier, -1});
+      }
     }
     /* Propagate references to nested nodes in group nodes. */
     for (const bNode *node : ntree.group_nodes()) {
