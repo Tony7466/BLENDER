@@ -2536,7 +2536,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   /* flags for inserting keyframes */
   flag = ANIM_get_keyframing_flags(scene, true);
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
@@ -2710,7 +2709,6 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
@@ -2819,7 +2817,6 @@ static int clear_key_button_exec(bContext *C, wmOperator *op)
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
 
-  /* try to insert keyframe using property retrieved from UI */
   if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
@@ -3034,9 +3031,9 @@ bool id_frame_has_keyframe(ID *id, float frame)
     case ID_OB: /* object */
       return object_frame_has_keyframe((Object *)id, frame);
 #if 0
-/* XXX TODO... for now, just use 'normal' behavior */
-case ID_SCE: /* scene */
-break;
+    /* XXX TODO... for now, just use 'normal' behavior */
+    case ID_SCE: /* scene */
+      break;
 #endif
     default: /* 'normal type' */
     {
