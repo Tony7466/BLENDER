@@ -219,6 +219,10 @@ static void restore_materials(ID &id,
   if (materials_prop->type != IDP_IDPARRAY) {
     return;
   }
+  if (materials_prop->len == 0) {
+    return;
+  }
+
   *materials_num = materials_prop->len;
   *materials = MEM_cnew_array<Material *>(*materials_num, __func__);
   for (const int i : IndexRange(materials_prop->len)) {
