@@ -39,7 +39,7 @@ set(SRC
   view3d_gizmo_forcefield.cc
   view3d_gizmo_light.cc
   view3d_gizmo_navigate.c
-  view3d_gizmo_navigate_type.c
+  view3d_gizmo_navigate_type.cc
   view3d_gizmo_preselect.c
   view3d_gizmo_preselect_type.cc
   view3d_gizmo_ruler.cc
