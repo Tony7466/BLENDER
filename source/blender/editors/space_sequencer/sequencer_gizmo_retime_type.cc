@@ -226,39 +226,51 @@ const SeqRetimingHandle *mousover_handle_get(bContext *C, const int mval[2], Seq
 /** \name Retiming Move Handle Gizmo
  * \{ */
 
-static void draw_half_keyframe(
-    const bContext *C, const Sequence *seq, const SeqRetimingHandle *handle, float size, bool sel)
+static void draw_half_keyframe(const bContext *C, const Sequence *seq)
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
   Editing *ed = SEQ_editing_get(scene);
-  const float x = UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, handle)) - 1;
+
+  const int right_handle_timeline_frame = SEQ_time_right_handle_frame_get(scene, seq);
+  const float x = UI_view2d_view_to_region_x(v2d, right_handle_timeline_frame) - 1;
   const float y = KEY_CENTER;
 
   GPU_blend(GPU_BLEND_ALPHA);
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (SEQ_retiming_selection_contains(ed, seq, handle) ||
-      SEQ_retiming_selection_contains(ed, seq, handle - 1))
-  {
-    immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
-  }
-  else {
-    immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
+  const SeqRetimingHandle *handle = SEQ_retiming_handle_get_by_timeline_frame(
+      scene, seq, right_handle_timeline_frame);
+  bool is_selected = false;
+
+  if (handle) {
+    if (SEQ_retiming_selection_contains(ed, seq, handle) ||
+        SEQ_retiming_selection_contains(ed, seq, handle - 1))
+    {
+      immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
+    }
+    else {
+      immUniform4f("color", 0.0f, 0.0f, 0.0f, 0.1f);
+    }
+
+    is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), seq, handle);
   }
 
-  size *= 0.5f;
-
+  const int size = KEY_SIZE * 0.5f;
   unsigned char col[4];
-  UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_KEYFRAME_SELECT : TH_KEYTYPE_KEYFRAME, col);
+
+  /* Triangle body. */
+  UI_GetThemeColor4ubv(is_selected ? TH_KEYTYPE_KEYFRAME_SELECT : TH_KEYTYPE_KEYFRAME, col);
   immUniformColor4ubv(col);
   immBegin(GPU_PRIM_TRI_FAN, 3);
   immVertex2f(pos, x, y + size);
   immVertex2f(pos, x, y - size);
   immVertex2f(pos, x - size, y);
   immEnd();
-  UI_GetThemeColor4ubv(sel ? TH_KEYBORDER_SELECT : TH_KEYBORDER, col);
+
+  /* Outline. */
+  UI_GetThemeColor4ubv(is_selected ? TH_KEYBORDER_SELECT : TH_KEYBORDER, col);
   immUniformColor4ubv(col);
   immBegin(GPU_PRIM_LINE_LOOP, 3);
   immVertex2f(pos, x, y + size);
@@ -273,6 +285,11 @@ static void retime_handle_draw(const bContext *C,
                                const Sequence *seq,
                                const SeqRetimingHandle *handle)
 {
+
+  if (SEQ_retiming_is_last_handle(seq, handle)) {
+    return;
+  }
+
   const Scene *scene = CTX_data_scene(C);
   const float handle_x = handle_x_get(scene, seq, handle);
 
@@ -288,13 +305,8 @@ static void retime_handle_draw(const bContext *C,
 
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-  bool is_selected = false;
-  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
-    if (seq == elem->seq && handle == elem->handle) {
-      is_selected = true;
-      break;
-    }
-  }
+  bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), seq, handle);
+
   /*
   if (handle == gizmo->mouse_over_handle || is_selected) {
 
@@ -335,9 +347,8 @@ static void retime_handle_draw(const bContext *C,
       format, "outlineColor", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   sh_bindings.flags_id = GPU_vertformat_attr_add(format, "flags", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
-  if (SEQ_retiming_last_handle_get(seq) != handle &&
-      SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) !=
-          SEQ_time_right_handle_frame_get(scene, seq))
+  if (SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) !=
+      SEQ_time_right_handle_frame_get(scene, seq))
   {
     GPU_blend(GPU_BLEND_ALPHA);
     GPU_program_point_size(true);
@@ -359,9 +370,6 @@ static void retime_handle_draw(const bContext *C,
     GPU_program_point_size(false);
     immUnbindProgram();
     GPU_blend(GPU_BLEND_NONE);
-  }
-  else {
-    draw_half_keyframe(C, seq, handle, size, is_selected);
   }
 }
 
@@ -458,6 +466,9 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
       }
       retime_handle_draw(C, seq, &handle);
     }
+
+    /* Special case for last handle. */
+    draw_half_keyframe(C, seq);
   }
 }
 
@@ -546,8 +557,7 @@ static void retime_speed_text_draw(const bContext *C,
                                    const Sequence *seq,
                                    const SeqRetimingHandle *handle)
 {
-  SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
-  if (handle == last_handle) {
+  if (SEQ_retiming_is_last_handle(seq, handle)) {
     return;
   }
 

@@ -39,6 +39,8 @@ SeqRetimingHandle *SEQ_retiming_add_freeze_frame(const struct Scene *scene,
                                                  struct Sequence *seq,
                                                  struct SeqRetimingHandle *handle,
                                                  const int offset);
+bool SEQ_retiming_is_last_handle(const struct Sequence *seq,
+                                 const struct SeqRetimingHandle *handle);
 struct SeqRetimingHandle *SEQ_retiming_last_handle_get(const struct Sequence *seq);
 void SEQ_retiming_remove_handle(const struct Scene *scene,
                                 struct Sequence *seq,
@@ -55,6 +57,9 @@ void SEQ_retiming_handle_speed_set(const struct Scene *scene,
                                    const float speed);
 int SEQ_retiming_handle_index_get(const struct Sequence *seq,
                                   const struct SeqRetimingHandle *handle);
+SeqRetimingHandle *SEQ_retiming_handle_get_by_timeline_frame(const struct Scene *scene,
+                                                             const struct Sequence *seq,
+                                                             const int timeline_frame);
 void SEQ_retiming_sound_animation_data_set(const struct Scene *scene, const struct Sequence *seq);
 float SEQ_retiming_handle_timeline_frame_get(const struct Scene *scene,
                                              const struct Sequence *seq,

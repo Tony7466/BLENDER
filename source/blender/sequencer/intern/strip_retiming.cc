@@ -50,6 +50,11 @@ MutableSpan<SeqRetimingHandle> SEQ_retiming_handles_get(const Sequence *seq)
   return handles;
 }
 
+bool SEQ_retiming_is_last_handle(const Sequence *seq, const SeqRetimingHandle *handle)
+{
+  return SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1;
+}
+
 SeqRetimingHandle *SEQ_retiming_last_handle_get(const Sequence *seq)
 {
   return seq->retiming_handles + seq->retiming_handle_num - 1;
@@ -60,9 +65,17 @@ int SEQ_retiming_handle_index_get(const Sequence *seq, const SeqRetimingHandle *
   return handle - seq->retiming_handles;
 }
 
-static bool seq_retiming_is_last_handle(const Sequence *seq, const SeqRetimingHandle *handle)
+SeqRetimingHandle *SEQ_retiming_handle_get_by_timeline_frame(const Scene *scene,
+                                                             const Sequence *seq,
+                                                             const int timeline_frame)
 {
-  return SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1;
+  for (auto &handle : SEQ_retiming_handles_get(seq)) {
+    if (SEQ_retiming_handle_timeline_frame_get(scene, seq, &handle) == timeline_frame) {
+      return &handle;
+    }
+  }
+
+  return nullptr;
 }
 
 const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const Sequence *seq,
@@ -70,7 +83,7 @@ const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const Sequence *
 {
   const SeqRetimingHandle *start_handle = nullptr;
   for (auto const &handle : SEQ_retiming_handles_get(seq)) {
-    if (seq_retiming_is_last_handle(seq, &handle)) {
+    if (SEQ_retiming_is_last_handle(seq, &handle)) {
       break;
     }
     if (handle.strip_frame_index > frame_index) {
@@ -405,7 +418,7 @@ void SEQ_retiming_offset_handle(const Scene *scene,
 
 static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *handle)
 {
-  if (handle->strip_frame_index == 0 || seq_retiming_is_last_handle(seq, handle)) {
+  if (handle->strip_frame_index == 0 || SEQ_retiming_is_last_handle(seq, handle)) {
     return; /* First and last handle can not be removed. */
   }
 
@@ -814,7 +827,7 @@ void SEQ_retiming_handle_timeline_frame_set(const Scene *scene,
       scene, seq, prev_handle);
   int next_handle_timeline_frame = MAXFRAME;
 
-  if (!seq_retiming_is_last_handle(seq, handle)) {
+  if (!SEQ_retiming_is_last_handle(seq, handle)) {
     SeqRetimingHandle *next_handle = handle + 1;
     next_handle_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle);
   }
