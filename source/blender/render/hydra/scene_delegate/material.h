@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "pxr/base/tf/hashmap.h"
+#include <pxr/imaging/hd/enums.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
 
@@ -27,6 +27,7 @@ class MaterialData : public IdData {
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   pxr::VtValue get_material_resource() const;
+  pxr::HdCullStyle cull_style() const;
 
   bool double_sided = true;
 

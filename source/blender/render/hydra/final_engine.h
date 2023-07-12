@@ -26,7 +26,7 @@ class FinalEngine : public Engine {
   pxr::GfVec2i resolution_;
 };
 
-class FinalEngineGL : public FinalEngine {
+class FinalEngineGPU : public FinalEngine {
  public:
   using FinalEngine::FinalEngine;
 

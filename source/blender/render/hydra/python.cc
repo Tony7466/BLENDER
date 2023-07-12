@@ -75,7 +75,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     }
     else {
       if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
-        engine = new FinalEngineGL(bl_engine, render_delegate_id);
+        engine = new FinalEngineGPU(bl_engine, render_delegate_id);
       }
       else {
         engine = new FinalEngine(bl_engine, render_delegate_id);
@@ -117,9 +117,9 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   engine->sync(depsgraph, context);
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -135,9 +135,9 @@ static PyObject *engine_sync_usd_func(PyObject * /*self*/, PyObject *args)
   boost::python::extract<pxr::UsdStageRefPtr> extract(pystage);
   pxr::UsdStagePtr stage = extract();
 
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   engine->sync_usd(stage);
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -152,12 +152,13 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
 
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
+
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS;
   engine->render(depsgraph);
   Py_END_ALLOW_THREADS;
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -172,12 +173,13 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx", engine);
+
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS;
   engine->render(depsgraph, context);
   Py_END_ALLOW_THREADS;
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -208,9 +210,10 @@ static PyObject *engine_set_sync_setting_func(PyObject * /*self*/, PyObject *arg
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  engine->set_sync_setting(key, get_setting_val(pyval));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx: %s", engine, key);
+  engine->set_sync_setting(key, get_setting_val(pyval));
+
   Py_RETURN_NONE;
 }
 
@@ -223,9 +226,10 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  engine->set_render_setting(key, get_setting_val(pyval));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx: %s", engine, key);
+  engine->set_render_setting(key, get_setting_val(pyval));
+
   Py_RETURN_NONE;
 }
 

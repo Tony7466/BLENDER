@@ -178,7 +178,7 @@ bool BlenderSceneDelegate::GetDoubleSided(pxr::SdfPath const &id)
 pxr::HdCullStyle BlenderSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
-  return mesh_data(id)->cull_style;
+  return mesh_data(id)->cull_style(id);
 }
 
 pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)

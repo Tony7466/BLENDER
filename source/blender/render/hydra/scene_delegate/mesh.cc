@@ -148,6 +148,15 @@ pxr::SdfPath MeshData::material_id(pxr::SdfPath const &id) const
   return sm.mat_data->prim_id;
 }
 
+pxr::HdCullStyle MeshData::cull_style(pxr::SdfPath const &id) const
+{
+  const SubMesh &sm = submesh(id);
+  if (sm.mat_data) {
+    return sm.mat_data->cull_style();
+  }
+  return pxr::HdCullStyle::HdCullStyleNothing;
+}
+
 bool MeshData::double_sided(pxr::SdfPath const &id) const
 {
   const SubMesh &sm = submesh(id);
@@ -162,7 +171,8 @@ void MeshData::update_double_sided(MaterialData *mat_data)
   for (int i = 0; i < submeshes_.size(); ++i) {
     if (submeshes_[i].mat_data == mat_data) {
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-          submesh_prim_id(i), pxr::HdChangeTracker::DirtyDoubleSided);
+          submesh_prim_id(i),
+          pxr::HdChangeTracker::DirtyDoubleSided | pxr::HdChangeTracker::DirtyCullStyle);
       ID_LOG(1, "%d", i);
     }
   }

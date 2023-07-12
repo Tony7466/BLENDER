@@ -87,6 +87,11 @@ pxr::VtValue MaterialData::get_material_resource() const
   return material_network_map_;
 }
 
+pxr::HdCullStyle MaterialData::cull_style() const
+{
+  return double_sided ? pxr::HdCullStyle::HdCullStyleNothing : pxr::HdCullStyle::HdCullStyleBack;
+}
+
 void MaterialData::export_mtlx()
 {
   /* Call of python function hydra.export_mtlx() */

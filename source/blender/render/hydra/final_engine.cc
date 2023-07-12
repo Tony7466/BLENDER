@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include <epoxy/gl.h>
+
+#include <pxr/imaging/hd/light.h>
+
 #include "BKE_lib_id.h"
 #include "BLI_timecode.h"
 #include "DEG_depsgraph_query.h"
@@ -18,14 +22,11 @@ namespace blender::render::hydra {
 void FinalEngine::render(Depsgraph *depsgraph)
 {
   prepare_for_render(depsgraph);
+  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
+
+  engine_->Execute(render_index_.get(), &tasks_);
 
   std::vector<float> &pixels = render_images_["Combined"];
-
-  {
-    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    engine_->Execute(render_index_.get(), &tasks_);
-  }
-
   char elapsed_time[32];
   double time_begin = PIL_check_seconds_timer();
   float percent_done = 0.0;
@@ -36,10 +37,8 @@ void FinalEngine::render(Depsgraph *depsgraph)
     }
 
     percent_done = renderer_percent_done();
-
     BLI_timecode_string_from_time_simple(
         elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin);
-
     notify_status(percent_done / 100.0,
                   scene_name_ + ": " + layer_name_,
                   std::string("Render Time: ") + elapsed_time +
@@ -107,7 +106,6 @@ void FinalEngine::prepare_for_render(Depsgraph *depsgraph)
   free_camera_delegate_->SetCamera(camera);
   render_task_delegate_->set_camera_and_viewport(
       free_camera_delegate_->GetCameraId(), pxr::GfVec4d(0, 0, resolution_[0], resolution_[1]));
-  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
 
   if (simple_light_task_delegate_) {
     simple_light_task_delegate_->set_camera_path(free_camera_delegate_->GetCameraId());
@@ -120,33 +118,55 @@ void FinalEngine::prepare_for_render(Depsgraph *depsgraph)
       std::vector<float>(resolution_[0] * resolution_[1] * 4)); /* 4 - number of channels. */
 }
 
-void FinalEngineGL::render(Depsgraph *depsgraph)
+void FinalEngineGPU::render(Depsgraph *depsgraph)
 {
   prepare_for_render(depsgraph);
 
-  std::vector<float> &pixels = render_images_["Combined"];
+  GPUFrameBuffer *framebuffer = GPU_framebuffer_create("fb_render_hydra");
+  GPUTexture *tex_color = GPU_texture_create_2d("tex_render_hydra_color",
+                                                resolution_[0],
+                                                resolution_[1],
+                                                1,
+                                                GPU_RGBA32F,
+                                                GPU_TEXTURE_USAGE_GENERAL,
+                                                nullptr);
+  GPUTexture *tex_depth = GPU_texture_create_2d("tex_render_hydra_depth",
+                                                resolution_[0],
+                                                resolution_[1],
+                                                1,
+                                                GPU_DEPTH32F_STENCIL8,
+                                                GPU_TEXTURE_USAGE_GENERAL,
+                                                nullptr);
+  GPU_texture_filter_mode(tex_color, true);
+  GPU_texture_mipmap_mode(tex_color, true, true);
+  GPU_texture_filter_mode(tex_depth, true);
+  GPU_texture_mipmap_mode(tex_depth, true, true);
 
-  GPUFrameBuffer *framebuffer = GPU_framebuffer_create("fb_hdyra_render_final");
-  GPUTexture *texture = GPU_texture_create_2d("tex_hydra_render_final",
-                                              resolution_[0],
-                                              resolution_[1],
-                                              1,
-                                              GPU_RGBA32F,
-                                              GPU_TEXTURE_USAGE_GENERAL,
-                                              nullptr);
-  GPU_texture_filter_mode(texture, true);
-  GPU_texture_mipmap_mode(texture, true, true);
-  GPU_framebuffer_texture_attach(framebuffer, texture, 0, 0);
+  GPU_framebuffer_ensure_config(
+      &framebuffer, {GPU_ATTACHMENT_TEXTURE(tex_depth), GPU_ATTACHMENT_TEXTURE(tex_color)});
 
   GPU_framebuffer_bind(framebuffer);
-  float clear_color[4] = {0.0, 0.0, 0.0, 0.0};
-  GPU_framebuffer_clear_color_depth(framebuffer, clear_color, 1.0);
 
-  {
-    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    engine_->Execute(render_index_.get(), &tasks_);
+  float clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  pxr::VtValue world_color = scene_delegate_->GetLightParamValue(
+      scene_delegate_->GetDelegateID().AppendElementString("World"), pxr::HdLightTokens->color);
+  if (!world_color.IsEmpty()) {
+    auto &c = world_color.Get<pxr::GfVec3f>();
+    clear_color[0] = c[0];
+    clear_color[1] = c[1];
+    clear_color[2] = c[2];
   }
+  GPU_framebuffer_clear_color_depth(framebuffer, clear_color, 1.0f);
 
+  /* Important: we have to create and bind at least one Vertex Array Object (VAO) before render
+     execution: More info at https://open.gl/drawing */
+  GLuint VAO;
+  glGenVertexArrays(1, &VAO);
+  glBindVertexArray(VAO);
+
+  engine_->Execute(render_index_.get(), &tasks_);
+
+  std::vector<float> &pixels = render_images_["Combined"];
   char elapsed_time[32];
   double time_begin = PIL_check_seconds_timer();
   float percent_done = 0.0;
@@ -170,19 +190,21 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
       break;
     }
 
-    void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
+    void *data = GPU_texture_read(tex_color, GPU_DATA_FLOAT, 0);
     memcpy(pixels.data(), data, pixels.size() * sizeof(float));
     MEM_freeN(data);
     update_render_result();
   }
 
-  void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
+  void *data = GPU_texture_read(tex_color, GPU_DATA_FLOAT, 0);
   memcpy(pixels.data(), data, pixels.size() * sizeof(float));
   MEM_freeN(data);
   update_render_result();
 
+  glDeleteVertexArrays(1, &VAO);
   GPU_framebuffer_free(framebuffer);
-  GPU_texture_free(texture);
+  GPU_texture_free(tex_color);
+  GPU_texture_free(tex_depth);
 }
 
 }  // namespace blender::render::hydra

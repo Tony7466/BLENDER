@@ -253,14 +253,11 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
   }
   tasks.push_back(render_task_delegate_->get_task());
 
-  {
-    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    engine_->Execute(render_index_.get(), &tasks);
+  engine_->Execute(render_index_.get(), &tasks);
 
-    if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-      draw_texture_.set_buffer(render_task_delegate_->get_renderer_aov(pxr::HdAovTokens->color));
-      draw_texture_.draw(shader, view_settings.border[0], view_settings.border[1]);
-    }
+  if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
+    draw_texture_.set_buffer(render_task_delegate_->get_renderer_aov(pxr::HdAovTokens->color));
+    draw_texture_.draw(shader, view_settings.border[0], view_settings.border[1]);
   }
 
   GPU_shader_unbind();
