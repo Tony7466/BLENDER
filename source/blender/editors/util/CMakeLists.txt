@@ -27,7 +27,7 @@ set(SRC
   ed_draw.cc
   ed_transverts.cc
   ed_util.cc
-  ed_util_imbuf.c
+  ed_util_imbuf.cc
   ed_util_ops.cc
   ed_viewer_path.cc
   gizmo_utils.c
