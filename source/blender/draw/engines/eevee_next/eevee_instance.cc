@@ -285,9 +285,7 @@ void Instance::render_sync()
   /* TODO: Remove old draw manager calls. */
   DRW_render_instance_buffer_finish();
 
-  /* Also we weed to have a correct FBO bound for #DRW_hair_update */
-  // GPU_framebuffer_bind();
-  // DRW_hair_update();
+  DRW_curves_update();
 }
 
 /** \} */
