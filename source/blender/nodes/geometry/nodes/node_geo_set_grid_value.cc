@@ -288,7 +288,7 @@ static void set_value_in_volume(GeometrySet &geometry,
   }
   openvdb::GridBase &grid = *grids.front().grid();
 
-  const eAttrDomain domain = ATTR_DOMAIN_POINT;
+  const eAttrDomain domain = ATTR_DOMAIN_VOXEL;
   const int domain_size = grid.activeVoxelCount();
   if (domain_size == 0) {
     return;

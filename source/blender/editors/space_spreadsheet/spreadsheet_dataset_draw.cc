@@ -102,8 +102,10 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
                                                           IFACE_("Point"),
                                                           ICON_PARTICLE_POINT);
 
-    this->add_tree_item<GeometryDataSetTreeViewItem>(
+    GeometryDataSetTreeViewItem &volume = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::Volume, IFACE_("Volume Grids"), ICON_VOLUME_DATA);
+    volume.add_tree_item<GeometryDataSetTreeViewItem>(
+        bke::GeometryComponent::Type::Volume, ATTR_DOMAIN_VOXEL, IFACE_("Voxel"), ICON_GRID);
 
     this->add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Instance,
                                                      ATTR_DOMAIN_INSTANCE,
@@ -161,10 +163,6 @@ std::optional<bool> GeometryDataSetTreeViewItem::should_be_active() const
 {
   GeometryDataSetTreeView &tree_view = this->get_tree();
   SpaceSpreadsheet &sspreadsheet = tree_view.sspreadsheet_;
-
-  if (component_type_ == bke::GeometryComponent::Type::Volume) {
-    return sspreadsheet.geometry_component_type == uint8_t(component_type_);
-  }
 
   if (!domain_) {
     return false;

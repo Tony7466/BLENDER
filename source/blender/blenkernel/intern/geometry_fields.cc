@@ -107,7 +107,7 @@ GeometryFieldContext::GeometryFieldContext(const Instances &instances)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const VolumeGridVector &grids)
-    : geometry_(&grids), type_(GeometryComponent::Type::Volume), domain_(ATTR_DOMAIN_POINT)
+    : geometry_(&grids), type_(GeometryComponent::Type::Volume), domain_(ATTR_DOMAIN_VOXEL)
 {
 }
 
@@ -612,6 +612,9 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
   }
   if (component_type == GeometryComponent::Type::Instance) {
     return ATTR_DOMAIN_INSTANCE;
+  }
+  if (component_type == GeometryComponent::Type::Volume) {
+    return ATTR_DOMAIN_VOXEL;
   }
   const std::shared_ptr<const fn::FieldInputs> &field_inputs = field.node().field_inputs();
   if (!field_inputs) {

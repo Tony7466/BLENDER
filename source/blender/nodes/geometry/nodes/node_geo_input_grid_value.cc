@@ -98,7 +98,7 @@ class VolumeGridValueFieldInput final : public bke::VolumeFieldInput {
                                  const IndexMask & /*mask*/) const final
   {
     switch (domain) {
-      case ATTR_DOMAIN_POINT:
+      case ATTR_DOMAIN_VOXEL:
         return bke::get_volume_varray<bke::VArrayImpl_For_VolumeGridValue>(volume->);
       default:
         BLI_assert_unreachable();

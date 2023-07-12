@@ -263,8 +263,6 @@ class VArrayImpl_For_VolumeGridValue final
   using ValueType = typename GridType::ValueType;
   using Converter = bke::GridValueConverter<ValueType>;
   using AttributeType = typename Converter::AttributeType;
-  using Accessor = typename GridType::Accessor;
-  using ConstAccessor = typename GridType::ConstAccessor;
   using LeafNodeType = typename TreeType::LeafNodeType;
   using LeafManager = openvdb::tree::LeafManager<TreeType>;
   using LeafRange = typename LeafManager::LeafRange;
@@ -307,9 +305,20 @@ class VArrayImpl_For_VolumeGridValue final
      * Implement all available alternative access methods to avoid
      * this as much as possible.
      */
-    ConstAccessor accessor = grid_.getConstAccessor();
-    openvdb::Coord coord = LeafNodeType::offsetToLocalCoord(index);
-    return Converter::to_attribute(accessor.getValue(coord));
+    const size_t *buffer_index_ptr = std::upper_bound(
+                                         prefix_sum_.begin(), prefix_sum_.end(), index) -
+                                     1;
+    const size_t leaf_index = buffer_index_ptr - prefix_sum_.begin();
+    BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
+    const size_t buffer_index = *buffer_index_ptr;
+    // BufferType &buffer = leaf_manager_.getBuffer(leaf_index, 0);
+    const LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
+    int64_t i = 0;
+    for (LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
+      if (i == index) {
+        return Converter::to_attribute(iter.getValue());
+      }
+    }
   }
 
   void set(const int64_t index, const AttributeType value) override

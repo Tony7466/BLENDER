@@ -993,7 +993,10 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
-        ss << TIP_("\u2022 Volume");
+        const geo_log::GeometryInfoLog::VolumeInfo &volume_info = *value_log.volume_info;
+        char line[256];
+        SNPRINTF(line, TIP_("\u2022 Voxels: %s"), to_string(volume_info.voxels_num).c_str());
+        ss << line;
         break;
       }
       case bke::GeometryComponent::Type::Edit: {
@@ -2012,7 +2015,8 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
       snode.edittree->type == NTREE_GEOMETRY)
   {
     if (std::optional<NodeExtraInfoRow> row = node_get_accessed_attributes_row(tree_draw_ctx,
-                                                                               node)) {
+                                                                               node))
+    {
       rows.append(std::move(*row));
     }
   }

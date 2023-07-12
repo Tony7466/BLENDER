@@ -354,7 +354,7 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
   static auto update_on_change = [](void * /*owner*/) {};
 
   // static BuiltinVolumeAttributeProvider position("position",
-  //                                                ATTR_DOMAIN_POINT,
+  //                                                ATTR_DOMAIN_VOXEL,
   //                                                CD_PROP_FLOAT3,
   //                                                BuiltinAttributeProvider::NonCreatable,
   //                                                BuiltinAttributeProvider::NonDeletable,
@@ -362,9 +362,9 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
   //                                                update_on_change);
 
   static VolumeGridValueAttributeProvider value(
-      "value", ATTR_DOMAIN_POINT, grid_access, update_on_change);
+      "value", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_POINT, grid_access);
+  // static VolumeAttributeProvider voxel_custom_data(ATTR_DOMAIN_VOXEL, grid_access);
 
   // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
   return ComponentAttributeProviders({&value}, {});
@@ -384,7 +384,7 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     return grids.domain_size(domain);
   };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
-    return ELEM(domain, ATTR_DOMAIN_POINT);
+    return ELEM(domain, ATTR_DOMAIN_VOXEL);
   };
   fn.adapt_domain = [](const void *owner,
                        const GVArray &varray,
@@ -393,7 +393,7 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     if (owner == nullptr) {
       return {};
     }
-    if (from_domain == ATTR_DOMAIN_POINT && to_domain == ATTR_DOMAIN_POINT) {
+    if (from_domain == ATTR_DOMAIN_VOXEL && to_domain == ATTR_DOMAIN_VOXEL) {
       return varray;
     }
     return {};
@@ -412,7 +412,7 @@ static const AttributeAccessorFunctions &get_volume_accessor_functions_ref()
 int VolumeGridVector::domain_size(eAttrDomain domain) const
 {
   switch (domain) {
-    case ATTR_DOMAIN_POINT:
+    case ATTR_DOMAIN_VOXEL:
       return empty() ? 0 : front().grid()->activeVoxelCount();
     default:
       return 0;

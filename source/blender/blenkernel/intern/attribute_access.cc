@@ -157,6 +157,8 @@ static int attribute_domain_priority(const eAttrDomain domain)
       return 4;
     case ATTR_DOMAIN_CORNER:
       return 5;
+    case ATTR_DOMAIN_VOXEL:
+      return 6;
     default:
       /* Domain not supported in nodes yet. */
       BLI_assert_unreachable();

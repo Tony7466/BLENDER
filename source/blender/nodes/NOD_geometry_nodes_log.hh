@@ -138,6 +138,9 @@ class GeometryInfoLog : public ValueLog {
   struct InstancesInfo {
     int instances_num;
   };
+  struct VolumeInfo {
+    int voxels_num;
+  };
   struct EditDataInfo {
     bool has_deformed_positions;
     bool has_deform_matrices;
@@ -147,6 +150,7 @@ class GeometryInfoLog : public ValueLog {
   std::optional<CurveInfo> curve_info;
   std::optional<PointCloudInfo> pointcloud_info;
   std::optional<InstancesInfo> instances_info;
+  std::optional<VolumeInfo> volume_info;
   std::optional<EditDataInfo> edit_data_info;
 
   GeometryInfoLog(const bke::GeometrySet &geometry_set);

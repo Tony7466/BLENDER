@@ -86,6 +86,7 @@ const EnumPropertyItem rna_enum_attribute_domain_items[] = {
     // {ATTR_DOMAIN_GRIDS, "GRIDS", 0, "Grids", "Attribute on mesh multires grids"},
     {ATTR_DOMAIN_CURVE, "CURVE", 0, "Spline", "Attribute on spline"},
     {ATTR_DOMAIN_INSTANCE, "INSTANCE", 0, "Instance", "Attribute on instance"},
+    {ATTR_DOMAIN_VOXEL, "VOXEL", 0, "Voxel", "Attribute on grid voxel"},
     {0, NULL, 0, NULL, NULL},
 };
 

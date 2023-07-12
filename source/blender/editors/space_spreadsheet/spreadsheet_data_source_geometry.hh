@@ -82,25 +82,25 @@ class GeometryDataSource : public DataSource {
   int tot_rows() const override;
 };
 
-class VolumeDataSource : public DataSource {
-  const bke::GeometrySet geometry_set_;
-  const bke::VolumeComponent *component_;
-
- public:
-  VolumeDataSource(bke::GeometrySet geometry_set)
-      : geometry_set_(std::move(geometry_set)),
-        component_(geometry_set_.get_component_for_read<bke::VolumeComponent>())
-  {
-  }
-
-  void foreach_default_column_ids(
-      FunctionRef<void(const SpreadsheetColumnID &, bool is_extra)> fn) const override;
-
-  std::unique_ptr<ColumnValues> get_column_values(
-      const SpreadsheetColumnID &column_id) const override;
-
-  int tot_rows() const override;
-};
+// class VolumeDataSource : public DataSource {
+//   const bke::GeometrySet geometry_set_;
+//   const bke::VolumeComponent *component_;
+//
+//  public:
+//   VolumeDataSource(bke::GeometrySet geometry_set)
+//       : geometry_set_(std::move(geometry_set)),
+//         component_(geometry_set_.get_component_for_read<bke::VolumeComponent>())
+//   {
+//   }
+//
+//   void foreach_default_column_ids(
+//       FunctionRef<void(const SpreadsheetColumnID &, bool is_extra)> fn) const override;
+//
+//   std::unique_ptr<ColumnValues> get_column_values(
+//       const SpreadsheetColumnID &column_id) const override;
+//
+//   int tot_rows() const override;
+// };
 
 std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object *object_eval);
 

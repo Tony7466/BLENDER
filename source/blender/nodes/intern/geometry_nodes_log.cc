@@ -110,6 +110,12 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         info.instances_num = instances_component.attribute_domain_size(ATTR_DOMAIN_INSTANCE);
         break;
       }
+      case bke::GeometryComponent::Type::Volume: {
+        const auto &volume_component = *static_cast<const bke::VolumeComponent *>(component);
+        VolumeInfo &info = this->volume_info.emplace();
+        info.voxels_num = volume_component.attribute_domain_size(ATTR_DOMAIN_VOXEL);
+        break;
+      }
       case bke::GeometryComponent::Type::Edit: {
         const auto &edit_component = *static_cast<const bke::GeometryComponentEditData *>(
             component);
@@ -119,9 +125,6 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions.has_value();
         }
-        break;
-      }
-      case bke::GeometryComponent::Type::Volume: {
         break;
       }
     }
