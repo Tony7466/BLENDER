@@ -338,7 +338,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 10)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 11)) {
     version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
   }
 
