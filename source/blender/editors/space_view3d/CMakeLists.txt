@@ -44,7 +44,7 @@ set(SRC
   view3d_gizmo_preselect_type.cc
   view3d_gizmo_ruler.cc
   view3d_gizmo_tool_generic.cc
-  view3d_header.c
+  view3d_header.cc
   view3d_iterators.cc
   view3d_navigate.cc
   view3d_navigate_dolly.cc
