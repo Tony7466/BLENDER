@@ -86,7 +86,7 @@ static void mesh_init_data(ID *id)
 
   CustomData_reset(&mesh->vdata);
   CustomData_reset(&mesh->edata);
-  CustomData_reset(&mesh->fdata);
+  CustomData_reset(&mesh->fdata_legacy);
   CustomData_reset(&mesh->pdata);
   CustomData_reset(&mesh->ldata);
 
@@ -164,7 +164,7 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
                                                  &mesh_dst->face_offset_indices,
                                                  &mesh_dst->runtime->face_offsets_sharing_info);
   if (do_tessface) {
-    CustomData_copy(&mesh_src->fdata, &mesh_dst->fdata, mask.fmask, mesh_dst->totface_legacy);
+    CustomData_copy(&mesh_src->fdata_legacy, &mesh_dst->fdata_legacy, mask.fmask, mesh_dst->totface_legacy);
   }
   else {
     mesh_tessface_clear_intern(mesh_dst, false);
@@ -240,7 +240,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   /* Cache only - don't write. */
   mesh->mface = nullptr;
   mesh->totface_legacy = 0;
-  memset(&mesh->fdata, 0, sizeof(mesh->fdata));
+  memset(&mesh->fdata_legacy, 0, sizeof(mesh->fdata_legacy));
 
   /* Do not store actual geometry data in case this is a library override ID. */
   if (ID_IS_OVERRIDE_LIBRARY(mesh) && !is_undo) {
@@ -286,7 +286,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       writer, &mesh->edata, edge_layers, mesh->totedge, CD_MASK_MESH.emask, &mesh->id);
   /* `fdata` is cleared above but written so slots align. */
   CustomData_blend_write(
-      writer, &mesh->fdata, {}, mesh->totface_legacy, CD_MASK_MESH.fmask, &mesh->id);
+      writer, &mesh->fdata_legacy, {}, mesh->totface_legacy, CD_MASK_MESH.fmask, &mesh->id);
   CustomData_blend_write(
       writer, &mesh->ldata, loop_layers, mesh->totloop, CD_MASK_MESH.lmask, &mesh->id);
   CustomData_blend_write(
@@ -321,7 +321,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   CustomData_blend_read(reader, &mesh->vdata, mesh->totvert);
   CustomData_blend_read(reader, &mesh->edata, mesh->totedge);
-  CustomData_blend_read(reader, &mesh->fdata, mesh->totface_legacy);
+  CustomData_blend_read(reader, &mesh->fdata_legacy, mesh->totface_legacy);
   CustomData_blend_read(reader, &mesh->ldata, mesh->totloop);
   CustomData_blend_read(reader, &mesh->pdata, mesh->faces_num);
   if (mesh->deform_verts().is_empty()) {
@@ -856,7 +856,7 @@ static void mesh_clear_geometry(Mesh &mesh)
 {
   CustomData_free(&mesh.vdata, mesh.totvert);
   CustomData_free(&mesh.edata, mesh.totedge);
-  CustomData_free(&mesh.fdata, mesh.totface_legacy);
+  CustomData_free(&mesh.fdata_legacy, mesh.totface_legacy);
   CustomData_free(&mesh.ldata, mesh.totloop);
   CustomData_free(&mesh.pdata, mesh.faces_num);
   if (mesh.face_offset_indices) {
@@ -897,10 +897,10 @@ void BKE_mesh_clear_geometry_and_metadata(Mesh *mesh)
 static void mesh_tessface_clear_intern(Mesh *mesh, int free_customdata)
 {
   if (free_customdata) {
-    CustomData_free(&mesh->fdata, mesh->totface_legacy);
+    CustomData_free(&mesh->fdata_legacy, mesh->totface_legacy);
   }
   else {
-    CustomData_reset(&mesh->fdata);
+    CustomData_reset(&mesh->fdata_legacy);
   }
 
   mesh->totface_legacy = 0;
@@ -1059,7 +1059,7 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
   CustomData_copy_layout(&me_src->ldata, &me_dst->ldata, mask.lmask, CD_SET_DEFAULT, loops_num);
   if (do_tessface) {
     CustomData_copy_layout(
-        &me_src->fdata, &me_dst->fdata, mask.fmask, CD_SET_DEFAULT, tessface_num);
+        &me_src->fdata_legacy, &me_dst->fdata_legacy, mask.fmask, CD_SET_DEFAULT, tessface_num);
   }
   else {
     mesh_tessface_clear_intern(me_dst, false);
@@ -1069,8 +1069,8 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
    * even in cases where the source mesh does not. */
   mesh_ensure_cdlayers_primary(*me_dst);
   BKE_mesh_face_offsets_ensure_alloc(me_dst);
-  if (do_tessface && !CustomData_get_layer(&me_dst->fdata, CD_MFACE)) {
-    CustomData_add_layer(&me_dst->fdata, CD_MFACE, CD_SET_DEFAULT, me_dst->totface_legacy);
+  if (do_tessface && !CustomData_get_layer(&me_dst->fdata_legacy, CD_MFACE)) {
+    CustomData_add_layer(&me_dst->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, me_dst->totface_legacy);
   }
 
   /* Expect that normals aren't copied at all, since the destination mesh is new. */

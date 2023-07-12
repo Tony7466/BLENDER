@@ -181,7 +181,7 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
 
     totface = mesh->totface_legacy;
     mface = mface_array = CustomData_get_layer_for_write(
-        &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+        &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
 
     for (a = 0; a < amax; a++) {
       if (a == 0) {
@@ -466,7 +466,7 @@ static void distribute_from_verts_exec(ParticleTask *thread, ParticleData *pa, i
   MFace *mface;
 
   mface = CustomData_get_layer_for_write(
-      &ctx->mesh->fdata, CD_MFACE, ctx->mesh->totface_legacy);
+      &ctx->mesh->fdata_legacy, CD_MFACE, ctx->mesh->totface_legacy);
 
   int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
@@ -528,7 +528,7 @@ static void distribute_from_faces_exec(ParticleTask *thread, ParticleData *pa, i
   int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
   MFace *mface;
 
   pa->num = i = ctx->index[p];
@@ -584,7 +584,7 @@ static void distribute_from_volume_exec(ParticleTask *thread, ParticleData *pa, 
 
   pa->num = i = ctx->index[p];
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
   mface = &mfaces[i];
 
   switch (distr) {
@@ -626,7 +626,7 @@ static void distribute_from_volume_exec(ParticleTask *thread, ParticleData *pa, 
 
   min_d = FLT_MAX;
   intersect = 0;
-  mface = CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface_legacy);
+  mface = CustomData_get_layer_for_write(&mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
   for (i = 0; i < tot; i++, mface++) {
     if (i == pa->num) {
       continue;
@@ -697,7 +697,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
   }
 
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
   mf = &mfaces[ctx->index[p]];
 
   randu = BLI_rng_get_float(thread->rng);
@@ -906,7 +906,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
   }
 
   if (!BKE_mesh_is_deformed_only(final_mesh) &&
-      !CustomData_get_layer(&final_mesh->fdata, CD_ORIGINDEX))
+      !CustomData_get_layer(&final_mesh->fdata_legacy, CD_ORIGINDEX))
   {
     printf(
         "Can't create particles with the current modifier stack, disable destructive modifiers\n");
@@ -1052,7 +1052,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
     orcodata = CustomData_get_layer(&mesh->vdata, CD_ORCO);
 
     MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-        &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+        &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
     for (i = 0; i < totelem; i++) {
       MFace *mf = &mfaces[i];
 
@@ -1114,7 +1114,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
     }
     else { /* PART_FROM_FACE / PART_FROM_VOLUME */
       MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-          &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+          &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
       for (i = 0; i < totelem; i++) {
         MFace *mf = &mfaces[i];
         tweight = vweight[mf->v1] + vweight[mf->v2] + vweight[mf->v3];
@@ -1239,7 +1239,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
     }
     else {
       if (mesh->totface_legacy) {
-        orig_index = CustomData_get_layer(&mesh->fdata, CD_ORIGINDEX);
+        orig_index = CustomData_get_layer(&mesh->fdata_legacy, CD_ORIGINDEX);
       }
     }
 

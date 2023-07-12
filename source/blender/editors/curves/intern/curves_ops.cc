@@ -312,7 +312,7 @@ static void try_convert_single_object(Object &curves_ob,
 
   /* Prepare utility data structure to map hair roots to #MFace's. */
   const Span<int> mface_to_poly_map{
-      static_cast<const int *>(CustomData_get_layer(&surface_me.fdata, CD_ORIGINDEX)),
+      static_cast<const int *>(CustomData_get_layer(&surface_me.fdata_legacy, CD_ORIGINDEX)),
       surface_me.totface_legacy};
   Array<Vector<int>> poly_to_mface_map(surface_me.faces_num);
   for (const int mface_i : mface_to_poly_map.index_range()) {
@@ -323,7 +323,7 @@ static void try_convert_single_object(Object &curves_ob,
   /* Prepare transformation matrices. */
   const bke::CurvesSurfaceTransforms transforms{curves_ob, &surface_ob};
 
-  const MFace *mfaces = (const MFace *)CustomData_get_layer(&surface_me.fdata, CD_MFACE);
+  const MFace *mfaces = (const MFace *)CustomData_get_layer(&surface_me.fdata_legacy, CD_MFACE);
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float3> positions = surface_me.vert_positions();
 

@@ -1105,7 +1105,7 @@ bool BKE_mesh_validate(Mesh *me, const bool do_verbose, const bool cddata_check_
       positions.size(),
       edges.data(),
       edges.size(),
-      (MFace *)CustomData_get_layer_for_write(&me->fdata, CD_MFACE, me->totface_legacy),
+      (MFace *)CustomData_get_layer_for_write(&me->fdata_legacy, CD_MFACE, me->totface_legacy),
       me->totface_legacy,
       corner_verts.data(),
       corner_edges.data(),
@@ -1159,7 +1159,7 @@ bool BKE_mesh_is_valid(Mesh *me)
       positions.size(),
       edges.data(),
       edges.size(),
-      (MFace *)CustomData_get_layer_for_write(&me->fdata, CD_MFACE, me->totface_legacy),
+      (MFace *)CustomData_get_layer_for_write(&me->fdata_legacy, CD_MFACE, me->totface_legacy),
       me->totface_legacy,
       corner_verts.data(),
       corner_edges.data(),
@@ -1328,7 +1328,7 @@ void BKE_mesh_calc_edges_tessface(Mesh *mesh)
   const int numFaces = mesh->totface_legacy;
   EdgeSet *eh = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_POLYS(numFaces));
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
 
   MFace *mf = mfaces;
   for (int i = 0; i < numFaces; i++, mf++) {

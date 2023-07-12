@@ -205,9 +205,9 @@ static void extract_edge_fac_finish(const MeshRenderData *mr,
     GPU_vertbuf_init_with_format(vbo, &format);
     GPU_vertbuf_data_alloc(vbo, buf_len);
 
-    float *fdata = (float *)GPU_vertbuf_get_data(vbo);
-    for (int ml_index = 0; ml_index < buf_len; ml_index++, fdata++) {
-      *fdata = data->vbo_data[ml_index] / 255.0f;
+    float *fdata_legacy = (float *)GPU_vertbuf_get_data(vbo);
+    for (int ml_index = 0; ml_index < buf_len; ml_index++, fdata_legacy++) {
+      *fdata_legacy = data->vbo_data[ml_index] / 255.0f;
     }
     /* Free old byte data. */
     MEM_freeN(data->vbo_data);

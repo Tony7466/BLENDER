@@ -349,7 +349,7 @@ void psys_calc_dmcache(Object *ob, Mesh *mesh_final, Mesh *mesh_original, Partic
       }
       else {
         totelem = mesh_original->totface_legacy;
-        origindex = CustomData_get_layer(&mesh_final->fdata, CD_ORIGINDEX);
+        origindex = CustomData_get_layer(&mesh_final->fdata_legacy, CD_ORIGINDEX);
 
         /* for face lookups we need the poly origindex too */
         origindex_poly = CustomData_get_layer(&mesh_final->pdata, CD_ORIGINDEX);

@@ -271,7 +271,7 @@ static void mesh_set_only_copy(Mesh *mesh, const CustomData_MeshMasks *mask)
 {
   CustomData_set_only_copy(&mesh->vdata, mask->vmask);
   CustomData_set_only_copy(&mesh->edata, mask->emask);
-  CustomData_set_only_copy(&mesh->fdata, mask->fmask);
+  CustomData_set_only_copy(&mesh->fdata_legacy, mask->fmask);
   /* this wasn't in 2.63 and is disabled for 2.64 because it gives problems with
    * weight paint mode when there are modifiers applied, needs further investigation,
    * see replies to r50969, Campbell */

@@ -1892,7 +1892,7 @@ static float psys_interpolate_value_from_verts(
     case PART_FROM_FACE:
     case PART_FROM_VOLUME: {
       MFace *mfaces = static_cast<MFace *>(
-          CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface_legacy));
+          CustomData_get_layer_for_write(&mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy));
       MFace *mf = &mfaces[index];
       return interpolate_particle_value(
           values[mf->v1], values[mf->v2], values[mf->v3], values[mf->v4], fw, mf->v4);
@@ -1962,14 +1962,14 @@ int psys_particle_dm_face_lookup(Mesh *mesh_final,
   }
 
   index_mf_to_mpoly = static_cast<const int *>(
-      CustomData_get_layer(&mesh_final->fdata, CD_ORIGINDEX));
+      CustomData_get_layer(&mesh_final->fdata_legacy, CD_ORIGINDEX));
   index_mp_to_orig = static_cast<const int *>(
       CustomData_get_layer(&mesh_final->pdata, CD_ORIGINDEX));
   BLI_assert(index_mf_to_mpoly);
 
   if (mesh_original) {
     index_mf_to_mpoly_deformed = static_cast<const int *>(
-        CustomData_get_layer(&mesh_original->fdata, CD_ORIGINDEX));
+        CustomData_get_layer(&mesh_original->fdata_legacy, CD_ORIGINDEX));
   }
   else {
     BLI_assert(BKE_mesh_is_deformed_only(mesh_final));
@@ -1986,9 +1986,9 @@ int psys_particle_dm_face_lookup(Mesh *mesh_final,
   index_mf_to_mpoly_deformed = nullptr;
 
   mtessface_final = static_cast<MFace *>(CustomData_get_layer_for_write(
-      &mesh_final->fdata, CD_MFACE, mesh_final->totface_legacy));
+      &mesh_final->fdata_legacy, CD_MFACE, mesh_final->totface_legacy));
   osface_final = static_cast<OrigSpaceFace *>(CustomData_get_layer_for_write(
-      &mesh_final->fdata, CD_ORIGSPACE, mesh_final->totface_legacy));
+      &mesh_final->fdata_legacy, CD_ORIGSPACE, mesh_final->totface_legacy));
 
   if (osface_final == nullptr) {
     /* Assume we don't need osface_final data, and we get a direct 1-1 mapping... */
@@ -2107,9 +2107,9 @@ static int psys_map_index_on_dm(Mesh *mesh,
       /* modify the original weights to become
        * weights for the derived mesh face */
       OrigSpaceFace *osface = static_cast<OrigSpaceFace *>(
-          CustomData_get_layer_for_write(&mesh->fdata, CD_ORIGSPACE, mesh->totface_legacy));
+          CustomData_get_layer_for_write(&mesh->fdata_legacy, CD_ORIGSPACE, mesh->totface_legacy));
       const MFace *mfaces = static_cast<const MFace *>(
-          CustomData_get_layer(&mesh->fdata, CD_MFACE));
+          CustomData_get_layer(&mesh->fdata_legacy, CD_MFACE));
       const MFace *mface = &mfaces[i];
 
       if (osface == nullptr) {
@@ -2193,11 +2193,11 @@ void psys_particle_on_dm(Mesh *mesh_final,
     MTFace *mtface;
 
     MFace *mfaces = static_cast<MFace *>(CustomData_get_layer_for_write(
-        &mesh_final->fdata, CD_MFACE, mesh_final->totface_legacy));
+        &mesh_final->fdata_legacy, CD_MFACE, mesh_final->totface_legacy));
     mface = &mfaces[mapindex];
     const blender::Span<blender::float3> vert_positions = mesh_final->vert_positions();
     mtface = static_cast<MTFace *>(CustomData_get_layer_for_write(
-        &mesh_final->fdata, CD_MTFACE, mesh_final->totface_legacy));
+        &mesh_final->fdata_legacy, CD_MTFACE, mesh_final->totface_legacy));
 
     if (mtface) {
       mtface += mapindex;
@@ -3905,10 +3905,10 @@ static void psys_face_mat(Object *ob, Mesh *mesh, ParticleData *pa, float mat[4]
   }
 
   MFace *mfaces = static_cast<MFace *>(
-      CustomData_get_layer_for_write(&mesh->fdata, CD_MFACE, mesh->totface_legacy));
+      CustomData_get_layer_for_write(&mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy));
   mface = &mfaces[i];
   const OrigSpaceFace *osface = static_cast<const OrigSpaceFace *>(
-      CustomData_get_for_write(&mesh->fdata, i, CD_ORIGSPACE, mesh->totface_legacy));
+      CustomData_get_for_write(&mesh->fdata_legacy, i, CD_ORIGSPACE, mesh->totface_legacy));
 
   if (orco &&
       (orcodata = static_cast<const float(*)[3]>(CustomData_get_layer(&mesh->vdata, CD_ORCO))))
@@ -4218,15 +4218,15 @@ static int get_particle_uv(Mesh *mesh,
                            bool from_vert)
 {
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
   MFace *mf;
   const MTFace *tf;
   int i;
 
   tf = static_cast<const MTFace *>(
-      CustomData_get_layer_named(&mesh->fdata, CD_MTFACE, name));
+      CustomData_get_layer_named(&mesh->fdata_legacy, CD_MTFACE, name));
   if (tf == nullptr) {
-    tf = static_cast<const MTFace *>(CustomData_get_layer(&mesh->fdata, CD_MTFACE));
+    tf = static_cast<const MTFace *>(CustomData_get_layer(&mesh->fdata_legacy, CD_MTFACE));
   }
   if (tf == nullptr) {
     return 0;
@@ -5124,7 +5124,7 @@ void psys_get_dupli_texture(ParticleSystem *psys,
   if (cpa) {
     if ((part->childtype == PART_CHILD_FACES) && (psmd->mesh_final != nullptr)) {
       if (!is_grid) {
-        CustomData *mtf_data = &psmd->mesh_final->fdata;
+        CustomData *mtf_data = &psmd->mesh_final->fdata_legacy;
         const int uv_idx = CustomData_get_render_layer(mtf_data, CD_MTFACE);
 
         if (uv_idx >= 0) {
@@ -5132,7 +5132,7 @@ void psys_get_dupli_texture(ParticleSystem *psys,
               CustomData_get_layer_n(mtf_data, CD_MTFACE, uv_idx));
           if (mtface != nullptr) {
             const MFace *mface = static_cast<const MFace *>(
-                CustomData_get_for_write(&psmd->mesh_final->fdata,
+                CustomData_get_for_write(&psmd->mesh_final->fdata_legacy,
                                          cpa->num,
                                          CD_MFACE,
                                          psmd->mesh_final->totface_legacy));
@@ -5173,14 +5173,14 @@ void psys_get_dupli_texture(ParticleSystem *psys,
     }
 
     if (!ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-      CustomData *mtf_data = &psmd->mesh_final->fdata;
+      CustomData *mtf_data = &psmd->mesh_final->fdata_legacy;
       const int uv_idx = CustomData_get_render_layer(mtf_data, CD_MTFACE);
 
       if (uv_idx >= 0) {
         const MTFace *mtface = static_cast<const MTFace *>(
             CustomData_get_layer_n(mtf_data, CD_MTFACE, uv_idx));
         const MFace *mface = static_cast<const MFace *>(CustomData_get_for_write(
-            &psmd->mesh_final->fdata, num, CD_MFACE, psmd->mesh_final->totface_legacy));
+            &psmd->mesh_final->fdata_legacy, num, CD_MFACE, psmd->mesh_final->totface_legacy));
         mtface += num;
         psys_interpolate_uvs(mtface, mface->v4, pa->fuv, uv);
       }

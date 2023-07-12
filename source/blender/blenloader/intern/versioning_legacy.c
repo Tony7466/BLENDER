@@ -284,9 +284,9 @@ static void customdata_version_242(Mesh *me)
     CustomData_add_layer_with_data(&me->edata, CD_MEDGE, me->medge, me->totedge, NULL);
   }
 
-  if (!me->fdata.totlayer) {
+  if (!me->fdata_legacy.totlayer) {
     CustomData_add_layer_with_data(
-        &me->fdata, CD_MFACE, me->mface, me->totface_legacy, NULL);
+        &me->fdata_legacy, CD_MFACE, me->mface, me->totface_legacy, NULL);
 
     if (me->tface) {
       if (me->mcol) {
@@ -294,9 +294,9 @@ static void customdata_version_242(Mesh *me)
       }
 
       me->mcol = CustomData_add_layer(
-          &me->fdata, CD_MCOL, CD_SET_DEFAULT, me->totface_legacy);
+          &me->fdata_legacy, CD_MCOL, CD_SET_DEFAULT, me->totface_legacy);
       me->mtface = CustomData_add_layer(
-          &me->fdata, CD_MTFACE, CD_SET_DEFAULT, me->totface_legacy);
+          &me->fdata_legacy, CD_MTFACE, CD_SET_DEFAULT, me->totface_legacy);
 
       mtf = me->mtface;
       mcol = me->mcol;
@@ -312,7 +312,7 @@ static void customdata_version_242(Mesh *me)
     }
     else if (me->mcol) {
       CustomData_add_layer_with_data(
-          &me->fdata, CD_MCOL, me->mcol, me->totface_legacy, NULL);
+          &me->fdata_legacy, CD_MCOL, me->mcol, me->totface_legacy, NULL);
     }
   }
 
@@ -321,8 +321,8 @@ static void customdata_version_242(Mesh *me)
     me->tface = NULL;
   }
 
-  for (a = 0, mtfacen = 0, mcoln = 0; a < me->fdata.totlayer; a++) {
-    layer = &me->fdata.layers[a];
+  for (a = 0, mtfacen = 0, mcoln = 0; a < me->fdata_legacy.totlayer; a++) {
+    layer = &me->fdata_legacy.layers[a];
 
     if (layer->type == CD_MTFACE) {
       if (layer->name[0] == 0) {
@@ -355,8 +355,8 @@ static void customdata_version_243(Mesh *me)
   CustomDataLayer *layer;
   int a;
 
-  for (a = 0; a < me->fdata.totlayer; a++) {
-    layer = &me->fdata.layers[a];
+  for (a = 0; a < me->fdata_legacy.totlayer; a++) {
+    layer = &me->fdata_legacy.layers[a];
     layer->active_rnd = layer->active;
   }
 }

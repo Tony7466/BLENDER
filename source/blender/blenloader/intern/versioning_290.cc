@@ -833,7 +833,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
               me->edges_for_write().data(),
               me->totedge,
               (MFace *)CustomData_get_layer_for_write(
-                  &me->fdata, CD_MFACE, me->totface_legacy),
+                  &me->fdata_legacy, CD_MFACE, me->totface_legacy),
               me->totface_legacy,
               me->corner_verts_for_write().data(),
               me->corner_edges_for_write().data(),

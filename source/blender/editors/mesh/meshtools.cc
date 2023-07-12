@@ -1112,7 +1112,7 @@ int *mesh_get_x_mirror_faces(Object *ob, BMEditMesh *em, Mesh *me_eval)
   mirrorfaces = static_cast<int *>(MEM_callocN(sizeof(int[2]) * totface, "MirrorFaces"));
 
   const Span<float3> vert_positions = me_eval ? me_eval->vert_positions() : me->vert_positions();
-  const MFace *mface = (const MFace *)CustomData_get_layer(&(me_eval ? me_eval : me)->fdata,
+  const MFace *mface = (const MFace *)CustomData_get_layer(&(me_eval ? me_eval : me)->fdata_legacy,
                                                            CD_MFACE);
 
   ED_mesh_mirror_spatial_table_begin(ob, em, me_eval);

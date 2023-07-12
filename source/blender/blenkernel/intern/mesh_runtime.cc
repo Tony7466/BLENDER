@@ -426,7 +426,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
                                        edges.data(),
                                        edges.size(),
                                        static_cast<MFace *>(CustomData_get_layer_for_write(
-                                           &me_eval->fdata, CD_MFACE, me_eval->totface_legacy)),
+                                           &me_eval->fdata_legacy, CD_MFACE, me_eval->totface_legacy)),
                                        me_eval->totface_legacy,
                                        corner_verts.data(),
                                        corner_edges.data(),

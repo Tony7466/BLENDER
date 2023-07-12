@@ -217,7 +217,7 @@ typedef struct Mesh {
    * \note This would be marked deprecated, however the particles still use this at run-time
    * for placing particles on the mesh (something which should be eventually upgraded).
    */
-  CustomData fdata;
+  CustomData fdata_legacy;
   /* Deprecated size of #fdata. */
   int totface_legacy;
 

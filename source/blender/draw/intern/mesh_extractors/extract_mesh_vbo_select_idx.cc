@@ -307,7 +307,7 @@ static void extract_face_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
   }
 }
 
-constexpr MeshExtract create_extractor_poly_idx()
+constexpr MeshExtract create_extractor_face_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
@@ -317,7 +317,7 @@ constexpr MeshExtract create_extractor_poly_idx()
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(int32_t *);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.poly_idx);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.face_idx);
   return extractor;
 }
 
@@ -402,7 +402,7 @@ constexpr MeshExtract create_extractor_fdot_idx()
 
 }  // namespace blender::draw
 
-const MeshExtract extract_face_idx = blender::draw::create_extractor_poly_idx();
+const MeshExtract extract_face_idx = blender::draw::create_extractor_face_idx();
 const MeshExtract extract_edge_idx = blender::draw::create_extractor_edge_idx();
 const MeshExtract extract_vert_idx = blender::draw::create_extractor_vert_idx();
 const MeshExtract extract_fdot_idx = blender::draw::create_extractor_fdot_idx();

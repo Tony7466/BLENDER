@@ -64,7 +64,7 @@ char *BKE_mesh_debug_info(const Mesh *me)
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "    'tessface_layers': (\n");
-  CustomData_debug_info_from_layers(&me->fdata, indent8, dynstr);
+  CustomData_debug_info_from_layers(&me->fdata_legacy, indent8, dynstr);
   BLI_dynstr_append(dynstr, "    ),\n");
 
   BLI_dynstr_append(dynstr, "}\n");

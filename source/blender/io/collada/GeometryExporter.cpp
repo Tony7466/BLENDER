@@ -68,7 +68,7 @@ void GeometryExporter::operator()(Object *ob)
 
   exportedGeometry.insert(geom_id);
 
-  bool has_color = bool(CustomData_has_layer(&me->fdata, CD_MCOL));
+  bool has_color = bool(CustomData_has_layer(&me->fdata_legacy, CD_MCOL));
 
   create_normals(nor, norind, me);
 
@@ -152,7 +152,7 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
 
   exportedGeometry.insert(geom_id);
 
-  bool has_color = bool(CustomData_has_layer(&me->fdata, CD_MCOL));
+  bool has_color = bool(CustomData_has_layer(&me->fdata_legacy, CD_MCOL));
 
   create_normals(nor, norind, me);
 

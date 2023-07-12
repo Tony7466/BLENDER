@@ -128,8 +128,8 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
   invert_m4_m4_safe(inv_mat, context.object->object_to_world);
 
   MTFace *mtface = (MTFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MTFACE, mesh->totface_legacy);
-  const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata, CD_MFACE);
+      &mesh->fdata_legacy, CD_MTFACE, mesh->totface_legacy);
+  const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata_legacy, CD_MFACE);
   const Span<float3> positions = mesh->vert_positions();
   const Span<float3> vert_normals = mesh->vert_normals();
 
@@ -252,9 +252,9 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
   float inv_mat[4][4];
   invert_m4_m4_safe(inv_mat, context.object->object_to_world);
 
-  const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata, CD_MFACE);
+  const MFace *mface = (const MFace *)CustomData_get_layer(&mesh->fdata_legacy, CD_MFACE);
   MTFace *mtface = (MTFace *)CustomData_get_layer_for_write(
-      &mesh->fdata, CD_MTFACE, mesh->totface_legacy);
+      &mesh->fdata_legacy, CD_MTFACE, mesh->totface_legacy);
   const Span<float3> positions = mesh->vert_positions();
   const Span<float3> vert_normals = mesh->vert_normals();
 

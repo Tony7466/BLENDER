@@ -402,9 +402,9 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
   {
 
     const MFace *mface = static_cast<const MFace *>(
-        CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+        CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
     const MTFace *mtface = static_cast<const MTFace *>(
-        CustomData_get_layer(&modifier->mesh_final->fdata, CD_MTFACE));
+        CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MTFACE));
 
     if (mface && mtface) {
       mtface += num;
@@ -569,7 +569,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
     else if (part->from == PART_FROM_VERT) {
       if (num != DMCACHE_NOTFOUND && num < totvert) {
         const MFace *mface = static_cast<const MFace *>(
-            CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+            CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
 
         *r_fuv = &particle->fuv;
 
@@ -613,7 +613,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
       else if (part->from == PART_FROM_VERT) {
         if (num != DMCACHE_NOTFOUND && num < totvert) {
           const MFace *mface = static_cast<const MFace *>(
-              CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+              CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
 
           *r_fuv = &parent->fuv;
 
@@ -664,10 +664,10 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
     }
     else {
       const MFace *mfaces = static_cast<const MFace *>(
-          CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+          CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
       const MFace *mface = &mfaces[num];
       const MTFace *mtface = (const MTFace *)CustomData_get_layer_n(
-          &modifier->mesh_final->fdata, CD_MTFACE, uv_no);
+          &modifier->mesh_final->fdata_legacy, CD_MTFACE, uv_no);
 
       psys_interpolate_uvs(&mtface[num], mface->v4, *fuv, r_uv);
     }
@@ -700,10 +700,10 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
     }
     else {
       const MFace *mfaces = static_cast<const MFace *>(
-          CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+          CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
       const MFace *mface = &mfaces[num];
       const MCol *mc = (const MCol *)CustomData_get_layer_n(
-          &modifier->mesh_final->fdata, CD_MCOL, vcol_no);
+          &modifier->mesh_final->fdata_legacy, CD_MCOL, vcol_no);
       MCol mcol;
 
       psys_interpolate_mcol(&mc[num * 4], mface->v4, *fuv, &mcol);
