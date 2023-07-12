@@ -5,3 +5,4 @@ Referenced by issue #97183, Regression: Vertex paint mode (old style) work only 
 Referenced by issue #69760, Undo/Adjust Last Operation: vertex and weightpaint operators/strokes undo more then they should (change back any setting changed prior to execution)
 Referenced by issue #107845, Vertex paint mode breaks permanently under certain conditions (Global undo involved)
 Referenced by pull request #109971, Fix #109822: Average Brush in Vertex Paint Mode is broken
+Referenced by commit ac3f4e959f5908b3a48a55e0e02a07794c31ae46, Fix #109822: Average Brush in Vertex Paint Mode is broken
