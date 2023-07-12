@@ -33,7 +33,7 @@ set(SRC
   view3d_cursor_snap.cc
   view3d_draw.cc
   view3d_edit.cc
-  view3d_gizmo_armature.c
+  view3d_gizmo_armature.cc
   view3d_gizmo_camera.c
   view3d_gizmo_empty.c
   view3d_gizmo_forcefield.c
