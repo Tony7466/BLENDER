@@ -4025,7 +4025,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
         # Automasking Pie menu
         op_menu_pie("VIEW3D_MT_sculpt_gpencil_automasking_pie", {
-                    "type": 'A', "shift": True, "alt": True, "value": 'PRESS'}),
+                    "type": 'A', "alt": True, "value": 'PRESS'}),
     ])
 
     return keymap

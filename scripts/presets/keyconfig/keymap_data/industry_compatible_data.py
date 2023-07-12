@@ -2304,7 +2304,6 @@ def _grease_pencil_selection(params):
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
          {"properties": [("extend", True), ("toggle", True)]}),
         # Select all
-        ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
          "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("gpencil.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
@@ -2342,6 +2341,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK'},
          {"properties": [("deselect_all", True)]}),
         # Selection
+        ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         *_grease_pencil_selection(params),
         # Duplicate and move selected points
         ("gpencil.duplicate_move", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
@@ -2555,7 +2555,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params),
-
+        op_menu_pie("VIEW3D_MT_gpencil_selection_edit_pie", {"type": 'A', "value": 'PRESS', "ctrl": True}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.strength')]}),
@@ -2853,6 +2853,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params),
+        op_menu_pie("VIEW3D_MT_gpencil_selection_edit_pie", {"type": 'A', "value": 'PRESS', "ctrl": True}),
         # Brush strength
         ("wm.radial_control", {"type": 'U', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_vertex_paint.brush.gpencil_settings.pen_strength')]}),
@@ -2995,8 +2996,7 @@ def km_face_mask(params):
     )
 
     items.extend([
-        ("paint.face_select_all", {"type": 'A', "value": 'PRESS',
-         "ctrl": True}, {"properties": [("action", 'SELECT')]}),
+        op_menu_pie("VIEW3D_MT_face_selection_edit_pie", {"type": 'A', "value": 'PRESS', "ctrl": True}),
         ("paint.face_select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
          "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("paint.face_select_all", {"type": 'I', "value": 'PRESS',
@@ -3025,6 +3025,7 @@ def km_weight_paint_vertex_selection(params):
     )
 
     items.extend([
+        op_menu_pie("VIEW3D_MT_vert_selection_edit_pie", {"type": 'A', "value": 'PRESS', "ctrl": True}),
         ("paint.vert_select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
         ("paint.vert_select_hide", {"type": 'H', "value": 'PRESS', "shift": True},
          {"properties": [("unselected", True)]}),
