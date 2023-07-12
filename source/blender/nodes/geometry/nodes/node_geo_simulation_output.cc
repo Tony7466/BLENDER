@@ -149,10 +149,13 @@ static void remove_materials(Material ***materials, short *materials_num)
 
 static void store_materials_as_id_properties(ID &id)
 {
-  IDProperty *materials_prop = IDP_NewIDPArray(".materials");
   Material ***materials = BKE_id_material_array_p(&id);
   short *materials_num = BKE_id_material_len_p(&id);
+  if (*materials_num == 0) {
+    return;
+  }
 
+  IDProperty *materials_prop = IDP_NewIDPArray(".materials");
   for (const int i : IndexRange(*materials_num)) {
     const Material *material = (*materials)[i];
     IDPropertyTemplate idprop{};
@@ -167,8 +170,8 @@ static void store_materials_as_id_properties(ID &id)
     /* IDP_AppendArray does a shallow copy. */
     MEM_freeN(material_prop);
   }
-  IDProperty *mesh_props = IDP_GetProperties(&id, true);
-  IDP_ReplaceInGroup(mesh_props, materials_prop);
+  IDProperty *id_properties = IDP_GetProperties(&id, true);
+  IDP_ReplaceInGroup(id_properties, materials_prop);
 
   remove_materials(materials, materials_num);
 }
@@ -216,6 +219,9 @@ static void restore_materials(ID &id,
   short *materials_num = BKE_id_material_len_p(&id);
 
   IDProperty *materials_prop = IDP_GetPropertyFromGroup(id.properties, ".materials");
+  if (materials_prop == nullptr) {
+    return;
+  }
   if (materials_prop->type != IDP_IDPARRAY) {
     return;
   }
