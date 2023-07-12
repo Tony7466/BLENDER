@@ -29,68 +29,66 @@ void LightData::init()
   Light *light = (Light *)((Object *)id)->data;
   data_.clear();
 
-  float intensity = light->energy;
-  data_[pxr::HdLightTokens->color] = pxr::GfVec3f(light->r, light->g, light->b);
-
   switch (light->type) {
-    case LA_LOCAL:
-      if (light->radius <= FLT_EPSILON) {
-        /* extremely small object should be considered as point */
-        data_[pxr::UsdLuxTokens->treatAsPoint] = true;
-      }
-      else {
-        data_[pxr::HdLightTokens->radius] = light->radius;
-        data_[pxr::HdLightTokens->normalize] = true;
-      }
-      intensity /= 40.0f; /* coefficient approximated to follow Cycles results */
-      break;
-
-    case LA_SUN:
-      data_[pxr::HdLightTokens->angle] = RAD2DEGF(light->sun_angle * 0.5f);
-      break;
-
-    case LA_SPOT:
-      data_[pxr::UsdLuxTokens->inputsShapingConeAngle] = RAD2DEGF(light->spotsize * 0.5f);
-      data_[pxr::UsdLuxTokens->inputsShapingConeSoftness] = light->spotblend;
-      data_[pxr::UsdLuxTokens->treatAsPoint] = true;
-      intensity /= 10.0f; /* coefficient approximated to follow Cycles results */
-      break;
-
-    case LA_AREA:
+    case LA_AREA: {
       switch (light->area_shape) {
         case LA_AREA_SQUARE:
           data_[pxr::HdLightTokens->width] = light->area_size;
           data_[pxr::HdLightTokens->height] = light->area_size;
-          intensity /= 4.0f; /* coefficient approximated to follow Cycles results */
           break;
         case LA_AREA_RECT:
           data_[pxr::HdLightTokens->width] = light->area_size;
           data_[pxr::HdLightTokens->height] = light->area_sizey;
-          intensity /= 4.0f; /* coefficient approximated to follow Cycles results */
           break;
-
         case LA_AREA_DISK:
           data_[pxr::HdLightTokens->radius] = light->area_size / 2.0f;
-          intensity /= 16.0f; /* coefficient approximated to follow Cycles results */
           break;
-
         case LA_AREA_ELLIPSE:
+          /* An ellipse light deteriorates into a disk light. */
           data_[pxr::HdLightTokens->radius] = (light->area_size + light->area_sizey) / 4.0f;
-          intensity /= 16.0f; /* coefficient approximated to follow Cycles results */
-          break;
-
-        default:
           break;
       }
-      data_[pxr::HdLightTokens->normalize] = true;
       break;
+    }
+    case LA_LOCAL:
+    case LA_SPOT: {
+      data_[pxr::HdLightTokens->radius] = light->radius;
+      if (light->radius == 0.0f) {
+        data_[pxr::UsdLuxTokens->treatAsPoint] = true;
+      }
 
-    default:
+      if (light->type == LA_SPOT) {
+        data_[pxr::UsdLuxTokens->inputsShapingConeAngle] = RAD2DEGF(light->spotsize * 0.5f);
+        data_[pxr::UsdLuxTokens->inputsShapingConeSoftness] = light->spotblend;
+      }
       break;
+    }
+    case LA_SUN: {
+      data_[pxr::HdLightTokens->angle] = RAD2DEGF(light->sun_angle * 0.5f);
+      break;
+    }
+    default: {
+      BLI_assert_unreachable();
+      break;
+    }
+  }
+
+  float intensity;
+  if (light->type == LA_SUN) {
+    /* Unclear why, but approximately matches Karma. */
+    intensity = light->energy / 4.0f;
+  }
+  else {
+    /* Convert from radiant flux to intensity. */
+    intensity = light->energy / M_PI;
   }
 
   data_[pxr::HdLightTokens->intensity] = intensity;
   data_[pxr::HdLightTokens->exposure] = 0.0f;
+  data_[pxr::HdLightTokens->color] = pxr::GfVec3f(light->r, light->g, light->b);
+  data_[pxr::HdLightTokens->diffuse] = light->diff_fac;
+  data_[pxr::HdLightTokens->specular] = light->spec_fac;
+  data_[pxr::HdLightTokens->normalize] = true;
 
   prim_type_ = prim_type(light);
 
@@ -164,13 +162,6 @@ bool LightData::update_visibility()
 pxr::TfToken LightData::prim_type(Light *light)
 {
   switch (light->type) {
-    case LA_LOCAL:
-    case LA_SPOT:
-      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
-
-    case LA_SUN:
-      return pxr::TfToken(pxr::HdPrimTypeTokens->distantLight);
-
     case LA_AREA:
       switch (light->area_shape) {
         case LA_AREA_SQUARE:
@@ -186,7 +177,15 @@ pxr::TfToken LightData::prim_type(Light *light)
       }
       break;
 
+    case LA_LOCAL:
+    case LA_SPOT:
+      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
+
+    case LA_SUN:
+      return pxr::TfToken(pxr::HdPrimTypeTokens->distantLight);
+
     default:
+      BLI_assert_unreachable();
       return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
   }
 }
