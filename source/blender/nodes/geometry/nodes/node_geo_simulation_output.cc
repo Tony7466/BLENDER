@@ -147,6 +147,32 @@ static void remove_materials(Material ***materials, short *materials_num)
   *materials_num = 0;
 }
 
+static void store_materials_as_id_properties(ID &id)
+{
+  IDProperty *materials_prop = IDP_NewIDPArray(".materials");
+  Material ***materials = BKE_id_material_array_p(&id);
+  short *materials_num = BKE_id_material_len_p(&id);
+
+  for (const int i : IndexRange(*materials_num)) {
+    const Material *material = (*materials)[i];
+    IDPropertyTemplate idprop{};
+    IDProperty *material_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
+    if (material != nullptr) {
+      IDP_AddToGroup(material_prop, IDP_NewString(material->id.name + 2, "id_name"));
+      if (material->id.lib != nullptr) {
+        IDP_AddToGroup(material_prop, IDP_NewString(material->id.lib->id.name + 2, "lib_name"));
+      }
+    }
+    IDP_AppendArray(materials_prop, material_prop);
+    /* IDP_AppendArray does a shallow copy. */
+    MEM_freeN(material_prop);
+  }
+  IDProperty *mesh_props = IDP_GetProperties(&id, true);
+  IDP_ReplaceInGroup(mesh_props, materials_prop);
+
+  remove_materials(materials, materials_num);
+}
+
 /**
  * Removes parts of the geometry that can't be stored in the simulation state:
  * - Anonymous attributes can't be stored because it is not known which of them will or will not be
@@ -159,32 +185,15 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
-      IDProperty *array_prop = IDP_NewIDPArray(".materials");
-      for (const int i : IndexRange(mesh->totcol)) {
-        const Material *material = mesh->mat[i];
-        IDPropertyTemplate idprop = {0};
-        IDProperty *mat_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
-        if (material != nullptr) {
-          IDP_AddToGroup(mat_prop, IDP_NewString(material->id.name + 2, "id_name"));
-          if (material->id.lib != nullptr) {
-            IDP_AddToGroup(mat_prop, IDP_NewString(material->id.lib->id.name + 2, "lib_name"));
-          }
-        }
-        IDP_AppendArray(array_prop, mat_prop);
-        /* IDP_AppendArray does a shallo copy. */
-        MEM_freeN(mat_prop);
-      }
-      IDProperty *mesh_props = IDP_GetProperties(&mesh->id, true);
-      IDP_ReplaceInGroup(mesh_props, array_prop);
-      remove_materials(&mesh->mat, &mesh->totcol);
+      store_materials_as_id_properties(mesh->id);
     }
     if (Curves *curves = geometry.get_curves_for_write()) {
       curves->geometry.wrap().attributes_for_write().remove_anonymous();
-      remove_materials(&curves->mat, &curves->totcol);
+      store_materials_as_id_properties(curves->id);
     }
     if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
       pointcloud->attributes_for_write().remove_anonymous();
-      remove_materials(&pointcloud->mat, &pointcloud->totcol);
+      store_materials_as_id_properties(pointcloud->id);
     }
     if (bke::Instances *instances = geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove_anonymous();
