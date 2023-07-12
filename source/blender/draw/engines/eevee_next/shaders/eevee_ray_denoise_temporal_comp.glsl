@@ -132,6 +132,7 @@ void main()
   vec3 in_radiance = imageLoad(in_radiance_img, texel_fullres).rgb;
 
   if (all(equal(in_radiance, FLT_11_11_10_MAX))) {
+    /* Early out on pixels that were marked unprocessed by the previous pass. */
     imageStore(out_radiance_img, texel_fullres, vec4(FLT_11_11_10_MAX, 0.0));
     imageStore(out_variance_img, texel_fullres, vec4(0.0));
     return;
@@ -152,7 +153,9 @@ void main()
   /* Finalize accumulation. */
   history_radiance *= safe_rcp(history_radiance.w);
   /* Blend history with new radiance. */
-  float mix_fac = (history_radiance.w == 0.0) ? 0.0 : 0.95;
+  float mix_fac = (history_radiance.w == 0.0) ? 0.0 : 0.97;
+  /* Reduce blend factor to improve low rougness reflections. Use variance instead of roughness. */
+  mix_fac *= mix(0.75, 1.0, saturate(in_variance / 1e-3));
   vec3 out_radiance = mix(safe_color(in_radiance), safe_color(history_radiance.rgb), mix_fac);
   /* This is feedback next frame as radiance_history_tx. */
   imageStore(out_radiance_img, texel_fullres, vec4(out_radiance, 0.0));

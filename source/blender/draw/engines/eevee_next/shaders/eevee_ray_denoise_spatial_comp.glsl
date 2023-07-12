@@ -172,8 +172,8 @@ void main()
   float filter_size = 9.0;
 #if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_REFLECT)
   float filter_size_factor = saturate((closure.roughness - 1e-3) * 8.0);
-  sample_count = 1u + uint(12.0 * filter_size_factor + 0.5);
-  filter_size = (sample_count == 1u) ? 0.0 : (3.0 + 8.0 * filter_size_factor);
+  sample_count = 1u + uint(15.0 * filter_size_factor + 0.5);
+  filter_size = (sample_count == 1u) ? 0.0 : (3.0 + 9.0 * sqrt(filter_size_factor));
   filter_size *= float(raytrace_buf.resolution_scale);
 #endif
 
