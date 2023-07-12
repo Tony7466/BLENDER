@@ -17,7 +17,7 @@ set(INC_SYS
 
 set(SRC
   script_edit.cc
-  script_ops.c
+  script_ops.cc
   space_script.c
 
   script_intern.h
