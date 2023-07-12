@@ -81,12 +81,17 @@ vec4 radiance_history_sample(vec3 P, LocalStatistics local)
   }
 
   vec3 history_radiance = texture(radiance_history_tx, uv).rgb;
+  /* Exclude unprocessed pixels. */
+  /* TODO(fclem): this doesn't work with bilinear filtering. */
+  if (all(equal(history_radiance, FLT_11_11_10_MAX))) {
+    return vec4(0.0);
+  }
 
   /* Weighted contribution (slide 46). */
   vec3 dist = abs(history_radiance - local.mean) / local.deviation;
   float weight = exp2(-10.0 * dot(dist, vec3(1.0 / 3.0)));
 
-  ivec2 history_texel = ivec2(round(uv * vec2(textureSize(radiance_history_tx, 0).xy)));
+  ivec2 history_texel = ivec2(floor(uv * vec2(textureSize(radiance_history_tx, 0).xy)));
   ivec2 history_tile = history_texel / RAYTRACE_GROUP_SIZE;
   /* Fetch previous tilemask to avoid loading invalid data. */
   bool is_valid_history = texelFetch(tilemask_history_tx, history_tile, 0).r != 0;
@@ -108,9 +113,9 @@ vec2 variance_history_sample(vec3 P)
     return vec2(0.0);
   }
 
-  ivec2 history_texel = ivec2(round(uv * vec2(textureSize(variance_history_tx, 0).xy)));
-  float history_variance = texelFetch(variance_history_tx, history_texel, 0).r;
+  float history_variance = texture(variance_history_tx, uv).r;
 
+  ivec2 history_texel = ivec2(floor(uv * vec2(textureSize(variance_history_tx, 0).xy)));
   ivec2 history_tile = history_texel / RAYTRACE_GROUP_SIZE;
   /* Fetch previous tilemask to avoid loading invalid data. */
   bool is_valid_history = texelFetch(tilemask_history_tx, history_tile, 0).r != 0;
