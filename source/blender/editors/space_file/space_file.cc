@@ -294,7 +294,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
 
   if (area) {
     ARegion *region_props = BKE_area_find_region_type(area, RGN_TYPE_TOOL_PROPS);
-    const bool region_flag_old = region_props->flag;
+    const short region_flag_old = region_props->flag;
     if (!(region_props->v2d.flag & V2D_IS_INIT)) {
       if (ED_fileselect_is_asset_browser(sfile)) {
         /* Hide by default in asset browser. */
