@@ -206,9 +206,11 @@ struct EraseOperationExecutor {
     const int dst_points_num = src_points_num + intersection_count - point_inside_count;
     Array<float> dst_points_parameters(dst_points_num);
     Array<bool> is_cut(dst_points_num, false);
+    Array<int> src_pivot_point(src_curves_num, -1);
+    Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     int dst_point_index = -1;
-    for (int curve_index = 0; curve_index < src_curves_num; curve_index++) {
-      IndexRange src_point_range = src_points_by_curves[curve_index];
+    for (int src_curve_index = 0; src_curve_index < src_curves_num; src_curve_index++) {
+      IndexRange src_point_range = src_points_by_curves[src_curve_index];
       const int src_point_last = src_point_range.last();
 
       for (int src_point_index : src_point_range) {
@@ -249,8 +251,15 @@ struct EraseOperationExecutor {
             dst_points_parameters[++dst_point_index] = src_point_index + mu1;
             is_cut[dst_point_index] = true;
           }
+
+          if (src_cyclic[src_curve_index] &&
+              (is_point_inside[src_point_index] || (nb_intersections[src_point_index] == 2)))
+          {
+            src_pivot_point[src_curve_index] = dst_point_index;
+          }
         }
       }
+      dst_interm_curves_offsets[src_curve_index + 1] = dst_point_index + 1;
     }
     if (debug) {
       std::cout << "Dest factors = [ ";
@@ -266,40 +275,42 @@ struct EraseOperationExecutor {
     }
 
     /* Shift the indices for cyclic curves */
-    Array<bool> src_now_cyclic(src_curves_num, false);
-    for (int src_curve_index = 0; src_curve_index < src_curves_num; src_curve_index++) {
-      if (!src_cyclic[src_curve_index]) {
+    Array<bool> src_now_cyclic(src_curves_num);
+    for (int src_curve_index : src.curves_range()) {
+      const int pivot_point = src_pivot_point[src_curve_index];
+
+      if (pivot_point == -1) {
+        /* Either the curve was not cyclic or it wasn't cut : no need to change it */
+        src_now_cyclic[src_curve_index] = src_cyclic[src_curve_index];
         continue;
       }
 
-      IndexRange src_point_range = src_points_by_curves[src_curve_index];
-      int last_endcut_index = -1;
-      for (int src_point_index : src_point_range) {
-        if ((has_intersection[src_point_index]) &&
-            (is_point_inside[src_point_index] || (nb_intersections[src_point_index] == 2)))
-        {
-          last_endcut_index = src_point_index;
-        }
-      }
+      /* The cyclic curve was cut, so this curve is not cyclic anymore */
+      src_now_cyclic[src_curve_index] = false;
 
-      if (last_endcut_index == -1) {
-        /* No intersection in this curve : don't change anything */
-        src_now_cyclic[src_curve_index] = true;
-        continue;
-      }
-
-      /* Intersections with the cyclic curve :
-       * the curve is now not cyclic,
+      /* The cyclic curve was cut
        * and we have to shift points so that we keep the cyclic segment */
-      // shift dst_points_parameters
-      // shift is_cut
-
-      std::rotate(dst_points_parameters.begin() + src_point_range.first(),
-                  dst_points_parameters.begin() + last_endcut_index,
-                  dst_points_parameters.begin() + src_point_range.last());
-      std::rotate(is_cut.begin() + src_point_range.first(),
-                  is_cut.begin() + last_endcut_index,
-                  is_cut.begin() + src_point_range.last());
+      const int dst_interm_first = dst_interm_curves_offsets[src_curve_index];
+      const int dst_interm_last = dst_interm_curves_offsets[src_curve_index + 1];
+      std::rotate(dst_points_parameters.begin() + dst_interm_first,
+                  dst_points_parameters.begin() + pivot_point,
+                  dst_points_parameters.begin() + dst_interm_last);
+      std::rotate(is_cut.begin() + dst_interm_first,
+                  is_cut.begin() + pivot_point,
+                  is_cut.begin() + dst_interm_last);
+    }
+    if (debug) {
+      std::cout << "After shifting" << std::endl;
+      std::cout << "Dest factors = [ ";
+      for (const float &param : dst_points_parameters) {
+        std::cout << param << " ";
+      }
+      std::cout << "]" << std::endl;
+      std::cout << "Is Cut = [ ";
+      for (const bool &cut : is_cut) {
+        std::cout << cut << " ";
+      }
+      std::cout << "]" << std::endl;
     }
 
     /* Compute the destination curve offsets*/
@@ -307,33 +318,29 @@ struct EraseOperationExecutor {
     Vector<int> dst_to_src_curve_index;
     int dst_offset = 0;
     dst_curves_offset.append(0);
-    for (int src_curve_index = 0; src_curve_index < src_curves_num; src_curve_index++) {
+    for (int src_curve_index : IndexRange(src_curves_num)) {
+      IndexRange dst_point_range(dst_interm_curves_offsets[src_curve_index],
+                                 dst_interm_curves_offsets[src_curve_index + 1] -
+                                     dst_interm_curves_offsets[src_curve_index]);
       IndexRange src_point_range = src_points_by_curves[src_curve_index];
       int length_of_current = 0;
-      for (int src_point_index : src_point_range) {
-        if (!is_point_inside[src_point_index]) {
-          ++length_of_current;
+
+      for (int dst_point_index : dst_point_range) {
+        const int src_point_index = std::floor(dst_points_parameters[dst_point_index]);
+        if ((length_of_current > 0) && is_cut[dst_point_index] && is_point_inside[src_point_index])
+        {
+          /* This is the new first point of a curve */
+          dst_curves_offset.append(dst_point_index);
+          dst_to_src_curve_index.append(src_curve_index);
+          length_of_current = 0;
         }
-        if (has_intersection[src_point_index]) {
-          if (nb_intersections[src_point_index] == 2) {
-            ++length_of_current;
-          }
-          if ((length_of_current != 0) &&
-              (is_point_inside[src_point_index] || (nb_intersections[src_point_index] == 2)))
-          {
-            /* The Intersection is the new first point of a curve */
-            dst_offset += length_of_current;
-            dst_curves_offset.append(dst_offset);
-            dst_to_src_curve_index.append(src_curve_index);
-            length_of_current = 0;
-          }
-          ++length_of_current;
-        }
+        ++length_of_current;
       }
+
       if (length_of_current != 0) {
         /* End of a source curve : add a new curve */
         dst_offset += length_of_current;
-        dst_curves_offset.append(dst_offset);
+        dst_curves_offset.append(dst_point_range.one_after_last());
         dst_to_src_curve_index.append(src_curve_index);
       }
     }
