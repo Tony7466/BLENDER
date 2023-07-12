@@ -338,10 +338,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 400, 11)) {
-    version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
-  }
-
   /* Fix brush->tip_scale_x which should never be zero. */
   LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
     if (brush->tip_scale_x == 0.0f) {
@@ -360,6 +356,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 11)) {
+    version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
   }
 
   /**
