@@ -5,19 +5,15 @@
 set(INC
   ../include
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../gpu
   ../../ikplugin
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../sequencer
   ../../windowmanager
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -98,6 +94,11 @@ set(SRC
   transform_snap.cc
   transform_snap_animation.c
   transform_snap_object.cc
+  transform_snap_object_armature.cc
+  transform_snap_object_camera.cc
+  transform_snap_object_curve.cc
+  transform_snap_object_editmesh.cc
+  transform_snap_object_mesh.cc
   transform_snap_sequencer.c
 
   transform.h
@@ -109,15 +110,18 @@ set(SRC
   transform_mode.h
   transform_orientations.h
   transform_snap.h
+  transform_snap_object.hh
 )
 
 set(LIB
   bf_blenfont
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::dna
   bf_editor_mask
   bf_gpu
+  PRIVATE bf::intern::guardedalloc
 )
 
 

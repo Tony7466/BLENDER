@@ -126,20 +126,20 @@
 
 #define NO_ACTIVE_LAYER ATTR_DOMAIN_AUTO
 
-typedef struct UndoSculpt {
+struct UndoSculpt {
   ListBase nodes;
 
   size_t undo_size;
-} UndoSculpt;
+};
 
-typedef struct SculptAttrRef {
+struct SculptAttrRef {
   eAttrDomain domain;
   eCustomDataType type;
   char name[MAX_CUSTOMDATA_LAYER_NAME];
   bool was_set;
-} SculptAttrRef;
+};
 
-typedef struct SculptUndoStep {
+struct SculptUndoStep {
   UndoStep step;
   /* NOTE: will split out into list for multi-object-sculpt-mode. */
   UndoSculpt data;
@@ -155,7 +155,7 @@ typedef struct SculptUndoStep {
 #ifdef SCULPT_UNDO_DEBUG
   int id;
 #endif
-} SculptUndoStep;
+};
 
 static UndoSculpt *sculpt_undo_get_nodes(void);
 static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b);
@@ -417,7 +417,7 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
 
     /* No need for float comparison here (memory is exactly equal or not). */
     index = unode->index;
-    float(*positions)[3] = ss->vert_positions;
+    blender::MutableSpan<blender::float3> positions = ss->vert_positions;
 
     if (ss->shapekey_active) {
       float(*vertCos)[3];
@@ -619,10 +619,9 @@ static bool sculpt_undo_restore_face_sets(bContext *C,
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
-  Mesh *me = BKE_object_get_original_mesh(ob);
   SculptSession *ss = ob->sculpt;
 
-  ss->face_sets = BKE_sculpt_face_sets_ensure(me);
+  ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   BKE_pbvh_face_sets_set(ss->pbvh, ss->face_sets);
 
   bool modified = false;
@@ -1841,8 +1840,7 @@ static void sculpt_undo_set_active_layer(bContext *C, SculptAttrRef *attr)
   SculptAttrRef existing;
   sculpt_save_active_attribute(ob, &existing);
 
-  CustomDataLayer *layer;
-  layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
+  CustomDataLayer *layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
 
   /* Temporary fix for #97408. This is a fundamental
    * bug in the undo stack; the operator code needs to push
@@ -1865,11 +1863,8 @@ static void sculpt_undo_set_active_layer(bContext *C, SculptAttrRef *attr)
 
   if (!layer) {
     /* Memfile undo killed the layer; re-create it. */
-    CustomData *cdata = attr->domain == ATTR_DOMAIN_POINT ? &me->vdata : &me->ldata;
-    int totelem = attr->domain == ATTR_DOMAIN_POINT ? me->totvert : me->totloop;
-
-    CustomData_add_layer_named(
-        cdata, eCustomDataType(attr->type), CD_SET_DEFAULT, totelem, attr->name);
+    me->attributes_for_write().add(
+        attr->name, attr->domain, attr->type, blender::bke::AttributeInitDefaultValue());
     layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
   }
 
@@ -2093,7 +2088,7 @@ static UndoSculpt *sculpt_undosys_step_get_nodes(UndoStep *us_p)
   return &us->data;
 }
 
-static UndoSculpt *sculpt_undo_get_nodes(void)
+static UndoSculpt *sculpt_undo_get_nodes()
 {
   UndoStack *ustack = ED_undo_stack_get();
   UndoStep *us = BKE_undosys_stack_init_or_active_with_type(ustack, BKE_UNDOSYS_TYPE_SCULPT);

@@ -45,7 +45,7 @@ using blender::Span;
 struct SubdivMeshContext {
   const SubdivToMeshSettings *settings;
   const Mesh *coarse_mesh;
-  const float (*coarse_positions)[3];
+  blender::Span<float3> coarse_positions;
   blender::Span<int2> coarse_edges;
   blender::OffsetIndices<int> coarse_polys;
   blender::Span<int> coarse_corner_verts;
@@ -264,7 +264,7 @@ static void vertex_interpolation_from_corner(const SubdivMeshContext *ctx,
     const CustomData *vertex_data = &ctx->coarse_mesh->vdata;
     LoopsOfPtex loops_of_ptex;
     loops_of_ptex_get(&loops_of_ptex, coarse_poly, corner);
-    /* Ptex face corner corresponds to a poly loop with same index. */
+    /* PTEX face corner corresponds to a poly loop with same index. */
     CustomData_copy_data(vertex_data,
                          &vertex_interpolation->vertex_data_storage,
                          ctx->coarse_corner_verts[coarse_poly.start() + corner],
@@ -394,7 +394,7 @@ static void loop_interpolation_from_corner(const SubdivMeshContext *ctx,
     const CustomData *loop_data = &ctx->coarse_mesh->ldata;
     LoopsOfPtex loops_of_ptex;
     loops_of_ptex_get(&loops_of_ptex, coarse_poly, corner);
-    /* Ptex face corner corresponds to a poly loop with same index. */
+    /* PTEX face corner corresponds to a poly loop with same index. */
     CustomData_free_elem(&loop_interpolation->loop_data_storage, 0, 1);
     CustomData_copy_data(
         loop_data, &loop_interpolation->loop_data_storage, coarse_poly.start() + corner, 0, 1);
@@ -1098,13 +1098,14 @@ static void subdiv_mesh_vertex_of_loose_edge(const SubdivForeachContext *foreach
     subdiv_mesh_vertex_of_loose_edge_interpolate(ctx, coarse_edge, u, subdiv_vertex_index);
   }
   /* Interpolate coordinate. */
-  BKE_subdiv_mesh_interpolate_position_on_edge(ctx->coarse_positions,
-                                               ctx->coarse_edges.data(),
-                                               ctx->vert_to_edge_map,
-                                               coarse_edge_index,
-                                               is_simple,
-                                               u,
-                                               ctx->subdiv_positions[subdiv_vertex_index]);
+  BKE_subdiv_mesh_interpolate_position_on_edge(
+      reinterpret_cast<const float(*)[3]>(ctx->coarse_positions.data()),
+      ctx->coarse_edges.data(),
+      ctx->vert_to_edge_map,
+      coarse_edge_index,
+      is_simple,
+      u,
+      ctx->subdiv_positions[subdiv_vertex_index]);
 }
 
 /** \} */
@@ -1167,7 +1168,7 @@ Mesh *BKE_subdiv_to_mesh(Subdiv *subdiv,
   subdiv_context.settings = settings;
 
   subdiv_context.coarse_mesh = coarse_mesh;
-  subdiv_context.coarse_positions = BKE_mesh_vert_positions(coarse_mesh);
+  subdiv_context.coarse_positions = coarse_mesh->vert_positions();
   subdiv_context.coarse_edges = coarse_mesh->edges();
   subdiv_context.coarse_polys = coarse_mesh->polys();
   subdiv_context.coarse_corner_verts = coarse_mesh->corner_verts();

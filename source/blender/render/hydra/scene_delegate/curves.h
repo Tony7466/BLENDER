@@ -7,7 +7,7 @@
 #include <pxr/imaging/hd/sceneDelegate.h>
 
 #include "BKE_duplilist.h"
-#include "DNA_Curves_types.h"
+#include "DNA_curves_types.h"
 
 #include "BLI_set.hh"
 #include "material.h"

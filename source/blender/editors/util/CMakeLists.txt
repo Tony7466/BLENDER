@@ -7,19 +7,15 @@ set(INC
   ../space_sequencer
   ../../asset_system
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../sequencer
   ../../windowmanager
   ../../../../intern/clog
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -55,7 +51,7 @@ set(SRC
   ../include/ED_gizmo_library.h
   ../include/ED_gizmo_utils.h
   ../include/ED_gpencil_legacy.h
-  ../include/ED_grease_pencil_draw.h
+  ../include/ED_grease_pencil.h
   ../include/ED_image.h
   ../include/ED_info.h
   ../include/ED_keyframes_draw.h
@@ -110,6 +106,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 

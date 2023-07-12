@@ -8,6 +8,8 @@
 #include "GPU_texture.h"
 #include "PIL_time.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "camera.h"
 #include "final_engine.h"
 
@@ -67,7 +69,7 @@ void FinalEngine::update_render_result()
     if (it_image == render_images_.end()) {
       continue;
     }
-    memcpy(pass->buffer.data,
+    memcpy(pass->ibuf->float_buffer.data,
            it_image->second.data(),
            sizeof(float) * pass->rectx * pass->recty * pass->channels);
   }

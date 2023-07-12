@@ -185,7 +185,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
   const bool do_flat_faces = dvert && (smd->flag & MOD_SOLIDIFY_NONMANIFOLD_FLAT_FACES);
 
-  const float(*orig_vert_positions)[3] = BKE_mesh_vert_positions(mesh);
+  const blender::Span<blender::float3> orig_vert_positions = mesh->vert_positions();
   const blender::Span<int2> orig_edges = mesh->edges();
   const blender::OffsetIndices orig_polys = mesh->polys();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
@@ -1992,7 +1992,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   result = BKE_mesh_new_nomain_from_template(
       mesh, int(new_verts_num), int(new_edges_num), int(new_polys_num), int(new_loops_num));
 
-  float(*vert_positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<float3> vert_positions = result->vert_positions_for_write();
   blender::MutableSpan<int2> edges = result->edges_for_write();
   blender::MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
   blender::MutableSpan<int> corner_verts = result->corner_verts_for_write();
@@ -2021,9 +2021,13 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   const float *vertex_crease = static_cast<const float *>(
       CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "crease_vert"));
   float *result_edge_crease = nullptr;
-  if (vertex_crease) {
-    result_edge_crease = (float *)CustomData_add_layer_named(
-        &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "crease_edge");
+  if (vertex_crease || orig_edge_crease) {
+    result_edge_crease = static_cast<float *>(CustomData_get_layer_named_for_write(
+        &result->edata, CD_PROP_FLOAT, "crease_edge", result->totedge));
+    if (!result_edge_crease) {
+      result_edge_crease = (float *)CustomData_add_layer_named(
+          &result->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, result->totedge, "crease_edge");
+    }
     /* delete all vertex creases in the result if a rim is used. */
     if (do_rim) {
       CustomData_free_layer_named(&result->vdata, "crease_vert", result->totvert);

@@ -53,7 +53,7 @@ namespace blender::nodes::node_geo_sample_nearest_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry")
-      .supported_type({GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD});
+      .supported_type({GeometryComponent::Type::Mesh, GeometryComponent::Type::PointCloud});
   b.add_input<decl::Vector>("Sample Position").implicit_field(implicit_field_inputs::position);
   b.add_output<decl::Int>("Index").dependent_field({1});
 }
@@ -72,14 +72,19 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void get_closest_pointcloud_points(const PointCloud &pointcloud,
                                           const VArray<float3> &positions,
                                           const IndexMask &mask,
-                                          const MutableSpan<int> r_indices,
-                                          const MutableSpan<float> r_distances_sq)
+                                          MutableSpan<int> r_indices,
+                                          MutableSpan<float> r_distances_sq)
 {
   BLI_assert(positions.size() >= r_indices.size());
   BLI_assert(pointcloud.totpoint > 0);
 
   BVHTreeFromPointCloud tree_data;
-  BKE_bvhtree_from_pointcloud_get(&tree_data, &pointcloud, 2);
+  const BVHTree *tree = BKE_bvhtree_from_pointcloud_get(&tree_data, &pointcloud, 2);
+  if (tree == nullptr) {
+    r_indices.fill(0);
+    r_distances_sq.fill(0.0f);
+    return;
+  }
 
   mask.foreach_index([&](const int i) {
     BVHTreeNearest nearest;
@@ -202,7 +207,7 @@ static void get_closest_mesh_corners(const Mesh &mesh,
 }
 
 static bool component_is_available(const GeometrySet &geometry,
-                                   const GeometryComponentType type,
+                                   const GeometryComponent::Type type,
                                    const eAttrDomain domain)
 {
   if (!geometry.has(type)) {
@@ -217,11 +222,12 @@ static const GeometryComponent *find_source_component(const GeometrySet &geometr
 {
   /* Choose the other component based on a consistent order, rather than some more complicated
    * heuristic. This is the same order visible in the spreadsheet and used in the ray-cast node. */
-  static const Array<GeometryComponentType> supported_types = {GEO_COMPONENT_TYPE_MESH,
-                                                               GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                               GEO_COMPONENT_TYPE_CURVE,
-                                                               GEO_COMPONENT_TYPE_INSTANCES};
-  for (const GeometryComponentType src_type : supported_types) {
+  static const Array<GeometryComponent::Type> supported_types = {
+      GeometryComponent::Type::Mesh,
+      GeometryComponent::Type::PointCloud,
+      GeometryComponent::Type::Curve,
+      GeometryComponent::Type::Instance};
+  for (const GeometryComponent::Type src_type : supported_types) {
     if (component_is_available(geometry, src_type, domain)) {
       return geometry.get_component_for_read(src_type);
     }
@@ -261,7 +267,7 @@ class SampleNearestFunction : public mf::MultiFunction {
     }
 
     switch (src_component_->type()) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case GeometryComponent::Type::Mesh: {
         const MeshComponent &component = *static_cast<const MeshComponent *>(src_component_);
         const Mesh &mesh = *component.get_for_read();
         switch (domain_) {
@@ -282,7 +288,7 @@ class SampleNearestFunction : public mf::MultiFunction {
         }
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case GeometryComponent::Type::PointCloud: {
         const PointCloudComponent &component = *static_cast<const PointCloudComponent *>(
             src_component_);
         const PointCloud &points = *component.get_for_read();

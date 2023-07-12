@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_object_types.h"
 
@@ -205,9 +207,9 @@ static void gather_vert_attributes(const Mesh &mesh_src,
                                    const IndexMask &vert_mask,
                                    Mesh &mesh_dst)
 {
-  Set<std::string> names;
+  Set<std::string> vertex_group_names;
   LISTBASE_FOREACH (bDeformGroup *, group, &mesh_src.vertex_group_names) {
-    names.add(group->name);
+    vertex_group_names.add(group->name);
   }
 
   const Span<MDeformVert> src = mesh_src.deform_verts();
@@ -227,7 +229,7 @@ static void gather_vert_attributes(const Mesh &mesh_src,
         bke::gather_attributes(mesh_src.attributes(),
                                ATTR_DOMAIN_POINT,
                                propagation_info,
-                               names,
+                               vertex_group_names,
                                vert_mask,
                                mesh_dst.attributes_for_write());
       });

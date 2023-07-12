@@ -69,6 +69,7 @@ static CLG_LogRef LOG = {"bke.mesh_convert"};
 
 static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispbase)
 {
+  using namespace blender;
   using namespace blender::bke;
   int a, b, ofs;
   const bool conv_polys = (
@@ -127,9 +128,9 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
       "material_index", ATTR_DOMAIN_FACE);
   SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_face", ATTR_DOMAIN_FACE);
-
-  blender::float2 *mloopuv = static_cast<blender::float2 *>(CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->totloop, DATA_("UVMap")));
+  SpanAttributeWriter<float2> uv_attribute = attributes.lookup_or_add_for_write_span<float2>(
+      DATA_("UVMap"), ATTR_DOMAIN_CORNER);
+  MutableSpan<float2> uv_map = uv_attribute.span;
 
   int dst_vert = 0;
   int dst_edge = 0;
@@ -203,11 +204,9 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
         poly_offsets[dst_poly] = dst_loop;
         material_indices.span[dst_poly] = dl->col;
 
-        if (mloopuv) {
-          for (int i = 0; i < 3; i++, mloopuv++) {
-            (*mloopuv)[0] = (corner_verts[dst_loop + i] - startvert) / float(dl->nr - 1);
-            (*mloopuv)[1] = 0.0f;
-          }
+        for (int i = 0; i < 3; i++) {
+          uv_map[dst_loop + i][0] = (corner_verts[dst_loop + i] - startvert) / float(dl->nr - 1);
+          uv_map[dst_loop + i][1] = 0.0f;
         }
 
         sharp_faces.span[dst_poly] = !is_smooth;
@@ -260,35 +259,33 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
           poly_offsets[dst_poly] = dst_loop;
           material_indices.span[dst_poly] = dl->col;
 
-          if (mloopuv) {
-            int orco_sizeu = dl->nr - 1;
-            int orco_sizev = dl->parts - 1;
+          int orco_sizeu = dl->nr - 1;
+          int orco_sizev = dl->parts - 1;
 
-            /* exception as handled in convertblender.c too */
-            if (dl->flag & DL_CYCL_U) {
-              orco_sizeu++;
-              if (dl->flag & DL_CYCL_V) {
-                orco_sizev++;
-              }
-            }
-            else if (dl->flag & DL_CYCL_V) {
+          /* exception as handled in convertblender.c too */
+          if (dl->flag & DL_CYCL_U) {
+            orco_sizeu++;
+            if (dl->flag & DL_CYCL_V) {
               orco_sizev++;
             }
+          }
+          else if (dl->flag & DL_CYCL_V) {
+            orco_sizev++;
+          }
 
-            for (int i = 0; i < 4; i++, mloopuv++) {
-              /* find uv based on vertex index into grid array */
-              int v = corner_verts[dst_loop + i] - startvert;
+          for (int i = 0; i < 4; i++) {
+            /* find uv based on vertex index into grid array */
+            int v = corner_verts[dst_loop + i] - startvert;
 
-              (*mloopuv)[0] = (v / dl->nr) / float(orco_sizev);
-              (*mloopuv)[1] = (v % dl->nr) / float(orco_sizeu);
+            uv_map[dst_loop + i][0] = (v / dl->nr) / float(orco_sizev);
+            uv_map[dst_loop + i][1] = (v % dl->nr) / float(orco_sizeu);
 
-              /* cyclic correction */
-              if (ELEM(i, 1, 2) && (*mloopuv)[0] == 0.0f) {
-                (*mloopuv)[0] = 1.0f;
-              }
-              if (ELEM(i, 0, 1) && (*mloopuv)[1] == 0.0f) {
-                (*mloopuv)[1] = 1.0f;
-              }
+            /* cyclic correction */
+            if (ELEM(i, 1, 2) && uv_map[dst_loop + i][0] == 0.0f) {
+              uv_map[dst_loop + i][0] = 1.0f;
+            }
+            if (ELEM(i, 0, 1) && uv_map[dst_loop + i][1] == 0.0f) {
+              uv_map[dst_loop + i][1] = 1.0f;
             }
           }
 
@@ -311,6 +308,7 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
 
   material_indices.finish();
   sharp_faces.finish();
+  uv_attribute.finish();
 
   return mesh;
 }
@@ -571,7 +569,8 @@ void BKE_pointcloud_to_mesh(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/
   BLI_assert(ob->type == OB_POINTCLOUD);
 
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-  const GeometrySet geometry = blender::bke::object_get_evaluated_geometry_set(*ob_eval);
+  const blender::bke::GeometrySet geometry = blender::bke::object_get_evaluated_geometry_set(
+      *ob_eval);
 
   Mesh *mesh = BKE_mesh_add(bmain, ob->id.name + 2);
 
@@ -688,7 +687,7 @@ static void curve_to_mesh_eval_ensure(Object &object)
 
 static const Curves *get_evaluated_curves_from_object(const Object *object)
 {
-  if (GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
+  if (blender::bke::GeometrySet *geometry_set_eval = object->runtime.geometry_set_eval) {
     return geometry_set_eval->get_curves_for_read();
   }
   return nullptr;
@@ -935,14 +934,12 @@ Mesh *BKE_mesh_new_from_object_to_bmain(Main *bmain,
   Mesh *mesh_in_bmain = BKE_mesh_add(bmain, mesh->id.name + 2);
 
   /* NOTE: BKE_mesh_nomain_to_mesh() does not copy materials and instead it preserves them in the
-   * destination mesh. So we "steal" all related fields before calling it.
+   * destination mesh. So we "steal" materials before calling it.
    *
    * TODO(sergey): We really better have a function which gets and ID and accepts it for the bmain.
    */
   mesh_in_bmain->mat = mesh->mat;
   mesh_in_bmain->totcol = mesh->totcol;
-  mesh_in_bmain->flag = mesh->flag;
-  mesh_in_bmain->smoothresh = mesh->smoothresh;
   mesh->mat = nullptr;
 
   BKE_mesh_nomain_to_mesh(mesh, mesh_in_bmain, nullptr);
@@ -984,28 +981,26 @@ static int find_object_active_key_uid(const Key &key, const Object &object)
 }
 
 static void move_shapekey_layers_to_keyblocks(const Mesh &mesh,
-                                              CustomData &custom_data,
+                                              const CustomData &custom_data,
                                               Key &key_dst,
                                               const int actshape_uid)
 {
   using namespace blender::bke;
   for (const int i : IndexRange(CustomData_number_of_layers(&custom_data, CD_SHAPEKEY))) {
     const int layer_index = CustomData_get_layer_index_n(&custom_data, CD_SHAPEKEY, i);
-    CustomDataLayer &layer = custom_data.layers[layer_index];
+    const CustomDataLayer &layer = custom_data.layers[layer_index];
 
     KeyBlock *kb = keyblock_ensure_from_uid(key_dst, layer.uid, layer.name);
     MEM_SAFE_FREE(kb->data);
 
     kb->totelem = mesh.totvert;
-
+    kb->data = MEM_malloc_arrayN(kb->totelem, sizeof(float3), __func__);
+    MutableSpan<float3> kb_coords(static_cast<float3 *>(kb->data), kb->totelem);
     if (kb->uid == actshape_uid) {
-      kb->data = MEM_malloc_arrayN(kb->totelem, sizeof(float3), __func__);
-      MutableSpan<float3> kb_coords(static_cast<float3 *>(kb->data), kb->totelem);
       mesh.attributes().lookup<float3>("position").varray.materialize(kb_coords);
     }
     else {
-      kb->data = layer.data;
-      layer.data = nullptr;
+      kb_coords.copy_from({static_cast<const float3 *>(layer.data), mesh.totvert});
     }
   }
 

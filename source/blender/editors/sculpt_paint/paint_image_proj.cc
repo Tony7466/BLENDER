@@ -417,7 +417,7 @@ struct ProjPaintState {
   int totpoly_eval;
   int totvert_eval;
 
-  const float (*vert_positions_eval)[3];
+  blender::Span<blender::float3> vert_positions_eval;
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::int2> edges_eval;
   blender::OffsetIndices<int> polys_eval;
@@ -4095,7 +4095,7 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   }
   ps->mat_array[totmat - 1] = nullptr;
 
-  ps->vert_positions_eval = BKE_mesh_vert_positions(ps->me_eval);
+  ps->vert_positions_eval = ps->me_eval->vert_positions();
   ps->vert_normals = ps->me_eval->vert_normals();
   ps->edges_eval = ps->me_eval->edges();
   ps->polys_eval = ps->me_eval->polys();
@@ -6925,18 +6925,6 @@ void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem domain_items[3] = {
-      {ATTR_DOMAIN_POINT, "POINT", 0, "Vertex", ""},
-      {ATTR_DOMAIN_CORNER, "CORNER", 0, "Face Corner", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem attribute_type_items[3] = {
-      {CD_PROP_COLOR, "COLOR", 0, "Color", ""},
-      {CD_PROP_BYTE_COLOR, "BYTE_COLOR", 0, "Byte Color", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   /* identifiers */
   ot->name = "Add Paint Slot";
   ot->description = "Add a paint slot";
@@ -6997,14 +6985,14 @@ void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
   /* Color Attribute Properties */
   RNA_def_enum(ot->srna,
                "domain",
-               domain_items,
+               rna_enum_color_attribute_domain_items,
                ATTR_DOMAIN_POINT,
                "Domain",
                "Type of element that attribute is stored on");
 
   RNA_def_enum(ot->srna,
                "data_type",
-               attribute_type_items,
+               rna_enum_color_attribute_type_items,
                CD_PROP_COLOR,
                "Data Type",
                "Type of data stored in attribute");

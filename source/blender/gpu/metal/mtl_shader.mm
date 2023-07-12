@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -186,7 +188,7 @@ void MTLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->glsl_vertex_source_ = ss.str();
 }
 
-void MTLShader::geometry_shader_from_glsl(MutableSpan<const char *> sources)
+void MTLShader::geometry_shader_from_glsl(MutableSpan<const char *> /*sources*/)
 {
   MTL_LOG_ERROR("MTLShader::geometry_shader_from_glsl - Geometry shaders unsupported!");
 }
@@ -1532,7 +1534,8 @@ void MTLShader::ssbo_vertex_fetch_bind_attribute(const MTLSSBOAttribute &ssbo_at
   ssbo_vbo_slot_used_[ssbo_attr.vbo_id] = true;
 }
 
-void MTLShader::ssbo_vertex_fetch_bind_attributes_end(id<MTLRenderCommandEncoder> active_encoder)
+void MTLShader::ssbo_vertex_fetch_bind_attributes_end(
+    id<MTLRenderCommandEncoder> /*active_encoder*/)
 {
   ssbo_vertex_attribute_bind_active_ = false;
 

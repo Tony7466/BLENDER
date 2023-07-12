@@ -23,6 +23,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_bounds.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
@@ -94,8 +95,8 @@
 #include <fmt/format.h>
 
 namespace geo_log = blender::nodes::geo_eval_log;
-using blender::bke::node_tree_zones::TreeZone;
-using blender::bke::node_tree_zones::TreeZones;
+using blender::bke::bNodeTreeZone;
+using blender::bke::bNodeTreeZones;
 
 /**
  * This is passed to many functions which draw the node editor.
@@ -113,7 +114,7 @@ struct TreeDrawContext {
    * Geometry nodes logs various data during execution. The logged data that corresponds to the
    * currently drawn node tree can be retrieved from the log below.
    */
-  geo_log::GeoTreeLog *geo_tree_log = nullptr;
+  blender::Map<const bNodeTreeZone *, geo_log::GeoTreeLog *> geo_log_by_zone;
   /**
    * True if there is an active realtime compositor using the node tree, false otherwise.
    */
@@ -314,9 +315,8 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
-  float2 result;
-  bke::nodeToView(&node, co.x, co.y, &result.x, &result.y);
-  return result * UI_SCALE_FAC;
+  const float2 node_location = bke::nodeToView(&node, co);
+  return node_location * UI_SCALE_FAC;
 }
 
 void node_to_updated_rect(const bNode &node, rctf &r_rect)
@@ -332,11 +332,9 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 
 float2 node_from_view(const bNode &node, const float2 &co)
 {
-  const float x = co.x / UI_SCALE_FAC;
-  const float y = co.y / UI_SCALE_FAC;
-  float2 result;
-  bke::nodeFromView(&node, x, y, &result.x, &result.y);
-  return result;
+  const float2 node_location = co / UI_SCALE_FAC;
+  return bke::nodeFromView(&node, node_location);
+  ;
 }
 
 /**
@@ -930,7 +928,7 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 
     for (const int i : input_tooltips.index_range()) {
       const blender::StringRef tooltip = input_tooltips[i];
-      ss << "\u2022 " << TIP_(tooltip.data());
+      ss << fmt::format(TIP_("\u2022 {}"), TIP_(tooltip.data()));
       if (i < input_tooltips.size() - 1) {
         ss << ".\n";
       }
@@ -941,7 +939,7 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 static void create_inspection_string_for_geometry_info(const geo_log::GeometryInfoLog &value_log,
                                                        std::stringstream &ss)
 {
-  Span<GeometryComponentType> component_types = value_log.component_types;
+  Span<bke::GeometryComponent::Type> component_types = value_log.component_types;
   if (component_types.is_empty()) {
     ss << TIP_("Empty Geometry");
     return;
@@ -954,9 +952,9 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   };
 
   ss << TIP_("Geometry:") << "\n";
-  for (GeometryComponentType type : component_types) {
+  for (bke::GeometryComponent::Type type : component_types) {
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         const geo_log::GeometryInfoLog::MeshInfo &mesh_info = *value_log.mesh_info;
         char line[256];
         SNPRINTF(line,
@@ -967,7 +965,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         const geo_log::GeometryInfoLog::PointCloudInfo &pointcloud_info =
             *value_log.pointcloud_info;
         char line[256];
@@ -977,7 +975,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         const geo_log::GeometryInfoLog::CurveInfo &curve_info = *value_log.curve_info;
         char line[256];
         SNPRINTF(line,
@@ -987,7 +985,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         const geo_log::GeometryInfoLog::InstancesInfo &instances_info = *value_log.instances_info;
         char line[256];
         SNPRINTF(
@@ -995,11 +993,11 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         ss << line;
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         ss << TIP_("\u2022 Volume");
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         if (value_log.edit_data_info.has_value()) {
           const geo_log::GeometryInfoLog::EditDataInfo &edit_info = *value_log.edit_data_info;
           char line[256];
@@ -1032,36 +1030,36 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
     ss << ".\n\n";
   }
 
-  Span<GeometryComponentType> supported_types = socket_decl->supported_types();
+  Span<bke::GeometryComponent::Type> supported_types = socket_decl->supported_types();
   if (supported_types.is_empty()) {
     ss << TIP_("Supported: All Types");
     return;
   }
 
   ss << TIP_("Supported: ");
-  for (GeometryComponentType type : supported_types) {
+  for (bke::GeometryComponent::Type type : supported_types) {
     switch (type) {
-      case GEO_COMPONENT_TYPE_MESH: {
+      case bke::GeometryComponent::Type::Mesh: {
         ss << TIP_("Mesh");
         break;
       }
-      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+      case bke::GeometryComponent::Type::PointCloud: {
         ss << TIP_("Point Cloud");
         break;
       }
-      case GEO_COMPONENT_TYPE_CURVE: {
+      case bke::GeometryComponent::Type::Curve: {
         ss << TIP_("Curve");
         break;
       }
-      case GEO_COMPONENT_TYPE_INSTANCES: {
+      case bke::GeometryComponent::Type::Instance: {
         ss << TIP_("Instances");
         break;
       }
-      case GEO_COMPONENT_TYPE_VOLUME: {
+      case bke::GeometryComponent::Type::Volume: {
         ss << CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
-      case GEO_COMPONENT_TYPE_EDIT: {
+      case bke::GeometryComponent::Type::Edit: {
         break;
       }
     }
@@ -1071,8 +1069,8 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
   }
 }
 
-static std::optional<std::string> create_socket_inspection_string(TreeDrawContext &tree_draw_ctx,
-                                                                  const bNodeSocket &socket)
+static std::optional<std::string> create_socket_inspection_string(
+    geo_log::GeoTreeLog &geo_tree_log, const bNodeSocket &socket)
 {
   using namespace blender::nodes::geo_eval_log;
 
@@ -1080,8 +1078,8 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
     return std::nullopt;
   }
 
-  tree_draw_ctx.geo_tree_log->ensure_socket_values();
-  ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
+  geo_tree_log.ensure_socket_values();
+  ValueLog *value_log = geo_tree_log.find_socket_value_log(socket);
   std::stringstream ss;
   if (const geo_log::GenericValueLog *generic_value_log =
           dynamic_cast<const geo_log::GenericValueLog *>(value_log))
@@ -1134,7 +1132,8 @@ static char *node_socket_get_tooltip(const SpaceNode *snode,
   TreeDrawContext tree_draw_ctx;
   if (snode != nullptr) {
     if (ntree.type == NTREE_GEOMETRY) {
-      tree_draw_ctx.geo_tree_log = geo_log::GeoModifierLog::get_tree_log_for_node_editor(*snode);
+      tree_draw_ctx.geo_log_by_zone =
+          geo_log::GeoModifierLog::get_tree_log_by_zone_for_node_editor(*snode);
     }
   }
 
@@ -1147,13 +1146,22 @@ static char *node_socket_get_tooltip(const SpaceNode *snode,
     }
   }
 
-  if (ntree.type == NTREE_GEOMETRY && tree_draw_ctx.geo_tree_log != nullptr) {
+  geo_log::GeoTreeLog *geo_tree_log = [&]() -> geo_log::GeoTreeLog * {
+    const bNodeTreeZones *zones = ntree.zones();
+    if (!zones) {
+      return nullptr;
+    }
+    const bNodeTreeZone *zone = zones->get_zone_by_socket(socket);
+    return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+  }();
+
+  if (ntree.type == NTREE_GEOMETRY && geo_tree_log != nullptr) {
     if (!output.str().empty()) {
       output << ".\n\n";
     }
 
     std::optional<std::string> socket_inspection_str = create_socket_inspection_string(
-        tree_draw_ctx, socket);
+        *geo_tree_log, socket);
     if (socket_inspection_str.has_value()) {
       output << *socket_inspection_str;
     }
@@ -1741,9 +1749,18 @@ static void node_add_error_message_button(const TreeDrawContext &tree_draw_ctx,
     return;
   }
 
+  geo_log::GeoTreeLog *geo_tree_log = [&]() -> geo_log::GeoTreeLog * {
+    const bNodeTreeZones *zones = node.owner_tree().zones();
+    if (!zones) {
+      return nullptr;
+    }
+    const bNodeTreeZone *zone = zones->get_zone_by_node(node.identifier);
+    return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+  }();
+
   Span<geo_log::NodeWarning> warnings;
-  if (tree_draw_ctx.geo_tree_log) {
-    geo_log::GeoNodeLog *node_log = tree_draw_ctx.geo_tree_log->nodes.lookup_ptr(node.identifier);
+  if (geo_tree_log) {
+    geo_log::GeoNodeLog *node_log = geo_tree_log->nodes.lookup_ptr(node.identifier);
     if (node_log != nullptr) {
       warnings = node_log->warnings;
     }
@@ -1781,7 +1798,15 @@ static void node_add_error_message_button(const TreeDrawContext &tree_draw_ctx,
 static std::optional<std::chrono::nanoseconds> node_get_execution_time(
     const TreeDrawContext &tree_draw_ctx, const bNodeTree &ntree, const bNode &node)
 {
-  const geo_log::GeoTreeLog *tree_log = tree_draw_ctx.geo_tree_log;
+  geo_log::GeoTreeLog *tree_log = [&]() -> geo_log::GeoTreeLog * {
+    const bNodeTreeZones *zones = ntree.zones();
+    if (!zones) {
+      return nullptr;
+    }
+    const bNodeTreeZone *zone = zones->get_zone_by_node(node.identifier);
+    return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+  }();
+
   if (tree_log == nullptr) {
     return std::nullopt;
   }
@@ -1896,7 +1921,7 @@ static char *named_attribute_tooltip(bContext * /*C*/, void *argN, const char * 
   for (const NameWithUsage &attribute : sorted_used_attribute) {
     const StringRefNull name = attribute.name;
     const geo_log::NamedAttributeUsage usage = attribute.usage;
-    ss << "  \u2022 \"" << name << "\": ";
+    ss << fmt::format(TIP_("  \u2022 \"{}\": "), std::string_view(name));
     Vector<std::string> usages;
     if ((usage & geo_log::NamedAttributeUsage::Read) != geo_log::NamedAttributeUsage::None) {
       usages.append(TIP_("read"));
@@ -1939,7 +1964,15 @@ static NodeExtraInfoRow row_from_used_named_attribute(
 static std::optional<NodeExtraInfoRow> node_get_accessed_attributes_row(
     TreeDrawContext &tree_draw_ctx, const bNode &node)
 {
-  if (tree_draw_ctx.geo_tree_log == nullptr) {
+  geo_log::GeoTreeLog *geo_tree_log = [&]() -> geo_log::GeoTreeLog * {
+    const bNodeTreeZones *zones = node.owner_tree().zones();
+    if (!zones) {
+      return nullptr;
+    }
+    const bNodeTreeZone *zone = zones->get_zone_by_node(node.identifier);
+    return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+  }();
+  if (geo_tree_log == nullptr) {
     return std::nullopt;
   }
   if (ELEM(node.type,
@@ -1956,8 +1989,8 @@ static std::optional<NodeExtraInfoRow> node_get_accessed_attributes_row(
       }
     }
   }
-  tree_draw_ctx.geo_tree_log->ensure_used_named_attributes();
-  geo_log::GeoNodeLog *node_log = tree_draw_ctx.geo_tree_log->nodes.lookup_ptr(node.identifier);
+  geo_tree_log->ensure_used_named_attributes();
+  geo_log::GeoNodeLog *node_log = geo_tree_log->nodes.lookup_ptr(node.identifier);
   if (node_log == nullptr) {
     return std::nullopt;
   }
@@ -2001,7 +2034,16 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
   }
 
   if (snode.edittree->type == NTREE_GEOMETRY) {
-    if (geo_log::GeoTreeLog *tree_log = tree_draw_ctx.geo_tree_log) {
+    geo_log::GeoTreeLog *tree_log = [&]() -> geo_log::GeoTreeLog * {
+      const bNodeTreeZones *tree_zones = node.owner_tree().zones();
+      if (!tree_zones) {
+        return nullptr;
+      }
+      const bNodeTreeZone *zone = tree_zones->get_zone_by_node(node.identifier);
+      return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+    }();
+
+    if (tree_log) {
       tree_log->ensure_debug_messages();
       const geo_log::GeoNodeLog *node_log = tree_log->nodes.lookup_ptr(node.identifier);
       if (node_log != nullptr) {
@@ -2154,7 +2196,12 @@ static void node_draw_basis(const bContext &C,
   }
 
   /* Shadow. */
-  if (!ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
+  if (!ELEM(node.type,
+            GEO_NODE_SIMULATION_INPUT,
+            GEO_NODE_SIMULATION_OUTPUT,
+            GEO_NODE_REPEAT_INPUT,
+            GEO_NODE_REPEAT_OUTPUT))
+  {
     node_draw_shadow(snode, node, BASIS_RAD, 1.0f);
   }
 
@@ -2432,6 +2479,10 @@ static void node_draw_basis(const bContext &C,
     }
     else if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
       UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, color_outline);
+      color_outline[3] = 1.0f;
+    }
+    else if (ELEM(node.type, GEO_NODE_REPEAT_INPUT, GEO_NODE_REPEAT_OUTPUT)) {
+      UI_GetThemeColor4fv(TH_NODE_ZONE_REPEAT, color_outline);
       color_outline[3] = 1.0f;
     }
     else {
@@ -3056,8 +3107,8 @@ static void add_rect_corner_positions(Vector<float2> &positions, const rctf &rec
 }
 
 static void find_bounds_by_zone_recursive(const SpaceNode &snode,
-                                          const TreeZone &zone,
-                                          const Span<std::unique_ptr<TreeZone>> all_zones,
+                                          const bNodeTreeZone &zone,
+                                          const Span<std::unique_ptr<bNodeTreeZone>> all_zones,
                                           MutableSpan<Vector<float2>> r_bounds_by_zone)
 {
   const float node_padding = UI_UNIT_X;
@@ -3069,7 +3120,7 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
   }
 
   Vector<float2> possible_bounds;
-  for (const TreeZone *child_zone : zone.child_zones) {
+  for (const bNodeTreeZone *child_zone : zone.child_zones) {
     find_bounds_by_zone_recursive(snode, *child_zone, all_zones, r_bounds_by_zone);
     const Span<float2> child_bounds = r_bounds_by_zone[child_zone->index];
     for (const float2 &pos : child_bounds) {
@@ -3103,7 +3154,7 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
       if (link.fromnode == nullptr) {
         continue;
       }
-      if (zone.contains_node_recursively(*link.fromnode) || zone.input_node == link.fromnode) {
+      if (zone.contains_node_recursively(*link.fromnode) && zone.output_node != link.fromnode) {
         const float2 pos = node_link_bezier_points_dragged(snode, link)[3];
         rctf rect;
         BLI_rctf_init_pt_radius(&rect, pos, node_padding);
@@ -3129,20 +3180,27 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
                             const SpaceNode &snode,
                             const bNodeTree &ntree)
 {
-  const TreeZones *zones = bke::node_tree_zones::get_tree_zones(ntree);
+  const bNodeTreeZones *zones = ntree.zones();
   if (zones == nullptr) {
     return;
   }
 
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
   Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
+  /* Bounding box area of zones is used to determine draw order. */
+  Array<float> bounding_box_area_by_zone(zones->zones.size());
 
   for (const int zone_i : zones->zones.index_range()) {
-    const TreeZone &zone = *zones->zones[zone_i];
+    const bNodeTreeZone &zone = *zones->zones[zone_i];
 
     find_bounds_by_zone_recursive(snode, zone, zones->zones, bounds_by_zone);
     const Span<float2> boundary_positions = bounds_by_zone[zone_i];
     const int boundary_positions_num = boundary_positions.size();
+
+    const Bounds<float2> bounding_box = *bounds::min_max(boundary_positions);
+    const float bounding_box_area = (bounding_box.max.x - bounding_box.min.x) *
+                                    (bounding_box.max.y - bounding_box.min.y);
+    bounding_box_area_by_zone[zone_i] = bounding_box_area;
 
     bke::CurvesGeometry boundary_curve(boundary_positions_num, 1);
     boundary_curve.cyclic_for_write().first() = true;
@@ -3168,21 +3226,38 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   float line_width = 1.0f * scale;
   float viewport[4] = {};
   GPU_viewport_size_get_f(viewport);
-  float zone_color[4];
-  UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
+
+  const auto get_theme_id = [&](const int zone_i) {
+    const bNode *node = zones->zones[zone_i]->output_node;
+    if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
+      return TH_NODE_ZONE_SIMULATION;
+    }
+    return TH_NODE_ZONE_REPEAT;
+  };
 
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  Vector<int> zone_draw_order;
   for (const int zone_i : zones->zones.index_range()) {
+    zone_draw_order.append(zone_i);
+  }
+  std::sort(zone_draw_order.begin(), zone_draw_order.end(), [&](const int a, const int b) {
+    /* Draw zones with smaller bounding box on top to make them visible. */
+    return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
+  });
+
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  for (const int zone_i : zone_draw_order) {
+    float zone_color[4];
+    UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
     if (zone_color[3] == 0.0f) {
       break;
     }
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the background. */
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
+    immUniformThemeColorBlend(TH_BACK, get_theme_id(zone_i), zone_color[3]);
 
     immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
@@ -3194,7 +3269,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immUnbindProgram();
   }
 
-  for (const int zone_i : zones->zones.index_range()) {
+  for (const int zone_i : zone_draw_order) {
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the contour lines. */
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
@@ -3202,7 +3277,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immUniform2fv("viewportSize", &viewport[2]);
     immUniform1f("lineWidth", line_width * U.pixelsize);
 
-    immUniformThemeColorAlpha(TH_NODE_ZONE_SIMULATION, 1.0f);
+    immUniformThemeColorAlpha(get_theme_id(zone_i), 1.0f);
     immBegin(GPU_PRIM_LINE_STRIP, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
       immVertex3fv(pos, p);
@@ -3249,14 +3324,14 @@ static void node_draw_nodetree(const bContext &C,
   GPU_blend(GPU_BLEND_ALPHA);
   nodelink_batch_start(snode);
 
-  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+  for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
-  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+  for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }
@@ -3371,10 +3446,11 @@ static void draw_nodetree(const bContext &C,
 
   TreeDrawContext tree_draw_ctx;
   if (ntree.type == NTREE_GEOMETRY) {
-    tree_draw_ctx.geo_tree_log = geo_log::GeoModifierLog::get_tree_log_for_node_editor(*snode);
-    if (tree_draw_ctx.geo_tree_log != nullptr) {
-      tree_draw_ctx.geo_tree_log->ensure_node_warnings();
-      tree_draw_ctx.geo_tree_log->ensure_node_run_time();
+    tree_draw_ctx.geo_log_by_zone = geo_log::GeoModifierLog::get_tree_log_by_zone_for_node_editor(
+        *snode);
+    for (geo_log::GeoTreeLog *log : tree_draw_ctx.geo_log_by_zone.values()) {
+      log->ensure_node_warnings();
+      log->ensure_node_run_time();
     }
     const WorkSpace *workspace = CTX_wm_workspace(&C);
     tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer(

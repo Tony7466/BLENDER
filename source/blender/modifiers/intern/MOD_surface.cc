@@ -22,7 +22,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
@@ -107,13 +107,7 @@ static void deformVerts(ModifierData *md,
   }
 
   if (mesh) {
-    /* Not possible to use get_mesh() in this case as we'll modify its vertices
-     * and get_mesh() would return 'mesh' directly. */
-    surmd->runtime.mesh = (Mesh *)BKE_id_copy_ex(
-        nullptr, (ID *)mesh, nullptr, LIB_ID_COPY_LOCALIZE);
-  }
-  else {
-    surmd->runtime.mesh = MOD_deform_mesh_eval_get(ctx->object, nullptr, nullptr, nullptr);
+    surmd->runtime.mesh = BKE_mesh_copy_for_eval(mesh);
   }
 
   if (!ctx->object->pd) {
@@ -148,7 +142,8 @@ static void deformVerts(ModifierData *md,
     }
 
     /* convert to global coordinates and calculate velocity */
-    float(*positions)[3] = BKE_mesh_vert_positions_for_write(surmd->runtime.mesh);
+    blender::MutableSpan<blender::float3> positions =
+        surmd->runtime.mesh->vert_positions_for_write();
     for (i = 0; i < mesh_verts_num; i++) {
       float *vec = positions[i];
       mul_m4_v3(ctx->object->object_to_world, vec);

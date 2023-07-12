@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "IMB_imbuf_types.h"
+
 #include "preview_engine.h"
 
 namespace blender::render::hydra {
@@ -39,7 +41,7 @@ void PreviewEngine::update_render_result(std::vector<float> &pixels)
 
   RenderLayer *layer = (RenderLayer *)result->layers.first;
   RenderPass *pass = (RenderPass *)layer->passes.first;
-  memcpy(pass->buffer.data,
+  memcpy(pass->ibuf->float_buffer.data,
          pixels.data(),
          sizeof(float) * pass->rectx * pass->recty * pass->channels);
 

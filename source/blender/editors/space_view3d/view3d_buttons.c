@@ -1614,7 +1614,7 @@ static void v3d_posearmature_buts(uiLayout *layout, Object *ob)
 
   col = uiLayoutColumn(layout, false);
 
-  /* XXX: RNA buts show data in native types (i.e. quats, 4-component axis/angle, etc.)
+  /* XXX: RNA buts show data in native types (i.e. quaternion, 4-component axis/angle, etc.)
    * but old-school UI shows in eulers always. Do we want to be able to still display in Eulers?
    * Maybe needs RNA/UI options to display rotations as different types. */
   v3d_transform_butsR(col, &pchanptr);
@@ -1799,19 +1799,19 @@ void view3d_buttons_register(ARegionType *art)
   PanelType *pt;
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype view3d panel object");
-  strcpy(pt->idname, "VIEW3D_PT_transform");
-  strcpy(pt->label, N_("Transform")); /* XXX C panels unavailable through RNA bpy.types! */
-  strcpy(pt->category, "Item");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "VIEW3D_PT_transform");
+  STRNCPY(pt->label, N_("Transform")); /* XXX C panels unavailable through RNA bpy.types! */
+  STRNCPY(pt->category, "Item");
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw = view3d_panel_transform;
   pt->poll = view3d_panel_transform_poll;
   BLI_addtail(&art->paneltypes, pt);
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype view3d panel vgroup");
-  strcpy(pt->idname, "VIEW3D_PT_vgroup");
-  strcpy(pt->label, N_("Vertex Weights")); /* XXX C panels unavailable through RNA bpy.types! */
-  strcpy(pt->category, "Item");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "VIEW3D_PT_vgroup");
+  STRNCPY(pt->label, N_("Vertex Weights")); /* XXX C panels unavailable through RNA bpy.types! */
+  STRNCPY(pt->category, "Item");
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw = view3d_panel_vgroup;
   pt->poll = view3d_panel_vgroup_poll;
   BLI_addtail(&art->paneltypes, pt);
@@ -1819,9 +1819,9 @@ void view3d_buttons_register(ARegionType *art)
   MenuType *mt;
 
   mt = MEM_callocN(sizeof(MenuType), "spacetype view3d menu collections");
-  strcpy(mt->idname, "VIEW3D_MT_collection");
-  strcpy(mt->label, N_("Collection"));
-  strcpy(mt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(mt->idname, "VIEW3D_MT_collection");
+  STRNCPY(mt->label, N_("Collection"));
+  STRNCPY(mt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   mt->draw = hide_collections_menu_draw;
   WM_menutype_add(mt);
 }

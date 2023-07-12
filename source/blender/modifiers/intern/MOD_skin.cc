@@ -42,6 +42,7 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_heap_simple.h"
 #include "BLI_math.h"
@@ -530,7 +531,7 @@ static float half_v2(const float v[2])
 
 static void end_node_frames(int v,
                             SkinNode *skin_nodes,
-                            const float (*vert_positions)[3],
+                            const blender::Span<blender::float3> vert_positions,
                             const MVertSkin *nodes,
                             blender::GroupedSpan<int> emap,
                             EMat *emat)
@@ -615,7 +616,7 @@ static int connection_node_mat(float mat[3][3], int v, blender::GroupedSpan<int>
 
 static void connection_node_frames(int v,
                                    SkinNode *skin_nodes,
-                                   const float (*vert_positions)[3],
+                                   const blender::Span<blender::float3> vert_positions,
                                    const MVertSkin *nodes,
                                    blender::GroupedSpan<int> emap,
                                    EMat *emat)
@@ -658,7 +659,7 @@ static void connection_node_frames(int v,
   create_frame(&skin_nodes[v].frames[0], vert_positions[v], rad, mat, 0);
 }
 
-static SkinNode *build_frames(const float (*vert_positions)[3],
+static SkinNode *build_frames(const blender::Span<blender::float3> vert_positions,
                               int verts_num,
                               const MVertSkin *nodes,
                               blender::GroupedSpan<int> emap,
@@ -726,7 +727,7 @@ static void build_emats_stack(BLI_Stack *stack,
                               blender::GroupedSpan<int> emap,
                               const blender::Span<blender::int2> edges,
                               const MVertSkin *vs,
-                              const float (*vert_positions)[3])
+                              const blender::Span<blender::float3> vert_positions)
 {
   EdgeStackElem stack_elem;
   float axis[3], angle;
@@ -777,7 +778,7 @@ static void build_emats_stack(BLI_Stack *stack,
 }
 
 static EMat *build_edge_mats(const MVertSkin *vs,
-                             const float (*vert_positions)[3],
+                             const blender::Span<blender::float3> vert_positions,
                              const int verts_num,
                              const blender::Span<blender::int2> edges,
                              blender::GroupedSpan<int> emap,
@@ -838,7 +839,7 @@ static EMat *build_edge_mats(const MVertSkin *vs,
  * nodes, at least two intermediate frames are required. (This avoids
  * having any special cases for dealing with sharing a frame between
  * two hulls.) */
-static int calc_edge_subdivisions(const float (*vert_positions)[3],
+static int calc_edge_subdivisions(const blender::Span<blender::float3> vert_positions,
                                   const MVertSkin *nodes,
                                   const blender::int2 &edge,
                                   const blender::Span<int> degree)
@@ -903,7 +904,7 @@ static Mesh *subdivide_base(const Mesh *orig)
 
   const MVertSkin *orignode = static_cast<const MVertSkin *>(
       CustomData_get_layer(&orig->vdata, CD_MVERT_SKIN));
-  const float(*orig_vert_positions)[3] = BKE_mesh_vert_positions(orig);
+  const blender::Span<blender::float3> orig_vert_positions = orig->vert_positions();
   const blender::Span<blender::int2> orig_edges = orig->edges();
   const MDeformVert *origdvert = BKE_mesh_deform_verts(orig);
   int orig_vert_num = orig->totvert;
@@ -911,10 +912,7 @@ static Mesh *subdivide_base(const Mesh *orig)
 
   /* Get degree of all vertices */
   blender::Array<int> degree(orig_vert_num, 0);
-  for (i = 0; i < orig_edge_num; i++) {
-    degree[orig_edges[i][0]]++;
-    degree[orig_edges[i][1]]++;
-  }
+  blender::array_utils::count_indices(orig_edges.cast<int>(), degree);
 
   /* Per edge, store how many subdivisions are needed */
   blender::Array<int> edge_subd(orig_edge_num, 0);
@@ -928,7 +926,7 @@ static Mesh *subdivide_base(const Mesh *orig)
   Mesh *result = BKE_mesh_new_nomain_from_template(
       orig, orig_vert_num + subd_num, orig_edge_num + subd_num, 0, 0);
 
-  float(*out_vert_positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<blender::float3> out_vert_positions = result->vert_positions_for_write();
   blender::MutableSpan<blender::int2> result_edges = result->edges_for_write();
   MVertSkin *outnode = static_cast<MVertSkin *>(
       CustomData_get_layer_for_write(&result->vdata, CD_MVERT_SKIN, result->totvert));
@@ -1921,7 +1919,7 @@ static Mesh *base_skin(Mesh *origmesh, SkinModifierData *smd, eSkinErrorFlag *r_
   const MVertSkin *nodes = static_cast<const MVertSkin *>(
       CustomData_get_layer(&origmesh->vdata, CD_MVERT_SKIN));
 
-  const float(*vert_positions)[3] = BKE_mesh_vert_positions(origmesh);
+  const blender::Span<blender::float3> vert_positions = origmesh->vert_positions();
   const blender::Span<blender::int2> edges = origmesh->edges();
   dvert = BKE_mesh_deform_verts(origmesh);
   const int verts_num = origmesh->totvert;
