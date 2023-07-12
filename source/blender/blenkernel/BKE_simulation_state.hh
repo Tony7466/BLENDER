@@ -122,6 +122,7 @@ class ModifierSimulationState {
   /** File path to folder containing baked data. */
   std::optional<std::string> bdata_dir_;
 
+  SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id);
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const;
   SimulationZoneState &get_zone_state_for_write(const SimulationZoneID &zone_id);
   void ensure_bake_loaded(const bNodeTree &ntree) const;
@@ -197,5 +198,11 @@ class ModifierSimulationCache {
 
   void reset();
 };
+
+/**
+ * Reset all simulation caches in the scene, for use when some fundamental change made them
+ * impossible to reuse.
+ */
+void scene_simulation_states_reset(Scene &scene);
 
 }  // namespace blender::bke::sim
