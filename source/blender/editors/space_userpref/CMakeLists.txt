@@ -16,7 +16,7 @@ set(INC_SYS
 
 set(SRC
   space_userpref.cc
-  userpref_ops.c
+  userpref_ops.cc
 
   userpref_intern.h
 )
