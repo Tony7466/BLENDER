@@ -5792,6 +5792,19 @@ class VIEW3D_MT_weight_face_selection_edit_pie(Menu):
         props.action = 'INVERT'
 
 
+class VIEW3D_MT_curve_sculpt_selection_edit_pie(Menu):
+    bl_label = "Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("curves.select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("curves.select_all", text="Deselect All")
+        props.action = 'DESELECT'
+
+
 class VIEW3D_MT_gpencil_selection_edit_pie(Menu):
     bl_label = "Selection"
 
@@ -8512,6 +8525,7 @@ classes = (
     VIEW3D_MT_weight_vert_selection_edit_pie,
     VIEW3D_MT_weight_face_selection_edit_pie,
     VIEW3D_MT_gpencil_selection_edit_pie,
+    VIEW3D_MT_curve_sculpt_selection_edit_pie,
     VIEW3D_MT_sculpt_automasking_pie,
     VIEW3D_MT_sculpt_gpencil_automasking_pie,
     VIEW3D_MT_wpaint_vgroup_lock_pie,

@@ -5836,8 +5836,8 @@ def km_sculpt_curves(params):
          {"properties": [("mode", 'SMOOTH')]}),
         ("curves.set_selection_domain", {"type": 'ONE', "value": 'PRESS'}, {"properties": [("domain", 'POINT')]}),
         ("curves.set_selection_domain", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("domain", 'CURVE')]}),
+        op_menu_pie("VIEW3D_MT_curve_sculpt_selection_edit_pie", {"type": 'A', "value": 'PRESS'}),
         *_template_paint_radial_control("curves_sculpt"),
-        *_template_items_select_actions(params, "curves.select_all"),
         ("sculpt_curves.min_distance_edit", {"type": 'R', "value": 'PRESS'}, {}),
         ("sculpt_curves.select_grow", {"type": 'A', "value": 'PRESS', "shift": True}, {}),
     ])
