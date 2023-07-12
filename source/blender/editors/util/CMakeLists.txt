@@ -30,7 +30,7 @@ set(SRC
   ed_util_imbuf.cc
   ed_util_ops.cc
   ed_viewer_path.cc
-  gizmo_utils.c
+  gizmo_utils.cc
   numinput.c
   select_utils.c
 

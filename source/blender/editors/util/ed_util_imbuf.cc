@@ -247,20 +247,19 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
 
 /* XXX node curve integration. */
 #if 0
-{
-ScrArea *area, *cur = curarea;
+    {
+      ScrArea *area, *cur = curarea;
 
-
-node_curvemap_sample(fp); /* sends global to node editor */
-for (area = G.curscreen->areabase.first; area; area = area->next) {
-if (area->spacetype == SPACE_NODE) {
-areawinset(area->win);
-scrarea_do_windraw(area);
-}
-}
-node_curvemap_sample(nullptr); /* clears global in node editor */
-curarea = cur;
-}
+      node_curvemap_sample(fp); /* sends global to node editor */
+      for (area = G.curscreen->areabase.first; area; area = area->next) {
+        if (area->spacetype == SPACE_NODE) {
+          areawinset(area->win);
+          scrarea_do_windraw(area);
+        }
+      }
+      node_curvemap_sample(nullptr); /* clears global in node editor */
+      curarea = cur;
+    }
 #endif
   }
   else {
