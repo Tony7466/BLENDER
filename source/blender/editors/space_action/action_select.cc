@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -658,7 +659,8 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
       bGPdata *gpd = ale->data;
       bGPDlayer *gpl;
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-        ED_gpencil_layer_frames_select_region(&rdata->ked, ale->data, rdata->mode, rdata->selectmode);
+        ED_gpencil_layer_frames_select_region(
+            &rdata->ked, ale->data, rdata->mode, rdata->selectmode);
       }
       break;
     }

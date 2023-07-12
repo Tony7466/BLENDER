@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PreviewOperation.h"
 
@@ -39,19 +40,21 @@ void PreviewOperation::init_execution()
 {
   input_ = get_input_socket_reader(0);
 
-  if (this->get_width() == uint(preview_->xsize) && this->get_height() == uint(preview_->ysize)) {
-    output_buffer_ = preview_->rect;
+  if (this->get_width() == uint(preview_->image.xsize) &&
+      this->get_height() == uint(preview_->image.ysize))
+  {
+    output_buffer_ = preview_->image.rect;
   }
 
   if (output_buffer_ == nullptr) {
     output_buffer_ = (uchar *)MEM_callocN(sizeof(uchar) * 4 * get_width() * get_height(),
                                           "PreviewOperation");
-    if (preview_->rect) {
-      MEM_freeN(preview_->rect);
+    if (preview_->image.rect) {
+      MEM_freeN(preview_->image.rect);
     }
-    preview_->xsize = get_width();
-    preview_->ysize = get_height();
-    preview_->rect = output_buffer_;
+    preview_->image.xsize = get_width();
+    preview_->image.ysize = get_height();
+    preview_->image.rect = output_buffer_;
   }
 }
 
@@ -65,7 +68,7 @@ void PreviewOperation::execute_region(rcti *rect, uint /*tile_number*/)
 {
   int offset;
   float color[4];
-  struct ColormanageProcessor *cm_processor;
+  ColormanageProcessor *cm_processor;
 
   cm_processor = IMB_colormanagement_display_processor_new(view_settings_, display_settings_);
 
@@ -159,7 +162,7 @@ void PreviewOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/,
                                                     Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *input = inputs[0];
-  struct ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(
+  ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(
       view_settings_, display_settings_);
 
   rcti buffer_area;

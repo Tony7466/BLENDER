@@ -1,18 +1,16 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   ../include
   ../../asset_system
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -36,9 +34,9 @@ set(SRC
 
   ED_asset_catalog.h
   ED_asset_catalog.hh
-  ED_asset_filter.h
+  ED_asset_filter.hh
   ED_asset_handle.h
-  ED_asset_import.h
+  ED_asset_import.hh
   ED_asset_indexer.h
   ED_asset_library.h
   ED_asset_list.h
@@ -50,8 +48,11 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
   bf_blenloader
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 blender_add_lib(bf_editor_asset "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

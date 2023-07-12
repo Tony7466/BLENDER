@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -510,7 +511,7 @@ uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
   return UI_popup_menu_begin_ex(C, title, __func__, icon);
 }
 
-void UI_popup_menu_but_set(uiPopupMenu *pup, struct ARegion *butregion, uiBut *but)
+void UI_popup_menu_but_set(uiPopupMenu *pup, ARegion *butregion, uiBut *but)
 {
   pup->but = but;
   pup->butregion = butregion;
@@ -720,7 +721,10 @@ void UI_popup_block_ex(bContext *C,
 }
 
 #if 0 /* UNUSED */
-void uiPupBlockOperator(bContext *C, uiBlockCreateFunc func, wmOperator *op, wmOperatorCallContext opcontext)
+void uiPupBlockOperator(bContext *C,
+                        uiBlockCreateFunc func,
+                        wmOperator *op,
+                        wmOperatorCallContext opcontext)
 {
   wmWindow *window = CTX_wm_window(C);
   uiPopupBlockHandle *handle;

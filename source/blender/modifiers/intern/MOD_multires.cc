@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -47,7 +48,7 @@
 
 struct MultiresRuntimeData {
   /* Cached subdivision surface descriptor, with topology and settings. */
-  struct Subdiv *subdiv;
+  Subdiv *subdiv;
 };
 
 static void initData(ModifierData *md)
@@ -244,7 +245,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       sculpt_session->multires.level = mmd->sculptlvl;
       sculpt_session->totvert = mesh->totvert;
       sculpt_session->totpoly = mesh->totpoly;
-      sculpt_session->vert_positions = nullptr;
+      sculpt_session->vert_positions = {};
       sculpt_session->polys = {};
       sculpt_session->corner_verts = {};
     }

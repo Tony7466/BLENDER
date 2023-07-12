@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editorui
@@ -415,6 +416,11 @@ void UI_view2d_center_set(struct View2D *v2d, float x, float y);
 void UI_view2d_offset(struct View2D *v2d, float xfac, float yfac);
 
 /**
+ * Scrolls the view so that the upper edge is at a multiple of the page size.
+ */
+void UI_view2d_offset_y_snap_to_closest_page(struct View2D *v2d);
+
+/**
  * Check if mouse is within scrollers
  *
  * \param xy: Mouse coordinates in screen (not region) space.
@@ -530,9 +536,10 @@ typedef struct View2DEdgePanData {
   float max_speed;
   /** Delay in seconds before maximum speed is reached. */
   float delay;
-  /** Influence factor for view zoom:
-   *    0 = Constant speed in UI units
-   *    1 = Constant speed in view space, UI speed slows down when zooming out
+  /**
+   * Influence factor for view zoom:
+   * - 0 = Constant speed in UI units.
+   * - 1 = Constant speed in view space, UI speed slows down when zooming out.
    */
   float zoom_influence;
 

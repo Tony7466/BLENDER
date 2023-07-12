@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -216,12 +218,13 @@ DefNode(CompositorNode, CMP_NODE_DENOISE,        def_cmp_denoise,        "DENOIS
 DefNode(CompositorNode, CMP_NODE_EXPOSURE,       0,                      "EXPOSURE",       Exposure,         "Exposure",          ""              )
 DefNode(CompositorNode, CMP_NODE_ANTIALIASING,   def_cmp_antialiasing,   "ANTIALIASING",   AntiAliasing,     "Anti-Aliasing",     ""              )
 DefNode(CompositorNode, CMP_NODE_POSTERIZE,      0,                      "POSTERIZE",      Posterize,        "Posterize",         ""              )
-DefNode(CompositorNode, CMP_NODE_CONVERT_COLOR_SPACE,def_cmp_convert_color_space, "CONVERT_COLORSPACE", ConvertColorSpace, "Color Space", ""      )
+DefNode(CompositorNode, CMP_NODE_CONVERT_COLOR_SPACE,def_cmp_convert_color_space, "CONVERT_COLORSPACE", ConvertColorSpace, "Convert Colorspace", ""      )
 DefNode(CompositorNode, CMP_NODE_SCENE_TIME,     0,                      "SCENE_TIME",     SceneTime,        "Scene Time",        ""              )
 DefNode(CompositorNode, CMP_NODE_COMBINE_XYZ,    0,                      "COMBINE_XYZ",    CombineXYZ,       "Combine XYZ",       ""              )
 DefNode(CompositorNode, CMP_NODE_SEPARATE_XYZ,   0,                      "SEPARATE_XYZ",   SeparateXYZ,      "Separate XYZ",      ""              )
 DefNode(CompositorNode, CMP_NODE_SEPARATE_COLOR, def_cmp_combsep_color,  "SEPARATE_COLOR", SeparateColor,    "Separate Color",    ""              )
 DefNode(CompositorNode, CMP_NODE_COMBINE_COLOR,  def_cmp_combsep_color,  "COMBINE_COLOR",  CombineColor,     "Combine Color",     ""              )
+DefNode(CompositorNode, CMP_NODE_KUWAHARA,       def_cmp_kuwahara,       "KUWAHARA",       Kuwahara,         "Kuwahara",          ""              )
 
 DefNode(TextureNode,    TEX_NODE_OUTPUT,         def_tex_output,         "OUTPUT",         Output,           "Output",            ""              )
 DefNode(TextureNode,    TEX_NODE_CHECKER,        0,                      "CHECKER",        Checker,          "Checker",           ""              )
@@ -374,6 +377,7 @@ DefNode(GeometryNode, GEO_NODE_MESH_TO_CURVE, 0, "MESH_TO_CURVE", MeshToCurve, "
 DefNode(GeometryNode, GEO_NODE_MESH_TO_POINTS, def_geo_mesh_to_points, "MESH_TO_POINTS", MeshToPoints, "Mesh to Points", "Generate a point cloud from a mesh's vertices")
 DefNode(GeometryNode, GEO_NODE_MESH_TO_SDF_VOLUME, def_geo_mesh_to_sdf_volume, "MESH_TO_SDF_VOLUME", MeshToSDFVolume, "Mesh to SDF Volume", "Create an SDF volume with the shape of the input mesh's surface")
 DefNode(GeometryNode, GEO_NODE_MESH_TO_VOLUME, def_geo_mesh_to_volume, "MESH_TO_VOLUME", MeshToVolume, "Mesh to Volume", "Create a fog volume with the shape of the input mesh's surface")
+DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE, 0, "CORNERS_OF_EDGE", CornersOfEdge, "Corners of Edge", "Retrieve face corners connected to edges")
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_FACE, 0, "CORNERS_OF_FACE", CornersOfFace, "Corners of Face", "Retrieve corners that make up a face")
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_VERTEX, 0, "CORNERS_OF_VERTEX", CornersOfVertex, "Corners of Vertex", "Retrieve face corners connected to vertices")
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_EDGES_OF_CORNER, 0, "EDGES_OF_CORNER", EdgesOfCorner, "Edges of Corner", "Retrieve the edges on both sides of a face corner")
@@ -392,6 +396,8 @@ DefNode(GeometryNode, GEO_NODE_PROXIMITY, def_geo_proximity, "PROXIMITY", Proxim
 DefNode(GeometryNode, GEO_NODE_RAYCAST, def_geo_raycast, "RAYCAST", Raycast, "Raycast", "Cast rays from the context geometry onto a target geometry, and retrieve information from each hit point")
 DefNode(GeometryNode, GEO_NODE_REALIZE_INSTANCES, 0, "REALIZE_INSTANCES", RealizeInstances, "Realize Instances", "Convert instances into real geometry data")
 DefNode(GeometryNode, GEO_NODE_REMOVE_ATTRIBUTE, 0, "REMOVE_ATTRIBUTE", RemoveAttribute, "Remove Named Attribute", "Delete an attribute with a specified name from a geometry. Typically used to optimize performance")
+DefNode(GeometryNode, GEO_NODE_REPEAT_INPUT, def_geo_repeat_input, "REPEAT_INPUT", RepeatInput, "Repeat Input", "")
+DefNode(GeometryNode, GEO_NODE_REPEAT_OUTPUT, def_geo_repeat_output, "REPEAT_OUTPUT", RepeatOutput, "Repeat Output", "")
 DefNode(GeometryNode, GEO_NODE_REPLACE_MATERIAL, 0, "REPLACE_MATERIAL", ReplaceMaterial, "Replace Material", "Swap one material with another")
 DefNode(GeometryNode, GEO_NODE_RESAMPLE_CURVE, def_geo_curve_resample, "RESAMPLE_CURVE", ResampleCurve, "Resample Curve", "Generate a poly spline for each input spline")
 DefNode(GeometryNode, GEO_NODE_REVERSE_CURVE, 0, "REVERSE_CURVE", ReverseCurve, "Reverse Curve", "Change the direction of curves by swapping their start and end data")

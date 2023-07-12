@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -161,6 +163,20 @@ class Result {
    * reference count of the result is incremented by the reference count of the target result. See
    * the discussion above for more information. */
   void pass_through(Result &target);
+
+  /* Steal the allocated data from the given source result and assign it to this result, then
+   * remove any references to the data from the source result. It is assumed that:
+   *
+   *   - Both results are of the same type.
+   *   - This result is not allocated but the source result is allocated.
+   *   - Neither of the results is a proxy one, that is, has a master result.
+   *
+   * This is different from proxy results and the pass_through mechanism in that it can be used on
+   * temporary results. This is most useful in multi-step compositor operations where some steps
+   * can be optional, in that case, intermediate results can be temporary results that can
+   * eventually be stolen by the actual output of the operation. See the uses of the method for
+   * a practical example of use. */
+  void steal_data(Result &source);
 
   /* Transform the result by the given transformation. This effectively pre-multiply the given
    * transformation by the current transformation of the domain of the result. */

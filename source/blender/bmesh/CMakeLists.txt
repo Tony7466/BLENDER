@@ -1,17 +1,13 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 set(INC
   .
-  ../blenkernel
-  ../blenlib
   ../blentranslation
   ../depsgraph
-  ../makesdna
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/eigen
-  ../../../intern/guardedalloc
   ../../../extern/rangetree
 )
 
@@ -71,7 +67,7 @@ set(SRC
   intern/bmesh_edgeloop.c
   intern/bmesh_edgeloop.h
   intern/bmesh_inline.h
-  intern/bmesh_interp.c
+  intern/bmesh_interp.cc
   intern/bmesh_interp.h
   intern/bmesh_iterators.cc
   intern/bmesh_iterators.h
@@ -169,9 +165,12 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   extern_rangetree
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_BULLET)

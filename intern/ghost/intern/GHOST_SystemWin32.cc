@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -143,6 +144,11 @@ GHOST_SystemWin32::GHOST_SystemWin32()
    * blurry scaling and enables WM_DPICHANGED to allow us to draw at proper DPI. */
   SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
+  /* Set App Id for the process so our console will be grouped on the Task Bar. */
+  UTF16_ENCODE(BLENDER_WIN_APPID);
+  SetCurrentProcessExplicitAppUserModelID(BLENDER_WIN_APPID_16);
+  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
+
   /* Check if current keyboard layout uses AltGr and save keylayout ID for
    * specialized handling if keys like VK_OEM_*. I.e. french keylayout
    * generates #VK_OEM_8 for their exclamation key (key left of right shift). */
@@ -219,7 +225,7 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
                                                uint32_t width,
                                                uint32_t height,
                                                GHOST_TWindowState state,
-                                               GHOST_GLSettings glSettings,
+                                               GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
                                                const bool is_dialog,
                                                const GHOST_IWindow *parentWindow)
@@ -232,11 +238,11 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
       width,
       height,
       state,
-      glSettings.context_type,
-      ((glSettings.flags & GHOST_glStereoVisual) != 0),
+      gpuSettings.context_type,
+      ((gpuSettings.flags & GHOST_gpuStereoVisual) != 0),
       false,
       (GHOST_WindowWin32 *)parentWindow,
-      ((glSettings.flags & GHOST_glDebugContext) != 0),
+      ((gpuSettings.flags & GHOST_gpuDebugContext) != 0),
       is_dialog);
 
   if (window->getValid()) {
@@ -258,15 +264,15 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
  * Never explicitly delete the window, use #disposeContext() instead.
  * \return The new context (or 0 if creation failed).
  */
-GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GLSettings glSettings)
+GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
-  const bool debug_context = (glSettings.flags & GHOST_glDebugContext) != 0;
+  const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
 
   GHOST_Context *context = nullptr;
 
 #ifdef WITH_VULKAN_BACKEND
   /* Vulkan does not need a window. */
-  if (glSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
+  if (gpuSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
     context = new GHOST_ContextVK(false, (HWND)0, 1, 2, debug_context);
 
     if (!context->initializeDrawingContext()) {
@@ -458,24 +464,27 @@ GHOST_TSuccess GHOST_SystemWin32::setCursorPosition(int32_t x, int32_t y)
 
 GHOST_TSuccess GHOST_SystemWin32::getModifierKeys(GHOST_ModifierKeys &keys) const
 {
-  bool down = HIBYTE(::GetKeyState(VK_LSHIFT)) != 0;
+  /* `GetAsyncKeyState` returns the current interrupt-level state of the hardware, which is needed
+   * when passing key states to a newly-activated window - #40059. Alterative `GetKeyState` only
+   * returns the state as processed by the thread's message queue.   */
+  bool down = HIBYTE(::GetAsyncKeyState(VK_LSHIFT)) != 0;
   keys.set(GHOST_kModifierKeyLeftShift, down);
-  down = HIBYTE(::GetKeyState(VK_RSHIFT)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_RSHIFT)) != 0;
   keys.set(GHOST_kModifierKeyRightShift, down);
 
-  down = HIBYTE(::GetKeyState(VK_LMENU)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_LMENU)) != 0;
   keys.set(GHOST_kModifierKeyLeftAlt, down);
-  down = HIBYTE(::GetKeyState(VK_RMENU)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_RMENU)) != 0;
   keys.set(GHOST_kModifierKeyRightAlt, down);
 
-  down = HIBYTE(::GetKeyState(VK_LCONTROL)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_LCONTROL)) != 0;
   keys.set(GHOST_kModifierKeyLeftControl, down);
-  down = HIBYTE(::GetKeyState(VK_RCONTROL)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_RCONTROL)) != 0;
   keys.set(GHOST_kModifierKeyRightControl, down);
 
-  down = HIBYTE(::GetKeyState(VK_LWIN)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_LWIN)) != 0;
   keys.set(GHOST_kModifierKeyLeftOS, down);
-  down = HIBYTE(::GetKeyState(VK_RWIN)) != 0;
+  down = HIBYTE(::GetAsyncKeyState(VK_RWIN)) != 0;
   keys.set(GHOST_kModifierKeyRightOS, down);
 
   return GHOST_kSuccess;
@@ -1201,15 +1210,10 @@ GHOST_EventKey *GHOST_SystemWin32::processKeyEvent(GHOST_WindowWin32 *window, RA
   bool is_repeat = false;
   bool is_repeated_modifier = false;
   if (key_down) {
-    if (system->m_keycode_last_repeat_key == vk) {
+    if (HIBYTE(::GetKeyState(vk)) != 0) {
+      /* This thread's message queue shows this key as already down. */
       is_repeat = true;
       is_repeated_modifier = GHOST_KEY_MODIFIER_CHECK(key);
-    }
-    system->m_keycode_last_repeat_key = vk;
-  }
-  else {
-    if (system->m_keycode_last_repeat_key == vk) {
-      system->m_keycode_last_repeat_key = 0;
     }
   }
 
@@ -1867,9 +1871,10 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           /* Mouse Tracking is now off. TrackMouseEvent restarts in MouseMove. */
           window->m_mousePresent = false;
 
-          /* Auto-focus only occurs within Blender windows, not with _other_ applications. */
+          /* Auto-focus only occurs within Blender windows, not with _other_ applications. We are
+           * notified of change of focus from our console, but it returns null from GetFocus. */
           HWND old_hwnd = ::GetFocus();
-          if (hwnd != old_hwnd) {
+          if (old_hwnd && hwnd != old_hwnd) {
             HWND new_parent = ::GetParent(hwnd);
             HWND old_parent = ::GetParent(old_hwnd);
             if (hwnd == old_parent || old_hwnd == new_parent) {
@@ -1883,8 +1888,14 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
             else if (!new_parent && !old_parent) {
               /* Between main windows that don't overlap. */
               RECT new_rect, old_rect, dest_rect;
-              ::GetWindowRect(hwnd, &new_rect);
-              ::GetWindowRect(old_hwnd, &old_rect);
+
+              /* The rects without the outside shadows and slightly inset. */
+              DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &new_rect, sizeof(RECT));
+              ::InflateRect(&new_rect, -1, -1);
+              DwmGetWindowAttribute(
+                  old_hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &old_rect, sizeof(RECT));
+              ::InflateRect(&old_rect, -1, -1);
+
               if (!IntersectRect(&dest_rect, &new_rect, &old_rect)) {
                 ::SetFocus(hwnd);
               }
@@ -1979,7 +1990,6 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
            * so the window is activated immediately. */
 
           system->m_wheelDeltaAccum = 0;
-          system->m_keycode_last_repeat_key = 0;
           event = processWindowEvent(
               LOWORD(wParam) ? GHOST_kEventWindowActivate : GHOST_kEventWindowDeactivate, window);
           /* WARNING: Let DefWindowProc handle WM_ACTIVATE, otherwise WM_MOUSEWHEEL

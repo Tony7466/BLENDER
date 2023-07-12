@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -28,6 +29,12 @@ typedef struct Global {
    * Otherwise access via #G_MAIN.
    */
   struct Main *main;
+
+  /**
+   * Data for the preview scene to avoid loading in multiple scenarios.
+   * It is actually shared between shader node previews and asset previews.
+   */
+  struct Main *pr_main;
 
   /** Last saved location for images. */
   char ima[1024]; /* 1024 = FILE_MAX */

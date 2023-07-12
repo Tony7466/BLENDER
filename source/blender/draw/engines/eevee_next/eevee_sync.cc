@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -27,7 +27,7 @@ namespace blender::eevee {
  *
  * \{ */
 
-static void draw_data_init_cb(struct DrawData *dd)
+static void draw_data_init_cb(DrawData *dd)
 {
   /* Object has just been created or was never evaluated by the engine. */
   dd->recalc = ID_RECALC_ALL;
@@ -36,7 +36,7 @@ static void draw_data_init_cb(struct DrawData *dd)
 ObjectHandle &SyncModule::sync_object(Object *ob)
 {
   DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  struct DrawData *dd = DRW_drawdata_ensure(
+  DrawData *dd = DRW_drawdata_ensure(
       (ID *)ob, owner, sizeof(eevee::ObjectHandle), draw_data_init_cb, nullptr);
   ObjectHandle &eevee_dd = *reinterpret_cast<ObjectHandle *>(dd);
 
@@ -57,7 +57,7 @@ ObjectHandle &SyncModule::sync_object(Object *ob)
 WorldHandle &SyncModule::sync_world(::World *world)
 {
   DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  struct DrawData *dd = DRW_drawdata_ensure(
+  DrawData *dd = DRW_drawdata_ensure(
       (ID *)world, owner, sizeof(eevee::WorldHandle), draw_data_init_cb, nullptr);
   WorldHandle &eevee_dd = *reinterpret_cast<WorldHandle *>(dd);
 
@@ -71,7 +71,7 @@ WorldHandle &SyncModule::sync_world(::World *world)
 SceneHandle &SyncModule::sync_scene(::Scene *scene)
 {
   DrawEngineType *owner = (DrawEngineType *)&DRW_engine_viewport_eevee_next_type;
-  struct DrawData *dd = DRW_drawdata_ensure(
+  DrawData *dd = DRW_drawdata_ensure(
       (ID *)scene, owner, sizeof(eevee::SceneHandle), draw_data_init_cb, nullptr);
   SceneHandle &eevee_dd = *reinterpret_cast<SceneHandle *>(dd);
 
@@ -131,6 +131,7 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.shading.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shadow.sub_pass, geom, res_handle);
+    geometry_call(material.capture.sub_pass, geom, res_handle);
 
     is_shadow_caster = is_shadow_caster || material.shadow.sub_pass != nullptr;
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
@@ -184,23 +185,23 @@ static void gpencil_drawcall_flush(gpIterData &iter)
 #if 0 /* Incompatible with new draw manager. */
   if (iter.geom != nullptr) {
     geometry_call(iter.material->shading.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
     geometry_call(iter.material->prepass.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
     geometry_call(iter.material->shadow.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
   }
 #endif
   iter.geom = nullptr;
@@ -351,6 +352,18 @@ void SyncModule::sync_curves(Object *ob,
   bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
   inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Probes
+ * \{ */
+
+void SyncModule::sync_light_probe(Object *ob, ObjectHandle &ob_handle)
+{
+  inst_.light_probes.sync_probe(ob, ob_handle);
+  inst_.reflection_probes.sync_object(ob, ob_handle);
 }
 
 /** \} */

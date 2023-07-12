@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "NOD_register.hh"
 
@@ -114,6 +116,7 @@ void register_geometry_nodes()
   register_node_type_geo_mesh_to_points();
   register_node_type_geo_mesh_to_sdf_volume();
   register_node_type_geo_mesh_to_volume();
+  register_node_type_geo_mesh_topology_corners_of_edge();
   register_node_type_geo_mesh_topology_corners_of_face();
   register_node_type_geo_mesh_topology_corners_of_vertex();
   register_node_type_geo_mesh_topology_edges_of_corner();
@@ -132,6 +135,8 @@ void register_geometry_nodes()
   register_node_type_geo_raycast();
   register_node_type_geo_realize_instances();
   register_node_type_geo_remove_attribute();
+  register_node_type_geo_repeat_input();
+  register_node_type_geo_repeat_output();
   register_node_type_geo_rotate_instances();
   register_node_type_geo_sample_index();
   register_node_type_geo_sample_nearest_surface();

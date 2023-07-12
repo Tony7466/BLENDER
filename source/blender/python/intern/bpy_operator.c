@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -78,7 +80,17 @@ static PyObject *pyop_poll(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  if (!PyArg_ParseTuple(args, "s|s:_bpy.ops.poll", &opname, &context_str)) {
+  /* All arguments are positional. */
+  static const char *_keywords[] = {"", "", NULL};
+  static _PyArg_Parser _parser = {
+      "s" /* `opname` */
+      "|" /* Optional arguments. */
+      "s" /* `context_str` */
+      ":_bpy.ops.poll",
+      _keywords,
+      0,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(args, NULL, &_parser, &opname, &context_str)) {
     return NULL;
   }
 
@@ -138,8 +150,20 @@ static PyObject *pyop_call(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  if (!PyArg_ParseTuple(
-          args, "s|O!si:_bpy.ops.call", &opname, &PyDict_Type, &kw, &context_str, &is_undo))
+  /* All arguments are positional. */
+  static const char *_keywords[] = {"", "", "", "", NULL};
+  static _PyArg_Parser _parser = {
+      "s"  /* `opname` */
+      "|"  /* Optional arguments. */
+      "O!" /* `kw` */
+      "s"  /* `context_str` */
+      "i"  /* `is_undo` */
+      ":_bpy.ops.call",
+      _keywords,
+      0,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(
+          args, NULL, &_parser, &opname, &PyDict_Type, &kw, &context_str, &is_undo))
   {
     return NULL;
   }
@@ -296,15 +320,28 @@ static PyObject *pyop_as_string(PyObject *UNUSED(self), PyObject *args)
     return NULL;
   }
 
-  if (!PyArg_ParseTuple(args,
-                        "s|O!O&O&:_bpy.ops.as_string",
-                        &opname,
-                        &PyDict_Type,
-                        &kw,
-                        PyC_ParseBool,
-                        &all_args,
-                        PyC_ParseBool,
-                        &macro_args))
+  /* All arguments are positional. */
+  static const char *_keywords[] = {"", "", "", "", NULL};
+  static _PyArg_Parser _parser = {
+      "s"  /* `opname` */
+      "|"  /* Optional arguments. */
+      "O!" /* `kw` */
+      "O&" /* `all_args` */
+      "O&" /* `macro_args` */
+      ":_bpy.ops.as_string",
+      _keywords,
+      0,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        NULL,
+                                        &_parser,
+                                        &opname,
+                                        &PyDict_Type,
+                                        &kw,
+                                        PyC_ParseBool,
+                                        &all_args,
+                                        PyC_ParseBool,
+                                        &macro_args))
   {
     return NULL;
   }
@@ -388,7 +425,7 @@ static PyObject *pyop_get_bl_options(PyObject *UNUSED(self), PyObject *value)
   return pyrna_enum_bitfield_as_set(rna_enum_operator_type_flag_items, ot->flag);
 }
 
-static struct PyMethodDef bpy_ops_methods[] = {
+static PyMethodDef bpy_ops_methods[] = {
     {"poll", (PyCFunction)pyop_poll, METH_VARARGS, NULL},
     {"call", (PyCFunction)pyop_call, METH_VARARGS, NULL},
     {"as_string", (PyCFunction)pyop_as_string, METH_VARARGS, NULL},
@@ -399,7 +436,7 @@ static struct PyMethodDef bpy_ops_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyModuleDef bpy_ops_module = {
+static PyModuleDef bpy_ops_module = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "_bpy.ops",
     /*m_doc*/ NULL,

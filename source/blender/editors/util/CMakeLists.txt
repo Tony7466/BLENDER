@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -5,19 +7,15 @@ set(INC
   ../space_sequencer
   ../../asset_system
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../sequencer
   ../../windowmanager
   ../../../../intern/clog
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -26,15 +24,15 @@ set(INC_SYS
 )
 
 set(SRC
-  ed_draw.c
-  ed_transverts.c
+  ed_draw.cc
+  ed_transverts.cc
   ed_util.cc
-  ed_util_imbuf.c
+  ed_util_imbuf.cc
   ed_util_ops.cc
   ed_viewer_path.cc
-  gizmo_utils.c
-  numinput.c
-  select_utils.c
+  gizmo_utils.cc
+  numinput.cc
+  select_utils.cc
 
   # general includes
   ../include/BIF_glutil.h
@@ -53,6 +51,7 @@ set(SRC
   ../include/ED_gizmo_library.h
   ../include/ED_gizmo_utils.h
   ../include/ED_gpencil_legacy.h
+  ../include/ED_grease_pencil.h
   ../include/ED_image.h
   ../include/ED_info.h
   ../include/ED_keyframes_draw.h
@@ -79,6 +78,7 @@ set(SRC
   ../include/ED_sculpt.h
   ../include/ED_select_utils.h
   ../include/ED_sequencer.h
+  ../include/ED_shader_preview.h
   ../include/ED_sound.h
   ../include/ED_space_api.h
   ../include/ED_spreadsheet.h
@@ -107,6 +107,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 

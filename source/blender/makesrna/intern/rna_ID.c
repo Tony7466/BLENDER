@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -40,7 +42,8 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_CU_LEGACY, "CURVE", ICON_CURVE_DATA, "Curve", ""},
     {ID_CV, "CURVES", ICON_CURVES_DATA, "Curves", ""},
     {ID_VF, "FONT", ICON_FONT_DATA, "Font", ""},
-    {ID_GD_LEGACY, "GREASEPENCIL", ICON_GREASEPENCIL, "Grease Pencil", ""},
+    {ID_GD_LEGACY, "GREASEPENCIL", ICON_GREASEPENCIL, "Grease Pencil (legacy)", ""},
+    {ID_GP, "GREASEPENCIL_V3", ICON_GREASEPENCIL, "Grease Pencil", ""},
     {ID_IM, "IMAGE", ICON_IMAGE_DATA, "Image", ""},
     {ID_KE, "KEY", ICON_SHAPEKEY_DATA, "Key", ""},
     {ID_LT, "LATTICE", ICON_LATTICE_DATA, "Lattice", ""},
@@ -60,7 +63,6 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_PA, "PARTICLE", ICON_PARTICLE_DATA, "Particle", ""},
     {ID_PT, "POINTCLOUD", ICON_POINTCLOUD_DATA, "Point Cloud", ""},
     {ID_SCE, "SCENE", ICON_SCENE_DATA, "Scene", ""},
-    {ID_SIM, "SIMULATION", ICON_PHYSICS, "Simulation", ""}, /* TODO: Use correct icon. */
     {ID_SO, "SOUND", ICON_SOUND, "Sound", ""},
     {ID_SPK, "SPEAKER", ICON_SPEAKER, "Speaker", ""},
     {ID_TXT, "TEXT", ICON_TEXT, "Text", ""},
@@ -188,11 +190,6 @@ const struct IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
      "Point Clouds",
      "Show/hide Point Cloud data-blocks"},
     {FILTER_ID_SCE, "filter_scene", ICON_SCENE_DATA, "Scenes", "Show Scene data-blocks"},
-    {FILTER_ID_SIM,
-     "filter_simulation",
-     ICON_PHYSICS,
-     "Simulations",
-     "Show Simulation data-blocks"}, /* TODO: Use correct icon. */
     {FILTER_ID_SPK, "filter_speaker", ICON_SPEAKER, "Speakers", "Show Speaker data-blocks"},
     {FILTER_ID_SO, "filter_sound", ICON_SOUND, "Sounds", "Show Sound data-blocks"},
     {FILTER_ID_TE, "filter_texture", ICON_TEXTURE_DATA, "Textures", "Show Texture data-blocks"},
@@ -429,11 +426,6 @@ short RNA_type_to_ID_code(const StructRNA *type)
   if (base_type == &RNA_Screen) {
     return ID_SCR;
   }
-#  ifdef WITH_SIMULATION_DATABLOCK
-  if (base_type == &RNA_Simulation) {
-    return ID_SIM;
-  }
-#  endif
   if (base_type == &RNA_Sound) {
     return ID_SO;
   }
@@ -484,6 +476,9 @@ StructRNA *ID_code_to_RNA_type(short idcode)
       return &RNA_Curve;
     case ID_GD_LEGACY:
       return &RNA_GreasePencil;
+    case ID_GP:
+      return &RNA_GreasePencilv3;
+      break;
     case ID_GR:
       return &RNA_Collection;
     case ID_CV:
@@ -528,12 +523,6 @@ StructRNA *ID_code_to_RNA_type(short idcode)
       return &RNA_Scene;
     case ID_SCR:
       return &RNA_Screen;
-    case ID_SIM:
-#  ifdef WITH_SIMULATION_DATABLOCK
-      return &RNA_Simulation;
-#  else
-      return &RNA_ID;
-#  endif
     case ID_SO:
       return &RNA_Sound;
     case ID_SPK:
@@ -717,6 +706,38 @@ static void rna_ID_asset_clear(ID *id)
     WM_main_add_notifier(NC_ID | NA_EDITED, NULL);
     WM_main_add_notifier(NC_ASSET | NA_REMOVED, NULL);
   }
+}
+
+static void rna_ID_asset_data_set(PointerRNA *ptr, PointerRNA value, struct ReportList *reports)
+{
+  ID *destination = ptr->data;
+
+  /* Avoid marking as asset by assigning. This should be done with `.asset_mark()`.
+   * This is just for clarity of the API, and to accommodate future changes. */
+  if (destination->asset_data == NULL) {
+    BKE_report(reports,
+               RPT_ERROR,
+               "Asset data can only be assigned to assets. Use asset_mark() to mark as an asset");
+    return;
+  }
+
+  const AssetMetaData *asset_data = value.data;
+  if (asset_data == NULL) {
+    /* Avoid clearing the asset data on assets. Un-marking as asset should be done with
+     * `.asset_clear()`. This is just for clarity of the API, and to accommodate future changes. */
+    BKE_report(reports, RPT_ERROR, "Asset data cannot be None");
+    return;
+  }
+
+  const bool assigned_ok = ED_asset_copy_to_id(asset_data, destination);
+  if (!assigned_ok) {
+    BKE_reportf(
+        reports, RPT_ERROR, "'%s' is of a type that cannot be an asset", destination->name + 2);
+    return;
+  }
+
+  WM_main_add_notifier(NC_ASSET | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_ID | NA_EDITED, NULL);
 }
 
 static ID *rna_ID_override_create(ID *id, Main *bmain, bool remap_local_usages)
@@ -1013,6 +1034,8 @@ static void rna_ID_user_remap(ID *id, Main *bmain, ID *new_id)
     /* For now, do not allow remapping data in linked data from here... */
     BKE_libblock_remap(
         bmain, id, new_id, ID_REMAP_SKIP_INDIRECT_USAGE | ID_REMAP_SKIP_NEVER_NULL_USAGE);
+
+    WM_main_add_notifier(NC_WINDOW, NULL);
   }
 }
 
@@ -1567,7 +1590,7 @@ static void rna_def_ID_materials(BlenderRNA *brna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  /* for mesh/mball/curve materials */
+  /* For mesh/meta-ball/curve materials. */
   srna = RNA_def_struct(brna, "IDMaterials", NULL);
   RNA_def_struct_sdna(srna, "ID");
   RNA_def_struct_ui_text(srna, "ID Materials", "Collection of materials");
@@ -1699,6 +1722,11 @@ static void rna_def_ID_override_library_property_operation(BlenderRNA *brna)
        0,
        "Locked",
        "Prevents the user from modifying that override operation (NOT USED)"},
+      {LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE,
+       "IDPOINTER_MATCH_REFERENCE",
+       0,
+       "Match Reference",
+       "The ID pointer overridden by this operation is expected to match the reference hierarchy"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -2123,7 +2151,8 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   prop = RNA_def_property(srna, "asset_data", PROP_POINTER, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(prop, NULL, "rna_ID_asset_data_set", NULL, NULL);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop, "Asset Data", "Additional data for an asset data-block");
 

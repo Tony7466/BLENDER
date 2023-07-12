@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -352,9 +354,9 @@ typedef struct BevelParams {
   bool harden_normals;
   char _pad[1];
   /** The struct used to store the custom profile input. */
-  const struct CurveProfile *custom_profile;
+  const CurveProfile *custom_profile;
   /** Vertex group array, maybe set if vertex only. */
-  const struct MDeformVert *dvert;
+  const MDeformVert *dvert;
   /** Vertex group index, maybe set if vertex only. */
   int vertex_group;
   /** If >= 0, material number for bevel; else material comes from adjacent faces. */
@@ -2482,16 +2484,16 @@ static void bevel_harden_normals(BevelParams *bp, BMesh *bm)
 
   int cd_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
 
-  /* If there is not already a custom split normal layer then making one (with BM_lnorspace_update)
-   * will not respect the autosmooth angle between smooth faces. To get that to happen, we have
-   * to mark the sharpen the edges that are only sharp because of the angle test -- otherwise would
-   * be smooth. */
+  /* If there is not already a custom split normal layer then making one
+   * (with #BM_lnorspace_update) will not respect the auto-smooth angle between smooth faces.
+   * To get that to happen, we have to mark the sharpen the edges that are only sharp because
+   * of the angle test -- otherwise would be smooth. */
   if (cd_clnors_offset == -1) {
     BM_edges_sharp_from_angle_set(bm, bp->smoothresh);
     bevel_edges_sharp_boundary(bm, bp);
   }
 
-  /* Ensure that bm->lnor_spacearr has properly stored loop normals.
+  /* Ensure that `bm->lnor_spacearr` has properly stored loop normals.
    * Side effect: ensures loop indices. */
   BM_lnorspace_update(bm);
 
@@ -7734,7 +7736,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const bool affect_type,
                    const bool use_weights,
                    const bool limit_offset,
-                   const struct MDeformVert *dvert,
+                   const MDeformVert *dvert,
                    const int vertex_group,
                    const int mat,
                    const bool loop_slide,
@@ -7746,7 +7748,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const int miter_inner,
                    const float spread,
                    const float smoothresh,
-                   const struct CurveProfile *custom_profile,
+                   const CurveProfile *custom_profile,
                    const int vmesh_method)
 {
   BMIter iter, liter;

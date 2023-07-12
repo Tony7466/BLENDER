@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -15,6 +16,8 @@
 
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
+
+#  include <optional>
 
 #  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
@@ -262,9 +265,9 @@ typedef struct Mesh {
    * Array of vertices for every face corner,  stored in the ".corner_vert" integer attribute.
    * For example, the vertices in a face can be retrieved with the #slice method:
    * \code{.cc}
-   * const Span<int> poly_verts = corner_verts.slice(poly.loopstart, poly.totloop);
+   * const Span<int> poly_verts = corner_verts.slice(poly);
    * \endcode
-   * Such a span can often be passed as an argument in lieu of a polygon and the entire corner
+   * Such a span can often be passed as an argument in lieu of a polygon or the entire corner
    * verts array.
    */
   blender::Span<int> corner_verts() const;
@@ -300,6 +303,12 @@ typedef struct Mesh {
    * A map containing the face index that each cached triangle from #Mesh::looptris() came from.
    */
   blender::Span<int> looptri_polys() const;
+
+  /**
+   * Calculate the largest and smallest position values of vertices.
+   * \note Does not take non-mesh data (edit mesh) into account, see #BKE_mesh_wrapper_minmax,
+   */
+  std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
   /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);

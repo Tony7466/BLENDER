@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -150,7 +151,7 @@ typedef struct tGP_BrushEditData {
 
   RNG *rng;
   /* Auto-masking strokes. */
-  struct GHash *automasking_strokes;
+  GHash *automasking_strokes;
   bool automasking_ready;
 
 } tGP_BrushEditData;
@@ -1313,7 +1314,7 @@ static void gpencil_sculpt_brush_exit(bContext *C, wmOperator *op)
 
   /* unregister timer (only used for realtime) */
   if (gso->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), win, gso->timer);
+    WM_event_timer_remove(CTX_wm_manager(C), win, gso->timer);
   }
 
   if (gso->rng != NULL) {
@@ -2293,7 +2294,7 @@ static int gpencil_sculpt_brush_invoke(bContext *C, wmOperator *op, const wmEven
 
   /* register timer for increasing influence by hovering over an area */
   if (needs_timer) {
-    gso->timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, brush_rate);
+    gso->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, brush_rate);
   }
 
   /* register modal handler */

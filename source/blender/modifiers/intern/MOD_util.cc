@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -129,7 +130,7 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
     texmapping = MOD_DISP_MAP_LOCAL;
   }
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
+  const Span<float3> positions = mesh->vert_positions();
   for (i = 0; i < verts_num; i++, r_texco++) {
     switch (texmapping) {
       case MOD_DISP_MAP_LOCAL:
@@ -163,66 +164,11 @@ void MOD_previous_vcos_store(ModifierData *md, const float (*vert_coords)[3])
   /* lattice/mesh modifier too */
 }
 
-Mesh *MOD_deform_mesh_eval_get(Object *ob,
-                               struct BMEditMesh *em,
-                               Mesh *mesh,
-                               const float (*vertexCos)[3],
-                               const int verts_num,
-                               const bool use_orco)
-{
-  if (mesh != nullptr) {
-    /* pass */
-  }
-  else if (ob->type == OB_MESH) {
-    if (em) {
-      mesh = BKE_mesh_wrapper_from_editmesh_with_coords(
-          em, nullptr, vertexCos, static_cast<const Mesh *>(ob->data));
-    }
-    else {
-      /* TODO(sybren): after modifier conversion of DM to Mesh is done, check whether
-       * we really need a copy here. Maybe the CoW ob->data can be directly used. */
-      Mesh *mesh_prior_modifiers = BKE_object_get_pre_modified_mesh(ob);
-      mesh = (Mesh *)BKE_id_copy_ex(
-          nullptr, &mesh_prior_modifiers->id, nullptr, LIB_ID_COPY_LOCALIZE);
-      mesh->runtime->deformed_only = true;
-    }
-
-    if (em != nullptr) {
-      /* pass */
-    }
-    /* TODO(sybren): after modifier conversion of DM to Mesh is done, check whether
-     * we really need vertexCos here. */
-    else if (vertexCos) {
-      BKE_mesh_vert_coords_apply(mesh, vertexCos);
-    }
-
-    if (use_orco) {
-      BKE_mesh_orco_ensure(ob, mesh);
-    }
-  }
-  else if (ELEM(ob->type, OB_FONT, OB_CURVES_LEGACY, OB_SURF)) {
-    /* TODO(sybren): get evaluated mesh from depsgraph once
-     * that's properly generated for curves. */
-    mesh = BKE_mesh_new_nomain_from_curve(ob);
-
-    /* Currently, that may not be the case every time
-     * (texts e.g. tend to give issues,
-     * also when deforming curve points instead of generated curve geometry... ). */
-    if (mesh != nullptr && mesh->totvert != verts_num) {
-      BKE_id_free(nullptr, mesh);
-      mesh = nullptr;
-    }
-  }
-
-  if (mesh && mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_MDATA) {
-    BLI_assert(mesh->totvert == verts_num);
-  }
-
-  return mesh;
-}
-
-void MOD_get_vgroup(
-    Object *ob, struct Mesh *mesh, const char *name, const MDeformVert **dvert, int *defgrp_index)
+void MOD_get_vgroup(const Object *ob,
+                    const Mesh *mesh,
+                    const char *name,
+                    const MDeformVert **dvert,
+                    int *defgrp_index)
 {
   if (mesh) {
     *defgrp_index = BKE_id_defgroup_name_index(&mesh->id, name);
@@ -244,7 +190,7 @@ void MOD_get_vgroup(
   }
 }
 
-void MOD_depsgraph_update_object_bone_relation(struct DepsNodeHandle *node,
+void MOD_depsgraph_update_object_bone_relation(DepsNodeHandle *node,
                                                Object *object,
                                                const char *bonename,
                                                const char *description)
