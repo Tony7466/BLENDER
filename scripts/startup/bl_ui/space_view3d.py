@@ -5724,6 +5724,89 @@ class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
         props.auto_iteration_count = False
 
 
+class VIEW3D_MT_vert_selection_edit_pie(Menu):
+    bl_label = "Vertex Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("paint.vert_select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("paint.vert_select_all", text="Deselect All")
+        props.action = 'DESELECT'
+        props = pie.operator("paint.vert_select_less", text="Select Less")
+        props = pie.operator("paint.vert_select_more", text="Select More")
+
+
+class VIEW3D_MT_face_selection_edit_pie(Menu):
+    bl_label = "Face Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("paint.face_select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("paint.face_select_all", text="Deselect All")
+        props.action = 'DESELECT'
+        props = pie.operator("paint.face_select_less", text="Select Less")
+        props = pie.operator("paint.face_select_more", text="Select More")
+
+
+class VIEW3D_MT_weight_vert_selection_edit_pie(Menu):
+    bl_label = "Vertex Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("paint.vert_select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("paint.vert_select_all", text="Deselect All")
+        props.action = 'DESELECT'
+        props = pie.operator("paint.vert_select_less", text="Select Less")
+        props = pie.operator("paint.vert_select_more", text="Select More")
+        props = pie.operator("pose.select_all", text="Select All Bones")
+        props.action = 'SELECT'
+        props = pie.operator("pose.select_all", text="Deselect All Bones")
+        props.action = 'INVERT'
+
+
+class VIEW3D_MT_weight_face_selection_edit_pie(Menu):
+    bl_label = "Face Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("paint.face_select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("paint.face_select_all", text="Deselect All")
+        props.action = 'DESELECT'
+        props = pie.operator("paint.face_select_less", text="Select Less")
+        props = pie.operator("paint.face_select_more", text="Select More")
+        props = pie.operator("pose.select_all", text="Select All Bones")
+        props.action = 'SELECT'
+        props = pie.operator("pose.select_all", text="Deselect All Bones")
+        props.action = 'INVERT'
+
+
+class VIEW3D_MT_gpencil_selection_edit_pie(Menu):
+    bl_label = "Selection"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        props = pie.operator("gpencil.select_all", text="Invert Selection")
+        props.action = 'INVERT'
+        props = pie.operator("gpencil.select_all", text="Deselect All")
+        props.action = 'DESELECT'
+        props = pie.operator("gpencil.select_less", text="Select Less")
+        props = pie.operator("gpencil.select_more", text="Select More")
+
+
 class VIEW3D_MT_sculpt_automasking_pie(Menu):
     bl_label = "Automasking"
 
@@ -8424,6 +8507,11 @@ classes = (
     VIEW3D_MT_orientations_pie,
     VIEW3D_MT_proportional_editing_falloff_pie,
     VIEW3D_MT_sculpt_mask_edit_pie,
+    VIEW3D_MT_vert_selection_edit_pie,
+    VIEW3D_MT_face_selection_edit_pie,
+    VIEW3D_MT_weight_vert_selection_edit_pie,
+    VIEW3D_MT_weight_face_selection_edit_pie,
+    VIEW3D_MT_gpencil_selection_edit_pie,
     VIEW3D_MT_sculpt_automasking_pie,
     VIEW3D_MT_sculpt_gpencil_automasking_pie,
     VIEW3D_MT_wpaint_vgroup_lock_pie,

@@ -3601,8 +3601,6 @@ def km_grease_pencil(params):
 
 def _grease_pencil_selection(params, *, use_select_mouse=True):
     return [
-        # Select all
-        *_template_items_select_actions(params, "gpencil.select_all"),
         # Circle select
         op_tool_optional(
             ("gpencil.select_circle", {"type": 'C', "value": 'PRESS'}, None),
@@ -3671,6 +3669,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Selection
         *_grease_pencil_selection(params),
+        *_template_items_select_actions(params, "gpencil.select_all"),
         # Duplicate and move selected points
         ("gpencil.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         # Extrude and move selected points
@@ -3994,8 +3993,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
 
     items.extend([
         # Selection
-        *_grease_pencil_selection(params, use_select_mouse=(not params.use_fallback_tool_select_mouse)),
-
+        op_menu_pie("VIEW3D_MT_gpencil_selection_edit_pie", {"type": 'A', "value": 'PRESS'}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.strength')]}),
@@ -4343,7 +4341,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
 
     items.extend([
         # Selection
-        *_grease_pencil_selection(params, use_select_mouse=(not params.use_fallback_tool_select_mouse)),
+        op_menu_pie("VIEW3D_MT_gpencil_selection_edit_pie", {"type": 'A', "value": 'PRESS'}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [
@@ -4531,7 +4529,7 @@ def km_face_mask(params):
     )
 
     items.extend([
-        *_template_items_select_actions(params, "paint.face_select_all"),
+        op_menu_pie("VIEW3D_MT_face_selection_edit_pie", {"type": 'A', "value": 'PRESS'}),
         *_template_items_hide_reveal_actions("paint.face_select_hide", "paint.face_vert_reveal"),
         ("paint.face_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("paint.face_select_linked_pick", {"type": 'L', "value": 'PRESS'},
@@ -4560,7 +4558,7 @@ def km_weight_paint_vertex_selection(params):
     )
 
     items.extend([
-        *_template_items_select_actions(params, "paint.vert_select_all"),
+        op_menu_pie("VIEW3D_MT_vert_selection_edit_pie", {"type": 'A', "value": 'PRESS'}),
         *_template_items_hide_reveal_actions("paint.vert_select_hide", "paint.face_vert_reveal"),
         ("view3d.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("view3d.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
