@@ -125,6 +125,51 @@ ccl_device void osl_closure_translucent_setup(KernelGlobals kg,
   sd->flag |= bsdf_translucent_setup(bsdf);
 }
 
+ccl_device void osl_closure_reflection_setup(KernelGlobals kg,
+                                             ccl_private ShaderData *sd,
+                                             uint32_t path_flag,
+                                             float3 weight,
+                                             ccl_private const ReflectionClosure *closure)
+{
+  if (osl_closure_skip(kg, sd, path_flag, LABEL_SINGULAR)) {
+    return;
+  }
+
+  ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+      sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(weight));
+  if (!bsdf) {
+    return;
+  }
+
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->alpha_x = bsdf->alpha_y = 0.0f;
+
+  sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+}
+
+ccl_device void osl_closure_refraction_setup(KernelGlobals kg,
+                                             ccl_private ShaderData *sd,
+                                             uint32_t path_flag,
+                                             float3 weight,
+                                             ccl_private const RefractionClosure *closure)
+{
+  if (osl_closure_skip(kg, sd, path_flag, LABEL_SINGULAR)) {
+    return;
+  }
+
+  ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+      sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(weight));
+  if (!bsdf) {
+    return;
+  }
+
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->ior = closure->ior;
+  bsdf->alpha_x = bsdf->alpha_y = 0.0f;
+
+  sd->flag |= bsdf_microfacet_ggx_refraction_setup(bsdf);
+}
+
 ccl_device void osl_closure_transparent_setup(KernelGlobals kg,
                                               ccl_private ShaderData *sd,
                                               uint32_t path_flag,
