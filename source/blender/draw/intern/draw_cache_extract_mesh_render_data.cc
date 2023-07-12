@@ -369,10 +369,10 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
       const float(*vert_normals)[3] = nullptr;
       const float(*face_normals)[3] = nullptr;
 
-      if (mr->edit_data && mr->edit_data->vertexCos) {
-        vert_coords = mr->bm_vert_coords;
-        vert_normals = mr->bm_vert_normals;
-        face_normals = mr->bm_face_normals;
+      if (mr->edit_data && !mr->edit_data->vertexCos.is_empty()) {
+        vert_coords = reinterpret_cast<const float(*)[3]>(mr->bm_vert_coords.data());
+        vert_normals = reinterpret_cast<const float(*)[3]>(mr->bm_vert_normals.data());
+        face_normals = reinterpret_cast<const float(*)[3]>(mr->bm_face_normals.data());
       }
 
       mr->loop_normals.reinitialize(mr->loop_len);
@@ -431,8 +431,8 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->hide_unmapped_edges = !do_final || editmesh_eval_final == editmesh_eval_cage;
 
     if (mr->edit_data) {
-      EditMeshData *emd = mr->edit_data;
-      if (emd->vertexCos) {
+      blender::bke::EditMeshData *emd = mr->edit_data;
+      if (!emd->vertexCos.is_empty()) {
         BKE_editmesh_cache_ensure_vert_normals(mr->edit_bmesh, emd);
         BKE_editmesh_cache_ensure_face_normals(mr->edit_bmesh, emd);
       }
@@ -440,7 +440,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
       mr->bm_vert_coords = mr->edit_data->vertexCos;
       mr->bm_vert_normals = mr->edit_data->vertexNos;
       mr->bm_face_normals = mr->edit_data->faceNos;
-      mr->bm_poly_centers = mr->edit_data->faceCos;
+      mr->bm_face_centers = mr->edit_data->faceCos;
     }
 
     int bm_ensure_types = BM_VERT | BM_EDGE | BM_LOOP | BM_FACE;

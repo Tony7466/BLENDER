@@ -4,12 +4,9 @@
 
 set(INC
   ../include
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
 
 )
 
@@ -25,7 +22,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 blender_add_lib(bf_editor_space_userpref "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

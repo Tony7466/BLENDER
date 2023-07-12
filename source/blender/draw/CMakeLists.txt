@@ -7,8 +7,6 @@ set(INC
   intern
 
   ../blenfont
-  ../blenkernel
-  ../blenlib
   ../blenloader
   ../blentranslation
   ../bmesh
@@ -29,7 +27,6 @@ set(INC
   ../windowmanager
 
   ../../../intern/clog
-  ../../../intern/guardedalloc
   ../../../intern/opensubdiv
 
 )
@@ -354,9 +351,10 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
   bf_windowmanager
   PRIVATE bf::intern::atomic
