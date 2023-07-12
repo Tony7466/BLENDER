@@ -79,28 +79,29 @@ static int select_more_less_exec(bContext *C, wmOperator *op)
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
   const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
-  int curve_offset = 0;
-  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  int drawing_index_2d = 0;
+  Curves2DSpace curves_2d;
   if (segment_mode) {
-    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
+    curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
   }
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
         /* In segment mode, store the pre-change point selection. */
-        Vector<bool> selection_before;
+        Array<bool> selection_before;
         if (segment_mode) {
           selection_before = ed::greasepencil::point_selection_get(&drawing);
         }
 
-        blender::ed::curves::select_adjacent(drawing.strokes_for_write(), deselect);
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        blender::ed::curves::select_adjacent(curves, deselect);
 
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
           expand_changed_selection_to_segments(
-              selection_before, drawing.geometry.wrap(), curve_offset, strokes_2d);
+              selection_before, curves, drawing_index_2d, &curves_2d);
         }
-        curve_offset += drawing.geometry.curve_num;
+        drawing_index_2d++;
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -195,10 +196,10 @@ static int select_random_exec(bContext *C, wmOperator *op)
 
   /* In segment mode, we expand a random point selection to segments.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
-  int curve_offset = 0;
-  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  int drawing_index_2d = 0;
+  Curves2DSpace curves_2d;
   if (segment_mode) {
-    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
+    curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
   }
 
   grease_pencil.foreach_editable_drawing(
@@ -208,13 +209,14 @@ static int select_random_exec(bContext *C, wmOperator *op)
         if (segment_mode) {
           /* Set random selection values for each segment on all curves. */
           expand_random_selection_to_segments(
-            curves,
-            curve_offset,
-            strokes_2d,
-            blender::get_default_hash_2<int>(seed, drawing_index),
-            ratio);
+              curves,
+              drawing_index_2d,
+              &curves_2d,
+              blender::get_default_hash_2<int>(seed, drawing_index),
+              ratio);
 
-          curve_offset += drawing.geometry.curve_num;
+          drawing_index_2d++;
+        }
         else {
           IndexMaskMemory memory;
           const IndexMask random_elements = ed::curves::random_mask(
@@ -313,10 +315,10 @@ static int select_ends_exec(bContext *C, wmOperator *op)
 
   /* In segment mode, we expand the point selection to segments after the selection has changed.
    * For checking segment intersections, we use strokes converted to viewport 2D space. */
-  int curve_offset = 0;
-  Vector<ed::greasepencil::Stroke2DSpace> strokes_2d;
+  int drawing_index_2d = 0;
+  Curves2DSpace curves_2d;
   if (segment_mode) {
-    strokes_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
+    curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc, &grease_pencil);
   }
 
   grease_pencil.foreach_editable_drawing(
@@ -324,7 +326,7 @@ static int select_ends_exec(bContext *C, wmOperator *op)
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
         /* In segment mode, store the pre-change point selection. */
-        Vector<bool> selection_before;
+        Array<bool> selection_before;
         if (segment_mode) {
           selection_before = ed::greasepencil::point_selection_get(&drawing);
         }
@@ -351,9 +353,9 @@ static int select_ends_exec(bContext *C, wmOperator *op)
         /* In segment mode, expand the changed point selection to segments. */
         if (segment_mode) {
           expand_changed_selection_to_segments(
-              selection_before, drawing.geometry.wrap(), curve_offset, strokes_2d);
+              selection_before, curves, drawing_index_2d, &curves_2d);
         }
-        curve_offset += drawing.geometry.curve_num;
+        drawing_index_2d++;
       });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -455,9 +457,35 @@ static int select_set_mode_exec(bContext *C, wmOperator *op)
       }
 
       changed = true;
-
-      /* TODO: expand point selection to segments when in 'segment' mode. */
     }
+  }
+
+  /* When the new selection mode is 'segment', we expand the point selection to segments. */
+  const bool segment_mode = ED_grease_pencil_segment_selection_mode(C);
+  if (segment_mode) {
+    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    ViewContext vc;
+    Scene *scene = CTX_data_scene(C);
+    ED_view3d_viewcontext_init(C, &vc, depsgraph);
+
+    /* Get viewport 2D representation of editable curves. */
+    int drawing_index_2d = 0;
+    Curves2DSpace curves_2d = ed::greasepencil::editable_strokes_in_2d_space_get(&vc,
+                                                                                 &grease_pencil);
+
+    /* For performance reasons, we only expand the selection of editable curves in the current
+     * frame. */
+    grease_pencil.foreach_editable_drawing(
+        scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
+          bke::CurvesGeometry &curves = drawing.strokes_for_write();
+          Array<bool> selection_before(curves.points_num(), false);
+
+          /* Expand existing point selection to segments. */
+          expand_changed_selection_to_segments(
+              selection_before, curves, drawing_index_2d, &curves_2d);
+          drawing_index_2d++;
+          changed = true;
+        });
   }
 
   if (changed) {
@@ -490,60 +518,59 @@ static void GREASE_PENCIL_OT_set_selection_mode(wmOperatorType *ot)
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
-Vector<bool> point_selection_get(const GreasePencilDrawing *drawing)
+Array<bool> point_selection_get(const GreasePencilDrawing *drawing)
 {
   /* Get point selection in the drawing. */
-  bke::CurvesGeometry curves = drawing->geometry.wrap();
-  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
-  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-
-  /* Copy selection. */
-  Vector<bool> point_selection(selection.span.size());
-  for (const int point_i : selection_typed.index_range()) {
-    point_selection[point_i] = selection_typed[point_i];
+  const bke::CurvesGeometry &curves = drawing->geometry.wrap();
+  const bke::AttributeAccessor attributes = curves.attributes();
+  if (!attributes.contains(".selection")) {
+    return Array<bool>(curves.points_num(), false);
   }
 
-  selection.finish();
+  /* Copy selection. */
+  const VArray<bool> selection = *attributes.lookup(".selection").typed<bool>();
+  Array<bool> point_selection(selection.size());
+  for (const int point_i : selection.index_range()) {
+    point_selection[point_i] = selection[point_i];
+  }
 
   return point_selection;
 }
 
-static int expand_changed_selection_point_to_segment(const int segment_stroke_index,
+static int expand_changed_selection_point_to_segment(const int segment_curve_index,
                                                      const int segment_point_start,
                                                      const IndexRange points,
                                                      MutableSpan<bool> &new_selection,
-                                                     Vector<bool> &stored_selection,
-                                                     const Vector<Stroke2DSpace> &strokes_2d,
+                                                     Array<bool> &old_selection,
+                                                     const Curves2DSpace *curves_2d,
                                                      const bool selection_state,
                                                      const bool is_cyclic)
 {
-  /* Get 2D stroke with segment to expand. */
-  const Stroke2DSpace stroke_2d = strokes_2d[segment_stroke_index];
-  const int index_offset = stroke_2d.first_index;
-
   /* Walk forward and backward along the curve from the point where
    * the selection has changed. We expand the changed selection
    * to the entire segment. */
   int point_abs;
+  int point_cont_offset = curves_2d->point_offset[segment_curve_index] - points.first();
   const int directions[2] = {-1, 1};
+
   for (const int direction : directions) {
     point_abs = segment_point_start;
     bool intersected = false;
     while ((direction == -1 && point_abs > points.first()) ||
            (direction == 1 && point_abs < points.last()))
     {
-      int point_rel = point_abs - index_offset;
+      const int point_cont = point_abs + point_cont_offset;
 
       /* The end of a segment is reached when the vector between the current and
        * next point intersects with an other stroke. */
-      intersected = intersect_segment_strokes_2d(stroke_2d.points[point_rel],
-                                                 stroke_2d.points[point_rel + direction],
-                                                 segment_stroke_index,
-                                                 strokes_2d);
+      intersected = intersect_segment_strokes_2d(curves_2d->points_2d[point_cont],
+                                                 curves_2d->points_2d[point_cont + direction],
+                                                 segment_curve_index,
+                                                 curves_2d);
+
       /* Set selection state. */
       new_selection[point_abs] = selection_state;
-      stored_selection[point_abs] = selection_state;
+      old_selection[point_abs] = selection_state;
 
       /* Intersection found, so stop expanding the segment. */
       if (intersected) {
@@ -566,17 +593,17 @@ static int expand_changed_selection_point_to_segment(const int segment_stroke_in
     /* Handle last point. */
     if (!intersected) {
       new_selection[point_abs] = selection_state;
-      stored_selection[point_abs] = selection_state;
+      old_selection[point_abs] = selection_state;
     }
   }
 
   return point_abs;
 }
 
-void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
+void expand_changed_selection_to_segments(Array<bool> &old_selection,
                                           bke::CurvesGeometry &curves,
-                                          const int curve_offset,
-                                          const Vector<Stroke2DSpace> &strokes_2d)
+                                          const int drawing_index_2d,
+                                          const Curves2DSpace *curves_2d)
 {
   /* Compare the new point selection with the stored selection and expand the changed points to
    * segments.
@@ -594,13 +621,14 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
 
     for (int point_i = points.first(); point_i <= points.last(); point_i++) {
       /* Expand to segment when selection is changed. */
-      if (stored_selection[point_i] != new_selection[point_i]) {
-        expand_changed_selection_point_to_segment(curve_i + curve_offset,
+      if (old_selection[point_i] != new_selection[point_i]) {
+        expand_changed_selection_point_to_segment(curve_i +
+                                                      curves_2d->curve_offset[drawing_index_2d],
                                                   point_i,
                                                   points,
                                                   new_selection,
-                                                  stored_selection,
-                                                  strokes_2d,
+                                                  old_selection,
+                                                  curves_2d,
                                                   new_selection[point_i],
                                                   cyclic[curve_i]);
       }
@@ -611,8 +639,8 @@ void expand_changed_selection_to_segments(Vector<bool> &stored_selection,
 }
 
 void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
-                                         const int curve_offset,
-                                         const Vector<Stroke2DSpace> &strokes_2d,
+                                         const int drawing_index_2d,
+                                         const Curves2DSpace *curves_2d,
                                          const uint32_t random_seed,
                                          const float probability)
 {
@@ -627,7 +655,7 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   MutableSpan<bool> new_selection = selection.span.typed<bool>();
-  Vector<bool> stored_selection = Vector<bool>(selection.span.size());
+  Array<bool> old_selection = Array<bool>(selection.span.size());
 
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i];
@@ -638,14 +666,15 @@ void expand_random_selection_to_segments(bke::CurvesGeometry &curves,
       /* Pick random selection value. */
       const bool random_value = next_bool_random_value();
 
-      point_i = expand_changed_selection_point_to_segment(curve_i + curve_offset,
-                                                          point_i,
-                                                          points,
-                                                          new_selection,
-                                                          stored_selection,
-                                                          strokes_2d,
-                                                          random_value,
-                                                          cyclic[curve_i]);
+      point_i = expand_changed_selection_point_to_segment(
+          curve_i + curves_2d->curve_offset[drawing_index_2d],
+          point_i,
+          points,
+          new_selection,
+          old_selection,
+          curves_2d,
+          random_value,
+          cyclic[curve_i]);
       point_i++;
     }
   }

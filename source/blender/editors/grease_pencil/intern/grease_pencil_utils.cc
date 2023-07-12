@@ -18,74 +18,88 @@
 
 namespace blender::ed::greasepencil {
 
-Vector<Stroke2DSpace> editable_strokes_in_2d_space_get(ViewContext *vc,
-                                                       GreasePencil *grease_pencil)
+Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, GreasePencil *grease_pencil)
 {
-  /* Count total number of editable strokes in grease pencil object. */
-  int stroke_count = 0;
-  grease_pencil->foreach_editable_drawing(
-      vc->scene->r.cfra, [&](int /*drawing_index*/, GreasePencilDrawing &drawing) {
-        stroke_count += drawing.geometry.curve_num;
-      });
-
-  /* Create vector for strokes converted to 2D space. */
-  Vector<Stroke2DSpace> strokes_2d(stroke_count);
-
   /* Get viewport projection matrix and evaluated GP object. */
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc->rv3d, vc->obact, projection.ptr());
-
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
                                                    const_cast<Object *>(vc->obedit));
 
+  /* Count total number of editable curves and points in grease pencil object. */
+  Curves2DSpace cv2d;
+  Vector<GreasePencilDrawing *> drawings;
+  Vector<int> drawing_indices;
+  Vector<int> curve_point_offset;
+  int drawing_num = 0, curve_num = 0, point_num = 0;
+
+  grease_pencil->foreach_editable_drawing(vc->scene->r.cfra,
+                                          [&](int drawing_index, GreasePencilDrawing &drawing) {
+                                            cv2d.curve_offset.append(curve_num);
+                                            curve_point_offset.append(point_num);
+                                            drawings.append(&drawing);
+                                            drawing_indices.append(drawing_index);
+
+                                            drawing_num++;
+                                            curve_num += drawing.geometry.curve_num;
+                                            point_num += drawing.geometry.point_num;
+                                          });
+
+  /* Initialize the contiguous arrays for the 2D curve data. */
+  cv2d.point_offset = Array<int>(curve_num);
+  cv2d.point_size = Array<int>(curve_num);
+  cv2d.curve_bbox = Array<rctf>(curve_num);
+  cv2d.points_2d = Array<float2>(point_num);
+
   /* Loop all drawings. */
-  int curve_offset = 0;
-  grease_pencil->foreach_editable_drawing(
-      vc->scene->r.cfra, [&](int drawing_index, GreasePencilDrawing &drawing) {
-        /* Get deformed geomtry. */
-        const bke::CurvesGeometry curves = drawing.geometry.wrap();
-        const OffsetIndices points_by_curve = curves.points_by_curve();
-        const bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *vc->obedit, drawing_index);
+  threading::parallel_for(drawings.index_range(), 1, [&](const IndexRange range) {
+    for (const int drawing_i : range) {
+      /* Get deformed geomtry. */
+      const bke::CurvesGeometry &curves = drawings[drawing_i]->geometry.wrap();
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      const bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *vc->obedit, drawing_indices[drawing_i]);
 
-        /* Loop all strokes (curves). */
-        threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-          for (const int curve_i : range) {
-            const int stroke_i = curve_i + curve_offset;
-            const IndexRange points = points_by_curve[curve_i];
-            strokes_2d[stroke_i] = Stroke2DSpace();
+      /* Get the initial point index in the 2D point array for curves in this drawing. */
+      int point_cont = curve_point_offset[drawing_i];
 
-            BLI_rctf_init_minmax(&strokes_2d[stroke_i].bbox);
-            strokes_2d[stroke_i].first_index = points.first();
+      /* Loop all curves. */
+      for (const int curve_i : curves.curves_range()) {
+        const int cv_cont = curve_i + cv2d.curve_offset[drawing_i];
+        const IndexRange points = points_by_curve[curve_i];
 
-            /* Loop all stroke points. */
-            for (int point_i = points.first(); point_i <= points.last(); point_i++) {
-              float2 pos;
+        BLI_rctf_init_minmax(&cv2d.curve_bbox[cv_cont]);
+        cv2d.point_size[cv_cont] = points.size();
+        cv2d.point_offset[cv_cont] = point_cont;
 
-              /* Convert point to 2D. */
-              ED_view3d_project_float_v2_m4(
-                  vc->region, deformation.positions[point_i], pos, projection.ptr());
+        /* Loop all stroke points. */
+        for (int point_i = points.first(); point_i <= points.last(); point_i++) {
+          float2 pos;
 
-              /* Store 2D point. */
-              strokes_2d[stroke_i].points.append(pos);
+          /* Convert point to 2D. */
+          ED_view3d_project_float_v2_m4(
+              vc->region, deformation.positions[point_i], pos, projection.ptr());
 
-              /* Update stroke bounding box. */
-              BLI_rctf_do_minmax_v(&strokes_2d[stroke_i].bbox, pos);
-            }
-          }
-        });
+          /* Store 2D point in contiguous array. */
+          cv2d.points_2d[point_cont] = pos;
 
-        curve_offset += drawing.geometry.curve_num;
-      });
+          /* Update stroke bounding box. */
+          BLI_rctf_do_minmax_v(&cv2d.curve_bbox[cv_cont], pos);
 
-  return strokes_2d;
+          point_cont++;
+        }
+      }
+    }
+  });
+
+  return cv2d;
 }
 
 bool intersect_segment_strokes_2d(const float2 segment_start,
                                   const float2 segment_end,
-                                  const int segment_stroke_index,
-                                  const Vector<Stroke2DSpace> &strokes_2d)
+                                  const int segment_curve_index,
+                                  const Curves2DSpace *curves_2d)
 {
   /* Create bounding box around the segment. */
   rctf bbox_sel;
@@ -94,48 +108,50 @@ bool intersect_segment_strokes_2d(const float2 segment_start,
   BLI_rctf_do_minmax_v(&bbox_sel, segment_end);
 
   /* Loop all strokes, looking for an intersecting segment. */
-  std::atomic<bool> intersect = false;
-  threading::parallel_for(strokes_2d.index_range(), 256, [&](const IndexRange range) {
-    for (const int stroke_i : range) {
-      /* Abort when intersection is found. */
-      if (intersect) {
-        break;
-      }
-
-      /* Do a quick bounding box check first. When the bounding box of a stroke doesn't
-       * intersect with the segment, non of the stroke segments do. */
-      Stroke2DSpace stroke_isect = strokes_2d[stroke_i];
-      if (!BLI_rctf_isect(&bbox_sel, &stroke_isect.bbox, nullptr)) {
-        continue;
-      }
-
-      /* Test for intersecting stroke segments. */
-      for (const int point_i : IndexRange(strokes_2d[stroke_i].points.size() - 1)) {
-        /* Don't self check. */
-        if (stroke_i == segment_stroke_index) {
-          if (segment_start == stroke_isect.points[point_i] ||
-              segment_start == stroke_isect.points[point_i + 1] ||
-              segment_end == stroke_isect.points[point_i] ||
-              segment_end == stroke_isect.points[point_i + 1])
-          {
+  return threading::parallel_reduce(
+      curves_2d->point_offset.index_range(),
+      256,
+      false,
+      [&](const IndexRange range, const bool init) {
+        if (init) {
+          return init;
+        }
+        for (const int curve_i : range) {
+          /* Do a quick bounding box check first. When the bounding box of a stroke doesn't
+           * intersect with the segment, none of the stroke segments do. */
+          if (!BLI_rctf_isect(&bbox_sel, &curves_2d->curve_bbox[curve_i], nullptr)) {
             continue;
+          }
+
+          /* Test for intersecting stroke segments. */
+          for (const int point_i :
+               IndexRange(curves_2d->point_offset[curve_i], curves_2d->point_size[curve_i] - 1))
+          {
+            /* Don't self check. */
+            if (curve_i == segment_curve_index) {
+              if (segment_start == curves_2d->points_2d[point_i] ||
+                  segment_start == curves_2d->points_2d[point_i + 1] ||
+                  segment_end == curves_2d->points_2d[point_i] ||
+                  segment_end == curves_2d->points_2d[point_i + 1])
+              {
+                continue;
+              }
+            }
+
+            auto isect = math::isect_seg_seg(curves_2d->points_2d[point_i],
+                                             curves_2d->points_2d[point_i + 1],
+                                             segment_start,
+                                             segment_end);
+
+            if (isect.kind == isect.LINE_LINE_CROSS) {
+              return true;
+            }
           }
         }
 
-        auto isect = math::isect_seg_seg(stroke_isect.points[point_i],
-                                         stroke_isect.points[point_i + 1],
-                                         segment_start,
-                                         segment_end);
-
-        if (isect.kind == isect.LINE_LINE_CROSS) {
-          intersect = true;
-          break;
-        }
-      }
-    }
-  });
-
-  return intersect;
+        return false;
+      },
+      [&](const bool a, const bool b) { return a || b; });
 }
 
 }  // namespace blender::ed::greasepencil
