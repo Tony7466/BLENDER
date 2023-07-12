@@ -48,8 +48,7 @@ void init_globals_curves()
 #  ifdef EEVEE_SAMPLING_DATA
     /* Needs to check for SAMPLING_DATA,
      * otherwise Surfel and World (?!?!) shader validation fails. */
-    /* TODO (Miguel Pozo): Use its own sampling sequence.  */
-    noise = fract(noise + sampling_rng_1D_get(SAMPLING_AO_U));
+    noise = fract(noise + sampling_rng_1D_get(SAMPLING_CURVES_U));
 #  endif
     cos_theta = noise * 2.0 - 1.0;
   }
