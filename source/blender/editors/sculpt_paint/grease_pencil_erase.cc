@@ -160,7 +160,7 @@ struct EraseOperationExecutor {
     /* Check if points are inside the eraser */
     Array<bool> is_point_inside(src_points_num, false);
     int point_inside_count = 0;
-    for (int point_index = 0; point_index < src_points_num - 1; point_index++) {
+    for (int point_index = 0; point_index < src_points_num; point_index++) {
       const float2 pos_view = screen_space_positions[point_index];
       is_point_inside[point_index] = (len_squared_v2v2(pos_view, mouse_position) <=
                                       eraser_radius * eraser_radius);
