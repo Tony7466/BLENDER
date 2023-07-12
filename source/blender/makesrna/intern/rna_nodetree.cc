@@ -10115,45 +10115,13 @@ static void def_fn_random_value(StructRNA *srna)
 
 static void def_fn_easing(StructRNA *srna)
 {
-  static const EnumPropertyItem rna_enum_node_easing_direction_items[] = {
-      {NODE_EASING_DIRECTION_IN, "IN", 0, "In", "The easing is calculated in a forward direction"},
-      {NODE_EASING_DIRECTION_OUT,
-       "OUT",
-       0,
-       "Out",
-       "The easing is calculated in a reverse direction"},
-      {NODE_EASING_DIRECTION_IN_OUT,
-       "IN_OUT",
-       0,
-       "In Out",
-       "The easing is calculated halfway in a forward direction and then halfway in a reverse "
-       "direction"},
-      {NODE_EASING_DIRECTION_OUT_IN,
-       "OUT_INT",
-       0,
-       "Out In",
-       "The easing is calculated halfway in a reverse direction and then halfway in a forward "
-       "direction"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   static const EnumPropertyItem rna_enum_node_easing_items[] = {
-      {0,
-       "",
-       0,
-       N_("Easing (by strength)"),
-       "Predefined fixed inertial transitions, useful for motion graphics (from least to most "
-       "''dramatic'')"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Easing (by strength)"), nullptr),
       {NODE_EASING_LINEAR,
        "LINEAR",
        ICON_IPO_LINEAR,
        "Linear",
-       "Straight-line interpolation between Start and End (i.e. no ease in/out)"},
-      {NODE_EASING_SMOOTHSTEP,
-       "SMOOTHSTEP",
-       ICON_IPO_BEZIER,
-       "Smoothstep",
-       "Smoothtep ease in and out"},
+       "Straight-line interpolation from 0-1 via point P1"},
       {NODE_EASING_SINE,
        "SINE",
        ICON_IPO_SINE,
@@ -10164,12 +10132,24 @@ static void def_fn_easing(StructRNA *srna)
       {NODE_EASING_QUART, "QUART", ICON_IPO_QUART, "Quartic", "Quartic easing"},
       {NODE_EASING_QUINT, "QUINT", ICON_IPO_QUINT, "Quintic", "Quintic easing"},
       {NODE_EASING_EXPO, "EXPO", ICON_IPO_EXPO, "Exponential", "Exponential easing (dramatic)"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Dynamic Effects"), nullptr),
+      {NODE_EASING_VARIABLE,
+       "VARIABLE",
+       ICON_IPO_EXPO,
+       "Variable",
+       "Easing controlled by variable power curve"},
       {NODE_EASING_CIRC,
        "CIRC",
        ICON_IPO_CIRC,
        "Circular",
-       "Circular easing (strongest and most dynamic)"},
-      {0, "", 0, N_("Dynamic Curves"), "Easing curves with additional controls"},
+       "Circular easing with adjustable radius size"},
+      {NODE_EASING_BIAS, "BIAS", ICON_IPO_BEZIER, "Bias/Gain", "Adjustable Bias/Gain curve"},
+      {NODE_EASING_CUBIC_BEZIER,
+       "BEZIER",
+       ICON_IPO_BEZIER,
+       "Cubic Bezier",
+       "Easing controlled by cubic bezier curve with adjustable handle positions"},
+      RNA_ENUM_ITEM_SEPR,
       {NODE_EASING_BACK, "BACK", ICON_IPO_BACK, "Back", "Cubic easing with overshoot and settle"},
       {NODE_EASING_BOUNCE,
        "BOUNCE",
@@ -10180,27 +10160,13 @@ static void def_fn_easing(StructRNA *srna)
        "ELASTIC",
        ICON_IPO_ELASTIC,
        "Elastic",
-       "Exponentially decaying sine wave, like an elastic band"},
-      {NODE_EASING_POWER, "POWER", ICON_IPO_EXPO, "Power", "Power curve with adjustable exponent"},
-      {NODE_EASING_DYNAMIC_CIRC,
-       "DYNAMIC_CIRC",
-       ICON_IPO_CIRC,
-       "Dynamic Circular",
-       "Dynamic circular easing"},
-      RNA_ENUM_ITEM_SEPR,
-      {NODE_EASING_BIAS, "BIAS", ICON_IPO_BEZIER, "Bias", "Bias curve"},
-      {NODE_EASING_GAIN, "GAIN", ICON_IPO_BEZIER, "Gain", "Gain curve"},
-      {NODE_EASING_CUBIC_BEZIER,
-       "BEZIER",
-       ICON_IPO_BEZIER,
-       "Cubic Bezier",
-       "Easing controlled by cubic bezier curve with adjustable handle positions"},
-      {NODE_EASING_SLOPE,
-       "SLOPE",
-       ICON_IPO_BEZIER,
-       "Slope",
-       "Easing with configurable slope and position"},
-      {0, "", 0, N_("Periodic Curves"), "Periodic curves with additional controls"},
+       "Exponentially decaying wave, like an elastic band"},
+      {NODE_EASING_SPRING,
+       "SPRING",
+       ICON_IPO_ELASTIC,
+       "Spring",
+       "Exponentially decaying wave, like a spring"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Periodic Effects"), nullptr),
       {NODE_EASING_SAWTOOTH,
        "SAWTOOTH",
        ICON_IPO_BEZIER,
@@ -10216,24 +10182,20 @@ static void def_fn_easing(StructRNA *srna)
        ICON_IPO_CONSTANT,
        "Square",
        "Square wave pattern with frequency and pulse width control"},
-      {NODE_EASING_SINUS,
+      {NODE_EASING_SINEWAVE,
        "SINUS",
        ICON_IPO_SINE,
        "Sinus",
        "Sinus pattern with frequency and width control"},
       {NODE_EASING_STEPS, "STEPS", ICON_IPO_CONSTANT, "Steps", "Stepped easing"},
+      RNA_ENUM_ITEM_SEPR,
+      {NODE_EASING_END, "TEST", ICON_IPO_BEZIER, "TEST", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeEasing", "storage");
-
-  prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "direction");
-  RNA_def_property_enum_items(prop, rna_enum_node_easing_direction_items);
-  RNA_def_property_ui_text(prop, "Easing Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "operation");

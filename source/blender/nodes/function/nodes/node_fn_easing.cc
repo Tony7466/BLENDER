@@ -2,9 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_base_safe.h"
-#include <algorithm>
-
+#include "BLI_easing.h"
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -18,95 +16,62 @@ static void node_easing_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.add_input<decl::Float>("Value").min(-10000.0f).max(10000.0f).is_default_link_socket();
-  b.add_input<decl::Float>("Slope")
+  b.add_input<decl::Float>("Strength")
+      .description("Controls strength of curve shape")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SLOPE; });
-  b.add_input<decl::Float>("Scale")
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_BOUNCE; });
-  b.add_input<decl::Float>("Offset")
-      .default_value(0.25f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SLOPE; });
-  b.add_input<decl::Float>("Steps").default_value(4.0f).min(0.0f).max(64.0f).make_available(
-      [](bNode &node) { node_storage(node).operation = NODE_EASING_STEPS; });
-  b.add_input<decl::Int>("Bounces").default_value(4).min(2).max(16).make_available(
-      [](bNode &node) { node_storage(node).operation = NODE_EASING_BOUNCE; });
-  b.add_input<decl::Float>("Exponent")
-      .default_value(2.0f)
-      .min(0.0f)
-      .max(10.0f)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_POWER; });
-  b.add_input<decl::Float>("Overshoot")
-      .default_value(1.0f)
-      .min(-10000.0f)
-      .max(10000.0f)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_BACK; });
-  b.add_input<decl::Float>("Amplitude").min(0.0f).max(10000.0f).make_available([](bNode &node) {
-    node_storage(node).operation = NODE_EASING_ELASTIC;
-  });
-  b.add_input<decl::Float>("Period").default_value(1.0f).min(0.0f).max(10000.0f).make_available(
-      [](bNode &node) { node_storage(node).operation = NODE_EASING_ELASTIC; });
+      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
   b.add_input<decl::Float>("Frequency")
       .default_value(1.0f)
-      .min(-10000.0f)
-      .max(10000.0f)
+      .min(-25.0f)
+      .max(25.0f)
       .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SAWTOOTH; });
-  b.add_input<decl::Float>("Width")
-      .default_value(1.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SAWTOOTH; });
-  b.add_input<decl::Float>("Pulse Width")
-      .default_value(0.5f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SQUARE; });
-  b.add_input<decl::Float>("A Width")
+  b.add_input<decl::Int>("Count").default_value(4).min(1).max(8).make_available(
+      [](bNode &node) { node_storage(node).operation = NODE_EASING_BOUNCE; });
+  b.add_input<decl::Bool>("Jump Start");
+  b.add_input<decl::Bool>("Jump End");
+  b.add_input<decl::Float>("Point 1 X")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
-  b.add_input<decl::Float>("A Height")
+  b.add_input<decl::Float>("Point 1 Y")
       .default_value(1.0f)
       .min(-2.0f)
       .max(2.0f)
       .subtype(PROP_FACTOR)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
-  b.add_input<decl::Float>("B Width")
+  b.add_input<decl::Float>("Point 2 X")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
-  b.add_input<decl::Float>("B Height")
+  b.add_input<decl::Float>("Point 2 Y")
       .min(-2.0f)
       .max(2.0f)
       .subtype(PROP_FACTOR)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
-  b.add_input<decl::Bool>("Ease Out").description("Change and flip direction from In to Out");
-  b.add_input<decl::Bool>("In & Out")
-      .description("Use both In and Out. Reversed if Out is selected");
-  b.add_input<decl::Bool>("Reverse Input").description("Invert input value");
+  b.add_input<decl::Float>("Inflection")
+      .description("Inflection point for In-Out/Out-In transition")
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR)
+      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
+  b.add_input<decl::Bool>("Invert").description("Change easing direction from In-Out to Out-In");
   b.add_input<decl::Float>("Mirror")
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .description("Mirror input value at this input position");
+      .description("Mirror input at this position");
   b.add_output<decl::Float>("Value");
 };
 
@@ -117,74 +82,81 @@ static void node_easing_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *p
 
 static void node_easing_update(bNodeTree *ntree, bNode *node)
 {
-  const NodeEasing *data = (NodeEasing *)node->storage;
-  NodeEasingOperation operation = (NodeEasingOperation)data->operation;
+  const NodeEasing &storage = node_storage(*node);
+  const NodeEasingOperation operation = static_cast<NodeEasingOperation>(storage.operation);
 
   int sock = 0;
 
   sock++;
-  bNodeSocket *sockSlope = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockScale = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockOffset = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockSteps = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockBounces = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockExponent = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockOvershoot = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockAmplitude = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockPeriod = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockStrength = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
   bNodeSocket *sockFrequency = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockWidth = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockPulseWidth = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockAWidth = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockAHeight = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockBWidth = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockBHeight = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockEaseOut = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
-  bNodeSocket *sockEaseInAndOut = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockCount = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockJumpStart = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockJumpEnd = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockP1X = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockP1Y = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockP2X = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockP2Y = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockInflection = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
+  bNodeSocket *sockInvert = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
 
-  const bool use_slope = ELEM(operation, NODE_EASING_SLOPE, NODE_EASING_BIAS, NODE_EASING_GAIN);
-  const bool use_offset = ELEM(operation, NODE_EASING_SLOPE, NODE_EASING_DYNAMIC_CIRC);
+  const bool use_step_control = ELEM(operation, NODE_EASING_STEPS);
+  const bool use_strength = ELEM(operation,
+                                 NODE_EASING_ELASTIC,
+                                 NODE_EASING_BACK,
+                                 NODE_EASING_VARIABLE,
+                                 NODE_EASING_BOUNCE,
+                                 NODE_EASING_BIAS,
+                                 NODE_EASING_SPRING,
+                                 NODE_EASING_SQUARE,
+                                 NODE_EASING_CIRC);
+  const bool use_inout_controls = ELEM(operation,
+                                       NODE_EASING_CUBIC,
+                                       NODE_EASING_QUAD,
+                                       NODE_EASING_QUART,
+                                       NODE_EASING_QUINT,
+                                       NODE_EASING_SINE,
+                                       NODE_EASING_EXPO,
+                                       NODE_EASING_CIRC,
+                                       NODE_EASING_SPRING,
+                                       NODE_EASING_BOUNCE,
+                                       NODE_EASING_BACK,
+                                       NODE_EASING_ELASTIC,
+                                       NODE_EASING_VARIABLE,
+                                       NODE_EASING_BIAS);
   const bool use_handles = ELEM(operation, NODE_EASING_CUBIC_BEZIER);
-  const bool use_ease_direction_controls = ELEM(operation,
-                                                NODE_EASING_CIRC,
-                                                NODE_EASING_CUBIC,
-                                                NODE_EASING_EXPO,
-                                                NODE_EASING_QUAD,
-                                                NODE_EASING_QUART,
-                                                NODE_EASING_QUINT,
-                                                NODE_EASING_SINE,
-                                                NODE_EASING_DYNAMIC_CIRC,
-                                                NODE_EASING_BOUNCE,
-                                                NODE_EASING_BACK,
-                                                NODE_EASING_ELASTIC,
-                                                NODE_EASING_POWER);
   const bool use_frequency = ELEM(operation,
+                                  NODE_EASING_ELASTIC,
+                                  NODE_EASING_STEPS,
                                   NODE_EASING_SAWTOOTH,
                                   NODE_EASING_TRIANGLE,
                                   NODE_EASING_SQUARE,
-                                  NODE_EASING_SINUS);
-  const bool use_width = ELEM(
-      operation, NODE_EASING_SAWTOOTH, NODE_EASING_TRIANGLE, NODE_EASING_SINUS);
-  const bool use_pulse_width = ELEM(operation, NODE_EASING_SQUARE);
+                                  NODE_EASING_SINEWAVE);
+  const bool use_test = operation == NODE_EASING_END;
 
-  bke::nodeSetSocketAvailability(ntree, sockEaseOut, use_ease_direction_controls);
-  bke::nodeSetSocketAvailability(ntree, sockEaseInAndOut, use_ease_direction_controls);
-  bke::nodeSetSocketAvailability(ntree, sockSlope, use_slope);
-  bke::nodeSetSocketAvailability(ntree, sockScale, operation == NODE_EASING_BOUNCE);
-  bke::nodeSetSocketAvailability(ntree, sockOffset, use_offset);
-  bke::nodeSetSocketAvailability(ntree, sockSteps, operation == NODE_EASING_STEPS);
-  bke::nodeSetSocketAvailability(ntree, sockBounces, operation == NODE_EASING_BOUNCE);
-  bke::nodeSetSocketAvailability(ntree, sockExponent, operation == NODE_EASING_POWER);
-  bke::nodeSetSocketAvailability(ntree, sockOvershoot, operation == NODE_EASING_BACK);
-  bke::nodeSetSocketAvailability(ntree, sockAmplitude, operation == NODE_EASING_ELASTIC);
-  bke::nodeSetSocketAvailability(ntree, sockPeriod, operation == NODE_EASING_ELASTIC);
+  bke::nodeSetSocketAvailability(ntree, sockInflection, use_inout_controls || use_test);
+  bke::nodeSetSocketAvailability(ntree, sockInvert, use_inout_controls || use_test);
+  bke::nodeSetSocketAvailability(ntree, sockStrength, use_strength || use_test);
+  bke::nodeSetSocketAvailability(ntree, sockCount, operation == NODE_EASING_BOUNCE || use_test);
   bke::nodeSetSocketAvailability(ntree, sockFrequency, use_frequency);
-  bke::nodeSetSocketAvailability(ntree, sockWidth, use_width);
-  bke::nodeSetSocketAvailability(ntree, sockPulseWidth, use_pulse_width);
-  bke::nodeSetSocketAvailability(ntree, sockAWidth, use_handles);
-  bke::nodeSetSocketAvailability(ntree, sockAHeight, use_handles);
-  bke::nodeSetSocketAvailability(ntree, sockBWidth, use_handles);
-  bke::nodeSetSocketAvailability(ntree, sockBHeight, use_handles);
+  bke::nodeSetSocketAvailability(ntree, sockJumpStart, use_step_control);
+  bke::nodeSetSocketAvailability(ntree, sockJumpEnd, use_step_control);
+  bke::nodeSetSocketAvailability(ntree, sockP1X, use_handles || operation == NODE_EASING_LINEAR);
+  bke::nodeSetSocketAvailability(ntree, sockP1Y, use_handles || operation == NODE_EASING_LINEAR);
+  bke::nodeSetSocketAvailability(ntree, sockP2X, use_handles);
+  bke::nodeSetSocketAvailability(ntree, sockP2Y, use_handles);
+
+  switch (operation) {
+    case NODE_EASING_SQUARE:
+      node_sock_label(sockStrength, "Pulse Width");
+      break;
+    case NODE_EASING_BACK:
+      node_sock_label(sockStrength, "Overshoot");
+      break;
+    default:
+      node_sock_label_clear(sockStrength);
+      break;
+  }
 }
 
 static void node_easing_init(bNodeTree * /*tree*/, bNode *node)
@@ -194,116 +166,72 @@ static void node_easing_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-/* Local functions. */
-static int set_direction(const bool out, const bool inout)
-{
-  if (inout) {
-    return out ? NODE_EASING_DIRECTION_OUT_IN : NODE_EASING_DIRECTION_IN_OUT;
-  }
-  return out ? NODE_EASING_DIRECTION_OUT : NODE_EASING_DIRECTION_IN;
-}
-
-static float clamp_range(const float value, const float a, const float b)
-{
-  return (a < b) ? math::clamp(value, a, b) : math::clamp(value, b, a);
-}
-
-/* Compatible with glsl and osl mod() with negative numbers. */
-static float safe_mod(float a, float b)
-{
-  return (b != 0.0f) ? a - b * math::floor(a / b) : 0.0f;
-}
-
-static float mirror_input(const float p, const float m)
+static float mirror_input(const float t, const float m)
 {
   if (m <= 0.0f) {
-    return p;
+    return t;
   }
   if (m >= 1.0f) {
-    return 1.0f - p;
+    return 1.0f - t;
   }
 
   const float mr = 1.0f - m;
-  return (p < mr) ? p * (1.0f / mr) : 1.0f - (p - mr) * (1.0f / (1.0f - mr));
+  return (t < mr) ? t * (1.0f / mr) : 1.0f - (t - mr) * (1.0f / m);
 }
 
-static float periodic_width(const float p, const float w)
+/* Clamp and mirror input. */
+static float process_input(const float t, const float m)
 {
-  if (w <= 0.0f) {
-    return 0.0f;
-  }
-
-  if (w >= 1.0f) {
-    return p;
-  }
-
-  return (p < w) ? p * (1.0f / w) : 0.0f;
+  return mirror_input(math::clamp(t, 0.0f, 1.0f), m);
 }
 
-static float map(
-    const float value, const float min1, const float max1, const float min2, const float max2)
+static float map(const float value,
+                 const float from_min,
+                 const float from_max,
+                 const float to_min,
+                 const float to_max)
 {
-  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
-}
-
-static float pre_map_input(const int direction, const float x)
-{
-  switch (direction) {
-    case NODE_EASING_DIRECTION_IN: {
-      return 1.0f - x;
-    }
-    case NODE_EASING_DIRECTION_OUT: {
-      return x;
-    }
-    case NODE_EASING_DIRECTION_IN_OUT: {
-      if (x <= 0.5f) {
-        return 1.0f - x * 2.0f;
-      }
-      return x * 2.0f - 1.0f;
-    }
-    case NODE_EASING_DIRECTION_OUT_IN: {
-      if (x <= 0.5f) {
-        return x * 2.0f;
-      }
-      return 2.0f - x * 2.0f;
-    }
-  }
-  BLI_assert_unreachable();
-  return 0.0f;
-}
-
-static float post_map_output(const int direction, const float x, const float t)
-{
-  switch (direction) {
-    case NODE_EASING_DIRECTION_IN: {
-      return 1.0f - t;
-    }
-    case NODE_EASING_DIRECTION_OUT: {
-      return t;
-    }
-    case NODE_EASING_DIRECTION_IN_OUT: {
-      if (x <= 0.5f) {
-        return (1.0f - t) * 0.5f;
-      }
-      return t * 0.5f + 0.5f;
-    }
-    case NODE_EASING_DIRECTION_OUT_IN: {
-      if (x <= 0.5f) {
-        return t * 0.5f;
-      }
-      return (1.0f - t) * 0.5f + 0.5f;
-    }
-  }
-  BLI_assert_unreachable();
-  return 0.0f;
+  const float factor = safe_divide(value - from_min, from_max - from_min);
+  return to_min + factor * (to_max - to_min);
 }
 
 /*
- * UnitBezier, ported from webkit cubic-bezier code.
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
- * Visualizer for unit bezier: https://cubic-bezier.com/
+ * UnitBezier, ported from webkit cubic-bezier code UnitBezier.h.
+ * https://github.com/WebKit/webkit/blob/main/Source/WebCore/platform/graphics/UnitBezier.h
+ *
+ * This source version has been altered and does not support input values outside [0,1].
+ *
+ * Copyright (C) 2008 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 class UnitBezier {
+
+#define CUBIC_BEZIER_SPLINE_SAMPLES 11
+
+  static constexpr double kBezierEpsilon = 1e-7;
+  static constexpr int kMaxNewtonIterations = 4;
+
  private:
   double ax;
   double bx;
@@ -312,6 +240,8 @@ class UnitBezier {
   double ay;
   double by;
   double cy;
+
+  double spline_samples[CUBIC_BEZIER_SPLINE_SAMPLES];
 
  public:
   UnitBezier(double p1x, double p1y, double p2x, double p2y)
@@ -325,6 +255,10 @@ class UnitBezier {
     cy = 3.0 * p1y;
     by = 3.0 * (p2y - p1y) - cy;
     ay = 1.0 - cy - by;
+
+    double deltaT = 1.0 / (CUBIC_BEZIER_SPLINE_SAMPLES - 1);
+    for (int i = 0; i < CUBIC_BEZIER_SPLINE_SAMPLES; i++)
+      spline_samples[i] = sample_curve_x(i * deltaT);
   }
 
   double sample_curve_x(double t)
@@ -346,49 +280,55 @@ class UnitBezier {
   /* Given an x value, find a parametric value it came from. */
   double solve_curve_x(double x, double epsilon)
   {
-    double t0;
-    double t1;
-    double t2;
-    double x2;
-    double d2;
-    int i;
+    double t0 = 0.0;
+    double t1 = 0.0;
+    double t2 = x;
+    double x2 = 0.0;
+    double d2 = 0.0;
+    int i = 0;
 
-    /* First try a few iterations of Newton's method -- normally very fast. */
-    for (t2 = x, i = 0; i < 8; i++) {
+    /* Linear interpolation of spline curve for initial guess. */
+    double deltaT = 1.0 / (CUBIC_BEZIER_SPLINE_SAMPLES - 1);
+    for (i = 1; i < CUBIC_BEZIER_SPLINE_SAMPLES; i++) {
+      if (x <= spline_samples[i]) {
+        t1 = deltaT * i;
+        t0 = t1 - deltaT;
+        t2 = t0 +
+             (t1 - t0) * (x - spline_samples[i - 1]) / (spline_samples[i] - spline_samples[i - 1]);
+        break;
+      }
+    }
+
+    /* Perform a few iterations of Newton's method -- normally very fast.
+     * See https://en.wikipedia.org/wiki/Newton%27s_method. */
+    double newtonEpsilon = math::min(kBezierEpsilon, epsilon);
+    for (i = 0; i < kMaxNewtonIterations; i++) {
       x2 = sample_curve_x(t2) - x;
-      if (fabs(x2) < epsilon) {
+      if (math::abs(x2) < newtonEpsilon) {
         return t2;
       }
       d2 = sample_curve_derivative_x(t2);
-      if (fabs(d2) < 1e-6)
+      if (math::abs(d2) < newtonEpsilon)
         break;
       t2 = t2 - x2 / d2;
     }
+    if (math::abs(x2) < epsilon)
+      return t2;
 
     /* Fall back to the bisection method for reliability. */
-    t0 = 0.0;
-    t1 = 1.0;
-    t2 = x;
-
-    if (t2 < t0) {
-      return t0;
-    }
-    if (t2 > t1) {
-      return t1;
-    }
-
     while (t0 < t1) {
       x2 = sample_curve_x(t2);
-      if (fabs(x2 - x) < epsilon) {
+      if (math::abs(x2 - x) < epsilon) {
         return t2;
       }
+
       if (x > x2) {
         t0 = t2;
       }
       else {
         t1 = t2;
       }
-      t2 = (t1 - t0) * 0.5 + t0;
+      t2 = (t1 + t0) * 0.5;
     }
 
     /* No result found. */
@@ -401,1144 +341,596 @@ class UnitBezier {
   }
 };
 
-/*
- * Simplified easing functions based on BLI_easing.h.
- * The simplified functions are unit based, designed to work on an input range of [0-1].
- * Only Ease out functions are defined here.
- * E.g. easing_expo_out(float x) vs
- * BLI_easing_expo_ease_out(float time, float begin, float change, float duration)
- * Based on Robert Penner functions, BSD-3-Clause
- * Copyright 2001 Robert Penner. All rights reserved.
- */
+/* Ease functions. */
 
-static float easing_circ_out(const float x)
+/* Ease functions are mostly based on Robert Penner functions,
+ * BSD-3-Clause Copyright 2001 Robert Penner. All rights reserved. */
+
+/* Adapted from Godot spring function, easing_equations.h with strength control.
+ * When strength is 0.5f, the function returns same value as Godot function. */
+static float easing_spring_in(const float t, const float s)
 {
-  float xm = x - 1.0f;
-  return math::sqrt(1.0f - xm * xm);
+  const float dt = 1.0f - t;
+  const float strength = s * 1.5f;
+
+  return 1.0f - (math::sin(dt * float(M_PI) * 2.0f * strength *
+                           (-0.3f + strength + 2.5f * dt * dt * dt)) *
+                     math::pow(t, 2.2f) +
+                 dt) *
+                    (1.0f + (1.2f * t));
 }
 
-static float easing_cubic_out(const float x)
+/* Inspired by CSS steps easing with start and end step controls. */
+static float easing_steps(const float t, const float f, const bool jump_start, const bool jump_end)
 {
-  float xm = x - 1.0f;
-  return (xm * xm * xm + 1.0f);
+  if (t == 0.0f || t == 1.0f) {
+    return t;
+  }
+  const float start = jump_start ? 1.0f : 0.0f;
+  const float end = jump_end ? 1.0f : 0.0f;
+  return math::clamp(math::safe_divide(math::floor(t * (f + end - start) + start), f), 0.0f, 1.0f);
 }
 
-static float easing_expo_out(const float x)
+/* Inspired by CSS linear easing with breakpoint control. */
+static float easing_linear(const float t, const float x, const float y)
 {
-  const float pow_min = 0.0009765625f; /* = 2^(-10) */
-  const float pow_scale = 1.0f / (1.0f - pow_min);
-  return (1.0f - (math::pow(2.0f, -10.0f * x) - pow_min) * pow_scale);
+  if (t <= 0.0f) {
+    return 0.0f;
+  }
+  if (t >= 1.0f) {
+    return 1.0f;
+  }
+  if (x == y) {
+    return t;
+  }
+  if (t < x) {
+    return map(t, 0.0f, x, 0.0f, y);
+  }
+  else {
+    return map(t, x, 1.0f, y, 1.0f);
+  }
 }
 
-static float easing_quad_out(const float x)
-{
-  return -1.0f * x * (x - 2.0f);
-}
-
-static float easing_quart_out(const float x)
-{
-  const float xm = x - 1.0f;
-  return -1.0f * (xm * xm * xm * xm - 1.0f);
-}
-
-static float easing_quint_out(const float x)
-{
-  const float xm = x - 1.0f;
-  return (xm * xm * xm * xm * xm + 1.0f);
-}
-
-static float easing_sine_out(const float x)
-{
-  return math::sin(x * float(M_PI_2));
-}
-
-static float easing_elastic_out(const float t, const float amplitude, const float period)
+/* CSS cubic-bezier easing function. Arguments match CSS order.
+ * Visualizer for unit bezier here: https://cubic-bezier.com/ */
+static float easing_cubic_bezier(
+    const float t, const float p1x, const float p1y, const float p2x, const float p2y)
 {
   if (t == 0.0f || t == 1.0f) {
     return t;
   }
 
-  float x = t;
-  float s;
-  float f = 1.0f;
-  float p = period;
-  float a = amplitude;
+  const float cp1x = math::clamp(p1x, 0.0f, 1.0f);
+  const float cp2x = math::clamp(p2x, 0.0f, 1.0f);
 
-  x = -x;
-  if (!p) {
-    p = 0.3f;
-  }
-
-  a += 1.0f;
-
-  if (!a || a < 1.0f) {
-    s = p / 4.0f;
-    a = 1.0f;
-  }
-  else {
-    s = p / (2.0f * float(M_PI)) * math::asin(1.0f / a);
-  }
-
-  return (f * (a * math::pow(2.0f, 10.0f * x) * math::sin((x - s) * (2.0f * float(M_PI)) / p))) +
-         1.0f;
-}
-
-static float easing_back_out(const float x, const float overshoot)
-{
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-  const float xm = x - 1.0f;
-  return (xm * xm * ((overshoot + 1.0f) * xm + overshoot) + 1.0f);
-}
-
-static float easing_bounce_out(const float t, const float amplitude)
-{
-  float x = t;
-  if (x < (1.0f / 2.75f)) {
-    return (7.5625f * x * x);
-  }
-  const float a = amplitude * 4.0f;
-  if (x < (2.0f / 2.75f)) {
-    x -= (1.5f / 2.75f);
-    x = ((7.5625f * x) * x + 0.75f);
-    return 1.0f - ((1.0f - x) * a);
-  }
-  if (x < (2.5f / 2.75f)) {
-    x -= (2.25f / 2.75f);
-    x = ((7.5625f * x) * x + 0.9375f);
-    return 1.0f - ((1.0f - x) * a);
-  }
-  x -= (2.625f / 2.75f);
-  x = ((7.5625f * x) * x + 0.984375f);
-  return 1.0f - ((1.0f - x) * a);
-}
-
-static float easing_dynamic_bounce_out(const float x, const int bounces, const float amplitude)
-{
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-
-  float t = x;
-  if (bounces == 1) {
-    return easing_bounce_out(t * (1.0f / 2.75f), amplitude);
-  }
-  if (bounces == 2) {
-    return easing_bounce_out(t * (2.0f / 2.75f), amplitude);
-  }
-  if (bounces == 3) {
-    return easing_bounce_out(t * (2.5f / 2.75f), amplitude);
-  }
-  if (bounces == 4) {
-    return easing_bounce_out(t, amplitude);
-  }
-
-  const int extra_bounces = bounces - 4;
-  const float extra = float(extra_bounces);
-  const float w = (2.5f / 2.75f);
-  const float mw = 1.0f - (2.5f / 2.75f);
-  const float emx = (1.0f + mw * extra);
-
-  t = t * emx;
-
-  if (t < 1.0f) {
-    return easing_bounce_out(t, amplitude);
-  }
-  float f = map(t, 1.0f, emx, 0.0f, 1.0f);
-  float s = (extra_bounces > 1) ? math::floor((1.0f - f) * (extra)) / (extra - 1.0f) : 1.0f;
-  s = map(s, 0.0f, 1.0f, 0.1, 0.95f);
-  t = map(math::fract(f * extra), 0.0f, 1.0f, w, 1.0f);
-  t = easing_bounce_out(t, amplitude);
-  return 1.0f - (1.0f - t) * s;
-}
-
-static float easing_power_out(const float x, const float exponent)
-{
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-
-  return safe_powf(x, math::max(exponent, FLT_MIN));
-}
-
-/* Designed to match CSS cubic-bezier function. */
-static float easing_cubic_bezier_out(
-    const float x, const float a0, const float a1, const float b0, const float b1)
-{
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-
-  const float aw = math::clamp(a0, 0.0f, 1.0f);
-  const float bw = math::clamp(b0, 0.0f, 1.0f);
-
-  UnitBezier *bez = new UnitBezier(a0, a1, b0, b1);
-  return float(bez->solve(x, FLT_EPSILON));
+  UnitBezier *bez = new UnitBezier(cp1x, p1y, cp2x, p2y);
+  return float(bez->solve(t, FLT_EPSILON));
 }
 
 /* Schlick bias and gain. */
-static float easing_bias(const float x, const float t)
+static float easing_bias(const float t, const float s)
 {
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-  return (x / ((((1.0f / t) - 2.0f) * (1.0f - x)) + 1.0f));
+  return t / ((((1.0f / math::clamp(s, 0.0f, 1.0f)) - 2.0f) * (1.0f - t)) + 1.0f);
 }
 
-static float easing_gain(const float x, const float t)
+/* Piecewise polynomial. */
+static float easing_variable(const float t, const float s)
 {
-  if (x == 0.0f || x == 1.0f) {
-    return x;
+  if (s <= 0.0f) {
+    return t;
   }
-  else if (x < 0.5f) {
-    return easing_bias(x * 2.0f, t) / 2.0f;
+  if (s >= 1.0f) {
+    return 0.0f;
+  }
+  const float c = math::safe_divide(2.0f, (1.0f - s)) - 1.0f;
+  return math::pow(t, c);
+}
+
+/* Adapted from bounce but with alternating pos/neg bounces. */
+static float easing_whip_in(const float t, const float s)
+{
+  float dt = 1.0f - t;
+  if (dt < (1.0f / 2.75f)) {
+    return 1.0f - (7.5625f * dt * dt);
+  }
+  if (dt < (2.0f / 2.75f)) {
+    dt -= (1.5f / 2.75f);
+    return (1.0f - ((7.5625f * dt) * dt + 0.75f)) * -s * 2.0f;
+  }
+  if (dt < (2.5f / 2.75f)) {
+    dt -= (2.25f / 2.75f);
+    return (1.0f - ((7.5625f * dt) * dt + 0.9375f)) * s * 2.0f;
+  }
+  dt -= (2.625f / 2.75f);
+  return (1.0f - ((7.5625f * dt) * dt + 0.984375f)) * -s * 2.0f;
+}
+
+static float easing_bounce_in(const float t, const float s)
+{
+  float dt = 1.0f - t;
+  if (dt < (1.0f / 2.75f)) {
+    return 1.0f - (7.5625f * dt * dt);
+  }
+  if (dt < (2.0f / 2.75f)) {
+    dt -= (1.5f / 2.75f);
+    return (1.0f - ((7.5625f * dt) * dt + 0.75f)) * s;
+  }
+  if (dt < (2.5f / 2.75f)) {
+    dt -= (2.25f / 2.75f);
+    return (1.0f - ((7.5625f * dt) * dt + 0.9375f)) * s;
+  }
+  dt -= (2.625f / 2.75f);
+  return (1.0f - ((7.5625f * dt) * dt + 0.984375f)) * s;
+}
+
+/* Adapted from Animation Nodes.Copyright(C) 2017 Jacques Lucke.
+ * Output matches classic Penner when s=0.5 and bounces=4. */
+static float easing_dynamic_bounce_in(const float t, const float s, const int bounces)
+{
+  float dt = 1.0f - t;
+
+  static constexpr int MAX_BOUNCE = 8;
+  /* a=2^(bounce-1), b=2^bounce-s^(bounce-2)-1, c=a/b, heights=1/4^i*/
+  static constexpr float cab[MAX_BOUNCE] = {
+      2.0f, 1.0f, 0.8f, 0.72727f, 0.69565f, 0.68085f, 0.67368f, 0.67016f};
+  static constexpr float heights[MAX_BOUNCE] = {
+      1.0f, 0.25f, 0.0625f, 0.01563f, 0.00391f, 0.00098f, 0.00024f, 0.00006f};
+  float widths[MAX_BOUNCE];
+
+  const int bounce_num = math::clamp(bounces, 1, MAX_BOUNCE);
+
+  for (int i = 0; i < bounce_num; i++) {
+    widths[i] = cab[bounce_num - 1] / float(math::pow(2, i));
+  };
+
+  dt += widths[0] / 2.0f;
+  float width = 0.0f;
+  float height = 1.0f;
+  for (int i = 0; i < bounce_num; i++) {
+    width = widths[i];
+    if (dt <= width) {
+      dt /= width;
+      if (i == 0 || s >= 1.0f) {
+        height = 1.0f;
+      }
+      else if (s <= 0.0f) {
+        height = 0.0f;
+      }
+      else {
+        if (s >= 0.5f) {
+          height = 1.0f / math::pow(s, float(i) * -2.0f);
+        }
+        else {
+          height = heights[i] * s * 2.0f;
+        }
+      }
+      break;
+    }
+    dt -= width;
+  }
+  const float z = 4.0f / width * height * dt;
+  return 1.0f - (1.0f - (z - z * dt) * width);
+}
+
+static float easing_elastic_in(const float t, const float strength, const float frequency)
+{
+  if (strength <= 0.0f) {
+    return 0.0f;
+  }
+  const float dt = 1.0f - t;
+  const float amp = math::max(strength * 2.0f, FLT_MIN);
+
+  float s;
+  float fac = 1.0f;
+  const float period = 1.0f / math::max(math::abs(frequency), FLT_MIN) * signf(frequency);
+
+  if (amp < 1.0f) {
+    /* Elastic_blend to prevent sharp falloff -- see elastic_blend easing.c */
+    s = 0.25f * period;
+    const float ts = math::abs(s);
+    fac *= amp;
+
+    if (dt < ts) {
+      const float l = dt / ts;
+      fac = (fac * l) + (1.0f - l);
+    }
   }
   else {
-    return easing_bias(x * 2.0f - 1.0f, 1.0f - t) / 2.0f + 0.5f;
+    s = period / (2.0f * float(M_PI)) * math::asin(1.0f / amp);
+  }
+  return (-fac * (amp * math::pow(2.0f, -10.0f * dt) *
+                  math::sin((dt - s) * (2.0f * float(M_PI)) * frequency)));
+}
+
+static float easing_back_in(const float t, const float strength)
+{
+  const float overshoot = strength * 5.0f;
+  return 1.0f * t * t * ((overshoot + 1.0f) * t - overshoot);
+}
+
+static float easing_circ(const float t, const float s)
+{
+  if (t < s) {
+    return 0.0f;
+  }
+  if (t >= 1.0f) {
+    return 1.0f;
+  }
+  const float r = 1.0f - s;
+  const float ts = t - s;
+  return 1.0f - math::sqrt(r * r - ts * ts) - s;
+}
+
+/* Ease wrapper functions. */
+
+/* Simplified ease in functions are unit based, designed to work on an input range
+ * of [0-1]. Ease out can be obtained by flipping the ease in calculations.
+ * Based on Robert Penner functions, BSD-3-Clause Copyright 2001 Robert Penner.
+ * All rights reserved.
+ */
+static float ease_in(const NodeEasingOperation operation,
+                     const float t,
+                     const float strength,
+                     const float frequency,
+                     const int count,
+                     const float inflection)
+{
+  if (t == 0.0f || t == 1.0f) {
+    return t;
+  }
+
+  switch (operation) {
+    case NODE_EASING_EXPO: {
+      const float pow_min = 0.0009765625f; /* = 2^(-10) */
+      const float pow_scale = 1.0f / (1.0f - pow_min);
+      return (math::pow(2.0f, 10.0f * (t - 1.0f)) - pow_min) * pow_scale;
+    }
+    case NODE_EASING_QUAD: {
+      return t * t;
+    }
+    case NODE_EASING_CUBIC: {
+      return t * t * t;
+    }
+    case NODE_EASING_QUART: {
+      return t * t * t * t;
+    }
+    case NODE_EASING_QUINT: {
+      return t * t * t * t * t;
+    }
+    case NODE_EASING_SINE: {
+      return -math::cos(t * float(M_PI_2)) + 1.0f;
+    }
+    case NODE_EASING_CIRC: {
+      return easing_circ(t, strength);
+    }
+    case NODE_EASING_BIAS: {
+      return easing_bias(t, strength);
+    }
+    case NODE_EASING_SPRING: {
+      return easing_spring_in(t, strength);
+    }
+    case NODE_EASING_BACK: {
+      return easing_back_in(t, strength);
+    }
+    case NODE_EASING_BOUNCE: {
+      return easing_dynamic_bounce_in(t, strength, count);
+    }
+    case NODE_EASING_VARIABLE: {
+      return easing_variable(t, strength);
+    }
+    case NODE_EASING_ELASTIC: {
+      return easing_elastic_in(t, strength, frequency);
+    }
+    default:
+      BLI_assert_unreachable();
+      return 0.0f;
   }
 }
 
-static float easing_dynamic_circ(const float x, const float t)
+static float ease_out(const NodeEasingOperation operation,
+                      const float t,
+                      const float strength,
+                      const float frequency,
+                      const int count,
+                      const float inflection)
 {
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-  else if (x < t) {
-    const float xt = x / t;
-    return (x * t / x) * (1.0f - (math::sqrt(1.0f - xt * xt)));
+  return 1.0f - ease_in(operation, 1.0f - t, strength, frequency, count, inflection);
+}
+
+static float ease_inout(const NodeEasingOperation operation,
+                        const float t,
+                        const float strength,
+                        const float frequency,
+                        const int count,
+                        const float inflection)
+{
+  const float cinflection = math::clamp(inflection, 0.0f, 1.0f);
+  if (t < cinflection) {
+    const float dt = map(t, 0.0f, cinflection, 0.0f, 1.0f);
+    return ease_in(operation, dt, strength, frequency, count, inflection) * cinflection;
   }
   else {
-    const float xm = 1.0f - x;
-    const float tm = 1.0f - t;
-    const float xt = math::safe_divide(xm, tm);
-    return 1.0f - (x * tm / x) * (1.0f - (math::sqrt(1 - xt * xt)));
+    const float dt = map(t, cinflection, 1.0f, 0.0f, 1.0f);
+    return ease_out(operation, dt, strength, frequency, count, inflection) * (1.0f - cinflection) +
+           cinflection;
   }
 }
 
-static float easing_slope_out(const float x, const float s, float offset)
+static float ease_outin(const NodeEasingOperation operation,
+                        const float t,
+                        const float strength,
+                        const float frequency,
+                        const int count,
+                        const float inflection)
 {
-  if (x == 0.0f || x == 1.0f) {
-    return x;
+  const float cinflection = math::clamp(inflection, 0.0f, 1.0f);
+  if (t < cinflection) {
+    const float dt = map(t, 0.0f, cinflection, 0.0f, 1.0f);
+    return ease_out(operation, dt, strength, frequency, count, inflection) * cinflection;
   }
-
-  float slope = 1.0f - s;
-
-  if (slope == 0.0f) {
-    return x;
+  else {
+    const float dt = map(t, cinflection, 1.0f, 0.0f, 1.0f);
+    return ease_in(operation, dt, strength, frequency, count, inflection) * (1.0f - cinflection) +
+           cinflection;
   }
+}
 
-  if (offset == 0.0f && x <= offset) {
+/* Periodic functions. */
+static float node_periodic(const NodeEasingOperation operation,
+                           const float value,
+                           const float frequency,
+                           const float width,
+                           const float mirror)
+{
+  float tf = process_input(value, mirror);
+
+  if (tf <= 0.0f || frequency == 0.0f) {
     return 0.0f;
   }
 
-  slope = math::clamp(slope, 0.0f, 0.999f);
-  offset = math::clamp(offset, 0.0f, 1.0f);
+  tf = tf * frequency - math::floor(tf * frequency);
 
-  const float c = math::safe_divide(2.0f, (1.0f - slope)) - 1.0f;
-  if (x <= offset) {
-    return math::safe_divide(math::pow(x, c), math::pow(offset, c - 1.0f));
+  switch (operation) {
+    case NODE_EASING_SINEWAVE: {
+      return 0.5f - math::cos(2.0f * float(M_PI) * tf) / 2.0f;
+    }
+    case NODE_EASING_TRIANGLE: {
+      return (tf < 0.5f) ? tf * 2.0f : 2.0f - tf * 2.0f;
+    }
+    case NODE_EASING_SAWTOOTH: {
+      if (value >= 1.0f && tf == 0.0f) {
+        return 1.0f;
+      }
+      return tf;
+    }
+    case NODE_EASING_SQUARE: {
+      if (value >= 1.0f && tf == 0.0f) {
+        return 1.0f;
+      }
+      return (tf >= width) ? 0.0f : 1.0f;
+    }
+    default:
+      BLI_assert_unreachable();
+      return 0.0f;
   }
-  return 1.0f - math::safe_divide(math::pow(1.0f - x, c), math::pow(1.0f - offset, c - 1.0f));
+  BLI_assert_unreachable();
+  return 0.0f;
 }
 
-/* Frequency and step based functions. */
-
-static float easing_square_wave(const float x, const float f, const float w)
+static float node_easing(const NodeEasingOperation operation,
+                         const float t,
+                         const float strength,
+                         const float frequency,
+                         const int count,
+                         const float inflection,
+                         const bool invert,
+                         const float mirror)
 {
-  if (x == 0.0f || f == 0.0f) {
+  float dt = process_input(t, mirror);
+  /* Early out for outer edges. */
+  if (dt <= 0.0f) {
     return 0.0f;
   }
-
-  const float xf = x * f - math::floor(x * f);
-
-  if (x == 1.0f && xf == 0.0f) {
+  else if (dt >= 1.0f) {
     return 1.0f;
   }
 
-  return (xf >= w) ? 0 : 1;
+  return invert ? ease_outin(operation, dt, strength, frequency, count, inflection) :
+                  ease_inout(operation, dt, strength, frequency, count, inflection);
 }
 
-static float easing_sinus_wave(const float x, const float f, const float w)
+static auto build_easing(const char *fn_name, const NodeEasingOperation operation)
 {
-  if (x == 0.0f || f == 0.0f) {
-    return 0.0f;
-  }
-
-  const float xf = periodic_width(x * f - math::floor(x * f), w);
-  return 0.5f - math::cos(2.0f * float(M_PI) * xf) / 2.0f;
+  return mf::build::SI4_SO<float, float, bool, float, float>(
+      fn_name,
+      [operation](float t, float inflection, bool invert, float mirror) -> float {
+        return node_easing(operation, t, 0.0f, 0.0f, 0, inflection, invert, mirror);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
 }
 
-static float easing_sawtooth_wave(const float x, const float f, const float w)
+static auto build_easing_with_strength(const char *fn_name, const NodeEasingOperation operation)
 {
-  if (x == 0.0f || f == 0.0f) {
-    return 0.0f;
-  }
-
-  const float xf = periodic_width(x * f - math::floor(x * f), w);
-
-  if (x == 1.0f && xf == 0.0f && w == 1.0f) {
-    return 1.0f;
-  }
-
-  return xf;
+  return mf::build::SI5_SO<float, float, float, bool, float, float>(
+      fn_name,
+      [operation](float t, float strength, float inflection, bool invert, float mirror) -> float {
+        return node_easing(operation, t, strength, 0.0f, 0, inflection, invert, mirror);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
 }
 
-static float easing_triangle_wave(const float x, const float f, const float w)
+static auto build_periodic(const char *fn_name, const NodeEasingOperation operation)
 {
-  if (x == 0.0f || f == 0.0f) {
-    return 0.0f;
-  }
-
-  const float xf = periodic_width(x * f - math::floor(x * f), w);
-  return (xf < 0.5f) ? xf * 2.0f : 2.0f - xf * 2.0f;
+  return mf::build::SI3_SO<float, float, float, float>(
+      fn_name,
+      [operation](float t, float frequency, float mirror) -> float {
+        return node_periodic(operation, t, frequency, 0.0f, mirror);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
 }
-
-static float easing_step_out(const float x, const float steps)
-{
-  if (x == 0.0f || x == 1.0f) {
-    return x;
-  }
-
-  if (steps == 0.0f) {
-    return 0.0f;
-  }
-
-  return math::clamp(math::safe_divide(math::floor(x * (steps + 1.0f)), steps), 0.0f, 1.0f);
-}
-
-/* Easing MultiFunctions */
-
-class EasingSmoothstepFunction : public mf::MultiFunction {
- public:
-  EasingSmoothstepFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Smoothstep", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      const float pp = p * p;
-      p = (3.0f * pp - 2.0f * pp * p);
-      p = reverse[i] ? 1.0f - p : p;
-      r_value[i] = p;
-    });
-  }
-};
-
-class EasingLinearFunction : public mf::MultiFunction {
- public:
-  EasingLinearFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Linear", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      r_value[i] = p;
-    });
-  }
-};
-
-class EasingSawtoothFunction : public mf::MultiFunction {
- public:
-  EasingSawtoothFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Sawtooth", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Frequency");
-    builder.single_input<float>("Width");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &frequency = params.readonly_single_input<float>(param++, "Frequency");
-    const VArray<float> &width = params.readonly_single_input<float>(param++, "Width");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_sawtooth_wave(p, frequency[i], width[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingSinusFunction : public mf::MultiFunction {
- public:
-  EasingSinusFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Sinus", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Frequency");
-    builder.single_input<float>("Width");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &frequency = params.readonly_single_input<float>(param++, "Frequency");
-    const VArray<float> &width = params.readonly_single_input<float>(param++, "Width");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_sinus_wave(p, frequency[i], width[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingSquareFunction : public mf::MultiFunction {
- public:
-  EasingSquareFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Square", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Frequency");
-    builder.single_input<float>("Pulse Width");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &frequency = params.readonly_single_input<float>(param++, "Frequency");
-    const VArray<float> &width = params.readonly_single_input<float>(param++, "Pulse Width");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_square_wave(p, frequency[i], width[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingTriangleFunction : public mf::MultiFunction {
- public:
-  EasingTriangleFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Triangle", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Frequency");
-    builder.single_input<float>("Width");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &frequency = params.readonly_single_input<float>(param++, "Frequency");
-    const VArray<float> &width = params.readonly_single_input<float>(param++, "Width");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_triangle_wave(p, frequency[i], width[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingStepFunction : public mf::MultiFunction {
- public:
-  EasingStepFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Steps", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Steps");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &steps = params.readonly_single_input<float>(param++, "Steps");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_step_out(p, steps[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingBiasFunction : public mf::MultiFunction {
-
- public:
-  EasingBiasFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Bias", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Slope");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &slope = params.readonly_single_input<float>(param++, "Slope");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_bias(p, slope[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingGainFunction : public mf::MultiFunction {
-
- public:
-  EasingGainFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Gain", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Slope");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &slope = params.readonly_single_input<float>(param++, "Slope");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_gain(p, slope[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingSlopeFunction : public mf::MultiFunction {
-
- public:
-  EasingSlopeFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Slope", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Slope");
-    builder.single_input<float>("Offset");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &slope = params.readonly_single_input<float>(param++, "Slope");
-    const VArray<float> &offset = params.readonly_single_input<float>(param++, "Offset");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_slope_out(p, slope[i], offset[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingDynamicCircularFunction : public mf::MultiFunction {
-
- public:
-  EasingDynamicCircularFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Slope", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Offset");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &offset = params.readonly_single_input<float>(param++, "Offset");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_dynamic_circ(t, offset[i]);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingPowerFunction : public mf::MultiFunction {
- public:
-  EasingPowerFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Power", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Exponent");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &exponent = params.readonly_single_input<float>(param++, "Exponent");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_power_out(t, exponent[i]);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingDynamicBounceFunction : public mf::MultiFunction {
- public:
-  EasingDynamicBounceFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Bounce", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Scale");
-    builder.single_input<int>("Bounces");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &scale = params.readonly_single_input<float>(param++, "Scale");
-    const VArray<int> &bounces = params.readonly_single_input<int>(param++, "Bounces");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_dynamic_bounce_out(t, bounces[i], scale[i]);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingCubicBezierFunction : public mf::MultiFunction {
- public:
-  EasingCubicBezierFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Bezier", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("A Width");
-    builder.single_input<float>("A Height");
-    builder.single_input<float>("B Width");
-    builder.single_input<float>("B Height");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &a_width = params.readonly_single_input<float>(param++, "A Width");
-    const VArray<float> &a_height = params.readonly_single_input<float>(param++, "A Height");
-    const VArray<float> &b_width = params.readonly_single_input<float>(param++, "B Width");
-    const VArray<float> &b_height = params.readonly_single_input<float>(param++, "B Height");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      const float t = easing_cubic_bezier_out(p, a_width[i], a_height[i], b_width[i], b_height[i]);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingElasticFunction : public mf::MultiFunction {
- public:
-  EasingElasticFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Elastic", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Amplitude");
-    builder.single_input<float>("Period");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &amplitude = params.readonly_single_input<float>(param++, "Amplitude");
-    const VArray<float> &period = params.readonly_single_input<float>(param++, "Period");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_elastic_out(t, amplitude[i], period[i]);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingBackFunction : public mf::MultiFunction {
- public:
-  EasingBackFunction()
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing Back", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<float>("Overshoot");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<float> &overshoot = params.readonly_single_input<float>(param++, "Overshoot");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_back_out(t, overshoot[i]);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
-
-class EasingFunction : public mf::MultiFunction {
- private:
-  int operation_;
-
- public:
-  EasingFunction(int operation) : operation_(operation)
-  {
-    static mf::Signature signature = create_signature();
-    this->set_signature(&signature);
-  }
-
-  static mf::Signature create_signature()
-  {
-    mf::Signature signature;
-    mf::SignatureBuilder builder{"Easing", signature};
-    builder.single_input<float>("Value");
-    builder.single_input<bool>("Ease Out");
-    builder.single_input<bool>("In & Out");
-    builder.single_input<bool>("Reverse Input");
-    builder.single_input<float>("Mirror");
-    builder.single_output<float>("Value");
-    return signature;
-  }
-
-  static float easing_out(const int operation, const float x)
-  {
-    if (x == 0.0f || x == 1.0f) {
-      return x;
-    }
-
-    switch (operation) {
-      case NODE_EASING_CIRC: {
-        return easing_circ_out(x);
-      }
-      case NODE_EASING_CUBIC: {
-        return easing_cubic_out(x);
-      }
-      case NODE_EASING_EXPO: {
-        return easing_expo_out(x);
-      }
-      case NODE_EASING_QUAD: {
-        return easing_quad_out(x);
-      }
-      case NODE_EASING_QUART: {
-        return easing_quart_out(x);
-      }
-      case NODE_EASING_QUINT: {
-        return easing_quint_out(x);
-      }
-      case NODE_EASING_SINE: {
-        return easing_sine_out(x);
-      }
-    }
-    BLI_assert_unreachable();
-    return 0.0f;
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    int param = 0;
-    const VArray<float> &value = params.readonly_single_input<float>(param++, "Value");
-    const VArray<bool> &ease_out = params.readonly_single_input<bool>(param++, "Ease Out");
-    const VArray<bool> &in_out = params.readonly_single_input<bool>(param++, "In & Out");
-    const VArray<bool> &reverse = params.readonly_single_input<bool>(param++, "Reverse Input");
-    const VArray<float> &mirror = params.readonly_single_input<float>(param++, "Mirror");
-    MutableSpan<float> r_value = params.uninitialized_single_output<float>(param++, "Value");
-
-    BLI_assert(ELEM(operation_,
-                    NODE_EASING_CIRC,
-                    NODE_EASING_CUBIC,
-                    NODE_EASING_EXPO,
-                    NODE_EASING_QUAD,
-                    NODE_EASING_QUART,
-                    NODE_EASING_QUINT,
-                    NODE_EASING_SINE));
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      const int direction = set_direction(ease_out[i], in_out[i]);
-      float p = math::clamp(value[i], 0.0f, 1.0f);
-      p = mirror_input(p, mirror[i]);
-      p = reverse[i] ? 1.0f - p : p;
-      float t = pre_map_input(direction, p);
-      t = easing_out(operation_, t);
-      t = post_map_output(direction, p, t);
-      r_value[i] = t;
-    });
-  }
-};
 
 static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  const NodeEasing data = node_storage(builder.node());
+  const NodeEasing &storage = node_storage(builder.node());
+  const NodeEasingOperation operation = NodeEasingOperation(storage.operation);
+  static auto exec_preset = mf::build::exec_presets::SomeSpanOrSingle<0>();
 
-  switch (NodeEasingOperation(data.operation)) {
-    case NODE_EASING_BACK:
-      builder.construct_and_set_matching_fn<EasingBackFunction>();
+  switch (operation) {
+    case NODE_EASING_CUBIC: {
+      static auto fn = build_easing("Easing Cubic", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_ELASTIC:
-      builder.construct_and_set_matching_fn<EasingElasticFunction>();
+    }
+    case NODE_EASING_EXPO: {
+      static auto fn = build_easing("Easing Expo", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_POWER:
-      builder.construct_and_set_matching_fn<EasingPowerFunction>();
+    }
+    case NODE_EASING_QUINT: {
+      static auto fn = build_easing("Easing Quint", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_STEPS:
-      builder.construct_and_set_matching_fn<EasingStepFunction>();
+    }
+    case NODE_EASING_SINE: {
+      static auto fn = build_easing("Easing Sine", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_LINEAR:
-      builder.construct_and_set_matching_fn<EasingLinearFunction>();
+    }
+    case NODE_EASING_QUAD: {
+      static auto fn = build_easing("Easing Quad", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_SMOOTHSTEP:
-      builder.construct_and_set_matching_fn<EasingSmoothstepFunction>();
+    }
+    case NODE_EASING_QUART: {
+      static auto fn = build_easing("Easing Quart", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_SLOPE:
-      builder.construct_and_set_matching_fn<EasingSlopeFunction>();
+    }
+    case NODE_EASING_CIRC: {
+      static auto fn = build_easing_with_strength("Easing Circ", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_DYNAMIC_CIRC:
-      builder.construct_and_set_matching_fn<EasingDynamicCircularFunction>();
+    }
+    case NODE_EASING_SPRING: {
+      static auto fn = build_easing_with_strength("Easing Spring", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_BIAS:
-      builder.construct_and_set_matching_fn<EasingBiasFunction>();
+    }
+    case NODE_EASING_VARIABLE: {
+      static auto fn = build_easing_with_strength("Easing Variable", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_GAIN:
-      builder.construct_and_set_matching_fn<EasingGainFunction>();
+    }
+    case NODE_EASING_SAWTOOTH: {
+      static auto fn = build_periodic("Easing Saw", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_CUBIC_BEZIER:
-      builder.construct_and_set_matching_fn<EasingCubicBezierFunction>();
+    }
+    case NODE_EASING_TRIANGLE: {
+      static auto fn = build_periodic("Easing Triangle", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_BOUNCE:
-      builder.construct_and_set_matching_fn<EasingDynamicBounceFunction>();
+    }
+    case NODE_EASING_SINEWAVE: {
+      static auto fn = build_periodic("Easing Sine", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_SAWTOOTH:
-      builder.construct_and_set_matching_fn<EasingSawtoothFunction>();
+    }
+    case NODE_EASING_BIAS: {
+      static auto fn = build_easing_with_strength("Variable Bias", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_TRIANGLE:
-      builder.construct_and_set_matching_fn<EasingTriangleFunction>();
+    }
+    case NODE_EASING_BACK: {
+      static auto fn = build_easing_with_strength("Easing Overshoot", operation);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_SINUS:
-      builder.construct_and_set_matching_fn<EasingSinusFunction>();
+    }
+    case NODE_EASING_SQUARE: {
+      static auto fn = mf::build::SI4_SO<float, float, float, float, float>(
+          "Easing Square",
+          [operation](float t, float strength, float frequency, float mirror) -> float {
+            return node_periodic(operation, t, frequency, strength, mirror);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_SQUARE:
-      builder.construct_and_set_matching_fn<EasingSquareFunction>();
+    }
+    case NODE_EASING_ELASTIC: {
+      static auto fn = mf::build::SI6_SO<float, float, float, float, bool, float, float>(
+          "Easing Elastic",
+          [operation](float t,
+                      float strength,
+                      float frequency,
+                      float inflection,
+                      bool invert,
+                      float mirror) -> float {
+            return node_easing(operation, t, strength, frequency, 0, inflection, invert, mirror);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
       break;
-    case NODE_EASING_CIRC:
-    case NODE_EASING_CUBIC:
-    case NODE_EASING_EXPO:
-    case NODE_EASING_QUAD:
-    case NODE_EASING_QUART:
-    case NODE_EASING_QUINT:
-    case NODE_EASING_SINE:
-      builder.construct_and_set_matching_fn<EasingFunction>(data.operation);
+    }
+    case NODE_EASING_STEPS: {
+      static auto fn = mf::build::SI5_SO<float, float, bool, bool, float, float>(
+          "Easing Steps",
+          [operation](
+              float t, float frequency, bool jump_start, bool jump_end, float mirror) -> float {
+            const float p = process_input(t, mirror);
+            return easing_steps(p, frequency, jump_start, jump_end);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
       break;
+    }
+    case NODE_EASING_BOUNCE: {
+      static auto fn = mf::build::SI6_SO<float, float, int, float, bool, float, float>(
+          "Easing Bounce",
+          [operation](
+              float t, float strength, int count, float inflection, bool invert, float mirror)
+              -> float {
+            return node_easing(operation, t, strength, 0.0f, count, inflection, invert, mirror);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
+      break;
+    }
+    case NODE_EASING_LINEAR: {
+      static auto fn = mf::build::SI4_SO<float, float, float, float, float>(
+          "Easing Linear",
+          [operation](float t, float p1, float p2, float mirror) -> float {
+            const float p = process_input(t, mirror);
+            return easing_linear(p, p1, p2);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
+      break;
+    }
+    case NODE_EASING_CUBIC_BEZIER: {
+      static auto fn = mf::build::SI6_SO<float, float, float, float, float, float, float>(
+          "Easing Cubic Bezier",
+          [operation](float value, float ax, float ay, float bx, float by, float mirror) -> float {
+            const float p = process_input(value, mirror);
+            return easing_cubic_bezier(p, ax, ay, bx, by);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
+      break;
+    }
+    case NODE_EASING_END: {
+      static auto fn = mf::build::SI6_SO<float, float, int, float, bool, float, float>(
+          "Easing Test",
+          [operation](
+              float t, float strength, int count, float inflection, bool invert, float mirror)
+              -> float {
+            const float p = process_input(t, mirror);
+            return easing_bounce_in(p, strength);
+            return easing_whip_in(p, strength);
+          },
+          exec_preset);
+      builder.set_matching_fn(fn);
+      break;
+    }
     default:
       BLI_assert_unreachable();
       break;
