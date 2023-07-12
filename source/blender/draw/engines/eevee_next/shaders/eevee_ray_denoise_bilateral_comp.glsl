@@ -16,6 +16,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 
@@ -42,7 +43,8 @@ float bilateral_spatial_weight(float sigma, vec2 offset_from_center)
 
 float bilateral_normal_weight(vec3 center_N, vec3 sample_N)
 {
-  float weight = saturate(square_f(dot(center_N, sample_N)));
+  float facing_ratio = dot(center_N, sample_N);
+  float weight = saturate(pow8f(facing_ratio));
   return weight;
 }
 
@@ -73,8 +75,7 @@ void gbuffer_load_closure_data(sampler2DArray gbuffer_closure_tx,
 
   closure.N = gbuffer_normal_unpack(data_in.xy);
   if (gbuffer_is_refraction(data_in)) {
-    /* NOTE: Roughness is squared here. */
-    closure.roughness = max(1e-3, sqr(data_in.z));
+    closure.roughness = data_in.z;
     closure.ior = gbuffer_ior_unpack(data_in.w);
   }
   else {
@@ -90,8 +91,7 @@ void gbuffer_load_closure_data(sampler2DArray gbuffer_closure_tx,
   vec4 data_in = texelFetch(gbuffer_closure_tx, ivec3(texel, 0), 0);
 
   closure.N = gbuffer_normal_unpack(data_in.xy);
-  /* NOTE: Roughness is squared now. */
-  closure.roughness = max(1e-3, sqr(data_in.z));
+  closure.roughness = data_in.z;
 }
 
 void main()
@@ -123,17 +123,11 @@ void main()
   bool is_background = (center_depth == 0.0);
   bool is_smooth = (roughness < 0.05);
   bool is_low_variance = (variance < 0.05);
-  bool is_high_variance = (variance > 0.05);
+  bool is_high_variance = (variance > 0.5);
 
   /* Width of the box filter in pixels. */
-  float filter_size = mix(1.0, 3.0, roughness * 8.0);
-  uint sample_count = uint(is_high_variance ? 10u : 5u);
-
-#if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_REFLECT)
-  if (roughness <= 1e-3) {
-    sample_count = 1;
-  }
-#endif
+  float filter_size = mix(0.0, 9.0, sqr(roughness) * 6.0);
+  uint sample_count = uint(mix(1.0, 6.0, roughness * 6.0) * (is_high_variance ? 1.5 : 1.0));
 
   if (is_smooth || is_background || is_low_variance) {
     /* Early out cases. */
@@ -163,6 +157,11 @@ void main()
     float sample_depth = texelFetch(hiz_tx, sample_texel, 0).r;
     vec2 sample_uv = vec2(sample_texel) * raytrace_buf.full_resolution_inv;
     vec3 sample_P = get_world_space_from_depth(sample_uv, sample_depth);
+
+    /* Background case. */
+    if (sample_depth == 0.0) {
+      continue;
+    }
 
     gbuffer_load_closure_data(gbuffer_closure_tx, sample_texel, sample_closure);
 

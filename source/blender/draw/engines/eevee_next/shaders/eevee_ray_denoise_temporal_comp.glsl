@@ -56,6 +56,7 @@ LocalStatistics local_statistics_get(ivec2 texel, vec3 center_radiance)
        * Same idea as in "High Quality Temporal Supersampling" by Brian Karis at Siggraph 2014
        * (Slide 32) Simple clamp to min/max of 8 neighbors results in 3x3 box artifacts. */
       float weight = (x == y) ? 0.25 : 1.0;
+      /* TODO(fclem): YCoCg space. */
       result.mean += radiance.rgb;
       result.moment += square_f(radiance.rgb);
       weight_accum += 1.0;

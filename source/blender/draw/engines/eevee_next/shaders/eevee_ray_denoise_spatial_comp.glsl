@@ -36,8 +36,7 @@ void gbuffer_load_closure_data(sampler2DArray gbuffer_closure_tx,
 
   closure.N = gbuffer_normal_unpack(data_in.xy);
   if (gbuffer_is_refraction(data_in)) {
-    /* NOTE: Roughness is squared here. */
-    closure.roughness = max(1e-3, sqr(data_in.z));
+    closure.roughness = data_in.z;
     closure.ior = gbuffer_ior_unpack(data_in.w);
   }
   else {
@@ -53,8 +52,7 @@ void gbuffer_load_closure_data(sampler2DArray gbuffer_closure_tx,
   vec4 data_in = texelFetch(gbuffer_closure_tx, ivec3(texel, 0), 0);
 
   closure.N = gbuffer_normal_unpack(data_in.xy);
-  /* NOTE: Roughness is squared now. */
-  closure.roughness = max(1e-3, sqr(data_in.z));
+  closure.roughness = data_in.z;
 }
 
 float bxdf_eval(ClosureDiffuse closure, vec3 L, vec3 V)
@@ -72,6 +70,21 @@ float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
   return bsdf_ggx(closure.N, L, V, closure.roughness);
 }
 
+void neighbor_tile_mask_bit_set(inout uint tile_mask, ivec2 offset)
+{
+  /* Only valid for a 3x3 neighborhood. */
+  offset += 1;
+  uint shift = offset.x + (offset.y << 2u);
+  tile_mask |= 1u << shift;
+}
+
+bool neighbor_tile_mask_bit_get(uint tile_mask, ivec2 offset)
+{
+  offset += 1;
+  uint shift = offset.x + (offset.y << 2u);
+  return flag_test(tile_mask, 1u << shift);
+}
+
 #if defined(RAYTRACE_DIFFUSE)
 #  define ClosureT ClosureDiffuse
 #  define CLOSURE_ACTIVE eClosureBits(CLOSURE_REFLECTION)
@@ -84,37 +97,6 @@ float bxdf_eval(ClosureReflection closure, vec3 L, vec3 V)
 #else
 #  error
 #endif
-
-void resolve_sample(ivec2 sample_texel,
-                    ClosureT closure,
-                    vec3 V,
-                    inout float closest_hit_time,
-                    inout vec3 radiance_accum,
-                    inout float weight_accum,
-                    inout vec3 rgb_moment)
-{
-  vec4 ray_data = imageLoad(ray_data_img, sample_texel);
-  float ray_time = imageLoad(ray_time_img, sample_texel).r;
-  vec4 ray_radiance = imageLoad(ray_radiance_img, sample_texel);
-
-  vec3 ray_direction = ray_data.xyz;
-  float ray_pdf_inv = ray_data.w;
-  /* Skip invalid pixels. */
-  if (ray_pdf_inv == 0.0) {
-    return;
-  }
-
-  closest_hit_time = min(closest_hit_time, ray_time);
-
-  /* Slide 54. */
-  /* TODO(fclem): Apparently, ratio estimator should be pdf_bsdf / pdf_ray. */
-  float weight = bxdf_eval(closure, ray_direction, V) * ray_pdf_inv;
-
-  radiance_accum += ray_radiance.rgb * weight;
-  weight_accum += weight;
-
-  rgb_moment += sqr(ray_radiance.rgb) * weight;
-}
 
 void main()
 {
@@ -129,8 +111,10 @@ void main()
     return;
   }
 
+  /* Store invalid neighbor tiles to avoid sampling them in the resampling loop. */
+  uint invalid_neighbor_tile_mask = 0u;
   /* Clear neighbor tiles that will not be processed. */
-  /* TODO(fclem): Optimize this. We don't need to clear the whole ring. This adds a ~8% cost  */
+  /* TODO(fclem): Optimize this. We don't need to clear the whole ring. */
   for (int x = -1; x <= 1; x++) {
     for (int y = -1; y <= 1; y++) {
       if (x == 0 && y == 0) {
@@ -139,6 +123,7 @@ void main()
 
       ivec2 tile_coord_neighbor = ivec2(tile_coord) + ivec2(x, y);
       if (!in_image_range(tile_coord_neighbor, tile_mask_img)) {
+        neighbor_tile_mask_bit_set(invalid_neighbor_tile_mask, ivec2(x, y));
         continue;
       }
 
@@ -149,6 +134,8 @@ void main()
         imageStore(out_radiance_img, texel_fullres_neighbor, vec4(FLT_11_11_10_MAX, 0.0));
         imageStore(out_variance_img, texel_fullres_neighbor, vec4(0.0));
         imageStore(out_hit_depth_img, texel_fullres_neighbor, vec4(0.0));
+
+        neighbor_tile_mask_bit_set(invalid_neighbor_tile_mask, ivec2(x, y));
       }
     }
   }
@@ -171,10 +158,15 @@ void main()
   uint sample_count = 16u;
   float filter_size = 9.0;
 #if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_REFLECT)
-  float filter_size_factor = saturate((closure.roughness - 1e-3) * 8.0);
+  float filter_size_factor = closure.roughness * 8.0;
   sample_count = 1u + uint(15.0 * filter_size_factor + 0.5);
-  filter_size = (sample_count == 1u) ? 0.0 : (3.0 + 9.0 * sqrt(filter_size_factor));
+  /* NOTE: filter_size should never be greater than twice RAYTRACE_GROUP_SIZE. Otherwise, the
+   * reconstruction can becomes ill defined since we don't know if further tiles are valids. */
+  filter_size = 12.0 * sqrt(filter_size_factor);
   filter_size *= float(raytrace_buf.resolution_scale);
+
+  /* NOTE: Roughness is squared now. */
+  closure.roughness = max(1e-3, sqr(closure.roughness));
 #endif
 
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel_fullres), UTIL_BLUE_NOISE_LAYER).ba;
@@ -184,13 +176,38 @@ void main()
   vec3 radiance_accum = vec3(0.0);
   float weight_accum = 0.0;
   float closest_hit_time = 1.0e10;
-  /* TODO(fclem) sample center sample */
   for (uint i = 0u; i < sample_count; i++) {
     ivec2 offset = ivec2((fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size);
     ivec2 sample_texel = texel + offset;
 
-    resolve_sample(
-        sample_texel, closure, V, closest_hit_time, radiance_accum, weight_accum, rgb_moment);
+    /* Reject samples outside of valid neighbor tiles. */
+    ivec2 sample_tile = ivec2(sample_texel) / int(tile_size);
+    ivec2 sample_tile_relative = sample_tile - ivec2(tile_coord);
+    if (neighbor_tile_mask_bit_get(invalid_neighbor_tile_mask, sample_tile_relative)) {
+      continue;
+    }
+
+    vec4 ray_data = imageLoad(ray_data_img, sample_texel);
+    float ray_time = imageLoad(ray_time_img, sample_texel).r;
+    vec4 ray_radiance = imageLoad(ray_radiance_img, sample_texel);
+
+    vec3 ray_direction = ray_data.xyz;
+    float ray_pdf_inv = ray_data.w;
+    /* Skip invalid pixels. */
+    if (ray_pdf_inv == 0.0) {
+      continue;
+    }
+
+    closest_hit_time = min(closest_hit_time, ray_time);
+
+    /* Slide 54. */
+    /* TODO(fclem): Apparently, ratio estimator should be pdf_bsdf / pdf_ray. */
+    float weight = bxdf_eval(closure, ray_direction, V) * ray_pdf_inv;
+
+    radiance_accum += ray_radiance.rgb * weight;
+    weight_accum += weight;
+
+    rgb_moment += sqr(ray_radiance.rgb) * weight;
   }
   float inv_weight = safe_rcp(weight_accum);
 
