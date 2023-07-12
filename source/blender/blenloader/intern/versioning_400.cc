@@ -165,8 +165,7 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute"))
-        {
+                     "GeometryNodeInputNamedAttribute")) {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -374,6 +373,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Convert anisotropic BSDF node to glossy BSDF. */
+
     /* Keep this block, even when empty. */
 
     if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_sample_count")) {
