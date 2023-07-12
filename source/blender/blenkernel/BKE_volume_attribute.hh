@@ -310,10 +310,8 @@ class VArrayImpl_For_VolumeGridValue final
                                      1;
     const size_t leaf_index = buffer_index_ptr - prefix_sum_.begin();
     BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
-    const size_t buffer_index = *buffer_index_ptr;
-    // BufferType &buffer = leaf_manager_.getBuffer(leaf_index, 0);
     const LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
-    int64_t i = 0;
+    int64_t i = *buffer_index_ptr;
     for (LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
       if (i == index) {
         return Converter::to_attribute(iter.getValue());
@@ -334,10 +332,8 @@ class VArrayImpl_For_VolumeGridValue final
                                      1;
     const size_t leaf_index = buffer_index_ptr - prefix_sum_.begin();
     BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
-    const size_t buffer_index = *buffer_index_ptr;
-    // BufferType &buffer = leaf_manager_.getBuffer(leaf_index, 0);
     LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
-    int64_t i = 0;
+    int64_t i = *buffer_index_ptr;
     for (LeafNodeType::ValueOnIter iter = leaf.beginValueOn(); iter; ++iter, ++i) {
       if (i == index) {
         iter.setValue(Converter::to_grid(value));
