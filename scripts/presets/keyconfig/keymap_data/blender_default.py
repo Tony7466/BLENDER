@@ -179,7 +179,7 @@ class Params:
             if self.legacy:
                 self.context_menu_event = {"type": 'W', "value": 'PRESS'}
             else:
-                self.context_menu_event = {"type": 'RIGHTMOUSE', "value": 'CLICK'}
+                self.context_menu_event = {"type": 'RIGHTMOUSE', "value": 'PRESS'}
 
             self.cursor_set_event = {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}
             self.cursor_tweak_event = {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True}
@@ -3725,6 +3725,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         # Delete Animation menu
         op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Separate
         ("gpencil.stroke_separate", {"type": 'P', "value": 'PRESS'}, None),
         # Split and joint strokes
@@ -3836,6 +3837,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         # Delete Animation menu
         op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Interpolation
         op_tool_optional(
             ("gpencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
@@ -4042,6 +4044,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         # Delete Animation menu
         op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
         # Automasking Pie menu
@@ -4267,6 +4270,7 @@ def km_grease_pencil_stroke_weight_mode(params):
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         # Delete Animation menu
         op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
         # Toggle Add/Subtract for weight draw tool
@@ -4392,6 +4396,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         # Delete Animation menu
         op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Vertex Paint context menu
         op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
     ])
@@ -5081,24 +5086,24 @@ def km_image_paint(params):
          ("paint.image_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
         ("paint.brush_colors_flip", {"type": 'X', "value": 'PRESS'}, None),
-        ("paint.grab_clone", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'}, None),
+        ("paint.grab_clone", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
         ("paint.sample_color", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("image_paint", color=True, zoom=True, rotation=True, secondary_rotation=True),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
          {"properties": [("data_path", 'image_paint_object.data.use_paint_mask')]}),
@@ -5138,17 +5143,17 @@ def km_vertex_paint(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("vertex_paint", color=True, rotation=True),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
          {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask')]}),
@@ -5341,17 +5346,17 @@ def km_sculpt(params):
          {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("sculpt", rotation=True),
         # Stencil
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG'},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'TRANSLATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SCALE')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'ROTATION')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'TRANSLATION'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
-        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True, "alt": True},
+        ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
         # Sculpt Session Pivot Point
         ("sculpt.set_pivot_position", {"type": 'RIGHTMOUSE', 'value': 'PRESS', "shift": True},
