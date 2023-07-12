@@ -8,8 +8,11 @@
 
 #define DNA_DEPRECATED_ALLOW
 
+#include <cmath>
+
 #include "CLG_log.h"
 
+#include "DNA_brush_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
@@ -133,6 +136,24 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
+/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
+static void version_vertex_weight_edit_preserve_threshold_exclusivity(Main *bmain)
+{
+  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+    if (ob->type != OB_MESH) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_WeightVGEdit) {
+        WeightVGEditModifierData *wmd = reinterpret_cast<WeightVGEditModifierData *>(md);
+        wmd->add_threshold = nexttoward(wmd->add_threshold, 2.0);
+        wmd->rem_threshold = nexttoward(wmd->rem_threshold, -1.0);
+      }
+    }
+  }
+}
+
 static void version_mesh_crease_generic(Main &bmain)
 {
   LISTBASE_FOREACH (Mesh *, mesh, &bmain.meshes) {
@@ -144,8 +165,7 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute"))
-        {
+                     "GeometryNodeInputNamedAttribute")) {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -315,6 +335,30 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         version_replace_texcoord_normal_socket(light->nodetree);
       }
     }
+  }
+
+  /* Fix brush->tip_scale_x which should never be zero. */
+  LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+    if (brush->tip_scale_x == 0.0f) {
+      brush->tip_scale_x = 1.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 10)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+          if (space->spacetype == SPACE_NODE) {
+            SpaceNode *snode = reinterpret_cast<SpaceNode *>(space);
+            snode->overlay.flag |= SN_OVERLAY_SHOW_PREVIEWS;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 11)) {
+    version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
   }
 
   /**
