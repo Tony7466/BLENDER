@@ -256,7 +256,7 @@ static void restore_materials(ID &id,
     }
   }
   IDP_RemoveFromGroup(id.properties, materials_prop);
-  IDP_FreeArray(materials_prop);
+  IDP_FreeProperty(materials_prop);
 }
 
 static void restore_geometry_set_materials(GeometrySet &geometry_set,
