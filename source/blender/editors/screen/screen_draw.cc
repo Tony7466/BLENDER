@@ -242,7 +242,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
   GPU_blend(GPU_BLEND_ALPHA);
 
   /* Highlight source (sa1) within combined area. */
-  immUniformColor4fv((const float[4]){1.0f, 1.0f, 1.0f, 0.10f});
+  immUniformColor4fv(blender::float4{1.0f, 1.0f, 1.0f, 0.10f});
   immRectf(pos_id,
            MAX2(sa1->totrct.xmin, combined.xmin),
            MAX2(sa1->totrct.ymin, combined.ymin),
@@ -250,7 +250,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
            MIN2(sa1->totrct.ymax, combined.ymax));
 
   /* Highlight destination (sa2) within combined area. */
-  immUniformColor4fv((const float[4]){0.0f, 0.0f, 0.0f, 0.25f});
+  immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.25f});
   immRectf(pos_id,
            MAX2(sa2->totrct.xmin, combined.xmin),
            MAX2(sa2->totrct.ymin, combined.ymin),
@@ -262,7 +262,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
   area_getoffsets(sa1, sa2, dir, &offset1, &offset2);
   if (offset1 < 0 || offset2 > 0) {
     /* Show partial areas that will be closed. */
-    immUniformColor4fv((const float[4]){0.0f, 0.0f, 0.0f, 0.8f});
+    immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.8f});
     if (vertical) {
       if (sa1->totrct.xmin < combined.xmin) {
         immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymin, combined.xmin, sa1->totrct.ymax);
