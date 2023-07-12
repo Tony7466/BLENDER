@@ -443,6 +443,12 @@ ccl_device_inline float bsdf_aniso_D(float alpha_x, float alpha_y, float3 H)
   }
 }
 
+/* Do not set `SD_BSDF_HAS_EVAL` flag if the squared roughness is below a certain threshold. */
+ccl_device_forceinline int bsdf_microfacet_eval_flag(const ccl_private MicrofacetBsdf *bsdf)
+{
+  return (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) ? SD_BSDF_HAS_EVAL : 0;
+}
+
 template<MicrofacetType m_type>
 ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
                                          const float3 Ng,
@@ -475,9 +481,8 @@ ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
    * - Purely reflective closures can't have refraction.
    * - Purely refractive closures can't have reflection.
    */
-  if ((cos_NI <= 0) || (alpha_x * alpha_y <= BSDF_ROUGHNESS_SQ_THRESH) ||
-      ((cos_NgO < 0.0f) != is_transmission) || (is_transmission && m_reflection) ||
-      (!is_transmission && m_refraction))
+  if ((cos_NI <= 0) || !bsdf_microfacet_eval_flag(bsdf) || ((cos_NgO < 0.0f) != is_transmission) ||
+      (is_transmission && m_reflection) || (!is_transmission && m_refraction))
   {
     *pdf = 0.0f;
     return zero_spectrum();
@@ -560,7 +565,7 @@ ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
   const bool m_reflection = !(m_refraction || m_glass);
   const float alpha_x = bsdf->alpha_x;
   const float alpha_y = bsdf->alpha_y;
-  bool m_singular = (alpha_x * alpha_y <= BSDF_ROUGHNESS_SQ_THRESH);
+  bool m_singular = !bsdf_microfacet_eval_flag(bsdf);
 
   const float3 N = bsdf->N;
   const float cos_NI = dot(N, wi);
@@ -843,13 +848,7 @@ ccl_device int bsdf_microfacet_ggx_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_ID;
 
-  int flag = SD_BSDF;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device int bsdf_microfacet_ggx_clearcoat_setup(ccl_private MicrofacetBsdf *bsdf,
@@ -863,13 +862,7 @@ ccl_device int bsdf_microfacet_ggx_clearcoat_setup(ccl_private MicrofacetBsdf *b
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf, true, true));
 
-  int flag = SD_BSDF;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device int bsdf_microfacet_ggx_refraction_setup(ccl_private MicrofacetBsdf *bsdf)
@@ -881,13 +874,7 @@ ccl_device int bsdf_microfacet_ggx_refraction_setup(ccl_private MicrofacetBsdf *
   bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 
-  int flag = SD_BSDF | SD_BSDF_HAS_TRANSMISSION;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | SD_BSDF_HAS_TRANSMISSION | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device int bsdf_microfacet_ggx_glass_setup(ccl_private MicrofacetBsdf *bsdf)
@@ -899,13 +886,7 @@ ccl_device int bsdf_microfacet_ggx_glass_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
 
-  int flag = SD_BSDF | SD_BSDF_HAS_TRANSMISSION;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | SD_BSDF_HAS_TRANSMISSION | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device void bsdf_microfacet_blur(ccl_private ShaderClosure *sc, float roughness)
@@ -957,13 +938,7 @@ ccl_device int bsdf_microfacet_beckmann_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->fresnel_type = MicrofacetFresnel::NONE;
   bsdf->type = CLOSURE_BSDF_MICROFACET_BECKMANN_ID;
 
-  int flag = SD_BSDF;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device int bsdf_microfacet_beckmann_refraction_setup(ccl_private MicrofacetBsdf *bsdf)
@@ -974,13 +949,7 @@ ccl_device int bsdf_microfacet_beckmann_refraction_setup(ccl_private MicrofacetB
   bsdf->fresnel_type = MicrofacetFresnel::NONE;
   bsdf->type = CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID;
 
-  int flag = SD_BSDF | SD_BSDF_HAS_TRANSMISSION;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | SD_BSDF_HAS_TRANSMISSION | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device int bsdf_microfacet_beckmann_glass_setup(ccl_private MicrofacetBsdf *bsdf)
@@ -991,13 +960,7 @@ ccl_device int bsdf_microfacet_beckmann_glass_setup(ccl_private MicrofacetBsdf *
   bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC;
   bsdf->type = CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID;
 
-  int flag = SD_BSDF | SD_BSDF_HAS_TRANSMISSION;
-
-  if (bsdf->alpha_x * bsdf->alpha_y > BSDF_ROUGHNESS_SQ_THRESH) {
-    flag |= SD_BSDF_HAS_EVAL;
-  }
-
-  return flag;
+  return SD_BSDF | SD_BSDF_HAS_TRANSMISSION | bsdf_microfacet_eval_flag(bsdf);
 }
 
 ccl_device Spectrum bsdf_microfacet_beckmann_eval(ccl_private const ShaderClosure *sc,
