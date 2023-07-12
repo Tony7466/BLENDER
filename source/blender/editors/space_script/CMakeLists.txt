@@ -16,7 +16,7 @@ set(INC_SYS
 )
 
 set(SRC
-  script_edit.c
+  script_edit.cc
   script_ops.c
   space_script.c
 
@@ -39,4 +39,3 @@ endif()
 
 
 blender_add_lib(bf_editor_space_script "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-
