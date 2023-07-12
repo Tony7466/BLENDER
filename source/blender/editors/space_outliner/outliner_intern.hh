@@ -29,6 +29,7 @@ struct TreeStoreElem;
 struct ViewLayer;
 struct bContext;
 struct bContextDataResult;
+struct bDeformGroup;
 struct bPoseChannel;
 struct View2D;
 struct wmKeyConfig;
@@ -294,6 +295,11 @@ struct BoneElementCreateData {
 struct EditBoneElementCreateData {
   ID *armature_id;
   EditBone *ebone;
+};
+
+struct DeformGroupElementCreateData {
+  Object *object;
+  bDeformGroup *defgroup;
 };
 
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);

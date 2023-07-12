@@ -245,6 +245,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_EBONE) {
     id = static_cast<EditBoneElementCreateData *>(idv)->armature_id;
   }
+  else if (type == TSE_DEFGROUP) {
+    id = reinterpret_cast<ID *>(static_cast<DeformGroupElementCreateData *>(idv)->object);
+  }
 
   /* exceptions */
   if (ELEM(type, TSE_ID_BASE, TSE_GENERIC_LABEL)) {
@@ -303,6 +306,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_BONE, TSE_EBONE)) {
     /* pass */
   }
+  else if (ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE)) {
+    /* pass */
+  }
   else if (type == TSE_SOME_ID) {
     if (!te->abstract_element) {
       BLI_assert_msg(0, "Expected this ID type to be ported to new Outliner tree-element design");
@@ -351,7 +357,8 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_SEQUENCE,
                 TSE_SEQ_STRIP,
                 TSE_SEQUENCE_DUP,
-                TSE_GENERIC_LABEL))
+                TSE_GENERIC_LABEL) ||
+           ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }
