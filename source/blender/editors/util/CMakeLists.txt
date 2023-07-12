@@ -31,7 +31,7 @@ set(SRC
   ed_util_ops.cc
   ed_viewer_path.cc
   gizmo_utils.cc
-  numinput.c
+  numinput.cc
   select_utils.c
 
   # general includes
