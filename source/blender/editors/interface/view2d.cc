@@ -652,8 +652,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize)
 
     /* width */
     if ((curwidth > totwidth) &&
-        !(v2d->keepzoom & (V2D_KEEPZOOM | V2D_LOCKZOOM_X | V2D_LIMITZOOM)))
-    {
+        !(v2d->keepzoom & (V2D_KEEPZOOM | V2D_LOCKZOOM_X | V2D_LIMITZOOM))) {
       /* if zoom doesn't have to be maintained, just clamp edges */
       if (cur->xmin < tot->xmin) {
         cur->xmin = tot->xmin;
@@ -742,8 +741,7 @@ static void ui_view2d_curRect_validate_resize(View2D *v2d, bool resize)
 
     /* height */
     if ((curheight > totheight) &&
-        !(v2d->keepzoom & (V2D_KEEPZOOM | V2D_LOCKZOOM_Y | V2D_LIMITZOOM)))
-    {
+        !(v2d->keepzoom & (V2D_KEEPZOOM | V2D_LOCKZOOM_Y | V2D_LIMITZOOM))) {
       /* if zoom doesn't have to be maintained, just clamp edges */
       if (cur->ymin < tot->ymin) {
         cur->ymin = tot->ymin;
@@ -851,6 +849,8 @@ void UI_view2d_curRect_changed(const bContext *C, View2D *v2d)
 
 void UI_view2d_curRect_clamp_y(struct View2D *v2d)
 {
+  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
+   * because it also clamps the x-axis to 0. */
   const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
 
   if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
