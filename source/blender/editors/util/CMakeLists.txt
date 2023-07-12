@@ -32,7 +32,7 @@ set(SRC
   ed_viewer_path.cc
   gizmo_utils.cc
   numinput.cc
-  select_utils.c
+  select_utils.cc
 
   # general includes
   ../include/BIF_glutil.h
