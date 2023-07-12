@@ -30,7 +30,7 @@ set(SRC
   space_view3d.cc
   view3d_buttons.cc
   view3d_camera_control.cc
-  view3d_cursor_snap.c
+  view3d_cursor_snap.cc
   view3d_draw.cc
   view3d_edit.c
   view3d_gizmo_armature.c
