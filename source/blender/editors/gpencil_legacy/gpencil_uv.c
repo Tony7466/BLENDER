@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -336,7 +338,7 @@ static bool gpencil_transform_fill_poll(bContext *C)
 
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
 
-  if ((gpl == NULL) || (ob->mode != OB_MODE_EDIT_GPENCIL)) {
+  if ((gpl == NULL) || (ob->mode != OB_MODE_EDIT_GPENCIL_LEGACY)) {
     return false;
   }
 

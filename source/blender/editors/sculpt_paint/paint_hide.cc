@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2010 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -23,7 +24,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subsurf.h"
 
 #include "DEG_depsgraph.h"

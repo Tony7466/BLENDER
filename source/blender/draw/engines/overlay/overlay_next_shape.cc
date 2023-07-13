@@ -1,11 +1,10 @@
-
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
  */
-
-#pragma once
 
 #include "overlay_next_private.hh"
 
@@ -261,14 +260,14 @@ ShapeCache::ShapeCache()
     float2 axis_marker_scale = {0.007f, 0.007f};
     Vector<float2> axis_marker = {
 #if 0 /* square */
-        float2(-1.0f, 1.0f) * axis_marker_scale,
-        float2(1.0f, 1.0f) * axis_marker_scale,
-        float2(1.0f, 1.0f) * axis_marker_scale,
-        float2(1.0f, -1.0f) * axis_marker_scale,
-        float2(1.0f, -1.0f) * axis_marker_scale,
-        float2(-1.0f, -1.0f) * axis_marker_scale,
-        float2(-1.0f, -1.0f) * axis_marker_scale,
-        float2(-1.0f, 1.0f) * axis_marker_scale,
+      float2(-1.0f, 1.0f) * axis_marker_scale,
+      float2(1.0f, 1.0f) * axis_marker_scale,
+      float2(1.0f, 1.0f) * axis_marker_scale,
+      float2(1.0f, -1.0f) * axis_marker_scale,
+      float2(1.0f, -1.0f) * axis_marker_scale,
+      float2(-1.0f, -1.0f) * axis_marker_scale,
+      float2(-1.0f, -1.0f) * axis_marker_scale,
+      float2(-1.0f, 1.0f) * axis_marker_scale,
 #else /* diamond */
       float2(-1.0f, 0.0f) * axis_marker_scale,
       float2(0.0f, 1.0f) * axis_marker_scale,

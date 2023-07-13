@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -183,7 +185,7 @@ static int foreach_libblock_remap_callback(LibraryIDLinkCallbackData *cb_data)
   IDRemap *id_remap_data = cb_data->user_data;
 
   /* Those asserts ensure the general sanity of ID tags regarding 'embedded' ID data (root
-   * nodetrees and co). */
+   * node-trees and co). */
   BLI_assert(id_owner == id_remap_data->id_owner);
   BLI_assert(id_self == id_owner || (id_self->flag & LIB_EMBEDDED_DATA) != 0);
 

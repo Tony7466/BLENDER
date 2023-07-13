@@ -1,14 +1,11 @@
+# SPDX-FileCopyrightText: 2008 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2008 Blender Foundation
 
 set(INC
   .
-  ../blenkernel
-  ../blenlib
   ../imbuf
-  ../makesdna
   ../makesrna
-  ../../../intern/guardedalloc
   ../../../intern/locale
 )
 
@@ -24,8 +21,10 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_INTERNATIONAL)

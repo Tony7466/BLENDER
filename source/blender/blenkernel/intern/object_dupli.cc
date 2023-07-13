@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -36,9 +37,9 @@
 #include "BKE_collection.h"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
-#include "BKE_geometry_set.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
@@ -66,12 +67,15 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 
+#include "MOD_nodes.hh"
+
 using blender::Array;
 using blender::float2;
 using blender::float3;
 using blender::float4x4;
 using blender::Span;
 using blender::Vector;
+using blender::bke::GeometrySet;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
 namespace geo_log = blender::nodes::geo_eval_log;
@@ -468,17 +472,17 @@ static const Mesh *mesh_data_from_duplicator_object(Object *ob,
      * We could change this but it matches 2.7x behavior. */
     me_eval = BKE_object_get_editmesh_eval_cage(ob);
     if ((me_eval == nullptr) || (me_eval->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH)) {
-      EditMeshData *emd = me_eval ? me_eval->runtime->edit_data : nullptr;
+      blender::bke::EditMeshData *emd = me_eval ? me_eval->runtime->edit_data : nullptr;
 
       /* Only assign edit-mesh in the case we can't use `me_eval`. */
       *r_em = em;
       me_eval = nullptr;
 
-      if ((emd != nullptr) && (emd->vertexCos != nullptr)) {
-        *r_vert_coords = emd->vertexCos;
+      if ((emd != nullptr) && !emd->vertexCos.is_empty()) {
+        *r_vert_coords = reinterpret_cast<const float(*)[3]>(emd->vertexCos.data());
         if (r_vert_normals != nullptr) {
           BKE_editmesh_cache_ensure_vert_normals(em, emd);
-          *r_vert_normals = emd->vertexNos;
+          *r_vert_normals = reinterpret_cast<const float(*)[3]>(emd->vertexNos.data());
         }
       }
     }
@@ -789,7 +793,7 @@ static void make_duplis_font(const DupliContext *ctx)
   GHash *family_gh;
   Object *ob;
   Curve *cu;
-  struct CharTrans *ct, *chartransdata = nullptr;
+  CharTrans *ct, *chartransdata = nullptr;
   float vec[3], obmat[4][4], pmat[4][4], fsize, xof, yof;
   int text_len, a;
   size_t family_len;
@@ -899,7 +903,9 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
     }
   }
   if (!ELEM(ctx->object->type, OB_CURVES_LEGACY, OB_FONT, OB_CURVES) || geometry_set_is_instance) {
-    if (const CurveComponent *component = geometry_set.get_component_for_read<CurveComponent>()) {
+    if (const blender::bke::CurveComponent *component =
+            geometry_set.get_component_for_read<blender::bke::CurveComponent>())
+    {
       if (use_new_curves_type) {
         if (const Curves *curves = component->get_for_read()) {
           make_dupli(ctx, ctx->object, &curves->id, parent_transform, component_index++);
@@ -1723,7 +1729,7 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   }
 
   if (ctx->object->runtime.geometry_set_eval != nullptr) {
-    if (BKE_object_has_geometry_set_instances(ctx->object)) {
+    if (blender::bke::object_has_geometry_set_instances(*ctx->object)) {
       return &gen_dupli_geometry_set;
     }
   }
@@ -1790,7 +1796,7 @@ ListBase *object_duplilist_preview(Depsgraph *depsgraph,
       continue;
     }
     NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(md_orig);
-    if (nmd_orig->runtime_eval_log == nullptr) {
+    if (!nmd_orig->runtime->eval_log) {
       continue;
     }
     if (const geo_log::ViewerNodeLog *viewer_log =
@@ -1822,6 +1828,7 @@ static bool find_geonode_attribute_rgba(const DupliObject *dupli,
                                         float r_value[4])
 {
   using namespace blender;
+  using namespace blender::bke;
 
   /* Loop over layers from innermost to outermost. */
   for (const int i : IndexRange(ARRAY_SIZE(dupli->instance_data))) {
@@ -1967,8 +1974,8 @@ bool BKE_object_dupli_find_rgba_attribute(
   return false;
 }
 
-bool BKE_view_layer_find_rgba_attribute(struct Scene *scene,
-                                        struct ViewLayer *layer,
+bool BKE_view_layer_find_rgba_attribute(Scene *scene,
+                                        ViewLayer *layer,
                                         const char *name,
                                         float r_value[4])
 {

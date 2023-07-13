@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # For documentation on tool definitions: see "bl_ui.space_toolsystem_common.ToolDef"
@@ -1729,6 +1731,18 @@ class _defs_weight_paint:
         )
 
 
+class _defs_paint_grease_pencil:
+
+    @ToolDef.from_fn
+    def draw():
+        return dict(
+            idname="builtin_brush.Draw",
+            label="Draw",
+            icon="brush.gpencil_draw.draw",
+            data_block='DRAW',
+        )
+
+
 class _defs_image_generic:
 
     @staticmethod
@@ -2999,6 +3013,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
             _defs_view3d_generic.ruler,
         ],
+        'EDIT_GREASE_PENCIL': [
+            *_tools_select,
+        ],
         'PARTICLE': [
             *_tools_select,
             _defs_view3d_generic.cursor,
@@ -3083,6 +3100,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 else ()
             ),
             *_tools_annotate,
+        ],
+        'PAINT_GREASE_PENCIL': [
+            _defs_view3d_generic.cursor,
+            None,
+            _defs_paint_grease_pencil.draw,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,

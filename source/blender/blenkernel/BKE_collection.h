@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -26,6 +28,7 @@ struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct Collection;
+struct Depsgraph;
 struct ID;
 struct Library;
 struct Main;
@@ -421,16 +424,16 @@ struct GSet *BKE_scene_objects_as_gset(struct Scene *scene, struct GSet *objects
       _instance_next = _scene->master_collection; \
     } \
     else { \
-      _instance_next = (_bmain)->collections.first; \
+      _instance_next = (Collection *)(_bmain)->collections.first; \
     } \
 \
     while ((_instance = _instance_next)) { \
       if (is_scene_collection) { \
-        _instance_next = (_bmain)->collections.first; \
+        _instance_next = (Collection *)(_bmain)->collections.first; \
         is_scene_collection = false; \
       } \
       else { \
-        _instance_next = _instance->id.next; \
+        _instance_next = (Collection *)_instance->id.next; \
       }
 
 #define FOREACH_COLLECTION_END \

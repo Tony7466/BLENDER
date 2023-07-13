@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -111,6 +113,7 @@ void register_node_type_geo_mesh_to_curve();
 void register_node_type_geo_mesh_to_points();
 void register_node_type_geo_mesh_to_sdf_volume();
 void register_node_type_geo_mesh_to_volume();
+void register_node_type_geo_mesh_topology_corners_of_edge();
 void register_node_type_geo_mesh_topology_corners_of_face();
 void register_node_type_geo_mesh_topology_corners_of_vertex();
 void register_node_type_geo_mesh_topology_edges_of_corner();
@@ -129,6 +132,8 @@ void register_node_type_geo_proximity();
 void register_node_type_geo_raycast();
 void register_node_type_geo_realize_instances();
 void register_node_type_geo_remove_attribute();
+void register_node_type_geo_repeat_input();
+void register_node_type_geo_repeat_output();
 void register_node_type_geo_rotate_instances();
 void register_node_type_geo_sample_index();
 void register_node_type_geo_sample_nearest_surface();

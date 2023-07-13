@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -47,10 +49,10 @@
 #include "RNA_define.h"
 
 /* local module include */
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_gizmo.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_gizmo.hh"
+#include "transform_snap.hh"
 
 static wmGizmoGroupType *g_GGT_xform_gizmo = nullptr;
 static wmGizmoGroupType *g_GGT_xform_gizmo_context = nullptr;
@@ -792,13 +794,13 @@ static int gizmo_3d_foreach_selected(const bContext *C,
           mat_local = float4x4(obedit->world_to_object) * float4x4(ob_iter->object_to_world);
         }
 
-        Vector<int64_t> indices;
-        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
+        IndexMaskMemory memory;
+        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
         const Span<float3> positions = deformation.positions;
         totsel += selected_points.size();
-        for (const int point_i : selected_points) {
+        selected_points.foreach_index([&](const int point_i) {
           run_coord_with_matrix(positions[point_i], use_mat_local, mat_local.ptr());
-        }
+        });
       }
       FOREACH_EDIT_OBJECT_END();
     }
@@ -1041,8 +1043,6 @@ static bool gizmo_3d_calc_pos(const bContext *C,
                               const short pivot_type,
                               float r_pivot_pos[3])
 {
-  zero_v3(r_pivot_pos);
-
   switch (pivot_type) {
     case V3D_AROUND_CURSOR:
       copy_v3_v3(r_pivot_pos, scene->cursor.location);
@@ -1085,8 +1085,9 @@ static bool gizmo_3d_calc_pos(const bContext *C,
         return true;
       }
 
+      float co_sum[3] = {0.0f, 0.0f, 0.0f};
       const auto gizmo_3d_calc_center_fn = [&](const blender::float3 &co) {
-        add_v3_v3(r_pivot_pos, co);
+        add_v3_v3(co_sum, co);
       };
       const float(*r_mat)[4] = nullptr;
       int totsel;
@@ -1098,7 +1099,7 @@ static bool gizmo_3d_calc_pos(const bContext *C,
                                          &r_mat,
                                          nullptr);
       if (totsel) {
-        mul_v3_fl(r_pivot_pos, 1.0f / float(totsel));
+        mul_v3_v3fl(r_pivot_pos, co_sum, 1.0f / float(totsel));
         if (r_mat) {
           mul_m4_v3(r_mat, r_pivot_pos);
         }
@@ -1110,9 +1111,7 @@ static bool gizmo_3d_calc_pos(const bContext *C,
   return false;
 }
 
-void gizmo_prepare_mat(const struct bContext *C,
-                       struct RegionView3D *rv3d,
-                       const struct TransformBounds *tbounds)
+void gizmo_prepare_mat(const bContext *C, RegionView3D *rv3d, const TransformBounds *tbounds)
 {
   Scene *scene = CTX_data_scene(C);
   gizmo_3d_calc_pos(C, scene, tbounds, scene->toolsettings->transform_pivot_point, rv3d->twmat[3]);
@@ -2303,7 +2302,7 @@ void VIEW3D_GGT_xform_gizmo_context(wmGizmoGroupType *gzgt)
 
 static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
 {
-  struct wmGizmoMap *gizmo_map = t->region->gizmo_map;
+  wmGizmoMap *gizmo_map = t->region->gizmo_map;
   if (gizmo_map == nullptr) {
     BLI_assert_msg(false, "#T_NO_GIZMO should already be set to return early before.");
     return nullptr;
@@ -2460,9 +2459,7 @@ void transform_gizmo_3d_model_from_constraint_and_mode_restore(TransInfo *t)
   MAN_ITER_AXES_END;
 }
 
-bool ED_transform_calc_pivot_pos(const struct bContext *C,
-                                 const short pivot_type,
-                                 float r_pivot_pos[3])
+bool ED_transform_calc_pivot_pos(const bContext *C, const short pivot_type, float r_pivot_pos[3])
 {
   Scene *scene = CTX_data_scene(C);
   return gizmo_3d_calc_pos(C, scene, nullptr, pivot_type, r_pivot_pos);

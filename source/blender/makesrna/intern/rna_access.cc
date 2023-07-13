@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -62,7 +64,7 @@ const PointerRNA PointerRNA_NULL = {nullptr};
 
 /* Init/Exit */
 
-void RNA_init(void)
+void RNA_init()
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -89,7 +91,7 @@ void RNA_init(void)
   }
 }
 
-void RNA_exit(void)
+void RNA_exit()
 {
   StructRNA *srna;
 
@@ -284,8 +286,7 @@ IDProperty *rna_idproperty_find(PointerRNA *ptr, const char *name)
     /* Not sure why that happens sometimes, with nested properties... */
     /* Seems to be actually array prop, name is usually "0"... To be sorted out later. */
 #if 0
-      printf(
-          "Got unexpected IDProp container when trying to retrieve %s: %d\n", name, group->type);
+    printf("Got unexpected IDProp container when trying to retrieve %s: %d\n", name, group->type);
 #endif
   }
 
@@ -6982,7 +6983,7 @@ void RNA_struct_state_owner_set(const char *name)
   }
 }
 
-const char *RNA_struct_state_owner_get(void)
+const char *RNA_struct_state_owner_get()
 {
   if (rna_struct_state_owner[0]) {
     return rna_struct_state_owner;

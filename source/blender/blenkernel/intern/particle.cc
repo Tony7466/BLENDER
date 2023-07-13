@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -516,7 +517,7 @@ uint PSYS_FRAND_SEED_OFFSET[PSYS_FRAND_COUNT];
 uint PSYS_FRAND_SEED_MULTIPLIER[PSYS_FRAND_COUNT];
 float PSYS_FRAND_BASE[PSYS_FRAND_COUNT];
 
-void BKE_particle_init_rng(void)
+void BKE_particle_init_rng()
 {
   RNG *rng = BLI_rng_new_srandom(5831); /* arbitrary */
   for (int i = 0; i < PSYS_FRAND_COUNT; i++) {
@@ -768,7 +769,7 @@ ParticleSystem *psys_orig_get(ParticleSystem *psys)
   return psys->orig_psys;
 }
 
-struct ParticleSystem *psys_eval_get(Depsgraph *depsgraph, Object *object, ParticleSystem *psys)
+ParticleSystem *psys_eval_get(Depsgraph *depsgraph, Object *object, ParticleSystem *psys)
 {
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   if (object_eval == object) {
@@ -1272,7 +1273,7 @@ void psys_interpolate_particle(
   }
 }
 
-typedef struct ParticleInterpolationData {
+struct ParticleInterpolationData {
   HairKey *hkey[2];
 
   Mesh *mesh;
@@ -1291,7 +1292,7 @@ typedef struct ParticleInterpolationData {
   /** Die on this frame, see #ParticleData.dietime for details. */
   float dietime;
   int bspline;
-} ParticleInterpolationData;
+};
 /**
  * Assumes pointcache->mem_cache exists, so for disk cached particles
  * call #psys_make_temp_pointcache() before use.
@@ -1941,7 +1942,7 @@ int psys_particle_dm_face_lookup(Mesh *mesh_final,
                                  Mesh *mesh_original,
                                  int findex_orig,
                                  const float fw[4],
-                                 struct LinkNode **poly_nodes)
+                                 LinkNode **poly_nodes)
 {
   MFace *mtessface_final;
   const OrigSpaceFace *osface_final;
@@ -2165,7 +2166,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
   const blender::Span<blender::float3> vert_normals = mesh_final->vert_normals();
 
   if (from == PART_FROM_VERT) {
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh_final);
+    const blender::Span<blender::float3> vert_positions = mesh_final->vert_positions();
     copy_v3_v3(vec, vert_positions[mapindex]);
 
     if (nor) {
@@ -2194,7 +2195,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
     MFace *mfaces = static_cast<MFace *>(
         CustomData_get_layer_for_write(&mesh_final->fdata, CD_MFACE, mesh_final->totface));
     mface = &mfaces[mapindex];
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh_final);
+    const blender::Span<blender::float3> vert_positions = mesh_final->vert_positions();
     mtface = static_cast<MTFace *>(
         CustomData_get_layer_for_write(&mesh_final->fdata, CD_MTFACE, mesh_final->totface));
 
@@ -2204,7 +2205,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
 
     if (from == PART_FROM_VOLUME) {
       psys_interpolate_face(mesh_final,
-                            vert_positions,
+                            reinterpret_cast<const float(*)[3]>(vert_positions.data()),
                             reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                             mface,
                             mtface,
@@ -2227,7 +2228,7 @@ void psys_particle_on_dm(Mesh *mesh_final,
     }
     else {
       psys_interpolate_face(mesh_final,
-                            vert_positions,
+                            reinterpret_cast<const float(*)[3]>(vert_positions.data()),
                             reinterpret_cast<const float(*)[3]>(vert_normals.data()),
                             mface,
                             mtface,
@@ -2883,7 +2884,7 @@ static void psys_task_init_path(ParticleTask *task, ParticleSimulationData *sim)
 
 /* NOTE: this function must be thread safe, except for branching! */
 static void psys_thread_create_path(ParticleTask *task,
-                                    struct ChildParticle *cpa,
+                                    ChildParticle *cpa,
                                     ParticleCacheKey *child_keys,
                                     int i)
 {
@@ -3568,14 +3569,14 @@ void psys_cache_paths(ParticleSimulationData *sim, float cfra, const bool use_re
   }
 }
 
-typedef struct CacheEditrPathsIterData {
+struct CacheEditrPathsIterData {
   Object *object;
   PTCacheEdit *edit;
   ParticleSystemModifierData *psmd;
   ParticleData *pa;
   int segments;
   bool use_weight;
-} CacheEditrPathsIterData;
+};
 
 static void psys_cache_edit_paths_iter(void *__restrict iter_data_v,
                                        const int iter,
@@ -3923,7 +3924,7 @@ static void psys_face_mat(Object *ob, Mesh *mesh, ParticleData *pa, float mat[4]
     }
   }
   else {
-    const float(*vert_positions)[3] = BKE_mesh_vert_positions(mesh);
+    const blender::Span<blender::float3> vert_positions = mesh->vert_positions();
     copy_v3_v3(v[0], vert_positions[mface->v1]);
     copy_v3_v3(v[1], vert_positions[mface->v2]);
     copy_v3_v3(v[2], vert_positions[mface->v3]);

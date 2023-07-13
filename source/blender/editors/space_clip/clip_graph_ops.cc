@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -346,10 +347,10 @@ void CLIP_OT_graph_select(wmOperatorType *ot)
 
 /********************** box select operator *********************/
 
-typedef struct BoxSelectuserData {
+struct BoxSelectuserData {
   rctf rect;
   bool select, extend, changed;
-} BoxSelectuserData;
+};
 
 static void box_select_cb(void *userdata,
                           MovieTrackingTrack * /*track*/,

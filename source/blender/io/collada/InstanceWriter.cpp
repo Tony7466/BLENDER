@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -35,7 +37,7 @@ void InstanceWriter::add_material_bindings(COLLADASW::BindMaterial &bind_materia
       COLLADASW::InstanceMaterial im(ostr.str(),
                                      COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, matid));
 
-      // create <bind_vertex_input> for each uv map
+      /* Create <bind_vertex_input> for each uv map. */
       Mesh *me = (Mesh *)ob->data;
 
       int num_layers = CustomData_number_of_layers(&me->ldata, CD_PROP_FLOAT2);

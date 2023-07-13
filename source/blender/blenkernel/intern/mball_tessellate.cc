@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -47,62 +48,62 @@
 /* Data types */
 
 /** Corner of a cube. */
-typedef struct corner {
+struct CORNER {
   int i, j, k;        /* (i, j, k) is index within lattice */
   float co[3], value; /* location and function value */
-  struct corner *next;
-} CORNER;
+  CORNER *next;
+};
 
 /** Partitioning cell (cube). */
-typedef struct cube {
+struct CUBE {
   int i, j, k;        /* lattice location of cube */
   CORNER *corners[8]; /* eight corners */
-} CUBE;
+};
 
 /** Linked list of cubes acting as stack. */
-typedef struct cubes {
-  CUBE cube;          /* a single cube */
-  struct cubes *next; /* remaining elements */
-} CUBES;
+struct CUBES {
+  CUBE cube;   /* a single cube */
+  CUBES *next; /* remaining elements */
+};
 
 /** List of cube locations. */
-typedef struct centerlist {
-  int i, j, k;             /* cube location */
-  struct centerlist *next; /* remaining elements */
-} CENTERLIST;
+struct CENTERLIST {
+  int i, j, k;      /* cube location */
+  CENTERLIST *next; /* remaining elements */
+};
 
 /** List of edges. */
-typedef struct edgelist {
+struct EDGELIST {
   int i1, j1, k1, i2, j2, k2; /* edge corner ids */
   int vid;                    /* vertex id */
-  struct edgelist *next;      /* remaining elements */
-} EDGELIST;
+  EDGELIST *next;             /* remaining elements */
+};
 
 /** List of integers. */
-typedef struct intlist {
-  int i;                /* an integer */
-  struct intlist *next; /* remaining elements */
-} INTLIST;
+struct INTLIST {
+  int i;         /* an integer */
+  INTLIST *next; /* remaining elements */
+};
 
 /** List of list of integers. */
-typedef struct intlists {
-  INTLIST *list;         /* a list of integers */
-  struct intlists *next; /* remaining elements */
-} INTLISTS;
+struct INTLISTS {
+  INTLIST *list;  /* a list of integers */
+  INTLISTS *next; /* remaining elements */
+};
 
 /** An AABB with pointer to metal-elem. */
-typedef struct Box {
+struct Box {
   float min[3], max[3];
   const MetaElem *ml;
-} Box;
+};
 
-typedef struct MetaballBVHNode { /* BVH node */
-  Box bb[2];                     /* AABB of children */
-  struct MetaballBVHNode *child[2];
-} MetaballBVHNode;
+struct MetaballBVHNode { /* node */
+  Box bb[2];             /* AABB of children */
+  MetaballBVHNode *child[2];
+};
 
 /** Parameters, storage. */
-typedef struct process {
+struct PROCESS {
   float thresh, size; /* mball threshold, single cube size */
   float delta;        /* small delta for calculating normals */
   uint converge_res;  /* converge procedure resolution (more = slower) */
@@ -130,7 +131,7 @@ typedef struct process {
 
   /* memory allocation from common pool */
   MemArena *pgn_elements;
-} PROCESS;
+};
 
 /* Forward declarations */
 static int vertid(PROCESS *process, const CORNER *c1, const CORNER *c2);
@@ -825,7 +826,7 @@ static void makecubetable()
   }
 }
 
-void BKE_mball_cubeTable_free(void)
+void BKE_mball_cubeTable_free()
 {
   for (int i = 0; i < 256; i++) {
     INTLISTS *lists = cubetable[i];
@@ -1233,7 +1234,7 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
         zero_size = 1;
       }
       else if (bob->parent) {
-        struct Object *pob = bob->parent;
+        Object *pob = bob->parent;
         while (pob) {
           if (has_zero_axis_m4(pob->object_to_world)) {
             zero_size = 1;

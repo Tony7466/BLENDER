@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -23,14 +24,16 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "RE_pipeline.h"
 
 #include "workbench_private.h"
 
 static void workbench_render_cache(void *vedata,
-                                   struct Object *ob,
-                                   struct RenderEngine *UNUSED(engine),
-                                   struct Depsgraph *UNUSED(depsgraph))
+                                   Object *ob,
+                                   RenderEngine *UNUSED(engine),
+                                   Depsgraph *UNUSED(depsgraph))
 {
   workbench_cache_populate(vedata, ob);
 }
@@ -38,7 +41,7 @@ static void workbench_render_cache(void *vedata,
 static void workbench_render_matrices_init(RenderEngine *engine, Depsgraph *depsgraph)
 {
   /* TODO(sergey): Shall render hold pointer to an evaluated camera instead? */
-  struct Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
+  Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, RE_GetCamera(engine->re));
 
   /* Set the perspective, view and window matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4];
@@ -95,9 +98,7 @@ static bool workbench_render_framebuffers_init(void)
   return ok;
 }
 
-static void workbench_render_result_z(struct RenderLayer *rl,
-                                      const char *viewname,
-                                      const rcti *rect)
+static void workbench_render_result_z(RenderLayer *rl, const char *viewname, const rcti *rect)
 {
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -105,7 +106,7 @@ static void workbench_render_result_z(struct RenderLayer *rl,
 
   if ((view_layer->passflag & SCE_PASS_Z) != 0) {
     RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_Z, viewname);
-    float *rp_buffer_data = rp->buffer.data;
+    float *rp_buffer_data = rp->ibuf->float_buffer.data;
 
     GPU_framebuffer_bind(dfbl->default_fb);
     GPU_framebuffer_read_depth(dfbl->default_fb,
@@ -209,7 +210,7 @@ void workbench_render(void *ved, RenderEngine *engine, RenderLayer *render_layer
                              4,
                              0,
                              GPU_DATA_FLOAT,
-                             rp->buffer.data);
+                             rp->ibuf->float_buffer.data);
 
   workbench_render_result_z(render_layer, viewname, rect);
 }

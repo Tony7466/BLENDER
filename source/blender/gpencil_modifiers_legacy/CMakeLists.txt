@@ -1,25 +1,20 @@
+# SPDX-FileCopyrightText: 2018 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2018 Blender Foundation
 
 set(INC
   .
   intern
   ../blenfont
-  ../blenkernel
-  ../blenlib
   ../blentranslation
   ../bmesh
   ../depsgraph
   ../editors/include
-  ../makesdna
   ../makesrna
   ../render
   ../windowmanager
   ../../../intern/eigen
-  ../../../intern/guardedalloc
 
-  # dna_type_offsets.h in BLO_read_write.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesdna/intern
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -92,10 +87,13 @@ list(APPEND LIB
 endif()
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 blender_add_lib(bf_gpencil_modifiers_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-add_dependencies(bf_gpencil_modifiers_legacy bf_dna)
 # RNA_prototypes.h
 add_dependencies(bf_gpencil_modifiers_legacy bf_rna)

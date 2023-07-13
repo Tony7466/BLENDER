@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -109,11 +111,11 @@ int UnaryPredicate1D_Init(PyObject *module)
 //------------------------INSTANCE METHODS ----------------------------------
 
 static char UnaryPredicate1D___doc__[] =
-    "Base class for unary predicates that work on :class:`Interface1D`.  A\n"
+    "Base class for unary predicates that work on :class:`Interface1D`. A\n"
     "UnaryPredicate1D is a functor that evaluates a condition on a\n"
     "Interface1D and returns true or false depending on whether this\n"
-    "condition is satisfied or not.  The UnaryPredicate1D is used by\n"
-    "invoking its __call__() method.  Any inherited class must overload the\n"
+    "condition is satisfied or not. The UnaryPredicate1D is used by\n"
+    "invoking its __call__() method. Any inherited class must overload the\n"
     "__call__() method.\n"
     "\n"
     ".. method:: __init__()\n"

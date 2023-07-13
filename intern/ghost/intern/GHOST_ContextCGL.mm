@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -43,6 +44,7 @@ static void ghost_fatal_error_dialog(const char *msg)
 }
 
 NSOpenGLContext *GHOST_ContextCGL::s_sharedOpenGLContext = nil;
+MTLCommandQueue *GHOST_ContextCGL::s_sharedMetalCommandQueue = nil;
 int GHOST_ContextCGL::s_sharedCount = 0;
 
 GHOST_ContextCGL::GHOST_ContextCGL(bool stereoVisual,
@@ -54,7 +56,6 @@ GHOST_ContextCGL::GHOST_ContextCGL(bool stereoVisual,
       m_useMetalForRendering(type == GHOST_kDrawingContextTypeMetal),
       m_metalView(metalView),
       m_metalLayer(metalLayer),
-      m_metalCmdQueue(nil),
       m_metalRenderPipeline(nil),
       m_openGLView(openGLView),
       m_openGLContext(nil),
@@ -107,7 +108,7 @@ GHOST_ContextCGL::~GHOST_ContextCGL()
   metalFree();
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       if (m_openGLContext == [NSOpenGLContext currentContext]) {
         [NSOpenGLContext clearCurrentContext];
@@ -144,7 +145,7 @@ GHOST_TSuccess GHOST_ContextCGL::swapBuffers()
   GHOST_TSuccess return_value = GHOST_kFailure;
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       if (m_metalView) {
         metalSwapBuffers();
@@ -174,7 +175,7 @@ GHOST_TSuccess GHOST_ContextCGL::setSwapInterval(int interval)
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
       [m_openGLContext setValues:&interval forParameter:NSOpenGLCPSwapInterval];
@@ -196,7 +197,7 @@ GHOST_TSuccess GHOST_ContextCGL::getSwapInterval(int &intervalOut)
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       GLint interval;
 
@@ -225,7 +226,7 @@ GHOST_TSuccess GHOST_ContextCGL::activateDrawingContext()
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
       [m_openGLContext makeCurrentContext];
@@ -246,7 +247,7 @@ GHOST_TSuccess GHOST_ContextCGL::releaseDrawingContext()
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
       [NSOpenGLContext clearCurrentContext];
@@ -277,7 +278,7 @@ GHOST_TSuccess GHOST_ContextCGL::updateDrawingContext()
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     if (m_openGLContext != nil) {
       if (m_metalView) {
         metalUpdateFramebuffer();
@@ -318,7 +319,7 @@ id<MTLTexture> GHOST_ContextCGL::metalOverlayTexture()
 
 MTLCommandQueue *GHOST_ContextCGL::metalCommandQueue()
 {
-  return m_metalCmdQueue;
+  return s_sharedMetalCommandQueue;
 }
 MTLDevice *GHOST_ContextCGL::metalDevice()
 {
@@ -384,7 +385,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
     /* Command-line argument would be better. */
     if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
       /* Command-line argument would be better. */
       static bool softwareGL = getenv("BLENDER_SOFTWAREGL");
 
@@ -507,7 +508,7 @@ GHOST_TSuccess GHOST_ContextCGL::initializeDrawingContext()
 
 GHOST_TSuccess GHOST_ContextCGL::releaseNativeHandles()
 {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
   m_openGLContext = nil;
   m_openGLView = nil;
 #endif
@@ -530,10 +531,14 @@ void GHOST_ContextCGL::metalInit()
     /* clang-format on */
     id<MTLDevice> device = m_metalLayer.device;
 
-    /* Create a command queue for blit/present operation. */
-    m_metalCmdQueue = (MTLCommandQueue *)[device
-        newCommandQueueWithMaxCommandBufferCount:GHOST_ContextCGL::max_command_buffer_count];
-    [m_metalCmdQueue retain];
+    /* Create a command queue for blit/present operation. Note: All context should share a single
+     * command queue to ensure correct ordering of work submitted from multiple contexts. */
+    if (s_sharedMetalCommandQueue == nil) {
+      s_sharedMetalCommandQueue = (MTLCommandQueue *)[device
+          newCommandQueueWithMaxCommandBufferCount:GHOST_ContextCGL::max_command_buffer_count];
+    }
+    /* Ensure active GHOSTContext retains a reference to the shared context. */
+    [s_sharedMetalCommandQueue retain];
 
     /* Create shaders for blit operation. */
     NSString *source = @R"msl(
@@ -616,9 +621,6 @@ void GHOST_ContextCGL::metalInit()
 
 void GHOST_ContextCGL::metalFree()
 {
-  if (m_metalCmdQueue) {
-    [m_metalCmdQueue release];
-  }
   if (m_metalRenderPipeline) {
     [m_metalRenderPipeline release];
   }
@@ -633,14 +635,14 @@ void GHOST_ContextCGL::metalFree()
 void GHOST_ContextCGL::metalInitFramebuffer()
 {
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     glGenFramebuffers(1, &m_defaultFramebuffer);
 #endif
   }
   updateDrawingContext();
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     glBindFramebuffer(GL_FRAMEBUFFER, m_defaultFramebuffer);
 #endif
   }
@@ -649,7 +651,7 @@ void GHOST_ContextCGL::metalInitFramebuffer()
 void GHOST_ContextCGL::metalUpdateFramebuffer()
 {
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     assert(m_defaultFramebuffer != 0);
 #endif
   }
@@ -659,7 +661,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
   size_t width = (size_t)backingSize.width;
   size_t height = (size_t)backingSize.height;
 
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
   unsigned int glTex;
   CVPixelBufferRef cvPixelBuffer = nil;
   CVOpenGLTextureCacheRef cvGLTexCache = nil;
@@ -669,7 +671,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
 #endif
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     /* OPENGL path */
     {
       /* Test if there is anything to update */
@@ -789,7 +791,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
         overlayTex;  //[(MTLTexture *)overlayTex retain];
 
     /* Clear texture on create */
-    id<MTLCommandBuffer> cmdBuffer = [m_metalCmdQueue commandBuffer];
+    id<MTLCommandBuffer> cmdBuffer = [s_sharedMetalCommandQueue commandBuffer];
     MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
     {
       auto attachment = [passDescriptor.colorAttachments objectAtIndexedSubscript:0];
@@ -807,7 +809,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
   }
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     glBindFramebuffer(GL_FRAMEBUFFER, m_defaultFramebuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, glTex, 0);
 #endif
@@ -815,7 +817,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
 
   [m_metalLayer setDrawableSize:CGSizeMake((CGFloat)width, (CGFloat)height)];
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     CVPixelBufferRelease(cvPixelBuffer);
     CVOpenGLTextureCacheRelease(cvGLTexCache);
     CVOpenGLTextureRelease(cvGLTex);
@@ -833,7 +835,7 @@ void GHOST_ContextCGL::metalSwapBuffers()
     updateDrawingContext();
 
     if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
       glFlush();
       assert(m_defaultFramebufferMetalTexture[current_swapchain_index].texture != nil);
 #endif
@@ -854,7 +856,7 @@ void GHOST_ContextCGL::metalSwapBuffers()
     }
 
     if (!m_useMetalForRendering) {
-      id<MTLCommandBuffer> cmdBuffer = [m_metalCmdQueue commandBuffer];
+      id<MTLCommandBuffer> cmdBuffer = [s_sharedMetalCommandQueue commandBuffer];
       {
         assert(m_defaultFramebufferMetalTexture[current_swapchain_index].texture != nil);
         id<MTLRenderCommandEncoder> enc = [cmdBuffer
@@ -886,33 +888,10 @@ void GHOST_ContextCGL::initClear()
 {
 
   if (!m_useMetalForRendering) {
-#if WITH_OPENGL
+#ifdef WITH_OPENGL_BACKEND
     glClearColor(0.294, 0.294, 0.294, 0.000);
     glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(0.000, 0.000, 0.000, 0.000);
-#endif
-  }
-  else {
-#if WITH_METAL
-    // TODO (mg_gpusw_apple) this path is never taken, this is legacy left from inital integration
-    // of metal and gl, the whole file should be cleaned up and stripped of the legacy path
-    id<MTLCommandBuffer> cmdBuffer = [m_metalCmdQueue commandBuffer];
-    MTLRenderPassDescriptor *passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
-    {
-      auto attachment = [passDescriptor.colorAttachments objectAtIndexedSubscript:0];
-      attachment.texture = m_defaultFramebufferMetalTexture[current_swapchain_index].texture;
-      attachment.loadAction = MTLLoadActionClear;
-      attachment.clearColor = MTLClearColorMake(0.294, 0.294, 0.294, 1.000);
-      attachment.storeAction = MTLStoreActionStore;
-    }
-
-    // encoding
-    {
-      id<MTLRenderCommandEncoder> enc = [cmdBuffer
-          renderCommandEncoderWithDescriptor:passDescriptor];
-      [enc endEncoding];
-    }
-    [cmdBuffer commit];
 #endif
   }
 }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup overlay
@@ -155,7 +157,7 @@ void Instance::draw(Manager &manager)
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
-  /* TODO: Better semantical switch? */
+  /* TODO: Better semantics using a switch? */
   if (!resources.color_overlay_tx.is_valid()) {
     /* Likely to be the selection case. Allocate dummy texture and bind only depth buffer. */
     resources.line_tx.acquire(int2(1, 1), GPU_RGBA8);
@@ -245,6 +247,7 @@ bool Instance::object_is_edit_mode(const Object *ob)
       case OB_CURVES:
         return state.ctx_mode == CTX_MODE_EDIT_CURVES;
       case OB_POINTCLOUD:
+        return state.ctx_mode == CTX_MODE_EDIT_POINT_CLOUD;
       case OB_VOLUME:
         /* No edit mode yet. */
         return false;
