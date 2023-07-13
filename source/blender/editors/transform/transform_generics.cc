@@ -70,13 +70,13 @@ void resetTransRestrictions(TransInfo *t)
 static void *t_view_get(TransInfo *t)
 {
   if (t->spacetype == SPACE_VIEW3D) {
-    View3D *v3d = t->area->spacedata.first;
+    View3D *v3d = static_cast<View3D *>(t->area->spacedata.first);
     return (void *)v3d;
   }
   if (t->region) {
     return (void *)&t->region->v2d;
   }
-  return NULL;
+  return nullptr;
 }
 
 static int t_around_get(TransInfo *t)
@@ -96,15 +96,15 @@ static int t_around_get(TransInfo *t)
       return t->settings->transform_pivot_point;
     }
     case SPACE_IMAGE: {
-      SpaceImage *sima = area->spacedata.first;
+      SpaceImage *sima = static_cast<SpaceImage *>(area->spacedata.first);
       return sima->around;
     }
     case SPACE_GRAPH: {
-      SpaceGraph *sipo = area->spacedata.first;
+      SpaceGraph *sipo = static_cast<SpaceGraph *>(area->spacedata.first);
       return sipo->around;
     }
     case SPACE_CLIP: {
-      SpaceClip *sclip = area->spacedata.first;
+      SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
       return sclip->around;
     }
     case SPACE_SEQ: {
@@ -126,7 +126,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(sce, view_layer);
   Object *obact = BKE_view_layer_active_object_get(view_layer);
-  const eObjectMode object_mode = obact ? obact->mode : OB_MODE_OBJECT;
+  const eObjectMode object_mode = eObjectMode(obact ? obact->mode : OB_MODE_OBJECT);
   ToolSettings *ts = CTX_data_tool_settings(C);
   ARegion *region = CTX_wm_region(C);
   ScrArea *area = CTX_wm_area(C);
@@ -141,11 +141,11 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   t->area = area;
   t->region = region;
   t->settings = ts;
-  t->reports = op ? op->reports : NULL;
+  t->reports = op ? op->reports : nullptr;
 
   t->helpline = HLP_NONE;
 
-  t->flag = 0;
+  t->flag = eTFlag(0);
 
   if (obact && !(t->options & (CTX_CURSOR | CTX_TEXTURE_SPACE)) &&
       ELEM(object_mode, OB_MODE_EDIT, OB_MODE_EDIT_GPENCIL_LEGACY))
@@ -163,8 +163,9 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   }
 
   /* Many kinds of transform only use a single handle. */
-  if (t->data_container == NULL) {
-    t->data_container = MEM_callocN(sizeof(*t->data_container), __func__);
+  if (t->data_container == nullptr) {
+    t->data_container = static_cast<TransDataContainer *>(
+        MEM_callocN(sizeof(*t->data_container), __func__));
     t->data_container_len = 1;
   }
 
@@ -185,7 +186,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   copy_v2_v2_int(t->mval, mval);
   copy_v2_v2_int(t->mouse.imval, mval);
 
-  t->mode_info = NULL;
+  t->mode_info = nullptr;
 
   t->data_len_all = 0;
 
@@ -223,11 +224,11 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   }
 
   /* Assign the space type, some exceptions for running in different mode */
-  if (area == NULL) {
+  if (area == nullptr) {
     /* background mode */
     t->spacetype = SPACE_EMPTY;
   }
-  else if ((region == NULL) && (area->spacetype == SPACE_VIEW3D)) {
+  else if ((region == nullptr) && (area->spacetype == SPACE_VIEW3D)) {
     /* running in the text editor */
     t->spacetype = SPACE_EMPTY;
   }
@@ -238,7 +239,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   /* handle T_ALT_TRANSFORM initialization, we may use for different operators */
   if (op) {
-    const char *prop_id = NULL;
+    const char *prop_id = nullptr;
     if (t->mode == TFM_SHRINKFATTEN) {
       prop_id = "use_even_offset";
     }
@@ -251,7 +252,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   if (t->spacetype == SPACE_VIEW3D) {
     bScreen *animscreen = ED_screen_animation_playing(CTX_wm_manager(C));
 
-    t->animtimer = (animscreen) ? animscreen->animtimer : NULL;
+    t->animtimer = (animscreen) ? animscreen->animtimer : nullptr;
 
     if (t->scene->toolsettings->transform_flag & SCE_XFORM_AXIS_ALIGN) {
       t->flag |= T_V3D_ALIGN;
@@ -281,7 +282,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
   else if (t->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = area->spacedata.first;
+    SpaceImage *sima = static_cast<SpaceImage *>(area->spacedata.first);
     BKE_view_layer_synced_ensure(t->scene, t->view_layer);
     if (ED_space_image_show_uvedit(sima, BKE_view_layer_active_object_get(t->view_layer))) {
       /* UV transform */
@@ -298,7 +299,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     /* image not in uv edit, nor in mask mode, can happen for some tools */
   }
   else if (t->spacetype == SPACE_CLIP) {
-    SpaceClip *sclip = area->spacedata.first;
+    SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
     if (ED_space_clip_check_show_trackedit(sclip)) {
       t->options |= CTX_MOVIECLIP;
     }
@@ -311,7 +312,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
     /* Needed for autokeying transforms in preview during playback. */
     bScreen *animscreen = ED_screen_animation_playing(CTX_wm_manager(C));
-    t->animtimer = (animscreen) ? animscreen->animtimer : NULL;
+    t->animtimer = (animscreen) ? animscreen->animtimer : nullptr;
   }
 
   setTransformViewAspect(t, t->aspect);
@@ -645,7 +646,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
 
-  /* Mirror is not supported with proportional editing, turn it off. */
+/* Mirror is not supported with proportional editing, turn it off. */
 #if 0
   if (t->flag & T_PROP_EDIT) {
     t->flag &= ~T_MIRROR;
@@ -677,14 +678,14 @@ static void freeTransCustomData(TransInfo *t, TransDataContainer *tc, TransCusto
   if (custom_data->free_cb) {
     /* Can take over freeing t->data and data_2d etc... */
     custom_data->free_cb(t, tc, custom_data);
-    BLI_assert(custom_data->data == NULL);
+    BLI_assert(custom_data->data == nullptr);
   }
-  else if ((custom_data->data != NULL) && custom_data->use_free) {
+  else if ((custom_data->data != nullptr) && custom_data->use_free) {
     MEM_freeN(custom_data->data);
-    custom_data->data = NULL;
+    custom_data->data = nullptr;
   }
   /* In case modes are switched in the same transform session. */
-  custom_data->free_cb = NULL;
+  custom_data->free_cb = nullptr;
   custom_data->use_free = false;
 }
 
@@ -700,7 +701,7 @@ static void freeTransCustomDataContainer(TransInfo *t,
 
 void freeTransCustomDataForMode(TransInfo *t)
 {
-  freeTransCustomData(t, NULL, &t->custom.mode);
+  freeTransCustomData(t, nullptr, &t->custom.mode);
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     freeTransCustomData(t, tc, &tc->custom.mode);
   }
@@ -715,7 +716,7 @@ void postTrans(bContext *C, TransInfo *t)
     ED_region_draw_cb_exit(t->region->type, t->draw_handle_pixel);
   }
   if (t->draw_handle_cursor) {
-    WM_paint_cursor_end(t->draw_handle_cursor);
+    WM_paint_cursor_end(static_cast<wmPaintCursor *>(t->draw_handle_cursor));
   }
 
   if (t->flag & T_MODAL_CURSOR_SET) {
@@ -723,12 +724,12 @@ void postTrans(bContext *C, TransInfo *t)
   }
 
   /* Free all custom-data */
-  freeTransCustomDataContainer(t, NULL, &t->custom);
+  freeTransCustomDataContainer(t, nullptr, &t->custom);
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     freeTransCustomDataContainer(t, tc, &tc->custom);
   }
 
-  /* postTrans can be called when nothing is selected, so data is NULL already */
+  /* postTrans can be called when nothing is selected, so data is nullptr already */
   if (t->data_len_all != 0) {
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       /* free data malloced per trans-data */
@@ -751,7 +752,7 @@ void postTrans(bContext *C, TransInfo *t)
   }
 
   MEM_SAFE_FREE(t->data_container);
-  t->data_container = NULL;
+  t->data_container = nullptr;
 
   BLI_freelistN(&t->tsnap.points);
 
@@ -760,7 +761,7 @@ void postTrans(bContext *C, TransInfo *t)
       /* pass */
     }
     else {
-      SpaceImage *sima = t->area->spacedata.first;
+      SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
       if (sima->flag & SI_LIVE_UNWRAP) {
         ED_uvedit_live_unwrap_end(t->state == TRANS_CANCEL);
       }
@@ -771,7 +772,7 @@ void postTrans(bContext *C, TransInfo *t)
     MEM_freeN(t->mouse.data);
   }
 
-  if (t->rng != NULL) {
+  if (t->rng != nullptr) {
     BLI_rng_free(t->rng);
   }
 
@@ -916,7 +917,7 @@ void calculateCenterCursor(TransInfo *t, float r_center[3])
 void calculateCenterCursor2D(TransInfo *t, float r_center[2])
 {
   float cursor_local_buf[2];
-  const float *cursor = NULL;
+  const float *cursor = nullptr;
 
   if (t->spacetype == SPACE_IMAGE) {
     SpaceImage *sima = (SpaceImage *)t->area->spacedata.first;
@@ -1140,10 +1141,11 @@ static void calculateZfac(TransInfo *t)
    * for a region different from RGN_TYPE_WINDOW.
    */
   if ((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW)) {
-    t->zfac = ED_view3d_calc_zfac(t->region->regiondata, t->center_global);
+    t->zfac = ED_view3d_calc_zfac(static_cast<const RegionView3D *>(t->region->regiondata),
+                                  t->center_global);
   }
   else if (t->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = t->area->spacedata.first;
+    SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
     t->zfac = 1.0f / sima->zoom;
   }
   else if (t->region) {
@@ -1238,7 +1240,7 @@ void calculatePropRatio(TransInfo *t)
   t->proptext[0] = '\0';
 
   if (t->flag & T_PROP_EDIT) {
-    const char *pet_id = NULL;
+    const char *pet_id = nullptr;
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
       for (i = 0; i < tc->data_len; i++, td++) {
@@ -1289,7 +1291,7 @@ void calculatePropRatio(TransInfo *t)
               td->factor = sqrtf(2 * dist - dist * dist);
               break;
             case PROP_RANDOM:
-              if (t->rng == NULL) {
+              if (t->rng == nullptr) {
                 /* Lazy initialization. */
                 uint rng_seed = (uint)(PIL_check_seconds_timer_i() & UINT_MAX);
                 t->rng = BLI_rng_new(rng_seed);
@@ -1453,7 +1455,7 @@ void transform_data_ext_rotate(TransData *td, float mat[3][3], bool use_drot)
 Object *transform_object_deform_pose_armature_get(const TransInfo *t, Object *ob)
 {
   if (!(ob->mode & OB_MODE_ALL_WEIGHT_PAINT)) {
-    return NULL;
+    return nullptr;
   }
   /* Important that ob_armature can be set even when its not selected #23412.
    * Lines below just check is also visible. */
@@ -1462,11 +1464,11 @@ Object *transform_object_deform_pose_armature_get(const TransInfo *t, Object *ob
     BKE_view_layer_synced_ensure(t->scene, t->view_layer);
     Base *base_arm = BKE_view_layer_base_find(t->view_layer, ob_armature);
     if (base_arm) {
-      View3D *v3d = t->view;
+      View3D *v3d = static_cast<View3D *>(t->view);
       if (BASE_VISIBLE(v3d, base_arm)) {
         return ob_armature;
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
