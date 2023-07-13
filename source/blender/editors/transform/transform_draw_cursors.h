@@ -8,6 +8,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Callbacks for #WM_paint_cursor_activate */
 
 /**
@@ -20,3 +24,7 @@ bool transform_draw_cursor_poll(struct bContext *C);
  * #WM_paint_cursor_activate
  */
 void transform_draw_cursor_draw(struct bContext *C, int x, int y, void *customdata);
+
+#ifdef __cplusplus
+}
+#endif

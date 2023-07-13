@@ -188,6 +188,7 @@ typedef enum {
   CON_NOFLIP = 1 << 5,
   CON_USER = 1 << 6,
 } eTConstraint;
+ENUM_OPERATORS(eTConstraint, CON_USER)
 
 /** #TransInfo.state */
 typedef enum {

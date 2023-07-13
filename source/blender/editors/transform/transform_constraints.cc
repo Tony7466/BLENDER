@@ -244,7 +244,7 @@ static void axisProjection(const TransInfo *t,
       /* Use ray-ray intersection instead of line-line because this gave
        * precision issues adding small values to large numbers. */
       float mul;
-      if (isect_ray_ray_v3(t_con_center, axis, v, norm, &mul, NULL)) {
+      if (isect_ray_ray_v3(t_con_center, axis, v, norm, &mul, nullptr)) {
         mul_v3_v3fl(out, axis, mul);
       }
       else {
@@ -306,7 +306,7 @@ void transform_constraint_snap_axis_to_edge(const TransInfo *t,
   const float *edge_dir = t->tsnap.snapNormal;
   bool is_aligned = fabsf(dot_v3v3(axis, edge_dir)) > (1.0f - CONSTRAIN_EPSILON);
   if (!is_aligned &&
-      isect_ray_ray_v3(t->tsnap.snap_source, axis, edge_snap_point, edge_dir, &lambda, NULL))
+      isect_ray_ray_v3(t->tsnap.snap_source, axis, edge_snap_point, edge_dir, &lambda, nullptr))
   {
     mul_v3_v3fl(r_out, axis, lambda);
   }
@@ -368,7 +368,7 @@ static short transform_orientation_or_default(const TransInfo *t)
 }
 
 static const float (*transform_object_axismtx_get(const TransInfo *t,
-                                                  const TransDataContainer *UNUSED(tc),
+                                                  const TransDataContainer * /*tc*/,
                                                   const TransData *td))[3]
 {
   if (transform_orientation_or_default(t) == V3D_ORIENT_GIMBAL) {
@@ -388,7 +388,7 @@ static const float (*transform_object_axismtx_get(const TransInfo *t,
  * (in perspective mode, the view vector is relative to the position on screen)
  */
 static void applyAxisConstraintVec(const TransInfo *t,
-                                   const TransDataContainer *UNUSED(tc),
+                                   const TransDataContainer * /*tc*/,
                                    const TransData *td,
                                    const float in[3],
                                    float out[3])
@@ -500,7 +500,7 @@ static void applyObjectConstraintVec(const TransInfo *t,
  * Generic callback for constant spatial constraints applied to resize motion.
  */
 static void applyAxisConstraintSize(const TransInfo *t,
-                                    const TransDataContainer *UNUSED(tc),
+                                    const TransDataContainer * /*tc*/,
                                     const TransData *td,
                                     float r_smat[3][3])
 {
@@ -603,7 +603,7 @@ static void constraints_rotation_impl(const TransInfo *t,
  * (ie: not doing counterclockwise rotations when the mouse moves clockwise).
  */
 static void applyAxisConstraintRot(const TransInfo *t,
-                                   const TransDataContainer *UNUSED(tc),
+                                   const TransDataContainer * /*tc*/,
                                    const TransData *td,
                                    float r_axis[3],
                                    float *r_angle)
@@ -637,8 +637,8 @@ static void applyObjectConstraintRot(const TransInfo *t,
     const float(*axismtx)[3];
 
     /* on setup call, use first object */
-    if (td == NULL) {
-      BLI_assert(tc == NULL);
+    if (td == nullptr) {
+      BLI_assert(tc == nullptr);
       tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
       td = tc->data;
     }
@@ -664,12 +664,12 @@ static void applyObjectConstraintRot(const TransInfo *t,
 void setConstraint(TransInfo *t, int mode, const char text[])
 {
   BLI_strncpy(t->con.text + 1, text, sizeof(t->con.text) - 1);
-  t->con.mode = mode;
+  t->con.mode = eTConstraint(mode);
   projection_matrix_calc(t, t->con.pmtx);
 
   startConstraint(t);
 
-  t->con.drawExtra = NULL;
+  t->con.drawExtra = nullptr;
   t->con.applyVec = applyAxisConstraintVec;
   t->con.applySize = applyAxisConstraintSize;
   t->con.applyRot = applyAxisConstraintRot;
@@ -679,7 +679,7 @@ void setConstraint(TransInfo *t, int mode, const char text[])
 void setAxisMatrixConstraint(TransInfo *t, int mode, const char text[])
 {
   BLI_strncpy(t->con.text + 1, text, sizeof(t->con.text) - 1);
-  t->con.mode = mode;
+  t->con.mode = eTConstraint(mode);
   projection_matrix_calc(t, t->con.pmtx);
 
   startConstraint(t);
@@ -751,7 +751,7 @@ static void drawLine(
   uchar col[3], col2[3];
 
   if (t->spacetype == SPACE_VIEW3D) {
-    View3D *v3d = t->view;
+    View3D *v3d = static_cast<View3D *>(t->view);
 
     copy_v3_v3(v3, dir);
     mul_v3_fl(v3, v3d->clip_end);
@@ -760,7 +760,7 @@ static void drawLine(
     add_v3_v3v3(v1, center, v3);
   }
   else if (t->spacetype == SPACE_SEQ) {
-    View2D *v2d = t->view;
+    View2D *v2d = static_cast<View2D *>(t->view);
 
     copy_v3_v3(v3, dir);
     float max_dist = max_ff(BLI_rctf_size_x(&v2d->cur), BLI_rctf_size_y(&v2d->cur));
@@ -879,7 +879,7 @@ void drawPropCircle(const bContext *C, TransInfo *t)
     RegionView3D *rv3d = CTX_wm_region_view3d(C);
     float tmat[4][4], imat[4][4];
 
-    if (t->spacetype == SPACE_VIEW3D && rv3d != NULL) {
+    if (t->spacetype == SPACE_VIEW3D && rv3d != nullptr) {
       copy_m4_m4(tmat, rv3d->viewmat);
       invert_m4_m4(imat, tmat);
     }
@@ -1191,7 +1191,7 @@ int constraintModeToIndex(const TransInfo *t)
   if ((t->con.mode & CON_APPLY) == 0) {
     return -1;
   }
-  switch (t->con.mode & (CON_AXIS0 | CON_AXIS1 | CON_AXIS2)) {
+  switch (int(t->con.mode & (CON_AXIS0 | CON_AXIS1 | CON_AXIS2))) {
     case (CON_AXIS0):
     case (CON_AXIS1 | CON_AXIS2):
       return 0;

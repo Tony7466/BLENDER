@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct LinkNode;
 struct TransData;
 struct TransDataContainer;
@@ -221,3 +225,7 @@ extern TransModeInfo TransMode_translate;
 
 extern TransModeInfo TransMode_vertslide;
 void transform_mode_vert_slide_reproject_input(TransInfo *t);
+
+#ifdef __cplusplus
+}
+#endif
