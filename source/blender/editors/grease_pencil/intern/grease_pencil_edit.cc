@@ -159,7 +159,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
 
   const int64_t first_pt = curve_points.first();
   const int64_t last_pt = curve_points.last();
-  const int64_t nb_pts = curve_points.size();
+  const int64_t total_points = curve_points.size();
 
   auto is_end_and_fixed = [smooth_ends, is_cyclic, first_pt, last_pt](int point_index) {
     return !smooth_ends && !is_cyclic && ((point_index == first_pt) || (point_index == last_pt));
@@ -187,8 +187,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
       int64_t before = point_index - step;
       int64_t after = point_index + step;
       if (is_cyclic) {
-        before = ((before - first_pt) % nb_pts + nb_pts) % nb_pts + first_pt;
-        after = (after - first_pt) % nb_pts + first_pt;
+        before = ((before - first_pt) % total_points + total_points) % total_points + first_pt;
+        after = (after - first_pt) % total_points + first_pt;
       }
       else {
         if (!smooth_ends && (before < first_pt)) {
@@ -197,8 +197,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
         before = std::max(before, first_pt);
 
         if (!smooth_ends && (after > last_pt)) {
-          w_after *= (after - first_pt - (nb_pts - 1)) /
-                     float(nb_pts - 1 - point_index + first_pt);
+          w_after *= (after - first_pt - (total_points - 1)) /
+                     float(total_points - 1 - point_index + first_pt);
         }
         after = std::min(after, last_pt);
       }
