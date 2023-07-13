@@ -5067,19 +5067,8 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
     state.but_flag &= ~UI_BUT_OVERRIDDEN;
   }
 
-  if ((state.but_drawflag & UI_BUT_INDETERMINATE)) {
-    if (state.but_flag & UI_SELECT) {
-      state.but_flag &= ~UI_SELECT;
-    }
-    if (ELEM(but->type,
-             UI_BTYPE_MENU,
-             UI_BTYPE_NUM,
-             UI_BTYPE_NUM_SLIDER,
-             UI_BTYPE_TEXT,
-             UI_BTYPE_SEARCH_MENU))
-    {
-      state.but_drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
-    }
+  if ((state.but_drawflag & UI_BUT_INDETERMINATE) && (state.but_flag & UI_SELECT)) {
+    state.but_flag &= ~UI_SELECT;
   }
 
   const float zoom = 1.0f / but->block->aspect;
