@@ -150,36 +150,6 @@ static void add_new_edges(Mesh &mesh,
   }
 }
 
-/** Split the vertex into duplicates so that each fan has a different vertex. */
-static void split_vertex_per_fan(const int vertex,
-                                 const int start_offset,
-                                 const int orig_verts_num,
-                                 const Span<int> fans,
-                                 const Span<int> fan_sizes,
-                                 const Span<Vector<int>> edge_to_loop_map,
-                                 MutableSpan<int> corner_verts,
-                                 MutableSpan<int> new_to_old_verts_map)
-{
-  int fan_start = 0;
-  /* We don't need to create a new vertex for the last fan. That fan can just be connected to the
-   * original vertex. */
-  for (const int i : fan_sizes.index_range().drop_back(1)) {
-    const int new_vert_i = start_offset + i;
-    new_to_old_verts_map[new_vert_i - orig_verts_num] = vertex;
-
-    for (const int edge_i : fans.slice(fan_start, fan_sizes[i])) {
-      for (const int loop_i : edge_to_loop_map[edge_i]) {
-        if (corner_verts[loop_i] == vertex) {
-          corner_verts[loop_i] = new_vert_i;
-        }
-        /* The old vertex is on the loop containing the adjacent edge. Since this function is also
-         * called on the adjacent edge, we don't replace it here. */
-      }
-    }
-    fan_start += fan_sizes[i];
-  }
-}
-
 /** Assign the newly created vertex duplicates to the loose edges around this vertex. */
 static void reassign_loose_edge_verts(const int vertex,
                                       const int start_offset,
@@ -223,271 +193,305 @@ static int adjacent_edge(const Span<int> corner_verts,
   return corner_edges[adjacent_loop_i];
 }
 
-/**
- * Calculate the disjoint fans connected to the vertex, where a fan is a group of edges connected
- * through polygons. The connected_edges vector is rearranged in such a way that edges in the same
- * fan are grouped together. The r_fans_sizes Vector gives the sizes of the different fans, and can
- * be used to retrieve the fans from connected_edges.
- */
-static void calc_vertex_fans(const int vertex,
-                             const Span<int> corner_verts,
-                             const Span<int> new_corner_edges,
-                             const OffsetIndices<int> polys,
-                             const Span<Vector<int>> edge_to_loop_map,
-                             const Span<int> loop_to_poly_map,
-                             MutableSpan<int> connected_edges,
-                             Vector<int> &r_fan_sizes)
+/** A vertex is selected if it's used by a selected edge. */
+static IndexMask vert_selection_from_edge(const Span<int2> edges,
+                                          const IndexMask &edge_mask,
+                                          const int verts_num,
+                                          IndexMaskMemory &memory)
 {
-  if (connected_edges.size() <= 1) {
-    r_fan_sizes.append(connected_edges.size());
-    return;
-  }
-
-  Vector<int> search_edges;
-  int total_found_edges_num = 0;
-  int fan_size = 0;
-  const int total_edge_num = connected_edges.size();
-  /* Iteratively go through the connected edges. The front contains already handled edges, while
-   * the back contains unhandled edges. */
-  while (true) {
-    /* This edge has not been visited yet. */
-    int curr_i = total_found_edges_num;
-    int curr_edge_i = connected_edges[curr_i];
-
-    /* Gather all the edges in this fan. */
-    while (true) {
-      fan_size++;
-
-      /* Add adjacent edges to search stack. */
-      for (const int loop_i : edge_to_loop_map[curr_edge_i]) {
-        const int adjacent_edge_i = adjacent_edge(
-            corner_verts, new_corner_edges, loop_i, polys[loop_to_poly_map[loop_i]], vertex);
-
-        /* Find out if this edge was visited already. */
-        int i = curr_i + 1;
-        for (; i < total_edge_num; i++) {
-          if (connected_edges[i] == adjacent_edge_i) {
-            break;
-          }
-        }
-        if (i == total_edge_num) {
-          /* Already visited this edge. */
-          continue;
-        }
-        search_edges.append(adjacent_edge_i);
-        curr_i++;
-        std::swap(connected_edges[curr_i], connected_edges[i]);
-      }
-
-      if (search_edges.is_empty()) {
-        break;
-      }
-
-      curr_edge_i = search_edges.pop_last();
-    }
-    /* We have now collected all the edges in this fan. */
-    total_found_edges_num += fan_size;
-    BLI_assert(total_found_edges_num <= total_edge_num);
-    r_fan_sizes.append(fan_size);
-    if (total_found_edges_num == total_edge_num) {
-      /* We have found all the edges, so this final batch must be the last connected fan. */
-      break;
-    }
-    fan_size = 0;
-  }
+  Array<bool> array(verts_num, false);
+  edge_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int i) {
+    array[edges[i][0]] = true;
+    array[edges[i][1]] = true;
+  });
+  return IndexMask::from_bools(array, memory);
 }
 
-/**
- * Splits the edge into duplicates, so that each edge is connected to one poly.
- */
-static void split_edge_per_poly(const int edge_i,
-                                const int new_edge_start,
-                                MutableSpan<Vector<int>> edge_to_loop_map,
-                                MutableSpan<int> corner_edges)
+static BitVector<> selection_to_bits(const IndexMask &selection, const int universe_size)
 {
-  if (edge_to_loop_map[edge_i].size() <= 1) {
-    return;
+  BitVector<> bits(universe_size);
+  selection.to_bits(bits);
+  return bits;
+}
+
+using VertEdgeFans = Vector<Vector<int>>;
+
+static BitVector<> bit_span_gather(const BitSpan span, const Span<int> indices)
+{
+  BitVector<> bits(indices.size());
+  for (const int i : indices) {
+    bits[i].set(span[i]);
   }
-  int new_edge_index = new_edge_start;
-  for (const int loop_i : edge_to_loop_map[edge_i].as_span().drop_front(1)) {
-    edge_to_loop_map[new_edge_index].append({loop_i});
-    corner_edges[loop_i] = new_edge_index;
-    new_edge_index++;
+  return bits;
+}
+
+static int bit_span_count(const BoundedBitSpan span)
+{
+  int count = 0;
+  for (const BitRef &bit : span) {
+    if (bit) {
+      count++;
+    }
   }
-  /* Only the first loop is now connected to this edge. */
-  edge_to_loop_map[edge_i].resize(1);
+  return count;
+}
+
+static bool bit_span_is_full(const BoundedBitSpan span)
+{
+  return bit_span_count(span) == span.size();
+}
+
+/* TODO: Use thread local allocators for #VertEdgeFans memory. */
+static VertEdgeFans calc_vert_fans(const OffsetIndices<int> polys,
+                                   const Span<int> corner_verts,
+                                   const Span<int> corner_edges,
+                                   const GroupedSpan<int> vert_to_edge_map,
+                                   const GroupedSpan<int> edge_to_corner_map,
+                                   const Span<int> corner_to_poly_map,
+                                   const BitSpan split_edges,
+                                   const int vert)
+{
+  Vector<Vector<int>> edge_fans;
+
+  const Span<int> connected_edges = vert_to_edge_map[vert];
+  if (connected_edges.size() <= 1) {
+    edge_fans.append_as(connected_edges);
+    return edge_fans;
+  }
+
+  const BitVector<> vert_edges_split = bit_span_gather(split_edges, connected_edges);
+
+  BitVector<> visited_edges(connected_edges.size());
+
+  int curr_i = 0;
+  while (!bit_span_is_full(visited_edges)) {
+    const int start_i = curr_i;
+
+    Vector<int> current_fan({curr_i});
+    do {
+      const int edge = connected_edges[curr_i];
+      for (const int corner : edge_to_corner_map[edge]) {
+        const int poly = corner_to_poly_map[corner];
+        const int next_edge = adjacent_edge(corner_verts, corner_edges, corner, polys[poly], vert);
+        const int other_i = connected_edges.first_index(next_edge);
+        if (visited_edges[other_i]) {
+          continue;
+        }
+
+        visited_edges[other_i].set();
+        current_fan.append(next_edge);
+
+        if (split_edges[other_i]) {
+          break;
+        }
+      }
+      curr_i++;
+    } while (curr_i != start_i);
+
+    edge_fans.append(std::move(current_fan));
+  }
+
+  return edge_fans;
+}
+
+/* Calculate groups of edges that are contiguously connected to each input vertex. */
+static Array<VertEdgeFans> calc_all_vert_fans(const OffsetIndices<int> polys,
+                                              const Span<int> corner_verts,
+                                              const Span<int> corner_edges,
+                                              const GroupedSpan<int> vert_to_edge_map,
+                                              const GroupedSpan<int> edge_to_corner_map,
+                                              const Span<int> corner_to_poly_map,
+                                              const BitSpan split_edges,
+                                              const IndexMask &vert_mask)
+{
+  Array<VertEdgeFans> vert_edge_fans(vert_mask.size()); /* TODO: Use NoInitialization() */
+  vert_mask.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
+    vert_edge_fans[mask] = calc_vert_fans(polys,
+                                          corner_verts,
+                                          corner_edges,
+                                          vert_to_edge_map,
+                                          edge_to_corner_map,
+                                          corner_to_poly_map,
+                                          split_edges,
+                                          vert);
+  });
+  return vert_edge_fans;
+}
+
+static OffsetIndices<int> calc_vert_ranges_per_old_vert(const IndexMask &vert_mask,
+                                                        const Span<VertEdgeFans> &vert_edge_fans,
+                                                        Array<int> &offset_data)
+{
+  offset_data.reinitialize(vert_mask.size());
+  threading::parallel_for(offset_data.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      /* Reuse the original vertex for the last fan. */
+      offset_data[i] = vert_edge_fans[i].size() - 1;
+    }
+  });
+  return offset_indices::accumulate_counts_to_offsets(offset_data);
+}
+
+static Array<int> calc_updated_corner_verts(const Span<int> orig_corner_verts,
+                                            const GroupedSpan<int> edge_to_corner_map,
+                                            const IndexMask &vert_mask,
+                                            const Span<VertEdgeFans> &vert_edge_fans,
+                                            const OffsetIndices<int> new_verts_by_old_vert)
+{
+  Array<int> new_corner_verts(orig_corner_verts.size());
+  new_corner_verts.as_mutable_span().copy_from(orig_corner_verts);
+
+  /* Update corner verts so that each fan of edges gets its own vertex. The last vertex can be
+   * reused. */
+  vert_mask.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
+    const VertEdgeFans &vert_fans = vert_edge_fans[mask];
+
+    int new_vert = new_verts_by_old_vert[vert].start();
+    for (const int fan : vert_fans.index_range().drop_back(1)) {
+      for (const int edge : vert_fans[fan]) {
+        /* Could potentially use a vert to corner map. */
+        for (const int corner : edge_to_corner_map[edge]) {
+          if (new_corner_verts[corner] == vert) {
+            new_corner_verts[corner] = new_vert;
+            new_vert++;
+          }
+        }
+      }
+    }
+  });
+
+  return new_corner_verts;
+}
+
+static VectorSet<OrderedEdge> calc_duplicate_edges(const OffsetIndices<int> polys,
+                                                   const Span<int> orig_corner_edges,
+                                                   const BitSpan selection,
+                                                   const Span<int> new_corner_verts,
+                                                   MutableSpan<int> new_corner_edges)
+{
+  VectorSet<OrderedEdge> duplicate_edges;
+  duplicate_edges.reserve(selection.size());
+  /* Could potentially use a compacted poly selection. */
+  for (const int i : polys.index_range()) {
+    const IndexRange poly = polys[i];
+    for (const int corner : poly) {
+      const int orig_edge = orig_corner_edges[corner];
+      if (selection[orig_edge]) {
+        const int vert_1 = new_corner_verts[corner];
+        const int vert_2 = new_corner_verts[bke::mesh::poly_corner_next(poly, corner)];
+        new_corner_edges[corner] = duplicate_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
+      }
+    }
+  }
+  return duplicate_edges;
+}
+
+static Array<int2> combine_all_final_edges(const Span<int2> orig_edges,
+                                           const IndexMask &edge_mask_inverse,
+                                           const Span<OrderedEdge> duplicate_edges)
+{
+  Array<int2> final_edges(orig_edges.size() + duplicate_edges.size());
+  array_utils::gather(orig_edges,
+                      edge_mask_inverse,
+                      final_edges.as_mutable_span().take_front(edge_mask_inverse.size()));
+  final_edges.as_mutable_span()
+      .take_back(duplicate_edges.size())
+      .copy_from(duplicate_edges.cast<int2>());
+  return final_edges;
+}
+
+static Array<int> calc_new_to_old_vert_map(const IndexMask &vert_mask,
+                                           const OffsetIndices<int> new_verts_by_old_vert)
+{
+  Array<int> map(new_verts_by_old_vert.total_size());
+  vert_mask.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
+    map.as_mutable_span().slice(new_verts_by_old_vert[mask]).fill(vert);
+  });
+  return map;
+}
+
+static Array<int> calc_new_to_old_edge_map(const OffsetIndices<int> polys,
+                                           const Span<int> orig_corner_edges,
+                                           const Span<int> new_corner_edges,
+                                           const int new_edges_num)
+{
+  Array<int> new_to_old_edge_map(new_edges_num);
+  for (const int i : polys.index_range()) {
+    const IndexRange poly = polys[i];
+    for (const int corner : poly) {
+      const int new_edge_i = new_corner_edges[corner];
+      const int old_edge_i = orig_corner_edges[corner];
+      new_to_old_edge_map[new_edge_i] = old_edge_i;
+    }
+  }
+  return new_to_old_edge_map;
 }
 
 void split_edges(Mesh &mesh,
-                 const IndexMask &mask,
+                 const IndexMask &edge_mask,
                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  /* Flag vertices that need to be split. */
-  Array<bool> should_split_vert(mesh.totvert, false);
-  const Span<int2> edges = mesh.edges();
-  mask.foreach_index([&](const int edge_i) {
-    const int2 &edge = edges[edge_i];
-    should_split_vert[edge[0]] = true;
-    should_split_vert[edge[1]] = true;
-  });
-
-  /* Precalculate topology info. */
-  Array<Vector<int>> vert_to_edge_map(mesh.totvert);
-  for (const int i : edges.index_range()) {
-    vert_to_edge_map[edges[i][0]].append(i);
-    vert_to_edge_map[edges[i][1]].append(i);
-  }
-
-  Array<int> orig_edge_to_loop_offsets;
-  Array<int> orig_edge_to_loop_indices;
-  const GroupedSpan<int> orig_edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
-      mesh.corner_edges(), mesh.totedge, orig_edge_to_loop_offsets, orig_edge_to_loop_indices);
-
-  Array<int> loop_to_poly_map = bke::mesh::build_loop_to_poly_map(mesh.polys());
-
-  /* Store offsets, so we can split edges in parallel. */
-  Array<int> edge_offsets(edges.size());
-  Array<int> num_edge_duplicates(edges.size());
-  int new_edges_size = edges.size();
-  mask.foreach_index([&](const int edge) {
-    edge_offsets[edge] = new_edges_size;
-    /* We add duplicates of the edge for each poly (except the first). */
-    const int num_connected_loops = orig_edge_to_loop_map[edge].size();
-    const int num_duplicates = std::max(0, num_connected_loops - 1);
-    new_edges_size += num_duplicates;
-    num_edge_duplicates[edge] = num_duplicates;
-  });
-
+  const int verts_num = mesh.totvert;
+  const Span<int2> orig_edges = mesh.edges();
   const OffsetIndices polys = mesh.polys();
-  const Array<int> orig_corner_edges = mesh.corner_edges();
+  const Span<int> orig_corner_verts = mesh.corner_verts();
+  const Span<int> orig_corner_edges = mesh.corner_edges();
+
+  Array<int> vert_to_edge_offsets;
+  Array<int> vert_to_edge_indices;
+  const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
+      orig_edges, verts_num, vert_to_edge_offsets, vert_to_edge_indices);
+
+  Array<int> edge_to_corner_offsets;
+  Array<int> edge_to_corner_indices;
+  const GroupedSpan<int> edge_to_corner_map = bke::mesh::build_edge_to_loop_map(
+      orig_corner_edges, orig_edges.size(), edge_to_corner_offsets, edge_to_corner_indices);
+
+  const Array<int> corner_to_poly_map = bke::mesh::build_loop_to_poly_map(mesh.polys());
+
   IndexMaskMemory memory;
-  const bke::LooseEdgeCache &loose_edges_cache = mesh.loose_edges();
-  const IndexMask loose_edges = IndexMask::from_bits(loose_edges_cache.is_loose_bits, memory);
 
-  MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
+  // const bke::LooseEdgeCache &loose_edges_cache = mesh.loose_edges();
+  // const IndexMask loose_edges = IndexMask::from_bits(loose_edges_cache.is_loose_bits, memory);
 
-  Vector<Vector<int>> edge_to_loop_map(new_edges_size);
-  threading::parallel_for(edges.index_range(), 512, [&](const IndexRange range) {
-    for (const int i : range) {
-      edge_to_loop_map[i].extend(orig_edge_to_loop_map[i]);
-    }
-  });
+  const IndexMask edge_mask_inverse = edge_mask.complement(orig_edges.index_range(), memory);
+  const IndexMask vert_mask = vert_selection_from_edge(orig_edges, edge_mask, verts_num, memory);
+  const BitVector<> selection_bits = selection_to_bits(edge_mask, orig_edges.size());
 
-  /* Split corner edge indices and update the edge to corner map. This step does not take into
-   * account future deduplication of the new edges, but is necessary in order to calculate the
-   * new fans around each vertex. */
-  mask.foreach_index([&](const int edge_i) {
-    split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
-  });
+  const Array<VertEdgeFans> vert_edge_fans = calc_all_vert_fans(polys,
+                                                                orig_corner_verts,
+                                                                orig_corner_edges,
+                                                                vert_to_edge_map,
+                                                                edge_to_corner_map,
+                                                                corner_to_poly_map,
+                                                                selection_bits,
+                                                                vert_mask);
 
-  /* Update vertex to edge map with new vertices from duplicated edges. */
-  mask.foreach_index([&](const int edge_i) {
-    const int2 &edge = edges[edge_i];
-    for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
-      vert_to_edge_map[edge[0]].append(duplicate_i);
-      vert_to_edge_map[edge[1]].append(duplicate_i);
-    }
-  });
+  Array<int> vert_new_vert_offset_data;
+  const OffsetIndices new_verts_by_old_vert = calc_vert_ranges_per_old_vert(
+      vert_mask, vert_edge_fans, vert_new_vert_offset_data);
 
-  MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
+  Array<int> new_corner_verts = calc_updated_corner_verts(
+      orig_corner_verts, edge_to_corner_map, vert_mask, vert_edge_fans, new_verts_by_old_vert);
 
-  /* Calculate vertex fans by reordering the vertex to edge maps. Fans are the the ordered
-   * groups of consecutive edges between consecutive faces looping around a vertex.  */
-  Array<Vector<int>> vertex_fan_sizes(mesh.totvert);
-  threading::parallel_for(IndexRange(mesh.totvert), 512, [&](IndexRange range) {
-    for (const int vert : range) {
-      if (!should_split_vert[vert]) {
-        continue;
-      }
-      calc_vertex_fans(vert,
-                       corner_verts,
-                       corner_edges,
-                       polys,
-                       edge_to_loop_map,
-                       loop_to_poly_map,
-                       vert_to_edge_map[vert],
-                       vertex_fan_sizes[vert]);
-    }
-  });
+  /* Create new edges. */
+  Array<int> new_corner_edges(orig_corner_edges.size());
+  new_corner_edges.as_mutable_span().copy_from(orig_corner_edges);
+  VectorSet<OrderedEdge> duplicate_edges = calc_duplicate_edges(
+      polys, orig_corner_edges, selection_bits, new_corner_verts, new_corner_edges);
 
-  /* Calculate result indices per source vertex as offsets for parallelizing the next step. */
-  Array<int> vert_offsets(mesh.totvert);
-  int total_verts_num = mesh.totvert;
-  for (const int vert : IndexRange(mesh.totvert)) {
-    if (!should_split_vert[vert]) {
-      continue;
-    }
-    vert_offsets[vert] = total_verts_num;
-    /* We only create a new vertex for each fan different from the first. */
-    total_verts_num += vertex_fan_sizes[vert].size() - 1;
-  }
+  Array<int2> result_edges = combine_all_final_edges(
+      orig_edges, edge_mask_inverse, duplicate_edges);
 
-  /* Split the vertices into their duplicates so that each fan has its own result vertex.
-   * Build a map from each new vertex to an old vertex to use for transferring attributes later. */
-  const int new_verts_num = total_verts_num - mesh.totvert;
-  Array<int> new_to_old_verts_map(new_verts_num);
-  threading::parallel_for(IndexRange(mesh.totvert), 512, [&](IndexRange range) {
-    for (const int vert : range) {
-      if (!should_split_vert[vert]) {
-        continue;
-      }
-      split_vertex_per_fan(vert,
-                           vert_offsets[vert],
-                           mesh.totvert,
-                           vert_to_edge_map[vert],
-                           vertex_fan_sizes[vert],
-                           edge_to_loop_map,
-                           corner_verts,
-                           new_to_old_verts_map);
-    }
-  });
+  const Array<int> new_to_old_edge_map = calc_new_to_old_edge_map(
+      polys, orig_corner_edges, new_corner_edges, result_edges.size());
 
-  /* Create deduplicated new edges based on the corner vertices at each polygon. */
-  VectorSet<OrderedEdge> new_edges;
-  new_edges.reserve(new_edges_size + loose_edges.size());
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    for (const int corner : poly) {
-      const int vert_1 = corner_verts[corner];
-      const int vert_2 = corner_verts[bke::mesh::poly_corner_next(poly, corner)];
-      corner_edges[corner] = new_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
-    }
-  }
-  loose_edges.foreach_index([&](const int64_t i) { new_edges.add(OrderedEdge(edges[i])); });
-
-  /* Build a map of old to new edges for transferring attributes. */
-  Array<int> new_to_old_edges_map(new_edges.size());
-  loose_edges.to_indices(new_to_old_edges_map.as_mutable_span().take_back(loose_edges.size()));
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    for (const int corner : poly) {
-      const int new_edge_i = corner_edges[corner];
-      const int old_edge_i = orig_corner_edges[corner];
-      new_to_old_edges_map[new_edge_i] = old_edge_i;
-    }
-  }
+  const Array<int> new_to_old_vert_map = calc_new_to_old_vert_map(vert_mask,
+                                                                  new_verts_by_old_vert);
 
   /* Resize the mesh to add the new vertices and rebuild the edges. */
-  add_new_vertices(mesh, new_to_old_verts_map);
-  add_new_edges(mesh, new_edges.as_span().cast<int2>(), new_to_old_edges_map, propagation_info);
-
-  /* Connect loose edges to duplicated vertices. */
-  if (loose_edges_cache.count > 0) {
-    MutableSpan<int2> new_edges_span = mesh.edges_for_write();
-    threading::parallel_for(should_split_vert.index_range(), 512, [&](IndexRange range) {
-      for (const int vert : range) {
-        if (!should_split_vert[vert]) {
-          continue;
-        }
-        reassign_loose_edge_verts(vert,
-                                  vert_offsets[vert],
-                                  vert_to_edge_map[vert],
-                                  vertex_fan_sizes[vert],
-                                  loose_edges_cache.is_loose_bits,
-                                  new_edges_span);
-      }
-    });
-  }
+  add_new_vertices(mesh, new_to_old_vert_map);
+  add_new_edges(mesh, result_edges, new_to_old_edge_map, propagation_info);
 
   BKE_mesh_tag_edges_split(&mesh);
 }
