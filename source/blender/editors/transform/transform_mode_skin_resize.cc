@@ -39,7 +39,7 @@ struct TransDataArgs_SkinResize {
 };
 
 static void transdata_elem_skin_resize(const TransInfo *t,
-                                       const TransDataContainer *UNUSED(tc),
+                                       const TransDataContainer * /*tc*/,
                                        TransData *td,
                                        const float mat[3][3])
 {
@@ -55,7 +55,7 @@ static void transdata_elem_skin_resize(const TransInfo *t,
   }
 
   if (t->con.applySize) {
-    t->con.applySize(t, NULL, NULL, tmat);
+    t->con.applySize(t, nullptr, nullptr, tmat);
   }
 
   mat3_to_size(fsize, tmat);
@@ -65,9 +65,9 @@ static void transdata_elem_skin_resize(const TransInfo *t,
 
 static void transdata_elem_skin_resize_fn(void *__restrict iter_data_v,
                                           const int iter,
-                                          const TaskParallelTLS *__restrict UNUSED(tls))
+                                          const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_SkinResize *data = iter_data_v;
+  TransDataArgs_SkinResize *data = static_cast<TransDataArgs_SkinResize *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -81,7 +81,7 @@ static void transdata_elem_skin_resize_fn(void *__restrict iter_data_v,
 /** \name Transform (Skin)
  * \{ */
 
-static void applySkinResize(TransInfo *t, const int UNUSED(mval[2]))
+static void applySkinResize(TransInfo *t, const int[2] /*mval*/)
 {
   float mat_final[3][3];
   int i;
@@ -118,10 +118,9 @@ static void applySkinResize(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct TransDataArgs_SkinResize data = {
-          .t = t,
-          .tc = tc,
-      };
+      TransDataArgs_SkinResize data{};
+      data.t = t;
+      data.tc = tc;
       copy_m3_m3(data.mat_final, mat_final);
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
@@ -134,7 +133,7 @@ static void applySkinResize(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initSkinResize(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initSkinResize(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_SKIN_RESIZE;
 
@@ -171,9 +170,9 @@ TransModeInfo TransMode_skinresize = {
     /*flags*/ 0,
     /*init_fn*/ initSkinResize,
     /*transform_fn*/ applySkinResize,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };

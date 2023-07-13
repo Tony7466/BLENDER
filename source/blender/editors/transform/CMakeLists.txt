@@ -79,7 +79,7 @@ set(SRC
   transform_mode_rotate.cc
   transform_mode_shear.cc
   transform_mode_shrink_fatten.cc
-  transform_mode_skin_resize.c
+  transform_mode_skin_resize.cc
   transform_mode_snapsource.c
   transform_mode_tilt.c
   transform_mode_timescale.c
