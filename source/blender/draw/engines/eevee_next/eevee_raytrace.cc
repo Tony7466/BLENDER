@@ -39,9 +39,9 @@ void RayTraceModule::init()
     use_temporal_denoise_ = use_bilateral_denoise_ = use_spatial_denoise_;
   }
 
-  data_.valid_history_reflection = 1;
   data_.resolution_scale = 1;
   data_.resolution_bias = int2(0);
+  /* TODO(fclem): Tracing. */
   data_.thickness = 1.0f;
   data_.quality = 1.0f;
   data_.brightness_clamp = 1.0f;

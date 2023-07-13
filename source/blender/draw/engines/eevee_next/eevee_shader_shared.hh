@@ -983,15 +983,13 @@ enum eClosureBits : uint32_t {
 struct RayTraceData {
   /** ViewProjection matrix used to render the previous frame. */
   float4x4 history_persmat;
-  /** False if the history buffer was just allocated and contains uninitialized data. */
-  bool1 valid_history_reflection;
-  /** Scale and bias to go from raytrace resolution to input resolution. */
-  int resolution_scale;
-  int2 resolution_bias;
   /** Input resolution. */
   int2 full_resolution;
   /** Inverse of input resolution to get screen UVs. */
   float2 full_resolution_inv;
+  /** Scale and bias to go from raytrace resolution to input resolution. */
+  int2 resolution_bias;
+  int resolution_scale;
   /** View space thickness the objects. */
   float thickness;
   /** Determine how fast the sample steps are getting bigger. */
@@ -1004,9 +1002,6 @@ struct RayTraceData {
   bool1 skip_denoise;
   /** Closure being ray-traced. */
   eClosureBits closure_active;
-  int _pad0;
-  int _pad1;
-  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
