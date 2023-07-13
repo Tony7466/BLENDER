@@ -40,7 +40,7 @@ struct TransDataArgs_PushPull {
   const TransDataContainer *tc;
 
   float distance;
-  const float axis_global[3];
+  float axis_global[3];
   bool is_lock_constraint;
   bool is_data_space;
 };
@@ -58,7 +58,7 @@ static void transdata_elem_push_pull(const TransInfo *t,
   if (t->con.applyRot && t->con.mode & CON_APPLY) {
     float axis[3];
     copy_v3_v3(axis, axis_global);
-    t->con.applyRot(t, tc, td, axis, NULL);
+    t->con.applyRot(t, tc, td, axis, nullptr);
 
     mul_m3_v3(td->smtx, axis);
     if (is_lock_constraint) {
@@ -80,9 +80,9 @@ static void transdata_elem_push_pull(const TransInfo *t,
 
 static void transdata_elem_push_pull_fn(void *__restrict iter_data_v,
                                         const int iter,
-                                        const TaskParallelTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_PushPull *data = iter_data_v;
+  TransDataArgs_PushPull *data = static_cast<TransDataArgs_PushPull *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -102,7 +102,7 @@ static void transdata_elem_push_pull_fn(void *__restrict iter_data_v,
 /** \name Transform (Push/Pull)
  * \{ */
 
-static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
+static void applyPushPull(TransInfo *t, const int[2] /*mval*/)
 {
   float axis_global[3];
   float distance;
@@ -131,7 +131,7 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
   }
 
   if (t->con.applyRot && t->con.mode & CON_APPLY) {
-    t->con.applyRot(t, NULL, NULL, axis_global, NULL);
+    t->con.applyRot(t, nullptr, nullptr, axis_global, nullptr);
   }
 
   const bool is_lock_constraint = isLockConstraint(t);
@@ -149,15 +149,13 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct TransDataArgs_PushPull data = {
-          .t = t,
-          .tc = tc,
-
-          .distance = distance,
-          .axis_global = {UNPACK3(axis_global)},
-          .is_lock_constraint = is_lock_constraint,
-          .is_data_space = is_data_space,
-      };
+      TransDataArgs_PushPull data{};
+      data.t = t;
+      data.tc = tc;
+      data.distance = distance;
+      copy_v3_v3(data.axis_global, axis_global);
+      data.is_lock_constraint = is_lock_constraint;
+      data.is_data_space = is_data_space;
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       BLI_task_parallel_range(0, tc->data_len, &data, transdata_elem_push_pull_fn, &settings);
@@ -169,7 +167,7 @@ static void applyPushPull(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initPushPull(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initPushPull(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_PUSHPULL;
 
@@ -191,9 +189,9 @@ TransModeInfo TransMode_pushpull = {
     /*flags*/ 0,
     /*init_fn*/ initPushPull,
     /*transform_fn*/ applyPushPull,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };

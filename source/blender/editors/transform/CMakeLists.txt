@@ -74,7 +74,7 @@ set(SRC
   transform_mode_gpshrinkfatten.cc
   transform_mode_maskshrinkfatten.cc
   transform_mode_mirror.cc
-  transform_mode_push_pull.c
+  transform_mode_push_pull.cc
   transform_mode_resize.c
   transform_mode_rotate.c
   transform_mode_shear.c
