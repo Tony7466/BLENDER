@@ -616,6 +616,8 @@ void smooth_fcurve_segment(FCurve *fcu,
   const int segment_end_index = segment->start_index + segment->length;
   const float segment_start_x = fcu->bezt[segment->start_index].vec[1][0];
   for (int i = segment->start_index; i < segment_end_index; i++) {
+    /* Using round() instead of (int). The latter would create stepping on x-values that are just
+     * below a full frame. */
     const int sample_index = round(fcu->bezt[i].vec[1][0] - segment_start_x) + kernel_size;
     /* Apply the kernel. */
     double filter_result = samples[sample_index] * kernel[0];
