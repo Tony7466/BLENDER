@@ -255,7 +255,9 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
   // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT) {
   BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
   l_num = liter.count;
-  loop_weights = tcld->use_merge_group ? BLI_array_alloca(loop_weights, l_num) : nullptr;
+  loop_weights = tcld->use_merge_group ?
+                     static_cast<float *>(BLI_array_alloca(loop_weights, l_num)) :
+                     nullptr;
   for (j = 0; j < l_num; j++) {
     BMLoop *l = static_cast<BMLoop *>(BM_iter_step(&liter));
     BMLoop *l_prev, *l_next;
@@ -527,7 +529,8 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
   // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT)
   BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
   l_num = liter.count;
-  loop_weights = do_loop_weight ? BLI_array_alloca(loop_weights, l_num) : nullptr;
+  loop_weights = do_loop_weight ? static_cast<float *>(BLI_array_alloca(loop_weights, l_num)) :
+                                  nullptr;
   for (j = 0; j < l_num; j++) {
     BMFace *f_copy; /* the copy of 'f' */
     BMLoop *l = static_cast<BMLoop *>(BM_iter_step(&liter));
@@ -617,7 +620,7 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
    */
   const bool update_loop_mdisps = is_moved && do_loop_mdisps && (tcld->cd_loop_mdisp_offset != -1);
   if (update_loop_mdisps) {
-    float(*faces_center)[3] = BLI_array_alloca(faces_center, l_num);
+    float(*faces_center)[3] = static_cast<float(*)[3]>(BLI_array_alloca(faces_center, l_num));
     BMLoop *l;
 
     BM_ITER_ELEM_INDEX (l, &liter, v, BM_LOOPS_OF_VERT, j) {
@@ -1181,7 +1184,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
                                             const bool mirror_axis[3],
                                             struct TransMirrorData *r_mirror_data)
 {
-  struct MirrorDataVert *vert_map;
+  MirrorDataVert *vert_map;
 
   BMesh *bm = em->bm;
   BMVert *eve;
@@ -1192,7 +1195,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
 
   float select_sum[3] = {0};
   BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, i) {
-    vert_map[i] = (struct MirrorDataVert){-1, 0};
+    vert_map[i] = MirrorDataVert{-1, 0};
     if (BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
       continue;
     }
@@ -1252,7 +1255,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
         continue;
       }
 
-      vert_map[i_mirr] = (struct MirrorDataVert){i, flag};
+      vert_map[i_mirr] = MirrorDataVert{i, flag};
       mirror_elem_len++;
     }
   }
