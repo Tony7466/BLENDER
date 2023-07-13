@@ -37,13 +37,13 @@
 #include "transform_convert.h"
 
 /* helper struct for gp-frame transforms */
-typedef struct tGPFtransdata {
+struct tGPFtransdata {
   union {
     float val;    /* where transdata writes transform */
     float loc[3]; /* #td->val and #td->loc share the same pointer. */
   };
   int *sdata; /* pointer to gpf->framenum */
-} tGPFtransdata;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Action Transform Creation
@@ -55,7 +55,7 @@ static int count_fcurve_keys(FCurve *fcu, char side, float cfra, bool is_prop_ed
   BezTriple *bezt;
   int i, count = 0, count_all = 0;
 
-  if (ELEM(NULL, fcu, fcu->bezt)) {
+  if (ELEM(nullptr, fcu, fcu->bezt)) {
     return count;
   }
 
@@ -84,12 +84,12 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
   bGPDframe *gpf;
   int count = 0, count_all = 0;
 
-  if (gpl == NULL) {
+  if (gpl == nullptr) {
     return count;
   }
 
   /* only include points that occur on the right side of cfra */
-  for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
     if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
       if (gpf->flag & GP_FRAME_SELECT) {
         count++;
@@ -110,12 +110,13 @@ static int count_masklayer_frames(MaskLayer *masklay, char side, float cfra, boo
   MaskLayerShape *masklayer_shape;
   int count = 0, count_all = 0;
 
-  if (masklay == NULL) {
+  if (masklay == nullptr) {
     return count;
   }
 
   /* only include points that occur on the right side of cfra */
-  for (masklayer_shape = masklay->splines_shapes.first; masklayer_shape;
+  for (masklayer_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
+       masklayer_shape;
        masklayer_shape = masklayer_shape->next)
   {
     if (FrameOnMouseSide(side, (float)masklayer_shape->frame, cfra)) {
@@ -190,14 +191,14 @@ static TransData *ActionFCurveToTransData(TransData *td,
   TransData2D *td2d = *td2dv;
   int i;
 
-  if (ELEM(NULL, fcu, fcu->bezt)) {
+  if (ELEM(nullptr, fcu, fcu->bezt)) {
     return td;
   }
 
   for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
     /* only add selected keyframes (for now, proportional edit is not enabled) */
-    if (is_prop_edit || (bezt->f2 & SELECT)) { /* note this MUST match count_fcurve_keys(),
-                                                * so can't use BEZT_ISSEL_ANY() macro */
+    if (is_prop_edit || (bezt->f2 & SELECT))
+    { /* note this MUST match count_fcurve_keys(), * so can't use BEZT_ISSEL_ANY() macro */
       /* only add if on the right 'side' of the current frame */
       if (FrameOnMouseSide(side, bezt->vec[1][0], cfra)) {
         TimeToTransData(td, td2d, bezt, adt, ypos);
@@ -233,7 +234,7 @@ static int GPLayerToTransData(TransData *td,
   int count = 0;
 
   /* check for select frames on right side of current frame */
-  for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+  for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
     const bool is_selected = (gpf->flag & GP_FRAME_SELECT) != 0;
     if (is_prop_edit || is_selected) {
       if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
@@ -274,7 +275,7 @@ static int MaskLayerToTransData(TransData *td,
   int count = 0;
 
   /* check for select frames on right side of current frame */
-  for (masklay_shape = masklay->splines_shapes.first; masklay_shape;
+  for (masklay_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first); masklay_shape;
        masklay_shape = masklay_shape->next)
   {
     if (is_prop_edit || (masklay_shape->flag & MASK_SHAPE_SELECT)) {
@@ -302,9 +303,9 @@ static int MaskLayerToTransData(TransData *td,
 static void createTransActionData(bContext *C, TransInfo *t)
 {
   Scene *scene = t->scene;
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  tGPFtransdata *tfd = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
+  tGPFtransdata *tfd = nullptr;
 
   rcti *mask = &t->region->v2d.mask;
   rctf *datamask = &t->region->v2d.cur;
@@ -315,7 +316,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
   float ymask = BLI_rcti_size_y(mask);
 
   bAnimContext ac;
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
@@ -332,7 +333,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* which side of the current frame should be allowed */
   if (t->mode == TFM_TIME_EXTEND) {
@@ -344,7 +346,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
   }
 
   /* loop 1: fully select F-Curve keys and count how many BezTriples are selected */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     int adt_count = 0;
     /* convert current-frame to action-time (slightly less accurate, especially under
@@ -358,13 +360,16 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
 
     if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
-      adt_count = count_fcurve_keys(ale->key_data, t->frame_side, cfra, is_prop_edit);
+      adt_count = count_fcurve_keys(
+          static_cast<FCurve *>(ale->key_data), t->frame_side, cfra, is_prop_edit);
     }
     else if (ale->type == ANIMTYPE_GPLAYER) {
-      adt_count = count_gplayer_frames(ale->data, t->frame_side, cfra, is_prop_edit);
+      adt_count = count_gplayer_frames(
+          static_cast<bGPDlayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
-      adt_count = count_masklayer_frames(ale->data, t->frame_side, cfra, is_prop_edit);
+      adt_count = count_masklayer_frames(
+          static_cast<MaskLayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
     }
     else {
       BLI_assert(0);
@@ -391,19 +396,22 @@ static void createTransActionData(bContext *C, TransInfo *t)
   /* allocate memory for data */
   tc->data_len = count;
 
-  tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransData(Action Editor)");
-  tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D), "transdata2d");
+  tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransData(Action Editor)"));
+  tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "transdata2d"));
   td = tc->data;
   td2d = tc->data_2d;
 
   if (ELEM(ac.datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK, ANIMCONT_DOPESHEET, ANIMCONT_TIMELINE)) {
     tc->data_gpf_len = gpf_count;
-    tc->custom.type.data = tfd = MEM_callocN(sizeof(tGPFtransdata) * gpf_count, "tGPFtransdata");
+    tc->custom.type.data = tfd = static_cast<tGPFtransdata *>(
+        MEM_callocN(sizeof(tGPFtransdata) * gpf_count, "tGPFtransdata"));
     tc->custom.type.use_free = true;
   }
 
   /* loop 2: build transdata array */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
 
     if (is_prop_edit && !ale->tag) {
       continue;
@@ -447,7 +455,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
   if (is_prop_edit) {
     td = tc->data;
 
-    for (ale = anim_data.first; ale; ale = ale->next) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       AnimData *adt;
 
       /* F-Curve may not have any keyframes */
@@ -467,14 +475,15 @@ static void createTransActionData(bContext *C, TransInfo *t)
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
         bGPDframe *gpf;
 
-        for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+        for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
           if (gpf->flag & GP_FRAME_SELECT) {
             td->dist = td->rdist = 0.0f;
           }
           else {
             bGPDframe *gpf_iter;
             int min = INT_MAX;
-            for (gpf_iter = gpl->frames.first; gpf_iter; gpf_iter = gpf_iter->next) {
+            for (gpf_iter = static_cast<bGPDframe *>(gpl->frames.first); gpf_iter;
+                 gpf_iter = gpf_iter->next) {
               if (gpf_iter->flag & GP_FRAME_SELECT) {
                 if (FrameOnMouseSide(t->frame_side, (float)gpf_iter->framenum, cfra)) {
                   int val = abs(gpf->framenum - gpf_iter->framenum);
@@ -493,7 +502,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
         MaskLayer *masklay = (MaskLayer *)ale->data;
         MaskLayerShape *masklay_shape;
 
-        for (masklay_shape = masklay->splines_shapes.first; masklay_shape;
+        for (masklay_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
+             masklay_shape;
              masklay_shape = masklay_shape->next)
         {
           if (FrameOnMouseSide(t->frame_side, (float)masklay_shape->frame, cfra)) {
@@ -503,8 +513,10 @@ static void createTransActionData(bContext *C, TransInfo *t)
             else {
               MaskLayerShape *masklay_iter;
               int min = INT_MAX;
-              for (masklay_iter = masklay->splines_shapes.first; masklay_iter;
-                   masklay_iter = masklay_iter->next) {
+              for (masklay_iter = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
+                   masklay_iter;
+                   masklay_iter = masklay_iter->next)
+              {
                 if (masklay_iter->flag & MASK_SHAPE_SELECT) {
                   if (FrameOnMouseSide(t->frame_side, (float)masklay_iter->frame, cfra)) {
                     int val = abs(masklay_shape->frame - masklay_iter->frame);
@@ -567,7 +579,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
 static void flushTransIntFrameActionData(TransInfo *t)
 {
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  tGPFtransdata *tfd = tc->custom.type.data;
+  tGPFtransdata *tfd = static_cast<tGPFtransdata *>(tc->custom.type.data);
 
   /* flush data!
    * Expects data_gpf_len to be set in the data container. */
@@ -581,8 +593,8 @@ static void recalcData_actedit(TransInfo *t)
   ViewLayer *view_layer = t->view_layer;
   SpaceAction *saction = (SpaceAction *)t->area->spacedata.first;
 
-  bAnimContext ac = {NULL};
-  ListBase anim_data = {NULL, NULL};
+  bAnimContext ac = {nullptr};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -596,7 +608,7 @@ static void recalcData_actedit(TransInfo *t)
   ac.obact = BKE_view_layer_active_object_get(view_layer);
   ac.area = t->area;
   ac.region = t->region;
-  ac.sl = (t->area) ? t->area->spacedata.first : NULL;
+  ac.sl = static_cast<SpaceLink *>((t->area) ? t->area->spacedata.first : nullptr);
   ac.spacetype = (t->area) ? t->area->spacetype : 0;
   ac.regiontype = (t->region) ? t->region->regiontype : 0;
 
@@ -616,7 +628,7 @@ static void recalcData_actedit(TransInfo *t)
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
     if ((autosnap != SACTSNAP_OFF) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, autosnap, td->loc);
+      transform_snap_anim_flush_data(t, td, eAnimEdit_AutoSnap(autosnap), td->loc);
     }
 
     /* Constrain Y. */
@@ -629,13 +641,14 @@ static void recalcData_actedit(TransInfo *t)
     /* Get animdata blocks visible in editor,
      * assuming that these will be the ones where things changed. */
     filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
-    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+    ANIM_animdata_filter(
+        &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
     /* just tag these animdata-blocks to recalc, assuming that some data there changed
      * BUT only do this if realtime updates are enabled
      */
     if ((saction->flag & SACTION_NOREALTIMEUPDATES) == 0) {
-      for (ale = anim_data.first; ale; ale = ale->next) {
+      for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
         /* set refresh tags for objects using this animation */
         ANIM_list_elem_update(CTX_data_main(t->context), t->scene, ale);
       }
@@ -654,8 +667,8 @@ static void recalcData_actedit(TransInfo *t)
 
 static int masklay_shape_cmp_frame(void *thunk, const void *a, const void *b)
 {
-  const MaskLayerShape *frame_a = a;
-  const MaskLayerShape *frame_b = b;
+  const MaskLayerShape *frame_a = static_cast<const MaskLayerShape *>(a);
+  const MaskLayerShape *frame_b = static_cast<const MaskLayerShape *>(b);
 
   if (frame_a->frame < frame_b->frame) {
     return -1;
@@ -675,14 +688,16 @@ static void posttrans_mask_clean(Mask *mask)
 {
   MaskLayer *masklay;
 
-  for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
+  for (masklay = static_cast<MaskLayer *>(mask->masklayers.first); masklay;
+       masklay = masklay->next) {
     MaskLayerShape *masklay_shape, *masklay_shape_next;
     bool is_double = false;
 
     BLI_listbase_sort_r(&masklay->splines_shapes, masklay_shape_cmp_frame, &is_double);
 
     if (is_double) {
-      for (masklay_shape = masklay->splines_shapes.first; masklay_shape;
+      for (masklay_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
+           masklay_shape;
            masklay_shape = masklay_shape_next)
       {
         masklay_shape_next = masklay_shape->next;
@@ -713,14 +728,14 @@ static void posttrans_gpd_clean(bGPdata *gpd)
 {
   bGPDlayer *gpl;
 
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+  for (gpl = static_cast<bGPDlayer *>(gpd->layers.first); gpl; gpl = gpl->next) {
     bGPDframe *gpf, *gpfn;
     bool is_double = false;
 
     BKE_gpencil_layer_frames_sort(gpl, &is_double);
 
     if (is_double) {
-      for (gpf = gpl->frames.first; gpf; gpf = gpfn) {
+      for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpfn) {
         gpfn = gpf->next;
         if (gpfn && gpf->framenum == gpfn->framenum) {
           BKE_gpencil_layer_frame_delete(gpl, gpf);
@@ -746,29 +761,31 @@ static void posttrans_gpd_clean(bGPdata *gpd)
  */
 static void posttrans_action_clean(bAnimContext *ac, bAction *act)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(ac, &anim_data, filter, act, ANIMCONT_ACTION);
+  ANIM_animdata_filter(ac, &anim_data, eAnimFilter_Flags(filter), act, ANIMCONT_ACTION);
 
   /* loop through relevant data, removing keyframes as appropriate
    *      - all keyframes are converted in/out of global time
    */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
-      BKE_fcurve_merge_duplicate_keys(
-          ale->key_data, SELECT, false); /* only use handles in graph editor */
-      ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
+      BKE_fcurve_merge_duplicate_keys(static_cast<FCurve *>(ale->key_data),
+                                      SELECT,
+                                      false); /* only use handles in graph editor */
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
     }
     else {
-      BKE_fcurve_merge_duplicate_keys(
-          ale->key_data, SELECT, false); /* only use handles in graph editor */
+      BKE_fcurve_merge_duplicate_keys(static_cast<FCurve *>(ale->key_data),
+                                      SELECT,
+                                      false); /* only use handles in graph editor */
     }
   }
 
@@ -792,14 +809,15 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
   Object *ob = ac.obact;
 
   if (ELEM(ac.datatype, ANIMCONT_DOPESHEET, ANIMCONT_SHAPEKEY, ANIMCONT_TIMELINE)) {
-    ListBase anim_data = {NULL, NULL};
+    ListBase anim_data = {nullptr, nullptr};
     bAnimListElem *ale;
     short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT);
 
     /* get channels to work on */
-    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+    ANIM_animdata_filter(
+        &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-    for (ale = anim_data.first; ale; ale = ale->next) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       switch (ale->datatype) {
         case ALE_GPFRAME:
           ale->id->tag &= ~LIB_TAG_DOIT;
@@ -873,9 +891,10 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
      *                            but we made duplicates, so get rid of these
      */
     if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
-      ListBase anim_data = {NULL, NULL};
+      ListBase anim_data = {nullptr, nullptr};
       const int filter = ANIMFILTER_DATA_VISIBLE;
-      ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+      ANIM_animdata_filter(
+          &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         if (ale->datatype == ALE_GPFRAME) {
@@ -897,9 +916,10 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
      *    User canceled the transform, but we made duplicates, so get rid of these.
      */
     if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
-      ListBase anim_data = {NULL, NULL};
+      ListBase anim_data = {nullptr, nullptr};
       const int filter = ANIMFILTER_DATA_VISIBLE;
-      ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+      ANIM_animdata_filter(
+          &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         if (ale->datatype == ALE_MASKLAY) {
@@ -917,12 +937,12 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
   if ((saction->flag & SACTION_MARKERS_MOVE) && (canceled == 0)) {
     if (t->mode == TFM_TIME_TRANSLATE) {
 #if 0
-        if (ELEM(t->frame_side, 'L', 'R')) { /* TFM_TIME_EXTEND */
-          /* same as below */
-          ED_markers_post_apply_transform(
-              ED_context_get_markers(C), t->scene, t->mode, t->values_final[0], t->frame_side);
-        }
-        else /* TFM_TIME_TRANSLATE */
+      if (ELEM(t->frame_side, 'L', 'R')) { /* TFM_TIME_EXTEND */
+        /* same as below */
+        ED_markers_post_apply_transform(
+            ED_context_get_markers(C), t->scene, t->mode, t->values_final[0], t->frame_side);
+      }
+      else /* TFM_TIME_TRANSLATE */
 #endif
       {
         ED_markers_post_apply_transform(
