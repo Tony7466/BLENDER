@@ -235,8 +235,6 @@ void CaptureView::render_probes()
 {
   GPU_debug_capture_begin();
   Texture cubemap_tx;
-  TextureFromPool depth_tx;
-  TextureFromPool vector_tx;
 
   Framebuffer prepass_fb;
   View view = {"Capture.View"};
