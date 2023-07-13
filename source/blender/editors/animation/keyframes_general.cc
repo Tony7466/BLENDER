@@ -557,6 +557,8 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     }
 
     const float x_delta = fcu->bezt[i].vec[1][0] - left_bezt.vec[1][0] + filter_order;
+    /* Using round() instead of casting to int. Casting would introduce a stepping issue when the
+     * x-value is just below a full frame. */
     const int filter_index = round(x_delta * sample_rate);
     const float blend_value = butterworth_calculate_blend_value(samples,
                                                                 filtered_values,
