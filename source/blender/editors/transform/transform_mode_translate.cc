@@ -42,10 +42,8 @@
 /** Rotation may be enabled when snapping. */
 enum eTranslateRotateMode {
   /** Don't rotate (default). */
-  TRANSLATE_ROTATE_OFF = 0,
-  /** Perform rotation (currently only snap to normal is used). */
-  TRANSLATE_ROTATE_ON,
-  /** Rotate, resetting back to the disabled state. */
+  TRANSLATE_ROTATE_OFF = 0, /** Perform rotation (currently only snap to normal is used). */
+  TRANSLATE_ROTATE_ON,      /** Rotate, resetting back to the disabled state. */
   TRANSLATE_ROTATE_RESET,
 };
 
@@ -71,8 +69,8 @@ struct TranslateCustomData {
 struct TransDataArgs_Translate {
   const TransInfo *t;
   const TransDataContainer *tc;
-  const float pivot_local[3];
-  const float vec[3];
+  float pivot_local[3];
+  float vec[3];
   enum eTranslateRotateMode rotate_mode;
 };
 
@@ -135,7 +133,7 @@ static void transdata_elem_translate(const TransInfo *t,
   if (t->options & CTX_GPENCIL_STROKES) {
     /* Grease pencil multi-frame falloff. */
     bGPDstroke *gps = (bGPDstroke *)td->extra;
-    if (gps != NULL) {
+    if (gps != nullptr) {
       mul_v3_fl(tvec, td->factor * gps->runtime.multi_frame_falloff);
     }
     else {
@@ -158,9 +156,9 @@ static void transdata_elem_translate(const TransInfo *t,
 
 static void transdata_elem_translate_fn(void *__restrict iter_data_v,
                                         const int iter,
-                                        const TaskParallelTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_Translate *data = iter_data_v;
+  TransDataArgs_Translate *data = static_cast<TransDataArgs_Translate *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -196,7 +194,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
   char dist_str[NUM_STR_REP_LEN];
   float dist;
 
-  UnitSettings *unit = NULL;
+  UnitSettings *unit = nullptr;
   if (!(t->flag & T_2D_EDIT)) {
     unit = &t->scene->unit;
   }
@@ -215,7 +213,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
       const short autosnap = getAnimEdit_SnapMode(t);
       float ival = TRANS_DATA_CONTAINER_FIRST_OK(t)->center_local[0];
       float val = ival + dvec[0];
-      snapFrameTransform(t, autosnap, ival, val, &val);
+      snapFrameTransform(t, eAnimEdit_AutoSnap(autosnap), ival, val, &val);
       dvec[0] = val - ival;
     }
 
@@ -385,7 +383,7 @@ static void translate_snap_grid_apply(TransInfo *t,
   float in[3];
   if (t->con.mode & CON_APPLY) {
     BLI_assert(t->tsnap.target_type == SCE_SNAP_TO_NONE);
-    t->con.applyVec(t, NULL, NULL, loc, in);
+    t->con.applyVec(t, nullptr, nullptr, loc, in);
   }
   else {
     copy_v3_v3(in, loc);
@@ -472,7 +470,8 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
 
 static void applyTranslationValue(TransInfo *t, const float vec[3])
 {
-  struct TranslateCustomData *custom_data = t->custom.mode.data;
+  struct TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(
+      t->custom.mode.data);
 
   enum eTranslateRotateMode rotate_mode = TRANSLATE_ROTATE_OFF;
 
@@ -517,13 +516,13 @@ static void applyTranslationValue(TransInfo *t, const float vec[3])
       }
     }
     else {
-      struct TransDataArgs_Translate data = {
-          .t = t,
-          .tc = tc,
-          .pivot_local = {UNPACK3(pivot_local)},
-          .vec = {UNPACK3(vec)},
-          .rotate_mode = rotate_mode,
-      };
+      TransDataArgs_Translate data{};
+      data.t = t;
+      data.tc = tc;
+      copy_v3_v3(data.pivot_local, pivot_local);
+      copy_v3_v3(data.vec, vec);
+      data.rotate_mode = rotate_mode;
+
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       BLI_task_parallel_range(0, tc->data_len, &data, transdata_elem_translate_fn, &settings);
@@ -540,7 +539,7 @@ static bool clip_uv_transform_translation(TransInfo *t, float vec[2])
   float base_offset[2] = {0.0f, 0.0f};
 
   /* If tiled image then constrain to correct/closest UDIM tile, else 0-1 UV space. */
-  const SpaceImage *sima = t->area->spacedata.first;
+  const SpaceImage *sima = static_cast<const SpaceImage *>(t->area->spacedata.first);
   BKE_image_find_nearest_tile_with_offset(sima->image, t->center_global, base_offset);
 
   float min[2], max[2];
@@ -575,7 +574,7 @@ static bool clip_uv_transform_translation(TransInfo *t, float vec[2])
   return result;
 }
 
-static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
+static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
   float global_dir[3] = {0.0f};
@@ -616,7 +615,7 @@ static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
     if (t->con.mode & CON_APPLY) {
       float in[3];
       copy_v3_v3(in, global_dir);
-      t->con.applyVec(t, NULL, NULL, in, global_dir);
+      t->con.applyVec(t, nullptr, nullptr, in, global_dir);
     }
 
     float incr_dir[3];
@@ -666,7 +665,7 @@ static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])
   add_v3_v3(mat_xform[3], delta);
 }
 
-static void initTranslation(TransInfo *t, wmOperator *UNUSED(op))
+static void initTranslation(TransInfo *t, wmOperator * /*op*/)
 {
   if (t->spacetype == SPACE_ACTION) {
     /* this space uses time translate */
@@ -705,7 +704,8 @@ static void initTranslation(TransInfo *t, wmOperator *UNUSED(op))
   transform_mode_default_modal_orientation_set(
       t, (t->options & CTX_CAMERA) ? V3D_ORIENT_VIEW : V3D_ORIENT_GLOBAL);
 
-  struct TranslateCustomData *custom_data = MEM_callocN(sizeof(*custom_data), __func__);
+  struct TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(
+      MEM_callocN(sizeof(*custom_data), __func__));
   custom_data->prev.rotate_mode = TRANSLATE_ROTATE_OFF;
   t->custom.mode.data = custom_data;
   t->custom.mode.use_free = true;
@@ -718,8 +718,8 @@ TransModeInfo TransMode_translate = {
     /*init_fn*/ initTranslation,
     /*transform_fn*/ applyTranslation,
     /*transform_matrix_fn*/ applyTranslationMatrix,
-    /*handle_event_fn*/ NULL,
+    /*handle_event_fn*/ nullptr,
     /*snap_distance_fn*/ transform_snap_distance_len_squared_fn,
     /*snap_apply_fn*/ ApplySnapTranslation,
-    /*draw_fn*/ NULL,
+    /*draw_fn*/ nullptr,
 };
