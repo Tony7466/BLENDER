@@ -54,7 +54,7 @@ static const uchar shape_plus[] = {
     0x8c, 0x8c, 0xc9, 0x73, 0xc9, 0x73, 0x8c, 0x36, 0x8c, 0x36, 0x73, 0x36, 0x73,
 };
 
-typedef struct GizmoExtrudeGroup {
+struct GizmoExtrudeGroup {
 
   /* XYZ & normal. */
   wmGizmo *invoke_xyz_no[4];
@@ -83,7 +83,7 @@ typedef struct GizmoExtrudeGroup {
 
   wmOperatorType *ot_extrude;
   PropertyRNA *gzgt_axis_type_prop;
-} GizmoExtrudeGroup;
+};
 
 static void gizmo_mesh_extrude_orientation_matrix_set(GizmoExtrudeGroup *ggd,
                                                       const float mat[3][3])
@@ -109,24 +109,25 @@ static void gizmo_mesh_extrude_orientation_matrix_set_for_adjust(GizmoExtrudeGro
 
 static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  GizmoExtrudeGroup *ggd = MEM_callocN(sizeof(GizmoExtrudeGroup), __func__);
+  GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(
+      MEM_callocN(sizeof(GizmoExtrudeGroup), __func__));
   gzgroup->customdata = ggd;
 
   const wmGizmoType *gzt_arrow = WM_gizmotype_find("GIZMO_GT_arrow_3d", true);
   const wmGizmoType *gzt_move = WM_gizmotype_find("GIZMO_GT_button_2d", true);
   const wmGizmoType *gzt_dial = WM_gizmotype_find("GIZMO_GT_dial_3d", true);
 
-  ggd->adjust[0] = WM_gizmo_new_ptr(gzt_arrow, gzgroup, NULL);
-  ggd->adjust[1] = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+  ggd->adjust[0] = WM_gizmo_new_ptr(gzt_arrow, gzgroup, nullptr);
+  ggd->adjust[1] = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
   RNA_enum_set(ggd->adjust[1]->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_FILL_SELECT);
 
   for (int i = 0; i < 4; i++) {
-    ggd->invoke_xyz_no[i] = WM_gizmo_new_ptr(gzt_move, gzgroup, NULL);
+    ggd->invoke_xyz_no[i] = WM_gizmo_new_ptr(gzt_move, gzgroup, nullptr);
     ggd->invoke_xyz_no[i]->flag |= WM_GIZMO_DRAW_OFFSET_SCALE;
   }
 
   {
-    ggd->invoke_view = WM_gizmo_new_ptr(gzt_dial, gzgroup, NULL);
+    ggd->invoke_view = WM_gizmo_new_ptr(gzt_dial, gzgroup, nullptr);
     ggd->invoke_view->select_bias = -2.0f;
     RNA_enum_set(ggd->invoke_view->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_FILL_SELECT);
   }
@@ -140,7 +141,7 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
   }
 
   {
-    const char *op_idname = NULL;
+    const char *op_idname = nullptr;
     /* Grease pencil does not use `obedit`. */
     /* GPXX: Remove if OB_MODE_EDIT_GPENCIL_LEGACY is merged with OB_MODE_EDIT */
     const Object *obact = CTX_data_active_object(C);
@@ -188,7 +189,7 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* XYZ & normal axis extrude. */
   for (int i = 0; i < 4; i++) {
-    PointerRNA *ptr = WM_gizmo_operator_set(ggd->invoke_xyz_no[i], 0, ggd->ot_extrude, NULL);
+    PointerRNA *ptr = WM_gizmo_operator_set(ggd->invoke_xyz_no[i], 0, ggd->ot_extrude, nullptr);
     {
       bool constraint[3] = {0, 0, 0};
       constraint[(i < 3) ? i : ggd->normal_axis] = true;
@@ -199,7 +200,7 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
   }
 
   {
-    PointerRNA *ptr = WM_gizmo_operator_set(ggd->invoke_view, 0, ggd->ot_extrude, NULL);
+    PointerRNA *ptr = WM_gizmo_operator_set(ggd->invoke_view, 0, ggd->ot_extrude, nullptr);
     PointerRNA macroptr = RNA_pointer_get(ptr, "TRANSFORM_OT_translate");
     RNA_boolean_set(&macroptr, "release_confirm", true);
 
@@ -210,7 +211,7 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
   /* Adjust extrude. */
   for (int i = 0; i < 2; i++) {
     wmGizmo *gz = ggd->adjust[i];
-    PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->ot_extrude, NULL);
+    PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ggd->ot_extrude, nullptr);
     PointerRNA macroptr = RNA_pointer_get(ptr, "TRANSFORM_OT_translate");
     RNA_boolean_set(&macroptr, "release_confirm", true);
     wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
@@ -220,7 +221,7 @@ static void gizmo_mesh_extrude_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
 static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  GizmoExtrudeGroup *ggd = gzgroup->customdata;
+  GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(gzgroup->customdata);
 
   for (int i = 0; i < 4; i++) {
     WM_gizmo_set_flag(ggd->invoke_xyz_no[i], WM_GIZMO_HIDDEN, true);
@@ -235,7 +236,7 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
   }
 
   Scene *scene = CTX_data_scene(C);
-  RegionView3D *rv3d = CTX_wm_region_data(C);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(CTX_wm_region_data(C));
 
   int axis_type;
   {
@@ -254,26 +255,18 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
   if (use_normal) {
     struct TransformBounds tbounds_normal;
-    if (!ED_transform_calc_gizmo_stats(C,
-                                       &(struct TransformCalcParams){
-                                           .orientation_index = V3D_ORIENT_NORMAL + 1,
-                                       },
-                                       &tbounds_normal,
-                                       rv3d))
-    {
+    TransformCalcParams params{};
+    params.orientation_index = V3D_ORIENT_NORMAL + 1;
+    if (!ED_transform_calc_gizmo_stats(C, &params, &tbounds_normal, rv3d)) {
       unit_m3(tbounds_normal.axis);
     }
     copy_m3_m3(ggd->data.normal_mat3, tbounds_normal.axis);
   }
 
   /* TODO(@ideasman42): run second since this modifies the 3D view, it should not. */
-  if (!ED_transform_calc_gizmo_stats(C,
-                                     &(struct TransformCalcParams){
-                                         .orientation_index = ggd->data.orientation_index + 1,
-                                     },
-                                     &tbounds,
-                                     rv3d))
-  {
+  TransformCalcParams params{};
+  params.orientation_index = ggd->data.orientation_index + 1;
+  if (!ED_transform_calc_gizmo_stats(C, &params, &tbounds, rv3d)) {
     return;
   }
 
@@ -290,12 +283,12 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
   /* Adjust current operator. */
   /* Don't use 'WM_operator_last_redo' because selection actions will be ignored. */
-  wmOperator *op = CTX_wm_manager(C)->operators.last;
+  wmOperator *op = static_cast<wmOperator *>(CTX_wm_manager(C)->operators.last);
   bool has_redo = (op && op->type == ggd->ot_extrude);
-  wmOperator *op_xform = has_redo ? op->macro.last : NULL;
+  wmOperator *op_xform = static_cast<wmOperator *>(has_redo ? op->macro.last : nullptr);
 
   bool adjust_is_flip = false;
-  wmGizmo *gz_adjust = NULL;
+  wmGizmo *gz_adjust = nullptr;
 
   if (has_redo) {
     gz_adjust = ggd->adjust[1];
@@ -384,7 +377,7 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
 static void gizmo_mesh_extrude_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
 {
-  GizmoExtrudeGroup *ggd = gzgroup->customdata;
+  GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(gzgroup->customdata);
   switch (ggd->data.orientation_index) {
     case V3D_ORIENT_VIEW: {
       RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -417,12 +410,12 @@ static void gizmo_mesh_extrude_draw_prepare(const bContext *C, wmGizmoGroup *gzg
   }
 }
 
-static void gizmo_mesh_extrude_invoke_prepare(const bContext *UNUSED(C),
+static void gizmo_mesh_extrude_invoke_prepare(const bContext * /*C*/,
                                               wmGizmoGroup *gzgroup,
                                               wmGizmo *gz,
-                                              const wmEvent *UNUSED(event))
+                                              const wmEvent * /*event*/)
 {
-  GizmoExtrudeGroup *ggd = gzgroup->customdata;
+  GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(gzgroup->customdata);
   if (ELEM(gz, ggd->adjust[0], ggd->adjust[1])) {
     /* Set properties for redo. */
     wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
@@ -462,7 +455,7 @@ static void gizmo_mesh_extrude_message_subscribe(const bContext *C,
                                                  wmGizmoGroup *gzgroup,
                                                  struct wmMsgBus *mbus)
 {
-  GizmoExtrudeGroup *ggd = gzgroup->customdata;
+  GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(gzgroup->customdata);
   ARegion *region = CTX_wm_region(C);
 
   /* Subscribe to view properties */
@@ -477,16 +470,10 @@ static void gizmo_mesh_extrude_message_subscribe(const bContext *C,
         mbus, TransformOrientationSlot, type, &msg_sub_value_gz_tag_refresh);
   }
 
-  WM_msg_subscribe_rna_params(mbus,
-                              &(const wmMsgParams_RNA){
-                                  .ptr =
-                                      (PointerRNA){
-                                          .type = gzgroup->type->srna,
-                                      },
-                                  .prop = ggd->gzgt_axis_type_prop,
-                              },
-                              &msg_sub_value_gz_tag_refresh,
-                              __func__);
+  wmMsgParams_RNA params{};
+  params.ptr.type = gzgroup->type->srna;
+  params.prop = ggd->gzgt_axis_type_prop;
+  WM_msg_subscribe_rna_params(mbus, &params, &msg_sub_value_gz_tag_refresh, __func__);
 
   {
     Scene *scene = CTX_data_scene(C);
@@ -524,7 +511,7 @@ void VIEW3D_GGT_xform_extrude(wmGizmoGroupType *gzgt)
   static const EnumPropertyItem axis_type_items[] = {
       {EXTRUDE_AXIS_NORMAL, "NORMAL", 0, "Normal", "Only show normal axis"},
       {EXTRUDE_AXIS_XYZ, "XYZ", 0, "XYZ", "Follow scene orientation"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   RNA_def_enum(gzgt->srna, "axis_type", axis_type_items, 0, "Axis Type", "");
 }
