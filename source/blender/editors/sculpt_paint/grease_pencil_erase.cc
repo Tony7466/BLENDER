@@ -37,6 +37,7 @@ class EraseOperation : public GreasePencilStrokeOperation {
   void on_stroke_done(const bContext &C) override;
 
   bool set_flat_caps = true;
+  float radius = 50;
 };
 
 /**
@@ -58,7 +59,7 @@ struct EraseOperationExecutor {
 
     /* Get the tool's data */
     float2 mouse_position = stroke_extension.mouse_position;
-    float eraser_radius = stroke_extension.pressure * 100;  // TODO : Fix the computation of radius
+    float eraser_radius = stroke_extension.pressure * self.radius;
 
     /* Get the grease pencil drawing */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
