@@ -41,7 +41,7 @@ struct ToSphereInfo {
 /** Calculate average radius. */
 static void to_sphere_radius_update(TransInfo *t)
 {
-  struct ToSphereInfo *data = t->custom.mode.data;
+  struct ToSphereInfo *data = static_cast<ToSphereInfo *>(t->custom.mode.data);
   float radius = 0.0f;
   float vec[3];
 
@@ -109,12 +109,12 @@ struct TransDataArgs_ToSphere {
   const TransInfo *t;
   const TransDataContainer *tc;
   float ratio;
-  const struct ToSphereInfo to_sphere_info;
+  ToSphereInfo to_sphere_info;
   bool is_local_center;
   bool is_data_space;
 };
 
-static void transdata_elem_to_sphere(const TransInfo *UNUSED(t),
+static void transdata_elem_to_sphere(const TransInfo * /*t*/,
                                      const TransDataContainer *tc,
                                      TransData *td,
                                      const float ratio,
@@ -148,9 +148,9 @@ static void transdata_elem_to_sphere(const TransInfo *UNUSED(t),
 
 static void transdata_elem_to_sphere_fn(void *__restrict iter_data_v,
                                         const int iter,
-                                        const TaskParallelTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_ToSphere *data = iter_data_v;
+  TransDataArgs_ToSphere *data = static_cast<TransDataArgs_ToSphere *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -170,7 +170,7 @@ static void transdata_elem_to_sphere_fn(void *__restrict iter_data_v,
 /** \name Transform (ToSphere)
  * \{ */
 
-static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
+static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
 {
   const bool is_local_center = transdata_check_local_center(t, t->around);
   const bool is_data_space = (t->options & CTX_POSE_BONE) != 0;
@@ -202,7 +202,8 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
     SNPRINTF(str, TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
   }
 
-  const struct ToSphereInfo *to_sphere_info = t->custom.mode.data;
+  const struct ToSphereInfo *to_sphere_info = static_cast<const ToSphereInfo *>(
+      t->custom.mode.data);
   if (to_sphere_info->prop_size_prev != t->prop_size) {
     to_sphere_radius_update(t);
   }
@@ -218,14 +219,14 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct TransDataArgs_ToSphere data = {
-          .t = t,
-          .tc = tc,
-          .ratio = ratio,
-          .to_sphere_info = *to_sphere_info,
-          .is_local_center = is_local_center,
-          .is_data_space = is_data_space,
-      };
+      TransDataArgs_ToSphere data{};
+      data.t = t;
+      data.tc = tc;
+      data.ratio = ratio;
+      data.to_sphere_info = *to_sphere_info;
+      data.is_local_center = is_local_center;
+      data.is_data_space = is_data_space;
+
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       BLI_task_parallel_range(0, tc->data_len, &data, transdata_elem_to_sphere_fn, &settings);
@@ -237,7 +238,7 @@ static void applyToSphere(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initToSphere(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initToSphere(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_TOSPHERE;
 
@@ -254,7 +255,7 @@ static void initToSphere(TransInfo *t, struct wmOperator *UNUSED(op))
 
   t->num.val_flag[0] |= NUM_NULL_ONE | NUM_NO_NEGATIVE;
 
-  struct ToSphereInfo *data = MEM_callocN(sizeof(*data), __func__);
+  struct ToSphereInfo *data = static_cast<ToSphereInfo *>(MEM_callocN(sizeof(*data), __func__));
   t->custom.mode.data = data;
   t->custom.mode.use_free = true;
 
@@ -267,9 +268,9 @@ TransModeInfo TransMode_tosphere = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initToSphere,
     /*transform_fn*/ applyToSphere,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
