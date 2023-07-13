@@ -14,6 +14,7 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_TRUETYPE_TABLES_H
 /* not needed yet */
 // #include FT_GLYPH_H
 // #include FT_BBOX_H
@@ -283,32 +284,23 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
     BLI_str_utf8_invalid_strip(vfd->name, strlen(vfd->name));
   }
 
-  /* Blender default BFont is not "complete". */
-  const bool complete_font = (face->ascender != 0) && (face->descender != 0) &&
-                             (face->ascender != face->descender);
+  int cap_height = int(float(face->units_per_EM) * 0.7f);
 
-  if (complete_font) {
-    /* We can get descender as well, but we simple store descender in relation to the ascender.
-     * Also note that descender is stored as a negative number. */
-    vfd->ascender = float(face->ascender) / (face->ascender - face->descender);
+  TT_OS2 *os2_table = static_cast<TT_OS2 *>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2));
+  if (os2_table && os2_table->version > 1) {
+    cap_height = os2_table->sCapHeight;
   }
   else {
-    vfd->ascender = 0.8f;
-    vfd->em_height = 1.0f;
-  }
-
-  /* Adjust font size */
-  if (face->bbox.yMax != face->bbox.yMin) {
-    vfd->scale = float(1.0 / double(face->bbox.yMax - face->bbox.yMin));
-
-    if (complete_font) {
-      vfd->em_height = float(face->ascender - face->descender) /
-                       (face->bbox.yMax - face->bbox.yMin);
+    FT_UInt gi = FT_Get_Char_Index(face, (FT_ULong)'H');
+    if (gi && FT_Load_Glyph(face, gi, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) == FT_Err_Ok) {
+      cap_height = face->glyph->metrics.height;
     }
   }
-  else {
-    vfd->scale = 1.0f / 1000.0f;
-  }
+
+  vfd->ascender = float(cap_height) / float(face->units_per_EM);
+
+  /* Scale down to better match old height calculation and to work with 1em line height. */
+  vfd->scale = 0.68f / float(cap_height);
 
   /* Load the first 256 glyphs. */
 

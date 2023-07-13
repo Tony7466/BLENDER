@@ -24,7 +24,6 @@ typedef struct VFontData {
   char name[128];
   float scale;
   /* Calculated from the font. */
-  float em_height;
   float ascender;
 } VFontData;
 

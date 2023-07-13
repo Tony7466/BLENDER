@@ -768,21 +768,15 @@ enum {
  * Em height: Space most glyphs should fit within.
  * Ascent: the recommended distance above the baseline to fit most characters.
  * Descent: the recommended distance below the baseline to fit most characters.
- *
- * We obtain ascent and descent from the font itself (FT_Face->ascender / face->height).
- * And in some cases it is even the same value as FT_Face->bbox.yMax/yMin
- * (font top and bottom respectively).
- *
- * The em_height here is relative to FT_Face->bbox.
  */
 
 static float vfont_ascent(const VFontData *vfd)
 {
-  return vfd->ascender * vfd->em_height;
+  return vfd->ascender;
 }
 static float vfont_descent(const VFontData *vfd)
 {
-  return vfd->em_height - vfont_ascent(vfd);
+  return 1.0f - vfont_ascent(vfd);
 }
 
 /**
@@ -1321,8 +1315,8 @@ static bool vfont_to_curve(Object *ob,
             yoff = textbox_y_origin - vfont_ascent(vfd);
             break;
           case CU_ALIGN_Y_CENTER:
-            yoff = ((((vfd->em_height + (lines - 1) * linedist) * 0.5f) - vfont_ascent(vfd)) -
-                    (tb_scale.h * 0.5f) + textbox_y_origin);
+            yoff = (((lines * linedist * 0.5f) - vfont_ascent(vfd)) - (tb_scale.h * 0.5f) +
+                    textbox_y_origin);
             break;
           case CU_ALIGN_Y_BOTTOM_BASELINE:
             yoff = textbox_y_origin + ((lines - 1) * linedist) - tb_scale.h;
@@ -1352,7 +1346,7 @@ static bool vfont_to_curve(Object *ob,
           yoff = -vfont_ascent(vfd);
           break;
         case CU_ALIGN_Y_CENTER:
-          yoff = ((vfd->em_height + (lnr - 1) * linedist) * 0.5f) - vfont_ascent(vfd);
+          yoff = (lnr * linedist * 0.5f) - vfont_ascent(vfd);
           break;
         case CU_ALIGN_Y_BOTTOM_BASELINE:
           yoff = (lnr - 1) * linedist;
