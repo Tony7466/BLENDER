@@ -60,19 +60,18 @@ struct TransCustomData_PartialUpdate {
  * (which can happen when rotation is enabled with snapping).
  */
 enum ePartialType {
-  PARTIAL_NONE = -1,
-  /**
-   * Update only faces between tagged and non-tagged faces (affine transformations).
-   * Use when transforming is guaranteed not to change the relative locations of vertices.
-   *
-   * This has the advantage that selecting the entire mesh or only isolated elements,
-   * can skip normal/tessellation updates entirely, so it's worth using when possible.
-   */
-  PARTIAL_TYPE_GROUP = 0,
-  /**
-   * Update for all tagged vertices (any kind of deformation).
-   * Use as a default since it can be used with any kind of deformation.
-   */
+  PARTIAL_NONE =
+      -1,                 /**
+                           * Update only faces between tagged and non-tagged faces (affine transformations).
+                           * Use when transforming is guaranteed not to change the relative locations of vertices.
+                           *
+                           * This has the advantage that selecting the entire mesh or only isolated elements,
+                           * can skip normal/tessellation updates entirely, so it's worth using when possible.
+                           */
+  PARTIAL_TYPE_GROUP = 0, /**
+                           * Update for all tagged vertices (any kind of deformation).
+                           * Use as a default since it can be used with any kind of deformation.
+                           */
   PARTIAL_TYPE_ALL = 1,
 };
 
@@ -95,13 +94,13 @@ struct TransCustomDataMesh {
 
 static struct TransCustomDataMesh *tc_mesh_customdata_ensure(TransDataContainer *tc)
 {
-  struct TransCustomDataMesh *tcmd = tc->custom.type.data;
-  BLI_assert(tc->custom.type.data == NULL ||
+  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+  BLI_assert(tc->custom.type.data == nullptr ||
              tc->custom.type.free_cb == tc_mesh_customdata_free_fn);
-  if (tc->custom.type.data == NULL) {
+  if (tc->custom.type.data == nullptr) {
     tc->custom.type.data = MEM_callocN(sizeof(struct TransCustomDataMesh), __func__);
     tc->custom.type.free_cb = tc_mesh_customdata_free_fn;
-    tcmd = tc->custom.type.data;
+    tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
     tcmd->partial_update_state_prev.for_looptri = PARTIAL_NONE;
     tcmd->partial_update_state_prev.for_normals = PARTIAL_NONE;
   }
@@ -110,12 +109,12 @@ static struct TransCustomDataMesh *tc_mesh_customdata_ensure(TransDataContainer 
 
 static void tc_mesh_customdata_free(struct TransCustomDataMesh *tcmd)
 {
-  if (tcmd->cd_layer_correct != NULL) {
+  if (tcmd->cd_layer_correct != nullptr) {
     tc_mesh_customdatacorrect_free(tcmd->cd_layer_correct);
   }
 
   for (int i = 0; i < ARRAY_SIZE(tcmd->partial_update); i++) {
-    if (tcmd->partial_update[i].cache != NULL) {
+    if (tcmd->partial_update[i].cache != nullptr) {
       BM_mesh_partial_destroy(tcmd->partial_update[i].cache);
     }
   }
@@ -123,13 +122,13 @@ static void tc_mesh_customdata_free(struct TransCustomDataMesh *tcmd)
   MEM_freeN(tcmd);
 }
 
-static void tc_mesh_customdata_free_fn(TransInfo *UNUSED(t),
-                                       TransDataContainer *UNUSED(tc),
+static void tc_mesh_customdata_free_fn(TransInfo * /*t*/,
+                                       TransDataContainer * /*tc*/,
                                        TransCustomData *custom_data)
 {
-  struct TransCustomDataMesh *tcmd = custom_data->data;
+  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(custom_data->data);
   tc_mesh_customdata_free(tcmd);
-  custom_data->data = NULL;
+  custom_data->data = nullptr;
 }
 
 /** \} */
@@ -179,7 +178,7 @@ struct TransCustomDataLayer {
  */
 static BMFace *tc_mesh_customdatacorrect_find_best_face_substitute(BMFace *f)
 {
-  BMFace *best_face = NULL;
+  BMFace *best_face = nullptr;
   BMLoop *l;
   BMIter liter;
   BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
@@ -201,7 +200,7 @@ static BMFace *tc_mesh_customdatacorrect_find_best_face_substitute(BMFace *f)
       best_face = f_test;
       break;
     }
-    if (best_face == NULL) {
+    if (best_face == nullptr) {
       best_face = f_test;
     }
   }
@@ -248,7 +247,7 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
                                                 const int index)
 {
   BMesh *bm = tcld->bm;
-  BMVert *v = td->extra;
+  BMVert *v = static_cast<BMVert *>(td->extra);
   BMIter liter;
   int j, l_num;
   float *loop_weights;
@@ -256,9 +255,9 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
   // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT) {
   BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
   l_num = liter.count;
-  loop_weights = tcld->use_merge_group ? BLI_array_alloca(loop_weights, l_num) : NULL;
+  loop_weights = tcld->use_merge_group ? BLI_array_alloca(loop_weights, l_num) : nullptr;
   for (j = 0; j < l_num; j++) {
-    BMLoop *l = BM_iter_step(&liter);
+    BMLoop *l = static_cast<BMLoop *>(BM_iter_step(&liter));
     BMLoop *l_prev, *l_next;
 
     /* Generic custom-data correction. Copy face data. */
@@ -289,8 +288,8 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
     /* Store cd_loop_groups. */
     struct TransCustomDataMergeGroup *merge_data = &tcld->merge_group.data[index];
     if (l_num != 0) {
-      merge_data->cd_loop_groups = BLI_memarena_alloc(
-          tcld->arena, tcld->merge_group.customdatalayer_map_len * sizeof(void *));
+      merge_data->cd_loop_groups = static_cast<LinkNode **>(BLI_memarena_alloc(
+          tcld->arena, tcld->merge_group.customdatalayer_map_len * sizeof(void *)));
       for (j = 0; j < tcld->merge_group.customdatalayer_map_len; j++) {
         const int layer_nr = tcld->merge_group.customdatalayer_map[j];
         merge_data->cd_loop_groups[j] = BM_vert_loop_groups_data_layer_create(
@@ -298,26 +297,25 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
       }
     }
     else {
-      merge_data->cd_loop_groups = NULL;
+      merge_data->cd_loop_groups = nullptr;
     }
 
     BLI_ghash_insert(tcld->merge_group.origverts, v, td);
   }
 }
 
-static void tc_mesh_customdatacorrect_init_container_generic(TransDataContainer *UNUSED(tc),
+static void tc_mesh_customdatacorrect_init_container_generic(TransDataContainer * /*tc*/,
                                                              struct TransCustomDataLayer *tcld)
 {
   BMesh *bm = tcld->bm;
 
   GHash *origfaces = BLI_ghash_ptr_new(__func__);
-  BMesh *bm_origfaces = BM_mesh_create(&bm_mesh_allocsize_default,
-                                       &((struct BMeshCreateParams){
-                                           .use_toolflags = false,
-                                       }));
+  BMeshCreateParams params{};
+  params.use_toolflags = false;
+  BMesh *bm_origfaces = BM_mesh_create(&bm_mesh_allocsize_default, &params);
 
   /* We need to have matching loop custom-data. */
-  BM_mesh_copy_init_customdata_all_layers(bm_origfaces, bm, BM_LOOP, NULL);
+  BM_mesh_copy_init_customdata_all_layers(bm_origfaces, bm, BM_LOOP, nullptr);
 
   tcld->origfaces = origfaces;
   tcld->bm_origfaces = bm_origfaces;
@@ -336,7 +334,8 @@ static void tc_mesh_customdatacorrect_init_container_merge_group(TransDataContai
    * to one of the sliding vertices. */
 
   /* Over allocate, only 'math' layers are indexed. */
-  int *customdatalayer_map = MEM_mallocN(sizeof(int) * bm->ldata.totlayer, __func__);
+  int *customdatalayer_map = static_cast<int *>(
+      MEM_mallocN(sizeof(int) * bm->ldata.totlayer, __func__));
   int layer_math_map_len = 0;
   for (int i = 0; i < bm->ldata.totlayer; i++) {
     if (CustomData_layer_has_math(&bm->ldata, i)) {
@@ -349,8 +348,8 @@ static void tc_mesh_customdatacorrect_init_container_merge_group(TransDataContai
   tcld->merge_group.customdatalayer_map = customdatalayer_map;
   tcld->merge_group.customdatalayer_map_len = layer_math_map_len;
   tcld->merge_group.origverts = BLI_ghash_ptr_new_ex(__func__, tcld->merge_group.data_len);
-  tcld->merge_group.data = BLI_memarena_alloc(
-      tcld->arena, tcld->merge_group.data_len * sizeof(*tcld->merge_group.data));
+  tcld->merge_group.data = static_cast<TransCustomDataMergeGroup *>(BLI_memarena_alloc(
+      tcld->arena, tcld->merge_group.data_len * sizeof(*tcld->merge_group.data)));
 }
 
 static struct TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(
@@ -363,14 +362,15 @@ static struct TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(
     /* Don't do this at all for non-basis shape keys, too easy to
      * accidentally break uv maps or vertex colors then */
     /* create copies of faces for custom-data projection. */
-    return NULL;
+    return nullptr;
   }
   if (!CustomData_has_math(&bm->ldata) && !CustomData_has_layer(&bm->ldata, CD_MDISPS)) {
     /* There is no custom-data to correct. */
-    return NULL;
+    return nullptr;
   }
 
-  struct TransCustomDataLayer *tcld = MEM_callocN(sizeof(*tcld), __func__);
+  struct TransCustomDataLayer *tcld = static_cast<TransCustomDataLayer *>(
+      MEM_callocN(sizeof(*tcld), __func__));
   tcld->bm = bm;
   tcld->arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
 
@@ -412,7 +412,7 @@ static void tc_mesh_customdatacorrect_create(TransDataContainer *tc, const bool 
   }
 
   struct TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
-  BLI_assert(tcmd->cd_layer_correct == NULL);
+  BLI_assert(tcmd->cd_layer_correct == nullptr);
   tcmd->cd_layer_correct = customdatacorrect;
 }
 
@@ -424,10 +424,10 @@ static void tc_mesh_customdatacorrect_free(struct TransCustomDataLayer *tcld)
     BM_mesh_free(tcld->bm_origfaces);
   }
   if (tcld->origfaces) {
-    BLI_ghash_free(tcld->origfaces, NULL, NULL);
+    BLI_ghash_free(tcld->origfaces, nullptr, nullptr);
   }
   if (tcld->merge_group.origverts) {
-    BLI_ghash_free(tcld->merge_group.origverts, NULL, NULL);
+    BLI_ghash_free(tcld->merge_group.origverts, nullptr, nullptr);
   }
   if (tcld->arena) {
     BLI_memarena_free(tcld->arena);
@@ -474,11 +474,11 @@ void transform_convert_mesh_customdatacorrect_init(TransInfo *t)
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    if (tc->custom.type.data != NULL) {
-      struct TransCustomDataMesh *tcmd = tc->custom.type.data;
+    if (tc->custom.type.data != nullptr) {
+      struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
       if (tcmd && tcmd->cd_layer_correct) {
         tc_mesh_customdatacorrect_free(tcmd->cd_layer_correct);
-        tcmd->cd_layer_correct = NULL;
+        tcmd->cd_layer_correct = nullptr;
       }
     }
 
@@ -497,7 +497,8 @@ void transform_convert_mesh_customdatacorrect_init(TransInfo *t)
  */
 static const float *tc_mesh_vert_orig_co_get(struct TransCustomDataLayer *tcld, BMVert *v)
 {
-  TransDataBasic *td = BLI_ghash_lookup(tcld->merge_group.origverts, v);
+  TransDataBasic *td = static_cast<TransDataBasic *>(
+      BLI_ghash_lookup(tcld->merge_group.origverts, v));
   return td ? td->iloc : v->co;
 }
 
@@ -507,7 +508,7 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
                                                  bool do_loop_mdisps)
 {
   BMesh *bm = tcld->bm;
-  BMVert *v = td->extra;
+  BMVert *v = static_cast<BMVert *>(td->extra);
   const float *co_orig_3d = td->iloc;
 
   BMIter liter;
@@ -526,12 +527,12 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
   // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT)
   BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
   l_num = liter.count;
-  loop_weights = do_loop_weight ? BLI_array_alloca(loop_weights, l_num) : NULL;
+  loop_weights = do_loop_weight ? BLI_array_alloca(loop_weights, l_num) : nullptr;
   for (j = 0; j < l_num; j++) {
     BMFace *f_copy; /* the copy of 'f' */
-    BMLoop *l = BM_iter_step(&liter);
+    BMLoop *l = static_cast<BMLoop *>(BM_iter_step(&liter));
 
-    f_copy = BLI_ghash_lookup(tcld->origfaces, l->f);
+    f_copy = static_cast<BMFace *>(BLI_ghash_lookup(tcld->origfaces, l->f));
 
 #ifdef USE_FACE_SUBSTITUTE
     /* In some faces it is not possible to calculate interpolation,
@@ -624,7 +625,7 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
     }
 
     BM_ITER_ELEM_INDEX (l, &liter, v, BM_LOOPS_OF_VERT, j) {
-      BMFace *f_copy = BLI_ghash_lookup(tcld->origfaces, l->f);
+      BMFace *f_copy = static_cast<BMFace *>(BLI_ghash_lookup(tcld->origfaces, l->f));
       float f_copy_center[3];
       BMIter liter_other;
       BMLoop *l_other;
@@ -646,9 +647,9 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
 
 static void tc_mesh_customdatacorrect_apply(TransDataContainer *tc, bool is_final)
 {
-  struct TransCustomDataMesh *tcmd = tc->custom.type.data;
-  struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : NULL;
-  if (tcld == NULL) {
+  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+  struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
+  if (tcld == nullptr) {
     return;
   }
   const bool use_merge_group = tcld->use_merge_group;
@@ -682,8 +683,8 @@ static void tc_mesh_customdatacorrect_apply(TransDataContainer *tc, bool is_fina
 static void tc_mesh_customdatacorrect_restore(TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    struct TransCustomDataMesh *tcmd = tc->custom.type.data;
-    struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : NULL;
+    struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+    struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
     if (!tcld) {
       continue;
     }
@@ -693,8 +694,8 @@ static void tc_mesh_customdatacorrect_restore(TransInfo *t)
 
     GHashIterator gh_iter;
     GHASH_ITER (gh_iter, tcld->origfaces) {
-      BMFace *f = BLI_ghashIterator_getKey(&gh_iter);
-      BMFace *f_copy = BLI_ghashIterator_getValue(&gh_iter);
+      BMFace *f = static_cast<BMFace *>(BLI_ghashIterator_getKey(&gh_iter));
+      BMFace *f_copy = static_cast<BMFace *>(BLI_ghashIterator_getValue(&gh_iter));
       BLI_assert(f->len == f_copy->len);
 
       BMLoop *l_iter, *l_first, *l_copy;
@@ -721,7 +722,7 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
                                          const bool calc_island_axismtx,
                                          struct TransIslandData *r_island_data)
 {
-  struct TransIslandData data = {NULL};
+  struct TransIslandData data = {nullptr};
 
   BMesh *bm = em->bm;
   char htype;
@@ -729,15 +730,16 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
   int i;
 
   /* group vars */
-  int *groups_array = NULL;
-  int(*group_index)[2] = NULL;
+  int *groups_array = nullptr;
+  int(*group_index)[2] = nullptr;
 
   bool has_only_single_islands = bm->totedgesel == 0 && bm->totfacesel == 0;
   if (has_only_single_islands && !calc_single_islands) {
     return;
   }
 
-  data.island_vert_map = MEM_mallocN(sizeof(*data.island_vert_map) * bm->totvert, __func__);
+  data.island_vert_map = static_cast<int *>(
+      MEM_mallocN(sizeof(*data.island_vert_map) * bm->totvert, __func__));
   /* we shouldn't need this, but with incorrect selection flushing
    * its possible we have a selected vertex that's not in a face,
    * for now best not crash in that case. */
@@ -745,17 +747,19 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
 
   if (!has_only_single_islands) {
     if (em->selectmode & (SCE_SELECT_VERTEX | SCE_SELECT_EDGE)) {
-      groups_array = MEM_mallocN(sizeof(*groups_array) * bm->totedgesel, __func__);
+      groups_array = static_cast<int *>(
+          MEM_mallocN(sizeof(*groups_array) * bm->totedgesel, __func__));
       data.island_tot = BM_mesh_calc_edge_groups(
-          bm, groups_array, &group_index, NULL, NULL, BM_ELEM_SELECT);
+          bm, groups_array, &group_index, nullptr, nullptr, BM_ELEM_SELECT);
 
       htype = BM_EDGE;
       itype = BM_VERTS_OF_EDGE;
     }
     else { /* (bm->selectmode & SCE_SELECT_FACE) */
-      groups_array = MEM_mallocN(sizeof(*groups_array) * bm->totfacesel, __func__);
+      groups_array = static_cast<int *>(
+          MEM_mallocN(sizeof(*groups_array) * bm->totfacesel, __func__));
       data.island_tot = BM_mesh_calc_face_groups(
-          bm, groups_array, &group_index, NULL, NULL, NULL, BM_ELEM_SELECT, BM_VERT);
+          bm, groups_array, &group_index, nullptr, nullptr, nullptr, BM_ELEM_SELECT, BM_VERT);
 
       htype = BM_FACE;
       itype = BM_VERTS_OF_FACE;
@@ -763,11 +767,13 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
 
     BLI_assert(data.island_tot);
     if (calc_island_center) {
-      data.center = MEM_mallocN(sizeof(*data.center) * data.island_tot, __func__);
+      data.center = static_cast<float(*)[3]>(
+          MEM_mallocN(sizeof(*data.center) * data.island_tot, __func__));
     }
 
     if (calc_island_axismtx) {
-      data.axismtx = MEM_mallocN(sizeof(*data.axismtx) * data.island_tot, __func__);
+      data.axismtx = static_cast<float(*)[3][3]>(
+          MEM_mallocN(sizeof(*data.axismtx) * data.island_tot, __func__));
     }
 
     BM_mesh_elem_table_ensure(bm, htype);
@@ -779,7 +785,7 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
 
     /* may be an edge OR a face array */
     for (i = 0; i < data.island_tot; i++) {
-      BMEditSelection ese = {NULL};
+      BMEditSelection ese = {nullptr};
 
       const int fg_sta = group_index[i][0];
       const int fg_len = group_index[i][1];
@@ -797,7 +803,7 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
        * - calculate (co, no)
        */
       for (j = 0; j < fg_len; j++) {
-        ese.ele = ele_array[groups_array[fg_sta + j]];
+        ese.ele = static_cast<BMElem *>(ele_array[groups_array[fg_sta + j]]);
 
         if (data.center) {
           float tmp_co[3];
@@ -864,12 +870,12 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
 
     if (group_tot_single != 0) {
       if (calc_island_center) {
-        data.center = MEM_reallocN(data.center,
-                                   sizeof(*data.center) * (data.island_tot + group_tot_single));
+        data.center = static_cast<float(*)[3]>(MEM_reallocN(
+            data.center, sizeof(*data.center) * (data.island_tot + group_tot_single)));
       }
       if (calc_island_axismtx) {
-        data.axismtx = MEM_reallocN(data.axismtx,
-                                    sizeof(*data.axismtx) * (data.island_tot + group_tot_single));
+        data.axismtx = static_cast<float(*)[3][3]>(MEM_reallocN(
+            data.axismtx, sizeof(*data.axismtx) * (data.island_tot + group_tot_single)));
       }
 
       BM_ITER_MESH_INDEX (v, &viter, bm, BM_VERTS_OF_MESH, i) {
@@ -920,8 +926,7 @@ void transform_convert_mesh_islanddata_free(struct TransIslandData *island_data)
 static bool bmesh_test_dist_add(BMVert *v0,
                                 BMVert *v1,
                                 BMVert *v2,
-                                float *dists,
-                                /* optionally track original index */
+                                float *dists, /* optionally track original index */
                                 int *index,
                                 const float mtx[3][3])
 {
@@ -963,7 +968,7 @@ static bool bmesh_test_dist_add(BMVert *v0,
 
     if (dist0 < dists[i0]) {
       dists[i0] = dist0;
-      if (index != NULL) {
+      if (index != nullptr) {
         index[i0] = index[i1];
       }
       return true;
@@ -976,7 +981,7 @@ static bool bmesh_test_dist_add(BMVert *v0,
 static bool bmesh_test_loose_edge(BMEdge *edge)
 {
   /* Actual loose edge. */
-  if (edge->l == NULL) {
+  if (edge->l == nullptr) {
     return true;
   }
 
@@ -1019,13 +1024,13 @@ void transform_convert_mesh_connectivity_distance(BMesh *bm,
 
       if (BM_elem_flag_test(v, BM_ELEM_SELECT) == 0 || BM_elem_flag_test(v, BM_ELEM_HIDDEN)) {
         dist = FLT_MAX;
-        if (index != NULL) {
+        if (index != nullptr) {
           index[i] = i;
         }
       }
       else {
         dist = 0.0f;
-        if (index != NULL) {
+        if (index != nullptr) {
           index[i] = i;
         }
       }
@@ -1077,7 +1082,7 @@ void transform_convert_mesh_connectivity_distance(BMesh *bm,
           SWAP(BMVert *, v1, v2);
         }
 
-        if (bmesh_test_dist_add(v2, v1, NULL, dists, index, mtx)) {
+        if (bmesh_test_dist_add(v2, v1, nullptr, dists, index, mtx)) {
           /* Add adjacent loose edges to the queue, or all edges if this is a loose edge.
            * Other edges are handled by propagation across edges below. */
           BMEdge *e_other;
@@ -1132,7 +1137,7 @@ void transform_convert_mesh_connectivity_distance(BMesh *bm,
 
     /* Clear for the next loop. */
     for (LinkNode *lnk = queue_next; lnk; lnk = lnk->next) {
-      BMEdge *e_link = lnk->link;
+      BMEdge *e_link = static_cast<BMEdge *>(lnk->link);
 
       BM_elem_flag_disable(e_link, tag_queued);
     }
@@ -1183,7 +1188,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
   BMIter iter;
   int i, flag, totvert = bm->totvert;
 
-  vert_map = MEM_callocN(totvert * sizeof(*vert_map), __func__);
+  vert_map = static_cast<MirrorDataVert *>(MEM_callocN(totvert * sizeof(*vert_map), __func__));
 
   float select_sum[3] = {0};
   BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, i) {
@@ -1208,7 +1213,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
   }
 
   uint mirror_elem_len = 0;
-  int *index[3] = {NULL, NULL, NULL};
+  int *index[3] = {nullptr, nullptr, nullptr};
   bool is_single_mirror_axis = (mirror_axis[0] + mirror_axis[1] + mirror_axis[2]) == 1;
   bool test_selected_only = use_select && is_single_mirror_axis;
   for (int a = 0; a < 3; a++) {
@@ -1216,7 +1221,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
       continue;
     }
 
-    index[a] = MEM_mallocN(totvert * sizeof(*index[a]), __func__);
+    index[a] = static_cast<int *>(MEM_mallocN(totvert * sizeof(*index[a]), __func__));
     EDBM_verts_mirror_cache_begin_ex(
         em, a, false, test_selected_only, true, use_topology, TRANSFORM_MAXDIST_MIRROR, index[a]);
 
@@ -1254,7 +1259,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
 
   if (!mirror_elem_len) {
     MEM_freeN(vert_map);
-    vert_map = NULL;
+    vert_map = nullptr;
   }
   else if (!is_single_mirror_axis) {
     /* Adjustment for elements that are mirrors of mirrored elements. */
@@ -1306,11 +1311,11 @@ void transform_convert_mesh_crazyspace_detect(TransInfo *t,
                                               BMEditMesh *em,
                                               struct TransMeshDataCrazySpace *r_crazyspace_data)
 {
-  float(*quats)[4] = NULL;
-  float(*defmats)[3][3] = NULL;
+  float(*quats)[4] = nullptr;
+  float(*defmats)[3][3] = nullptr;
   const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
-  if (BKE_modifiers_get_cage_index(t->scene, tc->obedit, NULL, 1) != -1) {
-    float(*defcos)[3] = NULL;
+  if (BKE_modifiers_get_cage_index(t->scene, tc->obedit, nullptr, 1) != -1) {
+    float(*defcos)[3] = nullptr;
     int totleft = -1;
     if (BKE_modifiers_is_correctable_deformed(t->scene, tc->obedit)) {
       BKE_scene_graph_evaluated_ensure(t->depsgraph, CTX_data_main(t->context));
@@ -1329,16 +1334,16 @@ void transform_convert_mesh_crazyspace_detect(TransInfo *t,
      * correction with \a quats, relative to the coordinates after
      * the modifiers that support deform matrices \a defcos. */
 
-#if 0 /* TODO(@ideasman42): fix crazy-space & extrude so it can be enabled for general use. \
-       */
-      if ((totleft > 0) || (totleft == -1))
+#if 0 /* TODO(@ideasman42): fix crazy-space & extrude so it can be enabled for general use. */
+    if ((totleft > 0) || (totleft == -1))
 #else
     if (totleft > 0)
 #endif
     {
-      float(*mappedcos)[3] = NULL;
+      float(*mappedcos)[3] = nullptr;
       mappedcos = BKE_crazyspace_get_mapped_editverts(t->depsgraph, tc->obedit);
-      quats = MEM_mallocN(em->bm->totvert * sizeof(*quats), "crazy quats");
+      quats = static_cast<float(*)[4]>(
+          MEM_mallocN(em->bm->totvert * sizeof(*quats), "crazy quats"));
       BKE_crazyspace_set_quats_editmesh(em, defcos, mappedcos, quats, !prop_mode);
       if (mappedcos) {
         MEM_freeN(mappedcos);
@@ -1461,8 +1466,8 @@ static void VertsToTransData(TransInfo *t,
         td->axismtx[1][1] = td->axismtx[1][2] = 0.0f;
   }
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
   td->extra = eve;
   if (t->mode == TFM_SHRINKFATTEN) {
     td->ext = tx;
@@ -1470,12 +1475,12 @@ static void VertsToTransData(TransInfo *t,
   }
 }
 
-static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
+static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    TransDataExtension *tx = NULL;
+    TransDataExtension *tx = nullptr;
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
-    Mesh *me = tc->obedit->data;
+    Mesh *me = static_cast<Mesh *>(tc->obedit->data);
     BMesh *bm = em->bm;
     BMVert *eve;
     BMIter iter;
@@ -1483,9 +1488,9 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
     int a;
     const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
 
-    struct TransIslandData island_data = {NULL};
-    struct TransMirrorData mirror_data = {NULL};
-    struct TransMeshDataCrazySpace crazyspace_data = {NULL};
+    struct TransIslandData island_data = {nullptr};
+    struct TransMirrorData mirror_data = {nullptr};
+    struct TransMeshDataCrazySpace crazyspace_data = {nullptr};
 
     /**
      * Quick check if we can transform.
@@ -1551,12 +1556,12 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
 
     /* Original index of our connected vertex when connected distances are calculated.
      * Optional, allocate if needed. */
-    int *dists_index = NULL;
-    float *dists = NULL;
+    int *dists_index = nullptr;
+    float *dists = nullptr;
     if (prop_mode & T_PROP_CONNECTED) {
-      dists = MEM_mallocN(bm->totvert * sizeof(float), __func__);
+      dists = static_cast<float *>(MEM_mallocN(bm->totvert * sizeof(float), __func__));
       if (is_island_center) {
-        dists_index = MEM_mallocN(bm->totvert * sizeof(int), __func__);
+        dists_index = static_cast<int *>(MEM_mallocN(bm->totvert * sizeof(int), __func__));
       }
       transform_convert_mesh_connectivity_distance(em->bm, mtx, dists, dists_index);
     }
@@ -1566,14 +1571,14 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
       bool use_topology = (me->editflag & ME_EDIT_MIRROR_TOPO) != 0;
       bool use_select = (t->flag & T_PROP_EDIT) == 0;
       const bool mirror_axis[3] = {
-          tc->use_mirror_axis_x, tc->use_mirror_axis_y, tc->use_mirror_axis_z};
+          bool(tc->use_mirror_axis_x), bool(tc->use_mirror_axis_y), bool(tc->use_mirror_axis_z)};
       transform_convert_mesh_mirrordata_calc(
           em, use_select, use_topology, mirror_axis, &mirror_data);
 
       if (mirror_data.vert_map) {
         tc->data_mirror_len = mirror_data.mirror_elem_len;
-        tc->data_mirror = MEM_callocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror),
-                                      __func__);
+        tc->data_mirror = static_cast<TransDataMirror *>(
+            MEM_callocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror), __func__));
 
         BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, a) {
           if (prop_mode || BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
@@ -1591,14 +1596,15 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
     /* Create TransData. */
     BLI_assert(data_len >= 1);
     tc->data_len = data_len;
-    tc->data = MEM_callocN(data_len * sizeof(TransData), "TransObData(Mesh EditMode)");
+    tc->data = static_cast<TransData *>(
+        MEM_callocN(data_len * sizeof(TransData), "TransObData(Mesh EditMode)"));
     if (t->mode == TFM_SHRINKFATTEN) {
       /* warning, this is overkill, we only need 2 extra floats,
        * but this stores loads of extra stuff, for TFM_SHRINKFATTEN its even more overkill
        * since we may not use the 'alt' transform mode to maintain shell thickness,
        * but with generic transform code its hard to lazy init vars */
-      tx = tc->data_ext = MEM_callocN(tc->data_len * sizeof(TransDataExtension),
-                                      "TransObData ext");
+      tx = tc->data_ext = static_cast<TransDataExtension *>(
+          MEM_callocN(tc->data_len * sizeof(TransDataExtension), "TransObData ext"));
     }
 
     TransData *tob = tc->data;
@@ -1659,10 +1665,10 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
         transform_convert_mesh_crazyspace_transdata_set(
             mtx,
             smtx,
-            crazyspace_data.defmats ? crazyspace_data.defmats[a] : NULL,
+            crazyspace_data.defmats ? crazyspace_data.defmats[a] : nullptr,
             crazyspace_data.quats && BM_elem_flag_test(eve, BM_ELEM_TAG) ?
                 crazyspace_data.quats[a] :
-                NULL,
+                nullptr,
             tob);
 
         if (tc->use_mirror_axis_any) {
@@ -1742,7 +1748,7 @@ static BMPartialUpdate *tc_mesh_partial_ensure(TransInfo *t,
     }
 
     BM_mesh_partial_destroy(pupdate->cache);
-    pupdate->cache = NULL;
+    pupdate->cache = nullptr;
   }
 
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
@@ -1750,15 +1756,16 @@ static BMPartialUpdate *tc_mesh_partial_ensure(TransInfo *t,
   BM_mesh_elem_index_ensure(em->bm, BM_VERT);
 
   /* Only use `verts_group` or `verts_mask`. */
-  int *verts_group = NULL;
+  int *verts_group = nullptr;
   int verts_group_count = 0; /* Number of non-zero elements in `verts_group`. */
 
-  BLI_bitmap *verts_mask = NULL;
+  BLI_bitmap *verts_mask = nullptr;
   int verts_mask_count = 0; /* Number of elements enabled in `verts_mask`. */
 
   if ((partial_type == PARTIAL_TYPE_GROUP) && ((t->flag & T_PROP_EDIT) || tc->use_mirror_axis_any))
   {
-    verts_group = MEM_callocN(sizeof(*verts_group) * em->bm->totvert, __func__);
+    verts_group = static_cast<int *>(
+        MEM_callocN(sizeof(*verts_group) * em->bm->totvert, __func__));
     int i;
     TransData *td;
     for (i = 0, td = tc->data; i < tc->data_len; i++, td++) {
@@ -1847,31 +1854,21 @@ static BMPartialUpdate *tc_mesh_partial_ensure(TransInfo *t,
 
   switch (partial_type) {
     case PARTIAL_TYPE_ALL: {
-      pupdate->cache = BM_mesh_partial_create_from_verts(em->bm,
-                                                         &(BMPartialUpdate_Params){
-                                                             .do_tessellate = true,
-                                                             .do_normals = true,
-                                                         },
-                                                         verts_mask,
-                                                         verts_mask_count);
+      BMPartialUpdate_Params params{};
+      params.do_tessellate = true;
+      params.do_normals = true;
+      pupdate->cache = BM_mesh_partial_create_from_verts(
+          em->bm, &params, verts_mask, verts_mask_count);
       break;
     }
     case PARTIAL_TYPE_GROUP: {
-      pupdate->cache =
-          (verts_group ? BM_mesh_partial_create_from_verts_group_multi(em->bm,
-                                                                       &(BMPartialUpdate_Params){
-                                                                           .do_tessellate = true,
-                                                                           .do_normals = true,
-                                                                       },
-                                                                       verts_group,
-                                                                       verts_group_count) :
-                         BM_mesh_partial_create_from_verts_group_single(em->bm,
-                                                                        &(BMPartialUpdate_Params){
-                                                                            .do_tessellate = true,
-                                                                            .do_normals = true,
-                                                                        },
-                                                                        verts_mask,
-                                                                        verts_mask_count));
+      BMPartialUpdate_Params params{};
+      params.do_tessellate = true;
+      params.do_normals = true;
+      pupdate->cache = (verts_group ? BM_mesh_partial_create_from_verts_group_multi(
+                                          em->bm, &params, verts_group, verts_group_count) :
+                                      BM_mesh_partial_create_from_verts_group_single(
+                                          em->bm, &params, verts_mask, verts_mask_count));
       break;
     }
     case PARTIAL_NONE: {
@@ -1982,11 +1979,9 @@ static void tc_mesh_partial_update(TransInfo *t,
   else {
     if (partial_for_looptri != PARTIAL_NONE) {
       BMPartialUpdate *bmpinfo = tc_mesh_partial_ensure(t, tc, partial_for_looptri);
-      BKE_editmesh_looptri_calc_with_partial_ex(em,
-                                                bmpinfo,
-                                                &(const struct BMeshCalcTessellation_Params){
-                                                    .face_normals = true,
-                                                });
+      BMeshCalcTessellation_Params params{};
+      params.face_normals = true;
+      BKE_editmesh_looptri_calc_with_partial_ex(em, bmpinfo, &params);
     }
 
     if (partial_for_normals != PARTIAL_NONE) {
@@ -1995,11 +1990,9 @@ static void tc_mesh_partial_update(TransInfo *t,
       const bool face_normals = !((partial_for_looptri == PARTIAL_TYPE_ALL) ||
                                   ((partial_for_looptri == PARTIAL_TYPE_GROUP) &&
                                    (partial_for_normals == PARTIAL_TYPE_GROUP)));
-      BM_mesh_normals_update_with_partial_ex(em->bm,
-                                             bmpinfo,
-                                             &(const struct BMeshNormalsUpdate_Params){
-                                                 .face_normals = face_normals,
-                                             });
+      BMeshNormalsUpdate_Params params{};
+      params.face_normals = face_normals;
+      BM_mesh_normals_update_with_partial_ex(em->bm, bmpinfo, &params);
     }
   }
 
@@ -2076,7 +2069,7 @@ static void recalcData_mesh(TransInfo *t)
   tc_mesh_partial_types_calc(t, &partial_state);
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(tc->obedit->data), ID_RECALC_GEOMETRY);
 
     tc_mesh_partial_update(t, tc, &partial_state);
   }
@@ -2088,7 +2081,7 @@ static void recalcData_mesh(TransInfo *t)
 /** \name Special After Transform Mesh
  * \{ */
 
-static void special_aftertrans_update__mesh(bContext *UNUSED(C), TransInfo *t)
+static void special_aftertrans_update__mesh(bContext * /*C*/, TransInfo *t)
 {
   const bool is_canceling = (t->state == TRANS_CANCEL);
   const bool use_automerge = !is_canceling && (t->flag & (T_AUTOMERGE | T_AUTOSPLIT)) != 0;
