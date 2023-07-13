@@ -45,7 +45,7 @@ struct TransDataArgs_ShrinkFatten {
 };
 
 static void transdata_elem_shrink_fatten(const TransInfo *t,
-                                         const TransDataContainer *UNUSED(tc),
+                                         const TransDataContainer * /*tc*/,
                                          TransData *td,
                                          const float distance)
 {
@@ -60,9 +60,9 @@ static void transdata_elem_shrink_fatten(const TransInfo *t,
 
 static void transdata_elem_shrink_fatten_fn(void *__restrict iter_data_v,
                                             const int iter,
-                                            const TaskParallelTLS *__restrict UNUSED(tls))
+                                            const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_ShrinkFatten *data = iter_data_v;
+  TransDataArgs_ShrinkFatten *data = static_cast<TransDataArgs_ShrinkFatten *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -79,7 +79,7 @@ static void transdata_elem_shrink_fatten_fn(void *__restrict iter_data_v,
 static eRedrawFlag shrinkfatten_handleEvent(TransInfo *t, const wmEvent *event)
 {
   BLI_assert(t->mode == TFM_SHRINKFATTEN);
-  const wmKeyMapItem *kmi = t->custom.mode.data;
+  const wmKeyMapItem *kmi = static_cast<const wmKeyMapItem *>(t->custom.mode.data);
   if (kmi && event->type == kmi->type && event->val == kmi->val) {
     /* Allows the "Even Thickness" effect to be enabled as a toggle. */
     t->flag ^= T_ALT_TRANSFORM;
@@ -88,7 +88,7 @@ static eRedrawFlag shrinkfatten_handleEvent(TransInfo *t, const wmEvent *event)
   return TREDRAW_NOTHING;
 }
 
-static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
+static void applyShrinkFatten(TransInfo *t, const int[2] /*mval*/)
 {
   float distance;
   int i;
@@ -113,7 +113,7 @@ static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   }
   else {
     /* default header print */
-    if (unit != NULL) {
+    if (unit != nullptr) {
       ofs += BKE_unit_value_as_string(str + ofs,
                                       sizeof(str) - ofs,
                                       distance * unit->scale_length,
@@ -132,7 +132,7 @@ static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   }
   ofs += BLI_strncpy_rlen(str + ofs, ", (", sizeof(str) - ofs);
 
-  const wmKeyMapItem *kmi = t->custom.mode.data;
+  const wmKeyMapItem *kmi = static_cast<const wmKeyMapItem *>(t->custom.mode.data);
   if (kmi) {
     ofs += WM_keymap_item_to_string(kmi, false, str + ofs, sizeof(str) - ofs);
   }
@@ -154,11 +154,10 @@ static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct TransDataArgs_ShrinkFatten data = {
-          .t = t,
-          .tc = tc,
-          .distance = distance,
-      };
+      TransDataArgs_ShrinkFatten data{};
+      data.t = t;
+      data.tc = tc;
+      data.distance = distance;
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       BLI_task_parallel_range(0, tc->data_len, &data, transdata_elem_shrink_fatten_fn, &settings);
@@ -170,7 +169,7 @@ static void applyShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initShrinkFatten(TransInfo *t, wmOperator *UNUSED(op))
+static void initShrinkFatten(TransInfo *t, wmOperator * /*op*/)
 {
   if ((t->flag & T_EDIT) == 0 || (t->obedit_type != OB_MESH)) {
     BKE_report(t->reports, RPT_ERROR, "'Shrink/Fatten' meshes is only supported in edit mode");
@@ -202,9 +201,9 @@ TransModeInfo TransMode_shrinkfatten = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initShrinkFatten,
     /*transform_fn*/ applyShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
     /*handle_event_fn*/ shrinkfatten_handleEvent,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
