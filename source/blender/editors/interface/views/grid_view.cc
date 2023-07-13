@@ -68,6 +68,20 @@ void AbstractGridView::change_state_delayed()
   BLI_assert_msg(
       is_reconstructed(),
       "These state changes are supposed to be delayed until reconstruction is completed");
+
+/* Debug-only sanity check: Ensure only one item requests to be active. */
+#ifndef NDEBUG
+  bool has_active = false;
+  foreach_item([&has_active](AbstractGridViewItem &item) {
+    if (item.should_be_active().value_or(false)) {
+      BLI_assert_msg(
+          !has_active,
+          "Only one view item should ever return true for its `should_be_active()` method");
+      has_active = true;
+    }
+  });
+#endif
+
   foreach_item([](AbstractGridViewItem &item) { item.change_state_delayed(); });
 }
 
@@ -209,6 +223,20 @@ AbstractGridView &AbstractGridViewItem::get_view() const
   }
   return dynamic_cast<AbstractGridView &>(*view_);
 }
+
+/* ---------------------------------------------------------------------- */
+
+std::unique_ptr<DropTargetInterface> AbstractGridViewItem::create_item_drop_target()
+{
+  return create_drop_target();
+}
+
+std::unique_ptr<GridViewItemDropTarget> AbstractGridViewItem::create_drop_target()
+{
+  return nullptr;
+}
+
+GridViewItemDropTarget::GridViewItemDropTarget(AbstractGridView &view) : view_(view) {}
 
 /* ---------------------------------------------------------------------- */
 

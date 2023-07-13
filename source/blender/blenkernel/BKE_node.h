@@ -576,17 +576,15 @@ int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
 /**
  * Add a new panel to the node tree.
  * \param name: Name of the new panel.
- * \param flag: Flags of the new panel.
  */
-bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name, int flag);
+bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name);
 
 /**
  * Insert a new panel in the node tree.
  * \param name: Name of the new panel.
- * \param flag: Flags of the new panel.
  * \param index: Index at which to insert the panel.
  */
-bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int flag, int index);
+bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int index);
 
 /** Remove a panel from the node tree. */
 void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel);
@@ -820,7 +818,9 @@ void node_type_storage(struct bNodeType *ntype,
 
 /** \} */
 
-/* ************** COMMON NODES *************** */
+/* -------------------------------------------------------------------- */
+/** \name Common Node Types
+ * \{ */
 
 #define NODE_UNDEFINED -2 /* node type is not registered */
 #define NODE_CUSTOM -1    /* for dynamically registered custom types */
@@ -847,7 +847,7 @@ void node_type_storage(struct bNodeType *ntype,
  *
  * - nodetree:
  *   The actual bNodeTree data block.
- *   Check nodetree->idname or nodetree->typeinfo to use only specific types.
+ *   Check `nodetree->idname` or `nodetree->typeinfo` to use only specific types.
  *
  * - id:
  *   The owner of the bNodeTree data block.
@@ -880,7 +880,6 @@ struct NodeTreeIterStore {
   struct Light *light;
   struct World *world;
   struct FreestyleLineStyle *linestyle;
-  struct Simulation *simulation;
 };
 
 void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
@@ -1362,6 +1361,10 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
 #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
+/* Leaving out two indices to avoid crashes with files that were created during the development of
+ * the repeat zone. */
+#define GEO_NODE_REPEAT_INPUT 2107
+#define GEO_NODE_REPEAT_OUTPUT 2108
 
 /** \} */
 

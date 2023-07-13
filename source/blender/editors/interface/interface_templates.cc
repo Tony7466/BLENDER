@@ -43,6 +43,7 @@
 
 #include "BKE_action.h"
 #include "BKE_blendfile.h"
+#include "BKE_cachefile.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -68,6 +69,7 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_fileselect.h"
 #include "ED_object.h"
@@ -1134,8 +1136,6 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Point Cloud Data to be linked");
       case ID_VO:
         return N_("Browse Volume Data to be linked");
-      case ID_SIM:
-        return N_("Browse Simulation to be linked");
       case ID_GP:
         return N_("Browse Grease Pencil Data to be linked");
 
@@ -1234,8 +1234,7 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                             BLT_I18NCONTEXT_ID_LIGHTPROBE,
                             BLT_I18NCONTEXT_ID_CURVES,
                             BLT_I18NCONTEXT_ID_POINTCLOUD,
-                            BLT_I18NCONTEXT_ID_VOLUME,
-                            BLT_I18NCONTEXT_ID_SIMULATION, );
+                            BLT_I18NCONTEXT_ID_VOLUME, );
   BLT_I18N_MSGID_MULTI_CTXT("New", BLT_I18NCONTEXT_ID_PAINTCURVE, );
   /* NOTE: BLT_I18N_MSGID_MULTI_CTXT takes a maximum number of parameters,
    * check the definition to see if a new call must be added when the limit
@@ -6303,23 +6302,23 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
           MEM_mallocN(sizeof(*tip_arg), __func__));
       tip_arg->wm = wm;
       tip_arg->owner = owner;
-      uiButProgressbar *but_progress = (uiButProgressbar *)uiDefIconTextBut(block,
-                                                                            UI_BTYPE_PROGRESS_BAR,
-                                                                            0,
-                                                                            0,
-                                                                            text,
-                                                                            UI_UNIT_X,
-                                                                            0,
-                                                                            UI_UNIT_X * 6.0f,
-                                                                            UI_UNIT_Y,
-                                                                            nullptr,
-                                                                            0.0f,
-                                                                            0.0f,
-                                                                            0.0f,
-                                                                            0,
-                                                                            nullptr);
+      uiButProgress *but_progress = (uiButProgress *)uiDefIconTextBut(block,
+                                                                      UI_BTYPE_PROGRESS,
+                                                                      0,
+                                                                      0,
+                                                                      text,
+                                                                      UI_UNIT_X,
+                                                                      0,
+                                                                      UI_UNIT_X * 6.0f,
+                                                                      UI_UNIT_Y,
+                                                                      nullptr,
+                                                                      0.0f,
+                                                                      0.0f,
+                                                                      0.0f,
+                                                                      0,
+                                                                      nullptr);
 
-      but_progress->progress = progress;
+      but_progress->progress_factor = progress;
       UI_but_func_tooltip_set(but_progress, progress_tooltip_func, tip_arg, MEM_freeN);
     }
 
@@ -6805,8 +6804,16 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   Scene *scene = CTX_data_scene(C);
   const bool engine_supports_procedural = RE_engine_supports_alembic_procedural(engine_type,
                                                                                 scene);
+  CacheFile *cache_file = static_cast<CacheFile *>(fileptr->data);
+  CacheFile *cache_file_eval = reinterpret_cast<CacheFile *>(
+      DEG_get_evaluated_id(CTX_data_depsgraph_pointer(C), &cache_file->id));
+  bool is_alembic = cache_file_eval->type == CACHEFILE_TYPE_ALEMBIC;
 
-  if (!engine_supports_procedural) {
+  if (!is_alembic) {
+    row = uiLayoutRow(layout, false);
+    uiItemL(row, TIP_("Only Alembic Procedurals supported"), ICON_INFO);
+  }
+  else if (!engine_supports_procedural) {
     row = uiLayoutRow(layout, false);
     /* For Cycles, verify that experimental features are enabled. */
     if (BKE_scene_uses_cycles(scene) && !BKE_scene_uses_cycles_experimental_features(scene)) {
@@ -6823,7 +6830,7 @@ void uiTemplateCacheFileProcedural(uiLayout *layout, const bContext *C, PointerR
   }
 
   row = uiLayoutRow(layout, false);
-  uiLayoutSetActive(row, engine_supports_procedural);
+  uiLayoutSetActive(row, is_alembic && engine_supports_procedural);
   uiItemR(row, fileptr, "use_render_procedural", 0, nullptr, ICON_NONE);
 
   const bool use_render_procedural = RNA_boolean_get(fileptr, "use_render_procedural");

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation.
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -2334,7 +2334,7 @@ static bool gpencil_fill_poll(bContext *C)
     ScrArea *area = CTX_wm_area(C);
     if (area->spacetype == SPACE_VIEW3D) {
       if ((obact == NULL) || (obact->type != OB_GPENCIL_LEGACY) ||
-          (obact->mode != OB_MODE_PAINT_GPENCIL))
+          (obact->mode != OB_MODE_PAINT_GPENCIL_LEGACY))
       {
         return false;
       }

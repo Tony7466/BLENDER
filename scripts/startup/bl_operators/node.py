@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 import bpy
@@ -151,14 +154,7 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
             return ""
 
 
-class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
-    """Add simulation zone input and output nodes to the active tree"""
-    bl_idname = "node.add_simulation_zone"
-    bl_label = "Add Simulation Zone"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    input_node_type = "GeometryNodeSimulationInput"
-    output_node_type = "GeometryNodeSimulationOutput"
+class NodeAddZoneOperator(NodeAddOperator):
     offset: FloatVectorProperty(
         name="Offset",
         description="Offset of nodes from the cursor when added",
@@ -191,6 +187,26 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
         tree.links.new(to_socket, from_socket)
 
         return {'FINISHED'}
+
+
+class NODE_OT_add_simulation_zone(NodeAddZoneOperator, Operator):
+    """Add simulation zone input and output nodes to the active tree"""
+    bl_idname = "node.add_simulation_zone"
+    bl_label = "Add Simulation Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeSimulationInput"
+    output_node_type = "GeometryNodeSimulationOutput"
+
+
+class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
+    """Add a repeat zone that allows executing nodes a dynamic number of times"""
+    bl_idname = "node.add_repeat_zone"
+    bl_label = "Add Repeat Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeRepeatInput"
+    output_node_type = "GeometryNodeRepeatOutput"
 
 
 class NODE_OT_collapse_hide_unused_toggle(Operator):
@@ -247,13 +263,10 @@ class NODE_OT_tree_path_parent(Operator):
 class NodePanelOperator():
     @classmethod
     def poll(cls, context):
-        snode = context.space_data
-        if snode is None:
+        space = context.space_data
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree:
             return False
-        tree = snode.edit_tree
-        if tree is None:
-            return False
-        if tree.is_embedded_data:
+        if space.edit_tree.is_embedded_data:
             return False
         return True
 
@@ -328,6 +341,7 @@ classes = (
 
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
+    NODE_OT_add_repeat_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_panel_add,
     NODE_OT_panel_remove,

@@ -180,7 +180,8 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
      * Therefore the duplicate polygon test can be skipped. */
     result = geometry::mesh_merge_verts(*tmp,
                                         MutableSpan<int>{full_doubles_map, result->totvert},
-                                        int(tot_doubles * (step_tot - 1)));
+                                        int(tot_doubles * (step_tot - 1)),
+                                        false);
 
     BKE_id_free(nullptr, tmp);
     MEM_freeN(full_doubles_map);
@@ -879,7 +880,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       else {
         origindex[mpoly_index] = ORIGINDEX_NONE;
         dst_material_index[mpoly_index] = mat_nr;
-        sharp_faces.span[i] = use_flat_shading;
+        sharp_faces.span[mpoly_index] = use_flat_shading;
       }
       poly_offests_new[mpoly_index] = mpoly_index * 4;
 

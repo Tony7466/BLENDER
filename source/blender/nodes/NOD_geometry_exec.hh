@@ -31,11 +31,19 @@ using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
 using bke::AttributeWriter;
+using bke::CurveComponent;
 using bke::GAttributeReader;
 using bke::GAttributeWriter;
+using bke::GeometryComponent;
+using bke::GeometryComponentEditData;
+using bke::GeometrySet;
 using bke::GSpanAttributeWriter;
+using bke::InstancesComponent;
+using bke::MeshComponent;
 using bke::MutableAttributeAccessor;
+using bke::PointCloudComponent;
 using bke::SpanAttributeWriter;
+using bke::VolumeComponent;
 using fn::Field;
 using fn::FieldContext;
 using fn::FieldEvaluator;
@@ -208,6 +216,9 @@ class GeoNodeExecParams {
     if (const auto *data = this->user_data()) {
       if (data->modifier_data) {
         return data->modifier_data->depsgraph;
+      }
+      if (data->operator_data) {
+        return data->operator_data->depsgraph;
       }
     }
     return nullptr;

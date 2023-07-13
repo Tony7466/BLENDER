@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -18,7 +18,7 @@
 
 Sequence *SEQ_select_active_get(Scene *scene)
 {
-  Editing *ed = SEQ_editing_get(scene);
+  const Editing *ed = SEQ_editing_get(scene);
 
   if (ed == NULL) {
     return NULL;
