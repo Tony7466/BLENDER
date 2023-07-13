@@ -44,7 +44,7 @@
 #define SEQ_EDGE_PAN_ZOOM_INFLUENCE 0.5f
 
 /** Used for sequencer transform. */
-typedef struct TransDataSeq {
+struct TransDataSeq {
   Sequence *seq;
   /** A copy of #Sequence.flag that may be modified for nested strips. */
   int flag;
@@ -53,13 +53,12 @@ typedef struct TransDataSeq {
   int start_offset;
   /** one of #SELECT, #SEQ_LEFTSEL and #SEQ_RIGHTSEL. */
   short sel_flag;
-
-} TransDataSeq;
+};
 
 /**
  * Sequencer transform customdata (stored in #TransCustomDataContainer).
  */
-typedef struct TransSeq {
+struct TransSeq {
   TransDataSeq *tdseq;
   int selection_channel_range_min;
   int selection_channel_range_max;
@@ -70,7 +69,7 @@ typedef struct TransSeq {
 
   /* Strips that aren't selected, but their position entirely depends on transformed strips. */
   SeqCollection *time_dependent_strips;
-} TransSeq;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Sequencer Transform Creation
@@ -156,7 +155,7 @@ static int SeqTransCount(TransInfo *t, ListBase *seqbase)
   Sequence *seq;
   int tot = 0, count, flag;
 
-  for (seq = seqbase->first; seq; seq = seq->next) {
+  for (seq = static_cast<Sequence *>(seqbase->first); seq; seq = seq->next) {
     SeqTransInfo(t, seq, &count, &flag); /* ignore the flag */
     tot += count;
   }
@@ -194,7 +193,7 @@ static TransData *SeqToTransData(Scene *scene,
 
   td2d->loc[1] = seq->machine; /* channel - Y location */
   td2d->loc[2] = 0.0f;
-  td2d->loc2d = NULL;
+  td2d->loc2d = nullptr;
 
   tdsq->seq = seq;
 
@@ -213,8 +212,8 @@ static TransData *SeqToTransData(Scene *scene,
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
 
   td->flag |= TD_SELECTED;
   td->dist = 0.0;
@@ -237,7 +236,7 @@ static int SeqToTransData_build(
   int count, flag;
   int tot = 0;
 
-  for (seq = seqbase->first; seq; seq = seq->next) {
+  for (seq = static_cast<Sequence *>(seqbase->first); seq; seq = seq->next) {
 
     SeqTransInfo(t, seq, &count, &flag);
 
@@ -264,12 +263,12 @@ static int SeqToTransData_build(
 
 static void free_transform_custom_data(TransCustomData *custom_data)
 {
-  if ((custom_data->data != NULL) && custom_data->use_free) {
-    TransSeq *ts = custom_data->data;
+  if ((custom_data->data != nullptr) && custom_data->use_free) {
+    TransSeq *ts = static_cast<TransSeq *>(custom_data->data);
     SEQ_collection_free(ts->time_dependent_strips);
     MEM_freeN(ts->tdseq);
     MEM_freeN(custom_data->data);
-    custom_data->data = NULL;
+    custom_data->data = nullptr;
   }
 }
 
@@ -319,7 +318,7 @@ static SeqCollection *seq_transform_collection_from_transdata(TransDataContainer
 static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data)
 {
   Editing *ed = SEQ_editing_get(t->scene);
-  if (ed == NULL) {
+  if (ed == nullptr) {
     free_transform_custom_data(custom_data);
     return;
   }
@@ -340,7 +339,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
     return;
   }
 
-  TransSeq *ts = tc->custom.type.data;
+  TransSeq *ts = static_cast<TransSeq *>(tc->custom.type.data);
   ListBase *seqbasep = seqbase_active_get(t);
   Scene *scene = t->scene;
   const bool use_sync_markers = (((SpaceSeq *)t->area->spacedata.first)->flag &
@@ -366,10 +365,10 @@ static SeqCollection *query_selected_strips_no_handles(ListBase *seqbase)
   return strips;
 }
 
-typedef enum SeqInputSide {
+enum SeqInputSide {
   SEQ_INPUT_LEFT = -1,
   SEQ_INPUT_RIGHT = 1,
-} SeqInputSide;
+};
 
 static Sequence *effect_input_get(const Scene *scene, Sequence *effect, SeqInputSide side)
 {
@@ -387,7 +386,7 @@ static Sequence *effect_input_get(const Scene *scene, Sequence *effect, SeqInput
 static Sequence *effect_base_input_get(const Scene *scene, Sequence *effect, SeqInputSide side)
 {
   Sequence *input = effect, *seq_iter = effect;
-  while (seq_iter != NULL) {
+  while (seq_iter != nullptr) {
     input = seq_iter;
     seq_iter = effect_input_get(scene, seq_iter, side);
   }
@@ -443,7 +442,7 @@ static SeqCollection *query_time_dependent_strips_strips(TransInfo *t)
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, selected_strips) {
     /* Check only 2 input effects. */
-    if (seq->seq1 == NULL || seq->seq2 == NULL) {
+    if (seq->seq1 == nullptr || seq->seq2 == nullptr) {
       continue;
     }
 
@@ -467,20 +466,20 @@ static SeqCollection *query_time_dependent_strips_strips(TransInfo *t)
   return dependent;
 }
 
-static void createTransSeqData(bContext *UNUSED(C), TransInfo *t)
+static void createTransSeqData(bContext * /*C*/, TransInfo *t)
 {
   Scene *scene = t->scene;
   Editing *ed = SEQ_editing_get(t->scene);
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  TransDataSeq *tdsq = NULL;
-  TransSeq *ts = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
+  TransDataSeq *tdsq = nullptr;
+  TransSeq *ts = nullptr;
 
   int count = 0;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  if (ed == NULL) {
+  if (ed == nullptr) {
     tc->data_len = 0;
     return;
   }
@@ -503,11 +502,14 @@ static void createTransSeqData(bContext *UNUSED(C), TransInfo *t)
     return;
   }
 
-  tc->custom.type.data = ts = MEM_callocN(sizeof(TransSeq), "transseq");
+  tc->custom.type.data = ts = static_cast<TransSeq *>(MEM_callocN(sizeof(TransSeq), "transseq"));
   tc->custom.type.use_free = true;
-  td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData");
-  td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D), "TransSeq TransData2D");
-  ts->tdseq = tdsq = MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq");
+  td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData"));
+  td2d = tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "TransSeq TransData2D"));
+  ts->tdseq = tdsq = static_cast<TransDataSeq *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq"));
 
   /* Custom data to enable edge panning during transformation. */
   UI_view2d_edge_pan_init(t->context,
@@ -575,9 +577,9 @@ static void flushTransSeq(TransInfo *t)
 
   int a, new_frame, offset;
 
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  TransDataSeq *tdsq = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
+  TransDataSeq *tdsq = nullptr;
   Sequence *seq;
 
   Scene *scene = t->scene;
@@ -663,7 +665,7 @@ static void recalcData_sequencer(TransInfo *t)
 {
   TransData *td;
   int a;
-  Sequence *seq_prev = NULL;
+  Sequence *seq_prev = nullptr;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
@@ -689,7 +691,7 @@ static void recalcData_sequencer(TransInfo *t)
 /** \name Special After Transform Sequencer
  * \{ */
 
-static void special_aftertrans_update__sequencer(bContext *UNUSED(C), TransInfo *t)
+static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
 {
   if (t->state == TRANS_CANCEL) {
     return;
