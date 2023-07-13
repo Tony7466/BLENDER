@@ -85,24 +85,25 @@ struct EraseOperationExecutor {
 
     /* Compute screen space positions. */
     Array<float2> screen_space_positions(src_points_num);
-    for (int point_index : src.points_range()) {
+    for (const int point_index : src.points_range()) {
       ED_view3d_project_float_global(region,
                                      deformation.positions[point_index],
                                      screen_space_positions[point_index],
                                      V3D_PROJ_TEST_NOP);
     }
 
-    auto compute_intersection_parameter = [](float2 p0, float2 p1, float2 inter) {
-      float mu = (len_v2(inter - p0) / len_v2(p1 - p0));
-      float sign_mu = (dot_v2v2(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
-      return sign_mu * mu;
-    };
+    auto compute_intersection_parameter =
+        [](const float2 p0, const float2 p1, const float2 inter) {
+          const float mu = (len_v2(inter - p0) / len_v2(p1 - p0));
+          const float sign_mu = (dot_v2v2(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
+          return sign_mu * mu;
+        };
 
     /* Check segments that have an intersection. */
     Array<bool> has_intersection(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
     int intersection_count = 0;
-    for (int src_curve_index : src.curves_range()) {
+    for (const int src_curve_index : src.curves_range()) {
       IndexRange src_point_range = src_points_by_curves[src_curve_index];
 
       for (int src_point_index : src_point_range.drop_back(1)) {
@@ -117,12 +118,12 @@ struct EraseOperationExecutor {
 
         /* The function above returns the intersections with the (infinite) line,
          * so we have to make sure they lie within the segment.  */
-        float mu0 = (nb_inter > 0) ?
-                        compute_intersection_parameter(pos_view, pos_after_view, inter0) :
-                        -1.0;
-        float mu1 = (nb_inter > 1) ?
-                        compute_intersection_parameter(pos_view, pos_after_view, inter1) :
-                        -1.0;
+        const float mu0 = (nb_inter > 0) ?
+                              compute_intersection_parameter(pos_view, pos_after_view, inter0) :
+                              -1.0;
+        const float mu1 = (nb_inter > 1) ?
+                              compute_intersection_parameter(pos_view, pos_after_view, inter1) :
+                              -1.0;
 
         has_intersection[src_point_index] = IN_RANGE(mu0, 0, 1) || IN_RANGE(mu1, 0, 1);
         nb_intersections[src_point_index] = int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
@@ -142,12 +143,12 @@ struct EraseOperationExecutor {
 
         /* The function above returns the intersections with the (infinite) line,
          * so we have to make sure they lie within the segment.  */
-        float mu0 = (nb_inter > 0) ?
-                        compute_intersection_parameter(pos_view, pos_after_view, inter0) :
-                        -1.0;
-        float mu1 = (nb_inter > 1) ?
-                        compute_intersection_parameter(pos_view, pos_after_view, inter1) :
-                        -1.0;
+        const float mu0 = (nb_inter > 0) ?
+                              compute_intersection_parameter(pos_view, pos_after_view, inter0) :
+                              -1.0;
+        const float mu1 = (nb_inter > 1) ?
+                              compute_intersection_parameter(pos_view, pos_after_view, inter1) :
+                              -1.0;
 
         has_intersection[src_last_point] = IN_RANGE(mu0, 0, 1) || IN_RANGE(mu1, 0, 1);
         nb_intersections[src_last_point] = int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
@@ -158,7 +159,7 @@ struct EraseOperationExecutor {
     /* Check if points are inside the eraser. */
     Array<bool> is_point_inside(src_points_num, false);
     int point_inside_count = 0;
-    for (int src_point_index : src.points_range()) {
+    for (const int src_point_index : src.points_range()) {
       const float2 pos_view = screen_space_positions[src_point_index];
       is_point_inside[src_point_index] = (len_squared_v2v2(pos_view, mouse_position) <=
                                           eraser_radius * eraser_radius);
@@ -180,11 +181,11 @@ struct EraseOperationExecutor {
     Array<int> src_pivot_point(src_curves_num, -1);
     Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     int dst_point_index = -1;
-    for (int src_curve_index : src.curves_range()) {
+    for (const int src_curve_index : src.curves_range()) {
       IndexRange src_point_range = src_points_by_curves[src_curve_index];
       const int src_point_last = src_point_range.last();
 
-      for (int src_point_index : src_point_range) {
+      for (const int src_point_index : src_point_range) {
         if (!is_point_inside[src_point_index]) {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_points_parameters[++dst_point_index] = float(src_point_index);
@@ -246,7 +247,7 @@ struct EraseOperationExecutor {
 
     /* Cyclic curves. */
     Array<bool> src_now_cyclic(src_curves_num);
-    for (int src_curve_index : src.curves_range()) {
+    for (const int src_curve_index : src.curves_range()) {
       const int pivot_point = src_pivot_point[src_curve_index];
 
       if (pivot_point == -1) {
@@ -276,9 +277,9 @@ struct EraseOperationExecutor {
     Vector<int> dst_to_src_curve_index;
     dst_curves_offset.append(0);
     for (int src_curve_index : src.curves_range()) {
-      IndexRange dst_point_range(dst_interm_curves_offsets[src_curve_index],
-                                 dst_interm_curves_offsets[src_curve_index + 1] -
-                                     dst_interm_curves_offsets[src_curve_index]);
+      const IndexRange dst_point_range(dst_interm_curves_offsets[src_curve_index],
+                                       dst_interm_curves_offsets[src_curve_index + 1] -
+                                           dst_interm_curves_offsets[src_curve_index]);
       int length_of_current = 0;
 
       for (int dst_point_index : dst_point_range) {
@@ -311,7 +312,7 @@ struct EraseOperationExecutor {
     /* Attributes. */
     const bke::AttributeAccessor src_attributes = src.attributes();
     bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
-    AnonymousAttributePropagationInfo propagation_info{};
+    const AnonymousAttributePropagationInfo propagation_info{};
 
     /* Copy curves attributes. */
     for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
@@ -332,7 +333,7 @@ struct EraseOperationExecutor {
 
     /* Update the cyclic attribute : cyclic curves that have been cut are not cyclic anymore. */
     MutableSpan<bool> dst_cyclic = dst.cyclic_for_write();
-    for (int dst_curve_index : dst.curves_range()) {
+    for (const int dst_curve_index : dst.curves_range()) {
       const int src_curve_index = dst_to_src_curve_index[dst_curve_index];
       dst_cyclic[dst_curve_index] = src_now_cyclic[src_curve_index];
     }
@@ -346,7 +347,7 @@ struct EraseOperationExecutor {
           dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("end_cap",
                                                                           ATTR_DOMAIN_CURVE);
       offset_indices::OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
-      for (int dst_curve_index : dst.curves_range()) {
+      for (const int dst_curve_index : dst.curves_range()) {
         IndexRange dst_curve_range = dst_points_by_curve[dst_curve_index];
         if (is_cut[dst_curve_range.first()]) {
           dst_start_caps.span[dst_curve_index] = GP_STROKE_CAP_TYPE_FLAT;
