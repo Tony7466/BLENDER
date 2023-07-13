@@ -86,7 +86,7 @@ AssetMetaData::~AssetMetaData()
 
 static AssetTag *asset_metadata_tag_add(AssetMetaData *asset_data, const char *const name)
 {
-  AssetTag *tag = (AssetTag *)MEM_callocN(sizeof(*tag), __func__);
+  AssetTag *tag = MEM_cnew<AssetTag>(__func__);
   STRNCPY(tag->name, name);
 
   BLI_addtail(&asset_data->tags, tag);
@@ -111,7 +111,8 @@ AssetTagEnsureResult BKE_asset_metadata_tag_ensure(AssetMetaData *asset_data, co
     return result;
   }
 
-  AssetTag *tag = (AssetTag *)BLI_findstring(&asset_data->tags, name, offsetof(AssetTag, name));
+  AssetTag *tag = static_cast<AssetTag *>(
+      BLI_findstring(&asset_data->tags, name, offsetof(AssetTag, name)));
 
   if (tag) {
     result.tag = tag;
@@ -137,7 +138,7 @@ void BKE_asset_metadata_tag_remove(AssetMetaData *asset_data, AssetTag *tag)
 
 static AssetTrait *asset_metadata_trait_add(AssetMetaData *asset_data, const char *const value)
 {
-  AssetTrait *trait = (AssetTrait *)MEM_callocN(sizeof(*trait), __func__);
+  AssetTrait *trait = MEM_cnew<AssetTrait>(__func__);
   BLI_strncpy(trait->value, value, sizeof(trait->value));
   BLI_addtail(&asset_data->traits, trait);
   return trait;
@@ -151,7 +152,8 @@ struct AssetTraitEnsureResult BKE_asset_metadata_trait_ensure(AssetMetaData *ass
     return result;
   }
 
-  AssetTrait *trait = (AssetTrait *)BLI_findstring(&asset_data->traits, value, offsetof(AssetTrait, value));
+  AssetTrait *trait = static_cast<AssetTrait *>(
+      BLI_findstring(&asset_data->traits, value, offsetof(AssetTrait, value)));
 
   if (trait) {
     result.trait = trait;
