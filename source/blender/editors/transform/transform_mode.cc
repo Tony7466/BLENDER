@@ -45,7 +45,7 @@ eTfmMode transform_mode_really_used(bContext *C, eTfmMode mode)
     if (ob->type != OB_ARMATURE) {
       return TFM_RESIZE;
     }
-    bArmature *arm = ob->data;
+    bArmature *arm = static_cast<bArmature *>(ob->data);
     if (arm->drawtype == ARM_ENVELOPE) {
       return TFM_BONE_ENVELOPE_DIST;
     }
@@ -243,7 +243,7 @@ void constraintTransLim(const TransInfo *t, TransData *td)
     const bConstraintTypeInfo *ctiDist = BKE_constraint_typeinfo_from_type(
         CONSTRAINT_TYPE_DISTLIMIT);
 
-    bConstraintOb cob = {NULL};
+    bConstraintOb cob = {nullptr};
     bConstraint *con;
     float ctime = (float)(t->scene->r.cfra);
 
@@ -256,8 +256,8 @@ void constraintTransLim(const TransInfo *t, TransData *td)
 
     /* Evaluate valid constraints */
     for (con = td->con; con; con = con->next) {
-      const bConstraintTypeInfo *cti = NULL;
-      ListBase targets = {NULL, NULL};
+      const bConstraintTypeInfo *cti = nullptr;
+      ListBase targets = {nullptr, nullptr};
 
       /* only consider constraint if enabled */
       if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
@@ -349,7 +349,7 @@ static void constraintob_from_transdata(bConstraintOb *cob, TransData *td)
   }
 }
 
-static void constraintRotLim(const TransInfo *UNUSED(t), TransData *td)
+static void constraintRotLim(const TransInfo * /*t*/, TransData *td)
 {
   if (td->con) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(CONSTRAINT_TYPE_ROTLIMIT);
@@ -394,7 +394,7 @@ static void constraintRotLim(const TransInfo *UNUSED(t), TransData *td)
         }
 
         /* do constraint */
-        cti->evaluate_constraint(con, &cob, NULL);
+        cti->evaluate_constraint(con, &cob, nullptr);
 
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
@@ -426,7 +426,7 @@ void constraintSizeLim(const TransInfo *t, TransData *td)
 {
   if (td->con && td->ext) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(CONSTRAINT_TYPE_SIZELIMIT);
-    bConstraintOb cob = {NULL};
+    bConstraintOb cob = {nullptr};
     bConstraint *con;
     float size_sign[3], size_abs[3];
     int i;
@@ -465,7 +465,7 @@ void constraintSizeLim(const TransInfo *t, TransData *td)
 
       /* we're only interested in Limit-Scale constraints */
       if (con->type == CONSTRAINT_TYPE_SIZELIMIT) {
-        bSizeLimitConstraint *data = con->data;
+        bSizeLimitConstraint *data = static_cast<bSizeLimitConstraint *>(con->data);
 
         /* only use it if it's tagged for this purpose */
         if ((data->flag2 & LIMIT_TRANSFORM) == 0) {
@@ -483,7 +483,7 @@ void constraintSizeLim(const TransInfo *t, TransData *td)
         }
 
         /* do constraint */
-        cti->evaluate_constraint(con, &cob, NULL);
+        cti->evaluate_constraint(con, &cob, nullptr);
 
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
@@ -1141,16 +1141,16 @@ static TransModeInfo *mode_info_get(TransInfo *t, const int mode)
     case TFM_GPENCIL_OPACITY:
       return &TransMode_gpopacity;
   }
-  return NULL;
+  return nullptr;
 }
 
 void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
 {
-  t->mode = mode;
+  t->mode = eTfmMode(mode);
   t->mode_info = mode_info_get(t, mode);
 
   if (t->mode_info) {
-    t->flag |= t->mode_info->flags;
+    t->flag |= eTFlag(t->mode_info->flags);
     t->mode_info->init_fn(t, op);
   }
 
@@ -1184,13 +1184,13 @@ void transform_mode_default_modal_orientation_set(TransInfo *t, int type)
     return;
   }
 
-  View3D *v3d = NULL;
-  RegionView3D *rv3d = NULL;
+  View3D *v3d = nullptr;
+  RegionView3D *rv3d = nullptr;
   if ((type == V3D_ORIENT_VIEW) && (t->spacetype == SPACE_VIEW3D) && t->region &&
       (t->region->regiontype == RGN_TYPE_WINDOW))
   {
-    v3d = t->view;
-    rv3d = t->region->regiondata;
+    v3d = static_cast<View3D *>(t->view);
+    rv3d = static_cast<RegionView3D *>(t->region->regiondata);
   }
 
   t->orient[O_DEFAULT].type = ED_transform_calc_orientation_from_type_ex(
@@ -1198,8 +1198,8 @@ void transform_mode_default_modal_orientation_set(TransInfo *t, int type)
       t->view_layer,
       v3d,
       rv3d,
-      NULL,
-      NULL,
+      nullptr,
+      nullptr,
       type,
       V3D_AROUND_CENTER_BOUNDS,
       t->orient[O_DEFAULT].matrix);

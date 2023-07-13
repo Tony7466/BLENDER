@@ -58,7 +58,7 @@ set(SRC
   transform_gizmo_3d_shear.cc
   transform_gizmo_extrude_3d.c
   transform_input.cc
-  transform_mode.c
+  transform_mode.cc
   transform_mode_align.cc
   transform_mode_baketime.cc
   transform_mode_bbone_resize.cc
