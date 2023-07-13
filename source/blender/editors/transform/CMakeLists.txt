@@ -73,7 +73,7 @@ set(SRC
   transform_mode_gpopacity.cc
   transform_mode_gpshrinkfatten.cc
   transform_mode_maskshrinkfatten.cc
-  transform_mode_mirror.c
+  transform_mode_mirror.cc
   transform_mode_push_pull.c
   transform_mode_resize.c
   transform_mode_rotate.c

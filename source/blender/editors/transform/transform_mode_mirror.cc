@@ -152,7 +152,7 @@ static void ElementMirror(TransInfo *t, TransDataContainer *tc, TransData *td, i
   }
 }
 
-static void applyMirror(TransInfo *t, const int UNUSED(mval[2]))
+static void applyMirror(TransInfo *t, const int[2] /*mval*/)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -216,7 +216,7 @@ static void applyMirror(TransInfo *t, const int UNUSED(mval[2]))
   }
 }
 
-static void initMirror(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initMirror(TransInfo *t, struct wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 }
@@ -227,9 +227,9 @@ TransModeInfo TransMode_mirror = {
     /*flags*/ T_NULL_ONE,
     /*init_fn*/ initMirror,
     /*transform_fn*/ applyMirror,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
