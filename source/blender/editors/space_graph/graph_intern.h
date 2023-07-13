@@ -15,6 +15,10 @@ struct bAnimContext;
 struct bAnimListElem;
 struct bContext;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* internal exports only */
 
 /* ***************************************** */
@@ -232,3 +236,7 @@ bool graphop_selected_fcurve_poll(struct bContext *C);
 
 void graphedit_keymap(struct wmKeyConfig *keyconf);
 void graphedit_operatortypes(void);
+
+#ifdef __cplusplus
+}
+#endif

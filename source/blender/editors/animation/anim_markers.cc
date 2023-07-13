@@ -361,7 +361,7 @@ TimeMarker *ED_markers_get_first_selected(ListBase *markers)
 
 void debug_markers_print_list(ListBase *markers)
 {
-  /* NOTE: do NOT make static or put in if-defs as "unused code".
+  /* NOTE: do NOT make static or use `ifdef`'s as "unused code".
    * That's too much trouble when we need to use for quick debugging! */
 
   TimeMarker *marker;
@@ -780,7 +780,7 @@ static void MARKER_OT_add(wmOperatorType *ot)
  * \{ */
 
 /* operator state vars used:
- *     frs: delta movement
+ *    frames: delta movement
  *
  * functions:
  *
@@ -957,7 +957,7 @@ static int ed_marker_move_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     /* add temp handler */
     WM_event_add_modal_handler(C, op);
 
-    /* reset frs delta */
+    /* Reset frames delta. */
     RNA_int_set(op->ptr, "frames", 0);
 
     ed_marker_move_update_header(C, op);
@@ -1144,7 +1144,7 @@ static void MARKER_OT_move(wmOperatorType *ot)
  * \{ */
 
 /* operator state vars used:
- *     frs: delta movement
+ *    frames: delta movement
  *
  * functions:
  *
@@ -1201,7 +1201,7 @@ static void ed_marker_duplicate_apply(bContext *C)
 static int ed_marker_duplicate_exec(bContext *C, wmOperator *op)
 {
   ed_marker_duplicate_apply(C);
-  ed_marker_move_exec(C, op); /* assumes frs delta set */
+  ed_marker_move_exec(C, op); /* Assumes frame delta set. */
 
   return OPERATOR_FINISHED;
 }
@@ -1748,7 +1748,11 @@ static void MARKER_OT_rename(wmOperatorType *ot)
                             "Name",
                             "New name for marker");
 #if 0
-RNA_def_boolean(ot->srna, "ensure_unique", 0, "Ensure Unique", "Ensure that new name is unique within collection of markers");
+  RNA_def_boolean(ot->srna,
+                  "ensure_unique",
+                  0,
+                  "Ensure Unique",
+                  "Ensure that new name is unique within collection of markers");
 #endif
 }
 
