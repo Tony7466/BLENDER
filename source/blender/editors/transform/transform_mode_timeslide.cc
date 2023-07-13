@@ -43,7 +43,7 @@ static void headerTimeSlide(TransInfo *t, const float sval, char str[UI_MAX_DRAW
     outputNumInput(&(t->num), tvec, &t->scene->unit);
   }
   else {
-    const float *range = t->custom.mode.data;
+    const float *range = static_cast<const float *>(t->custom.mode.data);
     float minx = range[0];
     float maxx = range[1];
     float cval = t->values_final[0];
@@ -61,7 +61,7 @@ static void headerTimeSlide(TransInfo *t, const float sval, char str[UI_MAX_DRAW
 static void applyTimeSlideValue(TransInfo *t, float sval, float cval)
 {
   int i;
-  const float *range = t->custom.mode.data;
+  const float *range = static_cast<const float *>(t->custom.mode.data);
   float minx = range[0];
   float maxx = range[1];
 
@@ -80,7 +80,7 @@ static void applyTimeSlideValue(TransInfo *t, float sval, float cval)
        * whose active action is where this keyframe comes from
        * (this is only valid when not in NLA)
        */
-      AnimData *adt = (t->spacetype != SPACE_NLA) ? td->extra : NULL;
+      AnimData *adt = static_cast<AnimData *>((t->spacetype != SPACE_NLA) ? td->extra : nullptr);
 
       /* only apply to data if in range */
       if ((sval > minx) && (sval < maxx)) {
@@ -122,7 +122,7 @@ static void applyTimeSlide(TransInfo *t, const int mval[2])
 {
   View2D *v2d = (View2D *)t->view;
   float cval[2], sval[2];
-  const float *range = t->custom.mode.data;
+  const float *range = static_cast<const float *>(t->custom.mode.data);
   float minx = range[0];
   float maxx = range[1];
   char str[UI_MAX_DRAW_STR];
@@ -148,7 +148,7 @@ static void applyTimeSlide(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeSlide(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initTimeSlide(TransInfo *t, struct wmOperator * /*op*/)
 {
   /* this tool is only really available in the Action Editor... */
   if (t->spacetype == SPACE_ACTION) {
@@ -168,7 +168,8 @@ static void initTimeSlide(TransInfo *t, struct wmOperator *UNUSED(op))
   {
     Scene *scene = t->scene;
     float *range;
-    t->custom.mode.data = range = MEM_mallocN(sizeof(float[2]), "TimeSlide Min/Max");
+    t->custom.mode.data = range = static_cast<float *>(
+        MEM_mallocN(sizeof(float[2]), "TimeSlide Min/Max"));
     t->custom.mode.use_free = true;
 
     float min = 999999999.0f, max = -999999999.0f;
@@ -176,7 +177,7 @@ static void initTimeSlide(TransInfo *t, struct wmOperator *UNUSED(op))
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
       for (i = 0; i < tc->data_len; i++, td++) {
-        AnimData *adt = (t->spacetype != SPACE_NLA) ? td->extra : NULL;
+        AnimData *adt = static_cast<AnimData *>((t->spacetype != SPACE_NLA) ? td->extra : nullptr);
         float val = *(td->val);
 
         /* strip/action time to global (mapped) time */
@@ -223,9 +224,9 @@ TransModeInfo TransMode_timeslide = {
     /*flags*/ T_NULL_ONE,
     /*init_fn*/ initTimeSlide,
     /*transform_fn*/ applyTimeSlide,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
