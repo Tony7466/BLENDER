@@ -63,7 +63,7 @@ set(SRC
   transform_mode_baketime.cc
   transform_mode_bbone_resize.cc
   transform_mode_bend.cc
-  transform_mode_boneenvelope.c
+  transform_mode_boneenvelope.cc
   transform_mode_boneroll.c
   transform_mode_curveshrinkfatten.c
   transform_mode_customdata.c

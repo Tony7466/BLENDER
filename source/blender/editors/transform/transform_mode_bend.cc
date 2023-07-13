@@ -201,7 +201,7 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
   copy_v2_v2(values.vector, t->values);
 
 #if 0
-snapGrid(t, angle_rad);
+  snapGrid(t, angle_rad);
 #else
   /* hrmf, snapping radius is using 'angle' steps, need to convert to something else
    * this isn't essential but nicer to give reasonable snapping values for radius. */

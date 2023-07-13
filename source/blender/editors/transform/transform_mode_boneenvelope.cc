@@ -30,7 +30,7 @@
 /** \name Transform (Bone Envelope)
  * \{ */
 
-static void applyBoneEnvelope(TransInfo *t, const int UNUSED(mval[2]))
+static void applyBoneEnvelope(TransInfo *t, const int[2] /*mval*/)
 {
   float ratio;
   int i;
@@ -79,7 +79,7 @@ static void applyBoneEnvelope(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initBoneEnvelope(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initBoneEnvelope(TransInfo *t, struct wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_SPRING);
 
@@ -99,9 +99,9 @@ TransModeInfo TransMode_boneenvelope = {
     /*flags*/ T_NO_CONSTRAINT | T_NO_PROJECT,
     /*init_fn*/ initBoneEnvelope,
     /*transform_fn*/ applyBoneEnvelope,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
