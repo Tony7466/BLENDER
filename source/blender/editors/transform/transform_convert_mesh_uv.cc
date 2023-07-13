@@ -25,8 +25,8 @@
 
 #include "WM_api.h" /* for WM_event_add_notifier to deal with stabilization nodes */
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name UVs Transform Creation

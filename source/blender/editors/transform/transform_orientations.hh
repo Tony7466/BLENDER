@@ -10,10 +10,6 @@
 
 #include "RE_engine.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct bPoseChannel;
 struct Object;
 struct TransInfo;
@@ -73,7 +69,3 @@ int getTransformOrientation_ex(const Scene *scene,
                                float plane[3],
                                short around);
 int getTransformOrientation(const bContext *C, float normal[3], float plane[3]);
-
-#ifdef __cplusplus
-}
-#endif

@@ -21,10 +21,10 @@
 
 #include "BLT_translation.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
-#include "transform_mode.h"
+#include "transform_mode.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Transform (Mirror)

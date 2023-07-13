@@ -43,8 +43,8 @@
 
 #include "SEQ_select.h"
 
-#include "transform.h"
-#include "transform_orientations.h"
+#include "transform.hh"
+#include "transform_orientations.hh"
 
 /* *********************** TransSpace ************************** */
 

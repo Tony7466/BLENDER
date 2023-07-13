@@ -42,11 +42,11 @@
 
 #include "DEG_depsgraph_build.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 bool transform_mode_use_local_origins(const TransInfo *t)
 {

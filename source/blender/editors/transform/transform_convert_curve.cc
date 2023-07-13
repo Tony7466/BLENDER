@@ -16,12 +16,12 @@
 #include "BKE_context.h"
 #include "BKE_curve.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_convert.h"
-#include "transform_orientations.h"
+#include "transform_convert.hh"
+#include "transform_orientations.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Curve/Surfaces Transform Creation

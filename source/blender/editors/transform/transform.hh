@@ -18,11 +18,7 @@
 
 #include "DEG_depsgraph.h"
 
-#include "transform_data.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "transform_data.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Types/
@@ -852,7 +848,3 @@ bool checkUseAxisMatrix(TransInfo *t);
        th++, i++)
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

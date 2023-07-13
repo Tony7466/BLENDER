@@ -17,12 +17,12 @@
 #include "ED_screen.h"
 #include "ED_transform_snap_object_context.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_gizmo.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_gizmo.hh"
+#include "transform_snap.hh"
 
-#include "transform_mode.h"
+#include "transform_mode.hh"
 
 #define RESET_TRANSFORMATION
 #define REMOVE_GIZMO

@@ -101,15 +101,15 @@ set(SRC
   transform_snap_object_mesh.cc
   transform_snap_sequencer.cc
 
-  transform.h
-  transform_constraints.h
-  transform_convert.h
-  transform_data.h
-  transform_draw_cursors.h
-  transform_gizmo.h
-  transform_mode.h
-  transform_orientations.h
-  transform_snap.h
+  transform.hh
+  transform_constraints.hh
+  transform_convert.hh
+  transform_data.hh
+  transform_draw_cursors.hh
+  transform_gizmo.hh
+  transform_mode.hh
+  transform_orientations.hh
+  transform_snap.hh
   transform_snap_object.hh
 )
 

@@ -14,10 +14,10 @@
 
 #include "BKE_context.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Meta Elements Transform Creation

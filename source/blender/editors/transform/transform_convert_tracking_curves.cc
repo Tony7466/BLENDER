@@ -22,8 +22,8 @@
 
 #include "WM_api.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 struct TransDataTrackingCurves {
   int flag;

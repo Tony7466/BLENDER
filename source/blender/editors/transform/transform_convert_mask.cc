@@ -24,8 +24,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 struct TransDataMasking {
   bool is_handle;

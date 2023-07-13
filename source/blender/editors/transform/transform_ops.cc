@@ -38,8 +38,8 @@
 /* for USE_LOOPSLIDE_HACK only */
 #include "ED_mesh.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 struct TransformModeItem {
   const char *idname;

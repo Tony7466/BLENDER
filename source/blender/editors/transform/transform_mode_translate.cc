@@ -30,10 +30,10 @@
 
 #include "BLT_translation.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_mode.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_mode.hh"
+#include "transform_snap.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Transform (Translate) Custom Data

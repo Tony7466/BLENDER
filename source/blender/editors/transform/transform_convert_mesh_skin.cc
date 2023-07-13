@@ -23,10 +23,10 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "transform.h"
-#include "transform_orientations.h"
+#include "transform.hh"
+#include "transform_orientations.hh"
 
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Edit Mesh #CD_MVERT_SKIN Transform Creation

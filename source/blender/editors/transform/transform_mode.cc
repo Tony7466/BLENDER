@@ -28,14 +28,14 @@
 
 #include "BLT_translation.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_gizmo.h"
-#include "transform_orientations.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_gizmo.hh"
+#include "transform_orientations.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_mode.h"
+#include "transform_mode.hh"
 
 eTfmMode transform_mode_really_used(bContext *C, eTfmMode mode)
 {

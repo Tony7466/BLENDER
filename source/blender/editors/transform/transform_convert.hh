@@ -11,10 +11,6 @@
 
 #include "RE_engine.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct BMEditMesh;
 struct BMesh;
 struct BezTriple;
@@ -280,7 +276,3 @@ extern TransConvertTypeInfo TransConvertType_Tracking;
 /* transform_convert_tracking_curves.c */
 
 extern TransConvertTypeInfo TransConvertType_TrackingCurves;
-
-#ifdef __cplusplus
-}
-#endif

@@ -21,8 +21,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "transform.h"
-#include "transform_mode.h"
+#include "transform.hh"
+#include "transform_mode.hh"
 
 #include "MEM_guardedalloc.h"
 

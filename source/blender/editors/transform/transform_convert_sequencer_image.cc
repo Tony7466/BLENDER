@@ -31,8 +31,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /** Used for sequencer transform. */
 struct TransDataSeq {

@@ -33,8 +33,8 @@
 
 #include "UI_view2d.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 #define SEQ_EDGE_PAN_INSIDE_PAD 3.5
 #define SEQ_EDGE_PAN_OUTSIDE_PAD 0 /* Disable clamping for panning, use whole screen. */

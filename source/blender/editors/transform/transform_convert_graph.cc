@@ -25,10 +25,10 @@
 
 #include "UI_view2d.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_mode.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_mode.hh"
+#include "transform_snap.hh"
 
 struct TransDataGraph {
   float unit_scale;

@@ -8,10 +8,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* -------------------------------------------------------------------- */
 /** \name Types/
  * \{ */
@@ -71,7 +67,3 @@ void transform_gizmo_3d_model_from_constraint_and_mode_set(TransInfo *t);
 void transform_gizmo_3d_model_from_constraint_and_mode_restore(TransInfo *t);
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

@@ -16,8 +16,8 @@
 #include "ED_markers.h"
 #include "ED_screen.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Snapping in Anim Editors

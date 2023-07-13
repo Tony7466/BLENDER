@@ -15,8 +15,8 @@
 #include "BKE_context.h"
 #include "BKE_paint.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 struct TransDataPaintCurve {
   PaintCurvePoint *pcp; /* initial curve point */

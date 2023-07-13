@@ -45,8 +45,8 @@
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
-#include "transform.h"
-#include "transform_gizmo.h"
+#include "transform.hh"
+#include "transform_gizmo.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Shared Callback's

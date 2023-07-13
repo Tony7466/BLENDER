@@ -35,12 +35,12 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "transform.h"
-#include "transform_orientations.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_orientations.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 struct BoneInitData {
   EditBone *bone;

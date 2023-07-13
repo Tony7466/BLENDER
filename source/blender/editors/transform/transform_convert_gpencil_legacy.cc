@@ -25,8 +25,8 @@
 #include "ED_gpencil_legacy.h"
 #include "ED_keyframing.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Gpencil Transform Creation

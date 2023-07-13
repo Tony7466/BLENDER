@@ -31,10 +31,10 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 /* helper struct for gp-frame transforms */
 struct tGPFtransdata {

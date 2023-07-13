@@ -49,14 +49,14 @@
 #include "BLF_api.h"
 #include "BLT_translation.h"
 
-#include "transform.h"
-#include "transform_constraints.h"
-#include "transform_convert.h"
-#include "transform_draw_cursors.h"
-#include "transform_gizmo.h"
-#include "transform_mode.h"
-#include "transform_orientations.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_constraints.hh"
+#include "transform_convert.hh"
+#include "transform_draw_cursors.hh"
+#include "transform_gizmo.hh"
+#include "transform_mode.hh"
+#include "transform_orientations.hh"
+#include "transform_snap.hh"
 
 /* Disabling, since when you type you know what you are doing,
  * and being able to set it to zero is handy. */

@@ -17,8 +17,8 @@
 #include "BKE_editmesh.h"
 #include "BKE_mesh.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Edge (for crease) Transform Creation

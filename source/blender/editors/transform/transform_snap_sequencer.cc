@@ -28,9 +28,9 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_snap.hh"
 
 struct TransSeqSnapData {
   int *source_snap_points;

@@ -35,13 +35,13 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "transform.h"
-#include "transform_gizmo.h"
-#include "transform_orientations.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_gizmo.hh"
+#include "transform_orientations.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_constraints.h"
+#include "transform_constraints.hh"
 
 static void drawObjectConstraint(TransInfo *t);
 

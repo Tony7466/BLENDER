@@ -8,10 +8,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TransInfo;
 
 void constraintNumInput(TransInfo *t, float vec[3]);
@@ -62,7 +58,3 @@ bool isLockConstraint(const TransInfo *t);
  * (Which could happen for weird constraints not yet designed. Along a path for example.)
  */
 int getConstraintSpaceDimension(const TransInfo *t);
-
-#ifdef __cplusplus
-}
-#endif

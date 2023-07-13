@@ -20,8 +20,8 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "transform.h"
-#include "transform_draw_cursors.h" /* Own include. */
+#include "transform.hh"
+#include "transform_draw_cursors.hh" /* Own include. */
 
 enum eArrowDirection {
   UP,

@@ -20,11 +20,11 @@
 
 #include "ED_particle.h"
 
-#include "transform.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_snap.hh"
 
 /* Own include. */
-#include "transform_convert.h"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Particle Edit Transform Creation
