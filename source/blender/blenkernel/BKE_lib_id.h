@@ -214,6 +214,14 @@ struct ID *BKE_libblock_find_name(struct Main *bmain,
                                   const char *name) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 struct ID *BKE_libblock_find_session_uuid(struct Main *bmain, short type, uint32_t session_uuid);
 /**
+ * Find an ID by it's own name and the name of the library it is from. If `lib_name` is null, the
+ * id is expected to be local.
+ */
+struct ID *BKE_libblock_find_name_with_lib(struct Main *bmain,
+                                           const char *id_name,
+                                           const char *lib_name) ATTR_WARN_UNUSED_RESULT
+    ATTR_NONNULL(1, 2);
+/**
  * Duplicate (a.k.a. deep copy) common processing options.
  * See also eDupli_ID_Flags for options controlling what kind of IDs to duplicate.
  */

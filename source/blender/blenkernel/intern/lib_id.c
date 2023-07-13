@@ -1484,6 +1484,30 @@ ID *BKE_libblock_find_session_uuid(Main *bmain, const short type, const uint32_t
   return NULL;
 }
 
+ID *BKE_libblock_find_name_with_lib(Main *bmain, const char *id_name, const char *lib_name)
+{
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    if (!STREQ(id->name + 2, id_name)) {
+      continue;
+    }
+    if (lib_name == NULL) {
+      if (id->lib == NULL) {
+        return id;
+      }
+      continue;
+    }
+    if (id->lib == NULL) {
+      continue;
+    }
+    if (STREQ(id->lib->id.name + 2, lib_name)) {
+      return id;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+  return NULL;
+}
+
 void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
 {
 #define ID_SORT_STEP_SIZE 512

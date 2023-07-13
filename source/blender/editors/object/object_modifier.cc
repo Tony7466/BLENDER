@@ -3726,32 +3726,6 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
 /** \name Update ID Mapping in Geometry Nodes Modifier
  * \{ */
 
-static ID *find_id_by_names(Main &bmain,
-                            const blender::StringRef id_name,
-                            const blender::StringRef lib_name)
-{
-  ID *id;
-  FOREACH_MAIN_ID_BEGIN (&bmain, id) {
-    if (id->name + 2 != id_name) {
-      continue;
-    }
-    if (lib_name.is_empty()) {
-      if (id->lib == nullptr) {
-        return id;
-      }
-      continue;
-    }
-    if (id->lib == nullptr) {
-      continue;
-    }
-    if (id->lib->id.name + 2 == lib_name) {
-      return id;
-    }
-  }
-  FOREACH_MAIN_ID_END;
-  return nullptr;
-};
-
 static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace blender;
@@ -3777,7 +3751,12 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
 
   NodesModifierIDMapping *new_mappings = nmd.id_mappings + nmd.id_mappings_num;
   for (const auto &item : nmd.runtime->id_mapping_issues.missing_mappings) {
-    ID *id = find_id_by_names(*bmain, item.first.id_name, item.first.lib_name);
+    char id_name[MAX_NAME];
+    char lib_name[MAX_NAME];
+    item.first.id_name.copy(id_name);
+    item.first.lib_name.copy(lib_name);
+    ID *id = BKE_libblock_find_name_with_lib(
+        bmain, id_name, lib_name[0] == '\0' ? nullptr : lib_name);
     NodesModifierIDMapping &mapping = *(new_mappings++);
     memset(&mapping, 0, sizeof(NodesModifierIDMapping));
     if (!item.first.id_name.is_empty()) {
