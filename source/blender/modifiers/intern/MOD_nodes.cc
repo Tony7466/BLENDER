@@ -355,8 +355,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
       },
       &settings);
 
-  for (const int i : IndexRange(nmd->id_mappings_num)) {
-    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+  for (NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num)) {
     walk(userData, ob, &mapping.id, IDWALK_CB_USER);
   }
 }
@@ -876,8 +875,7 @@ static void modifyGeometry(ModifierData *md,
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
   /* First insert all the user defined name mappings. */
-  for (const int i : IndexRange(nmd->id_mappings_num)) {
-    const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+  for (const NodesModifierIDMapping &mapping : Span(nmd->id_mappings, nmd->id_mappings_num)) {
     if (mapping.id == nullptr) {
       continue;
     }
@@ -889,8 +887,7 @@ static void modifyGeometry(ModifierData *md,
   }
   /* Then insert all IDs with their actual name (unless the same name is used by another mapping
    * already). */
-  for (const int i : IndexRange(nmd->id_mappings_num)) {
-    const NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+  for (const NodesModifierIDMapping &mapping : Span(nmd->id_mappings, nmd->id_mappings_num)) {
     if (mapping.id == nullptr) {
       continue;
     }
@@ -1545,8 +1542,7 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
     IDP_BlendWrite(writer, nmd->settings.properties);
 
     BLO_write_struct_array(writer, NodesModifierIDMapping, nmd->id_mappings_num, nmd->id_mappings);
-    for (const int i : IndexRange(nmd->id_mappings_num)) {
-      NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+    for (const NodesModifierIDMapping &mapping : Span(nmd->id_mappings, nmd->id_mappings_num)) {
       BLO_write_string(writer, mapping.id_name);
       BLO_write_string(writer, mapping.lib_name);
     }
@@ -1578,8 +1574,8 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
   BLO_read_data_address(reader, &nmd->id_mappings);
-  for (const int i : IndexRange(nmd->id_mappings_num)) {
-    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+  for (const NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num))
+  {
     BLO_read_data_address(reader, &mapping.id_name);
     BLO_read_data_address(reader, &mapping.lib_name);
   }
@@ -1636,8 +1632,7 @@ static void freeData(ModifierData *md)
     nmd->settings.properties = nullptr;
   }
 
-  for (const int i : IndexRange(nmd->id_mappings_num)) {
-    NodesModifierIDMapping &mapping = nmd->id_mappings[i];
+  for (NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num)) {
     MEM_SAFE_FREE(mapping.id_name);
     MEM_SAFE_FREE(mapping.lib_name);
   }
