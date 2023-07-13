@@ -708,7 +708,8 @@ static void posttrans_mask_clean(Mask *mask)
     }
 
 #ifdef DEBUG
-    for (masklay_shape = masklay->splines_shapes.first; masklay_shape;
+    for (masklay_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
+         masklay_shape;
          masklay_shape = masklay_shape->next)
     {
       BLI_assert(!masklay_shape->next || masklay_shape->frame < masklay_shape->next->frame);
@@ -744,7 +745,7 @@ static void posttrans_gpd_clean(bGPdata *gpd)
     }
 
 #ifdef DEBUG
-    for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+    for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
       BLI_assert(!gpf->next || gpf->framenum < gpf->next->framenum);
     }
 #endif

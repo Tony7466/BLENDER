@@ -108,11 +108,10 @@ static void gizmo2d_pivot_point_message_subscribe(wmGizmoGroup *gzgroup,
                                                   ScrArea *area,
                                                   ARegion *region)
 {
-  wmMsgSubscribeValue msg_sub_value_gz_tag_refresh = {
-      .owner = region,
-      .user_data = gzgroup->parent_gzmap,
-      .notify = WM_gizmo_do_msg_notify_tag_refresh,
-  };
+  wmMsgSubscribeValue msg_sub_value_gz_tag_refresh{};
+  msg_sub_value_gz_tag_refresh.owner = region;
+  msg_sub_value_gz_tag_refresh.user_data = gzgroup->parent_gzmap;
+  msg_sub_value_gz_tag_refresh.notify = WM_gizmo_do_msg_notify_tag_refresh;
 
   switch (area->spacetype) {
     case SPACE_IMAGE: {
