@@ -71,7 +71,7 @@ static void applySeqSlideValue(TransInfo *t, const float val[2])
   }
 }
 
-static void applySeqSlide(TransInfo *t, const int UNUSED(mval[2]))
+static void applySeqSlide(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
   float values_final[3] = {0.0f};
@@ -92,7 +92,7 @@ static void applySeqSlide(TransInfo *t, const int UNUSED(mval[2]))
     transform_convert_sequencer_channel_clamp(t, values_final);
 
     if (t->con.mode & CON_APPLY) {
-      t->con.applyVec(t, NULL, NULL, values_final, values_final);
+      t->con.applyVec(t, nullptr, nullptr, values_final, values_final);
     }
   }
 
@@ -108,7 +108,7 @@ static void applySeqSlide(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initSeqSlide(TransInfo *t, wmOperator *UNUSED(op))
+static void initSeqSlide(TransInfo *t, wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);
 
@@ -138,9 +138,9 @@ TransModeInfo TransMode_seqslide = {
     /*flags*/ 0,
     /*init_fn*/ initSeqSlide,
     /*transform_fn*/ applySeqSlide,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
     /*snap_apply_fn*/ transform_snap_sequencer_apply_translate,
-    /*draw_fn*/ NULL,
+    /*draw_fn*/ nullptr,
 };
