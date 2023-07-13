@@ -88,7 +88,7 @@ set(SRC
   transform_mode_tosphere.cc
   transform_mode_trackball.cc
   transform_mode_translate.cc
-  transform_mode_vert_slide.c
+  transform_mode_vert_slide.cc
   transform_ops.c
   transform_orientations.c
   transform_snap.cc

@@ -43,7 +43,7 @@
 /** \name Transform (Vert Slide)
  * \{ */
 
-typedef struct TransDataVertSlideVert {
+struct TransDataVertSlideVert {
   /** #TransDataGenericSlideVert (header) */
   BMVert *v;
   struct LinkNode **cd_loop_groups;
@@ -53,28 +53,29 @@ typedef struct TransDataVertSlideVert {
   float (*co_link_orig_3d)[3];
   int co_link_tot;
   int co_link_curr;
-} TransDataVertSlideVert;
+};
 
-typedef struct VertSlideData {
+struct VertSlideData {
   TransDataVertSlideVert *sv;
   int totsv;
   int curr_sv_index;
 
   /* result of ED_view3d_ob_project_mat_get */
   float proj_mat[4][4];
-} VertSlideData;
+};
 
-typedef struct VertSlideParams {
+struct VertSlideParams {
   float perc;
 
   bool use_even;
   bool flipped;
-} VertSlideParams;
+};
 
 static void vert_slide_update_input(TransInfo *t)
 {
-  VertSlideParams *slp = t->custom.mode.data;
-  VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
+  VertSlideParams *slp = static_cast<VertSlideParams *>(t->custom.mode.data);
+  VertSlideData *sld = static_cast<VertSlideData *>(
+      TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data);
   TransDataVertSlideVert *sv = &sld->sv[sld->curr_sv_index];
 
   const float *co_orig_3d = sv->co_orig_3d;
@@ -115,8 +116,9 @@ static void calcVertSlideCustomPoints(TransInfo *t)
 static void calcVertSlideMouseActiveVert(TransInfo *t, const int mval[2])
 {
   /* Active object may have no selected vertices. */
-  VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
-  const float mval_fl[2] = {UNPACK2(mval)};
+  VertSlideData *sld = static_cast<VertSlideData *>(
+      TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data);
+  const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   TransDataVertSlideVert *sv;
 
   /* set the vertex to use as a reference for the mouse direction 'curr_sv_index' */
@@ -142,9 +144,10 @@ static void calcVertSlideMouseActiveVert(TransInfo *t, const int mval[2])
  */
 static void calcVertSlideMouseActiveEdges(TransInfo *t, const int mval[2])
 {
-  VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
-  const float imval_fl[2] = {UNPACK2(t->mouse.imval)};
-  const float mval_fl[2] = {UNPACK2(mval)};
+  VertSlideData *sld = static_cast<VertSlideData *>(
+      TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data);
+  const float imval_fl[2] = {float(t->mouse.imval[0]), float(t->mouse.imval[1])};
+  const float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
   float dir[3];
   TransDataVertSlideVert *sv;
@@ -197,7 +200,7 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
   BMEdge *e;
   BMVert *v;
   TransDataVertSlideVert *sv_array;
-  VertSlideData *sld = MEM_callocN(sizeof(*sld), "sld");
+  VertSlideData *sld = static_cast<VertSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
   int j;
 
   sld->curr_sv_index = 0;
@@ -225,10 +228,11 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
 
   if (!j) {
     MEM_freeN(sld);
-    return NULL;
+    return nullptr;
   }
 
-  sv_array = MEM_callocN(sizeof(TransDataVertSlideVert) * j, "sv_array");
+  sv_array = static_cast<TransDataVertSlideVert *>(
+      MEM_callocN(sizeof(TransDataVertSlideVert) * j, "sv_array"));
 
   j = 0;
   BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
@@ -244,8 +248,8 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
         }
       }
 
-      sv_array[j].co_link_orig_3d = MEM_mallocN(sizeof(*sv_array[j].co_link_orig_3d) * k,
-                                                __func__);
+      sv_array[j].co_link_orig_3d = static_cast<float(*)[3]>(
+          MEM_mallocN(sizeof(*sv_array[j].co_link_orig_3d) * k, __func__));
       sv_array[j].co_link_tot = k;
 
       k = 0;
@@ -268,10 +272,10 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* view vars */
-    RegionView3D *rv3d = NULL;
+    RegionView3D *rv3d = nullptr;
     ARegion *region = t->region;
 
-    rv3d = region ? region->regiondata : NULL;
+    rv3d = static_cast<RegionView3D *>(region ? region->regiondata : nullptr);
     if (rv3d) {
       ED_view3d_ob_project_mat_get(rv3d, tc->obedit, sld->proj_mat);
     }
@@ -280,11 +284,11 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
   return sld;
 }
 
-static void freeVertSlideVerts(TransInfo *UNUSED(t),
-                               TransDataContainer *UNUSED(tc),
+static void freeVertSlideVerts(TransInfo * /*t*/,
+                               TransDataContainer * /*tc*/,
                                TransCustomData *custom_data)
 {
-  VertSlideData *sld = custom_data->data;
+  VertSlideData *sld = static_cast<VertSlideData *>(custom_data->data);
 
   if (!sld) {
     return;
@@ -301,12 +305,12 @@ static void freeVertSlideVerts(TransInfo *UNUSED(t),
   MEM_freeN(sld->sv);
   MEM_freeN(sld);
 
-  custom_data->data = NULL;
+  custom_data->data = nullptr;
 }
 
 static eRedrawFlag handleEventVertSlide(TransInfo *t, const wmEvent *event)
 {
-  VertSlideParams *slp = t->custom.mode.data;
+  VertSlideParams *slp = static_cast<VertSlideParams *>(t->custom.mode.data);
 
   if (slp) {
     switch (event->type) {
@@ -353,8 +357,9 @@ static eRedrawFlag handleEventVertSlide(TransInfo *t, const wmEvent *event)
 static void drawVertSlide(TransInfo *t)
 {
   if (TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data) {
-    const VertSlideParams *slp = t->custom.mode.data;
-    VertSlideData *sld = TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data;
+    const VertSlideParams *slp = static_cast<const VertSlideParams *>(t->custom.mode.data);
+    VertSlideData *sld = static_cast<VertSlideData *>(
+        TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data);
     const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
 
     /* Non-Prop mode */
@@ -429,7 +434,8 @@ static void drawVertSlide(TransInfo *t)
         mul_v3_m4v3(co_orig_3d,
                     TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->object_to_world,
                     curr_sv->co_orig_3d);
-        zfac = ED_view3d_calc_zfac(t->region->regiondata, co_orig_3d);
+        zfac = ED_view3d_calc_zfac(static_cast<const RegionView3D *>(t->region->regiondata),
+                                   co_orig_3d);
 
         ED_view3d_win_to_delta(t->region, xy_delta, zfac, co_dest_3d);
 
@@ -496,15 +502,15 @@ static void vert_slide_apply_elem(const TransDataVertSlideVert *sv,
 
 static void doVertSlide(TransInfo *t, float perc)
 {
-  VertSlideParams *slp = t->custom.mode.data;
+  VertSlideParams *slp = static_cast<VertSlideParams *>(t->custom.mode.data);
 
   slp->perc = perc;
 
   const bool use_even = slp->use_even;
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    VertSlideData *sld = tc->custom.mode.data;
-    if (sld == NULL) {
+    VertSlideData *sld = static_cast<VertSlideData *>(tc->custom.mode.data);
+    if (sld == nullptr) {
       continue;
     }
 
@@ -526,7 +532,7 @@ static void doVertSlide(TransInfo *t, float perc)
 static void vert_slide_snap_apply(TransInfo *t, float *value)
 {
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
-  VertSlideData *sld = tc->custom.mode.data;
+  VertSlideData *sld = static_cast<VertSlideData *>(tc->custom.mode.data);
   TransDataVertSlideVert *sv = &sld->sv[sld->curr_sv_index];
 
   float snap_point[3], co_orig_3d[3], co_curr_3d[3], dvec[3];
@@ -555,12 +561,12 @@ static void vert_slide_snap_apply(TransInfo *t, float *value)
   *value = line_point_factor_v3(snap_point, co_orig_3d, co_curr_3d);
 }
 
-static void applyVertSlide(TransInfo *t, const int UNUSED(mval[2]))
+static void applyVertSlide(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
   size_t ofs = 0;
   float final;
-  VertSlideParams *slp = t->custom.mode.data;
+  VertSlideParams *slp = static_cast<VertSlideParams *>(t->custom.mode.data);
   const bool flipped = slp->flipped;
   const bool use_even = slp->use_even;
   const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
@@ -614,9 +620,9 @@ static void vert_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
 {
   float delta[3], orig_co[3], final_co[3];
 
-  VertSlideParams *slp = t->custom.mode.data;
+  VertSlideParams *slp = static_cast<VertSlideParams *>(t->custom.mode.data);
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
-  VertSlideData *sld_active = tc->custom.mode.data;
+  VertSlideData *sld_active = static_cast<VertSlideData *>(tc->custom.mode.data);
   TransDataVertSlideVert *sv_active = &sld_active->sv[sld_active->curr_sv_index];
 
   copy_v3_v3(orig_co, sv_active->co_orig_3d);
@@ -645,7 +651,7 @@ static void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use
   t->mode = TFM_VERT_SLIDE;
 
   {
-    VertSlideParams *slp = MEM_callocN(sizeof(*slp), __func__);
+    VertSlideParams *slp = static_cast<VertSlideParams *>(MEM_callocN(sizeof(*slp), __func__));
     slp->use_even = use_even;
     slp->flipped = flipped;
     slp->perc = 0.0f;
@@ -712,9 +718,9 @@ static void initVertSlide(TransInfo *t, wmOperator *op)
 void transform_mode_vert_slide_reproject_input(TransInfo *t)
 {
   if (t->spacetype == SPACE_VIEW3D) {
-    RegionView3D *rv3d = t->region->regiondata;
+    RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-      VertSlideData *sld = tc->custom.mode.data;
+      VertSlideData *sld = static_cast<VertSlideData *>(tc->custom.mode.data);
       ED_view3d_ob_project_mat_get(rv3d, tc->obedit, sld->proj_mat);
     }
   }
