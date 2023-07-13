@@ -82,6 +82,7 @@ typedef enum {
   /** Enable edge scrolling in 2D views */
   CTX_VIEW2D_EDGE_PAN = (1 << 15),
 } eTContext;
+ENUM_OPERATORS(eTContext, CTX_VIEW2D_EDGE_PAN)
 
 /** #TransInfo.flag */
 typedef enum {

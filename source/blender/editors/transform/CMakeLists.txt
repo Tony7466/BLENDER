@@ -23,7 +23,7 @@ set(INC_SYS
 set(SRC
   transform.c
   transform_constraints.cc
-  transform_convert.c
+  transform_convert.cc
   transform_convert_action.cc
   transform_convert_armature.cc
   transform_convert_cursor.cc

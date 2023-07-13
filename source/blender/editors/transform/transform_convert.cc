@@ -177,14 +177,14 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
   int a;
 
   float _proj_vec[3];
-  const float *proj_vec = NULL;
+  const float *proj_vec = nullptr;
 
   /* support for face-islands */
   const bool use_island = transdata_check_local_islands(t, t->around);
 
   if (t->flag & T_PROP_PROJECTED) {
     if (t->spacetype == SPACE_VIEW3D && t->region && t->region->regiontype == RGN_TYPE_WINDOW) {
-      RegionView3D *rv3d = t->region->regiondata;
+      RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
       normalize_v3_v3(_proj_vec, rv3d->viewinv[2]);
       proj_vec = _proj_vec;
     }
@@ -207,7 +207,8 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
 
   /* Pointers to selected's #TransData.
    * Used to find #TransData from the index returned by #BLI_kdtree_find_nearest. */
-  TransData **td_table = MEM_mallocN(sizeof(*td_table) * td_table_len, __func__);
+  TransData **td_table = static_cast<TransData **>(
+      MEM_mallocN(sizeof(*td_table) * td_table_len, __func__));
 
   /* Create and fill KD-tree of selected's positions - in global or proj_vec space. */
   KDTree_3d *td_tree = BLI_kdtree_3d_new(td_table_len);
@@ -328,12 +329,12 @@ static bool pchan_autoik_adjust(bPoseChannel *pchan, short chainlen)
   }
 
   /* check if pchan has ik-constraint */
-  for (con = pchan->constraints.first; con; con = con->next) {
+  for (con = static_cast<bConstraint *>(pchan->constraints.first); con; con = con->next) {
     if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
       continue;
     }
     if (con->type == CONSTRAINT_TYPE_KINEMATIC && (con->enforce != 0.0f)) {
-      bKinematicConstraint *data = con->data;
+      bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
 
       /* only accept if a temporary one (for auto-ik) */
       if (data->flag & CONSTRAINT_IK_TEMP) {
@@ -382,11 +383,13 @@ void transform_autoik_update(TransInfo *t, short mode)
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 
     /* sanity checks (don't assume t->poseobj is set, or that it is an armature) */
-    if (ELEM(NULL, tc->poseobj, tc->poseobj->pose)) {
+    if (ELEM(nullptr, tc->poseobj, tc->poseobj->pose)) {
       continue;
     }
 
-    for (pchan = tc->poseobj->pose->chanbase.first; pchan; pchan = pchan->next) {
+    for (pchan = static_cast<bPoseChannel *>(tc->poseobj->pose->chanbase.first); pchan;
+         pchan = pchan->next)
+    {
       changed |= pchan_autoik_adjust(pchan, *chainlen);
     }
   }
@@ -422,7 +425,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
     float dist;
     float vec[3];
 
-    TransData *next_td = NULL;
+    TransData *next_td = nullptr;
 
     if (td + 1 <= tail) {
       next_td = td + 1;
@@ -431,7 +434,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
       next_td = head;
     }
 
-    if (next_td != NULL && !(next_td->flag & TD_NOTCONNECTED)) {
+    if (next_td != nullptr && !(next_td->flag & TD_NOTCONNECTED)) {
       sub_v3_v3v3(vec, next_td->center, td->center);
       mul_m3_v3(head->mtx, vec);
       dist = len_v3(vec) + td->dist;
@@ -442,7 +445,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
       }
     }
 
-    next_td = NULL;
+    next_td = nullptr;
 
     if (td - 1 >= head) {
       next_td = td - 1;
@@ -451,7 +454,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
       next_td = tail;
     }
 
-    if (next_td != NULL && !(next_td->flag & TD_NOTCONNECTED)) {
+    if (next_td != nullptr && !(next_td->flag & TD_NOTCONNECTED)) {
       sub_v3_v3v3(vec, next_td->center, td->center);
       mul_m3_v3(head->mtx, vec);
       dist = len_v3(vec) + td->dist;
@@ -469,7 +472,8 @@ TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *b
 {
   TransDataCurveHandleFlags *hdata;
   td->flag |= TD_BEZTRIPLE;
-  hdata = td->hdata = MEM_mallocN(sizeof(TransDataCurveHandleFlags), "CuHandle Data");
+  hdata = td->hdata = static_cast<TransDataCurveHandleFlags *>(
+      MEM_mallocN(sizeof(TransDataCurveHandleFlags), "CuHandle Data"));
   hdata->ih1 = bezt->h1;
   hdata->h1 = &bezt->h1;
   hdata->ih2 = bezt->h2; /* in case the second is not selected */
@@ -554,7 +558,7 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list)
    * constraints needing special crazy-space corrections
    */
   if (list) {
-    for (con = list->first; con; con = con->next) {
+    for (con = static_cast<bConstraint *>(list->first); con; con = con->next) {
       /* only consider constraint if it is enabled, and has influence on result */
       if ((con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) == 0 && (con->enforce != 0.0f)) {
         /* (affirmative) returns for specific constraints here... */
@@ -709,8 +713,8 @@ static int countAndCleanTransDataContainer(TransInfo *t)
     }
   }
   if (data_container_len_orig != t->data_container_len) {
-    t->data_container = MEM_reallocN(t->data_container,
-                                     sizeof(*t->data_container) * t->data_container_len);
+    t->data_container = static_cast<TransDataContainer *>(
+        MEM_reallocN(t->data_container, sizeof(*t->data_container) * t->data_container_len));
   }
   return t->data_len_all;
 }
@@ -809,7 +813,7 @@ static void init_TransDataContainers(TransInfo *t,
     return;
   }
 
-  const eObjectMode object_mode = obact ? obact->mode : OB_MODE_OBJECT;
+  const eObjectMode object_mode = eObjectMode(obact ? obact->mode : OB_MODE_OBJECT);
   const short object_type = obact ? obact->type : -1;
 
   if ((object_mode & OB_MODE_EDIT) || (t->data_type == &TransConvertType_GPencil) ||
@@ -820,7 +824,7 @@ static void init_TransDataContainers(TransInfo *t,
     }
 
     bool free_objects = false;
-    if (objects == NULL) {
+    if (objects == nullptr) {
       struct ObjectsInModeParams params = {0};
       params.object_mode = object_mode;
       /* Pose transform operates on `ob->pose` so don't skip duplicate object-data. */
@@ -828,13 +832,14 @@ static void init_TransDataContainers(TransInfo *t,
       objects = BKE_view_layer_array_from_objects_in_mode_params(
           t->scene,
           t->view_layer,
-          (t->spacetype == SPACE_VIEW3D) ? t->view : NULL,
+          static_cast<const View3D *>((t->spacetype == SPACE_VIEW3D) ? t->view : nullptr),
           &objects_len,
           &params);
       free_objects = true;
     }
 
-    t->data_container = MEM_callocN(sizeof(*t->data_container) * objects_len, __func__);
+    t->data_container = static_cast<TransDataContainer *>(
+        MEM_callocN(sizeof(*t->data_container) * objects_len, __func__));
     t->data_container_len = objects_len;
 
     for (int i = 0; i < objects_len; i++) {
@@ -923,7 +928,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     else if (t->obedit_type == OB_MESH) {
       return &TransConvertType_MeshUV;
     }
-    return NULL;
+    return nullptr;
   }
   if (t->spacetype == SPACE_ACTION) {
     return &TransConvertType_Action;
@@ -953,7 +958,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     if (t->options & CTX_MASK) {
       return &TransConvertType_Mask;
     }
-    return NULL;
+    return nullptr;
   }
   if (t->obedit_type != -1) {
     if (t->obedit_type == OB_MESH) {
@@ -980,7 +985,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     if (t->obedit_type == OB_CURVES) {
       return &TransConvertType_Curves;
     }
-    return NULL;
+    return nullptr;
   }
   if (ob && (ob->mode & OB_MODE_POSE)) {
     return &TransConvertType_Pose;
@@ -991,7 +996,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
       *r_obj_armature = ob_armature;
       return &TransConvertType_Pose;
     }
-    return NULL;
+    return nullptr;
   }
   if (ob && (ob->mode & OB_MODE_PARTICLE_EDIT) &&
       PE_start_edit(PE_get_current(t->depsgraph, t->scene, ob)))
@@ -1002,11 +1007,11 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     if ((t->options & CTX_PAINT_CURVE) && !ELEM(t->mode, TFM_SHEAR, TFM_SHRINKFATTEN)) {
       return &TransConvertType_PaintCurve;
     }
-    return NULL;
+    return nullptr;
   }
   if (ob && (ob->mode & OB_MODE_ALL_PAINT_GPENCIL)) {
     /* In grease pencil all transformations must be canceled if not Object or Edit. */
-    return NULL;
+    return nullptr;
   }
   return &TransConvertType_Object;
 }
@@ -1015,16 +1020,16 @@ void createTransData(bContext *C, TransInfo *t)
 {
   t->data_len_all = -1;
 
-  Object *ob_armature = NULL;
+  Object *ob_armature = nullptr;
   t->data_type = convert_type_get(t, &ob_armature);
-  if (t->data_type == NULL) {
+  if (t->data_type == nullptr) {
     printf("edit type not implemented!\n");
     BLI_assert(t->data_len_all == -1);
     t->data_len_all = 0;
     return;
   }
 
-  t->flag |= t->data_type->flags;
+  t->flag |= eTFlag(t->data_type->flags);
 
   if (ob_armature) {
     init_TransDataContainers(t, ob_armature, &ob_armature, 1);
@@ -1032,7 +1037,7 @@ void createTransData(bContext *C, TransInfo *t)
   else {
     BKE_view_layer_synced_ensure(t->scene, t->view_layer);
     Object *ob = BKE_view_layer_active_object_get(t->view_layer);
-    init_TransDataContainers(t, ob, NULL, 0);
+    init_TransDataContainers(t, ob, nullptr, 0);
   }
 
   if (t->data_type == &TransConvertType_Object) {
@@ -1050,8 +1055,8 @@ void createTransData(bContext *C, TransInfo *t)
     TransConvertType_Object.createTransData(C, t);
     /* Check if we're transforming the camera from the camera */
     if ((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW)) {
-      View3D *v3d = t->view;
-      RegionView3D *rv3d = t->region->regiondata;
+      View3D *v3d = static_cast<View3D *>(t->view);
+      RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
       if ((rv3d->persp == RV3D_CAMOB) && v3d->camera) {
         /* we could have a flag to easily check an object is being transformed */
         if (v3d->camera->id.tag & LIB_TAG_DOIT) {
@@ -1091,7 +1096,7 @@ void createTransData(bContext *C, TransInfo *t)
 void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc)
 {
   Object *ob = tc->obedit;
-  ModifierData *md = ob->modifiers.first;
+  ModifierData *md = static_cast<ModifierData *>(ob->modifiers.first);
 
   for (; md; md = md->next) {
     if ((md->type == eModifierType_Mirror) && (md->mode & eModifierMode_Realtime)) {
@@ -1119,7 +1124,7 @@ void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc)
       for (int i = 0; i < tc->data_len; i++, td++) {
         float loc[3], iloc[3];
 
-        if (td->loc == NULL) {
+        if (td->loc == nullptr) {
           break;
         }
 
@@ -1171,10 +1176,11 @@ void animrecord_check_state(TransInfo *t, ID *id)
 {
   Scene *scene = t->scene;
   wmTimer *animtimer = t->animtimer;
-  ScreenAnimData *sad = (animtimer) ? animtimer->customdata : NULL;
+  ScreenAnimData *sad = static_cast<ScreenAnimData *>((animtimer) ? animtimer->customdata :
+                                                                    nullptr);
 
   /* sanity checks */
-  if (ELEM(NULL, scene, id, sad)) {
+  if (ELEM(nullptr, scene, id, sad)) {
     return;
   }
 
@@ -1190,7 +1196,7 @@ void animrecord_check_state(TransInfo *t, ID *id)
      * we need to add a new NLA track+strip to allow a clean pass to occur */
     if ((sad) && (sad->flag & ANIMPLAY_FLAG_JUMPED)) {
       AnimData *adt = BKE_animdata_from_id(id);
-      const bool is_first = (adt) && (adt->nla_tracks.first == NULL);
+      const bool is_first = (adt) && (adt->nla_tracks.first == nullptr);
 
       /* perform push-down manually with some differences
        * NOTE: BKE_nla_action_pushdown() sync warning...
@@ -1205,7 +1211,7 @@ void animrecord_check_state(TransInfo *t, ID *id)
 
           /* clear reference to action now that we've pushed it onto the stack */
           id_us_min(&adt->action->id);
-          adt->action = NULL;
+          adt->action = nullptr;
 
           /* adjust blending + extend so that they will behave correctly */
           strip->extendmode = NLASTRIP_EXTEND_NOTHING;
