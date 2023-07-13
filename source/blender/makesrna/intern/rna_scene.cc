@@ -7421,6 +7421,14 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem eevee_pixel_rate_items[] = {
+      {1, "1", 0, "1 rpp", "1 ray per pixel"},
+      {2, "2", 0, "1/4 rpp", "1 ray for every 4 pixels"},
+      {4, "4", 0, "1/16 rpp", "1 ray for every 16 pixels"},
+      {8, "8", 0, "1/64 rpp", "1 ray for every 64 pixels"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem eevee_motion_blur_position_items[] = {
       {SCE_EEVEE_MB_START, "START", 0, "Start on Frame", "The shutter opens at the current frame"},
       {SCE_EEVEE_MB_CENTER,
@@ -7612,6 +7620,20 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Raytracing */
+  prop = RNA_def_property(srna, "ray_pixel_rate_reflection", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eevee_pixel_rate_items);
+  RNA_def_property_ui_text(
+      prop, "Reflection Ray Pixel Rate", "Number of ray per pixel for reflections");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "ray_pixel_rate_refraction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eevee_pixel_rate_items);
+  RNA_def_property_ui_text(
+      prop, "Refraction Ray Pixel Rate", "Number of ray per pixel for refractions");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
   prop = RNA_def_property(srna, "raytrace_denoise", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_RAYTRACE_DENOISE);
   RNA_def_property_ui_text(
@@ -7628,7 +7650,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "raytrace_denoise_bilateral", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_RAYTRACE_DENOISE_BILATERAL);
-  RNA_def_property_ui_text(prop, "Denoise Bilateral", "Enable noise reduction techniques for raytraced effects");
+  RNA_def_property_ui_text(
+      prop, "Denoise Bilateral", "Enable noise reduction techniques for raytraced effects");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 

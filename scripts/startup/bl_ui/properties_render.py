@@ -476,6 +476,9 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
         props = scene.eevee
         prefs = context.preferences
 
+        layout.prop(props, "ray_pixel_rate_reflection", text="Reflection Resolution")
+        layout.prop(props, "ray_pixel_rate_refraction", text="Refraction Resolution")
+
         if prefs.experimental.use_eevee_debug:
             # Debug option shows separate stages.
             layout.prop(props, "raytrace_denoise", text="Denoise Spatial")

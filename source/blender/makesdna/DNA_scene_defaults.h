@@ -184,6 +184,9 @@
     .ssr_border_fade = 0.075f, \
     .ssr_firefly_fac = 10.0f, \
  \
+    .ray_pixel_rate_reflection = 2, \
+    .ray_pixel_rate_refraction = 1, \
+ \
     .volumetric_start = 0.1f, \
     .volumetric_end = 100.0f, \
     .volumetric_tile_size = 8, \

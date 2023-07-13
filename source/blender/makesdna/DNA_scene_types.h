@@ -1833,6 +1833,9 @@ typedef struct SceneEEVEE {
   float ssr_border_fade;
   float ssr_firefly_fac;
 
+  int ray_pixel_rate_reflection;
+  int ray_pixel_rate_refraction;
+
   float volumetric_start;
   float volumetric_end;
   int volumetric_tile_size;

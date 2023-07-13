@@ -39,7 +39,6 @@ void RayTraceModule::init()
     use_temporal_denoise_ = use_bilateral_denoise_ = use_spatial_denoise_;
   }
 
-  data_.resolution_scale = 2;
   /* TODO(fclem): Tracing. */
   data_.thickness = 1.0f;
   data_.quality = 1.0f;
@@ -192,6 +191,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   PassSimple *denoise_spatial_ps = nullptr;
   PassSimple *denoise_bilateral_ps = nullptr;
   RayTraceBuffer::DenoiseBuffer *denoise_buf = nullptr;
+  int pixel_rate = 1;
 
   if (raytrace_closure == CLOSURE_REFLECTION) {
     generate_ray_ps = &generate_reflect_ps_;
@@ -199,6 +199,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_spatial_ps = &denoise_spatial_reflect_ps_;
     denoise_bilateral_ps = &denoise_bilateral_reflect_ps_;
     denoise_buf = &rt_buffer.reflection;
+    pixel_rate = inst_.scene->eevee.ray_pixel_rate_reflection;
   }
   else if (raytrace_closure == CLOSURE_REFRACTION) {
     generate_ray_ps = &generate_refract_ps_;
@@ -206,6 +207,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_spatial_ps = &denoise_spatial_refract_ps_;
     denoise_bilateral_ps = &denoise_bilateral_refract_ps_;
     denoise_buf = &rt_buffer.refraction;
+    pixel_rate = inst_.scene->eevee.ray_pixel_rate_refraction;
   }
 
   if ((active_closures & raytrace_closure) == 0) {
@@ -217,8 +219,10 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     return {denoise_buf->denoised_spatial_tx};
   }
 
+  const int resolution_scale = max_ii(1, power_of_2_max_i(pixel_rate));
+
   const int2 extent = inst_.film.render_extent_get();
-  const int2 tracing_res = math::divide_ceil(extent, int2(data_.resolution_scale));
+  const int2 tracing_res = math::divide_ceil(extent, int2(resolution_scale));
   const int2 dummy_extent(1, 1);
 
   tile_classify_dispatch_size_ = int3(math::divide_ceil(extent, int2(RAYTRACE_GROUP_SIZE)), 1);
@@ -234,9 +238,9 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
+  data_.resolution_scale = max_ii(1, power_of_2_max_i(pixel_rate));
   data_.closure_active = raytrace_closure;
-  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) *
-                               data_.resolution_scale);
+  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
