@@ -3727,7 +3727,7 @@ void OBJECT_OT_geometry_node_tree_copy_assign(wmOperatorType *ot)
  * \{ */
 
 static ID *find_id_by_names(Main &bmain,
-                            const blender::StringRef &id_name,
+                            const blender::StringRef id_name,
                             const blender::StringRef lib_name)
 {
   ID *id;
