@@ -382,4 +382,8 @@ void ED_undosys_stack_memfile_id_changed_tag(UndoStack *ustack, ID *id)
   }
 }
 
+MemFileUndoData *ED_undostack_memfile_step_data_get(MemFileUndoStep *us)
+{
+  return us->data;
+}
 /** \} */

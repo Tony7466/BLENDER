@@ -23,6 +23,8 @@ struct ViewLayer;
 struct bContext;
 struct wmOperator;
 struct wmOperatorType;
+struct MemFileUndoStep;
+struct MemFileUndoData;
 
 /* undo.c */
 
@@ -130,6 +132,9 @@ struct MemFile *ED_undosys_stack_memfile_get_active(struct UndoStack *ustack);
  * (currently we only do that in #MemFileWriteData when writing a new step).
  */
 void ED_undosys_stack_memfile_id_changed_tag(struct UndoStack *ustack, struct ID *id);
+
+/* Needed for wm_autosave_write. */
+struct MemFileUndoData *ED_undostack_memfile_step_data_get(struct MemFileUndoStep *us);
 
 #ifdef __cplusplus
 }
