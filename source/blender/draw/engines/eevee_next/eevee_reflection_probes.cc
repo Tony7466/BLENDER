@@ -46,7 +46,7 @@ void ReflectionProbeModule::init()
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
-    pass.bind_image("octahedral_img", probes_tx_);
+    pass.bind_image("octahedral_img", &probes_tx_);
     pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
     pass.push_constant("reflection_probe_index", &reflection_probe_index_);
     pass.dispatch(&dispatch_probe_pack_);
@@ -71,12 +71,10 @@ void ReflectionProbeModule::begin_sync()
 
 int ReflectionProbeModule::needed_layers_get() const
 {
-  const int max_probe_data_index = reflection_probe_data_index_max();
   int max_layer = 0;
-  for (const ReflectionProbeData &data :
-       Span<ReflectionProbeData>(data_buf_.data(), max_probe_data_index + 1))
-  {
-    max_layer = max_ii(max_layer, data.layer);
+  for (const ReflectionProbe &probe : probes_.values()) {
+    const ReflectionProbeData &probe_data = data_buf_[probe.index];
+    max_layer = max_ii(max_layer, probe_data.layer);
   }
   return max_layer + 1;
 }
@@ -114,8 +112,10 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
   probe_data.layer_subdivision = subdivision;
+  probe_data.valid = !probe.do_render;
 
   if (probe.do_render && update_probes_this_sample_ == false) {
+    probe_data.valid = false;
     update_probes_next_sample_ = true;
   }
 }
@@ -136,6 +136,12 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
         data_buf_[probe.index] = probe_data;
         return probe;
       });
+
+  ReflectionProbeData &probe_data = data_buf_[reflection_probe.index];
+  if (probe_data.layer_subdivision != subdivision_level) {
+    ReflectionProbeData new_probe_data = find_empty_reflection_probe_data(subdivision_level);
+    data_buf_[reflection_probe.index] = new_probe_data;
+  }
 
   return reflection_probe;
 }
@@ -275,8 +281,8 @@ void ReflectionProbeModule::end_sync()
   int current_layers = probes_tx_.depth();
   bool resize_layers = current_layers < number_layers_needed;
   if (resize_layers) {
-    /* TODO: Create new texture and copy previous texture so we don't need to rerender all the
-     * probes.*/
+    /* TODO(jbakker): Create new texture and copy previous texture so we don't need to rerender all
+     * the probes.*/
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                number_layers_needed,
@@ -287,14 +293,30 @@ void ReflectionProbeModule::end_sync()
   }
 
   recalc_lod_factors();
-  data_buf_.push_update();
-
+  const bool probe_sync_done = instance_.do_probe_sync();
   if (resize_layers) {
+    /* Texture has been recreated and all probes needs to be recreated, uploaded. */
     for (ReflectionProbe &probe : probes_.values()) {
       probe.do_update_data = true;
       probe.do_render = true;
+      ReflectionProbeData &probe_data = data_buf_[probe.index];
+      probe_data.valid = probe_sync_done;
+    }
+
+    if (!probe_sync_done) {
+      update_probes_next_sample_ = true;
     }
   }
+
+  /* Probe sync was successful. All invalid probes will be rendered. */
+  else if (probe_sync_done) {
+    for (ReflectionProbe &probe : probes_.values()) {
+      ReflectionProbeData &probe_data = data_buf_[probe.index];
+      probe_data.valid = true;
+    }
+  }
+
+  data_buf_.push_update();
 }
 
 void ReflectionProbeModule::remove_unused_probes()
