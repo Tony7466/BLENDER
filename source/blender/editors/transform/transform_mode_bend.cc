@@ -67,7 +67,7 @@ struct TransDataArgs_Bend {
   const TransDataContainer *tc;
 
   float angle;
-  struct BendCustomData bend_data;
+  BendCustomData bend_data;
 
   float warp_sta_local[3];
   float warp_end_local[3];
@@ -80,7 +80,7 @@ static void transdata_elem_bend(const TransInfo *t,
                                 const TransDataContainer *tc,
                                 TransData *td,
                                 float angle,
-                                const struct BendCustomData *bend_data,
+                                const BendCustomData *bend_data,
                                 const float warp_sta_local[3],
                                 const float[3] /*warp_end_local*/,
                                 const float warp_end_radius_local[3],
@@ -186,8 +186,7 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
   float warp_end_radius_global[3];
   int i;
   char str[UI_MAX_DRAW_STR];
-  const struct BendCustomData *bend_data = static_cast<const BendCustomData *>(
-      t->custom.mode.data);
+  const BendCustomData *bend_data = static_cast<const BendCustomData *>(t->custom.mode.data);
   const bool is_clamp = (t->flag & T_ALT_TRANSFORM) == 0;
 
   union {
@@ -254,12 +253,12 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
   if (values.angle > 0.0f) {
     madd_v3_v3fl(pivot_global,
                  bend_data->warp_tan,
-                 -values.scale * shell_angle_to_dist((float)M_PI_2 - values.angle));
+                 -values.scale * shell_angle_to_dist(float(M_PI_2) - values.angle));
   }
   else {
     madd_v3_v3fl(pivot_global,
                  bend_data->warp_tan,
-                 +values.scale * shell_angle_to_dist((float)M_PI_2 + values.angle));
+                 +values.scale * shell_angle_to_dist(float(M_PI_2) + values.angle));
   }
 
   /* TODO(@ideasman42): xform, compensate object center. */
@@ -329,7 +328,7 @@ static void initBend(TransInfo *t, wmOperator * /*op*/)
   const float mval_fl[2] = {float(t->mval[0]), float(t->mval[1])};
   const float *curs;
   float tvec[3];
-  struct BendCustomData *data;
+  BendCustomData *data;
 
   t->mode = TFM_BEND;
 

@@ -17,21 +17,22 @@ extern "C" {
 struct bPoseChannel;
 struct Object;
 struct TransInfo;
+struct TransformOrientation;
 
-bool gimbal_axis_pose(struct Object *ob, const struct bPoseChannel *pchan, float gmat[3][3]);
-bool gimbal_axis_object(struct Object *ob, float gmat[3][3]);
+bool gimbal_axis_pose(Object *ob, const bPoseChannel *pchan, float gmat[3][3]);
+bool gimbal_axis_object(Object *ob, float gmat[3][3]);
 
 /**
  * Sets the matrix of the specified space orientation.
  * If the matrix cannot be obtained, an orientation different from the one informed is returned.
  */
-short transform_orientation_matrix_get(struct bContext *C,
-                                       struct TransInfo *t,
+short transform_orientation_matrix_get(bContext *C,
+                                       TransInfo *t,
                                        short orient_index,
                                        const float custom[3][3],
                                        float r_spacemtx[3][3]);
-const char *transform_orientations_spacename_get(struct TransInfo *t, short orient_type);
-void transform_orientations_current_set(struct TransInfo *t, short orient_index);
+const char *transform_orientations_spacename_get(TransInfo *t, short orient_type);
+void transform_orientations_current_set(TransInfo *t, short orient_index);
 
 /**
  * Those two fill in mat and return non-zero on success.
@@ -48,13 +49,11 @@ bool createSpaceNormal(float mat[3][3], const float normal[3]);
  */
 bool createSpaceNormalTangent(float mat[3][3], const float normal[3], const float tangent[3]);
 
-struct TransformOrientation *addMatrixSpace(struct bContext *C,
-                                            float mat[3][3],
-                                            const char *name,
-                                            bool overwrite);
-void applyTransformOrientation(const struct TransformOrientation *ts,
-                               float r_mat[3][3],
-                               char r_name[64]);
+TransformOrientation *addMatrixSpace(bContext *C,
+                                     float mat[3][3],
+                                     const char *name,
+                                     bool overwrite);
+void applyTransformOrientation(const TransformOrientation *ts, float r_mat[3][3], char r_name[64]);
 
 enum {
   ORIENTATION_NONE = 0,
@@ -68,12 +67,12 @@ enum {
 int getTransformOrientation_ex(const Scene *scene,
                                ViewLayer *view_layer,
                                const View3D *v3d,
-                               struct Object *ob,
-                               struct Object *obedit,
+                               Object *ob,
+                               Object *obedit,
                                float normal[3],
                                float plane[3],
                                short around);
-int getTransformOrientation(const struct bContext *C, float normal[3], float plane[3]);
+int getTransformOrientation(const bContext *C, float normal[3], float plane[3]);
 
 #ifdef __cplusplus
 }

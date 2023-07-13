@@ -245,7 +245,7 @@ void constraintTransLim(const TransInfo *t, TransData *td)
 
     bConstraintOb cob = {nullptr};
     bConstraint *con;
-    float ctime = (float)(t->scene->r.cfra);
+    float ctime = float(t->scene->r.cfra);
 
     /* Make a temporary bConstraintOb for using these limit constraints
      * - they only care that cob->matrix is correctly set ;-)

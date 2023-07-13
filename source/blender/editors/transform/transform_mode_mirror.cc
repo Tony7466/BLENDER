@@ -216,7 +216,7 @@ static void applyMirror(TransInfo *t, const int[2] /*mval*/)
   }
 }
 
-static void initMirror(TransInfo *t, struct wmOperator * /*op*/)
+static void initMirror(TransInfo *t, wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 }

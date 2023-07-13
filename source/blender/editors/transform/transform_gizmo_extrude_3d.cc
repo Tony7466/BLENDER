@@ -251,10 +251,10 @@ static void gizmo_mesh_extrude_refresh(const bContext *C, wmGizmoGroup *gzgroup)
                            (axis_type == EXTRUDE_AXIS_NORMAL));
   const int axis_len_used = use_normal ? 4 : 3;
 
-  struct TransformBounds tbounds;
+  TransformBounds tbounds;
 
   if (use_normal) {
-    struct TransformBounds tbounds_normal;
+    TransformBounds tbounds_normal;
     TransformCalcParams params{};
     params.orientation_index = V3D_ORIENT_NORMAL + 1;
     if (!ED_transform_calc_gizmo_stats(C, &params, &tbounds_normal, rv3d)) {
@@ -453,7 +453,7 @@ static void gizmo_mesh_extrude_invoke_prepare(const bContext * /*C*/,
 
 static void gizmo_mesh_extrude_message_subscribe(const bContext *C,
                                                  wmGizmoGroup *gzgroup,
-                                                 struct wmMsgBus *mbus)
+                                                 wmMsgBus *mbus)
 {
   GizmoExtrudeGroup *ggd = static_cast<GizmoExtrudeGroup *>(gzgroup->customdata);
   ARegion *region = CTX_wm_region(C);

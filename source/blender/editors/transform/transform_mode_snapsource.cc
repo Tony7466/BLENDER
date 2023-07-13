@@ -53,7 +53,7 @@ static void snapsource_end(TransInfo *t)
   t->modifiers &= ~MOD_EDIT_SNAP_SOURCE;
 
   /* Restore. */
-  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
+  SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
   t->mode_info = customdata->mode_info_prev;
   t->custom.mode.data = customdata->customdata_mode_prev;
 
@@ -76,7 +76,7 @@ static void snapsource_confirm(TransInfo *t)
   t->tsnap.snap_source_fn = nullptr;
   t->tsnap.status |= SNAP_SOURCE_FOUND;
 
-  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
+  SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
   t->tsnap.mode = customdata->snap_mode_confirm;
 
   int mval[2];
@@ -169,7 +169,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator * /*op*/)
     transform_mode_init(t, nullptr, TFM_TRANSLATION);
   }
 
-  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(
+  SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(
       MEM_callocN(sizeof(*customdata), __func__));
   customdata->mode_info_prev = t->mode_info;
 
@@ -225,7 +225,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator * /*op*/)
 #endif
 
 #ifdef REMOVE_GIZMO
-  struct wmGizmo *gz = WM_gizmomap_get_modal(t->region->gizmo_map);
+  wmGizmo *gz = WM_gizmomap_get_modal(t->region->gizmo_map);
   if (gz) {
     const wmEvent *event = CTX_wm_window(t->context)->eventstate;
 #  ifdef RESET_TRANSFORMATION

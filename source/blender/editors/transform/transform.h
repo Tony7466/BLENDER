@@ -40,6 +40,8 @@ struct SnapObjectContext;
 struct TransConvertTypeInfo;
 struct TransDataContainer;
 struct TransInfo;
+struct TransModeInfo;
+struct TransSeqSnapData;
 struct TransSnap;
 struct ViewLayer;
 struct ViewOpsData;
@@ -47,6 +49,7 @@ struct bContext;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmKeyMap;
+struct wmMsgBus;
 struct wmOperator;
 struct wmTimer;
 
@@ -57,7 +60,7 @@ struct wmTimer;
  * \{ */
 
 /** #TransInfo.options */
-typedef enum {
+enum eTContext {
   CTX_NONE = 0,
 
   /* These are similar to TransInfo::data_type. */
@@ -81,11 +84,11 @@ typedef enum {
   CTX_OBMODE_XFORM_SKIP_CHILDREN = (1 << 14),
   /** Enable edge scrolling in 2D views */
   CTX_VIEW2D_EDGE_PAN = (1 << 15),
-} eTContext;
+};
 ENUM_OPERATORS(eTContext, CTX_VIEW2D_EDGE_PAN)
 
 /** #TransInfo.flag */
-typedef enum {
+enum eTFlag {
   /** \note We could remove 'T_EDIT' and use 'obedit_type', for now ensure they're in sync. */
   T_EDIT = 1 << 0,
   /** Transform points, having no rotation/scale. */
@@ -146,14 +149,14 @@ typedef enum {
   T_NO_GIZMO = 1 << 24,
 
   T_DRAW_SNAP_SOURCE = 1 << 25,
-} eTFlag;
+};
 ENUM_OPERATORS(eTFlag, T_NO_GIZMO);
 
 #define T_ALL_RESTRICTIONS (T_NO_CONSTRAINT | T_NULL_ONE)
 #define T_PROP_EDIT_ALL (T_PROP_EDIT | T_PROP_CONNECTED | T_PROP_PROJECTED)
 
 /** #TransInfo.modifiers */
-typedef enum {
+enum eTModifier {
   MOD_CONSTRAINT_SELECT_AXIS = 1 << 0,
   MOD_PRECISION = 1 << 1,
   MOD_SNAP = 1 << 2,
@@ -162,22 +165,22 @@ typedef enum {
   MOD_NODE_ATTACH = 1 << 5,
   MOD_SNAP_FORCED = 1 << 6,
   MOD_EDIT_SNAP_SOURCE = 1 << 7,
-} eTModifier;
+};
 ENUM_OPERATORS(eTModifier, MOD_NODE_ATTACH)
 
 /** #TransSnap.status */
-typedef enum eTSnap {
+enum eTSnap {
   SNAP_RESETTED = 0,
   SNAP_SOURCE_FOUND = 1 << 0,
   /* Special flag for snap to grid. */
   SNAP_TARGET_GRID_FOUND = 1 << 1,
   SNAP_TARGET_FOUND = 1 << 2,
   SNAP_MULTI_POINTS = 1 << 3,
-} eTSnap;
+};
 ENUM_OPERATORS(eTSnap, SNAP_MULTI_POINTS)
 
 /** #TransCon.mode, #TransInfo.con.mode */
-typedef enum {
+enum eTConstraint {
   /** When set constraints are in use. */
   CON_APPLY = 1 << 0,
   /** These are only used for modal execution. */
@@ -188,27 +191,27 @@ typedef enum {
   /** Does not reorient vector to face viewport when on. */
   CON_NOFLIP = 1 << 5,
   CON_USER = 1 << 6,
-} eTConstraint;
+};
 ENUM_OPERATORS(eTConstraint, CON_USER)
 
 /** #TransInfo.state */
-typedef enum {
+enum eTState {
   TRANS_STARTING = 0,
   TRANS_RUNNING = 1,
   TRANS_CONFIRM = 2,
   TRANS_CANCEL = 3,
-} eTState;
+};
 
 /** #TransInfo.redraw */
-typedef enum {
+enum eRedrawFlag {
   TREDRAW_NOTHING = 0,
   TREDRAW_SOFT = (1 << 0),
   TREDRAW_HARD = (1 << 1) | TREDRAW_SOFT,
-} eRedrawFlag;
+};
 ENUM_OPERATORS(eRedrawFlag, TREDRAW_HARD)
 
 /** #TransInfo.helpline */
-typedef enum {
+enum eTHelpline {
   HLP_NONE = 0,
   HLP_SPRING = 1,
   HLP_ANGLE = 2,
@@ -216,13 +219,13 @@ typedef enum {
   HLP_VARROW = 4,
   HLP_CARROW = 5,
   HLP_TRACKBALL = 6,
-} eTHelpline;
+};
 
-typedef enum {
+enum eTOType {
   O_DEFAULT = 0,
   O_SCENE,
   O_SET,
-} eTOType;
+};
 
 /** \} */
 
@@ -287,12 +290,12 @@ enum {
 /** \name Transform Types
  * \{ */
 
-typedef struct TransSnapPoint {
-  struct TransSnapPoint *next, *prev;
+struct TransSnapPoint {
+  TransSnapPoint *next, *prev;
   float co[3];
-} TransSnapPoint;
+};
 
-typedef struct TransSnap {
+struct TransSnap {
   /* Snapping options stored as flags */
   eSnapFlag flag;
   /* Method(s) used for snapping source to target */
@@ -315,26 +318,26 @@ typedef struct TransSnap {
   ListBase points;
   TransSnapPoint *selectedPoint;
   double last;
-  void (*snap_target_fn)(struct TransInfo *, float *);
-  void (*snap_source_fn)(struct TransInfo *);
+  void (*snap_target_fn)(TransInfo *, float *);
+  void (*snap_source_fn)(TransInfo *);
 
   /**
    * Re-usable snap context data.
    */
   union {
-    struct SnapObjectContext *object_context;
-    struct TransSeqSnapData *seq_context;
+    SnapObjectContext *object_context;
+    TransSeqSnapData *seq_context;
   };
-} TransSnap;
+};
 
-typedef struct TransCon {
+struct TransCon {
   /** Description of the constraint for header_print. */
   char text[50];
   /** Projection constraint matrix (same as #imtx with some axis == 0). */
   float pmtx[3][3];
   /** Mode flags of the constraint. */
   eTConstraint mode;
-  void (*drawExtra)(struct TransInfo *t);
+  void (*drawExtra)(TransInfo *t);
 
   /* NOTE: if 'tc' is NULL, 'td' must also be NULL.
    * For constraints that needs to draw differently from the other
@@ -342,27 +345,27 @@ typedef struct TransCon {
 
   /** Apply function pointer for linear vectorial transformation
    * The last three parameters are pointers to the in/out/printable vectors. */
-  void (*applyVec)(const struct TransInfo *t,
-                   const struct TransDataContainer *tc,
-                   const struct TransData *td,
+  void (*applyVec)(const TransInfo *t,
+                   const TransDataContainer *tc,
+                   const TransData *td,
                    const float in[3],
                    float r_out[3]);
   /** Apply function pointer for size transformation. */
-  void (*applySize)(const struct TransInfo *t,
-                    const struct TransDataContainer *tc,
-                    const struct TransData *td,
+  void (*applySize)(const TransInfo *t,
+                    const TransDataContainer *tc,
+                    const TransData *td,
                     float r_smat[3][3]);
   /** Apply function pointer for rotation transformation */
-  void (*applyRot)(const struct TransInfo *t,
-                   const struct TransDataContainer *tc,
-                   const struct TransData *td,
+  void (*applyRot)(const TransInfo *t,
+                   const TransDataContainer *tc,
+                   const TransData *td,
                    float r_axis[3],
                    float *r_angle);
-} TransCon;
+};
 
-typedef struct MouseInput {
-  void (*apply)(struct TransInfo *t, struct MouseInput *mi, const double mval[2], float output[3]);
-  void (*post)(struct TransInfo *t, float values[3]);
+struct MouseInput {
+  void (*apply)(TransInfo *t, MouseInput *mi, const double mval[2], float output[3]);
+  void (*post)(TransInfo *t, float values[3]);
 
   /** Initial mouse position. */
   int imval[2];
@@ -388,20 +391,18 @@ typedef struct MouseInput {
     double prev[2];
     double accum[2];
   } virtual_mval;
-} MouseInput;
+};
 
-typedef struct TransCustomData {
+struct TransCustomData {
   void *data;
-  void (*free_cb)(struct TransInfo *,
-                  struct TransDataContainer *tc,
-                  struct TransCustomData *custom_data);
+  void (*free_cb)(TransInfo *, TransDataContainer *tc, TransCustomData *custom_data);
   unsigned int use_free : 1;
-} TransCustomData;
+};
 
-typedef struct TransCenterData {
+struct TransCenterData {
   float global[3];
   unsigned int is_set : 1;
-} TransCenterData;
+};
 
 /**
  * Rule of thumb for choosing between mode/type:
@@ -410,13 +411,13 @@ typedef struct TransCenterData {
  * - If conversion uses the data as an extension to the #TransData, assign to `type`
  *   (typically in transform_conversion.c).
  */
-typedef struct TransCustomDataContainer {
+struct TransCustomDataContainer {
   /** Owned by the mode (grab, scale, bend... ). */
   union {
     TransCustomData mode, first_elem;
   };
   TransCustomData type;
-} TransCustomDataContainer;
+};
 #define TRANS_CUSTOM_DATA_ELEM_MAX (sizeof(TransCustomDataContainer) / sizeof(TransCustomData))
 
 /**
@@ -433,7 +434,7 @@ typedef struct TransCustomDataContainer {
  * otherwise all elements may as well be stored in one array (#TransDataContainer.data),
  * as is already done for curve-objects, f-curves. etc.
  */
-typedef struct TransDataContainer {
+struct TransDataContainer {
   /** Transformed data (array). */
   TransData *data;
   /** Transformed data extension (array). */
@@ -450,7 +451,7 @@ typedef struct TransDataContainer {
   /** Total number of transformed gp-frames. */
   int data_gpf_len;
 
-  struct Object *obedit;
+  Object *obedit;
 
   float mat[4][4];
   float imat[4][4];
@@ -462,7 +463,7 @@ typedef struct TransDataContainer {
   float mat3_unit[3][3];
 
   /** if 't->flag & T_POSE', this denotes pose object */
-  struct Object *poseobj;
+  Object *poseobj;
 
   /** Center of transformation (in local-space), Calculated from #TransInfo.center_global. */
   float center_local[3];
@@ -492,9 +493,9 @@ typedef struct TransDataContainer {
   };
 
   TransCustomDataContainer custom;
-} TransDataContainer;
+};
 
-typedef struct TransInfo {
+struct TransInfo {
   TransDataContainer *data_container;
   int data_container_len;
 
@@ -503,12 +504,12 @@ typedef struct TransInfo {
   int data_len_all;
 
   /** TODO: It should be a member of #TransDataContainer. */
-  struct TransConvertTypeInfo *data_type;
+  TransConvertTypeInfo *data_type;
 
   /** Mode indicator as set for the operator.
    * NOTE: A same `mode_info` can have different `mode`s. */
   eTfmMode mode;
-  struct TransModeInfo *mode_info;
+  TransModeInfo *mode_info;
 
   /** Current context/options for transform. */
   eTContext options;
@@ -639,19 +640,19 @@ typedef struct TransInfo {
 
   void *view;
   /** Only valid (non null) during an operator called function. */
-  struct bContext *context;
-  struct wmMsgBus *mbus;
-  struct ScrArea *area;
-  struct ARegion *region;
-  struct Depsgraph *depsgraph;
-  struct Scene *scene;
-  struct ViewLayer *view_layer;
-  struct ToolSettings *settings;
-  struct wmTimer *animtimer;
+  bContext *context;
+  wmMsgBus *mbus;
+  ScrArea *area;
+  ARegion *region;
+  Depsgraph *depsgraph;
+  Scene *scene;
+  ViewLayer *view_layer;
+  ToolSettings *settings;
+  wmTimer *animtimer;
   /** Needed so we can perform a look up for header text. */
-  struct wmKeyMap *keymap;
+  wmKeyMap *keymap;
   /** assign from the operator, or can be NULL. */
-  struct ReportList *reports;
+  ReportList *reports;
   /** current mouse position. */
   int mval[2];
   /** use for 3d view. */
@@ -661,16 +662,16 @@ typedef struct TransInfo {
   void *draw_handle_cursor;
 
   /** Currently only used for random curve of proportional editing. */
-  struct RNG *rng;
+  RNG *rng;
 
-  struct ViewOpsData *vod;
+  ViewOpsData *vod;
 
   /** Typically for mode settings. */
   TransCustomDataContainer custom;
 
   /* Needed for sculpt transform. */
   const char *undo_name;
-} TransInfo;
+};
 
 /** \} */
 
@@ -683,18 +684,14 @@ typedef struct TransInfo {
  * \warning \a event might be NULL (when tweaking from redo panel)
  * \see #saveTransform which writes these values back.
  */
-bool initTransform(struct bContext *C,
-                   struct TransInfo *t,
-                   struct wmOperator *op,
-                   const struct wmEvent *event,
-                   int mode);
+bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *event, int mode);
 /**
  * \see #initTransform which reads values from the operator.
  */
-void saveTransform(struct bContext *C, struct TransInfo *t, struct wmOperator *op);
-int transformEvent(TransInfo *t, const struct wmEvent *event);
-void transformApply(struct bContext *C, TransInfo *t);
-int transformEnd(struct bContext *C, TransInfo *t);
+void saveTransform(bContext *C, TransInfo *t, wmOperator *op);
+int transformEvent(TransInfo *t, const wmEvent *event);
+void transformApply(bContext *C, TransInfo *t);
+int transformEnd(bContext *C, TransInfo *t);
 
 void setTransformViewMatrices(TransInfo *t);
 void setTransformViewAspect(TransInfo *t, float r_aspect[3]);
@@ -710,7 +707,7 @@ void removeAspectRatio(TransInfo *t, float vec[2]);
 /**
  * Called in transform_ops.c, on each regeneration of key-maps.
  */
-struct wmKeyMap *transform_modal_keymap(struct wmKeyConfig *keyconf);
+wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf);
 
 /**
  * Transform a single matrix using the current `t->final_values`.
@@ -732,7 +729,7 @@ bool transdata_check_local_islands(TransInfo *t, short around);
 /** \name Mouse Input
  * \{ */
 
-typedef enum {
+enum MouseInputMode {
   INPUT_NONE,
   INPUT_VECTOR,
   INPUT_SPRING,
@@ -747,22 +744,19 @@ typedef enum {
   INPUT_VERTICAL_ABSOLUTE,
   INPUT_CUSTOM_RATIO,
   INPUT_CUSTOM_RATIO_FLIP,
-} MouseInputMode;
+};
 
 void initMouseInput(
     TransInfo *t, MouseInput *mi, const float center[2], const int mval[2], bool precision);
 void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode);
-void applyMouseInput(struct TransInfo *t,
-                     struct MouseInput *mi,
-                     const int mval[2],
-                     float output[3]);
+void applyMouseInput(TransInfo *t, MouseInput *mi, const int mval[2], float output[3]);
 void transform_input_update(TransInfo *t, const float fac);
 void transform_input_virtual_mval_reset(TransInfo *t);
 void transform_input_reset(TransInfo *t, const int mval[2]);
 
 void setCustomPoints(TransInfo *t, MouseInput *mi, const int start[2], const int end[2]);
 void setCustomPointsFromDirection(TransInfo *t, MouseInput *mi, const float dir[2]);
-void setInputPostFct(MouseInput *mi, void (*post)(struct TransInfo *t, float values[3]));
+void setInputPostFct(MouseInput *mi, void (*post)(TransInfo *t, float values[3]));
 
 /** \} */
 
@@ -777,10 +771,7 @@ void setInputPostFct(MouseInput *mi, void (*post)(struct TransInfo *t, float val
  *
  * \see #saveTransform does the reverse.
  */
-void initTransInfo(struct bContext *C,
-                   TransInfo *t,
-                   struct wmOperator *op,
-                   const struct wmEvent *event);
+void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *event);
 /**
  * Needed for mode switching.
  */
@@ -788,7 +779,7 @@ void freeTransCustomDataForMode(TransInfo *t);
 /**
  * Here I would suggest only #TransInfo related issues, like free data & reset vars. Not redraws.
  */
-void postTrans(struct bContext *C, TransInfo *t);
+void postTrans(bContext *C, TransInfo *t);
 /**
  * Free data before switching to another mode.
  */
@@ -831,7 +822,7 @@ void calculatePropRatio(TransInfo *t);
  */
 void transform_data_ext_rotate(TransData *td, float mat[3][3], bool use_drot);
 
-struct Object *transform_object_deform_pose_armature_get(const TransInfo *t, struct Object *ob);
+Object *transform_object_deform_pose_armature_get(const TransInfo *t, Object *ob);
 
 void freeCustomNormalArray(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data);
 

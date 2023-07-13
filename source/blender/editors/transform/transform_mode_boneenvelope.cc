@@ -79,7 +79,7 @@ static void applyBoneEnvelope(TransInfo *t, const int[2] /*mval*/)
   ED_area_status_text(t->area, str);
 }
 
-static void initBoneEnvelope(TransInfo *t, struct wmOperator * /*op*/)
+static void initBoneEnvelope(TransInfo *t, wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_SPRING);
 

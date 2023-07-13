@@ -976,7 +976,7 @@ void calculateCenterCursorGraph2D(TransInfo *t, float r_center[2])
     r_center[1] = sipo->cursorVal;
   }
   else {
-    r_center[0] = (float)(scene->r.cfra);
+    r_center[0] = float(scene->r.cfra);
     r_center[1] = sipo->cursorVal;
   }
 }
@@ -1020,7 +1020,7 @@ void calculateCenterMedian(TransInfo *t, float r_center[3])
     }
   }
   if (total) {
-    mul_v3_fl(partial, 1.0f / (float)total);
+    mul_v3_fl(partial, 1.0f / float(total));
   }
   copy_v3_v3(r_center, partial);
 }
@@ -1152,7 +1152,7 @@ static void calculateZfac(TransInfo *t)
     View2D *v2d = &t->region->v2d;
     /* Get zoom fac the same way as in
      * `ui_view2d_curRect_validate_resize` - better keep in sync! */
-    const float zoomx = (float)(BLI_rcti_size_x(&v2d->mask) + 1) / BLI_rctf_size_x(&v2d->cur);
+    const float zoomx = float(BLI_rcti_size_x(&v2d->mask) + 1) / BLI_rctf_size_x(&v2d->cur);
     t->zfac = 1.0f / zoomx;
   }
 }

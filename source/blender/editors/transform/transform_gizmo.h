@@ -38,16 +38,16 @@ struct wmMsgBus;
 
 #define GIZMO_AXIS_LINE_WIDTH 2.0f
 
-void gizmo_prepare_mat(const struct bContext *C,
+void gizmo_prepare_mat(const bContext *C,
                        struct RegionView3D *rv3d,
-                       const struct TransformBounds *tbounds);
-void gizmo_xform_message_subscribe(struct wmGizmoGroup *gzgroup,
-                                   struct wmMsgBus *mbus,
-                                   struct Scene *scene,
-                                   struct bScreen *screen,
-                                   struct ScrArea *area,
-                                   struct ARegion *region,
-                                   void (*type_fn)(struct wmGizmoGroupType *));
+                       const TransformBounds *tbounds);
+void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
+                                   wmMsgBus *mbus,
+                                   Scene *scene,
+                                   bScreen *screen,
+                                   ScrArea *area,
+                                   ARegion *region,
+                                   void (*type_fn)(wmGizmoGroupType *));
 
 /**
  * Set the #T_NO_GIZMO flag.

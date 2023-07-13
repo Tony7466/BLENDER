@@ -148,7 +148,7 @@ static void applyTimeSlide(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeSlide(TransInfo *t, struct wmOperator * /*op*/)
+static void initTimeSlide(TransInfo *t, wmOperator * /*op*/)
 {
   /* this tool is only really available in the Action Editor... */
   if (t->spacetype == SPACE_ACTION) {
@@ -196,8 +196,8 @@ static void initTimeSlide(TransInfo *t, struct wmOperator * /*op*/)
 
     if (min == max) {
       /* just use the current frame ranges */
-      min = (float)PSFRA;
-      max = (float)PEFRA;
+      min = float(PSFRA);
+      max = float(PEFRA);
     }
 
     range[0] = min;

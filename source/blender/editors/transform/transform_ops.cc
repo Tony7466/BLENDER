@@ -164,7 +164,7 @@ static int select_orientation_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   WM_msg_publish_rna_prop(mbus, &scene->id, scene, TransformOrientationSlot, type);
 
   return OPERATOR_FINISHED;
@@ -211,7 +211,7 @@ static int delete_orientation_exec(bContext *C, wmOperator * /*op*/)
 
   WM_event_add_notifier(C, NC_SCENE | NA_EDITED, scene);
 
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   WM_msg_publish_rna_prop(mbus, &scene->id, scene, Scene, transform_orientation_slots);
 
   return OPERATOR_FINISHED;
@@ -271,7 +271,7 @@ static int create_orientation_exec(bContext *C, wmOperator *op)
   }
 
   if (use) {
-    struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+    wmMsgBus *mbus = CTX_wm_message_bus(C);
     WM_msg_publish_rna_prop(mbus, &scene->id, scene, Scene, transform_orientation_slots);
     WM_event_add_notifier(C, NC_SCENE | NA_EDITED, scene);
   }
@@ -1444,7 +1444,7 @@ static void TRANSFORM_OT_from_gizmo(wmOperatorType *ot)
   ot->invoke = transform_from_gizmo_invoke;
 }
 
-void transform_operatortypes(void)
+void transform_operatortypes()
 {
   TransformModeItem *tmode;
 

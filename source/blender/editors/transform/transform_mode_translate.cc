@@ -470,8 +470,7 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
 
 static void applyTranslationValue(TransInfo *t, const float vec[3])
 {
-  struct TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(
-      t->custom.mode.data);
+  TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(t->custom.mode.data);
 
   enum eTranslateRotateMode rotate_mode = TRANSLATE_ROTATE_OFF;
 
@@ -704,7 +703,7 @@ static void initTranslation(TransInfo *t, wmOperator * /*op*/)
   transform_mode_default_modal_orientation_set(
       t, (t->options & CTX_CAMERA) ? V3D_ORIENT_VIEW : V3D_ORIENT_GLOBAL);
 
-  struct TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(
+  TranslateCustomData *custom_data = static_cast<TranslateCustomData *>(
       MEM_callocN(sizeof(*custom_data), __func__));
   custom_data->prev.rotate_mode = TRANSLATE_ROTATE_OFF;
   t->custom.mode.data = custom_data;

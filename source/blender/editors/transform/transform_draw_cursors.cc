@@ -90,8 +90,8 @@ void transform_draw_cursor_draw(bContext * /*C*/, int x, int y, void *customdata
   float cent[2];
   const float mval[3] = {float(x), float(y), 0.0f};
   float tmval[2] = {
-      (float)t->mval[0],
-      (float)t->mval[1],
+      float(t->mval[0]),
+      float(t->mval[1]),
   };
 
   projectFloatViewEx(t, t->center_global, cent, V3D_PROJ_TEST_CLIP_ZERO);

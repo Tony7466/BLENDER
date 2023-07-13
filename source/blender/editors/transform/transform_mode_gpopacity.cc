@@ -88,7 +88,7 @@ static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
   ED_area_status_text(t->area, str);
 }
 
-static void initGPOpacity(TransInfo *t, struct wmOperator * /*op*/)
+static void initGPOpacity(TransInfo *t, wmOperator * /*op*/)
 {
   t->mode = TFM_GPENCIL_OPACITY;
 

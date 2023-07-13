@@ -119,7 +119,7 @@ static void applyTimeTranslate(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeTranslate(TransInfo *t, struct wmOperator * /*op*/)
+static void initTimeTranslate(TransInfo *t, wmOperator * /*op*/)
 {
   /* this tool is only really available in the Action Editor... */
   if (!ELEM(t->spacetype, SPACE_ACTION, SPACE_SEQ)) {

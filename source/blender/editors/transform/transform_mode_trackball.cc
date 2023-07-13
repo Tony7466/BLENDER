@@ -186,7 +186,7 @@ static void applyTrackballMatrix(TransInfo *t, float mat_xform[4][4])
   mul_m4_m4m4(mat_xform, mat4, mat_xform);
 }
 
-static void initTrackball(TransInfo *t, struct wmOperator * /*op*/)
+static void initTrackball(TransInfo *t, wmOperator * /*op*/)
 {
   t->mode = TFM_TRACKBALL;
 

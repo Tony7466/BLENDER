@@ -45,14 +45,14 @@ struct TransDataObject {
    * Don't add these to transform data because we may want to include child objects
    * which aren't being transformed.
    */
-  struct XFormObjectData_Container *xds;
+  XFormObjectData_Container *xds;
 
   /**
    * Transform
    * - The key is object data #Object.
    * - The value is #XFormObjectSkipChild.
    */
-  struct XFormObjectSkipChild_Container *xcs;
+  XFormObjectSkipChild_Container *xcs;
 };
 
 static void freeTransObjectCustomData(TransInfo *t,
@@ -753,7 +753,7 @@ static void autokeyframe_object(
     ListBase dsources = {nullptr, nullptr};
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-        depsgraph, (float)scene->r.cfra);
+        depsgraph, float(scene->r.cfra));
     eInsertKeyFlags flag = eInsertKeyFlags(0);
 
     /* Get flags used for inserting keyframes. */

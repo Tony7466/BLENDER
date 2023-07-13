@@ -41,7 +41,7 @@ struct ToSphereInfo {
 /** Calculate average radius. */
 static void to_sphere_radius_update(TransInfo *t)
 {
-  struct ToSphereInfo *data = static_cast<ToSphereInfo *>(t->custom.mode.data);
+  ToSphereInfo *data = static_cast<ToSphereInfo *>(t->custom.mode.data);
   float radius = 0.0f;
   float vec[3];
 
@@ -89,7 +89,7 @@ static void to_sphere_radius_update(TransInfo *t)
         radius += len_v3(vec);
       }
     }
-    radius /= (float)t->data_len_all;
+    radius /= float(t->data_len_all);
   }
 
   data->prop_size_prev = t->prop_size;
@@ -118,7 +118,7 @@ static void transdata_elem_to_sphere(const TransInfo * /*t*/,
                                      const TransDataContainer *tc,
                                      TransData *td,
                                      const float ratio,
-                                     const struct ToSphereInfo *to_sphere_info,
+                                     const ToSphereInfo *to_sphere_info,
                                      const bool is_local_center,
                                      const bool is_data_space)
 {
@@ -202,8 +202,7 @@ static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
     SNPRINTF(str, TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
   }
 
-  const struct ToSphereInfo *to_sphere_info = static_cast<const ToSphereInfo *>(
-      t->custom.mode.data);
+  const ToSphereInfo *to_sphere_info = static_cast<const ToSphereInfo *>(t->custom.mode.data);
   if (to_sphere_info->prop_size_prev != t->prop_size) {
     to_sphere_radius_update(t);
   }
@@ -238,7 +237,7 @@ static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
   ED_area_status_text(t->area, str);
 }
 
-static void initToSphere(TransInfo *t, struct wmOperator * /*op*/)
+static void initToSphere(TransInfo *t, wmOperator * /*op*/)
 {
   t->mode = TFM_TOSPHERE;
 
@@ -255,7 +254,7 @@ static void initToSphere(TransInfo *t, struct wmOperator * /*op*/)
 
   t->num.val_flag[0] |= NUM_NULL_ONE | NUM_NO_NEGATIVE;
 
-  struct ToSphereInfo *data = static_cast<ToSphereInfo *>(MEM_callocN(sizeof(*data), __func__));
+  ToSphereInfo *data = static_cast<ToSphereInfo *>(MEM_callocN(sizeof(*data), __func__));
   t->custom.mode.data = data;
   t->custom.mode.use_free = true;
 

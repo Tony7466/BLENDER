@@ -467,7 +467,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
 
   /* which side of the current frame should be allowed */
   if (t->mode == TFM_TIME_EXTEND) {
-    t->frame_side = transform_convert_frame_side_dir_get(t, (float)scene->r.cfra);
+    t->frame_side = transform_convert_frame_side_dir_get(t, float(scene->r.cfra));
   }
   else {
     /* normal transform - both sides of current frame are considered */
@@ -488,10 +488,10 @@ static void createTransNlaData(bContext *C, TransInfo *t)
       /* transition strips can't get directly transformed */
       if (strip->type != NLASTRIP_TYPE_TRANSITION) {
         if (strip->flag & NLASTRIP_FLAG_SELECT) {
-          if (FrameOnMouseSide(t->frame_side, strip->start, (float)scene->r.cfra)) {
+          if (FrameOnMouseSide(t->frame_side, strip->start, float(scene->r.cfra))) {
             count++;
           }
-          if (FrameOnMouseSide(t->frame_side, strip->end, (float)scene->r.cfra)) {
+          if (FrameOnMouseSide(t->frame_side, strip->end, float(scene->r.cfra))) {
             count++;
           }
         }
@@ -556,7 +556,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
             tdn->trackIndex = BLI_findindex(&adt->nla_tracks, nlt);
             tdn->signed_track_index = tdn->trackIndex;
 
-            yval = (float)(tdn->trackIndex * NLACHANNEL_STEP(snla));
+            yval = float(tdn->trackIndex * NLACHANNEL_STEP(snla));
 
             tdn->h1[0] = strip->start;
             tdn->h1[1] = yval;
@@ -564,12 +564,12 @@ static void createTransNlaData(bContext *C, TransInfo *t)
             tdn->h2[1] = yval;
             tdn->h1[2] = tdn->h2[2] = strip->scale;
 
-            center[0] = (float)scene->r.cfra;
+            center[0] = float(scene->r.cfra);
             center[1] = yval;
             center[2] = 0.0f;
 
             /* set td's based on which handles are applicable */
-            if (FrameOnMouseSide(t->frame_side, strip->start, (float)scene->r.cfra)) {
+            if (FrameOnMouseSide(t->frame_side, strip->start, float(scene->r.cfra))) {
               /* just set tdn to assume that it only has one handle for now */
               tdn->handle = -1;
 
@@ -589,7 +589,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
               td->extra = tdn;
               td++;
             }
-            if (FrameOnMouseSide(t->frame_side, strip->end, (float)scene->r.cfra)) {
+            if (FrameOnMouseSide(t->frame_side, strip->end, float(scene->r.cfra))) {
               /* if tdn is already holding the start handle,
                * then we're doing both, otherwise, only end */
               tdn->handle = (tdn->handle) ? 2 : 1;
@@ -736,8 +736,8 @@ static void recalcData_nla(TransInfo *t)
       continue;
     }
 
-    delta_y1 = ((int)tdn->h1[1] / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
-    delta_y2 = ((int)tdn->h2[1] / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
+    delta_y1 = (int(tdn->h1[1]) / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
+    delta_y2 = (int(tdn->h2[1]) / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
 
     /* Move strip into track in the requested direction. */
     if (delta_y1 || delta_y2) {

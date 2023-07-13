@@ -167,7 +167,7 @@ static void applyPushPull(TransInfo *t, const int[2] /*mval*/)
   ED_area_status_text(t->area, str);
 }
 
-static void initPushPull(TransInfo *t, struct wmOperator * /*op*/)
+static void initPushPull(TransInfo *t, wmOperator * /*op*/)
 {
   t->mode = TFM_PUSHPULL;
 

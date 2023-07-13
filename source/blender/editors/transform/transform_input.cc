@@ -42,9 +42,9 @@ static void InputSpring(TransInfo * /*t*/, MouseInput *mi, const double mval[2],
   double dx, dy;
   float ratio;
 
-  dx = ((double)mi->center[0] - mval[0]);
-  dy = ((double)mi->center[1] - mval[1]);
-  ratio = hypot(dx, dy) / (double)mi->factor;
+  dx = double(mi->center[0]) - mval[0];
+  dy = double(mi->center[1]) - mval[1];
+  ratio = hypot(dx, dy) / double(mi->factor);
 
   output[0] = ratio;
 }
@@ -56,8 +56,8 @@ static void InputSpringFlip(TransInfo *t, MouseInput *mi, const double mval[2], 
 
   /* flip scale */
   /* values can become really big when zoomed in so use longs #26598. */
-  if (((int64_t)((int)mi->center[0] - mval[0]) * (int64_t)((int)mi->center[0] - mi->imval[0]) +
-       (int64_t)((int)mi->center[1] - mval[1]) * (int64_t)((int)mi->center[1] - mi->imval[1])) < 0)
+  if ((int64_t(int(mi->center[0]) - mval[0]) * int64_t(int(mi->center[0]) - mi->imval[0]) +
+       int64_t(int(mi->center[1]) - mval[1]) * int64_t(int(mi->center[1]) - mi->imval[1])) < 0)
   {
     output[0] *= -1.0f;
   }
@@ -76,8 +76,8 @@ static void InputTrackBall(TransInfo * /*t*/,
                            const double mval[2],
                            float output[3])
 {
-  output[0] = (float)(mi->imval[1] - mval[1]);
-  output[1] = (float)(mval[0] - mi->imval[0]);
+  output[0] = float(mi->imval[1] - mval[1]);
+  output[1] = float(mval[0] - mi->imval[0]);
 
   output[0] *= mi->factor;
   output[1] *= mi->factor;
@@ -154,7 +154,7 @@ static void InputCustomRatioFlip(TransInfo * /*t*/,
 
     distance = (length != 0.0) ? (mdx * dx + mdy * dy) / length : 0.0;
 
-    output[0] = (length != 0.0) ? (double)(distance / length) : 0.0;
+    output[0] = (length != 0.0) ? double(distance / length) : 0.0;
   }
 }
 
@@ -173,7 +173,7 @@ struct InputAngle_Data {
 /** Callback for #INPUT_ANGLE */
 static void InputAngle(TransInfo * /*t*/, MouseInput *mi, const double mval[2], float output[3])
 {
-  struct InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
+  InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
   float dir_prev[2], dir_curr[2], mi_center[2];
   copy_v2_v2(mi_center, mi->center);
 
@@ -188,7 +188,7 @@ static void InputAngle(TransInfo * /*t*/, MouseInput *mi, const double mval[2], 
       dphi = -dphi;
     }
 
-    data->angle += ((double)dphi) * (mi->precision ? (double)mi->precision_factor : 1.0);
+    data->angle += double(dphi) * (mi->precision ? double(mi->precision_factor) : 1.0);
 
     data->mval_prev[0] = mval[0];
     data->mval_prev[1] = mval[1];
@@ -236,10 +236,9 @@ void setCustomPoints(TransInfo * /*t*/,
 void setCustomPointsFromDirection(TransInfo *t, MouseInput *mi, const float dir[2])
 {
   BLI_ASSERT_UNIT_V2(dir);
-  const int win_axis = t->region ? ((abs((int)(t->region->winx * dir[0])) +
-                                     abs((int)(t->region->winy * dir[1]))) /
-                                    2) :
-                                   1;
+  const int win_axis =
+      t->region ? ((abs(int(t->region->winx * dir[0])) + abs(int(t->region->winy * dir[1]))) / 2) :
+                  1;
   const int mval_start[2] = {
       int(mi->imval[0] + dir[0] * win_axis),
       int(mi->imval[1] + dir[1] * win_axis),
@@ -268,7 +267,7 @@ void transform_input_reset(TransInfo *t, const int mval[2])
   }
 
   if (mi->data && ELEM(mi->apply, InputAngle, InputAngleSpring)) {
-    struct InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
+    InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
     data->mval_prev[0] = mi->imval[0];
     data->mval_prev[1] = mi->imval[1];
     data->angle = 0.0f;
@@ -291,7 +290,7 @@ void initMouseInput(
 
 static void calcSpringFactor(MouseInput *mi)
 {
-  float mdir[2] = {(float)(mi->center[1] - mi->imval[1]), (float)(mi->center[0] - mi->imval[0])};
+  float mdir[2] = {float(mi->center[1] - mi->imval[1]), float(mi->center[0] - mi->imval[0])};
 
   mi->factor = len_v2(mdir);
 
@@ -330,11 +329,11 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
       break;
     case INPUT_ANGLE:
     case INPUT_ANGLE_SPRING: {
-      struct InputAngle_Data *data;
+      InputAngle_Data *data;
       mi->use_virtual_mval = false;
       mi->precision_factor = 1.0f / 30.0f;
       data = static_cast<InputAngle_Data *>(
-          MEM_callocN(sizeof(struct InputAngle_Data), "angle accumulator"));
+          MEM_callocN(sizeof(InputAngle_Data), "angle accumulator"));
       data->mval_prev[0] = mi->imval[0];
       data->mval_prev[1] = mi->imval[1];
       mi->data = data;
@@ -438,8 +437,8 @@ void applyMouseInput(TransInfo *t, MouseInput *mi, const int mval[2], float outp
     mi->virtual_mval.prev[1] += mval_delta[1];
 
     if (mi->precision) {
-      mval_delta[0] *= (double)mi->precision_factor;
-      mval_delta[1] *= (double)mi->precision_factor;
+      mval_delta[0] *= double(mi->precision_factor);
+      mval_delta[1] *= double(mi->precision_factor);
     }
 
     mi->virtual_mval.accum[0] += mval_delta[0];
@@ -497,7 +496,7 @@ void transform_input_update(TransInfo *t, const float fac)
   if (ELEM(mi->apply, InputAngle, InputAngleSpring)) {
     float offset_center[2];
     sub_v2_v2v2(offset_center, mi->center, center_old);
-    struct InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
+    InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
     data->mval_prev[0] += offset_center[0];
     data->mval_prev[1] += offset_center[1];
   }
@@ -514,7 +513,7 @@ void transform_input_virtual_mval_reset(TransInfo *t)
 {
   MouseInput *mi = &t->mouse;
   if (ELEM(mi->apply, InputAngle, InputAngleSpring)) {
-    struct InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
+    InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
     data->angle = 0.0;
     data->mval_prev[0] = mi->imval[0];
     data->mval_prev[1] = mi->imval[1];

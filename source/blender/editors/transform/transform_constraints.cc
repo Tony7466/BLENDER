@@ -193,8 +193,8 @@ static void axisProjection(const TransInfo *t,
   viewAxisCorrectCenter(t, t_con_center);
 
   angle = fabsf(angle_v3v3(axis, t->viewinv[2]));
-  if (angle > (float)M_PI_2) {
-    angle = (float)M_PI - angle;
+  if (angle > float(M_PI_2)) {
+    angle = float(M_PI) - angle;
   }
 
   /* For when view is parallel to constraint... will cause NaNs otherwise
@@ -1092,8 +1092,8 @@ static void setNearestAxis3d(TransInfo *t)
   int i;
 
   /* calculate mouse movement */
-  mvec[0] = (float)(t->mval[0] - t->mouse.imval[0]);
-  mvec[1] = (float)(t->mval[1] - t->mouse.imval[1]);
+  mvec[0] = float(t->mval[0] - t->mouse.imval[0]);
+  mvec[1] = float(t->mval[1] - t->mouse.imval[1]);
   mvec[2] = 0.0f;
 
   /* We need to correct axis length for the current zoom-level of view,

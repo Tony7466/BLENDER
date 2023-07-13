@@ -13,17 +13,19 @@
 extern "C" {
 #endif
 
+struct BMVert;
 struct LinkNode;
 struct TransData;
 struct TransDataContainer;
 struct TransInfo;
 struct bContext;
 struct wmOperator;
+struct wmEvent;
 
-typedef struct TransModeInfo {
+struct TransModeInfo {
   int flags; /* eTFlag */
 
-  void (*init_fn)(TransInfo *, struct wmOperator *);
+  void (*init_fn)(TransInfo *, wmOperator *);
 
   /** Main transform mode function. */
   void (*transform_fn)(TransInfo *, const int[2]);
@@ -36,7 +38,7 @@ typedef struct TransModeInfo {
   void (*transform_matrix_fn)(TransInfo *, float[4][4]);
 
   /* Event handler function that determines whether the viewport needs to be redrawn. */
-  eRedrawFlag (*handle_event_fn)(TransInfo *, const struct wmEvent *);
+  enum eRedrawFlag (*handle_event_fn)(TransInfo *, const wmEvent *);
 
   /**
    * Get the transform distance between two points (used by Closest snap)
@@ -44,23 +46,23 @@ typedef struct TransModeInfo {
    * \note Return value can be anything,
    * where the smallest absolute value defines what's closest.
    */
-  float (*snap_distance_fn)(struct TransInfo *t, const float p1[3], const float p2[3]);
-  void (*snap_apply_fn)(struct TransInfo *, float *);
+  float (*snap_distance_fn)(TransInfo *t, const float p1[3], const float p2[3]);
+  void (*snap_apply_fn)(TransInfo *, float *);
 
   /** Custom drawing. */
-  void (*draw_fn)(struct TransInfo *);
-} TransModeInfo;
+  void (*draw_fn)(TransInfo *);
+};
 
 /* header of TransDataEdgeSlideVert, TransDataEdgeSlideEdge */
-typedef struct TransDataGenericSlideVert {
-  struct BMVert *v;
-  struct LinkNode **cd_loop_groups;
+struct TransDataGenericSlideVert {
+  BMVert *v;
+  LinkNode **cd_loop_groups;
   float co_orig_3d[3];
-} TransDataGenericSlideVert;
+};
 
 /* transform_mode.c */
 
-eTfmMode transform_mode_really_used(struct bContext *C, eTfmMode mode);
+eTfmMode transform_mode_really_used(bContext *C, eTfmMode mode);
 bool transdata_check_local_center(const TransInfo *t, short around);
 /**
  * Informs if the mode can be switched during modal.
@@ -95,7 +97,7 @@ void ElementResize(const TransInfo *t,
                    const TransDataContainer *tc,
                    TransData *td,
                    const float mat[3][3]);
-void transform_mode_init(TransInfo *t, struct wmOperator *op, int mode);
+void transform_mode_init(TransInfo *t, wmOperator *op, int mode);
 /**
  * When in modal and not set, initializes a default orientation for the mode.
  */
@@ -191,7 +193,7 @@ extern TransModeInfo TransMode_skinresize;
 /* transform_mode_snapsource.c */
 
 extern TransModeInfo TransMode_snapsource;
-void transform_mode_snap_source_init(TransInfo *t, struct wmOperator *op);
+void transform_mode_snap_source_init(TransInfo *t, wmOperator *op);
 
 /* transform_mode_tilt.c */
 

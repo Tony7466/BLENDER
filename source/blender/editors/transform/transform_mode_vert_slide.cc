@@ -46,7 +46,7 @@
 struct TransDataVertSlideVert {
   /** #TransDataGenericSlideVert (header) */
   BMVert *v;
-  struct LinkNode **cd_loop_groups;
+  LinkNode **cd_loop_groups;
   float co_orig_3d[3];
   /* end generic */
 

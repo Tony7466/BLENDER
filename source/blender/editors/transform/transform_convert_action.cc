@@ -90,7 +90,7 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
 
   /* only include points that occur on the right side of cfra */
   for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
-    if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
+    if (FrameOnMouseSide(side, float(gpf->framenum), cfra)) {
       if (gpf->flag & GP_FRAME_SELECT) {
         count++;
       }
@@ -119,7 +119,7 @@ static int count_masklayer_frames(MaskLayer *masklay, char side, float cfra, boo
        masklayer_shape;
        masklayer_shape = masklayer_shape->next)
   {
-    if (FrameOnMouseSide(side, (float)masklayer_shape->frame, cfra)) {
+    if (FrameOnMouseSide(side, float(masklayer_shape->frame), cfra)) {
       if (masklayer_shape->flag & MASK_SHAPE_SELECT) {
         count++;
       }
@@ -237,8 +237,8 @@ static int GPLayerToTransData(TransData *td,
   for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
     const bool is_selected = (gpf->flag & GP_FRAME_SELECT) != 0;
     if (is_prop_edit || is_selected) {
-      if (FrameOnMouseSide(side, (float)gpf->framenum, cfra)) {
-        tfd->val = (float)gpf->framenum;
+      if (FrameOnMouseSide(side, float(gpf->framenum), cfra)) {
+        tfd->val = float(gpf->framenum);
         tfd->sdata = &gpf->framenum;
 
         td->val = td->loc = &tfd->val;
@@ -279,8 +279,8 @@ static int MaskLayerToTransData(TransData *td,
        masklay_shape = masklay_shape->next)
   {
     if (is_prop_edit || (masklay_shape->flag & MASK_SHAPE_SELECT)) {
-      if (FrameOnMouseSide(side, (float)masklay_shape->frame, cfra)) {
-        tfd->val = (float)masklay_shape->frame;
+      if (FrameOnMouseSide(side, float(masklay_shape->frame), cfra)) {
+        tfd->val = float(masklay_shape->frame);
         tfd->sdata = &masklay_shape->frame;
 
         td->val = td->loc = &tfd->val;
@@ -338,7 +338,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
   /* which side of the current frame should be allowed */
   if (t->mode == TFM_TIME_EXTEND) {
-    t->frame_side = transform_convert_frame_side_dir_get(t, (float)scene->r.cfra);
+    t->frame_side = transform_convert_frame_side_dir_get(t, float(scene->r.cfra));
   }
   else {
     /* normal transform - both sides of current frame are considered */
@@ -353,10 +353,10 @@ static void createTransActionData(bContext *C, TransInfo *t)
      * higher scaling ratios, but is faster than converting all points)
      */
     if (adt) {
-      cfra = BKE_nla_tweakedit_remap(adt, (float)scene->r.cfra, NLATIME_CONVERT_UNMAP);
+      cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
     }
     else {
-      cfra = (float)scene->r.cfra;
+      cfra = float(scene->r.cfra);
     }
 
     if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
@@ -417,7 +417,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
       continue;
     }
 
-    cfra = (float)scene->r.cfra;
+    cfra = float(scene->r.cfra);
 
     {
       AnimData *adt;
@@ -465,10 +465,10 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
       adt = ANIM_nla_mapping_get(&ac, ale);
       if (adt) {
-        cfra = BKE_nla_tweakedit_remap(adt, (float)scene->r.cfra, NLATIME_CONVERT_UNMAP);
+        cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
       }
       else {
-        cfra = (float)scene->r.cfra;
+        cfra = float(scene->r.cfra);
       }
 
       if (ale->type == ANIMTYPE_GPLAYER) {
@@ -485,7 +485,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
             for (gpf_iter = static_cast<bGPDframe *>(gpl->frames.first); gpf_iter;
                  gpf_iter = gpf_iter->next) {
               if (gpf_iter->flag & GP_FRAME_SELECT) {
-                if (FrameOnMouseSide(t->frame_side, (float)gpf_iter->framenum, cfra)) {
+                if (FrameOnMouseSide(t->frame_side, float(gpf_iter->framenum), cfra)) {
                   int val = abs(gpf->framenum - gpf_iter->framenum);
                   if (val < min) {
                     min = val;
@@ -506,7 +506,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
              masklay_shape;
              masklay_shape = masklay_shape->next)
         {
-          if (FrameOnMouseSide(t->frame_side, (float)masklay_shape->frame, cfra)) {
+          if (FrameOnMouseSide(t->frame_side, float(masklay_shape->frame), cfra)) {
             if (masklay_shape->flag & MASK_SHAPE_SELECT) {
               td->dist = td->rdist = 0.0f;
             }
@@ -518,7 +518,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
                    masklay_iter = masklay_iter->next)
               {
                 if (masklay_iter->flag & MASK_SHAPE_SELECT) {
-                  if (FrameOnMouseSide(t->frame_side, (float)masklay_iter->frame, cfra)) {
+                  if (FrameOnMouseSide(t->frame_side, float(masklay_iter->frame), cfra)) {
                     int val = abs(masklay_shape->frame - masklay_iter->frame);
                     if (val < min) {
                       min = val;
@@ -548,7 +548,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
               float min = FLT_MAX;
               for (j = 0, bezt_iter = fcu->bezt; j < fcu->totvert; j++, bezt_iter++) {
                 if (bezt_iter->f2 & SELECT) {
-                  if (FrameOnMouseSide(t->frame_side, (float)bezt_iter->vec[1][0], cfra)) {
+                  if (FrameOnMouseSide(t->frame_side, float(bezt_iter->vec[1][0]), cfra)) {
                     float val = fabs(bezt->vec[1][0] - bezt_iter->vec[1][0]);
                     if (val < min) {
                       min = val;

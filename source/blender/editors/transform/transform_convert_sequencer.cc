@@ -490,7 +490,7 @@ static void createTransSeqData(bContext * /*C*/, TransInfo *t)
   }
 
   tc->custom.type.free_cb = freeSeqData;
-  t->frame_side = transform_convert_frame_side_dir_get(t, (float)scene->r.cfra);
+  t->frame_side = transform_convert_frame_side_dir_get(t, float(scene->r.cfra));
 
   count = SeqTransCount(t, ed->seqbasep);
 

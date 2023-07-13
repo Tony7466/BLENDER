@@ -825,7 +825,7 @@ static void init_TransDataContainers(TransInfo *t,
 
     bool free_objects = false;
     if (objects == nullptr) {
-      struct ObjectsInModeParams params = {0};
+      ObjectsInModeParams params = {0};
       params.object_mode = object_mode;
       /* Pose transform operates on `ob->pose` so don't skip duplicate object-data. */
       params.no_dup_data = (object_mode & OB_MODE_POSE) == 0;

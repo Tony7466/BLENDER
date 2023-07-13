@@ -43,13 +43,13 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
 #if 0
   if (t->mouse.precision) {
     /* calculate ratio for shiftkey pos, and for total, and blend these for precision */
-    time = (float)(t->center2d[0] - t->mouse.precision_mval[0]) * fac;
-    time += 0.1f * ((float)(t->center2d[0] * fac - mval[0]) - time);
+    time = float(t->center2d[0] - t->mouse.precision_mval[0]) * fac;
+    time += 0.1f * (float(t->center2d[0] * fac - mval[0]) - time);
   }
   else
 #endif
   {
-    time = (float)(t->center2d[0] - mval[0]) * fac;
+    time = float(t->center2d[0] - mval[0]) * fac;
   }
 
   transform_snap_increment(t, &time);
@@ -103,7 +103,7 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initBakeTime(TransInfo *t, struct wmOperator * /*op*/)
+static void initBakeTime(TransInfo *t, wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 

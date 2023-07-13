@@ -39,20 +39,18 @@ struct RotateMatrixCache {
   float mat[3][3];
 };
 
-static void rmat_cache_init(struct RotateMatrixCache *rmc, const float angle, const float axis[3])
+static void rmat_cache_init(RotateMatrixCache *rmc, const float angle, const float axis[3])
 {
   axis_angle_normalized_to_mat3(rmc->mat, axis, angle);
   rmc->do_update_matrix = 0;
 }
 
-static void rmat_cache_reset(struct RotateMatrixCache *rmc)
+static void rmat_cache_reset(RotateMatrixCache *rmc)
 {
   rmc->do_update_matrix = 2;
 }
 
-static void rmat_cache_update(struct RotateMatrixCache *rmc,
-                              const float axis[3],
-                              const float angle)
+static void rmat_cache_update(RotateMatrixCache *rmc, const float axis[3], const float angle)
 {
   if (rmc->do_update_matrix > 0) {
     axis_angle_normalized_to_mat3(rmc->mat, axis, angle);
@@ -79,7 +77,7 @@ struct TransDataArgs_Rotate {
 };
 
 struct TransDataArgs_RotateTLS {
-  struct RotateMatrixCache rmc;
+  RotateMatrixCache rmc;
 };
 
 static void transdata_elem_rotate(const TransInfo *t,
@@ -89,7 +87,7 @@ static void transdata_elem_rotate(const TransInfo *t,
                                   const float angle,
                                   const float angle_step,
                                   const bool is_large_rotation,
-                                  struct RotateMatrixCache *rmc)
+                                  RotateMatrixCache *rmc)
 {
   float axis_buffer[3];
   const float *axis_final = axis;
@@ -190,11 +188,11 @@ static float RotationBetween(TransInfo *t, const float p1[3], const float p2[3])
     angle = atan2f(start[1], start[0]) - atan2f(end[1], end[0]);
   }
 
-  if (angle > (float)M_PI) {
-    angle = angle - 2 * (float)M_PI;
+  if (angle > float(M_PI)) {
+    angle = angle - 2 * float(M_PI);
   }
-  else if (angle < -((float)M_PI)) {
-    angle = 2.0f * (float)M_PI + angle;
+  else if (angle < -(float(M_PI))) {
+    angle = 2.0f * float(M_PI) + angle;
   }
 
   return angle;
@@ -237,7 +235,7 @@ static void applyRotationValue(TransInfo *t,
     angle = large_rotation_limit(angle);
   }
 
-  struct RotateMatrixCache rmc = {0};
+  RotateMatrixCache rmc = {0};
   rmat_cache_init(&rmc, angle, axis);
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {

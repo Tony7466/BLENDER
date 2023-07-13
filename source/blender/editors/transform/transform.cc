@@ -175,7 +175,7 @@ void convertViewVec(TransInfo *t, float r_vec[3], double dx, double dy)
       r_vec[1] = dy;
     }
     else {
-      const float xy_delta[2] = {(float)dx, (float)dy};
+      const float xy_delta[2] = {float(dx), float(dy)};
       ED_view3d_win_to_delta(t->region, xy_delta, t->zfac, r_vec);
     }
   }
@@ -911,7 +911,7 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
       short orient_index = 1;
       if (t->orient_curr == O_DEFAULT || ELEM(constraint_curr, -1, constraint_new)) {
         /* Successive presses on existing axis, cycle orientation modes. */
-        orient_index = (short)((t->orient_curr + 1) % (int)ARRAY_SIZE(t->orient));
+        orient_index = short((t->orient_curr + 1) % int(ARRAY_SIZE(t->orient)));
       }
 
       transform_orientations_current_set(t, orient_index);
@@ -933,7 +933,7 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
     short orient_index = 1;
     if (t->orient_curr == O_DEFAULT || ELEM(constraint_curr, -1, constraint_new)) {
       /* Successive presses on existing axis, cycle orientation modes. */
-      orient_index = (short)((t->orient_curr + 1) % (int)ARRAY_SIZE(t->orient));
+      orient_index = short((t->orient_curr + 1) % int(ARRAY_SIZE(t->orient)));
     }
 
     transform_orientations_current_set(t, orient_index);
@@ -1503,7 +1503,7 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, ARegion *region)
   BLF_width_and_height(
       font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-  xco = (rect->xmax - U.widget_unit) - (int)printable_size[0];
+  xco = (rect->xmax - U.widget_unit) - int(printable_size[0]);
   yco = (rect->ymax - U.widget_unit);
 
   /* warning text (to clarify meaning of overlays)
@@ -1518,7 +1518,7 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, ARegion *region)
   GPU_blend(GPU_BLEND_ALPHA);
 
   xco -= U.widget_unit;
-  yco -= (int)printable_size[1] / 2;
+  yco -= int(printable_size[1]) / 2;
 
   UI_icon_draw(xco, yco, ICON_REC);
 

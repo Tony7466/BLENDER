@@ -43,7 +43,7 @@ static void tc_mesh_customdata_free_fn(TransInfo *t,
                                        TransCustomData *custom_data);
 
 struct TransCustomDataLayer;
-static void tc_mesh_customdatacorrect_free(struct TransCustomDataLayer *tcld);
+static void tc_mesh_customdatacorrect_free(TransCustomDataLayer *tcld);
 
 struct TransCustomData_PartialUpdate {
   BMPartialUpdate *cache;
@@ -82,19 +82,19 @@ enum ePartialType {
  * use for comparison with previous updates.
  */
 struct PartialTypeState {
-  enum ePartialType for_looptri;
-  enum ePartialType for_normals;
+  ePartialType for_looptri;
+  ePartialType for_normals;
 };
 
 struct TransCustomDataMesh {
-  struct TransCustomDataLayer *cd_layer_correct;
-  struct TransCustomData_PartialUpdate partial_update[PARTIAL_TYPE_MAX];
-  struct PartialTypeState partial_update_state_prev;
+  TransCustomDataLayer *cd_layer_correct;
+  TransCustomData_PartialUpdate partial_update[PARTIAL_TYPE_MAX];
+  PartialTypeState partial_update_state_prev;
 };
 
-static struct TransCustomDataMesh *tc_mesh_customdata_ensure(TransDataContainer *tc)
+static TransCustomDataMesh *tc_mesh_customdata_ensure(TransDataContainer *tc)
 {
-  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+  TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
   BLI_assert(tc->custom.type.data == nullptr ||
              tc->custom.type.free_cb == tc_mesh_customdata_free_fn);
   if (tc->custom.type.data == nullptr) {
@@ -107,7 +107,7 @@ static struct TransCustomDataMesh *tc_mesh_customdata_ensure(TransDataContainer 
   return tcmd;
 }
 
-static void tc_mesh_customdata_free(struct TransCustomDataMesh *tcmd)
+static void tc_mesh_customdata_free(TransCustomDataMesh *tcmd)
 {
   if (tcmd->cd_layer_correct != nullptr) {
     tc_mesh_customdatacorrect_free(tcmd->cd_layer_correct);
@@ -126,7 +126,7 @@ static void tc_mesh_customdata_free_fn(TransInfo * /*t*/,
                                        TransDataContainer * /*tc*/,
                                        TransCustomData *custom_data)
 {
-  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(custom_data->data);
+  TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(custom_data->data);
   tc_mesh_customdata_free(tcmd);
   custom_data->data = nullptr;
 }
@@ -156,7 +156,7 @@ struct TransCustomDataLayer {
   struct {
     /** map {BMVert: TransDataBasic} */
     GHash *origverts;
-    struct TransCustomDataMergeGroup *data;
+    TransCustomDataMergeGroup *data;
     int data_len;
     /** Array size of 'layer_math_map_len'
      * maps #TransCustomDataLayerVert.cd_group index to absolute #CustomData layer index */
@@ -207,7 +207,7 @@ static BMFace *tc_mesh_customdatacorrect_find_best_face_substitute(BMFace *f)
   return best_face;
 }
 
-static void tc_mesh_customdatacorrect_face_substitute_set(struct TransCustomDataLayer *tcld,
+static void tc_mesh_customdatacorrect_face_substitute_set(TransCustomDataLayer *tcld,
                                                           BMFace *f,
                                                           BMFace *f_copy)
 {
@@ -242,7 +242,7 @@ static BMFace *tc_mesh_customdatacorrect_face_substitute_get(BMFace *f_copy)
 
 #endif /* USE_FACE_SUBSTITUTE */
 
-static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcld,
+static void tc_mesh_customdatacorrect_init_vert(TransCustomDataLayer *tcld,
                                                 TransDataBasic *td,
                                                 const int index)
 {
@@ -288,7 +288,7 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
 
   if (tcld->use_merge_group) {
     /* Store cd_loop_groups. */
-    struct TransCustomDataMergeGroup *merge_data = &tcld->merge_group.data[index];
+    TransCustomDataMergeGroup *merge_data = &tcld->merge_group.data[index];
     if (l_num != 0) {
       merge_data->cd_loop_groups = static_cast<LinkNode **>(BLI_memarena_alloc(
           tcld->arena, tcld->merge_group.customdatalayer_map_len * sizeof(void *)));
@@ -307,7 +307,7 @@ static void tc_mesh_customdatacorrect_init_vert(struct TransCustomDataLayer *tcl
 }
 
 static void tc_mesh_customdatacorrect_init_container_generic(TransDataContainer * /*tc*/,
-                                                             struct TransCustomDataLayer *tcld)
+                                                             TransCustomDataLayer *tcld)
 {
   BMesh *bm = tcld->bm;
 
@@ -327,7 +327,7 @@ static void tc_mesh_customdatacorrect_init_container_generic(TransDataContainer 
 }
 
 static void tc_mesh_customdatacorrect_init_container_merge_group(TransDataContainer *tc,
-                                                                 struct TransCustomDataLayer *tcld)
+                                                                 TransCustomDataLayer *tcld)
 {
   BMesh *bm = tcld->bm;
   BLI_assert(CustomData_has_math(&bm->ldata));
@@ -354,8 +354,8 @@ static void tc_mesh_customdatacorrect_init_container_merge_group(TransDataContai
       tcld->arena, tcld->merge_group.data_len * sizeof(*tcld->merge_group.data)));
 }
 
-static struct TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(
-    TransDataContainer *tc, const bool use_merge_group)
+static TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(TransDataContainer *tc,
+                                                                   const bool use_merge_group)
 {
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   BMesh *bm = em->bm;
@@ -371,7 +371,7 @@ static struct TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(
     return nullptr;
   }
 
-  struct TransCustomDataLayer *tcld = static_cast<TransCustomDataLayer *>(
+  TransCustomDataLayer *tcld = static_cast<TransCustomDataLayer *>(
       MEM_callocN(sizeof(*tcld), __func__));
   tcld->bm = bm;
   tcld->arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
@@ -406,19 +406,19 @@ static struct TransCustomDataLayer *tc_mesh_customdatacorrect_create_impl(
 
 static void tc_mesh_customdatacorrect_create(TransDataContainer *tc, const bool use_merge_group)
 {
-  struct TransCustomDataLayer *customdatacorrect;
+  TransCustomDataLayer *customdatacorrect;
   customdatacorrect = tc_mesh_customdatacorrect_create_impl(tc, use_merge_group);
 
   if (!customdatacorrect) {
     return;
   }
 
-  struct TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
+  TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
   BLI_assert(tcmd->cd_layer_correct == nullptr);
   tcmd->cd_layer_correct = customdatacorrect;
 }
 
-static void tc_mesh_customdatacorrect_free(struct TransCustomDataLayer *tcld)
+static void tc_mesh_customdatacorrect_free(TransCustomDataLayer *tcld)
 {
   bmesh_edit_end(tcld->bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
 
@@ -477,7 +477,7 @@ void transform_convert_mesh_customdatacorrect_init(TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     if (tc->custom.type.data != nullptr) {
-      struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+      TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
       if (tcmd && tcmd->cd_layer_correct) {
         tc_mesh_customdatacorrect_free(tcmd->cd_layer_correct);
         tcmd->cd_layer_correct = nullptr;
@@ -497,16 +497,16 @@ void transform_convert_mesh_customdatacorrect_init(TransInfo *t)
 /**
  * If we're sliding the vert, return its original location, if not, the current location is good.
  */
-static const float *tc_mesh_vert_orig_co_get(struct TransCustomDataLayer *tcld, BMVert *v)
+static const float *tc_mesh_vert_orig_co_get(TransCustomDataLayer *tcld, BMVert *v)
 {
   TransDataBasic *td = static_cast<TransDataBasic *>(
       BLI_ghash_lookup(tcld->merge_group.origverts, v));
   return td ? td->iloc : v->co;
 }
 
-static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tcld,
+static void tc_mesh_customdatacorrect_apply_vert(TransCustomDataLayer *tcld,
                                                  TransDataBasic *td,
-                                                 struct TransCustomDataMergeGroup *merge_data,
+                                                 TransCustomDataMergeGroup *merge_data,
                                                  bool do_loop_mdisps)
 {
   BMesh *bm = tcld->bm;
@@ -650,14 +650,14 @@ static void tc_mesh_customdatacorrect_apply_vert(struct TransCustomDataLayer *tc
 
 static void tc_mesh_customdatacorrect_apply(TransDataContainer *tc, bool is_final)
 {
-  struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
-  struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
+  TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+  TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
   if (tcld == nullptr) {
     return;
   }
   const bool use_merge_group = tcld->use_merge_group;
 
-  struct TransCustomDataMergeGroup *merge_data = tcld->merge_group.data;
+  TransCustomDataMergeGroup *merge_data = tcld->merge_group.data;
   TransData *tob = tc->data;
   for (int i = tc->data_len; i--; tob++) {
     tc_mesh_customdatacorrect_apply_vert(tcld, (TransDataBasic *)tob, merge_data, is_final);
@@ -686,8 +686,8 @@ static void tc_mesh_customdatacorrect_apply(TransDataContainer *tc, bool is_fina
 static void tc_mesh_customdatacorrect_restore(TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    struct TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
-    struct TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
+    TransCustomDataMesh *tcmd = static_cast<TransCustomDataMesh *>(tc->custom.type.data);
+    TransCustomDataLayer *tcld = tcmd ? tcmd->cd_layer_correct : nullptr;
     if (!tcld) {
       continue;
     }
@@ -723,9 +723,9 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
                                          const bool calc_single_islands,
                                          const bool calc_island_center,
                                          const bool calc_island_axismtx,
-                                         struct TransIslandData *r_island_data)
+                                         TransIslandData *r_island_data)
 {
-  struct TransIslandData data = {nullptr};
+  TransIslandData data = {nullptr};
 
   BMesh *bm = em->bm;
   char htype;
@@ -835,7 +835,7 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
       }
 
       if (data.center) {
-        mul_v3_v3fl(data.center[i], co, 1.0f / (float)fg_len);
+        mul_v3_v3fl(data.center[i], co, 1.0f / float(fg_len));
       }
 
       if (data.axismtx) {
@@ -906,7 +906,7 @@ void transform_convert_mesh_islands_calc(BMEditMesh *em,
   *r_island_data = data;
 }
 
-void transform_convert_mesh_islanddata_free(struct TransIslandData *island_data)
+void transform_convert_mesh_islanddata_free(TransIslandData *island_data)
 {
   if (island_data->center) {
     MEM_freeN(island_data->center);
@@ -1182,7 +1182,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
                                             const bool use_select,
                                             const bool use_topology,
                                             const bool mirror_axis[3],
-                                            struct TransMirrorData *r_mirror_data)
+                                            TransMirrorData *r_mirror_data)
 {
   MirrorDataVert *vert_map;
 
@@ -1296,7 +1296,7 @@ void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
   r_mirror_data->mirror_elem_len = mirror_elem_len;
 }
 
-void transform_convert_mesh_mirrordata_free(struct TransMirrorData *mirror_data)
+void transform_convert_mesh_mirrordata_free(TransMirrorData *mirror_data)
 {
   if (mirror_data->vert_map) {
     MEM_freeN(mirror_data->vert_map);
@@ -1312,7 +1312,7 @@ void transform_convert_mesh_mirrordata_free(struct TransMirrorData *mirror_data)
 void transform_convert_mesh_crazyspace_detect(TransInfo *t,
                                               TransDataContainer *tc,
                                               BMEditMesh *em,
-                                              struct TransMeshDataCrazySpace *r_crazyspace_data)
+                                              TransMeshDataCrazySpace *r_crazyspace_data)
 {
   float(*quats)[4] = nullptr;
   float(*defmats)[3][3] = nullptr;
@@ -1397,7 +1397,7 @@ void transform_convert_mesh_crazyspace_transdata_set(const float mtx[3][3],
   }
 }
 
-void transform_convert_mesh_crazyspace_free(struct TransMeshDataCrazySpace *r_crazyspace_data)
+void transform_convert_mesh_crazyspace_free(TransMeshDataCrazySpace *r_crazyspace_data)
 {
   if (r_crazyspace_data->quats) {
     MEM_freeN(r_crazyspace_data->quats);
@@ -1413,7 +1413,7 @@ void transform_convert_mesh_crazyspace_free(struct TransMeshDataCrazySpace *r_cr
 /** \name Edit Mesh Verts Transform Creation
  * \{ */
 
-static void tc_mesh_transdata_center_copy(const struct TransIslandData *island_data,
+static void tc_mesh_transdata_center_copy(const TransIslandData *island_data,
                                           const int island_index,
                                           const float iloc[3],
                                           float r_center[3])
@@ -1432,7 +1432,7 @@ static void VertsToTransData(TransInfo *t,
                              TransDataExtension *tx,
                              BMEditMesh *em,
                              BMVert *eve,
-                             const struct TransIslandData *island_data,
+                             const TransIslandData *island_data,
                              const int island_index)
 {
   float *no, _no[3];
@@ -1491,9 +1491,9 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
     int a;
     const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
 
-    struct TransIslandData island_data = {nullptr};
-    struct TransMirrorData mirror_data = {nullptr};
-    struct TransMeshDataCrazySpace crazyspace_data = {nullptr};
+    TransIslandData island_data = {nullptr};
+    TransMirrorData mirror_data = {nullptr};
+    TransMeshDataCrazySpace crazyspace_data = {nullptr};
 
     /**
      * Quick check if we can transform.
@@ -1712,9 +1712,9 @@ static BMPartialUpdate *tc_mesh_partial_ensure(TransInfo *t,
                                                TransDataContainer *tc,
                                                enum ePartialType partial_type)
 {
-  struct TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
+  TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
 
-  struct TransCustomData_PartialUpdate *pupdate = &tcmd->partial_update[partial_type];
+  TransCustomData_PartialUpdate *pupdate = &tcmd->partial_update[partial_type];
 
   if (pupdate->cache) {
 
@@ -1892,7 +1892,7 @@ static BMPartialUpdate *tc_mesh_partial_ensure(TransInfo *t,
   return pupdate->cache;
 }
 
-static void tc_mesh_partial_types_calc(TransInfo *t, struct PartialTypeState *r_partial_state)
+static void tc_mesh_partial_types_calc(TransInfo *t, PartialTypeState *r_partial_state)
 {
   /* Calculate the kind of partial updates which can be performed. */
   enum ePartialType partial_for_normals = PARTIAL_NONE;
@@ -1952,13 +1952,13 @@ static void tc_mesh_partial_types_calc(TransInfo *t, struct PartialTypeState *r_
 
 static void tc_mesh_partial_update(TransInfo *t,
                                    TransDataContainer *tc,
-                                   const struct PartialTypeState *partial_state)
+                                   const PartialTypeState *partial_state)
 {
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
 
-  struct TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
+  TransCustomDataMesh *tcmd = tc_mesh_customdata_ensure(tc);
 
-  const struct PartialTypeState *partial_state_prev = &tcmd->partial_update_state_prev;
+  const PartialTypeState *partial_state_prev = &tcmd->partial_update_state_prev;
 
   /* Promote the partial update types based on the previous state
    * so the values that no longer modified are reset before being left as-is.
@@ -2068,7 +2068,7 @@ static void recalcData_mesh(TransInfo *t)
     tc_mesh_customdatacorrect_restore(t);
   }
 
-  struct PartialTypeState partial_state;
+  PartialTypeState partial_state;
   tc_mesh_partial_types_calc(t, &partial_state);
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {

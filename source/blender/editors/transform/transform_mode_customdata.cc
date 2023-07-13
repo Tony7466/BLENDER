@@ -160,19 +160,19 @@ static void init_mode_impl(TransInfo *t)
   t->num.unit_type[0] = B_UNIT_NONE;
 }
 
-static void initEgdeCrease(TransInfo *t, struct wmOperator * /*op*/)
+static void initEgdeCrease(TransInfo *t, wmOperator * /*op*/)
 {
   init_mode_impl(t);
   t->mode = TFM_EDGE_CREASE;
 }
 
-static void initVertCrease(TransInfo *t, struct wmOperator * /*op*/)
+static void initVertCrease(TransInfo *t, wmOperator * /*op*/)
 {
   init_mode_impl(t);
   t->mode = TFM_VERT_CREASE;
 }
 
-static void initBevelWeight(TransInfo *t, struct wmOperator * /*op*/)
+static void initBevelWeight(TransInfo *t, wmOperator * /*op*/)
 {
   init_mode_impl(t);
   t->mode = TFM_BWEIGHT;

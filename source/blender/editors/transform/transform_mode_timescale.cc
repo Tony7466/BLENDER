@@ -94,7 +94,7 @@ static void applyTimeScale(TransInfo *t, const int[2] /*mval*/)
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeScale(TransInfo *t, struct wmOperator * /*op*/)
+static void initTimeScale(TransInfo *t, wmOperator * /*op*/)
 {
   float center[2];
 

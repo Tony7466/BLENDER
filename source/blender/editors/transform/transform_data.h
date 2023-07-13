@@ -28,18 +28,18 @@ struct bConstraint;
   /** Various flags. */ \
   int flag
 
-typedef struct TransDataBasic {
+struct TransDataBasic {
   TRANSDATABASIC;
-} TransDataBasic;
+};
 
-typedef struct TransDataMirror {
+struct TransDataMirror {
   TRANSDATABASIC;
   // int pad;
   /** Location of the data to transform. */
   float *loc_src;
-} TransDataMirror;
+};
 
-typedef struct TransDataExtension {
+struct TransDataExtension {
   /** Initial object drot. */
   float drot[3];
 #if 0 /* TODO: not yet implemented */
@@ -89,9 +89,9 @@ typedef struct TransDataExtension {
   int rotOrder;
   /** Original object transformation used for rigid bodies. */
   float oloc[3], orot[3], oquat[4], orotAxis[3], orotAngle;
-} TransDataExtension;
+};
 
-typedef struct TransData2D {
+struct TransData2D {
   /** Location of data used to transform (x,y,0). */
   float loc[3];
   /** Pointer to real 2d location of data. */
@@ -100,18 +100,18 @@ typedef struct TransData2D {
   /** Pointer to handle locations, if handles aren't being moved independently. */
   float *h1, *h2;
   float ih1[2], ih2[2];
-} TransData2D;
+};
 
 /**
  * Used to store 2 handles for each #TransData in case the other handle wasn't selected.
  * Also to unset temporary flags.
  */
-typedef struct TransDataCurveHandleFlags {
+struct TransDataCurveHandleFlags {
   uint8_t ih1, ih2;
   uint8_t *h1, *h2;
-} TransDataCurveHandleFlags;
+};
 
-typedef struct TransData {
+struct TransData {
   TRANSDATABASIC;
   /** Distance needed to affect element (for Proportional Editing). */
   float dist;
@@ -134,7 +134,7 @@ typedef struct TransData {
   TransDataCurveHandleFlags *hdata;
   /** If set, copy of Object or #bPoseChannel protection. */
   short protectflag;
-} TransData;
+};
 
 #define TRANSDATA_THREAD_LIMIT 1024
 

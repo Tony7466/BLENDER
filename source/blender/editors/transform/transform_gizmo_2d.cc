@@ -103,7 +103,7 @@ static bool gizmo2d_generic_poll(const bContext *C, wmGizmoGroupType *gzgt)
 }
 
 static void gizmo2d_pivot_point_message_subscribe(wmGizmoGroup *gzgroup,
-                                                  struct wmMsgBus *mbus, /* Additional args. */
+                                                  wmMsgBus *mbus, /* Additional args. */
                                                   bScreen *screen,
                                                   ScrArea *area,
                                                   ARegion *region)
@@ -751,7 +751,7 @@ static void gizmo2d_xform_setup_no_cage(const bContext *C, wmGizmoGroup *gzgroup
 
 static void gizmo2d_xform_no_cage_message_subscribe(const bContext *C,
                                                     wmGizmoGroup *gzgroup,
-                                                    struct wmMsgBus *mbus)
+                                                    wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
   ScrArea *area = CTX_wm_area(C);
@@ -912,7 +912,7 @@ static void gizmo2d_resize_invoke_prepare(const bContext *C,
 
 static void gizmo2d_resize_message_subscribe(const bContext *C,
                                              wmGizmoGroup *gzgroup,
-                                             struct wmMsgBus *mbus)
+                                             wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
   ScrArea *area = CTX_wm_area(C);
@@ -1024,7 +1024,7 @@ static void gizmo2d_rotate_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 
 static void gizmo2d_rotate_message_subscribe(const bContext *C,
                                              wmGizmoGroup *gzgroup,
-                                             struct wmMsgBus *mbus)
+                                             wmMsgBus *mbus)
 {
   bScreen *screen = CTX_wm_screen(C);
   ScrArea *area = CTX_wm_area(C);

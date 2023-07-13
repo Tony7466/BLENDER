@@ -50,7 +50,7 @@
 struct TransDataEdgeSlideVert {
   /** #TransDataGenericSlideVert (header) */
   BMVert *v;
-  struct LinkNode **cd_loop_groups;
+  LinkNode **cd_loop_groups;
   float v_co_orig[3];
   /* end generic */
 
@@ -222,7 +222,7 @@ static BMLoop *get_next_loop(
 
     if (l->e == e_next) {
       if (i) {
-        normalize_v3_length(vec_accum, vec_accum_len / (float)i);
+        normalize_v3_length(vec_accum, vec_accum_len / float(i));
       }
       else {
         /* When there is no edge to slide along,
@@ -278,7 +278,7 @@ static BMLoop *get_next_loop(
 
     if (BM_loop_other_edge_loop(l, v)->e == e_next) {
       if (i) {
-        normalize_v3_length(vec_accum, vec_accum_len / (float)i);
+        normalize_v3_length(vec_accum, vec_accum_len / float(i));
       }
 
       copy_v3_v3(r_slide_vec, vec_accum);
@@ -288,7 +288,7 @@ static BMLoop *get_next_loop(
   } while ((l != l->radial_next) && ((l = l->radial_next) != l_first));
 
   if (i) {
-    normalize_v3_length(vec_accum, vec_accum_len / (float)i);
+    normalize_v3_length(vec_accum, vec_accum_len / float(i));
   }
 
   copy_v3_v3(r_slide_vec, vec_accum);
@@ -536,7 +536,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
   EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
-  const float mval[2] = {(float)t->mval[0], (float)t->mval[1]};
+  const float mval[2] = {float(t->mval[0]), float(t->mval[1])};
   int numsel, i, loop_nr;
   bool use_occlude_geometry = false;
   View3D *v3d = nullptr;
@@ -901,7 +901,7 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
   EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
-  const float mval[2] = {(float)t->mval[0], (float)t->mval[1]};
+  const float mval[2] = {float(t->mval[0]), float(t->mval[1])};
   int loop_nr;
   bool use_occlude_geometry = false;
   View3D *v3d = nullptr;

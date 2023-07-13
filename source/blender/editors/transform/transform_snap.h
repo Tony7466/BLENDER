@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-bool peelObjectsTransform(struct TransInfo *t,
+bool peelObjectsTransform(TransInfo *t,
                           const float mval[2],
                           bool use_peel_object,
                           /* return args */
@@ -25,13 +25,13 @@ bool peelObjectsTransform(struct TransInfo *t,
                           float r_no[3],
                           float *r_thickness);
 
-eSnapMode snapObjectsTransform(struct TransInfo *t,
+eSnapMode snapObjectsTransform(TransInfo *t,
                                const float mval[2],
                                float *dist_px,
                                /* return args */
                                float r_loc[3],
                                float r_no[3]);
-bool snapNodesTransform(struct TransInfo *t,
+bool snapNodesTransform(TransInfo *t,
                         const int mval[2],
                         /* return args */
                         float r_loc[2],
@@ -52,14 +52,14 @@ bool transform_snap_is_active(const TransInfo *t);
 
 bool validSnap(const TransInfo *t);
 
-void initSnapping(struct TransInfo *t, struct wmOperator *op);
-void freeSnapping(struct TransInfo *t);
+void initSnapping(TransInfo *t, wmOperator *op);
+void freeSnapping(TransInfo *t);
 bool transform_snap_project_individual_is_active(const TransInfo *t);
 void transform_snap_project_individual_apply(TransInfo *t);
 void transform_snap_mixed_apply(TransInfo *t, float *vec);
 void resetSnapping(TransInfo *t);
-eRedrawFlag handleSnapping(TransInfo *t, const struct wmEvent *event);
-void drawSnapping(const struct bContext *C, TransInfo *t);
+eRedrawFlag handleSnapping(TransInfo *t, const wmEvent *event);
+void drawSnapping(const bContext *C, TransInfo *t);
 bool usingSnappingNormal(const TransInfo *t);
 bool validSnappingNormal(const TransInfo *t);
 
@@ -72,9 +72,9 @@ float transform_snap_distance_len_squared_fn(TransInfo *t, const float p1[3], co
 
 /* transform_snap_sequencer.c */
 
-struct TransSeqSnapData *transform_snap_sequencer_data_alloc(const TransInfo *t);
-void transform_snap_sequencer_data_free(struct TransSeqSnapData *data);
-bool transform_snap_sequencer_calc(struct TransInfo *t);
+TransSeqSnapData *transform_snap_sequencer_data_alloc(const TransInfo *t);
+void transform_snap_sequencer_data_free(TransSeqSnapData *data);
+bool transform_snap_sequencer_calc(TransInfo *t);
 void transform_snap_sequencer_apply_translate(TransInfo *t, float *vec);
 
 /* transform_snap_animation.c */

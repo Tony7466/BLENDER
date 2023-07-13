@@ -83,7 +83,7 @@ void snapFrameTransform(TransInfo *t,
     case SACTSNAP_MARKER:
       /* Snap to nearest marker. */
       /* TODO: need some more careful checks for where data comes from. */
-      *r_val_final = (float)ED_markers_find_nearest_marker_time(&t->scene->markers, val_final);
+      *r_val_final = float(ED_markers_find_nearest_marker_time(&t->scene->markers, val_final));
       break;
     case SACTSNAP_SECOND:
     case SACTSNAP_TSTEP: {
@@ -93,7 +93,7 @@ void snapFrameTransform(TransInfo *t,
         *r_val_final = floorf((val_final / secf) + 0.5) * secf;
       }
       else {
-        deltax = (float)(floor((deltax / secf) + 0.5) * secf);
+        deltax = float(floor((deltax / secf) + 0.5) * secf);
         *r_val_final = val_initial + deltax;
       }
       break;

@@ -25,7 +25,7 @@ struct TransDataCurveHandleFlags;
 struct TransInfo;
 struct bContext;
 
-typedef struct TransConvertTypeInfo {
+struct TransConvertTypeInfo {
   int flags; /* eTFlag */
 
   /**
@@ -42,7 +42,7 @@ typedef struct TransConvertTypeInfo {
    * Called when the operation is finished.
    */
   void (*special_aftertrans_update)(bContext *C, TransInfo *t);
-} TransConvertTypeInfo;
+};
 
 /* transform_convert.c */
 
@@ -54,9 +54,9 @@ int special_transform_moving(TransInfo *t);
 /**
  * Inserting keys, point-cache, redraw events.
  */
-void special_aftertrans_update(struct bContext *C, TransInfo *t);
+void special_aftertrans_update(bContext *C, TransInfo *t);
 void sort_trans_data_dist(TransInfo *t);
-void createTransData(struct bContext *C, TransInfo *t);
+void createTransData(bContext *C, TransInfo *t);
 void clipUVData(TransInfo *t);
 void transform_convert_flush_handle2D(TransData *td, TransData2D *td2d, float y_fac);
 /**
@@ -95,7 +95,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic);
 /**
  * Utility function for getting the handle data from bezier's.
  */
-struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt);
+TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, BezTriple *bezt);
 /**
  * Used for `TFM_TIME_EXTEND`.
  */
@@ -108,7 +108,7 @@ void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc);
 /**
  * For the realtime animation recording feature, handle overlapping data.
  */
-void animrecord_check_state(TransInfo *t, struct ID *id);
+void animrecord_check_state(TransInfo *t, ID *id);
 
 /* transform_convert_action.c */
 
@@ -176,7 +176,7 @@ struct MirrorDataVert {
 };
 
 struct TransMirrorData {
-  struct MirrorDataVert *vert_map;
+  MirrorDataVert *vert_map;
   int mirror_elem_len;
 };
 
@@ -185,41 +185,41 @@ struct TransMeshDataCrazySpace {
   float (*defmats)[3][3];
 };
 
-void transform_convert_mesh_islands_calc(struct BMEditMesh *em,
+void transform_convert_mesh_islands_calc(BMEditMesh *em,
                                          bool calc_single_islands,
                                          bool calc_island_center,
                                          bool calc_island_axismtx,
-                                         struct TransIslandData *r_island_data);
-void transform_convert_mesh_islanddata_free(struct TransIslandData *island_data);
+                                         TransIslandData *r_island_data);
+void transform_convert_mesh_islanddata_free(TransIslandData *island_data);
 /**
  * \param mtx: Measure distance in this space.
  * \param dists: Store the closest connected distance to selected vertices.
  * \param index: Optionally store the original index we're measuring the distance to (can be NULL).
  */
-void transform_convert_mesh_connectivity_distance(struct BMesh *bm,
+void transform_convert_mesh_connectivity_distance(BMesh *bm,
                                                   const float mtx[3][3],
                                                   float *dists,
                                                   int *index);
-void transform_convert_mesh_mirrordata_calc(struct BMEditMesh *em,
+void transform_convert_mesh_mirrordata_calc(BMEditMesh *em,
                                             bool use_select,
                                             bool use_topology,
                                             const bool mirror_axis[3],
-                                            struct TransMirrorData *r_mirror_data);
-void transform_convert_mesh_mirrordata_free(struct TransMirrorData *mirror_data);
+                                            TransMirrorData *r_mirror_data);
+void transform_convert_mesh_mirrordata_free(TransMirrorData *mirror_data);
 /**
  * Detect CrazySpace [tm].
  * Vertices with space affected by quats are marked with #BM_ELEM_TAG.
  */
 void transform_convert_mesh_crazyspace_detect(TransInfo *t,
-                                              struct TransDataContainer *tc,
-                                              struct BMEditMesh *em,
-                                              struct TransMeshDataCrazySpace *r_crazyspace_data);
+                                              TransDataContainer *tc,
+                                              BMEditMesh *em,
+                                              TransMeshDataCrazySpace *r_crazyspace_data);
 void transform_convert_mesh_crazyspace_transdata_set(const float mtx[3][3],
                                                      const float smtx[3][3],
                                                      const float defmat[3][3],
                                                      const float quat[4],
-                                                     struct TransData *r_td);
-void transform_convert_mesh_crazyspace_free(struct TransMeshDataCrazySpace *r_crazyspace_data);
+                                                     TransData *r_td);
+void transform_convert_mesh_crazyspace_free(TransMeshDataCrazySpace *r_crazyspace_data);
 
 /* transform_convert_mesh_edge.c */
 

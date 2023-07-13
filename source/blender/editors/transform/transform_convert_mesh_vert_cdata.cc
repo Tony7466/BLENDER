@@ -32,7 +32,7 @@
 /** \name Edit Mesh Bevel Weight and Crease Transform Creation
  * \{ */
 
-static float *tc_mesh_cdata_transdata_center(const struct TransIslandData *island_data,
+static float *tc_mesh_cdata_transdata_center(const TransIslandData *island_data,
                                              const int island_index,
                                              BMVert *eve)
 {
@@ -45,7 +45,7 @@ static float *tc_mesh_cdata_transdata_center(const struct TransIslandData *islan
 static void tc_mesh_cdata_transdata_create(TransDataBasic *td,
                                            BMVert *eve,
                                            float *weight,
-                                           const struct TransIslandData *island_data,
+                                           const TransIslandData *island_data,
                                            const int island_index)
 {
   BLI_assert(BM_elem_flag_test(eve, BM_ELEM_HIDDEN) == 0);
@@ -74,9 +74,9 @@ static void createTransMeshVertCData(bContext * /*C*/, TransInfo *t)
     int a;
     const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
 
-    struct TransIslandData island_data = {nullptr};
-    struct TransMirrorData mirror_data = {nullptr};
-    struct TransMeshDataCrazySpace crazyspace_data = {nullptr};
+    TransIslandData island_data = {nullptr};
+    TransMirrorData mirror_data = {nullptr};
+    TransMeshDataCrazySpace crazyspace_data = {nullptr};
 
     /* Support other objects using proportional editing to adjust these, unless connected is
      * enabled. */
