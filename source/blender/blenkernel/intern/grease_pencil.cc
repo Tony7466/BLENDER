@@ -179,8 +179,6 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   grease_pencil->read_drawing_array(reader);
   /* Read layer tree. */
   grease_pencil->read_layer_tree(reader);
-  /* Read active layer. */
-  BLO_read_data_address(reader, reinterpret_cast<void **>(&grease_pencil->active_layer));
 
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
@@ -1771,7 +1769,22 @@ static void read_layer_tree_group(BlendDataReader *reader,
 
 void GreasePencil::read_layer_tree(BlendDataReader *reader)
 {
+  /* Read active layer. */
+  BLO_read_data_address(reader, &this->active_layer);
+  /* Read root group. */
   BLO_read_data_address(reader, &this->root_group_ptr);
+  /* This shouldn't normally happen, but for files that were created before the root group became a
+   * pointer, this address will not exist. In this case, we free the pointer to the active layer
+   * and create an empty root group to avoid crashes. */
+  if (this->root_group_ptr == nullptr) {
+    if (this->active_layer) {
+      read_layer(reader, this->active_layer, nullptr);
+      MEM_delete(&this->active_layer->wrap());
+      this->active_layer = nullptr;
+    }
+    this->root_group_ptr = MEM_new<blender::bke::greasepencil::LayerGroup>(__func__);
+    return;
+  }
   read_layer_tree_group(reader, this->root_group_ptr, nullptr);
 }
 
