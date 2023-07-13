@@ -116,7 +116,8 @@ void transform_snap_anim_flush_data(TransInfo *t,
 
   float val = td->loc[0];
   float ival = td->iloc[0];
-  AnimData *adt = !ELEM(t->spacetype, SPACE_NLA, SPACE_SEQ) ? td->extra : NULL;
+  AnimData *adt = static_cast<AnimData *>(!ELEM(t->spacetype, SPACE_NLA, SPACE_SEQ) ? td->extra :
+                                                                                      nullptr);
 
   /* Convert frame to nla-action time (if needed) */
   if (adt) {

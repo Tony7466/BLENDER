@@ -92,7 +92,7 @@ set(SRC
   transform_ops.cc
   transform_orientations.cc
   transform_snap.cc
-  transform_snap_animation.c
+  transform_snap_animation.cc
   transform_snap_object.cc
   transform_snap_object_armature.cc
   transform_snap_object_camera.cc
