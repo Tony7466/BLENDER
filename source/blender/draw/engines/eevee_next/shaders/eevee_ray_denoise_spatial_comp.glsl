@@ -167,6 +167,8 @@ void main()
     /* Filter at least 1 trace pixel to fight the undersampling. */
     filter_size = max(filter_size, 3.0);
     sample_count = max(sample_count, 5u);
+    /* Clamp to max allowed. The value 4 Seems to fix most issue of outside nan's being sampled. */
+    filter_size = min(filter_size, 4.0 * float(tile_size) / float(raytrace_buf.resolution_scale));
   }
   /* NOTE: Roughness is squared now. */
   closure.roughness = max(1e-3, sqr(closure.roughness));
