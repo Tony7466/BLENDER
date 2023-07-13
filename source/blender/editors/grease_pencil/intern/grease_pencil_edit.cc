@@ -172,7 +172,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
     }
   });
 
-  for (int step : IndexRange(iterations)) {
+  for (const int step : IndexRange(iterations)) {
     const int offset = iterations - step;
 
     mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
