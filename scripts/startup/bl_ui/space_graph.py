@@ -110,8 +110,7 @@ class GRAPH_PT_snapping(Panel):
         layout = self.layout
         col = layout.column()
         col.label(text="Snap With")
-        st = context.space_data
-        col.prop(st, "auto_snap", expand=True)
+        col.prop(context.tool_settings, "snap_anim_element", expand=True)
 
 
 class GRAPH_MT_editor_menus(Menu):

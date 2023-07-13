@@ -3282,12 +3282,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
-  prop = RNA_def_property(srna, "use_snap_animation", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "snap_flag_anim", 0);
-  RNA_def_property_ui_text(prop, "Snap", "Enable snapping when transforming keyframes");
-  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
-
   prop = RNA_def_property(srna, "lock_markers", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "lock_markers", 0);
   RNA_def_property_ui_text(prop, "Lock Markers", "Prevent marker editing");
@@ -3468,6 +3462,12 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_node_mode");
   RNA_def_property_enum_items(prop, rna_enum_snap_node_element_items);
   RNA_def_property_ui_text(prop, "Snap Node Element", "Type of element to snap to");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_anim_element", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_anim_mode");
+  RNA_def_property_enum_items(prop, rna_enum_snap_graph_element_items);
+  RNA_def_property_ui_text(prop, "Snap Anim Element", "Type of element to snap to");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   /* image editor uses own set of snap modes */
