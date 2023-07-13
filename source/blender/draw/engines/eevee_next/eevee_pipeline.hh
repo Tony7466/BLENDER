@@ -246,8 +246,6 @@ class DeferredProbeLayer {
 
 class DeferredProbePipeline {
  private:
-  /* Gbuffer filling passes. We could have an arbitrary number of them but for now we just have
-   * a hardcoded number of them. */
   DeferredProbeLayer opaque_layer_;
 
  public:
