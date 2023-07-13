@@ -86,7 +86,7 @@ set(SRC
   transform_mode_timeslide.cc
   transform_mode_timetranslate.cc
   transform_mode_tosphere.cc
-  transform_mode_trackball.c
+  transform_mode_trackball.cc
   transform_mode_translate.c
   transform_mode_vert_slide.c
   transform_ops.c

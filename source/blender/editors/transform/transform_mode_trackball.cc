@@ -37,8 +37,8 @@
 struct TransDataArgs_Trackball {
   const TransInfo *t;
   const TransDataContainer *tc;
-  const float axis[3];
-  const float angle;
+  float axis[3];
+  float angle;
   float mat_final[3][3];
 };
 
@@ -60,9 +60,9 @@ static void transdata_elem_trackball(const TransInfo *t,
 
 static void transdata_elem_trackball_fn(void *__restrict iter_data_v,
                                         const int iter,
-                                        const TaskParallelTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_Trackball *data = iter_data_v;
+  TransDataArgs_Trackball *data = static_cast<TransDataArgs_Trackball *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -108,12 +108,11 @@ static void applyTrackballValue(TransInfo *t, const float axis[3], const float a
       }
     }
     else {
-      struct TransDataArgs_Trackball data = {
-          .t = t,
-          .tc = tc,
-          .axis = {UNPACK3(axis)},
-          .angle = angle,
-      };
+      TransDataArgs_Trackball data{};
+      data.t = t;
+      data.tc = tc;
+      copy_v3_v3(data.axis, axis);
+      data.angle = angle;
       copy_m3_m3(data.mat_final, mat_final);
 
       TaskParallelSettings settings;
@@ -123,7 +122,7 @@ static void applyTrackballValue(TransInfo *t, const float axis[3], const float a
   }
 }
 
-static void applyTrackball(TransInfo *t, const int UNUSED(mval[2]))
+static void applyTrackball(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
   size_t ofs = 0;
@@ -187,7 +186,7 @@ static void applyTrackballMatrix(TransInfo *t, float mat_xform[4][4])
   mul_m4_m4m4(mat_xform, mat4, mat_xform);
 }
 
-static void initTrackball(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initTrackball(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_TRACKBALL;
 
@@ -212,8 +211,8 @@ TransModeInfo TransMode_trackball = {
     /*init_fn*/ initTrackball,
     /*transform_fn*/ applyTrackball,
     /*transform_matrix_fn*/ applyTrackballMatrix,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
