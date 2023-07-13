@@ -96,6 +96,8 @@ typedef enum eGPDbrush_Flag {
   GP_BRUSH_OUTLINE_STROKE = (1 << 17),
   /* Collide with stroke. */
   GP_BRUSH_FILL_STROKE_COLLIDE = (1 << 18),
+  /* Keep the caps as they are when erasing. Otherwise flatten the caps. */
+  GP_BRUSH_ERASER_KEEP_CAPS = (1 << 19),
 } eGPDbrush_Flag;
 
 typedef enum eGPDbrush_Flag2 {

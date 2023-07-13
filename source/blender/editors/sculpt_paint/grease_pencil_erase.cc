@@ -8,6 +8,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
 
+#include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
@@ -17,6 +18,7 @@
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_query.h"
+#include "DNA_brush_enums.h"
 
 #include "ED_view3d.h"
 
@@ -32,12 +34,13 @@ class EraseOperation : public GreasePencilStrokeOperation {
  public:
   ~EraseOperation() override {}
 
-  void on_stroke_begin(const bContext &C, const StrokeExtension &stroke_extension) /*override*/;
-  void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
-  bool set_flat_caps = true;
-  float radius = 50;
+  bool keep_caps{};
+  float radius{};
+  eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
 };
 
 /**
@@ -48,7 +51,7 @@ struct EraseOperationExecutor {
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
-  void execute(EraseOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
+  void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
     using namespace blender::bke;
     Scene *scene = CTX_data_scene(&C);
@@ -58,8 +61,8 @@ struct EraseOperationExecutor {
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
     /* Get the tool's data. */
-    const float2 mouse_position = stroke_extension.mouse_position;
-    const float eraser_radius = stroke_extension.pressure * self.radius;
+    const float2 mouse_position = extension_sample.mouse_position;
+    const float eraser_radius = extension_sample.pressure * self.radius;
 
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
@@ -335,7 +338,7 @@ struct EraseOperationExecutor {
     }
 
     /* Display intersections with flat caps. */
-    if (self.set_flat_caps) {
+    if (!self.keep_caps) {
       SpanAttributeWriter<int8_t> dst_start_caps =
           dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("start_cap",
                                                                           ATTR_DOMAIN_CURVE);
@@ -399,17 +402,21 @@ struct EraseOperationExecutor {
   }
 };
 
-void EraseOperation::on_stroke_begin(const bContext & /*C*/,
-                                     const StrokeExtension & /*stroke_extension*/)
+void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
-  // TODO
-  // Get the tools settings, and set the member attribute accordingly
+  Scene *scene = CTX_data_scene(&C);
+  Paint *paint = BKE_paint_get_active_from_context(&C);
+  Brush *brush = BKE_paint_brush(paint);
+
+  this->radius = BKE_brush_size_get(scene, brush);
+  this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
+  this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
 }
 
-void EraseOperation::on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension)
+void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
   EraseOperationExecutor executor{C};
-  executor.execute(*this, C, stroke_extension);
+  executor.execute(*this, C, extension_sample);
 }
 
 void EraseOperation::on_stroke_done(const bContext & /*C*/) {}
