@@ -7095,12 +7095,12 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "ID Name", "Name of the ID that is to be mapped");
+  RNA_def_property_ui_text(prop, "Data-Block Name", "Name of the data-block that is to be mapped");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "lib_name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Library Name", "Name of the library that contains the ID that is to be mapped");
+      prop, "Library Name", "Name of the library that contains the mapped data-block");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
@@ -7115,7 +7115,7 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_id_type_items);
   RNA_def_property_enum_default(prop, ID_MA);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_NodesModifier_id_mapping_id_type_set", nullptr);
-  RNA_def_property_ui_text(prop, "ID Type", "Type of ID that is mapped");
+  RNA_def_property_ui_text(prop, "Data-Block Type", "Type of data-block that is mapped");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   RNA_define_lib_overridable(false);
