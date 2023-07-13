@@ -33,9 +33,11 @@ static void createTransCursor_2D_impl(TransInfo *t, float cursor_location[2])
     BLI_assert(t->data_container_len == 1);
     TransDataContainer *tc = t->data_container;
     tc->data_len = 1;
-    td = tc->data = MEM_callocN(sizeof(TransData), "TransTexspace");
-    td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D), "TransObData2D(Cursor)");
-    td->ext = tc->data_ext = MEM_callocN(sizeof(TransDataExtension), "TransCursorExt");
+    td = tc->data = static_cast<TransData *>(MEM_callocN(sizeof(TransData), "TransTexspace"));
+    td2d = tc->data_2d = static_cast<TransData2D *>(
+        MEM_callocN(tc->data_len * sizeof(TransData2D), "TransObData2D(Cursor)"));
+    td->ext = tc->data_ext = static_cast<TransDataExtension *>(
+        MEM_callocN(sizeof(TransDataExtension), "TransCursorExt"));
   }
 
   td->flag = TD_SELECTED;
@@ -51,7 +53,7 @@ static void createTransCursor_2D_impl(TransInfo *t, float cursor_location[2])
 
   copy_v3_v3(td->center, td2d->loc);
 
-  td->ob = NULL;
+  td->ob = nullptr;
 
   unit_m3(td->mtx);
   unit_m3(td->axismtx);
@@ -83,9 +85,9 @@ static void recalcData_cursor_2D_impl(TransInfo *t)
 /** \name Image Cursor
  * \{ */
 
-static void createTransCursor_image(bContext *UNUSED(C), TransInfo *t)
+static void createTransCursor_image(bContext * /*C*/, TransInfo *t)
 {
-  SpaceImage *sima = t->area->spacedata.first;
+  SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
   createTransCursor_2D_impl(t, sima->cursor);
 }
 
@@ -100,9 +102,9 @@ static void recalcData_cursor_image(TransInfo *t)
 /** \name Sequencer Cursor
  * \{ */
 
-static void createTransCursor_sequencer(bContext *UNUSED(C), TransInfo *t)
+static void createTransCursor_sequencer(bContext * /*C*/, TransInfo *t)
 {
-  SpaceSeq *sseq = t->area->spacedata.first;
+  SpaceSeq *sseq = static_cast<SpaceSeq *>(t->area->spacedata.first);
   if (sseq->mainb != SEQ_DRAW_IMG_IMBUF) {
     return;
   }
@@ -120,7 +122,7 @@ static void recalcData_cursor_sequencer(TransInfo *t)
 /** \name View 3D Cursor
  * \{ */
 
-static void createTransCursor_view3d(bContext *UNUSED(C), TransInfo *t)
+static void createTransCursor_view3d(bContext * /*C*/, TransInfo *t)
 {
   TransData *td;
 
@@ -135,13 +137,14 @@ static void createTransCursor_view3d(bContext *UNUSED(C), TransInfo *t)
     BLI_assert(t->data_container_len == 1);
     TransDataContainer *tc = t->data_container;
     tc->data_len = 1;
-    td = tc->data = MEM_callocN(sizeof(TransData), "TransTexspace");
-    td->ext = tc->data_ext = MEM_callocN(sizeof(TransDataExtension), "TransTexspace");
+    td = tc->data = static_cast<TransData *>(MEM_callocN(sizeof(TransData), "TransTexspace"));
+    td->ext = tc->data_ext = static_cast<TransDataExtension *>(
+        MEM_callocN(sizeof(TransDataExtension), "TransTexspace"));
   }
 
   td->flag = TD_SELECTED;
   copy_v3_v3(td->center, cursor->location);
-  td->ob = NULL;
+  td->ob = nullptr;
 
   unit_m3(td->mtx);
   BKE_scene_cursor_rot_to_mat3(cursor, td->axismtx);
@@ -153,25 +156,25 @@ static void createTransCursor_view3d(bContext *UNUSED(C), TransInfo *t)
 
   if (cursor->rotation_mode > 0) {
     td->ext->rot = cursor->rotation_euler;
-    td->ext->rotAxis = NULL;
-    td->ext->rotAngle = NULL;
-    td->ext->quat = NULL;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
+    td->ext->quat = nullptr;
 
     copy_v3_v3(td->ext->irot, cursor->rotation_euler);
   }
   else if (cursor->rotation_mode == ROT_MODE_AXISANGLE) {
-    td->ext->rot = NULL;
+    td->ext->rot = nullptr;
     td->ext->rotAxis = cursor->rotation_axis;
     td->ext->rotAngle = &cursor->rotation_angle;
-    td->ext->quat = NULL;
+    td->ext->quat = nullptr;
 
     td->ext->irotAngle = cursor->rotation_angle;
     copy_v3_v3(td->ext->irotAxis, cursor->rotation_axis);
   }
   else {
-    td->ext->rot = NULL;
-    td->ext->rotAxis = NULL;
-    td->ext->rotAngle = NULL;
+    td->ext->rot = nullptr;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
     td->ext->quat = cursor->rotation_quaternion;
 
     copy_qt_qt(td->ext->iquat, cursor->rotation_quaternion);
@@ -190,19 +193,19 @@ TransConvertTypeInfo TransConvertType_CursorImage = {
     /*flags*/ T_2D_EDIT,
     /*createTransData*/ createTransCursor_image,
     /*recalcData*/ recalcData_cursor_image,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
 
 TransConvertTypeInfo TransConvertType_CursorSequencer = {
     /*flags*/ T_2D_EDIT,
     /*createTransData*/ createTransCursor_sequencer,
     /*recalcData*/ recalcData_cursor_sequencer,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
 
 TransConvertTypeInfo TransConvertType_Cursor3D = {
     /*flags*/ 0,
     /*createTransData*/ createTransCursor_view3d,
     /*recalcData*/ recalcData_cursor_view3d,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
