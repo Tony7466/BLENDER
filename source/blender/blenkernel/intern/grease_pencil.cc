@@ -1772,7 +1772,7 @@ void GreasePencil::read_layer_tree(BlendDataReader *reader)
   /* Read root group. */
   BLO_read_data_address(reader, &this->root_group_ptr);
   /* This shouldn't normally happen, but for files that were created before the root group became a
-   * pointer, this address will not exist. In this case, we free the pointer to the active layer
+   * pointer, this address will not exist. In this case, we clear the pointer to the active layer
    * and create an empty root group to avoid crashes. */
   if (this->root_group_ptr == nullptr) {
     this->root_group_ptr = MEM_new<blender::bke::greasepencil::LayerGroup>(__func__);
