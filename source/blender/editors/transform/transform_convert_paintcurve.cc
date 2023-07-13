@@ -18,10 +18,10 @@
 #include "transform.h"
 #include "transform_convert.h"
 
-typedef struct TransDataPaintCurve {
+struct TransDataPaintCurve {
   PaintCurvePoint *pcp; /* initial curve point */
   char id;
-} TransDataPaintCurve;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Paint Curve Transform Creation
@@ -45,8 +45,8 @@ static void PaintCurveConvertHandle(
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
   td->flag |= TD_SELECTED;
   td->dist = 0.0;
 
@@ -79,8 +79,8 @@ static void PaintCurvePointToTransData(PaintCurvePoint *pcp,
       memset(td->axismtx, 0, sizeof(td->axismtx));
       td->axismtx[2][2] = 1.0f;
 
-      td->ext = NULL;
-      td->val = NULL;
+      td->ext = nullptr;
+      td->val = nullptr;
       td->flag |= TD_SELECTED;
       td->dist = 0.0;
 
@@ -115,9 +115,9 @@ static void createTransPaintCurveVerts(bContext *C, TransInfo *t)
   PaintCurve *pc;
   PaintCurvePoint *pcp;
   Brush *br;
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  TransDataPaintCurve *tdpc = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
+  TransDataPaintCurve *tdpc = nullptr;
   int i;
   int total = 0;
 
@@ -152,10 +152,12 @@ static void createTransPaintCurveVerts(bContext *C, TransInfo *t)
   }
 
   tc->data_len = total;
-  td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D), "TransData2D");
-  td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransData");
-  tc->custom.type.data = tdpc = MEM_callocN(tc->data_len * sizeof(TransDataPaintCurve),
-                                            "TransDataPaintCurve");
+  td2d = tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "TransData2D"));
+  td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransData"));
+  tc->custom.type.data = tdpc = static_cast<TransDataPaintCurve *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataPaintCurve), "TransDataPaintCurve"));
   tc->custom.type.use_free = true;
 
   for (pcp = pc->points, i = 0; i < pc->tot_points; i++, pcp++) {
@@ -196,7 +198,7 @@ static void flushTransPaintCurve(TransInfo *t)
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
   TransData2D *td2d = tc->data_2d;
-  TransDataPaintCurve *tdpc = tc->custom.type.data;
+  TransDataPaintCurve *tdpc = static_cast<TransDataPaintCurve *>(tc->custom.type.data);
 
   for (i = 0; i < tc->data_len; i++, tdpc++, td2d++) {
     PaintCurvePoint *pcp = tdpc->pcp;
@@ -210,5 +212,5 @@ TransConvertTypeInfo TransConvertType_PaintCurve = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
     /*createTransData*/ createTransPaintCurveVerts,
     /*recalcData*/ flushTransPaintCurve,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
