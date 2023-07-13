@@ -32,7 +32,7 @@
 /** \name Transform (GPencil Strokes Shrink/Fatten)
  * \{ */
 
-static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
+static void applyGPShrinkFatten(TransInfo *t, const int[2] /*mval*/)
 {
   float ratio;
   int i;
@@ -60,7 +60,7 @@ static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   bool recalc = false;
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
-    bGPdata *gpd = td->ob->data;
+    bGPdata *gpd = static_cast<bGPdata *>(td->ob->data);
     const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
     /* Only recalculate data when in curve edit mode. */
     if (is_curve_edit) {
@@ -90,7 +90,7 @@ static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initGPShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initGPShrinkFatten(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_GPENCIL_SHRINKFATTEN;
 
@@ -116,9 +116,9 @@ TransModeInfo TransMode_gpshrinkfatten = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initGPShrinkFatten,
     /*transform_fn*/ applyGPShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };

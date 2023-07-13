@@ -71,7 +71,7 @@ set(SRC
   transform_mode_edge_seq_slide.cc
   transform_mode_edge_slide.cc
   transform_mode_gpopacity.cc
-  transform_mode_gpshrinkfatten.c
+  transform_mode_gpshrinkfatten.cc
   transform_mode_maskshrinkfatten.c
   transform_mode_mirror.c
   transform_mode_push_pull.c
