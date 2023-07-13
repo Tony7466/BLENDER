@@ -98,7 +98,7 @@ static void createTransGPencil_curves(bContext *C,
 #define SEL_F2 (1 << 1)
 #define SEL_F3 (1 << 2)
 
-  View3D *v3d = t->view;
+  View3D *v3d = static_cast<View3D *>(t->view);
   Scene *scene = CTX_data_scene(C);
   const bool handle_only_selected_visible = (v3d->overlay.handle_display == CURVE_HANDLE_SELECTED);
   const bool handle_all_visible = (v3d->overlay.handle_display == CURVE_HANDLE_ALL);
@@ -110,8 +110,9 @@ static void createTransGPencil_curves(bContext *C,
   uint32_t tot_curve_points = 0, tot_sel_curve_points = 0, tot_points = 0, tot_sel_points = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Only editable and visible layers are considered. */
-    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
-      bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
+      bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                      gpl->actframe);
       for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
         if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
           LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
@@ -124,7 +125,7 @@ static void createTransGPencil_curves(bContext *C,
               continue;
             }
             /* Check if stroke has an editcurve */
-            if (gps->editcurve == NULL) {
+            if (gps->editcurve == nullptr) {
               continue;
             }
 
@@ -192,7 +193,7 @@ static void createTransGPencil_curves(bContext *C,
 
   transform_around_single_fallback_ex(t, data_len_pt);
 
-  tc->data = MEM_callocN(tc->data_len * sizeof(TransData), __func__);
+  tc->data = static_cast<TransData *>(MEM_callocN(tc->data_len * sizeof(TransData), __func__));
   TransData *td = tc->data;
 
   const bool use_around_origins_for_handles_test = ((t->around == V3D_AROUND_LOCAL_ORIGINS) &&
@@ -200,10 +201,11 @@ static void createTransGPencil_curves(bContext *C,
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Only editable and visible layers are considered. */
-    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
       const int cfra = (gpl->flag & GP_LAYER_FRAMELOCK) ? gpl->actframe->framenum : cfra_scene;
       bGPDframe *gpf = gpl->actframe;
-      bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+      bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                      gpl->actframe);
       float diff_mat[4][4], mtx[3][3];
       float smtx[3][3];
 
@@ -219,8 +221,8 @@ static void createTransGPencil_curves(bContext *C,
         if (IS_AUTOKEY_ON(scene)) {
           gpf = BKE_gpencil_frame_addcopy(gpl, cfra);
         }
-        /* In some weird situations (frame-lock enabled) return NULL. */
-        if (gpf == NULL) {
+        /* In some weird situations (frame-lock enabled) return nullptr. */
+        if (gpf == nullptr) {
           continue;
         }
         if (!is_multiedit) {
@@ -254,7 +256,7 @@ static void createTransGPencil_curves(bContext *C,
               continue;
             }
             /* Check if stroke has an editcurve */
-            if (gps->editcurve == NULL) {
+            if (gps->editcurve == nullptr) {
               continue;
             }
             TransData *head, *tail;
@@ -272,7 +274,7 @@ static void createTransGPencil_curves(bContext *C,
                 continue;
               }
 
-              TransDataCurveHandleFlags *hdata = NULL;
+              TransDataCurveHandleFlags *hdata = nullptr;
               bool bezt_use = false;
               const bool handles_visible = (handle_all_visible ||
                                             (handle_only_selected_visible &&
@@ -308,7 +310,7 @@ static void createTransGPencil_curves(bContext *C,
                     }
                   }
 
-                  td->ext = NULL;
+                  td->ext = nullptr;
                   if (is_ctrl_point) {
                     if (t->mode != TFM_MIRROR) {
                       if (t->mode != TFM_GPENCIL_OPACITY) {
@@ -324,10 +326,10 @@ static void createTransGPencil_curves(bContext *C,
                     }
                   }
                   else {
-                    td->val = NULL;
+                    td->val = nullptr;
                   }
 
-                  if (hdata == NULL) {
+                  if (hdata == nullptr) {
                     if (is_ctrl_point && ((sel_flag & SEL_F1 & SEL_F3) == 0)) {
                       hdata = initTransDataCurveHandles(td, bezt);
                     }
@@ -394,7 +396,7 @@ static void createTransGPencil_strokes(bContext *C,
                                        const bool is_scale_thickness)
 {
   Scene *scene = CTX_data_scene(C);
-  TransData *td = NULL;
+  TransData *td = nullptr;
   float mtx[3][3], smtx[3][3];
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
@@ -411,14 +413,15 @@ static void createTransGPencil_strokes(bContext *C,
    */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Only editable and visible layers are considered. */
-    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
       bGPDframe *gpf;
       bGPDstroke *gps;
-      bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+      bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                      gpl->actframe);
 
       for (gpf = init_gpf; gpf; gpf = gpf->next) {
         if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-          for (gps = gpf->strokes.first; gps; gps = gps->next) {
+          for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
             /* skip strokes that are invalid for current view */
             if (ED_gpencil_stroke_can_use(C, gps) == false) {
               continue;
@@ -470,7 +473,8 @@ static void createTransGPencil_strokes(bContext *C,
   }
 
   /* Allocate memory for data */
-  tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransData(GPencil)");
+  tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransData(GPencil)"));
   td = tc->data;
 
   unit_m3(smtx);
@@ -479,13 +483,14 @@ static void createTransGPencil_strokes(bContext *C,
   /* Second Pass: Build transdata array. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
-    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != NULL)) {
+    if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
       const int cfra = (gpl->flag & GP_LAYER_FRAMELOCK) ? gpl->actframe->framenum : cfra_scene;
       bGPDframe *gpf = gpl->actframe;
       float diff_mat[3][3];
       float inverse_diff_mat[3][3];
 
-      bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+      bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                      gpl->actframe);
       /* Init multiframe falloff options. */
       int f_init = 0;
       int f_end = 0;
@@ -514,8 +519,8 @@ static void createTransGPencil_strokes(bContext *C,
         if (IS_AUTOKEY_ON(scene)) {
           gpf = BKE_gpencil_frame_addcopy(gpl, cfra);
         }
-        /* In some weird situations (frame-lock enabled) return NULL. */
-        if (gpf == NULL) {
+        /* In some weird situations (frame-lock enabled) return nullptr. */
+        if (gpf == nullptr) {
           continue;
         }
         if (!is_multiedit) {
@@ -685,8 +690,8 @@ static void createTransGPencil(bContext *C, TransInfo *t)
   ToolSettings *ts = scene->toolsettings;
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
   Object *obact = BKE_view_layer_active_object_get(t->view_layer);
-  bGPdata *gpd = obact->data;
-  BLI_assert(gpd != NULL);
+  bGPdata *gpd = static_cast<bGPdata *>(obact->data);
+  BLI_assert(gpd != nullptr);
 
   const int cfra_scene = scene->r.cfra;
 
@@ -706,7 +711,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
     BKE_curvemapping_init(ts->gp_sculpt.cur_falloff);
   }
 
-  if (gpd == NULL) {
+  if (gpd == nullptr) {
     return;
   }
 
@@ -746,14 +751,14 @@ static void recalcData_gpencil_strokes(TransInfo *t)
   GHash *strokes = BLI_ghash_ptr_new(__func__);
 
   TransData *td = tc->data;
-  bGPdata *gpd = td->ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(td->ob->data);
   const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
   for (int i = 0; i < tc->data_len; i++, td++) {
-    bGPDstroke *gps = td->extra;
+    bGPDstroke *gps = static_cast<bGPDstroke *>(td->extra);
 
-    if ((gps != NULL) && !BLI_ghash_haskey(strokes, gps)) {
+    if ((gps != nullptr) && !BLI_ghash_haskey(strokes, gps)) {
       BLI_ghash_insert(strokes, gps, gps);
-      if (is_curve_edit && gps->editcurve != NULL) {
+      if (is_curve_edit && gps->editcurve != nullptr) {
         BKE_gpencil_editcurve_recalculate_handles(gps);
         gps->flag |= GP_STROKE_NEEDS_CURVE_UPDATE;
       }
@@ -761,7 +766,7 @@ static void recalcData_gpencil_strokes(TransInfo *t)
       BKE_gpencil_stroke_geometry_update(gpd, gps);
     }
   }
-  BLI_ghash_free(strokes, NULL, NULL);
+  BLI_ghash_free(strokes, nullptr, nullptr);
 }
 
 /** \} */
@@ -770,5 +775,5 @@ TransConvertTypeInfo TransConvertType_GPencil = {
     /*flags*/ (T_EDIT | T_POINTS),
     /*createTransData*/ createTransGPencil,
     /*recalcData*/ recalcData_gpencil_strokes,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };

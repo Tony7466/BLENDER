@@ -29,7 +29,7 @@ set(SRC
   transform_convert_cursor.cc
   transform_convert_curve.cc
   transform_convert_curves.cc
-  transform_convert_gpencil_legacy.c
+  transform_convert_gpencil_legacy.cc
   transform_convert_graph.c
   transform_convert_lattice.c
   transform_convert_mask.c
