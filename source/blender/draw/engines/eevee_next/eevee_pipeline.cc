@@ -657,8 +657,8 @@ void DeferredProbeLayer::end_sync()
     inst_.sampling.bind_resources(&eval_light_ps_);
     inst_.hiz_buffer.bind_resources(&eval_light_ps_);
     inst_.ambient_occlusion.bind_resources(&eval_light_ps_);
-    // TODO: only allow the world light to be evaluated
-    inst_.reflection_probes.bind_resources(&eval_light_ps_);
+    inst_.reflection_probes.bind_resources(&eval_light_ps_,
+                                           ReflectionProbeModule::BindFlags::EVAL_WORLD_ONLY);
     inst_.irradiance_cache.bind_resources(&eval_light_ps_);
 
     eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);

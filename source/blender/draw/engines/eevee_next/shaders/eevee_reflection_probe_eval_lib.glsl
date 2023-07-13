@@ -76,7 +76,9 @@ int reflection_probes_find_closest(vec3 P)
 
 void reflection_probes_eval(ClosureReflection reflection, vec3 P, vec3 V, inout vec3 out_specular)
 {
-  int closest_reflection_probe = reflection_probes_find_closest(P);
+  int closest_reflection_probe = reflection_probe_do_world_only ?
+                                     -1 :
+                                     reflection_probes_find_closest(P);
   vec4 light_color = vec4(0.0);
   if (closest_reflection_probe != -1) {
     ReflectionProbeData probe_data = reflection_probe_buf[closest_reflection_probe];
