@@ -27,7 +27,7 @@
 #include "transform.h"
 #include "transform_convert.h"
 
-typedef struct TransDataMasking {
+struct TransDataMasking {
   bool is_handle;
 
   float handle[2], orig_handle[2];
@@ -38,7 +38,7 @@ typedef struct TransDataMasking {
   char orig_handle_type;
 
   eMaskWhichHandle which_handle;
-} TransDataMasking;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Masking Transform Creation
@@ -85,8 +85,8 @@ static void MaskHandleToTransData(MaskSplinePoint *point,
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
 
   if (is_sel_any) {
     td->flag |= TD_SELECTED;
@@ -151,7 +151,7 @@ static void MaskPointToTransData(Scene *scene,
       memset(td->axismtx, 0, sizeof(td->axismtx));
       td->axismtx[2][2] = 1.0f;
 
-      td->ext = NULL;
+      td->ext = nullptr;
 
       if (i == 1) {
         /* scaling weights */
@@ -159,7 +159,7 @@ static void MaskPointToTransData(Scene *scene,
         td->ival = *td->val;
       }
       else {
-        td->val = NULL;
+        td->val = nullptr;
       }
 
       if (is_sel_any) {
@@ -251,9 +251,9 @@ static void createTransMaskingData(bContext *C, TransInfo *t)
   Scene *scene = CTX_data_scene(C);
   Mask *mask = CTX_data_edit_mask(C);
   MaskLayer *masklay;
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  TransDataMasking *tdm = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
+  TransDataMasking *tdm = nullptr;
   int count = 0, countsel = 0;
   const bool is_prop_edit = (t->flag & T_PROP_EDIT);
   float asp[2];
@@ -267,14 +267,16 @@ static void createTransMaskingData(bContext *C, TransInfo *t)
   }
 
   /* count */
-  for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
+  for (masklay = static_cast<MaskLayer *>(mask->masklayers.first); masklay;
+       masklay = masklay->next) {
     MaskSpline *spline;
 
     if (masklay->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
-    for (spline = masklay->splines.first; spline; spline = spline->next) {
+    for (spline = static_cast<MaskSpline *>(masklay->splines.first); spline; spline = spline->next)
+    {
       int i;
 
       for (i = 0; i < spline->tot_point; i++) {
@@ -315,24 +317,27 @@ static void createTransMaskingData(bContext *C, TransInfo *t)
   ED_mask_get_aspect(t->area, t->region, &asp[0], &asp[1]);
 
   tc->data_len = (is_prop_edit) ? count : countsel;
-  td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(Mask Editing)");
+  td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(Mask Editing)"));
   /* for each 2d uv coord a 3d vector is allocated, so that they can be
    * treated just as if they were 3d verts */
-  td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D),
-                                   "TransObData2D(Mask Editing)");
-  tc->custom.type.data = tdm = MEM_callocN(tc->data_len * sizeof(TransDataMasking),
-                                           "TransDataMasking(Mask Editing)");
+  td2d = tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "TransObData2D(Mask Editing)"));
+  tc->custom.type.data = tdm = static_cast<TransDataMasking *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataMasking), "TransDataMasking(Mask Editing)"));
   tc->custom.type.use_free = true;
 
   /* create data */
-  for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
+  for (masklay = static_cast<MaskLayer *>(mask->masklayers.first); masklay;
+       masklay = masklay->next) {
     MaskSpline *spline;
 
     if (masklay->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
-    for (spline = masklay->splines.first; spline; spline = spline->next) {
+    for (spline = static_cast<MaskSpline *>(masklay->splines.first); spline; spline = spline->next)
+    {
       int i;
 
       for (i = 0; i < spline->tot_point; i++) {
@@ -392,7 +397,10 @@ static void flushTransMasking(TransInfo *t)
   inv[1] = 1.0f / asp[1];
 
   /* flush to 2d vector from internally used 3d vector */
-  for (a = 0, td = tc->data_2d, tdm = tc->custom.type.data; a < tc->data_len; a++, td++, tdm++) {
+  for (a = 0, td = tc->data_2d, tdm = static_cast<TransDataMasking *>(tc->custom.type.data);
+       a < tc->data_len;
+       a++, td++, tdm++)
+  {
     td->loc2d[0] = td->loc[0] * inv[0];
     td->loc2d[1] = td->loc[1] * inv[1];
     mul_m3_v2(tdm->parent_inverse_matrix, td->loc2d);
@@ -434,14 +442,14 @@ static void recalcData_mask_common(TransInfo *t)
 
 static void special_aftertrans_update__mask(bContext *C, TransInfo *t)
 {
-  Mask *mask = NULL;
+  Mask *mask = nullptr;
 
   if (t->spacetype == SPACE_CLIP) {
-    SpaceClip *sc = t->area->spacedata.first;
+    SpaceClip *sc = static_cast<SpaceClip *>(t->area->spacedata.first);
     mask = ED_space_clip_get_mask(sc);
   }
   else if (t->spacetype == SPACE_IMAGE) {
-    SpaceImage *sima = t->area->spacedata.first;
+    SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
     mask = ED_space_image_get_mask(sima);
   }
   else {

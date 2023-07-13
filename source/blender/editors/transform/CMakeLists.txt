@@ -32,7 +32,7 @@ set(SRC
   transform_convert_gpencil_legacy.cc
   transform_convert_graph.cc
   transform_convert_lattice.cc
-  transform_convert_mask.c
+  transform_convert_mask.cc
   transform_convert_mball.c
   transform_convert_mesh.c
   transform_convert_mesh_edge.c
