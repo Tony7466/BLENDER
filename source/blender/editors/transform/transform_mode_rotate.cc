@@ -72,7 +72,7 @@ static void rmat_cache_update(struct RotateMatrixCache *rmc,
 struct TransDataArgs_Rotate {
   const TransInfo *t;
   const TransDataContainer *tc;
-  const float axis[3];
+  float axis[3];
   float angle;
   float angle_step;
   bool is_large_rotation;
@@ -98,7 +98,7 @@ static void transdata_elem_rotate(const TransInfo *t,
   if (t->con.applyRot) {
     copy_v3_v3(axis_buffer, axis);
     axis_final = axis_buffer;
-    t->con.applyRot(t, tc, td, axis_buffer, NULL);
+    t->con.applyRot(t, tc, td, axis_buffer, nullptr);
     angle_final = angle * td->factor;
     /* Even though final angle might be identical to orig value,
      * we have to update the rotation matrix in that case... */
@@ -118,7 +118,7 @@ static void transdata_elem_rotate(const TransInfo *t,
    * Otherwise, just assume it's useless (e.g. in case of mesh/UV/etc. editing).
    * Also need to be in Euler rotation mode, the others never allow more than one turn anyway.
    */
-  if (is_large_rotation && td->ext != NULL && td->ext->rotOrder == ROT_MODE_EUL) {
+  if (is_large_rotation && td->ext != nullptr && td->ext->rotOrder == ROT_MODE_EUL) {
     copy_v3_v3(td->ext->rot, td->ext->irot);
     for (float angle_progress = angle_step; fabsf(angle_progress) < fabsf(angle_final);
          angle_progress += angle_step)
@@ -141,8 +141,8 @@ static void transdata_elem_rotate_fn(void *__restrict iter_data_v,
                                      const int iter,
                                      const TaskParallelTLS *__restrict tls)
 {
-  struct TransDataArgs_Rotate *data = iter_data_v;
-  struct TransDataArgs_RotateTLS *tls_data = tls->userdata_chunk;
+  TransDataArgs_Rotate *data = static_cast<TransDataArgs_Rotate *>(iter_data_v);
+  TransDataArgs_RotateTLS *tls_data = static_cast<TransDataArgs_RotateTLS *>(tls->userdata_chunk);
 
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
@@ -172,10 +172,10 @@ static float RotationBetween(TransInfo *t, const float p1[3], const float p2[3])
   sub_v3_v3v3(end, p2, t->center_global);
 
   /* Angle around a constraint axis (error prone, will need debug). */
-  if (t->con.applyRot != NULL && (t->con.mode & CON_APPLY)) {
+  if (t->con.applyRot != nullptr && (t->con.mode & CON_APPLY)) {
     float axis[3];
 
-    t->con.applyRot(t, NULL, NULL, axis, NULL);
+    t->con.applyRot(t, nullptr, nullptr, axis, nullptr);
 
     angle = -angle_signed_on_axis_v3v3_v3(start, end, axis);
   }
@@ -251,17 +251,15 @@ static void applyRotationValue(TransInfo *t,
       }
     }
     else {
-      struct TransDataArgs_Rotate data = {
-          .t = t,
-          .tc = tc,
-          .axis = {UNPACK3(axis)},
-          .angle = angle,
-          .angle_step = angle_step,
-          .is_large_rotation = is_large_rotation,
-      };
-      struct TransDataArgs_RotateTLS tls_data = {
-          .rmc = rmc,
-      };
+      TransDataArgs_Rotate data{};
+      data.t = t;
+      data.tc = tc;
+      copy_v3_v3(data.axis, axis);
+      data.angle = angle;
+      data.angle_step = angle_step;
+      data.is_large_rotation = is_large_rotation;
+      TransDataArgs_RotateTLS tls_data{};
+      tls_data.rmc = rmc;
 
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
@@ -336,13 +334,13 @@ static bool clip_uv_transform_rotate(const TransInfo *t, float *vec, float *vec_
   return true;
 }
 
-static void applyRotation(TransInfo *t, const int UNUSED(mval[2]))
+static void applyRotation(TransInfo *t, const int[2] /*mval*/)
 {
   float axis_final[3];
   float final = t->values[0] + t->values_modal_offset[0];
 
   if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-    t->con.applyRot(t, NULL, NULL, axis_final, &final);
+    t->con.applyRot(t, nullptr, nullptr, axis_final, &final);
   }
   else {
     negate_v3_v3(axis_final, t->spacemtx[t->orient_axis]);
@@ -391,7 +389,7 @@ static void applyRotationMatrix(TransInfo *t, float mat_xform[4][4])
   float axis_final[3];
   const float angle_final = t->values_final[0];
   if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-    t->con.applyRot(t, NULL, NULL, axis_final, NULL);
+    t->con.applyRot(t, nullptr, nullptr, axis_final, nullptr);
   }
   else {
     negate_v3_v3(axis_final, t->spacemtx[t->orient_axis]);
@@ -405,7 +403,7 @@ static void applyRotationMatrix(TransInfo *t, float mat_xform[4][4])
   mul_m4_m4m4(mat_xform, mat4, mat_xform);
 }
 
-static void initRotation(TransInfo *t, wmOperator *UNUSED(op))
+static void initRotation(TransInfo *t, wmOperator * /*op*/)
 {
   if (t->spacetype == SPACE_ACTION) {
     BKE_report(t->reports, RPT_ERROR, "Rotation is not supported in the Dope Sheet Editor");
@@ -440,8 +438,8 @@ TransModeInfo TransMode_rotate = {
     /*init_fn*/ initRotation,
     /*transform_fn*/ applyRotation,
     /*transform_matrix_fn*/ applyRotationMatrix,
-    /*handle_event_fn*/ NULL,
+    /*handle_event_fn*/ nullptr,
     /*snap_distance_fn*/ RotationBetween,
     /*snap_apply_fn*/ ApplySnapRotation,
-    /*draw_fn*/ NULL,
+    /*draw_fn*/ nullptr,
 };

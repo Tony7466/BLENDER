@@ -76,7 +76,7 @@ set(SRC
   transform_mode_mirror.cc
   transform_mode_push_pull.cc
   transform_mode_resize.cc
-  transform_mode_rotate.c
+  transform_mode_rotate.cc
   transform_mode_shear.c
   transform_mode_shrink_fatten.c
   transform_mode_skin_resize.c
