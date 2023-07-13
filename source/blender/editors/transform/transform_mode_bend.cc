@@ -69,10 +69,10 @@ struct TransDataArgs_Bend {
   float angle;
   struct BendCustomData bend_data;
 
-  const float warp_sta_local[3];
-  const float warp_end_local[3];
-  const float warp_end_radius_local[3];
-  const float pivot_local[3];
+  float warp_sta_local[3];
+  float warp_end_local[3];
+  float warp_end_radius_local[3];
+  float pivot_local[3];
   bool is_clamp;
 };
 
@@ -82,7 +82,7 @@ static void transdata_elem_bend(const TransInfo *t,
                                 float angle,
                                 const struct BendCustomData *bend_data,
                                 const float warp_sta_local[3],
-                                const float UNUSED(warp_end_local[3]),
+                                const float[3] /*warp_end_local*/,
                                 const float warp_end_radius_local[3],
                                 const float pivot_local[3],
 
@@ -109,7 +109,7 @@ static void transdata_elem_bend(const TransInfo *t,
   if (t->options & CTX_GPENCIL_STROKES) {
     /* Grease pencil multi-frame falloff. */
     bGPDstroke *gps = (bGPDstroke *)td->extra;
-    if (gps != NULL) {
+    if (gps != nullptr) {
       fac_scaled = fac * td->factor * gps->runtime.multi_frame_falloff;
     }
     else {
@@ -144,9 +144,9 @@ static void transdata_elem_bend(const TransInfo *t,
 
 static void transdata_elem_bend_fn(void *__restrict iter_data_v,
                                    const int iter,
-                                   const TaskParallelTLS *__restrict UNUSED(tls))
+                                   const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_Bend *data = iter_data_v;
+  TransDataArgs_Bend *data = static_cast<TransDataArgs_Bend *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -169,7 +169,7 @@ static void transdata_elem_bend_fn(void *__restrict iter_data_v,
 /** \name Transform (Bend)
  * \{ */
 
-static eRedrawFlag handleEventBend(TransInfo *UNUSED(t), const wmEvent *event)
+static eRedrawFlag handleEventBend(TransInfo * /*t*/, const wmEvent *event)
 {
   eRedrawFlag status = TREDRAW_NOTHING;
 
@@ -180,13 +180,14 @@ static eRedrawFlag handleEventBend(TransInfo *UNUSED(t), const wmEvent *event)
   return status;
 }
 
-static void Bend(TransInfo *t, const int UNUSED(mval[2]))
+static void Bend(TransInfo *t, const int[2] /*mval*/)
 {
   float pivot_global[3];
   float warp_end_radius_global[3];
   int i;
   char str[UI_MAX_DRAW_STR];
-  const struct BendCustomData *bend_data = t->custom.mode.data;
+  const struct BendCustomData *bend_data = static_cast<const BendCustomData *>(
+      t->custom.mode.data);
   const bool is_clamp = (t->flag & T_ALT_TRANSFORM) == 0;
 
   union {
@@ -200,7 +201,7 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
   copy_v2_v2(values.vector, t->values);
 
 #if 0
-  snapGrid(t, angle_rad);
+snapGrid(t, angle_rad);
 #else
   /* hrmf, snapping radius is using 'angle' steps, need to convert to something else
    * this isn't essential but nicer to give reasonable snapping values for radius. */
@@ -302,17 +303,16 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct TransDataArgs_Bend data = {
-          .t = t,
-          .tc = tc,
-          .angle = values.angle,
-          .bend_data = *bend_data,
-          .warp_sta_local = {UNPACK3(warp_sta_local)},
-          .warp_end_local = {UNPACK3(warp_end_local)},
-          .warp_end_radius_local = {UNPACK3(warp_end_radius_local)},
-          .pivot_local = {UNPACK3(pivot_local)},
-          .is_clamp = is_clamp,
-      };
+      TransDataArgs_Bend data{};
+      data.t = t;
+      data.tc = tc;
+      data.angle = values.angle;
+      data.bend_data = *bend_data;
+      copy_v3_v3(data.warp_sta_local, warp_sta_local);
+      copy_v3_v3(data.warp_end_local, warp_end_local);
+      copy_v3_v3(data.warp_end_radius_local, warp_end_radius_local);
+      copy_v3_v3(data.pivot_local, pivot_local);
+      data.is_clamp = is_clamp;
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       BLI_task_parallel_range(0, tc->data_len, &data, transdata_elem_bend_fn, &settings);
@@ -324,9 +324,9 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initBend(TransInfo *t, wmOperator *UNUSED(op))
+static void initBend(TransInfo *t, wmOperator * /*op*/)
 {
-  const float mval_fl[2] = {UNPACK2(t->mval)};
+  const float mval_fl[2] = {float(t->mval[0]), float(t->mval[1])};
   const float *curs;
   float tvec[3];
   struct BendCustomData *data;
@@ -352,7 +352,7 @@ static void initBend(TransInfo *t, wmOperator *UNUSED(op))
   }
   calculateCenterLocal(t, t->center_global);
 
-  data = MEM_callocN(sizeof(*data), __func__);
+  data = static_cast<BendCustomData *>(MEM_callocN(sizeof(*data), __func__));
 
   curs = t->scene->cursor.location;
   copy_v3_v3(data->warp_sta, curs);
@@ -379,9 +379,9 @@ TransModeInfo TransMode_bend = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initBend,
     /*transform_fn*/ Bend,
-    /*transform_matrix_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
     /*handle_event_fn*/ handleEventBend,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
