@@ -386,8 +386,7 @@ template<typename T>
   for (const int i : io_materials->elements().index_range()) {
     IDProperty *material_prop = bke::idprop::create_group(std::to_string(i)).release();
 
-    const DictionaryValue *io_material = io_materials->elements()[i]->as_dictionary_value();
-    if (io_material != nullptr) {
+    if (const DictionaryValue *io_material = io_materials->elements()[i]->as_dictionary_value()) {
       if (const std::optional<StringRefNull> id_name = io_material->lookup_str("id_name")) {
         IDP_AddToGroup(material_prop, IDP_NewString(id_name->c_str(), "id_name"));
       }
@@ -397,7 +396,7 @@ template<typename T>
     }
 
     IDP_AppendArray(materials_prop, material_prop);
-    /* IDP_AppendArray does a shallo copy. */
+    /* IDP_AppendArray does a shallow copy. */
     MEM_freeN(material_prop);
   }
   IDProperty *id_props = IDP_GetProperties(&id, true);
