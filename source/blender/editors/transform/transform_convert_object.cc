@@ -38,7 +38,7 @@
 /** \name Object Mode Custom Data
  * \{ */
 
-typedef struct TransDataObject {
+struct TransDataObject {
 
   /**
    * Object to object data transform table.
@@ -53,15 +53,14 @@ typedef struct TransDataObject {
    * - The value is #XFormObjectSkipChild.
    */
   struct XFormObjectSkipChild_Container *xcs;
-
-} TransDataObject;
+};
 
 static void freeTransObjectCustomData(TransInfo *t,
-                                      TransDataContainer *UNUSED(tc),
+                                      TransDataContainer * /*tc*/,
                                       TransCustomData *custom_data)
 {
-  TransDataObject *tdo = custom_data->data;
-  custom_data->data = NULL;
+  TransDataObject *tdo = static_cast<TransDataObject *>(custom_data->data);
+  custom_data->data = nullptr;
 
   if (t->options & CTX_OBMODE_XFORM_OBDATA) {
     ED_object_data_xform_container_destroy(tdo->xds);
@@ -87,8 +86,8 @@ static void freeTransObjectCustomData(TransInfo *t,
 
 static void trans_obdata_in_obmode_update_all(TransInfo *t)
 {
-  TransDataObject *tdo = t->custom.type.data;
-  if (tdo->xds == NULL) {
+  TransDataObject *tdo = static_cast<TransDataObject *>(t->custom.type.data);
+  if (tdo->xds == nullptr) {
     return;
   }
 
@@ -110,8 +109,8 @@ static void trans_obdata_in_obmode_update_all(TransInfo *t)
 
 static void trans_obchild_in_obmode_update_all(TransInfo *t)
 {
-  TransDataObject *tdo = t->custom.type.data;
-  if (tdo->xcs == NULL) {
+  TransDataObject *tdo = static_cast<TransDataObject *>(t->custom.type.data);
+  if (tdo->xcs == nullptr) {
     return;
   }
 
@@ -173,7 +172,7 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
     }
   }
 
-  td->con = ob->constraints.first;
+  td->con = static_cast<bConstraint *>(ob->constraints.first);
 
   /* hack: temporarily disable tracking and/or constraints when getting
    * object matrix, if tracking is on, or if constraints don't need
@@ -223,31 +222,31 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
 
   if (ob->rotmode > 0) {
     td->ext->rot = ob->rot;
-    td->ext->rotAxis = NULL;
-    td->ext->rotAngle = NULL;
-    td->ext->quat = NULL;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
+    td->ext->quat = nullptr;
 
     copy_v3_v3(td->ext->irot, ob->rot);
     copy_v3_v3(td->ext->drot, ob->drot);
   }
   else if (ob->rotmode == ROT_MODE_AXISANGLE) {
-    td->ext->rot = NULL;
+    td->ext->rot = nullptr;
     td->ext->rotAxis = ob->rotAxis;
     td->ext->rotAngle = &ob->rotAngle;
-    td->ext->quat = NULL;
+    td->ext->quat = nullptr;
 
     td->ext->irotAngle = ob->rotAngle;
     copy_v3_v3(td->ext->irotAxis, ob->rotAxis);
-    /* XXX, not implemented. */
+/* XXX, not implemented. */
 #if 0
     td->ext->drotAngle = ob->drotAngle;
     copy_v3_v3(td->ext->drotAxis, ob->drotAxis);
 #endif
   }
   else {
-    td->ext->rot = NULL;
-    td->ext->rotAxis = NULL;
-    td->ext->rotAngle = NULL;
+    td->ext->rot = nullptr;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
     td->ext->quat = ob->quat;
 
     copy_qt_qt(td->ext->iquat, ob->quat);
@@ -302,7 +301,7 @@ static void trans_object_base_deps_flag_prepare(const Scene *scene, ViewLayer *v
 
 static void set_trans_object_base_deps_flag_cb(ID *id,
                                                eDepsObjectComponentType component,
-                                               void *UNUSED(user_data))
+                                               void * /*user_data*/)
 {
   /* Here we only handle object IDs. */
   if (GS(id->name) != ID_OB) {
@@ -322,7 +321,7 @@ static void flush_trans_object_base_deps_flag(Depsgraph *depsgraph, Object *obje
                                      DEG_OB_COMP_TRANSFORM,
                                      DEG_FOREACH_COMPONENT_IGNORE_TRANSFORM_SOLVERS,
                                      set_trans_object_base_deps_flag_cb,
-                                     NULL);
+                                     nullptr);
 }
 
 static void trans_object_base_deps_flag_finish(const TransInfo *t,
@@ -346,7 +345,7 @@ static void set_trans_object_base_flags(TransInfo *t)
 {
   Main *bmain = CTX_data_main(t->context);
   ViewLayer *view_layer = t->view_layer;
-  View3D *v3d = t->view;
+  View3D *v3d = static_cast<View3D *>(t->view);
   Scene *scene = t->scene;
   Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
   /* NOTE: if Base selected and has parent selected:
@@ -370,10 +369,10 @@ static void set_trans_object_base_flags(TransInfo *t)
       Object *ob = base->object;
       Object *parsel = ob->parent;
       /* If parent selected, deselect. */
-      while (parsel != NULL) {
+      while (parsel != nullptr) {
         if (parsel->base_flag & BASE_SELECTED) {
           Base *parbase = BKE_view_layer_base_find(view_layer, parsel);
-          if (parbase != NULL) { /* in rare cases this can fail */
+          if (parbase != nullptr) { /* in rare cases this can fail */
             if (BASE_SELECTED_EDITABLE(v3d, parbase)) {
               break;
             }
@@ -381,7 +380,7 @@ static void set_trans_object_base_flags(TransInfo *t)
         }
         parsel = parsel->parent;
       }
-      if (parsel != NULL) {
+      if (parsel != nullptr) {
         /* Rotation around local centers are allowed to propagate. */
         if ((t->around == V3D_AROUND_LOCAL_ORIGINS) && ELEM(t->mode, TFM_ROTATION, TFM_TRACKBALL))
         {
@@ -421,7 +420,7 @@ static int count_proportional_objects(TransInfo *t)
 {
   int total = 0;
   ViewLayer *view_layer = t->view_layer;
-  View3D *v3d = t->view;
+  View3D *v3d = static_cast<View3D *>(t->view);
   Main *bmain = CTX_data_main(t->context);
   Scene *scene = t->scene;
   Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
@@ -434,7 +433,7 @@ static int count_proportional_objects(TransInfo *t)
       if (BASE_SELECTED_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)) {
         Object *parent = base->object->parent;
         /* flag all parents */
-        while (parent != NULL) {
+        while (parent != nullptr) {
           parent->flag |= BA_TRANSFORM_PARENT;
           parent = parent->parent;
         }
@@ -492,7 +491,7 @@ static void clear_trans_object_base_flags(TransInfo *t)
 static void createTransObject(bContext *C, TransInfo *t)
 {
   Main *bmain = CTX_data_main(C);
-  TransData *td = NULL;
+  TransData *td = nullptr;
   TransDataExtension *tx;
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
 
@@ -513,10 +512,12 @@ static void createTransObject(bContext *C, TransInfo *t)
     tc->data_len += count_proportional_objects(t);
   }
 
-  td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransOb");
-  tx = tc->data_ext = MEM_callocN(tc->data_len * sizeof(TransDataExtension), "TransObExtension");
+  td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransOb"));
+  tx = tc->data_ext = static_cast<TransDataExtension *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataExtension), "TransObExtension"));
 
-  TransDataObject *tdo = MEM_callocN(sizeof(*tdo), __func__);
+  TransDataObject *tdo = static_cast<TransDataObject *>(MEM_callocN(sizeof(*tdo), __func__));
   t->custom.type.data = tdo;
   t->custom.type.free_cb = freeTransObjectCustomData;
 
@@ -543,7 +544,7 @@ static void createTransObject(bContext *C, TransInfo *t)
     }
 
     if (t->options & CTX_OBMODE_XFORM_OBDATA) {
-      ID *id = ob->data;
+      ID *id = static_cast<ID *>(ob->data);
       if (!id || id->lib) {
         td->flag |= TD_SKIP;
       }
@@ -561,7 +562,7 @@ static void createTransObject(bContext *C, TransInfo *t)
     }
 
     ObjectToTransData(t, td, ob);
-    td->val = NULL;
+    td->val = nullptr;
     td++;
     tx++;
   }
@@ -570,7 +571,7 @@ static void createTransObject(bContext *C, TransInfo *t)
   if (is_prop_edit) {
     Scene *scene = t->scene;
     ViewLayer *view_layer = t->view_layer;
-    View3D *v3d = t->view;
+    View3D *v3d = static_cast<View3D *>(t->view);
 
     BKE_view_layer_synced_ensure(scene, view_layer);
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
@@ -587,7 +588,7 @@ static void createTransObject(bContext *C, TransInfo *t)
         td->ext->rotOrder = ob->rotmode;
 
         ObjectToTransData(t, td, ob);
-        td->val = NULL;
+        td->val = nullptr;
         td++;
         tx++;
       }
@@ -605,7 +606,7 @@ static void createTransObject(bContext *C, TransInfo *t)
 
     Scene *scene = t->scene;
     ViewLayer *view_layer = t->view_layer;
-    View3D *v3d = t->view;
+    View3D *v3d = static_cast<View3D *>(t->view);
 
     BKE_view_layer_synced_ensure(scene, view_layer);
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
@@ -618,10 +619,10 @@ static void createTransObject(bContext *C, TransInfo *t)
       {
 
         Object *ob_parent = ob->parent;
-        if (ob_parent != NULL) {
+        if (ob_parent != nullptr) {
           if (!BLI_gset_haskey(objects_in_transdata, ob)) {
             bool parent_in_transdata = false;
-            while (ob_parent != NULL) {
+            while (ob_parent != nullptr) {
               if (BLI_gset_haskey(objects_in_transdata, ob_parent)) {
                 parent_in_transdata = true;
                 break;
@@ -635,7 +636,7 @@ static void createTransObject(bContext *C, TransInfo *t)
         }
       }
     }
-    BLI_gset_free(objects_in_transdata, NULL);
+    BLI_gset_free(objects_in_transdata, nullptr);
   }
 
   if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
@@ -643,6 +644,7 @@ static void createTransObject(bContext *C, TransInfo *t)
     tdo->xcs = ED_object_xform_skip_child_container_create();
 
 #define BASE_XFORM_INDIRECT(base) \
+\
   ((base->flag_legacy & BA_WAS_SEL) && (base->flag & BASE_SELECTED) == 0)
 
     GSet *objects_in_transdata = BLI_gset_ptr_new_ex(__func__, tc->data_len);
@@ -660,7 +662,7 @@ static void createTransObject(bContext *C, TransInfo *t)
     BKE_view_layer_synced_ensure(scene, view_layer);
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
       Object *ob = base->object;
-      if (ob->parent != NULL) {
+      if (ob->parent != nullptr) {
         if (ob->parent && !BLI_gset_haskey(objects_in_transdata, ob->parent) &&
             !BLI_gset_haskey(objects_in_transdata, ob))
         {
@@ -668,8 +670,8 @@ static void createTransObject(bContext *C, TransInfo *t)
             Base *base_parent = BKE_view_layer_base_find(view_layer, ob->parent);
             if (base_parent && !BASE_XFORM_INDIRECT(base_parent)) {
               Object *ob_parent_recurse = ob->parent;
-              if (ob_parent_recurse != NULL) {
-                while (ob_parent_recurse != NULL) {
+              if (ob_parent_recurse != nullptr) {
+                while (ob_parent_recurse != nullptr) {
                   if (BLI_gset_haskey(objects_in_transdata, ob_parent_recurse)) {
                     break;
                   }
@@ -695,17 +697,18 @@ static void createTransObject(bContext *C, TransInfo *t)
       if (BASE_XFORM_INDIRECT(base) || BLI_gset_haskey(objects_in_transdata, ob)) {
         /* pass. */
       }
-      else if (ob->parent != NULL) {
+      else if (ob->parent != nullptr) {
         Base *base_parent = BKE_view_layer_base_find(view_layer, ob->parent);
         if (base_parent) {
           if (BASE_XFORM_INDIRECT(base_parent) ||
               BLI_gset_haskey(objects_in_transdata, ob->parent)) {
             ED_object_xform_skip_child_container_item_ensure(
-                tdo->xcs, ob, NULL, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
+                tdo->xcs, ob, nullptr, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
             base->flag_legacy |= BA_TRANSFORM_LOCKED_IN_PLACE;
           }
           else {
-            Object *ob_parent_recurse = BLI_ghash_lookup(objects_parent_root, ob->parent);
+            Object *ob_parent_recurse = static_cast<Object *>(
+                BLI_ghash_lookup(objects_parent_root, ob->parent));
             if (ob_parent_recurse) {
               ED_object_xform_skip_child_container_item_ensure(
                   tdo->xcs, ob, ob_parent_recurse, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM_INDIRECT);
@@ -714,8 +717,8 @@ static void createTransObject(bContext *C, TransInfo *t)
         }
       }
     }
-    BLI_gset_free(objects_in_transdata, NULL);
-    BLI_ghash_free(objects_parent_root, NULL, NULL);
+    BLI_gset_free(objects_in_transdata, nullptr);
+    BLI_ghash_free(objects_parent_root, nullptr, nullptr);
 
 #undef BASE_XFORM_INDIRECT
   }
@@ -747,17 +750,17 @@ static void autokeyframe_object(
     ReportList *reports = CTX_wm_reports(C);
     ToolSettings *ts = scene->toolsettings;
     KeyingSet *active_ks = ANIM_scene_get_active_keyingset(scene);
-    ListBase dsources = {NULL, NULL};
+    ListBase dsources = {nullptr, nullptr};
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
         depsgraph, (float)scene->r.cfra);
-    eInsertKeyFlags flag = 0;
+    eInsertKeyFlags flag = eInsertKeyFlags(0);
 
     /* Get flags used for inserting keyframes. */
     flag = ANIM_get_keyframing_flags(scene, true);
 
     /* Add data-source override for the object. */
-    ANIM_relative_keyingset_add_source(&dsources, id, NULL, NULL);
+    ANIM_relative_keyingset_add_source(&dsources, id, nullptr, nullptr);
 
     if (IS_AUTOKEY_FLAG(scene, ONLYKEYINGSET) && (active_ks)) {
       /* Only insert into active keyingset
@@ -765,24 +768,24 @@ static void autokeyframe_object(
        * does not need to have its iterator overridden.
        */
       ANIM_apply_keyingset(
-          C, &dsources, NULL, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+          C, &dsources, nullptr, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
     }
     else if (IS_AUTOKEY_FLAG(scene, INSERTAVAIL)) {
       AnimData *adt = ob->adt;
 
       /* only key on available channels */
       if (adt && adt->action) {
-        ListBase nla_cache = {NULL, NULL};
-        for (fcu = adt->action->curves.first; fcu; fcu = fcu->next) {
+        ListBase nla_cache = {nullptr, nullptr};
+        for (fcu = static_cast<FCurve *>(adt->action->curves.first); fcu; fcu = fcu->next) {
           insert_keyframe(bmain,
                           reports,
                           id,
                           adt->action,
-                          (fcu->grp ? fcu->grp->name : NULL),
+                          (fcu->grp ? fcu->grp->name : nullptr),
                           fcu->rna_path,
                           fcu->array_index,
                           &anim_eval_context,
-                          ts->keyframe_type,
+                          eBezTriple_KeyframeType(ts->keyframe_type),
                           &nla_cache,
                           flag);
         }
@@ -830,26 +833,26 @@ static void autokeyframe_object(
 
       /* insert keyframes for the affected sets of channels using the builtin KeyingSets found */
       if (do_loc) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_LOCATION_ID);
+        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOCATION_ID);
         ANIM_apply_keyingset(
-            C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
       if (do_rot) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_ROTATION_ID);
+        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_ROTATION_ID);
         ANIM_apply_keyingset(
-            C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
       if (do_scale) {
-        KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_SCALING_ID);
+        KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_SCALING_ID);
         ANIM_apply_keyingset(
-            C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+            C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
       }
     }
     /* insert keyframe in all (transform) channels */
     else {
-      KeyingSet *ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_LOC_ROT_SCALE_ID);
+      KeyingSet *ks = ANIM_builtin_keyingset_get_named(nullptr, ANIM_KS_LOC_ROT_SCALE_ID);
       ANIM_apply_keyingset(
-          C, &dsources, NULL, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
+          C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
     }
 
     /* free temp info */
@@ -959,7 +962,7 @@ static void special_aftertrans_update__object(bContext *C, TransInfo *t)
 
     /* flag object caches as outdated */
     BKE_ptcache_ids_from_object(&pidlist, ob, t->scene, MAX_DUPLI_RECUR);
-    for (pid = pidlist.first; pid; pid = pid->next) {
+    for (pid = static_cast<PTCacheID *>(pidlist.first); pid; pid = pid->next) {
       if (pid->type != PTCACHE_TYPE_PARTICLES) {
         /* particles don't need reset on geometry change */
         pid->cache->flag |= PTCACHE_OUTDATED;
