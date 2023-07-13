@@ -24,12 +24,12 @@
 /** \name Edge (for crease) Transform Creation
  * \{ */
 
-static void createTransEdge(bContext *UNUSED(C), TransInfo *t)
+static void createTransEdge(bContext * /*C*/, TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
-    TransData *td = NULL;
+    TransData *td = nullptr;
     BMEdge *eed;
     BMIter iter;
     float mtx[3][3], smtx[3][3];
@@ -61,7 +61,8 @@ static void createTransEdge(bContext *UNUSED(C), TransInfo *t)
       tc->data_len = countsel;
     }
 
-    td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransCrease");
+    td = tc->data = static_cast<TransData *>(
+        MEM_callocN(tc->data_len * sizeof(TransData), "TransCrease"));
 
     copy_m3_m4(mtx, tc->obedit->object_to_world);
     pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
@@ -93,7 +94,7 @@ static void createTransEdge(bContext *UNUSED(C), TransInfo *t)
         /* need to set center for center calculations */
         mid_v3_v3v3(td->center, eed->v1->co, eed->v2->co);
 
-        td->loc = NULL;
+        td->loc = nullptr;
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
           td->flag = TD_SELECTED;
         }
@@ -104,9 +105,9 @@ static void createTransEdge(bContext *UNUSED(C), TransInfo *t)
         copy_m3_m3(td->smtx, smtx);
         copy_m3_m3(td->mtx, mtx);
 
-        td->ext = NULL;
+        td->ext = nullptr;
 
-        fl_ptr = BM_ELEM_CD_GET_VOID_P(eed, cd_edge_float_offset);
+        fl_ptr = static_cast<float *>(BM_ELEM_CD_GET_VOID_P(eed, cd_edge_float_offset));
         td->val = fl_ptr;
         td->ival = *fl_ptr;
 
@@ -119,7 +120,7 @@ static void createTransEdge(bContext *UNUSED(C), TransInfo *t)
 static void recalcData_mesh_edge(TransInfo *t)
 {
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(tc->obedit->data), ID_RECALC_GEOMETRY);
   }
 }
 
@@ -129,5 +130,5 @@ TransConvertTypeInfo TransConvertType_MeshEdge = {
     /*flags*/ T_EDIT,
     /*createTransData*/ createTransEdge,
     /*recalcData*/ recalcData_mesh_edge,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
