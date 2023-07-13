@@ -172,7 +172,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
     }
   });
 
-  for (int step = iterations; step > 0; step--) {
+  for (int step : IndexRange(iterations)) {
+    const int offset = iterations - step;
 
     mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
       /* Filter out endpoints if smooth ends is disabled. */
@@ -184,8 +185,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
       double w_after = w - w2;
 
       /* Compute the neighboring points. */
-      int64_t before = point_index - step;
-      int64_t after = point_index + step;
+      int64_t before = point_index - offset;
+      int64_t after = point_index + offset;
       if (is_cyclic) {
         before = ((before - first_pt) % total_points + total_points) % total_points + first_pt;
         after = (after - first_pt) % total_points + first_pt;
@@ -216,8 +217,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
       total_weight[mask_index] += w_after;
     });
 
-    w *= (n_half + step) / double(n_half + 1 - step);
-    w2 *= (n_half * 3 + step) / double(n_half * 3 + 1 - step);
+    w *= (n_half + offset) / double(n_half + 1 - offset);
+    w2 *= (n_half * 3 + offset) / double(n_half * 3 + 1 - offset);
   }
 
   /* Normalize the weights. */
