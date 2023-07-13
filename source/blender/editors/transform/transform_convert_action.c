@@ -613,10 +613,9 @@ static void recalcData_actedit(TransInfo *t)
   const short autosnap = getAnimEdit_SnapMode(t);
   TransData *td;
   TransData2D *td2d;
-  ToolSettings *ts = t->scene->toolsettings;
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    if (ts->snap_flag_anim && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
+    if (t->tsnap.flag && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
       transform_snap_anim_flush_data(t, td, autosnap, td->loc);
     }
 

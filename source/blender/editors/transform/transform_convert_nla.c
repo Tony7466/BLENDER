@@ -637,8 +637,7 @@ static void recalcData_nla(TransInfo *t)
    * NOTE: only do this when transform is still running, or we can't restore
    */
   if (t->state != TRANS_CANCEL) {
-    ToolSettings *ts = t->scene->toolsettings;
-    if (ts->snap_flag_anim) {
+    if (t->tsnap.flag) {
       const short autosnap = getAnimEdit_SnapMode(t);
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
