@@ -310,11 +310,10 @@ void Instance::render_sample()
   sampling.step();
 
   capture_view.render_world();
-  main_view.render();
-  /* Rendering of probes depends on main view resources. The rendered probes will be applied to the
-   * next sample. */
-  // TODO: Not sure how to incorporate this during image rendering.
   capture_view.render_probes();
+
+  main_view.render();
+  // TODO: Not sure how to incorporate this during image rendering.
 
   motion_blur.step();
 }

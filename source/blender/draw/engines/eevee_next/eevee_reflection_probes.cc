@@ -450,30 +450,35 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.clipping_distances = item.value.clipping_distances;
     info.probe_pos = probe_data.pos;
 
+    if (cubemap_tx_.ensure_cube(GPU_RGBA16F, info.resolution, GPU_TEXTURE_USAGE_ATTACHMENT)) {
+      GPU_texture_mipmap_mode(cubemap_tx_, false, true);
+    }
+
     return info;
   }
+
+  /* Check reset probe updating as we completed rendering all Probes. */
+  if (probe_type == ReflectionProbe::Type::Probe && update_probes_this_sample_ &&
+      update_probes_next_sample_)
+  {
+    update_probes_next_sample_ = false;
+  }
+
   return std::nullopt;
 }
 
-void ReflectionProbeModule::remap_to_octahedral_projection(Texture &cubemap_tx,
-                                                           uint64_t object_key)
+void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
 {
-  BLI_assert(cubemap_tx_ == nullptr);
-  BLI_assert(cubemap_tx != nullptr);
-
   const ReflectionProbe &probe = probes_.lookup(object_key);
   const ReflectionProbeData &probe_data = data_buf_[probe.index];
 
   /* Update shader parameters that change per dispatch. */
-  cubemap_tx_ = cubemap_tx;
   reflection_probe_index_ = probe.index;
   dispatch_probe_pack_ = int3(int2(ceil_division(max_resolution_ >> probe_data.layer_subdivision,
                                                  REFLECTION_PROBE_GROUP_SIZE)),
                               1);
 
   instance_.manager->submit(remap_ps_);
-
-  cubemap_tx_ = nullptr;
 }
 
 void ReflectionProbeModule::update_probes_texture_mipmaps()

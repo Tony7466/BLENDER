@@ -104,13 +104,13 @@ class ReflectionProbeModule {
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
 
   int3 dispatch_probe_pack_ = int3(0);
+
   /**
-   * Texture containing a cubemap used as input for updating #probes_tx_.
+   * Texture containing a cubemap where the probe should be rendering to.
    *
-   * Is set and reset during `remap_to_octahedral_projection`. All other occasions should contain
-   * nullptr.
+   * NOTE: TextureFromPool doesn't support cubemaps.
    */
-  GPUTexture *cubemap_tx_ = nullptr;
+  Texture cubemap_tx_ = {"Probe.Cubemap"};
   int reflection_probe_index_ = 0;
 
   bool update_probes_next_sample_ = false;
@@ -165,7 +165,7 @@ class ReflectionProbeModule {
    * Pop the next reflection probe that requires to be updated.
    */
   std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
-  void remap_to_octahedral_projection(Texture &cubemap_tx, uint64_t object_key);
+  void remap_to_octahedral_projection(uint64_t object_key);
   void update_probes_texture_mipmaps();
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */

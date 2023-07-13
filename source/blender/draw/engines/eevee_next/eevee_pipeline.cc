@@ -569,7 +569,6 @@ void DeferredProbeLayer::begin_sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
       /* Uniform Buffer. */
-      // TODO: should not be camera...
       prepass_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
 
       inst_.velocity.bind_resources(&prepass_ps_);

@@ -203,12 +203,8 @@ void CaptureView::render_world()
     return;
   }
 
-  Texture cubemap_tx;
   View view = {"Capture.View"};
   GPU_debug_group_begin("World.Capture");
-
-  cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT);
-  GPU_texture_mipmap_mode(cubemap_tx, false, true);
 
   for (int face : IndexRange(6)) {
     float4x4 view_m4 = cubeface_mat(face);
@@ -220,12 +216,13 @@ void CaptureView::render_world()
                                                     update_info->clipping_distances.y);
     view.sync(view_m4, win_m4);
 
-    capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
+    capture_fb_.ensure(GPU_ATTACHMENT_NONE,
+                       GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
     GPU_framebuffer_bind(capture_fb_);
     inst_.pipelines.world.render(view);
   }
 
-  inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
+  inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
   inst_.reflection_probes.update_probes_texture_mipmaps();
 
   GPU_debug_group_end();
@@ -234,7 +231,6 @@ void CaptureView::render_world()
 void CaptureView::render_probes()
 {
   GPU_debug_capture_begin();
-  Texture cubemap_tx;
 
   Framebuffer prepass_fb;
   View view = {"Capture.View"};
@@ -246,12 +242,6 @@ void CaptureView::render_probes()
     do_update_mipmap_chain = true;
 
     int2 extent = int2(update_info->resolution);
-
-    if (cubemap_tx.ensure_cube(GPU_RGBA16F, update_info->resolution, GPU_TEXTURE_USAGE_ATTACHMENT))
-    {
-      GPU_texture_mipmap_mode(cubemap_tx, false, true);
-    }
-
     inst_.render_buffers.acquire(extent);
 
     inst_.render_buffers.vector_tx.clear(float4(0.0f));
@@ -269,8 +259,9 @@ void CaptureView::render_probes()
                                                       update_info->clipping_distances.y);
       view.sync(view_m4, win_m4);
 
-      capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-                         GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
+      capture_fb_.ensure(
+          GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
 
       GPU_framebuffer_bind(capture_fb_);
       GPU_framebuffer_clear_color_depth(capture_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
@@ -279,7 +270,7 @@ void CaptureView::render_probes()
 
     inst_.render_buffers.release();
     GPU_debug_group_end();
-    inst_.reflection_probes.remap_to_octahedral_projection(cubemap_tx, update_info->object_key);
+    inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
   }
 
   if (do_update_mipmap_chain) {
