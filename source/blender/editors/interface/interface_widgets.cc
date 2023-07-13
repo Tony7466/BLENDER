@@ -1937,6 +1937,19 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
   }
 
+  /* If not editing and indeterminate, show dash.*/
+  if (but->drawflag & UI_BUT_INDETERMINATE && !but->editstr &&
+      ELEM(but->type,
+           UI_BTYPE_MENU,
+           UI_BTYPE_NUM,
+           UI_BTYPE_NUM_SLIDER,
+           UI_BTYPE_TEXT,
+           UI_BTYPE_SEARCH_MENU))
+  {
+    STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
+    align = UI_STYLE_TEXT_CENTER;
+  }
+
   /* text button selection, cursor, composite underline */
   if (but->editstr && but->pos != -1) {
     int but_pos_ofs;
@@ -5052,6 +5065,21 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
 #endif
   if (but->block->flag & UI_BLOCK_NO_DRAW_OVERRIDDEN_STATE) {
     state.but_flag &= ~UI_BUT_OVERRIDDEN;
+  }
+
+  if ((state.but_drawflag & UI_BUT_INDETERMINATE)) {
+    if (state.but_flag & UI_SELECT) {
+      state.but_flag &= ~UI_SELECT;
+    }
+    if (ELEM(but->type,
+             UI_BTYPE_MENU,
+             UI_BTYPE_NUM,
+             UI_BTYPE_NUM_SLIDER,
+             UI_BTYPE_TEXT,
+             UI_BTYPE_SEARCH_MENU))
+    {
+      state.but_drawflag &= ~(UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT);
+    }
   }
 
   const float zoom = 1.0f / but->block->aspect;

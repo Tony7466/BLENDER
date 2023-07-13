@@ -86,6 +86,11 @@ typedef struct uiViewItemHandle uiViewItemHandle;
 #define UI_SEP_CHAR '|'
 #define UI_SEP_CHAR_S "|"
 
+/**
+ * Character used when value is indeterminate (multiple, unknown, unset).
+ */
+#define UI_VALUE_INDETERMINATE_CHAR BLI_STR_UTF8_EM_DASH
+
 /* Separator for text in search menus (right pointing arrow).
  * keep in sync with `string_search.cc`. */
 #define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
