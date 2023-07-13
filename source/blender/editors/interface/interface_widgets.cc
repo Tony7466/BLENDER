@@ -1948,6 +1948,9 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   {
     STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
     align = UI_STYLE_TEXT_CENTER;
+    use_right_only = false;
+    drawstr_right = nullptr;
+    drawstr_left_len = strlen(but->drawstr);
   }
 
   /* text button selection, cursor, composite underline */
