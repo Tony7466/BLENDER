@@ -183,13 +183,13 @@ static void reassign_loose_edge_verts(const int vertex,
  */
 static int adjacent_edge(const Span<int> corner_verts,
                          const Span<int> corner_edges,
-                         const int loop_i,
+                         const int corner,
                          const IndexRange poly,
-                         const int vertex)
+                         const int vert)
 {
-  const int adjacent_loop_i = (corner_verts[loop_i] == vertex) ?
-                                  bke::mesh::poly_corner_prev(poly, loop_i) :
-                                  bke::mesh::poly_corner_next(poly, loop_i);
+  const int adjacent_loop_i = (corner_verts[corner] == vert) ?
+                                  bke::mesh::poly_corner_prev(poly, corner) :
+                                  bke::mesh::poly_corner_next(poly, corner);
   return corner_edges[adjacent_loop_i];
 }
 
@@ -207,19 +207,17 @@ static IndexMask vert_selection_from_edge(const Span<int2> edges,
   return IndexMask::from_bools(array, memory);
 }
 
-static BitVector<> selection_to_bits(const IndexMask &selection, const int universe_size)
+static BitVector<> selection_to_bit_vector(const IndexMask &selection, const int universe_size)
 {
   BitVector<> bits(universe_size);
   selection.to_bits(bits);
   return bits;
 }
 
-using VertEdgeFans = Vector<Vector<int>>;
-
 static BitVector<> bit_span_gather(const BitSpan span, const Span<int> indices)
 {
   BitVector<> bits(indices.size());
-  for (const int i : indices) {
+  for (const int i : indices.index_range()) {
     bits[i].set(span[i]);
   }
   return bits;
@@ -241,6 +239,8 @@ static bool bit_span_is_full(const BoundedBitSpan span)
   return bit_span_count(span) == span.size();
 }
 
+using VertEdgeFans = Vector<Vector<int>>;
+
 /* TODO: Use thread local allocators for #VertEdgeFans memory. */
 static VertEdgeFans calc_vert_fans(const OffsetIndices<int> polys,
                                    const Span<int> corner_verts,
@@ -251,43 +251,50 @@ static VertEdgeFans calc_vert_fans(const OffsetIndices<int> polys,
                                    const BitSpan split_edges,
                                    const int vert)
 {
-  Vector<Vector<int>> edge_fans;
 
   const Span<int> connected_edges = vert_to_edge_map[vert];
   if (connected_edges.size() <= 1) {
-    edge_fans.append_as(connected_edges);
-    return edge_fans;
+    return Vector<Vector<int>>({Vector<int>(connected_edges)});
   }
 
   const BitVector<> vert_edges_split = bit_span_gather(split_edges, connected_edges);
 
+  Vector<Vector<int>> edge_fans;
   BitVector<> visited_edges(connected_edges.size());
 
-  int curr_i = 0;
+  int current = 0;
   while (!bit_span_is_full(visited_edges)) {
-    const int start_i = curr_i;
+    Vector<int> current_fan;
+    while (true) {
+      const int edge = connected_edges[current];
+      current_fan.append(edge);
+      visited_edges[current].set();
 
-    Vector<int> current_fan({curr_i});
-    do {
-      const int edge = connected_edges[curr_i];
+      bool next_fan = false;
       for (const int corner : edge_to_corner_map[edge]) {
         const int poly = corner_to_poly_map[corner];
+
         const int next_edge = adjacent_edge(corner_verts, corner_edges, corner, polys[poly], vert);
-        const int other_i = connected_edges.first_index(next_edge);
-        if (visited_edges[other_i]) {
+        const int next = connected_edges.first_index(next_edge);
+
+        current = next;
+
+        if (current_fan.contains(next_edge)) {
           continue;
         }
 
-        visited_edges[other_i].set();
         current_fan.append(next_edge);
+        visited_edges[next].set();
 
-        if (split_edges[other_i]) {
+        if (visited_edges[current] || split_edges[current]) {
+          next_fan = true;
           break;
         }
       }
-      curr_i++;
-    } while (curr_i != start_i);
-
+      if (next_fan) {
+        break;
+      }
+    }
     edge_fans.append(std::move(current_fan));
   }
 
@@ -456,7 +463,7 @@ void split_edges(Mesh &mesh,
 
   const IndexMask edge_mask_inverse = edge_mask.complement(orig_edges.index_range(), memory);
   const IndexMask vert_mask = vert_selection_from_edge(orig_edges, edge_mask, verts_num, memory);
-  const BitVector<> selection_bits = selection_to_bits(edge_mask, orig_edges.size());
+  const BitVector<> selection_bits = selection_to_bit_vector(edge_mask, orig_edges.size());
 
   const Array<VertEdgeFans> vert_edge_fans = calc_all_vert_fans(polys,
                                                                 orig_corner_verts,
