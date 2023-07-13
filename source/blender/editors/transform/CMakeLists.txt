@@ -81,7 +81,7 @@ set(SRC
   transform_mode_shrink_fatten.cc
   transform_mode_skin_resize.cc
   transform_mode_snapsource.cc
-  transform_mode_tilt.c
+  transform_mode_tilt.cc
   transform_mode_timescale.c
   transform_mode_timeslide.c
   transform_mode_timetranslate.c
