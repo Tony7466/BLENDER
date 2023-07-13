@@ -177,22 +177,6 @@ static void reassign_loose_edge_verts(const int vertex,
   }
 }
 
-/**
- * Get the index of the adjacent edge to a loop connected to a vertex. In other words, for the
- * given polygon return the unique edge connected to the given vertex and not on the given loop.
- */
-static int adjacent_edge(const Span<int> corner_verts,
-                         const Span<int> corner_edges,
-                         const int corner,
-                         const IndexRange poly,
-                         const int vert)
-{
-  const int adjacent_loop_i = (corner_verts[corner] == vert) ?
-                                  bke::mesh::poly_corner_prev(poly, corner) :
-                                  bke::mesh::poly_corner_next(poly, corner);
-  return corner_edges[adjacent_loop_i];
-}
-
 /** A vertex is selected if it's used by a selected edge. */
 static IndexMask vert_selection_from_edge(const Span<int2> edges,
                                           const IndexMask &edge_mask,
@@ -237,6 +221,22 @@ static int bit_span_count(const BoundedBitSpan span)
 static bool bit_span_is_full(const BoundedBitSpan span)
 {
   return bit_span_count(span) == span.size();
+}
+
+/**
+ * Get the index of the adjacent edge to a loop connected to a vertex. In other words, for the
+ * given polygon return the unique edge connected to the given vertex and not on the given loop.
+ */
+static int adjacent_edge(const Span<int> corner_verts,
+                         const Span<int> corner_edges,
+                         const int corner,
+                         const IndexRange poly,
+                         const int vert)
+{
+  const int adjacent_loop_i = (corner_verts[corner] == vert) ?
+                                  bke::mesh::poly_corner_prev(poly, corner) :
+                                  bke::mesh::poly_corner_next(poly, corner);
+  return corner_edges[adjacent_loop_i];
 }
 
 using VertEdgeFans = Vector<Vector<int>>;
