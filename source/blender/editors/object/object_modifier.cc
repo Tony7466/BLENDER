@@ -3843,6 +3843,8 @@ static int geometry_nodes_id_mapping_remove_exec(bContext *C, wmOperator *op)
           nmd.id_mappings + nmd.active_id_mapping + 1,
           sizeof(NodesModifierIDMapping) * (nmd.id_mappings_num - nmd.active_id_mapping));
   nmd.id_mappings_num--;
+  nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
+      MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * nmd.id_mappings_num));
 
   CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
 
