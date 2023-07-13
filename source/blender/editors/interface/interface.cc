@@ -2307,8 +2307,7 @@ int ui_but_is_pushed(uiBut *but)
 
 static void ui_but_update_select_flag(uiBut *but, double *value)
 {
-  switch (ui_but_is_pushed_ex(but, value))
-  {
+  switch (ui_but_is_pushed_ex(but, value)) {
     case true:
       but->flag |= UI_SELECT;
       break;
@@ -3899,6 +3898,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     case UI_BTYPE_SEARCH_MENU:
       if (!but->editstr) {
         char str[UI_MAX_DRAW_STR];
+
         ui_but_string_get(but, str, UI_MAX_DRAW_STR);
         SNPRINTF(but->drawstr, "%s%s", but->str, str);
       }
