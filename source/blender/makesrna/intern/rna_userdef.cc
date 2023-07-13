@@ -5419,6 +5419,15 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, "Auto-offset Margin", "Minimum distance between nodes for Auto-offsetting nodes");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "node_preview_resolution", PROP_INT, PROP_PIXEL);
+  RNA_def_property_int_sdna(prop, nullptr, "node_preview_res");
+  RNA_def_property_range(prop, 50, 250);
+  RNA_def_property_ui_text(prop,
+                           "Node Preview Resolution",
+                           "Resolution used for Shader node previews (should be changed for "
+                           "performances and/or DPI issues)");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
   /* cursor */
   prop = RNA_def_property(srna, "use_cursor_lock_adjust", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_LOCK_CURSOR_ADJUST);

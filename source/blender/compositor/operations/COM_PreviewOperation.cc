@@ -40,19 +40,21 @@ void PreviewOperation::init_execution()
 {
   input_ = get_input_socket_reader(0);
 
-  if (this->get_width() == uint(preview_->xsize) && this->get_height() == uint(preview_->ysize)) {
-    output_buffer_ = preview_->rect;
+  if (this->get_width() == uint(preview_->image.xsize) &&
+      this->get_height() == uint(preview_->image.ysize))
+  {
+    output_buffer_ = preview_->image.rect;
   }
 
   if (output_buffer_ == nullptr) {
     output_buffer_ = (uchar *)MEM_callocN(sizeof(uchar) * 4 * get_width() * get_height(),
                                           "PreviewOperation");
-    if (preview_->rect) {
-      MEM_freeN(preview_->rect);
+    if (preview_->image.rect) {
+      MEM_freeN(preview_->image.rect);
     }
-    preview_->xsize = get_width();
-    preview_->ysize = get_height();
-    preview_->rect = output_buffer_;
+    preview_->image.xsize = get_width();
+    preview_->image.ysize = get_height();
+    preview_->image.rect = output_buffer_;
   }
 }
 

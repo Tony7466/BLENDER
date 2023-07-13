@@ -26,6 +26,7 @@
 #include "ED_node.h"
 #include "ED_render.h"
 #include "ED_screen.h"
+#include "ED_shader_preview.h"
 #include "ED_space_api.h"
 
 #include "UI_resources.h"
@@ -316,6 +317,7 @@ static void node_free(SpaceLink *sl)
 
   if (snode->runtime) {
     snode->runtime->linkdrag.reset();
+    ED_spacenode_free_previews(snode);
     MEM_delete(snode->runtime);
   }
 }

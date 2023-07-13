@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_ID_enums.h"
+#include "DNA_material_types.h"
 #include "DNA_vec_types.h"
 
 #ifdef __cplusplus
@@ -26,6 +27,8 @@ struct ScrArea;
 struct bContext;
 struct bScreen;
 struct PreviewImage;
+struct ViewLayer;
+struct World;
 struct wmWindow;
 struct wmWindowManager;
 
@@ -71,13 +74,28 @@ typedef enum ePreviewRenderMethod {
   PR_ICON_DEFERRED = 2,
 } ePreviewRenderMethod;
 
-void ED_preview_ensure_dbase(void);
+struct Main *ED_preview_main_from_memory(const void *blend, int blend_size);
+bool ED_check_engine_supports_preview(struct Scene *scene);
+const char *ED_preview_collection_name(ePreviewType pr_type);
+
+void ED_preview_ensure_dbase(bool with_gpencil);
 void ED_preview_free_dbase(void);
 
 /**
  * Check if \a id is supported by the automatic preview render.
  */
 bool ED_preview_id_is_supported(const struct ID *id);
+
+void ED_preview_set_visibility(struct Main *pr_main,
+                               struct Scene *scene,
+                               struct ViewLayer *view_layer,
+                               ePreviewType pr_type,
+                               ePreviewRenderMethod pr_method);
+struct World *ED_preview_prepare_world(struct Main *pr_main,
+                                       const struct Scene *sce,
+                                       const struct World *world,
+                                       ID_Type id_type,
+                                       ePreviewRenderMethod pr_method);
 
 void ED_preview_shader_job(const struct bContext *C,
                            void *owner,

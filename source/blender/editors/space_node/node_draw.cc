@@ -68,6 +68,7 @@
 #include "ED_node.h"
 #include "ED_node.hh"
 #include "ED_screen.h"
+#include "ED_shader_preview.h"
 #include "ED_space_api.h"
 #include "ED_viewer_path.hh"
 
@@ -115,6 +116,8 @@ struct TreeDrawContext {
    * currently drawn node tree can be retrieved from the log below.
    */
   blender::Map<const bNodeTreeZone *, geo_log::GeoTreeLog *> geo_log_by_zone;
+
+  NestedNodePreviewMap *nested_group_infos = nullptr;
   /**
    * True if there is an active realtime compositor using the node tree, false otherwise.
    */
@@ -1326,24 +1329,24 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(bNodePreview *preview, rctf *prv)
+static void node_draw_preview(NodePreviewImage image, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
-  float xscale = xrect / float(preview->xsize);
-  float yscale = yrect / float(preview->ysize);
+  float xscale = xrect / float(image.xsize);
+  float yscale = yrect / float(image.ysize);
   float scale;
 
   /* Uniform scale and offset. */
   rctf draw_rect = *prv;
   if (xscale < yscale) {
-    float offset = 0.5f * (yrect - float(preview->ysize) * xscale);
+    float offset = 0.5f * (yrect - float(image.ysize) * xscale);
     draw_rect.ymin += offset;
     draw_rect.ymax -= offset;
     scale = xscale;
   }
   else {
-    float offset = 0.5f * (xrect - float(preview->xsize) * yscale);
+    float offset = 0.5f * (xrect - float(image.xsize) * yscale);
     draw_rect.xmin += offset;
     draw_rect.xmax -= offset;
     scale = yscale;
@@ -1359,11 +1362,11 @@ static void node_draw_preview(bNodePreview *preview, rctf *prv)
   immDrawPixelsTexTiled(&state,
                         draw_rect.xmin,
                         draw_rect.ymin,
-                        preview->xsize,
-                        preview->ysize,
+                        image.xsize,
+                        image.ysize,
                         GPU_RGBA8,
                         true,
-                        preview->rect,
+                        image.rect,
                         scale,
                         scale,
                         nullptr);
@@ -2086,7 +2089,7 @@ static void node_draw_extra_info_row(const bNode &node,
 static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       bNodePreview *preview,
+                                       NodePreviewImage *preview,
                                        uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
@@ -2166,7 +2169,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
 
     if (preview) {
-      node_draw_preview(preview, &preview_rect);
+      node_draw_preview(*preview, &preview_rect);
     }
 
     /* Resize the rect to draw the textual infos on top of the preview. */
@@ -2188,12 +2191,10 @@ static void node_draw_basis(const bContext &C,
                             bNodeInstanceKey key)
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
-  bNodeInstanceHash *previews = static_cast<bNodeInstanceHash *>(
-      CTX_data_pointer_get(&C, "node_previews").data);
 
   /* Skip if out of view. */
   rctf rect_with_preview = node.runtime->totr;
-  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+  if (node.flag & NODE_PREVIEW && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
     rect_with_preview.ymax += NODE_WIDTH(node);
   }
   if (BLI_rctf_isect(&rect_with_preview, &v2d.cur, nullptr) == false) {
@@ -2217,15 +2218,33 @@ static void node_draw_basis(const bContext &C,
 
   GPU_line_width(1.0f);
 
-  bNodePreview *preview = nullptr;
-  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
-    preview = static_cast<bNodePreview *>(BKE_node_instance_hash_lookup(previews, key));
-    if (!preview || !(preview->xsize && preview->ysize)) {
-      preview = nullptr;
-    }
-  }
+  /* Overlay atop the node. */
+  {
+    NodePreviewImage *image = nullptr;
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview, block);
+    if (node.flag & NODE_PREVIEW && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+      bNodeInstanceHash *previews_compo = static_cast<bNodeInstanceHash *>(
+          CTX_data_pointer_get(&C, "node_previews").data);
+      if (previews_compo) {
+        bNodePreview *preview = static_cast<bNodePreview *>(
+            BKE_node_instance_hash_lookup(previews_compo, key));
+        if (preview) {
+          image = &preview->image;
+        }
+      }
+
+      NestedNodePreviewMap *previews_sha = tree_draw_ctx.nested_group_infos;
+      if (previews_sha) {
+        image = ED_node_get_preview_rect(&ntree, previews_sha, &node);
+      }
+
+      if (image && !(image->xsize && image->ysize && image->rect)) {
+        image = nullptr;
+      }
+    }
+
+    node_draw_extra_info_panel(tree_draw_ctx, snode, node, image, block);
+  }
 
   /* Header. */
   {
@@ -2254,7 +2273,7 @@ static void node_draw_basis(const bContext &C,
   float iconofs = rct.xmax - 0.35f * U.widget_unit;
 
   /* Preview. */
-  if (node.typeinfo->flag & NODE_PREVIEW) {
+  if (node.typeinfo->flag & NODE_PREVIEW || ntree.type == NTREE_SHADER) {
     iconofs -= iconbutw;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
     uiBut *but = uiDefIconBut(&block,
@@ -3460,6 +3479,9 @@ static void draw_nodetree(const bContext &C,
   }
   else if (ntree.type == NTREE_COMPOSIT) {
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
+  }
+  else if (ntree.type == NTREE_SHADER) {
+    tree_draw_ctx.nested_group_infos = ED_spacenode_get_nested_previews(&C, snode);
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);

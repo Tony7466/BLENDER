@@ -787,7 +787,7 @@ typedef struct UserDef {
   int scrollback;
   /** Node insert offset (aka auto-offset) margin, but might be useful for later stuff as well. */
   char node_margin;
-  char _pad2[1];
+  char node_preview_res;
   /** #eUserpref_Translation_Flags. */
   short transopts;
   short menuthreshold1, menuthreshold2;

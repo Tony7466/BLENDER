@@ -119,6 +119,9 @@ struct Render {
   bool (*test_break)(void *handle);
   void *tbh;
 
+  bool (*prepare_viewlayer)(void *handle, struct ViewLayer *vl);
+  void *pvh;
+
   RenderStats i;
 
   /**

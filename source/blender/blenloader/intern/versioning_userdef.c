@@ -834,6 +834,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
   }
 
+  if (!USER_VERSION_ATLEAST(400, 11)) {
+    userdef->node_preview_res = 120;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

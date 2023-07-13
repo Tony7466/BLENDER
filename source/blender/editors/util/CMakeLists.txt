@@ -78,6 +78,7 @@ set(SRC
   ../include/ED_sculpt.h
   ../include/ED_select_utils.h
   ../include/ED_sequencer.h
+  ../include/ED_shader_preview.h
   ../include/ED_sound.h
   ../include/ED_space_api.h
   ../include/ED_spreadsheet.h

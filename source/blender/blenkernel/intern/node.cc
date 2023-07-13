@@ -3124,18 +3124,18 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   }
 
   /* sanity checks & initialize */
-  if (preview->rect) {
-    if (preview->xsize != xsize || preview->ysize != ysize) {
-      MEM_freeN(preview->rect);
-      preview->rect = nullptr;
+  if (preview->image.rect) {
+    if (preview->image.xsize != xsize || preview->image.ysize != ysize) {
+      MEM_freeN(preview->image.rect);
+      preview->image.rect = nullptr;
     }
   }
 
-  if (preview->rect == nullptr) {
-    preview->rect = reinterpret_cast<uchar *>(
+  if (preview->image.rect == nullptr) {
+    preview->image.rect = reinterpret_cast<uchar *>(
         MEM_callocN(4 * xsize + xsize * ysize * sizeof(char[4]), "node preview rect"));
-    preview->xsize = xsize;
-    preview->ysize = ysize;
+    preview->image.xsize = xsize;
+    preview->image.ysize = ysize;
   }
   /* no clear, makes nicer previews */
 
@@ -3145,16 +3145,16 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
 bNodePreview *node_preview_copy(bNodePreview *preview)
 {
   bNodePreview *new_preview = static_cast<bNodePreview *>(MEM_dupallocN(preview));
-  if (preview->rect) {
-    new_preview->rect = static_cast<uchar *>(MEM_dupallocN(preview->rect));
+  if (preview->image.rect) {
+    new_preview->image.rect = static_cast<uchar *>(MEM_dupallocN(preview->image.rect));
   }
   return new_preview;
 }
 
 void node_preview_free(bNodePreview *preview)
 {
-  if (preview->rect) {
-    MEM_freeN(preview->rect);
+  if (preview->image.rect) {
+    MEM_freeN(preview->image.rect);
   }
   MEM_freeN(preview);
 }
@@ -3229,8 +3229,8 @@ void node_preview_remove_unused(bNodeTree *ntree)
 
 void node_preview_clear(bNodePreview *preview)
 {
-  if (preview && preview->rect) {
-    memset(preview->rect, 0, MEM_allocN_len(preview->rect));
+  if (preview && preview->image.rect) {
+    memset(preview->image.rect, 0, MEM_allocN_len(preview->image.rect));
   }
 }
 

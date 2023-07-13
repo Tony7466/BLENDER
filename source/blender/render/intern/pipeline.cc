@@ -169,6 +169,10 @@ static bool do_write_image_or_movie(Render *re,
 static void result_nothing(void * /*arg*/, RenderResult * /*rr*/) {}
 static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, rcti * /*rect*/) {}
 static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/) {}
+static bool prepare_viewlayer_nothing(void * /*arg*/, ViewLayer * /*vl*/)
+{
+  return true;
+}
 static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/) {}
 static void float_nothing(void * /*arg*/, float /*val*/) {}
 static bool default_break(void * /*arg*/)
@@ -482,6 +486,35 @@ void RE_ResultGet32(Render *re, uint *rect)
   RE_ReleaseResultImageViews(re, &rres);
 }
 
+void RE_ResultPassGet32(Render *re, uint *rect, const char *pass_name, const char *layer_name)
+{
+  if (!re) {
+    return;
+  }
+  RE_AcquireResultRead(re);
+  RenderLayer *rl = static_cast<RenderLayer *>(re->result->layers.first);
+  if (layer_name) {
+    rl = RE_GetRenderLayer(re->result, layer_name);
+  }
+  RenderPass *rp = RE_pass_find_by_name(rl, pass_name, nullptr);
+  ImBuf *ibuf = rp ? rp->ibuf : nullptr;
+
+  if (ibuf && ibuf->byte_buffer.data) {
+    memcpy(rect, ibuf->byte_buffer.data, sizeof(int) * rp->rectx * rp->recty);
+  }
+  else if (ibuf && ibuf->float_buffer.data) {
+    IMB_display_buffer_transform_apply((uchar *)rect,
+                                       ibuf->float_buffer.data,
+                                       rp->rectx,
+                                       rp->recty,
+                                       4,
+                                       &re->scene->view_settings,
+                                       &re->scene->display_settings,
+                                       true);
+  }
+  RE_ReleaseResult(re);
+}
+
 RenderStats *RE_GetStats(Render *re)
 {
   return &re->i;
@@ -544,6 +577,7 @@ void RE_InitRenderCB(Render *re)
   re->display_clear = result_nothing;
   re->display_update = result_rcti_nothing;
   re->current_scene_update = current_scene_nothing;
+  re->prepare_viewlayer = prepare_viewlayer_nothing;
   re->progress = float_nothing;
   re->test_break = default_break;
   if (G.background) {
@@ -931,6 +965,12 @@ void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 {
   re->test_break = f;
   re->tbh = handle;
+}
+
+void RE_prepare_viewlayer_cb(Render *re, void *handle, bool (*f)(void *handle, ViewLayer *vl))
+{
+  re->prepare_viewlayer = f;
+  re->pvh = handle;
 }
 
 /** \} */

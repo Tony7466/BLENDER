@@ -505,7 +505,7 @@ bool ED_node_is_geometry(SpaceNode *snode)
 
 bool ED_node_supports_preview(SpaceNode *snode)
 {
-  return ED_node_is_compositor(snode);
+  return ED_node_is_compositor(snode) || ED_node_is_shader(snode);
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -1568,7 +1568,9 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0 &&
+          snode->nodetree->type != NTREE_SHADER)
+      {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1588,7 +1590,9 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0 &&
+          snode->nodetree->type != NTREE_SHADER)
+      {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1656,6 +1660,17 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static bool node_previewable(bContext *C)
+{
+  if (ED_operator_node_active(C)) {
+    SpaceNode *snode = CTX_wm_space_node(C);
+    if (ED_node_supports_preview(snode)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void NODE_OT_preview_toggle(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1665,7 +1680,7 @@ void NODE_OT_preview_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = node_preview_toggle_exec;
-  ot->poll = composite_node_active;
+  ot->poll = node_previewable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

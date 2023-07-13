@@ -501,6 +501,7 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(edit, "sculpt_paint_overlay_color", text="Sculpt Overlay Color")
         col.prop(edit, "node_margin", text="Node Auto-Offset Margin")
+        col.prop(edit, "node_preview_resolution", text="Node Preview Resolution")
 
 
 # -----------------------------------------------------------------------------

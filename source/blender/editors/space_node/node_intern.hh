@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_compute_context.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
@@ -29,6 +30,7 @@ struct bNodeSocket;
 struct wmGizmoGroupType;
 struct wmKeyConfig;
 struct wmWindow;
+struct NestedNodePreviewMap;
 
 /* Outside of blender namespace to avoid Python documentation build error with `ctypes`. */
 extern "C" {
@@ -106,6 +108,10 @@ struct SpaceNode_Runtime {
   /* XXX hack for translate_attach op-macros to pass data from transform op to insert_offset op */
   /** Temporary data for node insert offset (in UI called Auto-offset). */
   struct NodeInsertOfsData *iofsd;
+
+  /** Use this to store data for the displayed node tree. It has an entry for every distinct
+   * nested nodegroup. */
+  Map<ComputeContextHash, NestedNodePreviewMap *> distinctNG_datas;
 
   /**
    * Temporary data for node add menu in order to provide longer-term storage for context pointers.

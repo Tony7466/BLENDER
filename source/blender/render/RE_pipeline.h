@@ -241,6 +241,10 @@ struct RenderStats *RE_GetStats(struct Render *re);
  * Caller is responsible for allocating `rect` in correct size!
  */
 void RE_ResultGet32(struct Render *re, unsigned int *rect);
+void RE_ResultPassGet32(struct Render *re,
+                        unsigned int *rect,
+                        const char *pass_name,
+                        const char *layer_name);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,
@@ -402,6 +406,9 @@ void RE_stats_draw_cb(struct Render *re, void *handle, void (*f)(void *handle, R
 void RE_progress_cb(struct Render *re, void *handle, void (*f)(void *handle, float));
 void RE_draw_lock_cb(struct Render *re, void *handle, void (*f)(void *handle, bool lock));
 void RE_test_break_cb(struct Render *re, void *handle, bool (*f)(void *handle));
+void RE_prepare_viewlayer_cb(struct Render *re,
+                             void *handle,
+                             bool (*f)(void *handle, ViewLayer *vl));
 void RE_current_scene_update_cb(struct Render *re,
                                 void *handle,
                                 void (*f)(void *handle, struct Scene *scene));

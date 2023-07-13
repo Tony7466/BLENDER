@@ -30,6 +30,12 @@ typedef struct Global {
    */
   struct Main *main;
 
+  /**
+   * Data for the preview scene to avoid loading in multiple scenarios.
+   * It is actually shared between shader node previews and asset previews.
+   */
+  struct Main *pr_main;
+
   /** Last saved location for images. */
   char ima[1024]; /* 1024 = FILE_MAX */
   /** Last used location for library link/append. */
