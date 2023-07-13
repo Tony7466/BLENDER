@@ -217,12 +217,12 @@ void DrawTexture::free()
   texture_ = nullptr;
 }
 
-void ViewportEngine::render(Depsgraph *depsgraph)
+void ViewportEngine::render(Depsgraph * /* depsgraph */)
 {
   /* Empty function */
 }
 
-void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
+void ViewportEngine::render(Depsgraph * /* depsgraph */, bContext *context)
 {
   ViewSettings view_settings(context);
   if (view_settings.width() * view_settings.height() == 0) {

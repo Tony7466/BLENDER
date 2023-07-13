@@ -30,7 +30,7 @@ void SimpleLightTaskDelegate::set_camera_path(pxr::SdfPath const &camera_path)
   task_params_.cameraPath = camera_path;
 }
 
-pxr::VtValue SimpleLightTaskDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
+pxr::VtValue SimpleLightTaskDelegate::Get(pxr::SdfPath const & /*id*/, pxr::TfToken const &key)
 {
   if (key == pxr::HdTokens->params) {
     return pxr::VtValue(task_params_);

@@ -106,7 +106,7 @@ void RenderTaskDelegate::set_camera_and_viewport(pxr::SdfPath const &camera_id,
   }
 }
 
-pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
+pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const & /*id*/, pxr::TfToken const &key)
 {
   if (key == pxr::HdTokens->params) {
     return pxr::VtValue(task_params_);
@@ -127,7 +127,7 @@ pxr::HdRenderBufferDescriptor RenderTaskDelegate::GetRenderBufferDescriptor(pxr:
   return buffer_descriptors_[id];
 }
 
-pxr::TfTokenVector RenderTaskDelegate::GetTaskRenderTags(pxr::SdfPath const &task_id)
+pxr::TfTokenVector RenderTaskDelegate::GetTaskRenderTags(pxr::SdfPath const & /*task_id*/)
 {
   return {pxr::HdRenderTagTokens->geometry};
 }

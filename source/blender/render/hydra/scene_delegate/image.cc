@@ -46,7 +46,7 @@ static std::string cache_image_file(Image *image,
       opts.im_format = scene->r.im_format;
     }
 
-    snprintf(file_name, sizeof(file_name), "img_%016llx%s", (uintptr_t)image, r_ext);
+    snprintf(file_name, sizeof(file_name), "img_%p%s", image, r_ext);
 
     file_path = get_cache_file(file_name);
     if (check_exist && BLI_exists(file_path.c_str())) {

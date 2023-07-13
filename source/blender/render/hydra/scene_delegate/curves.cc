@@ -66,7 +66,7 @@ void CurvesData::update()
   ID_LOG(1, "");
 }
 
-pxr::VtValue CurvesData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
+pxr::VtValue CurvesData::get_data(pxr::SdfPath const & /* id */, pxr::TfToken const &key) const
 {
   if (key == pxr::HdTokens->points) {
     return pxr::VtValue(vertices_);
@@ -91,7 +91,7 @@ bool CurvesData::update_visibility()
   return ret;
 }
 
-pxr::HdBasisCurvesTopology CurvesData::curves_topology(pxr::SdfPath const &id) const
+pxr::HdBasisCurvesTopology CurvesData::curves_topology(pxr::SdfPath const & /* id */) const
 {
   return pxr::HdBasisCurvesTopology(pxr::HdTokens->linear,
                                     pxr::TfToken(),

@@ -12,7 +12,7 @@ IdData::IdData(BlenderSceneDelegate *scene_delegate, ID *id, pxr::SdfPath const 
 {
 }
 
-pxr::VtValue IdData::get_data(pxr::TfToken const &key) const
+pxr::VtValue IdData::get_data(pxr::TfToken const & /*key*/) const
 {
   return pxr::VtValue();
 }

@@ -5,6 +5,18 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()
 
+# Precompiled Linux libs are made with GCC, and USD uses some extensions
+# which lead to an incompatible ABI for Clang. Using those extensions with
+# Clang as well works around the issue.
+if(UNIX AND NOT APPLE)
+  if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    if(EXISTS ${LIBDIR})
+      add_definitions(-DARCH_HAS_GNU_STL_EXTENSIONS)
+      add_cxx_flag("-Wno-deprecated")
+    endif()
+  endif()
+endif()
+
 # USD headers use deprecated TBB headers, silence warning.
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 
@@ -44,8 +56,20 @@ set(INC_SYS
   ${BOOST_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
   ${GFLAGS_INCLUDE_DIRS}
-  ${LIBDIR}/MaterialX/include
 )
+
+set(LIB
+  ${Epoxy_LIBRARIES}
+  ${PYTHON_LIBRARIES}
+  ${BOOST_LIBRARIES}
+  ${USD_LIBRARIES}
+  ${TBB_LIBRARIES}
+)
+
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+endif()
 
 set(SRC
   python.cc
@@ -90,12 +114,6 @@ set(SRC
   scene_delegate/image.cc
   scene_delegate/volume.h
   scene_delegate/volume.cc
-)
-
-set(LIB
-  ${Epoxy_LIBRARIES}
-  ${PYTHON_LIBRARIES}
-  ${BOOST_LIBRARIES}
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

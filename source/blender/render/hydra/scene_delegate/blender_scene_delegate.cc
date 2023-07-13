@@ -273,7 +273,7 @@ pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  snprintf(name, sizeof(name), "%s_%016llx", prefix, (uintptr_t)id);
+  snprintf(name, sizeof(name), "%s_%p", prefix, id);
   return GetDelegateID().AppendElementString(name);
 }
 

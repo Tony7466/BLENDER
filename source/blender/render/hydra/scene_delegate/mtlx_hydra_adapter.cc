@@ -1,14 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "BLI_utildefines.h"
+
 #include <pxr/base/arch/fileSystem.h>
 
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/ar/resolverContextBinder.h>
 #include <pxr/usd/ar/resolverScopedCache.h>
 
-#include <pxr/usd/usdMtlx/reader.h>
-#include <pxr/usd/usdMtlx/utils.h>
+#ifdef WITH_MATERIALX
+#  include <pxr/usd/usdMtlx/reader.h>
+#  include <pxr/usd/usdMtlx/utils.h>
+#endif
 
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/shader.h>
@@ -20,8 +24,6 @@
 
 #include "mtlx_hydra_adapter.h"
 
-namespace mx = MaterialX;
-
 namespace blender::render::hydra {
 
 void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
@@ -29,6 +31,7 @@ void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
                                           pxr::TfTokenVector const &render_contexts,
                                           pxr::HdMaterialNetworkMap *out)
 {
+#ifdef WITH_MATERIALX
   if (mtlx_path.empty()) {
     return;
   }
@@ -46,17 +49,17 @@ void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
   pxr::UsdStageRefPtr stage = pxr::UsdStage::CreateInMemory(stage_id, context);
 
   try {
-    mx::DocumentPtr doc = pxr::UsdMtlxReadDocument(mtlx_path);
+    MaterialX::DocumentPtr doc = pxr::UsdMtlxReadDocument(mtlx_path);
     pxr::UsdMtlxRead(doc, stage);
   }
-  catch (mx::ExceptionFoundCycle &x) {
+  catch (MaterialX::ExceptionFoundCycle &x) {
     Tf_PostErrorHelper(pxr::TF_CALL_CONTEXT,
                        pxr::TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
                        "MaterialX cycle found: %s\n",
                        x.what());
     return;
   }
-  catch (mx::Exception &x) {
+  catch (MaterialX::Exception &x) {
     Tf_PostErrorHelper(pxr::TF_CALL_CONTEXT,
                        pxr::TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
                        "MaterialX error: %s\n",
@@ -78,6 +81,9 @@ void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
       }
     }
   }
+#else
+  UNUSED_VARS(mtlx_path, shader_source_types, render_contexts, out);
+#endif
 }
 
 }  // namespace blender::render::hydra

@@ -931,6 +931,9 @@ set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_ALEMBIC OFF)
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 
+# Hydra requires USD.
+set_and_warn_dependency(WITH_USD WITH_HYDRA OFF)
+
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
   # auto enable llvm for cycles_osl

@@ -163,7 +163,7 @@ void InstancerData::update_instance(Object *parent_ob, DupliObject *dupli)
       inst->data = std::make_unique<LightData>(scene_delegate_, ob, p_id);
       inst->data->init();
     }
-    ID_LOG(2, "Light %s %d", inst->data->id->name, inst->transforms.size());
+    ID_LOG(2, "Light %s %d", inst->data->id->name, (int)inst->transforms.size());
     inst->transforms.push_back(gf_matrix_from_transform(dupli->mat));
   }
   else {
@@ -177,7 +177,7 @@ void InstancerData::update_instance(Object *parent_ob, DupliObject *dupli)
     else {
       inst->data->update();
     }
-    ID_LOG(2, "Mesh %s %d", inst->data->id->name, mesh_transforms_.size());
+    ID_LOG(2, "Mesh %s %d", inst->data->id->name, (int)mesh_transforms_.size());
     inst->indices.push_back(mesh_transforms_.size());
     mesh_transforms_.push_back(gf_matrix_from_transform(dupli->mat));
   }
@@ -225,7 +225,7 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  snprintf(name, sizeof(name), "O_%016llx", (uint64_t)object);
+  snprintf(name, sizeof(name), "O_%p", object);
   return prim_id.AppendElementString(name);
 }
 
