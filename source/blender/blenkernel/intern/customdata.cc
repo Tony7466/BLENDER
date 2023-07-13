@@ -18,6 +18,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BLI_bit_vector.hh"
 #include "BLI_bitmap.h"
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
@@ -68,6 +69,7 @@ using blender::Set;
 using blender::Span;
 using blender::StringRef;
 using blender::Vector;
+using blender::BitVector;
 
 /* number of layers to add when growing a CustomData object */
 #define CUSTOMDATA_GROW 5
@@ -3909,13 +3911,9 @@ void CustomData_bmesh_set_default(CustomData *data, void **block)
   }
 }
 
-static bool customdata_layer_copy_check(const CustomDataLayer &source,
-                                        const CustomDataLayer &dest,
-                                        eCustomDataMask mask_exclude)
+static bool customdata_layer_copy_check(const CustomDataLayer &source, const CustomDataLayer &dest)
 {
-  return source.type == dest.type &&
-         (mask_exclude == 0ULL || !(CD_TYPE_AS_MASK(source.type) & mask_exclude)) &&
-         STREQ(source.name, dest.name);
+  return source.type == dest.type && STREQ(source.name, dest.name);
 }
 
 void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
@@ -3932,20 +3930,23 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     }
   }
 
-  Vector<bool, 32> donelayers;
-  donelayers.resize(dest->totlayer);
+  BitVector copied_layers(dest->totlayer);
 
   for (int layer_src_i : IndexRange(source->totlayer)) {
     const CustomDataLayer &layer_src = source->layers[layer_src_i];
 
+    if (CD_TYPE_AS_MASK(layer_src.type) & mask_exclude) {
+      continue;
+    }
+
     for (int layer_dst_i : IndexRange(dest->totlayer)) {
       CustomDataLayer &layer_dst = dest->layers[layer_dst_i];
 
-      if (!customdata_layer_copy_check(layer_src, layer_dst, mask_exclude)) {
+      if (!customdata_layer_copy_check(layer_src, layer_dst)) {
         continue;
       }
 
-      donelayers[layer_dst_i] = true;
+      copied_layers[layer_dst_i] = true;
 
       const void *src_data = POINTER_OFFSET(src_block, layer_src.offset);
       void *dest_data = POINTER_OFFSET(*dest_block, layer_dst.offset);
@@ -3961,7 +3962,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
 
   /* Initialize dest layers that weren't in source. */
   for (int layer_dst_i : IndexRange(dest->totlayer)) {
-    if (!donelayers[layer_dst_i]) {
+    if (!copied_layers[layer_dst_i]) {
       CustomData_bmesh_set_default_n(dest, dest_block, layer_dst_i);
     }
   }
