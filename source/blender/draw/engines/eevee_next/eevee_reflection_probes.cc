@@ -112,10 +112,8 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
   probe_data.layer_subdivision = subdivision;
-  probe_data.valid = !probe.do_render;
 
   if (probe.do_render && update_probes_this_sample_ == false) {
-    probe_data.valid = false;
     update_probes_next_sample_ = true;
   }
 }
@@ -127,6 +125,7 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
       ob_handle.object_key.hash_value, [this, subdivision_level]() {
         ReflectionProbe probe;
         ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
+        probe_data.valid = false;
 
         probe.do_update_data = true;
         probe.do_render = true;
@@ -140,6 +139,7 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
   ReflectionProbeData &probe_data = data_buf_[reflection_probe.index];
   if (probe_data.layer_subdivision != subdivision_level) {
     ReflectionProbeData new_probe_data = find_empty_reflection_probe_data(subdivision_level);
+    new_probe_data.valid = false;
     data_buf_[reflection_probe.index] = new_probe_data;
   }
 
