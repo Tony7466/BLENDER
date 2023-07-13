@@ -266,12 +266,11 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->denoised_temporal_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
     denoise_variance_tx_.acquire(use_bilateral_denoise_ ? extent : dummy_extent,
                                  RAYTRACE_VARIANCE_FORMAT);
-    denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent);
     denoise_buf->variance_history_tx.ensure_2d(RAYTRACE_VARIANCE_FORMAT,
                                                use_bilateral_denoise_ ? extent : dummy_extent);
-    if (denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT,
-                                                   tile_dispatch_size_.xy()))
-    {
+    denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT, tile_dispatch_size_.xy());
+    if (denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent)) {
+      /* If viewport resolution changes, do not try to use history. */
       denoise_buf->tilemask_history_tx.clear(uint4(0u));
     }
 
