@@ -42,7 +42,11 @@ static void node_declare_dynamic(const bNodeTree &ntree,
   builder.add_output<decl::Color>(N_("Image"));
   /* add the new views */
   LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
-    builder.add_input<decl::Color>(N_(srv->name)).default_value({0.0f, 0.0f, 0.0f, 1.0f});
+    auto sock =
+        builder.add_input<decl::Color>(N_(srv->name)).default_value({0.0f, 0.0f, 0.0f, 1.0f});
+    if (srv->viewflag & SCE_VIEW_DISABLE) {
+      sock.hide();
+    }
   }
 }
 
