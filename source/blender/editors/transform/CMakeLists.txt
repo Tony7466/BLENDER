@@ -47,7 +47,7 @@ set(SRC
   transform_convert_particle.cc
   transform_convert_sculpt.cc
   transform_convert_sequencer.c
-  transform_convert_sequencer_image.c
+  transform_convert_sequencer_image.cc
   transform_convert_tracking.c
   transform_convert_tracking_curves.c
   transform_draw_cursors.c

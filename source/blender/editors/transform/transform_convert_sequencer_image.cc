@@ -35,13 +35,13 @@
 #include "transform_convert.h"
 
 /** Used for sequencer transform. */
-typedef struct TransDataSeq {
+struct TransDataSeq {
   Sequence *seq;
   float orig_origin_position[2];
   float orig_translation[2];
   float orig_scale[2];
   float orig_rotation;
-} TransDataSeq;
+};
 
 static TransData *SeqToTransData(const Scene *scene,
                                  Sequence *seq,
@@ -69,7 +69,7 @@ static TransData *SeqToTransData(const Scene *scene,
 
   td2d->loc[0] = vertex[0];
   td2d->loc[1] = vertex[1];
-  td2d->loc2d = NULL;
+  td2d->loc2d = nullptr;
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
 
@@ -91,28 +91,28 @@ static TransData *SeqToTransData(const Scene *scene,
   tdseq->orig_rotation = transform->rotation;
 
   td->extra = (void *)tdseq;
-  td->ext = NULL;
+  td->ext = nullptr;
   td->flag |= TD_SELECTED;
   td->dist = 0.0;
 
   return td;
 }
 
-static void freeSeqData(TransInfo *UNUSED(t),
+static void freeSeqData(TransInfo * /*t*/,
                         TransDataContainer *tc,
-                        TransCustomData *UNUSED(custom_data))
+                        TransCustomData * /*custom_data*/)
 {
   TransData *td = (TransData *)tc->data;
   MEM_freeN(td->extra);
 }
 
-static void createTransSeqImageData(bContext *UNUSED(C), TransInfo *t)
+static void createTransSeqImageData(bContext * /*C*/, TransInfo *t)
 {
   Editing *ed = SEQ_editing_get(t->scene);
-  const SpaceSeq *sseq = t->area->spacedata.first;
+  const SpaceSeq *sseq = static_cast<const SpaceSeq *>(t->area->spacedata.first);
   const ARegion *region = t->region;
 
-  if (ed == NULL) {
+  if (ed == nullptr) {
     return;
   }
   if (sseq->mainb != SEQ_DRAW_IMG_IMBUF) {
@@ -138,10 +138,12 @@ static void createTransSeqImageData(bContext *UNUSED(C), TransInfo *t)
   tc->custom.type.free_cb = freeSeqData;
 
   tc->data_len = count * 3; /* 3 vertices per sequence are needed. */
-  TransData *td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData");
-  TransData2D *td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D),
-                                                "TransSeq TransData2D");
-  TransDataSeq *tdseq = MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq");
+  TransData *td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData"));
+  TransData2D *td2d = tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "TransSeq TransData2D"));
+  TransDataSeq *tdseq = static_cast<TransDataSeq *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq"));
 
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
@@ -195,8 +197,8 @@ static bool autokeyframe_sequencer_image(bContext *C,
 static void recalcData_sequencer_image(TransInfo *t)
 {
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
   int i;
 
   for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
@@ -219,7 +221,7 @@ static void recalcData_sequencer_image(TransInfo *t)
     copy_v2_v2(handle_y, td2d->loc);
     sub_v2_v2(handle_y, origin);
 
-    TransDataSeq *tdseq = td->extra;
+    TransDataSeq *tdseq = static_cast<TransDataSeq *>(td->extra);
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
     float mirror[2];
@@ -253,16 +255,16 @@ static void recalcData_sequencer_image(TransInfo *t)
   }
 }
 
-static void special_aftertrans_update__sequencer_image(bContext *UNUSED(C), TransInfo *t)
+static void special_aftertrans_update__sequencer_image(bContext * /*C*/, TransInfo *t)
 {
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
+  TransData *td = nullptr;
+  TransData2D *td2d = nullptr;
   int i;
 
   for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    TransDataSeq *tdseq = td->extra;
+    TransDataSeq *tdseq = static_cast<TransDataSeq *>(td->extra);
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
     if (t->state == TRANS_CANCEL) {
