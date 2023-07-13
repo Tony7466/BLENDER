@@ -61,12 +61,12 @@ static void tc_mesh_cdata_transdata_create(TransDataBasic *td,
   td->extra = eve;
 }
 
-static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
+static void createTransMeshVertCData(bContext * /*C*/, TransInfo *t)
 {
   BLI_assert(ELEM(t->mode, TFM_BWEIGHT, TFM_VERT_CREASE));
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
-    Mesh *me = tc->obedit->data;
+    Mesh *me = static_cast<Mesh *>(tc->obedit->data);
     BMesh *bm = em->bm;
     BMVert *eve;
     BMIter iter;
@@ -74,9 +74,9 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
     int a;
     const int prop_mode = (t->flag & T_PROP_EDIT) ? (t->flag & T_PROP_EDIT_ALL) : 0;
 
-    struct TransIslandData island_data = {NULL};
-    struct TransMirrorData mirror_data = {NULL};
-    struct TransMeshDataCrazySpace crazyspace_data = {NULL};
+    struct TransIslandData island_data = {nullptr};
+    struct TransMirrorData mirror_data = {nullptr};
+    struct TransMeshDataCrazySpace crazyspace_data = {nullptr};
 
     /* Support other objects using proportional editing to adjust these, unless connected is
      * enabled. */
@@ -140,12 +140,12 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
 
     /* Original index of our connected vertex when connected distances are calculated.
      * Optional, allocate if needed. */
-    int *dists_index = NULL;
-    float *dists = NULL;
+    int *dists_index = nullptr;
+    float *dists = nullptr;
     if (prop_mode & T_PROP_CONNECTED) {
-      dists = MEM_mallocN(bm->totvert * sizeof(float), __func__);
+      dists = static_cast<float *>(MEM_mallocN(bm->totvert * sizeof(float), __func__));
       if (is_island_center) {
-        dists_index = MEM_mallocN(bm->totvert * sizeof(int), __func__);
+        dists_index = static_cast<int *>(MEM_mallocN(bm->totvert * sizeof(int), __func__));
       }
       transform_convert_mesh_connectivity_distance(em->bm, mtx, dists, dists_index);
     }
@@ -155,14 +155,14 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
       bool use_topology = (me->editflag & ME_EDIT_MIRROR_TOPO) != 0;
       bool use_select = (t->flag & T_PROP_EDIT) == 0;
       const bool mirror_axis[3] = {
-          tc->use_mirror_axis_x, tc->use_mirror_axis_y, tc->use_mirror_axis_z};
+          bool(tc->use_mirror_axis_x), bool(tc->use_mirror_axis_y), bool(tc->use_mirror_axis_z)};
       transform_convert_mesh_mirrordata_calc(
           em, use_select, use_topology, mirror_axis, &mirror_data);
 
       if (mirror_data.vert_map) {
         tc->data_mirror_len = mirror_data.mirror_elem_len;
-        tc->data_mirror = MEM_mallocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror),
-                                      __func__);
+        tc->data_mirror = static_cast<TransDataMirror *>(
+            MEM_mallocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror), __func__));
 
         BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, a) {
           if (prop_mode || BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
@@ -180,7 +180,8 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
     /* Create TransData. */
     BLI_assert(data_len >= 1);
     tc->data_len = data_len;
-    tc->data = MEM_callocN(data_len * sizeof(TransData), "TransObData(Mesh EditMode)");
+    tc->data = static_cast<TransData *>(
+        MEM_callocN(data_len * sizeof(TransData), "TransObData(Mesh EditMode)"));
 
     TransData *td = tc->data;
     TransDataMirror *td_mirror = tc->data_mirror;
@@ -195,7 +196,7 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
         island_index = island_data.island_vert_map[connected_index];
       }
 
-      float *weight = BM_ELEM_CD_GET_VOID_P(eve, cd_offset);
+      float *weight = static_cast<float *>(BM_ELEM_CD_GET_VOID_P(eve, cd_offset));
       if (mirror_data.vert_map && mirror_data.vert_map[a].index != -1) {
         tc_mesh_cdata_transdata_create(
             (TransDataBasic *)td_mirror, eve, weight, &island_data, island_index);
@@ -204,7 +205,7 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
         BMVert *v_src = BM_vert_at_index(bm, elem_index);
 
         td_mirror->flag |= mirror_data.vert_map[a].flag;
-        td_mirror->loc_src = BM_ELEM_CD_GET_VOID_P(v_src, cd_offset);
+        td_mirror->loc_src = static_cast<float *>(BM_ELEM_CD_GET_VOID_P(v_src, cd_offset));
         td_mirror++;
       }
       else if (prop_mode || BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
@@ -235,10 +236,10 @@ static void createTransMeshVertCData(bContext *UNUSED(C), TransInfo *t)
         transform_convert_mesh_crazyspace_transdata_set(
             mtx,
             smtx,
-            crazyspace_data.defmats ? crazyspace_data.defmats[a] : NULL,
+            crazyspace_data.defmats ? crazyspace_data.defmats[a] : nullptr,
             crazyspace_data.quats && BM_elem_flag_test(eve, BM_ELEM_TAG) ?
                 crazyspace_data.quats[a] :
-                NULL,
+                nullptr,
             td);
 
         td++;
@@ -286,7 +287,7 @@ static void recalcData_mesh_cdata(TransInfo *t)
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(tc->obedit->data), ID_RECALC_GEOMETRY);
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     BKE_editmesh_looptri_and_normals_calc(em);
   }
@@ -298,5 +299,5 @@ TransConvertTypeInfo TransConvertType_MeshVertCData = {
     /*flags*/ (T_EDIT | T_POINTS),
     /*createTransData*/ createTransMeshVertCData,
     /*recalcData*/ recalcData_mesh_cdata,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
