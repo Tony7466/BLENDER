@@ -371,23 +371,18 @@ class VArrayImpl_For_VolumeGridValue final
 
   void set_all(Span<AttributeType> src) override
   {
-    LeafManager leaf_mgr(*grid_.treePtr());
-
-    /* Offset indices for leaf node buffers. */
-    Array<size_t> prefix_sum(leaf_mgr.activeLeafVoxelCount());
-    size_t *prefix_sum_data = prefix_sum.data();
-    size_t prefix_sum_size = prefix_sum.size();
-    leaf_mgr.getPrefixSum(prefix_sum_data, prefix_sum_size);
-
-    const LeafRange leaf_range = leaf_mgr.leafRange();
-    tbb::parallel_for(leaf_range, [&](const LeafRange &range) {
+    tbb::parallel_for(leaf_manager_.leafRange(), [&](const LeafRange &range) {
       for (auto leaf_iter = range.begin(); leaf_iter; ++leaf_iter) {
         const size_t leaf_index = leaf_iter.pos();
-        const IndexRange leaf_buffer_range(prefix_sum[leaf_index], leaf_iter->onVoxelCount());
+        const IndexRange leaf_buffer_range(prefix_sum_[leaf_index], leaf_iter->onVoxelCount());
+        // std::cout << "Leaf range: " << leaf_buffer_range.start() << " + "
+        //           << leaf_buffer_range.size() << std::endl;
 
         auto iter = leaf_iter->beginValueOn();
         for (const int src_i : leaf_buffer_range) {
           iter.setValue(Converter::to_grid(src[src_i]));
+          // std::cout << "  set [" << src_i << "] = " << Converter::to_grid(src[src_i]) <<
+          // std::endl;
         }
       }
     });
