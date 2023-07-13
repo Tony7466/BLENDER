@@ -91,7 +91,7 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Smooth Stroke Operator
+/** \name Smooth Stroke Operator.
  * \{ */
 
 template<typename T>
@@ -143,12 +143,12 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
    * Note these weights only work because the averaging is done in relative coordinates.
    */
 
-  /* Avoid computation if the mask is empty */
+  /* Avoid computation if the mask is empty. */
   if (mask.is_empty()) {
     return dst;
   }
 
-  /* Weight Initialization */
+  /* Weight Initialization. */
   const int n_half = keep_shape ? (iterations * iterations) / 8 + iterations :
                                   (iterations * iterations) / 4 + 2 * iterations + 12;
   double w = keep_shape ? 2.0 : 1.0;
@@ -165,7 +165,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
     return !smooth_ends && !is_cyclic && ((point_index == first_pt) || (point_index == last_pt));
   };
 
-  /* Initialize at zero */
+  /* Initialize at zero. */
   mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
     if (!is_end_and_fixed(point_index)) {
       dst[point_index] = T(0);
@@ -175,7 +175,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
   for (int step = iterations; step > 0; step--) {
 
     mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
-      /* Filter out endpoints if smooth ends is disabled */
+      /* Filter out endpoints if smooth ends is disabled. */
       if (is_end_and_fixed(point_index)) {
         return;
       }
@@ -183,7 +183,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
       float w_before = float(w - w2);
       float w_after = float(w - w2);
 
-      /* Compute the neighboring points */
+      /* Compute the neighboring points. */
       int64_t before = point_index - step;
       int64_t after = point_index + step;
       if (is_cyclic) {
@@ -203,7 +203,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
         after = std::min(after, last_pt);
       }
 
-      /* Add the neighboring values */
+      /* Add the neighboring values. */
       const T bval = src[before];
       const T aval = src[after];
       const T cval = src[point_index];
@@ -211,7 +211,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
       dst[point_index] += (bval - cval) * w_before;
       dst[point_index] += (aval - cval) * w_after;
 
-      /* Update the weight values */
+      /* Update the weight values. */
       total_weight[mask_index] += w_before;
       total_weight[mask_index] += w_after;
     });
@@ -220,7 +220,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
     w2 *= (n_half * 3 + step) / double(n_half * 3 + 1 - step);
   }
 
-  /* Normalize the weights */
+  /* Normalize the weights. */
   mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
     if (!is_end_and_fixed(point_index)) {
       total_weight[mask_index] += w - w2;
@@ -283,29 +283,29 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
-        /* Smooth all selected curves in the current drawing */
+        /* Smooth all selected curves in the current drawing. */
 
         /* Curves geometry and attributes*/
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        /* Position */
+        /* Position. */
         Array<float3> curves_positions_copy;
         if (smooth_position && !curves.positions().is_empty()) {
           curves_positions_copy = curves.positions();
         }
-        /* Opacity */
+        /* Opacity. */
         Array<float> curves_opacities_copy;
         if (smooth_opacity && drawing.opacities().is_span()) {
           curves_opacities_copy = drawing.opacities().get_internal_span();
         }
-        /* Radius */
+        /* Radius. */
         Array<float> curves_radii_copy;
         if (smooth_radius && drawing.radii().is_span()) {
           curves_radii_copy = drawing.radii().get_internal_span();
         }
-        /* Cyclic */
+        /* Cyclic. */
         const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
         const VArray<bool> cyclic = curves.cyclic();
-        /* Selection */
+        /* Selection. */
         bke::AttributeAccessor curves_attributes = curves.attributes();
         bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
@@ -378,18 +378,18 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
+  /* Identifiers. */
   ot->name = "Smooth Stroke";
   ot->idname = "GREASE_PENCIL_OT_stroke_smooth";
   ot->description = "Smooth selected strokes";
 
-  /* callbacks */
+  /* Callbacks. */
   ot->exec = grease_pencil_stroke_smooth_exec;
   ot->poll = editable_grease_pencil_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* Smooth parameters */
+  /* Smooth parameters. */
   prop = RNA_def_int(ot->srna, "iterations", 10, 1, 100, "Iterations", "", 1, 30);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 1.0f, "Factor", "", 0.0f, 1.0f);
