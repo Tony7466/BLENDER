@@ -669,9 +669,8 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
-static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
+static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *region)
 {
-  View2D *v2d = &region->v2d;
   Scene *scene = win->scene;
   Editing *ed = SEQ_editing_get(scene);
   int wmcursor = WM_CURSOR_DEFAULT;

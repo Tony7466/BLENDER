@@ -270,13 +270,15 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq)) {
+              SEQ_time_right_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq)) {
+              SEQ_time_left_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
@@ -1088,7 +1090,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   sequencer_select_strip_impl(ed, seq, handle_clicked, extend, deselect, toggle);
   if (seq2 != nullptr) {
     /* Invert handle selection for second strip */
-    int seq2_handle_clicked = (handle_clicked == SEQ_LEFTSEL) ? SEQ_RIGHTSEL : SEQ_LEFTSEL;
+    int seq2_handle_clicked = (handle_clicked == SEQ_LEFTSEL) ? SEQ_SIDE_RIGHT : SEQ_SIDE_LEFT;
     sequencer_select_strip_impl(ed, seq2, seq2_handle_clicked, extend, deselect, toggle);
   }
 

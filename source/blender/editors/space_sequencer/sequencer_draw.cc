@@ -659,12 +659,8 @@ static void drawmeta_contents(Scene *scene,
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void draw_handle_transform_text(const Scene *scene,
-                                       View2D *v2d,
-                                       Sequence *seq,
-                                       const short handle_side,
-                                       uint pos,
-                                       bool y_threshold)
+static void draw_handle_transform_text(
+    const Scene *scene, View2D *v2d, Sequence *seq, const short handle_side, bool y_threshold)
 {
   /* Draw numbers for start and end of the strip next to its handles. */
   if (!y_threshold || (seq->flag & SELECT) == 0 || (G.moving & G_TRANSFORM_SEQ) == 0) {
@@ -748,7 +744,7 @@ static void draw_seq_handle(const Scene *scene,
   }
   GPU_blend(GPU_BLEND_NONE);
 
-  draw_handle_transform_text(scene, v2d, seq, handle_side, pos, y_threshold);
+  draw_handle_transform_text(scene, v2d, seq, handle_side, y_threshold);
 }
 
 static void draw_seq_outline(Scene *scene,
@@ -782,7 +778,8 @@ static void draw_seq_outline(Scene *scene,
    */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
   if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE) {
+      overlap_mode != SEQ_OVERLAP_OVERWRITE)
+  {
     if (seq->flag & SEQ_OVERLAP) {
       col[0] = 255;
       col[1] = col[2] = 33;
@@ -1365,7 +1362,8 @@ static void draw_seq_strip(const bContext *C,
   if (sseq->flag & SEQ_SHOW_OVERLAY) {
     if (!is_single_image && pixely > 0) {
       if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) ||
-          (seq == special_seq_update)) {
+          (seq == special_seq_update))
+      {
         draw_sequence_extensions_overlay(scene, seq, pos, pixely, show_strip_color_tag);
       }
     }
@@ -2474,7 +2472,8 @@ static bool draw_cache_view_iter_fn(void *userdata,
   size_t *vert_count;
 
   if ((cache_type & SEQ_CACHE_STORE_FINAL_OUT) &&
-      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT)) {
+      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT))
+  {
     stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_SCALE_FAC * U.pixelsize) - v2d->cur.ymin;
     stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HANDLE_HEIGHT);
     stripe_top = stripe_bot + stripe_ht;

@@ -28,10 +28,10 @@ struct SequencerToolSettings;
 enum {
   SEQ_SIDE_MOUSE = -1,
   SEQ_SIDE_NONE = 0,
-  SEQ_SIDE_LEFT,
-  SEQ_SIDE_RIGHT,
-  SEQ_SIDE_BOTH,
-  SEQ_SIDE_NO_CHANGE,
+  SEQ_SIDE_LEFT = (1 << 1),
+  SEQ_SIDE_RIGHT = (1 << 2),
+  SEQ_SIDE_BOTH = (1 << 3),
+  SEQ_SIDE_NO_CHANGE = (1 << 4),
 };
 
 /* seq_dupli' flags */
