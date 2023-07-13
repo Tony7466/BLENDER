@@ -394,6 +394,12 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 
 void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 {
+  /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when there
+   * are other light probes in the scene. */
+  if (DEG_id_type_any_exists(this->depsgraph, ID_LP)) {
+    reflection_probes.update_probes_next_sample_ = true;
+  }
+
   while (!sampling.finished()) {
     this->render_sample();
 

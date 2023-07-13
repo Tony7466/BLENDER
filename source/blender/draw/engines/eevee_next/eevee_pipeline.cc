@@ -699,6 +699,7 @@ void DeferredProbeLayer::render(View &view,
   inst_.manager->submit(prepass_ps_, view);
 
   inst_.hiz_buffer.set_dirty();
+  inst_.lights.set_view(view, extent);
   inst_.shadows.set_view(view);
   inst_.irradiance_cache.set_view(view);
 

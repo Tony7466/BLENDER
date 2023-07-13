@@ -230,8 +230,6 @@ void CaptureView::render_world()
 
 void CaptureView::render_probes()
 {
-  GPU_debug_capture_begin();
-
   Framebuffer prepass_fb;
   View view = {"Capture.View"};
   bool do_update_mipmap_chain = false;
@@ -278,7 +276,6 @@ void CaptureView::render_probes()
     /* TODO: Composite world into the probes. */
     inst_.reflection_probes.update_probes_texture_mipmaps();
   }
-  GPU_debug_capture_end();
 }
 
 /** \} */
