@@ -76,7 +76,7 @@ static void transdata_elem_shear(const TransInfo *t,
   if (t->options & CTX_GPENCIL_STROKES) {
     /* Grease pencil multi-frame falloff. */
     bGPDstroke *gps = (bGPDstroke *)td->extra;
-    if (gps != NULL) {
+    if (gps != nullptr) {
       mul_v3_fl(vec, td->factor * gps->runtime.multi_frame_falloff);
     }
     else {
@@ -92,9 +92,9 @@ static void transdata_elem_shear(const TransInfo *t,
 
 static void transdata_elem_shear_fn(void *__restrict iter_data_v,
                                     const int iter,
-                                    const TaskParallelTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct TransDataArgs_Shear *data = iter_data_v;
+  TransDataArgs_Shear *data = static_cast<TransDataArgs_Shear *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -205,11 +205,10 @@ static void apply_shear_value(TransInfo *t, const float value)
       }
     }
     else {
-      struct TransDataArgs_Shear data = {
-          .t = t,
-          .tc = tc,
-          .is_local_center = is_local_center,
-      };
+      TransDataArgs_Shear data{};
+      data.t = t;
+      data.tc = tc;
+      data.is_local_center = is_local_center;
       copy_m3_m3(data.mat_final, mat_final);
 
       TaskParallelSettings settings;
@@ -280,7 +279,7 @@ static bool clip_uv_transform_shear(const TransInfo *t, float *vec, float *vec_i
   return true;
 }
 
-static void apply_shear(TransInfo *t, const int UNUSED(mval[2]))
+static void apply_shear(TransInfo *t, const int[2] /*mval*/)
 {
   float value = t->values[0] + t->values_modal_offset[0];
   transform_snap_increment(t, &value);
@@ -320,7 +319,7 @@ static void apply_shear(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initShear(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initShear(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_SHEAR;
 
@@ -349,9 +348,9 @@ TransModeInfo TransMode_shear = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initShear,
     /*transform_fn*/ apply_shear,
-    /*transform_matrix_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
     /*handle_event_fn*/ handleEventShear,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
