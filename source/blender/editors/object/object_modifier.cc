@@ -3749,7 +3749,7 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
   nmd.id_mappings = static_cast<NodesModifierIDMapping *>(
       MEM_reallocN(nmd.id_mappings, sizeof(NodesModifierIDMapping) * new_mappings_num));
 
-  NodesModifierIDMapping *new_mappings = nmd.id_mappings + nmd.id_mappings_num;
+  int new_mapping_i = nmd.id_mappings_num;
   for (const auto &item : nmd.runtime->id_mapping_issues.missing_mappings) {
     char id_name[MAX_NAME];
     char lib_name[MAX_NAME];
@@ -3757,7 +3757,8 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator * /*op*
     item.first.lib_name.copy(lib_name);
     ID *id = BKE_libblock_find_name_with_lib(
         bmain, id_name, lib_name[0] == '\0' ? nullptr : lib_name);
-    NodesModifierIDMapping &mapping = *(new_mappings++);
+
+    NodesModifierIDMapping &mapping = nmd.id_mappings[new_mapping_i++];
     memset(&mapping, 0, sizeof(NodesModifierIDMapping));
     if (!item.first.id_name.is_empty()) {
       mapping.id_name = BLI_strdupn(item.first.id_name.data(), item.first.id_name.size());
