@@ -57,7 +57,8 @@ static void step_object_sync_render(void *velocity,
                                     RenderEngine * /*engine*/,
                                     Depsgraph * /*depsgraph*/)
 {
-  ObjectKey object_key(ob);
+  /* TODO(Miguel Pozo): This should be de-duplicated with Instance::object_sync. */
+  ObjectKey object_key(DEG_get_original_object(ob));
   /* NOTE: Dummy resource handle since this will not be used for drawing. */
   ResourceHandle resource_handle(0);
   reinterpret_cast<VelocityModule *>(velocity)->step_object_sync(ob, object_key, resource_handle);
