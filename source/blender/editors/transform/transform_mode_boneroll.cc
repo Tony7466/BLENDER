@@ -30,7 +30,7 @@
 /** \name Transform (EditBone Roll)
  * \{ */
 
-static void applyBoneRoll(TransInfo *t, const int UNUSED(mval[2]))
+static void applyBoneRoll(TransInfo *t, const int[2] /*mval*/)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -73,7 +73,7 @@ static void applyBoneRoll(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initBoneRoll(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initBoneRoll(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_BONE_ROLL;
 
@@ -96,9 +96,9 @@ TransModeInfo TransMode_boneroll = {
     /*flags*/ T_NO_CONSTRAINT | T_NO_PROJECT,
     /*init_fn*/ initBoneRoll,
     /*transform_fn*/ applyBoneRoll,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
