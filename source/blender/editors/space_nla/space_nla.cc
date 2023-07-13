@@ -150,12 +150,6 @@ static SpaceLink *nla_duplicate(SpaceLink *sl)
   return reinterpret_cast<SpaceLink *>(snlan);
 }
 
-static void nla_clamp_scroll(ARegion *region)
-{
-  View2D *v2d = &region->v2d;
-  UI_view2d_curRect_clamp_y(v2d);
-}
-
 /* add handlers, stuff you only do once or on area/region changes */
 static void nla_channel_region_init(wmWindowManager *wm, ARegion *region)
 {
@@ -444,10 +438,8 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
 
 static void nla_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
 {
-
-  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
-   * because it also clamps the x-axis to 0. */
-  nla_clamp_scroll(region);
+  View2D *v2d = &region->v2d;
+  UI_view2d_curRect_clamp_y(v2d);
 }
 
 static void nla_channel_region_listener(const wmRegionListenerParams *params)

@@ -849,8 +849,6 @@ void UI_view2d_curRect_changed(const bContext *C, View2D *v2d)
 
 void UI_view2d_curRect_clamp_y(struct View2D *v2d)
 {
-  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
-   * because it also clamps the x-axis to 0. */
   const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
 
   if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
