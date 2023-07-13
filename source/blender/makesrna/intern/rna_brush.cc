@@ -542,11 +542,11 @@ static bool rna_BrushCapabilitiesSculpt_has_plane_offset_get(PointerRNA *ptr)
 static bool rna_BrushCapabilitiesSculpt_has_random_texture_angle_get(PointerRNA *ptr)
 {
   Brush *br = (Brush *)ptr->data;
-  return (!ELEM(br->sculpt_tool,
-                SCULPT_TOOL_GRAB,
-                SCULPT_TOOL_ROTATE,
-                SCULPT_TOOL_SNAKE_HOOK,
-                SCULPT_TOOL_THUMB));
+  return !ELEM(br->sculpt_tool,
+               SCULPT_TOOL_GRAB,
+               SCULPT_TOOL_ROTATE,
+               SCULPT_TOOL_SNAKE_HOOK,
+               SCULPT_TOOL_THUMB);
 }
 
 static bool rna_TextureCapabilities_has_random_texture_angle_get(PointerRNA *ptr)
@@ -1060,7 +1060,7 @@ static void rna_BrushGpencilSettings_default_eraser_update(Main *bmain,
   for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
        brush = static_cast<Brush *>(brush->id.next))
   {
-    if ((brush != brush_cur) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL) &&
+    if ((brush != brush_cur) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
         (brush->gpencil_tool == GPAINT_TOOL_ERASE))
     {
       brush->gpencil_settings->flag &= ~GP_BRUSH_DEFAULT_ERASER;
@@ -2864,7 +2864,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "tip_scale_x", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "tip_scale_x");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 3);
+  RNA_def_property_ui_range(prop, 0.0001f, 1.0f, 0.001, 3);
   RNA_def_property_ui_text(prop, "Tip Scale X", "Scale of the brush tip in the X axis");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
@@ -3708,11 +3708,11 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Use Texture", "Use this brush in texture paint mode");
 
   prop = RNA_def_property(srna, "use_paint_grease_pencil", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_PAINT_GPENCIL);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_PAINT_GPENCIL_LEGACY);
   RNA_def_property_ui_text(prop, "Use Paint", "Use this brush in grease pencil drawing mode");
 
   prop = RNA_def_property(srna, "use_vertex_grease_pencil", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_VERTEX_GPENCIL);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_VERTEX_GPENCIL_LEGACY);
   RNA_def_property_ui_text(
       prop, "Use Vertex", "Use this brush in grease pencil vertex color mode");
 

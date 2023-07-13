@@ -119,6 +119,15 @@ struct wmWindowManager;
 #include "gizmo/WM_gizmo_api.h"
 
 #ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
+#else
+typedef struct AssetRepresentationHandle AssetRepresentationHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -1079,7 +1088,7 @@ typedef enum eWM_DragDataType {
   WM_DRAG_COLOR,
   WM_DRAG_DATASTACK,
   WM_DRAG_ASSET_CATALOG,
-  /* Socket or panel declaration in a node tree interface. */
+  WM_DRAG_GREASE_PENCIL_LAYER,
   WM_DRAG_NODE_TREE_INTERFACE,
 } eWM_DragDataType;
 
@@ -1099,7 +1108,7 @@ typedef struct wmDragID {
 
 typedef struct wmDragAsset {
   int import_method; /* eAssetImportType */
-  const struct AssetRepresentation *asset;
+  const AssetRepresentationHandle *asset;
 
   /* FIXME: This is temporary evil solution to get scene/view-layer/etc in the copy callback of the
    * #wmDropBox.
@@ -1142,6 +1151,10 @@ typedef struct wmDragPath {
    * set, so `ELEM()` like comparison is possible. */
   int file_type; /* eFileSel_File_Types */
 } wmDragPath;
+
+typedef struct wmDragGreasePencilLayer {
+  struct GreasePencilLayer *layer;
+} wmDragGreasePencilLayer;
 
 typedef char *(*WMDropboxTooltipFunc)(struct bContext *,
                                       struct wmDrag *,
@@ -1191,7 +1204,7 @@ typedef struct wmDrag {
   double value;
 
   /** If no icon but imbuf should be drawn around cursor. */
-  struct ImBuf *imb;
+  const struct ImBuf *imb;
   float imbuf_scale;
 
   wmDragActiveDropState drop_state;
