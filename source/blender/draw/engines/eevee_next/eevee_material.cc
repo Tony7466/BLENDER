@@ -262,7 +262,7 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.probe_prepass = MaterialPass();
       mat.probe_shading = MaterialPass();
 
-      if (inst_.sampling.do_probe_sync()) {
+      if (inst_.do_probe_sync()) {
         mat.probe_prepass = material_pass_get(
             ob, blender_mat, MAT_PIPE_DEFERRED_PREPASS, geometry_type, true);
         mat.probe_shading = material_pass_get(

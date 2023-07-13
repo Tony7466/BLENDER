@@ -122,7 +122,7 @@ void SyncModule::sync_mesh(Object *ob,
 
   bool is_shadow_caster = false;
   bool is_alpha_blend = false;
-  bool do_probe_sync = inst_.sampling.do_probe_sync();
+  bool do_probe_sync = inst_.do_probe_sync();
   for (auto i : material_array.gpu_materials.index_range()) {
     GPUBatch *geom = mat_geom[i];
     if (geom == nullptr) {

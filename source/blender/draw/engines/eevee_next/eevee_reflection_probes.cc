@@ -424,7 +424,7 @@ std::ostream &operator<<(std::ostream &os, const ReflectionProbe &probe)
 std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     const ReflectionProbe::Type probe_type)
 {
-  const bool do_probe_sync = instance_.sampling.do_probe_sync();
+  const bool do_probe_sync = instance_.do_probe_sync();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
     if (!item.value.do_render) {

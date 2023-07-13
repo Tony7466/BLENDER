@@ -22,7 +22,6 @@ class Instance;
 struct ObjectHandle;
 struct WorldHandle;
 class CaptureView;
-class Sampling;
 struct ReflectionProbeUpdateInfo;
 
 /* -------------------------------------------------------------------- */
@@ -171,7 +170,8 @@ class ReflectionProbeModule {
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
-  friend class Sampling;
+  /* Instance requires access to #update_probes_this_sample_ */
+  friend class Instance;
 };
 
 std::ostream &operator<<(std::ostream &os, const ReflectionProbeModule &module);

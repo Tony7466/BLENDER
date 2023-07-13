@@ -273,6 +273,18 @@ void Instance::render_sync()
   // DRW_hair_update();
 }
 
+bool Instance::do_probe_sync() const
+{
+  /* TODO: research how this would handle false positives. */
+  if (materials.queued_shaders_count != 0) {
+    return false;
+  }
+  if (!reflection_probes.update_probes_this_sample_) {
+    return false;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

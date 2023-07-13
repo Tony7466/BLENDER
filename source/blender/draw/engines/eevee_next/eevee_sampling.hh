@@ -144,11 +144,6 @@ class Sampling {
   }
 
   /**
-   * Return true when probe pipeline is used during this sample.
-   */
-  bool do_probe_sync() const;
-
-  /**
    * Special ball distribution:
    * Point are distributed in a way that when they are orthogonally
    * projected into any plane, the resulting distribution is (close to)
