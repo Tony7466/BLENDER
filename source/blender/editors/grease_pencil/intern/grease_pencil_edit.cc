@@ -180,8 +180,8 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
         return;
       }
 
-      float w_before = float(w - w2);
-      float w_after = float(w - w2);
+      double w_before = w - w2;
+      double w_after = w - w2;
 
       /* Compute the neighboring points. */
       int64_t before = point_index - step;
