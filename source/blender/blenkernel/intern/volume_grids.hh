@@ -17,6 +17,7 @@
 
 #include "DNA_volume_types.h"
 
+#include <list>
 #include <unordered_set>
 
 #ifdef WITH_OPENVDB

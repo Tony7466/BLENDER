@@ -288,13 +288,13 @@ static openvdb::GridBase::Ptr add_generic_grid_with_varray(
   openvdb::GridBase::Ptr result = add_generic_grid(
       grids, grid_type, CD_CONSTRUCT, grid_template, attribute_id);
   if (result != nullptr) {
+    GVMutableArray dst_varray = get_volume_vmutablearray<VArrayImpl_For_VolumeGridValue>(
+        *result, grid_type);
     volume_grid_to_static_type_tag(grid_type, [&](auto tag) {
       using GridType = typename decltype(tag)::type;
       using VArrayImplType = VArrayImpl_For_VolumeGridValue<GridType>;
       using AttributeType = typename VArrayImplType::AttributeType;
 
-      GVMutableArray dst_varray = get_volume_vmutablearray<VArrayImpl_For_VolumeGridValue>(
-          *result, grid_type);
       VArray<AttributeType> typed_varray = varray.typed<AttributeType>();
       dst_varray.try_assign_VArray(typed_varray);
     });
@@ -314,15 +314,9 @@ static openvdb::GridBase::Ptr add_generic_grid_with_data(
   openvdb::GridBase::Ptr result = add_generic_grid(
       grids, grid_type, CD_CONSTRUCT, grid_template, attribute_id);
   if (result != nullptr) {
-    volume_grid_to_static_type_tag(grid_type, [&](auto tag) {
-      using GridType = typename decltype(tag)::type;
-      using VArrayImplType = VArrayImpl_For_VolumeGridValue<GridType>;
-      using AttributeType = typename VArrayImplType::AttributeType;
-
-      GVMutableArray dst_varray = get_volume_vmutablearray<VArrayImpl_For_VolumeGridValue>(
-          *result, grid_type);
-      dst_varray.set_all(data);
-    });
+    GVMutableArray dst_varray = get_volume_vmutablearray<VArrayImpl_For_VolumeGridValue>(
+        *result, grid_type);
+    dst_varray.set_all(data);
   }
   return result;
 }
@@ -389,7 +383,7 @@ bool VolumeCustomAttributeProvider::try_create(void *owner,
     return false;
   }
   VolumeGridVector &grids = grid_access_.get_grids(owner);
-  if (VolumeGrid *grid = grids.find_grid(attribute_id)) {
+  if (grids.find_grid(attribute_id)) {
     return false;
   }
 

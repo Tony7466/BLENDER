@@ -7,10 +7,11 @@
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_parameter_pack_utils.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_volume.h"
+
+#include "intern/volume_grids.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -109,18 +110,6 @@ template<typename Fn> auto volume_grid_to_static_type_tag(const VolumeGridType g
 {
   detail::TypeTagExecutor<Fn> executor{fn};
   return volume_grid_to_static_type(grid_type, executor);
-}
-
-inline const CPPType &volume_grid_type_to_cpp_type(const VolumeGridType grid_type)
-{
-  const CPPType *cpptype = nullptr;
-  volume_grid_to_static_type_tag(grid_type, [&cpptype](auto tag) {
-    using GridType = typename decltype(tag)::type;
-    using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
-    using AttributeType = typename Converter::AttributeType;
-    cpptype = &CPPType::get<AttributeType>();
-  });
-  return *cpptype;
 }
 
 /* -------------------------------------------------------------------- */
@@ -222,7 +211,8 @@ GVArray get_volume_varray(const openvdb::GridBase &vdb_grid, VolumeGridType grid
     using VArrayImplType = VArrayImplT<GridType>;
     using AttributeType = typename VArrayImplType::AttributeType;
 
-    result = VArray<AttributeType>::For<VArrayImplType>(static_cast<const GridType &>(vdb_grid));
+    result = VArray<AttributeType>::template For<VArrayImplType>(
+        static_cast<const GridType &>(vdb_grid));
   });
   return result;
 }
@@ -253,7 +243,7 @@ GVMutableArray get_volume_vmutablearray(openvdb::GridBase &vdb_grid, VolumeGridT
     using VArrayImplType = VArrayImplT<GridType>;
     using AttributeType = typename VArrayImplType::AttributeType;
 
-    result = VMutableArray<AttributeType>::For<VArrayImplType>(
+    result = VMutableArray<AttributeType>::template For<VArrayImplType>(
         static_cast<const GridType &>(vdb_grid));
   });
   return result;
@@ -273,6 +263,26 @@ GVMutableArray get_volume_vmutablearray(VolumeGridVector &grids,
 
   return get_volume_vmutablearray<VArrayImplT>(*grid->grid(), grid->grid_type());
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name CPP Type for grid type
+ * \{ */
+
+inline const CPPType &volume_grid_type_to_cpp_type(const VolumeGridType grid_type)
+{
+  const CPPType *cpptype = nullptr;
+  volume_grid_to_static_type_tag(grid_type, [&cpptype](auto tag) {
+    using GridType = typename decltype(tag)::type;
+    using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
+    using AttributeType = typename Converter::AttributeType;
+    cpptype = &CPPType::get<AttributeType>();
+  });
+  return *cpptype;
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Grid Value Virtual Array
@@ -338,7 +348,7 @@ class VArrayImpl_For_VolumeGridValue final
     BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
     const LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
     int64_t i = *buffer_index_ptr;
-    for (LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
+    for (typename LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
       if (i == index) {
         return Converter::to_attribute(iter.getValue());
       }
@@ -361,7 +371,7 @@ class VArrayImpl_For_VolumeGridValue final
     BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
     LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
     int64_t i = *buffer_index_ptr;
-    for (LeafNodeType::ValueOnIter iter = leaf.beginValueOn(); iter; ++iter, ++i) {
+    for (typename LeafNodeType::ValueOnIter iter = leaf.beginValueOn(); iter; ++iter, ++i) {
       if (i == index) {
         iter.setValue(Converter::to_grid(value));
         break;
@@ -497,7 +507,7 @@ class VArrayImpl_For_VolumeGridPosition final : public VArrayImpl<float3> {
     BLI_assert(IndexRange(leaf_manager_.leafCount()).contains(leaf_index));
     const LeafNodeType &leaf = leaf_manager_.leaf(leaf_index);
     int64_t i = *buffer_index_ptr;
-    for (LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
+    for (typename LeafNodeType::ValueOnCIter iter = leaf.cbeginValueOn(); iter; ++iter, ++i) {
       if (i == index) {
         return Converter::to_attribute(grid_.indexToWorld(iter.getCoord()));
       }

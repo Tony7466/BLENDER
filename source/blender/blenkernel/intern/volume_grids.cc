@@ -6,11 +6,8 @@
  * \ingroup bke
  */
 
-#pragma once
-
 #include "intern/volume_grids.hh"
 
-#include "BLI_ghash.h"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
