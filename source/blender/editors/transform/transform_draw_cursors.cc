@@ -79,7 +79,7 @@ bool transform_draw_cursor_poll(bContext *C)
   return (region && ELEM(region->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_PREVIEW)) ? 1 : 0;
 }
 
-void transform_draw_cursor_draw(bContext *UNUSED(C), int x, int y, void *customdata)
+void transform_draw_cursor_draw(bContext * /*C*/, int x, int y, void *customdata)
 {
   TransInfo *t = (TransInfo *)customdata;
 
@@ -88,7 +88,7 @@ void transform_draw_cursor_draw(bContext *UNUSED(C), int x, int y, void *customd
   }
 
   float cent[2];
-  const float mval[3] = {x, y, 0.0f};
+  const float mval[3] = {float(x), float(y), 0.0f};
   float tmval[2] = {
       (float)t->mval[0],
       (float)t->mval[1],
@@ -97,8 +97,8 @@ void transform_draw_cursor_draw(bContext *UNUSED(C), int x, int y, void *customd
   projectFloatViewEx(t, t->center_global, cent, V3D_PROJ_TEST_CLIP_ZERO);
   /* Offset the values for the area region. */
   const float offset[2] = {
-      t->region->winrct.xmin,
-      t->region->winrct.ymin,
+      float(t->region->winrct.xmin),
+      float(t->region->winrct.ymin),
   };
 
   for (int i = 0; i < 2; i++) {
@@ -156,7 +156,7 @@ void transform_draw_cursor_draw(bContext *UNUSED(C), int x, int y, void *customd
       break;
     case HLP_CARROW: {
       /* Draw arrow based on direction defined by custom-points. */
-      const int *data = t->mouse.data;
+      const int *data = static_cast<const int *>(t->mouse.data);
       const float angle = -atan2f(data[2] - data[0], data[3] - data[1]);
       GPU_matrix_rotate_axis(RAD2DEGF(angle), 'Z');
       drawArrow(pos_id, UP);
