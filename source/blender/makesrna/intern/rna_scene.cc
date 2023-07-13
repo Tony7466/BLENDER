@@ -7425,7 +7425,6 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       {1, "1", 0, "1 rpp", "1 ray per pixel"},
       {2, "2", 0, "1/4 rpp", "1 ray for every 4 pixels"},
       {4, "4", 0, "1/16 rpp", "1 ray for every 16 pixels"},
-      {8, "8", 0, "1/64 rpp", "1 ray for every 64 pixels"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
