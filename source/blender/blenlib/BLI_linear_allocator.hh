@@ -227,9 +227,9 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
     user_requested_size_ += other.user_requested_size_;
     owned_allocation_size_ += other.owned_allocation_size_;
 #endif
-    other.owned_buffers_.clear();
-    std::destroy_at(&other);
-    new (&other) LinearAllocator<>();
+    this->owned_buffers_.clear();
+    std::destroy_at(this);
+    new (this) LinearAllocator<>();
   }
 
  private:
