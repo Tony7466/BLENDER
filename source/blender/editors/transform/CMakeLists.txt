@@ -49,7 +49,7 @@ set(SRC
   transform_convert_sequencer.cc
   transform_convert_sequencer_image.cc
   transform_convert_tracking.c
-  transform_convert_tracking_curves.c
+  transform_convert_tracking_curves.cc
   transform_draw_cursors.c
   transform_generics.c
   transform_gizmo_2d.c

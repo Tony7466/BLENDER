@@ -25,7 +25,7 @@
 #include "transform.h"
 #include "transform_convert.h"
 
-typedef struct TransDataTrackingCurves {
+struct TransDataTrackingCurves {
   int flag;
 
   /* marker transformation from curves editor */
@@ -34,7 +34,7 @@ typedef struct TransDataTrackingCurves {
   short coord;
 
   MovieTrackingTrack *track;
-} TransDataTrackingCurves;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Clip Editor Motion Tracking Transform Creation
@@ -74,8 +74,8 @@ static void markerToTransCurveDataInit(TransData *td,
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
 
   td->flag |= TD_SELECTED;
   td->dist = 0.0;
@@ -130,12 +130,13 @@ static void createTransTrackingCurvesData(bContext *C, TransInfo *t)
     return;
   }
 
-  td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransTracking TransData");
-  td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D),
-                                   "TransTracking TransData2D");
-  tc->custom.type.data = tdt = MEM_callocN(tc->data_len * sizeof(TransDataTrackingCurves),
-                                           "TransTracking TransDataTracking");
-  tc->custom.type.free_cb = NULL;
+  td = tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransTracking TransData"));
+  td2d = tc->data_2d = static_cast<TransData2D *>(
+      MEM_callocN(tc->data_len * sizeof(TransData2D), "TransTracking TransData2D"));
+  tc->custom.type.data = tdt = static_cast<TransDataTrackingCurves *>(MEM_callocN(
+      tc->data_len * sizeof(TransDataTrackingCurves), "TransTracking TransDataTracking"));
+  tc->custom.type.free_cb = nullptr;
 
   /* create actual data */
   LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_object->tracks) {
@@ -203,7 +204,8 @@ static void createTransTrackingCurves(bContext *C, TransInfo *t)
 static void cancelTransTrackingCurves(TransInfo *t)
 {
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransDataTrackingCurves *tdt_array = tc->custom.type.data;
+  TransDataTrackingCurves *tdt_array = static_cast<TransDataTrackingCurves *>(
+      tc->custom.type.data);
 
   int i = 0;
   while (i < tc->data_len) {
@@ -246,7 +248,10 @@ static void flushTransTrackingCurves(TransInfo *t)
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
   /* flush to 2d vector from internally used 3d vector */
-  for (td_index = 0, td = tc->data, td2d = tc->data_2d, tdt = tc->custom.type.data;
+  for (td_index = 0,
+      td = tc->data,
+      td2d = tc->data_2d,
+      tdt = static_cast<TransDataTrackingCurves *>(tc->custom.type.data);
        td_index < tc->data_len;
        td_index++, td2d++, td++, tdt++)
   {
@@ -258,7 +263,7 @@ static void flushTransTrackingCurves(TransInfo *t)
 
 static void recalcData_tracking_curves(TransInfo *t)
 {
-  SpaceClip *sc = t->area->spacedata.first;
+  SpaceClip *sc = static_cast<SpaceClip *>(t->area->spacedata.first);
 
   if (ED_space_clip_check_show_trackedit(sc)) {
     MovieClip *clip = ED_space_clip_get_clip(sc);
@@ -277,17 +282,17 @@ static void recalcData_tracking_curves(TransInfo *t)
 
 static void special_aftertrans_update__movieclip_for_curves(bContext *C, TransInfo *t)
 {
-  SpaceClip *sc = t->area->spacedata.first;
+  SpaceClip *sc = static_cast<SpaceClip *>(t->area->spacedata.first);
   MovieClip *clip = ED_space_clip_get_clip(sc);
-  if (t->scene->nodetree != NULL) {
+  if (t->scene->nodetree != nullptr) {
     /* Tracks can be used for stabilization nodes,
      * flush update for such nodes.
      */
-    if (t->context != NULL) {
+    if (t->context != nullptr) {
       Main *bmain = CTX_data_main(C);
       BKE_ntree_update_tag_id_changed(bmain, &clip->id);
-      BKE_ntree_update_main(bmain, NULL);
-      WM_event_add_notifier(C, NC_SCENE | ND_NODES, NULL);
+      BKE_ntree_update_main(bmain, nullptr);
+      WM_event_add_notifier(C, NC_SCENE | ND_NODES, nullptr);
     }
   }
 }
