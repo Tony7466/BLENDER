@@ -275,8 +275,7 @@ void Instance::render_sync()
 
 bool Instance::do_probe_sync() const
 {
-  /* TODO: research how this would handle false positives. */
-  if (materials.queued_shaders_count != 0) {
+  if (materials.queued_shaders_count > 0) {
     return false;
   }
   if (!reflection_probes.update_probes_this_sample_) {
@@ -313,7 +312,6 @@ void Instance::render_sample()
   capture_view.render_probes();
 
   main_view.render();
-  // TODO: Not sure how to incorporate this during image rendering.
 
   motion_blur.step();
 }
