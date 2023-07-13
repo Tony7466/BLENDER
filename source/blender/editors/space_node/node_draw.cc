@@ -47,6 +47,8 @@
 #include "BKE_object.h"
 #include "BKE_type_conversions.hh"
 
+#include "IMB_imbuf.h"
+
 #include "DEG_depsgraph.h"
 
 #include "BLF_api.h"
@@ -1326,24 +1328,24 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(bNodePreview *preview, rctf *prv)
+static void node_draw_preview(Scene *sce, ImBuf *image, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
-  float xscale = xrect / float(preview->xsize);
-  float yscale = yrect / float(preview->ysize);
+  float xscale = xrect / float(image->x);
+  float yscale = yrect / float(image->y);
   float scale;
 
   /* Uniform scale and offset. */
   rctf draw_rect = *prv;
   if (xscale < yscale) {
-    float offset = 0.5f * (yrect - float(preview->ysize) * xscale);
+    float offset = 0.5f * (yrect - float(image->y) * xscale);
     draw_rect.ymin += offset;
     draw_rect.ymax -= offset;
     scale = xscale;
   }
   else {
-    float offset = 0.5f * (xrect - float(preview->xsize) * yscale);
+    float offset = 0.5f * (xrect - float(image->x) * yscale);
     draw_rect.xmin += offset;
     draw_rect.xmax -= offset;
     scale = yscale;
@@ -1355,18 +1357,14 @@ static void node_draw_preview(bNodePreview *preview, rctf *prv)
   /* Premul graphics. */
   GPU_blend(GPU_BLEND_ALPHA);
 
-  IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-  immDrawPixelsTexTiled(&state,
-                        draw_rect.xmin,
-                        draw_rect.ymin,
-                        preview->xsize,
-                        preview->ysize,
-                        GPU_RGBA8,
-                        true,
-                        preview->rect,
-                        scale,
-                        scale,
-                        nullptr);
+  ED_draw_imbuf(image,
+                draw_rect.xmin,
+                draw_rect.ymin,
+                false,
+                &sce->view_settings,
+                &sce->display_settings,
+                scale,
+                scale);
 
   GPU_blend(GPU_BLEND_NONE);
 
@@ -2083,14 +2081,15 @@ static void node_draw_extra_info_row(const bNode &node,
   }
 }
 
-static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
+static void node_draw_extra_info_panel(Scene *sce,
+                                       TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       bNodePreview *preview,
+                                       ImBuf *pr_image,
                                        uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
-  if (extra_info_rows.size() == 0 && !preview) {
+  if (extra_info_rows.size() == 0 && !pr_image) {
     return;
   }
 
@@ -2114,11 +2113,11 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.xmax = extra_info_rect.xmin + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
-    if (preview) {
-      if (preview->xsize > preview->ysize) {
+    if (pr_image) {
+      if (pr_image->x > pr_image->y) {
         const float preview_padding = 3.0f * UI_SCALE_FAC;
-        preview_height = (width - 2.0 * preview_padding) * float(preview->ysize) /
-                             float(preview->xsize) +
+        preview_height = (width - 2.0 * preview_padding) * float(pr_image->y) /
+                             float(pr_image->x) +
                          2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
@@ -2129,8 +2128,8 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
       else {
         const float preview_padding = 3.0f * UI_SCALE_FAC;
         preview_height = width;
-        const float preview_width = (width - 2.0 * preview_padding) * float(preview->xsize) /
-                                        float(preview->ysize) +
+        const float preview_width = (width - 2.0 * preview_padding) * float(pr_image->x) /
+                                        float(pr_image->y) +
                                     2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
@@ -2165,8 +2164,8 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
         ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
 
-    if (preview) {
-      node_draw_preview(preview, &preview_rect);
+    if (pr_image) {
+      node_draw_preview(sce, pr_image, &preview_rect);
     }
 
     /* Resize the rect to draw the textual infos on top of the preview. */
@@ -2217,15 +2216,18 @@ static void node_draw_basis(const bContext &C,
 
   GPU_line_width(1.0f);
 
-  bNodePreview *preview = nullptr;
+  ImBuf *pr_image = nullptr;
   if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
-    preview = static_cast<bNodePreview *>(BKE_node_instance_hash_lookup(previews, key));
-    if (!preview || !(preview->xsize && preview->ysize)) {
-      preview = nullptr;
+    bNodePreview *preview = static_cast<bNodePreview *>(BKE_node_instance_hash_lookup(previews, key));
+    if (preview) {
+      pr_image = preview->image;
     }
   }
+  if (!pr_image || !(pr_image->x && pr_image->y)) {
+    pr_image = nullptr;
+  }
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview, block);
+  node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, pr_image, block);
 
   /* Header. */
   {
@@ -2536,7 +2538,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
+  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -3022,7 +3024,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
+  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);

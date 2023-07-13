@@ -47,6 +47,8 @@
 #include "BLI_vector_set.hh"
 #include "BLT_translation.h"
 
+#include "IMB_imbuf.h"
+
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_asset.h"
@@ -3111,6 +3113,7 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   if (!preview) {
     if (create) {
       preview = MEM_cnew<bNodePreview>("node preview");
+      preview->image = IMB_allocImBuf(xsize, ysize, 32, 0);
       BKE_node_instance_hash_insert(previews, key, preview);
     }
     else {
@@ -3124,18 +3127,9 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   }
 
   /* sanity checks & initialize */
-  if (preview->rect) {
-    if (preview->xsize != xsize || preview->ysize != ysize) {
-      MEM_freeN(preview->rect);
-      preview->rect = nullptr;
-    }
-  }
-
-  if (preview->rect == nullptr) {
-    preview->rect = reinterpret_cast<uchar *>(
-        MEM_callocN(4 * xsize + xsize * ysize * sizeof(char[4]), "node preview rect"));
-    preview->xsize = xsize;
-    preview->ysize = ysize;
+  IMB_rect_size_set(preview->image, new uint[2]{(uint)xsize, (uint)ysize});
+  if (preview->image->byte_buffer.data == nullptr) {
+    imb_addrectImBuf(preview->image);
   }
   /* no clear, makes nicer previews */
 
@@ -3145,16 +3139,14 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
 bNodePreview *node_preview_copy(bNodePreview *preview)
 {
   bNodePreview *new_preview = static_cast<bNodePreview *>(MEM_dupallocN(preview));
-  if (preview->rect) {
-    new_preview->rect = static_cast<uchar *>(MEM_dupallocN(preview->rect));
-  }
+  new_preview->image = IMB_dupImBuf(preview->image);
   return new_preview;
 }
 
 void node_preview_free(bNodePreview *preview)
 {
-  if (preview->rect) {
-    MEM_freeN(preview->rect);
+  if (preview->image) {
+    IMB_freeImBuf(preview->image);
   }
   MEM_freeN(preview);
 }
@@ -3229,8 +3221,9 @@ void node_preview_remove_unused(bNodeTree *ntree)
 
 void node_preview_clear(bNodePreview *preview)
 {
-  if (preview && preview->rect) {
-    memset(preview->rect, 0, MEM_allocN_len(preview->rect));
+  if (preview && preview->image && preview->image->byte_buffer.data) {
+    //    memset(preview->rect, 0, MEM_allocN_len(preview->rect));
+    // TODO later (Kdaf)
   }
 }
 
