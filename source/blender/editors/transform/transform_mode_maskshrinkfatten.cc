@@ -30,7 +30,7 @@
 /** \name Transform (Mask Shrink/Fatten)
  * \{ */
 
-static void applyMaskShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
+static void applyMaskShrinkFatten(TransInfo *t, const int[2] /*mval*/)
 {
   float ratio;
   int i;
@@ -104,7 +104,7 @@ static void applyMaskShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initMaskShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initMaskShrinkFatten(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_MASK_SHRINKFATTEN;
 
@@ -130,9 +130,9 @@ TransModeInfo TransMode_maskshrinkfatten = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initMaskShrinkFatten,
     /*transform_fn*/ applyMaskShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
