@@ -11,6 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
 
@@ -46,7 +47,7 @@
 /** \name Transform (Edge Slide)
  * \{ */
 
-typedef struct TransDataEdgeSlideVert {
+struct TransDataEdgeSlideVert {
   /** #TransDataGenericSlideVert (header) */
   BMVert *v;
   struct LinkNode **cd_loop_groups;
@@ -61,17 +62,17 @@ typedef struct TransDataEdgeSlideVert {
   float dir_side[2][3];
 
   int loop_nr;
-} TransDataEdgeSlideVert;
+};
 
-typedef struct EdgeSlideData {
+struct EdgeSlideData {
   TransDataEdgeSlideVert *sv;
   int totsv;
 
   int mval_start[2], mval_end[2];
   int curr_sv_index;
-} EdgeSlideData;
+};
 
-typedef struct EdgeSlideParams {
+struct EdgeSlideParams {
   float perc;
 
   /** when un-clamped - use this index: #TransDataEdgeSlideVert.dir_side */
@@ -79,7 +80,7 @@ typedef struct EdgeSlideParams {
 
   bool use_even;
   bool flipped;
-} EdgeSlideParams;
+};
 
 /**
  * Get the first valid TransDataContainer *.
@@ -95,13 +96,13 @@ static TransDataContainer *edge_slide_container_first_ok(TransInfo *t)
     }
   }
   BLI_assert_msg(0, "Should never happen, at least one EdgeSlideData should be valid");
-  return NULL;
+  return nullptr;
 }
 
 static EdgeSlideData *edgeSlideFirstGet(TransInfo *t)
 {
   TransDataContainer *tc = edge_slide_container_first_ok(t);
-  return tc->custom.mode.data;
+  return static_cast<EdgeSlideData *>(tc->custom.mode.data);
 }
 
 static void calcEdgeSlideCustomPoints(TransInfo *t)
@@ -127,7 +128,7 @@ static BMEdge *get_other_edge(BMVert *v, BMEdge *e)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /* Interpolates along a line made up of 2 segments (used for edge slide). */
@@ -292,16 +293,16 @@ static BMLoop *get_next_loop(
 
   copy_v3_v3(r_slide_vec, vec_accum);
 
-  return NULL;
+  return nullptr;
 }
 
 static void edge_slide_projmat_get(TransInfo *t, TransDataContainer *tc, float r_projectMat[4][4])
 {
-  RegionView3D *rv3d = NULL;
+  RegionView3D *rv3d = nullptr;
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* Background mode support. */
-    rv3d = t->region ? t->region->regiondata : NULL;
+    rv3d = static_cast<RegionView3D *>(t->region ? t->region->regiondata : nullptr);
   }
 
   if (!rv3d) {
@@ -377,27 +378,27 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
   TransDataEdgeSlideVert *sv;
   BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   ARegion *region = t->region;
-  View3D *v3d = NULL;
+  View3D *v3d = nullptr;
   float projectMat[4][4];
   BMBVHTree *bmbvh;
 
   /* only for use_calc_direction */
-  float(*loop_dir)[3] = NULL, *loop_maxdist = NULL;
+  float(*loop_dir)[3] = nullptr, *loop_maxdist = nullptr;
 
   float mval_dir[3], dist_best_sq;
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* background mode support */
-    v3d = t->area ? t->area->spacedata.first : NULL;
+    v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
   }
 
   edge_slide_projmat_get(t, tc, projectMat);
 
   if (use_occlude_geometry) {
-    bmbvh = BKE_bmbvh_new_from_editmesh(em, BMBVH_RESPECT_HIDDEN, NULL, false);
+    bmbvh = BKE_bmbvh_new_from_editmesh(em, BMBVH_RESPECT_HIDDEN, nullptr, false);
   }
   else {
-    bmbvh = NULL;
+    bmbvh = nullptr;
   }
 
   /* find mouse vectors, the global one, and one per loop in case we have
@@ -406,8 +407,8 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
   dist_best_sq = -1.0f;
 
   if (use_calc_direction) {
-    loop_dir = MEM_callocN(sizeof(float[3]) * loop_nr, "sv loop_dir");
-    loop_maxdist = MEM_mallocN(sizeof(float) * loop_nr, "sv loop_maxdist");
+    loop_dir = static_cast<float(*)[3]>(MEM_callocN(sizeof(float[3]) * loop_nr, "sv loop_dir"));
+    loop_maxdist = static_cast<float *>(MEM_mallocN(sizeof(float) * loop_nr, "sv loop_maxdist"));
     copy_vn_fl(loop_maxdist, loop_nr, -1.0f);
   }
 
@@ -534,12 +535,12 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
   TransDataEdgeSlideVert *sv_array;
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
-  EdgeSlideData *sld = MEM_callocN(sizeof(*sld), "sld");
+  EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
   const float mval[2] = {(float)t->mval[0], (float)t->mval[1]};
   int numsel, i, loop_nr;
   bool use_occlude_geometry = false;
-  View3D *v3d = NULL;
-  RegionView3D *rv3d = NULL;
+  View3D *v3d = nullptr;
+  RegionView3D *rv3d = nullptr;
 
   sld->curr_sv_index = 0;
 
@@ -561,7 +562,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       if (numsel == 0 || numsel > 2) {
         /* Invalid edge selection. */
         MEM_freeN(sld);
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -572,12 +573,12 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       if (!BM_edge_is_manifold(e) && !BM_edge_is_boundary(e)) {
         /* can edges with at least once face user */
         MEM_freeN(sld);
-        return NULL;
+        return nullptr;
       }
     }
   }
 
-  sv_table = MEM_mallocN(sizeof(*sv_table) * bm->totvert, __func__);
+  sv_table = static_cast<int *>(MEM_mallocN(sizeof(*sv_table) * bm->totvert, __func__));
 
 #define INDEX_UNSET -1
 #define INDEX_INVALID -2
@@ -601,12 +602,13 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
     if (!j) {
       MEM_freeN(sld);
       MEM_freeN(sv_table);
-      return NULL;
+      return nullptr;
     }
     sv_tot = j;
   }
 
-  sv_array = MEM_callocN(sizeof(TransDataEdgeSlideVert) * sv_tot, "sv_array");
+  sv_array = static_cast<TransDataEdgeSlideVert *>(
+      MEM_callocN(sizeof(TransDataEdgeSlideVert) * sv_tot, "sv_array"));
   loop_nr = 0;
 
   STACK_DECLARE(sv_array);
@@ -617,16 +619,17 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
     BMLoop *l_a, *l_b;
     BMLoop *l_a_prev, *l_b_prev;
     BMVert *v_first;
-    /* If this succeeds call get_next_loop()
-     * which calculates the direction to slide based on clever checks.
-     *
-     * otherwise we simply use 'e_dir' as an edge-rail.
-     * (which is better when the attached edge is a boundary, see: #40422)
-     */
+/* If this succeeds call get_next_loop()
+ * which calculates the direction to slide based on clever checks.
+ *
+ * otherwise we simply use 'e_dir' as an edge-rail.
+ * (which is better when the attached edge is a boundary, see: #40422)
+ */
 #define EDGESLIDE_VERT_IS_INNER(v, e_dir) \
+\
   ((BM_edge_is_boundary(e_dir) == false) && (BM_vert_edge_count_nonwire(v) == 2))
 
-    v = NULL;
+    v = nullptr;
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
       if (BM_elem_flag_test(v, BM_ELEM_TAG)) {
         break;
@@ -700,16 +703,19 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       }
     }
     else {
-      l_b = NULL;
+      l_b = nullptr;
     }
 
-    l_a_prev = NULL;
-    l_b_prev = NULL;
+    l_a_prev = nullptr;
+    l_b_prev = nullptr;
 
 #define SV_FROM_VERT(v) \
+\
   ((sv_table[BM_elem_index_get(v)] == INDEX_UNSET) ? \
        ((void)(sv_table[BM_elem_index_get(v)] = STACK_SIZE(sv_array)), \
+\
         STACK_PUSH_RET_PTR(sv_array)) : \
+\
        (&sv_array[sv_table[BM_elem_index_get(v)]]))
 
     /* Iterate over the loop. */
@@ -722,7 +728,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       BMEdge *e_prev;
 
       /* XXX, 'sv' will initialize multiple times, this is suspicious. see #34024. */
-      BLI_assert(v != NULL);
+      BLI_assert(v != nullptr);
       BLI_assert(sv_table[BM_elem_index_get(v)] != INDEX_INVALID);
       sv = SV_FROM_VERT(v);
       sv->v = v;
@@ -748,7 +754,7 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       e = get_other_edge(v, e);
 
       if (!e) {
-        BLI_assert(v != NULL);
+        BLI_assert(v != nullptr);
 
         BLI_assert(sv_table[BM_elem_index_get(v)] != INDEX_INVALID);
         sv = SV_FROM_VERT(v);
@@ -784,8 +790,8 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
 
         break;
       }
-      l_a_ok_prev = (l_a != NULL);
-      l_b_ok_prev = (l_b != NULL);
+      l_a_ok_prev = (l_a != nullptr);
+      l_b_ok_prev = (l_b != nullptr);
 
       l_a_prev = l_a;
       l_b_prev = l_b;
@@ -810,14 +816,14 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
       else {
         if (l_a || l_b) {
           /* find the opposite loop if it was missing previously */
-          if (l_a == NULL && l_b && (l_b->radial_next != l_b)) {
+          if (l_a == nullptr && l_b && (l_b->radial_next != l_b)) {
             l_a = l_b->radial_next;
           }
-          else if (l_b == NULL && l_a && (l_a->radial_next != l_a)) {
+          else if (l_b == nullptr && l_a && (l_a->radial_next != l_a)) {
             l_b = l_a->radial_next;
           }
         }
-        else if (e->l != NULL) {
+        else if (e->l != nullptr) {
           /* if there are non-contiguous faces, we can still recover
            * the loops of the new edges faces */
 
@@ -826,11 +832,11 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
 
           if (l_a_ok_prev) {
             l_a = e->l;
-            l_b = (l_a->radial_next != l_a) ? l_a->radial_next : NULL;
+            l_b = (l_a->radial_next != l_a) ? l_a->radial_next : nullptr;
           }
           else if (l_b_ok_prev) {
             l_b = e->l;
-            l_a = (l_b->radial_next != l_b) ? l_b->radial_next : NULL;
+            l_a = (l_b->radial_next != l_b) ? l_b->radial_next : nullptr;
           }
         }
 
@@ -864,8 +870,8 @@ static EdgeSlideData *createEdgeSlideVerts_double_side(TransInfo *t, TransDataCo
 
   /* use for visibility checks */
   if (t->spacetype == SPACE_VIEW3D) {
-    v3d = t->area ? t->area->spacedata.first : NULL;
-    rv3d = t->region ? t->region->regiondata : NULL;
+    v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
+    rv3d = static_cast<RegionView3D *>(t->region ? t->region->regiondata : nullptr);
     use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE &&
                             !XRAY_ENABLED(v3d));
   }
@@ -894,17 +900,17 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
   TransDataEdgeSlideVert *sv_array;
   int sv_tot;
   int *sv_table; /* BMVert -> sv_array index */
-  EdgeSlideData *sld = MEM_callocN(sizeof(*sld), "sld");
+  EdgeSlideData *sld = static_cast<EdgeSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
   const float mval[2] = {(float)t->mval[0], (float)t->mval[1]};
   int loop_nr;
   bool use_occlude_geometry = false;
-  View3D *v3d = NULL;
-  RegionView3D *rv3d = NULL;
+  View3D *v3d = nullptr;
+  RegionView3D *rv3d = nullptr;
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* background mode support */
-    v3d = t->area ? t->area->spacedata.first : NULL;
-    rv3d = t->region ? t->region->regiondata : NULL;
+    v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
+    rv3d = static_cast<RegionView3D *>(t->region ? t->region->regiondata : nullptr);
   }
 
   sld->curr_sv_index = 0;
@@ -937,7 +943,7 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
 
     if (!j) {
       MEM_freeN(sld);
-      return NULL;
+      return nullptr;
     }
 
     sv_tot = j;
@@ -945,12 +951,13 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
 
   BLI_assert(sv_tot != 0);
   /* over alloc */
-  sv_array = MEM_callocN(sizeof(TransDataEdgeSlideVert) * bm->totvertsel, "sv_array");
+  sv_array = static_cast<TransDataEdgeSlideVert *>(
+      MEM_callocN(sizeof(TransDataEdgeSlideVert) * bm->totvertsel, "sv_array"));
 
   /* Same loop for all loops, weak but we don't connect loops in this case. */
   loop_nr = 1;
 
-  sv_table = MEM_mallocN(sizeof(*sv_table) * bm->totvert, __func__);
+  sv_table = static_cast<int *>(MEM_mallocN(sizeof(*sv_table) * bm->totvert, __func__));
 
   {
     int i = 0, j = 0;
@@ -958,7 +965,7 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
 
     BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
       sv_table[i] = -1;
-      if ((v->e != NULL) && BM_elem_flag_test(v, BM_ELEM_SELECT)) {
+      if ((v->e != nullptr) && BM_elem_flag_test(v, BM_ELEM_SELECT)) {
         if (BM_elem_flag_test(v->e, BM_ELEM_SELECT) == 0) {
           TransDataEdgeSlideVert *sv;
           sv = &sv_array[j];
@@ -984,7 +991,7 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
       BMIter eiter;
       BM_ITER_ELEM (e, &eiter, sv_iter->v, BM_EDGES_OF_VERT) {
         /* walk over wire */
-        TransDataEdgeSlideVert *sv_end = NULL;
+        TransDataEdgeSlideVert *sv_end = nullptr;
         BMEdge *e_step = e;
         BMVert *v = sv_iter->v;
         int j;
@@ -1048,8 +1055,8 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
 
   /* use for visibility checks */
   if (t->spacetype == SPACE_VIEW3D) {
-    v3d = t->area ? t->area->spacedata.first : NULL;
-    rv3d = t->region ? t->region->regiondata : NULL;
+    v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
+    rv3d = static_cast<RegionView3D *>(t->region ? t->region->regiondata : nullptr);
     use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE &&
                             !XRAY_ENABLED(v3d));
   }
@@ -1065,25 +1072,25 @@ static EdgeSlideData *createEdgeSlideVerts_single_side(TransInfo *t, TransDataCo
   return sld;
 }
 
-static void freeEdgeSlideVerts(TransInfo *UNUSED(t),
-                               TransDataContainer *UNUSED(tc),
+static void freeEdgeSlideVerts(TransInfo * /*t*/,
+                               TransDataContainer * /*tc*/,
                                TransCustomData *custom_data)
 {
-  EdgeSlideData *sld = custom_data->data;
+  EdgeSlideData *sld = static_cast<EdgeSlideData *>(custom_data->data);
 
-  if (sld == NULL) {
+  if (sld == nullptr) {
     return;
   }
 
   MEM_freeN(sld->sv);
   MEM_freeN(sld);
 
-  custom_data->data = NULL;
+  custom_data->data = nullptr;
 }
 
 static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
 {
-  EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
 
   if (slp) {
     switch (event->type) {
@@ -1122,11 +1129,11 @@ static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
 static void drawEdgeSlide(TransInfo *t)
 {
   EdgeSlideData *sld = edgeSlideFirstGet(t);
-  if (sld == NULL) {
+  if (sld == nullptr) {
     return;
   }
 
-  const EdgeSlideParams *slp = t->custom.mode.data;
+  const EdgeSlideParams *slp = static_cast<const EdgeSlideParams *>(t->custom.mode.data);
   const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
 
   const float line_size = UI_GetThemeValuef(TH_OUTLINE_WIDTH) + 0.5f;
@@ -1168,7 +1175,7 @@ static void drawEdgeSlide(TransInfo *t)
     immEnd();
 
     {
-      float *co_test = NULL;
+      float *co_test = nullptr;
       if (slp->flipped) {
         if (curr_sv->v_side[1]) {
           co_test = curr_sv->v_side[1]->co;
@@ -1180,7 +1187,7 @@ static void drawEdgeSlide(TransInfo *t)
         }
       }
 
-      if (co_test != NULL) {
+      if (co_test != nullptr) {
         immUniformThemeColorShadeAlpha(TH_SELECT, -30, alpha_shade);
         GPU_point_size(ctrl_size);
         immBegin(GPU_PRIM_POINTS, 1);
@@ -1256,8 +1263,8 @@ static void drawEdgeSlide(TransInfo *t)
 static void edge_slide_snap_apply(TransInfo *t, float *value)
 {
   TransDataContainer *tc = edge_slide_container_first_ok(t);
-  EdgeSlideParams *slp = t->custom.mode.data;
-  EdgeSlideData *sld_active = tc->custom.mode.data;
+  EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
+  EdgeSlideData *sld_active = static_cast<EdgeSlideData *>(tc->custom.mode.data);
   TransDataEdgeSlideVert *sv = &sld_active->sv[sld_active->curr_sv_index];
   float snap_point[3], co_orig[3], co_dest[2][3], dvec[3];
 
@@ -1288,7 +1295,8 @@ static void edge_slide_snap_apply(TransInfo *t, float *value)
   }
   else {
     /* Could be pre-calculated. */
-    t_mid = line_point_factor_v3((float[3]){0.0f, 0.0f, 0.0f}, sv->dir_side[0], sv->dir_side[1]);
+    t_mid = line_point_factor_v3(
+        blender::float3{0.0f, 0.0f, 0.0f}, sv->dir_side[0], sv->dir_side[1]);
 
     float t_snap = line_point_factor_v3(snap_point, co_dest[0], co_dest[1]);
     side_index = t_snap >= t_mid;
@@ -1391,7 +1399,7 @@ static void edge_slide_apply_elem(const TransDataEdgeSlideVert *sv,
 
 static void doEdgeSlide(TransInfo *t, float perc)
 {
-  EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
   EdgeSlideData *sld_active = edgeSlideFirstGet(t);
 
   slp->perc = perc;
@@ -1411,9 +1419,9 @@ static void doEdgeSlide(TransInfo *t, float perc)
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    EdgeSlideData *sld = tc->custom.mode.data;
+    EdgeSlideData *sld = static_cast<EdgeSlideData *>(tc->custom.mode.data);
 
-    if (sld == NULL) {
+    if (sld == nullptr) {
       continue;
     }
 
@@ -1425,12 +1433,12 @@ static void doEdgeSlide(TransInfo *t, float perc)
   }
 }
 
-static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
+static void applyEdgeSlide(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
   size_t ofs = 0;
   float final;
-  EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
   bool flipped = slp->flipped;
   bool use_even = slp->use_even;
   const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
@@ -1484,9 +1492,9 @@ static void edge_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
 {
   float delta[3], orig_co[3], final_co[3];
 
-  EdgeSlideParams *slp = t->custom.mode.data;
+  EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
   TransDataContainer *tc = edge_slide_container_first_ok(t);
-  EdgeSlideData *sld_active = tc->custom.mode.data;
+  EdgeSlideData *sld_active = static_cast<EdgeSlideData *>(tc->custom.mode.data);
   TransDataEdgeSlideVert *sv_active = &sld_active->sv[sld_active->curr_sv_index];
 
   copy_v3_v3(orig_co, sv_active->v_co_orig);
@@ -1524,7 +1532,7 @@ static void initEdgeSlide_ex(
   t->mode = TFM_EDGE_SLIDE;
 
   {
-    EdgeSlideParams *slp = MEM_callocN(sizeof(*slp), __func__);
+    EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(MEM_callocN(sizeof(*slp), __func__));
     slp->use_even = use_even;
     slp->flipped = flipped;
     /* happens to be best for single-sided */
@@ -1596,7 +1604,7 @@ void transform_mode_edge_slide_reproject_input(TransInfo *t)
   ARegion *region = t->region;
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    EdgeSlideData *sld = tc->custom.mode.data;
+    EdgeSlideData *sld = static_cast<EdgeSlideData *>(tc->custom.mode.data);
     if (sld) {
       float projectMat[4][4];
       edge_slide_projmat_get(t, tc, projectMat);
