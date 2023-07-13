@@ -53,7 +53,7 @@ static void snapsource_end(TransInfo *t)
   t->modifiers &= ~MOD_EDIT_SNAP_SOURCE;
 
   /* Restore. */
-  struct SnapSouceCustomData *customdata = t->custom.mode.data;
+  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
   t->mode_info = customdata->mode_info_prev;
   t->custom.mode.data = customdata->customdata_mode_prev;
 
@@ -73,10 +73,10 @@ static void snapsource_confirm(TransInfo *t)
 {
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
   getSnapPoint(t, t->tsnap.snap_source);
-  t->tsnap.snap_source_fn = NULL;
+  t->tsnap.snap_source_fn = nullptr;
   t->tsnap.status |= SNAP_SOURCE_FOUND;
 
-  struct SnapSouceCustomData *customdata = t->custom.mode.data;
+  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(t->custom.mode.data);
   t->tsnap.mode = customdata->snap_mode_confirm;
 
   int mval[2];
@@ -146,18 +146,18 @@ static eRedrawFlag snapsource_handle_event_fn(TransInfo *t, const wmEvent *event
   return TREDRAW_NOTHING;
 }
 
-static void snapsource_transform_fn(TransInfo *t, const int UNUSED(mval[2]))
+static void snapsource_transform_fn(TransInfo *t, const int[2] /*mval*/)
 {
   BLI_assert(t->modifiers & MOD_EDIT_SNAP_SOURCE);
 
-  t->tsnap.snap_target_fn(t, NULL);
+  t->tsnap.snap_target_fn(t, nullptr);
   if (t->tsnap.status & SNAP_MULTI_POINTS) {
     getSnapPoint(t, t->tsnap.snap_source);
   }
   t->redraw |= TREDRAW_SOFT;
 }
 
-void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
+void transform_mode_snap_source_init(TransInfo *t, wmOperator * /*op*/)
 {
   if (t->mode_info == &TransMode_snapsource) {
     /* Already running. */
@@ -166,10 +166,11 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
 
   if (ELEM(t->mode, TFM_INIT, TFM_DUMMY)) {
     /* Fallback */
-    transform_mode_init(t, NULL, TFM_TRANSLATION);
+    transform_mode_init(t, nullptr, TFM_TRANSLATION);
   }
 
-  struct SnapSouceCustomData *customdata = MEM_callocN(sizeof(*customdata), __func__);
+  struct SnapSouceCustomData *customdata = static_cast<SnapSouceCustomData *>(
+      MEM_callocN(sizeof(*customdata), __func__));
   customdata->mode_info_prev = t->mode_info;
 
   customdata->target_operation_prev = t->tsnap.target_operation;
@@ -206,7 +207,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
 
   if (t->data_type == &TransConvertType_Mesh) {
     ED_transform_snap_object_context_set_editmesh_callbacks(
-        t->tsnap.object_context, NULL, NULL, NULL, NULL);
+        t->tsnap.object_context, nullptr, nullptr, nullptr, nullptr);
   }
 
 #ifdef RESET_TRANSFORMATION
@@ -229,15 +230,15 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator *UNUSED(op))
     const wmEvent *event = CTX_wm_window(t->context)->eventstate;
 #  ifdef RESET_TRANSFORMATION
     wmGizmoFnModal modal_fn = gz->custom_modal ? gz->custom_modal : gz->type->modal;
-    modal_fn(t->context, gz, event, 0);
+    modal_fn(t->context, gz, event, eWM_GizmoFlagTweak(0));
 #  endif
 
-    WM_gizmo_modal_set_while_modal(t->region->gizmo_map, t->context, NULL, event);
+    WM_gizmo_modal_set_while_modal(t->region->gizmo_map, t->context, nullptr, event);
   }
 #endif
 
-  t->mouse.apply = NULL;
-  t->mouse.post = NULL;
+  t->mouse.apply = nullptr;
+  t->mouse.post = nullptr;
   t->mouse.use_virtual_mval = false;
 }
 
@@ -247,9 +248,9 @@ TransModeInfo TransMode_snapsource = {
     /*flags*/ 0,
     /*init_fn*/ transform_mode_snap_source_init,
     /*transform_fn*/ snapsource_transform_fn,
-    /*transform_matrix_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
     /*handle_event_fn*/ snapsource_handle_event_fn,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
