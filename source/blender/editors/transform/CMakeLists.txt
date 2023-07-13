@@ -27,7 +27,7 @@ set(SRC
   transform_convert_action.cc
   transform_convert_armature.cc
   transform_convert_cursor.cc
-  transform_convert_curve.c
+  transform_convert_curve.cc
   transform_convert_curves.cc
   transform_convert_gpencil_legacy.c
   transform_convert_graph.c

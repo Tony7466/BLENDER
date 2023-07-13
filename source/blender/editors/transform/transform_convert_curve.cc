@@ -63,7 +63,7 @@ static int bezt_select_to_transform_triple_flag(const BezTriple *bezt, const boo
   return flag;
 }
 
-static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
+static void createTransCurveVerts(bContext * /*C*/, TransInfo *t)
 {
 
 #define SEL_F1 (1 << 0)
@@ -77,8 +77,8 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
   int data_len_all_pt = 0;
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    Curve *cu = tc->obedit->data;
-    BLI_assert(cu->editnurb != NULL);
+    Curve *cu = static_cast<Curve *>(tc->obedit->data);
+    BLI_assert(cu->editnurb != nullptr);
     BezTriple *bezt;
     BPoint *bp;
     int a;
@@ -86,9 +86,9 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
     int count_pt = 0, countsel_pt = 0;
     const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
     const bool is_prop_connected = (t->flag & T_PROP_CONNECTED) != 0;
-    View3D *v3d = t->view;
-    short hide_handles = (v3d != NULL) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
-                                         false;
+    View3D *v3d = static_cast<View3D *>(t->view);
+    short hide_handles = (v3d != nullptr) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
+                                            false;
 
     /* count total of vertices, check identical as in 2nd loop for making transdata! */
     ListBase *nurbs = BKE_curve_editNurbs_get(cu);
@@ -149,7 +149,8 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
       tc->data_len = countsel;
       data_len_pt = countsel_pt;
     }
-    tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(Curve EditMode)");
+    tc->data = static_cast<TransData *>(
+        MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(Curve EditMode)"));
 
     t->data_len_all += tc->data_len;
     data_len_all_pt += data_len_pt;
@@ -163,14 +164,14 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
       continue;
     }
 
-    Curve *cu = tc->obedit->data;
+    Curve *cu = static_cast<Curve *>(tc->obedit->data);
     BezTriple *bezt;
     BPoint *bp;
     int a;
     const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
-    View3D *v3d = t->view;
-    short hide_handles = (v3d != NULL) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
-                                         false;
+    View3D *v3d = static_cast<View3D *>(t->view);
+    short hide_handles = (v3d != nullptr) ? (v3d->overlay.handle_display == CURVE_HANDLE_NONE) :
+                                            false;
 
     bool use_around_origins_for_handles_test = ((t->around == V3D_AROUND_LOCAL_ORIGINS) &&
                                                 transform_mode_use_local_origins(t));
@@ -188,7 +189,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
       if (nu->type == CU_BEZIER) {
         for (a = 0, bezt = nu->bezt; a < nu->pntsu; a++, bezt++) {
           if (bezt->hide == 0) {
-            TransDataCurveHandleFlags *hdata = NULL;
+            TransDataCurveHandleFlags *hdata = nullptr;
             float axismtx[3][3];
 
             if (t->around == V3D_AROUND_LOCAL_ORIGINS) {
@@ -235,8 +236,8 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
                   td->flag = 0;
                 }
               }
-              td->ext = NULL;
-              td->val = NULL;
+              td->ext = nullptr;
+              td->val = nullptr;
 
               hdata = initTransDataCurveHandles(td, bezt);
 
@@ -261,7 +262,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
               else {
                 td->flag = 0;
               }
-              td->ext = NULL;
+              td->ext = nullptr;
 
               /* TODO: make points scale. */
               if (t->mode == TFM_CURVE_SHRINKFATTEN /* `|| t->mode == TFM_RESIZE` */) {
@@ -273,7 +274,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
                 td->ival = bezt->tilt;
               }
               else {
-                td->val = NULL;
+                td->val = nullptr;
               }
 
               copy_m3_m3(td->smtx, smtx);
@@ -284,7 +285,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
 
               if ((bezt_tx & SEL_F1) == 0 && (bezt_tx & SEL_F3) == 0) {
                 /* If the middle is selected but the sides aren't, this is needed. */
-                if (hdata == NULL) {
+                if (hdata == nullptr) {
                   /* if the handle was not saved by the previous handle */
                   hdata = initTransDataCurveHandles(td, bezt);
                 }
@@ -317,10 +318,10 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
                   td->flag = 0;
                 }
               }
-              td->ext = NULL;
-              td->val = NULL;
+              td->ext = nullptr;
+              td->val = nullptr;
 
-              if (hdata == NULL) {
+              if (hdata == nullptr) {
                 /* if the handle was not saved by the previous handle */
                 hdata = initTransDataCurveHandles(td, bezt);
               }
@@ -353,7 +354,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
               else {
                 td->flag = 0;
               }
-              td->ext = NULL;
+              td->ext = nullptr;
 
               if (ELEM(t->mode, TFM_CURVE_SHRINKFATTEN, TFM_RESIZE)) {
                 td->val = &(bp->radius);
@@ -424,11 +425,11 @@ static void recalcData_curve(TransInfo *t)
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    Curve *cu = tc->obedit->data;
+    Curve *cu = static_cast<Curve *>(tc->obedit->data);
     ListBase *nurbs = BKE_curve_editNurbs_get(cu);
-    Nurb *nu = nurbs->first;
+    Nurb *nu = static_cast<Nurb *>(nurbs->first);
 
-    DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(tc->obedit->data), ID_RECALC_GEOMETRY);
 
     if (t->state == TRANS_CANCEL) {
       while (nu) {
@@ -453,5 +454,5 @@ TransConvertTypeInfo TransConvertType_Curve = {
     /*flags*/ (T_EDIT | T_POINTS),
     /*createTransData*/ createTransCurveVerts,
     /*recalcData*/ recalcData_curve,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
