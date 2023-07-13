@@ -158,8 +158,7 @@ static void store_materials_as_id_properties(ID &id)
   IDProperty *materials_prop = IDP_NewIDPArray(".materials");
   for (const int i : IndexRange(*materials_num)) {
     const Material *material = (*materials)[i];
-    IDPropertyTemplate idprop{};
-    IDProperty *material_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
+    IDProperty *material_prop = bke::idprop::create_group(std::to_string(i)).release();
     if (material != nullptr) {
       IDP_AddToGroup(material_prop, IDP_NewString(material->id.name + 2, "id_name"));
       if (material->id.lib != nullptr) {

@@ -384,8 +384,7 @@ template<typename T>
 
   IDProperty *materials_prop = IDP_NewIDPArray(".materials");
   for (const int i : io_materials->elements().index_range()) {
-    IDPropertyTemplate idprop = {0};
-    IDProperty *material_prop = IDP_New(IDP_GROUP, &idprop, std::to_string(i).c_str());
+    IDProperty *material_prop = bke::idprop::create_group(std::to_string(i)).release();
 
     const DictionaryValue *io_material = io_materials->elements()[i]->as_dictionary_value();
     if (io_material != nullptr) {
