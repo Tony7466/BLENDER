@@ -36,7 +36,7 @@ set(SRC
   transform_convert_mball.cc
   transform_convert_mesh.c
   transform_convert_mesh_edge.cc
-  transform_convert_mesh_skin.c
+  transform_convert_mesh_skin.cc
   transform_convert_mesh_uv.c
   transform_convert_mesh_vert_cdata.c
   transform_convert_nla.c
