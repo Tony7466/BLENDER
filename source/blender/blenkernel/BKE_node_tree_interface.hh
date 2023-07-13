@@ -302,10 +302,9 @@ void bNodeTreeInterfaceItem::to_static_type(Func func,
 
 template<typename TypeArgs, typename Func> void bNodeTreeInterfaceItem::to_static_type(Func func)
 {
-  const char *data_type = nullptr;
-  if (item_type == NODE_INTERFACE_SOCKET) {
-    data_type = reinterpret_cast<bNodeTreeInterfaceSocket *>(this)->data_type;
-  }
+  const char *data_type = (item_type == NODE_INTERFACE_SOCKET) ?
+                              reinterpret_cast<bNodeTreeInterfaceSocket *>(this)->data_type :
+                              "";
   to_static_type<TypeArgs>(func, eNodeTreeInterfaceItemType(item_type), data_type);
 }
 
