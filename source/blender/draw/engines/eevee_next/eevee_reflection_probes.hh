@@ -54,6 +54,11 @@ struct ReflectionProbe {
   int index = -1;
 
   /**
+   * Far and near clipping distances for rendering
+   */
+  float2 clipping_distances;
+
+  /**
    * Check if the probe needs to be updated during this sample.
    */
   bool needs_update() const
@@ -186,6 +191,8 @@ struct ReflectionProbeUpdateInfo {
    * Resolution of the cubemap to be rendered.
    */
   int resolution;
+
+  float2 clipping_distances;
   uint64_t object_key;
 };
 

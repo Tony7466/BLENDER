@@ -212,7 +212,12 @@ void CaptureView::render_world()
 
   for (int face : IndexRange(6)) {
     float4x4 view_m4 = cubeface_mat(face);
-    float4x4 win_m4 = math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f);
+    float4x4 win_m4 = math::projection::perspective(-update_info->clipping_distances.x,
+                                                    update_info->clipping_distances.x,
+                                                    -update_info->clipping_distances.x,
+                                                    update_info->clipping_distances.x,
+                                                    update_info->clipping_distances.x,
+                                                    update_info->clipping_distances.y);
     view.sync(view_m4, win_m4);
 
     capture_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE_CUBEFACE(cubemap_tx, face));
@@ -258,9 +263,12 @@ void CaptureView::render_probes()
     for (int face : IndexRange(6)) {
       float4x4 view_m4 = cubeface_mat(face);
       view_m4 = math::translate(view_m4, -update_info->probe_pos);
-      const float clip_distance = 0.1f;
-      float4x4 win_m4 = math::projection::perspective(
-          -clip_distance, clip_distance, -clip_distance, clip_distance, clip_distance, 10.0f);
+      float4x4 win_m4 = math::projection::perspective(-update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      -update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.x,
+                                                      update_info->clipping_distances.y);
       view.sync(view_m4, win_m4);
 
       capture_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),

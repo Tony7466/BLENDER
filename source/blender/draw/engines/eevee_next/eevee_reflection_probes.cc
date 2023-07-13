@@ -29,6 +29,7 @@ void ReflectionProbeModule::init()
     world_probe.do_update_data = true;
     world_probe.do_render = true;
     world_probe.index = 0;
+    world_probe.clipping_distances = float2(1.0f, 10.0f);
     probes_.add(world_object_key_, world_probe);
 
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
@@ -108,6 +109,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   probe.do_update_data |= is_dirty;
   probe.do_render |= is_dirty;
   probe.is_probe_used = true;
+  probe.clipping_distances = float2(light_probe->clipsta, light_probe->clipend);
 
   ReflectionProbeData &probe_data = data_buf_[probe.index];
   probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
@@ -445,6 +447,7 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.probe_type = item.value.type;
     info.object_key = item.key;
     info.resolution = 1 << (max_shift - probe_data.layer_subdivision - 1);
+    info.clipping_distances = item.value.clipping_distances;
     info.probe_pos = probe_data.pos;
 
     return info;
