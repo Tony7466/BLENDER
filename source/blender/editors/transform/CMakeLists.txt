@@ -84,7 +84,7 @@ set(SRC
   transform_mode_tilt.cc
   transform_mode_timescale.cc
   transform_mode_timeslide.cc
-  transform_mode_timetranslate.c
+  transform_mode_timetranslate.cc
   transform_mode_tosphere.c
   transform_mode_trackball.c
   transform_mode_translate.c
