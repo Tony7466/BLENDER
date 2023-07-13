@@ -59,7 +59,7 @@ static void applyTimeScaleValue(TransInfo *t, float value)
        * whose active action is where this keyframe comes from
        * (this is only valid when not in NLA)
        */
-      AnimData *adt = (t->spacetype != SPACE_NLA) ? td->extra : NULL;
+      AnimData *adt = static_cast<AnimData *>((t->spacetype != SPACE_NLA) ? td->extra : nullptr);
       float startx = scene->r.cfra;
       float fac = value;
 
@@ -77,7 +77,7 @@ static void applyTimeScaleValue(TransInfo *t, float value)
   }
 }
 
-static void applyTimeScale(TransInfo *t, const int UNUSED(mval[2]))
+static void applyTimeScale(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
 
@@ -94,7 +94,7 @@ static void applyTimeScale(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initTimeScale(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initTimeScale(TransInfo *t, struct wmOperator * /*op*/)
 {
   float center[2];
 
@@ -141,9 +141,9 @@ TransModeInfo TransMode_timescale = {
     /*flags*/ T_NULL_ONE,
     /*init_fn*/ initTimeScale,
     /*transform_fn*/ applyTimeScale,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
