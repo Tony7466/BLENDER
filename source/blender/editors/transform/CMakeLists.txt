@@ -39,7 +39,7 @@ set(SRC
   transform_convert_mesh_skin.cc
   transform_convert_mesh_uv.cc
   transform_convert_mesh_vert_cdata.cc
-  transform_convert_nla.c
+  transform_convert_nla.cc
   transform_convert_node.cc
   transform_convert_object.c
   transform_convert_object_texspace.c

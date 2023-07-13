@@ -35,7 +35,7 @@
 #include "transform_snap.h"
 
 /** Used for NLA transform (stored in #TransData.extra pointer). */
-typedef struct TransDataNla {
+struct TransDataNla {
   /** ID-block NLA-data is attached to. */
   ID *id;
 
@@ -64,7 +64,7 @@ typedef struct TransDataNla {
 
   /** handle-index: 0 for dummy entry, -1 for start, 1 for end, 2 for both ends. */
   int handle;
-} TransDataNla;
+};
 
 static bool is_overlap(const float left_bound_a,
                        const float right_bound_a,
@@ -171,8 +171,8 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
     return false;
   }
 
-  LinkData *first_link = trans_datas->first;
-  TransDataNla *first_transdata = first_link->data;
+  LinkData *first_link = static_cast<LinkData *>(trans_datas->first);
+  TransDataNla *first_transdata = static_cast<TransDataNla *>(first_link->data);
   AnimData *adt = BKE_animdata_from_id(first_transdata->id);
   ListBase *tracks = &adt->nla_tracks;
 
@@ -183,10 +183,11 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
     LISTBASE_FOREACH (LinkData *, link, trans_datas) {
       TransDataNla *trans_data = (TransDataNla *)link->data;
 
-      NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex + *r_total_offset);
+      NlaTrack *dst_track = static_cast<NlaTrack *>(
+          BLI_findlink(tracks, trans_data->trackIndex + *r_total_offset));
 
       /* Cannot keep moving strip in given track direction. No solution. */
-      if (dst_track == NULL) {
+      if (dst_track == nullptr) {
         return false;
       }
 
@@ -249,8 +250,9 @@ static bool transdata_get_track_shuffle_offset(ListBase *trans_datas, int *r_tra
 static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 {
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  ListBase anim_data = {nullptr, nullptr};
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     ListBase *nla_tracks = &ale->adt->nla_tracks;
@@ -260,7 +262,7 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
       if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
         break;
       }
-      if (track->strips.first != NULL) {
+      if (track->strips.first != nullptr) {
         break;
       }
       BKE_nlatrack_remove_and_free(nla_tracks, track, true);
@@ -276,7 +278,7 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
       if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
         break;
       }
-      if (track->strips.first != NULL) {
+      if (track->strips.first != nullptr) {
         break;
       }
       BKE_nlatrack_remove_and_free(nla_tracks, track, true);
@@ -322,10 +324,10 @@ static void applyTransformNLA_timeScale(PointerRNA *strip_rna_ptr, const float v
 /** Reorder strips for proper nla stack evaluation while dragging. */
 static void nlastrip_overlap_reorder(TransDataNla *tdn, NlaStrip *strip)
 {
-  while (strip->prev != NULL && tdn->h1[0] < strip->prev->start) {
+  while (strip->prev != nullptr && tdn->h1[0] < strip->prev->start) {
     BLI_listbase_swaplinks(&tdn->nlt->strips, strip, strip->prev);
   }
-  while (strip->next != NULL && tdn->h1[0] > strip->next->start) {
+  while (strip->next != nullptr && tdn->h1[0] > strip->next->start) {
     BLI_listbase_swaplinks(&tdn->nlt->strips, strip, strip->next);
   }
 }
@@ -338,13 +340,13 @@ static void nlastrip_flag_overlaps(NlaStrip *strip)
 {
 
   NlaStrip *adj_strip = strip->prev;
-  if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
+  if (adj_strip != nullptr && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
       nlastrip_is_overlap(strip, 0, adj_strip, 0))
   {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
   adj_strip = strip->next;
-  if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
+  if (adj_strip != nullptr && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
       nlastrip_is_overlap(strip, 0, adj_strip, 0))
   {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
@@ -368,8 +370,8 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
   PointerRNA strip_ptr;
 
   for (short iter = 0; iter <= iter_max; iter++) {
-    const bool p_exceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
-    const bool n_exceeded = (next != NULL) && (tdn->h2[0] > next->start);
+    const bool p_exceeded = (prev != nullptr) && (tdn->h1[0] < prev->end);
+    const bool n_exceeded = (next != nullptr) && (tdn->h2[0] > next->start);
 
     if ((p_exceeded && n_exceeded) || (iter == iter_max)) {
       /* Both endpoints exceeded (or iteration ping-pong'd meaning that we need a compromise).
@@ -407,7 +409,7 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
 
   /* Use RNA to write the values to ensure that constraints on these are obeyed
    * (e.g. for transition strips, the values are taken from the neighbors). */
-  RNA_pointer_create(NULL, &RNA_NlaStrip, strip, &strip_ptr);
+  RNA_pointer_create(nullptr, &RNA_NlaStrip, strip, &strip_ptr);
 
   switch (t->mode) {
     case TFM_TIME_EXTEND:
@@ -438,12 +440,12 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
 static void createTransNlaData(bContext *C, TransInfo *t)
 {
   Scene *scene = t->scene;
-  SpaceNla *snla = NULL;
-  TransData *td = NULL;
-  TransDataNla *tdn = NULL;
+  SpaceNla *snla = nullptr;
+  TransData *td = nullptr;
+  TransDataNla *tdn = nullptr;
 
   bAnimContext ac;
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
 
@@ -460,7 +462,8 @@ static void createTransNlaData(bContext *C, TransInfo *t)
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT |
             ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* which side of the current frame should be allowed */
   if (t->mode == TFM_TIME_EXTEND) {
@@ -472,7 +475,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
   }
 
   /* loop 1: count how many strips are selected (consider each strip as 2 points) */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     NlaTrack *nlt = (NlaTrack *)ale->data;
     NlaStrip *strip;
 
@@ -480,7 +483,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
     BKE_nlastrips_make_metas(&nlt->strips, 1);
 
     /* only consider selected strips */
-    for (strip = nlt->strips.first; strip; strip = strip->next) {
+    for (strip = static_cast<NlaStrip *>(nlt->strips.first); strip; strip = strip->next) {
       /* TODO: we can make strips have handles later on. */
       /* transition strips can't get directly transformed */
       if (strip->type != NLASTRIP_TYPE_TRANSITION) {
@@ -501,7 +504,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
     /* clear temp metas that may have been created but aren't needed now
      * because they fell on the wrong side of scene->r.cfra
      */
-    for (ale = anim_data.first; ale; ale = ale->next) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       NlaTrack *nlt = (NlaTrack *)ale->data;
       BKE_nlastrips_clear_metas(&nlt->strips, 0, 1);
     }
@@ -514,14 +517,15 @@ static void createTransNlaData(bContext *C, TransInfo *t)
   /* allocate memory for data */
   tc->data_len = count;
 
-  tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransData(NLA Editor)");
+  tc->data = static_cast<TransData *>(
+      MEM_callocN(tc->data_len * sizeof(TransData), "TransData(NLA Editor)"));
   td = tc->data;
-  tc->custom.type.data = tdn = MEM_callocN(tc->data_len * sizeof(TransDataNla),
-                                           "TransDataNla (NLA Editor)");
+  tc->custom.type.data = tdn = static_cast<TransDataNla *>(
+      MEM_callocN(tc->data_len * sizeof(TransDataNla), "TransDataNla (NLA Editor)"));
   tc->custom.type.use_free = true;
 
   /* loop 2: build transdata array */
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     /* only if a real NLA-track */
     if (ale->type == ANIMTYPE_NLATRACK) {
       AnimData *adt = ale->adt;
@@ -529,7 +533,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
       NlaStrip *strip;
 
       /* only consider selected strips */
-      for (strip = nlt->strips.first; strip; strip = strip->next) {
+      for (strip = static_cast<NlaStrip *>(nlt->strips.first); strip; strip = strip->next) {
         /* TODO: we can make strips have handles later on. */
         /* transition strips can't get directly transformed */
         if (strip->type != NLASTRIP_TYPE_TRANSITION) {
@@ -641,7 +645,7 @@ static void recalcData_nla(TransInfo *t)
     if (autosnap != SACTSNAP_OFF) {
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
-        transform_snap_anim_flush_data(t, td, autosnap, td->loc);
+        transform_snap_anim_flush_data(t, td, eAnimEdit_AutoSnap(autosnap), td->loc);
       }
     }
   }
@@ -650,7 +654,7 @@ static void recalcData_nla(TransInfo *t)
    * that got set before using RNA to set the value (which does some special
    * operations when setting these values to make sure that everything works ok).
    */
-  TransDataNla *tdn = tc->custom.type.data;
+  TransDataNla *tdn = static_cast<TransDataNla *>(tc->custom.type.data);
   for (int i = 0; i < tc->data_len; i++, tdn++) {
     NlaStrip *strip = tdn->strip;
     int delta_y1, delta_y2;
@@ -743,11 +747,11 @@ static void recalcData_nla(TransInfo *t)
       ListBase *nla_tracks = &anim_data->nla_tracks;
 
       NlaTrack *old_track = tdn->nlt;
-      NlaTrack *dst_track = NULL;
+      NlaTrack *dst_track = nullptr;
 
       /* Calculate the total new tracks needed
        *
-       * Determine dst_track, which will end up being NULL, the last library override
+       * Determine dst_track, which will end up being nullptr, the last library override
        * track, or a normal local track. The first two cases lead to delta_new_tracks!=0.
        * The last case leads to `delta_new_tracks == 0`. */
       int delta_new_tracks = delta;
@@ -788,7 +792,7 @@ static void recalcData_nla(TransInfo *t)
       }
 
       /* If the destination track is null, then we need to go to the last track. */
-      if (dst_track == NULL) {
+      if (dst_track == nullptr) {
         dst_track = old_track;
       }
 
@@ -820,18 +824,18 @@ static void recalcData_nla(TransInfo *t)
 /** \name Special After Transform NLA
  * \{ */
 
-typedef struct IDGroupedTransData {
+struct IDGroupedTransData {
   struct IDGroupedTransData *next, *prev;
 
   ID *id;
   ListBase trans_datas;
-} IDGroupedTransData;
+};
 
 /** horizontally translate (shuffle) the transformed strip to a non-overlapping state. */
 static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *first_trans_data)
 {
   /* Element: #IDGroupedTransData. */
-  ListBase grouped_trans_datas = {NULL, NULL};
+  ListBase grouped_trans_datas = {nullptr, nullptr};
 
   /* Flag all non-library-override transformed strips so we can distinguish them when shuffling.
    *
@@ -853,7 +857,7 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
 
       tdn->strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
 
-      IDGroupedTransData *dst_group = NULL;
+      IDGroupedTransData *dst_group = nullptr;
       /* Find dst_group with matching ID. */
       LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
         if (group->id == tdn->id) {
@@ -861,8 +865,9 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
           break;
         }
       }
-      if (dst_group == NULL) {
-        dst_group = MEM_callocN(sizeof(IDGroupedTransData), __func__);
+      if (dst_group == nullptr) {
+        dst_group = static_cast<IDGroupedTransData *>(
+            MEM_callocN(sizeof(IDGroupedTransData), __func__));
         dst_group->id = tdn->id;
         BLI_addhead(&grouped_trans_datas, dst_group);
       }
@@ -883,7 +888,8 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
 
       LISTBASE_FOREACH (LinkData *, link, trans_datas) {
         TransDataNla *trans_data = (TransDataNla *)link->data;
-        NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex + minimum_track_offset);
+        NlaTrack *dst_track = static_cast<NlaTrack *>(
+            BLI_findlink(tracks, trans_data->trackIndex + minimum_track_offset));
 
         NlaStrip *strip = trans_data->strip;
         if ((dst_track->flag & NLATRACK_PROTECTED) != 0) {
@@ -897,7 +903,7 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
           /* if destination track is locked, we need revert strip to source track. */
           printf("Cannot moved. Target track '%s' is locked. \n", trans_data->nlt->name);
           int old_track_index = BLI_findindex(tracks, trans_data->oldTrack);
-          NlaTrack *old_track = BLI_findlink(tracks, old_track_index);
+          NlaTrack *old_track = static_cast<NlaTrack *>(BLI_findlink(tracks, old_track_index));
 
           BKE_nlatrack_remove_strip(trans_data->nlt, strip);
           BKE_nlastrips_add_strip_unsafe(&old_track->strips, strip);
@@ -940,7 +946,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   }
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransDataNla *first_trans_data = tc->custom.type.data;
+  TransDataNla *first_trans_data = static_cast<TransDataNla *>(tc->custom.type.data);
 
   /* Shuffle transformed strips. */
   if (ELEM(t->mode, TFM_TRANSLATION) && t->state != TRANS_CANCEL) {
@@ -950,18 +956,19 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   /* Clear NLASTRIP_FLAG_INVALID_LOCATION flag. */
   TransDataNla *tdn = first_trans_data;
   for (int i = 0; i < tc->data_len; i++, tdn++) {
-    if (tdn->strip == NULL) {
+    if (tdn->strip == nullptr) {
       continue;
     }
 
     tdn->strip->flag &= ~NLASTRIP_FLAG_INVALID_LOCATION;
   }
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
   /* get channels to work on */
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     NlaTrack *nlt = (NlaTrack *)ale->data;
@@ -977,7 +984,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
    * - strips moved between tracks
    * - strips swapped order
    * - duplicate-move moves to different track. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   /* free temp memory */
   ANIM_animdata_freelist(&anim_data);
