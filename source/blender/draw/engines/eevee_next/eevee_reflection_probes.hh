@@ -125,16 +125,8 @@ class ReflectionProbeModule {
   void sync_object(Object *ob, ObjectHandle &ob_handle);
   void end_sync();
 
-  enum BindFlags {
-    EVAL_ALL_PROBES = 0,
-    EVAL_WORLD_ONLY = 1,
-  };
-  template<typename T>
-  void bind_resources(draw::detail::PassBase<T> *pass,
-                      BindFlags bind_flags = BindFlags::EVAL_ALL_PROBES)
+  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
-    pass->push_constant("reflection_probe_do_world_only",
-                        (bind_flags & BindFlags::EVAL_WORLD_ONLY) != 0);
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, probes_tx_);
     pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }

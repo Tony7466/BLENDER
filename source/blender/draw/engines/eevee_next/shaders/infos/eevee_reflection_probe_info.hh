@@ -10,7 +10,6 @@
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
-    .push_constant(Type::BOOL, "reflection_probe_do_world_only")
     .storage_buf(REFLECTION_PROBE_BUF_SLOT,
                  Qualifier::READ,
                  "ReflectionProbeData",

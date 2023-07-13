@@ -641,7 +641,7 @@ void DeferredProbeLayer::end_sync()
     eval_light_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL |
                              DRW_STATE_BLEND_CUSTOM);
     eval_light_ps_.state_stencil(0x00u, 0x00u, (CLOSURE_DIFFUSE | CLOSURE_REFLECTION));
-    eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
+    eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT_DIFFUSE_ONLY));
     eval_light_ps_.bind_image("out_diffuse_light_img", dummy_light_tx_);
     eval_light_ps_.bind_image("out_specular_light_img", dummy_light_tx_);
     eval_light_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
@@ -659,8 +659,7 @@ void DeferredProbeLayer::end_sync()
     inst_.sampling.bind_resources(&eval_light_ps_);
     inst_.hiz_buffer.bind_resources(&eval_light_ps_);
     inst_.ambient_occlusion.bind_resources(&eval_light_ps_);
-    inst_.reflection_probes.bind_resources(&eval_light_ps_,
-                                           ReflectionProbeModule::BindFlags::EVAL_WORLD_ONLY);
+    inst_.reflection_probes.bind_resources(&eval_light_ps_);
     inst_.irradiance_cache.bind_resources(&eval_light_ps_);
 
     eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
