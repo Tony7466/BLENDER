@@ -32,8 +32,11 @@ class EraseOperation : public GreasePencilStrokeOperation {
  public:
   ~EraseOperation() override {}
 
+  void on_stroke_begin(const bContext &C, const StrokeExtension &stroke_extension) /*override*/;
   void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override;
   void on_stroke_done(const bContext &C) override;
+
+  bool set_flat_caps = true;
 };
 
 /**
@@ -52,9 +55,7 @@ struct EraseOperationExecutor {
     }
   }
 
-  void execute(EraseOperation & /*self*/,
-               const bContext &C,
-               const StrokeExtension &stroke_extension)
+  void execute(EraseOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
   {
     using namespace blender::bke;
     Scene *scene = CTX_data_scene(&C);
@@ -322,7 +323,6 @@ struct EraseOperationExecutor {
       IndexRange dst_point_range(dst_interm_curves_offsets[src_curve_index],
                                  dst_interm_curves_offsets[src_curve_index + 1] -
                                      dst_interm_curves_offsets[src_curve_index]);
-      IndexRange src_point_range = src_points_by_curves[src_curve_index];
       int length_of_current = 0;
 
       for (int dst_point_index : dst_point_range) {
@@ -386,10 +386,34 @@ struct EraseOperationExecutor {
         attribute.dst.finish();
       });
     }
+
+    /* Update the cyclic attribute */
     MutableSpan<bool> dst_cyclic = dst.cyclic_for_write();
     for (int dst_curve_index : dst.curves_range()) {
       const int src_curve_index = dst_to_src_curve_index[dst_curve_index];
       dst_cyclic[dst_curve_index] = src_now_cyclic[src_curve_index];
+    }
+
+    /* Display intersections with flat caps */
+    if (self.set_flat_caps) {
+      SpanAttributeWriter<int8_t> dst_start_caps =
+          dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("start_cap",
+                                                                          ATTR_DOMAIN_CURVE);
+      SpanAttributeWriter<int8_t> dst_end_caps =
+          dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("end_cap",
+                                                                          ATTR_DOMAIN_CURVE);
+      offset_indices::OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
+      for (int dst_curve_index : dst.curves_range()) {
+        IndexRange dst_curve_range = dst_points_by_curve[dst_curve_index];
+        if (is_cut[dst_curve_range.first()]) {
+          dst_start_caps.span[dst_curve_index] = GP_STROKE_CAP_TYPE_FLAT;
+        }
+        if (is_cut[dst_curve_range.last()]) {
+          dst_end_caps.span[dst_curve_index] = GP_STROKE_CAP_TYPE_FLAT;
+        }
+      }
+      dst_start_caps.finish();
+      dst_end_caps.finish();
     }
 
     /* Copy/Interpolate point data */
@@ -451,6 +475,13 @@ struct EraseOperationExecutor {
     WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
   }
 };
+
+void EraseOperation::on_stroke_begin(const bContext & /*C*/,
+                                     const StrokeExtension & /*stroke_extension*/)
+{
+  // TODO
+  // Get the tools settings, and set the member attribute accordingly
+}
 
 void EraseOperation::on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension)
 {
