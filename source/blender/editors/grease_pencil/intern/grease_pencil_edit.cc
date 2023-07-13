@@ -263,7 +263,7 @@ Span<float> gaussian_blur_1D_float(const IndexRange curve_points,
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
