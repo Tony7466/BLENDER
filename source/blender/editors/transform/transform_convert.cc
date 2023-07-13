@@ -421,7 +421,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
     }
   }
 
-  while ((td = BLI_LINKSTACK_POP(queue))) {
+  while ((td = static_cast<TransData *>(BLI_LINKSTACK_POP(queue)))) {
     float dist;
     float vec[3];
 
