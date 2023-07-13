@@ -218,10 +218,8 @@ class DeferredProbeLayer {
   Instance &inst_;
 
   PassMain prepass_ps_ = {"Prepass"};
-  PassMain::Sub *prepass_single_sided_static_ps_ = nullptr;
-  // PassMain::Sub *prepass_single_sided_moving_ps_ = nullptr;
-  PassMain::Sub *prepass_double_sided_static_ps_ = nullptr;
-  // PassMain::Sub *prepass_double_sided_moving_ps_ = nullptr;
+  PassMain::Sub *prepass_single_sided_ps_ = nullptr;
+  PassMain::Sub *prepass_double_sided_ps_ = nullptr;
 
   PassMain gbuffer_ps_ = {"Shading"};
   PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
@@ -251,12 +249,9 @@ class DeferredProbePipeline {
   /* Gbuffer filling passes. We could have an arbitrary number of them but for now we just have
    * a hardcoded number of them. */
   DeferredProbeLayer opaque_layer_;
-  DeferredProbeLayer refraction_layer_;
-  DeferredProbeLayer volumetric_layer_;
 
  public:
-  DeferredProbePipeline(Instance &inst)
-      : opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
+  DeferredProbePipeline(Instance &inst) : opaque_layer_(inst){};
 
   void begin_sync();
   void end_sync();

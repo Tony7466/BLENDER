@@ -578,11 +578,11 @@ void DeferredProbeLayer::begin_sync()
 
     DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
 
-    prepass_double_sided_static_ps_ = &prepass_ps_.sub("DoubleSided.Static");
-    prepass_double_sided_static_ps_->state_set(state_depth_only);
+    prepass_double_sided_ps_ = &prepass_ps_.sub("DoubleSided.Static");
+    prepass_double_sided_ps_->state_set(state_depth_only);
 
-    prepass_single_sided_static_ps_ = &prepass_ps_.sub("SingleSided.Static");
-    prepass_single_sided_static_ps_->state_set(state_depth_only | DRW_STATE_CULL_BACK);
+    prepass_single_sided_ps_ = &prepass_ps_.sub("SingleSided.Static");
+    prepass_single_sided_ps_->state_set(state_depth_only | DRW_STATE_CULL_BACK);
   }
   {
     gbuffer_ps_.init();
@@ -646,7 +646,6 @@ void DeferredProbeLayer::end_sync()
     eval_light_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
     eval_light_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
     eval_light_ps_.push_constant("is_last_eval_pass", is_last_eval_pass);
-    // TODO bind dummy texture so they don't influence any render pass accumulation.
     eval_light_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
     eval_light_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
@@ -671,8 +670,8 @@ void DeferredProbeLayer::end_sync()
 PassMain::Sub *DeferredProbeLayer::prepass_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
-                            prepass_single_sided_static_ps_ :
-                            prepass_double_sided_static_ps_;
+                            prepass_single_sided_ps_ :
+                            prepass_double_sided_ps_;
 
   return &pass->sub(GPU_material_get_name(gpumat));
 }
@@ -723,33 +722,21 @@ void DeferredProbeLayer::render(View &view,
 void DeferredProbePipeline::begin_sync()
 {
   opaque_layer_.begin_sync();
-  refraction_layer_.begin_sync();
 }
 
 void DeferredProbePipeline::end_sync()
 {
   opaque_layer_.end_sync();
-  refraction_layer_.end_sync();
 }
 
 PassMain::Sub *DeferredProbePipeline::prepass_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
-    return refraction_layer_.prepass_add(blender_mat, gpumat);
-  }
-  else {
-    return opaque_layer_.prepass_add(blender_mat, gpumat);
-  }
+  return opaque_layer_.prepass_add(blender_mat, gpumat);
 }
 
 PassMain::Sub *DeferredProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
-    return refraction_layer_.material_add(blender_mat, gpumat);
-  }
-  else {
-    return opaque_layer_.material_add(blender_mat, gpumat);
-  }
+  return opaque_layer_.material_add(blender_mat, gpumat);
 }
 
 void DeferredProbePipeline::render(View &view,
@@ -758,15 +745,7 @@ void DeferredProbePipeline::render(View &view,
                                    int2 extent)
 {
   GPU_debug_group_begin("Probe.Render");
-
-  DRW_stats_group_start("Deferred.Opaque");
   opaque_layer_.render(view, prepass_fb, combined_fb, extent);
-  DRW_stats_group_end();
-
-  DRW_stats_group_start("Deferred.Refract");
-  refraction_layer_.render(view, prepass_fb, combined_fb, extent);
-  DRW_stats_group_end();
-
   GPU_debug_group_end();
 }
 
