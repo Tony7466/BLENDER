@@ -223,6 +223,11 @@ static bool bit_span_is_full(const BoundedBitSpan span)
   return bit_span_count(span) == span.size();
 }
 
+static bool array_contains_non_zero(const Span<int> span)
+{
+  return std::all_of(span.begin(), span.end(), [](const int a) { return a == 0; });
+}
+
 /**
  * Get the index of the adjacent edge to a loop connected to a vertex. In other words, for the
  * given polygon return the unique edge connected to the given vertex and not on the given loop.
@@ -257,36 +262,37 @@ static VertEdgeFans calc_vert_fans(const OffsetIndices<int> polys,
     return Vector<Vector<int>>({Vector<int>(connected_edges)});
   }
 
-  const BitVector<> vert_edges_split = bit_span_gather(split_edges, connected_edges);
+  Array<int, 8> edge_users_left(connected_edges.size());
+  for (const int i : edge_users_left.index_range()) {
+    const int edge = connected_edges[i];
+    edge_users_left[i] = edge_to_corner_map[edge].size();
+  }
 
   Vector<Vector<int>> edge_fans;
-  BitVector<> visited_edges(connected_edges.size());
 
   int current = 0;
-  while (!bit_span_is_full(visited_edges)) {
+  while (!array_contains_non_zero(edge_users_left)) {
     Vector<int> current_fan;
     while (true) {
       const int edge = connected_edges[current];
       current_fan.append(edge);
-      visited_edges[current].set();
+      edge_users_left[current]--;
 
       bool next_fan = false;
       for (const int corner : edge_to_corner_map[edge]) {
         const int poly = corner_to_poly_map[corner];
 
         const int next_edge = adjacent_edge(corner_verts, corner_edges, corner, polys[poly], vert);
-        const int next = connected_edges.first_index(next_edge);
+        current = connected_edges.first_index(next_edge);
 
-        current = next;
-
-        if (current_fan.contains(next_edge)) {
+        if (edge_users_left[current] == 0) {
           continue;
         }
 
         current_fan.append(next_edge);
-        visited_edges[next].set();
+        edge_users_left[current]--;
 
-        if (visited_edges[current] || split_edges[current]) {
+        if (split_edges[next_edge]) {
           next_fan = true;
           break;
         }
