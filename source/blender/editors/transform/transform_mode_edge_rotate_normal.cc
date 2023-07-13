@@ -39,7 +39,7 @@ static void storeCustomLNorValue(TransDataContainer *tc, BMesh *bm)
 
 void freeCustomNormalArray(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data)
 {
-  BMLoopNorEditDataArray *lnors_ed_arr = custom_data->data;
+  BMLoopNorEditDataArray *lnors_ed_arr = static_cast<BMLoopNorEditDataArray *>(custom_data->data);
 
   if (t->state == TRANS_CANCEL) {
     BMLoopNorEditData *lnor_ed = lnors_ed_arr->lnor_editdata;
@@ -55,12 +55,12 @@ void freeCustomNormalArray(TransInfo *t, TransDataContainer *tc, TransCustomData
 
   BM_loop_normal_editdata_array_free(lnors_ed_arr);
 
-  tc->custom.mode.data = NULL;
-  tc->custom.mode.free_cb = NULL;
+  tc->custom.mode.data = nullptr;
+  tc->custom.mode.free_cb = nullptr;
 }
 
 /* Works by getting custom normal from clnor_data, transform, then store */
-static void applyNormalRotation(TransInfo *t, const int UNUSED(mval[2]))
+static void applyNormalRotation(TransInfo *t, const int[2] /*mval*/)
 {
   char str[UI_MAX_DRAW_STR];
 
@@ -68,14 +68,15 @@ static void applyNormalRotation(TransInfo *t, const int UNUSED(mval[2]))
   copy_v3_v3(axis_final, t->spacemtx[t->orient_axis]);
 
   if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-    t->con.applyRot(t, NULL, NULL, axis_final, NULL);
+    t->con.applyRot(t, nullptr, nullptr, axis_final, nullptr);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     BMesh *bm = em->bm;
 
-    BMLoopNorEditDataArray *lnors_ed_arr = tc->custom.mode.data;
+    BMLoopNorEditDataArray *lnors_ed_arr = static_cast<BMLoopNorEditDataArray *>(
+        tc->custom.mode.data);
     BMLoopNorEditData *lnor_ed = lnors_ed_arr->lnor_editdata;
 
     float axis[3];
@@ -108,7 +109,7 @@ static void applyNormalRotation(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initNormalRotation(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initNormalRotation(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_NORMAL_ROTATION;
 
@@ -128,8 +129,8 @@ static void initNormalRotation(TransInfo *t, struct wmOperator *UNUSED(op))
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     BMesh *bm = em->bm;
 
-    BKE_editmesh_ensure_autosmooth(em, tc->obedit->data);
-    BKE_editmesh_lnorspace_update(em, tc->obedit->data);
+    BKE_editmesh_ensure_autosmooth(em, static_cast<Mesh *>(tc->obedit->data));
+    BKE_editmesh_lnorspace_update(em, static_cast<Mesh *>(tc->obedit->data));
 
     storeCustomLNorValue(tc, bm);
   }
@@ -143,9 +144,9 @@ TransModeInfo TransMode_rotatenormal = {
     /*flags*/ 0,
     /*init_fn*/ initNormalRotation,
     /*transform_fn*/ applyNormalRotation,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
