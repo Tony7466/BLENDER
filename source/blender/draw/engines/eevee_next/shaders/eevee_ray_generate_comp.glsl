@@ -15,9 +15,7 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  /* TODO */
-  // ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
-  ivec2 texel_fullres = texel;
+  ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
 
   bool valid_texel = in_texture_range(texel_fullres, stencil_tx);
   uint closure_bits = (!valid_texel) ? 0u : texelFetch(stencil_tx, texel_fullres, 0).r;
@@ -42,7 +40,7 @@ void main()
   vec2 noise = utility_tx_fetch(utility_tx, texel, UTIL_BLUE_NOISE_LAYER).rg;
 
   /* Load GBuffer data. */
-  vec4 gbuffer_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, gbuf_layer), 0);
+  vec4 gbuffer_packed = texelFetch(gbuffer_closure_tx, ivec3(texel_fullres, gbuf_layer), 0);
 
   closure.N = gbuffer_normal_unpack(gbuffer_packed.xy);
 

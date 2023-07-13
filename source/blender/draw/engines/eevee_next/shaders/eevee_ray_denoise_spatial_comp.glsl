@@ -102,9 +102,9 @@ void main()
 {
   const uint tile_size = RAYTRACE_GROUP_SIZE;
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
-  /* TODO(fclem): This is wrong. This is dispatched at fullres. */
-  ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
-  ivec2 texel_fullres = texel * raytrace_buf.resolution_scale + raytrace_buf.resolution_bias;
+
+  ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+  ivec2 texel = (texel_fullres) / raytrace_buf.resolution_scale;
 
   if (raytrace_buf.skip_denoise) {
     imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
@@ -163,8 +163,11 @@ void main()
   /* NOTE: filter_size should never be greater than twice RAYTRACE_GROUP_SIZE. Otherwise, the
    * reconstruction can becomes ill defined since we don't know if further tiles are valids. */
   filter_size = 12.0 * sqrt(filter_size_factor);
-  filter_size *= float(raytrace_buf.resolution_scale);
-
+  if (raytrace_buf.resolution_scale > 1) {
+    /* Filter at least 1 trace pixel to fight the undersampling. */
+    filter_size = max(filter_size, 3.0);
+    sample_count = max(sample_count, 5u);
+  }
   /* NOTE: Roughness is squared now. */
   closure.roughness = max(1e-3, sqr(closure.roughness));
 #endif
@@ -176,12 +179,13 @@ void main()
   vec3 radiance_accum = vec3(0.0);
   float weight_accum = 0.0;
   float closest_hit_time = 1.0e10;
+
   for (uint i = 0u; i < sample_count; i++) {
     ivec2 offset = ivec2((fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size);
     ivec2 sample_texel = texel + offset;
 
     /* Reject samples outside of valid neighbor tiles. */
-    ivec2 sample_tile = ivec2(sample_texel) / int(tile_size);
+    ivec2 sample_tile = ivec2(sample_texel * raytrace_buf.resolution_scale) / int(tile_size);
     ivec2 sample_tile_relative = sample_tile - ivec2(tile_coord);
     if (neighbor_tile_mask_bit_get(invalid_neighbor_tile_mask, sample_tile_relative)) {
       continue;

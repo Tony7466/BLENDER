@@ -98,6 +98,7 @@ class RayTraceModule {
   Instance &inst_;
 
   draw::PassSimple tile_classify_ps_ = {"TileClassify"};
+  draw::PassSimple tile_compact_ps_ = {"TileCompact"};
   draw::PassSimple generate_reflect_ps_ = {"RayGenerate.Reflection"};
   draw::PassSimple generate_refract_ps_ = {"RayGenerate.Refraction"};
   draw::PassSimple trace_reflect_ps_ = {"Trace.Reflection"};
@@ -109,13 +110,18 @@ class RayTraceModule {
   draw::PassSimple denoise_bilateral_refract_ps_ = {"DenoiseBilateral.Refraction"};
 
   /** Dispatch with enough tiles for the whole screen. */
-  int3 tile_dispatch_size_ = int3(1);
+  int3 tile_classify_dispatch_size_ = int3(1);
+  /** Dispatch with enough tiles for the tile mask. */
+  int3 tile_compact_dispatch_size_ = int3(1);
   /** 2D tile mask to check which unused adjacent tile we need to clear. */
   TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
   /** Indirect dispatch rays. Avoid dispatching workgroups that ultimately won't do any tracing. */
   DispatchIndirectBuf ray_dispatch_buf_ = {"ray_dispatch_buf_"};
+  /** Indirect dispatch denoise full-resolution tiles. */
+  DispatchIndirectBuf denoise_dispatch_buf_ = {"denoise_dispatch_buf_"};
   /** Tile buffer that contains tile coordinates. */
   RayTraceTileBuf ray_tiles_buf_ = {"ray_tiles_buf_"};
+  RayTraceTileBuf denoise_tiles_buf_ = {"denoise_tiles_buf_"};
   /** Texture containing the ray direction and pdf. */
   TextureFromPool ray_data_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit time. */

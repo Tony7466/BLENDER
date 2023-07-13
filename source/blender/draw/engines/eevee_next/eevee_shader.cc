@@ -170,6 +170,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_ray_trace_screen_refract";
     case RAY_TILE_CLASSIFY:
       return "eevee_ray_tile_classify";
+    case RAY_TILE_COMPACT:
+      return "eevee_ray_tile_compact";
     case LIGHTPROBE_IRRADIANCE_BOUNDS:
       return "eevee_lightprobe_irradiance_bounds";
     case LIGHTPROBE_IRRADIANCE_RAY:

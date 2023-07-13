@@ -20,11 +20,15 @@ float ray_glossy_factor(float roughness)
 void main()
 {
   if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
-    /* Buffer is cleared to 0 from CPU command so that we can use it as counter.
-     * Note that these writes are subject to race condition, but we write the same
-     * value from all workgroups. */
-    /* TODO(fclem): Move this to tile compaction. */
-    ray_dispatch_buf.num_groups_y = ray_dispatch_buf.num_groups_z = 1u;
+    /* Clear num_groups_x to 0 so that we can use it as counter in the compaction phase.
+     * Note that these writes are subject to race condition, but we write the same value
+     * from all workgroups. */
+    denoise_dispatch_buf.num_groups_x = 0u;
+    denoise_dispatch_buf.num_groups_y = 1u;
+    denoise_dispatch_buf.num_groups_z = 1u;
+    ray_dispatch_buf.num_groups_x = 0u;
+    ray_dispatch_buf.num_groups_y = 1u;
+    ray_dispatch_buf.num_groups_z = 1u;
 
     /* Init shared variables. */
     tile_contains_glossy_rays = 0;
@@ -56,10 +60,6 @@ void main()
     uint tile_mask = 0u;
     if (tile_contains_glossy_rays > 0) {
       tile_mask = 1u;
-
-      /* TODO(fclem): Move this to tile compaction. */
-      uint tile_index = atomicAdd(ray_dispatch_buf.num_groups_x, 1u);
-      ray_tiles_buf[tile_index] = packUvec2x16(gl_WorkGroupID.xy);
     }
 
     imageStore(tile_mask_img, tile_co, uvec4(tile_mask));

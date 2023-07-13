@@ -39,8 +39,7 @@ void RayTraceModule::init()
     use_temporal_denoise_ = use_bilateral_denoise_ = use_spatial_denoise_;
   }
 
-  data_.resolution_scale = 1;
-  data_.resolution_bias = int2(0);
+  data_.resolution_scale = 2;
   /* TODO(fclem): Tracing. */
   data_.thickness = 1.0f;
   data_.quality = 1.0f;
@@ -59,10 +58,23 @@ void RayTraceModule::sync()
     pass.bind_texture("stencil_tx", &renderbuf_stencil_view_);
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ssbo("ray_dispatch_buf", &ray_dispatch_buf_);
-    pass.bind_ssbo("ray_tiles_buf", &ray_tiles_buf_);
+    pass.bind_ssbo("denoise_dispatch_buf", &denoise_dispatch_buf_);
     pass.bind_ubo("raytrace_buf", &data_);
-    pass.dispatch(&tile_dispatch_size_);
-    pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
+    pass.dispatch(&tile_classify_dispatch_size_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_SHADER_STORAGE);
+  }
+  {
+    PassSimple &pass = tile_compact_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_TILE_COMPACT));
+    pass.bind_image("tile_mask_img", &tile_mask_tx_);
+    pass.bind_ssbo("ray_dispatch_buf", &ray_dispatch_buf_);
+    pass.bind_ssbo("denoise_dispatch_buf", &denoise_dispatch_buf_);
+    pass.bind_ssbo("ray_tiles_buf", &ray_tiles_buf_);
+    pass.bind_ssbo("denoise_tiles_buf", &denoise_tiles_buf_);
+    pass.bind_ubo("raytrace_buf", &data_);
+    pass.dispatch(&tile_compact_dispatch_size_);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
   }
   for (auto type : IndexRange(2)) {
     PassSimple &pass = (type == 0) ? generate_reflect_ps_ : generate_refract_ps_;
@@ -103,7 +115,7 @@ void RayTraceModule::sync()
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get((type == 0) ? RAY_DENOISE_SPATIAL_REFLECT :
                                                                   RAY_DENOISE_SPATIAL_REFRACT));
-    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_ssbo("tiles_coord_buf", &denoise_tiles_buf_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
     pass.bind_texture("stencil_tx", &renderbuf_stencil_view_);
@@ -117,7 +129,7 @@ void RayTraceModule::sync()
     pass.bind_ubo("raytrace_buf", &data_);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
-    pass.dispatch(ray_dispatch_buf_);
+    pass.dispatch(denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   {
@@ -133,10 +145,10 @@ void RayTraceModule::sync()
     pass.bind_image("out_radiance_img", &denoised_temporal_tx_);
     pass.bind_image("in_variance_img", &hit_variance_tx_);
     pass.bind_image("out_variance_img", &denoise_variance_tx_);
-    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_ssbo("tiles_coord_buf", &denoise_tiles_buf_);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
-    pass.dispatch(ray_dispatch_buf_);
+    pass.dispatch(denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   for (auto type : IndexRange(2)) {
@@ -149,11 +161,11 @@ void RayTraceModule::sync()
     pass.bind_image("out_radiance_img", &denoised_bilateral_tx_);
     pass.bind_image("in_variance_img", &denoise_variance_tx_);
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
-    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_ssbo("tiles_coord_buf", &denoise_tiles_buf_);
     pass.bind_ubo("raytrace_buf", &data_);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
-    pass.dispatch(ray_dispatch_buf_);
+    pass.dispatch(denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
@@ -197,7 +209,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   }
 
   if ((active_closures & raytrace_closure) == 0) {
-    /* Early out. Release persistent buffers. */
+    /* Early out. Release persistent buffers. Still acquire one dummy resource for validation. */
     denoise_buf->denoised_spatial_tx.acquire(int2(1), RAYTRACE_RADIANCE_FORMAT);
     denoise_buf->radiance_history_tx.free();
     denoise_buf->variance_history_tx.free();
@@ -205,33 +217,39 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     return {denoise_buf->denoised_spatial_tx};
   }
 
-  int2 extent = inst_.film.render_extent_get();
-  int2 dummy_extent(1, 1);
+  const int2 extent = inst_.film.render_extent_get();
+  const int2 tracing_res = math::divide_ceil(extent, int2(data_.resolution_scale));
+  const int2 dummy_extent(1, 1);
 
-  tile_dispatch_size_ = int3(math::divide_ceil(extent, int2(RAYTRACE_GROUP_SIZE)), 1);
-  const int tile_count = tile_dispatch_size_.x * tile_dispatch_size_.y;
+  tile_classify_dispatch_size_ = int3(math::divide_ceil(extent, int2(RAYTRACE_GROUP_SIZE)), 1);
+  const int denoise_tile_count = tile_classify_dispatch_size_.x * tile_classify_dispatch_size_.y;
+  const int2 tile_mask_extent = tile_classify_dispatch_size_.xy();
+
+  const int2 ray_tiles = math::divide_ceil(tracing_res, int2(RAYTRACE_GROUP_SIZE));
+  const int ray_tile_count = ray_tiles.x * ray_tiles.y;
+  tile_compact_dispatch_size_ = int3(math::divide_ceil(ray_tiles, int2(RAYTRACE_GROUP_SIZE)), 1);
 
   renderbuf_stencil_view_ = inst_.render_buffers.depth_tx.stencil_view();
   renderbuf_depth_view_ = inst_.render_buffers.depth_tx;
 
-  /* TODO(fclem): Half-Res tracing. */
-  int2 tracing_res = extent;
-
   DRW_stats_group_start("Raytracing");
 
   data_.closure_active = raytrace_closure;
+  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) *
+                               data_.resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
   data_.skip_denoise = !use_spatial_denoise_;
   data_.push_update();
 
-  tile_mask_tx_.acquire(tile_dispatch_size_.xy(), RAYTRACE_TILEMASK_FORMAT);
-  ray_tiles_buf_.resize(ceil_to_multiple_u(tile_count, 512));
+  tile_mask_tx_.acquire(tile_mask_extent, RAYTRACE_TILEMASK_FORMAT);
+  denoise_tiles_buf_.resize(ceil_to_multiple_u(denoise_tile_count, 512));
+  ray_tiles_buf_.resize(ceil_to_multiple_u(ray_tile_count, 512));
 
   /* Ray setup. */
-  GPU_storagebuf_clear_to_zero(ray_dispatch_buf_);
-  inst_.manager->submit(tile_classify_ps_, render_view);
+  inst_.manager->submit(tile_classify_ps_);
+  inst_.manager->submit(tile_compact_ps_);
 
   {
     /* Tracing rays. */
@@ -268,7 +286,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
                                  RAYTRACE_VARIANCE_FORMAT);
     denoise_buf->variance_history_tx.ensure_2d(RAYTRACE_VARIANCE_FORMAT,
                                                use_bilateral_denoise_ ? extent : dummy_extent);
-    denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT, tile_dispatch_size_.xy());
+    denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT, tile_mask_extent);
     if (denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent)) {
       /* If viewport resolution changes, do not try to use history. */
       denoise_buf->tilemask_history_tx.clear(uint4(0u));
