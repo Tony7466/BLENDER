@@ -52,7 +52,7 @@ set(SRC
   transform_convert_tracking_curves.cc
   transform_draw_cursors.cc
   transform_generics.cc
-  transform_gizmo_2d.c
+  transform_gizmo_2d.cc
   transform_gizmo_3d.cc
   transform_gizmo_3d_cage.cc
   transform_gizmo_3d_shear.cc
