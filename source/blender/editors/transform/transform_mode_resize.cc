@@ -41,9 +41,9 @@ struct ElemResizeData {
 
 static void element_resize_fn(void *__restrict iter_data_v,
                               const int iter,
-                              const TaskParallelTLS *__restrict UNUSED(tls))
+                              const TaskParallelTLS *__restrict /*tls*/)
 {
-  struct ElemResizeData *data = iter_data_v;
+  ElemResizeData *data = static_cast<ElemResizeData *>(iter_data_v);
   TransData *td = &data->tc->data[iter];
   if (td->flag & TD_SKIP) {
     return;
@@ -64,7 +64,7 @@ static float ResizeBetween(TransInfo *t, const float p1[3], const float p2[3])
   sub_v3_v3v3(d1, p1, t->center_global);
   sub_v3_v3v3(d2, p2, t->center_global);
 
-  if (t->con.applyRot != NULL && (t->con.mode & CON_APPLY)) {
+  if (t->con.applyRot != nullptr && (t->con.mode & CON_APPLY)) {
     mul_m3_v3(t->con.pmtx, d1);
     mul_m3_v3(t->con.pmtx, d2);
   }
@@ -142,7 +142,7 @@ static bool clip_uv_transform_resize(TransInfo *t, float vec[2])
   float base_offset[2] = {0.0f, 0.0f};
 
   /* If tiled image then constrain to correct/closest UDIM tile, else 0-1 UV space. */
-  const SpaceImage *sima = t->area->spacedata.first;
+  const SpaceImage *sima = static_cast<const SpaceImage *>(t->area->spacedata.first);
   BKE_image_find_nearest_tile_with_offset(sima->image, t->center_global, base_offset);
 
   /* Assume no change is required. */
@@ -187,7 +187,7 @@ static bool clip_uv_transform_resize(TransInfo *t, float vec[2])
   return scale != 1.0f;
 }
 
-static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
+static void applyResize(TransInfo *t, const int[2] /*mval*/)
 {
   float mat[3][3];
   int i;
@@ -213,7 +213,7 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
 
   size_to_mat3(mat, t->values_final);
   if (t->con.mode & CON_APPLY) {
-    t->con.applySize(t, NULL, NULL, mat);
+    t->con.applySize(t, nullptr, nullptr, mat);
 
     /* Only so we have re-usable value with redo. */
     float pvec[3] = {0.0f, 0.0f, 0.0f};
@@ -247,10 +247,9 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
       }
     }
     else {
-      struct ElemResizeData data = {
-          .t = t,
-          .tc = tc,
-      };
+      ElemResizeData data{};
+      data.t = t;
+      data.tc = tc;
       copy_m3_m3(data.mat, mat);
 
       TaskParallelSettings settings;
@@ -264,7 +263,7 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
     size_to_mat3(mat, t->values_final);
 
     if (t->con.mode & CON_APPLY) {
-      t->con.applySize(t, NULL, NULL, mat);
+      t->con.applySize(t, nullptr, nullptr, mat);
     }
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -377,8 +376,8 @@ TransModeInfo TransMode_resize = {
     /*init_fn*/ initResize,
     /*transform_fn*/ applyResize,
     /*transform_matrix_fn*/ resize_transform_matrix_fn,
-    /*handle_event_fn*/ NULL,
+    /*handle_event_fn*/ nullptr,
     /*snap_distance_fn*/ ResizeBetween,
     /*snap_apply_fn*/ ApplySnapResize,
-    /*draw_fn*/ NULL,
+    /*draw_fn*/ nullptr,
 };
