@@ -95,7 +95,7 @@ static void ElementBoneSize(TransInfo *t,
   td->loc[1] = oldy;
 }
 
-static void applyBoneSize(TransInfo *t, const int UNUSED(mval[2]))
+static void applyBoneSize(TransInfo *t, const int[2] /*mval*/)
 {
   float mat[3][3];
   int i;
@@ -120,7 +120,7 @@ static void applyBoneSize(TransInfo *t, const int UNUSED(mval[2]))
   size_to_mat3(mat, t->values_final);
 
   if (t->con.applySize) {
-    t->con.applySize(t, NULL, NULL, mat);
+    t->con.applySize(t, nullptr, nullptr, mat);
     for (i = 0; i < 3; i++) {
       if (!(t->con.mode & (CON_AXIS0 << i))) {
         t->values_final[i] = 1.0f;
@@ -148,7 +148,7 @@ static void applyBoneSize(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initBoneSize(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initBoneSize(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_BONESIZE;
 
@@ -176,9 +176,9 @@ TransModeInfo TransMode_bboneresize = {
     /*flags*/ 0,
     /*init_fn*/ initBoneSize,
     /*transform_fn*/ applyBoneSize,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
