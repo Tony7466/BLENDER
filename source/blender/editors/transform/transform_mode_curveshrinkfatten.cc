@@ -31,7 +31,7 @@
 /** \name Transform (Curve Shrink/Fatten)
  * \{ */
 
-static void applyCurveShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
+static void applyCurveShrinkFatten(TransInfo *t, const int[2] /*mval*/)
 {
   float ratio;
   int i;
@@ -84,7 +84,7 @@ static void applyCurveShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-static void initCurveShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initCurveShrinkFatten(TransInfo *t, struct wmOperator * /*op*/)
 {
   t->mode = TFM_CURVE_SHRINKFATTEN;
 
@@ -102,12 +102,12 @@ static void initCurveShrinkFatten(TransInfo *t, struct wmOperator *UNUSED(op))
   float scale_factor = 0.0f;
   if (((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW) &&
        (t->data_len_all == 1)) ||
-      (t->data_len_all == 3 && TRANS_DATA_CONTAINER_FIRST_OK(t)->data[0].val == NULL))
+      (t->data_len_all == 3 && TRANS_DATA_CONTAINER_FIRST_OK(t)->data[0].val == nullptr))
   {
     /* For cases where only one point on the curve is being transformed and the radius of that
      * point is zero, use the factor to multiply the offset of the ratio and allow scaling.
      * Note that for bezier curves, 3 TransData equals 1 point in most cases. */
-    RegionView3D *rv3d = t->region->regiondata;
+    RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
     scale_factor = rv3d->pixsize * t->mouse.factor * t->zfac;
   }
   t->custom.mode.data = POINTER_FROM_UINT(float_as_uint(scale_factor));
@@ -119,9 +119,9 @@ TransModeInfo TransMode_curveshrinkfatten = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initCurveShrinkFatten,
     /*transform_fn*/ applyCurveShrinkFatten,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
