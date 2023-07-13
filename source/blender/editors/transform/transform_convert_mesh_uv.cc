@@ -58,8 +58,8 @@ static void UVsToTransData(const float aspect[2],
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
 
-  td->ext = NULL;
-  td->val = NULL;
+  td->ext = nullptr;
+  td->val = nullptr;
 
   if (selected) {
     td->flag |= TD_SELECTED;
@@ -129,7 +129,7 @@ static void uv_set_connectivity_distance(const ToolSettings *ts,
   }
 
   /* Need to be very careful of feedback loops here, store previous dist's to avoid feedback. */
-  float *dists_prev = MEM_dupallocN(dists);
+  float *dists_prev = static_cast<float *>(MEM_dupallocN(dists));
 
   do {
     while ((l = BLI_LINKSTACK_POP(queue))) {
@@ -207,7 +207,7 @@ static void uv_set_connectivity_distance(const ToolSettings *ts,
 
     /* Clear elem flags for the next loop. */
     for (LinkNode *lnk = queue_next; lnk; lnk = lnk->next) {
-      BMLoop *l_link = lnk->link;
+      BMLoop *l_link = static_cast<BMLoop *>(lnk->link);
       const int i = BM_elem_index_get(l_link);
 
       BM_elem_flag_disable(l_link, BM_ELEM_TAG);
@@ -252,16 +252,16 @@ static void createTransUVs(bContext *C, TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 
-    TransData *td = NULL;
-    TransData2D *td2d = NULL;
+    TransData *td = nullptr;
+    TransData2D *td2d = nullptr;
     BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     BMFace *efa;
     BMIter iter, liter;
-    UvElementMap *elementmap = NULL;
-    struct {
+    UvElementMap *elementmap = nullptr;
+    struct IslandCenter {
       float co[2];
       int co_num;
-    } *island_center = NULL;
+    } *island_center = nullptr;
     int count = 0, countsel = 0;
     const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
@@ -273,11 +273,12 @@ static void createTransUVs(bContext *C, TransInfo *t)
     if (is_island_center) {
       /* create element map with island information */
       elementmap = BM_uv_element_map_create(em->bm, scene, true, false, true, true);
-      if (elementmap == NULL) {
+      if (elementmap == nullptr) {
         continue;
       }
 
-      island_center = MEM_callocN(sizeof(*island_center) * elementmap->total_islands, __func__);
+      island_center = static_cast<IslandCenter *>(
+          MEM_callocN(sizeof(*island_center) * elementmap->total_islands, __func__));
     }
 
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
@@ -314,7 +315,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
       }
     }
 
-    float *prop_dists = NULL;
+    float *prop_dists = nullptr;
 
     /* Support other objects using proportional editing to adjust these, unless connected is
      * enabled. */
@@ -330,10 +331,12 @@ static void createTransUVs(bContext *C, TransInfo *t)
     }
 
     tc->data_len = (is_prop_edit) ? count : countsel;
-    tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(UV Editing)");
+    tc->data = static_cast<TransData *>(
+        MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(UV Editing)"));
     /* for each 2d uv coord a 3d vector is allocated, so that they can be
      * treated just as if they were 3d verts */
-    tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D), "TransObData2D(UV Editing)");
+    tc->data_2d = static_cast<TransData2D *>(
+        MEM_callocN(tc->data_len * sizeof(TransData2D), "TransObData2D(UV Editing)"));
 
     if (sima->flag & SI_CLIP_UV) {
       t->flag |= T_CLIP_UV;
@@ -343,7 +346,8 @@ static void createTransUVs(bContext *C, TransInfo *t)
     td2d = tc->data_2d;
 
     if (is_prop_connected) {
-      prop_dists = MEM_callocN(em->bm->totloop * sizeof(float), "TransObPropDists(UV Editing)");
+      prop_dists = static_cast<float *>(
+          MEM_callocN(em->bm->totloop * sizeof(float), "TransObPropDists(UV Editing)"));
 
       uv_set_connectivity_distance(t->settings, em->bm, prop_dists, t->aspect);
     }
@@ -358,7 +362,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
         const bool selected = uvedit_uv_select_test(scene, l, offsets);
         float(*luv)[2];
-        const float *center = NULL;
+        const float *center = nullptr;
         float prop_distance = FLT_MAX;
 
         if (!is_prop_edit && !selected) {
@@ -406,7 +410,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
 
 static void flushTransUVs(TransInfo *t)
 {
-  SpaceImage *sima = t->area->spacedata.first;
+  SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
   const bool use_pixel_round = ((sima->pixel_round_mode != SI_PIXEL_ROUND_DISABLED) &&
                                 (t->state != TRANS_CANCEL));
 
@@ -454,7 +458,7 @@ static void flushTransUVs(TransInfo *t)
 
 static void recalcData_uv(TransInfo *t)
 {
-  SpaceImage *sima = t->area->spacedata.first;
+  SpaceImage *sima = static_cast<SpaceImage *>(t->area->spacedata.first);
 
   flushTransUVs(t);
   if (sima->flag & SI_LIVE_UNWRAP) {
@@ -463,7 +467,7 @@ static void recalcData_uv(TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     if (tc->data_len) {
-      DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
+      DEG_id_tag_update(static_cast<ID *>(tc->obedit->data), ID_RECALC_GEOMETRY);
     }
   }
 }
@@ -474,5 +478,5 @@ TransConvertTypeInfo TransConvertType_MeshUV = {
     /*flags*/ (T_EDIT | T_POINTS | T_2D_EDIT),
     /*createTransData*/ createTransUVs,
     /*recalcData*/ recalcData_uv,
-    /*special_aftertrans_update*/ NULL,
+    /*special_aftertrans_update*/ nullptr,
 };
