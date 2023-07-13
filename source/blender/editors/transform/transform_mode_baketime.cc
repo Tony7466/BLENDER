@@ -38,8 +38,8 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
 
   float fac = 0.1f;
 
-  /* XXX, disable precision for now,
-   * this isn't even accessible by the user */
+/* XXX, disable precision for now,
+ * this isn't even accessible by the user */
 #if 0
   if (t->mouse.precision) {
     /* calculate ratio for shiftkey pos, and for total, and blend these for precision */
@@ -103,7 +103,7 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
   ED_area_status_text(t->area, str);
 }
 
-static void initBakeTime(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initBakeTime(TransInfo *t, struct wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 
@@ -123,9 +123,9 @@ TransModeInfo TransMode_baketime = {
     /*flags*/ 0,
     /*init_fn*/ initBakeTime,
     /*transform_fn*/ applyBakeTime,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
