@@ -26,8 +26,10 @@
 short getAnimEdit_SnapMode(TransInfo *t)
 {
   eSnapMode autosnap = SCE_SNAP_TO_FRAME;
+  autosnap = t->scene->toolsettings->snap_anim_mode;
 
-  if (t->spacetype == SPACE_ACTION) {
+  /* TODO: Each editor has its own snapping flag */
+  /* if (t->spacetype == SPACE_ACTION) {
     SpaceAction *saction = (SpaceAction *)t->area->spacedata.first;
 
     if (saction) {
@@ -49,7 +51,7 @@ short getAnimEdit_SnapMode(TransInfo *t)
     if (snla) {
       autosnap = snla->autosnap;
     }
-  }
+  } */
 
   return autosnap;
 }
