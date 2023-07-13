@@ -3219,29 +3219,7 @@ void node_preview_remove_unused(bNodeTree *ntree)
       ntree->previews, reinterpret_cast<bNodeInstanceValueFP>(node_preview_free));
 }
 
-void node_preview_clear(bNodePreview *preview)
-{
-  if (preview && preview->image && preview->image->byte_buffer.data) {
-    //    memset(preview->rect, 0, MEM_allocN_len(preview->rect));
-    // TODO later (Kdaf)
-  }
-}
-
 }  // namespace blender::bke
-
-void BKE_node_preview_clear_tree(bNodeTree *ntree)
-{
-  if (!ntree || !ntree->previews) {
-    return;
-  }
-
-  blender::bke::bNodeInstanceHashIterator iter;
-  NODE_INSTANCE_HASH_ITER (iter, ntree->previews) {
-    bNodePreview *preview = static_cast<bNodePreview *>(
-        blender::bke::node_instance_hash_iterator_get_value(&iter));
-    blender::bke::node_preview_clear(preview);
-  }
-}
 
 namespace blender::bke {
 
