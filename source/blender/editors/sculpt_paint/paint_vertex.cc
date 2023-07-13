@@ -72,8 +72,8 @@
 using blender::IndexRange;
 using namespace blender;
 using namespace blender::color;
-using namespace blender::editors; /* For vwpaint namespace. */
-using blender::editors::vwpaint::NormalAnglePrecalc;
+using namespace blender::ed::sculpt_paint; /* For vwpaint namespace. */
+using blender::ed::sculpt_paint::vwpaint::NormalAnglePrecalc;
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities
@@ -115,7 +115,7 @@ template<typename BlendType> struct VPaintAverageAccum {
   BlendType value[3];
 };
 
-namespace blender::editors::vwpaint {
+namespace blender::ed::sculpt_paint::vwpaint {
 
 /* -------------------------------------------------------------------- */
 /** \name Shared vertex/weight paint code.

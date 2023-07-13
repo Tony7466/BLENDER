@@ -70,8 +70,8 @@
 #include "sculpt_intern.hh"
 
 using namespace blender;
-using namespace blender::editors;
-using blender::editors::vwpaint::NormalAnglePrecalc;
+using namespace blender::ed::sculpt_paint;
+using blender::ed::sculpt_paint::vwpaint::NormalAnglePrecalc;
 
 struct WPaintAverageAccum {
   uint len;
