@@ -25,7 +25,7 @@
 /** \name Transform (Align)
  * \{ */
 
-static void applyAlign(TransInfo *t, const int UNUSED(mval[2]))
+static void applyAlign(TransInfo *t, const int[2] /*mval*/)
 {
   float center[3];
   int i;
@@ -66,7 +66,7 @@ static void applyAlign(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, TIP_("Align"));
 }
 
-static void initAlign(TransInfo *t, struct wmOperator *UNUSED(op))
+static void initAlign(TransInfo *t, struct wmOperator * /*op*/)
 {
   initMouseInputMode(t, &t->mouse, INPUT_NONE);
 }
@@ -77,9 +77,9 @@ TransModeInfo TransMode_align = {
     /*flags*/ T_NO_CONSTRAINT,
     /*init_fn*/ initAlign,
     /*transform_fn*/ applyAlign,
-    /*transform_matrix_fn*/ NULL,
-    /*handle_event_fn*/ NULL,
-    /*snap_distance_fn*/ NULL,
-    /*snap_apply_fn*/ NULL,
-    /*draw_fn*/ NULL,
+    /*transform_matrix_fn*/ nullptr,
+    /*handle_event_fn*/ nullptr,
+    /*snap_distance_fn*/ nullptr,
+    /*snap_apply_fn*/ nullptr,
+    /*draw_fn*/ nullptr,
 };
