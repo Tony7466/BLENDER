@@ -99,7 +99,7 @@ set(SRC
   transform_snap_object_curve.cc
   transform_snap_object_editmesh.cc
   transform_snap_object_mesh.cc
-  transform_snap_sequencer.c
+  transform_snap_sequencer.cc
 
   transform.h
   transform_constraints.h
