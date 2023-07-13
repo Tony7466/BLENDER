@@ -65,9 +65,6 @@ int reflection_probes_find_closest(vec3 P)
   for (int index = 1; reflection_probe_buf[index].layer != -1 && index < REFLECTION_PROBES_MAX;
        index++)
   {
-    if (!reflection_probe_buf[index].valid) {
-      continue;
-    }
     float dist = distance(P, reflection_probe_buf[index].pos);
     if (dist < closest_distance) {
       closest_distance = dist;

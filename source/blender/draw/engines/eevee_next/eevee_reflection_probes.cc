@@ -39,6 +39,9 @@ void ReflectionProbeModule::init()
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
+
+    recalc_lod_factors();
+    data_buf_.push_update();
   }
 
   {
@@ -104,18 +107,27 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
   int subdivision = layer_subdivision_for(
       max_resolution_, static_cast<eLightProbeResolution>(light_probe->resolution));
   ReflectionProbe &probe = find_or_insert(ob_handle, subdivision);
-  probe.do_update_data |= is_dirty;
   probe.do_render |= is_dirty;
   probe.is_probe_used = true;
+
+  /* Only update data when rerendering the probes to reduce flickering. */
+  if (!instance_.do_probe_sync()) {
+    update_probes_next_sample_ = true;
+    return;
+  }
+
+  probe.do_update_data |= is_dirty;
   probe.clipping_distances = float2(light_probe->clipsta, light_probe->clipend);
 
   ReflectionProbeData &probe_data = data_buf_[probe.index];
-  probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
-  probe_data.layer_subdivision = subdivision;
-
-  if (probe.do_render && update_probes_this_sample_ == false) {
-    update_probes_next_sample_ = true;
+  if (probe_data.layer_subdivision != subdivision) {
+    ReflectionProbeData new_probe_data = find_empty_reflection_probe_data(subdivision);
+    probe_data.layer = new_probe_data.layer;
+    probe_data.layer_subdivision = new_probe_data.layer_subdivision;
+    probe_data.area_index = new_probe_data.area_index;
   }
+
+  probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
 }
 
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
@@ -125,7 +137,6 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
       ob_handle.object_key.hash_value, [this, subdivision_level]() {
         ReflectionProbe probe;
         ReflectionProbeData probe_data = find_empty_reflection_probe_data(subdivision_level);
-        probe_data.valid = false;
 
         probe.do_update_data = true;
         probe.do_render = true;
@@ -135,13 +146,6 @@ ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
         data_buf_[probe.index] = probe_data;
         return probe;
       });
-
-  ReflectionProbeData &probe_data = data_buf_[reflection_probe.index];
-  if (probe_data.layer_subdivision != subdivision_level) {
-    ReflectionProbeData new_probe_data = find_empty_reflection_probe_data(subdivision_level);
-    new_probe_data.valid = false;
-    data_buf_[reflection_probe.index] = new_probe_data;
-  }
 
   return reflection_probe;
 }
@@ -277,12 +281,16 @@ void ReflectionProbeModule::end_sync()
 {
   remove_unused_probes();
 
+  const bool probe_sync_done = instance_.do_probe_sync();
+  if (!probe_sync_done) {
+    return;
+  }
+
   int number_layers_needed = needed_layers_get();
   int current_layers = probes_tx_.depth();
   bool resize_layers = current_layers < number_layers_needed;
+
   if (resize_layers) {
-    /* TODO(jbakker): Create new texture and copy previous texture so we don't need to rerender all
-     * the probes.*/
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                number_layers_needed,
@@ -290,32 +298,14 @@ void ReflectionProbeModule::end_sync()
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
-  }
 
-  recalc_lod_factors();
-  const bool probe_sync_done = instance_.do_probe_sync();
-  if (resize_layers) {
-    /* Texture has been recreated and all probes needs to be recreated, uploaded. */
     for (ReflectionProbe &probe : probes_.values()) {
       probe.do_update_data = true;
       probe.do_render = true;
-      ReflectionProbeData &probe_data = data_buf_[probe.index];
-      probe_data.valid = probe_sync_done;
-    }
-
-    if (!probe_sync_done) {
-      update_probes_next_sample_ = true;
     }
   }
 
-  /* Probe sync was successful. All invalid probes will be rendered. */
-  else if (probe_sync_done) {
-    for (ReflectionProbe &probe : probes_.values()) {
-      ReflectionProbeData &probe_data = data_buf_[probe.index];
-      probe_data.valid = true;
-    }
-  }
-
+  recalc_lod_factors();
   data_buf_.push_update();
 }
 

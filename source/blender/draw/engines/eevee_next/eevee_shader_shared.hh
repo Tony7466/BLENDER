@@ -1035,12 +1035,6 @@ struct ReflectionProbeData {
    */
   packed_float3 pos;
 
-  /**
-   * true: the area in the texture for this probe is rendered and can be used during evaluation.
-   * false: the area in the texture for this probe isn't updated and is scheduled to be rendered.
-   */
-  bool1 valid;
-
   /** On which layer of the texture array is this reflection probe stored. */
   int layer;
 
@@ -1061,6 +1055,8 @@ struct ReflectionProbeData {
    * LOD factor for mipmap selection.
    */
   float lod_factor;
+
+  int _pad[1];
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
