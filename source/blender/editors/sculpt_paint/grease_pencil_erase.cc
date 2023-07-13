@@ -47,14 +47,6 @@ struct EraseOperationExecutor {
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
-  template<typename T>
-  static inline void interpolation(const T &a, const T &b, Span<float> factors, MutableSpan<T> dst)
-  {
-    for (const int i : dst.index_range()) {
-      dst[i] = bke::attribute_math::mix2<T>(factors[i], a, b);
-    }
-  }
-
   void execute(EraseOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
   {
     using namespace blender::bke;
@@ -63,19 +55,10 @@ struct EraseOperationExecutor {
     ARegion *region = CTX_wm_region(&C);
     Object *obact = CTX_data_active_object(&C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
-    bool debug = true;
-    auto print_float2 = [](const float2 &vec) {
-      std::cout << "(" << vec[0] << ", " << vec[1] << ")";
-    };
 
     /* Get the tool's data */
     float2 mouse_position = stroke_extension.mouse_position;
     float eraser_radius = stroke_extension.pressure * 100;  // TODO : Fix the computation of radius
-    if (debug) {
-      std::cout << "Mouse position ";
-      print_float2(mouse_position);
-      std::cout << std::endl;
-    }
 
     /* Get the grease pencil drawing */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
@@ -102,19 +85,6 @@ struct EraseOperationExecutor {
                                      deformation.positions[point_index],
                                      screen_space_positions[point_index],
                                      V3D_PROJ_TEST_NOP);
-    }
-    if (debug) {
-      std::cout << "Source positions (2D) = [ ";
-      for (const float2 &pos : screen_space_positions) {
-        print_float2(pos);
-        std::cout << " ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Source positions (3D)  = [ ";
-      for (const float3 &pos : src.positions()) {
-        std::cout << "(" << pos[0] << ", " << pos[1] << ", " << pos[2] << ") ";
-      }
-      std::cout << "]" << std::endl;
     }
 
     auto compute_intersection_parameter = [](float2 p0, float2 p1, float2 inter) {
@@ -178,13 +148,6 @@ struct EraseOperationExecutor {
         intersection_count += nb_intersections[src_last_point];
       }
     }
-    if (debug) {
-      std::cout << "NB Intersections = [ ";
-      for (const int &nb : nb_intersections) {
-        std::cout << nb << " ";
-      }
-      std::cout << "]" << std::endl;
-    }
 
     /* Check if points are inside the eraser */
     Array<bool> is_point_inside(src_points_num, false);
@@ -194,13 +157,6 @@ struct EraseOperationExecutor {
       is_point_inside[point_index] = (len_squared_v2v2(pos_view, mouse_position) <=
                                       eraser_radius * eraser_radius);
       point_inside_count += int(is_point_inside[point_index]);
-    }
-    if (debug) {
-      std::cout << "Point inside = [ ";
-      for (const bool &inside : is_point_inside) {
-        std::cout << inside << " ";
-      }
-      std::cout << "]" << std::endl;
     }
 
     /* Compute the factors of the destination points */
@@ -262,18 +218,6 @@ struct EraseOperationExecutor {
       }
       dst_interm_curves_offsets[src_curve_index + 1] = dst_point_index + 1;
     }
-    if (debug) {
-      std::cout << "Dest factors = [ ";
-      for (const float &param : dst_points_parameters) {
-        std::cout << param << " ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Is Cut = [ ";
-      for (const bool &cut : is_cut) {
-        std::cout << cut << " ";
-      }
-      std::cout << "]" << std::endl;
-    }
 
     /* Shift the indices for cyclic curves */
     Array<bool> src_now_cyclic(src_curves_num);
@@ -299,19 +243,6 @@ struct EraseOperationExecutor {
       std::rotate(is_cut.begin() + dst_interm_first,
                   is_cut.begin() + pivot_point,
                   is_cut.begin() + dst_interm_last);
-    }
-    if (debug) {
-      std::cout << "After shifting" << std::endl;
-      std::cout << "Dest factors = [ ";
-      for (const float &param : dst_points_parameters) {
-        std::cout << param << " ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Is Cut = [ ";
-      for (const bool &cut : is_cut) {
-        std::cout << cut << " ";
-      }
-      std::cout << "]" << std::endl;
     }
 
     /* Compute the destination curve offsets*/
@@ -343,19 +274,6 @@ struct EraseOperationExecutor {
         dst_curves_offset.append(dst_point_range.one_after_last());
         dst_to_src_curve_index.append(src_curve_index);
       }
-    }
-    if (debug) {
-      std::cout << "Dest curves range = [ ";
-      for (const int &offset : dst_curves_offset) {
-        std::cout << offset << " ";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "Dest to source curve index = [ ";
-      int dst_curve = -1;
-      for (const int &src_curve : dst_to_src_curve_index) {
-        std::cout << ++dst_curve << ":" << src_curve << ", ";
-      }
-      std::cout << "]" << std::endl;
     }
     const int dst_curves_num = dst_curves_offset.size() - 1;
 
@@ -447,25 +365,6 @@ struct EraseOperationExecutor {
         }
         attribute.dst.finish();
       });
-    }
-
-    if (debug) {
-      std::cout << "New geometry" << std::endl;
-      std::cout << dst.points_num() << " points, " << dst.curves_num() << " curves." << std::endl;
-
-      offset_indices::OffsetIndices<int> dst_curves_offsets = dst.points_by_curve();
-      std::cout << "Curve offsets = [";
-      for (int curve_index : dst.curves_range()) {
-        IndexRange dst_pt_range = dst_curves_offsets[curve_index];
-        std::cout << dst_pt_range.first() << ":" << dst_pt_range.last() << " ";
-      }
-      std::cout << "]" << std::endl;
-
-      std::cout << "Destin positions (3D)  = [ ";
-      for (const float3 &pos : dst.positions()) {
-        std::cout << "(" << pos[0] << ", " << pos[1] << ", " << pos[2] << ") ";
-      }
-      std::cout << "]" << std::endl;
     }
 
     drawing.geometry.wrap() = dst;
