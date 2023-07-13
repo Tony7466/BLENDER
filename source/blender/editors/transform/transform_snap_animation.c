@@ -25,7 +25,7 @@
 
 short getAnimEdit_SnapMode(TransInfo *t)
 {
-  eAnimEdit_AutoSnap autosnap = SACTSNAP_FRAME;
+  eSnapMode autosnap = SCE_SNAP_TO_FRAME;
 
   if (t->spacetype == SPACE_ACTION) {
     SpaceAction *saction = (SpaceAction *)t->area->spacedata.first;
@@ -50,34 +50,31 @@ short getAnimEdit_SnapMode(TransInfo *t)
       autosnap = snla->autosnap;
     }
   }
-  else {
-    autosnap = SACTSNAP_FRAME;
-  }
 
   return autosnap;
 }
 
 void snapFrameTransform(TransInfo *t,
-                        const eAnimEdit_AutoSnap autosnap,
+                        const eSnapMode autosnap,
                         const float val_initial,
                         const float val_final,
                         float *r_val_final)
 {
   float deltax = val_final - val_initial;
   switch (autosnap) {
-    case SACTSNAP_FRAME:
+    case SCE_SNAP_TO_FRAME:
       *r_val_final = floorf(val_final + 0.5f);
       break;
-    case SACTSNAP_MARKER:
+    case SCE_SNAP_TO_MARKERS:
       /* Snap to nearest marker. */
       /* TODO: need some more careful checks for where data comes from. */
       *r_val_final = (float)ED_markers_find_nearest_marker_time(&t->scene->markers, val_final);
       break;
-    case SACTSNAP_SECOND:
-    case SACTSNAP_TSTEP: {
+    case SCE_SNAP_TO_SECOND:
+    case SCE_SNAP_TO_GRID: {
       const Scene *scene = t->scene;
       const double secf = FPS;
-      if (autosnap == SACTSNAP_SECOND) {
+      if (autosnap == SCE_SNAP_TO_SECOND) {
         *r_val_final = floorf((val_final / secf) + 0.5) * secf;
       }
       else {
@@ -86,16 +83,21 @@ void snapFrameTransform(TransInfo *t,
       }
       break;
     }
-    case SACTSNAP_STEP:
+    case SCE_SNAP_ABS_GRID: {
       deltax = floorf(deltax + 0.5f);
       *r_val_final = val_initial + deltax;
       break;
+    }
+    default: {
+      *r_val_final = val_initial;
+      break;
+    }
   }
 }
 
 void transform_snap_anim_flush_data(TransInfo *t,
                                     TransData *td,
-                                    const eAnimEdit_AutoSnap autosnap,
+                                    const eSnapMode autosnap,
                                     float *r_val_final)
 {
   BLI_assert(t->scene->toolsettings->snap_flag_anim);

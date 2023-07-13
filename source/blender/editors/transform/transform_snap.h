@@ -11,6 +11,7 @@
 #define SNAP_MIN_DISTANCE 30
 
 /* For enum. */
+#include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 
 #ifdef __cplusplus
@@ -86,18 +87,15 @@ void transform_snap_sequencer_apply_translate(TransInfo *t, float *vec);
  * TODO: these modifier checks should be accessible from the key-map.
  */
 short getAnimEdit_SnapMode(TransInfo *t);
-void snapFrameTransform(TransInfo *t,
-                        eAnimEdit_AutoSnap autosnap,
-                        float val_initial,
-                        float val_final,
-                        float *r_val_final);
+void snapFrameTransform(
+    TransInfo *t, eSnapMode autosnap, float val_initial, float val_final, float *r_val_final);
 /**
  * This function is used by Animation Editor specific transform functions to do
  * the Snap Keyframe to Nearest Frame/Marker
  */
 void transform_snap_anim_flush_data(TransInfo *t,
                                     TransData *td,
-                                    eAnimEdit_AutoSnap autosnap,
+                                    eSnapMode autosnap,
                                     float *r_val_final);
 
 #ifdef __cplusplus
