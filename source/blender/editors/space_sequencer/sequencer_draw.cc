@@ -84,13 +84,50 @@
 /* Own include. */
 #include "sequencer_intern.h"
 
-#define SEQ_LEFTHANDLE 1
-#define SEQ_RIGHTHANDLE 2
-#define SEQ_HANDLE_SIZE 8.0f
+#define SEQ_HANDLE_SIZE 4.0f
 #define SEQ_SCROLLER_TEXT_OFFSET 8
 #define MUTE_ALPHA 120
 
 static Sequence *special_seq_update = nullptr;
+
+/* Is there enough space for drawing something else than text? */
+static bool can_draw_strip_text(const bContext *C, Sequence *seq)
+{
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+
+  if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_NAME |
+       SEQ_TIMELINE_SHOW_STRIP_DURATION | SEQ_TIMELINE_SHOW_STRIP_SOURCE) == 0)
+  {
+    return false;
+  }
+
+  const float y2 = seq->machine + SEQ_STRIP_OFSTOP;
+  const float y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
+  const float pixely = 1 / UI_view2d_scale_get_y(UI_view2d_fromcontext(C));
+  return ((y2 - y1) / pixely) > 20 * UI_SCALE_FAC;
+}
+
+/* Calculate height needed for drawing text on strip. */
+static float text_margin_get(const bContext *C, Sequence *seq)
+{
+  const float y2 = seq->machine + SEQ_STRIP_OFSTOP;
+  const float pixely = 1 / UI_view2d_scale_get_y(UI_view2d_fromcontext(C));
+  if (!can_draw_strip_text(C, seq)) {
+    return seq->machine + SEQ_STRIP_OFSTOP;
+  }
+  return y2 - min_ff(0.40f, 20 * UI_SCALE_FAC * pixely);
+}
+
+float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const float pixelx)
+{
+  const float maxhandle = (pixelx * SEQ_HANDLE_SIZE) * U.pixelsize;
+
+  /* Ensure that handle is not wider, than quarter of strip. */
+  return min_ff(maxhandle,
+                (float(SEQ_time_right_handle_frame_get(scene, seq) -
+                       SEQ_time_left_handle_frame_get(scene, seq)) /
+                 4.0f));
+}
 
 void color3ubv_from_seq(const Scene *curscene,
                         const Sequence *seq,
@@ -622,110 +659,96 @@ static void drawmeta_contents(Scene *scene,
   GPU_blend(GPU_BLEND_NONE);
 }
 
-float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const float pixelx)
+static void draw_handle_transform_text(const Scene *scene,
+                                       View2D *v2d,
+                                       Sequence *seq,
+                                       const short handle_side,
+                                       uint pos,
+                                       bool y_threshold)
 {
-  const float maxhandle = (pixelx * SEQ_HANDLE_SIZE) * U.pixelsize;
+  /* Draw numbers for start and end of the strip next to its handles. */
+  if (!y_threshold || (seq->flag & SELECT) == 0 || (G.moving & G_TRANSFORM_SEQ) == 0) {
+    return;
+  }
 
-  /* Ensure that handle is not wider, than quarter of strip. */
-  return min_ff(maxhandle,
-                (float(SEQ_time_right_handle_frame_get(scene, seq) -
-                       SEQ_time_left_handle_frame_get(scene, seq)) /
-                 4.0f));
+  char numstr[64];
+  BLF_set_default();
+
+  /* Calculate if strip is wide enough for showing the labels. */
+  size_t numstr_len = SNPRINTF_RLEN(numstr,
+                                    "%d%d",
+                                    SEQ_time_left_handle_frame_get(scene, seq),
+                                    SEQ_time_right_handle_frame_get(scene, seq));
+  float tot_width = BLF_width(BLF_default(), numstr, numstr_len);
+
+  float x1 = SEQ_time_left_handle_frame_get(scene, seq);
+  float x2 = SEQ_time_right_handle_frame_get(scene, seq);
+  float y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
+  const float pixelx = 1 / UI_view2d_scale_get_x(v2d);
+  const float handsize_clamped = sequence_handle_size_get_clamped(scene, seq, pixelx);
+
+  if ((x2 - x1) / pixelx < 20 + tot_width) {
+    return;
+  }
+
+  uchar col[4] = {255, 255, 255, 255};
+  float text_margin = 1.2f * handsize_clamped;
+
+  if (handle_side == SEQ_LEFTSEL) {
+    numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_left_handle_frame_get(scene, seq));
+    x1 += text_margin;
+    y1 += 0.09f;
+  }
+  else {
+    numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_right_handle_frame_get(scene, seq) - 1);
+    x1 = x2 - (text_margin + pixelx * BLF_width(BLF_default(), numstr, numstr_len));
+    y1 += 0.09f;
+  }
+  UI_view2d_text_cache_add(v2d, x1, y1, numstr, numstr_len, col);
 }
 
 /* Draw a handle, on left or right side of strip. */
 static void draw_seq_handle(const Scene *scene,
                             View2D *v2d,
                             Sequence *seq,
-                            const float handsize_clamped,
-                            const short direction,
+                            const short handle_side,
                             uint pos,
-                            bool seq_active,
-                            float pixelx,
                             bool y_threshold)
 {
-  float rx1 = 0, rx2 = 0;
-  float x1, x2, y1, y2;
-  uint whichsel = 0;
+  if ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) > 0) {
+    return;
+  }
+
+  if ((seq->flag & handle_side) == 0) {
+    return;
+  }
+
   uchar col[4];
-
-  x1 = SEQ_time_left_handle_frame_get(scene, seq);
-  x2 = SEQ_time_right_handle_frame_get(scene, seq);
-
-  y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
-  y2 = seq->machine + SEQ_STRIP_OFSTOP;
-
-  /* Set up co-ordinates and dimensions for either left or right handle. */
-  if (direction == SEQ_LEFTHANDLE) {
-    rx1 = x1;
-    rx2 = x1 + handsize_clamped;
-    whichsel = SEQ_LEFTSEL;
+  if (seq == SEQ_select_active_get(scene)) {
+    UI_GetThemeColor4ubv(TH_SEQ_ACTIVE, col);
   }
-  else if (direction == SEQ_RIGHTHANDLE) {
-    rx1 = x2 - handsize_clamped;
-    rx2 = x2;
-    whichsel = SEQ_RIGHTSEL;
+  else {
+    UI_GetThemeColor4ubv(TH_SEQ_SELECTED, col);
   }
+  immUniformColor4ubv(col);
 
-  if (!(seq->type & SEQ_TYPE_EFFECT) || SEQ_effect_get_num_inputs(seq->type) == 0) {
-    GPU_blend(GPU_BLEND_ALPHA);
+  float x1 = SEQ_time_left_handle_frame_get(scene, seq);
+  float x2 = SEQ_time_right_handle_frame_get(scene, seq);
+  float y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
+  float y2 = seq->machine + SEQ_STRIP_OFSTOP;
+  const float pixelx = 1 / UI_view2d_scale_get_x(v2d);
+  const float handsize_clamped = sequence_handle_size_get_clamped(scene, seq, pixelx);
 
-    GPU_blend(GPU_BLEND_ALPHA);
-
-    if (seq->flag & whichsel) {
-      if (seq_active) {
-        UI_GetThemeColor3ubv(TH_SEQ_ACTIVE, col);
-      }
-      else {
-        UI_GetThemeColor3ubv(TH_SEQ_SELECTED, col);
-        /* Make handles slightly brighter than the outlines. */
-        UI_GetColorPtrShade3ubv(col, col, 50);
-      }
-      col[3] = 255;
-      immUniformColor4ubv(col);
-    }
-    else {
-      immUniformColor4ub(0, 0, 0, 50);
-    }
-
-    immRectf(pos, rx1, y1, rx2, y2);
-    GPU_blend(GPU_BLEND_NONE);
+  GPU_blend(GPU_BLEND_ALPHA);
+  if (handle_side == SEQ_LEFTSEL) {
+    immRectf(pos, x1, y1, x1 + handsize_clamped, y2);
   }
-
-  /* Draw numbers for start and end of the strip next to its handles. */
-  if (y_threshold &&
-      (((seq->flag & SELECT) && (G.moving & G_TRANSFORM_SEQ)) || (seq->flag & whichsel)))
-  {
-
-    char numstr[64];
-    size_t numstr_len;
-    const int fontid = BLF_default();
-    BLF_set_default();
-
-    /* Calculate if strip is wide enough for showing the labels. */
-    numstr_len = SNPRINTF_RLEN(numstr,
-                               "%d%d",
-                               SEQ_time_left_handle_frame_get(scene, seq),
-                               SEQ_time_right_handle_frame_get(scene, seq));
-    float tot_width = BLF_width(fontid, numstr, numstr_len);
-
-    if ((x2 - x1) / pixelx > 20 + tot_width) {
-      col[0] = col[1] = col[2] = col[3] = 255;
-      float text_margin = 1.2f * handsize_clamped;
-
-      if (direction == SEQ_LEFTHANDLE) {
-        numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_left_handle_frame_get(scene, seq));
-        x1 += text_margin;
-        y1 += 0.09f;
-      }
-      else {
-        numstr_len = SNPRINTF_RLEN(numstr, "%d", SEQ_time_right_handle_frame_get(scene, seq) - 1);
-        x1 = x2 - (text_margin + pixelx * BLF_width(fontid, numstr, numstr_len));
-        y1 += 0.09f;
-      }
-      UI_view2d_text_cache_add(v2d, x1, y1, numstr, numstr_len, col);
-    }
+  else {
+    immRectf(pos, x2, y1, x2 - handsize_clamped, y2);
   }
+  GPU_blend(GPU_BLEND_NONE);
+
+  draw_handle_transform_text(scene, v2d, seq, handle_side, pos, y_threshold);
 }
 
 static void draw_seq_outline(Scene *scene,
@@ -1304,7 +1327,6 @@ static void draw_seq_strip(const bContext *C,
 
   View2D *v2d = &region->v2d;
   float x1, x2, y1, y2;
-  const float handsize_clamped = sequence_handle_size_get_clamped(scene, seq, pixelx);
   float pixely = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
 
   /* Check if we are doing "solo preview". */
@@ -1326,28 +1348,13 @@ static void draw_seq_strip(const bContext *C,
   x1 = min_ff(x1, SEQ_time_right_handle_frame_get(scene, seq));
   x2 = max_ff(x2, SEQ_time_left_handle_frame_get(scene, seq));
 
-  float text_margin_y;
-  bool y_threshold;
-  if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_NAME) ||
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_SOURCE) ||
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_DURATION))
-  {
-
-    /* Calculate height needed for drawing text on strip. */
-    text_margin_y = y2 - min_ff(0.40f, 20 * UI_SCALE_FAC * pixely);
-
-    /* Is there enough space for drawing something else than text? */
-    y_threshold = ((y2 - y1) / pixely) > 20 * UI_SCALE_FAC;
-  }
-  else {
-    text_margin_y = y2;
-    y_threshold = false;
-  }
-
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   draw_seq_background(scene, seq, pos, x1, x2, y1, y2, is_single_image, show_strip_color_tag);
+
+  bool y_threshold = can_draw_strip_text(C, seq);
+  const float text_margin_y = text_margin_get(C, seq);
 
   /* Draw a color band inside color strip. */
   if (seq->type == SEQ_TYPE_COLOR && y_threshold) {
@@ -1406,10 +1413,8 @@ static void draw_seq_strip(const bContext *C,
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   if (!SEQ_transform_is_locked(channels, seq)) {
-    draw_seq_handle(
-        scene, v2d, seq, handsize_clamped, SEQ_LEFTHANDLE, pos, seq_active, pixelx, y_threshold);
-    draw_seq_handle(
-        scene, v2d, seq, handsize_clamped, SEQ_RIGHTHANDLE, pos, seq_active, pixelx, y_threshold);
+    draw_seq_handle(scene, v2d, seq, SEQ_LEFTSEL, pos, y_threshold);
+    draw_seq_handle(scene, v2d, seq, SEQ_RIGHTSEL, pos, y_threshold);
   }
 
   draw_seq_outline(scene, seq, pos, x1, x2, y1, y2, pixelx, pixely, seq_active);

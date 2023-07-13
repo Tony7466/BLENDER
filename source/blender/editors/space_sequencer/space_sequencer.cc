@@ -669,6 +669,43 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
+static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
+{
+  View2D *v2d = &region->v2d;
+  Scene *scene = win->scene;
+  Editing *ed = SEQ_editing_get(scene);
+  int wmcursor = WM_CURSOR_DEFAULT;
+
+  if (ed == NULL) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
+
+  float view_x;
+  float view_y;
+  UI_view2d_region_to_view(&region->v2d,
+                           win->eventstate->xy[0] - region->winrct.xmin,
+                           win->eventstate->xy[1] - region->winrct.ymin,
+                           &view_x,
+                           &view_y);
+  Sequence *seq1, *seq2;
+  int side;
+
+  sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
+
+  if (seq1 != nullptr && seq2 != nullptr) {
+    wmcursor = WM_CURSOR_BOTH_HANDLES;
+  }
+  else if (side == SEQ_SIDE_LEFT) {
+    wmcursor = WM_CURSOR_LEFT_HANDLE;
+  }
+  else if (side == SEQ_SIDE_RIGHT) {
+    wmcursor = WM_CURSOR_RIGHT_HANDLE;
+  }
+
+  WM_cursor_set(win, wmcursor);
+}
+
 /* *********************** header region ************************ */
 /* Add handlers, stuff you only do once or on area/region changes. */
 static void sequencer_header_region_init(wmWindowManager * /*wm*/, ARegion *region)
@@ -1030,6 +1067,9 @@ void ED_spacetype_sequencer()
   art->message_subscribe = sequencer_main_region_message_subscribe;
   art->keymapflag = ED_KEYMAP_TOOL | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES |
                     ED_KEYMAP_ANIMATION;
+  art->cursor = sequencer_cursor;
+  art->event_cursor = true;
+  art->clip_gizmo_events_by_ui = true;
   BLI_addhead(&st->regiontypes, art);
 
   /* Preview. */

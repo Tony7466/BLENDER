@@ -15,7 +15,7 @@ extern "C" {
 struct Scene;
 struct Sequence;
 
-struct Sequence *SEQ_select_active_get(struct Scene *scene);
+struct Sequence *SEQ_select_active_get(const struct Scene *scene);
 bool SEQ_select_active_get_pair(struct Scene *scene,
                                 struct Sequence **r_seq_act,
                                 struct Sequence **r_seq_other);
