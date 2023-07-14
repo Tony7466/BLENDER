@@ -41,16 +41,17 @@ GPU_SHADER_CREATE_INFO(eevee_geom_mesh)
 GPU_SHADER_INTERFACE_INFO(eevee_surf_point_cloud_iface, "point_cloud_interp")
     .smooth(Type::FLOAT, "radius")
     .smooth(Type::VEC3, "position")
-    .flat(Type::INT, "ID");
+    .flat(Type::INT, "id");
 
 GPU_SHADER_CREATE_INFO(eevee_geom_point_cloud)
     .additional_info("eevee_shared")
     .define("MAT_GEOM_POINT_CLOUD")
     .vertex_source("eevee_geom_point_cloud_vert.glsl")
     .vertex_out(eevee_surf_point_cloud_iface)
+    /* TODO(Miguel Pozo): Remove once we get rid of old EEVEE. */
     .define("pointRadius", "point_cloud_interp.radius")
     .define("pointPosition", "point_cloud_interp.position")
-    .define("pointID", "point_cloud_interp.ID")
+    .define("pointID", "point_cloud_interp.id")
     .additional_info("draw_pointcloud_new",
                      "draw_modelmat_new",
                      "draw_resource_id_varying",

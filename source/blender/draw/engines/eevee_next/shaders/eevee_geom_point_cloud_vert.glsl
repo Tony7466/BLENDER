@@ -16,7 +16,7 @@ void main()
 
   init_interface();
 
-  point_cloud_interp.ID = pointcloud_get_point_id();
+  point_cloud_interp.id = pointcloud_get_point_id();
   pointcloud_get_pos_and_radius(point_cloud_interp.position, point_cloud_interp.radius);
 
   mat3 facing_mat;
@@ -45,9 +45,9 @@ void main()
       }
     }
 
-    Quaternion delta = from_vector_delta(facing_mat[2], new_z_axis);
+    Quaternion delta = rotation_between(facing_mat[2], new_z_axis);
     facing_mat[2] = new_z_axis;
-    facing_mat[1] = rotate(facing_mat[1], delta);
+    facing_mat[1] = transform_point(facing_mat[1], delta);
     facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
 #endif
   }
@@ -60,7 +60,7 @@ void main()
 #ifdef MAT_VELOCITY
   vec3 lP = point_world_to_object(point_cloud_interp.position);
   vec3 prv, nxt;
-  velocity_local_pos_get(lP, point_cloud_interp.ID, prv, nxt);
+  velocity_local_pos_get(lP, point_cloud_interp.id, prv, nxt);
   /* FIXME(fclem): Evaluating before displacement avoid displacement being treated as motion but
    * ignores motion from animated displacement. Supporting animated displacement motion vectors
    * would require evaluating the nodetree multiple time with different nodetree UBOs evaluated at
