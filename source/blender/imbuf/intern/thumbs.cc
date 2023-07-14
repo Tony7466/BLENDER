@@ -18,6 +18,7 @@
 #include "BLI_hash_md5.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -241,7 +242,7 @@ static bool uri_from_filename(const char *path, char *uri)
     /* Not a correct absolute path with a drive letter or UNC prefix. */
     return false;
   }
-  BLI_str_replace_char(orig_uri, '\\', '/');
+  BLI_string_replace_char(orig_uri, '\\', '/');
 #else
   SNPRINTF(orig_uri, "file://%s", path);
 #endif
@@ -360,7 +361,8 @@ static ImBuf *thumb_create_ex(const char *file_path,
       }
     }
     else {
-      if (ELEM(source, THB_SOURCE_IMAGE, THB_SOURCE_BLEND, THB_SOURCE_FONT)) {
+      if (ELEM(source, THB_SOURCE_IMAGE, THB_SOURCE_BLEND, THB_SOURCE_FONT, THB_SOURCE_OBJECT_IO))
+      {
         /* only load if we didn't give an image */
         if (img == nullptr) {
           switch (source) {
@@ -373,6 +375,12 @@ static ImBuf *thumb_create_ex(const char *file_path,
             case THB_SOURCE_FONT:
               img = IMB_thumb_load_font(file_path, tsize, tsize);
               break;
+            case THB_SOURCE_OBJECT_IO: {
+              if (BLI_path_extension_check(file_path, ".svg")) {
+                img = IMB_thumb_load_image(file_path, tsize, nullptr);
+              }
+              break;
+            }
             default:
               BLI_assert_unreachable(); /* This should never happen */
           }

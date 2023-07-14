@@ -36,6 +36,7 @@
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
 #include "BLI_memarena.h"
+#include "BLI_string.h"
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "BLI_system.h"    /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
@@ -1114,7 +1115,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
           BLI_assert(max_align_64);
 
           /* Sanity check 2: alignment should always be equal or smaller than the maximum
-           * size of a build in type which is 8 bytes (ie int64_t or double). */
+           * size of a build in type which is 8 bytes (i.e. `int64_t` or double). */
           BLI_assert(max_align_32 <= 8);
           BLI_assert(max_align_64 <= 8);
 
@@ -1218,7 +1219,7 @@ static void dna_write(FILE *file, const void *pntr, const int size)
   }
 }
 
-void print_struct_sizes(void)
+void print_struct_sizes()
 {
   int unknown = structs_len;
   printf("\n\n*** All detected structs:\n");
@@ -1316,7 +1317,7 @@ static int make_structDNA(const char *base_directory,
     /* NOTE(nzc): `str` contains filenames.
      * Since we now include paths, I stretched it a bit. Hope this is enough :). */
     char str[SDNA_MAX_FILENAME_LENGTH];
-    sprintf(str, "%s%s", base_directory, includefiles[i]);
+    SNPRINTF(str, "%s%s", base_directory, includefiles[i]);
     DEBUG_PRINTF(0, "\t|-- Converting %s\n", str);
     if (convert_include(str)) {
       return 1;
@@ -1621,7 +1622,7 @@ int main(int argc, char **argv)
  *
  * \{ */
 
-static void UNUSED_FUNCTION(dna_rename_defs_ensure)(void)
+static void UNUSED_FUNCTION(dna_rename_defs_ensure)()
 {
 #define DNA_STRUCT_RENAME(old, new) (void)sizeof(new);
 #define DNA_STRUCT_RENAME_ELEM(struct_name, old, new) (void)offsetof(struct_name, new);

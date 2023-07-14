@@ -37,7 +37,7 @@ class BackgroundPipeline {
  public:
   BackgroundPipeline(Instance &inst) : inst_(inst){};
 
-  void sync(GPUMaterial *gpumat);
+  void sync(GPUMaterial *gpumat, float background_opacity);
   void render(View &view);
 };
 
@@ -162,7 +162,7 @@ class DeferredLayer {
   PassSimple eval_light_ps_ = {"EvalLights"};
 
   /* Closures bits from the materials in this pass. */
-  eClosureBits closure_bits_;
+  eClosureBits closure_bits_ = CLOSURE_NONE;
 
   /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).

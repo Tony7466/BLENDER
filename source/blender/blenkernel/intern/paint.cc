@@ -12,6 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -55,7 +56,7 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subsurf.h"
@@ -498,16 +499,18 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
           return &ts->wpaint->paint;
         case OB_MODE_TEXTURE_PAINT:
           return &ts->imapaint.paint;
-        case OB_MODE_PAINT_GPENCIL:
+        case OB_MODE_PAINT_GPENCIL_LEGACY:
           return &ts->gp_paint->paint;
-        case OB_MODE_VERTEX_GPENCIL:
+        case OB_MODE_VERTEX_GPENCIL_LEGACY:
           return &ts->gp_vertexpaint->paint;
-        case OB_MODE_SCULPT_GPENCIL:
+        case OB_MODE_SCULPT_GPENCIL_LEGACY:
           return &ts->gp_sculptpaint->paint;
-        case OB_MODE_WEIGHT_GPENCIL:
+        case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return &ts->gp_weightpaint->paint;
         case OB_MODE_SCULPT_CURVES:
           return &ts->curves_sculpt->paint;
+        case OB_MODE_PAINT_GREASE_PENCIL:
+          return &ts->gp_paint->paint;
         case OB_MODE_EDIT:
           return ts->uvsculpt ? &ts->uvsculpt->paint : nullptr;
         default:
@@ -614,18 +617,20 @@ ePaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
         return PAINT_MODE_VERTEX;
       case CTX_MODE_PAINT_WEIGHT:
         return PAINT_MODE_WEIGHT;
-      case CTX_MODE_PAINT_GPENCIL:
+      case CTX_MODE_PAINT_GPENCIL_LEGACY:
         return PAINT_MODE_GPENCIL;
       case CTX_MODE_PAINT_TEXTURE:
         return PAINT_MODE_TEXTURE_3D;
-      case CTX_MODE_VERTEX_GPENCIL:
+      case CTX_MODE_VERTEX_GPENCIL_LEGACY:
         return PAINT_MODE_VERTEX_GPENCIL;
-      case CTX_MODE_SCULPT_GPENCIL:
+      case CTX_MODE_SCULPT_GPENCIL_LEGACY:
         return PAINT_MODE_SCULPT_GPENCIL;
-      case CTX_MODE_WEIGHT_GPENCIL:
+      case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
         return PAINT_MODE_WEIGHT_GPENCIL;
       case CTX_MODE_SCULPT_CURVES:
         return PAINT_MODE_SCULPT_CURVES;
+      case CTX_MODE_PAINT_GREASE_PENCIL:
+        return PAINT_MODE_GPENCIL;
     }
   }
   else if (tref->space_type == SPACE_IMAGE) {
@@ -685,19 +690,24 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
   }
   else if (ts->gp_paint && paint == &ts->gp_paint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_tool);
-    paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL;
+    if (U.experimental.use_grease_pencil_version3) {
+      paint->runtime.ob_mode = OB_MODE_PAINT_GREASE_PENCIL;
+    }
+    else {
+      paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+    }
   }
   else if (ts->gp_vertexpaint && paint == &ts->gp_vertexpaint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_vertex_tool);
-    paint->runtime.ob_mode = OB_MODE_VERTEX_GPENCIL;
+    paint->runtime.ob_mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
   }
   else if (ts->gp_sculptpaint && paint == &ts->gp_sculptpaint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_sculpt_tool);
-    paint->runtime.ob_mode = OB_MODE_SCULPT_GPENCIL;
+    paint->runtime.ob_mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
   else if (ts->gp_weightpaint && paint == &ts->gp_weightpaint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_weight_tool);
-    paint->runtime.ob_mode = OB_MODE_WEIGHT_GPENCIL;
+    paint->runtime.ob_mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   }
   else if (ts->curves_sculpt && paint == &ts->curves_sculpt->paint) {
     paint->runtime.tool_offset = offsetof(Brush, curves_sculpt_tool);
@@ -1122,13 +1132,10 @@ bool BKE_paint_ensure(ToolSettings *ts, Paint **r_paint)
   }
   else if ((Sculpt **)r_paint == &ts->sculpt) {
     Sculpt *data = MEM_cnew<Sculpt>(__func__);
+
+    *data = *DNA_struct_default_get(Sculpt);
+
     paint = &data->paint;
-
-    /* Turn on X plane mirror symmetry by default. */
-    paint->symmetry_flags |= PAINT_SYMM_X;
-
-    /* Make sure at least dyntopo subdivision is enabled. */
-    data->flags |= SCULPT_DYNTOPO_SUBDIVIDE | SCULPT_DYNTOPO_COLLAPSE;
   }
   else if ((GpPaint **)r_paint == &ts->gp_paint) {
     GpPaint *data = MEM_cnew<GpPaint>(__func__);
@@ -1323,8 +1330,11 @@ float paint_grid_paint_mask(const GridPaintMask *gpm, uint level, uint x, uint y
   return gpm->data[(y * factor) * gridsize + (x * factor)];
 }
 
-/* Threshold to move before updating the brush rotation. */
-#define RAKE_THRESHHOLD 20
+/* Threshold to move before updating the brush rotation, reduces jitter. */
+static float paint_rake_rotation_spacing(UnifiedPaintSettings * /*ups*/, Brush *brush)
+{
+  return brush->sculpt_tool == SCULPT_TOOL_CLAY_STRIPS ? 1.0f : 20.0f;
+}
 
 void paint_update_brush_rake_rotation(UnifiedPaintSettings *ups, Brush *brush, float rotation)
 {
@@ -1352,16 +1362,23 @@ static const bool paint_rake_rotation_active(const Brush &brush, ePaintMode pain
 bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
                                    Brush *brush,
                                    const float mouse_pos[2],
-                                   ePaintMode paint_mode)
+                                   ePaintMode paint_mode,
+                                   bool stroke_has_started)
 {
   bool ok = false;
   if (paint_rake_rotation_active(*brush, paint_mode)) {
-    const float r = RAKE_THRESHHOLD;
+    float r = paint_rake_rotation_spacing(ups, brush);
     float rotation;
+
+    /* Use a smaller limit if the stroke hasn't started to prevent excessive pre-roll. */
+    if (!stroke_has_started) {
+      r = min_ff(r, 4.0f);
+    }
 
     float dpos[2];
     sub_v2_v2v2(dpos, ups->last_rake, mouse_pos);
 
+    /* Limit how often we update the angle to prevent jitter. */
     if (len_squared_v2(dpos) >= r * r) {
       rotation = atan2f(dpos[0], dpos[1]);
 
@@ -1718,7 +1735,7 @@ static void sculpt_update_object(
 
     /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
      * and tools use the Face Sets data from the base mesh when Multires is active. */
-    ss->vert_positions = BKE_mesh_vert_positions_for_write(me);
+    ss->vert_positions = me->vert_positions_for_write();
     ss->polys = me->polys();
     ss->corner_verts = me->corner_verts();
   }
@@ -1726,7 +1743,7 @@ static void sculpt_update_object(
     ss->totvert = me->totvert;
     ss->totpoly = me->totpoly;
     ss->totfaces = me->totpoly;
-    ss->vert_positions = BKE_mesh_vert_positions_for_write(me);
+    ss->vert_positions = me->vert_positions_for_write();
     ss->polys = me->polys();
     ss->corner_verts = me->corner_verts();
     ss->multires.active = false;
@@ -1737,7 +1754,6 @@ static void sculpt_update_object(
 
     CustomDataLayer *layer;
     eAttrDomain domain;
-
     if (BKE_pbvh_get_color_layer(me, &layer, &domain)) {
       if (layer->type == CD_PROP_COLOR) {
         ss->vcol = static_cast<MPropCol *>(layer->data);
@@ -2097,23 +2113,6 @@ void BKE_sculpt_toolsettings_data_ensure(Scene *scene)
   BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->sculpt);
 
   Sculpt *sd = scene->toolsettings->sculpt;
-  if (!sd->detail_size) {
-    sd->detail_size = 12;
-  }
-  if (!sd->detail_percent) {
-    sd->detail_percent = 25;
-  }
-  if (sd->constant_detail == 0.0f) {
-    sd->constant_detail = 3.0f;
-  }
-
-  if (!sd->automasking_start_normal_limit) {
-    sd->automasking_start_normal_limit = 20.0f / 180.0f * M_PI;
-    sd->automasking_start_normal_falloff = 0.25f;
-
-    sd->automasking_view_normal_limit = 90.0f / 180.0f * M_PI;
-    sd->automasking_view_normal_falloff = 0.25f;
-  }
 
   /* Set sane default tiling offsets. */
   if (!sd->paint.tile_offset[0]) {
@@ -2125,6 +2124,7 @@ void BKE_sculpt_toolsettings_data_ensure(Scene *scene)
   if (!sd->paint.tile_offset[2]) {
     sd->paint.tile_offset[2] = 1.0f;
   }
+
   if (!sd->automasking_cavity_curve || !sd->automasking_cavity_curve_op) {
     BKE_sculpt_check_cavity_curves(sd);
   }
