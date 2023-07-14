@@ -123,6 +123,10 @@ class Texture {
   GPUAttachmentType fb_attachment_[GPU_TEX_MAX_FBO_ATTACHED];
   FrameBuffer *fb_[GPU_TEX_MAX_FBO_ATTACHED];
 
+  /* Whether the texture should be backed by a buffer.
+   * NOTE: This will only be valid for TextureBuffer and Texture2D. */
+  bool buffer_backed_ = false;
+
  public:
   Texture(const char *name);
   virtual ~Texture();
@@ -155,6 +159,7 @@ class Texture {
   void update(eGPUDataFormat format, const void *data);
 
   void usage_set(eGPUTextureUsage usage_flags);
+  void set_buffer_backed(bool is_buffer_backed);
 
   virtual void update_sub(
       int mip, int offset[3], int extent[3], eGPUDataFormat format, const void *data) = 0;
@@ -162,6 +167,8 @@ class Texture {
                           int extent[3],
                           eGPUDataFormat format,
                           GPUPixelBuffer *pixbuf) = 0;
+
+  virtual void bind_as_ssbo(uint binding) = 0;
 
   /* TODO(fclem): Legacy. Should be removed at some point. */
   virtual uint gl_bindcode_get() const = 0;
@@ -176,6 +183,10 @@ class Texture {
   int depth_get() const
   {
     return d_;
+  }
+  bool get_buffer_backed() const 
+  {
+    return buffer_backed_;
   }
   eGPUTextureUsage usage_get() const
   {

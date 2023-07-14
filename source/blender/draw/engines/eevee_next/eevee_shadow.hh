@@ -265,6 +265,10 @@ class ShadowModule {
                             SHADOW_TILEMAP_LOD + 1};
   /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
   Framebuffer render_fb_;
+  /* TODO(Metal): Temporary texture required to workaround missing attachment-less framebuffer
+   * support. This is only instantiated when running with Metal. This will be removed once missing
+   * FrameBuffer feature is added. */
+  Texture tmp_render_fb_tx_ = {"tmp_render_fb_tx_"};
 
   /** \} */
 

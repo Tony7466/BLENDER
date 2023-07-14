@@ -41,14 +41,14 @@ void ReflectionProbeModule::init()
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                init_num_probes_,
-                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
 
     /* Cube-map is half of the resolution of the octahedral map. */
     cubemap_tx_.ensure_cube(
-        GPU_RGBA16F, max_resolution_ / 2, GPU_TEXTURE_USAGE_ATTACHMENT, nullptr, 9999);
+        GPU_RGBA16F, max_resolution_ / 2, GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ, nullptr, 9999);
     GPU_texture_mipmap_mode(cubemap_tx_, true, true);
   }
 
@@ -299,7 +299,7 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                number_layers_needed,
-                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);

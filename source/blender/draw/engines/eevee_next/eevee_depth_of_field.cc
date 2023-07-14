@@ -168,7 +168,7 @@ void DepthOfField::sync()
    * the reduced buffers. Color needs to be signed format here. See note in shader for
    * explanation. Do not use texture pool because of needs mipmaps. */
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
+                           GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW | GPU_TEXTURE_USAGE_SHADER_WRITE;
   reduced_color_tx_.ensure_2d(GPU_RGBA16F, reduce_size, usage, nullptr, DOF_MIP_COUNT);
   reduced_coc_tx_.ensure_2d(GPU_R16F, reduce_size, usage, nullptr, DOF_MIP_COUNT);
   reduced_color_tx_.ensure_mip_views();
@@ -594,7 +594,7 @@ void DepthOfField::render(View &view,
       }
     }
     {
-      setup_color_tx_.acquire(half_res, GPU_RGBA16F);
+      setup_color_tx_.acquire(half_res, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE);
       setup_coc_tx_.acquire(half_res, GPU_R16F);
 
       drw.submit(setup_ps_, view);
@@ -627,8 +627,8 @@ void DepthOfField::render(View &view,
       /* WARNING: If format changes, make sure dof_tile_* GLSL constants are properly encoded. */
       tiles_fg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F);
       tiles_bg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F);
-      tiles_fg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F);
-      tiles_bg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F);
+      tiles_fg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
+      tiles_bg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
 
       drw.submit(tiles_flatten_ps_, view);
 
@@ -669,7 +669,7 @@ void DepthOfField::render(View &view,
       DRW_stats_group_end();
     }
 
-    downsample_tx_.acquire(quarter_res, GPU_RGBA16F);
+    downsample_tx_.acquire(quarter_res, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE);
 
     drw.submit(downsample_ps_, view);
 
@@ -694,8 +694,8 @@ void DepthOfField::render(View &view,
     PassSimple &filter_ps = is_background ? filter_bg_ps_ : filter_fg_ps_;
     PassSimple &scatter_ps = is_background ? scatter_bg_ps_ : scatter_fg_ps_;
 
-    color_tx.current().acquire(half_res, GPU_RGBA16F);
-    weight_tx.current().acquire(half_res, GPU_R16F);
+    color_tx.current().acquire(half_res, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
+    weight_tx.current().acquire(half_res, GPU_R16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
     occlusion_tx_.acquire(half_res, GPU_RG16F);
 
     drw.submit(gather_ps, view);
@@ -705,8 +705,8 @@ void DepthOfField::render(View &view,
       color_tx.swap();
       weight_tx.swap();
 
-      color_tx.current().acquire(half_res, GPU_RGBA16F);
-      weight_tx.current().acquire(half_res, GPU_R16F);
+      color_tx.current().acquire(half_res, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
+      weight_tx.current().acquire(half_res, GPU_R16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE );
 
       drw.submit(filter_ps, view);
 
@@ -732,8 +732,8 @@ void DepthOfField::render(View &view,
     bokeh_gather_lut_tx_.release();
     bokeh_scatter_lut_tx_.release();
 
-    hole_fill_color_tx_.acquire(half_res, GPU_RGBA16F);
-    hole_fill_weight_tx_.acquire(half_res, GPU_R16F);
+    hole_fill_color_tx_.acquire(half_res, GPU_RGBA16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE);
+    hole_fill_weight_tx_.acquire(half_res, GPU_R16F, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE);
 
     drw.submit(hole_fill_ps_, view);
 

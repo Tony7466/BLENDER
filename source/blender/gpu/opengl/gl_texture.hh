@@ -85,6 +85,11 @@ class GLTexture : public Texture {
   /* TODO(fclem): Legacy. Should be removed at some point. */
   uint gl_bindcode_get() const override;
 
+  void bind_as_ssbo(uint binding) override { 
+    /* NOTE: Feature unsupported by OpenGL backend. */
+    BLI_assert_unreachable();
+  };
+
   /**
    * Pre-generate, setup all possible samplers and cache them in the samplers_state_cache_ and
    * custom_samplers_state_cache_ arrays. This is done to avoid the runtime cost associated with

@@ -148,6 +148,7 @@ struct ResourceBind {
     UniformAsStorageBuf,
     VertexAsStorageBuf,
     IndexAsStorageBuf,
+    TextureAsStorageBuf,
   } type;
 
   union {
@@ -188,6 +189,10 @@ struct ResourceBind {
       : slot(slot_), is_reference(false), type(Type::IndexAsStorageBuf), index_buf(res){};
   ResourceBind(int slot_, GPUIndexBuf **res, Type /* type */)
       : slot(slot_), is_reference(true), type(Type::IndexAsStorageBuf), index_buf_ref(res){};
+  ResourceBind(int slot_, GPUTexture *res, Type /* type */)
+      : slot(slot_), is_reference(false), type(Type::TextureAsStorageBuf), texture(res){};
+  ResourceBind(int slot_, GPUTexture **res, Type /* type */)
+      : slot(slot_), is_reference(true), type(Type::TextureAsStorageBuf), texture_ref(res){};
   ResourceBind(int slot_, draw::Image *res)
       : slot(slot_), is_reference(false), type(Type::Image), texture(draw::as_texture(res)){};
   ResourceBind(int slot_, draw::Image **res)

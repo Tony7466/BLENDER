@@ -312,6 +312,10 @@ class PassBase {
   void bind_ssbo(const char *name, GPUIndexBuf **buffer);
   void bind_ssbo(int slot, GPUIndexBuf *buffer);
   void bind_ssbo(int slot, GPUIndexBuf **buffer);
+  void bind_ssbo(const char *name, GPUTexture *texture);
+  void bind_ssbo(const char *name, GPUTexture **texture);
+  void bind_ssbo(int slot, GPUTexture *texture);
+  void bind_ssbo(int slot, GPUTexture **texture);
   void bind_ubo(const char *name, GPUUniformBuf *buffer);
   void bind_ubo(const char *name, GPUUniformBuf **buffer);
   void bind_ubo(int slot, GPUUniformBuf *buffer);
@@ -907,6 +911,16 @@ template<class T> inline void PassBase<T>::bind_ssbo(const char *name, GPUIndexB
   this->bind_ssbo(GPU_shader_get_ssbo_binding(shader_, name), buffer);
 }
 
+template<class T> inline void PassBase<T>::bind_ssbo(const char *name, GPUTexture *texture)
+{
+  this->bind_ssbo(GPU_shader_get_ssbo_binding(shader_, name), texture);
+}
+
+template<class T> inline void PassBase<T>::bind_ssbo(const char *name, GPUTexture **texture)
+{
+  this->bind_ssbo(GPU_shader_get_ssbo_binding(shader_, name), texture);
+}
+
 template<class T> inline void PassBase<T>::bind_ubo(const char *name, GPUUniformBuf *buffer)
 {
   this->bind_ubo(GPU_shader_get_ubo_binding(shader_, name), buffer);
@@ -948,6 +962,18 @@ template<class T> inline void PassBase<T>::bind_ssbo(int slot, GPUUniformBuf **b
 {
   create_command(Type::ResourceBind).resource_bind = {
       slot, buffer, ResourceBind::Type::UniformAsStorageBuf};
+}
+
+template<class T> inline void PassBase<T>::bind_ssbo(int slot, GPUTexture *texture)
+{
+  create_command(Type::ResourceBind).resource_bind = {
+      slot, texture, ResourceBind::Type::TextureAsStorageBuf};
+}
+
+template<class T> inline void PassBase<T>::bind_ssbo(int slot, GPUTexture **texture)
+{
+  create_command(Type::ResourceBind).resource_bind = {
+      slot, texture, ResourceBind::Type::TextureAsStorageBuf};
 }
 
 template<class T> inline void PassBase<T>::bind_ssbo(int slot, GPUVertBuf *buffer)

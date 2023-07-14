@@ -265,6 +265,9 @@ class MTLTexture : public Texture {
   /* Remove once no longer required -- will just return 0 for now in MTL path. */
   uint gl_bindcode_get() const override;
 
+  /* Bind texture using backing storage with storage buffer. */
+  void bind_as_ssbo(uint binding) override;
+
   bool is_format_srgb();
   bool texture_is_baked();
   const char *get_name()

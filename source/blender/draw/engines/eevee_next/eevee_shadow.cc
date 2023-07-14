@@ -657,15 +657,33 @@ void ShadowModule::init()
                       int2(SHADOW_PAGE_PER_ROW, shadow_page_len_ / SHADOW_PAGE_PER_ROW);
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  if (atlas_tx_.ensure_2d(atlas_type, atlas_extent, tex_usage)) {
-    /* Global update. */
-    do_full_update = true;
-  }
 
-  /* Make allocation safe. Avoids crash later on. */
-  if (!atlas_tx_.is_valid()) {
-    atlas_tx_.ensure_2d(atlas_type, int2(1));
-    inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
+  /* Note: Metal backend MUST initialize shadow atlas as a buffer backed texture as we rely on buffer atomics for updating data. */
+  if(GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* Initialize shadow atlas using standard 2D texture. */
+    if (atlas_tx_.ensure_2d_buffer(atlas_type, atlas_extent, tex_usage)) {
+      /* Global update. */
+      do_full_update = true;
+    }
+
+    /* Make allocation safe. Avoids crash later on. */
+    if (!atlas_tx_.is_valid()) {
+      atlas_tx_.ensure_2d_buffer(atlas_type, int2(1));
+      inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
+    }
+
+  } else {
+    /* Initialize shadow atlas using standard 2D texture. */
+    if (atlas_tx_.ensure_2d(atlas_type, atlas_extent, tex_usage)) {
+      /* Global update. */
+      do_full_update = true;
+    }
+
+    /* Make allocation safe. Avoids crash later on. */
+    if (!atlas_tx_.is_valid()) {
+      atlas_tx_.ensure_2d(atlas_type, int2(1));
+      inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
+    }
   }
 
   /* Read end of the swap-chain to avoid stall. */
@@ -919,7 +937,7 @@ void ShadowModule::end_sync()
         /** Free unused tiles from tile-maps not used by any shadow. */
         if (tilemap_pool.tilemaps_unused.size() > 0) {
           sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_unused);
-          sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_unused.size()));
+          //sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_unused.size()));
         }
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
@@ -1131,7 +1149,15 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* TODO(Metal): Temporary hack to avoid crashing until attachment-less framebuffers are
+      * supported in the Metal backend. */
+    tmp_render_fb_tx_.ensure_2d(GPU_R16F, int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+    render_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(tmp_render_fb_tx_));
+  }
+  else {
+    render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+  }
 
   inst_.hiz_buffer.update();
 

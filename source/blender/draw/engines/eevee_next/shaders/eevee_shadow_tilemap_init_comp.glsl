@@ -58,7 +58,9 @@ void main()
   ivec2 tile_co = ivec2(gl_GlobalInvocationID.xy);
   ivec2 tile_shifted = tile_co + tilemap.grid_shift;
   /* Ensure value is shifted into positive range to avoid modulo on negative. */
-  ivec2 tile_wrapped = ivec2((ivec2(SHADOW_TILEMAP_RES) + tile_shifted) % SHADOW_TILEMAP_RES);
+  ivec2 tile_wrapped = ivec2((ivec2(SHADOW_TILEMAP_RES*SHADOW_TILEMAP_PER_ROW) + tile_shifted) % SHADOW_TILEMAP_RES);
+
+
 
   /* If this tile was shifted in and contains old information, update it.
    * Note that cubemap always shift all tiles on update. */
@@ -74,10 +76,15 @@ void main()
   for (int lod = 0; lod <= lod_max; lod++, lod_size >>= 1u) {
     bool thread_active = all(lessThan(tile_co, ivec2(lod_size)));
     ShadowTileDataPacked tile = 0;
-    int tile_load = shadow_tile_offset(tile_wrapped, tilemap.tiles_index, lod);
-    if (thread_active) {
-      tile = init_tile_data(tiles_buf[tile_load], do_update);
-    }
+    int tile_load = 0;
+    //if(tile_wrapped.x >= 0 && tile_wrapped.y >= 0){
+
+      tile_load = shadow_tile_offset(tile_wrapped, tilemap.tiles_index, lod);
+      if (thread_active) {
+        tile = init_tile_data(tiles_buf[tile_load], do_update);
+      }
+
+    //}
 
     /* Uniform control flow for barrier. Needed to avoid race condition on shifted loads. */
     barrier();

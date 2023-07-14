@@ -1189,7 +1189,7 @@ void gpu::MTLTexture::generate_mipmap()
   }
 
   /* Ensure mipmaps. */
-  this->ensure_mipmaps(9999);
+  this->ensure_mipmaps(mtl_max_mips_);
 
   /* Ensure texture is baked. */
   this->ensure_baked();
@@ -2198,6 +2198,21 @@ void gpu::MTLTexture::reset()
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Alias resource access to buffer backed content using Storage Buffer.
+ * \{ */
+
+void MTLTexture::bind_as_ssbo(uint binding)
+{
+  BLI_assert_msg(
+      buffer_backed_,
+      "Resource must have been created as a buffer backed resource to support SSBO wrapping.");
+
+  /* TODO: Bind texture as storagebuf. */
+  printf("[BINDING TEXTURE AS SSBO]\n");
+}
+
+/** \} */
 /* -------------------------------------------------------------------- */
 /** \name SRGB Handling.
  * \{ */

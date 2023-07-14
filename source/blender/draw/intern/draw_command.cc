@@ -67,6 +67,9 @@ void ResourceBind::execute() const
     case ResourceBind::Type::IndexAsStorageBuf:
       GPU_indexbuf_bind_as_ssbo(is_reference ? *index_buf_ref : index_buf, slot);
       break;
+    case ResourceBind::Type::TextureAsStorageBuf:
+      GPU_texture_bind_as_ssbo(is_reference ? *texture_ref : texture, slot);
+      break;
   }
 }
 
@@ -284,6 +287,9 @@ std::string ResourceBind::serialize() const
              std::to_string(slot) + ")";
     case Type::IndexAsStorageBuf:
       return std::string(".bind_indexbuf_as_ssbo") + (is_reference ? "_ref" : "") + "(" +
+             std::to_string(slot) + ")";
+    case Type::TextureAsStorageBuf:
+      return std::string(".bind_texture_as_ssbo") + (is_reference ? "_ref" : "") + "(" +
              std::to_string(slot) + ")";
     default:
       BLI_assert_unreachable();

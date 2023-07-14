@@ -101,7 +101,7 @@ bool debug_tilemaps(vec3 P, LightData light)
   if ((px.y < SHADOW_TILEMAP_RES) && (tilemap_index <= light_tilemap_max_get(light))) {
     /* Debug actual values in the tilemap buffer. */
     ShadowTileMapData tilemap = tilemaps_buf[tilemap_index];
-    int tile_index = shadow_tile_offset(px % SHADOW_TILEMAP_RES, tilemap.tiles_index, 0);
+    int tile_index = shadow_tile_offset((px+SHADOW_TILEMAP_RES) % SHADOW_TILEMAP_RES, tilemap.tiles_index, 0);
     ShadowTileData tile = shadow_tile_unpack(tiles_buf[tile_index]);
     /* Leave 1 px border between tilemaps. */
     if (!any(equal(ivec2(gl_FragCoord.xy) % (SHADOW_TILEMAP_RES * debug_tile_size_px), ivec2(0))))

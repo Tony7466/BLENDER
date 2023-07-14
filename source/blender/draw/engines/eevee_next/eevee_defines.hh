@@ -160,6 +160,7 @@
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
+#define SHADOW_ATLAS_BUF_SLOT 8
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0

@@ -592,6 +592,13 @@ GPUTexture *GPU_texture_create_2d(const char *name,
                                   eGPUTextureFormat format,
                                   eGPUTextureUsage usage,
                                   const float *data);
+GPUTexture *GPU_texture_create_2d_buffer(const char *name,
+                                         int width,
+                                         int height,
+                                         int mip_len,
+                                         eGPUTextureFormat format,
+                                         eGPUTextureUsage usage,
+                                         const float *data);
 GPUTexture *GPU_texture_create_2d_array(const char *name,
                                         int width,
                                         int height,
@@ -1059,6 +1066,18 @@ unsigned int GPU_texture_memory_usage_get(void);
  * Update sampler states depending on user settings.
  */
 void GPU_samplers_update(void);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Buffer-backed textures
+ *
+ * When a texture resource requires usage as a storage buffer simultaneously, we
+ * can utilise functionality to fetch a storage buffer sharing the same backing
+ * resource.
+ * \{ */
+
+void GPU_texture_bind_as_ssbo(GPUTexture *tex, uint slot);
 
 /** \} */
 

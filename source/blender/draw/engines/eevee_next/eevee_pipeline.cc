@@ -63,7 +63,7 @@ void BackgroundPipeline::render(View &view)
 void WorldPipeline::sync(GPUMaterial *gpumat)
 {
   const int2 extent(1);
-  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE;
+  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
   dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent, usage);
   dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);
@@ -122,6 +122,9 @@ void ShadowPipeline::sync()
   surface_ps_.bind_image(SHADOW_ATLAS_SLOT, &inst_.shadows.atlas_tx_);
   surface_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
   surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+  if(GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    surface_ps_.bind_ssbo(SHADOW_ATLAS_BUF_SLOT, &inst_.shadows.atlas_tx_);
+  }
   inst_.sampling.bind_resources(&surface_ps_);
 
   surface_ps_.framebuffer_set(&inst_.shadows.render_fb_);

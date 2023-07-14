@@ -13,7 +13,7 @@ int shadow_tile_index(ivec2 tile)
 
 ivec2 shadow_tile_coord(int tile_index)
 {
-  return ivec2(tile_index % SHADOW_TILEMAP_RES, tile_index / SHADOW_TILEMAP_RES);
+  return ivec2((tile_index+SHADOW_TILEMAP_RES) % SHADOW_TILEMAP_RES, tile_index / SHADOW_TILEMAP_RES);
 }
 
 /* Return bottom left pixel position of the tilemap inside the tilemap atlas. */

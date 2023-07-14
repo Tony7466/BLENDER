@@ -61,6 +61,12 @@ class VKTexture : public Texture, public VKBindableResource {
   /* TODO(fclem): Legacy. Should be removed at some point. */
   uint gl_bindcode_get() const override;
 
+  void bind_as_ssbo(uint binding) override
+  {
+    /* NOTE: Feature unsupported by OpenGL backend. */
+    BLI_assert_unreachable();
+  }
+
   void bind(int location, shader::ShaderCreateInfo::Resource::BindType bind_type) override;
 
   VkImage vk_image_handle() const

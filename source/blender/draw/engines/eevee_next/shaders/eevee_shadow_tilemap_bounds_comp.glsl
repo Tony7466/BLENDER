@@ -20,9 +20,15 @@ void main()
 {
   uint index = gl_GlobalInvocationID.x;
   /* Keep uniform control flow. Do not return. */
-  index = min(index, uint(resource_len) - 1);
+  //index = min(index, uint(resource_len) - 1);
+  bool invalid = false;
+  if(int(index) >= int(resource_len-1)){
+    index = 0;
+    invalid = true;
+  }
 
   uint resource_id = casters_id_buf[index];
+  if(invalid){ resource_id = 0;}
   ObjectBounds bounds = bounds_buf[resource_id];
   IsectBox box = isect_data_setup(bounds.bounding_corners[0].xyz,
                                   bounds.bounding_corners[1].xyz,

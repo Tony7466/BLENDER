@@ -171,6 +171,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
            ImageType::UINT_2D,
            "shadow_atlas_img")
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
+    .storage_buf(SHADOW_ATLAS_BUF_SLOT, Qualifier::READ_WRITE, "uint", "shadow_atlas_buf[]")
     .fragment_source("eevee_surf_shadow_frag.glsl")
     .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
 
