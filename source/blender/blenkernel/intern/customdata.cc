@@ -62,6 +62,7 @@
 /* only for customdata_data_transfer_interp_normal_normals */
 #include "data_transfer_intern.h"
 
+using blender::BitVector;
 using blender::float2;
 using blender::ImplicitSharingInfo;
 using blender::IndexRange;
@@ -69,7 +70,6 @@ using blender::Set;
 using blender::Span;
 using blender::StringRef;
 using blender::Vector;
-using blender::BitVector;
 
 /* number of layers to add when growing a CustomData object */
 #define CUSTOMDATA_GROW 5
@@ -3930,7 +3930,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     }
   }
 
-  BitVector copied_layers(dest->totlayer, false);
+  BitVector<> copied_layers(dest->totlayer);
 
   for (int layer_src_i : IndexRange(source->totlayer)) {
     const CustomDataLayer &layer_src = source->layers[layer_src_i];
