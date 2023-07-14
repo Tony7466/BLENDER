@@ -830,8 +830,8 @@ static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
  */
 static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
 {
-  const char *filepath = (const char *)arg;
-  const int dialog_width = (int)(256.0f * UI_SCALE_FAC);
+  const char *filepath = static_cast<const char *>(arg);
+  const int dialog_width = int((256.0f * UI_SCALE_FAC));
 
   uiBlock *block = UI_block_begin(C, region, "file_open_loading_popup", UI_EMBOSS);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
@@ -869,7 +869,7 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
   BLI_path_split_file_part(filepath, filename, sizeof(filename));
   uiItemL(layout, filename, ICON_NONE);
 
-  uiItemL_ex(layout, N_("Opening. Please wait..."), ICON_NONE, true, false);
+  uiItemL_ex(layout, N_("Loading. Please wait..."), ICON_NONE, true, false);
 
   UI_block_bounds_set_centered(block, 10 * UI_SCALE_FAC);
 
@@ -1061,7 +1061,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     wmWindow *win = CTX_wm_window(C);
     bool win_was_null = (win == NULL);
     if (win_was_null) {
-      win = (wmWindow *)wm->windows.first;
+      win = static_cast<wmWindow *>(wm->windows.first);
       CTX_wm_window_set(C, win);
     }
     if (win != NULL) {
