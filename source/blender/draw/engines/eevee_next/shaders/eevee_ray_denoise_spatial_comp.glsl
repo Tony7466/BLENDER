@@ -158,7 +158,7 @@ void main()
   uint sample_count = 16u;
   float filter_size = 9.0;
 #if defined(RAYTRACE_REFRACT) || defined(RAYTRACE_REFLECT)
-  float filter_size_factor = closure.roughness * 8.0;
+  float filter_size_factor = saturate(closure.roughness * 8.0);
   sample_count = 1u + uint(15.0 * filter_size_factor + 0.5);
   /* NOTE: filter_size should never be greater than twice RAYTRACE_GROUP_SIZE. Otherwise, the
    * reconstruction can becomes ill defined since we don't know if further tiles are valids. */
@@ -167,8 +167,6 @@ void main()
     /* Filter at least 1 trace pixel to fight the undersampling. */
     filter_size = max(filter_size, 3.0);
     sample_count = max(sample_count, 5u);
-    /* Clamp to max allowed. The value 4 Seems to fix most issue of outside nan's being sampled. */
-    filter_size = min(filter_size, 4.0 * float(tile_size) / float(raytrace_buf.resolution_scale));
   }
   /* NOTE: Roughness is squared now. */
   closure.roughness = max(1e-3, sqr(closure.roughness));
