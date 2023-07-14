@@ -2341,7 +2341,7 @@ typedef struct NodesModifierData {
    */
   char *simulation_bake_directory;
 
-  char _pad[4];
+  int active_bake;
   int bake_num;
   NodesModifierBake *bake_by_id;
 

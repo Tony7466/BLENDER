@@ -67,6 +67,7 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "RNA_access.h"
@@ -1460,7 +1461,41 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  uiItemL(layout, "Test", ICON_NONE);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+
+  PointerRNA bakes_ptr;
+  RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBakes, nmd, &bakes_ptr);
+
+  uiTemplateList(layout,
+                 C,
+                 "DATA_UL_nodes_modifier_bake",
+                 "",
+                 ptr,
+                 "bakes",
+                 &bakes_ptr,
+                 "active_index",
+                 nullptr,
+                 3,
+                 5,
+                 UILST_LAYOUT_DEFAULT,
+                 0,
+                 UI_TEMPLATE_LIST_FLAG_NONE);
+}
+
+static void bake_list_item_draw(uiList * /*ui_list*/,
+                                const bContext * /*C*/,
+                                uiLayout *layout,
+                                PointerRNA * /*idataptr*/,
+                                PointerRNA *itemptr,
+                                int /*icon*/,
+                                PointerRNA * /*active_dataptr*/,
+                                const char * /*active_propname*/,
+                                int /*index*/,
+                                int /*flt_flag*/)
+{
+  NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
+  uiItemR(layout, itemptr, "directory", 0, "Directory", ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -1481,6 +1516,11 @@ static void panelRegister(ARegionType *region_type)
                              panel_type);
   modifier_subpanel_register(
       region_type, "bake", N_("Bake"), nullptr, bake_panel_draw, panel_type);
+
+  uiListType *bake_list = MEM_cnew<uiListType>(__func__);
+  STRNCPY(bake_list->idname, "DATA_UL_nodes_modifier_bake");
+  bake_list->draw_item = bake_list_item_draw;
+  WM_uilisttype_add(bake_list);
 }
 
 static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
