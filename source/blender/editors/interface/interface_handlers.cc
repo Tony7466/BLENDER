@@ -958,8 +958,8 @@ static void ui_apply_but_undo(uiBut *but)
     }
     else {
       ID *id = but->rnapoin.owner_id;
-      if (!ED_undo_is_legacy_compatible_for_property(static_cast<bContext *>(but->block->evil_C),
-                                                     id))
+      if (!ED_undo_is_legacy_compatible_for_property(
+              static_cast<bContext *>(but->block->evil_C), id, but->rnaprop))
       {
         skip_undo = true;
       }
@@ -969,10 +969,20 @@ static void ui_apply_but_undo(uiBut *but)
   if (skip_undo == false) {
     /* XXX: disable all undo pushes from UI changes from sculpt mode as they cause memfile undo
      * steps to be written which cause lag: #71434. */
-    if (BKE_paintmode_get_active_from_context(static_cast<bContext *>(but->block->evil_C)) ==
-        PaintMode::Sculpt)
-    {
-      skip_undo = true;
+    bContext *C = static_cast<bContext *>(but->block->evil_C);
+    PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
+
+    /* Paint modes that are based on the sculpt engine. */
+    if (ELEM(paint_mode, PaintMode::Sculpt, PaintMode::Vertex)) {
+      /* If the last step already was a memfile save, still push for changes
+       * to sculptable datablock properties to avoid over-undo. */
+      ID *id = but->rnapoin.owner_id;
+      UndoStep *undo_step = CTX_wm_manager(C)->undo_stack->step_active;
+      if (!id || !undo_step || undo_step->type != BKE_UNDOSYS_TYPE_MEMFILE ||
+          !ELEM(GS(id->name), ID_ME, ID_OB))
+      {
+        skip_undo = true;
+      }
     }
   }
 
