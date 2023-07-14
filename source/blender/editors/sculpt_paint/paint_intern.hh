@@ -560,7 +560,7 @@ static void paint_log(const char *fmt...)
   va_list args;
   va_start(args, fmt);
   vfprintf(paint_log_file, fmt, args);
-  vprintf(fmt, args);
+  //vprintf(fmt, args);
   va_end(args);
 }
 
