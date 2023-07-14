@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -24,8 +26,8 @@ using namespace Freestyle;
 PyDoc_STRVAR(FEdgeSmooth_doc,
              "Class hierarchy: :class:`Interface1D` > :class:`FEdge` > :class:`FEdgeSmooth`\n"
              "\n"
-             "Class defining a smooth edge.  This kind of edge typically runs across\n"
-             "a face of the input mesh.  It can be a silhouette, a ridge or valley,\n"
+             "Class defining a smooth edge. This kind of edge typically runs across\n"
+             "a face of the input mesh. It can be a silhouette, a ridge or valley,\n"
              "a suggestive contour.\n"
              "\n"
              ".. method:: __init__()\n"

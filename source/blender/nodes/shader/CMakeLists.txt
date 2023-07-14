@@ -1,23 +1,20 @@
+# SPDX-FileCopyrightText: 2021 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2021 Blender Foundation
 
 set(INC
   .
   ..
   ../intern
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../depsgraph
   ../../editors/include
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../intern/sky/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -32,7 +29,6 @@ set(SRC
   nodes/node_shader_bevel.cc
   nodes/node_shader_blackbody.cc
   nodes/node_shader_brightness.cc
-  nodes/node_shader_bsdf_anisotropic.cc
   nodes/node_shader_bsdf_diffuse.cc
   nodes/node_shader_bsdf_glass.cc
   nodes/node_shader_bsdf_glossy.cc
@@ -129,7 +125,11 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_functions
+  PRIVATE bf::intern::guardedalloc
   bf_intern_sky
   bf_nodes
 )

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -105,16 +106,10 @@ static void deformVerts(ModifierData *md,
                         int verts_num)
 {
   CurveModifierData *cmd = (CurveModifierData *)md;
-  Mesh *mesh_src = nullptr;
-
-  if (ctx->object->type == OB_MESH && cmd->name[0] != '\0') {
-    /* mesh_src is only needed for vgroups. */
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
-  }
 
   const MDeformVert *dvert = nullptr;
   int defgrp_index = -1;
-  MOD_get_vgroup(ctx->object, mesh_src, cmd->name, &dvert, &defgrp_index);
+  MOD_get_vgroup(ctx->object, mesh, cmd->name, &dvert, &defgrp_index);
 
   /* Silly that defaxis and BKE_curve_deform_coords are off by 1
    * but leave for now to save having to call do_versions */
@@ -127,10 +122,6 @@ static void deformVerts(ModifierData *md,
                           defgrp_index,
                           cmd->flag,
                           cmd->defaxis - 1);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
 }
 
 static void deformVertsEM(ModifierData *md,
@@ -140,7 +131,7 @@ static void deformVertsEM(ModifierData *md,
                           float (*vertexCos)[3],
                           int verts_num)
 {
-  if (mesh != nullptr) {
+  if (mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_MDATA) {
     deformVerts(md, ctx, mesh, vertexCos, verts_num);
     return;
   }

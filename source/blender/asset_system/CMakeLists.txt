@@ -1,13 +1,11 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   intern
-  ../blenkernel
-  ../blenlib
-  ../makesdna
   ../../../intern/clog
-  ../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -37,11 +35,13 @@ set(SRC
   intern/utils.hh
 
   AS_asset_library.h
-  AS_asset_representation.h
 )
 
 set(LIB
-    bf_blenkernel
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -12,7 +14,6 @@
 
 struct PBVHGPUFormat;
 struct MLoopTri;
-struct MeshElemMap;
 
 /* Axis-aligned bounding box */
 struct BB {
@@ -156,10 +157,12 @@ struct PBVH {
   Mesh *mesh;
 
   /* NOTE: Normals are not `const` because they can be updated for drawing by sculpt code. */
-  float (*vert_normals)[3];
+  blender::MutableSpan<blender::float3> vert_normals;
   blender::MutableSpan<blender::float3> poly_normals;
   bool *hide_vert;
-  float (*vert_positions)[3];
+  blender::MutableSpan<blender::float3> vert_positions;
+  /** Local vertex positions owned by the PVBH when not sculpting base mesh positions directly. */
+  blender::Array<blender::float3> vert_positions_deformed;
   blender::OffsetIndices<int> polys;
   bool *hide_poly;
   /** Only valid for polygon meshes. */
@@ -206,7 +209,7 @@ struct PBVH {
   BMLog *bm_log;
   SubdivCCG *subdiv_ccg;
 
-  const MeshElemMap *pmap;
+  blender::GroupedSpan<int> pmap;
 
   CustomDataLayer *color_layer;
   eAttrDomain color_domain;

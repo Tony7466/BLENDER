@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -38,7 +39,7 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -576,10 +577,6 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
   }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
-
-  if (!ss->pmap) {
-    return;
-  }
 
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
@@ -1383,7 +1380,7 @@ static void SCULPT_OT_reveal_all(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-void ED_operatortypes_sculpt(void)
+void ED_operatortypes_sculpt()
 {
   WM_operatortype_append(SCULPT_OT_brush_stroke);
   WM_operatortype_append(SCULPT_OT_sculptmode_toggle);

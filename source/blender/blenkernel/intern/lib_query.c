@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation */
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -60,7 +61,7 @@ typedef struct LibraryForeachIDData {
   BLI_LINKSTACK_DECLARE(ids_todo, ID *);
 } LibraryForeachIDData;
 
-bool BKE_lib_query_foreachid_iter_stop(LibraryForeachIDData *data)
+bool BKE_lib_query_foreachid_iter_stop(const LibraryForeachIDData *data)
 {
   return (data->status & IDWALK_STOP) != 0;
 }
@@ -85,12 +86,12 @@ void BKE_lib_query_foreachid_process(LibraryForeachIDData *data, ID **id_pp, int
   }
 
   const int callback_return = data->callback(
-      &(struct LibraryIDLinkCallbackData){.user_data = data->user_data,
-                                          .bmain = data->bmain,
-                                          .owner_id = data->owner_id,
-                                          .self_id = data->self_id,
-                                          .id_pointer = id_pp,
-                                          .cb_flag = cb_flag});
+      &(LibraryIDLinkCallbackData){.user_data = data->user_data,
+                                   .bmain = data->bmain,
+                                   .owner_id = data->owner_id,
+                                   .self_id = data->self_id,
+                                   .id_pointer = id_pp,
+                                   .cb_flag = cb_flag});
   if (flag & IDWALK_READONLY) {
     BLI_assert(*(id_pp) == old_id);
   }
@@ -106,7 +107,7 @@ void BKE_lib_query_foreachid_process(LibraryForeachIDData *data, ID **id_pp, int
   }
 }
 
-int BKE_lib_query_foreachid_process_flags_get(LibraryForeachIDData *data)
+int BKE_lib_query_foreachid_process_flags_get(const LibraryForeachIDData *data)
 {
   return data->flag;
 }
@@ -464,6 +465,8 @@ uint64_t BKE_library_id_can_use_filter_id(const ID *owner_id, const bool include
       return FILTER_ID_IM;
     case ID_GD_LEGACY:
       return FILTER_ID_MA;
+    case ID_GP:
+      return FILTER_ID_GP | FILTER_ID_MA;
     case ID_WS:
       return FILTER_ID_SCE;
     case ID_CV:
@@ -472,8 +475,6 @@ uint64_t BKE_library_id_can_use_filter_id(const ID *owner_id, const bool include
       return FILTER_ID_MA;
     case ID_VO:
       return FILTER_ID_MA;
-    case ID_SIM:
-      return FILTER_ID_OB | FILTER_ID_IM;
     case ID_WM:
       return FILTER_ID_SCE | FILTER_ID_WS;
     case ID_IM:
@@ -719,7 +720,7 @@ static bool lib_query_unused_ids_tag_recurse(Main *bmain,
   if (ELEM(GS(id->name), ID_IM)) {
     /* Images which have a 'viewer' source (e.g. render results) should not be considered as
      * orphaned/unused data. */
-    Image *image = (Image *)id;
+    const Image *image = (Image *)id;
     if (image->source == IMA_SRC_VIEWER) {
       id_relations->tags |= MAINIDRELATIONS_ENTRY_TAGS_PROCESSED;
       return false;

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -37,7 +39,7 @@ static char IncreasingThicknessShader___doc__[] =
     "   Assigns thicknesses values such as the thickness increases from a\n"
     "   thickness value A to a thickness value B between the first vertex\n"
     "   to the midpoint vertex and then decreases from B to a A between\n"
-    "   this midpoint vertex and the last vertex.  The thickness is\n"
+    "   this midpoint vertex and the last vertex. The thickness is\n"
     "   linearly interpolated from A to B.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"

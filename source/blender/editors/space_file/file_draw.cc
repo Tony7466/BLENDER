@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -11,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "AS_asset_representation.h"
+#include "AS_asset_representation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops_types.h"
@@ -38,7 +39,6 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "ED_asset_handle.h"
 #include "ED_fileselect.h"
 #include "ED_screen.h"
 
@@ -116,9 +116,9 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
 
 static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
-  const AssetRepresentation *asset = static_cast<AssetRepresentation *>(argN);
-  std::string complete_string = AS_asset_representation_name_get(asset);
-  const AssetMetaData &meta_data = *AS_asset_representation_metadata_get(asset);
+  const auto *asset = static_cast<blender::asset_system::AssetRepresentation *>(argN);
+  std::string complete_string = asset->get_name();
+  const AssetMetaData &meta_data = asset->get_metadata();
   if (meta_data.description) {
     complete_string += '\n';
     complete_string += meta_data.description;
@@ -141,7 +141,7 @@ static void file_but_enable_drag(uiBut *but,
                                  const SpaceFile *sfile,
                                  const FileDirEntry *file,
                                  const char *path,
-                                 ImBuf *preview_image,
+                                 const ImBuf *preview_image,
                                  int icon,
                                  float scale)
 {
@@ -155,17 +155,10 @@ static void file_but_enable_drag(uiBut *but,
   }
   else if (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS &&
            (file->typeflag & FILE_TYPE_ASSET) != 0) {
-    char blend_path[FILE_MAX_LIBEXTRA];
-    if (BKE_blendfile_library_path_explode(path, blend_path, nullptr, nullptr)) {
-      const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
-      BLI_assert(import_method > -1);
+    const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
+    BLI_assert(import_method > -1);
 
-      AssetHandle asset{};
-      asset.file_data = file;
-
-      UI_but_drag_set_asset(
-          but, &asset, BLI_strdup(blend_path), import_method, icon, preview_image, scale);
-    }
+    UI_but_drag_set_asset(but, file->asset, import_method, icon, preview_image, scale);
   }
   else if (preview_image) {
     UI_but_drag_set_image(but, path, icon, preview_image, scale);
@@ -311,7 +304,7 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
                                       const FileDirEntry *file,
                                       const char *path,
                                       const rcti *tile_draw_rect,
-                                      ImBuf *preview_image,
+                                      const ImBuf *preview_image,
                                       const int icon,
                                       const float scale)
 {
@@ -345,10 +338,11 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
   }
 }
 
-static void file_draw_preview(const FileDirEntry *file,
+static void file_draw_preview(const FileList *files,
+                              const FileDirEntry *file,
                               const rcti *tile_draw_rect,
                               const float icon_aspect,
-                              ImBuf *imb,
+                              const ImBuf *imb,
                               const int icon,
                               FileLayout *layout,
                               const bool is_icon,
@@ -363,9 +357,10 @@ static void file_draw_preview(const FileDirEntry *file,
   float scaledx, scaledy;
   float scale;
   int ex, ey;
-  bool show_outline = !is_icon &&
-                      (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
+  bool show_outline = !is_icon && (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_OBJECT_IO |
+                                                     FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
+  const bool is_loading = !filelist_is_ready(files) || file->flags & FILE_ENTRY_PREVIEW_LOADING;
 
   BLI_assert(imb != nullptr);
 
@@ -405,21 +400,26 @@ static void file_draw_preview(const FileDirEntry *file,
 
   /* the large image */
 
-  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float document_img_col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
     if (file->typeflag & FILE_TYPE_DIR) {
-      UI_GetThemeColor4fv(TH_ICON_FOLDER, col);
+      UI_GetThemeColor4fv(TH_ICON_FOLDER, document_img_col);
     }
     else {
-      UI_GetThemeColor4fv(TH_TEXT, col);
+      UI_GetThemeColor4fv(TH_TEXT, document_img_col);
     }
   }
   else if (file->typeflag & FILE_TYPE_FTFONT) {
-    UI_GetThemeColor4fv(TH_TEXT, col);
+    UI_GetThemeColor4fv(TH_TEXT, document_img_col);
   }
 
   if (dimmed) {
-    col[3] *= 0.3f;
+    document_img_col[3] *= 0.3f;
+  }
+
+  if (!is_icon && ELEM(file->typeflag, FILE_TYPE_IMAGE, FILE_TYPE_OBJECT_IO)) {
+    /* Draw checker pattern behind image previews in case they have transparency. */
+    imm_draw_box_checker_2d(float(xco), float(yco), float(xco + ex), float(yco + ey));
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
@@ -427,20 +427,23 @@ static void file_draw_preview(const FileDirEntry *file,
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
 
-  IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-  immDrawPixelsTexTiled_scaling(&state,
-                                float(xco),
-                                float(yco),
-                                imb->x,
-                                imb->y,
-                                GPU_RGBA8,
-                                true,
-                                imb->rect,
-                                scale,
-                                scale,
-                                1.0f,
-                                1.0f,
-                                col);
+  if (!is_loading) {
+    /* Don't show outer document image if loading - too flashy. */
+    IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
+    immDrawPixelsTexTiled_scaling(&state,
+                                  float(xco),
+                                  float(yco),
+                                  imb->x,
+                                  imb->y,
+                                  GPU_RGBA8,
+                                  true,
+                                  imb->byte_buffer.data,
+                                  scale,
+                                  scale,
+                                  1.0f,
+                                  1.0f,
+                                  document_img_col);
+  }
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -450,18 +453,22 @@ static void file_draw_preview(const FileDirEntry *file,
     const float icon_size = 16.0f / icon_aspect * UI_SCALE_FAC;
     float icon_opacity = 0.3f;
     uchar icon_color[4] = {0, 0, 0, 255};
-    float bgcolor[4];
-    UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
-    if (rgb_to_grayscale(bgcolor) < 0.5f) {
+    if (rgb_to_grayscale(document_img_col) < 0.5f) {
       icon_color[0] = 255;
       icon_color[1] = 255;
       icon_color[2] = 255;
     }
+
+    if (is_loading) {
+      /* Contrast with background since we are not showing the large document image. */
+      UI_GetThemeColor4ubv(TH_TEXT, icon_color);
+    }
+
     icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
     icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(icon_x,
                     icon_y,
-                    icon,
+                    is_loading ? ICON_TEMP : icon,
                     icon_aspect / UI_SCALE_FAC,
                     icon_opacity,
                     0.0f,
@@ -516,7 +523,7 @@ static void file_draw_preview(const FileDirEntry *file,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
   }
-  else if (icon && !is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) {
+  else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading)) {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
@@ -567,7 +574,7 @@ static void file_draw_preview(const FileDirEntry *file,
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.15f};
     float bgcolor[4];
     UI_GetThemeColor4fv(TH_BACK, bgcolor);
     if (rgb_to_grayscale(bgcolor) > 0.5f) {
@@ -576,7 +583,7 @@ static void file_draw_preview(const FileDirEntry *file,
       border_color[2] = 0.0f;
     }
     immUniformColor4fv(border_color);
-    imm_draw_box_wire_2d(pos, float(xco), float(yco), float(xco + ex), float(yco + ey));
+    imm_draw_box_wire_2d(pos, float(xco), float(yco), float(xco + ex + 1), float(yco + ey + 1));
     immUnbindProgram();
   }
 
@@ -608,7 +615,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
       errno = 0;
       if ((BLI_rename(orgname, newname) != 0) || !BLI_exists(newname)) {
         WM_reportf(RPT_ERROR, "Could not rename: %s", errno ? strerror(errno) : "unknown error");
-        WM_report_banner_show();
+        WM_report_banner_show(wm, win);
       }
       else {
         /* If rename is successful, scroll to newly renamed entry. */
@@ -911,7 +918,6 @@ void file_draw_list(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
   FileList *files = sfile->files;
   FileDirEntry *file;
-  ImBuf *imb;
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   int numfiles;
   int numfiles_layout;
@@ -973,13 +979,13 @@ void file_draw_list(const bContext *C, ARegion *region)
                                     !filelist_cache_previews_done(files);
       //          printf("%s: preview task: %d\n", __func__, previews_running);
       if (previews_running && !sfile->previews_timer) {
-        sfile->previews_timer = WM_event_add_timer_notifier(
+        sfile->previews_timer = WM_event_timer_add_notifier(
             wm, win, NC_SPACE | ND_SPACE_FILE_PREVIEW, 0.01);
       }
       if (!previews_running && sfile->previews_timer) {
         /* Preview is not running, no need to keep generating update events! */
         //              printf("%s: Inactive preview task, sleeping!\n", __func__);
-        WM_event_remove_timer_notifier(wm, win, sfile->previews_timer);
+        WM_event_timer_remove_notifier(wm, win, sfile->previews_timer);
         sfile->previews_timer = nullptr;
       }
     }
@@ -1028,14 +1034,15 @@ void file_draw_list(const bContext *C, ARegion *region)
     if (FILE_IMGDISPLAY == params->display) {
       const int icon = filelist_geticon(files, i, false);
       is_icon = 0;
-      imb = filelist_getimage(files, i);
+      const ImBuf *imb = filelist_getimage(files, i);
       if (!imb) {
         imb = filelist_geticon_image(files, i);
         is_icon = 1;
       }
 
       float scale = 0;
-      file_draw_preview(file,
+      file_draw_preview(files,
+                        file,
                         &tile_draw_rect,
                         thumb_icon_aspect,
                         imb,

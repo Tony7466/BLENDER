@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 remove_strict_flags()
 find_file(OPENCOLLADA_ANIMATION_CLIP
@@ -20,16 +21,12 @@ unset(OPENCOLLADA_ANIMATION_CLIP CACHE)
 
 set(INC
   .
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../depsgraph
   ../../editors/include
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../ikplugin
   ../../../../intern/iksolver/extern
   ../../bmesh
@@ -116,6 +113,10 @@ set(LIB
   ${OPENCOLLADA_LIBRARIES}
   ${PCRE_LIBRARIES}
   ${XML2_LIBRARIES}
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_BUILDINFO)

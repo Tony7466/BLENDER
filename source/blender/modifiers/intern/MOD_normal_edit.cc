@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -484,7 +486,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                     (enmd->mix_factor == 1.0f) && (enmd->defgrp_name[0] == '\0') &&
                                     (enmd->mix_limit == float(M_PI)));
 
-  /* Do not run that modifier at all if autosmooth is disabled! */
+  /* Do not run that modifier at all if auto-smooth is disabled! */
   if (!is_valid_target_with_error(ctx->object, enmd) || mesh->totloop == 0) {
     return mesh;
   }
@@ -646,7 +648,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
   walk(userData, ob, (ID **)&enmd->target, IDWALK_CB_NOP);
 }
 
-static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   NormalEditModifierData *enmd = (NormalEditModifierData *)md;
 

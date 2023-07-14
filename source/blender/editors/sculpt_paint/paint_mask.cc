@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -33,7 +34,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
 #include "BKE_subsurf.h"
 
@@ -784,7 +785,7 @@ static void sculpt_gesture_init_face_set_properties(SculptGestureContext *sgcont
   sgcontext->operation = reinterpret_cast<SculptGestureOperation *>(
       MEM_cnew<SculptGestureFaceSetOperation>(__func__));
 
-  sgcontext->ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
+  sgcontext->ss->face_sets = BKE_sculpt_face_sets_ensure(sgcontext->vc.obact);
 
   SculptGestureFaceSetOperation *face_set_operation = (SculptGestureFaceSetOperation *)
                                                           sgcontext->operation;
@@ -1404,8 +1405,7 @@ static void sculpt_gesture_trim_begin(bContext *C, SculptGestureContext *sgconte
 {
   Object *object = sgcontext->vc.obact;
   SculptSession *ss = object->sculpt;
-  Mesh *mesh = (Mesh *)object->data;
-  ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
+  ss->face_sets = BKE_sculpt_face_sets_ensure(object);
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   sculpt_gesture_trim_calculate_depth(sgcontext);
@@ -1542,7 +1542,7 @@ static void project_line_gesture_apply_task_cb(void *__restrict userdata,
       continue;
     }
     add_v3_v3(vd.co, disp);
-    if (vd.vert_positions) {
+    if (vd.is_mesh) {
       BKE_pbvh_vert_tag_update_normal(sgcontext->ss->pbvh, vd.vertex);
     }
     any_updated = true;

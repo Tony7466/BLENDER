@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -14,7 +15,6 @@
 #include "DNA_view3d_types.h"
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
@@ -583,28 +583,6 @@ static int mesh_customdata_clear_exec__internal(bContext *C,
   return OPERATOR_CANCELLED;
 }
 
-static int mesh_customdata_add_exec__internal(bContext *C, char htype, const eCustomDataType type)
-{
-  Mesh *mesh = ED_mesh_context(C);
-
-  int tot;
-  CustomData *data = mesh_customdata_get_type(mesh, htype, &tot);
-
-  BLI_assert(CustomData_layertype_is_singleton(type) == true);
-
-  if (mesh->edit_mesh) {
-    BM_data_layer_add(mesh->edit_mesh->bm, data, type);
-  }
-  else {
-    CustomData_add_layer(data, eCustomDataType(type), CD_SET_DEFAULT, tot);
-  }
-
-  DEG_id_tag_update(&mesh->id, 0);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
-
-  return CustomData_has_layer(data, type) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
-}
-
 /* Clear Mask */
 static bool mesh_customdata_mask_clear_poll(bContext *C)
 {
@@ -825,275 +803,6 @@ void MESH_OT_customdata_custom_splitnormals_clear(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-/* Vertex bevel weight. */
-
-static int mesh_customdata_bevel_weight_vertex_state(bContext *C)
-{
-  const Object *object = ED_object_context(C);
-
-  if (object && object->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(object->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, vdata);
-      return CustomData_has_layer(data, CD_BWEIGHT);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_bevel_weight_vertex_add_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_vertex_state(C) == 0;
-}
-
-static int mesh_customdata_bevel_weight_vertex_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_VERT, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_vertex_add(wmOperatorType *ot)
-{
-  ot->name = "Add Vertex Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_vertex_add";
-  ot->description = "Add a vertex bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_vertex_add_exec;
-  ot->poll = mesh_customdata_bevel_weight_vertex_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_bevel_weight_vertex_clear_poll(bContext *C)
-{
-  return (mesh_customdata_bevel_weight_vertex_state(C) == 1);
-}
-
-static int mesh_customdata_bevel_weight_vertex_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_VERT, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_vertex_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Vertex Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_vertex_clear";
-  ot->description = "Clear the vertex bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_vertex_clear_exec;
-  ot->poll = mesh_customdata_bevel_weight_vertex_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/* Edge bevel weight. */
-
-static int mesh_customdata_bevel_weight_edge_state(bContext *C)
-{
-  const Object *ob = ED_object_context(C);
-
-  if (ob && ob->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(ob->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, edata);
-      return CustomData_has_layer(data, CD_BWEIGHT);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_bevel_weight_edge_add_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_edge_state(C) == 0;
-}
-
-static int mesh_customdata_bevel_weight_edge_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_EDGE, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_edge_add(wmOperatorType *ot)
-{
-  ot->name = "Add Edge Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_edge_add";
-  ot->description = "Add an edge bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_edge_add_exec;
-  ot->poll = mesh_customdata_bevel_weight_edge_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_bevel_weight_edge_clear_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_edge_state(C) == 1;
-}
-
-static int mesh_customdata_bevel_weight_edge_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_EDGE, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_edge_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Edge Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_edge_clear";
-  ot->description = "Clear the edge bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_edge_clear_exec;
-  ot->poll = mesh_customdata_bevel_weight_edge_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/* Edge crease. */
-
-static int mesh_customdata_crease_edge_state(bContext *C)
-{
-  const Object *ob = ED_object_context(C);
-
-  if (ob && ob->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(ob->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, edata);
-      return CustomData_has_layer(data, CD_CREASE);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_crease_edge_add_poll(bContext *C)
-{
-  return mesh_customdata_crease_edge_state(C) == 0;
-}
-
-static int mesh_customdata_crease_edge_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_EDGE, CD_CREASE);
-}
-
-void MESH_OT_customdata_crease_edge_add(wmOperatorType *ot)
-{
-  ot->name = "Add Edge Crease";
-  ot->idname = "MESH_OT_customdata_crease_edge_add";
-  ot->description = "Add an edge crease layer";
-
-  ot->exec = mesh_customdata_crease_edge_add_exec;
-  ot->poll = mesh_customdata_crease_edge_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_crease_edge_clear_poll(bContext *C)
-{
-  return mesh_customdata_crease_edge_state(C) == 1;
-}
-
-static int mesh_customdata_crease_edge_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_EDGE, CD_CREASE);
-}
-
-void MESH_OT_customdata_crease_edge_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Edge Crease";
-  ot->idname = "MESH_OT_customdata_crease_edge_clear";
-  ot->description = "Clear the edge crease layer";
-
-  ot->exec = mesh_customdata_crease_edge_clear_exec;
-  ot->poll = mesh_customdata_crease_edge_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/* Vertex crease. */
-
-static int mesh_customdata_crease_vertex_state(bContext *C)
-{
-  const Object *object = ED_object_context(C);
-
-  if (object && object->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(object->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, vdata);
-      return CustomData_has_layer(data, CD_CREASE);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_crease_vertex_add_poll(bContext *C)
-{
-  return mesh_customdata_crease_vertex_state(C) == 0;
-}
-
-static int mesh_customdata_crease_vertex_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_VERT, CD_CREASE);
-}
-
-void MESH_OT_customdata_crease_vertex_add(wmOperatorType *ot)
-{
-  ot->name = "Add Vertex Crease";
-  ot->idname = "MESH_OT_customdata_crease_vertex_add";
-  ot->description = "Add a vertex crease layer";
-
-  ot->exec = mesh_customdata_crease_vertex_add_exec;
-  ot->poll = mesh_customdata_crease_vertex_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_crease_vertex_clear_poll(bContext *C)
-{
-  return (mesh_customdata_crease_vertex_state(C) == 1);
-}
-
-static int mesh_customdata_crease_vertex_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_VERT, CD_CREASE);
-}
-
-void MESH_OT_customdata_crease_vertex_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Vertex Crease";
-  ot->idname = "MESH_OT_customdata_crease_vertex_clear";
-  ot->description = "Clear the vertex crease layer";
-
-  ot->exec = mesh_customdata_crease_vertex_clear_exec;
-  ot->poll = mesh_customdata_crease_vertex_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/************************** Add Geometry Layers *************************/
-
-void ED_mesh_update(Mesh *mesh, bContext *C, bool calc_edges, bool calc_edges_loose)
-{
-  if (calc_edges || ((mesh->totpoly || mesh->totface) && mesh->totedge == 0)) {
-    BKE_mesh_calc_edges(mesh, calc_edges, true);
-  }
-
-  if (calc_edges_loose) {
-    mesh->runtime->loose_edges_cache.tag_dirty();
-  }
-
-  /* Default state is not to have tessface's so make sure this is the case. */
-  BKE_mesh_tessface_clear(mesh);
-
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->poly_normals_dirty = true;
-
-  DEG_id_tag_update(&mesh->id, 0);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
-}
-
-bool ED_mesh_edge_is_loose(const Mesh *mesh, const int index)
-{
-  using namespace blender;
-  const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
-  return loose_edges.count > 0 && loose_edges.is_loose_bits[index];
-}
-
 static void mesh_add_verts(Mesh *mesh, int len)
 {
   using namespace blender;
@@ -1106,7 +815,7 @@ static void mesh_add_verts(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->vdata, &vdata, CD_MASK_MESH.vmask, CD_SET_DEFAULT, totvert);
   CustomData_copy_data(&mesh->vdata, &vdata, 0, 0, mesh->totvert);
 
-  if (!CustomData_get_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
+  if (!CustomData_has_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
     CustomData_add_layer_named(&vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, totvert, "position");
   }
 
@@ -1140,7 +849,7 @@ static void mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
-  if (!CustomData_get_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
+  if (!CustomData_has_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
     CustomData_add_layer_named(&edata, CD_PROP_INT32_2D, CD_SET_DEFAULT, totedge, ".edge_verts");
   }
 
@@ -1173,10 +882,10 @@ static void mesh_add_loops(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->ldata, &ldata, CD_MASK_MESH.lmask, CD_SET_DEFAULT, totloop);
   CustomData_copy_data(&mesh->ldata, &ldata, 0, 0, mesh->totloop);
 
-  if (!CustomData_get_layer_named(&ldata, CD_PROP_INT32, ".corner_vert")) {
+  if (!CustomData_has_layer_named(&ldata, CD_PROP_INT32, ".corner_vert")) {
     CustomData_add_layer_named(&ldata, CD_PROP_INT32, CD_SET_DEFAULT, totloop, ".corner_vert");
   }
-  if (!CustomData_get_layer_named(&ldata, CD_PROP_INT32, ".corner_edge")) {
+  if (!CustomData_has_layer_named(&ldata, CD_PROP_INT32, ".corner_edge")) {
     CustomData_add_layer_named(&ldata, CD_PROP_INT32, CD_SET_DEFAULT, totloop, ".corner_edge");
   }
 
@@ -1466,9 +1175,8 @@ void ED_mesh_split_faces(Mesh *mesh)
     }
   });
 
-  Vector<int64_t> split_indices;
-  const IndexMask split_mask = index_mask_ops::find_indices_from_virtual_array(
-      sharp_edges.index_range(), VArray<bool>::ForSpan(sharp_edges), 4096, split_indices);
+  IndexMaskMemory memory;
+  const IndexMask split_mask = IndexMask::from_bools(sharp_edges, memory);
   if (split_mask.is_empty()) {
     return;
   }

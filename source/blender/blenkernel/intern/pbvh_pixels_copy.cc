@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
@@ -12,7 +13,7 @@
 #include "IMB_imbuf_types.h"
 
 #include "BKE_image_wrappers.hh"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_pbvh_pixels.hh"
 
 #include "pbvh_intern.hh"

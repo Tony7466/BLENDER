@@ -1,16 +1,13 @@
+# SPDX-FileCopyrightText: 2008 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2008 Blender Foundation
 
 set(INC
   .
-  ../blenkernel
-  ../blenlib
   ../blentranslation
   ../gpu
   ../imbuf
-  ../makesdna
   ../makesrna
-  ../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -33,8 +30,11 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_gpu
-  bf_intern_guardedalloc
+  PRIVATE bf::intern::guardedalloc
 
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )

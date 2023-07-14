@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -12,7 +13,7 @@
 
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 
 #include "extract_mesh.hh"
 
@@ -162,8 +163,8 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
     BMesh *bm = em->bm;
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
-    struct BMLoop *(*looptris)[3] = em->looptris;
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMLoop *(*looptris)[3] = em->looptris;
     for (int i = 0; i < mr->tri_len; i++) {
       BMLoop **ltri = looptris[i];
       const int index = BM_elem_index_get(ltri[0]->f);
@@ -268,7 +269,7 @@ struct BVHTree_OverlapData {
 
 static bool bvh_overlap_cb(void *userdata, int index_a, int index_b, int /*thread*/)
 {
-  struct BVHTree_OverlapData *data = static_cast<struct BVHTree_OverlapData *>(userdata);
+  BVHTree_OverlapData *data = static_cast<BVHTree_OverlapData *>(userdata);
 
   if (UNLIKELY(data->looptri_polys[index_a] == data->looptri_polys[index_b])) {
     return false;
@@ -313,7 +314,7 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
     BVHTreeOverlap *overlap = BKE_bmbvh_overlap_self(bmtree, &overlap_len);
 
     if (overlap) {
@@ -342,7 +343,7 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BVHTree *tree = BKE_bvhtree_from_mesh_get(&treeData, mr->me, BVHTREE_FROM_LOOPTRI, 4);
 
-    struct BVHTree_OverlapData data = {};
+    BVHTree_OverlapData data = {};
     data.positions = mr->vert_positions;
     data.corner_verts = mr->corner_verts;
     data.looptris = mr->looptris;
@@ -393,7 +394,7 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
     BMesh *bm = em->bm;
     BMFace *f;
 
-    if (mr->bm_vert_coords != nullptr) {
+    if (!mr->bm_vert_coords.is_empty()) {
       BKE_editmesh_cache_ensure_poly_normals(em, mr->edit_data);
 
       /* Most likely this is already valid, ensure just in case.
@@ -414,9 +415,13 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
         do {
           const float *no_face;
           float no_corner[3];
-          if (mr->bm_vert_coords != nullptr) {
+          if (!mr->bm_vert_coords.is_empty()) {
             no_face = mr->bm_poly_normals[f_index];
-            BM_loop_calc_face_normal_safe_vcos(l_iter, no_face, mr->bm_vert_coords, no_corner);
+            BM_loop_calc_face_normal_safe_vcos(
+                l_iter,
+                no_face,
+                reinterpret_cast<const float(*)[3]>(mr->bm_vert_coords.data()),
+                no_corner);
           }
           else {
             no_face = f->no;

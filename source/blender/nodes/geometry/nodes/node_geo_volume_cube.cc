@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -17,6 +19,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 namespace blender::nodes::node_geo_volume_cube_cc {
 
@@ -78,7 +81,7 @@ class Grid3DFieldContext : public FieldContext {
   }
 
   GVArray get_varray_for_input(const FieldInput &field_input,
-                               const IndexMask /*mask*/,
+                               const IndexMask & /*mask*/,
                                ResourceScope & /*scope*/) const
   {
     const bke::AttributeFieldInput *attribute_field_input =

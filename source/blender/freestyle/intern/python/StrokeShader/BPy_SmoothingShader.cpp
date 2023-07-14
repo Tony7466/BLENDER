@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -50,8 +52,8 @@ static char SmoothingShader___doc__[] =
     ".. method:: shade(stroke)\n"
     "\n"
     "   Smooths the stroke by moving the vertices to make the stroke\n"
-    "   smoother.  Uses curvature flow to converge towards a curve of\n"
-    "   constant curvature.  The diffusion method we use is anisotropic to\n"
+    "   smoother. Uses curvature flow to converge towards a curve of\n"
+    "   constant curvature. The diffusion method we use is anisotropic to\n"
     "   prevent the diffusion across corners.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"

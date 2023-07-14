@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -28,8 +30,8 @@ static char PolygonalizationShader___doc__[] =
     "   Builds a PolygonalizationShader object.\n"
     "\n"
     "   :arg error: The error we want our polygonal approximation to have\n"
-    "      with respect to the original geometry.  The smaller, the closer\n"
-    "      the new stroke is to the original one.  This error corresponds to\n"
+    "      with respect to the original geometry. The smaller, the closer\n"
+    "      the new stroke is to the original one. This error corresponds to\n"
     "      the maximum distance between the new stroke and the old one.\n"
     "   :type error: float\n"
     "\n"

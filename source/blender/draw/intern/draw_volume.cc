@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -80,7 +81,7 @@ static void drw_volume_globals_init()
   memset(g_data.dummy_grid_mat, 0, sizeof(g_data.dummy_grid_mat));
 }
 
-void DRW_volume_free(void)
+void DRW_volume_free()
 {
   GPU_TEXTURE_FREE_SAFE(g_data.dummy_zero);
   GPU_TEXTURE_FREE_SAFE(g_data.dummy_one);

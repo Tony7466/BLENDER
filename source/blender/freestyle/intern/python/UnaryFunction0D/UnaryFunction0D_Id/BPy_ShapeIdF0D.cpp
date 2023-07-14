@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -31,7 +33,7 @@ static char ShapeIdF0D___doc__[] =
     "   Returns the :class:`freestyle.types.Id` of the Shape the\n"
     "   :class:`freestyle.types.Interface0D` pointed by the\n"
     "   Interface0DIterator belongs to. This evaluation can be ambiguous (in\n"
-    "   the case of a :class:`freestyle.types.TVertex` for example).  This\n"
+    "   the case of a :class:`freestyle.types.TVertex` for example). This\n"
     "   functor tries to remove this ambiguity using the context offered by\n"
     "   the 1D element to which the Interface0DIterator belongs to. However,\n"
     "   there still can be problematic cases, and the user willing to deal\n"

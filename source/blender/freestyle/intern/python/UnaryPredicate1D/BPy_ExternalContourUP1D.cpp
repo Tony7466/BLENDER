@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -21,8 +23,8 @@ static char ExternalContourUP1D___doc__[] =
     "\n"
     ".. method:: __call__(inter)\n"
     "\n"
-    "   Returns true if the Interface1D is an external contour.  An\n"
-    "   Interface1D is an external contour if it is bordered by no shape on\n"
+    "   Returns true if the Interface1D is an external contour.\n"
+    "   An Interface1D is an external contour if it is bordered by no shape on\n"
     "   one of its sides.\n"
     "\n"
     "   :arg inter: An Interface1D object.\n"

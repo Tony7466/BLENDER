@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -33,7 +35,7 @@ static char LocalAverageDepthF0D___doc__[] =
     "\n"
     "   Returns the average depth around the\n"
     "   :class:`freestyle.types.Interface0D` pointed by the\n"
-    "   Interface0DIterator.  The result is obtained by querying the depth\n"
+    "   Interface0DIterator. The result is obtained by querying the depth\n"
     "   buffer on a window around that point.\n"
     "\n"
     "   :arg it: An Interface0DIterator object.\n"

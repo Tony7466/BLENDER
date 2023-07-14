@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
+#include "BLI_array_utils.hh"
 
 #include "BKE_mesh.hh"
 
@@ -25,9 +26,7 @@ static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const eAttr
   const Span<int> corner_edges = mesh.corner_edges();
 
   Array<int> edge_count(mesh.totedge, 0);
-  for (const int edge : corner_edges) {
-    edge_count[edge]++;
-  }
+  array_utils::count_indices(corner_edges, edge_count);
 
   Array<int> poly_count(polys.size(), 0);
   for (const int poly_index : polys.index_range()) {
@@ -50,7 +49,7 @@ class FaceNeighborCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     return construct_neighbor_count_varray(mesh, domain);
   }
@@ -91,7 +90,7 @@ class FaceVertexCountFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     return construct_vertex_count_varray(mesh, domain);
   }

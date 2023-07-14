@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -17,6 +19,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "DEG_depsgraph_query.h"
 

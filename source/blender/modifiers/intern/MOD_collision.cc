@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -25,7 +26,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
 #include "BKE_pointcache.h"
@@ -89,10 +90,9 @@ static void deformVerts(ModifierData *md,
                         const ModifierEvalContext *ctx,
                         Mesh *mesh,
                         float (*vertexCos)[3],
-                        int verts_num)
+                        int /*verts_num*/)
 {
   CollisionModifierData *collmd = (CollisionModifierData *)md;
-  Mesh *mesh_src;
   Object *ob = ctx->object;
 
   /* If collision is disabled, free the stale data and exit. */
@@ -105,20 +105,11 @@ static void deformVerts(ModifierData *md,
     return;
   }
 
-  if (mesh == nullptr) {
-    mesh_src = MOD_deform_mesh_eval_get(ob, nullptr, nullptr, nullptr, verts_num, false);
-  }
-  else {
-    /* Not possible to use get_mesh() in this case as we'll modify its vertices
-     * and get_mesh() would return 'mesh' directly. */
-    mesh_src = (Mesh *)BKE_id_copy_ex(nullptr, (ID *)mesh, nullptr, LIB_ID_COPY_LOCALIZE);
-  }
-
-  if (mesh_src) {
+  if (mesh) {
     float current_time = 0;
-    uint mvert_num = 0;
+    int mvert_num = 0;
 
-    BKE_mesh_vert_coords_apply(mesh_src, vertexCos);
+    BKE_mesh_vert_coords_apply(mesh, vertexCos);
 
     current_time = DEG_get_ctime(ctx->depsgraph);
 
@@ -126,7 +117,7 @@ static void deformVerts(ModifierData *md,
       printf("current_time %f, collmd->time_xnew %f\n", current_time, collmd->time_xnew);
     }
 
-    mvert_num = mesh_src->totvert;
+    mvert_num = mesh->totvert;
 
     if (current_time < collmd->time_xnew) {
       freeData((ModifierData *)collmd);
@@ -144,8 +135,7 @@ static void deformVerts(ModifierData *md,
 
     if (collmd->time_xnew == -1000) { /* first time */
 
-      collmd->x = static_cast<float(*)[3]>(
-          MEM_dupallocN(BKE_mesh_vert_positions(mesh_src))); /* frame start position */
+      collmd->x = BKE_mesh_vert_coords_alloc(mesh, &mvert_num); /* frame start position */
 
       for (uint i = 0; i < mvert_num; i++) {
         /* we save global positions */
@@ -160,12 +150,12 @@ static void deformVerts(ModifierData *md,
       collmd->mvert_num = mvert_num;
 
       {
-        const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh_src);
-        collmd->tri_num = BKE_mesh_runtime_looptri_len(mesh_src);
+        const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(mesh);
+        collmd->tri_num = BKE_mesh_runtime_looptri_len(mesh);
         MVertTri *tri = static_cast<MVertTri *>(
             MEM_mallocN(sizeof(*tri) * collmd->tri_num, __func__));
         BKE_mesh_runtime_verttri_from_looptri(
-            tri, BKE_mesh_corner_verts(mesh_src), looptri, collmd->tri_num);
+            tri, mesh->corner_verts().data(), looptri, collmd->tri_num);
         collmd->tri = tri;
       }
 
@@ -183,7 +173,7 @@ static void deformVerts(ModifierData *md,
       collmd->xnew = temp;
       collmd->time_x = collmd->time_xnew;
 
-      memcpy(collmd->xnew, BKE_mesh_vert_positions(mesh_src), mvert_num * sizeof(float[3]));
+      memcpy(collmd->xnew, mesh->vert_positions().data(), mvert_num * sizeof(float[3]));
 
       bool is_static = true;
 
@@ -229,10 +219,6 @@ static void deformVerts(ModifierData *md,
       freeData((ModifierData *)collmd);
     }
   }
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
 }
 
 static void updateDepsgraph(ModifierData * /*md*/, const ModifierUpdateDepsgraphContext *ctx)
@@ -260,15 +246,15 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 {
   CollisionModifierData *collmd = (CollisionModifierData *)md;
 #if 0
-      /* TODO: #CollisionModifier should use point-cache
-       * + have proper reset events before enabling this. */
-      collmd->x = newdataadr(fd, collmd->x);
-      collmd->xnew = newdataadr(fd, collmd->xnew);
-      collmd->mfaces = newdataadr(fd, collmd->mfaces);
+  /* TODO: #CollisionModifier should use point-cache
+   * + have proper reset events before enabling this. */
+  collmd->x = newdataadr(fd, collmd->x);
+  collmd->xnew = newdataadr(fd, collmd->xnew);
+  collmd->mfaces = newdataadr(fd, collmd->mfaces);
 
-      collmd->current_x = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_x");
-      collmd->current_xnew = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_xnew");
-      collmd->current_v = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_v");
+  collmd->current_x = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_x");
+  collmd->current_xnew = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_xnew");
+  collmd->current_v = MEM_calloc_arrayN(collmd->mvert_num, sizeof(float[3]), "current_v");
 #endif
 
   collmd->x = nullptr;

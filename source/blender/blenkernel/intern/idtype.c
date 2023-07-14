@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -94,7 +95,7 @@ static void id_type_init(void)
   INIT_TYPE(ID_CV);
   INIT_TYPE(ID_PT);
   INIT_TYPE(ID_VO);
-  INIT_TYPE(ID_SIM);
+  INIT_TYPE(ID_GP);
 
   /* Special naughty boy... */
   BLI_assert(IDType_ID_LINK_PLACEHOLDER.main_listbase_index == INDEX_ID_NULL);
@@ -222,6 +223,7 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
     CASE_IDFILTER(CF);
     CASE_IDFILTER(CU_LEGACY);
     CASE_IDFILTER(GD_LEGACY);
+    CASE_IDFILTER(GP);
     CASE_IDFILTER(GR);
     CASE_IDFILTER(CV);
     CASE_IDFILTER(IM);
@@ -245,7 +247,6 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
     CASE_IDFILTER(PT);
     CASE_IDFILTER(SCE);
     CASE_IDFILTER(SCR);
-    CASE_IDFILTER(SIM);
     CASE_IDFILTER(SO);
     CASE_IDFILTER(SPK);
     CASE_IDFILTER(TE);
@@ -280,6 +281,7 @@ short BKE_idtype_idcode_from_idfilter(const uint64_t idfilter)
     CASE_IDFILTER(CF);
     CASE_IDFILTER(CU_LEGACY);
     CASE_IDFILTER(GD_LEGACY);
+    CASE_IDFILTER(GP);
     CASE_IDFILTER(GR);
     CASE_IDFILTER(CV);
     CASE_IDFILTER(IM);
@@ -303,7 +305,6 @@ short BKE_idtype_idcode_from_idfilter(const uint64_t idfilter)
     CASE_IDFILTER(PT);
     CASE_IDFILTER(SCE);
     CASE_IDFILTER(SCR);
-    CASE_IDFILTER(SIM);
     CASE_IDFILTER(SO);
     CASE_IDFILTER(SPK);
     CASE_IDFILTER(TE);
@@ -336,6 +337,7 @@ int BKE_idtype_idcode_to_index(const short idcode)
     CASE_IDINDEX(CF);
     CASE_IDINDEX(CU_LEGACY);
     CASE_IDINDEX(GD_LEGACY);
+    CASE_IDINDEX(GP);
     CASE_IDINDEX(GR);
     CASE_IDINDEX(CV);
     CASE_IDINDEX(IM);
@@ -359,7 +361,6 @@ int BKE_idtype_idcode_to_index(const short idcode)
     CASE_IDINDEX(LP);
     CASE_IDINDEX(SCE);
     CASE_IDINDEX(SCR);
-    CASE_IDINDEX(SIM);
     CASE_IDINDEX(SPK);
     CASE_IDINDEX(SO);
     CASE_IDINDEX(TE);
@@ -395,6 +396,7 @@ short BKE_idtype_idcode_from_index(const int index)
     CASE_IDCODE(CF);
     CASE_IDCODE(CU_LEGACY);
     CASE_IDCODE(GD_LEGACY);
+    CASE_IDCODE(GP);
     CASE_IDCODE(GR);
     CASE_IDCODE(CV);
     CASE_IDCODE(IM);
@@ -418,7 +420,6 @@ short BKE_idtype_idcode_from_index(const int index)
     CASE_IDCODE(LP);
     CASE_IDCODE(SCE);
     CASE_IDCODE(SCR);
-    CASE_IDCODE(SIM);
     CASE_IDCODE(SPK);
     CASE_IDCODE(SO);
     CASE_IDCODE(TE);
@@ -445,7 +446,7 @@ short BKE_idtype_idcode_iter_step(int *index)
   return (*index < ARRAY_SIZE(id_types)) ? BKE_idtype_idcode_from_index((*index)++) : 0;
 }
 
-void BKE_idtype_id_foreach_cache(struct ID *id,
+void BKE_idtype_id_foreach_cache(ID *id,
                                  IDTypeForeachCacheFunctionCallback function_callback,
                                  void *user_data)
 {
@@ -460,7 +461,7 @@ void BKE_idtype_id_foreach_cache(struct ID *id,
     type_info = BKE_idtype_get_info_from_id(&nodetree->id);
     if (type_info == NULL) {
       /* Very old .blend file seem to have empty names for their embedded node trees, see
-       * `blo_do_versions_250()`. Assume those are nodetrees then. */
+       * `blo_do_versions_250()`. Assume those are node-trees then. */
       type_info = BKE_idtype_get_info_from_idcode(ID_NT);
     }
     if (type_info->foreach_cache != NULL) {

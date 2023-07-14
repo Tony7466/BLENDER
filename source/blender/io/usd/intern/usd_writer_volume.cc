@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_writer_volume.h"
 
@@ -79,7 +81,7 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
   }
 
   float3 volume_bound_min(std::numeric_limits<float>::max());
-  float3 volume_bound_max(std::numeric_limits<float>::min());
+  float3 volume_bound_max(std::numeric_limits<float>::lowest());
   if (BKE_volume_min_max(volume, volume_bound_min, volume_bound_max)) {
     const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&volume_bound_min[0]),
                                                       pxr::GfVec3f(&volume_bound_max[0])};
