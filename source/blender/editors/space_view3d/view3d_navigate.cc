@@ -11,6 +11,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_bounds_types.hh"
 #include "BLI_math.h"
 #include "BLI_rect.h"
 
@@ -29,7 +30,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_geometry.h"
+#include "ED_curves.h"
 #include "ED_mesh.h"
 #include "ED_particle.h"
 #include "ED_screen.h"
@@ -1386,8 +1387,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     const Object &ob_orig = *DEG_get_original_object(ob_eval);
     const GeometryDeformation deformation = get_evaluated_curves_deformation(ob_eval, ob_orig);
     const Curves *curves = static_cast<const Curves *>(ob_eval->data);
-    const std::optional<Bounds<float3>> curves_bounds = ed::geometry::selection_bounds(
-        curves, deformation);
+    const std::optional<Bounds<float3>> curves_bounds = ed::curves::selection_bounds(curves,
+                                                                                     deformation);
     if (curves_bounds.has_value()) {
       ok = true;
       copy_v3_v3(min, curves_bounds->min);

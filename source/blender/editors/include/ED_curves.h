@@ -57,7 +57,9 @@ int *ED_curves_offsets_for_write(struct Curves *curves_id);
 #  include "BKE_crazyspace.hh"
 #  include "BKE_curves.hh"
 
+#  include "BLI_bounds_types.hh"
 #  include "BLI_index_mask.hh"
+#  include "BLI_math_vector.hh"
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
 
@@ -246,6 +248,9 @@ bool select_circle(const ViewContext &vc,
                    int2 coord,
                    float radius,
                    eSelectOp sel_op);
+
+std::optional<Bounds<float3>> selection_bounds(
+    const Curves *curves_id, const bke::crazyspace::GeometryDeformation deformation);
 /** \} */
 
 /* -------------------------------------------------------------------- */

@@ -48,56 +48,6 @@
 
 namespace blender::ed::geometry {
 
-template<typename T> constexpr bool is_selection_type = is_same_any_v<T, bool, float>;
-
-static bool is_selection_cpptype(const CPPType &type)
-{
-  return ELEM(&type, &CPPType::get<float>(), &CPPType::get<bool>());
-}
-
-static GPointer default_is_selected()
-{
-  static const bool default_unselected = true;
-  return GPointer(&default_unselected);
-}
-
-template<typename T = bool> static const VArray<T> to_selection_type(GVArray selection)
-{
-  static_assert(is_selection_type<T>);
-  const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
-  return conversions.try_convert(std::move(selection), CPPType::get<T>()).typed<T>();
-}
-
-static GVArray selection_for_read(const bke::AttributeAccessor attributes,
-                                  const GPointer default_selection = default_is_selected())
-{
-  BLI_assert(is_selection_cpptype(*default_selection.type()));
-  const eCustomDataType default_type = bke::cpp_type_to_custom_data_type(
-      *default_selection.type());
-  return *attributes.lookup_or_default(
-      ".selection", ATTR_DOMAIN_POINT, default_type, default_selection.get());
-}
-
-static IndexMask selection_mask(const bke::AttributeAccessor attributes, IndexMaskMemory &memory)
-{
-  GVArray selection = selection_for_read(attributes);
-  const VArray<bool> boolean_selection = to_selection_type(std::move(selection));
-  return IndexMask::from_bools(std::move(boolean_selection), memory);
-}
-
-std::optional<Bounds<float3>> selection_bounds(
-    const Curves *curves_id, const bke::crazyspace::GeometryDeformation deformation)
-{
-  if (curves_id == nullptr) {
-    return std::nullopt;
-  }
-  IndexMaskMemory memory;
-  const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-  const bke::AttributeAccessor attributes = curves.attributes();
-  const IndexMask mask = selection_mask(attributes, memory);
-  return bounds::min_max(mask, deformation.positions);
-}
-
 /*********************** Attribute Operators ************************/
 
 static bool geometry_attributes_poll(bContext *C)
