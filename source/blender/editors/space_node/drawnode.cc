@@ -2084,11 +2084,11 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
 
   const bool field_link = node_link_is_field_link(snode, link);
 
-  draw_config.dash_factor = field_link ? 0.75f : 1.0f;
+  draw_config.dash_factor = field_link ? 0.5f : 1.0f;
 
   const float scale = UI_view2d_scale_get_x(&v2d);
   /* Clamp the thickness to make the links more readable when zooming out. */
-  draw_config.thickness = max_ff(scale, 1.0f) * (field_link ? 0.7f : 1.0f);
+  draw_config.thickness = max_ff(scale, 1.0f) * (field_link ? 1.4f : 1.0f);
   draw_config.highlighted = link.flag & NODE_LINK_TEMP_HIGHLIGHT;
   draw_config.drawarrow = ((link.tonode && (link.tonode->type == NODE_REROUTE)) &&
                            (link.fromnode && (link.fromnode->type == NODE_REROUTE)));
