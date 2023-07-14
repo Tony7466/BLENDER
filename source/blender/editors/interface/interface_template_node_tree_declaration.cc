@@ -98,7 +98,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
     uiLayoutSetPropDecorate(&row, false);
 
     uiLayout *input_socket_layout = uiLayoutRow(&row, true);
-    if (socket_.kind & NODE_INTERFACE_INPUT) {
+    if (socket_.flag & NODE_INTERFACE_SOCKET_INPUT) {
       /* XXX Socket template only draws in embossed layouts (Julian). */
       uiLayoutSetEmboss(input_socket_layout, UI_EMBOSS);
       /* XXX Context is not used by the template function. */
@@ -113,7 +113,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
     add_label(row);
 
     uiLayout *output_socket_layout = uiLayoutRow(&row, true);
-    if (socket_.kind & NODE_INTERFACE_OUTPUT) {
+    if (socket_.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
       /* XXX Socket template only draws in embossed layouts (Julian). */
       uiLayoutSetEmboss(output_socket_layout, UI_EMBOSS);
       /* XXX Context is not used by the template function. */

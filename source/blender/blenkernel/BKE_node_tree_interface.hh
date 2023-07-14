@@ -153,30 +153,67 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
   return nullptr;
 }
 
-template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
-{
-  std::queue<bNodeTreeInterfacePanel *> queue;
+namespace detail {
 
-  if (op(this->item) == false) {
-    return;
-  }
-  queue.push(this);
+template<typename Func, typename ReturnT> struct PanelForeachExecutor {
+  void operator()(bNodeTreeInterfacePanel &panel, Func op)
+  {
+    std::queue<bNodeTreeInterfacePanel *> queue;
 
-  while (!queue.empty()) {
-    bNodeTreeInterfacePanel *parent = queue.front();
-    queue.pop();
+    if (op(panel.item) == false) {
+      return;
+    }
+    queue.push(&panel);
 
-    for (bNodeTreeInterfaceItem *item : parent->items()) {
-      if (op(*item) == false) {
-        return;
-      }
+    while (!queue.empty()) {
+      bNodeTreeInterfacePanel *parent = queue.front();
+      queue.pop();
 
-      if (item->item_type == NODE_INTERFACE_PANEL) {
-        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
-        queue.push(panel);
+      for (bNodeTreeInterfaceItem *item : parent->items()) {
+        if (op(*item) == false) {
+          return;
+        }
+
+        if (item->item_type == NODE_INTERFACE_PANEL) {
+          bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+          queue.push(panel);
+        }
       }
     }
   }
+};
+
+template<typename Func> struct PanelForeachExecutor<Func, void> {
+  void operator()(bNodeTreeInterfacePanel &panel, Func op)
+  {
+    std::queue<bNodeTreeInterfacePanel *> queue;
+
+    op(panel.item);
+    queue.push(&panel);
+
+    while (!queue.empty()) {
+      bNodeTreeInterfacePanel *parent = queue.front();
+      queue.pop();
+
+      for (bNodeTreeInterfaceItem *item : parent->items()) {
+        op(*item);
+
+        if (item->item_type == NODE_INTERFACE_PANEL) {
+          bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+          queue.push(panel);
+        }
+      }
+    }
+  }
+};
+
+}  // namespace detail
+
+template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
+{
+  using ResultT = std::result_of<Func(bNodeTreeInterfaceItem &)>;
+  detail::PanelForeachExecutor<Func, ResultT> executor;
+  executor(*this, op);
 }
 
 template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op) const
@@ -225,7 +262,7 @@ void BKE_nodetree_interface_read_data(struct BlendDataReader *reader,
                                       struct bNodeTreeInterface *interface);
 void BKE_nodetree_interface_read_lib(struct BlendLibReader *reader,
                                      struct ID *id,
-                                     struct bNodeTreeInterface *interface);
+                                     struct bNodeTreeInterface *interface) ATTR_NONNULL(1);
 void BKE_nodetree_interface_read_expand(struct BlendExpander *expander,
                                         struct bNodeTreeInterface *interface);
 

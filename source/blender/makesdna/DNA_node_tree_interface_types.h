@@ -48,12 +48,14 @@ typedef struct bNodeTreeInterfaceItem {
 #endif
 } bNodeTreeInterfaceItem;
 
-/** Socket side (input/output). */
-typedef enum eNodeTreeInterfaceSocketKind {
-  NODE_INTERFACE_INPUT = 1 << 0,
-  NODE_INTERFACE_OUTPUT = 1 << 1,
-} eNodeTreeInterfaceSocketKind;
-ENUM_OPERATORS(eNodeTreeInterfaceSocketKind, NODE_INTERFACE_OUTPUT);
+/* Socket interface flags */
+typedef enum eNodeTreeInterfaceSocketFlag {
+  NODE_INTERFACE_SOCKET_INPUT = 1 << 0,
+  NODE_INTERFACE_SOCKET_OUTPUT = 1 << 1,
+  NODE_INTERFACE_SOCKET_HIDE_VALUE = 1 << 2,
+  NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER = 1 << 3,
+} eNodeTreeInterfaceSocketFlag;
+ENUM_OPERATORS(eNodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
 
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
@@ -61,11 +63,16 @@ typedef struct bNodeTreeInterfaceSocket {
   char *name;
   char *description;
   char *socket_type;
-  /* eNodeTreeInterfaceSocketKind */
-  int kind;
+  /* eNodeTreeInterfaceSocketFlag */
+  int flag;
+
+  /* eAttrDomain */
+  int attribute_domain;
+  char *default_attribute_name;
 
   /* Unique id for constructing socket identifiers. */
   int uid;
+  char _pad[4];
 
 #ifdef __cplusplus
   std::string socket_identifier() const;
@@ -76,6 +83,11 @@ typedef struct bNodeTreeInterfaceSocket {
 typedef struct bNodeTreeInterfaceSocketFloat {
   bNodeTreeInterfaceSocket base;
 
+  int subtype;
+  float default_value;
+  float min_value;
+  float max_value;
+
 #ifdef __cplusplus
   static const char *socket_type_static;
 #endif
@@ -83,6 +95,11 @@ typedef struct bNodeTreeInterfaceSocketFloat {
 
 typedef struct bNodeTreeInterfaceSocketInt {
   bNodeTreeInterfaceSocket base;
+
+  int subtype;
+  int default_value;
+  int min_value;
+  int max_value;
 
 #ifdef __cplusplus
   static const char *socket_type_static;
@@ -92,6 +109,10 @@ typedef struct bNodeTreeInterfaceSocketInt {
 typedef struct bNodeTreeInterfaceSocketBool {
   bNodeTreeInterfaceSocket base;
 
+  int subtype;
+  char default_value;
+  char _pad[3];
+
 #ifdef __cplusplus
   static const char *socket_type_static;
 #endif
@@ -100,6 +121,10 @@ typedef struct bNodeTreeInterfaceSocketBool {
 typedef struct bNodeTreeInterfaceSocketString {
   bNodeTreeInterfaceSocket base;
 
+  int subtype;
+  char _pad[4];
+  char *default_value;
+
 #ifdef __cplusplus
   static const char *socket_type_static;
 #endif
@@ -107,6 +132,10 @@ typedef struct bNodeTreeInterfaceSocketString {
 
 typedef struct bNodeTreeInterfaceSocketObject {
   bNodeTreeInterfaceSocket base;
+
+  int subtype;
+  char _pad[4];
+  struct Object *default_value;
 
 #ifdef __cplusplus
   static const char *socket_type_static;
@@ -155,22 +184,22 @@ typedef struct bNodeTreeInterfacePanel {
   /**
    * Apply an operator to every item in the panel.
    * The items are visited in drawing order from top to bottom.
-   * The operator should have the following signature:
    *
+   * Handle all items:
+   *   void MyOperator(bNodeTreeInterfaceItem &item);
+   * Stops if the operator return false:
    *   bool MyOperator(bNodeTreeInterfaceItem &item);
-   *
-   * If the operator returns false for any item the iteration stops.
    */
   template<typename Func> void foreach_item(Func op);
 
   /**
    * Apply an operator to every item in the panel.
    * The items are visited in drawing order from top to bottom.
-   * The operator should have the following signature:
    *
-   *   bool MyOperator(const bNodeTreeInterfaceItem &item);
-   *
-   * If the operator returns false for any item the iteration stops.
+   * Handle all items:
+   *   void MyOperator(bNodeTreeInterfaceItem &item);
+   * Stops if the operator return false:
+   *   bool MyOperator(bNodeTreeInterfaceItem &item);
    */
   template<typename Func> void foreach_item(Func op) const;
 #endif
@@ -216,7 +245,7 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
                                        blender::StringRef description,
                                        blender::StringRef socket_type,
-                                       eNodeTreeInterfaceSocketKind in_out,
+                                       eNodeTreeInterfaceSocketFlag flag,
                                        bNodeTreeInterfacePanel *parent);
   /**
    * Insert a new socket.
@@ -227,7 +256,7 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
                                           blender::StringRef description,
                                           blender::StringRef socket_type,
-                                          eNodeTreeInterfaceSocketKind in_out,
+                                          eNodeTreeInterfaceSocketFlag flag,
                                           bNodeTreeInterfacePanel *parent,
                                           int index);
 
@@ -285,11 +314,11 @@ typedef struct bNodeTreeInterface {
   /**
    * Apply an operator to every item in the interface.
    * The items are visited in drawing order from top to bottom.
-   * The operator should have the following signature:
    *
+   * Handle all items:
+   *   void MyOperator(bNodeTreeInterfaceItem &item);
+   * Stops if the operator return false:
    *   bool MyOperator(bNodeTreeInterfaceItem &item);
-   *
-   * If the operator returns false for any item the iteration stops.
    */
   template<typename Func> void foreach_item(Func op)
   {
@@ -299,11 +328,11 @@ typedef struct bNodeTreeInterface {
   /**
    * Apply an operator to every item in the interface.
    * The items are visited in drawing order from top to bottom.
-   * The operator should have the following signature:
    *
-   *   bool MyOperator(const bNodeTreeInterfaceItem &item);
-   *
-   * If the operator returns false for any item the iteration stops.
+   * Handle all items:
+   *   void MyOperator(bNodeTreeInterfaceItem &item);
+   * Stops if the operator return false:
+   *   bool MyOperator(bNodeTreeInterfaceItem &item);
    */
   template<typename Func> void foreach_item(Func op) const
   {

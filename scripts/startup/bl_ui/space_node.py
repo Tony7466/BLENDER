@@ -1001,13 +1001,43 @@ class NODE_PT_node_tree_declaration(Panel):
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "name")
                 layout.prop(active_item, "description")
-                layout.prop(active_item, "kind", toggle=True)
-                # layout.prop(active_item, "is_input", toggle=True)
-                # layout.prop(active_item, "is_output", toggle=True)
+                layout.prop(active_item, "is_input", toggle=True)
+                layout.prop(active_item, "is_output", toggle=True)
                 layout.prop(active_item, "socket_type")
+
+                if active_item.socket_type == "NodeSocketFloat":
+                    layout.prop(active_item, "subtype")
+                    layout.prop(active_item, "default_value")
+                    layout.prop(active_item, "min_value")
+                    layout.prop(active_item, "max_value")
+                elif active_item.socket_type == "NodeSocketInt":
+                    layout.prop(active_item, "subtype")
+                    layout.prop(active_item, "default_value")
+                    layout.prop(active_item, "min_value")
+                    layout.prop(active_item, "max_value")
+                elif active_item.socket_type == "NodeSocketBool":
+                    layout.prop(active_item, "default_value")
+                elif active_item.socket_type == "NodeSocketString":
+                    layout.prop(active_item, "subtype")
+                    layout.prop(active_item, "default_value")
+                elif active_item.socket_type == "NodeSocketObject":
+                    layout.prop(active_item, "default_value")
+
+                # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
+                if tree.type == 'GEOMETRY':
+                    field_socket_types = {
+                        "NodeSocketInt",
+                        "NodeSocketColor",
+                        "NodeSocketVector",
+                        "NodeSocketBool",
+                        "NodeSocketFloat",
+                    }
+                    if active_item.socket_type in field_socket_types:
+                        if active_item.is_output:
+                            layout.prop(active_item, "attribute_domain")
+                        layout.prop(active_item, "default_attribute_name")
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
-
 
 class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
     bl_space_type = 'NODE_EDITOR'
