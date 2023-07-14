@@ -189,9 +189,6 @@ class NodePanelViewItem : public BasicTreeViewItem {
 
     uiLayout *sub = uiLayoutRow(&row, true);
     uiLayoutSetPropDecorate(sub, false);
-
-    //    build_state_button(*sub);
-    //    build_remove_button(*sub);
   }
 
  protected:

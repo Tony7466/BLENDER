@@ -33,37 +33,6 @@ typedef enum eNodeTreeInterfaceItemType {
   NODE_INTERFACE_SOCKET = 1,
 } eNodeTreeInterfaceItemType;
 
-#ifdef __cplusplus
-
-namespace blender::bke::node_interface {
-
-/* List of final item types. */
-using SocketItemTypes = std::tuple<bNodeTreeInterfaceSocketFloat,
-                                   bNodeTreeInterfaceSocketInt,
-                                   bNodeTreeInterfaceSocketBool,
-                                   bNodeTreeInterfaceSocketString,
-                                   bNodeTreeInterfaceSocketObject>;
-/* List of final item types. */
-using FinalItemTypes = std::tuple<bNodeTreeInterfacePanel,
-                                  bNodeTreeInterfaceSocketFloat,
-                                  bNodeTreeInterfaceSocketInt,
-                                  bNodeTreeInterfaceSocketBool,
-                                  bNodeTreeInterfaceSocketString,
-                                  bNodeTreeInterfaceSocketObject>;
-/* List of all item types, including intermediate classes. */
-using AllItemTypes = std::tuple<bNodeTreeInterfaceItem,
-                                bNodeTreeInterfacePanel,
-                                bNodeTreeInterfaceSocket,
-                                bNodeTreeInterfaceSocketFloat,
-                                bNodeTreeInterfaceSocketInt,
-                                bNodeTreeInterfaceSocketBool,
-                                bNodeTreeInterfaceSocketString,
-                                bNodeTreeInterfaceSocketObject>;
-
-}  // namespace blender::bke::node_interface
-
-#endif
-
 /** Describes a socket and all necessary details for a node declaration. */
 typedef struct bNodeTreeInterfaceItem {
   /* eNodeTreeInterfaceItemType */
@@ -76,50 +45,6 @@ typedef struct bNodeTreeInterfaceItem {
 
   template<typename T> T *get_as_ptr();
   template<typename T> const T *get_as_ptr() const;
-
-  //  /* Call function with the static item type.
-  //   *
-  //   * template <typename T>
-  //   * static void myfunc()
-  //   * {
-  //   *   [...]
-  //   * }
-  //   *
-  //   * to_static_type_tag(item_type, socket_type, myfunc);
-  //   */
-  //  template<typename Types, typename Func>
-  //  static void to_static_type(eNodeTreeInterfaceItemType item_type,
-  //                             blender::StringRef socket_type,
-  //                             Func func);
-
-  //  /* Call function with a statically typed instance.
-  //   *
-  //   * template <typename T>
-  //   * static void myfunc(T &item)
-  //   * {
-  //   *   [...]
-  //   * }
-  //   *
-  //   * item.to_static_type_tag(myfunc);
-  //   */
-  //  template<typename Types, typename Func> void to_static_type(Func func);
-
-  //  /* Call function with a statically typed instance.
-  //   *
-  //   * template <typename T>
-  //   * static void myfunc(const T &item)
-  //   * {
-  //   *   [...]
-  //   * }
-  //   *
-  //   * item.to_static_type_tag(myfunc);
-  //   */
-  //  template<typename Types, typename Func> void to_static_type(Func func) const;
-
-  //  /* Overloaded by subclasses. Don't call directly. */
-  //  void copy_impl(const bNodeTreeInterfaceItem &src);
-  //  /* Overloaded by subclasses. Don't call directly. */
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceItem;
 
@@ -145,9 +70,6 @@ typedef struct bNodeTreeInterfaceSocket {
 #ifdef __cplusplus
   std::string socket_identifier() const;
   blender::ColorGeometry4f socket_color() const;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocket &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocket;
 
@@ -155,13 +77,7 @@ typedef struct bNodeTreeInterfaceSocketFloat {
   bNodeTreeInterfaceSocket base;
 
 #ifdef __cplusplus
-  using ValueType = float;
-  using SocketValueType = struct bNodeSocketValueFloat;
-
   static const char *socket_type_static;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocketFloat &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketFloat;
 
@@ -169,13 +85,7 @@ typedef struct bNodeTreeInterfaceSocketInt {
   bNodeTreeInterfaceSocket base;
 
 #ifdef __cplusplus
-  using ValueType = int;
-  using SocketValueType = struct bNodeSocketValueInt;
-
   static const char *socket_type_static;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocketInt &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketInt;
 
@@ -183,13 +93,7 @@ typedef struct bNodeTreeInterfaceSocketBool {
   bNodeTreeInterfaceSocket base;
 
 #ifdef __cplusplus
-  using ValueType = bool;
-  using SocketValueType = struct bNodeSocketValueBoolean;
-
   static const char *socket_type_static;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocketBool &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketBool;
 
@@ -197,13 +101,7 @@ typedef struct bNodeTreeInterfaceSocketString {
   bNodeTreeInterfaceSocket base;
 
 #ifdef __cplusplus
-  using ValueType = std::string;
-  using SocketValueType = struct bNodeSocketValueString;
-
   static const char *socket_type_static;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocketString &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketString;
 
@@ -211,13 +109,7 @@ typedef struct bNodeTreeInterfaceSocketObject {
   bNodeTreeInterfaceSocket base;
 
 #ifdef __cplusplus
-  using ValueType = struct Object *;
-  using SocketValueType = struct bNodeSocketValueObject;
-
   static const char *socket_type_static;
-
-  //  void copy_impl(const bNodeTreeInterfaceSocketObject &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfaceSocketObject;
 
@@ -281,9 +173,6 @@ typedef struct bNodeTreeInterfacePanel {
    * If the operator returns false for any item the iteration stops.
    */
   template<typename Func> void foreach_item(Func op) const;
-
-  //  void copy_impl(const bNodeTreeInterfacePanel &src);
-  //  void free_impl();
 #endif
 } bNodeTreeInterfacePanel;
 

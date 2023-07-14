@@ -25,19 +25,8 @@ const char *bNodeTreeInterfaceSocketObject::socket_type_static = "NodeSocketObje
 
 namespace detail {
 
-// struct CopyItemOperator {
-//  bNodeTreeInterfaceItem &dst;
-//  const bNodeTreeInterfaceItem &src;
-
-//  template<typename T> void operator()() const
-//  {
-//    reinterpret_cast<T &>(dst).copy_impl(reinterpret_cast<const T &>(src));
-//  }
-//};
-
 static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem &src)
 {
-  //  dst.to_static_type<blender::bke::node_interface::AllItemTypes>(CopyItemOperator{dst, src});
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &dst_socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(dst);
@@ -77,19 +66,8 @@ static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem 
   }
 }
 
-// struct ItemFreeOperator {
-//  bNodeTreeInterfaceItem &item;
-
-//  template<typename T> void operator()() const
-//  {
-//    reinterpret_cast<T &>(item).free_impl();
-//    MEM_freeN(&item);
-//  }
-//};
-
 static void item_free(bNodeTreeInterfaceItem &item)
 {
-  //  item.to_static_type<blender::bke::node_interface::AllItemTypes>(ItemFreeOperator{item});
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
@@ -122,56 +100,8 @@ static void item_free(bNodeTreeInterfaceItem &item)
   MEM_freeN(&item);
 }
 
-// void item_write(BlendWriter *writer, bNodeTreeInterfaceItem &item);
-
-// struct ItemWriteOperator {
-//  BlendWriter *writer;
-//  bNodeTreeInterfaceItem &item;
-
-//  template<typename T> void operator()() const
-//  {
-//    reinterpret_cast<T &>(item).write(writer);
-//  }
-
-//  static const char *name(bNodeTreeInterfaceItem &)
-//  {
-//    return "bNodeTreeInterfaceItem";
-//  }
-
-//  void write_base(bNodeTreeInterfaceItem & /*item*/) {}
-//  void write_base(bNodeTreeInterfacePanel &panel)
-//  {
-//    BLO_write_struct(writer, bNodeTreeInterfacePanel, &panel);
-//    BLO_write_string(writer, panel.name);
-//    BLO_write_pointer_array(writer, panel.items_num, panel.items_array);
-
-//    for (bNodeTreeInterfaceItem *item : panel.items()) {
-//      item_write(writer, *item);
-//    }
-//  }
-//  void write_base(bNodeTreeInterfaceSocket &socket)
-//  {
-//    BLO_write_struct(writer, bNodeTreeInterfaceSocket, &socket);
-//    BLO_write_string(writer, socket.name);
-//    BLO_write_string(writer, socket.description);
-//    BLO_write_string(writer, socket.socket_type);
-//  }
-//  void write(bNodeTreeInterfaceSocket &socket)
-//  {
-//    BLO_write_struct(writer, bNodeTreeInterfaceSocket, &socket);
-//    write_
-//  }
-
-//  void write(bNodeTreeInterfaceSocketFloat &socket)
-//  {
-//    BLO_write_struct(writer, bNodeTreeInterfaceSocketFloat, &socket);
-//  }
-//};
-
 static void item_write(BlendWriter *writer, bNodeTreeInterfaceItem &item, bool write_item)
 {
-  //  item.to_static_type<blender::bke::node_interface::AllItemTypes>(ItemWriteOperator{writer,
-  //  item});
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
@@ -271,10 +201,6 @@ static void item_read_expand(BlendExpander *expander, bNodeTreeInterfaceItem &it
 
 }  // namespace detail
 
-// void bNodeTreeInterfaceItem::copy_impl(const bNodeTreeInterfaceItem & /*src*/) {}
-
-// void bNodeTreeInterfaceItem::free_impl() {}
-
 std::string bNodeTreeInterfaceSocket::socket_identifier() const
 {
   return "Socket" + std::to_string(uid);
@@ -310,47 +236,6 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
     return blender::ColorGeometry4f(1.0f, 0.0f, 1.0f, 1.0f);
   }
 }
-
-// void bNodeTreeInterfaceSocket::copy_impl(const bNodeTreeInterfaceSocket &src)
-//{
-//  item.copy_impl(src.item);
-
-//  BLI_assert(src.name != nullptr);
-//  BLI_assert(src.socket_type != nullptr);
-//  name = BLI_strdup(src.name);
-//  description = src.description ? BLI_strdup(src.description) : nullptr;
-//  socket_type = BLI_strdup(src.socket_type);
-//}
-// void bNodeTreeInterfaceSocket::free_impl()
-//{
-//  MEM_SAFE_FREE(name);
-//  MEM_SAFE_FREE(description);
-//  MEM_SAFE_FREE(socket_type);
-
-//  item.free_impl();
-//}
-
-// void bNodeTreeInterfaceSocketFloat::copy_impl(const bNodeTreeInterfaceSocketFloat & /*src*/) {}
-
-// void bNodeTreeInterfaceSocketFloat::free_impl() {}
-
-// void bNodeTreeInterfaceSocketInt::copy_impl(const bNodeTreeInterfaceSocketInt & /*src*/) {}
-
-// void bNodeTreeInterfaceSocketInt::free_impl() {}
-
-// void bNodeTreeInterfaceSocketBool::copy_impl(const bNodeTreeInterfaceSocketBool & /*src*/) {}
-
-// void bNodeTreeInterfaceSocketBool::free_impl() {}
-
-// void bNodeTreeInterfaceSocketString::copy_impl(const bNodeTreeInterfaceSocketString & /*src*/)
-// {}
-
-// void bNodeTreeInterfaceSocketString::free_impl() {}
-
-// void bNodeTreeInterfaceSocketObject::copy_impl(const bNodeTreeInterfaceSocketObject & /*src*/)
-// {}
-
-// void bNodeTreeInterfaceSocketObject::free_impl() {}
 
 blender::IndexRange bNodeTreeInterfacePanel::items_range() const
 {
@@ -516,24 +401,6 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int 
 
   return true;
 }
-
-// void bNodeTreeInterfacePanel::copy_impl(const bNodeTreeInterfacePanel &src)
-//{
-//  item.copy_impl(src.item);
-
-//  BLI_assert(src.name != nullptr);
-//  name = BLI_strdup(src.name);
-
-//  copy_items(src.items());
-//}
-
-// void bNodeTreeInterfacePanel::free_impl()
-//{
-//  MEM_SAFE_FREE(name);
-//  clear_items();
-
-//  item.free_impl();
-//}
 
 static bNodeTreeInterfaceSocket *make_socket(const int uid,
                                              blender::StringRef name,

@@ -6,7 +6,6 @@
 
 #include "DNA_node_tree_interface_types.h"
 
-#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 #ifdef __cplusplus
@@ -137,44 +136,8 @@ template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
   return reinterpret_cast<const T &>(*this);
 }
 
-// namespace detail {
-
-// template<typename T> struct ItemMatchFunc {
-//  bool &match;
-
-//  template<typename U> void operator()()
-//  {
-//    match = std::is_same<T, U>::value;
-//  }
-//};
-
-//}  // namespace detail
-
 template<typename T> T *bNodeTreeInterfaceItem::get_as_ptr()
 {
-  //  bool match = false;
-
-  //  /* Handle base types first, since there is no way to detect nested C type "inheritance" based
-  //  on
-  //   * types alone. */
-  //  switch (eNodeTreeInterfaceItemType(item_type)) {
-  //    case NODE_INTERFACE_SOCKET: {
-  //      if (std::is_same<T, bNodeTreeInterfaceSocket>::value) {
-  //        match = true;
-  //        break;
-  //      }
-
-  //      /* Use static type dispatcher to find the final socket type */
-  //      detail::ItemMatchFunc<T> func{match};
-  //      to_static_type<blender::bke::node_interface::SocketItemTypes>(func);
-  //      break;
-  //    }
-  //    case NODE_INTERFACE_PANEL: {
-  //      match = std::is_same<T, bNodeTreeInterfacePanel>::value;
-  //      break;
-  //    }
-  //  }
-  //  return match ? reinterpret_cast<T *>(this) : nullptr;
   if (blender::bke::node_interface::detail::item_is_type<T>(*this)) {
     return reinterpret_cast<T *>(this);
   }
@@ -189,95 +152,6 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
   }
   return nullptr;
 }
-
-#  if 0
-namespace detail {
-
-/* Build a lookup table to avoid having to compare the socket data type with every
- * type name one after another. */
-template<typename Func, typename... Types>
-static auto build_callback_map(const std::tuple<Types...> & /*dummy*/)
-{
-  using Callback = void (*)(Func &);
-  using CallbackMap = blender::Map<std::string, Callback>;
-
-  CallbackMap callback_map;
-  /* This adds an entry in the map for every type in #Types. */
-  (callback_map.add_new(Types::socket_type_static,
-                        [](Func &func) {
-                          /* Call the templated `operator()` of the given function
-                           * object. */
-                          func.template operator()<Types>();
-                        }),
-   ...);
-  return callback_map;
-};
-
-template<typename Func, typename... Types>
-static void to_static_type_impl(eNodeTreeInterfaceItemType item_type,
-                                blender::StringRef socket_type,
-                                Func func)
-{
-  static auto callback_map = build_callback_map<Func>(
-      blender::bke::node_interface::SocketItemTypes());
-
-  switch (item_type) {
-    case NODE_INTERFACE_PANEL: {
-      func.template operator()<bNodeTreeInterfacePanel>();
-      break;
-    }
-    case NODE_INTERFACE_SOCKET: {
-      const auto callback = callback_map.lookup_default(socket_type, nullptr);
-      if (callback != nullptr) {
-        callback(func);
-      }
-      else {
-        func.template operator()<bNodeTreeInterfaceSocket>();
-      }
-      break;
-    }
-  }
-}
-
-template<typename Func, typename... Types>
-static void to_static_type_resolve(std::tuple<Types...> /*dummy*/,
-                                   eNodeTreeInterfaceItemType item_type,
-                                   blender::StringRef socket_type,
-                                   Func func)
-{
-  to_static_type_impl<Func, Types...>(item_type, socket_type, func);
-}
-
-}  // namespace detail
-
-template<typename Types, typename Func>
-void bNodeTreeInterfaceItem::to_static_type(eNodeTreeInterfaceItemType item_type,
-                                            blender::StringRef socket_type,
-                                            Func func)
-{
-  detail::to_static_type_resolve(Types(), item_type, socket_type, func);
-}
-
-template<typename Types, typename Func> void bNodeTreeInterfaceItem::to_static_type(Func func)
-{
-  const char *socket_type = (item_type == NODE_INTERFACE_SOCKET) ?
-                                reinterpret_cast<bNodeTreeInterfaceSocket *>(this)->socket_type :
-                                "";
-  detail::to_static_type_resolve(
-      Types(), eNodeTreeInterfaceItemType(item_type), socket_type, func);
-}
-
-template<typename Types, typename Func>
-void bNodeTreeInterfaceItem::to_static_type(Func func) const
-{
-  const char *socket_type =
-      (item_type == NODE_INTERFACE_SOCKET) ?
-          reinterpret_cast<const bNodeTreeInterfaceSocket *>(this)->socket_type :
-          "";
-  detail::to_static_type_resolve(
-      Types(), eNodeTreeInterfaceItemType(item_type), socket_type, func);
-}
-#  endif
 
 template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
 {
