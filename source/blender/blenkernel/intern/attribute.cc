@@ -229,12 +229,10 @@ bool BKE_id_attribute_and_defgroup_unique_name_check(void *arg, const char *name
   AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
       arg);
 
-  /* Checking vertex groups first. */
   if (BKE_defgroup_unique_name_check(data, name)) {
     return true;
   }
 
-  /* Checking attributes next. */
   DomainInfo info[ATTR_DOMAIN_NUM];
   get_domains(data->id, info);
 

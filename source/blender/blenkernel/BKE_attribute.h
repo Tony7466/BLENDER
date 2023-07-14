@@ -9,9 +9,6 @@
 
 #pragma once
 
-#include "DNA_ID.h"
-#include "DNA_object_types.h"
-
 #include "BLI_sys_types.h"
 
 #include "BKE_customdata.h"
@@ -24,11 +21,6 @@ struct CustomData;
 struct CustomDataLayer;
 struct ID;
 struct ReportList;
-
-typedef struct AttributeAndDefgroupUniqueNameData {
-  ID *id;
-  bDeformGroup *dg;
-} AttributeAndDefgroupUniqueNameData;
 
 /** #Attribute.domain */
 typedef enum eAttrDomain {
@@ -124,6 +116,11 @@ void BKE_id_attributes_active_color_set(struct ID *id, const char *name);
 void BKE_id_attributes_default_color_set(struct ID *id, const char *name);
 
 const struct CustomDataLayer *BKE_id_attributes_color_find(const struct ID *id, const char *name);
+
+typedef struct AttributeAndDefgroupUniqueNameData {
+  struct ID *id;
+  struct bDeformGroup *dg;
+} AttributeAndDefgroupUniqueNameData;
 
 bool BKE_id_attribute_and_defgroup_unique_name_check(void *arg, const char *name);
 bool BKE_id_attribute_calc_unique_name(struct ID *id, const char *name, char *outname);

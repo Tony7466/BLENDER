@@ -448,9 +448,6 @@ bool BKE_object_supports_vertex_groups(const Object *ob)
 const ListBase *BKE_id_defgroup_list_get(const ID *id)
 {
   switch (GS(id->name)) {
-    case ID_OB: {
-      return BKE_object_defgroup_list((const Object *)id);
-    }
     case ID_ME: {
       const Mesh *me = (const Mesh *)id;
       return &me->vertex_group_names;
@@ -687,7 +684,10 @@ int BKE_object_defgroup_flip_index(const Object *ob, int index, const bool use_d
 
 static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, ID *id)
 {
-  const ListBase *defbase = BKE_id_defgroup_list_get(id);
+  const ListBase *defbase = (GS(id->name) == ID_OB) ?
+                                BKE_object_defgroup_list((const Object *)id) :
+                                BKE_id_defgroup_list_get(id);
+
   bDeformGroup *curdef;
 
   for (curdef = static_cast<bDeformGroup *>(defbase->first); curdef; curdef = curdef->next) {
