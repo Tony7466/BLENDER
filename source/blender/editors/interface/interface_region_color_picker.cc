@@ -483,12 +483,16 @@ static void ui_block_colorpicker_resize_update(bContext * /* C */, void * /* arg
 
   U.color_picker_size = MAX2(MIN2(U.color_picker_size, 400), 150);
   U.runtime.is_dirty = true;
+  
+  uiBut *but = static_cast<uiBut *>(block->buttons.first);
+  float margin = but->rect.xmin;
 
-  const int width = int(PICKER_TOTAL_W + (UI_SCALE_FAC * 42.0f));
-  const int height = int(PICKER_H + (7.2f * UI_UNIT_Y));
+  const int width = int(PICKER_TOTAL_W + (margin * 2.0f));
+  const int height = int(PICKER_H + (5.0f * UI_UNIT_Y) + (margin * 2.0f));
 
   region->winrct.xmax = region->winrct.xmin + width;
   region->winrct.ymax = region->winrct.ymin + height;
+
   ED_region_update_rect(region);
   ED_region_tag_redraw(region);
 }
@@ -546,7 +550,6 @@ static void ui_block_colorpicker(uiBlock *block,
       ui_colorpicker_circle(block, ptr, prop, cpicker);
       break;
   }
-
 
   /* mode */
   yco = -1.5f * UI_UNIT_Y;
@@ -901,6 +904,8 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
 
 uiBlock *ui_block_func_COLOR(bContext *C, uiPopupBlockHandle *handle, void *arg_but)
 {
+  printf("block func \n");
+
   uiBut *but = static_cast<uiBut *>(arg_but);
   uiBlock *block;
 
