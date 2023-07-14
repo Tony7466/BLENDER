@@ -12,13 +12,8 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_bounds.hh"
-#include "BLI_generic_pointer.hh"
-
 #include "BKE_attribute.h"
 #include "BKE_context.h"
-#include "BKE_crazyspace.hh"
-#include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
@@ -26,7 +21,6 @@
 #include "BKE_object_deform.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
-#include "BKE_type_conversions.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"

@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "DNA_curve_types.h"
 #include "DNA_customdata_types.h"
 
 #include "BKE_attribute.h"
