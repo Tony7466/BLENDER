@@ -367,6 +367,10 @@ static Array<int> calc_updated_corner_verts(const int orig_verts_num,
       for (const int edge : vert_fans[fan]) {
         /* Could potentially use a vert to corner map. */
         for (const int corner : edge_to_corner_map[edge]) {
+          // TODO: Because the edge to corner map doesn't reflect the splits anymore, this is
+          // updating too many corners (the corners on both sides of a split edge rather than just
+          // the ones that are actually part of the fan. To fix that, the fans should contain
+          // corner indices rather than edge indices.
           if (new_corner_verts[corner] == vert) {
             new_corner_verts[corner] = new_vert;
             new_vert++;
