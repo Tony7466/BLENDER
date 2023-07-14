@@ -24,7 +24,7 @@ static void node_declare_dynamic(const bNodeTree &ntree,
                                  const bNode &node,
                                  NodeDeclaration &r_declaration)
 {
-  Scene *scene = (Scene *)node.id;
+  Scene *scene = reinterpret_cast<Scene *>(node.id);
   if (scene == nullptr) {
     return;
   }
@@ -43,10 +43,10 @@ static void node_declare_dynamic(const bNodeTree &ntree,
 static void init_switch_view(const bContext *C, PointerRNA *ptr)
 {
   Scene *scene = CTX_data_scene(C);
-  bNode *node = (bNode *)ptr->data;
+  bNode *node = static_cast<bNode *>(ptr->data);
 
   /* store scene for updates */
-  node->id = (ID *)scene;
+  node->id = reinterpret_cast<ID *>(scene);
   id_us_plus(node->id);
 }
 
