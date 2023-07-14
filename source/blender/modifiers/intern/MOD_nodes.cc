@@ -1497,7 +1497,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 static void bake_list_item_draw(uiList * /*ui_list*/,
                                 const bContext * /*C*/,
                                 uiLayout *layout,
-                                PointerRNA * /*idataptr*/,
+                                PointerRNA *dataptr,
                                 PointerRNA *itemptr,
                                 int /*icon*/,
                                 PointerRNA * /*active_dataptr*/,
@@ -1505,8 +1505,16 @@ static void bake_list_item_draw(uiList * /*ui_list*/,
                                 int /*index*/,
                                 int /*flt_flag*/)
 {
-  // NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
-  uiItemR(layout, itemptr, "directory", 0, "Directory", ICON_NONE);
+  NodesModifierData &nmd = *static_cast<NodesModifierData *>(dataptr->data);
+  NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
+  const bNode *node = nmd.node_group->find_nested_node(bake.id);
+
+  if (node) {
+    uiItemL(layout, node->label_or_name().c_str(), ICON_NONE);
+  }
+  else {
+    uiItemL(layout, N_("Not found"), ICON_ERROR);
+  }
 }
 
 static void panelRegister(ARegionType *region_type)
