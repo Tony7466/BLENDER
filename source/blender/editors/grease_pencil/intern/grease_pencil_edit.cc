@@ -284,6 +284,10 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
         /* Smooth all selected curves in the current drawing. */
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+
         bke::AttributeAccessor attributes = curves.attributes();
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
@@ -295,7 +299,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
             ".selection", ATTR_DOMAIN_POINT, true);
 
         Array<float3> orig_positions;
-        if (smooth_position && !curves.positions().is_empty()) {
+        if (smooth_position) {
           orig_positions = curves.positions();
         }
         Array<float> orig_opacities;
