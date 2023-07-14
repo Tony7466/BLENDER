@@ -5633,6 +5633,8 @@ static void do_projectpaint_thread(TaskPool *__restrict /*pool*/, void *ph_v)
 
 static bool project_paint_op(void *state, const float lastpos[2], const float pos[2])
 {
+  paintscope_begin;
+
   /* First unpack args from the struct */
   ProjPaintState *ps = (ProjPaintState *)state;
   bool touch_any = false;
@@ -5779,6 +5781,8 @@ static void paint_proj_stroke_ps(const bContext * /*C*/,
                                  /* extra view */
                                  ProjPaintState *ps)
 {
+  paintscope_begin;
+
   ProjStrokeHandle *ps_handle = static_cast<ProjStrokeHandle *>(ps_handle_p);
   Brush *brush = ps->brush;
   Scene *scene = ps->scene;
@@ -5831,6 +5835,8 @@ void paint_proj_stroke(const bContext *C,
                        float distance,
                        float size)
 {
+  paintscope_begin;
+
   int i;
   ProjStrokeHandle *ps_handle = static_cast<ProjStrokeHandle *>(ps_handle_p);
 
@@ -5864,6 +5870,7 @@ void paint_proj_stroke(const bContext *C,
 /* initialize project paint settings from context */
 static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int mode)
 {
+  paintscope_begin;
   Scene *scene = CTX_data_scene(C);
   ToolSettings *settings = scene->toolsettings;
 
@@ -5973,6 +5980,8 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
 
 void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int mode)
 {
+  paintscope_begin;
+
   ProjStrokeHandle *ps_handle;
   Scene *scene = CTX_data_scene(C);
   ToolSettings *settings = scene->toolsettings;
@@ -6091,6 +6100,8 @@ void paint_proj_redraw(const bContext *C, void *ps_handle_p, bool final)
 
 void paint_proj_stroke_done(void *ps_handle_p)
 {
+  paintscope_begin;
+
   ProjStrokeHandle *ps_handle = static_cast<ProjStrokeHandle *>(ps_handle_p);
   Scene *scene = ps_handle->scene;
 

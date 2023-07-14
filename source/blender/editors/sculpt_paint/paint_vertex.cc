@@ -2675,6 +2675,7 @@ static void wpaint_cancel(bContext *C, wmOperator *op)
 
 static int wpaint_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  paintscope_begin;
   return paint_stroke_modal(C, op, event, (PaintStroke **)&op->customdata);
 }
 
@@ -3943,6 +3944,7 @@ static void vpaint_cancel(bContext *C, wmOperator *op)
 
 static int vpaint_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  paintscope_begin;
   return paint_stroke_modal(C, op, event, (PaintStroke **)&op->customdata);
 }
 

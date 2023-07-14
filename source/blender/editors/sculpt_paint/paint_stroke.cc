@@ -295,6 +295,8 @@ static bool paint_brush_update(bContext *C,
                                float r_location[3],
                                bool *r_location_is_set)
 {
+  paintscope_begin;
+
   Scene *scene = CTX_data_scene(C);
   UnifiedPaintSettings *ups = stroke->ups;
   bool location_sampled = false;
@@ -517,10 +519,154 @@ static bool paint_stroke_use_jitter(ePaintMode mode, Brush *brush, bool invert)
   return use_jitter;
 }
 
+double paint_time_start = 0.0;
+extern FILE *paint_log_file = nullptr;
+
+#ifdef _
+#  undef _
+#endif
+#define _(f) \
+  case f: \
+    return #f;
+const char *get_brush_flag1(int bit)
+{
+  switch (bit) {
+    _(BRUSH_AIRBRUSH)
+    _(BRUSH_INVERT_TO_SCRAPE_FILL)
+    _(BRUSH_ALPHA_PRESSURE)
+    _(BRUSH_SIZE_PRESSURE)
+    _(BRUSH_JITTER_PRESSURE)
+    _(BRUSH_SPACING_PRESSURE)
+    _(BRUSH_ORIGINAL_PLANE)
+    _(BRUSH_GRAB_ACTIVE_VERTEX)
+    _(BRUSH_ANCHORED)
+    _(BRUSH_DIR_IN)
+    _(BRUSH_SPACE)
+    _(BRUSH_SMOOTH_STROKE)
+    _(BRUSH_PERSISTENT)
+    _(BRUSH_ACCUMULATE)
+    _(BRUSH_LOCK_ALPHA)
+    _(BRUSH_ORIGINAL_NORMAL)
+    _(BRUSH_OFFSET_PRESSURE)
+    _(BRUSH_SCENE_SPACING)
+    _(BRUSH_SPACE_ATTEN)
+    _(BRUSH_ADAPTIVE_SPACE)
+    _(BRUSH_LOCK_SIZE)
+    _(BRUSH_USE_GRADIENT)
+    _(BRUSH_EDGE_TO_EDGE)
+    _(BRUSH_DRAG_DOT)
+    _(BRUSH_INVERSE_SMOOTH_PRESSURE)
+    _(BRUSH_FRONTFACE_FALLOFF)
+    _(BRUSH_PLANE_TRIM)
+    _(BRUSH_FRONTFACE)
+    _(BRUSH_CUSTOM_ICON)
+    _(BRUSH_LINE)
+    _(BRUSH_ABSOLUTE_JITTER)
+    _(BRUSH_CURVE)
+    default:
+      return nullptr;
+  }
+}
+
+const char *get_brush_flag2(int bit)
+{
+  switch (bit) {
+    _(BRUSH_MULTIPLANE_SCRAPE_DYNAMIC);
+    _(BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW);
+    _(BRUSH_POSE_IK_ANCHORED);
+    _(BRUSH_USE_CONNECTED_ONLY);
+    _(BRUSH_CLOTH_PIN_SIMULATION_BOUNDARY);
+    _(BRUSH_POSE_USE_LOCK_ROTATION);
+    _(BRUSH_CLOTH_USE_COLLISION);
+    _(BRUSH_AREA_RADIUS_PRESSURE);
+    _(BRUSH_GRAB_SILHOUETTE);
+    _(BRUSH_USE_COLOR_AS_DISPLACEMENT);
+    default:
+      return nullptr;
+  }
+}
+
+#undef _
+void log_brush_settings(Brush *brush)
+{
+  paint_log("{brush : {\n");
+  paint_log("  mode: \"");
+  int s = 0;
+
+  if (brush->ob_mode & OB_MODE_SCULPT) {
+    paint_log("%ssculpt", s++ ? " " : "");
+  }
+  if (brush->ob_mode & OB_MODE_VERTEX_PAINT) {
+    paint_log("%svertex", s++ ? " " : "");
+  }
+  if (brush->ob_mode & OB_MODE_WEIGHT_PAINT) {
+    paint_log("%sweight", s++ ? " " : "");
+  }
+  if (brush->ob_mode & OB_MODE_TEXTURE_PAINT) {
+    paint_log("%stexture", s++ ? " " : "");
+  }
+  if (brush->ob_mode & OB_MODE_SCULPT_CURVES) {
+    paint_log("%scurves", s++ ? " " : "");
+  }
+  paint_log("\",\n");
+  paint_log("  strength            : %f,\n", brush->alpha);
+  paint_log("  size                : %d,\n", brush->size);
+  paint_log("  unprojected_radius  : %f,\n", brush->unprojected_radius);
+  paint_log("  automasking_flags   : %d,\n", brush->automasking_flags);
+  paint_log("  spacing             : %d,\n", brush->spacing);
+  if (brush->ob_mode & OB_MODE_SCULPT) {
+    paint_log("  sculpt_tool         : %d,\n", brush->sculpt_tool);
+  }
+  if (brush->ob_mode & OB_MODE_VERTEX_PAINT) {
+    paint_log("  vertexpaint_tool    : %d,\n", brush->vertexpaint_tool);
+  }
+  if (brush->ob_mode & OB_MODE_WEIGHT_PAINT) {
+    paint_log("  weightpaint_tool    : %d,\n", brush->weightpaint_tool);
+  }
+  if (brush->ob_mode & OB_MODE_TEXTURE_PAINT) {
+    paint_log("  imagepaint_tool     : %d,\n", brush->imagepaint_tool);
+  }
+  if (brush->ob_mode & OB_MODE_SCULPT_CURVES) {
+    paint_log("  curves_sculpt_tool  : %d,\n", brush->curves_sculpt_tool);
+  }
+
+  paint_log("  flag                  : \"");
+  int first = 0;
+  for (uint i = 0; i < 32; i++) {
+    int bit = uint(brush->flag) & (1 << i);
+
+    if (bit) {
+      const char *name = get_brush_flag1(bit);
+      if (bit) {
+        paint_log("%s%s", first++ ? "|" : "", name);
+      }
+    }
+  }
+  paint_log("\",\n");
+
+  paint_log("  flag2                 : \"");
+  first = 0;
+  for (uint i = 0; i < 32; i++) {
+    int bit = uint(brush->flag2) & (1 << i);
+
+    if (bit) {
+      const char *name = get_brush_flag2(bit);
+      if (bit) {
+        paint_log("%s%s", first++ ? "|" : "", name);
+      }
+    }
+  }
+  paint_log("\",\n");
+
+  paint_log("}},\n");
+}
+
 /* Put the location of the next stroke dot into the stroke RNA and apply it to the mesh */
 static void paint_brush_stroke_add_step(
     bContext *C, wmOperator *op, PaintStroke *stroke, const float mval[2], float pressure)
 {
+  paintscope_begin;
+
   Scene *scene = CTX_data_scene(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
@@ -619,8 +765,34 @@ static void paint_brush_stroke_add_step(
     }
   }
 
+  static float last_time = 0.0;
+
+  if (last_time == 0.0) {
+    last_time = paint_time_ms();
+  }
+
+  float time_delta = paint_time_ms() - last_time;
+
+  last_time = paint_time_ms();
+
   /* Add to stroke */
   if (add_step) {
+    log_brush_settings(brush);
+    paint_log("{stroke_sample : {\n");
+    paint_log("  time        : %lf,\n", paint_time_ms() / 1000.0);
+    paint_log("  time_delta  : %.5f,\n", time_delta);
+    paint_log("  size        : %f,\n", ups->pixel_radius);
+    paint_log("  location    : [%f, %f, %f],\n", location[0], location[1], location[2]);
+    paint_log("  mouse       : [%f, %f],\n", mouse_out[0], mouse_out[1]);
+    paint_log("  mouse_event : [%f, %f],\n", mval[0], mval[1]);
+    paint_log("  x_tilt      : %f,\n", stroke->x_tilt);
+    paint_log("  y_tilt      : %f,\n", stroke->y_tilt);
+    paint_log("  pressure    : %f,\n", pressure);
+    paint_log("  stack_trace : ");
+    paint_print_stack();
+    paint_log(",\n");
+    paint_log("}},\n");
+
     RNA_collection_add(op->ptr, "stroke", &itemptr);
     RNA_float_set(&itemptr, "size", ups->pixel_radius);
     RNA_float_set_array(&itemptr, "location", location);
@@ -638,6 +810,8 @@ static void paint_brush_stroke_add_step(
     /* don't record this for now, it takes up a lot of memory when doing long
      * strokes with small brush size, and operators have register disabled */
     RNA_collection_clear(op->ptr, "stroke");
+
+    paint_log("\n");
   }
 
   stroke->tot_samples++;
@@ -650,6 +824,8 @@ static bool paint_smooth_stroke(PaintStroke *stroke,
                                 float r_mouse[2],
                                 float *r_pressure)
 {
+  paintscope_begin;
+
   if (paint_supports_smooth_stroke(stroke->brush, mode)) {
     float radius = stroke->brush->smooth_stroke_radius * stroke->zoom_2d;
     float u = stroke->brush->smooth_stroke_factor;
@@ -678,6 +854,8 @@ static float paint_space_stroke_spacing(bContext *C,
                                         float size_pressure,
                                         float spacing_pressure)
 {
+  paintscope_begin;
+
   Paint *paint = BKE_paint_get_active_from_context(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
@@ -784,6 +962,8 @@ static float paint_space_stroke_spacing_variable(bContext *C,
                                                  float dpressure,
                                                  float length)
 {
+  paintscope_begin;
+
   if (BKE_brush_use_size_pressure(stroke->brush)) {
     /* use pressure to modify size. set spacing so that at 100%, the circles
      * are aligned nicely with no overlap. for this the spacing needs to be
@@ -815,6 +995,8 @@ static int paint_space_stroke(bContext *C,
                               const float final_mouse[2],
                               float final_pressure)
 {
+  paintscope_begin;
+
   const Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
   UnifiedPaintSettings *ups = stroke->ups;
@@ -907,6 +1089,8 @@ PaintStroke *paint_stroke_new(bContext *C,
                               StrokeDone done,
                               int event_type)
 {
+  paintscope_begin;
+
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   PaintStroke *stroke = MEM_cnew<PaintStroke>(__func__);
   ToolSettings *toolsettings = CTX_data_tool_settings(C);
@@ -915,6 +1099,8 @@ PaintStroke *paint_stroke_new(bContext *C,
   Brush *br = stroke->brush = BKE_paint_brush(p);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float zoomx, zoomy;
+
+  log_brush_settings(br);
 
   ED_view3d_viewcontext_init(C, &stroke->vc, depsgraph);
 
@@ -968,6 +1154,8 @@ PaintStroke *paint_stroke_new(bContext *C,
 
 void paint_stroke_free(bContext *C, wmOperator * /*op*/, PaintStroke *stroke)
 {
+  paintscope_begin;
+
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   if (rv3d) {
     rv3d->rflag &= ~RV3D_PAINTING;
@@ -1002,6 +1190,8 @@ void paint_stroke_free(bContext *C, wmOperator * /*op*/, PaintStroke *stroke)
 
 static void stroke_done(bContext *C, wmOperator *op, PaintStroke *stroke)
 {
+  paintscope_begin;
+
   UnifiedPaintSettings *ups = stroke->ups;
 
   /* reset rotation here to avoid doing so in cursor display */
@@ -1077,6 +1267,8 @@ static bool sculpt_is_grab_tool(Brush *br)
 
 bool paint_supports_dynamic_size(Brush *br, ePaintMode mode)
 {
+  paintscope_begin;
+
   if (br->flag & BRUSH_ANCHORED) {
     return false;
   }
@@ -1103,6 +1295,8 @@ bool paint_supports_dynamic_size(Brush *br, ePaintMode mode)
 
 bool paint_supports_smooth_stroke(Brush *br, ePaintMode mode)
 {
+  paintscope_begin;
+
   if (!(br->flag & BRUSH_SMOOTH_STROKE) ||
       (br->flag & (BRUSH_ANCHORED | BRUSH_DRAG_DOT | BRUSH_LINE)))
   {
@@ -1215,6 +1409,8 @@ static void paint_line_strokes_spacing(bContext *C,
                                        const float old_pos[2],
                                        const float new_pos[2])
 {
+  paintscope_begin;
+
   UnifiedPaintSettings *ups = stroke->ups;
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
@@ -1302,6 +1498,8 @@ static void paint_stroke_line_end(bContext *C,
                                   PaintStroke *stroke,
                                   const float mouse[2])
 {
+  paintscope_begin;
+
   Brush *br = stroke->brush;
   if (stroke->stroke_started && (br->flag & BRUSH_LINE)) {
     stroke->ups->overlap_factor = paint_stroke_integrate_overlap(br, 1.0);
@@ -1313,6 +1511,8 @@ static void paint_stroke_line_end(bContext *C,
 
 static bool paint_stroke_curve_end(bContext *C, wmOperator *op, PaintStroke *stroke)
 {
+  paintscope_begin;
+
   Brush *br = stroke->brush;
 
   if (br->flag & BRUSH_CURVE) {
@@ -1439,8 +1639,31 @@ static void paint_stroke_line_constrain(PaintStroke *stroke, float mouse[2])
   }
 }
 
+namespace paint_scope_stack {
+ATTR_NO_OPT
+PaintScopeLogEntry paintscope_stack[5000];
+int paintscope_stack_cur = 0;
+}  // namespace paint_scope_stack
+
+ATTR_NO_OPT void paint_print_stack()
+{
+  using namespace paint_scope_stack;
+
+  if (paintscope_stack_cur <= 0) {
+    paint_log("[]");
+    return;
+  }
+
+  paint_log("[\n");
+  for (int i = 0; i < paintscope_stack_cur; i++) {
+    paint_log("    \"%s:%d\",\n", paintscope_stack[i].name, paintscope_stack[i].line);
+  }
+  paint_log("  ]");
+}
 int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintStroke **stroke_p)
 {
+  paintscope_begin;
+
   Paint *p = BKE_paint_get_active_from_context(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
   PaintStroke *stroke = *stroke_p;
@@ -1452,8 +1675,25 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
   bool redraw = false;
   float pressure;
 
+  paint_log("{paint_tool_require_inbetween_mouse_events: %s},\n",
+            paint_tool_require_inbetween_mouse_events(br, mode) ? "true" : "false");
+
   if (event->type == INBETWEEN_MOUSEMOVE && !paint_tool_require_inbetween_mouse_events(br, mode)) {
     return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (WM_event_is_tablet(event) ||
+      ELEM(event->type, INBETWEEN_MOUSEMOVE, MOUSEMOVE, stroke->event_type))
+  {
+    paint_log("{event: {\n");
+    paint_log("  is_tablet: %s,\n", WM_event_is_tablet(event) ? "true" : "false");
+    paint_log("  pen_type: \"%s\",\n",
+              event->tablet.active == EVT_TABLET_ERASER ? "eraser" : "stylus");
+    paint_log("  pressure: %f,\n", event->tablet.pressure);
+    paint_log("  x_tilt: %d,\n", event->tablet.x_tilt);
+    paint_log("  y_tilt: %d,\n", event->tablet.y_tilt);
+    paint_log("  is_motion_absolute: %s\n", event->tablet.is_motion_absolute ? "true" : "false");
+    paint_log("}},\n");
   }
 
   /* see if tablet affects event. Line, anchored and drag dot strokes do not support pressure */

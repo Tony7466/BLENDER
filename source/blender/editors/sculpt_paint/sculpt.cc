@@ -5976,6 +5976,7 @@ static void sculpt_brush_stroke_cancel(bContext *C, wmOperator *op)
 
 static int sculpt_brush_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  paintscope_begin;
   return paint_stroke_modal(C, op, event, (PaintStroke **)&op->customdata);
 }
 

@@ -142,6 +142,7 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
 
 static int grease_pencil_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  paintscope_begin;
   return paint_stroke_modal(C, op, event, reinterpret_cast<PaintStroke **>(&op->customdata));
 }
 

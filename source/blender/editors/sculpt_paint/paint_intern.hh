@@ -8,6 +8,16 @@
 
 #pragma once
 
+#ifdef __clang__
+#  define ATTR_NO_OPT __attribute__((optnone))
+#elif defined(_MSC_VER)
+#  define ATTR_NO_OPT __pragma(optimize("", off))
+#elif defined(__GNUC__)
+#  define ATTR_NO_OPT __attribute__((optimize("O0")))
+#else
+#  define ATTR_NO_OPT
+#endif
+
 #include "BKE_paint.h"
 
 #include "BLI_compiler_compat.h"
@@ -517,3 +527,68 @@ void paint_init_pivot(Object *ob, Scene *scene);
 
 /* paint curve defines */
 #define PAINT_CURVE_NUM_SEGMENTS 40
+
+#include "PIL_time.h"
+#include <stdarg.h>
+#include <stdio.h>
+
+extern FILE *paint_log_file;
+extern double paint_time_start;
+
+void log_brush_settings(Brush *brush);
+
+static double paint_time_ms()
+{
+  if (paint_time_start == 0.0) {
+    paint_time_start = PIL_check_seconds_timer();
+  }
+
+  return (PIL_check_seconds_timer() - paint_time_start) * 1000.0;
+}
+
+static void paint_check_log()
+{
+  if (!paint_log_file) {
+    paint_log_file = fopen("paint_log.txt", "a");
+  }
+}
+
+static void paint_log(const char *fmt...)
+{
+  paint_check_log();
+
+  va_list args;
+  va_start(args, fmt);
+  vfprintf(paint_log_file, fmt, args);
+  vprintf(fmt, args);
+  va_end(args);
+}
+
+namespace paint_scope_stack {
+struct PaintScopeLogEntry {
+  const char *name;
+  int line;
+};
+
+extern PaintScopeLogEntry paintscope_stack[5000];
+extern int paintscope_stack_cur;
+
+struct _paintscope {
+  ATTR_NO_OPT _paintscope(const char *name, int line)
+  {
+    paintscope_stack[paintscope_stack_cur].name = name;
+    paintscope_stack[paintscope_stack_cur].line = line;
+    paintscope_stack_cur++;
+  }
+  _paintscope(const _paintscope &) = delete;
+  _paintscope(const _paintscope &&) = delete;
+  ~_paintscope()
+  {
+    paintscope_stack_cur--;
+  }
+};
+
+#define paintscope_begin volatile paint_scope_stack::_paintscope scope_start(__func__, __LINE__)
+}  // namespace paint_scope_stack
+
+void paint_print_stack();
