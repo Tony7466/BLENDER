@@ -1456,6 +1456,13 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
+static void bake_panel_draw(const bContext *C, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  uiItemL(layout, "Test", ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
   using namespace blender;
@@ -1472,6 +1479,8 @@ static void panelRegister(ARegionType *region_type)
                              nullptr,
                              internal_dependencies_panel_draw,
                              panel_type);
+  modifier_subpanel_register(
+      region_type, "bake", N_("Bake"), nullptr, bake_panel_draw, panel_type);
 }
 
 static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
