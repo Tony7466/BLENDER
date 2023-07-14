@@ -49,85 +49,54 @@
 
 namespace blender::ed::geometry {
 
-static GPointer default_selection()
+template<typename T> constexpr bool is_selection_type = is_same_any_v<T, bool, float>;
+
+static bool is_selection_cpptype(const CPPType &type)
 {
-  static const bool default_unselected = false;
+  return ELEM(&type, &CPPType::get<float>(), &CPPType::get<bool>());
+}
+
+static GPointer default_is_selected()
+{
+  static const bool default_unselected = true;
   return GPointer(&default_unselected);
 }
 
-static const VArray<bool> typed_selection(GVArray selection)
+template<typename T = bool> static const VArray<T> to_selection_type(GVArray selection)
 {
-  BLI_assert(ELEM(&selection.type(), &CPPType::get<float>(), &CPPType::get<bool>()));
+  static_assert(is_selection_type<T>);
   const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
-  return conversions.try_convert(std::move(selection), CPPType::get<bool>()).typed<bool>();
+  return conversions.try_convert(std::move(selection), CPPType::get<T>()).typed<T>();
 }
 
 static GVArray selection_for_read(const bke::AttributeAccessor attributes,
-                                  const GPointer default_value)
+                                  const GPointer default_selection = default_is_selected())
 {
-  if (attributes.contains(".selection")) {
-    bke::GAttributeReader selection_attr = attributes.lookup(".selection");
-    return attributes.adapt_domain(
-        selection_attr.varray, selection_attr.domain, ATTR_DOMAIN_POINT);
-  }
-  const int domain_size = attributes.domain_size(ATTR_DOMAIN_POINT);
-  return GVArray::ForSingle(*default_value.type(), domain_size, default_value.get());
+  BLI_assert(is_selection_cpptype(*default_selection.type()));
+  const eCustomDataType default_type = bke::cpp_type_to_custom_data_type(
+      *default_selection.type());
+  return *attributes.lookup_or_default(
+      ".selection", ATTR_DOMAIN_POINT, default_type, default_selection.get());
 }
 
 static IndexMask selection_mask(const bke::AttributeAccessor attributes, IndexMaskMemory &memory)
 {
-  GVArray selection = selection_for_read(attributes, default_selection());
-  const VArray<bool> boolean_selection = typed_selection(std::move(selection));
+  GVArray selection = selection_for_read(attributes);
+  const VArray<bool> boolean_selection = to_selection_type(std::move(selection));
   return IndexMask::from_bools(std::move(boolean_selection), memory);
 }
 
-static std::optional<Bounds<float3>> selection_bounds(const bke::AttributeAccessor attributes,
-                                                      const Span<float3> positions)
-{
-  IndexMaskMemory memory;
-  const IndexMask mask = selection_mask(attributes, memory);
-  return bounds::min_max(mask, positions);
-}
-
-static std::optional<Bounds<float3>> selection_bounds(
+std::optional<Bounds<float3>> selection_bounds(
     const Curves *curves_id, const bke::crazyspace::GeometryDeformation deformation)
 {
   if (curves_id == nullptr) {
     return std::nullopt;
   }
+  IndexMaskMemory memory;
   const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   const bke::AttributeAccessor attributes = curves.attributes();
-  return selection_bounds(attributes, deformation.positions);
-}
-
-static std::optional<Bounds<float3>> selection_bounds(const Mesh *mesh)
-{
-  if (mesh == nullptr) {
-    return std::nullopt;
-  }
-  const bke::AttributeAccessor attributes = mesh->attributes();
-  return selection_bounds(attributes, mesh->vert_positions());
-}
-
-static std::optional<Bounds<float3>> selection_bounds(const PointCloud *points)
-{
-  if (points == nullptr) {
-    return std::nullopt;
-  }
-  const bke::AttributeAccessor attributes = points->attributes();
-  return selection_bounds(attributes, points->positions());
-}
-
-std::optional<Bounds<float3>> selection_bounds_for_geometry(
-    const bke::GeometrySet &geometry, const bke::crazyspace::GeometryDeformation deformation)
-{
-  std::optional<Bounds<float3>> bounds;
-
-  bounds = bounds::merge(bounds, selection_bounds(geometry.get_curves_for_read(), deformation));
-  bounds = bounds::merge(bounds, selection_bounds(geometry.get_mesh_for_read()));
-  bounds = bounds::merge(bounds, selection_bounds(geometry.get_pointcloud_for_read()));
-
-  return bounds;
+  const IndexMask mask = selection_mask(attributes, memory);
+  return bounds::min_max(mask, deformation.positions);
 }
 
 /*********************** Attribute Operators ************************/

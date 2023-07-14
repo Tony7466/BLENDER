@@ -1385,15 +1385,13 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     using namespace blender::bke::crazyspace;
     const Object &ob_orig = *DEG_get_original_object(ob_eval);
     const GeometryDeformation deformation = get_evaluated_curves_deformation(ob_eval, ob_orig);
-    const GeometrySet *runtime_curve_geometry = ob_eval->runtime.geometry_set_eval;
-    if (runtime_curve_geometry != nullptr) {
-      const std::optional<Bounds<float3>> curves_bounds =
-          ed::geometry::selection_bounds_for_geometry(*runtime_curve_geometry, deformation);
-      if (curves_bounds.has_value()) {
-        ok = true;
-        copy_v3_v3(min, curves_bounds->min);
-        copy_v3_v3(max, curves_bounds->max);
-      }
+    const Curves *curves = static_cast<const Curves *>(ob_eval->data);
+    const std::optional<Bounds<float3>> curves_bounds = ed::geometry::selection_bounds(
+        curves, deformation);
+    if (curves_bounds.has_value()) {
+      ok = true;
+      copy_v3_v3(min, curves_bounds->min);
+      copy_v3_v3(max, curves_bounds->max);
     }
   }
   else if (ob_eval && (ob_eval->mode & (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT |
