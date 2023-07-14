@@ -443,21 +443,30 @@ static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
 static void reassign_loose_edge_verts(const IndexMask &affected_verts,
                                       const Span<Vector<Fan>> &vert_fans,
                                       const OffsetIndices<int> new_verts_by_affected_vert,
+                                      const int orig_edges_num,
+                                      const IndexMask &unselected_edges,
+                                      const IndexMask &selected_loose_edges,
                                       const int selected_loose_edge_start,
                                       MutableSpan<int2> edges)
 {
+  /* This map is only useful because loose edges are not duplicated. Non-loose
+   * edges can potentially be duplicated into multiple final edges. */
+  Array<int> old_to_new_loose_edge_map(orig_edges_num);
+  unselected_edges.to_reverse_map<int>(old_to_new_loose_edge_map);
+  selected_loose_edges.to_reverse_map<int>(old_to_new_loose_edge_map);
+
   affected_verts.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
     const Vector<Fan> &fans = vert_fans[mask];
     const IndexRange new_verts = new_verts_by_affected_vert[mask];
     for (const int i : fans.index_range().drop_back(1)) {
       if (std::holds_alternative<SplitLooseEdgeFan>(fans[i])) {
         const int orig_edge = std::get<SplitLooseEdgeFan>(fans[i]);
-        const int new_edge = selected_loose_edge_start + 0;  // TODO!!!!
+        const int new_edge = old_to_new_loose_edge_map[orig_edge];
         swap_edge_vert(edges[new_edge], vert, new_verts[i]);
       }
       else if (std::holds_alternative<LooseEdgeGroupfan>(fans[i])) {
         for (const int orig_edge : std::get<LooseEdgeGroupfan>(fans[i])) {
-          const int new_edge = selected_loose_edge_start + 0;  // TODO!!!!
+          const int new_edge = old_to_new_loose_edge_map[orig_edge] + selected_loose_edge_start;
           swap_edge_vert(edges[new_edge], vert, new_verts[i]);
         }
       }
@@ -552,10 +561,14 @@ void split_edges(Mesh &mesh,
   Array<int2> result_edges = combine_all_final_edges(
       orig_edges, unselected_edges, duplicate_edges, selected_loose_edges);
   if (loose_edge_cache.count > 0) {
+    const int selected_loose_edge_start = unselected_edges.size() + duplicate_edges.size();
     reassign_loose_edge_verts(affected_verts,
                               vert_fans,
                               new_verts_by_affected_vert,
-                              0,  // TODO
+                              orig_edges.size(),
+                              unselected_edges,
+                              selected_loose_edges,
+                              selected_loose_edge_start,
                               result_edges);
   }
 
