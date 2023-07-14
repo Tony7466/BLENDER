@@ -181,7 +181,8 @@ void main()
   float closest_hit_time = 1.0e10;
 
   for (uint i = 0u; i < sample_count; i++) {
-    ivec2 offset = ivec2((fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size);
+    vec2 offset_f = (fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size;
+    ivec2 offset = ivec2(floor(offset_f + 0.5));
     ivec2 sample_texel = texel + offset;
 
     /* Reject samples outside of valid neighbor tiles. */

@@ -144,7 +144,8 @@ void main()
    * So we do a random sampling around the center point. */
   for (uint i = 0u; i < sample_count; i++) {
     /* Essentially a box radius overtime. */
-    ivec2 offset = ivec2((fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size);
+    vec2 offset_f = (fract(hammersley_2d(i, sample_count) + noise) - 0.5) * filter_size;
+    ivec2 offset = ivec2(floor(offset_f + 0.5));
 
     ivec2 sample_texel = texel_fullres + offset;
     ivec2 sample_tile = sample_texel / RAYTRACE_GROUP_SIZE;
