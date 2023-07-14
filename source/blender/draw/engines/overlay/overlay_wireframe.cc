@@ -65,6 +65,8 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   bool is_object_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_OBJECT_COLOR);
   bool is_random_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_RANDOM_COLOR);
 
+  const bool use_fresnel_edit = (U.gpu_flag & USER_GPU_FLAG_FRESNEL_EDIT) != 0;
+
   const bool use_select = (DRW_state_is_select() || DRW_state_is_depth());
   GPUShader *wires_sh = use_select ? OVERLAY_shader_wireframe_select() :
                                      OVERLAY_shader_wireframe(pd->antialiasing.enabled);
@@ -98,6 +100,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_bool_copy(grp, "isObjectColor", is_object_color);
       DRW_shgroup_uniform_bool_copy(grp, "isRandomColor", is_random_color);
       DRW_shgroup_uniform_bool_copy(grp, "isHair", false);
+      DRW_shgroup_uniform_bool_copy(grp, "useFresnelEdit", use_fresnel_edit);
 
       pd->wires_all_grp[xray][use_coloring] = grp = DRW_shgroup_create(wires_sh, pass);
       DRW_shgroup_uniform_float_copy(grp, "wireStepParam", 1.0f);

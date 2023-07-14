@@ -130,22 +130,24 @@ void main()
   out_finalColor[1].a *= (occluded1) ? alpha : 1.0;
 
 #if !defined(FACE)
-  /* Facing based color blend */
-  vec3 view_normal0 = normalize(normal_object_to_view(in_vnor0) + 1e-4);
-  vec3 view_vec0 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos0) : vec3(0.0, 0.0, 1.0);
-  float facing0 = dot(view_vec0, view_normal0);
-  facing0 = 1.0 - abs(facing0) * 0.2;
+  if (useFresnelEdit) {
+    /* Facing based color blend */
+    vec3 view_normal0 = normalize(normal_object_to_view(in_vnor0) + 1e-4);
+    vec3 view_vec0 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos0) : vec3(0.0, 0.0, 1.0);
+    float facing0 = dot(view_vec0, view_normal0);
+    facing0 = 1.0 - abs(facing0) * 0.2;
 
-  vec3 view_normal1 = normalize(normal_object_to_view(in_vnor1) + 1e-4);
-  vec3 view_vec1 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos1) : vec3(0.0, 0.0, 1.0);
-  float facing1 = dot(view_vec1, view_normal1);
-  facing1 = 1.0 - abs(facing1) * 0.2;
+    vec3 view_normal1 = normalize(normal_object_to_view(in_vnor1) + 1e-4);
+    vec3 view_vec1 = (ProjectionMatrix[3][3] == 0.0) ? normalize(view_pos1) : vec3(0.0, 0.0, 1.0);
+    float facing1 = dot(view_vec1, view_normal1);
+    facing1 = 1.0 - abs(facing1) * 0.2;
 
-  /* Do interpolation in a non-linear space to have a better visual result. */
-  out_finalColor[0].rgb = non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0);
-  out_finalColor[1].rgb = non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1);
+    /* Do interpolation in a non-linear space to have a better visual result. */
+    out_finalColor[0].rgb = non_linear_blend_color(
+        colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0);
+    out_finalColor[1].rgb = non_linear_blend_color(
+        colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1);
+  }
 #endif
 
   // -------- GEOM SHADER ALTERNATIVE ----------- //
