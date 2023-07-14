@@ -101,8 +101,8 @@ static SpaceLink *graph_create(const ScrArea * /*area*/, const Scene *scene)
   region->regiontype = RGN_TYPE_WINDOW;
 
   region->v2d.tot.xmin = 0.0f;
-  region->v2d.tot.ymin = (float)scene->r.sfra - 10.0f;
-  region->v2d.tot.xmax = (float)scene->r.efra;
+  region->v2d.tot.ymin = float(scene->r.sfra) - 10.0f;
+  region->v2d.tot.xmax = float(scene->r.efra);
   region->v2d.tot.ymax = 10.0f;
 
   region->v2d.cur = region->v2d.tot;
@@ -791,7 +791,7 @@ static void graph_refresh(const bContext *C, ScrArea *area)
   if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR) {
     sipo->runtime.flag &= ~SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR;
 #if 0 /* Done below. */
-graph_refresh_fcurve_colors(C);
+    graph_refresh_fcurve_colors(C);
 #endif
     ED_area_tag_redraw(area);
   }
@@ -869,7 +869,7 @@ static void graph_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   sipo->runtime.ghost_curves = tmpGhosts;
 }
 
-void ED_spacetype_ipo(void)
+void ED_spacetype_ipo()
 {
   SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype ipo"));
   ARegionType *art;

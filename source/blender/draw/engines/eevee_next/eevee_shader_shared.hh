@@ -326,8 +326,8 @@ struct AOVsInfoData {
   uint4 hash_value[AOV_MAX];
   uint4 hash_color[AOV_MAX];
   /* Length of used data. */
-  uint color_len;
-  uint value_len;
+  int color_len;
+  int value_len;
   /** Id of the AOV to be displayed (from the start of the AOV array). -1 for combined. */
   int display_id;
   /** True if the AOV to be displayed is from the value accumulation buffer. */
@@ -966,6 +966,7 @@ BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
  * \{ */
 
 enum eClosureBits : uint32_t {
+  CLOSURE_NONE = 0u,
   /** NOTE: These are used as stencil bits. So we are limited to 8bits. */
   CLOSURE_DIFFUSE = (1u << 0u),
   CLOSURE_SSS = (1u << 1u),
