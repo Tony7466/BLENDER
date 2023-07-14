@@ -30,4 +30,12 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
     .additional_info("eevee_shared")
     .do_static_compilation(true);
 
+/* Extract spherical harmonics band L0 + L1 from octahedral mapped reflection probe. */
+GPU_SHADER_CREATE_INFO(eevee_reflection_probe_spherical_harmonics_extract)
+    .local_group_size(1, 1, 1)
+    .push_constant(Type::INT, "reflection_probe_index")
+    .additional_info("eevee_shared", "eevee_reflection_probe_data")
+    .compute_source("eevee_reflection_probe_spherical_harmonics_extract_comp.glsl")
+    .do_static_compilation(true);
+
 /** \} */

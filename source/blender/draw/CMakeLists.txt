@@ -522,6 +522,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_remap_comp.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_spherical_harmonics_extract_comp.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
