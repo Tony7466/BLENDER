@@ -400,35 +400,41 @@ class SampleCurveFunction : public mf::MultiFunction {
       else {
         fill_invalid(mask);
       }
+      return;
     }
-    else {
-      Vector<int> invalid_indices;
-      VectorSet<int> used_curves;
-      devirtualize_varray(curve_indices, [&](const auto curve_indices) {
-        mask.foreach_index([&](const int i) {
-          const int curve_i = curve_indices[i];
-          if (curves.curves_range().contains(curve_i)) {
-            used_curves.add(curve_i);
-          }
-          else {
-            invalid_indices.append(i);
-          }
-        });
+
+    IndexMaskMemory memory;
+    IndexMask mask_valids;
+    IndexMask mask_invalids;
+    VectorSet<int> used_curves;
+    devirtualize_varray(curve_indices, [&](const auto curve_indices) {
+      const IndexRange curves_range = curves.curves_range();
+      mask_valids = IndexMask::from_predicate(mask, GrainSize(1024), memory, [&](const int index) {
+        const int curve_index = curve_indices[index];
+        return curves_range.contains(curve_index);
       });
+      mask_invalids = IndexMask::from_predicate(
+          mask, GrainSize(1024), memory, [&](const int index) {
+            const int curve_index = curve_indices[index];
+            return !curves_range.contains(curve_index);
+          });
+      mask_valids.foreach_index([&](const int i) {
+        const int curve_i = curve_indices[i];
+        used_curves.add(curve_i);
+      });
+    });
 
-      IndexMaskMemory memory;
-      Array<IndexMask> mask_by_curve(used_curves.size());
-      IndexMask::from_groups<int>(
-          mask,
-          memory,
-          [&](const int i) { return used_curves.index_of(curve_indices[i]); },
-          mask_by_curve);
+    Array<IndexMask> mask_by_curve(used_curves.size());
+    IndexMask::from_groups<int>(
+        mask_valids,
+        memory,
+        [&](const int i) { return used_curves.index_of(curve_indices[i]); },
+        mask_by_curve);
 
-      for (const int i : mask_by_curve.index_range()) {
-        sample_curve(used_curves[i], mask_by_curve[i]);
-      }
-      fill_invalid(IndexMask::from_indices<int>(invalid_indices, memory));
+    for (const int i : mask_by_curve.index_range()) {
+      sample_curve(used_curves[i], mask_by_curve[i]);
     }
+    fill_invalid(mask_invalids);
   }
 
  private:
