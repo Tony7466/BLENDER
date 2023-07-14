@@ -18,44 +18,14 @@ void main()
 
   point_cloud_interp.id = pointcloud_get_point_id();
   pointcloud_get_pos_and_radius(point_cloud_interp.position, point_cloud_interp.radius);
-
-  mat3 facing_mat;
-  {
-    /* Same logic as pointcloud_get_facing_matrix(), but ensuring we use the actual camera matrices
-     * so shadowmaps are rendered correctly. */
-    facing_mat[2] = camera_buf.persmat[3][3] == 0.0 ?
-                        normalize(camera_buf.viewinv[3].xyz - point_cloud_interp.position) :
-                        camera_buf.viewinv[2].xyz;
-    facing_mat[1] = normalize(cross(camera_buf.viewinv[0].xyz, facing_mat[2]));
-    facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
-
+  pointcloud_get_pos_and_nor(interp.P, interp.N);
 #ifdef MAT_SHADOW
-    /* Since only half of the shape is rendered, ensure it's facing towards the light,
-     * but aligned with the camera axes. */
-    vec3 new_z_axis;
-    {
-      vec3 shadowmap_V = cameraVec(point_cloud_interp.position);
-      float max_abs_dot = -1.0f;
-      for (int i = 0; i < 3; i++) {
-        float _dot = dot(facing_mat[i], shadowmap_V);
-        if (abs(_dot) > max_abs_dot) {
-          max_abs_dot = abs(_dot);
-          new_z_axis = facing_mat[i] * sign(_dot);
-        }
-      }
-    }
-
-    Quaternion delta = rotation_between(facing_mat[2], new_z_axis);
-    facing_mat[2] = new_z_axis;
-    facing_mat[1] = transform_point(facing_mat[1], delta);
-    facing_mat[0] = cross(facing_mat[1], facing_mat[2]);
-#endif
-  }
-
-  interp.N = pointcloud_get_normal(facing_mat);
+  /* Since point clouds always face the view, camera and shadow orientation don't match.
+   * Apply a bias to avoid self-shadow issues. */
   /* TODO(fclem): remove multiplication here. Here only for keeping the size correct for now. */
-  float radius = point_cloud_interp.radius * 0.01;
-  interp.P = point_cloud_interp.position + interp.N * radius;
+  float actual_radius = point_cloud_interp.radius * 0.01;
+  interp.P -= cameraVec(interp.P) * actual_radius;
+#endif
 
 #ifdef MAT_VELOCITY
   vec3 lP = point_world_to_object(point_cloud_interp.position);
