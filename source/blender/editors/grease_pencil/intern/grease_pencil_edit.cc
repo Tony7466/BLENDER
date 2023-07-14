@@ -95,15 +95,15 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
  * \{ */
 
 template<typename T>
-static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
-                                   const int iterations,
-                                   const float influence,
-                                   const bool smooth_ends,
-                                   const bool keep_shape,
-                                   const bool is_cyclic,
-                                   MutableSpan<T> dst,
-                                   const Span<T> src,
-                                   const IndexMask &mask)
+static void gaussian_blur_1D(const IndexRange curve_points,
+                             const int iterations,
+                             const float influence,
+                             const bool smooth_ends,
+                             const bool keep_shape,
+                             const bool is_cyclic,
+                             const Span<T> src,
+                             const IndexMask &mask,
+                             MutableSpan<T> dst)
 {
   /* 1D Gaussian-like smoothing function.
    *
@@ -145,7 +145,7 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
 
   /* Avoid computation if the mask is empty. */
   if (mask.is_empty()) {
-    return dst;
+    return;
   }
 
   /* Weight Initialization. */
@@ -229,36 +229,34 @@ static Span<T> gaussian_blur_1D_ex(const IndexRange curve_points,
                          influence * dst[point_index] / total_weight[mask_index];
     }
   });
-
-  return dst.as_span();
 }
 
-Span<float3> gaussian_blur_1D_float3(const IndexRange curve_points,
-                                     const int iterations,
-                                     const float influence,
-                                     const bool smooth_ends,
-                                     const bool keep_shape,
-                                     const bool is_cyclic,
-                                     MutableSpan<float3> dst,
-                                     const Span<float3> src,
-                                     const IndexMask &mask)
+void gaussian_blur_1D(const IndexRange curve_points,
+                      const int iterations,
+                      const float influence,
+                      const bool smooth_ends,
+                      const bool keep_shape,
+                      const bool is_cyclic,
+                      const Span<float3> src,
+                      const IndexMask &mask,
+                      MutableSpan<float3> dst)
 {
-  return gaussian_blur_1D_ex<float3>(
-      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, dst, src, mask);
+  gaussian_blur_1D<float3>(
+      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, src, mask, dst);
 }
 
-Span<float> gaussian_blur_1D_float(const IndexRange curve_points,
-                                   const int iterations,
-                                   const float influence,
-                                   const bool smooth_ends,
-                                   const bool keep_shape,
-                                   const bool is_cyclic,
-                                   MutableSpan<float> dst,
-                                   const Span<float> src,
-                                   const IndexMask &mask)
+void gaussian_blur_1D(const IndexRange curve_points,
+                      const int iterations,
+                      const float influence,
+                      const bool smooth_ends,
+                      const bool keep_shape,
+                      const bool is_cyclic,
+                      const Span<float> src,
+                      const IndexMask &mask,
+                      MutableSpan<float> dst)
 {
-  return gaussian_blur_1D_ex<float>(
-      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, dst, src, mask);
+  gaussian_blur_1D<float>(
+      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, src, mask, dst);
 }
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
@@ -278,92 +276,87 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
   const bool smooth_opacity = RNA_boolean_get(op->ptr, "smooth_opacity");
 
   if (!(smooth_position || smooth_radius || smooth_opacity)) {
-    /* If there's nothing to be done, then do nothing. */
+    /* There's nothing to be smoothed, return. */
     return OPERATOR_FINISHED;
   }
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
         /* Smooth all selected curves in the current drawing. */
-
-        /* Curves geometry and attributes*/
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        /* Position. */
-        Array<float3> curves_positions_copy;
-        if (smooth_position && !curves.positions().is_empty()) {
-          curves_positions_copy = curves.positions();
-        }
-        /* Opacity. */
-        Array<float> curves_opacities_copy;
-        if (smooth_opacity && drawing.opacities().is_span()) {
-          curves_opacities_copy = drawing.opacities().get_internal_span();
-        }
-        /* Radius. */
-        Array<float> curves_radii_copy;
-        if (smooth_radius && drawing.radii().is_span()) {
-          curves_radii_copy = drawing.radii().get_internal_span();
-        }
-        /* Cyclic. */
-        const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        bke::AttributeAccessor attributes = curves.attributes();
+        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+        MutableSpan<float3> positions = curves.positions_for_write();
+        MutableSpan<float> opacities = drawing.opacities_for_write();
+        MutableSpan<float> radii = drawing.radii_for_write();
         const VArray<bool> cyclic = curves.cyclic();
-        /* Selection. */
-        bke::AttributeAccessor curves_attributes = curves.attributes();
-        bke::AttributeReader<bool> selection_attribute = curves_attributes.lookup_or_default<bool>(
+        const VArray<bool> selection = *attributes.lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
-        if (!ed::curves::has_anything_selected(selection_attribute.varray,
-                                               curves.points_range()) ||
-            (curves_positions_copy.is_empty() && curves_opacities_copy.is_empty() &&
-             curves_radii_copy.is_empty()))
+        Array<float3> orig_positions;
+        if (smooth_position && !curves.positions().is_empty()) {
+          orig_positions = curves.positions();
+        }
+        Array<float> orig_opacities;
+        if (smooth_opacity && drawing.opacities().is_span()) {
+          orig_opacities = drawing.opacities().get_internal_span();
+        }
+        Array<float> orig_radii;
+        if (smooth_radius && drawing.radii().is_span()) {
+          orig_radii = drawing.radii().get_internal_span();
+        }
+
+        if (!ed::curves::has_anything_selected(selection, curves.points_range()) ||
+            (orig_positions.is_empty() && orig_opacities.is_empty() && orig_radii.is_empty()))
         {
+          /* If nothing is selected or none of the attributes should be smoothed, return. */
           return;
         }
 
         threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
           for (const int curve_i : range) {
-            /* Smooth a single curve*/
-
+            /* Smooth a single curve. */
             const IndexRange points = points_by_curve[curve_i];
             const bool is_cyclic = cyclic[curve_i];
 
             IndexMaskMemory memory;
-            const IndexMask curve_mask = IndexMask::from_bools(
-                points, selection_attribute.varray, memory);
+            const IndexMask curve_mask = IndexMask::from_bools(points, selection, memory);
 
-            if (!curves_positions_copy.is_empty()) {
-              gaussian_blur_1D_float3(points,
-                                      iterations,
-                                      influence,
-                                      smooth_ends,
-                                      keep_shape,
-                                      is_cyclic,
-                                      curves.positions_for_write(),
-                                      curves_positions_copy,
-                                      curve_mask);
+            if (!orig_positions.is_empty()) {
+              gaussian_blur_1D(points,
+                               iterations,
+                               influence,
+                               smooth_ends,
+                               keep_shape,
+                               is_cyclic,
+                               orig_positions,
+                               curve_mask,
+                               positions);
             }
 
-            if (!curves_opacities_copy.is_empty()) {
-              gaussian_blur_1D_float(points,
-                                     iterations,
-                                     influence,
-                                     smooth_ends,
-                                     false,
-                                     is_cyclic,
-                                     drawing.opacities_for_write(),
-                                     curves_opacities_copy,
-                                     curve_mask);
+            if (!orig_opacities.is_empty()) {
+              gaussian_blur_1D(points,
+                               iterations,
+                               influence,
+                               smooth_ends,
+                               false,
+                               is_cyclic,
+                               orig_opacities,
+                               curve_mask,
+                               opacities);
             }
 
-            if (!curves_radii_copy.is_empty()) {
-              gaussian_blur_1D_float(points,
-                                     iterations,
-                                     influence,
-                                     smooth_ends,
-                                     false,
-                                     is_cyclic,
-                                     drawing.radii_for_write(),
-                                     curves_radii_copy,
-                                     curve_mask);
+            if (!orig_radii.is_empty()) {
+              gaussian_blur_1D(points,
+                               iterations,
+                               influence,
+                               smooth_ends,
+                               false,
+                               is_cyclic,
+                               orig_radii,
+                               curve_mask,
+                               radii);
             }
           }
         });
