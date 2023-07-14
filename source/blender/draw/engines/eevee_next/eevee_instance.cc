@@ -17,6 +17,7 @@
 #include "DNA_ID.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
+#include "IMB_imbuf_types.h"
 #include "RE_pipeline.h"
 
 #include "eevee_engine.h"
@@ -272,6 +273,17 @@ void Instance::render_sync()
   // DRW_hair_update();
 }
 
+bool Instance::do_probe_sync() const
+{
+  if (materials.queued_shaders_count > 0) {
+    return false;
+  }
+  if (!reflection_probes.update_probes_this_sample_) {
+    return false;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -296,7 +308,9 @@ void Instance::render_sample()
 
   sampling.step();
 
-  capture_view.render();
+  capture_view.render_world();
+  capture_view.render_probes();
+
   main_view.render();
 
   motion_blur.step();
@@ -362,7 +376,9 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
       RenderPass *vector_rp = RE_pass_find_by_name(
           render_layer, vector_pass_name.c_str(), view_name);
       if (vector_rp) {
-        memset(vector_rp->buffer.data, 0, sizeof(float) * 4 * vector_rp->rectx * vector_rp->recty);
+        memset(vector_rp->ibuf->float_buffer.data,
+               0,
+               sizeof(float) * 4 * vector_rp->rectx * vector_rp->recty);
       }
     }
   }
@@ -376,6 +392,12 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 
 void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 {
+  /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when there
+   * are other light probes in the scene. */
+  if (DEG_id_type_any_exists(this->depsgraph, ID_LP)) {
+    reflection_probes.update_probes_next_sample_ = true;
+  }
+
   while (!sampling.finished()) {
     this->render_sample();
 
@@ -520,7 +542,7 @@ void Instance::light_bake_irradiance(
     render_sync();
     manager->end_sync();
 
-    capture_view.render();
+    capture_view.render_world();
 
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();
