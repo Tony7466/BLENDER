@@ -37,7 +37,7 @@ void ReflectionProbeModule::init()
                                init_num_probes_,
                                GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
-                               REFLECTION_PROBE_MIPMAP_LEVELS);
+                               9999);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
 
     recalc_lod_factors();
@@ -294,7 +294,7 @@ void ReflectionProbeModule::end_sync()
                                number_layers_needed,
                                GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
-                               REFLECTION_PROBE_MIPMAP_LEVELS);
+                               9999);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
 
     for (ReflectionProbe &probe : probes_.values()) {
