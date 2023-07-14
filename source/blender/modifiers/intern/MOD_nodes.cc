@@ -1487,6 +1487,9 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
     return;
   }
 
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
   NodesModifierBake &bake = nmd->bakes[nmd->active_bake];
   PointerRNA bake_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBake, &bake, &bake_ptr);
