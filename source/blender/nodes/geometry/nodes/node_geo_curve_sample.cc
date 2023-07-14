@@ -404,21 +404,21 @@ class SampleCurveFunction : public mf::MultiFunction {
     }
 
     IndexMaskMemory memory;
-    IndexMask mask_valids;
-    IndexMask mask_invalids;
+    IndexMask mask_valid;
+    IndexMask mask_invalid;
     VectorSet<int> used_curves;
     devirtualize_varray(curve_indices, [&](const auto curve_indices) {
       const IndexRange curves_range = curves.curves_range();
-      mask_valids = IndexMask::from_predicate(mask, GrainSize(1024), memory, [&](const int index) {
+      mask_valid = IndexMask::from_predicate(mask, GrainSize(1024), memory, [&](const int index) {
         const int curve_index = curve_indices[index];
         return curves_range.contains(curve_index);
       });
-      mask_invalids = IndexMask::from_predicate(
+      mask_invalid = IndexMask::from_predicate(
           mask, GrainSize(1024), memory, [&](const int index) {
             const int curve_index = curve_indices[index];
             return !curves_range.contains(curve_index);
           });
-      mask_valids.foreach_index([&](const int i) {
+      mask_valid.foreach_index([&](const int i) {
         const int curve_i = curve_indices[i];
         used_curves.add(curve_i);
       });
@@ -426,7 +426,7 @@ class SampleCurveFunction : public mf::MultiFunction {
 
     Array<IndexMask> mask_by_curve(used_curves.size());
     IndexMask::from_groups<int>(
-        mask_valids,
+        mask_valid,
         memory,
         [&](const int i) { return used_curves.index_of(curve_indices[i]); },
         mask_by_curve);
@@ -434,7 +434,7 @@ class SampleCurveFunction : public mf::MultiFunction {
     for (const int i : mask_by_curve.index_range()) {
       sample_curve(used_curves[i], mask_by_curve[i]);
     }
-    fill_invalid(mask_invalids);
+    fill_invalid(mask_invalid);
   }
 
  private:
