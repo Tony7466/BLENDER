@@ -46,9 +46,8 @@ void write_depth(ivec2 texel_co, const int lod, ivec2 tile_co, float depth)
   u_depth += 2;
 
 #ifdef GPU_METAL
-  /* TOOD(Metal): For Metal, textures will need to be viewed as buffers to workaround missing image
-   * atomics support. */
-  uint out_index = out_texel.x + out_texel.y*shadow_atlas_img.texture->get_width();
+  /* NOTE: Metal requires buffer-backed texture for shadow atlas for atomic operations. */
+  uint out_index = out_texel.x + out_texel.y * shadow_atlas_img.texture->get_width();
   atomicMin(shadow_atlas_buf[out_index], u_depth);
 #else
   imageAtomicMin(shadow_atlas_img, out_texel, u_depth);

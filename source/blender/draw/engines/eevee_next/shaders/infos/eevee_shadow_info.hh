@@ -44,7 +44,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_init)
     .storage_buf(1, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .storage_buf(2, Qualifier::READ_WRITE, "ShadowTileMapClip", "tilemaps_clip_buf[]")
     .storage_buf(4, Qualifier::READ_WRITE, "uvec2", "pages_cached_buf[]")
-    .push_constant(Type::INT, "dummy")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_tilemap_init_comp.glsl");
 
