@@ -42,6 +42,7 @@ set(INC
   ../../depsgraph
   ../../blenkernel
   ../../imbuf
+  ../../io/usd
   ../../gpu
   ../../gpu/intern
   ../../python/intern
@@ -90,30 +91,33 @@ set(SRC
   simple_light_task_delegate.cc
   simple_light_task_delegate.h
 
-  scene_delegate/blender_scene_delegate.h
   scene_delegate/blender_scene_delegate.cc
-  scene_delegate/id.h
-  scene_delegate/id.cc
-  scene_delegate/object.h
-  scene_delegate/object.cc
-  scene_delegate/material.h
-  scene_delegate/material.cc
-  scene_delegate/mesh.h
-  scene_delegate/mesh.cc
-  scene_delegate/curves.h
+  scene_delegate/blender_scene_delegate.h
   scene_delegate/curves.cc
-  scene_delegate/mtlx_hydra_adapter.h
-  scene_delegate/mtlx_hydra_adapter.cc
-  scene_delegate/light.h
-  scene_delegate/light.cc
-  scene_delegate/world.h
-  scene_delegate/world.cc
-  scene_delegate/instancer.h
-  scene_delegate/instancer.cc
-  scene_delegate/image.h
+  scene_delegate/curves.h
+  scene_delegate/id.cc
+  scene_delegate/id.h
   scene_delegate/image.cc
-  scene_delegate/volume.h
+  scene_delegate/image.h
+  scene_delegate/instancer.cc
+  scene_delegate/instancer.h
+  scene_delegate/light.cc
+  scene_delegate/light.h
+  scene_delegate/material.cc
+  scene_delegate/material.h
+  scene_delegate/mesh.cc
+  scene_delegate/mesh.h
+  scene_delegate/mtlx_hydra_adapter.cc
+  scene_delegate/mtlx_hydra_adapter.h
+  scene_delegate/object.cc
+  scene_delegate/object.h
+  scene_delegate/settings.h
+  scene_delegate/usd_scene_delegate.cc
+  scene_delegate/usd_scene_delegate.hh
   scene_delegate/volume.cc
+  scene_delegate/volume.h
+  scene_delegate/world.cc
+  scene_delegate/world.h
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

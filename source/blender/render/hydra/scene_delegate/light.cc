@@ -140,7 +140,7 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
     return pxr::VtValue(it->second);
   }
 
-  pxr::VtValue *ret_ptr = scene_delegate_->settings.render_tokens.lookup_ptr(key);
+  const pxr::VtValue *ret_ptr = scene_delegate_->settings.render_tokens.lookup_ptr(key);
   if (ret_ptr) {
     return *ret_ptr;
   }

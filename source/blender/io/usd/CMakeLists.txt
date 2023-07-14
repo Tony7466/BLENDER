@@ -93,6 +93,7 @@ set(SRC
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
 
+  usd.hh
   usd.h
 
   intern/usd_asset_utils.h

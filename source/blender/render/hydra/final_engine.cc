@@ -148,14 +148,21 @@ void FinalEngineGPU::render(Depsgraph *depsgraph)
   GPU_framebuffer_bind(framebuffer);
 
   float clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  pxr::VtValue world_color = scene_delegate_->GetLightParamValue(
-      scene_delegate_->GetDelegateID().AppendElementString("World"), pxr::HdLightTokens->color);
-  if (!world_color.IsEmpty()) {
-    auto &c = world_color.Get<pxr::GfVec3f>();
-    clear_color[0] = c[0];
-    clear_color[1] = c[1];
-    clear_color[2] = c[2];
+
+  /* Workaround Storm rendering with transparent background. Does not currently work for
+   * USD, and should probably be optional depending on the Blender film transparency setting. */
+  if (hydra_scene_delegate_ && render_delegate_name == "HdStormRendererPlugin") {
+    pxr::VtValue world_color = hydra_scene_delegate_->GetLightParamValue(
+        hydra_scene_delegate_->GetDelegateID().AppendElementString("World"),
+        pxr::HdLightTokens->color);
+    if (!world_color.IsEmpty()) {
+      auto &c = world_color.Get<pxr::GfVec3f>();
+      clear_color[0] = c[0];
+      clear_color[1] = c[1];
+      clear_color[2] = c[2];
+    }
   }
+
   GPU_framebuffer_clear_color_depth(framebuffer, clear_color, 1.0f);
 
   /* Important: we have to create and bind at least one Vertex Array Object (VAO) before render

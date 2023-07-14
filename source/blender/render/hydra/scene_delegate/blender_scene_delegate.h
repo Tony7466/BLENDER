@@ -17,6 +17,7 @@
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
+#include "settings.h"
 #include "volume.h"
 #include "world.h"
 
@@ -34,11 +35,6 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   friend MaterialData; /* has access to objects and instancers */
 
  public:
-  struct Settings {
-    pxr::TfToken mx_filename_key;
-    Map<pxr::TfToken, pxr::VtValue> render_tokens;
-  };
-
   struct ShadingSettings {
     bool use_scene_lights = true;
     bool use_scene_world = true;
@@ -51,7 +47,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                        pxr::SdfPath const &delegate_id,
-                       Engine *engine);
+                       const SceneDelegateSettings &settings);
   ~BlenderSceneDelegate() override = default;
 
   /* Delegate methods */
@@ -77,14 +73,12 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   void populate(Depsgraph *depsgraph, bContext *context);
   void clear();
-  void set_setting(const std::string &key, const pxr::VtValue &val);
 
   Depsgraph *depsgraph = nullptr;
   bContext *context = nullptr;
   View3D *view3d = nullptr;
   Scene *scene = nullptr;
-  Engine *engine;
-  Settings settings;
+  const SceneDelegateSettings &settings;
   ShadingSettings shading_settings;
 
  private:

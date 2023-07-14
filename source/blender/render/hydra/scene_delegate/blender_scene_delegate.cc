@@ -28,8 +28,8 @@ bool BlenderSceneDelegate::ShadingSettings::operator==(const ShadingSettings &ot
 
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
-                                           Engine *engine)
-    : HdSceneDelegate(parent_index, delegate_id), engine(engine)
+                                           const SceneDelegateSettings &settings)
+    : HdSceneDelegate(parent_index, delegate_id), settings(settings)
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
 }
@@ -257,16 +257,6 @@ void BlenderSceneDelegate::clear()
   context = nullptr;
   scene = nullptr;
   view3d = nullptr;
-}
-
-void BlenderSceneDelegate::set_setting(const std::string &key, const pxr::VtValue &val)
-{
-  if (key == "MaterialXFilenameKey") {
-    settings.mx_filename_key = pxr::TfToken(val.Get<std::string>());
-  }
-  else {
-    settings.render_tokens.add_overwrite(pxr::TfToken(key), val);
-  }
 }
 
 pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const

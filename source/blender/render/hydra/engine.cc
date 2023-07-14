@@ -9,7 +9,10 @@
 #include <pxr/usd/usdGeom/tokens.h>
 
 #include "BLI_path_util.h"
+
 #include "GPU_context.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "engine.h"
 
@@ -47,8 +50,6 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   render_index_.reset(pxr::HdRenderIndex::New(render_delegate_.Get(), hd_drivers));
   free_camera_delegate_ = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
-  scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
-      render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"), this);
   render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
   if (render_delegate_name == "HdStormRendererPlugin") {
@@ -62,21 +63,44 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
 
 void Engine::sync(Depsgraph *depsgraph, bContext *context)
 {
-  scene_delegate_->populate(depsgraph, context);
-}
+  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
-void Engine::sync_usd(pxr::UsdStageRefPtr stage)
-{
-  if (!usd_delegate_) {
-    usd_delegate_ = std::make_unique<pxr::UsdImagingDelegate>(
-        render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("usd"));
+  if (scene->hydra.export_method == SCE_HYDRA_EXPORT_HYDRA) {
+    /* Fast path. */
+    usd_scene_delegate_.reset();
+
+    if (!hydra_scene_delegate_) {
+      pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene");
+      hydra_scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
+          render_index_.get(), scene_path, scene_delegate_settings_);
+    }
+    hydra_scene_delegate_->populate(depsgraph, context);
   }
-  usd_delegate_->Populate(stage->GetPseudoRoot());
+  else {
+    /* Slow USD export for reference. */
+    if (hydra_scene_delegate_) {
+      /* Freeing the Hydra scene delegate crashes as something internal to USD
+       * still holds a pointer to it, only clear it instead. */
+      hydra_scene_delegate_->clear();
+    }
+
+    if (!usd_scene_delegate_) {
+      pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("usd_scene");
+      usd_scene_delegate_ = std::make_unique<USDSceneDelegate>(
+          render_index_.get(), scene_path, scene_delegate_settings_);
+    }
+    usd_scene_delegate_->populate(depsgraph, context);
+  }
 }
 
 void Engine::set_sync_setting(const std::string &key, const pxr::VtValue &val)
 {
-  scene_delegate_->set_setting(key, val);
+  if (key == "MaterialXFilenameKey") {
+    scene_delegate_settings_.mx_filename_key = pxr::TfToken(val.Get<std::string>());
+  }
+  else {
+    scene_delegate_settings_.render_tokens.add_overwrite(pxr::TfToken(key), val);
+  }
 }
 
 void Engine::set_render_setting(const std::string &key, const pxr::VtValue &val)

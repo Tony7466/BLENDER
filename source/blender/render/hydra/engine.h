@@ -18,8 +18,10 @@
 #include "CLG_log.h"
 
 #include "render_task_delegate.h"
-#include "scene_delegate/blender_scene_delegate.h"
 #include "simple_light_task_delegate.h"
+
+#include "scene_delegate/blender_scene_delegate.h"
+#include "scene_delegate/usd_scene_delegate.hh"
 
 namespace blender::render::hydra {
 
@@ -31,7 +33,6 @@ class Engine {
   virtual ~Engine() = default;
 
   void sync(Depsgraph *depsgraph, bContext *context);
-  void sync_usd(pxr::UsdStageRefPtr stage);
   virtual void render(Depsgraph *depsgraph) = 0;
 
   void set_sync_setting(const std::string &key, const pxr::VtValue &val);
@@ -42,18 +43,21 @@ class Engine {
  protected:
   float renderer_percent_done();
 
-  RenderEngine *bl_engine_;
+  RenderEngine *bl_engine_ = nullptr;
 
   /* The order is important due to deletion order */
   pxr::HgiUniquePtr hgi_;
   pxr::HdDriver hgi_driver_;
   pxr::HdPluginRenderDelegateUniqueHandle render_delegate_;
   std::unique_ptr<pxr::HdRenderIndex> render_index_;
-  std::unique_ptr<BlenderSceneDelegate> scene_delegate_;
+
+  SceneDelegateSettings scene_delegate_settings_;
+  std::unique_ptr<BlenderSceneDelegate> hydra_scene_delegate_;
+  std::unique_ptr<USDSceneDelegate> usd_scene_delegate_;
+
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate_;
-  std::unique_ptr<pxr::UsdImagingDelegate> usd_delegate_;
   std::unique_ptr<pxr::HdEngine> engine_;
 };
 

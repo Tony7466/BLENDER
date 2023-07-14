@@ -19,7 +19,7 @@ namespace blender::render::hydra {
 static std::string get_cache_file(const std::string &file_name, bool mkdir = true)
 {
   char dir_path[FILE_MAX];
-  BLI_path_join(dir_path, sizeof(dir_path), BKE_tempdir_session(), "hydra_image_cache");
+  BLI_path_join(dir_path, sizeof(dir_path), BKE_tempdir_session(), "hydra", "image_cache");
   if (mkdir) {
     BLI_dir_create_recursive(dir_path);
   }
