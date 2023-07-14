@@ -3113,7 +3113,7 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   if (!preview) {
     if (create) {
       preview = MEM_cnew<bNodePreview>("node preview");
-      preview->image = IMB_allocImBuf(xsize, ysize, 32, 0);
+      preview->image = IMB_allocImBuf(xsize, ysize, 32, IB_rect);
       BKE_node_instance_hash_insert(previews, key, preview);
     }
     else {

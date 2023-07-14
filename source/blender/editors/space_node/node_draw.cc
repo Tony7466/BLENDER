@@ -1328,24 +1328,24 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(Scene *sce, ImBuf *image, rctf *prv)
+static void node_draw_preview(Scene *sce, ImBuf *preview, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
-  float xscale = xrect / float(image->x);
-  float yscale = yrect / float(image->y);
+  float xscale = xrect / float(preview->x);
+  float yscale = yrect / float(preview->y);
   float scale;
 
   /* Uniform scale and offset. */
   rctf draw_rect = *prv;
   if (xscale < yscale) {
-    float offset = 0.5f * (yrect - float(image->y) * xscale);
+    float offset = 0.5f * (yrect - float(preview->y) * xscale);
     draw_rect.ymin += offset;
     draw_rect.ymax -= offset;
     scale = xscale;
   }
   else {
-    float offset = 0.5f * (xrect - float(image->x) * yscale);
+    float offset = 0.5f * (xrect - float(preview->x) * yscale);
     draw_rect.xmin += offset;
     draw_rect.xmax -= offset;
     scale = yscale;
@@ -1357,7 +1357,7 @@ static void node_draw_preview(Scene *sce, ImBuf *image, rctf *prv)
   /* Premul graphics. */
   GPU_blend(GPU_BLEND_ALPHA);
 
-  ED_draw_imbuf(image,
+  ED_draw_imbuf(preview,
                 draw_rect.xmin,
                 draw_rect.ymin,
                 false,
@@ -2085,11 +2085,11 @@ static void node_draw_extra_info_panel(Scene *sce,
                                        TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       ImBuf *pr_image,
+                                       ImBuf *preview,
                                        uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
-  if (extra_info_rows.size() == 0 && !pr_image) {
+  if (extra_info_rows.size() == 0 && !preview) {
     return;
   }
 
@@ -2113,11 +2113,10 @@ static void node_draw_extra_info_panel(Scene *sce,
     extra_info_rect.xmax = extra_info_rect.xmin + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
-    if (pr_image) {
-      if (pr_image->x > pr_image->y) {
+    if (preview) {
+      if (preview->x > preview->y) {
         const float preview_padding = 3.0f * UI_SCALE_FAC;
-        preview_height = (width - 2.0 * preview_padding) * float(pr_image->y) /
-                             float(pr_image->x) +
+        preview_height = (width - 2.0 * preview_padding) * float(preview->y) / float(preview->x) +
                          2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
@@ -2128,8 +2127,8 @@ static void node_draw_extra_info_panel(Scene *sce,
       else {
         const float preview_padding = 3.0f * UI_SCALE_FAC;
         preview_height = width;
-        const float preview_width = (width - 2.0 * preview_padding) * float(pr_image->x) /
-                                        float(pr_image->y) +
+        const float preview_width = (width - 2.0 * preview_padding) * float(preview->x) /
+                                        float(preview->y) +
                                     2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
@@ -2164,8 +2163,8 @@ static void node_draw_extra_info_panel(Scene *sce,
         ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
 
-    if (pr_image) {
-      node_draw_preview(sce, pr_image, &preview_rect);
+    if (preview) {
+      node_draw_preview(sce, preview, &preview_rect);
     }
 
     /* Resize the rect to draw the textual infos on top of the preview. */
@@ -2216,18 +2215,19 @@ static void node_draw_basis(const bContext &C,
 
   GPU_line_width(1.0f);
 
-  ImBuf *pr_image = nullptr;
+  ImBuf *preview = nullptr;
   if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
-    bNodePreview *preview = static_cast<bNodePreview *>(BKE_node_instance_hash_lookup(previews, key));
-    if (preview) {
-      pr_image = preview->image;
+    bNodePreview *preview_compositor = static_cast<bNodePreview *>(
+        BKE_node_instance_hash_lookup(previews, key));
+    if (preview_compositor) {
+      preview = preview_compositor->image;
     }
   }
-  if (!pr_image || !(pr_image->x && pr_image->y)) {
-    pr_image = nullptr;
+  if (!preview || !(preview->x && preview->y)) {
+    preview = nullptr;
   }
 
-  node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, pr_image, block);
+  node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
 
   /* Header. */
   {
