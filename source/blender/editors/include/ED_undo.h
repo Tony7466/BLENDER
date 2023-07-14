@@ -25,6 +25,7 @@ struct wmOperator;
 struct wmOperatorType;
 struct MemFileUndoStep;
 struct MemFileUndoData;
+struct MemFile;
 
 /* undo.c */
 
@@ -133,8 +134,15 @@ struct MemFile *ED_undosys_stack_memfile_get_active(struct UndoStack *ustack);
  */
 void ED_undosys_stack_memfile_id_changed_tag(struct UndoStack *ustack, struct ID *id);
 
-/* Needed for wm_autosave_write. */
-struct MemFileUndoData *ED_undostack_memfile_step_data_get(struct MemFileUndoStep *us);
+/**
+ * Encodes a new memfile without affecting the state of the undo stack;
+ * this is used to flush edit/sculpt mode data during autosave.
+ *
+ * Note: you must call MEM_freeN in addition to BLO_memfile_free to free the
+ *       result.
+ */
+struct MemFile *ED_undosys_stack_memfile_encode_clean(struct Main *bmain,
+                                                      struct MemFileUndoStep *undostep);
 
 #ifdef __cplusplus
 }

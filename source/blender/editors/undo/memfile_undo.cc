@@ -382,8 +382,44 @@ void ED_undosys_stack_memfile_id_changed_tag(UndoStack *ustack, ID *id)
   }
 }
 
-MemFileUndoData *ED_undostack_memfile_step_data_get(MemFileUndoStep *us)
+MemFile *ED_undosys_stack_memfile_encode_clean(Main *bmain, MemFileUndoStep *undostep)
 {
-  return us->data;
+  /* Make a copy of the current step
+   * as its metadata (specifically the list of MemFileChunk's
+   * in .memfile.chunks) will be modified.
+   *
+   * Note: we don't copy the data buffers (we just copy the
+   * pointers, the .buf member).
+   */
+
+  MemFileUndoData *mfu_prev = undostep->data;
+  MemFileUndoData prev_cpy = *mfu_prev;
+
+  /* Clear existing chunk list. */
+  prev_cpy.memfile.chunks = {nullptr, nullptr};
+
+  LISTBASE_FOREACH (MemFileChunk *, chunk_old, &mfu_prev->memfile.chunks) {
+    MemFileChunk *chunk_new = MEM_cnew<MemFileChunk>(__func__);
+
+    /* Do a shallow copy. */
+    *chunk_new = *chunk_old;
+
+    BLI_addtail(&prev_cpy.memfile.chunks, chunk_new);
+  }
+
+  /* Encode undo step. */
+  MemFileUndoData *mus = BKE_memfile_undo_encode(bmain, &prev_cpy);
+
+  /* Free the copied chunks. */
+  BLI_freelistN(&prev_cpy.memfile.chunks);
+
+  /* Return a heap copy of prev_cpy.memfile. */
+  MemFile *memfile = MEM_cnew<MemFile>(__func__);
+  *memfile = mus->memfile;
+
+  MEM_freeN(mus);
+
+  return memfile;
 }
+
 /** \} */

@@ -74,7 +74,6 @@
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
-#include "BKE_multires.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -2069,33 +2068,32 @@ static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
   MemFile *memfile = use_memfile ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : nullptr;
   bool have_edits = false;
 
-  /* We call ED_editors_flush_edits_for_object_ex directly with the `render`
+  /* We call ED_editors_flush_edits_for_object_ex directly with the render
    * parameter set to true.  This is needed to prevent sculpt mode from
    * triggering a DAG update (which would lead to a full PBVH rebuild).
-   * Sculpt mode is the only user of `render`
+   * Sculpt mode is the only user of the render paramater
    * so this should be fine.
    */
   LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
     have_edits |= ED_editors_flush_edits_for_object_ex(bmain, ob, true, true);
   }
 
-  MemFileUndoData *mus = NULL;
-
   if (have_edits && memfile) {
     UndoStep *us = BKE_undosys_stack_active_with_type(wm->undo_stack, BKE_UNDOSYS_TYPE_MEMFILE);
 
     if (us) {
-      mus = ED_undostack_memfile_step_data_get(reinterpret_cast<MemFileUndoStep *>(us));
-      mus = BKE_memfile_undo_encode(bmain, mus);
-      memfile = &mus->memfile;
+      memfile = ED_undosys_stack_memfile_encode_clean(bmain,
+                                                      reinterpret_cast<MemFileUndoStep *>(us));
     }
   }
 
   if (memfile != nullptr) {
     BLO_memfile_write_file(memfile, filepath);
 
+    /* Did we write our own memfile? */
     if (have_edits) {
-      BKE_memfile_undo_free(mus);
+      BLO_memfile_free(memfile);
+      MEM_freeN(memfile);
     }
   }
   else {
