@@ -409,11 +409,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         MovieTracking &tracking = clip->tracking;
 
-        tracking.settings.default_search_margin_factor = 0.05f;
+        tracking.settings.default_search_margin_factor = 0.1f;
 
         LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking.objects) {
           LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_object->tracks) {
-            track->search_margin_factor = 0.05f;
+            track->search_margin_factor = 0.1f;
           }
         }
       }

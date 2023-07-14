@@ -329,13 +329,15 @@ static bool tracking_check_marker_margin_to_frame_bounds(const libmv_Marker &lib
 }
 
 static void tracking_expand_search_area_if_needed(const MovieTrackingTrack &track,
+                                                  libmv_Marker &libmv_reference_marker,
                                                   libmv_Marker &libmv_marker)
 {
-  const float2 search_region_size = float2(libmv_marker.search_region_max) -
-                                    float2(libmv_marker.search_region_min);
+  const PatternBounds reference_pattern_bounds = libmv_marker_patch_minmax(libmv_reference_marker);
+  const float2 reference_pattern_size = reference_pattern_bounds.max -
+                                        reference_pattern_bounds.min;
 
-  const float margin_x = search_region_size.x * track.search_margin_factor;
-  const float margin_y = search_region_size.y * track.search_margin_factor;
+  const float margin_x = reference_pattern_size.x * track.search_margin_factor;
+  const float margin_y = reference_pattern_size.y * track.search_margin_factor;
 
   const PatternBounds pattern_bounds = libmv_marker_patch_minmax(libmv_marker);
 
@@ -730,7 +732,8 @@ static void autotrack_context_step_cb(void *__restrict userdata,
     autotrack_result->libmv_marker.frame = new_marker_frame;
   }
   else {
-    tracking_expand_search_area_if_needed(track, autotrack_result->libmv_marker);
+    tracking_expand_search_area_if_needed(
+        track, libmv_reference_marker, autotrack_result->libmv_marker);
   }
 
   BLI_addtail(&autotrack_tls->results, autotrack_result);

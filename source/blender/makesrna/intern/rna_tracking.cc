@@ -1046,10 +1046,11 @@ static void rna_def_trackingSettings(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_float_sdna(prop, nullptr, "default_search_margin_factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop,
-                           "Search Margin",
-                           "Default margin (in percentage of search are size) between pattern and "
-                           "search area when tracking");
+  RNA_def_property_ui_text(
+      prop,
+      "Search Margin",
+      "Default margin (in percentage of the reference pattern area size) between pattern and "
+      "search area when tracking");
 
   /* default_tracking_motion_model */
   prop = RNA_def_property(srna, "default_motion_model", PROP_ENUM, PROP_NONE);
@@ -1557,10 +1558,11 @@ static void rna_def_trackingTrack(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_float_sdna(prop, nullptr, "search_margin_factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop,
-                           "Search Margin",
-                           "Default margin (in percentage of search are size) between pattern and "
-                           "search area when tracking");
+  RNA_def_property_ui_text(
+      prop,
+      "Search Margin",
+      "Default margin (in percentage of the reference pattern area size) between pattern and "
+      "search area when tracking");
 
   /* tracking motion model */
   prop = RNA_def_property(srna, "motion_model", PROP_ENUM, PROP_NONE);
