@@ -41,6 +41,7 @@
 #include "BLI_vector_set.hh"
 
 #include "FN_multi_function.hh"
+#include "FN_volume_field.hh"
 
 namespace blender::fn {
 
@@ -177,8 +178,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**
@@ -329,6 +329,10 @@ class FieldContext {
   virtual GVArray get_varray_for_input(const FieldInput &field_input,
                                        const IndexMask &mask,
                                        ResourceScope &scope) const;
+
+  virtual GVArray get_varray_for_volume_input(const FieldInput &field_input,
+                                              const VolumeMask &mask,
+                                              ResourceScope &scope) const;
 };
 
 /**
@@ -476,7 +480,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
  *   sure the scope is not destructed when the output virtual arrays are still used.
  * \param fields_to_evaluate: The fields that should be evaluated together.
  * \param mask: Determines which indices are computed. The mask may be referenced by the returned
- *   virtual arrays. So the underlying indices (if applicable) should live longer then #scope.
+ *   virtual arrays. So the underlying indices (if applicable) should live longer than #scope.
  * \param context: The context that the field is evaluated in. Used to retrieve data from each
  *   #FieldInput in the field network.
  * \param dst_varrays: If provided, the computed data will be written into those virtual arrays
@@ -491,6 +495,30 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
                                 const IndexMask &mask,
                                 const FieldContext &context,
                                 Span<GVMutableArray> dst_varrays = {});
+
+/**
+ * Evaluate fields in the given volume context. If possible, multiple fields should be evaluated
+ * together, because that can be more efficient when they share common sub-fields.
+ *
+ * \param scope: The resource scope that owns data that makes up the output virtual arrays. Make
+ *   sure the scope is not destructed when the output virtual arrays are still used.
+ * \param fields_to_evaluate: The fields that should be evaluated together.
+ * \param mask: Determines grid voxels are computed. The mask may be referenced by the returned
+ *   virtual arrays. So the underlying coordinates (if applicable) should live longer than #scope.
+ * \param context: The volume context that the field is evaluated in. Used to retrieve data from
+ *   each #FieldInput in the field network.
+ * \param dst_varrays: If provided, the computed data will be written into those virtual arrays
+ *   instead of into newly created ones. That allows making the computed data live longer than
+ *   #scope and is more efficient when the data will be written into those virtual arrays later
+ *   anyway.
+ * \return The computed virtual arrays for each provided field. If #dst_varrays is passed,
+ *   the provided virtual arrays are returned.
+ */
+Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
+                                       Span<GFieldRef> fields_to_evaluate,
+                                       const VolumeMask &mask,
+                                       const FieldContext &context,
+                                       Span<GVMutableArray> dst_varrays = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation

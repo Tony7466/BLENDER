@@ -508,6 +508,7 @@ set(SRC
   BKE_viewer_path.h
   BKE_volume.h
   BKE_volume_attribute.hh
+  BKE_volume_fields.hh
   BKE_volume_geometry.hh
   BKE_volume_render.h
   BKE_volume_to_mesh.hh

@@ -27,6 +27,7 @@ set(SRC
   intern/multi_function_procedure_builder.cc
   intern/multi_function_procedure_executor.cc
   intern/multi_function_procedure_optimization.cc
+  intern/volume_field.cc
 
   FN_field.hh
   FN_field_cpp_type.hh
@@ -47,6 +48,7 @@ set(SRC
   FN_multi_function_procedure_executor.hh
   FN_multi_function_procedure_optimization.hh
   FN_multi_function_signature.hh
+  FN_volume_field.hh
 )
 
 set(LIB
@@ -67,6 +69,20 @@ if(WITH_TBB)
   list(APPEND LIB
     ${TBB_LIBRARIES}
   )
+endif()
+
+if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../intern/openvdb
+  )
+  list(APPEND INC_SYS
+    ${OPENVDB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    bf_intern_openvdb
+    ${OPENVDB_LIBRARIES}
+  )
+  add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
 blender_add_lib(bf_functions "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

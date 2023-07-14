@@ -102,6 +102,27 @@ static Vector<GVArray> get_field_context_inputs(
 }
 
 /**
+ * Retrieves the data from the context that is passed as input into the field.
+ */
+static Vector<GVArray> get_volume_field_context_inputs(
+    ResourceScope &scope,
+    const VolumeMask &mask,
+    const FieldContext &context,
+    const Span<std::reference_wrapper<const FieldInput>> field_inputs)
+{
+  Vector<GVArray> field_context_inputs;
+  for (const FieldInput &field_input : field_inputs) {
+    GVArray varray = context.get_varray_for_input(field_input, mask, scope);
+    if (!varray) {
+      const CPPType &type = field_input.cpp_type();
+      varray = GVArray::ForSingleDefault(type, mask.min_array_size());
+    }
+    field_context_inputs.append(varray);
+  }
+  return field_context_inputs;
+}
+
+/**
  * \return A set that contains all fields from the field tree that depend on an input that varies
  * for different indices.
  */
@@ -495,6 +516,223 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
   return r_varrays;
 }
 
+Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
+                                       Span<GFieldRef> fields_to_evaluate,
+                                       const VolumeMask &mask,
+                                       const FieldContext &context,
+                                       Span<GVMutableArray> dst_varrays)
+{
+  Vector<GVArray> r_varrays(fields_to_evaluate.size());
+  Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
+  const int voxel_count = mask.min_voxel_count();
+
+  if (mask.is_empty()) {
+    for (const int i : fields_to_evaluate.index_range()) {
+      const CPPType &type = fields_to_evaluate[i].cpp_type();
+      r_varrays[i] = GVArray::ForEmpty(type);
+    }
+    return r_varrays;
+  }
+
+  /* Destination arrays are optional. Create a small utility method to access them. */
+  auto get_dst_varray = [&](int index) -> GVMutableArray {
+    if (dst_varrays.is_empty()) {
+      return {};
+    }
+    const GVMutableArray &varray = dst_varrays[index];
+    if (!varray) {
+      return {};
+    }
+    BLI_assert(varray.size() >= voxel_count);
+    return varray;
+  };
+
+  /* Traverse the field tree and prepare some data that is used in later steps. */
+  FieldTreeInfo field_tree_info = preprocess_field_tree(fields_to_evaluate);
+
+  /* Get inputs that will be passed into the field when evaluated. */
+  Vector<GVArray> field_context_inputs = get_volume_field_context_inputs(
+      scope, mask, context, field_tree_info.deduplicated_field_inputs);
+
+  /* Finish fields that don't need any processing directly. */
+  for (const int out_index : fields_to_evaluate.index_range()) {
+    const GFieldRef &field = fields_to_evaluate[out_index];
+    const FieldNode &field_node = field.node();
+    switch (field_node.node_type()) {
+      case FieldNodeType::Input: {
+        const FieldInput &field_input = static_cast<const FieldInput &>(field.node());
+        const int field_input_index = field_tree_info.deduplicated_field_inputs.index_of(
+            field_input);
+        const GVArray &varray = field_context_inputs[field_input_index];
+        r_varrays[out_index] = varray;
+        break;
+      }
+      case FieldNodeType::Constant: {
+        const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
+        r_varrays[out_index] = GVArray::ForSingleRef(
+            field_constant.type(), voxel_count, field_constant.value().get());
+        break;
+      }
+      case FieldNodeType::Operation: {
+        break;
+      }
+    }
+  }
+
+  Set<GFieldRef> varying_fields = find_varying_fields(field_tree_info, field_context_inputs);
+
+  /* Separate fields into two categories. Those that are constant and need to be evaluated only
+   * once, and those that need to be evaluated for every index. */
+  Vector<GFieldRef> varying_fields_to_evaluate;
+  Vector<int> varying_field_indices;
+  Vector<GFieldRef> constant_fields_to_evaluate;
+  Vector<int> constant_field_indices;
+  for (const int i : fields_to_evaluate.index_range()) {
+    if (r_varrays[i]) {
+      /* Already done. */
+      continue;
+    }
+    GFieldRef field = fields_to_evaluate[i];
+    if (varying_fields.contains(field)) {
+      varying_fields_to_evaluate.append(field);
+      varying_field_indices.append(i);
+    }
+    else {
+      constant_fields_to_evaluate.append(field);
+      constant_field_indices.append(i);
+    }
+  }
+
+  /* Evaluate varying fields if necessary. */
+  if (!varying_fields_to_evaluate.is_empty()) {
+    /* Build the procedure for those fields. */
+    mf::Procedure procedure;
+    build_multi_function_procedure_for_fields(
+        procedure, scope, field_tree_info, varying_fields_to_evaluate);
+    mf::ProcedureExecutor procedure_executor{procedure};
+
+    mf::ParamsBuilder mf_params{procedure_executor, &mask};
+    mf::ContextBuilder mf_context;
+
+    /* Provide inputs to the procedure executor. */
+    for (const GVArray &varray : field_context_inputs) {
+      mf_params.add_readonly_single_input(varray);
+    }
+
+    for (const int i : varying_fields_to_evaluate.index_range()) {
+      const GFieldRef &field = varying_fields_to_evaluate[i];
+      const CPPType &type = field.cpp_type();
+      const int out_index = varying_field_indices[i];
+
+      /* Try to get an existing virtual array that the result should be written into. */
+      GVMutableArray dst_varray = get_dst_varray(out_index);
+      void *buffer;
+      if (!dst_varray || !dst_varray.is_span()) {
+        /* Allocate a new buffer for the computed result. */
+        buffer = scope.linear_allocator().allocate(type.size() * array_size, type.alignment());
+
+        if (!type.is_trivially_destructible()) {
+          /* Destruct values in the end. */
+          scope.add_destruct_call(
+              [buffer, mask, &type]() { type.destruct_indices(buffer, mask); });
+        }
+
+        r_varrays[out_index] = GVArray::ForSpan({type, buffer, array_size});
+      }
+      else {
+        /* Write the result into the existing span. */
+        buffer = dst_varray.get_internal_span().data();
+
+        r_varrays[out_index] = dst_varray;
+        is_output_written_to_dst[out_index] = true;
+      }
+
+      /* Pass output buffer to the procedure executor. */
+      const GMutableSpan span{type, buffer, array_size};
+      mf_params.add_uninitialized_single_output(span);
+    }
+
+    procedure_executor.call_auto(mask, mf_params, mf_context);
+  }
+
+  /* Evaluate constant fields if necessary. */
+  if (!constant_fields_to_evaluate.is_empty()) {
+    /* Build the procedure for those fields. */
+    mf::Procedure procedure;
+    build_multi_function_procedure_for_fields(
+        procedure, scope, field_tree_info, constant_fields_to_evaluate);
+    mf::ProcedureExecutor procedure_executor{procedure};
+    const IndexMask mask(1);
+    mf::ParamsBuilder mf_params{procedure_executor, &mask};
+    mf::ContextBuilder mf_context;
+
+    /* Provide inputs to the procedure executor. */
+    for (const GVArray &varray : field_context_inputs) {
+      mf_params.add_readonly_single_input(varray);
+    }
+
+    for (const int i : constant_fields_to_evaluate.index_range()) {
+      const GFieldRef &field = constant_fields_to_evaluate[i];
+      const CPPType &type = field.cpp_type();
+      /* Allocate memory where the computed value will be stored in. */
+      void *buffer = scope.linear_allocator().allocate(type.size(), type.alignment());
+
+      if (!type.is_trivially_destructible()) {
+        /* Destruct value in the end. */
+        scope.add_destruct_call([buffer, &type]() { type.destruct(buffer); });
+      }
+
+      /* Pass output buffer to the procedure executor. */
+      mf_params.add_uninitialized_single_output({type, buffer, 1});
+
+      /* Create virtual array that can be used after the procedure has been executed below. */
+      const int out_index = constant_field_indices[i];
+      r_varrays[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
+    }
+
+    procedure_executor.call(mask, mf_params, mf_context);
+  }
+
+  /* Copy data to supplied destination arrays if necessary. In some cases the evaluation above
+   * has written the computed data in the right place already. */
+  if (!dst_varrays.is_empty()) {
+    for (const int out_index : fields_to_evaluate.index_range()) {
+      GVMutableArray dst_varray = get_dst_varray(out_index);
+      if (!dst_varray) {
+        /* Caller did not provide a destination for this output. */
+        continue;
+      }
+      const GVArray &computed_varray = r_varrays[out_index];
+      BLI_assert(computed_varray.type() == dst_varray.type());
+      if (is_output_written_to_dst[out_index]) {
+        /* The result has been written into the destination provided by the caller already. */
+        continue;
+      }
+      /* Still have to copy over the data in the destination provided by the caller. */
+      if (dst_varray.is_span()) {
+        array_utils::copy(computed_varray,
+                          mask,
+                          dst_varray.get_internal_span().take_front(mask.min_array_size()));
+      }
+      else {
+        /* Slower materialize into a different structure. */
+        const CPPType &type = computed_varray.type();
+        threading::parallel_for(mask.index_range(), 2048, [&](const IndexRange range) {
+          BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+          mask.slice(range).foreach_segment([&](auto segment) {
+            for (const int i : segment) {
+              computed_varray.get_to_uninitialized(i, buffer);
+              dst_varray.set_by_relocate(i, buffer);
+            }
+          });
+        });
+      }
+      r_varrays[out_index] = dst_varray;
+    }
+  }
+  return r_varrays;
+}
+
 void evaluate_constant_field(const GField &field, void *r_value)
 {
   if (field.node().depends_on_input()) {
@@ -543,6 +781,14 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   /* By default ask the field input to create the varray. Another field context might overwrite
    * the context here. */
   return field_input.get_varray_for_context(*this, mask, scope);
+}
+
+GVArray FieldContext::get_varray_for_volume_input(const FieldInput &field_input,
+                                                  const VolumeMask &mask,
+                                                  ResourceScope &scope) const
+{
+  /* Implemented only by volume context. */
+  return {};
 }
 
 IndexFieldInput::IndexFieldInput() : FieldInput(CPPType::get<int>(), "Index")
