@@ -3814,7 +3814,7 @@ void OBJECT_OT_geometry_nodes_id_mapping_update(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
-/** \name Remove id mapping in geometry nodes modifier
+/** \name Remove ID Mapping in Geometry Nodes Modifier
  * \{ */
 
 static int geometry_nodes_id_mapping_remove_exec(bContext *C, wmOperator *op)
@@ -3882,7 +3882,7 @@ void OBJECT_OT_geometry_nodes_id_mapping_remove(wmOperatorType *ot)
 /** \} */
 
 /* ------------------------------------------------------------------- */
-/** \name Add id mapping in geometry nodes modifier
+/** \name Add ID Mapping in Geometry Nodes Modifier
  * \{ */
 
 static int geometry_nodes_id_mapping_add_exec(bContext *C, wmOperator *op)
