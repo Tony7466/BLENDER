@@ -1112,10 +1112,10 @@ class NodeTreeMainUpdater {
 
     /* Simplify lookup of old ids. */
     Map<bNestedNodePath, int32_t> old_id_by_path;
-    Set<int32_t> old_ids;
+    VectorSet<int32_t> sorted_old_ids;
     for (const bNestedNodeRef &ref : ntree.nested_node_refs_span()) {
       old_id_by_path.add(ref.path, ref.id);
-      old_ids.add(ref.id);
+      sorted_old_ids.add(ref.id);
     }
 
     Vector<bNestedNodePath> nested_node_paths;
@@ -1165,7 +1165,7 @@ class NodeTreeMainUpdater {
       int32_t new_id;
       while (true) {
         new_id = rng.get_int32(INT32_MAX);
-        if (!old_ids.contains(new_id) && !new_path_by_id.contains(new_id)) {
+        if (!sorted_old_ids.contains(new_id) && !new_path_by_id.contains(new_id)) {
           break;
         }
       }
@@ -1194,6 +1194,21 @@ class NodeTreeMainUpdater {
       ref.path = item.value;
       index++;
     }
+
+    /* Keep references in the same order as before and only add new references at the end. */
+    std::sort(new_refs,
+              new_refs + new_path_by_id.size(),
+              [&](const bNestedNodeRef &a, const bNestedNodeRef &b) {
+                int a_index = sorted_old_ids.index_of_try(a.id);
+                int b_index = sorted_old_ids.index_of_try(b.id);
+                if (a_index == -1) {
+                  a_index = INT32_MAX;
+                }
+                if (b_index == -1) {
+                  b_index = INT32_MAX;
+                }
+                return a_index < b_index;
+              });
 
     ntree.nested_node_refs = new_refs;
     ntree.nested_node_refs_num = new_path_by_id.size();
