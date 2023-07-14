@@ -565,7 +565,7 @@ extern PaintScopeLogEntry paintscope_stack[5000];
 extern int paintscope_stack_cur;
 
 struct _paintscope {
-  ATTR_NO_OPT _paintscope(const char *name, int line)
+  _paintscope(const char *name, int line)
   {
     paintscope_stack[paintscope_stack_cur].name = name;
     paintscope_stack[paintscope_stack_cur].line = line;
