@@ -1577,8 +1577,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
   BLO_read_data_address(reader, &nmd->id_mappings);
-  for (const NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num))
-  {
+  for (NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num)) {
     BLO_read_data_address(reader, &mapping.id_name);
     BLO_read_data_address(reader, &mapping.lib_name);
   }
