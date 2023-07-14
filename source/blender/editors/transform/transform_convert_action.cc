@@ -628,7 +628,7 @@ static void recalcData_actedit(TransInfo *t)
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
     if (t->tsnap.flag && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, (eSnapMode)autosnap, td->loc);
+      transform_snap_anim_flush_data(t, td, eSnapMode(autosnap), td->loc);
     }
 
     /* Constrain Y. */

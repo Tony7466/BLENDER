@@ -645,7 +645,7 @@ static void recalcData_nla(TransInfo *t)
       const short autosnap = getAnimEdit_SnapMode(t);
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
-        transform_snap_anim_flush_data(t, td, eAnimEdit_AutoSnap(autosnap), td->loc);
+        transform_snap_anim_flush_data(t, td, eSnapMode(autosnap), td->loc);
       }
     }
   }
