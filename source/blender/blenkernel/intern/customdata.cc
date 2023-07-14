@@ -3924,7 +3924,6 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
 {
   if (*dest_block == nullptr) {
     CustomData_bmesh_alloc_block(dest, dest_block);
-
     if (*dest_block) {
       memset(*dest_block, 0, dest->totsize);
     }
