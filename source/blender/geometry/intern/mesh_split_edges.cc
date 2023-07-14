@@ -358,8 +358,8 @@ static Array<int> calc_updated_corner_verts(const int orig_verts_num,
   Array<int> new_corner_verts(orig_corner_verts.size());
   new_corner_verts.as_mutable_span().copy_from(orig_corner_verts);
 
-  /* Update corner verts so that each fan of edges gets its own vertex. The last vertex can be
-   * reused. */
+  /* Update corner verts so that each fan of edges gets its own vertex. For the last "new vertex"
+   * we can reuse the original vertex, which would otherwise become unused by any faces. */
   vert_mask.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
     const VertCornerFans &fans = vert_fans[mask];
     const IndexRange new_verts = new_verts_by_masked_vert[mask];
