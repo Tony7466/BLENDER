@@ -611,9 +611,6 @@ static void shader_preview_startjob(void *customdata,
   }
 
   preview_render(*job_data);
-
-  BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
-  BKE_id_free(G.pr_main, &job_data->mat_copy->id);
 }
 
 static void shader_preview_free(void *customdata)
@@ -621,6 +618,10 @@ static void shader_preview_free(void *customdata)
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(customdata);
   BLI_freelistN(&job_data->treepath_copy);
   job_data->ng_data->rendering = false;
+  if (job_data->mat_copy) {
+    BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
+    BKE_id_free(G.pr_main, &job_data->mat_copy->id);
+  }
   MEM_freeN(job_data);
 }
 

@@ -101,7 +101,6 @@
 #include "ED_keyframes_edit.h"
 #include "ED_keyframing.h"
 #include "ED_node.h"
-#include "ED_node_preview.hh"
 #include "ED_render.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
@@ -582,7 +581,7 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
   RE_FreeAllRender();
   RE_engines_exit();
 
-  ED_preview_free_dbase(); /* frees Main dbase, before BKE_blender_free! */
+  ED_preview_free_dbase(); /* frees a Main dbase, before BKE_blender_free! */
   ED_preview_restart_queue_free();
   ED_assetlist_storage_exit();
 

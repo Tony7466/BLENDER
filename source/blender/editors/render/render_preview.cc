@@ -160,7 +160,7 @@ struct IconPreview {
 static Main *G_pr_main_grease_pencil = nullptr;
 
 #ifndef WITH_HEADLESS
-Main *ED_preview_main_from_memory(const void *blend, int blend_size)
+static Main *load_main_from_memory(const void *blend, int blend_size)
 {
   const int fileflags = G.fileflags;
   Main *bmain = nullptr;
@@ -186,11 +186,11 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
   static bool base_initialized_gpencil = false;
   BLI_assert(BLI_thread_is_main());
   if (!base_initialized) {
-    G.pr_main = ED_preview_main_from_memory(datatoc_preview_blend, datatoc_preview_blend_size);
+    G.pr_main = load_main_from_memory(datatoc_preview_blend, datatoc_preview_blend_size);
     base_initialized = true;
   }
   if (!base_initialized_gpencil && with_gpencil) {
-    G_pr_main_grease_pencil = ED_preview_main_from_memory(
+    G_pr_main_grease_pencil = load_main_from_memory(
         datatoc_preview_grease_pencil_blend, datatoc_preview_grease_pencil_blend_size);
     base_initialized_gpencil = true;
   }
