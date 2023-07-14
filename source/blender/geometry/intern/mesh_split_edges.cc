@@ -204,14 +204,6 @@ using LooseEdgeGroupfan = Vector<int, 2>;
 
 using Fan = std::variant<CornerFan, SplitLooseEdgeFan, LooseEdgeGroupfan>;
 
-//     struct Vector<Fan> {
-//   Vector<CornerFan> corner_fans;
-//   /** Each split loose edge is its own "fan" made up of just that edge. */
-//   Vector<int> split_loose_edges;
-//   /** All non split loose edges can be attached to the same vertex in the final mesh. */
-//   Vector<int> non_split_loose_edges;
-// };
-
 static CornerFan gather_corner_fan(const OffsetIndices<int> polys,
                                    const Span<int> corner_verts,
                                    const Span<int> corner_edges,
