@@ -528,7 +528,7 @@ extern FILE *paint_log_file = nullptr;
 #define _(f) \
   case f: \
     return #f;
-const char *get_brush_flag1(int bit)
+const char *get_brush_flag1(int64_t bit)
 {
   switch (bit) {
     _(BRUSH_AIRBRUSH)
@@ -568,7 +568,7 @@ const char *get_brush_flag1(int bit)
   }
 }
 
-const char *get_brush_flag2(int bit)
+const char *get_brush_flag2(int64_t bit)
 {
   switch (bit) {
     _(BRUSH_MULTIPLANE_SCRAPE_DYNAMIC);
@@ -632,8 +632,8 @@ void log_brush_settings(Brush *brush)
 
   paint_log("  flag                  : \"");
   int first = 0;
-  for (uint i = 0; i < 32; i++) {
-    int bit = uint(brush->flag) & (1 << i);
+  for (int64_t i = 0; i < 32; i++) {
+    int bit = int64_t(brush->flag) & (1LL << i);
 
     if (bit) {
       const char *name = get_brush_flag1(bit);
@@ -646,8 +646,8 @@ void log_brush_settings(Brush *brush)
 
   paint_log("  flag2                 : \"");
   first = 0;
-  for (uint i = 0; i < 32; i++) {
-    int bit = uint(brush->flag2) & (1 << i);
+  for (int64_t i = 0; i < 32; i++) {
+    int bit = int64_t(brush->flag2) & (1LL << i);
 
     if (bit) {
       const char *name = get_brush_flag2(bit);
