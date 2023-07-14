@@ -1495,6 +1495,8 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBake, &bake, &bake_ptr);
 
   uiItemR(layout, &bake_ptr, "directory", 0, "Directory", ICON_NONE);
+
+  uiItemO(layout, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake");
 }
 
 static void bake_list_item_draw(uiList * /*ui_list*/,

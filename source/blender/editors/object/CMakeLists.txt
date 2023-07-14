@@ -32,6 +32,7 @@ set(SRC
   object_add.cc
   object_bake.cc
   object_bake_api.cc
+  object_bake_geometry_nodes.cc
   object_bake_simulation.cc
   object_collection.cc
   object_constraint.cc
