@@ -2303,6 +2303,8 @@ typedef enum eSnapFlag {
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
   SCE_SNAP_ABS_GRID = (1 << 5),
+  /* Same value with different name to make it easier to understand in time based code. */
+  SCE_SNAP_ABS_TIME_STEP = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),
   SCE_SNAP_KEEP_ON_SAME_OBJECT = (1 << 7),
   /** see #eSnapTargetOP */
@@ -2366,6 +2368,7 @@ typedef enum eSnapMode {
   SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
   SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 9),
 
+  /** #ToolSettings::snap_anim_mode */
   SCE_SNAP_TO_FRAME = (1 << 10),
   SCE_SNAP_TO_SECOND = (1 << 11),
   SCE_SNAP_TO_MARKERS = (1 << 12),

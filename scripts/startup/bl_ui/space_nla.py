@@ -52,7 +52,7 @@ class NLA_PT_snapping(Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column()
-        col.label(text="Snap With")
+        col.label(text="Snap To")
         col.prop(context.tool_settings, "snap_anim_element", expand=True)
 
 

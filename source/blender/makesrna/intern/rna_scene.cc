@@ -3414,6 +3414,12 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       "Absolute grid alignment while translating (based on the pivot center)");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
+  prop = RNA_def_property(srna, "use_snap_time_absolute", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag_anim", SCE_SNAP_ABS_TIME_STEP);
+  RNA_def_property_ui_text(
+      prop, "Absolute Time Snap", "Absolute time alignment while translating");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
+
   prop = RNA_def_property(srna, "snap_elements", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_mode");
   RNA_def_property_enum_items(prop, rna_enum_snap_element_items);

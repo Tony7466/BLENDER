@@ -109,8 +109,9 @@ class GRAPH_PT_snapping(Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column()
-        col.label(text="Snap With")
+        col.label(text="Snap To")
         col.prop(context.tool_settings, "snap_anim_element", expand=True)
+        col.prop(context.tool_settings, "use_snap_time_absolute")
 
 
 class GRAPH_MT_editor_menus(Menu):

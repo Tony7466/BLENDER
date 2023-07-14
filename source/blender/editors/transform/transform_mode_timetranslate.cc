@@ -47,7 +47,7 @@ static void headerTimeTranslate(TransInfo *t, char str[UI_MAX_DRAW_STR])
     float ival = TRANS_DATA_CONTAINER_FIRST_OK(t)->data->ival;
     float val = ival + t->values_final[0];
 
-    snapFrameTransform(t, eSnapMode(autosnap), ival, val, &val);
+    snapFrameTransform(t, autosnap, ival, val, &val);
     float delta_x = val - ival;
 
     if (ELEM(autosnap, SACTSNAP_SECOND, SACTSNAP_TSTEP)) {

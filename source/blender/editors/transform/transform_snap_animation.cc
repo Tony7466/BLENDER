@@ -24,37 +24,49 @@
  * \{ */
 
 void snapFrameTransform(TransInfo *t,
-                        const eSnapMode autosnap,
+                        const eSnapMode snap_mode,
                         const float val_initial,
                         const float val_final,
                         float *r_val_final)
 {
   float deltax = val_final - val_initial;
-  switch (autosnap) {
-    case SCE_SNAP_TO_FRAME:
-      *r_val_final = floorf(val_final + 0.5f);
-      break;
-    case SCE_SNAP_TO_MARKERS:
-      /* Snap to nearest marker. */
-      /* TODO: need some more careful checks for where data comes from. */
-      *r_val_final = float(ED_markers_find_nearest_marker_time(&t->scene->markers, val_final));
-      break;
-    case SCE_SNAP_TO_SECOND:
-    case SCE_SNAP_TO_GRID: {
-      const Scene *scene = t->scene;
-      const double secf = FPS;
-      if (autosnap == SCE_SNAP_TO_SECOND) {
-        *r_val_final = floorf((val_final / secf) + 0.5) * secf;
+  /* This is needed for the FPS macro. */
+  const Scene *scene = t->scene;
+  const eSnapFlag snap_flag = t->tsnap.flag;
+
+  switch (snap_mode) {
+    case SCE_SNAP_TO_FRAME: {
+      if (snap_flag & SCE_SNAP_ABS_TIME_STEP) {
+        *r_val_final = floorf(val_final + 0.5f);
       }
       else {
-        deltax = float(floor((deltax / secf) + 0.5) * secf);
+        deltax = floorf(deltax + 0.5f);
         *r_val_final = val_initial + deltax;
       }
       break;
     }
-    case SCE_SNAP_ABS_GRID: {
-      deltax = floorf(deltax + 0.5f);
-      *r_val_final = val_initial + deltax;
+    case SCE_SNAP_TO_SECOND: {
+      if (snap_flag & SCE_SNAP_ABS_TIME_STEP) {
+        *r_val_final = floorf((val_final / FPS) + 0.5) * FPS;
+      }
+      else {
+        deltax = float(floor((deltax / FPS) + 0.5) * FPS);
+        *r_val_final = val_initial + deltax;
+      }
+      break;
+    }
+    case SCE_SNAP_TO_MARKERS: {
+      /* Snap to nearest marker. */
+      /* TODO: need some more careful checks for where data comes from. */
+      const float nearest_marker_time = float(
+          ED_markers_find_nearest_marker_time(&t->scene->markers, val_final));
+      if (snap_flag & SCE_SNAP_ABS_TIME_STEP) {
+        *r_val_final = nearest_marker_time;
+      }
+      else {
+        /* TODO */
+        *r_val_final = val_final;
+      }
       break;
     }
     default: {
@@ -66,7 +78,7 @@ void snapFrameTransform(TransInfo *t,
 
 void transform_snap_anim_flush_data(TransInfo *t,
                                     TransData *td,
-                                    const eSnapMode autosnap,
+                                    const eSnapMode snap_mode,
                                     float *r_val_final)
 {
   BLI_assert(t->scene->toolsettings->snap_flag_anim);
@@ -82,7 +94,7 @@ void transform_snap_anim_flush_data(TransInfo *t,
     ival = BKE_nla_tweakedit_remap(adt, ival, NLATIME_CONVERT_MAP);
   }
 
-  snapFrameTransform(t, autosnap, ival, val, &val);
+  snapFrameTransform(t, snap_mode, ival, val, &val);
 
   /* Convert frame out of nla-action time. */
   if (adt) {
