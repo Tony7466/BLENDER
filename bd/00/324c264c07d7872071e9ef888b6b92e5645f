@@ -1,3 +1,4 @@
 Referenced by issue #101919, Adjusting Animation Track Total Amount No Longer Evenly Adjusts
 Referenced by issue #101130, Regression: Scaling of NLA Strip Via S Hotkey Not Working
 Referenced by issue #100918, Regression: The start frame of NLA tracks can not be negative.
+Referenced by pull request #110121, Fix #110108: NLA Markers transform not resetting correctly
