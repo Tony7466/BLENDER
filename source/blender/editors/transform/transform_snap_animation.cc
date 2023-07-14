@@ -60,13 +60,7 @@ void snapFrameTransform(TransInfo *t,
       /* TODO: need some more careful checks for where data comes from. */
       const float nearest_marker_time = float(
           ED_markers_find_nearest_marker_time(&t->scene->markers, val_final));
-      if (snap_flag & SCE_SNAP_ABS_TIME_STEP) {
-        *r_val_final = nearest_marker_time;
-      }
-      else {
-        /* TODO */
-        *r_val_final = val_final;
-      }
+      *r_val_final = nearest_marker_time;
       break;
     }
     default: {
