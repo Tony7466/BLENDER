@@ -124,6 +124,7 @@ void SyncModule::sync_mesh(Object *ob,
 
   bool is_shadow_caster = false;
   bool is_alpha_blend = false;
+  bool do_probe_sync = inst_.do_probe_sync();
   for (auto i : material_array.gpu_materials.index_range()) {
     GPUBatch *geom = mat_geom[i];
     if (geom == nullptr) {
@@ -134,6 +135,10 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shadow.sub_pass, geom, res_handle);
     geometry_call(material.capture.sub_pass, geom, res_handle);
+    if (do_probe_sync) {
+      geometry_call(material.probe_prepass.sub_pass, geom, res_handle);
+      geometry_call(material.probe_shading.sub_pass, geom, res_handle);
+    }
 
     is_shadow_caster = is_shadow_caster || material.shadow.sub_pass != nullptr;
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
@@ -230,23 +235,23 @@ static void gpencil_drawcall_flush(gpIterData &iter)
 #if 0 /* Incompatible with new draw manager. */
   if (iter.geom != nullptr) {
     geometry_call(iter.material->shading.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
     geometry_call(iter.material->prepass.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
     geometry_call(iter.material->shadow.sub_pass,
-                          iter.ob,
-                          iter.geom,
-                          iter.vfirst,
-                          iter.vcount,
-                          iter.instancing);
+                  iter.ob,
+                  iter.geom,
+                  iter.vfirst,
+                  iter.vcount,
+                  iter.instancing);
   }
 #endif
   iter.geom = nullptr;
@@ -397,6 +402,18 @@ void SyncModule::sync_curves(Object *ob,
   bool is_caster = material.shadow.sub_pass != nullptr;
   bool is_alpha_blend = material.is_alpha_blend_transparent;
   inst_.shadows.sync_object(ob_handle, res_handle, is_caster, is_alpha_blend);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Probes
+ * \{ */
+
+void SyncModule::sync_light_probe(Object *ob, ObjectHandle &ob_handle)
+{
+  inst_.light_probes.sync_probe(ob, ob_handle);
+  inst_.reflection_probes.sync_object(ob, ob_handle);
 }
 
 /** \} */
