@@ -1449,6 +1449,9 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd, &mappings_ptr);
 
   uiLayout *col = uiLayoutColumn(layout, false);
+  uiLayoutSetPropSep(col, true);
+  uiLayoutSetPropDecorate(col, false);
+
   uiLayout *list_row = uiLayoutRow(col, false);
   uiTemplateList(list_row,
                  C,
