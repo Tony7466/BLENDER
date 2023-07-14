@@ -7113,7 +7113,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "bakes", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodesModifierBake");
-  RNA_def_property_collection_sdna(prop, nullptr, "bake_by_id", "bake_num");
+  RNA_def_property_collection_sdna(prop, nullptr, "bakes", "bakes_num");
   RNA_def_property_srna(prop, "NodesModifierBakes");
 
   RNA_define_lib_overridable(false);

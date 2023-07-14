@@ -413,7 +413,7 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd)
 static void update_bakes_from_node_group(NodesModifierData &nmd)
 {
   Map<int, const NodesModifierBake *> old_bake_by_id;
-  for (const NodesModifierBake &bake : Span(nmd.bake_by_id, nmd.bake_num)) {
+  for (const NodesModifierBake &bake : Span(nmd.bakes, nmd.bakes_num)) {
     old_bake_by_id.add(bake.id, &bake);
   }
 
@@ -449,13 +449,13 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
     }
   }
 
-  for (NodesModifierBake &old_bake : MutableSpan(nmd.bake_by_id, nmd.bake_num)) {
+  for (NodesModifierBake &old_bake : MutableSpan(nmd.bakes, nmd.bakes_num)) {
     MEM_SAFE_FREE(old_bake.directory);
   }
-  MEM_SAFE_FREE(nmd.bake_by_id);
+  MEM_SAFE_FREE(nmd.bakes);
 
-  nmd.bake_by_id = new_bake_data;
-  nmd.bake_num = new_bake_ids.size();
+  nmd.bakes = new_bake_data;
+  nmd.bakes_num = new_bake_ids.size();
 }
 
 }  // namespace blender
@@ -1494,7 +1494,7 @@ static void bake_list_item_draw(uiList * /*ui_list*/,
                                 int /*index*/,
                                 int /*flt_flag*/)
 {
-  NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
+  // NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
   uiItemR(layout, itemptr, "directory", 0, "Directory", ICON_NONE);
 }
 
@@ -1551,8 +1551,8 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
      * and don't necessarily need to be written, but we can't just free them. */
     IDP_BlendWrite(writer, nmd->settings.properties);
 
-    BLO_write_struct_array(writer, NodesModifierBake, nmd->bake_num, nmd->bake_by_id);
-    for (const NodesModifierBake &bake : Span(nmd->bake_by_id, nmd->bake_num)) {
+    BLO_write_struct_array(writer, NodesModifierBake, nmd->bakes_num, nmd->bakes);
+    for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
       BLO_write_string(writer, bake.directory);
     }
 
@@ -1583,8 +1583,8 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
 
-  BLO_read_data_address(reader, &nmd->bake_by_id);
-  for (NodesModifierBake &bake : MutableSpan(nmd->bake_by_id, nmd->bake_num)) {
+  BLO_read_data_address(reader, &nmd->bakes);
+  for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     BLO_read_data_address(reader, &bake.directory);
   }
 
@@ -1599,10 +1599,10 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   BKE_modifier_copydata_generic(md, target, flag);
 
-  if (nmd->bake_by_id) {
-    tnmd->bake_by_id = static_cast<NodesModifierBake *>(MEM_dupallocN(nmd->bake_by_id));
-    for (const int i : IndexRange(nmd->bake_num)) {
-      NodesModifierBake &bake = tnmd->bake_by_id[i];
+  if (nmd->bakes) {
+    tnmd->bakes = static_cast<NodesModifierBake *>(MEM_dupallocN(nmd->bakes));
+    for (const int i : IndexRange(nmd->bakes_num)) {
+      NodesModifierBake &bake = tnmd->bakes[i];
       if (bake.directory) {
         bake.directory = BLI_strdup(bake.directory);
       }
@@ -1638,10 +1638,10 @@ static void freeData(ModifierData *md)
     nmd->settings.properties = nullptr;
   }
 
-  for (NodesModifierBake &bake : MutableSpan(nmd->bake_by_id, nmd->bake_num)) {
+  for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     MEM_SAFE_FREE(bake.directory);
   }
-  MEM_SAFE_FREE(nmd->bake_by_id);
+  MEM_SAFE_FREE(nmd->bakes);
 
   MEM_SAFE_FREE(nmd->simulation_bake_directory);
   MEM_delete(nmd->runtime);
