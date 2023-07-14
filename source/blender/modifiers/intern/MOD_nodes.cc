@@ -456,6 +456,7 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
   nmd.bakes = new_bake_data;
   nmd.bakes_num = new_bake_ids.size();
+  nmd.active_bake = std::max(0, std::min(nmd.bakes_num - 1, nmd.active_bake));
 }
 
 }  // namespace blender
