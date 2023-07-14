@@ -622,7 +622,7 @@ static void recalcData_actedit(TransInfo *t)
 
   /* Flush 2d vector. */
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  const short autosnap = getAnimEdit_SnapMode(t);
+  eSnapMode autosnap = t->tsnap.mode;
   TransData *td;
   TransData2D *td2d;
   int i = 0;

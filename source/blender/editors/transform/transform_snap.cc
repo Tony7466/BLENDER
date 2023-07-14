@@ -666,7 +666,7 @@ static eSnapMode snap_mode_from_spacetype(TransInfo *t)
   }
 
   if (ELEM(t->spacetype, SPACE_ACTION, SPACE_NLA, SPACE_GRAPH)) {
-    return eSnapMode(ts->snap_mode);
+    return eSnapMode(ts->snap_anim_mode);
   }
 
   return SCE_SNAP_TO_INCREMENT;
@@ -783,6 +783,9 @@ static void initSnappingMode(TransInfo *t)
     if (t->tsnap.seq_context == nullptr) {
       t->tsnap.seq_context = transform_snap_sequencer_data_alloc(t);
     }
+  }
+  else if (ELEM(t->spacetype, SPACE_GRAPH, SPACE_NLA, SPACE_ACTION)) {
+    t->tsnap.mode = snap_mode_from_spacetype(t);
   }
 }
 

@@ -642,10 +642,10 @@ static void recalcData_nla(TransInfo *t)
    */
   if (t->state != TRANS_CANCEL) {
     if (t->tsnap.flag) {
-      const short autosnap = getAnimEdit_SnapMode(t);
+      eSnapMode autosnap = t->tsnap.mode;
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
-        transform_snap_anim_flush_data(t, td, eSnapMode(autosnap), td->loc);
+        transform_snap_anim_flush_data(t, td, autosnap, td->loc);
       }
     }
   }

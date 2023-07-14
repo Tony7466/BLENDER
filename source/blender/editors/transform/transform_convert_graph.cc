@@ -654,7 +654,7 @@ static void flushTransGraphData(TransInfo *t)
   TransDataGraph *tdg;
   int a;
 
-  const short autosnap = getAnimEdit_SnapMode(t);
+  eSnapMode autosnap = t->tsnap.mode;
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   /* flush to 2d vector from internally used 3d vector */
   for (a = 0,
@@ -675,7 +675,7 @@ static void flushTransGraphData(TransInfo *t)
      * - Don't do this when canceling, or else these changes won't go away.
      */
     if (t->tsnap.flag && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, eSnapMode(autosnap), td->loc);
+      transform_snap_anim_flush_data(t, td, autosnap, td->loc);
     }
 
     /* we need to unapply the nla-mapping from the time in some situations */

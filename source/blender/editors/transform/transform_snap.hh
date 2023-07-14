@@ -75,14 +75,6 @@ bool transform_snap_sequencer_calc(TransInfo *t);
 void transform_snap_sequencer_apply_translate(TransInfo *t, float *vec);
 
 /* transform_snap_animation.c */
-
-/**
- * This function returns the snapping 'mode' for Animation Editors only.
- * We cannot use the standard snapping due to NLA-strip scaling complexities.
- *
- * TODO: these modifier checks should be accessible from the key-map.
- */
-short getAnimEdit_SnapMode(TransInfo *t);
 void snapFrameTransform(
     TransInfo *t, eSnapMode autosnap, float val_initial, float val_final, float *r_val_final);
 /**

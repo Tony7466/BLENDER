@@ -23,39 +23,6 @@
 /** \name Snapping in Anim Editors
  * \{ */
 
-short getAnimEdit_SnapMode(TransInfo *t)
-{
-  eSnapMode autosnap = SCE_SNAP_TO_FRAME;
-  autosnap = t->scene->toolsettings->snap_anim_mode;
-
-  /* TODO: Each editor has its own snapping flag */
-  /* if (t->spacetype == SPACE_ACTION) {
-    SpaceAction *saction = (SpaceAction *)t->area->spacedata.first;
-
-    if (saction) {
-      autosnap = saction->autosnap;
-    }
-  }
-  else if (t->spacetype == SPACE_GRAPH) {
-    if ((t->mode == TFM_TRANSLATION) && transform_snap_is_active(t)) {
-      return autosnap;
-    }
-    SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
-    if (sipo) {
-      autosnap = sipo->autosnap;
-    }
-  }
-  else if (t->spacetype == SPACE_NLA) {
-    SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
-
-    if (snla) {
-      autosnap = snla->autosnap;
-    }
-  } */
-
-  return autosnap;
-}
-
 void snapFrameTransform(TransInfo *t,
                         const eSnapMode autosnap,
                         const float val_initial,
@@ -91,7 +58,7 @@ void snapFrameTransform(TransInfo *t,
       break;
     }
     default: {
-      *r_val_final = val_initial;
+      *r_val_final = val_final;
       break;
     }
   }
