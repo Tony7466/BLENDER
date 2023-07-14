@@ -153,7 +153,6 @@ class SocketDeclaration {
   /** Defined by whether the socket is part of the node's input or
    * output socket declaration list. Included here for convenience. */
   eNodeSocketInOut in_out;
-  bool is_hidden = false;
   bool hide_label = false;
   bool hide_value = false;
   bool compact = false;
@@ -257,12 +256,6 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
   friend class NodeDeclarationBuilder;
 
  public:
-  Self &hide(bool value = true)
-  {
-    decl_->is_hidden = value;
-    return *(Self *)this;
-  }
-
   Self &hide_label(bool value = true)
   {
     decl_->hide_label = value;
