@@ -52,6 +52,7 @@ void CONSOLE_OT_history_cycle(struct wmOperatorType *ot);
 void CONSOLE_OT_copy(struct wmOperatorType *ot);
 void CONSOLE_OT_paste(struct wmOperatorType *ot);
 void CONSOLE_OT_select_set(struct wmOperatorType *ot);
+void CONSOLE_OT_select_all(struct wmOperatorType *ot);
 void CONSOLE_OT_select_word(struct wmOperatorType *ot);
 
 enum { LINE_BEGIN, LINE_END, PREV_CHAR, NEXT_CHAR, PREV_WORD, NEXT_WORD };
