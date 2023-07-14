@@ -2326,11 +2326,11 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
-typedef struct NodesModifierBakeSettings {
+typedef struct NodesModifierBake {
   int id;
   char _pad[4];
   char *directory;
-} NodesModifierBakeSettings;
+} NodesModifierBake;
 
 typedef struct NodesModifierData {
   ModifierData modifier;
@@ -2342,8 +2342,8 @@ typedef struct NodesModifierData {
   char *simulation_bake_directory;
 
   char _pad[4];
-  int bake_settings_num;
-  NodesModifierBakeSettings *bake_settings_by_id;
+  int bake_num;
+  NodesModifierBake *bake_by_id;
 
   NodesModifierRuntimeHandle *runtime;
   void *_pad2;
