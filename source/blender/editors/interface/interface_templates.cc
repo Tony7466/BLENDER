@@ -72,6 +72,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "ED_fileselect.h"
+#include "ED_info.h"
 #include "ED_object.h"
 #include "ED_render.h"
 #include "ED_screen.h"
@@ -6505,6 +6506,116 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     row = uiLayoutRow(col, false);
     uiItemL(row, "                                                                   ", ICON_NONE);
   }
+}
+
+void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  wmWindow *win = CTX_wm_window(C);
+  WorkSpace *workspace = CTX_wm_workspace(C);
+
+  if (!bmain->has_forward_compatibility_issues) {
+    const char *status_info_txt = ED_info_statusbar_string(
+        bmain, CTX_data_scene(C), CTX_data_view_layer(C));
+    uiItemL(layout, status_info_txt, ICON_NONE);
+    return;
+  }
+
+  /* Blender version part is shown as warning area when there are forward compatibility issues with
+   * currently loaded .blend file. */
+
+  const char *status_info_txt = ED_info_statusbar_string_ex(
+      bmain,
+      CTX_data_scene(C),
+      CTX_data_view_layer(C),
+      (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
+  uiItemL(layout, status_info_txt, ICON_NONE);
+
+  status_info_txt = ED_info_statusbar_string_ex(
+      bmain, CTX_data_scene(C), CTX_data_view_layer(C), STATUSBAR_SHOW_VERSION);
+
+  uiBut *but;
+
+  const uiStyle *style = UI_style_get();
+  uiLayout *ui_abs = uiLayoutAbsolute(layout, false);
+  uiBlock *block = uiLayoutGetBlock(ui_abs);
+  eUIEmbossType previous_emboss = UI_block_emboss_get(block);
+
+  UI_fontstyle_set(&style->widgetlabel);
+  int width = static_cast<int>(
+      BLF_width(style->widgetlabel.uifont_id, status_info_txt, strlen(status_info_txt)));
+  width = max_ii(width, static_cast<int>(10 * UI_SCALE_FAC));
+
+  UI_block_align_begin(block);
+
+  /* Background for icon. */
+  but = uiDefBut(block,
+                 UI_BTYPE_ROUNDBOX,
+                 0,
+                 "",
+                 0,
+                 0,
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0,
+                 0,
+                 "");
+  /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
+
+  /* Background for the rest of the message. */
+  but = uiDefBut(block,
+                 UI_BTYPE_ROUNDBOX,
+                 0,
+                 "",
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
+                 0,
+                 UI_UNIT_X + width,
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0,
+                 0,
+                 "");
+
+  /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
+  but->col[3] = 64;
+
+  UI_block_align_end(block);
+  UI_block_emboss_set(block, UI_EMBOSS_NONE);
+
+  /* The report icon itself. */
+  but = uiDefIconButO(block,
+                      UI_BTYPE_BUT,
+                      "SCREEN_OT_info_status_show",
+                      WM_OP_INVOKE_REGION_WIN,
+                      ICON_ERROR,
+                      static_cast<int>(3 * UI_SCALE_FAC),
+                      0,
+                      UI_UNIT_X,
+                      UI_UNIT_Y,
+                      TIP_("Show detailed comatibility info"));
+  UI_GetThemeColorType4ubv(TH_INFO_WARNING_TEXT, SPACE_INFO, but->col);
+  but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
+
+  /* The report message. */
+  but = uiDefButO(block,
+                  UI_BTYPE_BUT,
+                  "SCREEN_OT_info_status_show",
+                  WM_OP_INVOKE_REGION_WIN,
+                  status_info_txt,
+                  UI_UNIT_X,
+                  0,
+                  static_cast<short>(width + UI_UNIT_X),
+                  UI_UNIT_Y,
+                  TIP_("Show detailed comatibility info"));
+
+  UI_block_emboss_set(block, previous_emboss);
 }
 
 /** \} */

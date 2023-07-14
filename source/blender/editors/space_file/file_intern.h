@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -180,6 +181,8 @@ typedef struct SpaceFile_Runtime {
    * Use file_on_reload_callback_register() to register a callback. */
   onReloadFn on_reload;
   onReloadFnData on_reload_custom_data;
+
+  ReportList reports;
 } SpaceFile_Runtime;
 
 /**

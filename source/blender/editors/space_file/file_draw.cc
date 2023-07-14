@@ -26,6 +26,7 @@
 
 #include "BKE_blendfile.h"
 #include "BKE_context.h"
+#include "BKE_report.h"
 
 #include "BLT_translation.h"
 
@@ -1177,12 +1178,11 @@ void file_draw_list(const bContext *C, ARegion *region)
   layout->curr_size = params->thumbnail_size;
 }
 
-static void file_draw_invalid_library_hint(const bContext *C,
-                                           const SpaceFile *sfile,
-                                           ARegion *region)
+static void file_draw_invalid_asset_library_hint(const bContext *C,
+                                                 const SpaceFile *sfile,
+                                                 ARegion *region,
+                                                 FileAssetSelectParams *asset_params)
 {
-  const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
-
   char library_ui_path[PATH_MAX];
   file_path_to_ui_path(asset_params->base_params.dir, library_ui_path, sizeof(library_ui_path));
 
@@ -1237,21 +1237,97 @@ static void file_draw_invalid_library_hint(const bContext *C,
   }
 }
 
+static void file_draw_invalid_library_hint(const bContext * /*C*/,
+                                           const SpaceFile *sfile,
+                                           ARegion *region,
+                                           const char *blendfile_path,
+                                           ReportList *reports)
+{
+  uchar text_col[4];
+  UI_GetThemeColor4ubv(TH_TEXT, text_col);
+
+  const View2D *v2d = &region->v2d;
+  const int pad = sfile->layout->tile_border_x;
+  const int width = BLI_rctf_size_x(&v2d->tot) - (2 * pad);
+  const int line_height = sfile->layout->textheight;
+  int sx = v2d->tot.xmin + pad;
+  /* For some reason no padding needed. */
+  int sy = v2d->tot.ymax;
+
+  {
+    const char *message = TIP_("Unreadable Blender library file:");
+    file_draw_string_multiline(sx, sy, message, width, line_height, text_col, nullptr, &sy);
+
+    sy -= line_height;
+    file_draw_string(sx, sy, blendfile_path, width, line_height, UI_STYLE_TEXT_LEFT, text_col);
+  }
+
+  /* Separate a bit further. */
+  sy -= line_height * 2.2f;
+
+  LISTBASE_FOREACH (Report *, report, &reports->list) {
+    const short report_type = report->type;
+    if (report_type <= RPT_INFO) {
+      continue;
+    }
+
+    int icon = ICON_INFO;
+    if (report_type > RPT_WARNING) {
+      icon = ICON_ERROR;
+    }
+    UI_icon_draw(sx, sy - UI_UNIT_Y, icon);
+
+    file_draw_string_multiline(sx + UI_UNIT_X,
+                               sy,
+                               TIP_(report->message),
+                               width - UI_UNIT_X,
+                               line_height,
+                               text_col,
+                               nullptr,
+                               &sy);
+    sy -= line_height;
+  }
+}
+
 bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegion *region)
 {
-  FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
-  /* Only for asset browser. */
-  if (!ED_fileselect_is_asset_browser(sfile)) {
-    return false;
-  }
-  /* Check if the library exists. */
-  if ((asset_params->asset_library_ref.type == ASSET_LIBRARY_LOCAL) ||
-      filelist_is_dir(sfile->files, asset_params->base_params.dir))
-  {
+  char blendfile_path[FILE_MAX_LIBEXTRA];
+  const bool is_asset_browser = ED_fileselect_is_asset_browser(sfile);
+  const bool is_library_browser = !is_asset_browser &&
+                                  filelist_islibrary(sfile->files, blendfile_path, nullptr);
+  if (!is_asset_browser && !is_library_browser) {
     return false;
   }
 
-  file_draw_invalid_library_hint(C, sfile, region);
+  if (is_asset_browser) {
+    FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
 
-  return true;
+    /* Check if the asset library exists. */
+    if (!((asset_params->asset_library_ref.type == ASSET_LIBRARY_LOCAL) ||
+          filelist_is_dir(sfile->files, asset_params->base_params.dir)))
+    {
+      file_draw_invalid_asset_library_hint(C, sfile, region, asset_params);
+      return true;
+    }
+  }
+
+  /* Check if the blendfile library is valid (has entries). */
+  if (is_library_browser) {
+    if (!filelist_is_ready(sfile->files)) {
+      return false;
+    }
+
+    const int numfiles = filelist_files_num_entries(sfile->files);
+    if (numfiles > 0) {
+      return false;
+    }
+
+    BKE_reports_clear(&sfile->runtime->reports);
+    if (!BKE_blendfile_is_readable(blendfile_path, &sfile->runtime->reports)) {
+      file_draw_invalid_library_hint(C, sfile, region, blendfile_path, &sfile->runtime->reports);
+      return true;
+    }
+  }
+
+  return false;
 }

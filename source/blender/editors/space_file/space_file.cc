@@ -20,6 +20,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
+#include "BKE_report.h"
 #include "BKE_screen.h"
 
 #include "RNA_access.h"
@@ -126,6 +127,9 @@ static void file_free(SpaceLink *sl)
 
   MEM_SAFE_FREE(sfile->params);
   MEM_SAFE_FREE(sfile->asset_params);
+  if (sfile->runtime != nullptr) {
+    BKE_reports_clear(&sfile->runtime->reports);
+  }
   MEM_SAFE_FREE(sfile->runtime);
 
   MEM_SAFE_FREE(sfile->layout);
@@ -143,6 +147,7 @@ static void file_init(wmWindowManager * /*wm*/, ScrArea *area)
   if (sfile->runtime == nullptr) {
     sfile->runtime = static_cast<SpaceFile_Runtime *>(
         MEM_callocN(sizeof(*sfile->runtime), __func__));
+    BKE_reports_init(&sfile->runtime->reports, RPT_STORE);
   }
   /* Validate the params right after file read. */
   fileselect_refresh_params(sfile);
