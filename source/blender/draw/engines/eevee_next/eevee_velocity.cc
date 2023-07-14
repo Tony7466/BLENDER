@@ -15,6 +15,7 @@
 #include "BKE_object.h"
 #include "BLI_map.hh"
 #include "DEG_depsgraph_query.h"
+#include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_rigidbody_types.h"
 
@@ -52,16 +53,44 @@ void VelocityModule::init()
   next_step_ = inst_.is_viewport() ? STEP_PREVIOUS : STEP_NEXT;
 }
 
-static void step_object_sync_render(void *velocity,
+/* Similar to Instance::object_sync, but only syncs velocity. */
+static void step_object_sync_render(void *instance,
                                     Object *ob,
                                     RenderEngine * /*engine*/,
                                     Depsgraph * /*depsgraph*/)
 {
-  /* TODO(Miguel Pozo): This should be de-duplicated with Instance::object_sync. */
-  ObjectKey object_key(DEG_get_original_object(ob));
-  /* NOTE: Dummy resource handle since this will not be used for drawing. */
+  Instance &inst = *reinterpret_cast<Instance *>(instance);
+
+  const bool is_velocity_type = ELEM(
+      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_POINTCLOUD);
+  const int ob_visibility = DRW_object_visibility_in_active_context(ob);
+  const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
+                                  (ob->type == OB_MESH);
+  const bool object_is_visible = DRW_object_is_renderable(ob) &&
+                                 (ob_visibility & OB_VISIBLE_SELF) != 0;
+
+  if (!is_velocity_type || (!partsys_is_visible && !object_is_visible)) {
+    return;
+  }
+
+  /* NOTE: Dummy resource handle since this won't be used for drawing. */
   ResourceHandle resource_handle(0);
-  reinterpret_cast<VelocityModule *>(velocity)->step_object_sync(ob, object_key, resource_handle);
+  ObjectHandle &ob_handle = inst.sync.sync_object(ob);
+
+  if (partsys_is_visible) {
+    auto sync_hair =
+        [&](ObjectHandle hair_handle, ModifierData &md, ParticleSystem &particle_sys) {
+          inst.velocity.step_object_sync(
+              ob, hair_handle.object_key, resource_handle, hair_handle.recalc, &md, &particle_sys);
+        };
+    foreach_hair_particle_handle(ob, ob_handle, sync_hair);
+  };
+
+  if (object_is_visible) {
+    inst.velocity.step_object_sync(ob, ob_handle.object_key, resource_handle, ob_handle.recalc);
+  }
+
+  ob_handle.reset_recalc_flag();
 }
 
 void VelocityModule::step_sync(eVelocityStep step, float time)
@@ -70,7 +99,7 @@ void VelocityModule::step_sync(eVelocityStep step, float time)
   step_ = step;
   object_steps_usage[step_] = 0;
   step_camera_sync();
-  DRW_render_object_iter(this, inst_.render, inst_.depsgraph, step_object_sync_render);
+  DRW_render_object_iter(&inst_, inst_.render, inst_.depsgraph, step_object_sync_render);
 }
 
 void VelocityModule::step_camera_sync()
