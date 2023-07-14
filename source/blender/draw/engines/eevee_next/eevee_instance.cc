@@ -23,6 +23,8 @@
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
 
+#include "DNA_particle_types.h"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -175,7 +177,7 @@ void Instance::scene_sync()
 void Instance::object_sync(Object *ob)
 {
   const bool is_renderable_type = ELEM(
-      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_LAMP, OB_LIGHTPROBE);
+      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_POINTCLOUD, OB_LAMP, OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
@@ -193,9 +195,24 @@ void Instance::object_sync(Object *ob)
   ObjectHandle &ob_handle = sync.sync_object(ob);
 
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
+    int sub_key = 1;
     LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
       if (md->type == eModifierType_ParticleSystem) {
-        sync.sync_curves(ob, ob_handle, res_handle, md);
+        ParticleSystem *particle_sys = reinterpret_cast<ParticleSystemModifierData *>(md)->psys;
+        ParticleSettings *part_settings = particle_sys->part;
+        const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
+                                                                         part_settings->draw_as;
+        if (draw_as != PART_DRAW_PATH ||
+            !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
+          continue;
+        }
+
+        ObjectHandle _ob_handle = {0};
+        _ob_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
+        _ob_handle.recalc = particle_sys->recalc;
+        ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
+
+        sync.sync_curves(ob, _ob_handle, _res_handle, md, particle_sys);
       }
     }
   }
@@ -208,6 +225,8 @@ void Instance::object_sync(Object *ob)
       case OB_MESH:
         sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
         break;
+      case OB_POINTCLOUD:
+        sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
       case OB_VOLUME:
         break;
       case OB_CURVES:
@@ -268,9 +287,7 @@ void Instance::render_sync()
   /* TODO: Remove old draw manager calls. */
   DRW_render_instance_buffer_finish();
 
-  /* Also we weed to have a correct FBO bound for #DRW_hair_update */
-  // GPU_framebuffer_bind();
-  // DRW_hair_update();
+  DRW_curves_update();
 }
 
 bool Instance::do_probe_sync() const

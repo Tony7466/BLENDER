@@ -526,64 +526,58 @@ extern FILE *paint_log_file = nullptr;
 #  undef _
 #endif
 #define _(f) \
-  case f: \
+  if (bit == f) \
     return #f;
 const char *get_brush_flag1(int64_t bit)
 {
-  switch (bit) {
-    _(BRUSH_AIRBRUSH)
-    _(BRUSH_INVERT_TO_SCRAPE_FILL)
-    _(BRUSH_ALPHA_PRESSURE)
-    _(BRUSH_SIZE_PRESSURE)
-    _(BRUSH_JITTER_PRESSURE)
-    _(BRUSH_SPACING_PRESSURE)
-    _(BRUSH_ORIGINAL_PLANE)
-    _(BRUSH_GRAB_ACTIVE_VERTEX)
-    _(BRUSH_ANCHORED)
-    _(BRUSH_DIR_IN)
-    _(BRUSH_SPACE)
-    _(BRUSH_SMOOTH_STROKE)
-    _(BRUSH_PERSISTENT)
-    _(BRUSH_ACCUMULATE)
-    _(BRUSH_LOCK_ALPHA)
-    _(BRUSH_ORIGINAL_NORMAL)
-    _(BRUSH_OFFSET_PRESSURE)
-    _(BRUSH_SCENE_SPACING)
-    _(BRUSH_SPACE_ATTEN)
-    _(BRUSH_ADAPTIVE_SPACE)
-    _(BRUSH_LOCK_SIZE)
-    _(BRUSH_USE_GRADIENT)
-    _(BRUSH_EDGE_TO_EDGE)
-    _(BRUSH_DRAG_DOT)
-    _(BRUSH_INVERSE_SMOOTH_PRESSURE)
-    _(BRUSH_FRONTFACE_FALLOFF)
-    _(BRUSH_PLANE_TRIM)
-    _(BRUSH_FRONTFACE)
-    _(BRUSH_CUSTOM_ICON)
-    _(BRUSH_LINE)
-    _(BRUSH_ABSOLUTE_JITTER)
-    _(BRUSH_CURVE)
-    default:
-      return nullptr;
-  }
+  _(BRUSH_AIRBRUSH)
+  _(BRUSH_INVERT_TO_SCRAPE_FILL)
+  _(BRUSH_ALPHA_PRESSURE)
+  _(BRUSH_SIZE_PRESSURE)
+  _(BRUSH_JITTER_PRESSURE)
+  _(BRUSH_SPACING_PRESSURE)
+  _(BRUSH_ORIGINAL_PLANE)
+  _(BRUSH_GRAB_ACTIVE_VERTEX)
+  _(BRUSH_ANCHORED)
+  _(BRUSH_DIR_IN)
+  _(BRUSH_SPACE)
+  _(BRUSH_SMOOTH_STROKE)
+  _(BRUSH_PERSISTENT)
+  _(BRUSH_ACCUMULATE)
+  _(BRUSH_LOCK_ALPHA)
+  _(BRUSH_ORIGINAL_NORMAL)
+  _(BRUSH_OFFSET_PRESSURE)
+  _(BRUSH_SCENE_SPACING)
+  _(BRUSH_SPACE_ATTEN)
+  _(BRUSH_ADAPTIVE_SPACE)
+  _(BRUSH_LOCK_SIZE)
+  _(BRUSH_USE_GRADIENT)
+  _(BRUSH_EDGE_TO_EDGE)
+  _(BRUSH_DRAG_DOT)
+  _(BRUSH_INVERSE_SMOOTH_PRESSURE)
+  _(BRUSH_FRONTFACE_FALLOFF)
+  _(BRUSH_PLANE_TRIM)
+  _(BRUSH_FRONTFACE)
+  _(BRUSH_CUSTOM_ICON)
+  _(BRUSH_LINE)
+  _(BRUSH_ABSOLUTE_JITTER)
+  _(BRUSH_CURVE)
+  return nullptr;
 }
 
 const char *get_brush_flag2(int64_t bit)
 {
-  switch (bit) {
-    _(BRUSH_MULTIPLANE_SCRAPE_DYNAMIC);
-    _(BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW);
-    _(BRUSH_POSE_IK_ANCHORED);
-    _(BRUSH_USE_CONNECTED_ONLY);
-    _(BRUSH_CLOTH_PIN_SIMULATION_BOUNDARY);
-    _(BRUSH_POSE_USE_LOCK_ROTATION);
-    _(BRUSH_CLOTH_USE_COLLISION);
-    _(BRUSH_AREA_RADIUS_PRESSURE);
-    _(BRUSH_GRAB_SILHOUETTE);
-    _(BRUSH_USE_COLOR_AS_DISPLACEMENT);
-    default:
-      return nullptr;
-  }
+  _(BRUSH_MULTIPLANE_SCRAPE_DYNAMIC);
+  _(BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW);
+  _(BRUSH_POSE_IK_ANCHORED);
+  _(BRUSH_USE_CONNECTED_ONLY);
+  _(BRUSH_CLOTH_PIN_SIMULATION_BOUNDARY);
+  _(BRUSH_POSE_USE_LOCK_ROTATION);
+  _(BRUSH_CLOTH_USE_COLLISION);
+  _(BRUSH_AREA_RADIUS_PRESSURE);
+  _(BRUSH_GRAB_SILHOUETTE);
+  _(BRUSH_USE_COLOR_AS_DISPLACEMENT);
+  return nullptr;
 }
 
 #undef _
@@ -632,7 +626,7 @@ void log_brush_settings(Brush *brush)
 
   paint_log("  flag                  : \"");
   int first = 0;
-  for (int64_t i = 0; i < 32; i++) {
+  for (int64_t i = 0; i < 32LL; i++) {
     int bit = int64_t(brush->flag) & (1LL << i);
 
     if (bit) {
@@ -646,7 +640,7 @@ void log_brush_settings(Brush *brush)
 
   paint_log("  flag2                 : \"");
   first = 0;
-  for (int64_t i = 0; i < 32; i++) {
+  for (int64_t i = 0; i < 32LL; i++) {
     int bit = int64_t(brush->flag2) & (1LL << i);
 
     if (bit) {
