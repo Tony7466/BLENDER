@@ -182,6 +182,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
     .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
     .storage_buf(2, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(6, Qualifier::READ, "uint", "clear_page_buf[]")
+    .storage_buf(SHADOW_ATLAS_BUF_SLOT, Qualifier::WRITE, "uint", "atlas_buf[]")
     .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D, "atlas_img")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_clear_comp.glsl");

@@ -18,6 +18,7 @@
 #include "mtl_storage_buffer.hh"
 #include "mtl_uniform_buffer.hh"
 #include "mtl_vertex_buffer.hh"
+#include "mtl_texture.hh"
 
 namespace blender::gpu {
 
@@ -60,6 +61,17 @@ MTLStorageBuf::MTLStorageBuf(MTLIndexBuf *index_buf, size_t size)
   index_buffer_ = index_buf;
   BLI_assert(index_buffer_ != nullptr);
 }
+
+MTLStorageBuf::MTLStorageBuf(MTLTexture *texture, size_t size)
+    : StorageBuf(size, "Texture_as_SSBO")
+{
+  usage_ = GPU_USAGE_DYNAMIC;
+  storage_source_ = MTL_STORAGE_BUF_TYPE_TEXTURE;
+  texture_ = texture;
+  BLI_assert(texture_ != nullptr);
+}
+
+
 
 MTLStorageBuf::~MTLStorageBuf()
 {
@@ -286,7 +298,6 @@ void MTLStorageBuf::read(void *data)
 
 id<MTLBuffer> MTLStorageBuf::get_metal_buffer()
 {
-
   gpu::MTLBuffer *source_buffer = nullptr;
   switch (storage_source_) {
     /* Default SSBO buffer comes from own allocation. */
@@ -313,6 +324,14 @@ id<MTLBuffer> MTLStorageBuf::get_metal_buffer()
     case MTL_STORAGE_BUF_TYPE_INDEXBUF: {
       source_buffer = index_buffer_->ibo_;
     } break;
+    /* SSBO buffer comes from Texture. */
+    case MTL_STORAGE_BUF_TYPE_TEXTURE: {
+      BLI_assert(texture_);
+      /* Fetch metal texture to ensure it has been initialized. */
+      id<MTLTexture> tex = texture_->get_metal_handle_base();
+      BLI_assert(tex != nil);
+      source_buffer = texture_->backing_buffer_;
+    }
   }
 
   /* Return Metal allocation handle and flag as used. */

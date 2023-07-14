@@ -22,6 +22,7 @@
 #include "mtl_common.hh"
 #include "mtl_context.hh"
 #include "mtl_debug.hh"
+#include "mtl_storage_buffer.hh"
 #include "mtl_texture.hh"
 #include "mtl_vertex_buffer.hh"
 
@@ -2136,8 +2137,27 @@ void gpu::MTLTexture::ensure_baked()
     /* Determine Resource Mode. */
     resource_mode_ = MTL_TEXTURE_MODE_DEFAULT;
 
-    /* Standard texture allocation. */
-    texture_ = [ctx->device newTextureWithDescriptor:texture_descriptor_];
+    if (buffer_backed_) {
+      /* Allocate buffer for texture data. */
+      size_t bytes_per_pixel = get_mtl_format_bytesize(mtl_format);
+      size_t bytes_per_row = bytes_per_pixel * texture_descriptor_.width;
+      size_t total_bytes = bytes_per_row * texture_descriptor_.height;
+      backing_buffer_ = MTLContext::get_global_memory_manager()->allocate(
+          total_bytes, (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_HOST_READ));
+      BLI_assert(backing_buffer_ != nullptr);
+#ifndef NDEBUG
+      backing_buffer_->set_label([NSString stringWithFormat:@"BufferBackedTexture_%s", this->get_name()]);
+#endif
+
+      /* Texture allocation with buffer as backing storage. */
+      texture_ = [backing_buffer_->get_metal_buffer() newTextureWithDescriptor:texture_descriptor_
+                                                                        offset:0
+                                                                   bytesPerRow:bytes_per_row];
+    }
+    else {
+      /* Standard texture allocation. */
+      texture_ = [ctx->device newTextureWithDescriptor:texture_descriptor_];
+    }
 
     texture_.label = [NSString stringWithUTF8String:this->get_name()];
     BLI_assert(texture_);
@@ -2161,6 +2181,18 @@ void gpu::MTLTexture::reset()
     texture_ = nil;
     is_baked_ = false;
     is_dirty_ = true;
+  }
+
+  /* Release backing Metal buffer, if used. */
+  if (backing_buffer_ != nullptr) {
+    backing_buffer_->free();
+    backing_buffer_ = nullptr;
+  }
+
+  /* Release backing storage buffer, if used. */
+  if (storage_buffer_ != nullptr) {
+    delete storage_buffer_;
+    storage_buffer_ = nullptr;
   }
 
   if (texture_no_srgb_ != nil) {
@@ -2202,7 +2234,7 @@ void gpu::MTLTexture::reset()
 /** \name Alias resource access to buffer backed content using Storage Buffer.
  * \{ */
 
-void MTLTexture::bind_as_ssbo(uint binding)
+void gpu::MTLTexture::bind_as_ssbo(uint binding)
 {
   BLI_assert_msg(
       buffer_backed_,
@@ -2210,6 +2242,18 @@ void MTLTexture::bind_as_ssbo(uint binding)
 
   /* TODO: Bind texture as storagebuf. */
   printf("[BINDING TEXTURE AS SSBO]\n");
+
+  /* Ensure texture exists. */
+  this->ensure_baked();
+
+  if (storage_buffer_ == nil) {
+    BLI_assert(texture_ != nullptr);
+    id<MTLBuffer> backing_buffer = [texture_ buffer];
+    BLI_assert(backing_buffer != nil);
+    storage_buffer_ = new MTLStorageBuf(this, [backing_buffer length]);
+  }
+
+  storage_buffer_->bind(binding);
 }
 
 /** \} */

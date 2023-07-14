@@ -121,6 +121,8 @@ namespace blender::gpu {
 
 class MTLContext;
 class MTLVertBuf;
+class MTLStorageBuf;
+class MTLBuffer;
 
 /* Metal Texture internal implementation. */
 static const int MTL_MAX_MIPMAP_COUNT = 15; /* Max: 16384x16384 */
@@ -167,6 +169,7 @@ class MTLTexture : public Texture {
   friend class MTLContext;
   friend class MTLStateManager;
   friend class MTLFrameBuffer;
+  friend class MTLStorageBuf;
 
  private:
   /* Where the textures data comes from. */
@@ -187,6 +190,12 @@ class MTLTexture : public Texture {
   /* Texture Storage. */
   id<MTLBuffer> texture_buffer_ = nil;
   size_t aligned_w_ = 0;
+  
+  /* Storage buffer view. 
+   * Buffer backed textures can be wrapped with a storage buffer instance for direct data reading/writing. 
+   * Required for atomic operations on texture data. */
+  MTLBuffer *backing_buffer_ = nullptr;
+  MTLStorageBuf *storage_buffer_ = nullptr;
 
   /* Blit Frame-buffer. */
   GPUFrameBuffer *blit_fb_ = nullptr;

@@ -1049,6 +1049,9 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
         sub.bind_image("atlas_img", atlas_tx_);
+        if(GPU_backend_get_type() == GPU_BACKEND_METAL) {
+          sub.bind_ssbo("atlas_buf", atlas_tx_);
+        }
         sub.dispatch(clear_dispatch_buf_);
         sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }

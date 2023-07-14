@@ -13,5 +13,12 @@ void main()
   uvec2 page_texel = page_co * pages_infos_buf.page_size + gl_GlobalInvocationID.xy;
 
   /* Clear to FLT_MAX instead of 1 so the far plane doesn't cast shadows onto farther objects. */
+#ifdef GPU_METAL
+  /* TOOD(Metal): For Metal, textures will need to be viewed as buffers to workaround missing image
+   * atomics support. */
+  uint out_index = page_texel.x + page_texel.y*atlas_img.texture->get_width();
+  atlas_buf[out_index] = floatBitsToUint(FLT_MAX);
+#else
   imageStore(atlas_img, ivec2(page_texel), uvec4(floatBitsToUint(FLT_MAX)));
+#endif
 }

@@ -198,15 +198,6 @@ template<typename T> T atomicExchange(device T &mem, T data)
   return atomic_exchange_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
 }
 
-/* Unblock texture atomic compilation.
- * TODO(Metal): This is not correct for global atomic behaviour, but will be safe within a single
- * thread.
- * We need to re-visit the solution for this use-case and use a 2D texture buffer instead. */
-#define imageAtomicMin(tex, coord, data) \
-  uint val = _texelFetch_internal(tex, coord, 0).r; \
-  _texture_write_internal(tex, coord, uint4((val < data) ? val : data)); \
-  tex.texture->fence();
-
 /* Used to replace 'out' in function parameters with threadlocal reference
  * shortened to avoid expanding the glsl source string. */
 #define THD thread

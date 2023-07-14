@@ -19,6 +19,7 @@ namespace gpu {
 class MTLUniformBuf;
 class MTLVertBuf;
 class MTLIndexBuf;
+class MTLTexture;
 
 /**
  * Implementation of Storage Buffers using Metal.
@@ -43,6 +44,7 @@ class MTLStorageBuf : public StorageBuf {
     MTLUniformBuf *uniform_buffer_;
     MTLVertBuf *vertex_buffer_;
     MTLIndexBuf *index_buffer_;
+    gpu::MTLTexture *texture_;
   };
 
   /* Whether buffer has contents, if false, no GPU buffer will
