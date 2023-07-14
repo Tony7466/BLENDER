@@ -67,6 +67,7 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "RNA_access.h"
@@ -1491,6 +1492,34 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   uiItemR(col, &active_mapping_ptr, "lib_name", 0, "Library Name", ICON_NONE);
 }
 
+static void id_mapping_list_item_draw(uiList * /*ui_list*/,
+                                      const bContext * /*C*/,
+                                      uiLayout *layout,
+                                      PointerRNA * /*idataptr*/,
+                                      PointerRNA *itemptr,
+                                      int /*icon*/,
+                                      PointerRNA * /*active_dataptr*/,
+                                      const char * /*active_propname*/,
+                                      int /*index*/,
+                                      int /*flt_flag*/)
+{
+  NodesModifierIDMapping &mapping = *static_cast<NodesModifierIDMapping *>(itemptr->data);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  if (mapping.id) {
+    const int icon = UI_icon_from_idcode(mapping.id_type);
+    uiItemL(row, mapping.id->name + 2, icon);
+  }
+  else if (StringRef(mapping.id_name).is_empty()) {
+    uiItemL(row, N_("Empty"), ICON_INFO);
+  }
+  else {
+    char label[1024];
+    BLI_snprintf(label, sizeof(label), N_("Missing '%s'"), mapping.id_name);
+    uiItemL(row, label, ICON_INFO);
+  }
+}
+
 static void panelRegister(ARegionType *region_type)
 {
   using namespace blender;
@@ -1514,6 +1543,11 @@ static void panelRegister(ARegionType *region_type)
                              nullptr,
                              id_mappings_panel_draw,
                              internal_dependencies_panel);
+
+  uiListType *id_mappings_list = MEM_cnew<uiListType>(__func__);
+  STRNCPY(id_mappings_list->idname, "DATA_UL_nodes_modifier_id_mappings");
+  id_mappings_list->draw_item = id_mapping_list_item_draw;
+  WM_uilisttype_add(id_mappings_list);
 }
 
 static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)

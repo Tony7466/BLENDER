@@ -40,21 +40,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         layout.template_grease_pencil_modifiers()
 
 
-class DATA_UL_nodes_modifier_id_mappings(UIList):
-    def draw_item(self, _context, layout, _data, item, _icon, _active_data, _active_propname, _index):
-        if item.id:
-            icon = item.bl_rna.properties["id_type"].enum_items.get(item.id_type).icon
-            layout.label(text=item.id.name, icon=icon)
-        elif item.id_name:
-            layout.label(text="Missing '%s'" % item.id_name, icon='ERROR')
-        else:
-            layout.label(text="Empty", icon='INFO')
-
-
 classes = (
     DATA_PT_modifiers,
     DATA_PT_gpencil_modifiers,
-    DATA_UL_nodes_modifier_id_mappings,
 )
 
 if __name__ == "__main__":  # only for live edit.
