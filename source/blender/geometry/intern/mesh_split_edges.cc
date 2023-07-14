@@ -380,7 +380,6 @@ static VectorSet<OrderedEdge> calc_duplicate_edges(const OffsetIndices<int> poly
 {
   VectorSet<OrderedEdge> duplicate_edges;
   duplicate_edges.reserve(selection.size());
-  /* Could potentially use a compacted poly selection. */
   for (const int i : polys.index_range()) {
     const IndexRange poly = polys[i];
     for (const int corner : poly) {
