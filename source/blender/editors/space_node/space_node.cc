@@ -24,9 +24,9 @@
 #include "BKE_screen.h"
 
 #include "ED_node.h"
+#include "ED_node_preview.hh"
 #include "ED_render.h"
 #include "ED_screen.h"
-#include "ED_shader_preview.h"
 #include "ED_space_api.h"
 
 #include "UI_resources.h"

@@ -65,6 +65,7 @@ set(SRC
   ../include/ED_mesh.h
   ../include/ED_node.h
   ../include/ED_node.hh
+  ../include/ED_node_preview.hh
   ../include/ED_numinput.h
   ../include/ED_object.h
   ../include/ED_outliner.h
@@ -78,7 +79,6 @@ set(SRC
   ../include/ED_sculpt.h
   ../include/ED_select_utils.h
   ../include/ED_sequencer.h
-  ../include/ED_shader_preview.h
   ../include/ED_sound.h
   ../include/ED_space_api.h
   ../include/ED_spreadsheet.h

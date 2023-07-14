@@ -67,8 +67,8 @@
 #include "ED_gpencil_legacy.h"
 #include "ED_node.h"
 #include "ED_node.hh"
+#include "ED_node_preview.hh"
 #include "ED_screen.h"
-#include "ED_shader_preview.h"
 #include "ED_space_api.h"
 #include "ED_viewer_path.hh"
 

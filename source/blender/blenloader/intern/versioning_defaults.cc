@@ -22,9 +22,9 @@
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
-#include "DNA_defaults.h"
 #include "DNA_camera_types.h"
 #include "DNA_curveprofile_types.h"
+#include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mask_types.h"

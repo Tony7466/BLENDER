@@ -37,9 +37,9 @@
 #include "WM_types.h"
 
 #include "ED_datafiles.h"
+#include "ED_node_preview.hh"
 #include "ED_render.h"
 #include "ED_screen.h"
-#include "ED_shader_preview.h"
 #include "node_intern.hh"
 
 #ifndef NDEBUG
