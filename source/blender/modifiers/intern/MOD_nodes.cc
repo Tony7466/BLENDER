@@ -1482,6 +1482,16 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
                  UILST_LAYOUT_DEFAULT,
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
+
+  if (nmd->active_bake < 0 || nmd->active_bake >= nmd->bakes_num) {
+    return;
+  }
+
+  NodesModifierBake &bake = nmd->bakes[nmd->active_bake];
+  PointerRNA bake_ptr;
+  RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBake, &bake, &bake_ptr);
+
+  uiItemR(layout, &bake_ptr, "directory", 0, "Directory", ICON_NONE);
 }
 
 static void bake_list_item_draw(uiList * /*ui_list*/,
