@@ -2343,7 +2343,7 @@ typedef struct NodesModifierData {
 
   char _pad[4];
   int bake_settings_num;
-  NodesModifierBakeSettings *bake_settings;
+  NodesModifierBakeSettings *bake_settings_by_id;
 
   NodesModifierRuntimeHandle *runtime;
   void *_pad2;

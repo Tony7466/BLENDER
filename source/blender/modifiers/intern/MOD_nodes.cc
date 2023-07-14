@@ -1456,6 +1456,14 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
      * and don't necessarily need to be written, but we can't just free them. */
     IDP_BlendWrite(writer, nmd->settings.properties);
 
+    BLO_write_struct_array(
+        writer, NodesModifierBakeSettings, nmd->bake_settings_num, nmd->bake_settings_by_id);
+    for (const NodesModifierBakeSettings &bake_settings :
+         Span(nmd->bake_settings_by_id, nmd->bake_settings_num))
+    {
+      BLO_write_string(writer, bake_settings.directory);
+    }
+
     if (!BLO_write_is_undo(writer)) {
       LISTBASE_FOREACH (IDProperty *, prop, &nmd->settings.properties->data.group) {
         if (prop->type == IDP_INT) {
@@ -1482,6 +1490,14 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
     BLO_read_data_address(reader, &nmd->settings.properties);
     IDP_BlendDataRead(reader, &nmd->settings.properties);
   }
+
+  BLO_read_data_address(reader, &nmd->bake_settings_by_id);
+  for (NodesModifierBakeSettings &bake_settings :
+       MutableSpan(nmd->bake_settings_by_id, nmd->bake_settings_num))
+  {
+    BLO_read_data_address(reader, &bake_settings.directory);
+  }
+
   nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
   nmd->runtime->simulation_cache = std::make_shared<bke::sim::ModifierSimulationCache>();
 }
@@ -1492,6 +1508,17 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   NodesModifierData *tnmd = reinterpret_cast<NodesModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
+
+  if (nmd->bake_settings_by_id) {
+    tnmd->bake_settings_by_id = static_cast<NodesModifierBakeSettings *>(
+        MEM_dupallocN(nmd->bake_settings_by_id));
+    for (const int i : IndexRange(nmd->bake_settings_num)) {
+      NodesModifierBakeSettings &bake_settings = tnmd->bake_settings_by_id[i];
+      if (bake_settings.directory) {
+        bake_settings.directory = BLI_strdup(bake_settings.directory);
+      }
+    }
+  }
 
   tnmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
 
@@ -1521,6 +1548,13 @@ static void freeData(ModifierData *md)
     IDP_FreeProperty_ex(nmd->settings.properties, false);
     nmd->settings.properties = nullptr;
   }
+
+  for (NodesModifierBakeSettings &bake_settings :
+       MutableSpan(nmd->bake_settings_by_id, nmd->bake_settings_num))
+  {
+    MEM_SAFE_FREE(bake_settings.directory);
+  }
+  MEM_SAFE_FREE(nmd->bake_settings_by_id);
 
   MEM_SAFE_FREE(nmd->simulation_bake_directory);
   MEM_delete(nmd->runtime);
