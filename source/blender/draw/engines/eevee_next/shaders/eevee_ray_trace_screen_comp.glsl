@@ -82,6 +82,9 @@ void main()
     hit_time = 10000.0;
   }
 
+  float luma = max(1e-8, max_v3(radiance));
+  radiance *= 1.0 - max(0.0, luma - raytrace_buf.brightness_clamp) / luma;
+
   imageStore(ray_time_img, texel, vec4(hit_time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
 }

@@ -28,7 +28,8 @@ void RayTraceModule::init()
 {
   enabled_ = true;
 
-  const int flag = inst_.scene->eevee.flag;
+  const SceneEEVEE &sce_eevee = inst_.scene->eevee;
+  const int flag = sce_eevee.flag;
 
   use_spatial_denoise_ = (flag & SCE_EEVEE_RAYTRACE_DENOISE);
   use_temporal_denoise_ = use_spatial_denoise_ && (flag & SCE_EEVEE_RAYTRACE_DENOISE_TEMPORAL);
@@ -42,8 +43,9 @@ void RayTraceModule::init()
   /* TODO(fclem): Tracing. */
   data_.thickness = 1.0f;
   data_.quality = 1.0f;
-  data_.brightness_clamp = 1.0f;
-  data_.max_roughness = 1.0f;
+  /* TODO(fclem): Per ray type clamp. */
+  data_.brightness_clamp = (sce_eevee.ssr_firefly_fac > 0.0) ? sce_eevee.ssr_firefly_fac : 1e20;
+  data_.max_trace_roughness = 1.0f;
 }
 
 void RayTraceModule::sync()
