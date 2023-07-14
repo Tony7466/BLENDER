@@ -579,10 +579,10 @@ void DeferredProbeLayer::begin_sync()
 
     DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
 
-    prepass_double_sided_ps_ = &prepass_ps_.sub("DoubleSided.Static");
+    prepass_double_sided_ps_ = &prepass_ps_.sub("DoubleSided");
     prepass_double_sided_ps_->state_set(state_depth_only);
 
-    prepass_single_sided_ps_ = &prepass_ps_.sub("SingleSided.Static");
+    prepass_single_sided_ps_ = &prepass_ps_.sub("SingleSided");
     prepass_single_sided_ps_->state_set(state_depth_only | DRW_STATE_CULL_BACK);
   }
   {
