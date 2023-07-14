@@ -38,8 +38,8 @@ class EraseOperation : public GreasePencilStrokeOperation {
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
-  bool keep_caps{};
-  float radius{};
+  bool keep_caps = false;
+  float radius = 50.0f;
   eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
 };
 
@@ -441,8 +441,10 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   Brush *brush = BKE_paint_brush(paint);
 
   this->radius = BKE_brush_size_get(scene, brush);
-  this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
-  this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
+  if (brush->gpencil_settings) {
+    this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
+    this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
+  }
 }
 
 void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
