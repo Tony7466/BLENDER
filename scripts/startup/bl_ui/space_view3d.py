@@ -6975,9 +6975,15 @@ class VIEW3D_PT_overlay_object(Panel):
         subsub.active = overlay.show_object_origins
         subsub.prop(overlay, "show_object_origins_all", text="Origins (All)")
 
-        if shading.type == 'WIREFRAME' or shading.show_xray:
+        if shading.type == 'WIREFRAME' or shading.show_xray or VIEW3D_PT_overlay_bones.is_using_wireframe(context):
             layout.separator()
             layout.prop(overlay, "bone_wire_alpha")
+
+            row = layout.row()
+            row.prop(overlay, "bone_wire_use_fade_depth", text="")
+            sub = row.row()
+            sub.active = overlay.bone_wire_use_fade_depth
+            sub.prop(overlay, "bone_wire_fade_depth")
 
 
 class VIEW3D_PT_overlay_geometry(Panel):

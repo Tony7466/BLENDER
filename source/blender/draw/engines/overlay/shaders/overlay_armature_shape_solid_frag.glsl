@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(overlay_armature_alpha_lib.glsl)
+
 void main()
 {
   /* Manual back-face culling. Not ideal for performance
@@ -10,6 +12,7 @@ void main()
   if ((inverted == 1) == gl_FrontFacing) {
     discard;
   }
-  fragColor = vec4(finalColor.rgb, alpha);
+  float z_alpha = wire_depth_alpha(gl_FragCoord.z, wireFadeDepth);
+  fragColor = vec4(finalColor.rgb, alpha * z_alpha);
   lineOutput = vec4(0.0);
 }

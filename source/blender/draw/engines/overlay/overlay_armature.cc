@@ -20,6 +20,7 @@
 #include "DRW_render.hh"
 
 #include "BLI_listbase_wrapper.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_rotation.h"
@@ -101,6 +102,8 @@ struct ArmatureDrawContext {
   bool transparent;
   bool show_relations;
   bool draw_relation_from_head;
+
+  float *p_fade_depth_bias;
 
   const ThemeWireColor *bcolor; /* pchan color */
 };
@@ -338,7 +341,14 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
                                    draw_ctx->object_pose != nullptr;
 
   const float wire_alpha = pd->overlay.bone_wire_alpha;
-  const bool use_wire_alpha = (wire_alpha < 1.0f);
+  const float wire_fade = (pd->overlay.flag & V3D_OVERLAY_BONE_FADE_DEPTH) ?
+                              1 / max_ff(1e-3f, pd->overlay.bone_wire_fade_depth) :
+                              0.0f;
+
+  pd->armature.do_wire_depth_fade = wire_fade > 0.0f;
+  copy_v2_fl2(pd->shdata.fade_depth_info, wire_fade, FLT_MAX);
+
+  const bool use_wire_alpha = pd->armature.do_wire_depth_fade || (wire_alpha < 1.0f);
 
   DRWState state;
 
@@ -398,6 +408,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_state_disable(grp, DRW_STATE_WRITE_DEPTH);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
       DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha * 0.4f);
+      DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
       cb->transp.point_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_point_get());
 
       sh = OVERLAY_shader_armature_shape(false);
@@ -411,6 +422,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_state_disable(grp, DRW_STATE_WRITE_DEPTH);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
       DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha * 0.6f);
+      DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
       cb->transp.custom_fill = grp;
       cb->transp.box_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_box_get());
       cb->transp.octa_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_get());
@@ -426,6 +438,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.point_outline = BUF_INSTANCE(
             grp, format, DRW_cache_bone_point_wire_outline_get());
       }
@@ -445,6 +458,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.box_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_box_wire_get());
         cb->transp.octa_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_wire_get());
       }
@@ -464,6 +478,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
       }
       else {
         cb->transp.custom_wire = cb->solid.custom_wire;
@@ -483,6 +498,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.dof_lines = BUF_INSTANCE(grp, format, DRW_cache_bone_dof_lines_get());
       }
       else {
@@ -499,6 +515,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         grp = DRW_shgroup_create(sh, armature_transp_ps);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.dof_sphere = BUF_INSTANCE(grp, format, DRW_cache_bone_dof_sphere_get());
       }
       else {
@@ -519,6 +536,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.stick = BUF_INSTANCE(grp, format, DRW_cache_bone_stick_get());
       }
       else {
@@ -539,6 +557,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_state_disable(grp, DRW_STATE_WRITE_DEPTH);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK);
       DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha * 0.6f);
+      DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
       cb->transp.envelope_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_envelope_solid_get());
 
       format = formats->instance_bone_envelope_outline;
@@ -555,6 +574,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.envelope_outline = BUF_INSTANCE(
             grp, format, DRW_cache_bone_envelope_outline_get());
       }
@@ -575,6 +595,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         grp = DRW_shgroup_create(sh, armature_transp_ps);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         DRW_shgroup_uniform_bool_copy(grp, "isDistance", true);
         DRW_shgroup_state_enable(grp, DRW_STATE_CULL_FRONT);
         cb->transp.envelope_distance = BUF_INSTANCE(
@@ -598,6 +619,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
         DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+        DRW_shgroup_uniform_vec2(grp, "wireFadeDepth", pd->shdata.fade_depth_info, 1);
         cb->transp.wire = BUF_LINE(grp, format);
       }
       else {
@@ -2552,12 +2574,18 @@ static void draw_armature_edit(ArmatureDrawContext *ctx)
    * for now we can draw from the original armature. See: #66773. */
   // bArmature *arm = ob->data;
   bArmature *arm = static_cast<bArmature *>(ob_orig->data);
+  float depth_bias_mat[4][4], pt[3];
 
   edbo_compute_bbone_child(arm);
 
   /* Determine drawing strategy. */
   const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype(
       eArmature_Drawtype(arm->drawtype));
+
+  if (ctx->p_fade_depth_bias) {
+    DRW_view_viewmat_get(NULL, depth_bias_mat, false);
+    mul_m4_m4m4(depth_bias_mat, depth_bias_mat, ctx->ob->object_to_world);
+  }
 
   for (eBone = static_cast<EditBone *>(arm->edbo->first), index = ob_orig->runtime->select_id;
        eBone;
@@ -2585,6 +2613,14 @@ static void draw_armature_edit(ArmatureDrawContext *ctx)
     UnifiedBonePtr bone = eBone;
     if (!ctx->const_color) {
       set_ctx_bcolor(ctx, bone);
+    }
+
+    if (ctx->p_fade_depth_bias) {
+      mul_v3_m4v3(pt, depth_bias_mat, eBone->head);
+      CLAMP_MAX(*ctx->p_fade_depth_bias, -pt[2]);
+
+      mul_v3_m4v3(pt, depth_bias_mat, eBone->tail);
+      CLAMP_MAX(*ctx->p_fade_depth_bias, -pt[2]);
     }
 
     if (!is_select) {
@@ -2616,6 +2652,7 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
   int index = -1;
   const bool show_text = DRW_state_show_text();
   bool draw_locked_weights = false;
+  float depth_bias_mat[4][4];
 
   /* We can't safely draw non-updated pose, might contain nullptr bone pointers... */
   if (ob->pose->flag & POSE_RECALC) {
@@ -2680,6 +2717,11 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
     }
   }
 
+  if (ctx->p_fade_depth_bias) {
+    DRW_view_viewmat_get(NULL, depth_bias_mat, false);
+    mul_m4_m4m4(depth_bias_mat, depth_bias_mat, ctx->ob->object_to_world);
+  }
+
   const DRWView *view = is_pose_select ? DRW_view_default_get() : nullptr;
 
   const ArmatureBoneDrawStrategy &draw_strat_normal = strategy_for_armature_drawtype(
@@ -2733,6 +2775,24 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
       draw_strat.draw_bone(ctx, bone_ptr, boneflag, select_id);
     }
 
+    if (ctx->p_fade_depth_bias) {
+      if (use_custom_shape) {
+        std::optional<Bounds<float3>> custom_bbox = BKE_object_boundbox_get(pchan->custom);
+        float3 pt = math::midpoint(custom_bbox->min, custom_bbox->max);
+        mul_m4_v3(pchan->disp_mat, pt);
+        mul_m4_v3(depth_bias_mat, pt);
+        CLAMP_MAX(*ctx->p_fade_depth_bias, -pt.z);
+      }
+      else {
+        float3 pt;
+        mul_v3_m4v3(pt, depth_bias_mat, pchan->pose_head);
+        CLAMP_MAX(*ctx->p_fade_depth_bias, -pt.z);
+
+        mul_v3_m4v3(pt, depth_bias_mat, pchan->pose_tail);
+        CLAMP_MAX(*ctx->p_fade_depth_bias, -pt.z);
+      }
+    }
+
     /* Below this point nothing is used for selection queries. */
     if (is_pose_select) {
       continue;
@@ -2783,6 +2843,9 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
   ctx->show_relations = pd->armature.show_relations;
   ctx->do_relations = !DRW_state_is_select() && pd->armature.show_relations &&
                       is_edit_or_pose_mode;
+  ctx->p_fade_depth_bias = (pd->armature.do_wire_depth_fade && is_transparent) ?
+                               &pd->shdata.fade_depth_info[1] :
+                               nullptr;
   ctx->const_color = DRW_state_is_select() ? select_const_color : const_color;
   ctx->const_wire = ((ob->base_flag & BASE_SELECTED) && (pd->v3d_flag & V3D_SELECT_OUTLINE) ?
                          1.5f :
