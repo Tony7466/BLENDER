@@ -2240,10 +2240,7 @@ void gpu::MTLTexture::bind_as_ssbo(uint binding)
       buffer_backed_,
       "Resource must have been created as a buffer backed resource to support SSBO wrapping.");
 
-  /* TODO: Bind texture as storagebuf. */
-  printf("[BINDING TEXTURE AS SSBO]\n");
-
-  /* Ensure texture exists. */
+  /* Ensure texture resource is up to date. */
   this->ensure_baked();
 
   if (storage_buffer_ == nil) {

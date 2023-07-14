@@ -1365,7 +1365,6 @@ bool MTLContext::ensure_buffer_bindings(
      * compute shader path. */
     /* Bind push constant data. */
     BLI_assert(this->pipeline_state.active_shader->get_push_constant_data() != nullptr);
-    printf("--- PUSH CONSTANT BINDINGS FOR %s------ IND: %u\n", shader_interface->get_name(), buffer_index);
     cs.bind_compute_bytes(
         this->pipeline_state.active_shader->get_push_constant_data(), block_size, buffer_index);
 
@@ -1377,7 +1376,6 @@ bool MTLContext::ensure_buffer_bindings(
   /* Iterate through expected UBOs in the shader interface, and check if the globally bound ones
    * match. This is used to support the gpu_uniformbuffer module, where the uniform data is global,
    * and not owned by the shader instance. */
-   printf("--- UBO BINDINGS FOR %s------\n", shader_interface->get_name());
   for (const uint ubo_index : IndexRange(shader_interface->get_total_uniform_blocks())) {
     const MTLShaderBufferBlock &ubo = shader_interface->get_uniform_block(ubo_index);
 
@@ -1433,13 +1431,6 @@ bool MTLContext::ensure_buffer_bindings(
         if (bool(ubo.stage_mask & ShaderStage::COMPUTE)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
           cs.bind_compute_buffer(ubo_buffer, 0, buffer_bind_index);
-
-          printf("Shader %s BINDING to SSBO slot %s with Bind index: %u to buffer slot %u (SSBO Name: %s)\n", shader_interface->get_name(), 
-        shader_interface->get_name_at_offset(ubo.name_offset), 
-        ubo_location,
-        buffer_bind_index,
-        this->pipeline_state.ubo_bindings[ubo_location].ubo->get_name()
-        );
         }
       }
       else {
@@ -1456,7 +1447,6 @@ bool MTLContext::ensure_buffer_bindings(
   /* Bind Global GPUStorageBuffers. */
   /* Iterate through expected SSBOs in the shader interface, and check if the globally bound ones
    * match. */
-   printf("--- SSBO BINDINGS FOR %s------ (base: %u)\n", shader_interface->get_name(), pipeline_state_instance.base_storage_buffer_index);
   for (const uint ssbo_index : IndexRange(shader_interface->get_total_storage_blocks())) {
     const MTLShaderBufferBlock &ssbo = shader_interface->get_storage_block(ssbo_index);
 
@@ -1504,12 +1494,6 @@ bool MTLContext::ensure_buffer_bindings(
         if (bool(ssbo.stage_mask & ShaderStage::COMPUTE)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
           cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index, true);
-          printf("Shader %s BINDING to SSBO slot %s with Bind index: %u to buffer slot %u (SSBO Name: %s)\n", shader_interface->get_name(), 
-        shader_interface->get_name_at_offset(ssbo.name_offset), 
-        ssbo_location,
-        buffer_bind_index,
-        this->pipeline_state.ssbo_bindings[ssbo_location].ssbo->get_name()
-        );
         }
       }
       else {
@@ -2161,8 +2145,6 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
     GPU_finish();
 #endif
 
-printf("------ BEGIN DISPATCH FOR %s ---------------\n", this->pipeline_state.active_shader->get_interface()->get_name());
-
   /* Shader instance. */
   MTLShaderInterface *shader_interface = this->pipeline_state.active_shader->get_interface();
   const MTLComputePipelineStateInstance &compute_pso_inst =
@@ -2197,8 +2179,6 @@ printf("------ BEGIN DISPATCH FOR %s ---------------\n", this->pipeline_state.ac
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
     GPU_finish();
 #endif
-
-printf("------ END DISPATCH ----------\n ");
 }
 
 void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
