@@ -75,7 +75,7 @@ void transform_snap_anim_flush_data(TransInfo *t,
                                     const eSnapMode snap_mode,
                                     float *r_val_final)
 {
-  BLI_assert(t->scene->toolsettings->snap_flag_anim);
+  BLI_assert(t->tsnap.flag);
 
   float val = td->loc[0];
   float ival = td->iloc[0];
