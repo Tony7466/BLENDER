@@ -53,7 +53,10 @@ class NLA_PT_snapping(Panel):
         layout = self.layout
         col = layout.column()
         col.label(text="Snap To")
-        col.prop(context.tool_settings, "snap_anim_element", expand=True)
+        tool_settings = context.tool_settings
+        col.prop(tool_settings, "snap_anim_element", expand=True)
+        if tool_settings.snap_anim_element not in ('MARKER', ):
+            col.prop(tool_settings, "use_snap_time_absolute")
 
 
 class NLA_PT_filters(DopesheetFilterPopoverBase, Panel):
@@ -370,6 +373,7 @@ classes = (
     NLA_MT_channel_context_menu,
     NLA_PT_filters,
     NLA_PT_action,
+    NLA_PT_snapping,
 )
 
 if __name__ == "__main__":  # only for live edit.

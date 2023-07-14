@@ -622,13 +622,13 @@ static void recalcData_actedit(TransInfo *t)
 
   /* Flush 2d vector. */
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  eSnapMode autosnap = t->tsnap.mode;
+  eSnapMode snap_mode = t->tsnap.mode;
   TransData *td;
   TransData2D *td2d;
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
     if (t->tsnap.flag && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, eSnapMode(autosnap), td->loc);
+      transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
     }
 
     /* Constrain Y. */

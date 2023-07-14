@@ -148,7 +148,7 @@ bool transformModeUseSnap(const TransInfo *t)
   if (t->mode == TFM_RESIZE) {
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_SCALE) != 0;
   }
-  if (ELEM(t->mode, TFM_VERT_SLIDE, TFM_EDGE_SLIDE, TFM_SEQ_SLIDE)) {
+  if (ELEM(t->mode, TFM_VERT_SLIDE, TFM_EDGE_SLIDE, TFM_SEQ_SLIDE, TFM_TIME_TRANSLATE)) {
     return true;
   }
 
@@ -783,9 +783,6 @@ static void initSnappingMode(TransInfo *t)
     if (t->tsnap.seq_context == nullptr) {
       t->tsnap.seq_context = transform_snap_sequencer_data_alloc(t);
     }
-  }
-  else if (ELEM(t->spacetype, SPACE_GRAPH, SPACE_NLA, SPACE_ACTION)) {
-    t->tsnap.mode = snap_mode_from_spacetype(t);
   }
 }
 

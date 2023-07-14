@@ -308,7 +308,10 @@ class DOPESHEET_PT_snapping(Panel):
         layout = self.layout
         col = layout.column()
         col.label(text="Snap To")
-        col.prop(context.tool_settings, "snap_anim_element", expand=True)
+        tool_settings = context.tool_settings
+        col.prop(tool_settings, "snap_anim_element", expand=True)
+        if tool_settings.snap_anim_element not in ('MARKER', ):
+            col.prop(tool_settings, "use_snap_time_absolute")
 
 
 class DOPESHEET_PT_proportional_edit(Panel):
