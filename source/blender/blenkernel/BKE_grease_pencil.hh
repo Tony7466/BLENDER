@@ -85,7 +85,8 @@ class Drawing : public ::GreasePencilDrawing {
   MutableSpan<float> radii_for_write();
 
   /**
-   * Opacities for the points. Used by the render engine as an alpha value so they are expected to
+   * Opacity array for the points.
+   * Used by the render engine as an alpha value so they are expected to
    * be between 0 and 1 inclusive.
    */
   VArray<float> opacities() const;
@@ -520,6 +521,15 @@ inline blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap(
 inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap() const
 {
   return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
+}
+
+inline const blender::bke::greasepencil::LayerGroup &GreasePencil::root_group() const
+{
+  return this->root_group_ptr->wrap();
+}
+inline blender::bke::greasepencil::LayerGroup &GreasePencil::root_group()
+{
+  return this->root_group_ptr->wrap();
 }
 
 inline bool GreasePencil::has_active_layer() const
