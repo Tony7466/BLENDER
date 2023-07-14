@@ -3127,7 +3127,8 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   }
 
   /* sanity checks & initialize */
-  IMB_rect_size_set(preview->image, new uint[2]{(uint)xsize, (uint)ysize});
+  uint size[2] = {(uint)xsize, (uint)ysize};
+  IMB_rect_size_set(preview->image, size);
   if (preview->image->byte_buffer.data == nullptr) {
     imb_addrectImBuf(preview->image);
   }
