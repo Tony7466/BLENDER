@@ -63,7 +63,8 @@ void BackgroundPipeline::render(View &view)
 void WorldPipeline::sync(GPUMaterial *gpumat)
 {
   const int2 extent(1);
-  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE;
+  constexpr eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                     GPU_TEXTURE_USAGE_SHADER_READ;
   dummy_cryptomatte_tx_.ensure_2d(GPU_RGBA32F, extent, usage);
   dummy_renderpass_tx_.ensure_2d(GPU_RGBA16F, extent, usage);
   dummy_aov_color_tx_.ensure_2d_array(GPU_RGBA16F, extent, 1, usage);

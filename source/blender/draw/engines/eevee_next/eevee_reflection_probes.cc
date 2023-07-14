@@ -35,7 +35,7 @@ void ReflectionProbeModule::init()
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                init_num_probes_,
-                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
@@ -292,7 +292,7 @@ void ReflectionProbeModule::end_sync()
     probes_tx_.ensure_2d_array(GPU_RGBA16F,
                                int2(max_resolution_),
                                number_layers_needed,
-                               GPU_TEXTURE_USAGE_SHADER_WRITE,
+                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ,
                                nullptr,
                                REFLECTION_PROBE_MIPMAP_LEVELS);
     GPU_texture_mipmap_mode(probes_tx_, true, true);
@@ -460,7 +460,10 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.clipping_distances = item.value.clipping_distances;
     info.probe_pos = probe_data.pos;
 
-    if (cubemap_tx_.ensure_cube(GPU_RGBA16F, info.resolution, GPU_TEXTURE_USAGE_ATTACHMENT)) {
+    if (cubemap_tx_.ensure_cube(GPU_RGBA16F,
+                                info.resolution,
+                                GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ))
+    {
       GPU_texture_mipmap_mode(cubemap_tx_, false, true);
     }
 
