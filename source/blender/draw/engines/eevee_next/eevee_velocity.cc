@@ -180,6 +180,8 @@ bool VelocityModule::step_object_sync(Object *ob,
   }
 
   /* TODO(@fclem): Reset sampling here? Should ultimately be covered by depsgraph update tags. */
+  /* NOTE(Miguel Pozo): Disable, since is_deform is always true for objects with particle
+   * modifiers, and this causes the renderer to get stuck at sample 1. */
   // inst_.sampling.reset();
 
   return true;

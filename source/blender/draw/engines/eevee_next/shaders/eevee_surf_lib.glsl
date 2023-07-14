@@ -38,7 +38,6 @@ void init_globals_mesh()
 
 void init_globals_curves()
 {
-  vec3 V = cameraVec(g_data.P);
   /* Shade as a cylinder. */
   float cos_theta = interp.curves_time_width / interp.curves_thickness;
 #if defined(GPU_FRAGMENT_SHADER) && defined(MAT_GEOM_CURVES)
@@ -57,6 +56,7 @@ void init_globals_curves()
   g_data.N = g_data.Ni = normalize(interp.N * sin_theta + interp.curves_binormal * cos_theta);
 
   /* Costly, but follows cycles per pixel tangent space (not following curve shape). */
+  vec3 V = cameraVec(g_data.P);
   g_data.curve_T = -interp.curves_tangent;
   g_data.curve_B = cross(V, g_data.curve_T);
   g_data.curve_N = safe_normalize(cross(g_data.curve_T, g_data.curve_B));

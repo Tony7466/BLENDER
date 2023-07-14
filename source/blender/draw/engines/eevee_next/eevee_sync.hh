@@ -41,7 +41,7 @@ struct ObjectKey {
   /** Dupli objects recursive unique identifier */
   int id[MAX_DUPLI_RECUR];
   /** Used for particle system hair. */
-  bool sub_key_;
+  int sub_key_;
 #ifdef DEBUG
   char name[64];
 #endif
