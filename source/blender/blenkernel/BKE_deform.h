@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "DNA_object_types.h"
-
 #ifdef __cplusplus
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
