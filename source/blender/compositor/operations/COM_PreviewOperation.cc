@@ -47,7 +47,7 @@ void PreviewOperation::init_execution()
   {
     return;
   }
-  uint size[2] = {get_width(), get_height()};
+  const uint size[2] = {get_width(), get_height()};
   IMB_rect_size_set(output_image_, size);
   if (output_image_->byte_buffer.data == nullptr) {
     imb_addrectImBuf(output_image_);

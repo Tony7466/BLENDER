@@ -1328,7 +1328,7 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(Scene *sce, ImBuf *preview, rctf *prv)
+static void node_draw_preview(Scene *scene, ImBuf *preview, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
@@ -1361,8 +1361,8 @@ static void node_draw_preview(Scene *sce, ImBuf *preview, rctf *prv)
                 draw_rect.xmin,
                 draw_rect.ymin,
                 false,
-                &sce->view_settings,
-                &sce->display_settings,
+                &scene->view_settings,
+                &scene->display_settings,
                 scale,
                 scale);
 
@@ -2081,7 +2081,7 @@ static void node_draw_extra_info_row(const bNode &node,
   }
 }
 
-static void node_draw_extra_info_panel(Scene *sce,
+static void node_draw_extra_info_panel(Scene *scene,
                                        TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
@@ -2164,7 +2164,7 @@ static void node_draw_extra_info_panel(Scene *sce,
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
 
     if (preview) {
-      node_draw_preview(sce, preview, &preview_rect);
+      node_draw_preview(scene, preview, &preview_rect);
     }
 
     /* Resize the rect to draw the textual infos on top of the preview. */
