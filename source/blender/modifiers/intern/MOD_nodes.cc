@@ -383,11 +383,8 @@ static bool logging_enabled(const ModifierEvalContext *ctx)
   return true;
 }
 
-}  // namespace blender
-
-void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
+static void update_id_properties_from_node_group(NodesModifierData *nmd)
 {
-  using namespace blender;
   if (nmd->node_group == nullptr) {
     if (nmd->settings.properties) {
       IDP_FreeProperty(nmd->settings.properties);
@@ -410,14 +407,63 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
   if (old_properties != nullptr) {
     IDP_FreeProperty(old_properties);
   }
+}
 
-  std::cout << "\n";
-  for (const bNestedNodeRef &ref : nmd->node_group->nested_node_refs_span()) {
-    const bNode *node = nmd->node_group->find_nested_node(ref.id);
-    if (node && node->type == GEO_NODE_BAKE) {
-      std::cout << node->name << "\n";
+static void update_bakes_from_node_group(NodesModifierData &nmd)
+{
+  Map<int, const NodesModifierBake *> old_bake_by_id;
+  for (const NodesModifierBake &bake : Span(nmd.bake_by_id, nmd.bake_num)) {
+    old_bake_by_id.add(bake.id, &bake);
+  }
+
+  Vector<int> new_bake_ids;
+  for (const bNestedNodeRef &ref : nmd.node_group->nested_node_refs_span()) {
+    const bNode *node = nmd.node_group->find_nested_node(ref.id);
+    if (node) {
+      if (node->type == GEO_NODE_BAKE) {
+        new_bake_ids.append(ref.id);
+      }
+    }
+    else if (old_bake_by_id.contains(ref.id)) {
+      /* Keep baked data in case linked data is missing so that it still exists when the linked
+       * data has been found. */
+      new_bake_ids.append(ref.id);
     }
   }
+
+  NodesModifierBake *new_bake_data = static_cast<NodesModifierBake *>(
+      MEM_callocN(sizeof(NodesModifierBake) * new_bake_ids.size(), __func__));
+  for (const int i : new_bake_ids.index_range()) {
+    const int id = new_bake_ids[i];
+    const NodesModifierBake *old_bake = old_bake_by_id.lookup_default(id, nullptr);
+    NodesModifierBake &new_bake = new_bake_data[i];
+    if (old_bake) {
+      new_bake = *old_bake;
+      if (new_bake.directory) {
+        new_bake.directory = BLI_strdup(new_bake.directory);
+      }
+    }
+    else {
+      new_bake.id = id;
+    }
+  }
+
+  for (NodesModifierBake &old_bake : MutableSpan(nmd.bake_by_id, nmd.bake_num)) {
+    MEM_SAFE_FREE(old_bake.directory);
+  }
+  MEM_SAFE_FREE(nmd.bake_by_id);
+
+  nmd.bake_by_id = new_bake_data;
+  nmd.bake_num = new_bake_ids.size();
+}
+
+}  // namespace blender
+
+void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
+{
+  using namespace blender;
+  update_id_properties_from_node_group(nmd);
+  update_bakes_from_node_group(*nmd);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 }
