@@ -10,6 +10,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_bounds.hh"
@@ -17,6 +18,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
@@ -72,50 +74,60 @@ static GVArray selection_for_read(const bke::AttributeAccessor attributes,
   return GVArray::ForSingle(*default_value.type(), domain_size, default_value.get());
 }
 
-static std::optional<Bounds<float3>> selection_bounds_for_curves(const bke::CurvesGeometry &curves)
+static IndexMask selection_mask(const bke::AttributeAccessor attributes, IndexMaskMemory &memory)
 {
-  const bke::AttributeAccessor attributes = curves.attributes();
   GVArray selection = selection_for_read(attributes, default_selection());
   const VArray<bool> boolean_selection = typed_selection(std::move(selection));
+  return IndexMask::from_bools(std::move(boolean_selection), memory);
+}
+
+static std::optional<Bounds<float3>> selection_bounds(const bke::AttributeAccessor attributes,
+                                                      const Span<float3> positions)
+{
   IndexMaskMemory memory;
-  const IndexMask selection_mask = IndexMask::from_bools(std::move(boolean_selection), memory);
-  return bounds::min_max(selection_mask, curves.positions());
+  const IndexMask mask = selection_mask(attributes, memory);
+  return bounds::min_max(mask, positions);
 }
 
-static std::optional<Bounds<float3>> selection_bounds_for_mesh(const Mesh & /*mesh*/)
+static std::optional<Bounds<float3>> selection_bounds(
+    const Curves *curves_id, const bke::crazyspace::GeometryDeformation deformation)
 {
-
-  return {};
+  if (curves_id == nullptr) {
+    return std::nullopt;
+  }
+  const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  const bke::AttributeAccessor attributes = curves.attributes();
+  return selection_bounds(attributes, deformation.positions);
 }
 
-static std::optional<Bounds<float3>> selection_bounds_for_points(const PointCloud & /*points*/)
+static std::optional<Bounds<float3>> selection_bounds(const Mesh *mesh)
 {
-
-  return {};
+  if (mesh == nullptr) {
+    return std::nullopt;
+  }
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  return selection_bounds(attributes, mesh->vert_positions());
 }
 
-std::optional<Bounds<float3>> selection_bounds_for_geometry(const bke::GeometrySet &geometry)
+static std::optional<Bounds<float3>> selection_bounds(const PointCloud *points)
 {
-  Vector<Bounds<float3>> bounds_list;
+  if (points == nullptr) {
+    return std::nullopt;
+  }
+  const bke::AttributeAccessor attributes = points->attributes();
+  return selection_bounds(attributes, points->positions());
+}
 
-  if (const Curves *curves_id = geometry.get_curves_for_read()) {
-    const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_curves(curves)) {
-      bounds_list.append(*bounds);
-    }
-  }
-  if (const Mesh *mesh = geometry.get_mesh_for_read()) {
-    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_mesh(*mesh)) {
-      bounds_list.append(*bounds);
-    }
-  }
-  if (const PointCloud *points = geometry.get_pointcloud_for_read()) {
-    if (const std::optional<Bounds<float3>> bounds = selection_bounds_for_points(*points)) {
-      bounds_list.append(*bounds);
-    }
-  }
+std::optional<Bounds<float3>> selection_bounds_for_geometry(
+    const bke::GeometrySet &geometry, const bke::crazyspace::GeometryDeformation deformation)
+{
+  std::optional<Bounds<float3>> bounds;
 
-  return bounds::merge(bounds_list.as_span());
+  bounds = bounds::merge(bounds, selection_bounds(geometry.get_curves_for_read(), deformation));
+  bounds = bounds::merge(bounds, selection_bounds(geometry.get_mesh_for_read()));
+  bounds = bounds::merge(bounds, selection_bounds(geometry.get_pointcloud_for_read()));
+
+  return bounds;
 }
 
 /*********************** Attribute Operators ************************/

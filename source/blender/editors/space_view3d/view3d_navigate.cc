@@ -18,6 +18,7 @@
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
@@ -1380,10 +1381,14 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     BLI_assert(ob_eval->type == OB_CURVES);
     BLI_assert(ob_eval->data != nullptr);
     using namespace blender;
-    const bke::GeometrySet *runtime_curve_geometry = ob_eval->runtime.geometry_set_eval;
+    using namespace blender::bke;
+    using namespace blender::bke::crazyspace;
+    const Object &ob_orig = *DEG_get_original_object(ob_eval);
+    const GeometryDeformation deformation = get_evaluated_curves_deformation(ob_eval, ob_orig);
+    const GeometrySet *runtime_curve_geometry = ob_eval->runtime.geometry_set_eval;
     if (runtime_curve_geometry != nullptr) {
-      const std::optional<Bounds<blender::float3>> curves_bounds =
-          ed::geometry::selection_bounds_for_geometry(*runtime_curve_geometry);
+      const std::optional<Bounds<float3>> curves_bounds =
+          ed::geometry::selection_bounds_for_geometry(*runtime_curve_geometry, deformation);
       if (curves_bounds.has_value()) {
         ok = true;
         copy_v3_v3(min, curves_bounds->min);

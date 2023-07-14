@@ -14,6 +14,7 @@
 #include "DNA_customdata_types.h"
 
 #include "BKE_attribute.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_screen.h"
 
@@ -51,7 +52,8 @@ namespace blender::ed::geometry {
 
 MenuType node_group_operator_assets_menu();
 
-std::optional<Bounds<float3>> selection_bounds_for_geometry(const bke::GeometrySet &geometry);
+std::optional<Bounds<float3>> selection_bounds_for_geometry(
+    const bke::GeometrySet &geometry, const bke::crazyspace::GeometryDeformation deformation);
 
 void ui_template_node_operator_asset_menu_items(uiLayout &layout,
                                                 bContext &C,

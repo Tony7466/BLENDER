@@ -25,26 +25,6 @@ template<typename T> [[nodiscard]] inline Bounds<T> merge(const Bounds<T> &a, co
 }
 
 template<typename T>
-[[nodiscard]] inline std::optional<Bounds<T>> merge(const Span<Bounds<T>> values)
-{
-  if (values.is_empty()) {
-    return std::nullopt;
-  }
-  return threading::parallel_reduce(
-      values.index_range().drop_front(1),
-      512,
-      values.first(),
-      [&](const IndexRange range, const Bounds<T> &init) {
-        Bounds<T> result = init;
-        for (const int i : range) {
-          result = merge(values[i], result);
-        }
-        return result;
-      },
-      [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
-}
-
-template<typename T>
 [[nodiscard]] inline std::optional<Bounds<T>> merge(const std::optional<Bounds<T>> &a,
                                                     const std::optional<Bounds<T>> &b)
 {
