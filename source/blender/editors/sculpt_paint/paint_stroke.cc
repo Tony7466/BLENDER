@@ -1634,12 +1634,12 @@ static void paint_stroke_line_constrain(PaintStroke *stroke, float mouse[2])
 }
 
 namespace paint_scope_stack {
-ATTR_NO_OPT
+
 PaintScopeLogEntry paintscope_stack[5000];
 int paintscope_stack_cur = 0;
 }  // namespace paint_scope_stack
 
-ATTR_NO_OPT void paint_print_stack()
+void paint_print_stack()
 {
   using namespace paint_scope_stack;
 
@@ -1654,6 +1654,18 @@ ATTR_NO_OPT void paint_print_stack()
   }
   paint_log("  ]");
 }
+
+void paint_log(const char *fmt...)
+{
+  paint_check_log();
+
+  va_list args;
+  va_start(args, fmt);
+  vfprintf(paint_log_file, fmt, args);
+  // vprintf(fmt, args);
+  va_end(args);
+}
+
 int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintStroke **stroke_p)
 {
   paintscope_begin;
@@ -1680,6 +1692,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
       ELEM(event->type, INBETWEEN_MOUSEMOVE, MOUSEMOVE, stroke->event_type))
   {
     paint_log("{event: {\n");
+    paint_log("  type     : %d\n", event->type);
     paint_log("  is_tablet: %s,\n", WM_event_is_tablet(event) ? "true" : "false");
     paint_log("  pen_type: \"%s\",\n",
               event->tablet.active == EVT_TABLET_ERASER ? "eraser" : "stylus");
@@ -1845,9 +1858,12 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
     redraw = true;
   }
 
+  static float last_draw = 0;
+
   /* do updates for redraw. if event is in between mouse-move there are more
    * coming, so postpone potentially slow redraw updates until all are done */
-  if (event->type != INBETWEEN_MOUSEMOVE) {
+  if (event->type != INBETWEEN_MOUSEMOVE || PIL_check_seconds_timer() - last_draw > 0.02) {
+    last_draw = PIL_check_seconds_timer();
     wmWindow *window = CTX_wm_window(C);
     ARegion *region = CTX_wm_region(C);
 
@@ -1863,6 +1879,42 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
 
   return OPERATOR_RUNNING_MODAL;
 }
+
+#if 0
+int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintStroke **stroke_p)
+{
+  wmEvent event2 = *event;
+
+  static int prev_mval[2] = {0, 0};
+  int ret = 0;
+
+  const int steps = 50;
+  float t = 0.0f, dt = 1.0 / float(steps);
+  for (int i = 0; i < steps; i++, t += dt) {
+    event2 = *event;
+
+    event2.xy[0] += (event2.prev_xy[0] - event2.xy[0]) * (1.0 - t);
+    event2.xy[1] += (event2.prev_xy[1] - event2.xy[1]) * (1.0 - t);
+    event2.mval[0] += (prev_mval[0] - event2.mval[0]) * (1.0 - t);
+    event2.mval[1] += (prev_mval[1] - event2.mval[1]) * (1.0 - t);
+
+    ret = paint_stroke_modal_intern(C, op, event, stroke_p);
+    if (ret != OPERATOR_RUNNING_MODAL) {
+      goto exit;
+    }
+
+    if (!WM_event_is_tablet(event) && event->type != MOUSEMOVE && event->type != INBETWEEN_MOUSEMOVE) {
+      break;
+    }
+  }
+
+exit:
+  prev_mval[0] = event->mval[0];
+  prev_mval[1] = event->mval[1];
+
+  return ret;
+}
+#endif
 
 int paint_stroke_exec(bContext *C, wmOperator *op, PaintStroke *stroke)
 {

@@ -553,16 +553,7 @@ static void paint_check_log()
   }
 }
 
-static void paint_log(const char *fmt...)
-{
-  paint_check_log();
-
-  va_list args;
-  va_start(args, fmt);
-  vfprintf(paint_log_file, fmt, args);
-  // vprintf(fmt, args);
-  va_end(args);
-}
+void paint_log(const char *fmt...);
 
 namespace paint_scope_stack {
 struct PaintScopeLogEntry {
