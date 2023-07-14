@@ -1004,7 +1004,7 @@ class NODE_PT_node_tree_declaration(Panel):
                 layout.prop(active_item, "kind", toggle=True)
                 # layout.prop(active_item, "is_input", toggle=True)
                 # layout.prop(active_item, "is_output", toggle=True)
-                layout.prop(active_item, "data_type")
+                layout.prop(active_item, "socket_type")
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
 

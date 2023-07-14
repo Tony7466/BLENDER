@@ -67,23 +67,23 @@ static int rna_NodeTreeInterfaceSocket_identifier_length(PointerRNA *ptr)
   return socket->socket_identifier().length();
 }
 
-static int rna_NodeTreeInterfaceSocket_data_type_get(PointerRNA *ptr)
+static int rna_NodeTreeInterfaceSocket_socket_type_get(PointerRNA *ptr)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  return rna_node_socket_idname_to_enum(socket->data_type);
+  return rna_node_socket_idname_to_enum(socket->socket_type);
 }
 
-static void rna_NodeTreeInterfaceSocket_data_type_set(PointerRNA *ptr, int value)
+static void rna_NodeTreeInterfaceSocket_socket_type_set(PointerRNA *ptr, int value)
 {
   bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(value);
 
   if (typeinfo) {
     bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-    socket->data_type = BLI_strdup(typeinfo->idname);
+    socket->socket_type = BLI_strdup(typeinfo->idname);
   }
 }
 
-static bool is_data_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
+static bool is_socket_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
 {
   /* Check if the node tree supports the socket type. */
   if (ntreetype->valid_socket_type && !ntreetype->valid_socket_type(ntreetype, socket_type)) {
@@ -102,10 +102,10 @@ static bool is_data_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *so
   return true;
 }
 
-static bNodeSocketType *find_supported_data_type(bNodeTreeType *ntree_type)
+static bNodeSocketType *find_supported_socket_type(bNodeTreeType *ntree_type)
 {
   NODE_SOCKET_TYPES_BEGIN (socket_type) {
-    if (is_data_type_supported(ntree_type, socket_type)) {
+    if (is_socket_type_supported(ntree_type, socket_type)) {
       return socket_type;
     }
   }
@@ -113,17 +113,15 @@ static bNodeSocketType *find_supported_data_type(bNodeTreeType *ntree_type)
   return nullptr;
 }
 
-static bool rna_NodeTreeInterfaceSocket_data_type_poll(void *userdata,
-                                                       bNodeSocketType *socket_type)
+static bool rna_NodeTreeInterfaceSocket_socket_type_poll(void *userdata,
+                                                         bNodeSocketType *socket_type)
 {
   bNodeTreeType *ntreetype = static_cast<bNodeTreeType *>(userdata);
-  return is_data_type_supported(ntreetype, socket_type);
+  return is_socket_type_supported(ntreetype, socket_type);
 }
 
-static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bContext * /*C*/,
-                                                                           PointerRNA *ptr,
-                                                                           PropertyRNA * /*prop*/,
-                                                                           bool *r_free)
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_socket_type_itemf(
+    bContext * /*C*/, PointerRNA *ptr, PropertyRNA * /*prop*/, bool *r_free)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
 
@@ -132,7 +130,7 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_data_type_itemf(bCont
   }
 
   return rna_node_socket_type_itemf(
-      ntree->typeinfo, rna_NodeTreeInterfaceSocket_data_type_poll, r_free);
+      ntree->typeinfo, rna_NodeTreeInterfaceSocket_socket_type_poll, r_free);
 }
 
 static PointerRNA rna_NodeTreeInterfaceItems_active_get(PointerRNA *ptr)
@@ -159,7 +157,7 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     ReportList *reports,
     const char *name,
     const char *description,
-    int data_type_enum,
+    int socket_type_enum,
     int in_out,
     bNodeTreeInterfacePanel *parent)
 {
@@ -168,24 +166,24 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     return nullptr;
   }
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(data_type_enum);
+  bNodeSocketType *typeinfo = rna_node_socket_type_from_enum(socket_type_enum);
   if (typeinfo == nullptr) {
     BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Unknown socket type");
     return nullptr;
   }
 
   /* If data type is unsupported try to find a valid type. */
-  if (!is_data_type_supported(ntree->typeinfo, typeinfo)) {
-    typeinfo = find_supported_data_type(ntree->typeinfo);
+  if (!is_socket_type_supported(ntree->typeinfo, typeinfo)) {
+    typeinfo = find_supported_socket_type(ntree->typeinfo);
     if (typeinfo == nullptr) {
       BKE_report(reports, RPT_ERROR, "Could not find supported socket type");
       return nullptr;
     }
   }
-  const char *data_type = typeinfo->idname;
+  const char *socket_type = typeinfo->idname;
 
   bNodeTreeInterfaceSocket *socket = interface->add_socket(
-      name, description, data_type, eNodeTreeInterfaceSocketKind(in_out), parent);
+      name, description, socket_type, eNodeTreeInterfaceSocketKind(in_out), parent);
 
   if (socket == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
@@ -342,13 +340,14 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Description", "Socket description");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
   RNA_def_property_enum_funcs(prop,
-                              "rna_NodeTreeInterfaceSocket_data_type_get",
-                              "rna_NodeTreeInterfaceSocket_data_type_set",
-                              "rna_NodeTreeInterfaceSocket_data_type_itemf");
-  RNA_def_property_ui_text(prop, "Data Type", "Socket data type");
+                              "rna_NodeTreeInterfaceSocket_socket_type_get",
+                              "rna_NodeTreeInterfaceSocket_socket_type_set",
+                              "rna_NodeTreeInterfaceSocket_socket_type_itemf");
+  RNA_def_property_ui_text(
+      prop, "Socket Type", "Type of the socket generated by this interface item");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
   prop = RNA_def_property(srna, "kind", PROP_ENUM, PROP_NONE);
@@ -422,11 +421,15 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of the socket");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_string(func, "description", nullptr, 0, "Description", "Description of the socket");
-  parm = RNA_def_enum(
-      func, "data_type", DummyRNA_DEFAULT_items, 0, "Data Type", "Socket data type");
+  parm = RNA_def_enum(func,
+                      "socket_type",
+                      DummyRNA_DEFAULT_items,
+                      0,
+                      "Socket Type",
+                      "Type of socket generated on nodes");
   /* Note: itemf callback works for the function parameter, it does not require a data pointer. */
   RNA_def_property_enum_funcs(
-      parm, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_data_type_itemf");
+      parm, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_socket_type_itemf");
   RNA_def_enum_flag(func,
                     "kind",
                     rna_enum_node_tree_interface_socket_kind_items,

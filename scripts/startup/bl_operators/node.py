@@ -360,7 +360,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         default='SOCKET',
     )
 
-    data_type = 'NodeSocketFloat'
+    socket_type = 'NodeSocketFloat'
 
     def execute(self, context):
         snode = context.space_data
@@ -370,7 +370,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         # Remember index to move the item.
         dst_index = interface.active_index + 1
         if self.item_type == 'SOCKET':
-            item = interface.new_socket("Socket", data_type=self.data_type, kind={'INPUT'})
+            item = interface.new_socket("Socket", socket_type=self.socket_type, kind={'INPUT'})
         elif self.item_type == 'PANEL':
             item = interface.new_panel("Panel")
         else:
