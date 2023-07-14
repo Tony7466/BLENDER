@@ -1083,7 +1083,7 @@ static FileData *filedata_new(BlendFileReadReport *reports)
 
 /** Check if minversion of the file is older than current Blender, return false if it is not.
  * Should only be called after #read_file_dna was successfuly executed. */
-static bool blo_check_minversion(FileData *fd, ReportList *reports)
+static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
 {
   BLI_assert(fd->filesdna != nullptr);
   for (BHead *bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
@@ -1136,7 +1136,7 @@ static FileData *blo_decode_and_check(FileData *fd, ReportList *reports)
       blo_filedata_free(fd);
       fd = nullptr;
     }
-    if (!blo_check_minversion(fd, reports)) {
+    if (!is_minversion_older_than_blender(fd, reports)) {
       blo_filedata_free(fd);
       fd = nullptr;
     }
