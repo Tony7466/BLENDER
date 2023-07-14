@@ -126,8 +126,9 @@ void main()
   bool is_high_variance = (variance > 0.5);
 
   /* Width of the box filter in pixels. */
-  float filter_size = mix(0.0, 9.0, sqr(roughness) * 6.0);
-  uint sample_count = uint(mix(1.0, 6.0, roughness * 6.0) * (is_high_variance ? 1.5 : 1.0));
+  float filter_size_factor = saturate(roughness * 8.0);
+  float filter_size = mix(0.0, 9.0, filter_size_factor);
+  uint sample_count = uint(mix(1.0, 10.0, filter_size_factor) * (is_high_variance ? 1.5 : 1.0));
 
   if (is_smooth || is_background || is_low_variance) {
     /* Early out cases. */
@@ -135,8 +136,8 @@ void main()
     return;
   }
 
-  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_W);
-  vec2 noise = interlieved_gradient_noise(vec2(texel_fullres) + 0.5, vec2(3, 5), noise_offset);
+  vec2 noise = interlieved_gradient_noise(vec2(texel_fullres) + 0.5, vec2(3, 5), vec2(0.0));
+  noise += sampling_rng_2D_get(SAMPLING_RAYTRACE_W);
 
   vec3 accum_radiance = to_accumulation_space(in_radiance);
   float accum_weight = 1.0;
