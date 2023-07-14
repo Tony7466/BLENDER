@@ -20,11 +20,6 @@
 
 namespace blender::nodes::node_composite_switchview_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
-{
-  b.add_output<decl::Color>(N_("Image")).default_value({0.0f, 0.0f, 0.0f, 1.0f});
-}
-
 static void node_declare_dynamic(const bNodeTree &ntree,
                                  const bNode &node,
                                  NodeDeclaration &r_declaration)
@@ -48,7 +43,6 @@ static void node_declare_dynamic(const bNodeTree &ntree,
 static void init_switch_view(const bContext *C, PointerRNA *ptr)
 {
   Scene *scene = CTX_data_scene(C);
-  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   /* store scene for updates */
