@@ -626,13 +626,6 @@ template<typename T> void IndexMask::to_reverse_map(MutableSpan<T> r_map) const
                                    [&](const T src_i, const T dst_i) { r_map[src_i] = dst_i; });
 }
 
-Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
-{
-
-  IndexMaskMemory memory;
-  return this->complement(universe, memory).to_ranges();
-}
-
 namespace detail {
 
 /**
