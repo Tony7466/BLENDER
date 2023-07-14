@@ -2326,10 +2326,27 @@ typedef struct NodesModifierSettings {
   struct IDProperty *properties;
 } NodesModifierSettings;
 
+/**
+ * Maps a name (+ optional library name) to an ID. The name can be stored on disk and is remapped
+ * to the ID when loading the data.
+ *
+ * At run-time, #BakeIDMappingKey is used to pair up the data-block and library name.
+ */
 typedef struct NodesModifierIDMapping {
+  /**
+   * Name of the data-block. Can be empty in which case the name of the `id` below is used.
+   * This only needs to be set manually when the name stored on disk does not exist in the .blend
+   * file anymore, because e.g. the ID has been renamed.
+   */
   char *id_name;
+  /**
+   * Name of the library the ID is in. Can be empty when the ID is not linked or when `id_name` is
+   * empty as well and thus the names from the `id` below are used.
+   */
   char *lib_name;
+  /** ID that us mapped to. */
   struct ID *id;
+  /** Type of ID that is referenced by this mapping. */
   int id_type;
   char _pad[4];
 } NodesModifierIDMapping;
@@ -2343,6 +2360,12 @@ typedef struct NodesModifierData {
    */
   char *simulation_bake_directory;
 
+  /**
+   * Maps data-block names to actual data-blocks, so that names stored in caches or on disk can be
+   * remapped to actual IDs on load. The mapping also makes sure that IDs referenced by baked data
+   * are not automatically removed because they are not referenced anymore. Furthermore, it allows
+   * the us to add all required IDs to the dependency graph before actually loading the baked data.
+   */
   int id_mappings_num;
   int active_id_mapping;
   NodesModifierIDMapping *id_mappings;
