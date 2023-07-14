@@ -27,7 +27,7 @@
 /* Keep last */
 #include "BKE_undo_system.h"
 
-void ED_undosys_type_init(void)
+void ED_undosys_type_init()
 {
   /* Edit Modes */
   BKE_undosys_type_append(ED_armature_undosys_type);
@@ -55,7 +55,7 @@ void ED_undosys_type_init(void)
   BKE_UNDOSYS_TYPE_MEMFILE = BKE_undosys_type_append(ED_memfile_undosys_type);
 }
 
-void ED_undosys_type_free(void)
+void ED_undosys_type_free()
 {
   BKE_undosys_type_free_all();
 }

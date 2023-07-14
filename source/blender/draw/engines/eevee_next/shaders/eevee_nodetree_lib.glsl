@@ -199,12 +199,31 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 }
 
 float ambient_occlusion_eval(vec3 normal,
-                             float distance,
+                             float max_distance,
                              const float inverted,
                              const float sample_count)
 {
-  /* TODO */
+  /* Avoid multiline preprocesor conditionals.
+   * Some drivers don't handle them correctly. */
+  // clang-format off
+#if defined(GPU_FRAGMENT_SHADER) && defined(MAT_AMBIENT_OCCLUSION) && !defined(MAT_DEPTH) && !defined(MAT_SHADOW)
+  // clang-format on
+  vec3 vP = transform_point(ViewMatrix, g_data.P);
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+  OcclusionData data = ambient_occlusion_search(
+      vP, hiz_tx, texel, max_distance, inverted, sample_count);
+
+  vec3 V = cameraVec(g_data.P);
+  vec3 N = g_data.N;
+  vec3 Ng = g_data.Ng;
+
+  float unused_error, visibility;
+  vec3 unused;
+  ambient_occlusion_eval(data, texel, V, N, Ng, inverted, visibility, unused_error, unused);
+  return visibility;
+#else
   return 1.0;
+#endif
 }
 
 #ifndef GPU_METAL
@@ -273,13 +292,13 @@ void clear_aovs()
 void output_aov(vec4 color, float value, uint hash)
 {
 #if defined(MAT_RENDER_PASS_SUPPORT) && defined(GPU_FRAGMENT_SHADER)
-  for (uint i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
+  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
     if (rp_buf.aovs.hash_color[i].x == hash) {
       imageStore(rp_color_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.color_len + i), color);
       return;
     }
   }
-  for (uint i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
+  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
     if (rp_buf.aovs.hash_value[i].x == hash) {
       imageStore(rp_value_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.value_len + i), vec4(value));
       return;
