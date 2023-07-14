@@ -87,10 +87,10 @@ bool neighbor_tile_mask_bit_get(uint tile_mask, ivec2 offset)
 
 #if defined(RAYTRACE_DIFFUSE)
 #  define ClosureT ClosureDiffuse
-#  define CLOSURE_ACTIVE eClosureBits(CLOSURE_REFLECTION)
+#  define CLOSURE_ACTIVE eClosureBits(CLOSURE_DIFFUSE)
 #elif defined(RAYTRACE_REFRACT)
 #  define ClosureT ClosureRefraction
-#  define CLOSURE_ACTIVE eClosureBits(CLOSURE_REFLECTION)
+#  define CLOSURE_ACTIVE eClosureBits(CLOSURE_REFRACTION)
 #elif defined(RAYTRACE_REFLECT)
 #  define ClosureT ClosureReflection
 #  define CLOSURE_ACTIVE eClosureBits(CLOSURE_REFLECTION)

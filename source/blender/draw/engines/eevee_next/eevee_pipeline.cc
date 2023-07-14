@@ -404,14 +404,15 @@ void DeferredLayer::begin_sync()
 
 void DeferredLayer::end_sync()
 {
-  if (closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
+  eClosureBits evaluated_closures = CLOSURE_DIFFUSE | CLOSURE_REFLECTION | CLOSURE_REFRACTION;
+  if (closure_bits_ & evaluated_closures) {
     const bool is_last_eval_pass = !(closure_bits_ & CLOSURE_SSS);
 
     eval_light_ps_.init();
     /* Use stencil test to reject pixel not written by this layer. */
     eval_light_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL |
                              DRW_STATE_BLEND_CUSTOM);
-    eval_light_ps_.state_stencil(0x00u, 0x00u, (CLOSURE_DIFFUSE | CLOSURE_REFLECTION));
+    eval_light_ps_.state_stencil(0x00u, 0x00u, evaluated_closures);
     eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
     eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
     eval_light_ps_.bind_image("out_specular_light_img", &specular_light_tx_);

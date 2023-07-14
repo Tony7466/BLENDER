@@ -131,8 +131,7 @@ vec3 sample_ggx_refract(
   vec3 H = tangent_to_world(Ht, N, T, B);
 
   if (VH > 0.0) {
-    /* NOTE: Ior is already inverted for front faces. */
-    vec3 L = refract(-V, H, ior);
+    vec3 L = refract(-V, H, 1.0 / ior);
     float LH = dot(L, H);
     pdf = sample_pdf_ggx_refract(NH, NV, VH, LH, G1, alpha, ior);
     return L;

@@ -39,6 +39,11 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
            Qualifier::READ,
            ImageType::FLOAT_2D,
            "indirect_reflection_img")
+    .image(5,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_refraction_img")
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
