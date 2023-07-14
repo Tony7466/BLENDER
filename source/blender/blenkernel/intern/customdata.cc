@@ -3930,7 +3930,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     }
   }
 
-  BitVector copied_layers(dest->totlayer);
+  BitVector copied_layers(dest->totlayer, false);
 
   for (int layer_src_i : IndexRange(source->totlayer)) {
     const CustomDataLayer &layer_src = source->layers[layer_src_i];
@@ -3946,7 +3946,7 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
         continue;
       }
 
-      copied_layers[layer_dst_i] = true;
+      copied_layers[layer_dst_i].set(true);
 
       const void *src_data = POINTER_OFFSET(src_block, layer_src.offset);
       void *dest_data = POINTER_OFFSET(*dest_block, layer_dst.offset);
