@@ -904,8 +904,6 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
 
 uiBlock *ui_block_func_COLOR(bContext *C, uiPopupBlockHandle *handle, void *arg_but)
 {
-  printf("block func \n");
-
   uiBut *but = static_cast<uiBut *>(arg_but);
   uiBlock *block;
 
