@@ -362,8 +362,9 @@ static Array<int> calc_updated_corner_verts(const int orig_verts_num,
    * reused. */
   vert_mask.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
     const VertCornerFans &fans = vert_fans[mask];
+    const IndexRange new_verts = new_verts_by_masked_vert[mask];
     for (const int i : fans.index_range().drop_back(1)) {
-      const int new_vert = orig_verts_num + new_verts_by_masked_vert[mask][i];
+      const int new_vert = orig_verts_num + new_verts[i];
       new_corner_verts.as_mutable_span().fill_indices(fans[i].as_span(), new_vert);
     }
   });
