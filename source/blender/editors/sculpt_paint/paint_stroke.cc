@@ -538,8 +538,8 @@ static void paint_brush_stroke_add_step(
    * windows for some tablets, then we just skip first touch. */
   if (tablet && (pressure >= 0.99f) &&
       ((pop->s.brush->flag & BRUSH_SPACING_PRESSURE) ||
-       BKE_brush_use_alpha_pressure(pop->s.brush) ||
-       BKE_brush_use_size_pressure(pop->s.brush))) {
+       BKE_brush_use_alpha_pressure(pop->s.brush) || BKE_brush_use_size_pressure(pop->s.brush)))
+  {
     return;
   }
 
@@ -551,8 +551,8 @@ static void paint_brush_stroke_add_step(
    * which is the sensitivity of the most sensitive pen tablet available */
   if (tablet && (pressure < 0.0002f) &&
       ((pop->s.brush->flag & BRUSH_SPACING_PRESSURE) ||
-       BKE_brush_use_alpha_pressure(pop->s.brush) ||
-       BKE_brush_use_size_pressure(pop->s.brush))) {
+       BKE_brush_use_alpha_pressure(pop->s.brush) || BKE_brush_use_size_pressure(pop->s.brush)))
+  {
     return;
   }
 #endif
@@ -1611,20 +1611,21 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
     redraw = true;
   }
 
-  /* do updates for redraw. if event is in between mouse-move there are more
-   * coming, so postpone potentially slow redraw updates until all are done */
+  /* Don't update the paint cursor in INBETWEEN_MOUSEMOVE events.*/
   if (event->type != INBETWEEN_MOUSEMOVE) {
     wmWindow *window = CTX_wm_window(C);
     ARegion *region = CTX_wm_region(C);
 
-    /* At the very least, invalidate the cursor */
     if (region && (p->flags & PAINT_SHOW_BRUSH)) {
       WM_paint_cursor_tag_redraw(window, region);
     }
+  }
 
-    if (redraw && stroke->redraw) {
-      stroke->redraw(C, stroke, false);
-    }
+  /* Draw for all events (even in between) otherwise updating the brush
+   * display is noticeably delayed.
+   */
+  if (redraw && stroke->redraw) {
+    stroke->redraw(C, stroke, false);
   }
 
   return OPERATOR_RUNNING_MODAL;
