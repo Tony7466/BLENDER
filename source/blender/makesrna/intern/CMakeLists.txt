@@ -94,7 +94,6 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
   list(APPEND DEFSRC
     rna_grease_pencil.cc
-    rna_simulation.cc
   )
 endif()
 
@@ -404,6 +403,10 @@ endif()
 
 if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
+endif()
+
+if(WITH_OPENGL_BACKEND)
+  add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_METAL_BACKEND)
