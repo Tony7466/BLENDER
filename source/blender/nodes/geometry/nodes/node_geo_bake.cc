@@ -40,6 +40,11 @@ class LazyFunctionForBakeNode : public LazyFunction {
 
     user_data.compute_context->print_stack(std::cout, node_.label_or_name());
 
+    const int32_t nested_node_id =
+        user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
+            {user_data.compute_context->hash(), node_.identifier}, -1);
+    std::cout << "Nested Node Id in bake node: " << nested_node_id << "\n";
+
     GeometrySet geometry = params.extract_input<GeometrySet>(0);
     params.set_output(0, std::move(geometry));
   }

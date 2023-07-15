@@ -1003,8 +1003,24 @@ static void modifyGeometry(ModifierData *md,
   find_side_effect_nodes(*nmd, *ctx, side_effect_nodes);
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
-  bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
+  {
+    ComputeContextBuilder compute_context_builder;
+    compute_context_builder.push<bke::ModifierComputeContext>(nmd->modifier.name);
+    for (const bNestedNodeRef &node_ref : nmd->node_group->nested_node_refs_span()) {
+      Vector<int32_t> node_ids;
+      if (!nmd->node_group->node_id_path_from_nested_node_ref(node_ref.id, node_ids)) {
+        continue;
+      }
+      const int32_t leaf_node_id = node_ids.pop_last();
+      for (const int32_t node_id : node_ids.as_span()) {
+        compute_context_builder.push<bke::NodeGroupComputeContext>(node_id);
+      }
+      modifier_eval_data.nested_node_id_by_compute_context.add(
+          {compute_context_builder.hash(), leaf_node_id}, node_ref.id);
+    }
+  }
 
+  bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
   geometry_set = nodes::execute_geometry_nodes_on_geometry(
       tree,
       nmd->settings.properties,
