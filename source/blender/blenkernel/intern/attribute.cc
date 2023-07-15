@@ -307,8 +307,7 @@ CustomDataLayer *BKE_id_attribute_new(ID *id,
 
   const int index = CustomData_get_named_layer_index(customdata, type, uniquename);
   if (index == -1) {
-    BKE_reportf(
-        reports, RPT_WARNING, "Layer '%s' could not be created with a unique name", uniquename);
+    BKE_reportf(reports, RPT_WARNING, "Layer '%s' could not be created", uniquename);
   }
 
   return (index == -1) ? nullptr : &(customdata->layers[index]);

@@ -17,6 +17,7 @@
 extern "C" {
 #endif
 
+struct bDeformGroup;
 struct CustomData;
 struct CustomDataLayer;
 struct ID;
