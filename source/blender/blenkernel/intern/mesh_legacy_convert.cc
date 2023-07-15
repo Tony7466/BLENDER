@@ -1442,6 +1442,9 @@ void BKE_mesh_legacy_bevel_weight_to_generic(Mesh *mesh)
 void BKE_mesh_legacy_edge_crease_to_layers(Mesh *mesh)
 {
   using namespace blender;
+  if (!mesh->medge) {
+    return;
+  }
   if (CustomData_has_layer(&mesh->edata, CD_CREASE)) {
     return;
   }
@@ -2043,7 +2046,7 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
       }
     });
 
-    CustomData_free(&old_poly_data, mesh->totloop);
+    CustomData_free(&old_poly_data, mesh->totpoly);
   }
 
   CustomData_free_layers(&mesh->pdata, CD_MPOLY, mesh->totpoly);

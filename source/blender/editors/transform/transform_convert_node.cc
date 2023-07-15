@@ -25,9 +25,9 @@
 #include "UI_interface.h"
 #include "UI_view2d.h"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_snap.hh"
 
 #include "WM_api.h"
 
@@ -154,8 +154,7 @@ static void node_snap_grid_apply(TransInfo *t)
   using namespace blender;
 
   if (!(transform_snap_is_active(t) &&
-        (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID))))
-  {
+        (t->tsnap.mode & (SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID)))) {
     return;
   }
 
