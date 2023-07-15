@@ -92,6 +92,8 @@ class View3DPanel:
 
 # Used by vertex & weight paint
 def draw_vpaint_symmetry(layout, vpaint, obj):
+    mesh = obj.data
+
     col = layout.column()
     row = col.row(heading="Mirror", align=True)
     row.prop(obj, "use_mesh_mirror_x", text="X", toggle=True)
@@ -100,7 +102,7 @@ def draw_vpaint_symmetry(layout, vpaint, obj):
 
     col = layout.column()
     col.active = not obj.data.use_mirror_vertex_groups
-    col.prop(obj, "radial_symmetry", text="Radial")
+    col.prop(mesh, "radial_symmetry", text="Radial")
 
 
 # Most of these panels should not be visible in GP edit modes
