@@ -1604,7 +1604,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
                   &op_ptr);
       WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
       RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
-      RNA_int_set(&op_ptr, "bake_index", nmd->active_bake);
+      RNA_int_set(&op_ptr, "bake_id", bake.id);
     }
     {
       PointerRNA op_ptr;
@@ -1618,7 +1618,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
                   &op_ptr);
       WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
       RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
-      RNA_int_set(&op_ptr, "bake_index", nmd->active_bake);
+      RNA_int_set(&op_ptr, "bake_id", bake.id);
     }
   }
 }

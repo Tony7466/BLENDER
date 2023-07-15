@@ -36,7 +36,7 @@ static void bake_operator_props(wmOperatorType *ot)
       ot->srna, "modifier", nullptr, MAX_NAME, "Modifier", "Name of the modifier");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
-  prop = RNA_def_int(ot->srna, "bake_index", 0, 0, INT32_MAX, "Bake Index", "", 0, INT32_MAX);
+  prop = RNA_def_int(ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "", 0, INT32_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -58,14 +58,20 @@ static void bake_operator_props(wmOperatorType *ot)
     return false;
   }
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-  const int bake_index = RNA_int_get(op->ptr, "bake_index");
-  if (bake_index < 0 || bake_index >= nmd->bakes_num) {
+  const int bake_id = RNA_int_get(op->ptr, "bake_id");
+  NodesModifierBake *bake = nullptr;
+  for (NodesModifierBake &bake_iter : MutableSpan(nmd->bakes, nmd->bakes_num)) {
+    if (bake_iter.id == bake_id) {
+      bake = &bake_iter;
+    }
+  }
+  if (bake == nullptr) {
     return false;
   }
 
   *r_object = object;
   *r_modifier = nmd;
-  *r_bake = nmd->bakes + bake_index;
+  *r_bake = bake;
   return true;
 }
 

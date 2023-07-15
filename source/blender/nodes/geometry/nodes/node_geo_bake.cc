@@ -4,12 +4,148 @@
 
 #include "node_geometry_util.hh"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
+#include "BKE_context.h"
+#include "BKE_modifier.h"
+#include "BKE_object.h"
+
+#include "DNA_modifier_types.h"
+#include "DNA_space_types.h"
+
+#include "MOD_nodes.hh"
+
+#include "WM_api.h"
+
 namespace blender::nodes::node_geo_bake_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
   b.add_output<decl::Geometry>("Geometry");
+}
+
+static const bNode *group_node_by_name(const bNodeTree &ntree, StringRef name)
+{
+  for (const bNode *node : ntree.group_nodes()) {
+    if (node->name == name) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+static int32_t find_nested_node_id_in_root(SpaceNode *snode, const bNode *node)
+{
+  int32_t id_in_node = -1;
+  const char *group_node_name = nullptr;
+  LISTBASE_FOREACH_BACKWARD (const bNodeTreePath *, path, &snode->treepath) {
+    const bNodeTree *ntree = path->nodetree;
+    if (group_node_name) {
+      node = group_node_by_name(*ntree, group_node_name);
+    }
+    bool found = false;
+    for (const bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
+      if (node->is_group()) {
+        if (ref.path.node_id == node->identifier && ref.path.id_in_node == id_in_node) {
+          group_node_name = path->node_name;
+          id_in_node = ref.id;
+          found = true;
+          break;
+        }
+      }
+      else if (ref.path.node_id == node->identifier) {
+        group_node_name = path->node_name;
+        id_in_node = ref.id;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return -1;
+    }
+  }
+  return id_in_node;
+}
+
+static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id)
+{
+  if (!nmd.runtime->bakes) {
+    return false;
+  }
+  const bke::BakeNodeStorage *bake_storage = nmd.runtime->bakes->get_storage(bake_id);
+  if (bake_storage == nullptr) {
+    return false;
+  }
+  return bake_storage->geometry.has_value();
+}
+
+static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  const bNode *node = static_cast<bNode *>(ptr->data);
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (snode == nullptr) {
+    return;
+  }
+  if (snode->id == nullptr) {
+    return;
+  }
+  if (GS(snode->id->name) != ID_OB) {
+    return;
+  }
+  Object *object = reinterpret_cast<Object *>(snode->id);
+  ModifierData *md = BKE_object_active_modifier(object);
+  if (md == nullptr || md->type != eModifierType_Nodes) {
+    return;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  if (nmd.node_group != snode->nodetree) {
+    return;
+  }
+  const int32_t nested_node_id = find_nested_node_id_in_root(snode, node);
+  if (nested_node_id == -1) {
+    return;
+  }
+
+  const bool is_baked = bake_id_is_baked(nmd, nested_node_id);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  {
+    PointerRNA op_ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake",
+                "Bake",
+                ICON_NONE,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &op_ptr);
+    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object->id);
+    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
+    RNA_int_set(&op_ptr, "bake_id", nested_node_id);
+  }
+  {
+    PointerRNA op_ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake_delete",
+                "",
+                ICON_TRASH,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &op_ptr);
+    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object->id);
+    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
+    RNA_int_set(&op_ptr, "bake_id", nested_node_id);
+  }
+
+  if (is_baked) {
+    uiItemL(layout, "Baked", ICON_LOCKED);
+  }
+  else {
+    uiItemL(layout, "Not Baked", ICON_UNLOCKED);
+  }
 }
 
 class LazyFunctionForBakeNode : public LazyFunction {
@@ -162,5 +298,6 @@ void register_node_type_geo_bake()
 
   geo_node_type_base(&ntype, GEO_NODE_BAKE, "Bake", NODE_CLASS_GEOMETRY);
   ntype.declare = file_ns::node_declare;
+  ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
