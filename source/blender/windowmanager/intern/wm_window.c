@@ -1267,24 +1267,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         break;
       }
       case GHOST_kEventWindowActivate: {
-
-#ifdef WIN32
-        /* NOTE(@ideasman42): Alt-Tab on Windows-10 (22H2) can deactivate the window,
-         * then (in rare cases - approx 1 in 20) immediately call `WM_ACTIVATE` on the window
-         * (which isn't active) and doesn't receive modifier release events.
-         * This looks like a bug in MS-Windows, searching online other apps
-         * have run into similar issues although it's not clear exactly which.
-         *
-         * - Therefor activation must always clear modifiers
-         *   or Alt-Tab can occasionally get stuck, see: #105381.
-         * - Unfortunately modifiers that are held before
-         *   the window is active are ignored, see: #40059.
-         */
-        wm_window_update_eventstate_modifiers_clear(wm, win);
-#else
         /* Ensure the event state matches modifiers (window was inactive). */
         wm_window_update_eventstate_modifiers(wm, win);
-#endif
 
         /* Entering window, update mouse position (without sending an event). */
         wm_window_update_eventstate(win);
@@ -1756,7 +1740,11 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
       return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_ANY:
     case GPU_BACKEND_OPENGL:
+#ifdef WITH_OPENGL_BACKEND
       return GHOST_kDrawingContextTypeOpenGL;
+#endif
+      BLI_assert_unreachable();
+      return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
       return GHOST_kDrawingContextTypeVulkan;
@@ -1766,10 +1754,9 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
     case GPU_BACKEND_METAL:
 #ifdef WITH_METAL_BACKEND
       return GHOST_kDrawingContextTypeMetal;
-#else
+#endif
       BLI_assert_unreachable();
       return GHOST_kDrawingContextTypeNone;
-#endif
   }
 
   /* Avoid control reaches end of non-void function compilation warning, which could be promoted
