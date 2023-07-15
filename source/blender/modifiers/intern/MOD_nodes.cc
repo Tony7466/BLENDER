@@ -1594,6 +1594,18 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
       layout, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake", "bake_index", nmd->active_bake);
 }
 
+static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id)
+{
+  if (!nmd.runtime->bakes) {
+    return false;
+  }
+  const bke::BakeNodeStorage *bake_storage = nmd.runtime->bakes->get_storage(bake_id);
+  if (bake_storage == nullptr) {
+    return false;
+  }
+  return bake_storage->geometry.has_value();
+}
+
 static void bake_list_item_draw(uiList * /*ui_list*/,
                                 const bContext * /*C*/,
                                 uiLayout *layout,
@@ -1610,7 +1622,8 @@ static void bake_list_item_draw(uiList * /*ui_list*/,
   const bNode *node = nmd.node_group->find_nested_node(bake.id);
 
   if (node) {
-    uiItemL(layout, node->label_or_name().c_str(), ICON_NONE);
+    const bool is_baked = bake_id_is_baked(nmd, bake.id);
+    uiItemL(layout, node->label_or_name().c_str(), is_baked ? ICON_LOCKED : ICON_UNLOCKED);
   }
   else {
     uiItemL(layout, N_("Not found"), ICON_ERROR);
