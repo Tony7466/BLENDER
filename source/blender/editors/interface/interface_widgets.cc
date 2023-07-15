@@ -1882,6 +1882,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   const char *drawstr = but->drawstr;
   const char *drawstr_right = nullptr;
   bool use_right_only = false;
+  const char *indeterminate_str = UI_VALUE_INDETERMINATE_CHAR;
 
 #ifdef WITH_INPUT_IME
   const wmIMEData *ime_data;
@@ -1946,11 +1947,9 @@ static void widget_draw_text(const uiFontStyle *fstyle,
            UI_BTYPE_TEXT,
            UI_BTYPE_SEARCH_MENU))
   {
-    STRNCPY(but->drawstr, UI_VALUE_INDETERMINATE_CHAR);
+    drawstr = indeterminate_str;
+    drawstr_left_len = strlen(drawstr);
     align = UI_STYLE_TEXT_CENTER;
-    use_right_only = false;
-    drawstr_right = nullptr;
-    drawstr_left_len = strlen(but->drawstr);
   }
 
   /* text button selection, cursor, composite underline */
@@ -5070,7 +5069,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
     state.but_flag &= ~UI_BUT_OVERRIDDEN;
   }
 
-  if ((state.but_drawflag & UI_BUT_INDETERMINATE) && (state.but_flag & UI_SELECT)) {
+  if (state.but_drawflag & UI_BUT_INDETERMINATE) {
     state.but_flag &= ~UI_SELECT;
   }
 
