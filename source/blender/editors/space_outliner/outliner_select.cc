@@ -403,7 +403,8 @@ static void tree_element_material_activate(bContext *C,
   /* Note : ob->matbits can be nullptr when a local object points to a library mesh. */
   BKE_view_layer_synced_ensure(scene, view_layer);
   if (ob == nullptr || ob != BKE_view_layer_active_object_get(view_layer) ||
-      ob->matbits == nullptr) {
+      ob->matbits == nullptr)
+  {
     return; /* just paranoia */
   }
 
@@ -1043,7 +1044,8 @@ static eOLDrawState tree_element_active_material_get(const Scene *scene,
   /* Note : ob->matbits can be nullptr when a local object points to a library mesh. */
   BKE_view_layer_synced_ensure(scene, view_layer);
   if (ob == nullptr || ob != BKE_view_layer_active_object_get(view_layer) ||
-      ob->matbits == nullptr) {
+      ob->matbits == nullptr)
+  {
     return OL_DRAWSEL_NONE; /* just paranoia */
   }
 
@@ -1519,30 +1521,83 @@ void outliner_item_select(bContext *C,
   }
 }
 
-static bool do_outliner_range_select_recursive(ListBase *lb,
-                                               TreeElement *active,
-                                               TreeElement *cursor,
-                                               bool selecting)
+/* A simple but apparently effective solution for recursive selections. */
+static void do_outliner_select_recursive(ListBase *lb, bool selecting, Collection *in_collection)
 {
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    if (selecting) {
-      tselem->flag |= TSE_SELECTED;
+    /* The desired behavior is only to select collections and object hierarchies
+       recursively. So if this isn't a collection or an object, skip it. */
+    if (tselem->type == TSE_LAYER_COLLECTION) {
+      tselem->flag = selecting ? (tselem->flag | TSE_SELECTED) : (tselem->flag & ~TSE_SELECTED);
+      /* Restrict sub-tree selections to this collection. This prevents undesirable behavior in
+         the edge-case where there is an object which is part of this collection, but which has
+         children that are part of another collection. */
+      do_outliner_select_recursive(
+          &te->subtree, selecting, static_cast<LayerCollection *>(te->directdata)->collection);
     }
+    else if (tselem->type == TSE_SOME_ID && te->idcode == ID_OB) {
+      /* Only actually select the object if
+         1. We are not restricted to any collection, or
+         2. The object is in fact in the given collection. */
+      if (!in_collection || BKE_collection_has_object_recursive(
+                                in_collection, reinterpret_cast<Object *>(tselem->id)))
+      {
+        tselem->flag = selecting ? (tselem->flag | TSE_SELECTED) : (tselem->flag & ~TSE_SELECTED);
+        do_outliner_select_recursive(&te->subtree, selecting, in_collection);
+      }
+    }
+    else {
+      tselem->flag &= ~TSE_SELECTED;
+    }
+  }
+}
+
+static bool do_outliner_range_select_recursive(ListBase *lb,
+                                               TreeElement *active,
+                                               TreeElement *cursor,
+                                               bool selecting,
+                                               bool recurse,
+                                               Collection *in_collection)
+{
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
+    TreeStoreElem *tselem = TREESTORE(te);
+
+    /* If recurse is true, we are in recursive selection mode meaning we double clicked
+       on an icon. In this case, we want to be consistent with ordinary (non-range) recursive
+       selection mode by only selecting layer collections and objects. The object condition
+       is kinda gross but necessary for consistent behavior in the recursive case. Essentially
+       we need to be sure that the object belongs to the right collection before setting the
+       SELECTED flag. */
+    bool can_select = !recurse || (tselem->type == TSE_LAYER_COLLECTION ||
+                                   (tselem->type == TSE_SOME_ID && te->idcode == ID_OB &&
+                                    (!in_collection ||
+                                     BKE_collection_has_object_recursive(
+                                         in_collection, reinterpret_cast<Object *>(tselem->id)))));
+
+    /* Remember if we are selecting before we potentially change the selecting state. */
+    bool selecting_before = selecting;
 
     /* Set state for selection */
     if (ELEM(te, active, cursor)) {
       selecting = !selecting;
     }
 
-    if (selecting) {
+    if (can_select && (selecting_before || selecting)) {
       tselem->flag |= TSE_SELECTED;
     }
 
-    /* Don't look inside closed elements */
-    if (!(tselem->flag & TSE_CLOSED)) {
-      selecting = do_outliner_range_select_recursive(&te->subtree, active, cursor, selecting);
+    /* Don't look inside closed elements, unless we're forcing the recursion all the way down. */
+    if (!(tselem->flag & TSE_CLOSED) || recurse) {
+      /* If this tree element is a collection, then it sets the precedent for inclusion
+         of its subobjects. */
+      Collection *in_collection2 = in_collection;
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        in_collection2 = static_cast<LayerCollection *>(te->directdata)->collection;
+      }
+      selecting = do_outliner_range_select_recursive(
+          &te->subtree, active, cursor, selecting, recurse, in_collection2);
     }
   }
 
@@ -1553,7 +1608,8 @@ static bool do_outliner_range_select_recursive(ListBase *lb,
 static void do_outliner_range_select(bContext *C,
                                      SpaceOutliner *space_outliner,
                                      TreeElement *cursor,
-                                     const bool extend)
+                                     const bool extend,
+                                     const bool recurse)
 {
   TreeElement *active = outliner_find_element_with_flag(&space_outliner->tree, TSE_ACTIVE);
 
@@ -1582,7 +1638,19 @@ static void do_outliner_range_select(bContext *C,
     return;
   }
 
-  do_outliner_range_select_recursive(&space_outliner->tree, active, cursor, false);
+  Collection *in_collection = nullptr;
+  if (recurse) {
+    if (tselem->type == TSE_LAYER_COLLECTION) {
+      in_collection = static_cast<LayerCollection *>(active->directdata)->collection;
+    }
+    else if (tselem->type == TSE_SOME_ID && active->idcode == ID_OB) {
+      in_collection = BKE_collection_object_find(
+          CTX_data_main(C), CTX_data_scene(C), nullptr, reinterpret_cast<Object *>(tselem->id));
+    }
+  }
+
+  do_outliner_range_select_recursive(
+      &space_outliner->tree, active, cursor, false, recurse, in_collection);
 }
 
 static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *space_outliner,
@@ -1623,7 +1691,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
                                                  const int mval[2],
                                                  const bool extend,
                                                  const bool use_range,
-                                                 const bool deselect_all)
+                                                 const bool deselect_all,
+                                                 const bool recurse)
 {
   ARegion *region = CTX_wm_region(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
@@ -1652,7 +1721,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
-    /* The row may also contain children, if one is hovered we want this instead of current te. */
+    /* The row may also contain children, if one is hovered we want this instead of current te.
+     */
     bool merged_elements = false;
     bool is_over_icon = false;
     TreeElement *activate_te = outliner_find_item_at_x_in_row(
@@ -1666,21 +1736,71 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
+    /* If we're recursing, we need to know the collection of the selected item in order
+       to prevent selecting across collection boundaries. (Object hierarchies might cross
+       collection boundaries, i.e., children may be in different collections from their
+       parents.) */
+    Collection *in_collection = nullptr;
+    if (recurse) {
+      if (activate_tselem->type == TSE_LAYER_COLLECTION) {
+        in_collection = static_cast<LayerCollection *>(activate_te->directdata)->collection;
+      }
+      else if (activate_tselem->type == TSE_SOME_ID && activate_te->idcode == ID_OB) {
+        in_collection = BKE_collection_object_find(
+            CTX_data_main(C),
+            CTX_data_scene(C),
+            nullptr,
+            reinterpret_cast<Object *>(activate_tselem->id));
+      }
+    }
+
+    /* If we're not recursing (not double clicking), and we are extending or range selecting by
+       holding CTRL or SHIFT, ignore events when the cursor is over the icon. This disambiguates
+       the case where we are recursing *and* holding CTRL or SHIFT in order to extend or range
+       select recursively. */
+    if (!recurse && (extend || use_range) &&
+        outliner_item_is_co_over_icon(activate_te, view_mval[0]))
+      return OPERATOR_CANCELLED;
+
     if (use_range) {
-      do_outliner_range_select(C, space_outliner, activate_te, extend);
+      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse);
+      if (recurse)
+        do_outliner_select_recursive(&activate_te->subtree, /*selecting=*/true, in_collection);
     }
     else {
       const bool is_over_name_icons = outliner_item_is_co_over_name_icons(activate_te,
                                                                           view_mval[0]);
+
       /* Always select unless already active and selected */
-      const bool select = !extend || !(activate_tselem->flag & TSE_ACTIVE &&
-                                       activate_tselem->flag & TSE_SELECTED);
+      bool select = !extend ||
+                    !(activate_tselem->flag & TSE_ACTIVE && activate_tselem->flag & TSE_SELECTED);
+
+      /* If we're CTRL+double-clicking and the element is aleady selected, skip the activation
+         straight to deselection */
+      if (extend && recurse && activate_tselem->flag & TSE_SELECTED)
+        select = false;
 
       const short select_flag = OL_ITEM_ACTIVATE | (select ? OL_ITEM_SELECT : OL_ITEM_DESELECT) |
                                 (is_over_name_icons ? OL_ITEM_SELECT_DATA : 0) |
                                 (extend ? OL_ITEM_EXTEND : 0);
 
-      outliner_item_select(C, space_outliner, activate_te, select_flag);
+      /* The recurse flag is set when the user double-clicks to select everything in a
+         collection or hierarchy. */
+      if (recurse) {
+        if (outliner_item_is_co_over_icon(activate_te, view_mval[0])) {
+          /* Select or deselect object hierarchy recursively. */
+          outliner_item_select(C, space_outliner, activate_te, select_flag);
+
+          do_outliner_select_recursive(&activate_te->subtree, select, in_collection);
+        }
+        else {
+          /* Double-clicked, but it wasn't on the icon. */
+          return OPERATOR_CANCELLED;
+        }
+      }
+      else {
+        outliner_item_select(C, space_outliner, activate_te, select_flag);
+      }
 
       /* Only switch properties editor tabs when icons are selected. */
       if (is_over_icon) {
@@ -1715,10 +1835,11 @@ static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEv
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   const bool use_range = RNA_boolean_get(op->ptr, "extend_range");
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
+  const bool recurse = RNA_boolean_get(op->ptr, "recurse");
 
   int mval[2];
   WM_event_drag_start_mval(event, region, mval);
-  return outliner_item_do_activate_from_cursor(C, mval, extend, use_range, deselect_all);
+  return outliner_item_do_activate_from_cursor(C, mval, extend, use_range, deselect_all, recurse);
 }
 
 void OUTLINER_OT_item_activate(wmOperatorType *ot)
@@ -1745,6 +1866,10 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
                          false,
                          "Deselect On Nothing",
                          "Deselect all when nothing under the cursor");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(
+      ot->srna, "recurse", false, "Recurse", "Select objects recursively from active element");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
