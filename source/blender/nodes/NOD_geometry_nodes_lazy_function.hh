@@ -261,6 +261,9 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     const bNode &node,
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
+std::unique_ptr<LazyFunction> get_bake_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
+std::unique_ptr<LazyFunction> get_bake_node_input_usage_lazy_function(const bNode &node);
 
 std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
     const GeoNodesLFUserData &user_data, const int output_node_id);

@@ -2677,6 +2677,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         this->build_switch_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_BAKE: {
+        this->build_bake_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3230,6 +3234,38 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         graph_params.usage_by_bsocket.add(false_input_bsocket, output_is_used_socket);
       }
     }
+  }
+
+  void build_bake_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_bake_node_lazy_function(bnode,
+                                                                              *lf_graph_info_);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    {
+      lf::InputSocket &lf_socket = lf_node.input(0);
+      const bNodeSocket &bsocket = bnode.input_socket(0);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+    {
+      lf::OutputSocket &lf_socket = lf_node.output(0);
+      const bNodeSocket &bsocket = bnode.output_socket(0);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+
+    this->build_bake_node_socket_usage(bnode, graph_params);
+  }
+
+  void build_bake_node_socket_usage(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_bake_node_input_usage_lazy_function(bnode);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    graph_params.usage_by_bsocket.add(&bnode.input_socket(0), &lf_node.output(0));
   }
 
   void build_undefined_node(const bNode &bnode, BuildGraphParams &graph_params)
