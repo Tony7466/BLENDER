@@ -299,7 +299,7 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuS
   HDC prev_hdc = wglGetCurrentDC();
   HGLRC prev_context = wglGetCurrentContext();
 
-  for (int minor = 5; minor >= 0; --minor) {
+  for (int minor = 6; minor >= 3; --minor) {
     context = new GHOST_ContextWGL(false,
                                    true,
                                    wnd,
@@ -311,29 +311,13 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_GPUSettings gpuS
                                    GHOST_OPENGL_WGL_RESET_NOTIFICATION_STRATEGY);
 
     if (context->initializeDrawingContext()) {
-      goto finished;
+      wglMakeCurrent(prev_hdc, prev_context);
+      return context;
     }
     else {
       delete context;
+      context = nullptr;
     }
-  }
-
-  context = new GHOST_ContextWGL(false,
-                                 true,
-                                 wnd,
-                                 mHDC,
-                                 WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                 3,
-                                 3,
-                                 (debug_context ? WGL_CONTEXT_DEBUG_BIT_ARB : 0),
-                                 GHOST_OPENGL_WGL_RESET_NOTIFICATION_STRATEGY);
-
-  if (context->initializeDrawingContext()) {
-    goto finished;
-  }
-  else {
-    delete context;
-    return NULL;
   }
 
 finished:
@@ -465,8 +449,8 @@ GHOST_TSuccess GHOST_SystemWin32::setCursorPosition(int32_t x, int32_t y)
 GHOST_TSuccess GHOST_SystemWin32::getModifierKeys(GHOST_ModifierKeys &keys) const
 {
   /* `GetAsyncKeyState` returns the current interrupt-level state of the hardware, which is needed
-   * when passing key states to a newly-activated window - #40059. Alterative `GetKeyState` only
-   * returns the state as processed by the thread's message queue.   */
+   * when passing key states to a newly-activated window - #40059. Alternative `GetKeyState` only
+   * returns the state as processed by the thread's message queue. */
   bool down = HIBYTE(::GetAsyncKeyState(VK_LSHIFT)) != 0;
   keys.set(GHOST_kModifierKeyLeftShift, down);
   down = HIBYTE(::GetAsyncKeyState(VK_RSHIFT)) != 0;
