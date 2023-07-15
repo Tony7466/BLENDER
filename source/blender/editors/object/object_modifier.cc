@@ -113,9 +113,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   BKE_object_eval_reset(ob_eval);
   if (ob->type == OB_MESH) {
-    /* This matches the masks in BKE_object_handle_data_update(). */
     CustomData_MeshMasks cddata_masks = CD_MASK_DERIVEDMESH;
-
     Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &cddata_masks);
     BKE_mesh_eval_delete(me_eval);
   }
