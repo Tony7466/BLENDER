@@ -2645,48 +2645,6 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   /* omit poll to run in background mode */
 }
 
-void WM_OT_read_factory_settings(wmOperatorType *ot)
-{
-  ot->name = "Load Factory Settings";
-  ot->idname = "WM_OT_read_factory_settings";
-  ot->description =
-      "Load factory default startup file and preferences. "
-      "To make changes permanent, use \"Save Startup File\" and \"Save Preferences\"";
-
-  ot->invoke = WM_operator_confirm;
-  ot->exec = wm_homefile_read_exec;
-  /* Omit poll to run in background mode. */
-
-  read_factory_reset_props(ot);
-
-  read_homefile_props(ot);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Open Main .blend File Utilities
- * \{ */
-
-/**
- * Wrap #WM_file_read, shared by file reading operators.
- */
-static bool wm_file_read_opwrap(bContext *C, const char *filepath, ReportList *reports)
-{
-  /* XXX wm in context is not set correctly after WM_file_read -> crash */
-  /* do it before for now, but is this correct with multiple windows? */
-  WM_event_add_notifier(C, NC_WINDOW, nullptr);
-
-  /* Set by the "use_scripts" property on file load. */
-  if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) {
-    WM_file_autoexec_init(filepath);
-  }
-
-  const bool success = WM_file_read(C, filepath, reports);
-
-  return success;
-}
-
 /* Generic operator state utilities */
 
 static void create_operator_state(wmOperatorType *ot, int first_state)
@@ -2723,6 +2681,102 @@ static int operator_state_dispatch(bContext *C, wmOperator *op, OperatorDispatch
   }
   BLI_assert_unreachable();
   return OPERATOR_CANCELLED;
+}
+
+// Read factory settings operator states
+
+enum {
+  READ_FACTORY_SETTINGS_STATE_CONFIRM,
+  READ_FACTORY_SETTINGS_STATE_DISCARD_CHANGES,
+  READ_FACTORY_SETTINGS_STATE_READ,
+};
+
+static int wm_read_factory_settings_dispatch(bContext *C, wmOperator *op);
+
+static void wm_read_factory_settings_after_dialog_callback(bContext *C, void *user_data)
+{
+  WM_operator_name_call_with_properties(
+      C, "WM_OT_read_factory_settings", WM_OP_INVOKE_DEFAULT, (IDProperty *)user_data, nullptr);
+}
+
+static int wm_read_factory_settings__confirm(bContext *C, wmOperator *op)
+{
+  set_next_operator_state(op, READ_FACTORY_SETTINGS_STATE_DISCARD_CHANGES);
+
+  return WM_operator_confirm_message_ex(
+      C, op, IFACE_("OK?"), ICON_QUESTION, NULL, WM_OP_INVOKE_DEFAULT);
+}
+
+static int wm_read_factory_settings__discard_changes(bContext *C, wmOperator *op)
+{
+  set_next_operator_state(op, READ_FACTORY_SETTINGS_STATE_READ);
+
+  if (wm_operator_close_file_dialog_if_needed(
+          C, op, wm_read_factory_settings_after_dialog_callback)) {
+    return OPERATOR_INTERFACE;
+  }
+  return wm_read_factory_settings_dispatch(C, op);
+}
+
+static OperatorDispatchTarget wm_read_factory_settings_dispatch_targets[] = {
+    {READ_FACTORY_SETTINGS_STATE_CONFIRM, wm_read_factory_settings__confirm},
+    {READ_FACTORY_SETTINGS_STATE_DISCARD_CHANGES, wm_read_factory_settings__discard_changes},
+    {READ_FACTORY_SETTINGS_STATE_READ, wm_homefile_read_exec},
+    {0, nullptr},
+};
+
+static int wm_read_factory_settings_dispatch(bContext *C, wmOperator *op)
+{
+  return operator_state_dispatch(C, op, wm_read_factory_settings_dispatch_targets);
+}
+
+static int wm_read_factory_settings_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return wm_read_factory_settings_dispatch(C, op);
+}
+
+void WM_OT_read_factory_settings(wmOperatorType *ot)
+{
+  ot->name = "Load Factory Settings";
+  ot->idname = "WM_OT_read_factory_settings";
+  ot->description =
+      "Load factory default startup file and preferences. "
+      "To make changes permanent, use \"Save Startup File\" and \"Save Preferences\"";
+
+  ot->invoke = wm_read_factory_settings_invoke;
+  ot->exec = wm_homefile_read_exec;
+  /* Omit poll to run in background mode. */
+
+  read_factory_reset_props(ot);
+
+  read_homefile_props(ot);
+
+  create_operator_state(ot, READ_FACTORY_SETTINGS_STATE_CONFIRM);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Open Main .blend File Utilities
+ * \{ */
+
+/**
+ * Wrap #WM_file_read, shared by file reading operators.
+ */
+static bool wm_file_read_opwrap(bContext *C, const char *filepath, ReportList *reports)
+{
+  /* XXX wm in context is not set correctly after WM_file_read -> crash */
+  /* do it before for now, but is this correct with multiple windows? */
+  WM_event_add_notifier(C, NC_WINDOW, nullptr);
+
+  /* Set by the "use_scripts" property on file load. */
+  if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) {
+    WM_file_autoexec_init(filepath);
+  }
+
+  const bool success = WM_file_read(C, filepath, reports);
+
+  return success;
 }
 
 /** \} */
