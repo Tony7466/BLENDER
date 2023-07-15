@@ -1611,18 +1611,19 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
     redraw = true;
   }
 
-  /* do updates for redraw. if event is in between mouse-move there are more
-   * coming, so postpone potentially slow redraw updates until all are done */
-  wmWindow *window = CTX_wm_window(C);
-  ARegion *region = CTX_wm_region(C);
-
+  /* Don't update the paint cursor in INBETWEEN_MOUSEMOVE events.*/
   if (event->type != INBETWEEN_MOUSEMOVE) {
-    /* At the very least, invalidate the cursor */
+    wmWindow *window = CTX_wm_window(C);
+    ARegion *region = CTX_wm_region(C);
+
     if (region && (p->flags & PAINT_SHOW_BRUSH)) {
       WM_paint_cursor_tag_redraw(window, region);
     }
   }
 
+  /* Draw for all events (even in between) otherwise updating the brush
+   * display is noticeably delayed.
+   */
   if (redraw && stroke->redraw) {
     stroke->redraw(C, stroke, false);
   }
