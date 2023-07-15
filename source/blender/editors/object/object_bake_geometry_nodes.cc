@@ -76,6 +76,41 @@ static int geometry_node_bake_invoke(bContext *C, wmOperator *op, const wmEvent 
   return OPERATOR_CANCELLED;
 }
 
+static int geometry_node_bake_delete_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  ModifierData *md = edit_modifier_property_get(op, ob, 0);
+  if (!(md && md->type == eModifierType_Nodes)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  const int32_t bake_index = RNA_int_get(op->ptr, "bake_index");
+
+  if (bake_index < 0 || bake_index >= nmd.bakes_num) {
+    return OPERATOR_CANCELLED;
+  }
+
+  NodesModifierBake &bake = nmd.bakes[bake_index];
+  if (!nmd.runtime->bakes) {
+    return OPERATOR_FINISHED;
+  }
+
+  nmd.runtime->bakes->storage_by_id.remove(bake.id);
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static int geometry_node_bake_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (edit_modifier_invoke_properties(C, op)) {
+    return geometry_node_bake_delete_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
 }  // namespace blender::ed::object::bake_geometry_nodes
 
 void OBJECT_OT_geometry_node_bake(wmOperatorType *ot)
@@ -88,6 +123,26 @@ void OBJECT_OT_geometry_node_bake(wmOperatorType *ot)
 
   ot->invoke = geometry_node_bake_invoke;
   ot->exec = geometry_node_bake_exec;
+  ot->poll = ED_operator_object_active_editable;
+
+  PropertyRNA *prop;
+
+  edit_modifier_properties(ot);
+
+  prop = RNA_def_int(ot->srna, "bake_index", 0, 0, INT32_MAX, "Bake Index", "", 0, INT32_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+}
+
+void OBJECT_OT_geometry_node_bake_delete(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_geometry_nodes;
+
+  ot->name = "Delete Geometry Node Bake";
+  ot->description = "Delete baked data";
+  ot->idname = __func__;
+
+  ot->invoke = geometry_node_bake_delete_invoke;
+  ot->exec = geometry_node_bake_delete_exec;
   ot->poll = ED_operator_object_active_editable;
 
   PropertyRNA *prop;

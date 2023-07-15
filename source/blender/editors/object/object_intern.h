@@ -351,6 +351,7 @@ void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
 /* object_bake_geometry_nodes.cc */
 
 void OBJECT_OT_geometry_node_bake(wmOperatorType *ot);
+void OBJECT_OT_geometry_node_bake_delete(wmOperatorType *ot);
 
 /* object_random.c */
 

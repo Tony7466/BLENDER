@@ -1004,13 +1004,13 @@ static void modifyGeometry(ModifierData *md,
   modifier_eval_data.side_effect_nodes = &side_effect_nodes;
 
   {
-    ComputeContextBuilder compute_context_builder;
-    compute_context_builder.push<bke::ModifierComputeContext>(nmd->modifier.name);
     for (const bNestedNodeRef &node_ref : nmd->node_group->nested_node_refs_span()) {
       Vector<int32_t> node_ids;
       if (!nmd->node_group->node_id_path_from_nested_node_ref(node_ref.id, node_ids)) {
         continue;
       }
+      ComputeContextBuilder compute_context_builder;
+      compute_context_builder.push<bke::ModifierComputeContext>(nmd->modifier.name);
       const int32_t leaf_node_id = node_ids.pop_last();
       for (const int32_t node_id : node_ids.as_span()) {
         compute_context_builder.push<bke::NodeGroupComputeContext>(node_id);
@@ -1590,8 +1590,17 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &bake_ptr, "directory", 0, "Directory", ICON_NONE);
 
-  uiItemIntO(
-      layout, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake", "bake_index", nmd->active_bake);
+  {
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiItemIntO(
+        row, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake", "bake_index", nmd->active_bake);
+    uiItemIntO(row,
+               "",
+               ICON_TRASH,
+               "OBJECT_OT_geometry_node_bake_delete",
+               "bake_index",
+               nmd->active_bake);
+  }
 }
 
 static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id)
