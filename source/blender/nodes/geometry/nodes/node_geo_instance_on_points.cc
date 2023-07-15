@@ -14,6 +14,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
+#include "BKE_type_conversions.hh"
 
 #include "node_geometry_util.hh"
 
@@ -160,25 +161,30 @@ static void add_instances_from_component(
   bke::MutableAttributeAccessor dst_attributes = dst_component.attributes_for_write();
   for (const auto item : attributes_to_propagate.items()) {
     const AttributeIDRef &id = item.key;
+    const eCustomDataType data_type = item.value.data_type;
     const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_POINT);
     if (!src) {
       /* Domain interpolation can fail if the source domain is empty. */
       continue;
     }
 
-    const eCustomDataType type = bke::cpp_type_to_custom_data_type(src.varray.type());
-    if (src.varray.size() == dst_component.instances_num() && src.sharing_info &&
-        src.varray.is_span()) {
-      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
-                                          *src.sharing_info);
-      dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, type, init);
+    if (!dst_attributes.contains(id)) {
+      const eCustomDataType src_type = bke::cpp_type_to_custom_data_type(src.varray.type());
+      if (src.sharing_info && src.varray.is_span() && data_type == src_type) {
+        const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                            *src.sharing_info);
+        dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, data_type, init);
+        continue;
+      }
+      dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, data_type, bke::AttributeInitConstruct());
     }
-    else {
-      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_INSTANCE, type);
-      array_utils::gather(src.varray, selection, dst.span.slice(start_len, select_len));
-      dst.finish();
-    }
+    const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+    const GVArray src_typed = conversions.try_convert(
+        src.varray, *bke::custom_data_type_to_cpp_type(data_type));
+
+    GSpanAttributeWriter dst = dst_attributes.lookup_for_write_span(id);
+    array_utils::gather(src_typed, selection, dst.span.slice(start_len, select_len));
+    dst.finish();
   }
 }
 
