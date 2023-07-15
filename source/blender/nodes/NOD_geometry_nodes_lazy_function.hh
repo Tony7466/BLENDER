@@ -28,6 +28,7 @@
 
 #include "BLI_compute_context.hh"
 
+#include "BKE_bake_geometry_nodes.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_simulation_state.hh"
 
@@ -78,6 +79,8 @@ struct GeoNodesModifierData {
    * If this is null, all socket values will be logged.
    */
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
+
+  bke::GeometryNodesBakes *bakes = nullptr;
 };
 
 struct GeoNodesOperatorData {
@@ -198,6 +201,7 @@ struct GeometryNodeLazyFunctionGraphMapping {
   Map<const bNode *, const lf::FunctionNode *> group_node_map;
   Map<const bNode *, const lf::FunctionNode *> viewer_node_map;
   Map<const bke::bNodeTreeZone *, const lf::FunctionNode *> zone_node_map;
+  Map<const bNode *, const lf::FunctionNode *> bake_node_map;
 
   /* Indexed by #bNodeSocket::index_in_all_outputs. */
   Array<int> lf_input_index_for_output_bsocket_usage;

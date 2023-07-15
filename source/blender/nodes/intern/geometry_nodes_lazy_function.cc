@@ -3256,6 +3256,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 
+    mapping_->bake_node_map.add(&bnode, &lf_node);
+
     this->build_bake_node_socket_usage(bnode, graph_params);
   }
 

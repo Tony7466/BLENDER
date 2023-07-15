@@ -33,8 +33,13 @@ class LazyFunctionForBakeNode : public LazyFunction {
         "Geometry", type);
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const final
+  void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
+    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
+        context.user_data);
+
+    user_data.compute_context->print_stack(std::cout, "Bake");
+
     GeometrySet geometry = params.extract_input<GeometrySet>(0);
     params.set_output(0, std::move(geometry));
   }

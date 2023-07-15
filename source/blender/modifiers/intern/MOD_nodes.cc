@@ -39,6 +39,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_bake_geometry_nodes.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_customdata.h"
 #include "BKE_geometry_fields.hh"
@@ -612,11 +613,87 @@ static void find_side_effect_nodes_for_viewer_path(
   }
 }
 
+static void find_side_effect_nodes_for_nested_node_ref(
+    const bNestedNodeRef &node_ref,
+    const NodesModifierData &nmd,
+    MultiValueMap<ComputeContextHash, const lf::FunctionNode *> &r_side_effect_nodes)
+{
+  ComputeContextBuilder compute_context_builder;
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+
+  /* Write side effect nodes to a new map and only add them to r_side_effect_nodes if this function
+   * does not return early. */
+  MultiValueMap<ComputeContextHash, const lf::FunctionNode *> local_side_effect_nodes;
+
+  const bNodeTree *group = nmd.node_group;
+  Vector<int32_t> node_id_path;
+  if (!group->node_id_path_from_nested_node_ref(node_ref.id, node_id_path)) {
+    return;
+  }
+  for (const int32_t node_id : node_id_path) {
+    const bNode *node = group->node_by_id(node_id);
+    if (node == nullptr) {
+      return;
+    }
+    const bke::bNodeTreeZones *tree_zones = group->zones();
+    if (tree_zones == nullptr) {
+      return;
+    }
+    const auto lf_graph_info = nodes::ensure_geometry_nodes_lazy_function_graph(*group);
+    if (lf_graph_info == nullptr) {
+      return;
+    }
+    const bke::bNodeTreeZone *zone = tree_zones->get_zone_by_node(node_id);
+    if (zone != nullptr) {
+      /* Referenced node must be outside of any zone to be able to make it a side effect node. */
+      return;
+    }
+    if (node->is_group()) {
+      if (node->id == nullptr) {
+        return;
+      }
+      if (node->is_muted()) {
+        return;
+      }
+      const lf::FunctionNode *lf_group_node = lf_graph_info->mapping.group_node_map.lookup_default(
+          node, nullptr);
+      if (lf_group_node == nullptr) {
+        return;
+      }
+      local_side_effect_nodes.add(compute_context_builder.hash(), lf_group_node);
+      compute_context_builder.push<bke::NodeGroupComputeContext>(*node);
+      group = reinterpret_cast<const bNodeTree *>(node->id);
+    }
+    else {
+      const lf::FunctionNode *lf_bake_node = lf_graph_info->mapping.bake_node_map.lookup_default(
+          node, nullptr);
+      if (lf_bake_node == nullptr) {
+        return;
+      }
+      local_side_effect_nodes.add(compute_context_builder.hash(), lf_bake_node);
+      break;
+    }
+  }
+
+  /* Successfully found all compute contexts for the nested node. */
+  for (const auto item : local_side_effect_nodes.items()) {
+    r_side_effect_nodes.add_multiple(item.key, item.value);
+  }
+}
+
 static void find_side_effect_nodes(
     const NodesModifierData &nmd,
     const ModifierEvalContext &ctx,
     MultiValueMap<ComputeContextHash, const lf::FunctionNode *> &r_side_effect_nodes)
 {
+  if (nmd.runtime->bakes) {
+    for (const int32_t bake_id : nmd.runtime->bakes->requested_bake_ids) {
+      const bNestedNodeRef *node_ref = nmd.node_group->find_nested_node_ref(bake_id);
+      BLI_assert(node_ref != nullptr);
+      find_side_effect_nodes_for_nested_node_ref(*node_ref, nmd, r_side_effect_nodes);
+    }
+  }
+
   Main *bmain = DEG_get_bmain(ctx.depsgraph);
   wmWindowManager *wm = (wmWindowManager *)bmain->wm.first;
   if (wm == nullptr) {
@@ -1636,8 +1713,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   tnmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
 
   if (flag & LIB_ID_COPY_SET_COPIED_ON_WRITE) {
-    /* Share the simulation cache between the original and evaluated modifier. */
+    /* Share the simulation cache and bakes between the original and evaluated modifier. */
     tnmd->runtime->simulation_cache = nmd->runtime->simulation_cache;
+    tnmd->runtime->bakes = nmd->runtime->bakes;
     /* Keep bake path in the evaluated modifier. */
     tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
                                           BLI_strdup(nmd->simulation_bake_directory) :
