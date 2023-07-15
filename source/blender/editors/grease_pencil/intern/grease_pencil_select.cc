@@ -520,19 +520,14 @@ static void GREASE_PENCIL_OT_set_selection_mode(wmOperatorType *ot)
 
 Array<bool> point_selection_get(const GreasePencilDrawing *drawing)
 {
-  /* Get point selection in the drawing. */
   const bke::CurvesGeometry &curves = drawing->geometry.wrap();
   const bke::AttributeAccessor attributes = curves.attributes();
-  if (!attributes.contains(".selection")) {
-    return Array<bool>(curves.points_num(), false);
-  }
 
-  /* Copy selection. */
-  const VArray<bool> selection = *attributes.lookup(".selection").typed<bool>();
+  /* Copy selection to array. */
+  const VArray<bool> selection = *attributes.lookup_or_default<bool>(
+      ".selection", ATTR_DOMAIN_POINT, false);
   Array<bool> point_selection(selection.size());
-  for (const int point_i : selection.index_range()) {
-    point_selection[point_i] = selection[point_i];
-  }
+  selection.materialize(point_selection);
 
   return point_selection;
 }
