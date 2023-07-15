@@ -178,8 +178,6 @@ class LazyFunctionForBakeNode : public LazyFunction {
       return;
     }
 
-    user_data.compute_context->print_stack(std::cout, node_.label_or_name());
-
     const int32_t nested_node_id =
         user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
             {user_data.compute_context->hash(), node_.identifier}, -1);
