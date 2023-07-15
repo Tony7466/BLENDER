@@ -58915,6 +58915,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "기본 파일을 열기 (현재 파일을 저장하지 않음)"
 
 
+msgid "Open the default file"
+msgstr "기본 파일을 열기"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "또 다른 스타트업 파일에 대한 경로"
 

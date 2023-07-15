@@ -32027,6 +32027,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Otevře výchozí soubor (neuloží současný soubor)"
 
 
+msgid "Open the default file"
+msgstr "Otevře výchozí soubor"
+
+
 msgctxt "Operator"
 msgid "Load Preferences"
 msgstr "Načíst Předvolby"

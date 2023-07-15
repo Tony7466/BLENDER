@@ -46944,6 +46944,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Abre o ficheiro padrão (não guarda o ficheiro atual)."
 
 
+msgid "Open the default file"
+msgstr "Abre o ficheiro padrão"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "Caminho para um ficheiro de inicialização alternativo"
 

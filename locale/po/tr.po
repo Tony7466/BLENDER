@@ -8250,6 +8250,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Öntanımlı dosyayı aç (geçerli dosyayı kaydetmez)"
 
 
+msgid "Open the default file"
+msgstr "Öntanımlı dosyayı aç"
+
+
 msgid "Factory Startup"
 msgstr "Fabrika Başlangıcı"
 

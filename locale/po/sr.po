@@ -20446,6 +20446,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Отвара подразумевану датотеку (не уписује тернутну датотеку)"
 
 
+msgid "Open the default file"
+msgstr "Отвара подразумевану датотеку"
+
+
 msgctxt "Operator"
 msgid "Recover Auto Save"
 msgstr "Опорави аутоматски сачувано"

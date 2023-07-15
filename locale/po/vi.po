@@ -76667,6 +76667,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Mở tập tin mặc định (sẽ không lưu tập tin hiện tại)"
 
 
+msgid "Open the default file"
+msgstr "Mở tập tin mặc định"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "Đường dẫn đến tập tin khởi động thay phiên"
 

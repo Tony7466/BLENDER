@@ -81942,6 +81942,9 @@ msgstr "Recharger le fichier de démarrage"
 msgid "Open the default file (doesn't save the current file)"
 msgstr "Ouvrir le fichier par défaut (ne pas sauvegarder le fichier en cours)"
 
+msgid "Open the default file"
+msgstr "Ouvrir le fichier par défaut"
+
 
 msgid "Path to an alternative start-up file"
 msgstr "Chemin vers un fichier de démarrage alternatif"

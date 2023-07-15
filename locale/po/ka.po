@@ -38698,6 +38698,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "გახსენი ნაგულისხმები ფაილი (არ შეინახო მიმდინარე ფაილი)"
 
 
+msgid "Open the default file"
+msgstr "გახსენი ნაგულისხმები ფაილი"
+
+
 msgctxt "Operator"
 msgid "Load Preferences"
 msgstr "ჩატვირთე პარამეტრები"

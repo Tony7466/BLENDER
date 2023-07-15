@@ -81941,6 +81941,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Obre el document predeterminat (no desa el document actual)"
 
 
+msgid "Open the default file"
+msgstr "Obre el document predeterminat"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "Camí a un document d'inici alternatiu"
 

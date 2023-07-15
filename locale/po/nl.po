@@ -6252,6 +6252,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Open Opstart Bestand (huidige bestand wordt niet opgelsagen)"
 
 
+msgid "Open the default file"
+msgstr "Open Opstart Bestand"
+
+
 msgctxt "Operator"
 msgid "Load Preferences"
 msgstr "Laad Instellingen"

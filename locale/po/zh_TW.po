@@ -42695,6 +42695,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "開啟預設檔案 (不儲存目前檔案)"
 
 
+msgid "Open the default file"
+msgstr "開啟預設檔案"
+
+
 msgctxt "Operator"
 msgid "Load Preferences"
 msgstr "載入偏好設定"

@@ -41981,6 +41981,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Standard-Datei öffnen (aktuelle Datei wird nicht gespeichert)"
 
 
+msgid "Open the default file"
+msgstr "Standard-Datei öffnen"
+
+
 msgid "Load user interface setup from the .blend file"
 msgstr "Lade Benutzeroberflächeneinstellungen von .blend-Datei"
 

@@ -81682,6 +81682,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "デフォルトのファイルを開く(現在のファイルは保存されません)"
 
 
+msgid "Open the default file"
+msgstr "デフォルトのファイルを開く"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "代わりのスタートアップファイルのパス"
 

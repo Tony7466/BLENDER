@@ -81943,6 +81943,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Otvorí predvolený súbor (neuloží aktuálny súbor)"
 
 
+msgid "Open the default file"
+msgstr "Otvorí predvolený súbor"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "Cesta k alternatívnemu spúšťaciemu súboru"
 

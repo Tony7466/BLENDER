@@ -16587,6 +16587,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Alapértelmezett fájl megnyitása (nem menti az aktuális fájlt)"
 
 
+msgid "Open the default file"
+msgstr "Alapértelmezett fájl megnyitása"
+
+
 msgctxt "Operator"
 msgid "Recover Auto Save"
 msgstr "Biztonsági mentés helyreállítása"

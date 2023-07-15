@@ -62458,6 +62458,10 @@ msgid "Open the default file (doesn't save the current file)"
 msgstr "Открыть файл по умолчанию (без сохранения текущего файла)"
 
 
+msgid "Open the default file"
+msgstr "Открыть файл по умолчанию"
+
+
 msgid "Path to an alternative start-up file"
 msgstr "Путь к альтернативному стартовому файлу"
 
