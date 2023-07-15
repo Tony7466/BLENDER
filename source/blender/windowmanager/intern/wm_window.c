@@ -29,6 +29,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
@@ -2481,6 +2482,7 @@ void WM_window_set_active_scene(Main *bmain, bContext *C, wmWindow *win, Scene *
 
   /* Set scene in parent and its child windows. */
   if (win_parent->scene != scene) {
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_SCENE_CHANGE_PRE);
     ED_screen_scene_change(C, win_parent, scene, true);
     changed = true;
   }
@@ -2499,6 +2501,7 @@ void WM_window_set_active_scene(Main *bmain, bContext *C, wmWindow *win, Scene *
 
     /* Complete redraw. */
     WM_event_add_notifier(C, NC_WINDOW, NULL);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_SCENE_CHANGE_POST);
   }
 }
 

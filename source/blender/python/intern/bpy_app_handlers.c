@@ -90,6 +90,10 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"composite_cancel", "on a compositing background job (cancel)"},
     {"animation_playback_pre", "on starting animation playback"},
     {"animation_playback_post", "on ending animation playback"},
+    {"workspace_change_pre", "on workspace change (before)"},
+    {"workspace_change_post", "on workspace change (after)"},
+    {"scene_change_pre", "on scene change (before)"},
+    {"scene_change_post", "on scene change (after)"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1

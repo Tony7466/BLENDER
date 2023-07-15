@@ -16,6 +16,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_blendfile.h"
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -186,6 +187,7 @@ bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager 
     return false;
   }
 
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_WORKSPACE_CHANGE_PRE);
   workspace_exit(workspace_old, win);
 
   screen_change_prepare(screen_old, screen_new, bmain, C, win);
@@ -209,6 +211,7 @@ bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager 
     ED_object_mode_set(C, eObjectMode(workspace_new->object_mode));
   }
 
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_WORKSPACE_CHANGE_POST);
   return true;
 }
 
