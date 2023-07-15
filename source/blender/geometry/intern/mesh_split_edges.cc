@@ -493,6 +493,15 @@ static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
   }
 }
 
+static void create_reverse_map(const IndexMask &mask, MutableSpan<int> r_map)
+{
+#ifdef DEBUG
+  r_map.fill(-1);
+#endif
+  mask.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int src_i, const int dst_i) { r_map[src_i] = dst_i; });
+}
+
 /** Assign the newly created vertex duplicates to the loose edges around this vertex. */
 static void reassign_loose_edge_verts(const int orig_verts_num,
                                       const int orig_edges_num,
@@ -506,12 +515,7 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
   /* This map is only useful because loose edges are not duplicated. Non-loose
    * edges can potentially be duplicated into multiple final edges. */
   Array<int> old_to_new_edge_map(orig_edges_num);
-  maps.unselected.foreach_index_optimized<int>(GrainSize(4096), [&](const int src, const int dst) {
-    old_to_new_edge_map[src] = ranges.unselected[dst];
-  });
-  maps.loose.foreach_index_optimized<int>(GrainSize(4096), [&](const int src, const int dst) {
-    old_to_new_edge_map[src] = ranges.loose[dst];
-  });
+  create_reverse_map(maps.loose, old_to_new_edge_map);
 
   affected_verts.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
     const Span<Fan> fans = vert_fans[mask];
@@ -522,14 +526,8 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
        * non-split loose edges attached to the vertex, they all reuse the original vertex. */
       if (std::holds_alternative<SplitLooseEdgeFan>(fans[i])) {
         const int orig_edge = std::get<SplitLooseEdgeFan>(fans[i]);
-        const int new_edge = old_to_new_edge_map[orig_edge];
+        const int new_edge = ranges.loose[old_to_new_edge_map[orig_edge]];
         swap_edge_vert(edges[new_edge], vert, new_vert);
-      }
-      else if (std::holds_alternative<LooseEdgeGroupfan>(fans[i])) {
-        for (const int orig_edge : std::get<LooseEdgeGroupfan>(fans[i])) {
-          const int new_edge = old_to_new_edge_map[orig_edge];
-          swap_edge_vert(edges[new_edge], vert, new_vert);
-        }
       }
     }
   });
