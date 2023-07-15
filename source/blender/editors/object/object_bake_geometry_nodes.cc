@@ -17,6 +17,7 @@
 
 #include "BKE_bake_geometry_nodes.hh"
 #include "BKE_context.h"
+#include "BKE_modifier.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
@@ -25,37 +26,74 @@
 
 namespace blender::ed::object::bake_geometry_nodes {
 
+static void bake_operator_props(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  WM_operator_properties_id_lookup(ot, false);
+
+  prop = RNA_def_string(
+      ot->srna, "modifier", nullptr, MAX_NAME, "Modifier", "Name of the modifier");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+
+  prop = RNA_def_int(ot->srna, "bake_index", 0, 0, INT32_MAX, "Bake Index", "", 0, INT32_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+}
+
+[[nodiscard]] static bool find_edit_bake(Main *bmain,
+                                         wmOperator *op,
+                                         Object **r_object,
+                                         NodesModifierData **r_modifier,
+                                         NodesModifierBake **r_bake)
+{
+  Object *object = reinterpret_cast<Object *>(
+      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+  if (object == nullptr) {
+    return false;
+  }
+  char modifier_name[MAX_NAME];
+  RNA_string_get(op->ptr, "modifier", modifier_name);
+  ModifierData *md = BKE_modifiers_findby_name(object, modifier_name);
+  if (md == nullptr || md->type != eModifierType_Nodes) {
+    return false;
+  }
+  NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+  const int bake_index = RNA_int_get(op->ptr, "bake_index");
+  if (bake_index < 0 || bake_index >= nmd->bakes_num) {
+    return false;
+  }
+
+  *r_object = object;
+  *r_modifier = nmd;
+  *r_bake = nmd->bakes + bake_index;
+  return true;
+}
+
 static int geometry_node_bake_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Object *ob = ED_object_active_context(C);
-  ModifierData *md = edit_modifier_property_get(op, ob, 0);
+
+  Object *object;
+  NodesModifierData *modifier;
+  NodesModifierBake *bake;
+  if (!find_edit_bake(bmain, op, &object, &modifier, &bake)) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *modifier;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  if (!(md && md->type == eModifierType_Nodes)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  const int32_t bake_index = RNA_int_get(op->ptr, "bake_index");
-
-  if (bake_index < 0 || bake_index >= nmd.bakes_num) {
-    return OPERATOR_CANCELLED;
-  }
-
-  NodesModifierBake &bake = nmd.bakes[bake_index];
 
   if (!nmd.runtime->bakes) {
     nmd.runtime->bakes = std::make_shared<bke::GeometryNodesModifierBakes>();
   }
   bke::GeometryNodesModifierBakes &bakes = *nmd.runtime->bakes;
   bke::BakeNodeStorage &bake_storage = *bakes.storage_by_id.lookup_or_add_cb(
-      bake.id, []() { return std::make_unique<bke::BakeNodeStorage>(); });
+      bake->id, []() { return std::make_unique<bke::BakeNodeStorage>(); });
   bake_storage.geometry.reset();
   bake_storage.newly_baked_geometry.reset();
 
-  bakes.requested_bake_ids.add(bake.id);
+  bakes.requested_bake_ids.add(bake->id);
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 
   bakes.requested_bake_ids.clear();
@@ -68,37 +106,25 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static int geometry_node_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  if (edit_modifier_invoke_properties(C, op)) {
-    return geometry_node_bake_exec(C, op);
-  }
-  return OPERATOR_CANCELLED;
-}
-
 static int geometry_node_bake_delete_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_active_context(C);
-  ModifierData *md = edit_modifier_property_get(op, ob, 0);
-  if (!(md && md->type == eModifierType_Nodes)) {
+  Main *bmain = CTX_data_main(C);
+
+  Object *object;
+  NodesModifierData *modifier;
+  NodesModifierBake *bake;
+  if (!find_edit_bake(bmain, op, &object, &modifier, &bake)) {
     return OPERATOR_CANCELLED;
   }
+  NodesModifierData &nmd = *modifier;
 
-  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  const int32_t bake_index = RNA_int_get(op->ptr, "bake_index");
-
-  if (bake_index < 0 || bake_index >= nmd.bakes_num) {
-    return OPERATOR_CANCELLED;
-  }
-
-  NodesModifierBake &bake = nmd.bakes[bake_index];
   if (!nmd.runtime->bakes) {
     return OPERATOR_FINISHED;
   }
 
-  nmd.runtime->bakes->storage_by_id.remove(bake.id);
+  nmd.runtime->bakes->storage_by_id.remove(bake->id);
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
   return OPERATOR_FINISHED;
 }
@@ -121,16 +147,10 @@ void OBJECT_OT_geometry_node_bake(wmOperatorType *ot)
   ot->description = "Bake geometry in a Bake node in geometry nodes";
   ot->idname = __func__;
 
-  ot->invoke = geometry_node_bake_invoke;
   ot->exec = geometry_node_bake_exec;
   ot->poll = ED_operator_object_active_editable;
 
-  PropertyRNA *prop;
-
-  edit_modifier_properties(ot);
-
-  prop = RNA_def_int(ot->srna, "bake_index", 0, 0, INT32_MAX, "Bake Index", "", 0, INT32_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
+  bake_operator_props(ot);
 }
 
 void OBJECT_OT_geometry_node_bake_delete(wmOperatorType *ot)
@@ -145,10 +165,5 @@ void OBJECT_OT_geometry_node_bake_delete(wmOperatorType *ot)
   ot->exec = geometry_node_bake_delete_exec;
   ot->poll = ED_operator_object_active_editable;
 
-  PropertyRNA *prop;
-
-  edit_modifier_properties(ot);
-
-  prop = RNA_def_int(ot->srna, "bake_index", 0, 0, INT32_MAX, "Bake Index", "", 0, INT32_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
+  bake_operator_props(ot);
 }

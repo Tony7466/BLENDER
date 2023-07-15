@@ -1592,14 +1592,34 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 
   {
     uiLayout *row = uiLayoutRow(layout, true);
-    uiItemIntO(
-        row, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake", "bake_index", nmd->active_bake);
-    uiItemIntO(row,
-               "",
-               ICON_TRASH,
-               "OBJECT_OT_geometry_node_bake_delete",
-               "bake_index",
-               nmd->active_bake);
+    {
+      PointerRNA op_ptr;
+      uiItemFullO(row,
+                  "OBJECT_OT_geometry_node_bake",
+                  "Bake",
+                  ICON_NONE,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  0,
+                  &op_ptr);
+      WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
+      RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
+      RNA_int_set(&op_ptr, "bake_index", nmd->active_bake);
+    }
+    {
+      PointerRNA op_ptr;
+      uiItemFullO(row,
+                  "OBJECT_OT_geometry_node_bake_delete",
+                  "",
+                  ICON_TRASH,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  0,
+                  &op_ptr);
+      WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
+      RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
+      RNA_int_set(&op_ptr, "bake_index", nmd->active_bake);
+    }
   }
 }
 
