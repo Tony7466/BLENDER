@@ -28,7 +28,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
     const CPPType &type = CPPType::get<GeometrySet>();
 
     lf_index_by_bsocket[input_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
-        "Geometry", type);
+        "Geometry", type, lf::ValueUsage::Maybe);
     lf_index_by_bsocket[output_bsocket.index_in_tree()] = outputs_.append_and_get_index_as(
         "Geometry", type);
   }
@@ -37,16 +37,59 @@ class LazyFunctionForBakeNode : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
+    if (user_data.modifier_data->bakes == nullptr) {
+      this->pass_through(params);
+      return;
+    }
 
     user_data.compute_context->print_stack(std::cout, node_.label_or_name());
 
     const int32_t nested_node_id =
         user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
             {user_data.compute_context->hash(), node_.identifier}, -1);
-    std::cout << "Nested Node Id in bake node: " << nested_node_id << "\n";
+    if (nested_node_id == -1) {
+      this->pass_through(params);
+      return;
+    }
 
-    GeometrySet geometry = params.extract_input<GeometrySet>(0);
-    params.set_output(0, std::move(geometry));
+    bke::BakeNodeStorage *bake_storage = user_data.modifier_data->bakes->get_storage(
+        nested_node_id);
+    if (bake_storage == nullptr) {
+      this->pass_through(params);
+      return;
+    }
+
+    if (bake_storage->geometry.has_value()) {
+      params.set_output(0, *bake_storage->geometry);
+      return;
+    }
+
+    const bool is_baking = user_data.modifier_data->bakes->requested_bake_ids.contains(
+        nested_node_id);
+    if (!is_baking) {
+      this->pass_through(params);
+      return;
+    }
+
+    GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
+    if (geometry == nullptr) {
+      /* Wait until value is available. */
+      return;
+    }
+    clean_geometry_for_cache(*geometry);
+    bake_storage->newly_baked_geometry.emplace(*geometry);
+    params.set_output(0, std::move(*geometry));
+  }
+
+  void pass_through(lf::Params &params) const
+  {
+    GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
+    if (geometry == nullptr) {
+      /* Wait until value is available. */
+      return;
+    }
+    clean_geometry_for_cache(*geometry);
+    params.set_output(0, std::move(*geometry));
   }
 };
 
@@ -57,12 +100,36 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
   LazyFunctionForBakeNodeInputUsage(const bNode &node) : node_(node)
   {
     debug_name_ = "Bake Input Usage";
-    outputs_.append_as("Usage", CPPType::get<ValueOrField<bool>>());
+    outputs_.append_as("Usage", CPPType::get<bool>());
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const final
+  void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
-    params.set_output(0, true);
+    const bool inputs_required = this->bake_inputs_required(context);
+    params.set_output(0, inputs_required);
+  }
+
+  bool bake_inputs_required(const lf::Context &context) const
+  {
+    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
+        context.user_data);
+    if (user_data.modifier_data->bakes == nullptr) {
+      return true;
+    }
+    const int32_t nested_node_id =
+        user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
+            {user_data.compute_context->hash(), node_.identifier}, -1);
+    if (nested_node_id == -1) {
+      return true;
+    }
+    bke::BakeNodeStorage *storage = user_data.modifier_data->bakes->get_storage(nested_node_id);
+    if (storage == nullptr) {
+      return true;
+    }
+    if (!storage->geometry.has_value()) {
+      return true;
+    }
+    return false;
   }
 };
 

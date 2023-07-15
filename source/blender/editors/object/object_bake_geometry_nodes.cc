@@ -51,13 +51,19 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   bke::BakeNodeStorage &bake_storage = *bakes.storage_by_id.lookup_or_add_cb(
       bake.id, []() { return std::make_unique<bke::BakeNodeStorage>(); });
   bake_storage.geometry.reset();
+  bake_storage.newly_baked_geometry.reset();
 
-  bakes.requested_bake_ids.append(bake.id);
+  bakes.requested_bake_ids.add(bake.id);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 
   bakes.requested_bake_ids.clear();
+
+  bake_storage.geometry = std::move(bake_storage.newly_baked_geometry);
+  bake_storage.newly_baked_geometry.reset();
+
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 
   return OPERATOR_CANCELLED;
 }

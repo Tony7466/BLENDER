@@ -153,6 +153,7 @@ static void remove_materials(Material ***materials, short *materials_num)
  */
 static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
 {
+  main_geometry.ensure_owns_all_data();
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
@@ -174,6 +175,11 @@ static void cleanup_geometry_for_simulation_state(GeometrySet &main_geometry)
                                       GeometryComponent::Type::PointCloud,
                                       GeometryComponent::Type::Instance});
   });
+}
+
+void clean_geometry_for_cache(GeometrySet &geometry)
+{
+  cleanup_geometry_for_simulation_state(geometry);
 }
 
 /**
@@ -464,7 +470,6 @@ void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulat
 
   for (GeometrySet *geometry : stored_geometries) {
     cleanup_geometry_for_simulation_state(*geometry);
-    geometry->ensure_owns_all_data();
   }
 }
 

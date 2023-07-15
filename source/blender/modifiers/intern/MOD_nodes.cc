@@ -1018,6 +1018,7 @@ static void modifyGeometry(ModifierData *md,
       modifier_eval_data.nested_node_id_by_compute_context.add(
           {compute_context_builder.hash(), leaf_node_id}, node_ref.id);
     }
+    modifier_eval_data.bakes = nmd->runtime->bakes.get();
   }
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};

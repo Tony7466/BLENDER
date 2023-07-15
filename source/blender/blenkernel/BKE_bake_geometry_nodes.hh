@@ -14,23 +14,26 @@ namespace blender::bke {
 class BakeNodeStorage {
  public:
   std::optional<GeometrySet> geometry;
-};
-
-class GeometryNodesBakes {
- public:
-  Map<std::pair<ComputeContextHash, int32_t>, BakeNodeStorage *> storage_by_compute_context_;
-
-  BakeNodeStorage *get_storage(const ComputeContextHash &compute_context,
-                               const int32_t bake_node_id)
-  {
-    return storage_by_compute_context_.lookup_default({compute_context, bake_node_id}, nullptr);
-  }
+  /**
+   * Store data during baking here to avoid race conditions with other nodes that access the
+   * geometry above.
+   */
+  std::optional<GeometrySet> newly_baked_geometry;
 };
 
 class GeometryNodesModifierBakes {
  public:
   Map<int32_t, std::unique_ptr<BakeNodeStorage>> storage_by_id;
-  Vector<int32_t> requested_bake_ids;
+  Set<int32_t> requested_bake_ids;
+
+  BakeNodeStorage *get_storage(const int32_t nested_node_id)
+  {
+    std::unique_ptr<BakeNodeStorage> *storage = this->storage_by_id.lookup_ptr(nested_node_id);
+    if (storage) {
+      return storage->get();
+    }
+    return nullptr;
+  }
 };
 
 }  // namespace blender::bke
