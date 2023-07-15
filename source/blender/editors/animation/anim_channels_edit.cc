@@ -3823,7 +3823,6 @@ static int mouse_anim_channels(bContext *C,
       /*todo*/
       break;
     case ANIMTYPE_GREASE_PENCIL_LAYER:
-      /*todo*/
       notifierFlags |= click_select_channel_grease_pencil_layer(
           C, ac, ale, SELECT_REPLACE, filter);
       break;
