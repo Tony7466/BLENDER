@@ -617,15 +617,6 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
   return this->complement(universe, memory).to_ranges();
 }
 
-template<typename T> void IndexMask::to_reverse_map(MutableSpan<T> r_map) const
-{
-#ifdef DEBUG
-  r_map.fill(-1);
-#endif
-  this->foreach_index_optimized<T>(GrainSize(4096),
-                                   [&](const T src_i, const T dst_i) { r_map[src_i] = dst_i; });
-}
-
 namespace detail {
 
 /**
@@ -736,7 +727,5 @@ template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
 template void IndexMask::to_indices(MutableSpan<int64_t>) const;
-template void IndexMask::to_reverse_map(MutableSpan<int32_t>) const;
-template void IndexMask::to_reverse_map(MutableSpan<int64_t>) const;
 
 }  // namespace blender::index_mask

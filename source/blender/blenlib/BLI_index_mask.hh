@@ -362,8 +362,6 @@ class IndexMask : private IndexMaskData {
   template<int64_t N = 4>
   Vector<std::variant<IndexRange, IndexMaskSegment>, N> to_spans_and_ranges() const;
 
-  template<typename T> void to_reverse_map(MutableSpan<T> r_indices) const;
-
   /**
    * Is used by some functions to get low level access to the mask in order to construct it.
    */

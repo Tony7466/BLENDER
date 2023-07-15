@@ -15,6 +15,15 @@
 
 namespace blender::geometry {
 
+static void create_reverse_map(const IndexMask &mask, MutableSpan<int> r_map)
+{
+#ifdef DEBUG
+  r_map.fill(-1);
+#endif
+  mask.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int src_i, const int dst_i) { r_map[src_i] = dst_i; });
+}
+
 static void remap_verts(const OffsetIndices<int> src_polys,
                         const OffsetIndices<int> dst_polys,
                         const int src_verts_num,
@@ -27,7 +36,7 @@ static void remap_verts(const OffsetIndices<int> src_polys,
                         MutableSpan<int> dst_corner_verts)
 {
   Array<int> map(src_verts_num);
-  vert_mask.to_reverse_map(map);
+  create_reverse_map(vert_mask, map);
   threading::parallel_invoke(
       vert_mask.size() > 1024,
       [&]() {
@@ -56,7 +65,7 @@ static void remap_edges(const OffsetIndices<int> src_polys,
                         MutableSpan<int> dst_corner_edges)
 {
   Array<int> map(src_edges_num);
-  edge_mask.to_reverse_map(map);
+  create_reverse_map(edge_mask, map);
   poly_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
     const IndexRange src_poly = src_polys[src_i];
     const IndexRange dst_poly = dst_polys[dst_i];
