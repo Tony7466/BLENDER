@@ -12,7 +12,8 @@
 namespace blender::bke {
 
 class BakeNodeStorage {
-  GeometrySet geometry;
+ public:
+  std::optional<GeometrySet> geometry;
 };
 
 class GeometryNodesBakes {

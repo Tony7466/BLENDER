@@ -38,7 +38,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
 
-    user_data.compute_context->print_stack(std::cout, "Bake");
+    user_data.compute_context->print_stack(std::cout, node_.label_or_name());
 
     GeometrySet geometry = params.extract_input<GeometrySet>(0);
     params.set_output(0, std::move(geometry));

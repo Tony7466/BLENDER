@@ -1573,7 +1573,8 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &bake_ptr, "directory", 0, "Directory", ICON_NONE);
 
-  uiItemO(layout, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake");
+  uiItemIntO(
+      layout, "Bake", ICON_NONE, "OBJECT_OT_geometry_node_bake", "bake_index", nmd->active_bake);
 }
 
 static void bake_list_item_draw(uiList * /*ui_list*/,
