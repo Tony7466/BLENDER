@@ -357,6 +357,11 @@ typedef struct wmWindow {
    */
   struct wmIMEData *ime_data;
 
+  /* The last mouse event type, used to generate INBETWEEN_MOUSEMOVE events. */
+  int last_mouse_event_type;
+  int _pad[1];
+  double last_mousemove_time;
+
   /** All events #wmEvent (ghost level events were handled). */
   ListBase event_queue;
   /** Window+screen handlers, handled last. */

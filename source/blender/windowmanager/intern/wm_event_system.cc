@@ -143,6 +143,10 @@ wmEvent *wm_event_add_ex(wmWindow *win,
 
   *event = *event_to_add;
 
+  if (event->type >= _EVT_MOUSE_MIN && event->type <= _EVT_MOUSE_MAX) {
+    win->last_mouse_event_type = event->type;
+  }
+
   if (event_to_add_after == nullptr) {
     BLI_addtail(&win->event_queue, event);
   }
@@ -5266,19 +5270,29 @@ static void wm_event_prev_click_set(wmEvent *event_state)
   event_state->prev_press_xy[1] = event_state->xy[1];
 }
 
-static wmEvent *wm_event_add_mousemove(wmWindow *win, const wmEvent *event)
-{
-  wmEvent *event_last = static_cast<wmEvent *>(win->event_queue.last);
+/* Where should this go? Should it be a const int? */
+#define INBETWEEN_MOUSEMOVES_PER_SECOND 30
 
-  /* Some painting operators want accurate mouse events, they can
-   * handle in between mouse move moves, others can happily ignore
-   * them for better performance. */
-  if (event_last && event_last->type == MOUSEMOVE) {
-    event_last->type = INBETWEEN_MOUSEMOVE;
-    event_last->flag = (eWM_EventFlag)0;
+static wmEvent *wm_event_add_mousemove(wmWindow *win, wmEvent *event)
+{
+  /* Enforce a limit on the number of MOUSEMOVE events per second.
+   * Those that fail the limit will be retyped to INBETWEEN_MOUSEMOVE
+   * so tools that need full-resolution mouse events can get them.
+   */
+  if (ELEM(win->last_mouse_event_type, MOUSEMOVE, INBETWEEN_MOUSEMOVE) &&
+      PIL_check_seconds_timer() - win->last_mousemove_time <
+          (1.0 / double(INBETWEEN_MOUSEMOVES_PER_SECOND)))
+  {
+    event->type = INBETWEEN_MOUSEMOVE;
+    event->flag = (eWM_EventFlag)0;
+  }
+  else {
+    win->last_mousemove_time = PIL_check_seconds_timer();
   }
 
+  wmEvent *event_last = static_cast<wmEvent *>(win->event_queue.last);
   wmEvent *event_new = wm_event_add(win, event);
+
   if (event_last == nullptr) {
     event_last = win->eventstate;
   }
@@ -5515,6 +5529,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
       event.val = KM_NOTHING;
       {
         wmEvent *event_new = wm_event_add_mousemove(win, &event);
+
         copy_v2_v2_int(event_state->xy, event_new->xy);
         event_state->tablet.is_motion_absolute = event_new->tablet.is_motion_absolute;
       }
@@ -5538,6 +5553,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
         event_other.val = KM_NOTHING;
         {
           wmEvent *event_new = wm_event_add_mousemove(win_other, &event_other);
+
           copy_v2_v2_int(win_other->eventstate->xy, event_new->xy);
           win_other->eventstate->tablet.is_motion_absolute = event_new->tablet.is_motion_absolute;
         }
