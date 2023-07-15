@@ -35,7 +35,8 @@ class LazyFunctionForBakeNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const final
   {
-    params.set_default_remaining_outputs();
+    GeometrySet geometry = params.extract_input<GeometrySet>(0);
+    params.set_output(0, std::move(geometry));
   }
 };
 
