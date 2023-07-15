@@ -104,20 +104,21 @@ static Vector<GVArray> get_field_context_inputs(
 /**
  * Retrieves the data from the context that is passed as input into the field.
  */
-static Vector<GVArray> get_volume_field_context_inputs(
+static Vector<VolumeGrid> get_volume_field_context_inputs(
     ResourceScope &scope,
     const VolumeMask &mask,
     const FieldContext &context,
     const Span<std::reference_wrapper<const FieldInput>> field_inputs)
 {
-  Vector<GVArray> field_context_inputs;
+  Vector<VolumeGrid> field_context_inputs;
   for (const FieldInput &field_input : field_inputs) {
-    GVArray varray = context.get_varray_for_input(field_input, mask, scope);
-    if (!varray) {
+    VolumeGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
+    if (!grid) {
       const CPPType &type = field_input.cpp_type();
-      varray = GVArray::ForSingleDefault(type, mask.min_array_size());
+      const void *default_value = type.default_value();
+      grid = VolumeGrid::create(scope, type, default_value);
     }
-    field_context_inputs.append(varray);
+    field_context_inputs.append(grid);
   }
   return field_context_inputs;
 }
@@ -138,6 +139,45 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
   for (const int i : field_context_inputs.index_range()) {
     const GVArray &varray = field_context_inputs[i];
     if (varray.is_single()) {
+      continue;
+    }
+    const FieldInput &field_input = field_tree_info.deduplicated_field_inputs[i];
+    const GFieldRef field_input_field{field_input, 0};
+    const Span<GFieldRef> users = field_tree_info.field_users.lookup(field_input_field);
+    for (const GFieldRef &field : users) {
+      if (found_fields.add(field)) {
+        fields_to_check.push(field);
+      }
+    }
+  }
+  while (!fields_to_check.is_empty()) {
+    GFieldRef field = fields_to_check.pop();
+    const Span<GFieldRef> users = field_tree_info.field_users.lookup(field);
+    for (GFieldRef field : users) {
+      if (found_fields.add(field)) {
+        fields_to_check.push(field);
+      }
+    }
+  }
+  return found_fields;
+}
+
+/**
+ * \return A set that contains all fields from the field tree that depend on an input that varies
+ * for different indices.
+ */
+static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
+                                          Span<VolumeGrid> field_context_inputs)
+{
+  Set<GFieldRef> found_fields;
+  Stack<GFieldRef> fields_to_check;
+
+  /* The varying fields are the ones that depend on inputs that are not constant. Therefore we
+   * start the tree search at the non-constant input fields and traverse through all fields that
+   * depend on them. */
+  for (const int i : field_context_inputs.index_range()) {
+    const VolumeGrid &grid = field_context_inputs[i];
+    if (grid.is_empty()) {
       continue;
     }
     const FieldInput &field_input = field_tree_info.deduplicated_field_inputs[i];
@@ -516,42 +556,42 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
   return r_varrays;
 }
 
-Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
-                                       Span<GFieldRef> fields_to_evaluate,
-                                       const VolumeMask &mask,
-                                       const FieldContext &context,
-                                       Span<GVMutableArray> dst_varrays)
+Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
+                                          Span<GFieldRef> fields_to_evaluate,
+                                          const VolumeMask &mask,
+                                          const FieldContext &context,
+                                          Span<VolumeGrid> dst_grids)
 {
-  Vector<GVArray> r_varrays(fields_to_evaluate.size());
+  Vector<VolumeGrid> r_grids(fields_to_evaluate.size());
   Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
-  const int voxel_count = mask.min_voxel_count();
+  const int64_t voxel_count = mask.min_voxel_count();
 
   if (mask.is_empty()) {
     for (const int i : fields_to_evaluate.index_range()) {
-      const CPPType &type = fields_to_evaluate[i].cpp_type();
-      r_varrays[i] = GVArray::ForEmpty(type);
+      // const CPPType &type = fields_to_evaluate[i].cpp_type();
+      r_grids[i] = VolumeGrid{};
     }
-    return r_varrays;
+    return r_grids;
   }
 
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_varray = [&](int index) -> GVMutableArray {
-    if (dst_varrays.is_empty()) {
+  auto get_dst_grid = [&](int index) -> VolumeGrid {
+    if (dst_grids.is_empty()) {
       return {};
     }
-    const GVMutableArray &varray = dst_varrays[index];
-    if (!varray) {
+    const VolumeGrid &grid = dst_grids[index];
+    if (!grid) {
       return {};
     }
-    BLI_assert(varray.size() >= voxel_count);
-    return varray;
+    BLI_assert(grid.voxel_count() >= voxel_count);
+    return grid;
   };
 
   /* Traverse the field tree and prepare some data that is used in later steps. */
   FieldTreeInfo field_tree_info = preprocess_field_tree(fields_to_evaluate);
 
   /* Get inputs that will be passed into the field when evaluated. */
-  Vector<GVArray> field_context_inputs = get_volume_field_context_inputs(
+  Vector<VolumeGrid> field_context_inputs = get_volume_field_context_inputs(
       scope, mask, context, field_tree_info.deduplicated_field_inputs);
 
   /* Finish fields that don't need any processing directly. */
@@ -563,14 +603,14 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
         const FieldInput &field_input = static_cast<const FieldInput &>(field.node());
         const int field_input_index = field_tree_info.deduplicated_field_inputs.index_of(
             field_input);
-        const GVArray &varray = field_context_inputs[field_input_index];
-        r_varrays[out_index] = varray;
+        const VolumeGrid &grid = field_context_inputs[field_input_index];
+        r_grids[out_index] = grid;
         break;
       }
       case FieldNodeType::Constant: {
         const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
-        r_varrays[out_index] = GVArray::ForSingleRef(
-            field_constant.type(), voxel_count, field_constant.value().get());
+        r_grids[out_index] = VolumeGrid::create(
+            scope, field_constant.type(), field_constant.value().get());
         break;
       }
       case FieldNodeType::Operation: {
@@ -588,7 +628,7 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
   Vector<GFieldRef> constant_fields_to_evaluate;
   Vector<int> constant_field_indices;
   for (const int i : fields_to_evaluate.index_range()) {
-    if (r_varrays[i]) {
+    if (r_grids[i]) {
       /* Already done. */
       continue;
     }
@@ -625,25 +665,29 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
       const int out_index = varying_field_indices[i];
 
       /* Try to get an existing virtual array that the result should be written into. */
-      GVMutableArray dst_varray = get_dst_varray(out_index);
-      void *buffer;
-      if (!dst_varray || !dst_varray.is_span()) {
-        /* Allocate a new buffer for the computed result. */
-        buffer = scope.linear_allocator().allocate(type.size() * array_size, type.alignment());
+      VolumeGrid dst_varray = get_dst_grid(out_index);
+      // void *buffer;
+      if (!dst_varray) {
+        ///* Allocate a new buffer for the computed result. */
+        // buffer = scope.linear_allocator().allocate(type.size() * array_size, type.alignment());
 
-        if (!type.is_trivially_destructible()) {
-          /* Destruct values in the end. */
-          scope.add_destruct_call(
-              [buffer, mask, &type]() { type.destruct_indices(buffer, mask); });
-        }
-
-        r_varrays[out_index] = GVArray::ForSpan({type, buffer, array_size});
+        // if (!type.is_trivially_destructible()) {
+        //   /* Destruct values in the end. */
+        //   scope.add_destruct_call(
+        //       [buffer, mask, &type]() { type.destruct_indices(buffer, mask); });
+        // }
+        // r_grids[out_index] = GVArray::ForSpan({type, buffer, array_size});
+        /* Create a destination grid for the computed result. */
+        VolumeGrid::create(scope, type, voxel_count);
+        /* Destruct values in the end. */
+        scope.add_destruct_call([&volume_buffer]() { volume_buffer.destroy(); });
+        r_grids[out_index] = GVArray::For<VArrayImpl_For_>({type, buffer, array_size});
       }
       else {
         /* Write the result into the existing span. */
         buffer = dst_varray.get_internal_span().data();
 
-        r_varrays[out_index] = dst_varray;
+        r_grids[out_index] = dst_varray;
         is_output_written_to_dst[out_index] = true;
       }
 
@@ -687,7 +731,7 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
 
       /* Create virtual array that can be used after the procedure has been executed below. */
       const int out_index = constant_field_indices[i];
-      r_varrays[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
+      r_grids[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
     }
 
     procedure_executor.call(mask, mf_params, mf_context);
@@ -702,7 +746,7 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
         /* Caller did not provide a destination for this output. */
         continue;
       }
-      const GVArray &computed_varray = r_varrays[out_index];
+      const GVArray &computed_varray = r_grids[out_index];
       BLI_assert(computed_varray.type() == dst_varray.type());
       if (is_output_written_to_dst[out_index]) {
         /* The result has been written into the destination provided by the caller already. */
@@ -727,10 +771,10 @@ Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
           });
         });
       }
-      r_varrays[out_index] = dst_varray;
+      r_grids[out_index] = dst_varray;
     }
   }
-  return r_varrays;
+  return r_grids;
 }
 
 void evaluate_constant_field(const GField &field, void *r_value)
@@ -783,9 +827,9 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   return field_input.get_varray_for_context(*this, mask, scope);
 }
 
-GVArray FieldContext::get_varray_for_volume_input(const FieldInput &field_input,
-                                                  const VolumeMask &mask,
-                                                  ResourceScope &scope) const
+VolumeGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
+                                                   const VolumeMask &mask,
+                                                   ResourceScope &scope) const
 {
   /* Implemented only by volume context. */
   return {};

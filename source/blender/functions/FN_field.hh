@@ -330,9 +330,9 @@ class FieldContext {
                                        const IndexMask &mask,
                                        ResourceScope &scope) const;
 
-  virtual GVArray get_varray_for_volume_input(const FieldInput &field_input,
-                                              const VolumeMask &mask,
-                                              ResourceScope &scope) const;
+  virtual VolumeGrid get_volume_grid_for_input(const FieldInput &field_input,
+                                               const VolumeMask &mask,
+                                               ResourceScope &scope) const;
 };
 
 /**
@@ -514,11 +514,11 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  * \return The computed virtual arrays for each provided field. If #dst_varrays is passed,
  *   the provided virtual arrays are returned.
  */
-Vector<GVArray> evaluate_volume_fields(ResourceScope &scope,
-                                       Span<GFieldRef> fields_to_evaluate,
-                                       const VolumeMask &mask,
-                                       const FieldContext &context,
-                                       Span<GVMutableArray> dst_varrays = {});
+Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
+                                          Span<GFieldRef> fields_to_evaluate,
+                                          const VolumeMask &mask,
+                                          const FieldContext &context,
+                                          Span<VolumeGrid> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation
