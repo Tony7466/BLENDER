@@ -162,7 +162,7 @@ set(SRC
   intern/image_save.cc
   intern/instances.cc
   intern/ipo.cc
-  intern/kelvinlet.c
+  intern/kelvinlet.cc
   intern/key.cc
   intern/keyconfig.c
   intern/lattice.c
