@@ -176,7 +176,7 @@ set(SRC
   intern/lib_override.cc
   intern/lib_override_proxy_conversion.cc
   intern/lib_query.cc
-  intern/lib_remap.c
+  intern/lib_remap.cc
   intern/library.c
   intern/light.c
   intern/light_linking.cc
