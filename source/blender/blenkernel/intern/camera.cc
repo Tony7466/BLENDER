@@ -68,7 +68,7 @@ static void camera_init_data(ID *id)
  *
  * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
-static void camera_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src, const int flag)
+static void camera_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
 {
   Camera *cam_dst = (Camera *)id_dst;
   const Camera *cam_src = (const Camera *)id_src;
@@ -131,7 +131,7 @@ static void camera_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_list(reader, &ca->bg_images);
 
   LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
-    bgpic->iuser.scene = NULL;
+    bgpic->iuser.scene = nullptr;
 
     /* If linking from a library, clear 'local' library override flag. */
     if (ID_IS_LINKED(ca)) {
@@ -166,33 +166,33 @@ static void camera_blend_read_expand(BlendExpander *expander, ID *id)
 }
 
 IDTypeInfo IDType_ID_CA = {
-    .id_code = ID_CA,
-    .id_filter = FILTER_ID_CA,
-    .main_listbase_index = INDEX_ID_CA,
-    .struct_size = sizeof(Camera),
-    .name = "Camera",
-    .name_plural = "cameras",
-    .translation_context = BLT_I18NCONTEXT_ID_CAMERA,
-    .flags = IDTYPE_FLAGS_APPEND_IS_REUSABLE,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_CA,
+    /*id_filter*/ FILTER_ID_CA,
+    /*main_listbase_index*/ INDEX_ID_CA,
+    /*struct_size*/ sizeof(Camera),
+    /*name*/ "Camera",
+    /*name_plural*/ "cameras",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_CAMERA,
+    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = camera_init_data,
-    .copy_data = camera_copy_data,
-    .free_data = camera_free_data,
-    .make_local = NULL,
-    .foreach_id = camera_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = NULL,
-    .owner_pointer_get = NULL,
+    /*init_data*/ camera_init_data,
+    /*copy_data*/ camera_copy_data,
+    /*free_data*/ camera_free_data,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ camera_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ nullptr,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = camera_blend_write,
-    .blend_read_data = camera_blend_read_data,
-    .blend_read_lib = camera_blend_read_lib,
-    .blend_read_expand = camera_blend_read_expand,
+    /*blend_write*/ camera_blend_write,
+    /*blend_read_data*/ camera_blend_read_data,
+    /*blend_read_lib*/ camera_blend_read_lib,
+    /*blend_read_expand*/ camera_blend_read_expand,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 /** \} */
@@ -205,7 +205,7 @@ void *BKE_camera_add(Main *bmain, const char *name)
 {
   Camera *cam;
 
-  cam = BKE_id_new(bmain, ID_CA, name);
+  cam = static_cast<Camera *>(BKE_id_new(bmain, ID_CA, name));
 
   return cam;
 }
@@ -287,7 +287,7 @@ void BKE_camera_params_from_object(CameraParams *params, const Object *cam_ob)
 
   if (cam_ob->type == OB_CAMERA) {
     /* camera object */
-    Camera *cam = cam_ob->data;
+    Camera *cam = static_cast<Camera *>(cam_ob->data);
 
     if (cam->type == CAM_ORTHO) {
       params->is_ortho = true;
@@ -307,7 +307,7 @@ void BKE_camera_params_from_object(CameraParams *params, const Object *cam_ob)
   }
   else if (cam_ob->type == OB_LAMP) {
     /* light object */
-    Light *la = cam_ob->data;
+    Light *la = static_cast<Light *>(cam_ob->data);
     params->lens = 16.0f / tanf(la->spotsize * 0.5f);
     if (params->lens == 0.0f) {
       params->lens = 35.0f;
@@ -568,7 +568,7 @@ void BKE_camera_view_frame(const Scene *scene, const Camera *camera, float r_vec
 #define Z_MIN 2
 #define Z_MAX 3
 
-typedef struct CameraViewFrameData {
+struct CameraViewFrameData {
   float plane_tx[CAMERA_VIEWFRAME_NUM_PLANES][4]; /* 4 planes normalized */
   float dist_vals[CAMERA_VIEWFRAME_NUM_PLANES];   /* distance (signed) */
   float camera_no[3];
@@ -579,7 +579,7 @@ typedef struct CameraViewFrameData {
 
   /* Not used by callbacks... */
   float camera_rotmat[3][3];
-} CameraViewFrameData;
+};
 
 static void camera_to_frame_view_cb(const float co[3], void *user_data)
 {
@@ -636,8 +636,8 @@ static void camera_frame_fit_data_init(const Scene *scene,
                       data->plane_tx[Y_MAX],
                       data->plane_tx[Z_MIN],
                       data->plane_tx[Z_MAX],
-                      NULL,
-                      NULL);
+                      nullptr,
+                      nullptr);
 
   /* Rotate planes and get normals from them */
   for (uint i = 0; i < CAMERA_VIEWFRAME_NUM_PLANES; i++) {
@@ -813,7 +813,7 @@ bool BKE_camera_view_frame_fit_to_coords(const Depsgraph *depsgraph,
     camera_to_frame_view_cb(cos[num_cos], &data_cb);
   }
 
-  return camera_frame_fit_calc_from_data(&params, &data_cb, r_co, r_scale, NULL, NULL);
+  return camera_frame_fit_calc_from_data(&params, &data_cb, r_co, r_scale, nullptr, nullptr);
 }
 
 /** \} */
@@ -1003,7 +1003,7 @@ bool BKE_camera_multiview_spherical_stereo(const RenderData *rd, const Object *c
     return false;
   }
 
-  cam = camera->data;
+  cam = static_cast<Camera *>(camera->data);
 
   if ((rd->views_format == SCE_VIEWS_FORMAT_STEREO_3D) && ELEM(cam->type, CAM_PANO, CAM_PERSP) &&
       ((cam->stereo.flag & CAM_S3D_SPHERICAL) != 0))
@@ -1039,7 +1039,7 @@ static Object *camera_multiview_advanced(const Scene *scene, Object *camera, con
 
   if (name[0] != '\0') {
     Object *ob = BKE_scene_object_find_by_name(scene, name);
-    if (ob != NULL) {
+    if (ob != nullptr) {
       return ob;
     }
   }
@@ -1049,7 +1049,7 @@ static Object *camera_multiview_advanced(const Scene *scene, Object *camera, con
 
 Object *BKE_camera_multiview_render(const Scene *scene, Object *camera, const char *viewname)
 {
-  const bool is_multiview = (camera != NULL) && (scene->r.scemode & R_MULTIVIEW) != 0;
+  const bool is_multiview = (camera != nullptr) && (scene->r.scemode & R_MULTIVIEW) != 0;
 
   if (!is_multiview) {
     return camera;
@@ -1064,7 +1064,7 @@ Object *BKE_camera_multiview_render(const Scene *scene, Object *camera, const ch
 
 static float camera_stereo3d_shift_x(const Object *camera, const char *viewname)
 {
-  Camera *data = camera->data;
+  Camera *data = static_cast<Camera *>(camera->data);
   float shift = data->shiftx;
   float interocular_distance, convergence_distance;
   short convergence_mode, pivot;
@@ -1106,7 +1106,7 @@ float BKE_camera_multiview_shift_x(const RenderData *rd,
                                    const char *viewname)
 {
   const bool is_multiview = (rd && rd->scemode & R_MULTIVIEW) != 0;
-  Camera *data = camera->data;
+  Camera *data = static_cast<Camera *>(camera->data);
 
   BLI_assert(camera->type == OB_CAMERA);
 
@@ -1141,7 +1141,8 @@ void BKE_camera_multiview_params(const RenderData *rd,
 
 CameraBGImage *BKE_camera_background_image_new(Camera *cam)
 {
-  CameraBGImage *bgpic = MEM_callocN(sizeof(CameraBGImage), "Background Image");
+  CameraBGImage *bgpic = static_cast<CameraBGImage *>(
+      MEM_callocN(sizeof(CameraBGImage), "Background Image"));
 
   bgpic->scale = 1.0f;
   bgpic->alpha = 0.5f;
@@ -1155,9 +1156,9 @@ CameraBGImage *BKE_camera_background_image_new(Camera *cam)
 
 CameraBGImage *BKE_camera_background_image_copy(CameraBGImage *bgpic_src, const int flag)
 {
-  CameraBGImage *bgpic_dst = MEM_dupallocN(bgpic_src);
+  CameraBGImage *bgpic_dst = static_cast<CameraBGImage *>(MEM_dupallocN(bgpic_src));
 
-  bgpic_dst->next = bgpic_dst->prev = NULL;
+  bgpic_dst->next = bgpic_dst->prev = nullptr;
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     id_us_plus((ID *)bgpic_dst->ima);
@@ -1180,7 +1181,7 @@ void BKE_camera_background_image_remove(Camera *cam, CameraBGImage *bgpic)
 
 void BKE_camera_background_image_clear(Camera *cam)
 {
-  CameraBGImage *bgpic = cam->bg_images.first;
+  CameraBGImage *bgpic = static_cast<CameraBGImage *>(cam->bg_images.first);
 
   while (bgpic) {
     CameraBGImage *next_bgpic = bgpic->next;
