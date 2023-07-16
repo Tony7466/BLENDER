@@ -22,9 +22,9 @@
 /* Static definitions */
 /**********************/
 
-static Text *activeToolText = NULL;
-static SuggList suggestions = {NULL, NULL, NULL, NULL, NULL};
-static char *documentation = NULL;
+static Text *activeToolText = nullptr;
+static SuggList suggestions = {nullptr, nullptr, nullptr, nullptr, nullptr};
+static char *documentation = nullptr;
 // static int doc_lines = 0;
 
 static void txttl_free_suggest(void)
@@ -34,9 +34,9 @@ static void txttl_free_suggest(void)
     prev = item->prev;
     MEM_freeN(item);
   }
-  suggestions.first = suggestions.last = NULL;
-  suggestions.firstmatch = suggestions.lastmatch = NULL;
-  suggestions.selected = NULL;
+  suggestions.first = suggestions.last = nullptr;
+  suggestions.firstmatch = suggestions.lastmatch = nullptr;
+  suggestions.selected = nullptr;
   suggestions.top = 0;
 }
 
@@ -67,7 +67,7 @@ void texttool_text_set_active(Text *text)
 void texttool_text_clear(void)
 {
   free_texttools();
-  activeToolText = NULL;
+  activeToolText = nullptr;
 }
 
 short texttool_text_is_active(Text *text)
@@ -85,7 +85,7 @@ void texttool_suggest_add(const char *name, char type)
   int cmp;
   SuggItem *newitem, *item;
 
-  newitem = MEM_mallocN(sizeof(SuggItem) + len + 1, "SuggItem");
+  newitem = static_cast<SuggItem *>(MEM_mallocN(sizeof(SuggItem) + len + 1, "SuggItem"));
   if (!newitem) {
     printf("Failed to allocate memory for suggestion.\n");
     return;
@@ -93,7 +93,7 @@ void texttool_suggest_add(const char *name, char type)
 
   memcpy(newitem->name, name, len + 1);
   newitem->type = type;
-  newitem->prev = newitem->next = NULL;
+  newitem->prev = newitem->next = nullptr;
 
   /* Perform simple linear search for ordered storage */
   if (!suggestions.first || !suggestions.last) {
@@ -127,7 +127,7 @@ void texttool_suggest_add(const char *name, char type)
       suggestions.first = newitem;
     }
   }
-  suggestions.firstmatch = suggestions.lastmatch = suggestions.selected = NULL;
+  suggestions.firstmatch = suggestions.lastmatch = suggestions.selected = nullptr;
   suggestions.top = 0;
 }
 
@@ -145,7 +145,7 @@ void texttool_suggest_prefix(const char *prefix, const int prefix_len)
     return;
   }
 
-  first = last = NULL;
+  first = last = nullptr;
   for (match = suggestions.first; match; match = match->next) {
     cmp = BLI_strncasecmp(prefix, match->name, prefix_len);
     if (cmp == 0) {
@@ -171,9 +171,9 @@ void texttool_suggest_prefix(const char *prefix, const int prefix_len)
     suggestions.selected = first;
   }
   else {
-    suggestions.firstmatch = NULL;
-    suggestions.lastmatch = NULL;
-    suggestions.selected = NULL;
+    suggestions.firstmatch = nullptr;
+    suggestions.lastmatch = nullptr;
+    suggestions.selected = nullptr;
     suggestions.top = 0;
   }
 }

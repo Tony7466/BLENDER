@@ -287,7 +287,7 @@ set(SRC
   intern/subdiv_topology.cc
   intern/subsurf_ccg.cc
   intern/text.c
-  intern/text_suggestions.c
+  intern/text_suggestions.cc
   intern/texture.cc
   intern/tracking.cc
   intern/tracking_auto.cc
