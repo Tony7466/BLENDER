@@ -73,7 +73,7 @@ static struct IDNameLib_TypeMap *main_idmap_from_idcode(struct IDNameLib_Map *id
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 struct IDNameLib_Map *BKE_main_idmap_create(Main *bmain,
@@ -81,19 +81,20 @@ struct IDNameLib_Map *BKE_main_idmap_create(Main *bmain,
                                             Main *old_bmain,
                                             const int idmap_types)
 {
-  struct IDNameLib_Map *id_map = MEM_mallocN(sizeof(*id_map), __func__);
+  struct IDNameLib_Map *id_map = static_cast<IDNameLib_Map *>(
+      MEM_mallocN(sizeof(*id_map), __func__));
   id_map->bmain = bmain;
   id_map->idmap_types = idmap_types;
 
   int index = 0;
   while (index < INDEX_ID_MAX) {
     struct IDNameLib_TypeMap *type_map = &id_map->type_maps[index];
-    type_map->map = NULL;
+    type_map->map = nullptr;
     type_map->id_type = BKE_idtype_idcode_iter_step(&index);
     BLI_assert(type_map->id_type != 0);
   }
   BLI_assert(index == INDEX_ID_MAX);
-  id_map->type_maps_keys_pool = NULL;
+  id_map->type_maps_keys_pool = nullptr;
 
   if (idmap_types & MAIN_IDMAP_TYPE_UUID) {
     ID *id;
@@ -111,17 +112,17 @@ struct IDNameLib_Map *BKE_main_idmap_create(Main *bmain,
     FOREACH_MAIN_ID_END;
   }
   else {
-    id_map->uuid_map = NULL;
+    id_map->uuid_map = nullptr;
   }
 
   if (create_valid_ids_set) {
-    id_map->valid_id_pointers = BKE_main_gset_create(bmain, NULL);
-    if (old_bmain != NULL) {
+    id_map->valid_id_pointers = BKE_main_gset_create(bmain, nullptr);
+    if (old_bmain != nullptr) {
       id_map->valid_id_pointers = BKE_main_gset_create(old_bmain, id_map->valid_id_pointers);
     }
   }
   else {
-    id_map->valid_id_pointers = NULL;
+    id_map->valid_id_pointers = nullptr;
   }
 
   return id_map;
@@ -134,10 +135,11 @@ void BKE_main_idmap_insert_id(struct IDNameLib_Map *id_map, ID *id)
     struct IDNameLib_TypeMap *type_map = main_idmap_from_idcode(id_map, id_type);
 
     /* No need to do anything if map has not been lazily created yet. */
-    if (LIKELY(type_map != NULL) && type_map->map != NULL) {
-      BLI_assert(id_map->type_maps_keys_pool != NULL);
+    if (LIKELY(type_map != nullptr) && type_map->map != nullptr) {
+      BLI_assert(id_map->type_maps_keys_pool != nullptr);
 
-      struct IDNameLib_Key *key = BLI_mempool_alloc(id_map->type_maps_keys_pool);
+      struct IDNameLib_Key *key = static_cast<IDNameLib_Key *>(
+          BLI_mempool_alloc(id_map->type_maps_keys_pool));
       key->name = id->name + 2;
       key->lib = id->lib;
       BLI_ghash_insert(type_map->map, key, id);
@@ -145,7 +147,7 @@ void BKE_main_idmap_insert_id(struct IDNameLib_Map *id_map, ID *id)
   }
 
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
-    BLI_assert(id_map->uuid_map != NULL);
+    BLI_assert(id_map->uuid_map != nullptr);
     BLI_assert(id->session_uuid != MAIN_ID_SESSION_UUID_UNSET);
     void **id_ptr_v;
     const bool existing_key = BLI_ghash_ensure_p(
@@ -164,20 +166,21 @@ void BKE_main_idmap_remove_id(struct IDNameLib_Map *id_map, ID *id)
     struct IDNameLib_TypeMap *type_map = main_idmap_from_idcode(id_map, id_type);
 
     /* No need to do anything if map has not been lazily created yet. */
-    if (LIKELY(type_map != NULL) && type_map->map != NULL) {
-      BLI_assert(id_map->type_maps_keys_pool != NULL);
+    if (LIKELY(type_map != nullptr) && type_map->map != nullptr) {
+      BLI_assert(id_map->type_maps_keys_pool != nullptr);
 
       /* NOTE: We cannot free the key from the MemPool here, would need new API from GHash to also
        * retrieve key pointer. Not a big deal for now */
-      BLI_ghash_remove(type_map->map, &(struct IDNameLib_Key){id->name + 2, id->lib}, NULL, NULL);
+      IDNameLib_Key key{id->name + 2, id->lib};
+      BLI_ghash_remove(type_map->map, &key, nullptr, nullptr);
     }
   }
 
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
-    BLI_assert(id_map->uuid_map != NULL);
+    BLI_assert(id_map->uuid_map != nullptr);
     BLI_assert(id->session_uuid != MAIN_ID_SESSION_UUID_UNSET);
 
-    BLI_ghash_remove(id_map->uuid_map, POINTER_FROM_UINT(id->session_uuid), NULL, NULL);
+    BLI_ghash_remove(id_map->uuid_map, POINTER_FROM_UINT(id->session_uuid), nullptr, nullptr);
   }
 }
 
@@ -188,7 +191,7 @@ Main *BKE_main_idmap_main_get(struct IDNameLib_Map *id_map)
 
 static uint idkey_hash(const void *ptr)
 {
-  const struct IDNameLib_Key *idkey = ptr;
+  const struct IDNameLib_Key *idkey = static_cast<const IDNameLib_Key *>(ptr);
   uint key = BLI_ghashutil_strhash(idkey->name);
   if (idkey->lib) {
     key ^= BLI_ghashutil_ptrhash(idkey->lib);
@@ -198,8 +201,8 @@ static uint idkey_hash(const void *ptr)
 
 static bool idkey_cmp(const void *a, const void *b)
 {
-  const struct IDNameLib_Key *idkey_a = a;
-  const struct IDNameLib_Key *idkey_b = b;
+  const struct IDNameLib_Key *idkey_a = static_cast<const IDNameLib_Key *>(a);
+  const struct IDNameLib_Key *idkey_b = static_cast<const IDNameLib_Key *>(b);
   return !STREQ(idkey_a->name, idkey_b->name) || (idkey_a->lib != idkey_b->lib);
 }
 
@@ -210,21 +213,22 @@ ID *BKE_main_idmap_lookup_name(struct IDNameLib_Map *id_map,
 {
   struct IDNameLib_TypeMap *type_map = main_idmap_from_idcode(id_map, id_type);
 
-  if (UNLIKELY(type_map == NULL)) {
-    return NULL;
+  if (UNLIKELY(type_map == nullptr)) {
+    return nullptr;
   }
 
   /* Lazy init. */
-  if (type_map->map == NULL) {
-    if (id_map->type_maps_keys_pool == NULL) {
+  if (type_map->map == nullptr) {
+    if (id_map->type_maps_keys_pool == nullptr) {
       id_map->type_maps_keys_pool = BLI_mempool_create(
           sizeof(struct IDNameLib_Key), 1024, 1024, BLI_MEMPOOL_NOP);
     }
 
     GHash *map = type_map->map = BLI_ghash_new(idkey_hash, idkey_cmp, __func__);
     ListBase *lb = which_libbase(id_map->bmain, id_type);
-    for (ID *id = lb->first; id; id = id->next) {
-      struct IDNameLib_Key *key = BLI_mempool_alloc(id_map->type_maps_keys_pool);
+    for (ID *id = static_cast<ID *>(lb->first); id; id = static_cast<ID *>(id->next)) {
+      struct IDNameLib_Key *key = static_cast<IDNameLib_Key *>(
+          BLI_mempool_alloc(id_map->type_maps_keys_pool));
       key->name = id->name + 2;
       key->lib = id->lib;
       BLI_ghash_insert(map, key, id);
@@ -232,7 +236,7 @@ ID *BKE_main_idmap_lookup_name(struct IDNameLib_Map *id_map,
   }
 
   const struct IDNameLib_Key key_lookup = {name, lib};
-  return BLI_ghash_lookup(type_map->map, &key_lookup);
+  return static_cast<ID *>(BLI_ghash_lookup(type_map->map, &key_lookup));
 }
 
 ID *BKE_main_idmap_lookup_id(struct IDNameLib_Map *id_map, const ID *id)
@@ -243,18 +247,18 @@ ID *BKE_main_idmap_lookup_id(struct IDNameLib_Map *id_map, const ID *id)
    * Otherwise, we cannot provide new ID pointer that way (would crash accessing freed memory
    * when trying to get ID name).
    */
-  if (id_map->valid_id_pointers == NULL || BLI_gset_haskey(id_map->valid_id_pointers, id)) {
+  if (id_map->valid_id_pointers == nullptr || BLI_gset_haskey(id_map->valid_id_pointers, id)) {
     return BKE_main_idmap_lookup_name(id_map, GS(id->name), id->name + 2, id->lib);
   }
-  return NULL;
+  return nullptr;
 }
 
 ID *BKE_main_idmap_lookup_uuid(struct IDNameLib_Map *id_map, const uint session_uuid)
 {
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
-    return BLI_ghash_lookup(id_map->uuid_map, POINTER_FROM_UINT(session_uuid));
+    return static_cast<ID *>(BLI_ghash_lookup(id_map->uuid_map, POINTER_FROM_UINT(session_uuid)));
   }
-  return NULL;
+  return nullptr;
 }
 
 void BKE_main_idmap_destroy(struct IDNameLib_Map *id_map)
@@ -263,23 +267,23 @@ void BKE_main_idmap_destroy(struct IDNameLib_Map *id_map)
     struct IDNameLib_TypeMap *type_map = id_map->type_maps;
     for (int i = 0; i < INDEX_ID_MAX; i++, type_map++) {
       if (type_map->map) {
-        BLI_ghash_free(type_map->map, NULL, NULL);
-        type_map->map = NULL;
+        BLI_ghash_free(type_map->map, nullptr, nullptr);
+        type_map->map = nullptr;
       }
     }
-    if (id_map->type_maps_keys_pool != NULL) {
+    if (id_map->type_maps_keys_pool != nullptr) {
       BLI_mempool_destroy(id_map->type_maps_keys_pool);
-      id_map->type_maps_keys_pool = NULL;
+      id_map->type_maps_keys_pool = nullptr;
     }
   }
   if (id_map->idmap_types & MAIN_IDMAP_TYPE_UUID) {
-    BLI_ghash_free(id_map->uuid_map, NULL, NULL);
+    BLI_ghash_free(id_map->uuid_map, nullptr, nullptr);
   }
 
-  BLI_assert(id_map->type_maps_keys_pool == NULL);
+  BLI_assert(id_map->type_maps_keys_pool == nullptr);
 
-  if (id_map->valid_id_pointers != NULL) {
-    BLI_gset_free(id_map->valid_id_pointers, NULL);
+  if (id_map->valid_id_pointers != nullptr) {
+    BLI_gset_free(id_map->valid_id_pointers, nullptr);
   }
 
   MEM_freeN(id_map);

@@ -183,7 +183,7 @@ set(SRC
   intern/lightprobe.cc
   intern/linestyle.cc
   intern/main.c
-  intern/main_idmap.c
+  intern/main_idmap.cc
   intern/main_namemap.cc
   intern/mask.cc
   intern/mask_evaluate.cc
