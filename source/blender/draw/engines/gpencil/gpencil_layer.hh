@@ -47,6 +47,17 @@ class LayerModule {
       do_layer_blending = true;
     }
 
+    bool ob_shadeless = false;  // TODO: ob.is_shadeless
+    if (ob_shadeless) {
+      gp_layer.use_lights = false;
+    }
+    else {
+      gp_layer.use_lights = layer.use_lights();
+      if (!gp_layer.use_lights) {
+        do_layer_blending = true;
+      }
+    }
+
     layers_buf_.append(gp_layer);
   }
 
