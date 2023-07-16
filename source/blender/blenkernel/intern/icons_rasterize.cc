@@ -32,7 +32,7 @@ struct UserRasterInfo {
 
 static void tri_fill_flat(int x, int x_end, int y, void *user_data)
 {
-  struct UserRasterInfo *data = user_data;
+  struct UserRasterInfo *data = static_cast<UserRasterInfo *>(user_data);
   uint *p = &data->rect[(y * data->rect_size[1]) + x];
   uint col = data->color[0];
   while (x++ != x_end) {
@@ -42,7 +42,7 @@ static void tri_fill_flat(int x, int x_end, int y, void *user_data)
 
 static void tri_fill_smooth(int x, int x_end, int y, void *user_data)
 {
-  struct UserRasterInfo *data = user_data;
+  struct UserRasterInfo *data = static_cast<UserRasterInfo *>(user_data);
   uint *p = &data->rect[(y * data->rect_size[1]) + x];
   float pt_step_fl[2] = {(float)x, (float)y};
   while (x++ != x_end) {
@@ -74,7 +74,7 @@ ImBuf *BKE_icon_geom_rasterize(const struct Icon_Geom *geom, const uint size_x, 
   const int coords_len = geom->coords_len;
 
   const uchar(*pos)[2] = geom->coords;
-  const uint *col = (void *)geom->colors;
+  const uint *col = static_cast<const uint *>((void *)geom->colors);
 
   /* TODO(@ideasman42): Currently rasterizes to fixed size, then scales.
    * Should rasterize to double size for eg instead. */
