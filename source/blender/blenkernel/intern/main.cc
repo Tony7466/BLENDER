@@ -32,8 +32,8 @@
 
 Main *BKE_main_new(void)
 {
-  Main *bmain = MEM_callocN(sizeof(Main), "new main");
-  bmain->lock = MEM_mallocN(sizeof(SpinLock), "main lock");
+  Main *bmain = static_cast<Main *>(MEM_callocN(sizeof(Main), "new main"));
+  bmain->lock = static_cast<MainLock *>(MEM_mallocN(sizeof(SpinLock), "main lock"));
   BLI_spin_init((SpinLock *)bmain->lock);
   bmain->is_global_main = false;
   return bmain;
@@ -68,8 +68,8 @@ void BKE_main_free(Main *mainvar)
     ListBase *lb = lbarray[a];
     ID *id, *id_next;
 
-    for (id = lb->first; id != NULL; id = id_next) {
-      id_next = id->next;
+    for (id = static_cast<ID *>(lb->first); id != nullptr; id = id_next) {
+      id_next = static_cast<ID *>(id->next);
 #if 1
       BKE_id_free_ex(mainvar, id, free_flag, false);
 #else
@@ -178,7 +178,7 @@ void BKE_main_unlock(Main *bmain)
 
 static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
 {
-  MainIDRelations *bmain_relations = cb_data->user_data;
+  MainIDRelations *bmain_relations = static_cast<MainIDRelations *>(cb_data->user_data);
   ID *self_id = cb_data->self_id;
   ID **id_pointer = cb_data->id_pointer;
   const int cb_flag = cb_data->cb_flag;
@@ -190,33 +190,34 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
     {
       if (!BLI_ghash_ensure_p(
               bmain_relations->relations_from_pointers, self_id, (void ***)&entry_p)) {
-        *entry_p = MEM_callocN(sizeof(**entry_p), __func__);
+        *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
         (*entry_p)->session_uuid = self_id->session_uuid;
       }
       else {
         BLI_assert((*entry_p)->session_uuid == self_id->session_uuid);
       }
-      MainIDRelationsEntryItem *to_id_entry = BLI_mempool_alloc(bmain_relations->entry_items_pool);
+      MainIDRelationsEntryItem *to_id_entry = static_cast<MainIDRelationsEntryItem *>(
+          BLI_mempool_alloc(bmain_relations->entry_items_pool));
       to_id_entry->next = (*entry_p)->to_ids;
       to_id_entry->id_pointer.to = id_pointer;
-      to_id_entry->session_uuid = (*id_pointer != NULL) ? (*id_pointer)->session_uuid :
-                                                          MAIN_ID_SESSION_UUID_UNSET;
+      to_id_entry->session_uuid = (*id_pointer != nullptr) ? (*id_pointer)->session_uuid :
+                                                             MAIN_ID_SESSION_UUID_UNSET;
       to_id_entry->usage_flag = cb_flag;
       (*entry_p)->to_ids = to_id_entry;
     }
 
     /* Add `self_id` as parent of `id_pointer`. */
-    if (*id_pointer != NULL) {
+    if (*id_pointer != nullptr) {
       if (!BLI_ghash_ensure_p(
               bmain_relations->relations_from_pointers, *id_pointer, (void ***)&entry_p)) {
-        *entry_p = MEM_callocN(sizeof(**entry_p), __func__);
+        *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
         (*entry_p)->session_uuid = (*id_pointer)->session_uuid;
       }
       else {
         BLI_assert((*entry_p)->session_uuid == (*id_pointer)->session_uuid);
       }
-      MainIDRelationsEntryItem *from_id_entry = BLI_mempool_alloc(
-          bmain_relations->entry_items_pool);
+      MainIDRelationsEntryItem *from_id_entry = static_cast<MainIDRelationsEntryItem *>(
+          BLI_mempool_alloc(bmain_relations->entry_items_pool));
       from_id_entry->next = (*entry_p)->from_ids;
       from_id_entry->id_pointer.from = self_id;
       from_id_entry->session_uuid = self_id->session_uuid;
@@ -230,11 +231,12 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
 
 void BKE_main_relations_create(Main *bmain, const short flag)
 {
-  if (bmain->relations != NULL) {
+  if (bmain->relations != nullptr) {
     BKE_main_relations_free(bmain);
   }
 
-  bmain->relations = MEM_mallocN(sizeof(*bmain->relations), __func__);
+  bmain->relations = static_cast<MainIDRelations *>(
+      MEM_mallocN(sizeof(*bmain->relations), __func__));
   bmain->relations->relations_from_pointers = BLI_ghash_new(
       BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
   bmain->relations->entry_items_pool = BLI_mempool_create(
@@ -250,7 +252,7 @@ void BKE_main_relations_create(Main *bmain, const short flag)
     /* Ensure all IDs do have an entry, even if they are not connected to any other. */
     MainIDRelationsEntry **entry_p;
     if (!BLI_ghash_ensure_p(bmain->relations->relations_from_pointers, id, (void ***)&entry_p)) {
-      *entry_p = MEM_callocN(sizeof(**entry_p), __func__);
+      *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
       (*entry_p)->session_uuid = id->session_uuid;
     }
     else {
@@ -258,26 +260,26 @@ void BKE_main_relations_create(Main *bmain, const short flag)
     }
 
     BKE_library_foreach_ID_link(
-        NULL, id, main_relations_create_idlink_cb, bmain->relations, idwalk_flag);
+        nullptr, id, main_relations_create_idlink_cb, bmain->relations, idwalk_flag);
   }
   FOREACH_MAIN_ID_END;
 }
 
 void BKE_main_relations_free(Main *bmain)
 {
-  if (bmain->relations != NULL) {
-    if (bmain->relations->relations_from_pointers != NULL) {
-      BLI_ghash_free(bmain->relations->relations_from_pointers, NULL, MEM_freeN);
+  if (bmain->relations != nullptr) {
+    if (bmain->relations->relations_from_pointers != nullptr) {
+      BLI_ghash_free(bmain->relations->relations_from_pointers, nullptr, MEM_freeN);
     }
     BLI_mempool_destroy(bmain->relations->entry_items_pool);
     MEM_freeN(bmain->relations);
-    bmain->relations = NULL;
+    bmain->relations = nullptr;
   }
 }
 
 void BKE_main_relations_tag_set(Main *bmain, const eMainIDRelationsEntryTags tag, const bool value)
 {
-  if (bmain->relations == NULL) {
+  if (bmain->relations == nullptr) {
     return;
   }
 
@@ -286,7 +288,8 @@ void BKE_main_relations_tag_set(Main *bmain, const eMainIDRelationsEntryTags tag
        !BLI_ghashIterator_done(gh_iter);
        BLI_ghashIterator_step(gh_iter))
   {
-    MainIDRelationsEntry *entry = BLI_ghashIterator_getValue(gh_iter);
+    MainIDRelationsEntry *entry = static_cast<MainIDRelationsEntry *>(
+        BLI_ghashIterator_getValue(gh_iter));
     if (value) {
       entry->tags |= tag;
     }
@@ -299,7 +302,7 @@ void BKE_main_relations_tag_set(Main *bmain, const eMainIDRelationsEntryTags tag
 
 GSet *BKE_main_gset_create(Main *bmain, GSet *gset)
 {
-  if (gset == NULL) {
+  if (gset == nullptr) {
     gset = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
   }
 
@@ -312,17 +315,17 @@ GSet *BKE_main_gset_create(Main *bmain, GSet *gset)
 }
 
 /* Utils for ID's library weak reference API. */
-typedef struct LibWeakRefKey {
+struct LibWeakRefKey {
   char filepath[FILE_MAX];
   char id_name[MAX_ID_NAME];
-} LibWeakRefKey;
+};
 
 static LibWeakRefKey *lib_weak_key_create(LibWeakRefKey *key,
                                           const char *lib_path,
                                           const char *id_name)
 {
-  if (key == NULL) {
-    key = MEM_mallocN(sizeof(*key), __func__);
+  if (key == nullptr) {
+    key = static_cast<LibWeakRefKey *>(MEM_mallocN(sizeof(*key), __func__));
   }
   STRNCPY(key->filepath, lib_path);
   STRNCPY(key->id_name, id_name);
@@ -331,15 +334,15 @@ static LibWeakRefKey *lib_weak_key_create(LibWeakRefKey *key,
 
 static uint lib_weak_key_hash(const void *ptr)
 {
-  const LibWeakRefKey *string_pair = ptr;
+  const LibWeakRefKey *string_pair = static_cast<const LibWeakRefKey *>(ptr);
   uint hash = BLI_ghashutil_strhash_p_murmur(string_pair->filepath);
   return hash ^ BLI_ghashutil_strhash_p_murmur(string_pair->id_name);
 }
 
 static bool lib_weak_key_cmp(const void *a, const void *b)
 {
-  const LibWeakRefKey *string_pair_a = a;
-  const LibWeakRefKey *string_pair_b = b;
+  const LibWeakRefKey *string_pair_a = static_cast<const LibWeakRefKey *>(a);
+  const LibWeakRefKey *string_pair_b = static_cast<const LibWeakRefKey *>(b);
 
   return !(STREQ(string_pair_a->filepath, string_pair_b->filepath) &&
            STREQ(string_pair_a->id_name, string_pair_b->id_name));
@@ -352,8 +355,8 @@ GHash *BKE_main_library_weak_reference_create(Main *bmain)
 
   ListBase *lb;
   FOREACH_MAIN_LISTBASE_BEGIN (bmain, lb) {
-    ID *id_iter = lb->first;
-    if (id_iter == NULL) {
+    ID *id_iter = static_cast<ID *>(lb->first);
+    if (id_iter == nullptr) {
       continue;
     }
     if (!BKE_idtype_idcode_append_is_reusable(GS(id_iter->name))) {
@@ -362,10 +365,10 @@ GHash *BKE_main_library_weak_reference_create(Main *bmain)
     BLI_assert(BKE_idtype_idcode_is_linkable(GS(id_iter->name)));
 
     FOREACH_MAIN_LISTBASE_ID_BEGIN (lb, id_iter) {
-      if (id_iter->library_weak_reference == NULL) {
+      if (id_iter->library_weak_reference == nullptr) {
         continue;
       }
-      LibWeakRefKey *key = lib_weak_key_create(NULL,
+      LibWeakRefKey *key = lib_weak_key_create(nullptr,
                                                id_iter->library_weak_reference->library_filepath,
                                                id_iter->library_weak_reference->library_id_name);
       BLI_ghash_insert(library_weak_reference_mapping, key, id_iter);
@@ -379,7 +382,7 @@ GHash *BKE_main_library_weak_reference_create(Main *bmain)
 
 void BKE_main_library_weak_reference_destroy(GHash *library_weak_reference_mapping)
 {
-  BLI_ghash_free(library_weak_reference_mapping, MEM_freeN, NULL);
+  BLI_ghash_free(library_weak_reference_mapping, MEM_freeN, nullptr);
 }
 
 ID *BKE_main_library_weak_reference_search_item(GHash *library_weak_reference_mapping,
@@ -397,13 +400,13 @@ void BKE_main_library_weak_reference_add_item(GHash *library_weak_reference_mapp
                                               ID *new_id)
 {
   BLI_assert(GS(library_id_name) == GS(new_id->name));
-  BLI_assert(new_id->library_weak_reference == NULL);
+  BLI_assert(new_id->library_weak_reference == nullptr);
   BLI_assert(BKE_idtype_idcode_append_is_reusable(GS(new_id->name)));
 
-  new_id->library_weak_reference = MEM_mallocN(sizeof(*(new_id->library_weak_reference)),
-                                               __func__);
+  new_id->library_weak_reference = static_cast<LibraryWeakReference *>(
+      MEM_mallocN(sizeof(*(new_id->library_weak_reference)), __func__));
 
-  LibWeakRefKey *key = lib_weak_key_create(NULL, library_filepath, library_id_name);
+  LibWeakRefKey *key = lib_weak_key_create(nullptr, library_filepath, library_id_name);
   void **id_p;
   const bool already_exist_in_mapping = BLI_ghash_ensure_p(
       library_weak_reference_mapping, key, &id_p);
@@ -423,18 +426,18 @@ void BKE_main_library_weak_reference_update_item(GHash *library_weak_reference_m
 {
   BLI_assert(GS(library_id_name) == GS(old_id->name));
   BLI_assert(GS(library_id_name) == GS(new_id->name));
-  BLI_assert(old_id->library_weak_reference != NULL);
-  BLI_assert(new_id->library_weak_reference == NULL);
+  BLI_assert(old_id->library_weak_reference != nullptr);
+  BLI_assert(new_id->library_weak_reference == nullptr);
   BLI_assert(STREQ(old_id->library_weak_reference->library_filepath, library_filepath));
   BLI_assert(STREQ(old_id->library_weak_reference->library_id_name, library_id_name));
 
   LibWeakRefKey key;
   lib_weak_key_create(&key, library_filepath, library_id_name);
   void **id_p = BLI_ghash_lookup_p(library_weak_reference_mapping, &key);
-  BLI_assert(id_p != NULL && *id_p == old_id);
+  BLI_assert(id_p != nullptr && *id_p == old_id);
 
   new_id->library_weak_reference = old_id->library_weak_reference;
-  old_id->library_weak_reference = NULL;
+  old_id->library_weak_reference = nullptr;
   *id_p = new_id;
 }
 
@@ -444,20 +447,20 @@ void BKE_main_library_weak_reference_remove_item(GHash *library_weak_reference_m
                                                  ID *old_id)
 {
   BLI_assert(GS(library_id_name) == GS(old_id->name));
-  BLI_assert(old_id->library_weak_reference != NULL);
+  BLI_assert(old_id->library_weak_reference != nullptr);
 
   LibWeakRefKey key;
   lib_weak_key_create(&key, library_filepath, library_id_name);
 
   BLI_assert(BLI_ghash_lookup(library_weak_reference_mapping, &key) == old_id);
-  BLI_ghash_remove(library_weak_reference_mapping, &key, MEM_freeN, NULL);
+  BLI_ghash_remove(library_weak_reference_mapping, &key, MEM_freeN, nullptr);
 
   MEM_SAFE_FREE(old_id->library_weak_reference);
 }
 
 BlendThumbnail *BKE_main_thumbnail_from_imbuf(Main *bmain, ImBuf *img)
 {
-  BlendThumbnail *data = NULL;
+  BlendThumbnail *data = nullptr;
 
   if (bmain) {
     MEM_SAFE_FREE(bmain->blen_thumb);
@@ -465,7 +468,7 @@ BlendThumbnail *BKE_main_thumbnail_from_imbuf(Main *bmain, ImBuf *img)
 
   if (img) {
     const size_t data_size = BLEN_THUMB_MEMSIZE(img->x, img->y);
-    data = MEM_mallocN(data_size, __func__);
+    data = static_cast<BlendThumbnail *>(MEM_mallocN(data_size, __func__));
 
     IMB_rect_from_float(img); /* Just in case... */
     data->width = img->x;
@@ -481,7 +484,7 @@ BlendThumbnail *BKE_main_thumbnail_from_imbuf(Main *bmain, ImBuf *img)
 
 ImBuf *BKE_main_thumbnail_to_imbuf(Main *bmain, BlendThumbnail *data)
 {
-  ImBuf *img = NULL;
+  ImBuf *img = nullptr;
 
   if (!data && bmain) {
     data = bmain->blen_thumb;
@@ -489,7 +492,7 @@ ImBuf *BKE_main_thumbnail_to_imbuf(Main *bmain, BlendThumbnail *data)
 
   if (data) {
     img = IMB_allocFromBuffer(
-        (const uint8_t *)data->rect, NULL, (uint)data->width, (uint)data->height, 4);
+        (const uint8_t *)data->rect, nullptr, (uint)data->width, (uint)data->height, 4);
   }
 
   return img;
@@ -499,7 +502,8 @@ void BKE_main_thumbnail_create(Main *bmain)
 {
   MEM_SAFE_FREE(bmain->blen_thumb);
 
-  bmain->blen_thumb = MEM_callocN(BLEN_THUMB_MEMSIZE(BLEN_THUMB_SIZE, BLEN_THUMB_SIZE), __func__);
+  bmain->blen_thumb = static_cast<BlendThumbnail *>(
+      MEM_callocN(BLEN_THUMB_MEMSIZE(BLEN_THUMB_SIZE, BLEN_THUMB_SIZE), __func__));
   bmain->blen_thumb->width = BLEN_THUMB_SIZE;
   bmain->blen_thumb->height = BLEN_THUMB_SIZE;
 }
@@ -598,7 +602,7 @@ ListBase *which_libbase(Main *bmain, short type)
     case ID_VO:
       return &(bmain->volumes);
   }
-  return NULL;
+  return nullptr;
 }
 
 int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
@@ -663,7 +667,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   lb[INDEX_ID_WM] = &(bmain->wm);
   lb[INDEX_ID_MSK] = &(bmain->masks);
 
-  lb[INDEX_ID_NULL] = NULL;
+  lb[INDEX_ID_NULL] = nullptr;
 
   return (INDEX_ID_MAX - 1);
 }
