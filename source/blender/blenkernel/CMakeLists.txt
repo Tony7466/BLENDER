@@ -168,7 +168,7 @@ set(SRC
   intern/lattice.cc
   intern/lattice_deform.cc
   intern/layer.cc
-  intern/layer_utils.c
+  intern/layer_utils.cc
   intern/lib_id.c
   intern/lib_id_delete.c
   intern/lib_id_eval.c
