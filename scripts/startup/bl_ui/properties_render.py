@@ -479,6 +479,8 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
         layout.prop(props, "ray_pixel_rate_reflection", text="Reflection Resolution")
         layout.prop(props, "ray_pixel_rate_refraction", text="Refraction Resolution")
         layout.prop(props, "ssr_firefly_fac")
+        layout.prop(props, "ssr_quality")
+        layout.prop(props, "ssr_thickness")
 
         if prefs.experimental.use_eevee_debug:
             # Debug option shows separate stages.

@@ -40,9 +40,8 @@ void RayTraceModule::init()
     use_temporal_denoise_ = use_bilateral_denoise_ = use_spatial_denoise_;
   }
 
-  /* TODO(fclem): Tracing. */
-  data_.thickness = 1.0f;
-  data_.quality = 1.0f;
+  data_.thickness = sce_eevee.ssr_thickness;
+  data_.quality = 1.0f - 0.95f * sce_eevee.ssr_quality;
   /* TODO(fclem): Per ray type clamp. */
   data_.brightness_clamp = (sce_eevee.ssr_firefly_fac > 0.0) ? sce_eevee.ssr_firefly_fac : 1e20;
   data_.max_trace_roughness = 1.0f;

@@ -8,6 +8,7 @@
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 
 void main()
@@ -22,9 +23,10 @@ void main()
   vec2 uv = (vec2(texel_fullres) + 0.5) * raytrace_buf.full_resolution_inv;
 
   vec4 ray_data = imageLoad(ray_data_img, texel);
-  float pdf = ray_data.w;
+  float ray_pdf_inv = ray_data.w;
 
-  if (pdf == 0.0) {
+  if (ray_pdf_inv == 0.0) {
+    /* Invalid ray or pixels without ray. Do not trace. */
     imageStore(ray_time_img, texel, vec4(0.0));
     imageStore(ray_radiance_img, texel, vec4(0.0));
     return;
@@ -33,11 +35,10 @@ void main()
   Ray ray;
   ray.origin = get_world_space_from_depth(uv, depth);
   ray.direction = ray_data.xyz;
-  /* Extend the ray to cover the whole view. */
 
   vec3 radiance = vec3(0.0);
-  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_W);
-  float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset.x);
+  float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
+  float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
 
 #if defined(RAYTRACE_REFLECT)
   const bool discard_backface = true;
@@ -49,19 +50,28 @@ void main()
 
   /* TODO(fclem): Take IOR into account in the roughness LOD bias. */
   /* TODO(fclem): pdf to roughness mapping is a crude approximation. Find something better. */
-  float roughness = saturate(sample_pdf_uniform_hemisphere() / pdf);
+  float roughness = saturate(sample_pdf_uniform_hemisphere() / ray_pdf_inv);
   bool hit = false;
   float hit_time = 0.0;
 
-  //   ray.direction *= 1e6;
-  //   hit = raytrace_screen(raytrace_buf,
-  //                         hiz_buf,
-  //                         hiz_tx,
-  //                         rand_trace,
-  //                         roughness,
-  //                         discard_backface,
-  //                         allow_self_intersection,
-  //                         ray);
+  /* Transform the ray into viewspace. */
+  Ray ray_view;
+  ray_view.origin = transform_point(drw_view.viewmat, ray.origin);
+  ray_view.direction = transform_direction(drw_view.viewmat, ray.direction);
+  /* Extend the ray to cover the whole view. */
+  ray_view.direction *= 1e6;
+  /* FIXME. This should be 1e6 and replace the line above. But the ray clipping
+   * (raytrace_clip_ray_to_near_plane) is not taking it into account. */
+  ray_view.max_time = 1.0;
+
+  hit = raytrace_screen(raytrace_buf,
+                        hiz_buf,
+                        hiz_tx,
+                        rand_trace,
+                        roughness,
+                        discard_backface,
+                        allow_self_intersection,
+                        ray_view);
 
   if (hit) {
     /* Evaluate radiance at hitpoint. */
@@ -73,6 +83,10 @@ void main()
     // if (thickness > 0.0 && length(ray_data.xyz) > thickness) {
     //   ray_radiance.rgb *= color;
     // }
+    ReflectionProbeData world_probe = reflection_probe_buf[0];
+    radiance = reflection_probes_sample(ray.direction, 0.0, world_probe).rgb;
+    hit_time = length(ray_view.direction);
+    radiance *= vec3(1.0, 0.0, 0.0);
   }
   else {
     /* Fallback to nearest lightprobe. */

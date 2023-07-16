@@ -50,8 +50,9 @@ bool raytrace_screen(RayTraceData rt_data,
     raytrace_clip_ray_to_near_plane(ray);
   }
 
+  /*  NOTE: The 2.0 factor here is because we are applying it in. */
   ScreenSpaceRay ssray = raytrace_screenspace_ray_create(
-      ray, rt_data.pixel_size, rt_data.thickness);
+      ray, 2.0 * rt_data.full_resolution_inv, rt_data.thickness);
 
   /* Avoid no iteration. */
   if (!allow_self_intersection && ssray.max_time < 1.1) {
@@ -77,7 +78,7 @@ bool raytrace_screen(RayTraceData rt_data,
   bool hit_failsafe = true;
 #endif
   const int max_steps = 255;
-  for (int iter = 1.0; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
+  for (int iter = 1; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
     float stride = 1.0 + float(iter) * rt_data.quality;
     float lod = log2(stride) * lod_fac;
 
@@ -95,11 +96,23 @@ bool raytrace_screen(RayTraceData rt_data,
     hit = (delta < 0.0);
     /* ... and above it with the added thickness. */
     hit = hit && (delta > ss_p.z - ss_p.w || abs(delta) < abs(ssray.direction.z * stride * 2.0));
+
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+    /* For workaround, perform discard backface and background check only within
+     * the iteration where the first successful ray intersection is registered.
+     * We flag failures to discard ray hits later. */
+    bool hit_valid = !(discard_backface && prev_delta < 0.0) && (depth_sample != 1.0);
+    if (hit && !hit_valid) {
+      hit_failsafe = false;
+    }
+#endif
   }
+#ifndef METAL_AMD_RAYTRACE_WORKAROUND
   /* Discard backface hits. */
   hit = hit && !(discard_backface && prev_delta < 0.0);
   /* Reject hit if background. */
   hit = hit && (depth_sample != 1.0);
+#endif
   /* Refine hit using intersection between the sampled heightfield and the ray.
    * This simplifies nicely to this single line. */
   time = mix(prev_time, time, saturate(prev_delta / (prev_delta - delta)));
@@ -109,5 +122,11 @@ bool raytrace_screen(RayTraceData rt_data,
   vec3 hit_P = get_world_space_from_depth(hit_ssP.xy, saturate(hit_ssP.z));
   ray.direction = hit_P - ray.origin;
 
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+  /* Check failed ray flag to discard bad hits. */
+  if (!hit_failsafe) {
+    return false;
+  }
+#endif
   return hit;
 }
