@@ -3754,9 +3754,8 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_symmetry_feather", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "symmetry", ME_SYMMETRY_FEATHER);
-  RNA_def_property_ui_text(prop,
-                           "Symmetry Feathering",
-                           "Reduce the strength where it overlaps with symmetric daubs");
+  RNA_def_property_ui_text(
+      prop, "Symmetry Feathering", "Reduce the strength where it overlaps with symmetric daubs");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, "rna_Mesh_update_draw");
   /* End Symmetry */
 

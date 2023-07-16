@@ -683,55 +683,6 @@ static void rna_def_paint(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", PAINT_USE_CAVITY_MASK);
   RNA_def_property_ui_text(prop, "Cavity Mask", "Mask painting according to mesh geometry cavity");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  /* Properties moved from paint properties to mesh properites */
-  /*
-  prop = RNA_def_property(srna, "tile_x", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_TILE_X);
-  RNA_def_property_ui_text(prop, "Tile X", "Tile along X axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "tile_y", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_TILE_Y);
-  RNA_def_property_ui_text(prop, "Tile Y", "Tile along Y axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "tile_z", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_TILE_Z);
-  RNA_def_property_ui_text(prop, "Tile Z", "Tile along Z axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "tile_offset", PROP_FLOAT, PROP_XYZ_LENGTH);
-  RNA_def_property_float_sdna(prop, NULL, "tile_offset");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_range(prop, 0.01, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0.01, 100, 1 * 100, 2);
-  RNA_def_property_ui_text(
-      prop, "Tiling offset for the X Axis", "Stride at which tiled strokes are copied");
-
-  srna = RNA_def_struct(brna, "Mesh", NULL);
-  prop = RNA_def_property(srna, "use_symmetry_x", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_SYMM_X);
-  RNA_def_property_ui_text(prop, "Symmetry X", "Mirror brush across the X axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "use_symmetry_y", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_SYMM_Y);
-  RNA_def_property_ui_text(prop, "Symmetry Y", "Mirror brush across the Y axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "use_symmetry_z", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_SYMM_Z);
-  RNA_def_property_ui_text(prop, "Symmetry Z", "Mirror brush across the Z axis");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "use_symmetry_feather", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "symmetry_flags", PAINT_SYMMETRY_FEATHER);
-  RNA_def_property_ui_text(prop,
-                           "Symmetry Feathering",
-                           "Reduce the strength of the brush where it overlaps symmetrical daubs");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-  */
 }
 
 static void rna_def_sculpt(BlenderRNA *brna)
@@ -807,24 +758,6 @@ static void rna_def_sculpt(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0, 32, 1, 1);
   RNA_def_property_ui_text(
       prop, "Radial Symmetry Count X Axis", "Number of times to copy strokes across the surface");
-
-  // TODO: 
-  // do these need to be remapped to a mesh property so that they can be
-  // deprecated before they're removed?
-  prop = RNA_def_property(srna, "lock_x", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", SCULPT_LOCK_X);
-  RNA_def_property_ui_text(prop, "Lock X", "Disallow changes to the X axis of vertices");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "lock_y", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", SCULPT_LOCK_Y);
-  RNA_def_property_ui_text(prop, "Lock Y", "Disallow changes to the Y axis of vertices");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
-
-  prop = RNA_def_property(srna, "lock_z", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", SCULPT_LOCK_Z);
-  RNA_def_property_ui_text(prop, "Lock Z", "Disallow changes to the Z axis of vertices");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "use_deform_only", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", SCULPT_ONLY_DEFORM);

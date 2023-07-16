@@ -2807,8 +2807,7 @@ bool SCULPT_search_circle_cb(PBVHNode *node, void *data_v)
   return dist_sq < data->radius_squared || true;
 }
 
-#define ME_USING_LOCK_AXIS(_me, _axis) \
-  ((_me)->lock & (ME_LOCK_X << _axis))
+#define ME_USING_LOCK_AXIS(_me, _axis) ((_me)->lock & (ME_LOCK_X << _axis))
 
 void SCULPT_clip(Object *ob, SculptSession *ss, float co[3], const float val[3])
 {
@@ -3191,7 +3190,7 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
                                    const float pivot[3])
 {
   for (int i = 0; i < 3; i++) {
-    ePaintSymmetryFlags symm_it =ePaintSymmetryFlags(1 << i);
+    ePaintSymmetryFlags symm_it = ePaintSymmetryFlags(1 << i);
     if (!(symm & symm_it)) {
       continue;
     }

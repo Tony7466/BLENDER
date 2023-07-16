@@ -171,7 +171,7 @@ typedef struct Mesh {
    * symmetrical geometry. Supported by operations such as transform and weight-painting.
    */
   char symmetry;
- 
+
   /** Choice between different remesh methods in the UI. */
   char remesh_mode;
 
@@ -219,7 +219,8 @@ typedef struct Mesh {
   int totface;
 
   /**
-   * User-defined symmetrize direction, one of the directions itemized in rna_enum_symmetrize_direction_items.
+   * User-defined symmetrize direction, one of the directions itemized in
+   * rna_enum_symmetrize_direction_items.
    */
   int symmetrize_direction;
 
@@ -468,13 +469,13 @@ typedef enum eMeshSymmetryType {
 
 #define ME_SYMMETRY_ANY (ME_SYMMETRY_X | ME_SYMMETRY_Y | ME_SYMMETRY_Z)
 
- /** #Mesh.lock */
+/** #Mesh.lock */
 typedef enum eMeshLockType {
   ME_LOCK_X = 1 << 0,
   ME_LOCK_Y = 1 << 1,
   ME_LOCK_Z = 1 << 2,
- } eMeshLockType;
- 
+} eMeshLockType;
+
 #define MESH_MAX_VERTS 2000000000L
 
 #ifdef __cplusplus
