@@ -99,7 +99,7 @@ set(SRC
   intern/crazyspace.cc
   intern/cryptomatte.cc
   intern/curve.cc
-  intern/curve_bevel.c
+  intern/curve_bevel.cc
   intern/curve_bezier.cc
   intern/curve_catmull_rom.cc
   intern/curve_convert.c
