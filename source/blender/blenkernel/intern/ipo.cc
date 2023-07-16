@@ -322,30 +322,36 @@ static const char *ob_adrcodes_to_paths(int adrcode, int *array_index)
       *array_index = 3;
       return "color";
 #if 0
-case OB_PD_FSTR: if (ob->pd) {
-poin = &(ob->pd->f_strength);
-}
-break;
-case OB_PD_FFALL: if (ob->pd) {
-poin = &(ob->pd->f_power);
-}
-break;
-case OB_PD_SDAMP: if (ob->pd) {
-poin = &(ob->pd->pdef_damp);
-}
-break;
-case OB_PD_RDAMP: if (ob->pd) {
-poin = &(ob->pd->pdef_rdamp);
-}
-break;
-case OB_PD_PERM: if (ob->pd) {
-poin = &(ob->pd->pdef_perm);
-}
-break;
-case OB_PD_FMAXD: if (ob->pd) {
-poin = &(ob->pd->maxdist);
-}
-break;
+    case OB_PD_FSTR:
+      if (ob->pd) {
+        poin = &(ob->pd->f_strength);
+      }
+      break;
+    case OB_PD_FFALL:
+      if (ob->pd) {
+        poin = &(ob->pd->f_power);
+      }
+      break;
+    case OB_PD_SDAMP:
+      if (ob->pd) {
+        poin = &(ob->pd->pdef_damp);
+      }
+      break;
+    case OB_PD_RDAMP:
+      if (ob->pd) {
+        poin = &(ob->pd->pdef_rdamp);
+      }
+      break;
+    case OB_PD_PERM:
+      if (ob->pd) {
+        poin = &(ob->pd->pdef_perm);
+      }
+      break;
+    case OB_PD_FMAXD:
+      if (ob->pd) {
+        poin = &(ob->pd->maxdist);
+      }
+      break;
 #endif
   }
 
@@ -528,32 +534,45 @@ static const char *mtex_adrcodes_to_paths(int adrcode, int * /*array_index*/)
   adrcode = (adrcode & (MA_MAP1 - 1));
   switch (adrcode) {
 #if 0 /* XXX these are not wrapped in RNA yet! */
-case MAP_OFS_X: poin = &(mtex->ofs[0]);
-break;
-case MAP_OFS_Y: poin = &(mtex->ofs[1]);
-break;
-case MAP_OFS_Z: poin = &(mtex->ofs[2]);
-break;
-case MAP_SIZE_X: poin = &(mtex->size[0]);
-break;
-case MAP_SIZE_Y: poin = &(mtex->size[1]);
-break;
-case MAP_SIZE_Z: poin = &(mtex->size[2]);
-break;
-case MAP_R: poin = &(mtex->r);
-break;
-case MAP_G: poin = &(mtex->g);
-break;
-case MAP_B: poin = &(mtex->b);
-break;
-case MAP_DVAR: poin = &(mtex->def_var);
-break;
-case MAP_COLF: poin = &(mtex->colfac);
-break;
-case MAP_NORF: poin = &(mtex->norfac);
-break;
-case MAP_VARF: poin = &(mtex->varfac);
-break;
+    case MAP_OFS_X:
+      poin = &(mtex->ofs[0]);
+      break;
+    case MAP_OFS_Y:
+      poin = &(mtex->ofs[1]);
+      break;
+    case MAP_OFS_Z:
+      poin = &(mtex->ofs[2]);
+      break;
+    case MAP_SIZE_X:
+      poin = &(mtex->size[0]);
+      break;
+    case MAP_SIZE_Y:
+      poin = &(mtex->size[1]);
+      break;
+    case MAP_SIZE_Z:
+      poin = &(mtex->size[2]);
+      break;
+    case MAP_R:
+      poin = &(mtex->r);
+      break;
+    case MAP_G:
+      poin = &(mtex->g);
+      break;
+    case MAP_B:
+      poin = &(mtex->b);
+      break;
+    case MAP_DVAR:
+      poin = &(mtex->def_var);
+      break;
+    case MAP_COLF:
+      poin = &(mtex->colfac);
+      break;
+    case MAP_NORF:
+      poin = &(mtex->norfac);
+      break;
+    case MAP_VARF:
+      poin = &(mtex->varfac);
+      break;
 #endif
     case MAP_DISP:
       prop = "warp_factor";
@@ -760,12 +779,12 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
     case CAM_LENS:
 #if 0  /* XXX this cannot be resolved easily... \
         * perhaps we assume camera is perspective (works for most cases... */
-if (ca->type == CAM_ORTHO) {
-return "ortho_scale";
-}
-else {
-return "lens";
-}
+      if (ca->type == CAM_ORTHO) {
+        return "ortho_scale";
+      }
+      else {
+        return "lens";
+      }
 #else  /* XXX lazy hack for now... */
       return "lens";
 #endif /* XXX this cannot be resolved easily */
@@ -776,10 +795,12 @@ return "lens";
       return "clip_end";
 
 #if 0  /* XXX these are not defined in RNA */
-case CAM_YF_APERT: poin = &(ca->YF_aperture);
-break;
-case CAM_YF_FDIST: poin = &(ca->dof_distance);
-break;
+    case CAM_YF_APERT:
+      poin = &(ca->YF_aperture);
+      break;
+    case CAM_YF_FDIST:
+      poin = &(ca->dof_distance);
+      break;
 #endif /* XXX these are not defined in RNA */
 
     case CAM_SHIFT_X:
@@ -852,7 +873,8 @@ static const char *sound_adrcodes_to_paths(int adrcode, int *array_index)
 /* XXX Joshua -- I had wrapped panning in rna,
  * but someone commented out, calling it "unused" */
 #if 0
-case SND_PANNING: return "panning";
+    case SND_PANNING:
+      return "panning";
 #endif
     case SND_ATTEN:
       return "attenuation";
@@ -954,30 +976,36 @@ static const char *particle_adrcodes_to_paths(int adrcode, int *array_index)
  * being used as forces -- it will use the same rna structure
  * as the similar object forces */
 #if 0
-case PART_PD_FSTR: if (part->pd) {
-poin = &(part->pd->f_strength);
-}
-break;
-case PART_PD_FFALL: if (part->pd) {
-poin = &(part->pd->f_power);
-}
-break;
-case PART_PD_FMAXD: if (part->pd) {
-poin = &(part->pd->maxdist);
-}
-break;
-case PART_PD2_FSTR: if (part->pd2) {
-poin = &(part->pd2->f_strength);
-}
-break;
-case PART_PD2_FFALL: if (part->pd2) {
-poin = &(part->pd2->f_power);
-}
-break;
-case PART_PD2_FMAXD: if (part->pd2) {
-poin = &(part->pd2->maxdist);
-}
-break;
+    case PART_PD_FSTR:
+      if (part->pd) {
+        poin = &(part->pd->f_strength);
+      }
+      break;
+    case PART_PD_FFALL:
+      if (part->pd) {
+        poin = &(part->pd->f_power);
+      }
+      break;
+    case PART_PD_FMAXD:
+      if (part->pd) {
+        poin = &(part->pd->maxdist);
+      }
+      break;
+    case PART_PD2_FSTR:
+      if (part->pd2) {
+        poin = &(part->pd2->f_strength);
+      }
+      break;
+    case PART_PD2_FFALL:
+      if (part->pd2) {
+        poin = &(part->pd2->f_power);
+      }
+      break;
+    case PART_PD2_FMAXD:
+      if (part->pd2) {
+        poin = &(part->pd2->maxdist);
+      }
+      break;
 #endif
   }
 
