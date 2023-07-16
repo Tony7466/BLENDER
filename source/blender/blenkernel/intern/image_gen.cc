@@ -20,12 +20,12 @@
 
 #include "BLF_api.h"
 
-typedef struct FillColorThreadData {
+struct FillColorThreadData {
   uchar *rect;
   float *rect_float;
   int width;
   float color[4];
-} FillColorThreadData;
+};
 
 static void image_buf_fill_color_slice(
     uchar *rect, float *rect_float, int width, int height, const float color[4])
@@ -62,8 +62,8 @@ static void image_buf_fill_color_thread_do(void *data_v, int scanline)
   FillColorThreadData *data = (FillColorThreadData *)data_v;
   const int num_scanlines = 1;
   size_t offset = ((size_t)scanline) * data->width * 4;
-  uchar *rect = (data->rect != NULL) ? (data->rect + offset) : NULL;
-  float *rect_float = (data->rect_float != NULL) ? (data->rect_float + offset) : NULL;
+  uchar *rect = (data->rect != nullptr) ? (data->rect + offset) : nullptr;
+  float *rect_float = (data->rect_float != nullptr) ? (data->rect_float + offset) : nullptr;
   image_buf_fill_color_slice(rect, rect_float, data->width, num_scanlines, data->color);
 }
 
@@ -99,7 +99,7 @@ static void image_buf_fill_checker_slice(
   float rgb[3];
 
   float dark_linear_color = 0.0f, bright_linear_color = 0.0f;
-  if (rect_float != NULL) {
+  if (rect_float != nullptr) {
     dark_linear_color = srgb_to_linearrgb(0.25f);
     bright_linear_color = srgb_to_linearrgb(0.58f);
   }
@@ -181,19 +181,19 @@ static void image_buf_fill_checker_slice(
   }
 }
 
-typedef struct FillCheckerThreadData {
+struct FillCheckerThreadData {
   uchar *rect;
   float *rect_float;
   int width;
-} FillCheckerThreadData;
+};
 
 static void image_buf_fill_checker_thread_do(void *data_v, int scanline)
 {
   FillCheckerThreadData *data = (FillCheckerThreadData *)data_v;
   size_t offset = ((size_t)scanline) * data->width * 4;
   const int num_scanlines = 1;
-  uchar *rect = (data->rect != NULL) ? (data->rect + offset) : NULL;
-  float *rect_float = (data->rect_float != NULL) ? (data->rect_float + offset) : NULL;
+  uchar *rect = (data->rect != nullptr) ? (data->rect + offset) : nullptr;
+  float *rect_float = (data->rect_float != nullptr) ? (data->rect_float + offset) : nullptr;
   image_buf_fill_checker_slice(rect, rect_float, data->width, num_scanlines, scanline);
 }
 
@@ -356,16 +356,18 @@ static void checker_board_text(
 
   BLF_size(mono, 54.0f); /* hard coded size! */
 
-  /* OCIO_TODO: using NULL as display will assume using sRGB display
+  /* OCIO_TODO: using nullptr as display will assume using sRGB display
    *            this is correct since currently generated images are assumed to be in sRGB space,
    *            but this would probably needed to be fixed in some way
    */
-  BLF_buffer(mono, rect_float, rect, width, height, 4, NULL);
+  BLF_buffer(mono, rect_float, rect, width, height, 4, nullptr);
 
   const float text_color[4] = {0.0, 0.0, 0.0, 1.0};
   const float text_outline[4] = {1.0, 1.0, 1.0, 1.0};
 
-  const char char_array[36] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const char char_array[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  /* Subtract one because of null termination. */
+  const int char_num = sizeof(char_array) - 1;
 
   int first_char_index = 0;
   for (y = 0; y < height; y += step) {
@@ -404,13 +406,13 @@ static void checker_board_text(
       BLF_position(mono, pen_x, pen_y, 0.0);
       BLF_draw_buffer(mono, text, 2);
 
-      second_char_index = (second_char_index + 1) % ARRAY_SIZE(char_array);
+      second_char_index = (second_char_index + 1) % char_num;
     }
-    first_char_index = (first_char_index + 1) % ARRAY_SIZE(char_array);
+    first_char_index = (first_char_index + 1) % char_num;
   }
 
   /* cleanup the buffer. */
-  BLF_buffer(mono, NULL, NULL, 0, 0, 0, NULL);
+  BLF_buffer(mono, nullptr, nullptr, 0, 0, 0, nullptr);
 }
 
 static void checker_board_color_prepare_slice(
@@ -424,19 +426,19 @@ static void checker_board_color_prepare_slice(
   checker_board_grid_fill(rect, rect_float, width, height, 1.0f / 4.0f, offset);
 }
 
-typedef struct FillCheckerColorThreadData {
+struct FillCheckerColorThreadData {
   uchar *rect;
   float *rect_float;
   int width, height;
-} FillCheckerColorThreadData;
+};
 
 static void checker_board_color_prepare_thread_do(void *data_v, int scanline)
 {
   FillCheckerColorThreadData *data = (FillCheckerColorThreadData *)data_v;
   const int num_scanlines = 1;
   size_t offset = ((size_t)data->width) * scanline * 4;
-  uchar *rect = (data->rect != NULL) ? (data->rect + offset) : NULL;
-  float *rect_float = (data->rect_float != NULL) ? (data->rect_float + offset) : NULL;
+  uchar *rect = (data->rect != nullptr) ? (data->rect + offset) : nullptr;
+  float *rect_float = (data->rect_float != nullptr) ? (data->rect_float + offset) : nullptr;
   checker_board_color_prepare_slice(
       rect, rect_float, data->width, num_scanlines, scanline, data->height);
 }
@@ -457,7 +459,7 @@ void BKE_image_buf_fill_checker_color(uchar *rect, float *rect_float, int width,
 
   checker_board_text(rect, rect_float, width, height, 128, 2);
 
-  if (rect_float != NULL) {
+  if (rect_float != nullptr) {
     /* TODO(sergey): Currently it's easier to fill in form buffer and
      * linearize it afterwards. This could be optimized with some smart
      * trickery around blending factors and such.
