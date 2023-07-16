@@ -88,7 +88,7 @@ set(SRC
   intern/camera.cc
   intern/cdderivedmesh.cc
   intern/cloth.cc
-  intern/collection.c
+  intern/collection.cc
   intern/collision.cc
   intern/colorband.c
   intern/colortools.c
