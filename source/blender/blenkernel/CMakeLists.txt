@@ -254,7 +254,7 @@ set(SRC
   intern/pbvh_pixels.cc
   intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
-  intern/pointcache.c
+  intern/pointcache.cc
   intern/pointcloud.cc
   intern/pose_backup.cc
   intern/preferences.c
