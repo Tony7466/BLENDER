@@ -74,7 +74,7 @@ set(SRC
   intern/attribute_math.cc
   intern/autoexec.cc
   intern/blender.c
-  intern/blender_copybuffer.c
+  intern/blender_copybuffer.cc
   intern/blender_undo.cc
   intern/blender_user_menu.c
   intern/blendfile.cc

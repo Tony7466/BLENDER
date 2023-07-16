@@ -107,7 +107,7 @@ bool BKE_copybuffer_read(Main *bmain_dst,
 
   BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
       &liblink_params);
-  BKE_blendfile_link_append_context_library_add(lapp_context, libname, NULL);
+  BKE_blendfile_link_append_context_library_add(lapp_context, libname, nullptr);
 
   const int num_pasted = BKE_blendfile_link_append_context_item_idtypes_from_library_add(
       lapp_context, reports, id_types_mask, 0);
@@ -131,7 +131,7 @@ int BKE_copybuffer_paste(bContext *C,
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  View3D *v3d = CTX_wm_view3d(C); /* may be NULL. */
+  View3D *v3d = CTX_wm_view3d(C); /* may be nullptr. */
   const int id_tag_extra = 0;
 
   /* NOTE: No recursive append here, external linked data should remain linked. */
@@ -143,7 +143,7 @@ int BKE_copybuffer_paste(bContext *C,
 
   BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
       &liblink_params);
-  BKE_blendfile_link_append_context_library_add(lapp_context, libname, NULL);
+  BKE_blendfile_link_append_context_library_add(lapp_context, libname, nullptr);
 
   const int num_pasted = BKE_blendfile_link_append_context_item_idtypes_from_library_add(
       lapp_context, reports, id_types_mask, 0);
