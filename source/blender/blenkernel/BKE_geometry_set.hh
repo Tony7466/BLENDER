@@ -353,6 +353,8 @@ struct GeometrySet {
    * Returns a mutable curves data-block or null. No ownership is transferred.
    */
   Curves *get_curves_for_write();
+
+  blender::bke::GizmosGeometry *get_gizmos_for_write();
   /**
    * Returns mutable instances or null. No ownership is transferred.
    */

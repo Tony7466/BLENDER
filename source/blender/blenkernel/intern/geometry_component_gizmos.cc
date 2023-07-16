@@ -15,11 +15,13 @@ GizmosComponent::GizmosComponent() : GeometryComponent(GeometryComponent::Type::
 
 GizmosComponent::~GizmosComponent()
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   this->clear();
 }
 
 GeometryComponent *GizmosComponent::copy() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   GizmosComponent *new_component = new GizmosComponent();
   if (gizmos_ != nullptr) {
     new_component->gizmos_ = gizmos_->copy();
@@ -30,6 +32,7 @@ GeometryComponent *GizmosComponent::copy() const
 
 void GizmosComponent::clear()
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   BLI_assert(this->is_mutable() || this->is_expired());
   if (gizmos_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
@@ -38,9 +41,9 @@ void GizmosComponent::clear()
     gizmos_ = nullptr;
   }
 }
-void GizmosComponent::replace(GizmosGeometry *gizmos,
-                              GeometryOwnershipType ownership)
+void GizmosComponent::replace(GizmosGeometry *gizmos, GeometryOwnershipType ownership)
 {
+  std::cout << ">> " << __func__ << ": " << this << " >>: " << gizmos << ";\n";
   BLI_assert(this->is_mutable());
   this->clear();
   gizmos_ = gizmos;
@@ -49,16 +52,19 @@ void GizmosComponent::replace(GizmosGeometry *gizmos,
 
 bool GizmosComponent::has_gizmos() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   return gizmos_ != nullptr;
 }
 
 const GizmosGeometry *GizmosComponent::get_for_read() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   return gizmos_;
 }
 
 GizmosGeometry *GizmosComponent::get_for_write()
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
     gizmos_ = gizmos_->copy();
@@ -69,16 +75,19 @@ GizmosGeometry *GizmosComponent::get_for_write()
 
 bool GizmosComponent::is_empty() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   return gizmos_ == nullptr;
 }
 
 bool GizmosComponent::owns_direct_data() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   return ownership_ == GeometryOwnershipType::Owned;
 }
 
 void GizmosComponent::ensure_owns_direct_data()
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
     gizmos_ = gizmos_->copy();
@@ -173,23 +182,20 @@ AttributeAccessor GizmosGeometry::attributes() const
 
 MutableAttributeAccessor GizmosGeometry::attributes_for_write()
 {
-  return MutableAttributeAccessor(this,
-                                                get_gizmos_accessor_functions_ref());
+  return MutableAttributeAccessor(this, get_gizmos_accessor_functions_ref());
 }
 
 std::optional<AttributeAccessor> GizmosComponent::attributes() const
 {
-  return AttributeAccessor(gizmos_,
-                                         get_gizmos_accessor_functions_ref());
+  return AttributeAccessor(gizmos_, get_gizmos_accessor_functions_ref());
 }
 
 std::optional<MutableAttributeAccessor> GizmosComponent::attributes_for_write()
 {
   GizmosGeometry *gizmos = this->get_for_write();
-  return MutableAttributeAccessor(gizmos,
-                                                get_gizmos_accessor_functions_ref());
+  return MutableAttributeAccessor(gizmos, get_gizmos_accessor_functions_ref());
 }
 
-}
+}  // namespace blender::bke
 
 /** \} */

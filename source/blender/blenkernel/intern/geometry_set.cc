@@ -549,6 +549,12 @@ Instances *GeometrySet::get_instances_for_write()
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
+blender::bke::GizmosGeometry *GeometrySet::get_gizmos_for_write()
+{
+  GizmosComponent *component = this->get_component_ptr<GizmosComponent>();
+  return component == nullptr ? nullptr : component->get_for_write();
+}
+
 CurvesEditHints *GeometrySet::get_curve_edit_hints_for_write()
 {
   if (!this->has<GeometryComponentEditData>()) {

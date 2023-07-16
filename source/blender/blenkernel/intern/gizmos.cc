@@ -8,11 +8,13 @@ namespace blender::bke {
 
 GizmosGeometry::GizmosGeometry(std::string path) : paths_{std::move(path)}, mapping(1, 0)
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   attributes_.reallocate(1);
 }
 
 GizmosGeometry *GizmosGeometry::copy() const
 {
+  std::cout << ">> " << __func__ << ": " << this << ";\n";
   GizmosGeometry *gizmos = new GizmosGeometry;
   gizmos->paths_ = paths_;
   gizmos->mapping = mapping;

@@ -58,6 +58,18 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
   });
 }
 
+static void transform_positions_rotation_scale(MutableSpan<float3> positions,
+                                               MutableSpan<float3> scales,
+                                               MutableSpan<math::Quaternion> rotations,
+                                               const float4x4 &matrix)
+{
+  threading::parallel_for(scales.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      math::to_loc_rot_scale(matrix, positions[index], rotations[index], scales[index]);
+    }
+  });
+}
+
 static void transform_mesh(Mesh &mesh, const float4x4 &transform)
 {
   transform_positions(mesh.vert_positions_for_write(), transform);
@@ -88,6 +100,19 @@ static void translate_pointcloud(PointCloud &pointcloud, const float3 translatio
   }
 }
 
+static void translate_gizmo(bke::GizmosGeometry &gizmo, const float3 translation)
+{
+  if (math::is_zero(translation)) {
+    return;
+  }
+
+  MutableAttributeAccessor attributes = gizmo.attributes_for_write();
+  SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
+      "position", ATTR_DOMAIN_POINT);
+  translate_positions(position.span, translation);
+  position.finish();
+}
+
 static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transform)
 {
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
@@ -95,6 +120,21 @@ static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transfo
       "position", ATTR_DOMAIN_POINT);
   transform_positions(position.span, transform);
   position.finish();
+}
+
+static void transform_gizmo(bke::GizmosGeometry &gizmo, const float4x4 &transform)
+{
+  MutableAttributeAccessor attributes = gizmo.attributes_for_write();
+  SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
+      "position", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter scales = attributes.lookup_or_add_for_write_span<float3>("scale",
+                                                                               ATTR_DOMAIN_POINT);
+  SpanAttributeWriter rotations = attributes.lookup_or_add_for_write_span<math::Quaternion>(
+      "rotation", ATTR_DOMAIN_POINT);
+  transform_positions_rotation_scale(position.span, scales.span, rotations.span, transform);
+  position.finish();
+  scales.finish();
+  rotations.finish();
 }
 
 static void translate_instances(bke::Instances &instances, const float3 translation)
@@ -224,6 +264,10 @@ static void translate_geometry_set(GeoNodeExecParams &params,
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     translate_curve_edit_hints(*curve_edit_hints, translation);
   }
+  if (bke::GizmosGeometry *gizmo = geometry.get_gizmos_for_write()) {
+    std::cout << ">> AAAx2" << __func__ << ";\n";
+    translate_gizmo(*gizmo, translation);
+  }
 }
 
 void transform_geometry_set(GeoNodeExecParams &params,
@@ -248,6 +292,10 @@ void transform_geometry_set(GeoNodeExecParams &params,
   }
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     transform_curve_edit_hints(*curve_edit_hints, transform);
+  }
+  if (bke::GizmosGeometry *gizmo = geometry.get_gizmos_for_write()) {
+    std::cout << ">> AAA" << __func__ << ";\n";
+    transform_gizmo(*gizmo, transform);
   }
 }
 
@@ -275,11 +323,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  std::cout << ">> 1" << __func__ << ";\n";
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const float3 translation = params.extract_input<float3>("Translation");
   const float3 rotation = params.extract_input<float3>("Rotation");
   const float3 scale = params.extract_input<float3>("Scale");
-
+  std::cout << ">> 2" << __func__ << ";\n";
   /* Use only translation if rotation and scale don't apply. */
   if (use_translate(rotation, scale)) {
     translate_geometry_set(params, geometry_set, translation, *params.depsgraph());

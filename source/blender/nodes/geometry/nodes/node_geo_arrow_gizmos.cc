@@ -34,12 +34,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
   const bNodeTree &tree = node.owner_tree();
-  std::string gizmos_value_path_str = fmt::format(TIP_("node_groups[\"{}\"].nodes[\"{}\"]"), tree.id.name + 2, node.name);
+  std::string gizmos_value_path_str = fmt::format(
+      TIP_("node_groups[\"{}\"].nodes[\"{}\"]"), tree.id.name + 2, node.name);
   bke::GizmosGeometry *gizmo = new bke::GizmosGeometry(std::move(gizmos_value_path_str));
   params.set_output("Gizmo", GeometrySet::create_with_gizmos(gizmo));
 
   const NodeGeometryArrowGizmo &storage = node_storage(node);
   params.set_output("Value", storage.value);
+  std::cout << ">> " << __func__ << ";\n";
 }
 
 }  // namespace blender::nodes::node_geo_arrow_gizmo_cc

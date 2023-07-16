@@ -6,6 +6,7 @@
  * \ingroup spview3d
  */
 
+#include "BKE_attribute.hh"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_gizmos.hh"
@@ -13,6 +14,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_index_range.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_span.hh"
 
 #include "DNA_node_types.h"
@@ -39,12 +41,12 @@ static const bke::GizmosGeometry static_empty_gizmos = {};
 
 struct MetaData {
   int size;
-  
+
   bool operator==(const MetaData &other) const
   {
     return this->size == other.size;
   }
-  
+
   bool operator!=(const MetaData &other) const
   {
     return !(*this == other);
@@ -104,9 +106,9 @@ struct GizmoData {
   Vector<wmGizmo *> gizmos_objects;
   MetaData meta_data;
 
-  GizmoData(const bke::GizmosGeometry &gizmos) : gizmos_objects(gizmos.gizmos_num()), meta_data(meta_data_for_gizmos(gizmos))
+  GizmoData(const bke::GizmosGeometry &gizmos)
+      : gizmos_objects(gizmos.gizmos_num()), meta_data(meta_data_for_gizmos(gizmos))
   {
-    
   }
 
   ~GizmoData() = default;
@@ -145,9 +147,12 @@ static void geometry_node_setup(const bContext *C, wmGizmoGroup *gzgroup)
   }
 }
 
-static void refresh_data_to_new_meta(GizmoData &data, MetaData &new_meta, wmGizmoGroup *gzgroup, const bContext *C)
+static void refresh_data_to_new_meta(GizmoData &data,
+                                     MetaData &new_meta,
+                                     wmGizmoGroup *gzgroup,
+                                     const bContext *C)
 {
-  const int sze = data.gizmos_objects.size();
+  const int size = data.gizmos_objects.size();
   if (data.meta_data.size > new_meta.size) {
     wmGizmo *gizmo = data.gizmos_objects.pop_last();
     WM_gizmo_unlink(&gzgroup->gizmos, gzgroup->parent_gzmap, gizmo, const_cast<bContext *>(C));
@@ -161,7 +166,7 @@ static void refresh_data_to_new_meta(GizmoData &data, MetaData &new_meta, wmGizm
     data.gizmos_objects.append(gizmo);
   }
   data.meta_data = new_meta;
-  printf("%d -> %d;\n", sze, data.gizmos_objects.size());
+  // printf("%d -> %d;\n", sze, data.gizmos_objects.size());
 }
 
 static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
@@ -189,17 +194,11 @@ static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
     PointerRNA node_ptr;
     PropertyRNA *value_prop;
-    const bool path_is_resolved = RNA_path_resolve_full(&blender_data_pointer,
-                                                       rna_path.data(),
-                                                       &node_ptr,
-                                                       &value_prop,
-                                                       nullptr);
+    const bool path_is_resolved = RNA_path_resolve_full(
+        &blender_data_pointer, rna_path.data(), &node_ptr, &value_prop, nullptr);
     BLI_assert(path_is_resolved);
     UNUSED_VARS_NDEBUG(path_is_resolved);
 
-    const float3 normal = {1.0f, 0.0f, 0.0f};
-    WM_gizmo_set_matrix_rotation_from_z_axis(gizmo, normal);
-    WM_gizmo_set_matrix_location(gizmo, object.object_to_world[3]);
     WM_gizmo_target_property_def_rna(gizmo, "offset", &node_ptr, "value", -1);
   }
 }
@@ -212,14 +211,39 @@ static void geometry_node_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
   const bke::GizmosGeometry &gizmos = context->gizmo;
   GizmoData &gzgroup_data = *static_cast<GizmoData *>(gzgroup->customdata);
 
+  const bke::AttributeAccessor attributes = gizmos.attributes();
+  const bke::AttributeReader<float3> positions = attributes.lookup_or_default<float3>(
+      "position", ATTR_DOMAIN_POINT, float3());
+  const bke::AttributeReader<float3> scales = attributes.lookup_or_default<float3>(
+      "scale", ATTR_DOMAIN_POINT, float3());
+  const bke::AttributeReader<math::Quaternion> rotations =
+      attributes.lookup_or_default<math::Quaternion>(
+          "rotation", ATTR_DOMAIN_POINT, math::Quaternion());
+
+  const float4x4 object_mathix(object.object_to_world);
+
   for (const int index : IndexRange(gizmos.gizmos_num())) {
     wmGizmo *gizmo = gzgroup_data.gizmos_objects[index];
     const float3 normal = {1.0f, 0.0f, 0.0f};
-    WM_gizmo_set_matrix_rotation_from_z_axis(gizmo, normal);
-    WM_gizmo_set_matrix_location(gizmo, object.object_to_world[3]);
+    const float3 &position = positions.varray[index];
+    const float3 &scale = scales.varray[index];
+    const math::Quaternion &rotation = rotations.varray[index];
+    const float3 world_position = math::transform_point(object_mathix, position);
+    [[maybe_unused]] const float3 world_scale = math::transform_point(object_mathix, position);
+    const float3 world_rotation = math::transform_point(object_mathix, position);
+    WM_gizmo_set_matrix_location(gizmo, world_position);
+
+    const float4x4 mathix = math::from_loc_rot_scale<MatBase<float, 4, 4>>(
+        position, rotation, scale);
+
+    const float4x4 final_mathix = mathix * object_mathix;
+
+    const float3 normal_a = math::transform_point(final_mathix, float3(0.0f, 1.0f, 0.0f));
+    const float3 normal_b = math::transform_point(final_mathix, float3(0.0f, 0.0f, 1.0f));
+    WM_gizmo_set_matrix_rotation_from_yz_axis(gizmo, normal_a, normal_b);
   }
 }
-}  // namespace geometry_node_gizmo
+}  // namespace blender::gizmos::geometry_node_gizmo
 
 void VIEW3D_GGT_geometry_node_gizmos(wmGizmoGroupType *gzgt)
 {
