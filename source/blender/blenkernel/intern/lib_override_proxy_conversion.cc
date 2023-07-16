@@ -40,8 +40,8 @@ bool BKE_lib_override_library_proxy_convert(Main *bmain,
   /* `proxy_group`, if defined, is the empty instantiating the collection from which the proxy is
    * coming. */
   Object *ob_proxy_group = ob_proxy->proxy_group;
-  const bool is_override_instancing_object = (ob_proxy_group != NULL) &&
-                                             (ob_proxy_group->instance_collection != NULL);
+  const bool is_override_instancing_object = (ob_proxy_group != nullptr) &&
+                                             (ob_proxy_group->instance_collection != nullptr);
   ID *id_root = is_override_instancing_object ? &ob_proxy_group->instance_collection->id :
                                                 &ob_proxy->proxy->id;
   ID *id_instance_hint = is_override_instancing_object ? &ob_proxy_group->id : &ob_proxy->id;
@@ -49,11 +49,11 @@ bool BKE_lib_override_library_proxy_convert(Main *bmain,
   /* In some cases the instance collection of a proxy object may be local (see e.g. #83875). Not
    * sure this is a valid state, but for now just abort the overriding process. */
   if (!ID_IS_OVERRIDABLE_LIBRARY_HIERARCHY(id_root)) {
-    if (ob_proxy->proxy != NULL) {
-      ob_proxy->proxy->proxy_from = NULL;
+    if (ob_proxy->proxy != nullptr) {
+      ob_proxy->proxy->proxy_from = nullptr;
     }
     id_us_min((ID *)ob_proxy->proxy);
-    ob_proxy->proxy = ob_proxy->proxy_group = NULL;
+    ob_proxy->proxy = ob_proxy->proxy_group = nullptr;
     return false;
   }
 
@@ -66,8 +66,8 @@ bool BKE_lib_override_library_proxy_convert(Main *bmain,
   BKE_lib_override_library_init(&ob_proxy->id, &ob_proxy->proxy->id);
   ob_proxy->id.override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
 
-  ob_proxy->proxy->proxy_from = NULL;
-  ob_proxy->proxy = ob_proxy->proxy_group = NULL;
+  ob_proxy->proxy->proxy_from = nullptr;
+  ob_proxy->proxy = ob_proxy->proxy_group = nullptr;
 
   DEG_id_tag_update(&ob_proxy->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -83,8 +83,15 @@ bool BKE_lib_override_library_proxy_convert(Main *bmain,
   }
   FOREACH_MAIN_ID_END;
 
-  return BKE_lib_override_library_create(
-      bmain, scene, view_layer, ob_proxy->id.lib, id_root, id_root, id_instance_hint, NULL, false);
+  return BKE_lib_override_library_create(bmain,
+                                         scene,
+                                         view_layer,
+                                         ob_proxy->id.lib,
+                                         id_root,
+                                         id_root,
+                                         id_instance_hint,
+                                         nullptr,
+                                         false);
 }
 
 static void lib_override_library_proxy_convert_do(Main *bmain,
@@ -93,9 +100,9 @@ static void lib_override_library_proxy_convert_do(Main *bmain,
                                                   BlendFileReadReport *reports)
 {
   Object *ob_proxy_group = ob_proxy->proxy_group;
-  const bool is_override_instancing_object = ob_proxy_group != NULL;
+  const bool is_override_instancing_object = ob_proxy_group != nullptr;
 
-  const bool success = BKE_lib_override_library_proxy_convert(bmain, scene, NULL, ob_proxy);
+  const bool success = BKE_lib_override_library_proxy_convert(bmain, scene, nullptr, ob_proxy);
 
   if (success) {
     CLOG_INFO(&LOG,
@@ -114,34 +121,34 @@ static void lib_override_library_proxy_convert_do(Main *bmain,
 void BKE_lib_override_library_main_proxy_convert(Main *bmain, BlendFileReadReport *reports)
 {
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-    LinkNodePair proxy_objects = {NULL};
+    LinkNodePair proxy_objects = {nullptr};
 
     FOREACH_SCENE_OBJECT_BEGIN (scene, object) {
-      if (object->proxy_group != NULL) {
+      if (object->proxy_group != nullptr) {
         BLI_linklist_append(&proxy_objects, object);
       }
     }
     FOREACH_SCENE_OBJECT_END;
 
     FOREACH_SCENE_OBJECT_BEGIN (scene, object) {
-      if (object->proxy != NULL && object->proxy_group == NULL) {
+      if (object->proxy != nullptr && object->proxy_group == nullptr) {
         BLI_linklist_append(&proxy_objects, object);
       }
     }
     FOREACH_SCENE_OBJECT_END;
 
-    for (LinkNode *proxy_object_iter = proxy_objects.list; proxy_object_iter != NULL;
+    for (LinkNode *proxy_object_iter = proxy_objects.list; proxy_object_iter != nullptr;
          proxy_object_iter = proxy_object_iter->next)
     {
-      Object *proxy_object = proxy_object_iter->link;
+      Object *proxy_object = static_cast<Object *>(proxy_object_iter->link);
       lib_override_library_proxy_convert_do(bmain, scene, proxy_object, reports);
     }
 
-    BLI_linklist_free(proxy_objects.list, NULL);
+    BLI_linklist_free(proxy_objects.list, nullptr);
   }
 
   LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-    if (object->proxy_group != NULL || object->proxy != NULL) {
+    if (object->proxy_group != nullptr || object->proxy != nullptr) {
       if (ID_IS_LINKED(object)) {
         CLOG_WARN(&LOG,
                   "Linked proxy object '%s' from '%s' failed to be converted to library override",
@@ -154,11 +161,11 @@ void BKE_lib_override_library_main_proxy_convert(Main *bmain, BlendFileReadRepor
                   object->id.name + 2);
       }
       reports->count.proxies_to_lib_overrides_failures++;
-      if (object->proxy != NULL) {
-        object->proxy->proxy_from = NULL;
+      if (object->proxy != nullptr) {
+        object->proxy->proxy_from = nullptr;
       }
       id_us_min((ID *)object->proxy);
-      object->proxy = object->proxy_group = NULL;
+      object->proxy = object->proxy_group = nullptr;
     }
   }
 }
