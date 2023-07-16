@@ -93,7 +93,7 @@ set(SRC
   intern/colorband.cc
   intern/colortools.cc
   intern/compute_contexts.cc
-  intern/constraint.c
+  intern/constraint.cc
   intern/context.cc
   intern/cpp_types.cc
   intern/crazyspace.cc

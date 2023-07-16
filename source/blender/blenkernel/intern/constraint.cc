@@ -123,7 +123,7 @@ bConstraintOb *BKE_constraints_make_evalob(
   bConstraintOb *cob;
 
   /* create regardless of whether we have any data! */
-  cob = MEM_callocN(sizeof(bConstraintOb), "bConstraintOb");
+  cob = static_cast<bConstraintOb *>(MEM_callocN(sizeof(bConstraintOb), "bConstraintOb"));
 
   /* NOTE(@ton): For system time, part of de-globalization, code nicer later with local time. */
   cob->scene = scene;
@@ -199,7 +199,7 @@ void BKE_constraints_clear_evalob(bConstraintOb *cob)
   float delta[4][4], imat[4][4];
 
   /* prevent crashes */
-  if (cob == NULL) {
+  if (cob == nullptr) {
     return;
   }
 
@@ -255,7 +255,7 @@ void BKE_constraint_mat_convertspace(Object *ob,
   float imat[4][4];
 
   /* Prevent crashes in these unlikely events. */
-  if (ob == NULL || mat == NULL) {
+  if (ob == nullptr || mat == nullptr) {
     return;
   }
   /* optimize trick - check if need to do anything */
@@ -534,7 +534,8 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
       BMIter iter;
 
       BM_ITER_MESH (v, &iter, em->bm, BM_VERTS_OF_MESH) {
-        MDeformVert *dv = CustomData_bmesh_get(&em->bm->vdata, v->head.data, CD_MDEFORMVERT);
+        MDeformVert *dv = static_cast<MDeformVert *>(
+            CustomData_bmesh_get(&em->bm->vdata, v->head.data, CD_MDEFORMVERT));
         MDeformWeight *dw = BKE_defvert_find_index(dv, defgroup);
 
         if (dw && dw->weight > 0.0f) {
@@ -547,7 +548,8 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
   }
   else if (me_eval) {
     const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me_eval);
-    const MDeformVert *dvert = CustomData_get_layer(&me_eval->vdata, CD_MDEFORMVERT);
+    const MDeformVert *dvert = static_cast<const MDeformVert *>(
+        CustomData_get_layer(&me_eval->vdata, CD_MDEFORMVERT));
     const float(*positions)[3] = BKE_mesh_vert_positions(me_eval);
     int numVerts = me_eval->totvert;
 
@@ -614,8 +616,8 @@ static void contarget_get_lattice_mat(Object *ob, const char *substring, float m
 
   DispList *dl = ob->runtime.curve_cache ?
                      BKE_displist_find(&ob->runtime.curve_cache->disp, DL_VERTS) :
-                     NULL;
-  const float *co = dl ? dl->verts : NULL;
+                     nullptr;
+  const float *co = dl ? dl->verts : nullptr;
   BPoint *bp = lt->def;
 
   MDeformVert *dv = lt->dvert;
@@ -632,7 +634,7 @@ static void contarget_get_lattice_mat(Object *ob, const char *substring, float m
   if (defgroup == -1) {
     return;
   }
-  if (dv == NULL) {
+  if (dv == nullptr) {
     return;
   }
 
@@ -684,7 +686,7 @@ static void constraint_target_to_mat4(Object *ob,
   /* Case OBJECT */
   if (substring[0] == '\0') {
     copy_m4_m4(mat, ob->object_to_world);
-    BKE_constraint_mat_convertspace(ob, NULL, cob, mat, from, to, false);
+    BKE_constraint_mat_convertspace(ob, nullptr, cob, mat, from, to, false);
   }
   /* Case VERTEXGROUP */
   /* Current method just takes the average location of all the points in the
@@ -697,11 +699,11 @@ static void constraint_target_to_mat4(Object *ob,
    */
   else if (ob->type == OB_MESH) {
     contarget_get_mesh_mat(ob, substring, mat);
-    BKE_constraint_mat_convertspace(ob, NULL, cob, mat, from, to, false);
+    BKE_constraint_mat_convertspace(ob, nullptr, cob, mat, from, to, false);
   }
   else if (ob->type == OB_LATTICE) {
     contarget_get_lattice_mat(ob, substring, mat);
-    BKE_constraint_mat_convertspace(ob, NULL, cob, mat, from, to, false);
+    BKE_constraint_mat_convertspace(ob, nullptr, cob, mat, from, to, false);
   }
   /* Case BONE */
   else {
@@ -780,7 +782,7 @@ static void constraint_target_to_mat4(Object *ob,
  * - although the naming of functions doesn't matter, it would help for code
  *   readability, to follow the same naming convention as is presented here
  * - any functions that a constraint doesn't need to define, don't define
- *   for such cases, just use NULL
+ *   for such cases, just use nullptr
  * - these should be defined after all the functions have been defined, so that
  *   forward-definitions/prototypes don't need to be used!
  * - keep this copy #if-def'd so that future constraints can get based off this
@@ -805,11 +807,11 @@ static bConstraintTypeInfo CTI_CONSTRNAME = {
 /* This function should be used for the get_target_matrix member of all
  * constraints that are not picky about what happens to their target matrix.
  */
-static void default_get_tarmat(Depsgraph *UNUSED(depsgraph),
+static void default_get_tarmat(Depsgraph * /*depsgraph*/,
                                bConstraint *con,
                                bConstraintOb *cob,
                                bConstraintTarget *ct,
-                               float UNUSED(ctime))
+                               float /*ctime*/)
 {
   if (VALID_CONS_TARGET(ct)) {
     constraint_target_to_mat4(ct->tar,
@@ -828,11 +830,11 @@ static void default_get_tarmat(Depsgraph *UNUSED(depsgraph),
 
 /* This is a variant that extracts full transformation from B-Bone segments.
  */
-static void default_get_tarmat_full_bbone(Depsgraph *UNUSED(depsgraph),
+static void default_get_tarmat_full_bbone(Depsgraph * /*depsgraph*/,
                                           bConstraint *con,
                                           bConstraintOb *cob,
                                           bConstraintTarget *ct,
-                                          float UNUSED(ctime))
+                                          float /*ctime*/)
 {
   if (VALID_CONS_TARGET(ct)) {
     constraint_target_to_mat4(ct->tar,
@@ -857,7 +859,8 @@ static void default_get_tarmat_full_bbone(Depsgraph *UNUSED(depsgraph),
 /* TODO: cope with getting rotation order... */
 #define SINGLETARGET_GET_TARS(con, datatar, datasubtarget, ct, list) \
   { \
-    ct = MEM_callocN(sizeof(bConstraintTarget), "tempConstraintTarget"); \
+    ct = static_cast<bConstraintTarget *>( \
+        MEM_callocN(sizeof(bConstraintTarget), "tempConstraintTarget")); \
 \
     ct->tar = datatar; \
     STRNCPY(ct->subtarget, datasubtarget); \
@@ -892,7 +895,8 @@ static void default_get_tarmat_full_bbone(Depsgraph *UNUSED(depsgraph),
 /* TODO: cope with getting rotation order... */
 #define SINGLETARGETNS_GET_TARS(con, datatar, ct, list) \
   { \
-    ct = MEM_callocN(sizeof(bConstraintTarget), "tempConstraintTarget"); \
+    ct = static_cast<bConstraintTarget *>( \
+        MEM_callocN(sizeof(bConstraintTarget), "tempConstraintTarget")); \
 \
     ct->tar = datatar; \
     ct->space = con->tarspace; \
@@ -967,7 +971,7 @@ static void childof_new_data(void *cdata)
 
 static void childof_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bChildOfConstraint *data = con->data;
+  bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -976,7 +980,7 @@ static void childof_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 static int childof_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bChildOfConstraint *data = con->data;
+    bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -991,8 +995,8 @@ static int childof_get_tars(bConstraint *con, ListBase *list)
 static void childof_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bChildOfConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -1001,8 +1005,8 @@ static void childof_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bChildOfConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (!VALID_CONS_TARGET(ct)) {
@@ -1067,7 +1071,7 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
   /* If requested, compute the inverse matrix from the computed parent matrix. */
   if (data->flag & CHILDOF_SET_INVERSE) {
     invert_m4_m4(data->invmat, parmat);
-    if (cob->pchan != NULL) {
+    if (cob->pchan != nullptr) {
       mul_m4_series(data->invmat, data->invmat, cob->ob->object_to_world);
     }
 
@@ -1078,8 +1082,8 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
     /* Write the computed matrix back to the master copy if in COW evaluation. */
     bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
-    if (orig_con != NULL) {
-      bChildOfConstraint *orig_data = orig_con->data;
+    if (orig_con != nullptr) {
+      bChildOfConstraint *orig_data = static_cast<bChildOfConstraint *>(orig_con->data);
 
       copy_m4_m4(orig_data->invmat, data->invmat);
       orig_data->flag &= ~CHILDOF_SET_INVERSE;
@@ -1113,9 +1117,9 @@ static bConstraintTypeInfo CTI_CHILDOF = {
     /*size*/ sizeof(bChildOfConstraint),
     /*name*/ N_("Child Of"),
     /*structName*/ "bChildOfConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ childof_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ childof_new_data,
     /*get_constraint_targets*/ childof_get_tars,
     /*flush_constraint_targets*/ childof_flush_tars,
@@ -1135,7 +1139,7 @@ static void trackto_new_data(void *cdata)
 
 static void trackto_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bTrackToConstraint *data = con->data;
+  bTrackToConstraint *data = static_cast<bTrackToConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -1144,7 +1148,7 @@ static void trackto_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 static int trackto_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bTrackToConstraint *data = con->data;
+    bTrackToConstraint *data = static_cast<bTrackToConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -1159,8 +1163,8 @@ static int trackto_get_tars(bConstraint *con, ListBase *list)
 static void trackto_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bTrackToConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bTrackToConstraint *data = static_cast<bTrackToConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -1260,8 +1264,8 @@ static void vectomat(const float vec[3],
 
 static void trackto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bTrackToConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bTrackToConstraint *data = static_cast<bTrackToConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float size[3], vec[3];
@@ -1297,9 +1301,9 @@ static bConstraintTypeInfo CTI_TRACKTO = {
     /*size*/ sizeof(bTrackToConstraint),
     /*name*/ N_("Track To"),
     /*structName*/ "bTrackToConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ trackto_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ trackto_new_data,
     /*get_constraint_targets*/ trackto_get_tars,
     /*flush_constraint_targets*/ trackto_flush_tars,
@@ -1322,7 +1326,7 @@ static void kinematic_new_data(void *cdata)
 
 static void kinematic_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bKinematicConstraint *data = con->data;
+  bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
 
   /* chain target */
   func(con, (ID **)&data->tar, false, userdata);
@@ -1334,7 +1338,7 @@ static void kinematic_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int kinematic_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bKinematicConstraint *data = con->data;
+    bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints is used twice here */
@@ -1350,8 +1354,8 @@ static int kinematic_get_tars(bConstraint *con, ListBase *list)
 static void kinematic_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bKinematicConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -1359,13 +1363,13 @@ static void kinematic_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
   }
 }
 
-static void kinematic_get_tarmat(Depsgraph *UNUSED(depsgraph),
+static void kinematic_get_tarmat(Depsgraph * /*depsgraph*/,
                                  bConstraint *con,
                                  bConstraintOb *cob,
                                  bConstraintTarget *ct,
-                                 float UNUSED(ctime))
+                                 float /*ctime*/)
 {
-  bKinematicConstraint *data = con->data;
+  bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
 
   if (VALID_CONS_TARGET(ct)) {
     constraint_target_to_mat4(ct->tar,
@@ -1381,7 +1385,7 @@ static void kinematic_get_tarmat(Depsgraph *UNUSED(depsgraph),
     if (data->flag & CONSTRAINT_IK_AUTO) {
       Object *ob = cob->ob;
 
-      if (ob == NULL) {
+      if (ob == nullptr) {
         unit_m4(ct->matrix);
       }
       else {
@@ -1403,14 +1407,14 @@ static bConstraintTypeInfo CTI_KINEMATIC = {
     /*size*/ sizeof(bKinematicConstraint),
     /*name*/ N_("IK"),
     /*structName*/ "bKinematicConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ kinematic_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ kinematic_new_data,
     /*get_constraint_targets*/ kinematic_get_tars,
     /*flush_constraint_targets*/ kinematic_flush_tars,
     /*get_target_matrix*/ kinematic_get_tarmat,
-    /* evaluate - solved as separate loop */ NULL,
+    /* evaluate - solved as separate loop */ nullptr,
 };
 
 /* -------- Follow-Path Constraint ---------- */
@@ -1427,7 +1431,7 @@ static void followpath_new_data(void *cdata)
 
 static void followpath_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bFollowPathConstraint *data = con->data;
+  bFollowPathConstraint *data = static_cast<bFollowPathConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -1436,7 +1440,7 @@ static void followpath_id_looper(bConstraint *con, ConstraintIDFunc func, void *
 static int followpath_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bFollowPathConstraint *data = con->data;
+    bFollowPathConstraint *data = static_cast<bFollowPathConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* Standard target-getting macro for single-target constraints without sub-targets. */
@@ -1451,24 +1455,24 @@ static int followpath_get_tars(bConstraint *con, ListBase *list)
 static void followpath_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bFollowPathConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bFollowPathConstraint *data = static_cast<bFollowPathConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGETNS_FLUSH_TARS(con, data->tar, ct, list, no_copy);
   }
 }
 
-static void followpath_get_tarmat(Depsgraph *UNUSED(depsgraph),
+static void followpath_get_tarmat(Depsgraph * /*depsgraph*/,
                                   bConstraint *con,
-                                  bConstraintOb *UNUSED(cob),
+                                  bConstraintOb * /*cob*/,
                                   bConstraintTarget *ct,
-                                  float UNUSED(ctime))
+                                  float /*ctime*/)
 {
-  bFollowPathConstraint *data = con->data;
+  bFollowPathConstraint *data = static_cast<bFollowPathConstraint *>(con->data);
 
   if (VALID_CONS_TARGET(ct) && (ct->tar->type == OB_CURVES_LEGACY)) {
-    Curve *cu = ct->tar->data;
+    Curve *cu = static_cast<Curve *>(ct->tar->data);
     float vec[4], radius;
     float curvetime;
 
@@ -1491,7 +1495,7 @@ static void followpath_get_tarmat(Depsgraph *UNUSED(depsgraph),
          * to get a time factor. */
         curvetime /= cu->pathlen;
 
-        Nurb *nu = cu->nurb.first;
+        Nurb *nu = static_cast<Nurb *>(cu->nurb.first);
         if (!(nu && nu->flagu & CU_NURB_CYCLIC) && cu->flag & CU_PATH_CLAMP) {
           /* If curve is not cyclic, clamp to the begin/end points if the curve clamp option is on.
            */
@@ -1506,10 +1510,10 @@ static void followpath_get_tarmat(Depsgraph *UNUSED(depsgraph),
       if (BKE_where_on_path(ct->tar,
                             curvetime,
                             vec,
-                            NULL,
-                            (data->followflag & FOLLOWPATH_FOLLOW) ? quat : NULL,
+                            nullptr,
+                            (data->followflag & FOLLOWPATH_FOLLOW) ? quat : nullptr,
                             &radius,
-                            NULL))
+                            nullptr))
       {
         float totmat[4][4];
         unit_m4(totmat);
@@ -1539,13 +1543,13 @@ static void followpath_get_tarmat(Depsgraph *UNUSED(depsgraph),
 
 static void followpath_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bConstraintTarget *ct = targets->first;
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
     float obmat[4][4];
     float size[3];
-    bFollowPathConstraint *data = con->data;
+    bFollowPathConstraint *data = static_cast<bFollowPathConstraint *>(con->data);
 
     /* get Object transform (loc/rot/size) to determine transformation from path */
     /* TODO: this used to be local at one point, but is probably more useful as-is */
@@ -1582,9 +1586,9 @@ static bConstraintTypeInfo CTI_FOLLOWPATH = {
     /*size*/ sizeof(bFollowPathConstraint),
     /*name*/ N_("Follow Path"),
     /*structName*/ "bFollowPathConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ followpath_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ followpath_new_data,
     /*get_constraint_targets*/ followpath_get_tars,
     /*flush_constraint_targets*/ followpath_flush_tars,
@@ -1594,9 +1598,9 @@ static bConstraintTypeInfo CTI_FOLLOWPATH = {
 
 /* --------- Limit Location --------- */
 
-static void loclimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void loclimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
-  bLocLimitConstraint *data = con->data;
+  bLocLimitConstraint *data = static_cast<bLocLimitConstraint *>(con->data);
 
   if (data->flag & LIMIT_XMIN) {
     if (cob->matrix[3][0] < data->xmin) {
@@ -1635,21 +1639,21 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
     /*size*/ sizeof(bLocLimitConstraint),
     /*name*/ N_("Limit Location"),
     /*structName*/ "bLocLimitConstraint",
-    /*free_data*/ NULL,
-    /*id_looper*/ NULL,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*free_data*/ nullptr,
+    /*id_looper*/ nullptr,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ loclimit_evaluate,
 };
 
 /* -------- Limit Rotation --------- */
 
-static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
-  bRotLimitConstraint *data = con->data;
+  bRotLimitConstraint *data = static_cast<bRotLimitConstraint *>(con->data);
   float loc[3];
   float eul[3];
   float size[3];
@@ -1716,21 +1720,21 @@ static bConstraintTypeInfo CTI_ROTLIMIT = {
     /*size*/ sizeof(bRotLimitConstraint),
     /*name*/ N_("Limit Rotation"),
     /*structName*/ "bRotLimitConstraint",
-    /*free_data*/ NULL,
-    /*id_looper*/ NULL,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*free_data*/ nullptr,
+    /*id_looper*/ nullptr,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ rotlimit_evaluate,
 };
 
 /* --------- Limit Scale --------- */
 
-static void sizelimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void sizelimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
-  bSizeLimitConstraint *data = con->data;
+  bSizeLimitConstraint *data = static_cast<bSizeLimitConstraint *>(con->data);
   float obsize[3], size[3];
 
   mat4_to_size(size, cob->matrix);
@@ -1784,13 +1788,13 @@ static bConstraintTypeInfo CTI_SIZELIMIT = {
     /*size*/ sizeof(bSizeLimitConstraint),
     /*name*/ N_("Limit Scale"),
     /*structName*/ "bSizeLimitConstraint",
-    /*free_data*/ NULL,
-    /*id_looper*/ NULL,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*free_data*/ nullptr,
+    /*id_looper*/ nullptr,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ sizelimit_evaluate,
 };
 
@@ -1805,7 +1809,7 @@ static void loclike_new_data(void *cdata)
 
 static void loclike_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bLocateLikeConstraint *data = con->data;
+  bLocateLikeConstraint *data = static_cast<bLocateLikeConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -1814,7 +1818,7 @@ static void loclike_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 static int loclike_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bLocateLikeConstraint *data = con->data;
+    bLocateLikeConstraint *data = static_cast<bLocateLikeConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -1829,8 +1833,8 @@ static int loclike_get_tars(bConstraint *con, ListBase *list)
 static void loclike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bLocateLikeConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bLocateLikeConstraint *data = static_cast<bLocateLikeConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -1839,8 +1843,8 @@ static void loclike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void loclike_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bLocateLikeConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bLocateLikeConstraint *data = static_cast<bLocateLikeConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float offset[3] = {0.0f, 0.0f, 0.0f};
@@ -1881,9 +1885,9 @@ static bConstraintTypeInfo CTI_LOCLIKE = {
     /*size*/ sizeof(bLocateLikeConstraint),
     /*name*/ N_("Copy Location"),
     /*structName*/ "bLocateLikeConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ loclike_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ loclike_new_data,
     /*get_constraint_targets*/ loclike_get_tars,
     /*flush_constraint_targets*/ loclike_flush_tars,
@@ -1902,7 +1906,7 @@ static void rotlike_new_data(void *cdata)
 
 static void rotlike_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bRotateLikeConstraint *data = con->data;
+  bRotateLikeConstraint *data = static_cast<bRotateLikeConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -1911,7 +1915,7 @@ static void rotlike_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 static int rotlike_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bRotateLikeConstraint *data = con->data;
+    bRotateLikeConstraint *data = static_cast<bRotateLikeConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -1926,8 +1930,8 @@ static int rotlike_get_tars(bConstraint *con, ListBase *list)
 static void rotlike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bRotateLikeConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bRotateLikeConstraint *data = static_cast<bRotateLikeConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -1936,8 +1940,8 @@ static void rotlike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void rotlike_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bRotateLikeConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bRotateLikeConstraint *data = static_cast<bRotateLikeConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float loc[3], size[3], oldrot[3][3], newrot[3][3];
@@ -2058,9 +2062,9 @@ static bConstraintTypeInfo CTI_ROTLIKE = {
     /*size*/ sizeof(bRotateLikeConstraint),
     /*name*/ N_("Copy Rotation"),
     /*structName*/ "bRotateLikeConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ rotlike_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ rotlike_new_data,
     /*get_constraint_targets*/ rotlike_get_tars,
     /*flush_constraint_targets*/ rotlike_flush_tars,
@@ -2080,7 +2084,7 @@ static void sizelike_new_data(void *cdata)
 
 static void sizelike_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bSizeLikeConstraint *data = con->data;
+  bSizeLikeConstraint *data = static_cast<bSizeLikeConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -2089,7 +2093,7 @@ static void sizelike_id_looper(bConstraint *con, ConstraintIDFunc func, void *us
 static int sizelike_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bSizeLikeConstraint *data = con->data;
+    bSizeLikeConstraint *data = static_cast<bSizeLikeConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -2104,8 +2108,8 @@ static int sizelike_get_tars(bConstraint *con, ListBase *list)
 static void sizelike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bSizeLikeConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bSizeLikeConstraint *data = static_cast<bSizeLikeConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -2114,8 +2118,8 @@ static void sizelike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void sizelike_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bSizeLikeConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bSizeLikeConstraint *data = static_cast<bSizeLikeConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float obsize[3], size[3];
@@ -2188,9 +2192,9 @@ static bConstraintTypeInfo CTI_SIZELIKE = {
     /*size*/ sizeof(bSizeLikeConstraint),
     /*name*/ N_("Copy Scale"),
     /*structName*/ "bSizeLikeConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ sizelike_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ sizelike_new_data,
     /*get_constraint_targets*/ sizelike_get_tars,
     /*flush_constraint_targets*/ sizelike_flush_tars,
@@ -2202,7 +2206,7 @@ static bConstraintTypeInfo CTI_SIZELIKE = {
 
 static void translike_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bTransLikeConstraint *data = con->data;
+  bTransLikeConstraint *data = static_cast<bTransLikeConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -2211,7 +2215,7 @@ static void translike_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int translike_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bTransLikeConstraint *data = con->data;
+    bTransLikeConstraint *data = static_cast<bTransLikeConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -2226,8 +2230,8 @@ static int translike_get_tars(bConstraint *con, ListBase *list)
 static void translike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bTransLikeConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bTransLikeConstraint *data = static_cast<bTransLikeConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -2236,8 +2240,8 @@ static void translike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void translike_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bTransLikeConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bTransLikeConstraint *data = static_cast<bTransLikeConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float target_mat[4][4];
@@ -2294,10 +2298,10 @@ static bConstraintTypeInfo CTI_TRANSLIKE = {
     /*size*/ sizeof(bTransLikeConstraint),
     /*name*/ N_("Copy Transforms"),
     /*structName*/ "bTransLikeConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ translike_id_looper,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
     /*get_constraint_targets*/ translike_get_tars,
     /*flush_constraint_targets*/ translike_flush_tars,
     /*get_target_matrix*/ default_get_tarmat_full_bbone,
@@ -2314,9 +2318,9 @@ static void samevolume_new_data(void *cdata)
   data->volume = 1.0f;
 }
 
-static void samevolume_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void samevolume_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
-  bSameVolumeConstraint *data = con->data;
+  bSameVolumeConstraint *data = static_cast<bSameVolumeConstraint *>(con->data);
 
   float volume = data->volume;
   float fac = 1.0f, total_scale = 1.0f;
@@ -2363,13 +2367,13 @@ static bConstraintTypeInfo CTI_SAMEVOL = {
     /*size*/ sizeof(bSameVolumeConstraint),
     /*name*/ N_("Maintain Volume"),
     /*structName*/ "bSameVolumeConstraint",
-    /*free_data*/ NULL,
-    /*id_looper*/ NULL,
-    /*copy_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*id_looper*/ nullptr,
+    /*copy_data*/ nullptr,
     /*new_data*/ samevolume_new_data,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ samevolume_evaluate,
 };
 
@@ -2377,7 +2381,7 @@ static bConstraintTypeInfo CTI_SAMEVOL = {
 
 static void pycon_free(bConstraint *con)
 {
-  bPythonConstraint *data = con->data;
+  bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
   /* id-properties */
   IDP_FreeProperty(data->prop);
@@ -2400,14 +2404,14 @@ static void pycon_new_data(void *cdata)
   bPythonConstraint *data = (bPythonConstraint *)cdata;
 
   /* Everything should be set correctly by calloc, except for the prop->type constant. */
-  data->prop = MEM_callocN(sizeof(IDProperty), "PyConstraintProps");
+  data->prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "PyConstraintProps"));
   data->prop->type = IDP_GROUP;
 }
 
 static int pycon_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bPythonConstraint *data = con->data;
+    bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
     list->first = data->targets.first;
     list->last = data->targets.last;
@@ -2420,7 +2424,7 @@ static int pycon_get_tars(bConstraint *con, ListBase *list)
 
 static void pycon_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bPythonConstraint *data = con->data;
+  bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
   /* targets */
   LISTBASE_FOREACH (bConstraintTarget *, ct, &data->targets) {
@@ -2432,18 +2436,18 @@ static void pycon_id_looper(bConstraint *con, ConstraintIDFunc func, void *userd
 }
 
 /* Whether this approach is maintained remains to be seen (aligorith) */
-static void pycon_get_tarmat(Depsgraph *UNUSED(depsgraph),
+static void pycon_get_tarmat(Depsgraph * /*depsgraph*/,
                              bConstraint *con,
                              bConstraintOb *cob,
                              bConstraintTarget *ct,
-                             float UNUSED(ctime))
+                             float /*ctime*/)
 {
 #ifdef WITH_PYTHON
-  bPythonConstraint *data = con->data;
+  bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 #endif
 
   if (VALID_CONS_TARGET(ct)) {
-    if (ct->tar->type == OB_CURVES_LEGACY && ct->tar->runtime.curve_cache == NULL) {
+    if (ct->tar->type == OB_CURVES_LEGACY && ct->tar->runtime.curve_cache == nullptr) {
       unit_m4(ct->matrix);
       return;
     }
@@ -2460,7 +2464,7 @@ static void pycon_get_tarmat(Depsgraph *UNUSED(depsgraph),
                               con->flag,
                               con->headtail);
 
-    /* only execute target calculation if allowed */
+/* only execute target calculation if allowed */
 #ifdef WITH_PYTHON
     if (G.f & G_FLAG_SCRIPT_AUTOEXEC) {
       BPY_pyconstraint_target(data, ct);
@@ -2478,7 +2482,7 @@ static void pycon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targe
   UNUSED_VARS(con, cob, targets);
   return;
 #else
-  bPythonConstraint *data = con->data;
+  bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
   /* only evaluate in python if we're allowed to do so */
   if ((G.f & G_FLAG_SCRIPT_AUTOEXEC) == 0) {
@@ -2500,7 +2504,7 @@ static bConstraintTypeInfo CTI_PYTHON = {
     /*copy_data*/ pycon_copy,
     /*new_data*/ pycon_new_data,
     /*get_constraint_targets*/ pycon_get_tars,
-    /*flush_constraint_targets*/ NULL,
+    /*flush_constraint_targets*/ nullptr,
     /*get_target_matrix*/ pycon_get_tarmat,
     /*evaluate_constraint*/ pycon_evaluate,
 };
@@ -2509,7 +2513,7 @@ static bConstraintTypeInfo CTI_PYTHON = {
 
 static void armdef_free(bConstraint *con)
 {
-  bArmatureConstraint *data = con->data;
+  bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
   /* Target list. */
   BLI_freelistN(&data->targets);
@@ -2526,7 +2530,7 @@ static void armdef_copy(bConstraint *con, bConstraint *srccon)
 static int armdef_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bArmatureConstraint *data = con->data;
+    bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
     *list = data->targets;
 
@@ -2538,7 +2542,7 @@ static int armdef_get_tars(bConstraint *con, ListBase *list)
 
 static void armdef_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bArmatureConstraint *data = con->data;
+  bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
   /* Target list. */
   LISTBASE_FOREACH (bConstraintTarget *, ct, &data->targets) {
@@ -2547,17 +2551,17 @@ static void armdef_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
 }
 
 /* Compute the world space pose matrix of the target bone. */
-static void armdef_get_tarmat(Depsgraph *UNUSED(depsgraph),
-                              bConstraint *UNUSED(con),
-                              bConstraintOb *UNUSED(cob),
+static void armdef_get_tarmat(Depsgraph * /*depsgraph*/,
+                              bConstraint * /*con*/,
+                              bConstraintOb * /*cob*/,
                               bConstraintTarget *ct,
-                              float UNUSED(ctime))
+                              float /*ctime*/)
 {
-  if (ct != NULL) {
+  if (ct != nullptr) {
     if (ct->tar && ct->tar->type == OB_ARMATURE) {
       bPoseChannel *pchan = BKE_pose_channel_find_name(ct->tar->pose, ct->subtarget);
 
-      if (pchan != NULL) {
+      if (pchan != nullptr) {
         mul_m4_m4m4(ct->matrix, ct->tar->object_to_world, pchan->pose_mat);
         return;
       }
@@ -2584,7 +2588,7 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
   mul_m4_series(mat, obmat, bonemat, iobmat);
 
   /* Accumulate the transformation. */
-  if (r_sum_dq != NULL) {
+  if (r_sum_dq != nullptr) {
     float basemat_world[4][4];
     DualQuat tmpdq;
 
@@ -2640,7 +2644,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
     float blend;
     BKE_pchan_bbone_deform_segment_index(pchan, y / bone->length, &index, &blend);
 
-    if (r_sum_dq != NULL) {
+    if (r_sum_dq != nullptr) {
       /* Compute the object space rest matrix of the segment. */
       mul_m4_m4m4(basemat, bone->arm_mat, b_bone_rest_mats[index].mat);
     }
@@ -2653,7 +2657,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              r_sum_mat,
                              r_sum_dq);
 
-    if (r_sum_dq != NULL) {
+    if (r_sum_dq != nullptr) {
       /* Compute the object space rest matrix of the segment. */
       mul_m4_m4m4(basemat, bone->arm_mat, b_bone_rest_mats[index + 1].mat);
     }
@@ -2683,7 +2687,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
 
 static void armdef_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bArmatureConstraint *data = con->data;
+  bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
   float sum_mat[4][4], input_co[3];
   DualQuat sum_dq;
@@ -2693,7 +2697,7 @@ static void armdef_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targ
   zero_m4(sum_mat);
   memset(&sum_dq, 0, sizeof(sum_dq));
 
-  DualQuat *pdq = (data->flag & CONSTRAINT_ARMATURE_QUATERNION) ? &sum_dq : NULL;
+  DualQuat *pdq = (data->flag & CONSTRAINT_ARMATURE_QUATERNION) ? &sum_dq : nullptr;
   bool use_envelopes = (data->flag & CONSTRAINT_ARMATURE_ENVELOPE) != 0;
 
   if (cob->pchan && cob->pchan->bone && !(data->flag & CONSTRAINT_ARMATURE_CUR_LOCATION)) {
@@ -2720,7 +2724,7 @@ static void armdef_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targ
 
     bPoseChannel *pchan = BKE_pose_channel_find_name(ct->tar->pose, ct->subtarget);
 
-    if (pchan == NULL || pchan->bone == NULL) {
+    if (pchan == nullptr || pchan->bone == nullptr) {
       return;
     }
 
@@ -2729,7 +2733,7 @@ static void armdef_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targ
 
   /* Compute the final transform. */
   if (weight > 0.0f) {
-    if (pdq != NULL) {
+    if (pdq != nullptr) {
       normalize_dq(pdq, weight);
       dquat_to_mat4(sum_mat, pdq);
     }
@@ -2750,9 +2754,9 @@ static bConstraintTypeInfo CTI_ARMATURE = {
     /*free_data*/ armdef_free,
     /*id_looper*/ armdef_id_looper,
     /*copy_data*/ armdef_copy,
-    /*new_data*/ NULL,
+    /*new_data*/ nullptr,
     /*get_constraint_targets*/ armdef_get_tars,
-    /*flush_constraint_targets*/ NULL,
+    /*flush_constraint_targets*/ nullptr,
     /*get_target_matrix*/ armdef_get_tarmat,
     /*evaluate_constraint*/ armdef_evaluate,
 };
@@ -2772,7 +2776,7 @@ static void actcon_new_data(void *cdata)
 
 static void actcon_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bActionConstraint *data = con->data;
+  bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
 
   /* target */
   func(con, (ID **)&data->tar, false, userdata);
@@ -2784,7 +2788,7 @@ static void actcon_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
 static int actcon_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bActionConstraint *data = con->data;
+    bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -2799,8 +2803,8 @@ static int actcon_get_tars(bConstraint *con, ListBase *list)
 static void actcon_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bActionConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -2811,9 +2815,9 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
                               bConstraint *con,
                               bConstraintOb *cob,
                               bConstraintTarget *ct,
-                              float UNUSED(ctime))
+                              float /*ctime*/)
 {
-  bActionConstraint *data = con->data;
+  bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
 
   if (VALID_CONS_TARGET(ct) || data->flag & ACTCON_USE_EVAL_TIME) {
     float tempmat[4][4], vec[3];
@@ -2876,7 +2880,7 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
       printf("do Action Constraint %s - Ob %s Pchan %s\n",
              con->name,
              cob->ob->id.name + 2,
-             (cob->pchan) ? cob->pchan->name : NULL);
+             (cob->pchan) ? cob->pchan->name : nullptr);
     }
 
     /* Get the appropriate information from the action */
@@ -2885,7 +2889,7 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       /* evaluate using workob */
       /* FIXME: we don't have any consistent standards on limiting effects on object... */
-      what_does_obaction(cob->ob, &workob, NULL, data->act, NULL, &anim_eval_context);
+      what_does_obaction(cob->ob, &workob, nullptr, data->act, nullptr, &anim_eval_context);
       BKE_object_to_mat4(&workob, ct->matrix);
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
@@ -2920,8 +2924,8 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
 static void actcon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bActionConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct) || data->flag & ACTCON_USE_EVAL_TIME) {
     switch (data->mix_mode) {
@@ -2963,9 +2967,9 @@ static bConstraintTypeInfo CTI_ACTION = {
     /*size*/ sizeof(bActionConstraint),
     /*name*/ N_("Action"),
     /*structName*/ "bActionConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ actcon_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ actcon_new_data,
     /*get_constraint_targets*/ actcon_get_tars,
     /*flush_constraint_targets*/ actcon_flush_tars,
@@ -2985,7 +2989,7 @@ static void locktrack_new_data(void *cdata)
 
 static void locktrack_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bLockTrackConstraint *data = con->data;
+  bLockTrackConstraint *data = static_cast<bLockTrackConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -2994,7 +2998,7 @@ static void locktrack_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int locktrack_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bLockTrackConstraint *data = con->data;
+    bLockTrackConstraint *data = static_cast<bLockTrackConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* the following macro is used for all standard single-target constraints */
@@ -3009,8 +3013,8 @@ static int locktrack_get_tars(bConstraint *con, ListBase *list)
 static void locktrack_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bLockTrackConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bLockTrackConstraint *data = static_cast<bLockTrackConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -3019,8 +3023,8 @@ static void locktrack_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void locktrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bLockTrackConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bLockTrackConstraint *data = static_cast<bLockTrackConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float vec[3], vec2[3];
@@ -3279,9 +3283,9 @@ static bConstraintTypeInfo CTI_LOCKTRACK = {
     /*size*/ sizeof(bLockTrackConstraint),
     /*name*/ N_("Locked Track"),
     /*structName*/ "bLockTrackConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ locktrack_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ locktrack_new_data,
     /*get_constraint_targets*/ locktrack_get_tars,
     /*flush_constraint_targets*/ locktrack_flush_tars,
@@ -3300,7 +3304,7 @@ static void distlimit_new_data(void *cdata)
 
 static void distlimit_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bDistLimitConstraint *data = con->data;
+  bDistLimitConstraint *data = static_cast<bDistLimitConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -3309,7 +3313,7 @@ static void distlimit_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int distlimit_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bDistLimitConstraint *data = con->data;
+    bDistLimitConstraint *data = static_cast<bDistLimitConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -3324,8 +3328,8 @@ static int distlimit_get_tars(bConstraint *con, ListBase *list)
 static void distlimit_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bDistLimitConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bDistLimitConstraint *data = static_cast<bDistLimitConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -3334,8 +3338,8 @@ static void distlimit_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void distlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bDistLimitConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bDistLimitConstraint *data = static_cast<bDistLimitConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
@@ -3352,8 +3356,8 @@ static void distlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
       /* Write the computed distance back to the master copy if in COW evaluation. */
       bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
-      if (orig_con != NULL) {
-        bDistLimitConstraint *orig_data = orig_con->data;
+      if (orig_con != nullptr) {
+        bDistLimitConstraint *orig_data = static_cast<bDistLimitConstraint *>(orig_con->data);
 
         orig_data->dist = data->dist;
       }
@@ -3422,9 +3426,9 @@ static bConstraintTypeInfo CTI_DISTLIMIT = {
     /*size*/ sizeof(bDistLimitConstraint),
     /*name*/ N_("Limit Distance"),
     /*structName*/ "bDistLimitConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ distlimit_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ distlimit_new_data,
     /*get_constraint_targets*/ distlimit_get_tars,
     /*flush_constraint_targets*/ distlimit_flush_tars,
@@ -3448,7 +3452,7 @@ static void stretchto_new_data(void *cdata)
 
 static void stretchto_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bStretchToConstraint *data = con->data;
+  bStretchToConstraint *data = static_cast<bStretchToConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -3457,7 +3461,7 @@ static void stretchto_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int stretchto_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bStretchToConstraint *data = con->data;
+    bStretchToConstraint *data = static_cast<bStretchToConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -3472,8 +3476,8 @@ static int stretchto_get_tars(bConstraint *con, ListBase *list)
 static void stretchto_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bStretchToConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bStretchToConstraint *data = static_cast<bStretchToConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -3482,8 +3486,8 @@ static void stretchto_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void stretchto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bStretchToConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bStretchToConstraint *data = static_cast<bStretchToConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
@@ -3520,8 +3524,8 @@ static void stretchto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
       /* Write the computed length back to the master copy if in COW evaluation. */
       bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
-      if (orig_con != NULL) {
-        bStretchToConstraint *orig_data = orig_con->data;
+      if (orig_con != nullptr) {
+        bStretchToConstraint *orig_data = static_cast<bStretchToConstraint *>(orig_con->data);
 
         orig_data->orglength = data->orglength;
       }
@@ -3630,9 +3634,9 @@ static bConstraintTypeInfo CTI_STRETCHTO = {
     /*size*/ sizeof(bStretchToConstraint),
     /*name*/ N_("Stretch To"),
     /*structName*/ "bStretchToConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ stretchto_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ stretchto_new_data,
     /*get_constraint_targets*/ stretchto_get_tars,
     /*flush_constraint_targets*/ stretchto_flush_tars,
@@ -3653,7 +3657,7 @@ static void minmax_new_data(void *cdata)
 
 static void minmax_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bMinMaxConstraint *data = con->data;
+  bMinMaxConstraint *data = static_cast<bMinMaxConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -3662,7 +3666,7 @@ static void minmax_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
 static int minmax_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bMinMaxConstraint *data = con->data;
+    bMinMaxConstraint *data = static_cast<bMinMaxConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -3677,8 +3681,8 @@ static int minmax_get_tars(bConstraint *con, ListBase *list)
 static void minmax_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bMinMaxConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bMinMaxConstraint *data = static_cast<bMinMaxConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -3687,8 +3691,8 @@ static void minmax_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void minmax_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bMinMaxConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bMinMaxConstraint *data = static_cast<bMinMaxConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
@@ -3761,9 +3765,9 @@ static bConstraintTypeInfo CTI_MINMAX = {
     /*size*/ sizeof(bMinMaxConstraint),
     /*name*/ N_("Floor"),
     /*structName*/ "bMinMaxConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ minmax_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ minmax_new_data,
     /*get_constraint_targets*/ minmax_get_tars,
     /*flush_constraint_targets*/ minmax_flush_tars,
@@ -3775,7 +3779,7 @@ static bConstraintTypeInfo CTI_MINMAX = {
 
 static void clampto_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bClampToConstraint *data = con->data;
+  bClampToConstraint *data = static_cast<bClampToConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -3784,7 +3788,7 @@ static void clampto_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 static int clampto_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bClampToConstraint *data = con->data;
+    bClampToConstraint *data = static_cast<bClampToConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* Standard target-getting macro for single-target constraints without sub-targets. */
@@ -3799,19 +3803,19 @@ static int clampto_get_tars(bConstraint *con, ListBase *list)
 static void clampto_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bClampToConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bClampToConstraint *data = static_cast<bClampToConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGETNS_FLUSH_TARS(con, data->tar, ct, list, no_copy);
   }
 }
 
-static void clampto_get_tarmat(Depsgraph *UNUSED(depsgraph),
-                               bConstraint *UNUSED(con),
-                               bConstraintOb *UNUSED(cob),
+static void clampto_get_tarmat(Depsgraph * /*depsgraph*/,
+                               bConstraint * /*con*/,
+                               bConstraintOb * /*cob*/,
                                bConstraintTarget *ct,
-                               float UNUSED(ctime))
+                               float /*ctime*/)
 {
   /* technically, this isn't really needed for evaluation, but we don't know what else
    * might end up calling this...
@@ -3823,8 +3827,8 @@ static void clampto_get_tarmat(Depsgraph *UNUSED(depsgraph),
 
 static void clampto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bClampToConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bClampToConstraint *data = static_cast<bClampToConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target and it is a curve */
   if (VALID_CONS_TARGET(ct) && (ct->tar->type == OB_CURVES_LEGACY)) {
@@ -3929,7 +3933,7 @@ static void clampto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
       }
 
       /* 3. position on curve */
-      if (BKE_where_on_path(ct->tar, curvetime, vec, NULL, NULL, NULL, NULL)) {
+      if (BKE_where_on_path(ct->tar, curvetime, vec, nullptr, nullptr, nullptr, nullptr)) {
         unit_m4(totmat);
         copy_v3_v3(totmat[3], vec);
 
@@ -3947,10 +3951,10 @@ static bConstraintTypeInfo CTI_CLAMPTO = {
     /*size*/ sizeof(bClampToConstraint),
     /*name*/ N_("Clamp To"),
     /*structName*/ "bClampToConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ clampto_id_looper,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
     /*get_constraint_targets*/ clampto_get_tars,
     /*flush_constraint_targets*/ clampto_flush_tars,
     /*get_target_matrix*/ clampto_get_tarmat,
@@ -3975,7 +3979,7 @@ static void transform_new_data(void *cdata)
 
 static void transform_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bTransformConstraint *data = con->data;
+  bTransformConstraint *data = static_cast<bTransformConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -3984,7 +3988,7 @@ static void transform_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int transform_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bTransformConstraint *data = con->data;
+    bTransformConstraint *data = static_cast<bTransformConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -3999,8 +4003,8 @@ static int transform_get_tars(bConstraint *con, ListBase *list)
 static void transform_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bTransformConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bTransformConstraint *data = static_cast<bTransformConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -4009,8 +4013,8 @@ static void transform_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void transform_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bTransformConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bTransformConstraint *data = static_cast<bTransformConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
@@ -4156,9 +4160,9 @@ static bConstraintTypeInfo CTI_TRANSFORM = {
     /*size*/ sizeof(bTransformConstraint),
     /*name*/ N_("Transformation"),
     /*structName*/ "bTransformConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ transform_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ transform_new_data,
     /*get_constraint_targets*/ transform_get_tars,
     /*flush_constraint_targets*/ transform_flush_tars,
@@ -4170,7 +4174,7 @@ static bConstraintTypeInfo CTI_TRANSFORM = {
 
 static void shrinkwrap_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bShrinkwrapConstraint *data = con->data;
+  bShrinkwrapConstraint *data = static_cast<bShrinkwrapConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->target, false, userdata);
@@ -4187,7 +4191,7 @@ static void shrinkwrap_new_data(void *cdata)
 static int shrinkwrap_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bShrinkwrapConstraint *data = con->data;
+    bShrinkwrapConstraint *data = static_cast<bShrinkwrapConstraint *>(con->data);
     bConstraintTarget *ct;
 
     SINGLETARGETNS_GET_TARS(con, data->target, ct, list);
@@ -4201,18 +4205,18 @@ static int shrinkwrap_get_tars(bConstraint *con, ListBase *list)
 static void shrinkwrap_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bShrinkwrapConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bShrinkwrapConstraint *data = static_cast<bShrinkwrapConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     SINGLETARGETNS_FLUSH_TARS(con, data->target, ct, list, no_copy);
   }
 }
 
-static void shrinkwrap_get_tarmat(Depsgraph *UNUSED(depsgraph),
+static void shrinkwrap_get_tarmat(Depsgraph * /*depsgraph*/,
                                   bConstraint *con,
                                   bConstraintOb *cob,
                                   bConstraintTarget *ct,
-                                  float UNUSED(ctime))
+                                  float /*ctime*/)
 {
   bShrinkwrapConstraint *scon = (bShrinkwrapConstraint *)con->data;
 
@@ -4258,12 +4262,12 @@ static void shrinkwrap_get_tarmat(Depsgraph *UNUSED(depsgraph),
             if (do_track_normal) {
               track_normal = true;
               BKE_shrinkwrap_compute_smooth_normal(
-                  &tree, NULL, nearest.index, nearest.co, nearest.no, track_no);
+                  &tree, nullptr, nearest.index, nearest.co, nearest.no, track_no);
               BLI_space_transform_invert_normal(&transform, track_no);
             }
 
             BKE_shrinkwrap_snap_point_to_surface(&tree,
-                                                 NULL,
+                                                 nullptr,
                                                  scon->shrinkMode,
                                                  nearest.index,
                                                  nearest.co,
@@ -4373,9 +4377,9 @@ static void shrinkwrap_get_tarmat(Depsgraph *UNUSED(depsgraph),
   }
 }
 
-static void shrinkwrap_evaluate(bConstraint *UNUSED(con), bConstraintOb *cob, ListBase *targets)
+static void shrinkwrap_evaluate(bConstraint * /*con*/, bConstraintOb *cob, ListBase *targets)
 {
-  bConstraintTarget *ct = targets->first;
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   /* only evaluate if there is a target */
   if (VALID_CONS_TARGET(ct)) {
@@ -4388,9 +4392,9 @@ static bConstraintTypeInfo CTI_SHRINKWRAP = {
     /*size*/ sizeof(bShrinkwrapConstraint),
     /*name*/ N_("Shrinkwrap"),
     /*structName*/ "bShrinkwrapConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ shrinkwrap_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ shrinkwrap_new_data,
     /*get_constraint_targets*/ shrinkwrap_get_tars,
     /*flush_constraint_targets*/ shrinkwrap_flush_tars,
@@ -4409,7 +4413,7 @@ static void damptrack_new_data(void *cdata)
 
 static void damptrack_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bDampTrackConstraint *data = con->data;
+  bDampTrackConstraint *data = static_cast<bDampTrackConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -4418,7 +4422,7 @@ static void damptrack_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 static int damptrack_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bDampTrackConstraint *data = con->data;
+    bDampTrackConstraint *data = static_cast<bDampTrackConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* the following macro is used for all standard single-target constraints */
@@ -4433,8 +4437,8 @@ static int damptrack_get_tars(bConstraint *con, ListBase *list)
 static void damptrack_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bDampTrackConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bDampTrackConstraint *data = static_cast<bDampTrackConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -4453,8 +4457,8 @@ static const float track_dir_vecs[6][3] = {
 
 static void damptrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bDampTrackConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bDampTrackConstraint *data = static_cast<bDampTrackConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   if (VALID_CONS_TARGET(ct)) {
     float tarvec[3];
@@ -4553,9 +4557,9 @@ static bConstraintTypeInfo CTI_DAMPTRACK = {
     /*size*/ sizeof(bDampTrackConstraint),
     /*name*/ N_("Damped Track"),
     /*structName*/ "bDampTrackConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ damptrack_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ damptrack_new_data,
     /*get_constraint_targets*/ damptrack_get_tars,
     /*flush_constraint_targets*/ damptrack_flush_tars,
@@ -4567,7 +4571,7 @@ static bConstraintTypeInfo CTI_DAMPTRACK = {
 
 static void splineik_free(bConstraint *con)
 {
-  bSplineIKConstraint *data = con->data;
+  bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
   /* binding array */
   MEM_SAFE_FREE(data->points);
@@ -4575,11 +4579,11 @@ static void splineik_free(bConstraint *con)
 
 static void splineik_copy(bConstraint *con, bConstraint *srccon)
 {
-  bSplineIKConstraint *src = srccon->data;
-  bSplineIKConstraint *dst = con->data;
+  bSplineIKConstraint *src = static_cast<bSplineIKConstraint *>(srccon->data);
+  bSplineIKConstraint *dst = static_cast<bSplineIKConstraint *>(con->data);
 
   /* copy the binding array */
-  dst->points = MEM_dupallocN(src->points);
+  dst->points = static_cast<float *>(MEM_dupallocN(src->points));
 }
 
 static void splineik_new_data(void *cdata)
@@ -4597,7 +4601,7 @@ static void splineik_new_data(void *cdata)
 
 static void splineik_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bSplineIKConstraint *data = con->data;
+  bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -4606,7 +4610,7 @@ static void splineik_id_looper(bConstraint *con, ConstraintIDFunc func, void *us
 static int splineik_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bSplineIKConstraint *data = con->data;
+    bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* Standard target-getting macro for single-target constraints without sub-targets. */
@@ -4621,19 +4625,19 @@ static int splineik_get_tars(bConstraint *con, ListBase *list)
 static void splineik_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bSplineIKConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGETNS_FLUSH_TARS(con, data->tar, ct, list, no_copy);
   }
 }
 
-static void splineik_get_tarmat(Depsgraph *UNUSED(depsgraph),
-                                bConstraint *UNUSED(con),
-                                bConstraintOb *UNUSED(cob),
+static void splineik_get_tarmat(Depsgraph * /*depsgraph*/,
+                                bConstraint * /*con*/,
+                                bConstraintOb * /*cob*/,
                                 bConstraintTarget *ct,
-                                float UNUSED(ctime))
+                                float /*ctime*/)
 {
   /* technically, this isn't really needed for evaluation, but we don't know what else
    * might end up calling this...
@@ -4655,14 +4659,14 @@ static bConstraintTypeInfo CTI_SPLINEIK = {
     /*get_constraint_targets*/ splineik_get_tars,
     /*flush_constraint_targets*/ splineik_flush_tars,
     /*get_target_matrix*/ splineik_get_tarmat,
-    /* evaluate - solved as separate loop */ NULL,
+    /* evaluate - solved as separate loop */ nullptr,
 };
 
 /* ----------- Pivot ------------- */
 
 static void pivotcon_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bPivotConstraint *data = con->data;
+  bPivotConstraint *data = static_cast<bPivotConstraint *>(con->data);
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
@@ -4671,7 +4675,7 @@ static void pivotcon_id_looper(bConstraint *con, ConstraintIDFunc func, void *us
 static int pivotcon_get_tars(bConstraint *con, ListBase *list)
 {
   if (con && list) {
-    bPivotConstraint *data = con->data;
+    bPivotConstraint *data = static_cast<bPivotConstraint *>(con->data);
     bConstraintTarget *ct;
 
     /* standard target-getting macro for single-target constraints */
@@ -4686,8 +4690,8 @@ static int pivotcon_get_tars(bConstraint *con, ListBase *list)
 static void pivotcon_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 {
   if (con && list) {
-    bPivotConstraint *data = con->data;
-    bConstraintTarget *ct = list->first;
+    bPivotConstraint *data = static_cast<bPivotConstraint *>(con->data);
+    bConstraintTarget *ct = static_cast<bConstraintTarget *>(list->first);
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
@@ -4696,8 +4700,8 @@ static void pivotcon_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
 static void pivotcon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-  bPivotConstraint *data = con->data;
-  bConstraintTarget *ct = targets->first;
+  bPivotConstraint *data = static_cast<bPivotConstraint *>(con->data);
+  bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
   float pivot[3], vec[3];
   float rotMat[3][3];
@@ -4772,10 +4776,10 @@ static bConstraintTypeInfo CTI_PIVOT = {
     /*size*/ sizeof(bPivotConstraint),
     /*name*/ N_("Pivot"),
     /*structName*/ "bPivotConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ pivotcon_id_looper,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
     /* XXX: might be needed to get 'normal' pivot behavior. */
     /*get_constraint_targets*/ pivotcon_get_tars,
     /*flush_constraint_targets*/ pivotcon_flush_tars,
@@ -4789,13 +4793,13 @@ static void followtrack_new_data(void *cdata)
 {
   bFollowTrackConstraint *data = (bFollowTrackConstraint *)cdata;
 
-  data->clip = NULL;
+  data->clip = nullptr;
   data->flag |= FOLLOWTRACK_ACTIVECLIP;
 }
 
 static void followtrack_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
 
   func(con, (ID **)&data->clip, true, userdata);
   func(con, (ID **)&data->camera, false, userdata);
@@ -4804,7 +4808,7 @@ static void followtrack_id_looper(bConstraint *con, ConstraintIDFunc func, void 
 
 static MovieClip *followtrack_tracking_clip_get(bConstraint *con, bConstraintOb *cob)
 {
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
 
   if (data->flag & FOLLOWTRACK_ACTIVECLIP) {
     Scene *scene = cob->scene;
@@ -4818,7 +4822,7 @@ static MovieTrackingObject *followtrack_tracking_object_get(bConstraint *con, bC
 {
   MovieClip *clip = followtrack_tracking_clip_get(con, cob);
   MovieTracking *tracking = &clip->tracking;
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
 
   if (data->object[0]) {
     return BKE_tracking_object_get_named(tracking, data->object);
@@ -4828,9 +4832,9 @@ static MovieTrackingObject *followtrack_tracking_object_get(bConstraint *con, bC
 
 static Object *followtrack_camera_object_get(bConstraint *con, bConstraintOb *cob)
 {
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
 
-  if (data->camera == NULL) {
+  if (data->camera == nullptr) {
     Scene *scene = cob->scene;
     return scene->camera;
   }
@@ -4838,7 +4842,7 @@ static Object *followtrack_camera_object_get(bConstraint *con, bConstraintOb *co
   return data->camera;
 }
 
-typedef struct FollowTrackContext {
+struct FollowTrackContext {
   int flag;
   int frame_method;
 
@@ -4855,13 +4859,13 @@ typedef struct FollowTrackContext {
 
   float depsgraph_time;
   float clip_frame;
-} FollowTrackContext;
+};
 
 static bool followtrack_context_init(FollowTrackContext *context,
                                      bConstraint *con,
                                      bConstraintOb *cob)
 {
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
 
   context->flag = data->flag;
   context->frame_method = data->frame_method;
@@ -4871,19 +4875,19 @@ static bool followtrack_context_init(FollowTrackContext *context,
 
   context->clip = followtrack_tracking_clip_get(con, cob);
   context->camera_object = followtrack_camera_object_get(con, cob);
-  if (context->clip == NULL || context->camera_object == NULL) {
+  if (context->clip == nullptr || context->camera_object == nullptr) {
     return false;
   }
   context->depth_object = data->depth_ob;
 
   context->tracking = &context->clip->tracking;
   context->tracking_object = followtrack_tracking_object_get(con, cob);
-  if (context->tracking_object == NULL) {
+  if (context->tracking_object == nullptr) {
     return false;
   }
 
   context->track = BKE_tracking_object_find_track_with_name(context->tracking_object, data->track);
-  if (context->track == NULL) {
+  if (context->track == nullptr) {
     return false;
   }
 
@@ -5049,13 +5053,13 @@ static float followtrack_distance_from_viewplane_get(FollowTrackContext *context
 static void followtrack_project_to_depth_object_if_needed(FollowTrackContext *context,
                                                           bConstraintOb *cob)
 {
-  if (context->depth_object == NULL) {
+  if (context->depth_object == nullptr) {
     return;
   }
 
   Object *depth_object = context->depth_object;
   const Mesh *depth_mesh = BKE_object_get_evaluated_mesh(depth_object);
-  if (depth_mesh == NULL) {
+  if (depth_mesh == nullptr) {
     return;
   }
 
@@ -5107,7 +5111,7 @@ static void followtrack_evaluate_using_2d_position(FollowTrackContext *context, 
   }
 
   int clip_width, clip_height;
-  BKE_movieclip_get_size(clip, NULL, &clip_width, &clip_height);
+  BKE_movieclip_get_size(clip, nullptr, &clip_width, &clip_height);
 
   float marker_position[2];
   BKE_tracking_marker_get_subframe_position(track, clip_frame, marker_position);
@@ -5171,14 +5175,14 @@ static void followtrack_evaluate_using_2d_position(FollowTrackContext *context, 
   followtrack_project_to_depth_object_if_needed(context, cob);
 }
 
-static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void followtrack_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
   FollowTrackContext context;
   if (!followtrack_context_init(&context, con, cob)) {
     return;
   }
 
-  bFollowTrackConstraint *data = con->data;
+  bFollowTrackConstraint *data = static_cast<bFollowTrackConstraint *>(con->data);
   if (data->flag & FOLLOWTRACK_USE_3D_POSITION) {
     followtrack_evaluate_using_3d_position(&context, cob);
     return;
@@ -5192,13 +5196,13 @@ static bConstraintTypeInfo CTI_FOLLOWTRACK = {
     /*size*/ sizeof(bFollowTrackConstraint),
     /*name*/ N_("Follow Track"),
     /*structName*/ "bFollowTrackConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ followtrack_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ followtrack_new_data,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ followtrack_evaluate,
 };
 
@@ -5208,22 +5212,22 @@ static void camerasolver_new_data(void *cdata)
 {
   bCameraSolverConstraint *data = (bCameraSolverConstraint *)cdata;
 
-  data->clip = NULL;
+  data->clip = nullptr;
   data->flag |= CAMERASOLVER_ACTIVECLIP;
 }
 
 static void camerasolver_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bCameraSolverConstraint *data = con->data;
+  bCameraSolverConstraint *data = static_cast<bCameraSolverConstraint *>(con->data);
 
   func(con, (ID **)&data->clip, true, userdata);
 }
 
-static void camerasolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void camerasolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
   Depsgraph *depsgraph = cob->depsgraph;
   Scene *scene = cob->scene;
-  bCameraSolverConstraint *data = con->data;
+  bCameraSolverConstraint *data = static_cast<bCameraSolverConstraint *>(con->data);
   MovieClip *clip = data->clip;
 
   if (data->flag & CAMERASOLVER_ACTIVECLIP) {
@@ -5250,13 +5254,13 @@ static bConstraintTypeInfo CTI_CAMERASOLVER = {
     /*size*/ sizeof(bCameraSolverConstraint),
     /*name*/ N_("Camera Solver"),
     /*structName*/ "bCameraSolverConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ camerasolver_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ camerasolver_new_data,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ camerasolver_evaluate,
 };
 
@@ -5266,24 +5270,24 @@ static void objectsolver_new_data(void *cdata)
 {
   bObjectSolverConstraint *data = (bObjectSolverConstraint *)cdata;
 
-  data->clip = NULL;
+  data->clip = nullptr;
   data->flag |= OBJECTSOLVER_ACTIVECLIP;
   unit_m4(data->invmat);
 }
 
 static void objectsolver_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bObjectSolverConstraint *data = con->data;
+  bObjectSolverConstraint *data = static_cast<bObjectSolverConstraint *>(con->data);
 
   func(con, (ID **)&data->clip, false, userdata);
   func(con, (ID **)&data->camera, false, userdata);
 }
 
-static void objectsolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *UNUSED(targets))
+static void objectsolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
   Depsgraph *depsgraph = cob->depsgraph;
   Scene *scene = cob->scene;
-  bObjectSolverConstraint *data = con->data;
+  bObjectSolverConstraint *data = static_cast<bObjectSolverConstraint *>(con->data);
   MovieClip *clip = data->clip;
   Object *camob = data->camera ? data->camera : scene->camera;
 
@@ -5320,8 +5324,8 @@ static void objectsolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase
     /* Write the computed matrix back to the master copy if in COW evaluation. */
     bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
-    if (orig_con != NULL) {
-      bObjectSolverConstraint *orig_data = orig_con->data;
+    if (orig_con != nullptr) {
+      bObjectSolverConstraint *orig_data = static_cast<bObjectSolverConstraint *>(orig_con->data);
 
       copy_m4_m4(orig_data->invmat, data->invmat);
       orig_data->flag &= ~OBJECTSOLVER_SET_INVERSE;
@@ -5336,13 +5340,13 @@ static bConstraintTypeInfo CTI_OBJECTSOLVER = {
     /*size*/ sizeof(bObjectSolverConstraint),
     /*name*/ N_("Object Solver"),
     /*structName*/ "bObjectSolverConstraint",
-    /*free_data*/ NULL,
+    /*free_data*/ nullptr,
     /*id_looper*/ objectsolver_id_looper,
-    /*copy_data*/ NULL,
+    /*copy_data*/ nullptr,
     /*new_data*/ objectsolver_new_data,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ objectsolver_evaluate,
 };
 
@@ -5350,14 +5354,14 @@ static bConstraintTypeInfo CTI_OBJECTSOLVER = {
 
 static void transformcache_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
 {
-  bTransformCacheConstraint *data = con->data;
+  bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
   func(con, (ID **)&data->cache_file, true, userdata);
 }
 
 static void transformcache_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
 #if defined(WITH_ALEMBIC) || defined(WITH_USD)
-  bTransformCacheConstraint *data = con->data;
+  bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
   Scene *scene = cob->scene;
 
   CacheFile *cache_file = data->cache_file;
@@ -5402,18 +5406,18 @@ static void transformcache_evaluate(bConstraint *con, bConstraintOb *cob, ListBa
 
 static void transformcache_copy(bConstraint *con, bConstraint *srccon)
 {
-  bTransformCacheConstraint *src = srccon->data;
-  bTransformCacheConstraint *dst = con->data;
+  bTransformCacheConstraint *src = static_cast<bTransformCacheConstraint *>(srccon->data);
+  bTransformCacheConstraint *dst = static_cast<bTransformCacheConstraint *>(con->data);
 
   STRNCPY(dst->object_path, src->object_path);
   dst->cache_file = src->cache_file;
-  dst->reader = NULL;
+  dst->reader = nullptr;
   dst->reader_object_path[0] = '\0';
 }
 
 static void transformcache_free(bConstraint *con)
 {
-  bTransformCacheConstraint *data = con->data;
+  bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
 
   if (data->reader) {
     BKE_cachefile_reader_free(data->cache_file, &data->reader);
@@ -5425,7 +5429,7 @@ static void transformcache_new_data(void *cdata)
 {
   bTransformCacheConstraint *data = (bTransformCacheConstraint *)cdata;
 
-  data->cache_file = NULL;
+  data->cache_file = nullptr;
 }
 
 static bConstraintTypeInfo CTI_TRANSFORM_CACHE = {
@@ -5437,9 +5441,9 @@ static bConstraintTypeInfo CTI_TRANSFORM_CACHE = {
     /*id_looper*/ transformcache_id_looper,
     /*copy_data*/ transformcache_copy,
     /*new_data*/ transformcache_new_data,
-    /*get_constraint_targets*/ NULL,
-    /*flush_constraint_targets*/ NULL,
-    /*get_target_matrix*/ NULL,
+    /*get_constraint_targets*/ nullptr,
+    /*flush_constraint_targets*/ nullptr,
+    /*get_target_matrix*/ nullptr,
     /*evaluate_constraint*/ transformcache_evaluate,
 };
 
@@ -5455,7 +5459,7 @@ static short CTI_INIT = 1; /* when non-zero, the list needs to be updated */
 /* This function only gets called when CTI_INIT is non-zero */
 static void constraints_init_typeinfo(void)
 {
-  constraintsTypeInfo[0] = NULL;                       /* 'Null' Constraint */
+  constraintsTypeInfo[0] = nullptr;                    /* 'Null' Constraint */
   constraintsTypeInfo[1] = &CTI_CHILDOF;               /* ChildOf Constraint */
   constraintsTypeInfo[2] = &CTI_TRACKTO;               /* TrackTo Constraint */
   constraintsTypeInfo[3] = &CTI_KINEMATIC;             /* IK Constraint */
@@ -5504,7 +5508,7 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_from_type(int type)
 
   CLOG_WARN(&LOG, "No valid constraint type-info data available. Type = %i", type);
 
-  return NULL;
+  return nullptr;
 }
 
 const bConstraintTypeInfo *BKE_constraint_typeinfo_get(bConstraint *con)
@@ -5514,7 +5518,7 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_get(bConstraint *con)
     return BKE_constraint_typeinfo_from_type(con->type);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /* ************************* General Constraints API ************************** */
@@ -5527,10 +5531,10 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_get(bConstraint *con)
 /**
  * Helper function for #BKE_constraint_free_data() - unlinks references.
  */
-static void con_unlink_refs_cb(bConstraint *UNUSED(con),
+static void con_unlink_refs_cb(bConstraint * /*con*/,
                                ID **idpoin,
                                bool is_reference,
-                               void *UNUSED(userData))
+                               void * /*userData*/)
 {
   if (*idpoin && is_reference) {
     id_us_min(*idpoin);
@@ -5563,7 +5567,7 @@ void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)
 
       /* unlink the referenced resources it uses */
       if (do_id_user) {
-        con_invoke_id_looper(cti, con, con_unlink_refs_cb, NULL);
+        con_invoke_id_looper(cti, con, con_unlink_refs_cb, nullptr);
       }
     }
 
@@ -5639,7 +5643,7 @@ bool BKE_constraint_apply_for_object(Depsgraph *depsgraph,
   ListBase single_con = {new_con, new_con};
 
   bConstraintOb *cob = BKE_constraints_make_evalob(
-      depsgraph, scene_eval, ob_eval, NULL, CONSTRAINT_OBTYPE_OBJECT);
+      depsgraph, scene_eval, ob_eval, nullptr, CONSTRAINT_OBTYPE_OBJECT);
   /* Undo the effect of the current constraint stack evaluation. */
   mul_m4_m4m4(cob->matrix, ob_eval->constinv, cob->matrix);
 
@@ -5745,7 +5749,7 @@ void BKE_constraint_panel_expand(bConstraint *con)
 /* Creates a new constraint, initializes its data, and returns it */
 static bConstraint *add_new_constraint_internal(const char *name, short type)
 {
-  bConstraint *con = MEM_callocN(sizeof(bConstraint), "Constraint");
+  bConstraint *con = static_cast<bConstraint *>(MEM_callocN(sizeof(bConstraint), "Constraint"));
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
   const char *newName;
 
@@ -5807,7 +5811,7 @@ static void add_new_constraint_to_list(Object *ob, bPoseChannel *pchan, bConstra
   }
 }
 
-/* if pchan is not NULL then assume we're adding a pose constraint */
+/* if pchan is not nullptr then assume we're adding a pose constraint */
 static bConstraint *add_new_constraint(Object *ob,
                                        bPoseChannel *pchan,
                                        const char *name,
@@ -5837,7 +5841,7 @@ static bConstraint *add_new_constraint(Object *ob,
        * for objects the Local space doesn't make sense (#78462, D6095 etc).
        * So only default to Before (Split) if the constraint is on a bone. */
       if (pchan) {
-        bActionConstraint *data = con->data;
+        bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
         data->mix_mode = ACTCON_MIX_BEFORE_SPLIT;
         con->ownspace = CONSTRAINT_SPACE_LOCAL;
       }
@@ -5864,8 +5868,8 @@ bConstraint *BKE_constraint_add_for_pose(Object *ob,
                                          const char *name,
                                          short type)
 {
-  if (pchan == NULL) {
-    return NULL;
+  if (pchan == nullptr) {
+    return nullptr;
   }
 
   return add_new_constraint(ob, pchan, name, type);
@@ -5873,7 +5877,7 @@ bConstraint *BKE_constraint_add_for_pose(Object *ob,
 
 bConstraint *BKE_constraint_add_for_object(Object *ob, const char *name, short type)
 {
-  return add_new_constraint(ob, NULL, name, type);
+  return add_new_constraint(ob, nullptr, name, type);
 }
 
 /* ......... */
@@ -5892,10 +5896,10 @@ void BKE_constraints_id_loop(ListBase *conlist, ConstraintIDFunc func, void *use
 /* ......... */
 
 /* helper for BKE_constraints_copy(), to be used for making sure that ID's are valid */
-static void con_extern_cb(bConstraint *UNUSED(con),
+static void con_extern_cb(bConstraint * /*con*/,
                           ID **idpoin,
-                          bool UNUSED(is_reference),
-                          void *UNUSED(userData))
+                          bool /*is_reference*/,
+                          void * /*userData*/)
 {
   if (*idpoin && ID_IS_LINKED(*idpoin)) {
     id_lib_extern(*idpoin);
@@ -5906,10 +5910,10 @@ static void con_extern_cb(bConstraint *UNUSED(con),
  * Helper for #BKE_constraints_copy(),
  * to be used for making sure that user-counts of copied ID's are fixed up.
  */
-static void con_fix_copied_refs_cb(bConstraint *UNUSED(con),
+static void con_fix_copied_refs_cb(bConstraint * /*con*/,
                                    ID **idpoin,
                                    bool is_reference,
-                                   void *UNUSED(userData))
+                                   void * /*userData*/)
 {
   /* Increment user-count if this is a reference type. */
   if ((*idpoin) && (is_reference)) {
@@ -5937,29 +5941,29 @@ static void constraint_copy_data_ex(bConstraint *dst,
 
     /* Fix user-counts for all referenced data that need it. */
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-      con_invoke_id_looper(cti, dst, con_fix_copied_refs_cb, NULL);
+      con_invoke_id_looper(cti, dst, con_fix_copied_refs_cb, nullptr);
     }
 
     /* For proxies we don't want to make external. */
     if (do_extern) {
       /* go over used ID-links for this constraint to ensure that they are valid for proxies */
-      con_invoke_id_looper(cti, dst, con_extern_cb, NULL);
+      con_invoke_id_looper(cti, dst, con_extern_cb, nullptr);
     }
   }
 }
 
 bConstraint *BKE_constraint_duplicate_ex(bConstraint *src, const int flag, const bool do_extern)
 {
-  bConstraint *dst = MEM_dupallocN(src);
+  bConstraint *dst = static_cast<bConstraint *>(MEM_dupallocN(src));
   constraint_copy_data_ex(dst, src, flag, do_extern);
-  dst->next = dst->prev = NULL;
+  dst->next = dst->prev = nullptr;
   return dst;
 }
 
 bConstraint *BKE_constraint_copy_for_pose(Object *ob, bPoseChannel *pchan, bConstraint *src)
 {
-  if (pchan == NULL) {
-    return NULL;
+  if (pchan == nullptr) {
+    return nullptr;
   }
 
   bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
@@ -5970,7 +5974,7 @@ bConstraint *BKE_constraint_copy_for_pose(Object *ob, bPoseChannel *pchan, bCons
 bConstraint *BKE_constraint_copy_for_object(Object *ob, bConstraint *src)
 {
   bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
-  add_new_constraint_to_list(ob, NULL, new_con);
+  add_new_constraint_to_list(ob, nullptr, new_con);
   return new_con;
 }
 
@@ -5981,8 +5985,11 @@ void BKE_constraints_copy_ex(ListBase *dst, const ListBase *src, const int flag,
   BLI_listbase_clear(dst);
   BLI_duplicatelist(dst, src);
 
-  for (con = dst->first, srccon = src->first; con && srccon;
-       srccon = srccon->next, con = con->next) {
+  for (con = static_cast<bConstraint *>(dst->first),
+      srccon = static_cast<bConstraint *>(src->first);
+       con && srccon;
+       srccon = srccon->next, con = con->next)
+  {
     constraint_copy_data_ex(con, srccon, flag, do_extern);
     if ((flag & LIB_ID_COPY_NO_LIB_OVERRIDE_LOCAL_DATA_FLAG) == 0) {
       con->flag |= CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
@@ -5999,7 +6006,7 @@ void BKE_constraints_copy(ListBase *dst, const ListBase *src, bool do_extern)
 
 bConstraint *BKE_constraints_find_name(ListBase *list, const char *name)
 {
-  return BLI_findstring(list, name, offsetof(bConstraint, name));
+  return static_cast<bConstraint *>(BLI_findstring(list, name, offsetof(bConstraint, name)));
 }
 
 bConstraint *BKE_constraints_active_get(ListBase *list)
@@ -6015,7 +6022,7 @@ bConstraint *BKE_constraints_active_get(ListBase *list)
   }
 
   /* no active constraint found */
-  return NULL;
+  return nullptr;
 }
 
 void BKE_constraints_active_set(ListBase *list, bConstraint *con)
@@ -6036,7 +6043,7 @@ void BKE_constraints_active_set(ListBase *list, bConstraint *con)
 static bConstraint *constraint_list_find_from_target(ListBase *constraints, bConstraintTarget *tgt)
 {
   LISTBASE_FOREACH (bConstraint *, con, constraints) {
-    ListBase *targets = NULL;
+    ListBase *targets = nullptr;
 
     if (con->type == CONSTRAINT_TYPE_PYTHON) {
       targets = &((bPythonConstraint *)con->data)->targets;
@@ -6050,29 +6057,29 @@ static bConstraint *constraint_list_find_from_target(ListBase *constraints, bCon
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bConstraint *BKE_constraint_find_from_target(Object *ob,
                                              bConstraintTarget *tgt,
                                              bPoseChannel **r_pchan)
 {
-  if (r_pchan != NULL) {
-    *r_pchan = NULL;
+  if (r_pchan != nullptr) {
+    *r_pchan = nullptr;
   }
 
   bConstraint *result = constraint_list_find_from_target(&ob->constraints, tgt);
 
-  if (result != NULL) {
+  if (result != nullptr) {
     return result;
   }
 
-  if (ob->pose != NULL) {
+  if (ob->pose != nullptr) {
     LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
       result = constraint_list_find_from_target(&pchan->constraints, tgt);
 
-      if (result != NULL) {
-        if (r_pchan != NULL) {
+      if (result != nullptr) {
+        if (r_pchan != nullptr) {
           *r_pchan = pchan;
         }
 
@@ -6081,7 +6088,7 @@ bConstraint *BKE_constraint_find_from_target(Object *ob,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /* Finds the original copy of the constraint based on a COW copy. */
@@ -6092,18 +6099,18 @@ static bConstraint *constraint_find_original(Object *ob,
 {
   Object *orig_ob = (Object *)DEG_get_original_id(&ob->id);
 
-  if (ELEM(orig_ob, NULL, ob)) {
-    return NULL;
+  if (ELEM(orig_ob, nullptr, ob)) {
+    return nullptr;
   }
 
   /* Find which constraint list to use. */
   ListBase *constraints, *orig_constraints;
 
-  if (pchan != NULL) {
+  if (pchan != nullptr) {
     bPoseChannel *orig_pchan = pchan->orig_pchan;
 
-    if (orig_pchan == NULL) {
-      return NULL;
+    if (orig_pchan == nullptr) {
+      return nullptr;
     }
 
     constraints = &pchan->constraints;
@@ -6118,11 +6125,11 @@ static bConstraint *constraint_find_original(Object *ob,
   int index = BLI_findindex(constraints, con);
 
   if (index >= 0) {
-    bConstraint *orig_con = BLI_findlink(orig_constraints, index);
+    bConstraint *orig_con = static_cast<bConstraint *>(BLI_findlink(orig_constraints, index));
 
     /* Verify it has correct type and name. */
     if (orig_con && orig_con->type == con->type && STREQ(orig_con->name, con->name)) {
-      if (r_orig_ob != NULL) {
+      if (r_orig_ob != nullptr) {
         *r_orig_ob = orig_ob;
       }
 
@@ -6130,20 +6137,20 @@ static bConstraint *constraint_find_original(Object *ob,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bConstraint *con)
 {
   /* Write the computed distance back to the master copy if in COW evaluation. */
   if (!DEG_is_active(cob->depsgraph)) {
-    return NULL;
+    return nullptr;
   }
 
-  Object *orig_ob = NULL;
+  Object *orig_ob = nullptr;
   bConstraint *orig_con = constraint_find_original(cob->ob, cob->pchan, con, &orig_ob);
 
-  if (orig_con != NULL) {
+  if (orig_con != nullptr) {
     DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM);
   }
 
@@ -6153,7 +6160,7 @@ static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bCon
 bool BKE_constraint_is_nonlocal_in_liboverride(const Object *ob, const bConstraint *con)
 {
   return (ID_IS_OVERRIDE_LIBRARY(ob) &&
-          (con == NULL || (con->flag & CONSTRAINT_OVERRIDE_LIBRARY_LOCAL) == 0));
+          (con == nullptr || (con->flag & CONSTRAINT_OVERRIDE_LIBRARY_LOCAL) == 0));
 }
 
 /* -------- Target-Matrix Stuff ------- */
@@ -6225,13 +6232,13 @@ void BKE_constraint_target_matrix_get(Depsgraph *depsgraph,
                                       float ctime)
 {
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
-  ListBase targets = {NULL, NULL};
+  ListBase targets = {nullptr, nullptr};
   bConstraintOb *cob;
   bConstraintTarget *ct;
 
   if (cti && cti->get_constraint_targets) {
     /* make 'constraint-ob' */
-    cob = MEM_callocN(sizeof(bConstraintOb), "tempConstraintOb");
+    cob = static_cast<bConstraintOb *>(MEM_callocN(sizeof(bConstraintOb), "tempConstraintOb"));
     cob->type = ownertype;
     cob->scene = scene;
     cob->depsgraph = depsgraph;
@@ -6239,7 +6246,7 @@ void BKE_constraint_target_matrix_get(Depsgraph *depsgraph,
       case CONSTRAINT_OBTYPE_OBJECT: /* it is usually this case */
       {
         cob->ob = (Object *)ownerdata;
-        cob->pchan = NULL;
+        cob->pchan = nullptr;
         if (cob->ob) {
           copy_m4_m4(cob->matrix, cob->ob->object_to_world);
           copy_m4_m4(cob->startmat, cob->matrix);
@@ -6252,7 +6259,7 @@ void BKE_constraint_target_matrix_get(Depsgraph *depsgraph,
       }
       case CONSTRAINT_OBTYPE_BONE: /* this may occur in some cases */
       {
-        cob->ob = NULL; /* this might not work at all :/ */
+        cob->ob = nullptr; /* this might not work at all :/ */
         cob->pchan = (bPoseChannel *)ownerdata;
         if (cob->pchan) {
           copy_m4_m4(cob->matrix, cob->pchan->pose_mat);
@@ -6273,7 +6280,7 @@ void BKE_constraint_target_matrix_get(Depsgraph *depsgraph,
     cti->get_constraint_targets(con, &targets);
 
     /* only calculate the target matrix on the first target */
-    ct = BLI_findlink(&targets, index);
+    ct = static_cast<bConstraintTarget *>(BLI_findlink(&targets, index));
 
     if (ct) {
       if (cti->get_target_matrix) {
@@ -6317,12 +6324,12 @@ void BKE_constraint_targets_for_solving_get(
      * - calculate if possible, otherwise just initialize as identity matrix
      */
     if (cti->get_target_matrix) {
-      for (ct = targets->first; ct; ct = ct->next) {
+      for (ct = static_cast<bConstraintTarget *>(targets->first); ct; ct = ct->next) {
         cti->get_target_matrix(depsgraph, con, cob, ct, ctime);
       }
     }
     else {
-      for (ct = targets->first; ct; ct = ct->next) {
+      for (ct = static_cast<bConstraintTarget *>(targets->first); ct; ct = ct->next) {
         unit_m4(ct->matrix);
       }
     }
@@ -6335,7 +6342,7 @@ void BKE_constraint_custom_object_space_init(bConstraintOb *cob, bConstraint *co
     /* Basically default_get_tarmat but without the unused parameters. */
     constraint_target_to_mat4(con->space_object,
                               con->space_subtarget,
-                              NULL,
+                              nullptr,
                               cob->space_obj_world_matrix,
                               CONSTRAINT_SPACE_WORLD,
                               CONSTRAINT_SPACE_WORLD,
@@ -6360,24 +6367,24 @@ void BKE_constraints_solve(Depsgraph *depsgraph,
   float enf;
 
   /* check that there is a valid constraint object to evaluate */
-  if (cob == NULL) {
+  if (cob == nullptr) {
     return;
   }
 
   /* loop over available constraints, solving and blending them */
-  for (con = conlist->first; con; con = con->next) {
+  for (con = static_cast<bConstraint *>(conlist->first); con; con = con->next) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
-    ListBase targets = {NULL, NULL};
+    ListBase targets = {nullptr, nullptr};
 
     /* these we can skip completely (invalid constraints...) */
-    if (cti == NULL) {
+    if (cti == nullptr) {
       continue;
     }
     if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
       continue;
     }
     /* these constraints can't be evaluated anyway */
-    if (cti->evaluate_constraint == NULL) {
+    if (cti->evaluate_constraint == nullptr) {
       continue;
     }
     /* influence == 0 should be ignored */
@@ -6448,7 +6455,7 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
       /* do any constraint specific stuff */
       switch (con->type) {
         case CONSTRAINT_TYPE_PYTHON: {
-          bPythonConstraint *data = con->data;
+          bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
           /* write targets */
           LISTBASE_FOREACH (bConstraintTarget *, ct, &data->targets) {
@@ -6462,7 +6469,7 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
           break;
         }
         case CONSTRAINT_TYPE_ARMATURE: {
-          bArmatureConstraint *data = con->data;
+          bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
           /* write targets */
           LISTBASE_FOREACH (bConstraintTarget *, ct, &data->targets) {
@@ -6472,7 +6479,7 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
           break;
         }
         case CONSTRAINT_TYPE_SPLINEIK: {
-          bSplineIKConstraint *data = con->data;
+          bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
           /* write points array */
           BLO_write_float_array(writer, data->numpoints, data->points);
@@ -6495,7 +6502,7 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
 
     switch (con->type) {
       case CONSTRAINT_TYPE_PYTHON: {
-        bPythonConstraint *data = con->data;
+        bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
         BLO_read_list(reader, &data->targets);
 
@@ -6504,20 +6511,20 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
         break;
       }
       case CONSTRAINT_TYPE_ARMATURE: {
-        bArmatureConstraint *data = con->data;
+        bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
         BLO_read_list(reader, &data->targets);
 
         break;
       }
       case CONSTRAINT_TYPE_SPLINEIK: {
-        bSplineIKConstraint *data = con->data;
+        bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
         BLO_read_data_address(reader, &data->points);
         break;
       }
       case CONSTRAINT_TYPE_KINEMATIC: {
-        bKinematicConstraint *data = con->data;
+        bKinematicConstraint *data = static_cast<bKinematicConstraint *>(con->data);
 
         con->lin_error = 0.0f;
         con->rot_error = 0.0f;
@@ -6534,8 +6541,8 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
         break;
       }
       case CONSTRAINT_TYPE_TRANSFORM_CACHE: {
-        bTransformCacheConstraint *data = con->data;
-        data->reader = NULL;
+        bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
+        data->reader = nullptr;
         data->reader_object_path[0] = '\0';
       }
     }
@@ -6543,14 +6550,14 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
 }
 
 /* temp struct used to transport needed info to lib_link_constraint_cb() */
-typedef struct tConstraintLinkData {
+struct tConstraintLinkData {
   BlendLibReader *reader;
   ID *id;
-} tConstraintLinkData;
+};
 /* callback function used to relink constraint ID-links */
-static void lib_link_constraint_cb(bConstraint *UNUSED(con),
+static void lib_link_constraint_cb(bConstraint * /*con*/,
                                    ID **idpoin,
-                                   bool UNUSED(is_reference),
+                                   bool /*is_reference*/,
                                    void *userdata)
 {
   tConstraintLinkData *cld = (tConstraintLinkData *)userdata;
@@ -6565,7 +6572,7 @@ void BKE_constraint_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *con
   LISTBASE_FOREACH (bConstraint *, con, conlist) {
     /* Patch for error introduced by changing constraints (don't know how). */
     /* NOTE(@ton): If `con->data` type changes, DNA cannot resolve the pointer!. */
-    if (con->data == NULL) {
+    if (con->data == nullptr) {
       con->type = CONSTRAINT_TYPE_NULL;
     }
     /* own ipo, all constraints have it */
@@ -6585,12 +6592,12 @@ void BKE_constraint_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *con
 }
 
 /* callback function used to expand constraint ID-links */
-static void expand_constraint_cb(bConstraint *UNUSED(con),
+static void expand_constraint_cb(bConstraint * /*con*/,
                                  ID **idpoin,
-                                 bool UNUSED(is_reference),
+                                 bool /*is_reference*/,
                                  void *userdata)
 {
-  BlendExpander *expander = userdata;
+  BlendExpander *expander = static_cast<BlendExpander *>(userdata);
   BLO_expand(expander, *idpoin);
 }
 
