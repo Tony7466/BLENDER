@@ -164,7 +164,7 @@ set(SRC
   intern/ipo.cc
   intern/kelvinlet.cc
   intern/key.cc
-  intern/keyconfig.c
+  intern/keyconfig.cc
   intern/lattice.c
   intern/lattice_deform.c
   intern/layer.cc
