@@ -177,7 +177,7 @@ set(SRC
   intern/lib_override_proxy_conversion.cc
   intern/lib_query.cc
   intern/lib_remap.cc
-  intern/library.c
+  intern/library.cc
   intern/light.c
   intern/light_linking.cc
   intern/lightprobe.cc

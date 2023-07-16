@@ -63,7 +63,8 @@ static void library_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 
   /* FIXME: Find if we should respect #BKE_BPATH_FOREACH_PATH_SKIP_PACKED here, and if not, explain
    * why. */
-  if (lib->packedfile != NULL /*&& (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0 */)
+  if (lib->packedfile !=
+      nullptr /*&& (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0 */)
   {
     return;
   }
@@ -73,40 +74,40 @@ static void library_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   }
 }
 
-static void library_blend_read_data(struct BlendDataReader *UNUSED(reader), ID *id)
+static void library_blend_read_data(struct BlendDataReader * /*reader*/, ID *id)
 {
   Library *lib = (Library *)id;
-  lib->runtime.name_map = NULL;
+  lib->runtime.name_map = nullptr;
 }
 
 IDTypeInfo IDType_ID_LI = {
-    .id_code = ID_LI,
-    .id_filter = FILTER_ID_LI,
-    .main_listbase_index = INDEX_ID_LI,
-    .struct_size = sizeof(Library),
-    .name = "Library",
-    .name_plural = "libraries",
-    .translation_context = BLT_I18NCONTEXT_ID_LIBRARY,
-    .flags = IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_LI,
+    /*id_filter*/ FILTER_ID_LI,
+    /*main_listbase_index*/ INDEX_ID_LI,
+    /*struct_size*/ sizeof(Library),
+    /*name*/ "Library",
+    /*name_plural*/ "libraries",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_LIBRARY,
+    /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = NULL,
-    .copy_data = NULL,
-    .free_data = library_free_data,
-    .make_local = NULL,
-    .foreach_id = library_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = library_foreach_path,
-    .owner_pointer_get = NULL,
+    /*init_data*/ nullptr,
+    /*copy_data*/ nullptr,
+    /*free_data*/ library_free_data,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ library_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ library_foreach_path,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = NULL,
-    .blend_read_data = library_blend_read_data,
-    .blend_read_lib = NULL,
-    .blend_read_expand = NULL,
+    /*blend_write*/ nullptr,
+    /*blend_read_data*/ library_blend_read_data,
+    /*blend_read_lib*/ nullptr,
+    /*blend_read_expand*/ nullptr,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 void BKE_library_filepath_set(Main *bmain, Library *lib, const char *filepath)
