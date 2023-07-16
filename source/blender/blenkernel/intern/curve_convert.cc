@@ -24,7 +24,7 @@
 static Curve *curve_from_font_object(Object *object, Depsgraph *depsgraph)
 {
   Curve *curve = (Curve *)object->data;
-  Curve *new_curve = (Curve *)BKE_id_copy_ex(NULL, &curve->id, NULL, LIB_ID_COPY_LOCALIZE);
+  Curve *new_curve = (Curve *)BKE_id_copy_ex(nullptr, &curve->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
   Object *evaluated_object = DEG_get_evaluated_object(depsgraph, object);
   BKE_vfont_to_curve_nubase(evaluated_object, FO_EDIT, &new_curve->nurb);
@@ -41,7 +41,7 @@ static Curve *curve_from_curve_object(Object *object, Depsgraph *depsgraph, bool
 {
   Object *evaluated_object = DEG_get_evaluated_object(depsgraph, object);
   Curve *curve = (Curve *)evaluated_object->data;
-  Curve *new_curve = (Curve *)BKE_id_copy_ex(NULL, &curve->id, NULL, LIB_ID_COPY_LOCALIZE);
+  Curve *new_curve = (Curve *)BKE_id_copy_ex(nullptr, &curve->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
   if (apply_modifiers) {
     BKE_curve_calc_modifiers_pre(depsgraph,
@@ -58,7 +58,7 @@ static Curve *curve_from_curve_object(Object *object, Depsgraph *depsgraph, bool
 Curve *BKE_curve_new_from_object(Object *object, Depsgraph *depsgraph, bool apply_modifiers)
 {
   if (!ELEM(object->type, OB_FONT, OB_CURVES_LEGACY)) {
-    return NULL;
+    return nullptr;
   }
 
   if (object->type == OB_FONT) {
