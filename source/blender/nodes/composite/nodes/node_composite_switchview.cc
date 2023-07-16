@@ -44,7 +44,7 @@ static void init_switch_view(const bContext *C, PointerRNA *ptr)
   Scene *scene = CTX_data_scene(C);
   bNode *node = (bNode *)ptr->data;
 
-  /* store scene for updates */
+  /* store scene for dynamic declaration */
   node->id = (ID *)scene;
   id_us_plus(node->id);
 }
