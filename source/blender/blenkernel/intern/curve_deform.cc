@@ -36,11 +36,11 @@
  * Calculations is in local space of deformed object
  * so we store matrices to transform points to/from local-space.
  */
-typedef struct {
+struct CurveDeform {
   float dmin[3], dmax[3];
   float curvespace[4][4], objectspace[4][4], objectspace3[3][3];
   int no_rot_axis;
-} CurveDeform;
+};
 
 static void init_curve_deform(const Object *ob_curve, const Object *ob_target, CurveDeform *cd)
 {
@@ -62,17 +62,17 @@ static void init_curve_deform(const Object *ob_curve, const Object *ob_target, C
 static bool calc_curve_deform(
     const Object *ob_curve, float co[3], const short axis, const CurveDeform *cd, float r_quat[4])
 {
-  const Curve *cu = ob_curve->data;
+  const Curve *cu = static_cast<const Curve *>(ob_curve->data);
   float fac, loc[4], dir[3], new_quat[4], radius;
   short index;
   const bool is_neg_axis = (axis > 2);
 
-  if (ob_curve->runtime.curve_cache == NULL) {
+  if (ob_curve->runtime.curve_cache == nullptr) {
     /* Happens with a cyclic dependencies. */
     return false;
   }
 
-  if (ob_curve->runtime.curve_cache->anim_path_accum_length == NULL) {
+  if (ob_curve->runtime.curve_cache->anim_path_accum_length == nullptr) {
     return false; /* happens on append, cyclic dependencies and empty curves */
   }
 
@@ -122,7 +122,7 @@ static bool calc_curve_deform(
     }
   }
 
-  if (BKE_where_on_path(ob_curve, fac, loc, dir, new_quat, &radius, NULL)) { /* returns OK */
+  if (BKE_where_on_path(ob_curve, fac, loc, dir, new_quat, &radius, nullptr)) { /* returns OK */
     float quat[4], cent[3];
 
     if (cd->no_rot_axis) { /* set by caller */
@@ -216,7 +216,7 @@ static void curve_deform_coords_impl(const Object *ob_curve,
     return;
   }
 
-  cu = ob_curve->data;
+  cu = static_cast<Curve *>(ob_curve->data);
 
   init_curve_deform(ob_curve, ob_target, &cd);
 
@@ -237,14 +237,14 @@ static void curve_deform_coords_impl(const Object *ob_curve,
     INIT_MINMAX(cd.dmin, cd.dmax);
   }
 
-  if (em_target != NULL) {
+  if (em_target != nullptr) {
     cd_dvert_offset = CustomData_get_offset(&em_target->bm->vdata, CD_MDEFORMVERT);
     if (cd_dvert_offset != -1) {
       use_dverts = true;
     }
   }
   else {
-    if (dvert != NULL) {
+    if (dvert != nullptr) {
       use_dverts = true;
     }
   }
@@ -260,18 +260,18 @@ static void curve_deform_coords_impl(const Object *ob_curve,
       float vec[3]; \
       mul_m4_v3(cd.curvespace, vert_coords[a]); \
       copy_v3_v3(vec, vert_coords[a]); \
-      calc_curve_deform(ob_curve, vec, defaxis, &cd, NULL); \
+      calc_curve_deform(ob_curve, vec, defaxis, &cd, nullptr); \
       interp_v3_v3v3(vert_coords[a], vert_coords[a], vec, weight); \
       mul_m4_v3(cd.objectspace, vert_coords[a]); \
     } \
   } \
   ((void)0)
 
-      if (em_target != NULL) {
+      if (em_target != nullptr) {
         BMIter iter;
         BMVert *v;
         BM_ITER_MESH_INDEX (v, &iter, em_target->bm, BM_VERTS_OF_MESH, a) {
-          dvert = BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset);
+          dvert = static_cast<const MDeformVert *>(BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset));
           DEFORM_OP(dvert);
         }
       }
@@ -296,7 +296,7 @@ static void curve_deform_coords_impl(const Object *ob_curve,
   } \
   ((void)0)
 
-      /* Already in 'cd.curvespace', previous for loop. */
+/* Already in 'cd.curvespace', previous for loop. */
 #define DEFORM_OP_CLAMPED(dvert) \
   { \
     const float weight = invert_vgroup ? 1.0f - BKE_defvert_find_weight(dvert, defgrp_index) : \
@@ -304,23 +304,23 @@ static void curve_deform_coords_impl(const Object *ob_curve,
     if (weight > 0.0f) { \
       float vec[3]; \
       copy_v3_v3(vec, vert_coords[a]); \
-      calc_curve_deform(ob_curve, vec, defaxis, &cd, NULL); \
+      calc_curve_deform(ob_curve, vec, defaxis, &cd, nullptr); \
       interp_v3_v3v3(vert_coords[a], vert_coords[a], vec, weight); \
       mul_m4_v3(cd.objectspace, vert_coords[a]); \
     } \
   } \
   ((void)0)
 
-      if (em_target != NULL) {
+      if (em_target != nullptr) {
         BMIter iter;
         BMVert *v;
         BM_ITER_MESH_INDEX (v, &iter, em_target->bm, BM_VERTS_OF_MESH, a) {
-          dvert = BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset);
+          dvert = static_cast<const MDeformVert *>(BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset));
           DEFORM_OP_MINMAX(dvert);
         }
 
         BM_ITER_MESH_INDEX (v, &iter, em_target->bm, BM_VERTS_OF_MESH, a) {
-          dvert = BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset);
+          dvert = static_cast<const MDeformVert *>(BM_ELEM_CD_GET_VOID_P(v, cd_dvert_offset));
           DEFORM_OP_CLAMPED(dvert);
         }
       }
@@ -343,7 +343,7 @@ static void curve_deform_coords_impl(const Object *ob_curve,
     if (cu->flag & CU_DEFORM_BOUNDS_OFF) {
       for (a = 0; a < vert_coords_len; a++) {
         mul_m4_v3(cd.curvespace, vert_coords[a]);
-        calc_curve_deform(ob_curve, vert_coords[a], defaxis, &cd, NULL);
+        calc_curve_deform(ob_curve, vert_coords[a], defaxis, &cd, nullptr);
         mul_m4_v3(cd.objectspace, vert_coords[a]);
       }
     }
@@ -355,7 +355,7 @@ static void curve_deform_coords_impl(const Object *ob_curve,
 
       for (a = 0; a < vert_coords_len; a++) {
         /* Already in 'cd.curvespace', previous for loop. */
-        calc_curve_deform(ob_curve, vert_coords[a], defaxis, &cd, NULL);
+        calc_curve_deform(ob_curve, vert_coords[a], defaxis, &cd, nullptr);
         mul_m4_v3(cd.objectspace, vert_coords[a]);
       }
     }
@@ -371,8 +371,15 @@ void BKE_curve_deform_coords(const Object *ob_curve,
                              const short flag,
                              const short defaxis)
 {
-  curve_deform_coords_impl(
-      ob_curve, ob_target, vert_coords, vert_coords_len, dvert, defgrp_index, flag, defaxis, NULL);
+  curve_deform_coords_impl(ob_curve,
+                           ob_target,
+                           vert_coords,
+                           vert_coords_len,
+                           dvert,
+                           defgrp_index,
+                           flag,
+                           defaxis,
+                           nullptr);
 }
 
 void BKE_curve_deform_coords_with_editmesh(const Object *ob_curve,
@@ -388,7 +395,7 @@ void BKE_curve_deform_coords_with_editmesh(const Object *ob_curve,
                            ob_target,
                            vert_coords,
                            vert_coords_len,
-                           NULL,
+                           nullptr,
                            defgrp_index,
                            flag,
                            defaxis,

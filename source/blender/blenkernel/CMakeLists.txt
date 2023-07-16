@@ -104,7 +104,7 @@ set(SRC
   intern/curve_catmull_rom.cc
   intern/curve_convert.cc
   intern/curve_decimate.cc
-  intern/curve_deform.c
+  intern/curve_deform.cc
   intern/curve_legacy_convert.cc
   intern/curve_nurbs.cc
   intern/curve_poly.cc
