@@ -178,7 +178,7 @@ set(SRC
   intern/lib_query.cc
   intern/lib_remap.cc
   intern/library.cc
-  intern/light.c
+  intern/light.cc
   intern/light_linking.cc
   intern/lightprobe.cc
   intern/linestyle.cc

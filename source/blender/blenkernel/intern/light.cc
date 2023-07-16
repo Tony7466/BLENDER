@@ -83,7 +83,7 @@ static void light_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
     BKE_previewimg_id_copy(&la_dst->id, &la_src->id);
   }
   else {
-    la_dst->preview = NULL;
+    la_dst->preview = nullptr;
   }
 }
 
@@ -95,7 +95,7 @@ static void light_free_data(ID *id)
   if (la->nodetree) {
     ntreeFreeEmbeddedTree(la->nodetree);
     MEM_freeN(la->nodetree);
-    la->nodetree = NULL;
+    la->nodetree = nullptr;
   }
 
   BKE_previewimg_free(&la->preview);
@@ -168,40 +168,40 @@ static void light_blend_read_expand(BlendExpander *expander, ID *id)
 }
 
 IDTypeInfo IDType_ID_LA = {
-    .id_code = ID_LA,
-    .id_filter = FILTER_ID_LA,
-    .main_listbase_index = INDEX_ID_LA,
-    .struct_size = sizeof(Light),
-    .name = "Light",
-    .name_plural = "lights",
-    .translation_context = BLT_I18NCONTEXT_ID_LIGHT,
-    .flags = IDTYPE_FLAGS_APPEND_IS_REUSABLE,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_LA,
+    /*id_filter*/ FILTER_ID_LA,
+    /*main_listbase_index*/ INDEX_ID_LA,
+    /*struct_size*/ sizeof(Light),
+    /*name*/ "Light",
+    /*name_plural*/ "lights",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHT,
+    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = light_init_data,
-    .copy_data = light_copy_data,
-    .free_data = light_free_data,
-    .make_local = NULL,
-    .foreach_id = light_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = NULL,
-    .owner_pointer_get = NULL,
+    /*init_data*/ light_init_data,
+    /*copy_data*/ light_copy_data,
+    /*free_data*/ light_free_data,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ light_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ nullptr,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = light_blend_write,
-    .blend_read_data = light_blend_read_data,
-    .blend_read_lib = light_blend_read_lib,
-    .blend_read_expand = light_blend_read_expand,
+    /*blend_write*/ light_blend_write,
+    /*blend_read_data*/ light_blend_read_data,
+    /*blend_read_lib*/ light_blend_read_lib,
+    /*blend_read_expand*/ light_blend_read_expand,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 Light *BKE_light_add(Main *bmain, const char *name)
 {
   Light *la;
 
-  la = BKE_id_new(bmain, ID_LA, name);
+  la = static_cast<Light *>(BKE_id_new(bmain, ID_LA, name));
 
   return la;
 }
