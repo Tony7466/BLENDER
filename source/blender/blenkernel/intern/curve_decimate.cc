@@ -14,7 +14,9 @@
 
 #include "BKE_curve.h"
 
+extern "C" {
 #include "curve_fit_nd.h"
+}
 
 #include "BLI_strict_flags.h"
 
@@ -54,7 +56,7 @@ static float knot_remove_error_value(const float tan_l[3],
 
   curve_fit_cubic_to_points_single_fl(&points[0][0],
                                       points_len,
-                                      NULL,
+                                      nullptr,
                                       dims,
                                       0.0f,
                                       tan_l,
@@ -105,10 +107,10 @@ static void knot_remove_error_recalculate(Heap *heap,
   if (cost_sq < error_sq_max) {
     struct Removal *r;
     if (k->heap_node) {
-      r = BLI_heap_node_ptr(k->heap_node);
+      r = static_cast<Removal *>(BLI_heap_node_ptr(k->heap_node));
     }
     else {
-      r = MEM_mallocN(sizeof(*r), __func__);
+      r = static_cast<Removal *>(MEM_mallocN(sizeof(*r), __func__));
       r->knot_index = k->knot_index;
     }
 
@@ -119,12 +121,12 @@ static void knot_remove_error_recalculate(Heap *heap,
   else {
     if (k->heap_node) {
       struct Removal *r;
-      r = BLI_heap_node_ptr(k->heap_node);
+      r = static_cast<Removal *>(BLI_heap_node_ptr(k->heap_node));
       BLI_heap_remove(heap, k->heap_node);
 
       MEM_freeN(r);
 
-      k->heap_node = NULL;
+      k->heap_node = nullptr;
     }
   }
 }
@@ -150,9 +152,9 @@ static void curve_decimate(const float (*points)[3],
     struct Knot *k;
 
     {
-      struct Removal *r = BLI_heap_pop_min(heap);
+      struct Removal *r = static_cast<Removal *>(BLI_heap_pop_min(heap));
       k = &knots[r->knot_index];
-      k->heap_node = NULL;
+      k->heap_node = nullptr;
       k->prev->handles[1] = r->handles[0];
       k->next->handles[0] = r->handles[1];
       MEM_freeN(r);
@@ -165,8 +167,8 @@ static void curve_decimate(const float (*points)[3],
     k_next->prev = k_prev;
     k_prev->next = k_next;
 
-    k->next = NULL;
-    k->prev = NULL;
+    k->next = nullptr;
+    k->prev = nullptr;
     k->is_removed = true;
 
     if (k_prev->can_remove) {
@@ -195,7 +197,8 @@ uint BKE_curve_decimate_bezt_array(BezTriple *bezt_array,
   const uint bezt_array_last = bezt_array_len - 1;
   const uint points_len = BKE_curve_calc_coords_axis_len(bezt_array_len, resolu, is_cyclic, true);
 
-  float(*points)[3] = MEM_mallocN((sizeof(float[3]) * points_len * (is_cyclic ? 2 : 1)), __func__);
+  float(*points)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN((sizeof(float[3]) * points_len * (is_cyclic ? 2 : 1)), __func__));
 
   BKE_curve_calc_coords_axis(
       bezt_array, bezt_array_len, resolu, is_cyclic, false, 0, sizeof(float[3]), &points[0][0]);
@@ -205,14 +208,15 @@ uint BKE_curve_decimate_bezt_array(BezTriple *bezt_array,
       bezt_array, bezt_array_len, resolu, is_cyclic, false, 2, sizeof(float[3]), &points[0][2]);
 
   const uint knots_len = bezt_array_len;
-  struct Knot *knots = MEM_mallocN((sizeof(*knots) * bezt_array_len), __func__);
+  struct Knot *knots = static_cast<Knot *>(
+      MEM_mallocN((sizeof(*knots) * bezt_array_len), __func__));
 
   if (is_cyclic) {
     memcpy(points[points_len], points[0], sizeof(float[3]) * points_len);
   }
 
   for (uint i = 0; i < bezt_array_len; i++) {
-    knots[i].heap_node = NULL;
+    knots[i].heap_node = nullptr;
     knots[i].can_remove = (bezt_array[i].f2 & flag_test) != 0;
     knots[i].is_removed = false;
     knots[i].next = &knots[i + 1];
@@ -237,8 +241,8 @@ uint BKE_curve_decimate_bezt_array(BezTriple *bezt_array,
     knots[bezt_array_last].next = &knots[0];
   }
   else {
-    knots[0].prev = NULL;
-    knots[bezt_array_last].next = NULL;
+    knots[0].prev = nullptr;
+    knots[bezt_array_last].next = nullptr;
 
     /* always keep end-points */
     knots[0].can_remove = false;
@@ -251,7 +255,7 @@ uint BKE_curve_decimate_bezt_array(BezTriple *bezt_array,
 
   uint knots_len_decimated = knots_len;
 
-  /* Update handle type on modifications. */
+/* Update handle type on modifications. */
 #define HANDLE_UPDATE(a, b) \
   { \
     if (a == HD_VECT) { \
@@ -323,7 +327,8 @@ void BKE_curve_decimate_nurb(Nurb *nu,
   }
 
   BezTriple *bezt_src = nu->bezt;
-  BezTriple *bezt_dst = MEM_mallocN(sizeof(BezTriple) * pntsu_dst, __func__);
+  BezTriple *bezt_dst = static_cast<BezTriple *>(
+      MEM_mallocN(sizeof(BezTriple) * pntsu_dst, __func__));
 
   int i_src = 0, i_dst = 0;
 

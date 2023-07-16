@@ -103,7 +103,7 @@ set(SRC
   intern/curve_bezier.cc
   intern/curve_catmull_rom.cc
   intern/curve_convert.cc
-  intern/curve_decimate.c
+  intern/curve_decimate.cc
   intern/curve_deform.c
   intern/curve_legacy_convert.cc
   intern/curve_nurbs.cc
