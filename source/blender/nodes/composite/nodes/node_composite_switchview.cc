@@ -43,10 +43,10 @@ static void node_declare_dynamic(const bNodeTree &ntree,
 static void init_switch_view(const bContext *C, PointerRNA *ptr)
 {
   Scene *scene = CTX_data_scene(C);
-  bNode *node = static_cast<bNode *>(ptr->data);
+  bNode *node = (bNode *)ptr->data;
 
   /* store scene for updates */
-  node->id = reinterpret_cast<ID *>(scene);
+  node->id = (ID *)scene;
   id_us_plus(node->id);
 }
 
