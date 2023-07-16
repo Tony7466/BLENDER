@@ -84,7 +84,7 @@ set(SRC
   intern/brush.cc
   intern/bvhutils.cc
   intern/cachefile.cc
-  intern/callbacks.c
+  intern/callbacks.cc
   intern/camera.c
   intern/cdderivedmesh.cc
   intern/cloth.cc

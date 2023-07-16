@@ -17,7 +17,7 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 
-static ListBase callback_slots[BKE_CB_EVT_TOT] = {{NULL}};
+static ListBase callback_slots[BKE_CB_EVT_TOT] = {{nullptr}};
 
 static bool callbacks_initialized = false;
 
@@ -42,7 +42,7 @@ void BKE_callback_exec(struct Main *bmain,
 
 void BKE_callback_exec_null(struct Main *bmain, eCbEvent evt)
 {
-  BKE_callback_exec(bmain, NULL, 0, evt);
+  BKE_callback_exec(bmain, nullptr, 0, evt);
 }
 
 void BKE_callback_exec_id(struct Main *bmain, struct ID *id, eCbEvent evt)
@@ -64,7 +64,7 @@ void BKE_callback_exec_id_depsgraph(struct Main *bmain,
   RNA_id_pointer_create(id, &id_ptr);
 
   PointerRNA depsgraph_ptr;
-  RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
+  RNA_pointer_create(nullptr, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
 
   PointerRNA *pointers[2] = {&id_ptr, &depsgraph_ptr};
 
@@ -74,9 +74,9 @@ void BKE_callback_exec_id_depsgraph(struct Main *bmain,
 void BKE_callback_exec_string(struct Main *bmain, eCbEvent evt, const char *str)
 {
   PointerRNA str_ptr;
-  PrimitiveStringRNA data = {NULL};
+  PrimitiveStringRNA data = {nullptr};
   data.value = str;
-  RNA_pointer_create(NULL, &RNA_PrimitiveString, &data, &str_ptr);
+  RNA_pointer_create(nullptr, &RNA_PrimitiveString, &data, &str_ptr);
 
   PointerRNA *pointers[1] = {&str_ptr};
 
@@ -118,12 +118,14 @@ void BKE_callback_global_init(void)
 
 void BKE_callback_global_finalize(void)
 {
-  eCbEvent evt;
-  for (evt = 0; evt < BKE_CB_EVT_TOT; evt++) {
+  for (int evt_i = 0; evt_i < BKE_CB_EVT_TOT; evt_i++) {
+    const eCbEvent evt = eCbEvent(evt_i);
     ListBase *lb = &callback_slots[evt];
     bCallbackFuncStore *funcstore;
     bCallbackFuncStore *funcstore_next;
-    for (funcstore = lb->first; funcstore; funcstore = funcstore_next) {
+    for (funcstore = static_cast<bCallbackFuncStore *>(lb->first); funcstore;
+         funcstore = funcstore_next)
+    {
       funcstore_next = funcstore->next;
       BKE_callback_remove(funcstore, evt);
     }
