@@ -39,7 +39,8 @@ bUserAssetLibrary *BKE_preferences_asset_library_add(UserDef *userdef,
                                                      const char *name,
                                                      const char *dirpath)
 {
-  bUserAssetLibrary *library = MEM_callocN(sizeof(*library), "bUserAssetLibrary");
+  bUserAssetLibrary *library = static_cast<bUserAssetLibrary *>(
+      MEM_callocN(sizeof(*library), "bUserAssetLibrary"));
   memcpy(library, DNA_struct_default_get(bUserAssetLibrary), sizeof(*library));
 
   BLI_addtail(&userdef->asset_libraries, library);
@@ -82,13 +83,14 @@ void BKE_preferences_asset_library_path_set(bUserAssetLibrary *library, const ch
 
 bUserAssetLibrary *BKE_preferences_asset_library_find_from_index(const UserDef *userdef, int index)
 {
-  return BLI_findlink(&userdef->asset_libraries, index);
+  return static_cast<bUserAssetLibrary *>(BLI_findlink(&userdef->asset_libraries, index));
 }
 
 bUserAssetLibrary *BKE_preferences_asset_library_find_from_name(const UserDef *userdef,
                                                                 const char *name)
 {
-  return BLI_findstring(&userdef->asset_libraries, name, offsetof(bUserAssetLibrary, name));
+  return static_cast<bUserAssetLibrary *>(
+      BLI_findstring(&userdef->asset_libraries, name, offsetof(bUserAssetLibrary, name)));
 }
 
 bUserAssetLibrary *BKE_preferences_asset_library_containing_path(const UserDef *userdef,
@@ -99,7 +101,7 @@ bUserAssetLibrary *BKE_preferences_asset_library_containing_path(const UserDef *
       return asset_lib_pref;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 int BKE_preferences_asset_library_get_index(const UserDef *userdef,
@@ -118,7 +120,7 @@ void BKE_preferences_asset_library_default_add(UserDef *userdef)
   }
 
   bUserAssetLibrary *library = BKE_preferences_asset_library_add(
-      userdef, DATA_(BKE_PREFS_ASSET_LIBRARY_DEFAULT_NAME), NULL);
+      userdef, DATA_(BKE_PREFS_ASSET_LIBRARY_DEFAULT_NAME), nullptr);
 
   /* Add new "Default" library under '[doc_path]/Blender/Assets'. */
   BLI_path_join(
