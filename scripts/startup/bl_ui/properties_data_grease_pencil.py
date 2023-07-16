@@ -72,6 +72,9 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
             col = layout.column(align=True)
 
             col = layout.row(align=True)
+            col.prop(gpl, "blend_mode", text="Blend")
+
+            col = layout.row(align=True)
             col.prop(gpl, "opacity", text="Opacity", slider=True)
 
 
