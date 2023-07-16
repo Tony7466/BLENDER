@@ -38,7 +38,7 @@
 
 #include "BLO_read_write.h"
 
-static ShaderFxTypeInfo *shader_fx_types[NUM_SHADER_FX_TYPES] = {NULL};
+static ShaderFxTypeInfo *shader_fx_types[NUM_SHADER_FX_TYPES] = {nullptr};
 
 /* *************************************************** */
 /* Methods - Evaluation Loops, etc. */
@@ -46,8 +46,8 @@ static ShaderFxTypeInfo *shader_fx_types[NUM_SHADER_FX_TYPES] = {NULL};
 bool BKE_shaderfx_has_gpencil(const Object *ob)
 {
   const ShaderFxData *fx;
-  for (fx = ob->shader_fx.first; fx; fx = fx->next) {
-    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+  for (fx = static_cast<const ShaderFxData *>(ob->shader_fx.first); fx; fx = fx->next) {
+    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
     if (fxi->type == eShaderFxType_GpencilType) {
       return true;
     }
@@ -63,8 +63,8 @@ void BKE_shaderfx_init(void)
 
 ShaderFxData *BKE_shaderfx_new(int type)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(type);
-  ShaderFxData *fx = MEM_callocN(fxi->struct_size, fxi->struct_name);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(type));
+  ShaderFxData *fx = static_cast<ShaderFxData *>(MEM_callocN(fxi->struct_size, fxi->struct_name));
 
   /* NOTE: this name must be made unique later. */
   STRNCPY_UTF8(fx->name, DATA_(fxi->name));
@@ -86,24 +86,24 @@ ShaderFxData *BKE_shaderfx_new(int type)
   return fx;
 }
 
-static void shaderfx_free_data_id_us_cb(void *UNUSED(userData),
-                                        Object *UNUSED(ob),
+static void shaderfx_free_data_id_us_cb(void * /*userData*/,
+                                        Object * /*ob*/,
                                         ID **idpoin,
                                         int cb_flag)
 {
   ID *id = *idpoin;
-  if (id != NULL && (cb_flag & IDWALK_CB_USER) != 0) {
+  if (id != nullptr && (cb_flag & IDWALK_CB_USER) != 0) {
     id_us_min(id);
   }
 }
 
 void BKE_shaderfx_free_ex(ShaderFxData *fx, const int flag)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     if (fxi->foreachIDLink) {
-      fxi->foreachIDLink(fx, NULL, shaderfx_free_data_id_us_cb, NULL);
+      fxi->foreachIDLink(fx, nullptr, shaderfx_free_data_id_us_cb, nullptr);
     }
   }
 
@@ -125,7 +125,7 @@ void BKE_shaderfx_free(ShaderFxData *fx)
 bool BKE_shaderfx_unique_name(ListBase *shaders, ShaderFxData *fx)
 {
   if (shaders && fx) {
-    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
     return BLI_uniquename(
         shaders, fx, DATA_(fxi->name), '.', offsetof(ShaderFxData, name), sizeof(fx->name));
   }
@@ -134,7 +134,7 @@ bool BKE_shaderfx_unique_name(ListBase *shaders, ShaderFxData *fx)
 
 bool BKE_shaderfx_depends_ontime(ShaderFxData *fx)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
 
   return fxi->dependsOnTime && fxi->dependsOnTime(fx);
 }
@@ -146,13 +146,13 @@ const ShaderFxTypeInfo *BKE_shaderfx_get_info(ShaderFxType type)
     return shader_fx_types[type];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool BKE_shaderfx_is_nonlocal_in_liboverride(const Object *ob, const ShaderFxData *shaderfx)
 {
   return (ID_IS_OVERRIDE_LIBRARY(ob) &&
-          ((shaderfx == NULL) || (shaderfx->flag & eShaderFxFlag_OverrideLibrary_Local) == 0));
+          ((shaderfx == nullptr) || (shaderfx->flag & eShaderFxFlag_OverrideLibrary_Local) == 0));
 }
 
 void BKE_shaderfxType_panel_id(ShaderFxType type, char *r_idname)
@@ -168,7 +168,7 @@ void BKE_shaderfx_panel_expand(ShaderFxData *fx)
 
 void BKE_shaderfx_copydata_generic(const ShaderFxData *fx_src, ShaderFxData *fx_dst)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx_src->type);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx_src->type));
 
   /* fx_dst may have already be fully initialized with some extra allocated data,
    * we need to free it now to avoid memleak. */
@@ -183,20 +183,20 @@ void BKE_shaderfx_copydata_generic(const ShaderFxData *fx_src, ShaderFxData *fx_
   memcpy(fx_dst_data, fx_src_data, (size_t)fxi->struct_size - data_size);
 }
 
-static void shaderfx_copy_data_id_us_cb(void *UNUSED(userData),
-                                        Object *UNUSED(ob),
+static void shaderfx_copy_data_id_us_cb(void * /*userData*/,
+                                        Object * /*ob*/,
                                         ID **idpoin,
                                         int cb_flag)
 {
   ID *id = *idpoin;
-  if (id != NULL && (cb_flag & IDWALK_CB_USER) != 0) {
+  if (id != nullptr && (cb_flag & IDWALK_CB_USER) != 0) {
     id_us_plus(id);
   }
 }
 
 void BKE_shaderfx_copydata_ex(ShaderFxData *fx, ShaderFxData *target, const int flag)
 {
-  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+  const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
 
   target->mode = fx->mode;
   target->flag = fx->flag;
@@ -208,7 +208,7 @@ void BKE_shaderfx_copydata_ex(ShaderFxData *fx, ShaderFxData *target, const int 
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     if (fxi->foreachIDLink) {
-      fxi->foreachIDLink(target, NULL, shaderfx_copy_data_id_us_cb, NULL);
+      fxi->foreachIDLink(target, nullptr, shaderfx_copy_data_id_us_cb, nullptr);
     }
   }
 }
@@ -226,14 +226,18 @@ void BKE_shaderfx_copy(ListBase *dst, const ListBase *src)
   BLI_listbase_clear(dst);
   BLI_duplicatelist(dst, src);
 
-  for (srcfx = src->first, fx = dst->first; srcfx && fx; srcfx = srcfx->next, fx = fx->next) {
+  for (srcfx = static_cast<ShaderFxData *>(src->first),
+      fx = static_cast<ShaderFxData *>(dst->first);
+       srcfx && fx;
+       srcfx = srcfx->next, fx = fx->next)
+  {
     BKE_shaderfx_copydata(srcfx, fx);
   }
 }
 
 ShaderFxData *BKE_shaderfx_findby_type(Object *ob, ShaderFxType type)
 {
-  ShaderFxData *fx = ob->shader_fx.first;
+  ShaderFxData *fx = static_cast<ShaderFxData *>(ob->shader_fx.first);
 
   for (; fx; fx = fx->next) {
     if (fx->type == type) {
@@ -246,10 +250,10 @@ ShaderFxData *BKE_shaderfx_findby_type(Object *ob, ShaderFxType type)
 
 void BKE_shaderfx_foreach_ID_link(Object *ob, ShaderFxIDWalkFunc walk, void *userData)
 {
-  ShaderFxData *fx = ob->shader_fx.first;
+  ShaderFxData *fx = static_cast<ShaderFxData *>(ob->shader_fx.first);
 
   for (; fx; fx = fx->next) {
-    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
 
     if (fxi->foreachIDLink) {
       fxi->foreachIDLink(fx, ob, walk, userData);
@@ -259,18 +263,19 @@ void BKE_shaderfx_foreach_ID_link(Object *ob, ShaderFxIDWalkFunc walk, void *use
 
 ShaderFxData *BKE_shaderfx_findby_name(Object *ob, const char *name)
 {
-  return BLI_findstring(&(ob->shader_fx), name, offsetof(ShaderFxData, name));
+  return static_cast<ShaderFxData *>(
+      BLI_findstring(&(ob->shader_fx), name, offsetof(ShaderFxData, name)));
 }
 
 void BKE_shaderfx_blend_write(BlendWriter *writer, ListBase *fxbase)
 {
-  if (fxbase == NULL) {
+  if (fxbase == nullptr) {
     return;
   }
 
   LISTBASE_FOREACH (ShaderFxData *, fx, fxbase) {
-    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
-    if (fxi == NULL) {
+    const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx->type));
+    if (fxi == nullptr) {
       return;
     }
 
@@ -283,10 +288,10 @@ void BKE_shaderfx_blend_read_data(BlendDataReader *reader, ListBase *lb)
   BLO_read_list(reader, lb);
 
   LISTBASE_FOREACH (ShaderFxData *, fx, lb) {
-    fx->error = NULL;
+    fx->error = nullptr;
 
     /* if shader disappear, or for upward compatibility */
-    if (NULL == BKE_shaderfx_get_info(fx->type)) {
+    if (nullptr == BKE_shaderfx_get_info(ShaderFxType(fx->type))) {
       fx->type = eShaderFxType_None;
     }
   }
