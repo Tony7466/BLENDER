@@ -47,6 +47,10 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
+        ob = context.object
+        grease_pencil = context.grease_pencil
+        gpl = grease_pencil.layers.active
+
         row = layout.row()
         row.template_grease_pencil_layer_tree()
 
@@ -56,6 +60,19 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
         col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+
+        # Layer main properties
+        row = layout.row()
+        col = layout.column(align=True)
+
+        if gpl:
+            layout = self.layout
+            layout.use_property_split = True
+            layout.use_property_decorate = True
+            col = layout.column(align=True)
+
+            col = layout.row(align=True)
+            col.prop(gpl, "opacity", text="Opacity", slider=True)
 
 
 classes = (
