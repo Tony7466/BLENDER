@@ -6290,7 +6290,7 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gp
 
       for (int minor = 6; minor >= 3; --minor) {
         /* Caller must lock `system->server_mutex`. */
-        GHOST_Context *context = new GHOST_ContextEGL(system,
+        GHOST_Context *context = new GHOST_ContextEGL(this,
                                                       false,
                                                       EGLNativeWindowType(egl_window),
                                                       EGLNativeDisplayType(display_->wl_display),
