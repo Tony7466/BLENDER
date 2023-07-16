@@ -240,7 +240,7 @@ set(SRC
   intern/ocean.cc
   intern/ocean_spectrum.cc
   intern/outliner_treehash.cc
-  intern/packedFile.c
+  intern/packedFile.cc
   intern/paint.cc
   intern/paint_canvas.cc
   intern/paint_toolslots.c

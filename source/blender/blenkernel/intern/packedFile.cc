@@ -81,7 +81,7 @@ void BKE_packedfile_rewind(PackedFile *pf)
 
 int BKE_packedfile_read(PackedFile *pf, void *data, int size)
 {
-  if ((pf != NULL) && (size >= 0) && (data != NULL)) {
+  if ((pf != nullptr) && (size >= 0) && (data != nullptr)) {
     if (size + pf->seek > pf->size) {
       size = pf->size - pf->seek;
     }
@@ -111,25 +111,31 @@ int BKE_packedfile_count_all(Main *bmain)
   int count = 0;
 
   /* let's check if there are packed files... */
-  for (ima = bmain->images.first; ima; ima = ima->id.next) {
+  for (ima = static_cast<Image *>(bmain->images.first); ima;
+       ima = static_cast<Image *>(ima->id.next))
+  {
     if (BKE_image_has_packedfile(ima)) {
       count++;
     }
   }
 
-  for (vf = bmain->fonts.first; vf; vf = vf->id.next) {
+  for (vf = static_cast<VFont *>(bmain->fonts.first); vf; vf = static_cast<VFont *>(vf->id.next)) {
     if (vf->packedfile) {
       count++;
     }
   }
 
-  for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
+  for (sound = static_cast<bSound *>(bmain->sounds.first); sound;
+       sound = static_cast<bSound *>(sound->id.next))
+  {
     if (sound->packedfile) {
       count++;
     }
   }
 
-  for (volume = bmain->volumes.first; volume; volume = volume->id.next) {
+  for (volume = static_cast<Volume *>(bmain->volumes.first); volume;
+       volume = static_cast<Volume *>(volume->id.next))
+  {
     if (volume->packedfile) {
       count++;
     }
@@ -141,24 +147,24 @@ int BKE_packedfile_count_all(Main *bmain)
 void BKE_packedfile_free(PackedFile *pf)
 {
   if (pf) {
-    BLI_assert(pf->data != NULL);
+    BLI_assert(pf->data != nullptr);
 
     MEM_SAFE_FREE(pf->data);
     MEM_freeN(pf);
   }
   else {
-    printf("%s: Trying to free a NULL pointer\n", __func__);
+    printf("%s: Trying to free a nullptr pointer\n", __func__);
   }
 }
 
 PackedFile *BKE_packedfile_duplicate(const PackedFile *pf_src)
 {
-  BLI_assert(pf_src != NULL);
-  BLI_assert(pf_src->data != NULL);
+  BLI_assert(pf_src != nullptr);
+  BLI_assert(pf_src->data != nullptr);
 
   PackedFile *pf_dst;
 
-  pf_dst = MEM_dupallocN(pf_src);
+  pf_dst = static_cast<PackedFile *>(MEM_dupallocN(pf_src));
   pf_dst->data = MEM_dupallocN(pf_src->data);
 
   return pf_dst;
@@ -166,9 +172,9 @@ PackedFile *BKE_packedfile_duplicate(const PackedFile *pf_src)
 
 PackedFile *BKE_packedfile_new_from_memory(void *mem, int memlen)
 {
-  BLI_assert(mem != NULL);
+  BLI_assert(mem != nullptr);
 
-  PackedFile *pf = MEM_callocN(sizeof(*pf), "PackedFile");
+  PackedFile *pf = static_cast<PackedFile *>(MEM_callocN(sizeof(*pf), "PackedFile"));
   pf->data = mem;
   pf->size = memlen;
 
@@ -177,7 +183,7 @@ PackedFile *BKE_packedfile_new_from_memory(void *mem, int memlen)
 
 PackedFile *BKE_packedfile_new(ReportList *reports, const char *filepath_rel, const char *basepath)
 {
-  PackedFile *pf = NULL;
+  PackedFile *pf = nullptr;
   int file, filelen;
   char filepath[FILE_MAX];
   void *data;
@@ -236,7 +242,9 @@ void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
   Volume *volume;
   int tot = 0;
 
-  for (ima = bmain->images.first; ima; ima = ima->id.next) {
+  for (ima = static_cast<Image *>(bmain->images.first); ima;
+       ima = static_cast<Image *>(ima->id.next))
+  {
     if (BKE_image_has_packedfile(ima) == false && !ID_IS_LINKED(ima)) {
       if (ELEM(ima->source, IMA_SRC_FILE, IMA_SRC_TILED)) {
         BKE_image_packfiles(reports, ima, ID_BLEND_PATH(bmain, &ima->id));
@@ -251,25 +259,31 @@ void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
     }
   }
 
-  for (vfont = bmain->fonts.first; vfont; vfont = vfont->id.next) {
-    if (vfont->packedfile == NULL && !ID_IS_LINKED(vfont) && BKE_vfont_is_builtin(vfont) == false)
-    {
+  for (vfont = static_cast<VFont *>(bmain->fonts.first); vfont;
+       vfont = static_cast<VFont *>(vfont->id.next))
+  {
+    if (vfont->packedfile == nullptr && !ID_IS_LINKED(vfont) &&
+        BKE_vfont_is_builtin(vfont) == false) {
       vfont->packedfile = BKE_packedfile_new(
           reports, vfont->filepath, BKE_main_blendfile_path(bmain));
       tot++;
     }
   }
 
-  for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
-    if (sound->packedfile == NULL && !ID_IS_LINKED(sound)) {
+  for (sound = static_cast<bSound *>(bmain->sounds.first); sound;
+       sound = static_cast<bSound *>(sound->id.next))
+  {
+    if (sound->packedfile == nullptr && !ID_IS_LINKED(sound)) {
       sound->packedfile = BKE_packedfile_new(
           reports, sound->filepath, BKE_main_blendfile_path(bmain));
       tot++;
     }
   }
 
-  for (volume = bmain->volumes.first; volume; volume = volume->id.next) {
-    if (volume->packedfile == NULL && !ID_IS_LINKED(volume)) {
+  for (volume = static_cast<Volume *>(bmain->volumes.first); volume;
+       volume = static_cast<Volume *>(volume->id.next))
+  {
+    if (volume->packedfile == nullptr && !ID_IS_LINKED(volume)) {
       volume->packedfile = BKE_packedfile_new(
           reports, volume->filepath, BKE_main_blendfile_path(bmain));
       tot++;
@@ -410,10 +424,10 @@ char *BKE_packedfile_unpack_to_file(ReportList *reports,
                                     PackedFile *pf,
                                     enum ePF_FileStatus how)
 {
-  char *newname = NULL;
-  const char *temp = NULL;
+  char *newname = nullptr;
+  const char *temp = nullptr;
 
-  if (pf != NULL) {
+  if (pf != nullptr) {
     switch (how) {
       case PF_KEEP:
         break;
@@ -460,7 +474,7 @@ char *BKE_packedfile_unpack_to_file(ReportList *reports,
         }
         break;
       default:
-        printf("%s: unknown return_value %u\n", __func__, how);
+        printf("%s: unknown return_value %d\n", __func__, how);
         break;
     }
 
@@ -495,17 +509,18 @@ static void unpack_generate_paths(const char *filepath,
      * a file extension based on the file magic. */
     if (id_type == ID_IM) {
       Image *ima = (Image *)id;
-      ImagePackedFile *imapf = ima->packedfiles.last;
-      if (imapf != NULL && imapf->packedfile != NULL) {
+      ImagePackedFile *imapf = static_cast<ImagePackedFile *>(ima->packedfiles.last);
+      if (imapf != nullptr && imapf->packedfile != nullptr) {
         const PackedFile *pf = imapf->packedfile;
-        enum eImbFileType ftype = IMB_ispic_type_from_memory((const uchar *)pf->data, pf->size);
+        enum eImbFileType ftype = eImbFileType(
+            IMB_ispic_type_from_memory((const uchar *)pf->data, pf->size));
         if (ima->source == IMA_SRC_TILED) {
           char tile_number[6];
           SNPRINTF(tile_number, ".%d", imapf->tile_number);
           BLI_strncpy(temp_filename + len, tile_number, sizeof(temp_filename) - len);
         }
         if (ftype != IMB_FTYPE_NONE) {
-          const int imtype = BKE_ftype_to_imtype(ftype, NULL);
+          const int imtype = BKE_ftype_to_imtype(ftype, nullptr);
           BKE_image_path_ext_from_imtype_ensure(temp_filename, sizeof(temp_filename), imtype);
         }
       }
@@ -521,7 +536,7 @@ static void unpack_generate_paths(const char *filepath,
   }
 
   {
-    const char *dir_name = NULL;
+    const char *dir_name = nullptr;
     switch (id_type) {
       case ID_VF:
         dir_name = "fonts";
@@ -557,9 +572,9 @@ char *BKE_packedfile_unpack(Main *bmain,
                             enum ePF_FileStatus how)
 {
   char localname[FILE_MAX], absname[FILE_MAX];
-  char *new_name = NULL;
+  char *new_name = nullptr;
 
-  if (id != NULL) {
+  if (id != nullptr) {
     unpack_generate_paths(
         orig_file_path, id, absname, sizeof(absname), localname, sizeof(localname));
     new_name = BKE_packedfile_unpack_to_file(
@@ -579,10 +594,10 @@ int BKE_packedfile_unpack_vfont(Main *bmain,
     char *new_file_path = BKE_packedfile_unpack(
         bmain, reports, (ID *)vfont, vfont->filepath, vfont->packedfile, how);
 
-    if (new_file_path != NULL) {
+    if (new_file_path != nullptr) {
       ret_value = RET_OK;
       BKE_packedfile_free(vfont->packedfile);
-      vfont->packedfile = NULL;
+      vfont->packedfile = nullptr;
       STRNCPY(vfont->filepath, new_file_path);
       MEM_freeN(new_file_path);
     }
@@ -598,15 +613,15 @@ int BKE_packedfile_unpack_sound(Main *bmain,
 {
   int ret_value = RET_ERROR;
 
-  if (sound != NULL) {
+  if (sound != nullptr) {
     char *new_file_path = BKE_packedfile_unpack(
         bmain, reports, (ID *)sound, sound->filepath, sound->packedfile, how);
-    if (new_file_path != NULL) {
+    if (new_file_path != nullptr) {
       STRNCPY(sound->filepath, new_file_path);
       MEM_freeN(new_file_path);
 
       BKE_packedfile_free(sound->packedfile);
-      sound->packedfile = NULL;
+      sound->packedfile = nullptr;
 
       BKE_sound_load(bmain, sound);
 
@@ -624,21 +639,22 @@ int BKE_packedfile_unpack_image(Main *bmain,
 {
   int ret_value = RET_ERROR;
 
-  if (ima != NULL) {
+  if (ima != nullptr) {
     while (ima->packedfiles.last) {
-      ImagePackedFile *imapf = ima->packedfiles.last;
+      ImagePackedFile *imapf = static_cast<ImagePackedFile *>(ima->packedfiles.last);
       char *new_file_path = BKE_packedfile_unpack(
           bmain, reports, (ID *)ima, imapf->filepath, imapf->packedfile, how);
 
-      if (new_file_path != NULL) {
+      if (new_file_path != nullptr) {
         ImageView *iv;
 
         ret_value = ret_value == RET_ERROR ? RET_ERROR : RET_OK;
         BKE_packedfile_free(imapf->packedfile);
-        imapf->packedfile = NULL;
+        imapf->packedfile = nullptr;
 
         /* update the new corresponding view filepath */
-        iv = BLI_findstring(&ima->views, imapf->filepath, offsetof(ImageView, filepath));
+        iv = static_cast<ImageView *>(
+            BLI_findstring(&ima->views, imapf->filepath, offsetof(ImageView, filepath)));
         if (iv) {
           STRNCPY(iv->filepath, new_file_path);
         }
@@ -663,7 +679,7 @@ int BKE_packedfile_unpack_image(Main *bmain,
   }
 
   if (ret_value == RET_OK) {
-    BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_RELOAD);
+    BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_RELOAD);
   }
 
   return ret_value;
@@ -676,15 +692,15 @@ int BKE_packedfile_unpack_volume(Main *bmain,
 {
   int ret_value = RET_ERROR;
 
-  if (volume != NULL) {
+  if (volume != nullptr) {
     char *new_file_path = BKE_packedfile_unpack(
         bmain, reports, (ID *)volume, volume->filepath, volume->packedfile, how);
-    if (new_file_path != NULL) {
+    if (new_file_path != nullptr) {
       STRNCPY(volume->filepath, new_file_path);
       MEM_freeN(new_file_path);
 
       BKE_packedfile_free(volume->packedfile);
-      volume->packedfile = NULL;
+      volume->packedfile = nullptr;
 
       BKE_volume_unload(volume);
 
@@ -701,7 +717,9 @@ int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
   char *newname;
   int ret_value = RET_ERROR;
 
-  for (lib = bmain->libraries.first; lib; lib = lib->id.next) {
+  for (lib = static_cast<Library *>(bmain->libraries.first); lib;
+       lib = static_cast<Library *>(lib->id.next))
+  {
     if (lib->packedfile && lib->filepath[0]) {
 
       newname = BKE_packedfile_unpack_to_file(reports,
@@ -710,13 +728,13 @@ int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
                                               lib->filepath_abs,
                                               lib->packedfile,
                                               PF_WRITE_ORIGINAL);
-      if (newname != NULL) {
+      if (newname != nullptr) {
         ret_value = RET_OK;
 
         printf("Unpacked .blend library: %s\n", newname);
 
         BKE_packedfile_free(lib->packedfile);
-        lib->packedfile = NULL;
+        lib->packedfile = nullptr;
 
         MEM_freeN(newname);
       }
@@ -731,7 +749,9 @@ void BKE_packedfile_pack_all_libraries(Main *bmain, ReportList *reports)
   Library *lib;
 
   /* Test for relativeness. */
-  for (lib = bmain->libraries.first; lib; lib = lib->id.next) {
+  for (lib = static_cast<Library *>(bmain->libraries.first); lib;
+       lib = static_cast<Library *>(lib->id.next))
+  {
     if (!BLI_path_is_rel(lib->filepath)) {
       break;
     }
@@ -742,8 +762,10 @@ void BKE_packedfile_pack_all_libraries(Main *bmain, ReportList *reports)
     return;
   }
 
-  for (lib = bmain->libraries.first; lib; lib = lib->id.next) {
-    if (lib->packedfile == NULL) {
+  for (lib = static_cast<Library *>(bmain->libraries.first); lib;
+       lib = static_cast<Library *>(lib->id.next))
+  {
+    if (lib->packedfile == nullptr) {
       lib->packedfile = BKE_packedfile_new(reports, lib->filepath, BKE_main_blendfile_path(bmain));
     }
   }
@@ -756,25 +778,31 @@ void BKE_packedfile_unpack_all(Main *bmain, ReportList *reports, enum ePF_FileSt
   bSound *sound;
   Volume *volume;
 
-  for (ima = bmain->images.first; ima; ima = ima->id.next) {
+  for (ima = static_cast<Image *>(bmain->images.first); ima;
+       ima = static_cast<Image *>(ima->id.next))
+  {
     if (BKE_image_has_packedfile(ima)) {
       BKE_packedfile_unpack_image(bmain, reports, ima, how);
     }
   }
 
-  for (vf = bmain->fonts.first; vf; vf = vf->id.next) {
+  for (vf = static_cast<VFont *>(bmain->fonts.first); vf; vf = static_cast<VFont *>(vf->id.next)) {
     if (vf->packedfile) {
       BKE_packedfile_unpack_vfont(bmain, reports, vf, how);
     }
   }
 
-  for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
+  for (sound = static_cast<bSound *>(bmain->sounds.first); sound;
+       sound = static_cast<bSound *>(sound->id.next))
+  {
     if (sound->packedfile) {
       BKE_packedfile_unpack_sound(bmain, reports, sound, how);
     }
   }
 
-  for (volume = bmain->volumes.first; volume; volume = volume->id.next) {
+  for (volume = static_cast<Volume *>(bmain->volumes.first); volume;
+       volume = static_cast<Volume *>(volume->id.next))
+  {
     if (volume->packedfile) {
       BKE_packedfile_unpack_volume(bmain, reports, volume, how);
     }
@@ -790,19 +818,19 @@ bool BKE_packedfile_id_check(const ID *id)
     }
     case ID_VF: {
       const VFont *vf = (const VFont *)id;
-      return vf->packedfile != NULL;
+      return vf->packedfile != nullptr;
     }
     case ID_SO: {
       const bSound *snd = (const bSound *)id;
-      return snd->packedfile != NULL;
+      return snd->packedfile != nullptr;
     }
     case ID_VO: {
       const Volume *volume = (const Volume *)id;
-      return volume->packedfile != NULL;
+      return volume->packedfile != nullptr;
     }
     case ID_LI: {
       const Library *li = (const Library *)id;
-      return li->packedfile != NULL;
+      return li->packedfile != nullptr;
     }
     default:
       break;
@@ -853,7 +881,7 @@ void BKE_packedfile_id_unpack(Main *bmain, ID *id, ReportList *reports, enum ePF
 
 void BKE_packedfile_blend_write(BlendWriter *writer, PackedFile *pf)
 {
-  if (pf == NULL) {
+  if (pf == nullptr) {
     return;
   }
   BLO_write_struct(writer, PackedFile, pf);
@@ -864,15 +892,15 @@ void BKE_packedfile_blend_read(BlendDataReader *reader, PackedFile **pf_p)
 {
   BLO_read_packed_address(reader, pf_p);
   PackedFile *pf = *pf_p;
-  if (pf == NULL) {
+  if (pf == nullptr) {
     return;
   }
 
   BLO_read_packed_address(reader, &pf->data);
-  if (pf->data == NULL) {
-    /* We cannot allow a PackedFile with a NULL data field,
+  if (pf->data == nullptr) {
+    /* We cannot allow a PackedFile with a nullptr data field,
      * the whole code assumes this is not possible. See #70315. */
-    printf("%s: NULL packedfile data, cleaning up...\n", __func__);
+    printf("%s: nullptr packedfile data, cleaning up...\n", __func__);
     MEM_SAFE_FREE(pf);
   }
 }
