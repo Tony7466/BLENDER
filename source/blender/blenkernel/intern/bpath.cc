@@ -86,7 +86,7 @@ void BKE_bpath_foreach_path_id(BPathForeachPathData *bpath_data, ID *id)
   const eBPathForeachFlag flag = bpath_data->flag;
   const char *absbase = (flag & BKE_BPATH_FOREACH_PATH_ABSOLUTE) ?
                             ID_BLEND_PATH(bpath_data->bmain, id) :
-                            NULL;
+                            nullptr;
   bpath_data->absolute_base_path = absbase;
   bpath_data->owner_id = id;
   bpath_data->is_path_modified = false;
@@ -95,22 +95,22 @@ void BKE_bpath_foreach_path_id(BPathForeachPathData *bpath_data, ID *id)
     return;
   }
 
-  if (id->library_weak_reference != NULL && (flag & BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES) == 0)
-  {
+  if (id->library_weak_reference != nullptr &&
+      (flag & BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES) == 0) {
     BKE_bpath_foreach_path_fixed_process(bpath_data,
                                          id->library_weak_reference->library_filepath,
                                          sizeof(id->library_weak_reference->library_filepath));
   }
 
   bNodeTree *embedded_node_tree = ntreeFromID(id);
-  if (embedded_node_tree != NULL) {
+  if (embedded_node_tree != nullptr) {
     BKE_bpath_foreach_path_id(bpath_data, &embedded_node_tree->id);
   }
 
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
 
-  BLI_assert(id_type != NULL);
-  if (id_type == NULL || id_type->foreach_path == NULL) {
+  BLI_assert(id_type != nullptr);
+  if (id_type == nullptr || id_type->foreach_path == nullptr) {
     return;
   }
 
@@ -225,8 +225,8 @@ bool BKE_bpath_foreach_path_allocated_process(BPathForeachPathData *bpath_data, 
  * \{ */
 
 static bool check_missing_files_foreach_path_cb(BPathForeachPathData *bpath_data,
-                                                char *UNUSED(path_dst),
-                                                size_t UNUSED(path_dst_maxncpy),
+                                                char * /*path_dst*/,
+                                                size_t /*path_dst_maxncpy*/,
 
                                                 const char *path_src)
 {
@@ -241,12 +241,13 @@ static bool check_missing_files_foreach_path_cb(BPathForeachPathData *bpath_data
 
 void BKE_bpath_missing_files_check(Main *bmain, ReportList *reports)
 {
-  BKE_bpath_foreach_path_main(&(BPathForeachPathData){
-      .bmain = bmain,
-      .callback_function = check_missing_files_foreach_path_cb,
-      .flag = BKE_BPATH_FOREACH_PATH_ABSOLUTE | BKE_BPATH_FOREACH_PATH_SKIP_PACKED |
-              BKE_BPATH_FOREACH_PATH_RESOLVE_TOKEN | BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES,
-      .user_data = reports});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = check_missing_files_foreach_path_cb;
+  path_data.flag = BKE_BPATH_FOREACH_PATH_ABSOLUTE | BKE_BPATH_FOREACH_PATH_SKIP_PACKED |
+                   BKE_BPATH_FOREACH_PATH_RESOLVE_TOKEN | BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES;
+  path_data.user_data = reports;
+  BKE_bpath_foreach_path_main(&path_data);
 
   if (BLI_listbase_is_empty(&reports->list)) {
     BKE_reportf(reports, RPT_INFO, "No missing files");
@@ -293,7 +294,7 @@ static bool missing_files_find__recursive(const char *search_directory,
 
   dir = opendir(search_directory);
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     return found;
   }
 
@@ -301,7 +302,7 @@ static bool missing_files_find__recursive(const char *search_directory,
     *r_filesize = 0; /* The directory opened fine. */
   }
 
-  for (struct dirent *de = readdir(dir); de != NULL; de = readdir(dir)) {
+  for (struct dirent *de = readdir(dir); de != nullptr; de = readdir(dir)) {
     if (FILENAME_IS_CURRPAR(de->d_name)) {
       continue;
     }
@@ -337,12 +338,12 @@ static bool missing_files_find__recursive(const char *search_directory,
   return found;
 }
 
-typedef struct BPathFind_Data {
+struct BPathFind_Data {
   const char *basedir;
   const char *searchdir;
   ReportList *reports;
   bool find_all; /* Also search for files which current path is still valid. */
-} BPathFind_Data;
+};
 
 static bool missing_files_find_foreach_path_cb(BPathForeachPathData *bpath_data,
                                                char *path_dst,
@@ -394,7 +395,7 @@ void BKE_bpath_missing_files_find(Main *bmain,
                                   ReportList *reports,
                                   const bool find_all)
 {
-  BPathFind_Data data = {NULL};
+  BPathFind_Data data = {nullptr};
   const int flag = BKE_BPATH_FOREACH_PATH_ABSOLUTE | BKE_BPATH_FOREACH_PATH_RELOAD_EDITED |
                    BKE_BPATH_FOREACH_PATH_RESOLVE_TOKEN | BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES;
 
@@ -403,11 +404,12 @@ void BKE_bpath_missing_files_find(Main *bmain,
   data.searchdir = searchpath;
   data.find_all = find_all;
 
-  BKE_bpath_foreach_path_main(
-      &(BPathForeachPathData){.bmain = bmain,
-                              .callback_function = missing_files_find_foreach_path_cb,
-                              .flag = flag,
-                              .user_data = &data});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = missing_files_find_foreach_path_cb;
+  path_data.flag = eBPathForeachFlag(flag);
+  path_data.user_data = &data;
+  BKE_bpath_foreach_path_main(&path_data);
 }
 
 #undef MAX_DIR_RECURSE
@@ -419,7 +421,7 @@ void BKE_bpath_missing_files_find(Main *bmain,
 /** \name Rebase Relative Paths
  * \{ */
 
-typedef struct BPathRebase_Data {
+struct BPathRebase_Data {
   const char *basedir_src;
   const char *basedir_dst;
   ReportList *reports;
@@ -427,7 +429,7 @@ typedef struct BPathRebase_Data {
   int count_tot;
   int count_changed;
   int count_failed;
-} BPathRebase_Data;
+};
 
 static bool relative_rebase_foreach_path_cb(BPathForeachPathData *bpath_data,
                                             char *path_dst,
@@ -466,7 +468,7 @@ void BKE_bpath_relative_rebase(Main *bmain,
                                const char *basedir_dst,
                                ReportList *reports)
 {
-  BPathRebase_Data data = {NULL};
+  BPathRebase_Data data = {nullptr};
   const int flag = (BKE_BPATH_FOREACH_PATH_SKIP_LINKED | BKE_BPATH_FOREACH_PATH_SKIP_MULTIFILE);
 
   BLI_assert(basedir_src[0] != '\0');
@@ -476,11 +478,12 @@ void BKE_bpath_relative_rebase(Main *bmain,
   data.basedir_dst = basedir_dst;
   data.reports = reports;
 
-  BKE_bpath_foreach_path_main(
-      &(BPathForeachPathData){.bmain = bmain,
-                              .callback_function = relative_rebase_foreach_path_cb,
-                              .flag = flag,
-                              .user_data = &data});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = relative_rebase_foreach_path_cb;
+  path_data.flag = eBPathForeachFlag(flag);
+  path_data.user_data = &data;
+  BKE_bpath_foreach_path_main(&path_data);
 
   BKE_reportf(reports,
               data.count_failed ? RPT_WARNING : RPT_INFO,
@@ -496,14 +499,14 @@ void BKE_bpath_relative_rebase(Main *bmain,
 /** \name Make Paths Relative Or Absolute
  * \{ */
 
-typedef struct BPathRemap_Data {
+struct BPathRemap_Data {
   const char *basedir;
   ReportList *reports;
 
   int count_tot;
   int count_changed;
   int count_failed;
-} BPathRemap_Data;
+};
 
 static bool relative_convert_foreach_path_cb(BPathForeachPathData *bpath_data,
                                              char *path_dst,
@@ -579,7 +582,7 @@ static void bpath_absolute_relative_convert(Main *bmain,
                                             ReportList *reports,
                                             BPathForeachPathFunctionCallback callback_function)
 {
-  BPathRemap_Data data = {NULL};
+  BPathRemap_Data data = {nullptr};
   const int flag = BKE_BPATH_FOREACH_PATH_SKIP_LINKED;
 
   BLI_assert(basedir[0] != '\0');
@@ -591,8 +594,12 @@ static void bpath_absolute_relative_convert(Main *bmain,
   data.basedir = basedir;
   data.reports = reports;
 
-  BKE_bpath_foreach_path_main(&(BPathForeachPathData){
-      .bmain = bmain, .callback_function = callback_function, .flag = flag, .user_data = &data});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = callback_function;
+  path_data.flag = eBPathForeachFlag(flag);
+  path_data.user_data = &data;
+  BKE_bpath_foreach_path_main(&path_data);
 
   BKE_reportf(reports,
               data.count_failed ? RPT_WARNING : RPT_INFO,
@@ -626,15 +633,16 @@ struct PathStore {
 };
 
 static bool bpath_list_append(BPathForeachPathData *bpath_data,
-                              char *UNUSED(path_dst),
-                              size_t UNUSED(path_dst_maxncpy),
+                              char * /*path_dst*/,
+                              size_t /*path_dst_maxncpy*/,
                               const char *path_src)
 {
-  ListBase *path_list = bpath_data->user_data;
+  ListBase *path_list = static_cast<ListBase *>(bpath_data->user_data);
   size_t path_size = strlen(path_src) + 1;
 
   /* NOTE: the PathStore and its string are allocated together in a single alloc. */
-  struct PathStore *path_store = MEM_mallocN(sizeof(struct PathStore) + path_size, __func__);
+  struct PathStore *path_store = static_cast<PathStore *>(
+      MEM_mallocN(sizeof(struct PathStore) + path_size, __func__));
 
   char *filepath = path_store->filepath;
 
@@ -648,13 +656,13 @@ static bool bpath_list_restore(BPathForeachPathData *bpath_data,
                                size_t path_dst_maxncpy,
                                const char *path_src)
 {
-  ListBase *path_list = bpath_data->user_data;
+  ListBase *path_list = static_cast<ListBase *>(bpath_data->user_data);
 
-  /* `ls->first` should never be NULL, because the number of paths should not change.
+  /* `ls->first` should never be nullptr, because the number of paths should not change.
    * If this happens, there is a bug in caller code. */
   BLI_assert(!BLI_listbase_is_empty(path_list));
 
-  struct PathStore *path_store = path_list->first;
+  struct PathStore *path_store = static_cast<PathStore *>(path_list->first);
   const char *filepath = path_store->filepath;
   bool is_path_changed = false;
 
@@ -669,29 +677,33 @@ static bool bpath_list_restore(BPathForeachPathData *bpath_data,
 
 void *BKE_bpath_list_backup(Main *bmain, const eBPathForeachFlag flag)
 {
-  ListBase *path_list = MEM_callocN(sizeof(ListBase), __func__);
+  ListBase *path_list = static_cast<ListBase *>(MEM_callocN(sizeof(ListBase), __func__));
 
-  BKE_bpath_foreach_path_main(&(BPathForeachPathData){.bmain = bmain,
-                                                      .callback_function = bpath_list_append,
-                                                      .flag = flag,
-                                                      .user_data = path_list});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = bpath_list_append;
+  path_data.flag = flag;
+  path_data.user_data = path_list;
+  BKE_bpath_foreach_path_main(&path_data);
 
   return path_list;
 }
 
 void BKE_bpath_list_restore(Main *bmain, const eBPathForeachFlag flag, void *path_list_handle)
 {
-  ListBase *path_list = path_list_handle;
+  ListBase *path_list = static_cast<ListBase *>(path_list_handle);
 
-  BKE_bpath_foreach_path_main(&(BPathForeachPathData){.bmain = bmain,
-                                                      .callback_function = bpath_list_restore,
-                                                      .flag = flag,
-                                                      .user_data = path_list});
+  BPathForeachPathData path_data{};
+  path_data.bmain = bmain;
+  path_data.callback_function = bpath_list_restore;
+  path_data.flag = flag;
+  path_data.user_data = path_list;
+  BKE_bpath_foreach_path_main(&path_data);
 }
 
 void BKE_bpath_list_free(void *path_list_handle)
 {
-  ListBase *path_list = path_list_handle;
+  ListBase *path_list = static_cast<ListBase *>(path_list_handle);
   /* The whole list should have been consumed by #BKE_bpath_list_restore, see also comment in
    * #bpath_list_restore. */
   BLI_assert(BLI_listbase_is_empty(path_list));
