@@ -269,7 +269,7 @@ set(SRC
   intern/softbody.cc
   intern/sound.cc
   intern/speaker.cc
-  intern/studiolight.c
+  intern/studiolight.cc
   intern/subdiv.cc
   intern/subdiv_ccg.cc
   intern/subdiv_ccg_mask.cc
