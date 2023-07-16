@@ -5287,10 +5287,8 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
                               int *r_attr_tot,
                               bool *r_attr_signed)
 {
-#if 0
   int array_tot;
   int target_tot;
-#endif
 
   *r_size = *r_attr_tot = 0;
   *r_attr_signed = false;
@@ -5312,6 +5310,19 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
   *r_tot = PySequence_Size(*r_seq);
 
   if (*r_tot > 0) {
+    if (RNA_property_type(self->prop) == PROP_COLLECTION) {
+      array_tot = RNA_property_collection_length(&self->ptr, self->prop);
+    }
+    else {
+      array_tot = RNA_property_array_length(&self->ptr, self->prop);
+    }
+    if (array_tot == 0) {
+      PyErr_Format(PyExc_TypeError,
+                   "foreach_get(attr, sequence) sequence length mismatch given %d, needed 0",
+                   *r_tot);
+      return -1;
+    }
+
     if (!foreach_attr_type(self, *r_attr, r_raw_type, r_attr_tot, r_attr_signed)) {
       PyErr_Format(PyExc_AttributeError,
                    "foreach_get/set '%.200s.%200s[...]' elements have no attribute '%.200s'",
@@ -5322,17 +5333,8 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
     }
     *r_size = RNA_raw_type_sizeof(*r_raw_type);
 
-#if 0 /* Works fine, but not strictly needed. \
-       * we could allow RNA_property_collection_raw_* to do the checks */
     if ((*r_attr_tot) < 1) {
       *r_attr_tot = 1;
-    }
-
-    if (RNA_property_type(self->prop) == PROP_COLLECTION) {
-      array_tot = RNA_property_collection_length(&self->ptr, self->prop);
-    }
-    else {
-      array_tot = RNA_property_array_length(&self->ptr, self->prop);
     }
 
     target_tot = array_tot * (*r_attr_tot);
@@ -5345,7 +5347,6 @@ static int foreach_parse_args(BPy_PropertyRNA *self,
                    target_tot);
       return -1;
     }
-#endif
   }
 
   /* Check 'r_attr_tot' otherwise we don't know if any values were set.
@@ -6609,7 +6610,7 @@ static PyObject *pyrna_func_doc_get(BPy_FunctionRNA *self, void *UNUSED(closure)
 }
 
 PyTypeObject pyrna_struct_meta_idprop_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_struct_meta_idprop",
     /* NOTE: would be `sizeof(PyTypeObject)`,
      * but sub-types of Type must be #PyHeapTypeObject's. */
@@ -6669,7 +6670,7 @@ PyTypeObject pyrna_struct_meta_idprop_Type = {
 /*-----------------------BPy_StructRNA method def------------------------------*/
 
 PyTypeObject pyrna_struct_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_struct",
     /*tp_basicsize*/ sizeof(BPy_StructRNA),
     /*tp_itemsize*/ 0,
@@ -6736,7 +6737,7 @@ PyTypeObject pyrna_struct_Type = {
 /*-----------------------BPy_PropertyRNA method def------------------------------*/
 
 PyTypeObject pyrna_prop_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop",
     /*tp_basicsize*/ sizeof(BPy_PropertyRNA),
     /*tp_itemsize*/ 0,
@@ -6792,7 +6793,7 @@ PyTypeObject pyrna_prop_Type = {
 };
 
 PyTypeObject pyrna_prop_array_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop_array",
     /*tp_basicsize*/ sizeof(BPy_PropertyArrayRNA),
     /*tp_itemsize*/ 0,
@@ -6848,7 +6849,7 @@ PyTypeObject pyrna_prop_array_Type = {
 };
 
 PyTypeObject pyrna_prop_collection_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop_collection",
     /*tp_basicsize*/ sizeof(BPy_PropertyRNA),
     /*tp_itemsize*/ 0,
@@ -6905,7 +6906,7 @@ PyTypeObject pyrna_prop_collection_Type = {
 
 /* only for add/remove/move methods */
 static PyTypeObject pyrna_prop_collection_idprop_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop_collection_idprop",
     /*tp_basicsize*/ sizeof(BPy_PropertyRNA),
     /*tp_itemsize*/ 0,
@@ -6963,7 +6964,7 @@ static PyTypeObject pyrna_prop_collection_idprop_Type = {
 /*-----------------------BPy_PropertyRNA method def------------------------------*/
 
 PyTypeObject pyrna_func_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_func",
     /*tp_basicsize*/ sizeof(BPy_FunctionRNA),
     /*tp_itemsize*/ 0,
@@ -7031,7 +7032,7 @@ static void pyrna_prop_collection_iter_dealloc(BPy_PropertyCollectionIterRNA *se
 static PyObject *pyrna_prop_collection_iter_next(BPy_PropertyCollectionIterRNA *self);
 
 static PyTypeObject pyrna_prop_collection_iter_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop_collection_iter",
     /*tp_basicsize*/ sizeof(BPy_PropertyCollectionIterRNA),
     /*tp_itemsize*/ 0,
@@ -7792,7 +7793,7 @@ static PyMethodDef bpy_types_module_methods[] = {
 
 PyDoc_STRVAR(bpy_types_module_doc, "Access to internal Blender types");
 static PyModuleDef bpy_types_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy.types",
     /*m_doc*/ bpy_types_module_doc,
     /*m_size*/ sizeof(struct BPy_TypesModule_State),
@@ -8025,7 +8026,7 @@ static int deferred_register_prop(StructRNA *srna, PyObject *key, PyObject *item
     Py_DECREF(args_fake); /* Free's py_srna_cobject too. */
   }
   else {
-    /* _must_ print before decreffing args_fake. */
+    /* _must_ print before decrefing args_fake. */
     PyErr_Print();
     PyErr_Clear();
 
@@ -8948,7 +8949,7 @@ static PyObject *pyrna_register_class(PyObject *UNUSED(self), PyObject *py_class
                  bpy_class_free);
 
   if (!BLI_listbase_is_empty(&reports.list)) {
-    const bool has_error = BPy_reports_to_error(&reports, PyExc_RuntimeError, false);
+    const bool has_error = (BPy_reports_to_error(&reports, PyExc_RuntimeError, false) == -1);
     if (!has_error) {
       BPy_reports_write_stdout(&reports, error_prefix);
     }

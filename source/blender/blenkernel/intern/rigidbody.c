@@ -1144,9 +1144,8 @@ RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene)
 
   rbw->time_scale = 1.0f;
 
-  /* Most high quality Bullet example files has an internal framerate of 240hz.
-   * The blender default scene has a frame rate of 24, so take 10 substeps (24fps * 10).
-   */
+  /* Most high quality Bullet example files has an internal frame-rate of 240hz.
+   * The blender default scene has a frame rate of 24, so take 10 sub-steps (24fps * 10). */
   rbw->substeps_per_frame = 10;
   rbw->num_solver_iterations = 10; /* 10 is bullet default */
 
@@ -1339,7 +1338,7 @@ RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short ty
   return rbc;
 }
 
-void BKE_rigidbody_objects_collection_validate(Scene *scene, RigidBodyWorld *rbw)
+void BKE_rigidbody_objects_collection_validate(Main *bmain, Scene *scene, RigidBodyWorld *rbw)
 {
   if (rbw->group != NULL) {
     FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->group, object) {
@@ -1347,8 +1346,10 @@ void BKE_rigidbody_objects_collection_validate(Scene *scene, RigidBodyWorld *rbw
         continue;
       }
       object->rigidbody_object = BKE_rigidbody_create_object(scene, object, RBO_TYPE_ACTIVE);
+      DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+    DEG_relations_tag_update(bmain);
   }
 }
 
@@ -2343,7 +2344,7 @@ bool BKE_rigidbody_check_sim_running(RigidBodyWorld *rbw, float ctime)
 void BKE_rigidbody_cache_reset(RigidBodyWorld *rbw) {}
 void BKE_rigidbody_rebuild_world(Depsgraph *depsgraph, Scene *scene, float ctime) {}
 void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime) {}
-void BKE_rigidbody_objects_collection_validate(Scene *scene, RigidBodyWorld *rbw) {}
+void BKE_rigidbody_objects_collection_validate(Main *bmain, Scene *scene, RigidBodyWorld *rbw) {}
 void BKE_rigidbody_constraints_collection_validate(Scene *scene, RigidBodyWorld *rbw) {}
 void BKE_rigidbody_main_collection_object_add(Main *bmain, Collection *collection, Object *object)
 {

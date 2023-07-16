@@ -156,7 +156,7 @@ static PyObject *py_bvhtree_raycast_to_py(const BVHTreeRayHit *hit)
   return py_retval;
 }
 
-static PyObject *py_bvhtree_raycast_to_py_none(void)
+static PyObject *py_bvhtree_raycast_to_py_none()
 {
   PyObject *py_retval = PyTuple_New(4);
 
@@ -210,7 +210,7 @@ static PyObject *py_bvhtree_nearest_to_py(const BVHTreeNearest *nearest)
   return py_retval;
 }
 
-static PyObject *py_bvhtree_nearest_to_py_none(void)
+static PyObject *py_bvhtree_nearest_to_py_none()
 {
   PyObject *py_retval = PyTuple_New(4);
 
@@ -1256,7 +1256,7 @@ static PyMethodDef py_bvhtree_methods[] = {
 #endif
 
 PyTypeObject PyBVHTree_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "BVHTree",
     /*tp_basicsize*/ sizeof(PyBVHTree),
     /*tp_itemsize*/ 0,
@@ -1313,7 +1313,7 @@ PyTypeObject PyBVHTree_Type = {
 PyDoc_STRVAR(py_bvhtree_doc,
              "BVH tree structures for proximity searches and ray casts on geometry.");
 static PyModuleDef bvhtree_moduledef = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "mathutils.bvhtree",
     /*m_doc*/ py_bvhtree_doc,
     /*m_size*/ 0,
@@ -1324,7 +1324,7 @@ static PyModuleDef bvhtree_moduledef = {
     /*m_free*/ nullptr,
 };
 
-PyMODINIT_FUNC PyInit_mathutils_bvhtree(void)
+PyMODINIT_FUNC PyInit_mathutils_bvhtree()
 {
   PyObject *m = PyModule_Create(&bvhtree_moduledef);
 
