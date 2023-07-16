@@ -57,7 +57,7 @@ static CLG_LogRef LOG = {"bke.fcurve"};
  * \{ */
 
 /* TypeInfo for Driver Variables (dvti) */
-typedef struct DriverVarTypeInfo {
+struct DriverVarTypeInfo {
   /* Evaluation callback. */
   float (*get_value)(const AnimationEvalContext *anim_eval_context,
                      ChannelDriver *driver,
@@ -67,7 +67,7 @@ typedef struct DriverVarTypeInfo {
   int num_targets;                              /* Number of target slots required. */
   const char *target_names[MAX_DRIVER_TARGETS]; /* UI names that should be given to the slots. */
   short target_flags[MAX_DRIVER_TARGETS]; /* Flags defining the requirements for each slot. */
-} DriverVarTypeInfo;
+};
 
 /* Macro to begin definitions */
 #define BEGIN_DVAR_TYPEDEF(type) {
@@ -114,13 +114,13 @@ static bool driver_get_target_context_property(const DriverTargetContext *driver
 
   BLI_assert_unreachable();
 
-  /* Reset to a NULL RNA pointer.
+  /* Reset to a nullptr RNA pointer.
    * This allows to more gracefully handle issues with unsupported configuration (forward
    * compatibility. for example). */
   /* TODO(sergey): Replace with utility null-RNA-pointer creation once that is available. */
-  r_property_ptr->data = NULL;
-  r_property_ptr->type = NULL;
-  r_property_ptr->owner_id = NULL;
+  r_property_ptr->data = nullptr;
+  r_property_ptr->type = nullptr;
+  r_property_ptr->owner_id = nullptr;
 
   return false;
 }
@@ -134,7 +134,7 @@ bool driver_get_target_property(const DriverTargetContext *driver_target_context
     return driver_get_target_context_property(driver_target_context, dtar, r_prop);
   }
 
-  if (dtar->id == NULL) {
+  if (dtar->id == nullptr) {
     return false;
   }
 
@@ -153,7 +153,7 @@ static float dtar_get_prop_val(const AnimationEvalContext *anim_eval_context,
                                DriverTarget *dtar)
 {
   /* Sanity check. */
-  if (driver == NULL) {
+  if (driver == nullptr) {
     return 0.0f;
   }
 
@@ -263,7 +263,7 @@ bool driver_get_variable_property(const AnimationEvalContext *anim_eval_context,
   int index = -1;
 
   /* Sanity check. */
-  if (ELEM(NULL, driver, dtar)) {
+  if (ELEM(nullptr, driver, dtar)) {
     return false;
   }
 
@@ -282,9 +282,9 @@ bool driver_get_variable_property(const AnimationEvalContext *anim_eval_context,
   }
 
   /* Get property to read from, and get value as appropriate. */
-  if (dtar->rna_path == NULL || dtar->rna_path[0] == '\0') {
+  if (dtar->rna_path == nullptr || dtar->rna_path[0] == '\0') {
     ptr = PointerRNA_NULL;
-    prop = NULL; /* OK. */
+    prop = nullptr; /* OK. */
   }
   else if (RNA_path_resolve_full(&target_ptr, dtar->rna_path, &ptr, &prop, &index)) {
     /* OK. */
@@ -299,7 +299,7 @@ bool driver_get_variable_property(const AnimationEvalContext *anim_eval_context,
     }
 
     ptr = PointerRNA_NULL;
-    *r_prop = NULL;
+    *r_prop = nullptr;
     *r_index = -1;
 
     driver->flag |= DRIVER_FLAG_INVALID;
@@ -324,7 +324,7 @@ static short driver_check_valid_targets(ChannelDriver *driver, DriverVar *dvar)
     Object *ob = (Object *)dtar->id;
 
     /* Check if this target has valid data. */
-    if ((ob == NULL) || (GS(ob->id.name) != ID_OB)) {
+    if ((ob == nullptr) || (GS(ob->id.name) != ID_OB)) {
       /* Invalid target, so will not have enough targets. */
       driver->flag |= DRIVER_FLAG_INVALID;
       dtar->flag |= DTAR_FLAG_INVALID;
@@ -356,7 +356,7 @@ static float dvar_eval_singleProp(const AnimationEvalContext *anim_eval_context,
 }
 
 /* Evaluate 'rotation difference' driver variable. */
-static float dvar_eval_rotDiff(const AnimationEvalContext *UNUSED(anim_eval_context),
+static float dvar_eval_rotDiff(const AnimationEvalContext * /*anim_eval_context*/,
                                ChannelDriver *driver,
                                DriverVar *dvar)
 {
@@ -384,7 +384,7 @@ static float dvar_eval_rotDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
     bPoseChannel *pchan;
 
     /* After the checks above, the targets should be valid here. */
-    BLI_assert((ob != NULL) && (GS(ob->id.name) == ID_OB));
+    BLI_assert((ob != nullptr) && (GS(ob->id.name) == ID_OB));
 
     /* Try to get pose-channel. */
     pchan = BKE_pose_channel_find_name(ob->pose, dtar->pchan_name);
@@ -419,7 +419,7 @@ static float dvar_eval_rotDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
  *
  * TODO: this needs to take into account space conversions.
  */
-static float dvar_eval_locDiff(const AnimationEvalContext *UNUSED(anim_eval_context),
+static float dvar_eval_locDiff(const AnimationEvalContext * /*anim_eval_context*/,
                                ChannelDriver *driver,
                                DriverVar *dvar)
 {
@@ -448,7 +448,7 @@ static float dvar_eval_locDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
     float tmp_loc[3];
 
     /* After the checks above, the targets should be valid here. */
-    BLI_assert((ob != NULL) && (GS(ob->id.name) == ID_OB));
+    BLI_assert((ob != nullptr) && (GS(ob->id.name) == ID_OB));
 
     /* Try to get pose-channel. */
     pchan = BKE_pose_channel_find_name(ob->pose, dtar->pchan_name);
@@ -463,7 +463,7 @@ static float dvar_eval_locDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
           /* Extract transform just like how the constraints do it! */
           copy_m4_m4(mat, pchan->pose_mat);
           BKE_constraint_mat_convertspace(
-              ob, pchan, NULL, mat, CONSTRAINT_SPACE_POSE, CONSTRAINT_SPACE_LOCAL, false);
+              ob, pchan, nullptr, mat, CONSTRAINT_SPACE_POSE, CONSTRAINT_SPACE_LOCAL, false);
 
           /* ... and from that, we get our transform. */
           copy_v3_v3(tmp_loc, mat[3]);
@@ -489,7 +489,7 @@ static float dvar_eval_locDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
           /* Extract transform just like how the constraints do it! */
           copy_m4_m4(mat, ob->object_to_world);
           BKE_constraint_mat_convertspace(
-              ob, NULL, NULL, mat, CONSTRAINT_SPACE_WORLD, CONSTRAINT_SPACE_LOCAL, false);
+              ob, nullptr, nullptr, mat, CONSTRAINT_SPACE_WORLD, CONSTRAINT_SPACE_LOCAL, false);
 
           /* ... and from that, we get our transform. */
           copy_v3_v3(tmp_loc, mat[3]);
@@ -523,7 +523,7 @@ static float dvar_eval_locDiff(const AnimationEvalContext *UNUSED(anim_eval_cont
 /**
  * Evaluate 'transform channel' driver variable.
  */
-static float dvar_eval_transChan(const AnimationEvalContext *UNUSED(anim_eval_context),
+static float dvar_eval_transChan(const AnimationEvalContext * /*anim_eval_context*/,
                                  ChannelDriver *driver,
                                  DriverVar *dvar)
 {
@@ -536,7 +536,7 @@ static float dvar_eval_transChan(const AnimationEvalContext *UNUSED(anim_eval_co
   short rot_order = ROT_MODE_EUL;
 
   /* Check if this target has valid data. */
-  if ((ob == NULL) || (GS(ob->id.name) != ID_OB)) {
+  if ((ob == nullptr) || (GS(ob->id.name) != ID_OB)) {
     /* Invalid target, so will not have enough targets. */
     driver->flag |= DRIVER_FLAG_INVALID;
     dtar->flag |= DTAR_FLAG_INVALID;
@@ -568,7 +568,7 @@ static float dvar_eval_transChan(const AnimationEvalContext *UNUSED(anim_eval_co
         /* Just like how the constraints do it! */
         copy_m4_m4(mat, pchan->pose_mat);
         BKE_constraint_mat_convertspace(
-            ob, pchan, NULL, mat, CONSTRAINT_SPACE_POSE, CONSTRAINT_SPACE_LOCAL, false);
+            ob, pchan, nullptr, mat, CONSTRAINT_SPACE_POSE, CONSTRAINT_SPACE_LOCAL, false);
       }
       else {
         /* Specially calculate local matrix, since chan_mat is not valid
@@ -595,7 +595,7 @@ static float dvar_eval_transChan(const AnimationEvalContext *UNUSED(anim_eval_co
         /* Just like how the constraints do it! */
         copy_m4_m4(mat, ob->object_to_world);
         BKE_constraint_mat_convertspace(
-            ob, NULL, NULL, mat, CONSTRAINT_SPACE_WORLD, CONSTRAINT_SPACE_LOCAL, false);
+            ob, nullptr, nullptr, mat, CONSTRAINT_SPACE_WORLD, CONSTRAINT_SPACE_LOCAL, false);
       }
       else {
         /* Transforms to matrix. */
@@ -716,10 +716,10 @@ void BKE_driver_target_matrix_to_rot_channels(
 
     if (channel == axis + 1) {
       /* If only the twist angle is needed, skip computing swing. */
-      twist = quat_split_swing_and_twist(raw_quat, axis, NULL, NULL);
+      twist = quat_split_swing_and_twist(raw_quat, axis, nullptr, nullptr);
     }
     else {
-      twist = quat_split_swing_and_twist(raw_quat, axis, quat, NULL);
+      twist = quat_split_swing_and_twist(raw_quat, axis, quat, nullptr);
 
       quaternion_to_angles(quat, channel);
     }
@@ -780,7 +780,7 @@ static const DriverVarTypeInfo *get_dvar_typeinfo(int type)
     return &dvar_types[type];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -792,7 +792,7 @@ static const DriverVarTypeInfo *get_dvar_typeinfo(int type)
 void driver_free_variable(ListBase *variables, DriverVar *dvar)
 {
   /* Sanity checks. */
-  if (dvar == NULL) {
+  if (dvar == nullptr) {
     return;
   }
 
@@ -832,7 +832,7 @@ void driver_variables_copy(ListBase *dst_vars, const ListBase *src_vars)
     DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
       /* Make a copy of target's rna path if available. */
       if (dtar->rna_path) {
-        dtar->rna_path = MEM_dupallocN(dtar->rna_path);
+        dtar->rna_path = static_cast<char *>(MEM_dupallocN(dtar->rna_path));
       }
     }
     DRIVER_TARGETS_LOOPER_END;
@@ -844,7 +844,7 @@ void driver_change_variable_type(DriverVar *dvar, int type)
   const DriverVarTypeInfo *dvti = get_dvar_typeinfo(type);
 
   /* Sanity check. */
-  if (ELEM(NULL, dvar, dvti)) {
+  if (ELEM(nullptr, dvar, dvti)) {
     return;
   }
 
@@ -877,7 +877,7 @@ void driver_variable_name_validate(DriverVar *dvar)
   };
 
   /* Sanity checks. */
-  if (dvar == NULL) {
+  if (dvar == nullptr) {
     return;
   }
 
@@ -916,15 +916,15 @@ void driver_variable_name_validate(DriverVar *dvar)
     if (match == dvar->name) {
       dvar->flag |= DVAR_FLAG_INVALID_START_CHAR;
     }
-    else if (match != NULL) {
+    else if (match != nullptr) {
       dvar->flag |= DVAR_FLAG_INVALID_HAS_SPECIAL;
     }
   }
 
-  /* 4) Check if the name is a reserved keyword
-   * NOTE: These won't confuse Python, but it will be impossible to use the variable
-   *       in an expression without Python misinterpreting what these are for
-   */
+/* 4) Check if the name is a reserved keyword
+ * NOTE: These won't confuse Python, but it will be impossible to use the variable
+ *       in an expression without Python misinterpreting what these are for
+ */
 #ifdef WITH_PYTHON
   if (BPY_string_is_keyword(dvar->name)) {
     dvar->flag |= DVAR_FLAG_INVALID_PY_KEYWORD;
@@ -948,12 +948,12 @@ DriverVar *driver_add_new_variable(ChannelDriver *driver)
   DriverVar *dvar;
 
   /* Sanity checks. */
-  if (driver == NULL) {
-    return NULL;
+  if (driver == nullptr) {
+    return nullptr;
   }
 
   /* Make a new variable. */
-  dvar = MEM_callocN(sizeof(DriverVar), "DriverVar");
+  dvar = static_cast<DriverVar *>(MEM_callocN(sizeof(DriverVar), "DriverVar"));
   BLI_addtail(&driver->variables, dvar);
 
   /* Give the variable a 'unique' name. */
@@ -981,13 +981,13 @@ void fcurve_free_driver(FCurve *fcu)
   DriverVar *dvar, *dvarn;
 
   /* Sanity checks. */
-  if (ELEM(NULL, fcu, fcu->driver)) {
+  if (ELEM(nullptr, fcu, fcu->driver)) {
     return;
   }
   driver = fcu->driver;
 
   /* Free driver targets. */
-  for (dvar = driver->variables.first; dvar; dvar = dvarn) {
+  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvarn) {
     dvarn = dvar->next;
     driver_free_variable_ex(driver, dvar);
   }
@@ -1001,10 +1001,10 @@ void fcurve_free_driver(FCurve *fcu)
 
   BLI_expr_pylike_free(driver->expr_simple);
 
-  /* Free driver itself, then set F-Curve's point to this to NULL
+  /* Free driver itself, then set F-Curve's point to this to nullptr
    * (as the curve may still be used). */
   MEM_freeN(driver);
-  fcu->driver = NULL;
+  fcu->driver = nullptr;
 }
 
 ChannelDriver *fcurve_copy_driver(const ChannelDriver *driver)
@@ -1012,14 +1012,14 @@ ChannelDriver *fcurve_copy_driver(const ChannelDriver *driver)
   ChannelDriver *ndriver;
 
   /* Sanity checks. */
-  if (driver == NULL) {
-    return NULL;
+  if (driver == nullptr) {
+    return nullptr;
   }
 
   /* Copy all data. */
-  ndriver = MEM_dupallocN(driver);
-  ndriver->expr_comp = NULL;
-  ndriver->expr_simple = NULL;
+  ndriver = static_cast<ChannelDriver *>(MEM_dupallocN(driver));
+  ndriver->expr_comp = nullptr;
+  ndriver->expr_simple = nullptr;
 
   /* Copy variables. */
 
@@ -1115,7 +1115,7 @@ static bool driver_evaluate_simple_expr(const AnimationEvalContext *anim_eval_co
 /* Compile and cache the driver expression if necessary, with thread safety. */
 static bool driver_compile_simple_expr(ChannelDriver *driver)
 {
-  if (driver->expr_simple != NULL) {
+  if (driver->expr_simple != nullptr) {
     return true;
   }
 
@@ -1127,9 +1127,9 @@ static bool driver_compile_simple_expr(ChannelDriver *driver)
    * waste some effort, but in return avoids mutex contention. */
   ExprPyLike_Parsed *expr = driver_compile_simple_expr_impl(driver);
 
-  /* Store the result if the field is still NULL, or discard
+  /* Store the result if the field is still nullptr, or discard
    * it if another thread got here first. */
-  if (atomic_cas_ptr((void **)&driver->expr_simple, NULL, expr) != NULL) {
+  if (atomic_cas_ptr((void **)&driver->expr_simple, nullptr, expr) != nullptr) {
     BLI_expr_pylike_free(expr);
   }
 
@@ -1165,11 +1165,11 @@ static bool python_driver_exression_depends_on_time(const char *expression)
     /* Empty expression depends on nothing. */
     return false;
   }
-  if (strchr(expression, '(') != NULL) {
+  if (strchr(expression, '(') != nullptr) {
     /* Function calls are considered dependent on a time. */
     return true;
   }
-  if (strstr(expression, "frame") != NULL) {
+  if (strstr(expression, "frame") != nullptr) {
     /* Variable `frame` depends on time. */
     /* TODO(sergey): This is a bit weak, but not sure about better way of handling this. */
     return true;
@@ -1199,7 +1199,7 @@ void BKE_driver_invalidate_expression(ChannelDriver *driver,
 {
   if (expr_changed || varname_changed) {
     BLI_expr_pylike_free(driver->expr_simple);
-    driver->expr_simple = NULL;
+    driver->expr_simple = nullptr;
   }
 
 #ifdef WITH_PYTHON
@@ -1226,7 +1226,7 @@ float driver_get_variable_value(const AnimationEvalContext *anim_eval_context,
   const DriverVarTypeInfo *dvti;
 
   /* Sanity check. */
-  if (ELEM(NULL, driver, dvar)) {
+  if (ELEM(nullptr, driver, dvar)) {
     return 0.0f;
   }
 
@@ -1253,7 +1253,7 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
   /* Check how many variables there are first (i.e. just one?). */
   if (BLI_listbase_is_single(&driver->variables)) {
     /* Just one target, so just use that. */
-    dvar = driver->variables.first;
+    dvar = static_cast<DriverVar *>(driver->variables.first);
     driver->curval = driver_get_variable_value(anim_eval_context, driver, dvar);
     return;
   }
@@ -1263,7 +1263,7 @@ static void evaluate_driver_sum(const AnimationEvalContext *anim_eval_context,
   int tot = 0;
 
   /* Loop through targets, adding (hopefully we don't get any overflow!). */
-  for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
+  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
     value += driver_get_variable_value(anim_eval_context, driver, dvar);
     tot++;
   }
@@ -1284,7 +1284,7 @@ static void evaluate_driver_min_max(const AnimationEvalContext *anim_eval_contex
   float value = 0.0f;
 
   /* Loop through the variables, getting the values and comparing them to existing ones. */
-  for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
+  for (dvar = static_cast<DriverVar *>(driver->variables.first); dvar; dvar = dvar->next) {
     /* Get value. */
     float tmp_val = driver_get_variable_value(anim_eval_context, driver, dvar);
 

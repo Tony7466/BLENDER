@@ -127,7 +127,7 @@ set(SRC
   intern/effect.cc
   intern/fcurve.c
   intern/fcurve_cache.cc
-  intern/fcurve_driver.c
+  intern/fcurve_driver.cc
   intern/fluid.cc
   intern/fmodifier.c
   intern/freestyle.c
