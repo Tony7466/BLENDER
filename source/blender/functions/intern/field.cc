@@ -668,14 +668,11 @@ Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
         procedure, scope, field_tree_info, constant_fields_to_evaluate);
 
     evaluate_procedure_on_constant_volume_fields(scope,
-                                                 mask,
                                                  procedure,
                                                  field_context_inputs,
                                                  constant_fields_to_evaluate,
                                                  constant_field_indices,
-                                                 dst_grids,
-                                                 r_grids,
-                                                 is_output_written_to_dst);
+                                                 r_grids);
   }
 
   /* Copy data to supplied destination arrays if necessary. In some cases the evaluation above
@@ -751,9 +748,9 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   return field_input.get_varray_for_context(*this, mask, scope);
 }
 
-VolumeGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
-                                                   const VolumeMask &mask,
-                                                   ResourceScope &scope) const
+VolumeGrid FieldContext::get_volume_grid_for_input(const FieldInput & /*field_input*/,
+                                                   const VolumeMask & /*mask*/,
+                                                   ResourceScope & /*scope*/) const
 {
   /* Implemented only by volume context. */
   return {};

@@ -539,47 +539,64 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
   }
 }
 
-void evaluate_procedure_on_constant_volume_fields(ResourceScope &scope,
-                                                  const VolumeMask &mask,
+void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
                                                   const mf::Procedure &procedure,
                                                   Span<VolumeGrid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  Span<VolumeGrid> dst_grids,
-                                                  MutableSpan<VolumeGrid> r_grids,
-                                                  MutableSpan<bool> r_is_output_written_to_dst)
+                                                  MutableSpan<VolumeGrid> r_grids)
 {
+  mf::ProcedureExecutor procedure_executor{procedure};
+  const IndexMask mask(1);
+  mf::ParamsBuilder mf_params{procedure_executor, &mask};
+  mf::ContextBuilder mf_context;
 
-  // mf::ProcedureExecutor procedure_executor{procedure};
-  // const IndexMask mask(1);
-  // mf::ParamsBuilder mf_params{procedure_executor, &mask};
-  // mf::ContextBuilder mf_context;
+  /* Provide inputs to the procedure executor. */
+  for (const int i : field_context_inputs.index_range()) {
+    detail::grid_to_static_type(field_context_inputs[i].grid_, [&](auto &input_grid) {
+      using InputGridType = typename std::decay<decltype(input_grid)>::type;
+      using ValueType = typename InputGridType::ValueType;
 
-  ///* Provide inputs to the procedure executor. */
-  // for (const GVArray &varray : field_context_inputs) {
-  //   mf_params.add_readonly_single_input(varray);
-  // }
+      /* XXX not all grid types have a background property. */
+      // const ValueType input_value = input_grid.background();
+      typename InputGridType::Accessor accessor = input_grid.getAccessor();
+      const ValueType input_value = accessor.getValue(openvdb::Coord(0, 0, 0));
 
-  // for (const int i : constant_fields_to_evaluate.index_range()) {
-  //   const GFieldRef &field = constant_fields_to_evaluate[i];
-  //   const CPPType &type = field.cpp_type();
-  //   /* Allocate memory where the computed value will be stored in. */
-  //   void *buffer = scope.linear_allocator().allocate(type.size(), type.alignment());
+      VArray<ValueType> varray = VArray<ValueType>::ForSingle(input_value, 1);
+      mf_params.add_readonly_single_input(varray);
+    });
+  }
 
-  //  if (!type.is_trivially_destructible()) {
-  //    /* Destruct value in the end. */
-  //    scope.add_destruct_call([buffer, &type]() { type.destruct(buffer); });
-  //  }
+  /* Temporary buffers for output values, these are stored as background values on empty grids
+   * after the prodcure execution. */
+  Array<void *> output_buffers(fields_to_evaluate.size());
+  for (const int i : fields_to_evaluate.index_range()) {
+    const GFieldRef &field = fields_to_evaluate[i];
+    const CPPType &type = field.cpp_type();
 
-  //  /* Pass output buffer to the procedure executor. */
-  //  mf_params.add_uninitialized_single_output({type, buffer, 1});
+    output_buffers[i] = MEM_mallocN(type.size(), __func__);
 
-  //  /* Create virtual array that can be used after the procedure has been executed below. */
-  //  const int out_index = constant_field_indices[i];
-  //  r_grids[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
-  //}
+    /* Pass output buffer to the procedure executor. */
+    mf_params.add_uninitialized_single_output({type, output_buffers[i], 1});
+  }
 
-  // procedure_executor.call(mask, mf_params, mf_context);
+  procedure_executor.call(mask, mf_params, mf_context);
+
+  for (const int i : fields_to_evaluate.index_range()) {
+    const GFieldRef &field = fields_to_evaluate[i];
+    const CPPType &type = field.cpp_type();
+    const int out_index = field_indices[i];
+
+    detail::field_to_static_type(type, [&](auto type_tag) {
+      using ValueType = typename decltype(type_tag)::type;
+
+      const ValueType &value = *static_cast<ValueType *>(output_buffers[i]);
+      r_grids[out_index] = VolumeGrid{grid_types::GridCommon<ValueType>::create(value)};
+    });
+
+    /* Destruct output value buffers, value is stored in grid backgrounds now. */
+    type.destruct(output_buffers[i]);
+  }
 }
 
 }  // namespace blender::fn
