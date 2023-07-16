@@ -238,7 +238,7 @@ set(SRC
   intern/object_dupli.cc
   intern/object_update.cc
   intern/ocean.c
-  intern/ocean_spectrum.c
+  intern/ocean_spectrum.cc
   intern/outliner_treehash.cc
   intern/packedFile.c
   intern/paint.cc
