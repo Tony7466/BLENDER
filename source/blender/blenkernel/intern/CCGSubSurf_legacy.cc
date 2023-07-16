@@ -71,10 +71,10 @@ static float *_face_getIFNoEdge(CCGFace *f,
 static void _face_calcIFNo(
     CCGFace *f, int lvl, int S, int x, int y, float no[3], int levels, int dataSize)
 {
-  float *a = ccg_face_getIFCo(f, lvl, S, x + 0, y + 0, levels, dataSize);
-  float *b = ccg_face_getIFCo(f, lvl, S, x + 1, y + 0, levels, dataSize);
-  float *c = ccg_face_getIFCo(f, lvl, S, x + 1, y + 1, levels, dataSize);
-  float *d = ccg_face_getIFCo(f, lvl, S, x + 0, y + 1, levels, dataSize);
+  float *a = static_cast<float *>(ccg_face_getIFCo(f, lvl, S, x + 0, y + 0, levels, dataSize));
+  float *b = static_cast<float *>(ccg_face_getIFCo(f, lvl, S, x + 1, y + 0, levels, dataSize));
+  float *c = static_cast<float *>(ccg_face_getIFCo(f, lvl, S, x + 1, y + 1, levels, dataSize));
+  float *d = static_cast<float *>(ccg_face_getIFCo(f, lvl, S, x + 0, y + 1, levels, dataSize));
   float a_cX = c[0] - a[0], a_cY = c[1] - a[1], a_cZ = c[2] - a[2];
   float b_dX = d[0] - b[0], b_dY = d[1] - b[1], b_dZ = d[2] - b[2];
 
@@ -104,7 +104,7 @@ static float EDGE_getSharpness(CCGEdge *e, int lvl)
   return e->crease - lvl;
 }
 
-typedef struct CCGSubSurfCalcSubdivData {
+struct CCGSubSurfCalcSubdivData {
   CCGSubSurf *ss;
   CCGVert **effectedV;
   CCGEdge **effectedE;
@@ -114,12 +114,12 @@ typedef struct CCGSubSurfCalcSubdivData {
   int numEffectedF;
 
   int curLvl;
-} CCGSubSurfCalcSubdivData;
+};
 
 static void ccgSubSurf__calcVertNormals_faces_accumulate_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGFace *f = data->effectedF[ptrIdx];
@@ -216,9 +216,9 @@ static void ccgSubSurf__calcVertNormals_faces_accumulate_cb(
 }
 
 static void ccgSubSurf__calcVertNormals_faces_finalize_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGFace *f = data->effectedF[ptrIdx];
@@ -255,9 +255,9 @@ static void ccgSubSurf__calcVertNormals_faces_finalize_cb(
 }
 
 static void ccgSubSurf__calcVertNormals_edges_accumulate_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGEdge *e = data->effectedE[ptrIdx];
@@ -318,15 +318,14 @@ static void ccgSubSurf__calcVertNormals(CCGSubSurf *ss,
   const int normalDataOffset = ss->normalDataOffset;
   const int vertDataSize = ss->meshIFC.vertDataSize;
 
-  CCGSubSurfCalcSubdivData data = {
-      .ss = ss,
-      .effectedV = effectedV,
-      .effectedE = effectedE,
-      .effectedF = effectedF,
-      .numEffectedV = numEffectedV,
-      .numEffectedE = numEffectedE,
-      .numEffectedF = numEffectedF,
-  };
+  CCGSubSurfCalcSubdivData data{};
+  data.ss = ss;
+  data.effectedV = effectedV;
+  data.effectedE = effectedE;
+  data.effectedF = effectedF;
+  data.numEffectedV = numEffectedV;
+  data.numEffectedE = numEffectedE;
+  data.numEffectedF = numEffectedF;
 
   {
     TaskParallelSettings settings;
@@ -407,9 +406,9 @@ static void ccgSubSurf__calcVertNormals(CCGSubSurf *ss,
 }
 
 static void ccgSubSurf__calcSubdivLevel_interior_faces_edges_midpoints_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGFace *f = data->effectedF[ptrIdx];
@@ -495,9 +494,9 @@ static void ccgSubSurf__calcSubdivLevel_interior_faces_edges_midpoints_cb(
 }
 
 static void ccgSubSurf__calcSubdivLevel_interior_faces_edges_centerpoints_shift_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGFace *f = data->effectedF[ptrIdx];
@@ -508,8 +507,8 @@ static void ccgSubSurf__calcSubdivLevel_interior_faces_edges_centerpoints_shift_
   const int gridSize = ccg_gridsize(curLvl);
   const int vertDataSize = ss->meshIFC.vertDataSize;
 
-  float *q_thread = alloca(vertDataSize);
-  float *r_thread = alloca(vertDataSize);
+  float *q_thread = static_cast<float *>(alloca(vertDataSize));
+  float *r_thread = static_cast<float *>(alloca(vertDataSize));
 
   int S, x, y;
 
@@ -601,9 +600,9 @@ static void ccgSubSurf__calcSubdivLevel_interior_faces_edges_centerpoints_shift_
 }
 
 static void ccgSubSurf__calcSubdivLevel_verts_copydata_cb(
-    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int ptrIdx, const TaskParallelTLS *__restrict /*tls*/)
 {
-  CCGSubSurfCalcSubdivData *data = userdata;
+  CCGSubSurfCalcSubdivData *data = static_cast<CCGSubSurfCalcSubdivData *>(userdata);
 
   CCGSubSurf *ss = data->ss;
   CCGFace *f = data->effectedF[ptrIdx];
@@ -636,10 +635,12 @@ static void ccgSubSurf__calcSubdivLevel_verts_copydata_cb(
     for (x = 0; x < gridSize - 1; x++) {
       int eI = gridSize - 1 - x;
       VertDataCopy(FACE_getIFCo(f, nextLvl, S, cornerIdx, x),
-                   _edge_getCoVert(e, FACE_getVerts(f)[S], nextLvl, eI, vertDataSize),
+                   static_cast<const float *>(
+                       _edge_getCoVert(e, FACE_getVerts(f)[S], nextLvl, eI, vertDataSize)),
                    ss);
       VertDataCopy(FACE_getIFCo(f, nextLvl, S, x, cornerIdx),
-                   _edge_getCoVert(prevE, FACE_getVerts(f)[S], nextLvl, eI, vertDataSize),
+                   static_cast<const float *>(
+                       _edge_getCoVert(prevE, FACE_getVerts(f)[S], nextLvl, eI, vertDataSize)),
                    ss);
     }
   }
@@ -659,18 +660,17 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
   int edgeSize = ccg_edgesize(curLvl);
   int ptrIdx, i;
   const int vertDataSize = ss->meshIFC.vertDataSize;
-  float *q = ss->q, *r = ss->r;
+  float *q = static_cast<float *>(ss->q), *r = static_cast<float *>(ss->r);
 
-  CCGSubSurfCalcSubdivData data = {
-      .ss = ss,
-      .effectedV = effectedV,
-      .effectedE = effectedE,
-      .effectedF = effectedF,
-      .numEffectedV = numEffectedV,
-      .numEffectedE = numEffectedE,
-      .numEffectedF = numEffectedF,
-      .curLvl = curLvl,
-  };
+  CCGSubSurfCalcSubdivData data{};
+  data.ss = ss;
+  data.effectedV = effectedV;
+  data.effectedE = effectedE;
+  data.effectedF = effectedF;
+  data.numEffectedV = numEffectedV;
+  data.numEffectedE = numEffectedE;
+  data.numEffectedF = numEffectedF;
+  data.curLvl = curLvl;
 
   {
     TaskParallelSettings settings;
@@ -719,10 +719,10 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
         for (j = 0; j < e->numFaces; j++) {
           CCGFace *f = e->faces[j];
           const int f_ed_idx = ccg_face_getEdgeIndex(f, e);
-          VertDataAdd(
-              q,
-              ccg_face_getIFCoEdge(f, e, f_ed_idx, nextLvl, fx, 1, subdivLevels, vertDataSize),
-              ss);
+          VertDataAdd(q,
+                      static_cast<const float *>(ccg_face_getIFCoEdge(
+                          f, e, f_ed_idx, nextLvl, fx, 1, subdivLevels, vertDataSize)),
+                      ss);
           numFaces++;
         }
 
@@ -792,7 +792,8 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
       for (j = 0; j < v->numEdges; j++) {
         CCGEdge *e = v->edges[j];
         if (_edge_isBoundary(e)) {
-          VertDataAdd(r, _edge_getCoVert(e, v, curLvl, 1, vertDataSize), ss);
+          VertDataAdd(
+              r, static_cast<const float *>(_edge_getCoVert(e, v, curLvl, 1, vertDataSize)), ss);
           numBoundary++;
         }
       }
@@ -817,7 +818,8 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
       VertDataZero(r, ss);
       for (j = 0; j < v->numEdges; j++) {
         CCGEdge *e = v->edges[j];
-        VertDataAdd(r, _edge_getCoVert(e, v, curLvl, 1, vertDataSize), ss);
+        VertDataAdd(
+            r, static_cast<const float *>(_edge_getCoVert(e, v, curLvl, 1, vertDataSize)), ss);
         numEdges++;
       }
       VertDataMulN(r, 1.0f / numEdges, ss);
@@ -844,11 +846,13 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
 
         if (seam) {
           if (_edge_isBoundary(e)) {
-            VertDataAdd(q, _edge_getCoVert(e, v, curLvl, 1, vertDataSize), ss);
+            VertDataAdd(
+                q, static_cast<const float *>(_edge_getCoVert(e, v, curLvl, 1, vertDataSize)), ss);
           }
         }
         else if (sharpness != 0.0f) {
-          VertDataAdd(q, _edge_getCoVert(e, v, curLvl, 1, vertDataSize), ss);
+          VertDataAdd(
+              q, static_cast<const float *>(_edge_getCoVert(e, v, curLvl, 1, vertDataSize)), ss);
         }
       }
 
@@ -933,19 +937,19 @@ static void ccgSubSurf__calcSubdivLevel(CCGSubSurf *ss,
         for (j = 0; j < e->numFaces; j++) {
           CCGFace *f = e->faces[j];
           int f_ed_idx = ccg_face_getEdgeIndex(f, e);
-          VertDataAdd(
-              q,
-              ccg_face_getIFCoEdge(f, e, f_ed_idx, nextLvl, fx - 1, 1, subdivLevels, vertDataSize),
-              ss);
-          VertDataAdd(
-              q,
-              ccg_face_getIFCoEdge(f, e, f_ed_idx, nextLvl, fx + 1, 1, subdivLevels, vertDataSize),
-              ss);
+          VertDataAdd(q,
+                      static_cast<const float *>(ccg_face_getIFCoEdge(
+                          f, e, f_ed_idx, nextLvl, fx - 1, 1, subdivLevels, vertDataSize)),
+                      ss);
+          VertDataAdd(q,
+                      static_cast<const float *>(ccg_face_getIFCoEdge(
+                          f, e, f_ed_idx, nextLvl, fx + 1, 1, subdivLevels, vertDataSize)),
+                      ss);
 
-          VertDataAdd(
-              r,
-              ccg_face_getIFCoEdge(f, e, f_ed_idx, curLvl, x, 1, subdivLevels, vertDataSize),
-              ss);
+          VertDataAdd(r,
+                      static_cast<const float *>(ccg_face_getIFCoEdge(
+                          f, e, f_ed_idx, curLvl, x, 1, subdivLevels, vertDataSize)),
+                      ss);
           numFaces++;
         }
         VertDataMulN(q, 1.0f / (numFaces * 2.0f), ss);
@@ -1014,9 +1018,12 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   int curLvl, nextLvl;
   void *q = ss->q, *r = ss->r;
 
-  effectedV = MEM_mallocN(sizeof(*effectedV) * ss->vMap->numEntries, "CCGSubsurf effectedV");
-  effectedE = MEM_mallocN(sizeof(*effectedE) * ss->eMap->numEntries, "CCGSubsurf effectedE");
-  effectedF = MEM_mallocN(sizeof(*effectedF) * ss->fMap->numEntries, "CCGSubsurf effectedF");
+  effectedV = static_cast<CCGVert **>(
+      MEM_mallocN(sizeof(*effectedV) * ss->vMap->numEntries, "CCGSubsurf effectedV"));
+  effectedE = static_cast<CCGEdge **>(
+      MEM_mallocN(sizeof(*effectedE) * ss->eMap->numEntries, "CCGSubsurf effectedE"));
+  effectedF = static_cast<CCGFace **>(
+      MEM_mallocN(sizeof(*effectedF) * ss->fMap->numEntries, "CCGSubsurf effectedF"));
   numEffectedV = numEffectedE = numEffectedF = 0;
   for (i = 0; i < ss->vMap->curSize; i++) {
     CCGVert *v = (CCGVert *)ss->vMap->buckets[i];
@@ -1049,11 +1056,11 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   for (ptrIdx = 0; ptrIdx < numEffectedF; ptrIdx++) {
     CCGFace *f = effectedF[ptrIdx];
     void *co = FACE_getCenterData(f);
-    VertDataZero(co, ss);
+    VertDataZero(static_cast<float *>(co), ss);
     for (i = 0; i < f->numVerts; i++) {
-      VertDataAdd(co, VERT_getCo(FACE_getVerts(f)[i], curLvl), ss);
+      VertDataAdd(static_cast<float *>(co), VERT_getCo(FACE_getVerts(f)[i], curLvl), ss);
     }
-    VertDataMulN(co, 1.0f / f->numVerts, ss);
+    VertDataMulN(static_cast<float *>(co), 1.0f / f->numVerts, ss);
 
     f->flags = 0;
   }
@@ -1063,29 +1070,29 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
     float sharpness = EDGE_getSharpness(e, curLvl);
 
     if (_edge_isBoundary(e) || sharpness >= 1.0f) {
-      VertDataCopy(co, VERT_getCo(e->v0, curLvl), ss);
-      VertDataAdd(co, VERT_getCo(e->v1, curLvl), ss);
-      VertDataMulN(co, 0.5f, ss);
+      VertDataCopy(static_cast<float *>(co), VERT_getCo(e->v0, curLvl), ss);
+      VertDataAdd(static_cast<float *>(co), VERT_getCo(e->v1, curLvl), ss);
+      VertDataMulN(static_cast<float *>(co), 0.5f, ss);
     }
     else {
       int numFaces = 0;
-      VertDataCopy(q, VERT_getCo(e->v0, curLvl), ss);
-      VertDataAdd(q, VERT_getCo(e->v1, curLvl), ss);
+      VertDataCopy(static_cast<float *>(q), VERT_getCo(e->v0, curLvl), ss);
+      VertDataAdd(static_cast<float *>(q), VERT_getCo(e->v1, curLvl), ss);
       for (i = 0; i < e->numFaces; i++) {
         CCGFace *f = e->faces[i];
-        VertDataAdd(q, (float *)FACE_getCenterData(f), ss);
+        VertDataAdd(static_cast<float *>(q), (float *)FACE_getCenterData(f), ss);
         numFaces++;
       }
-      VertDataMulN(q, 1.0f / (2.0f + numFaces), ss);
+      VertDataMulN(static_cast<float *>(q), 1.0f / (2.0f + numFaces), ss);
 
-      VertDataCopy(r, VERT_getCo(e->v0, curLvl), ss);
-      VertDataAdd(r, VERT_getCo(e->v1, curLvl), ss);
-      VertDataMulN(r, 0.5f, ss);
+      VertDataCopy(static_cast<float *>(r), VERT_getCo(e->v0, curLvl), ss);
+      VertDataAdd(static_cast<float *>(r), VERT_getCo(e->v1, curLvl), ss);
+      VertDataMulN(static_cast<float *>(r), 0.5f, ss);
 
-      VertDataCopy(co, q, ss);
-      VertDataSub(r, q, ss);
-      VertDataMulN(r, sharpness, ss);
-      VertDataAdd(co, r, ss);
+      VertDataCopy(static_cast<float *>(co), static_cast<const float *>(q), ss);
+      VertDataSub(static_cast<float *>(r), static_cast<const float *>(q), ss);
+      VertDataMulN(static_cast<float *>(r), sharpness, ss);
+      VertDataAdd(static_cast<float *>(co), static_cast<const float *>(r), ss);
     }
 
     /* edge flags cleared later */
@@ -1127,51 +1134,51 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
     }
 
     if (!v->numEdges || ss->meshIFC.simpleSubdiv) {
-      VertDataCopy(nCo, co, ss);
+      VertDataCopy(static_cast<float *>(nCo), static_cast<const float *>(co), ss);
     }
     else if (_vert_isBoundary(v)) {
       int numBoundary = 0;
 
-      VertDataZero(r, ss);
+      VertDataZero(static_cast<float *>(r), ss);
       for (i = 0; i < v->numEdges; i++) {
         CCGEdge *e = v->edges[i];
         if (_edge_isBoundary(e)) {
-          VertDataAdd(r, VERT_getCo(_edge_getOtherVert(e, v), curLvl), ss);
+          VertDataAdd(static_cast<float *>(r), VERT_getCo(_edge_getOtherVert(e, v), curLvl), ss);
           numBoundary++;
         }
       }
-      VertDataCopy(nCo, co, ss);
-      VertDataMulN(nCo, 0.75f, ss);
-      VertDataMulN(r, 0.25f / numBoundary, ss);
-      VertDataAdd(nCo, r, ss);
+      VertDataCopy(static_cast<float *>(nCo), static_cast<const float *>(co), ss);
+      VertDataMulN(static_cast<float *>(nCo), 0.75f, ss);
+      VertDataMulN(static_cast<float *>(r), 0.25f / numBoundary, ss);
+      VertDataAdd(static_cast<float *>(nCo), static_cast<const float *>(r), ss);
     }
     else {
       int numEdges = 0, numFaces = 0;
 
-      VertDataZero(q, ss);
+      VertDataZero(static_cast<float *>(q), ss);
       for (i = 0; i < v->numFaces; i++) {
         CCGFace *f = v->faces[i];
-        VertDataAdd(q, (float *)FACE_getCenterData(f), ss);
+        VertDataAdd(static_cast<float *>(q), (float *)FACE_getCenterData(f), ss);
         numFaces++;
       }
-      VertDataMulN(q, 1.0f / numFaces, ss);
-      VertDataZero(r, ss);
+      VertDataMulN(static_cast<float *>(q), 1.0f / numFaces, ss);
+      VertDataZero(static_cast<float *>(r), ss);
       for (i = 0; i < v->numEdges; i++) {
         CCGEdge *e = v->edges[i];
-        VertDataAdd(r, VERT_getCo(_edge_getOtherVert(e, v), curLvl), ss);
+        VertDataAdd(static_cast<float *>(r), VERT_getCo(_edge_getOtherVert(e, v), curLvl), ss);
         numEdges++;
       }
-      VertDataMulN(r, 1.0f / numEdges, ss);
+      VertDataMulN(static_cast<float *>(r), 1.0f / numEdges, ss);
 
-      VertDataCopy(nCo, co, ss);
-      VertDataMulN(nCo, numEdges - 2.0f, ss);
-      VertDataAdd(nCo, q, ss);
-      VertDataAdd(nCo, r, ss);
-      VertDataMulN(nCo, 1.0f / numEdges, ss);
+      VertDataCopy(static_cast<float *>(nCo), static_cast<const float *>(co), ss);
+      VertDataMulN(static_cast<float *>(nCo), numEdges - 2.0f, ss);
+      VertDataAdd(static_cast<float *>(nCo), static_cast<const float *>(q), ss);
+      VertDataAdd(static_cast<float *>(nCo), static_cast<const float *>(r), ss);
+      VertDataMulN(static_cast<float *>(nCo), 1.0f / numEdges, ss);
     }
 
     if (sharpCount > 1 || seam) {
-      VertDataZero(q, ss);
+      VertDataZero(static_cast<float *>(q), ss);
 
       if (seam) {
         avgSharpness = 1.0f;
@@ -1186,35 +1193,35 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
         if (seam) {
           if (_edge_isBoundary(e)) {
             CCGVert *oV = _edge_getOtherVert(e, v);
-            VertDataAdd(q, VERT_getCo(oV, curLvl), ss);
+            VertDataAdd(static_cast<float *>(q), VERT_getCo(oV, curLvl), ss);
           }
         }
         else if (sharpness != 0.0f) {
           CCGVert *oV = _edge_getOtherVert(e, v);
-          VertDataAdd(q, VERT_getCo(oV, curLvl), ss);
+          VertDataAdd(static_cast<float *>(q), VERT_getCo(oV, curLvl), ss);
         }
       }
 
-      VertDataMulN(q, (float)1 / sharpCount, ss);
+      VertDataMulN(static_cast<float *>(q), (float)1 / sharpCount, ss);
 
       if (sharpCount != 2 || allSharp) {
         /* q = q + (co - q) * avgSharpness */
-        VertDataCopy(r, co, ss);
-        VertDataSub(r, q, ss);
-        VertDataMulN(r, avgSharpness, ss);
-        VertDataAdd(q, r, ss);
+        VertDataCopy(static_cast<float *>(r), static_cast<const float *>(co), ss);
+        VertDataSub(static_cast<float *>(r), static_cast<const float *>(q), ss);
+        VertDataMulN(static_cast<float *>(r), avgSharpness, ss);
+        VertDataAdd(static_cast<float *>(q), static_cast<const float *>(r), ss);
       }
 
       /* r = co * 0.75 + q * 0.25 */
-      VertDataCopy(r, co, ss);
-      VertDataMulN(r, 0.75f, ss);
-      VertDataMulN(q, 0.25f, ss);
-      VertDataAdd(r, q, ss);
+      VertDataCopy(static_cast<float *>(r), static_cast<const float *>(co), ss);
+      VertDataMulN(static_cast<float *>(r), 0.75f, ss);
+      VertDataMulN(static_cast<float *>(q), 0.25f, ss);
+      VertDataAdd(static_cast<float *>(r), static_cast<const float *>(q), ss);
 
       /* nCo = nCo + (r - nCo) * avgSharpness */
-      VertDataSub(r, nCo, ss);
-      VertDataMulN(r, avgSharpness, ss);
-      VertDataAdd(nCo, r, ss);
+      VertDataSub(static_cast<float *>(r), static_cast<const float *>(nCo), ss);
+      VertDataMulN(static_cast<float *>(r), avgSharpness, ss);
+      VertDataAdd(static_cast<float *>(nCo), static_cast<const float *>(r), ss);
     }
 
     /* vert flags cleared later */
@@ -1223,19 +1230,19 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   if (ss->useAgeCounts) {
     for (i = 0; i < numEffectedV; i++) {
       CCGVert *v = effectedV[i];
-      byte *userData = ccgSubSurf_getVertUserData(ss, v);
+      byte *userData = static_cast<byte *>(ccgSubSurf_getVertUserData(ss, v));
       *((int *)&userData[ss->vertUserAgeOffset]) = ss->currentAge;
     }
 
     for (i = 0; i < numEffectedE; i++) {
       CCGEdge *e = effectedE[i];
-      byte *userData = ccgSubSurf_getEdgeUserData(ss, e);
+      byte *userData = static_cast<byte *>(ccgSubSurf_getEdgeUserData(ss, e));
       *((int *)&userData[ss->edgeUserAgeOffset]) = ss->currentAge;
     }
 
     for (i = 0; i < numEffectedF; i++) {
       CCGFace *f = effectedF[i];
-      byte *userData = ccgSubSurf_getFaceUserData(ss, f);
+      byte *userData = static_cast<byte *>(ccgSubSurf_getFaceUserData(ss, f));
       *((int *)&userData[ss->faceUserAgeOffset]) = ss->currentAge;
     }
   }
@@ -1259,10 +1266,12 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
           FACE_getIECo(f, nextLvl, S, 1), EDGE_getCo(FACE_getEdges(f)[S], nextLvl, 1), ss);
 
       VertDataCopy(FACE_getIFCo(f, nextLvl, S, 1, 0),
-                   _edge_getCoVert(e, FACE_getVerts(f)[S], nextLvl, 1, vertDataSize),
+                   static_cast<const float *>(
+                       _edge_getCoVert(e, FACE_getVerts(f)[S], nextLvl, 1, vertDataSize)),
                    ss);
       VertDataCopy(FACE_getIFCo(f, nextLvl, S, 0, 1),
-                   _edge_getCoVert(prevE, FACE_getVerts(f)[S], nextLvl, 1, vertDataSize),
+                   static_cast<const float *>(
+                       _edge_getCoVert(prevE, FACE_getVerts(f)[S], nextLvl, 1, vertDataSize)),
                    ss);
     }
   }
