@@ -161,7 +161,7 @@ set(SRC
   intern/image_partial_update.cc
   intern/image_save.cc
   intern/instances.cc
-  intern/ipo.c
+  intern/ipo.cc
   intern/kelvinlet.c
   intern/key.cc
   intern/keyconfig.c
