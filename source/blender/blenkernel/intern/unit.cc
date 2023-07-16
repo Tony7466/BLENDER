@@ -14,6 +14,7 @@
 #include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h"
 
 #include "DNA_scene_types.h"
@@ -242,11 +243,13 @@ static   bUnitCollection buNaturalTimeCollection = {buNaturalTimeDef, 3, 0, UNIT
 
 
 static   bUnitDef buNaturalRotDef[] = {
-{"degree",    "degrees",     "°",  "d",   "Degrees",    "DEGREES",    M_PI / 180.0,             0.0,  B_UNIT_DEF_NONE | B_UNIT_DEF_NO_SPACE},
-/* arcminutes/arcseconds are used in Astronomy/Navigation areas... */
-{"arcminute", "arcminutes",  "'",  nullptr,  "Arcminutes", "ARCMINUTES", (M_PI / 180.0) / 60.0,    0.0,  B_UNIT_DEF_SUPPRESS | B_UNIT_DEF_NO_SPACE}, {"arcsecond", "arcseconds",  "\"", nullptr,  "Arcseconds", "ARCSECONDS", (M_PI / 180.0) / 3600.0,  0.0,  B_UNIT_DEF_SUPPRESS | B_UNIT_DEF_NO_SPACE}, {"radian",    "radians",     "r",  nullptr,  "Radians",    "RADIANS",    1.0,                      0.0,  B_UNIT_DEF_NONE},
+  {"degree",    "degrees",     BLI_STR_UTF8_DEGREE_SIGN,  "d",   "Degrees",    "DEGREES",    M_PI / 180.0,             0.0,  B_UNIT_DEF_NONE | B_UNIT_DEF_NO_SPACE},
+  /* arcminutes/arcseconds are used in Astronomy/Navigation areas... */
+  {"arcminute", "arcminutes",  "'",  nullptr,  "Arcminutes", "ARCMINUTES", (M_PI / 180.0) / 60.0,    0.0,  B_UNIT_DEF_SUPPRESS | B_UNIT_DEF_NO_SPACE},
+  {"arcsecond", "arcseconds",  "\"", nullptr,  "Arcseconds", "ARCSECONDS", (M_PI / 180.0) / 3600.0,  0.0,  B_UNIT_DEF_SUPPRESS | B_UNIT_DEF_NO_SPACE},
+  {"radian",    "radians",     "r",  nullptr,  "Radians",    "RADIANS",    1.0,                      0.0,  B_UNIT_DEF_NONE},
 #if 0
-{"turn",    "turns",         "t",  nullptr,  "Turns",      nullptr,         1.0 / (M_PI * 2.0),       0.0,  B_UNIT_DEF_NONE},
+  {"turn",    "turns",         "t",  nullptr,  "Turns",      nullptr,         1.0 / (M_PI * 2.0),       0.0,  B_UNIT_DEF_NONE},
 #endif
 NULL_UNIT, };
 static   bUnitCollection buNaturalRotCollection = {buNaturalRotDef, 0, 0, UNIT_COLLECTION_LENGTH(buNaturalRotDef)};
@@ -268,14 +271,18 @@ static   bUnitCollection buPowerCollection = {buPowerDef, 3, 0, UNIT_COLLECTION_
 
 /* Temperature */
 static   bUnitDef buMetricTempDef[] = {
-{"kelvin",  "kelvin",  "K",  nullptr, "Kelvin",  "KELVIN",  1.0f, 0.0,    B_UNIT_DEF_NONE}, /* Base unit. */
-{"celsius", "celsius", "°C", "C",  "Celsius", "CELSIUS", 1.0f, 273.15, B_UNIT_DEF_NONE}, NULL_UNIT, };
+  {"kelvin",  "kelvin",  "K",  nullptr, "Kelvin",  "KELVIN",  1.0f, 0.0,    B_UNIT_DEF_NONE}, /* Base unit. */
+  {"celsius", "celsius", BLI_STR_UTF8_DEGREE_SIGN "C", "C",  "Celsius", "CELSIUS", 1.0f, 273.15, B_UNIT_DEF_NONE},
+  NULL_UNIT,
+};
 static   bUnitCollection buMetricTempCollection = {buMetricTempDef, 0, 0, UNIT_COLLECTION_LENGTH(buMetricTempDef)};
 
 
 static   bUnitDef buImperialTempDef[] = {
-{"kelvin",     "kelvin",     "K",  nullptr, "Kelvin",     "KELVIN",     1.0f,      0.0,    B_UNIT_DEF_NONE}, /* Base unit. */
-{"fahrenheit", "fahrenheit", "°F", "F",  "Fahrenheit", "FAHRENHEIT", UN_SC_FAH, 459.67, B_UNIT_DEF_NONE}, NULL_UNIT, };
+  {"kelvin",     "kelvin",     "K",  nullptr, "Kelvin",     "KELVIN",     1.0f,      0.0,    B_UNIT_DEF_NONE}, /* Base unit. */
+  {"fahrenheit", "fahrenheit", BLI_STR_UTF8_DEGREE_SIGN "F", "F",  "Fahrenheit", "FAHRENHEIT", UN_SC_FAH, 459.67, B_UNIT_DEF_NONE},
+  NULL_UNIT,
+};
 static   bUnitCollection buImperialTempCollection = {
 buImperialTempDef, 1, 0, UNIT_COLLECTION_LENGTH(buImperialTempDef)};
 
