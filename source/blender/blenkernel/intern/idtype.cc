@@ -31,7 +31,7 @@
 
 uint BKE_idtype_cache_key_hash(const void *key_v)
 {
-  const IDCacheKey *key = key_v;
+  const IDCacheKey *key = static_cast<const IDCacheKey *>(key_v);
   size_t hash = BLI_ghashutil_uinthash(key->id_session_uuid);
   hash = BLI_ghashutil_combine_hash(hash, BLI_ghashutil_uinthash((uint)key->offset_in_ID));
   return (uint)hash;
@@ -39,13 +39,13 @@ uint BKE_idtype_cache_key_hash(const void *key_v)
 
 bool BKE_idtype_cache_key_cmp(const void *key_a_v, const void *key_b_v)
 {
-  const IDCacheKey *key_a = key_a_v;
-  const IDCacheKey *key_b = key_b_v;
+  const IDCacheKey *key_a = static_cast<const IDCacheKey *>(key_a_v);
+  const IDCacheKey *key_b = static_cast<const IDCacheKey *>(key_b_v);
   return (key_a->id_session_uuid != key_b->id_session_uuid) ||
          (key_a->offset_in_ID != key_b->offset_in_ID);
 }
 
-static IDTypeInfo *id_types[INDEX_ID_MAX] = {NULL};
+static IDTypeInfo *id_types[INDEX_ID_MAX] = {nullptr};
 
 static void id_type_init(void)
 {
@@ -114,13 +114,13 @@ const IDTypeInfo *BKE_idtype_get_info_from_idcode(const short id_code)
 {
   int id_index = BKE_idtype_idcode_to_index(id_code);
 
-  if (id_index >= 0 && id_index < ARRAY_SIZE(id_types) && id_types[id_index] != NULL &&
+  if (id_index >= 0 && id_index < ARRAY_SIZE(id_types) && id_types[id_index] != nullptr &&
       id_types[id_index]->name[0] != '\0')
   {
     return id_types[id_index];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 const IDTypeInfo *BKE_idtype_get_info_from_id(const ID *id)
@@ -131,12 +131,12 @@ const IDTypeInfo *BKE_idtype_get_info_from_id(const ID *id)
 static const IDTypeInfo *idtype_get_info_from_name(const char *idtype_name)
 {
   for (int i = ARRAY_SIZE(id_types); i--;) {
-    if (id_types[i] != NULL && STREQ(idtype_name, id_types[i]->name)) {
+    if (id_types[i] != nullptr && STREQ(idtype_name, id_types[i]->name)) {
       return id_types[i];
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /* Various helpers/wrappers around #IDTypeInfo structure. */
@@ -144,48 +144,48 @@ static const IDTypeInfo *idtype_get_info_from_name(const char *idtype_name)
 const char *BKE_idtype_idcode_to_name(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  return id_type != NULL ? id_type->name : NULL;
+  BLI_assert(id_type != nullptr);
+  return id_type != nullptr ? id_type->name : nullptr;
 }
 
 const char *BKE_idtype_idcode_to_name_plural(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  return id_type != NULL ? id_type->name_plural : NULL;
+  BLI_assert(id_type != nullptr);
+  return id_type != nullptr ? id_type->name_plural : nullptr;
 }
 
 const char *BKE_idtype_idcode_to_translation_context(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  return id_type != NULL ? id_type->translation_context : BLT_I18NCONTEXT_DEFAULT;
+  BLI_assert(id_type != nullptr);
+  return id_type != nullptr ? id_type->translation_context : BLT_I18NCONTEXT_DEFAULT;
 }
 
 short BKE_idtype_idcode_from_name(const char *idtype_name)
 {
   const IDTypeInfo *id_type = idtype_get_info_from_name(idtype_name);
   BLI_assert(id_type);
-  return id_type != NULL ? id_type->id_code : 0;
+  return id_type != nullptr ? id_type->id_code : 0;
 }
 
 bool BKE_idtype_idcode_is_valid(const short idcode)
 {
-  return BKE_idtype_get_info_from_idcode(idcode) != NULL ? true : false;
+  return BKE_idtype_get_info_from_idcode(idcode) != nullptr ? true : false;
 }
 
 bool BKE_idtype_idcode_is_linkable(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  return id_type != NULL ? (id_type->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0 : false;
+  BLI_assert(id_type != nullptr);
+  return id_type != nullptr ? (id_type->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0 : false;
 }
 
 bool BKE_idtype_idcode_is_only_appendable(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  if (id_type != NULL && (id_type->flags & IDTYPE_FLAGS_ONLY_APPEND) != 0) {
+  BLI_assert(id_type != nullptr);
+  if (id_type != nullptr && (id_type->flags & IDTYPE_FLAGS_ONLY_APPEND) != 0) {
     /* Only appendable ID types should also always be linkable. */
     BLI_assert((id_type->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0);
     return true;
@@ -196,8 +196,8 @@ bool BKE_idtype_idcode_is_only_appendable(const short idcode)
 bool BKE_idtype_idcode_append_is_reusable(const short idcode)
 {
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != NULL);
-  if (id_type != NULL && (id_type->flags & IDTYPE_FLAGS_APPEND_IS_REUSABLE) != 0) {
+  BLI_assert(id_type != nullptr);
+  if (id_type != nullptr && (id_type->flags & IDTYPE_FLAGS_APPEND_IS_REUSABLE) != 0) {
     /* All appendable ID types should also always be linkable. */
     BLI_assert((id_type->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0);
     return true;
@@ -451,29 +451,29 @@ void BKE_idtype_id_foreach_cache(ID *id,
                                  void *user_data)
 {
   const IDTypeInfo *type_info = BKE_idtype_get_info_from_id(id);
-  if (type_info->foreach_cache != NULL) {
+  if (type_info->foreach_cache != nullptr) {
     type_info->foreach_cache(id, function_callback, user_data);
   }
 
   /* Handle 'private IDs'. */
   bNodeTree *nodetree = ntreeFromID(id);
-  if (nodetree != NULL) {
+  if (nodetree != nullptr) {
     type_info = BKE_idtype_get_info_from_id(&nodetree->id);
-    if (type_info == NULL) {
+    if (type_info == nullptr) {
       /* Very old .blend file seem to have empty names for their embedded node trees, see
        * `blo_do_versions_250()`. Assume those are node-trees then. */
       type_info = BKE_idtype_get_info_from_idcode(ID_NT);
     }
-    if (type_info->foreach_cache != NULL) {
+    if (type_info->foreach_cache != nullptr) {
       type_info->foreach_cache(&nodetree->id, function_callback, user_data);
     }
   }
 
   if (GS(id->name) == ID_SCE) {
     Scene *scene = (Scene *)id;
-    if (scene->master_collection != NULL) {
+    if (scene->master_collection != nullptr) {
       type_info = BKE_idtype_get_info_from_id(&scene->master_collection->id);
-      if (type_info->foreach_cache != NULL) {
+      if (type_info->foreach_cache != nullptr) {
         type_info->foreach_cache(&scene->master_collection->id, function_callback, user_data);
       }
     }

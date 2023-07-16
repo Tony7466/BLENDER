@@ -153,7 +153,7 @@ set(SRC
   intern/idprop_create.cc
   intern/idprop_serialize.cc
   intern/idprop_utils.cc
-  intern/idtype.c
+  intern/idtype.cc
   intern/image.cc
   intern/image_format.cc
   intern/image_gen.c
