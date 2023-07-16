@@ -397,18 +397,18 @@ void BKE_ocean_eval_ij(Ocean *oc, OceanResult *ocr, int i, int j)
   BLI_rw_mutex_unlock(&oc->oceanmutex);
 }
 
-typedef struct OceanSimulateData {
+struct OceanSimulateData {
   Ocean *o;
   float t;
   float scale;
   float chop_amount;
-} OceanSimulateData;
+};
 
 static void ocean_compute_htilda(void *__restrict userdata,
                                  const int i,
-                                 const TaskParallelTLS *__restrict UNUSED(tls))
+                                 const TaskParallelTLS *__restrict /*tls*/)
 {
-  OceanSimulateData *osd = userdata;
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(userdata);
   const Ocean *o = osd->o;
   const float scale = osd->scale;
   const float t = osd->t;
@@ -436,17 +436,17 @@ static void ocean_compute_htilda(void *__restrict userdata,
   }
 }
 
-static void ocean_compute_displacement_y(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_displacement_y(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
 
   fftw_execute(o->_disp_y_plan);
 }
 
-static void ocean_compute_displacement_x(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_displacement_x(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   const float scale = osd->scale;
   const float chop_amount = osd->chop_amount;
@@ -473,9 +473,9 @@ static void ocean_compute_displacement_x(TaskPool *__restrict pool, void *UNUSED
   fftw_execute(o->_disp_x_plan);
 }
 
-static void ocean_compute_displacement_z(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_displacement_z(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   const float scale = osd->scale;
   const float chop_amount = osd->chop_amount;
@@ -502,9 +502,9 @@ static void ocean_compute_displacement_z(TaskPool *__restrict pool, void *UNUSED
   fftw_execute(o->_disp_z_plan);
 }
 
-static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   const float chop_amount = osd->chop_amount;
   int i, j;
@@ -535,9 +535,9 @@ static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool, void *UNUSED(t
   }
 }
 
-static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   const float chop_amount = osd->chop_amount;
   int i, j;
@@ -568,9 +568,9 @@ static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool, void *UNUSED(t
   }
 }
 
-static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   const float chop_amount = osd->chop_amount;
   int i, j;
@@ -595,9 +595,9 @@ static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool, void *UNUSED(t
   fftw_execute(o->_Jxz_plan);
 }
 
-static void ocean_compute_normal_x(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_normal_x(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   int i, j;
 
@@ -614,9 +614,9 @@ static void ocean_compute_normal_x(TaskPool *__restrict pool, void *UNUSED(taskd
   fftw_execute(o->_N_x_plan);
 }
 
-static void ocean_compute_normal_z(TaskPool *__restrict pool, void *UNUSED(taskdata))
+static void ocean_compute_normal_z(TaskPool *__restrict pool, void * /*taskdata*/)
 {
-  OceanSimulateData *osd = BLI_task_pool_user_data(pool);
+  OceanSimulateData *osd = static_cast<OceanSimulateData *>(BLI_task_pool_user_data(pool));
   const Ocean *o = osd->o;
   int i, j;
 
@@ -635,7 +635,7 @@ static void ocean_compute_normal_z(TaskPool *__restrict pool, void *UNUSED(taskd
 
 bool BKE_ocean_is_valid(const Ocean *o)
 {
-  return o->_k != NULL;
+  return o->_k != nullptr;
 }
 
 void BKE_ocean_simulate(Ocean *o, float t, float scale, float chop_amount)
@@ -669,23 +669,23 @@ void BKE_ocean_simulate(Ocean *o, float t, float scale, float chop_amount)
   BLI_task_parallel_range(0, o->_M, &osd, ocean_compute_htilda, &settings);
 
   if (o->_do_disp_y) {
-    BLI_task_pool_push(pool, ocean_compute_displacement_y, NULL, false, NULL);
+    BLI_task_pool_push(pool, ocean_compute_displacement_y, nullptr, false, nullptr);
   }
 
   if (o->_do_chop) {
-    BLI_task_pool_push(pool, ocean_compute_displacement_x, NULL, false, NULL);
-    BLI_task_pool_push(pool, ocean_compute_displacement_z, NULL, false, NULL);
+    BLI_task_pool_push(pool, ocean_compute_displacement_x, nullptr, false, nullptr);
+    BLI_task_pool_push(pool, ocean_compute_displacement_z, nullptr, false, nullptr);
   }
 
   if (o->_do_jacobian) {
-    BLI_task_pool_push(pool, ocean_compute_jacobian_jxx, NULL, false, NULL);
-    BLI_task_pool_push(pool, ocean_compute_jacobian_jzz, NULL, false, NULL);
-    BLI_task_pool_push(pool, ocean_compute_jacobian_jxz, NULL, false, NULL);
+    BLI_task_pool_push(pool, ocean_compute_jacobian_jxx, nullptr, false, nullptr);
+    BLI_task_pool_push(pool, ocean_compute_jacobian_jzz, nullptr, false, nullptr);
+    BLI_task_pool_push(pool, ocean_compute_jacobian_jxz, nullptr, false, nullptr);
   }
 
   if (o->_do_normals) {
-    BLI_task_pool_push(pool, ocean_compute_normal_x, NULL, false, NULL);
-    BLI_task_pool_push(pool, ocean_compute_normal_z, NULL, false, NULL);
+    BLI_task_pool_push(pool, ocean_compute_normal_x, nullptr, false, nullptr);
+    BLI_task_pool_push(pool, ocean_compute_normal_z, nullptr, false, nullptr);
     o->_N_y = 1.0f / scale;
   }
 
@@ -734,7 +734,7 @@ static void set_height_normalize_factor(Ocean *oc)
 
 Ocean *BKE_ocean_add(void)
 {
-  Ocean *oc = MEM_callocN(sizeof(Ocean), "ocean sim data");
+  Ocean *oc = static_cast<Ocean *>(MEM_callocN(sizeof(Ocean), "ocean sim data"));
 
   BLI_rw_mutex_init(&oc->oceanmutex);
 
@@ -1314,7 +1314,7 @@ OceanCache *BKE_ocean_init_cache(const char *bakepath,
                                  float foam_fade,
                                  int resolution)
 {
-  OceanCache *och = MEM_callocN(sizeof(OceanCache), "ocean cache data");
+  OceanCache *och = static_cast<OceanCache *>(MEM_callocN(sizeof(OceanCache), "ocean cache data"));
 
   och->bakepath = bakepath;
   och->relbase = relbase;
@@ -1329,15 +1329,18 @@ OceanCache *BKE_ocean_init_cache(const char *bakepath,
   och->resolution_x = resolution * resolution;
   och->resolution_y = resolution * resolution;
 
-  och->ibufs_disp = MEM_callocN(sizeof(ImBuf *) * och->duration,
-                                "displacement imbuf pointer array");
-  och->ibufs_foam = MEM_callocN(sizeof(ImBuf *) * och->duration, "foam imbuf pointer array");
-  och->ibufs_spray = MEM_callocN(sizeof(ImBuf *) * och->duration, "spray imbuf pointer array");
-  och->ibufs_spray_inverse = MEM_callocN(sizeof(ImBuf *) * och->duration,
-                                         "spray_inverse imbuf pointer array");
-  och->ibufs_norm = MEM_callocN(sizeof(ImBuf *) * och->duration, "normal imbuf pointer array");
+  och->ibufs_disp = static_cast<ImBuf **>(
+      MEM_callocN(sizeof(ImBuf *) * och->duration, "displacement imbuf pointer array"));
+  och->ibufs_foam = static_cast<ImBuf **>(
+      MEM_callocN(sizeof(ImBuf *) * och->duration, "foam imbuf pointer array"));
+  och->ibufs_spray = static_cast<ImBuf **>(
+      MEM_callocN(sizeof(ImBuf *) * och->duration, "spray imbuf pointer array"));
+  och->ibufs_spray_inverse = static_cast<ImBuf **>(
+      MEM_callocN(sizeof(ImBuf *) * och->duration, "spray_inverse imbuf pointer array"));
+  och->ibufs_norm = static_cast<ImBuf **>(
+      MEM_callocN(sizeof(ImBuf *) * och->duration, "normal imbuf pointer array"));
 
-  och->time = NULL;
+  och->time = nullptr;
 
   return och;
 }
@@ -1353,7 +1356,7 @@ void BKE_ocean_simulate_cache(OceanCache *och, int frame)
   f = frame - och->start; /* shift to 0 based */
 
   /* if image is already loaded in mem, return */
-  if (och->ibufs_disp[f] != NULL) {
+  if (och->ibufs_disp[f] != nullptr) {
     return;
   }
 
@@ -1361,19 +1364,19 @@ void BKE_ocean_simulate_cache(OceanCache *och, int frame)
    * files were saved with default settings too. */
 
   cache_filepath(filepath, och->bakepath, och->relbase, frame, CACHE_TYPE_DISPLACE);
-  och->ibufs_disp[f] = IMB_loadiffname(filepath, 0, NULL);
+  och->ibufs_disp[f] = IMB_loadiffname(filepath, 0, nullptr);
 
   cache_filepath(filepath, och->bakepath, och->relbase, frame, CACHE_TYPE_FOAM);
-  och->ibufs_foam[f] = IMB_loadiffname(filepath, 0, NULL);
+  och->ibufs_foam[f] = IMB_loadiffname(filepath, 0, nullptr);
 
   cache_filepath(filepath, och->bakepath, och->relbase, frame, CACHE_TYPE_SPRAY);
-  och->ibufs_spray[f] = IMB_loadiffname(filepath, 0, NULL);
+  och->ibufs_spray[f] = IMB_loadiffname(filepath, 0, nullptr);
 
   cache_filepath(filepath, och->bakepath, och->relbase, frame, CACHE_TYPE_SPRAY_INVERSE);
-  och->ibufs_spray_inverse[f] = IMB_loadiffname(filepath, 0, NULL);
+  och->ibufs_spray_inverse[f] = IMB_loadiffname(filepath, 0, nullptr);
 
   cache_filepath(filepath, och->bakepath, och->relbase, frame, CACHE_TYPE_NORMAL);
-  och->ibufs_norm[f] = IMB_loadiffname(filepath, 0, NULL);
+  och->ibufs_norm[f] = IMB_loadiffname(filepath, 0, nullptr);
 }
 
 void BKE_ocean_bake(Ocean *o,
@@ -1402,10 +1405,11 @@ void BKE_ocean_bake(Ocean *o,
   }
 
   if (o->_do_jacobian) {
-    prev_foam = MEM_callocN(res_x * res_y * sizeof(float), "previous frame foam bake data");
+    prev_foam = static_cast<float *>(
+        MEM_callocN(res_x * res_y * sizeof(float), "previous frame foam bake data"));
   }
   else {
-    prev_foam = NULL;
+    prev_foam = nullptr;
   }
 
   // rng = BLI_rng_new(0);
@@ -1553,51 +1557,45 @@ void BKE_ocean_bake(Ocean *o,
 
 #else /* WITH_OCEANSIM */
 
-float BKE_ocean_jminus_to_foam(float UNUSED(jminus), float UNUSED(coverage))
+float BKE_ocean_jminus_to_foam(float /*jminus*/, float /*coverage*/)
 {
   return 0.0f;
 }
 
-void BKE_ocean_eval_uv(struct Ocean *UNUSED(oc),
-                       struct OceanResult *UNUSED(ocr),
-                       float UNUSED(u),
-                       float UNUSED(v))
+void BKE_ocean_eval_uv(struct Ocean * /*oc*/,
+                       struct OceanResult * /*ocr*/,
+                       float /*u*/,
+                       float /*v*/)
 {
 }
 
 /* use catmullrom interpolation rather than linear */
-void BKE_ocean_eval_uv_catrom(struct Ocean *UNUSED(oc),
-                              struct OceanResult *UNUSED(ocr),
-                              float UNUSED(u),
-                              float UNUSED(v))
+void BKE_ocean_eval_uv_catrom(struct Ocean * /*oc*/,
+                              struct OceanResult * /*ocr*/,
+                              float /*u*/,
+                              float /*v*/)
 {
 }
 
-void BKE_ocean_eval_xz(struct Ocean *UNUSED(oc),
-                       struct OceanResult *UNUSED(ocr),
-                       float UNUSED(x),
-                       float UNUSED(z))
+void BKE_ocean_eval_xz(struct Ocean * /*oc*/,
+                       struct OceanResult * /*ocr*/,
+                       float /*x*/,
+                       float /*z*/)
 {
 }
 
-void BKE_ocean_eval_xz_catrom(struct Ocean *UNUSED(oc),
-                              struct OceanResult *UNUSED(ocr),
-                              float UNUSED(x),
-                              float UNUSED(z))
+void BKE_ocean_eval_xz_catrom(struct Ocean * /*oc*/,
+                              struct OceanResult * /*ocr*/,
+                              float /*x*/,
+                              float /*z*/)
 {
 }
 
-void BKE_ocean_eval_ij(struct Ocean *UNUSED(oc),
-                       struct OceanResult *UNUSED(ocr),
-                       int UNUSED(i),
-                       int UNUSED(j))
+void BKE_ocean_eval_ij(struct Ocean * /*oc*/, struct OceanResult * /*ocr*/, int /*i*/, int /*j*/)
 {
 }
 
-void BKE_ocean_simulate(struct Ocean *UNUSED(o),
-                        float UNUSED(t),
-                        float UNUSED(scale),
-                        float UNUSED(chop_amount))
+void BKE_ocean_simulate(struct Ocean * /*o*/, float /*t*/, float /*scale*/, float /*chop_amount*/)
 {
 }
 
@@ -1608,33 +1606,33 @@ struct Ocean *BKE_ocean_add(void)
   return oc;
 }
 
-bool BKE_ocean_init(struct Ocean *UNUSED(o),
-                    int UNUSED(M),
-                    int UNUSED(N),
-                    float UNUSED(Lx),
-                    float UNUSED(Lz),
-                    float UNUSED(V),
-                    float UNUSED(l),
-                    float UNUSED(A),
-                    float UNUSED(w),
-                    float UNUSED(damp),
-                    float UNUSED(alignment),
-                    float UNUSED(depth),
-                    float UNUSED(time),
-                    int UNUSED(spectrum),
-                    float UNUSED(fetch_jonswap),
-                    float UNUSED(sharpen_peak_jonswap),
-                    short UNUSED(do_height_field),
-                    short UNUSED(do_chop),
-                    short UNUSED(do_spray),
-                    short UNUSED(do_normals),
-                    short UNUSED(do_jacobian),
-                    int UNUSED(seed))
+bool BKE_ocean_init(struct Ocean * /*o*/,
+                    int /*M*/,
+                    int /*N*/,
+                    float /*Lx*/,
+                    float /*Lz*/,
+                    float /*V*/,
+                    float /*l*/,
+                    float /*A*/,
+                    float /*w*/,
+                    float /*damp*/,
+                    float /*alignment*/,
+                    float /*depth*/,
+                    float /*time*/,
+                    int /*spectrum*/,
+                    float /*fetch_jonswap*/,
+                    float /*sharpen_peak_jonswap*/,
+                    short /*do_height_field*/,
+                    short /*do_chop*/,
+                    short /*do_spray*/,
+                    short /*do_normals*/,
+                    short /*do_jacobian*/,
+                    int /*seed*/)
 {
   return false;
 }
 
-void BKE_ocean_free_data(struct Ocean *UNUSED(oc)) {}
+void BKE_ocean_free_data(struct Ocean * /*oc*/) {}
 
 void BKE_ocean_free(struct Ocean *oc)
 {
@@ -1655,51 +1653,45 @@ void BKE_ocean_free_cache(struct OceanCache *och)
   MEM_freeN(och);
 }
 
-void BKE_ocean_cache_eval_uv(struct OceanCache *UNUSED(och),
-                             struct OceanResult *UNUSED(ocr),
-                             int UNUSED(f),
-                             float UNUSED(u),
-                             float UNUSED(v))
+void BKE_ocean_cache_eval_uv(
+    struct OceanCache * /*och*/, struct OceanResult * /*ocr*/, int /*f*/, float /*u*/, float /*v*/)
 {
 }
 
-void BKE_ocean_cache_eval_ij(struct OceanCache *UNUSED(och),
-                             struct OceanResult *UNUSED(ocr),
-                             int UNUSED(f),
-                             int UNUSED(i),
-                             int UNUSED(j))
+void BKE_ocean_cache_eval_ij(
+    struct OceanCache * /*och*/, struct OceanResult * /*ocr*/, int /*f*/, int /*i*/, int /*j*/)
 {
 }
 
-OceanCache *BKE_ocean_init_cache(const char *UNUSED(bakepath),
-                                 const char *UNUSED(relbase),
-                                 int UNUSED(start),
-                                 int UNUSED(end),
-                                 float UNUSED(wave_scale),
-                                 float UNUSED(chop_amount),
-                                 float UNUSED(foam_coverage),
-                                 float UNUSED(foam_fade),
-                                 int UNUSED(resolution))
+OceanCache *BKE_ocean_init_cache(const char * /*bakepath*/,
+                                 const char * /*relbase*/,
+                                 int /*start*/,
+                                 int /*end*/,
+                                 float /*wave_scale*/,
+                                 float /*chop_amount*/,
+                                 float /*foam_coverage*/,
+                                 float /*foam_fade*/,
+                                 int /*resolution*/)
 {
   OceanCache *och = MEM_callocN(sizeof(OceanCache), "ocean cache data");
 
   return och;
 }
 
-void BKE_ocean_simulate_cache(struct OceanCache *UNUSED(och), int UNUSED(frame)) {}
+void BKE_ocean_simulate_cache(struct OceanCache * /*och*/, int /*frame*/) {}
 
-void BKE_ocean_bake(struct Ocean *UNUSED(o),
-                    struct OceanCache *UNUSED(och),
+void BKE_ocean_bake(struct Ocean * /*o*/,
+                    struct OceanCache * /*och*/,
                     void (*update_cb)(void *, float progress, int *cancel),
-                    void *UNUSED(update_cb_data))
+                    void * /*update_cb_data*/)
 {
   /* unused */
   (void)update_cb;
 }
 
-bool BKE_ocean_init_from_modifier(struct Ocean *UNUSED(ocean),
-                                  struct OceanModifierData const *UNUSED(omd),
-                                  int UNUSED(resolution))
+bool BKE_ocean_init_from_modifier(struct Ocean * /*ocean*/,
+                                  struct OceanModifierData const * /*omd*/,
+                                  int /*resolution*/)
 {
   return true;
 }
@@ -1709,6 +1701,6 @@ bool BKE_ocean_init_from_modifier(struct Ocean *UNUSED(ocean),
 void BKE_ocean_free_modifier_cache(OceanModifierData *omd)
 {
   BKE_ocean_free_cache(omd->oceancache);
-  omd->oceancache = NULL;
+  omd->oceancache = nullptr;
   omd->cached = false;
 }
