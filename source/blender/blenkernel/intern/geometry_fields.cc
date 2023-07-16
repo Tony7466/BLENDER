@@ -193,6 +193,23 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   return {};
 }
 
+fn::VolumeGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                               const fn::VolumeMask &mask,
+                                                               ResourceScope & /*scope*/) const
+{
+  if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
+          &context))
+  {
+    return this->get_volume_grid_for_context(*geometry_context, mask);
+  }
+  if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
+          &context))
+  {
+    return this->get_volume_grid_for_context(GeometryFieldContext{volume_context->grids()}, mask);
+  }
+  return {};
+}
+
 std::optional<eAttrDomain> GeometryFieldInput::preferred_domain(
     const GeometryComponent & /*component*/) const
 {
@@ -284,21 +301,21 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
   return {};
 }
 
-GVArray VolumeFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                 const IndexMask &mask,
-                                                 ResourceScope & /*scope*/) const
+fn::VolumeGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                             const fn::VolumeMask &mask,
+                                                             ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
   {
     if (const VolumeGridVector *grids = geometry_context->grids()) {
-      return this->get_varray_for_context(*grids, geometry_context->domain(), mask);
+      return this->get_volume_grid_for_context(*grids, mask);
     }
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
           &context))
   {
-    return this->get_varray_for_context(volume_context->grids(), volume_context->domain(), mask);
+    return this->get_volume_grid_for_context(volume_context->grids(), mask);
   }
   return {};
 }

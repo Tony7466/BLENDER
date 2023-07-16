@@ -283,6 +283,16 @@ class FieldInput : public FieldNode {
   virtual GVArray get_varray_for_context(const FieldContext &context,
                                          const IndexMask &mask,
                                          ResourceScope &scope) const = 0;
+  /**
+   * Get the value of this specific input based on the given context. The returned grid should live
+   * at least as long as the passed in #scope. May return null.
+   */
+  virtual VolumeGrid get_volume_grid_for_context(const FieldContext & /*context*/,
+                                                 const VolumeMask & /*mask*/,
+                                                 ResourceScope & /*scope*/) const
+  {
+    return {};
+  }
 
   virtual std::string socket_inspection_name() const;
   blender::StringRef debug_name() const;

@@ -748,12 +748,13 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   return field_input.get_varray_for_context(*this, mask, scope);
 }
 
-VolumeGrid FieldContext::get_volume_grid_for_input(const FieldInput & /*field_input*/,
-                                                   const VolumeMask & /*mask*/,
-                                                   ResourceScope & /*scope*/) const
+VolumeGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
+                                                   const VolumeMask &mask,
+                                                   ResourceScope &scope) const
 {
-  /* Implemented only by volume context. */
-  return {};
+  /* By default ask the field input to create the varray. Another field context might overwrite
+   * the context here. */
+  return field_input.get_volume_grid_for_context(*this, mask, scope);
 }
 
 IndexFieldInput::IndexFieldInput() : FieldInput(CPPType::get<int>(), "Index")
