@@ -564,12 +564,11 @@ Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
 {
   Vector<VolumeGrid> r_grids(fields_to_evaluate.size());
   Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
-  const int64_t voxel_count = mask.min_voxel_count();
 
   if (mask.is_empty()) {
     for (const int i : fields_to_evaluate.index_range()) {
-      // const CPPType &type = fields_to_evaluate[i].cpp_type();
-      r_grids[i] = VolumeGrid{};
+      const CPPType &type = fields_to_evaluate[i].cpp_type();
+      r_grids[i] = VolumeGrid::create(scope, type);
     }
     return r_grids;
   }
@@ -583,7 +582,7 @@ Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
     if (!grid) {
       return {};
     }
-    BLI_assert(grid.voxel_count() >= voxel_count);
+    BLI_assert(grid.voxel_count() >= mask.min_voxel_count());
     return grid;
   };
 
@@ -649,54 +648,16 @@ Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
     mf::Procedure procedure;
     build_multi_function_procedure_for_fields(
         procedure, scope, field_tree_info, varying_fields_to_evaluate);
-    mf::ProcedureExecutor procedure_executor{procedure};
 
-    mf::ParamsBuilder mf_params{procedure_executor, &mask};
-    mf::ContextBuilder mf_context;
-
-    /* Provide inputs to the procedure executor. */
-    for (const GVArray &varray : field_context_inputs) {
-      mf_params.add_readonly_single_input(varray);
-    }
-
-    for (const int i : varying_fields_to_evaluate.index_range()) {
-      const GFieldRef &field = varying_fields_to_evaluate[i];
-      const CPPType &type = field.cpp_type();
-      const int out_index = varying_field_indices[i];
-
-      /* Try to get an existing virtual array that the result should be written into. */
-      VolumeGrid dst_varray = get_dst_grid(out_index);
-      // void *buffer;
-      if (!dst_varray) {
-        ///* Allocate a new buffer for the computed result. */
-        // buffer = scope.linear_allocator().allocate(type.size() * array_size, type.alignment());
-
-        // if (!type.is_trivially_destructible()) {
-        //   /* Destruct values in the end. */
-        //   scope.add_destruct_call(
-        //       [buffer, mask, &type]() { type.destruct_indices(buffer, mask); });
-        // }
-        // r_grids[out_index] = GVArray::ForSpan({type, buffer, array_size});
-        /* Create a destination grid for the computed result. */
-        VolumeGrid::create(scope, type, voxel_count);
-        /* Destruct values in the end. */
-        scope.add_destruct_call([&volume_buffer]() { volume_buffer.destroy(); });
-        r_grids[out_index] = GVArray::For<VArrayImpl_For_>({type, buffer, array_size});
-      }
-      else {
-        /* Write the result into the existing span. */
-        buffer = dst_varray.get_internal_span().data();
-
-        r_grids[out_index] = dst_varray;
-        is_output_written_to_dst[out_index] = true;
-      }
-
-      /* Pass output buffer to the procedure executor. */
-      const GMutableSpan span{type, buffer, array_size};
-      mf_params.add_uninitialized_single_output(span);
-    }
-
-    procedure_executor.call_auto(mask, mf_params, mf_context);
+    evaluate_procedure_on_varying_volume_fields(scope,
+                                                mask,
+                                                procedure,
+                                                field_context_inputs,
+                                                varying_fields_to_evaluate,
+                                                varying_field_indices,
+                                                dst_grids,
+                                                r_grids,
+                                                is_output_written_to_dst);
   }
 
   /* Evaluate constant fields if necessary. */
@@ -705,73 +666,36 @@ Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
     mf::Procedure procedure;
     build_multi_function_procedure_for_fields(
         procedure, scope, field_tree_info, constant_fields_to_evaluate);
-    mf::ProcedureExecutor procedure_executor{procedure};
-    const IndexMask mask(1);
-    mf::ParamsBuilder mf_params{procedure_executor, &mask};
-    mf::ContextBuilder mf_context;
 
-    /* Provide inputs to the procedure executor. */
-    for (const GVArray &varray : field_context_inputs) {
-      mf_params.add_readonly_single_input(varray);
-    }
-
-    for (const int i : constant_fields_to_evaluate.index_range()) {
-      const GFieldRef &field = constant_fields_to_evaluate[i];
-      const CPPType &type = field.cpp_type();
-      /* Allocate memory where the computed value will be stored in. */
-      void *buffer = scope.linear_allocator().allocate(type.size(), type.alignment());
-
-      if (!type.is_trivially_destructible()) {
-        /* Destruct value in the end. */
-        scope.add_destruct_call([buffer, &type]() { type.destruct(buffer); });
-      }
-
-      /* Pass output buffer to the procedure executor. */
-      mf_params.add_uninitialized_single_output({type, buffer, 1});
-
-      /* Create virtual array that can be used after the procedure has been executed below. */
-      const int out_index = constant_field_indices[i];
-      r_grids[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
-    }
-
-    procedure_executor.call(mask, mf_params, mf_context);
+    evaluate_procedure_on_constant_volume_fields(scope,
+                                                 mask,
+                                                 procedure,
+                                                 field_context_inputs,
+                                                 constant_fields_to_evaluate,
+                                                 constant_field_indices,
+                                                 dst_grids,
+                                                 r_grids,
+                                                 is_output_written_to_dst);
   }
 
   /* Copy data to supplied destination arrays if necessary. In some cases the evaluation above
    * has written the computed data in the right place already. */
-  if (!dst_varrays.is_empty()) {
+  if (!dst_grids.is_empty()) {
     for (const int out_index : fields_to_evaluate.index_range()) {
-      GVMutableArray dst_varray = get_dst_varray(out_index);
-      if (!dst_varray) {
+      VolumeGrid dst_grid = get_dst_grid(out_index);
+      if (!dst_grid) {
         /* Caller did not provide a destination for this output. */
         continue;
       }
-      const GVArray &computed_varray = r_grids[out_index];
-      BLI_assert(computed_varray.type() == dst_varray.type());
+      const VolumeGrid &computed_grid = r_grids[out_index];
+      // BLI_assert(computed_varray.type() == dst_grid.type());
       if (is_output_written_to_dst[out_index]) {
         /* The result has been written into the destination provided by the caller already. */
         continue;
       }
       /* Still have to copy over the data in the destination provided by the caller. */
-      if (dst_varray.is_span()) {
-        array_utils::copy(computed_varray,
-                          mask,
-                          dst_varray.get_internal_span().take_front(mask.min_array_size()));
-      }
-      else {
-        /* Slower materialize into a different structure. */
-        const CPPType &type = computed_varray.type();
-        threading::parallel_for(mask.index_range(), 2048, [&](const IndexRange range) {
-          BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
-          mask.slice(range).foreach_segment([&](auto segment) {
-            for (const int i : segment) {
-              computed_varray.get_to_uninitialized(i, buffer);
-              dst_varray.set_by_relocate(i, buffer);
-            }
-          });
-        });
-      }
-      r_grids[out_index] = dst_varray;
+      dst_grid.grid_->setTree(computed_grid.grid_->baseTreePtr());
+      r_grids[out_index] = dst_grid;
     }
   }
   return r_grids;
