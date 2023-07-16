@@ -47,6 +47,10 @@ class LayerModule {
       do_layer_blending = true;
     }
 
+    if (layer.blend_mode != GP_LAYER_BLEND_NONE) {
+      do_layer_blending = true;
+    }
+
     layers_buf_.append(gp_layer);
   }
 

@@ -18,6 +18,15 @@
 
 #include "WM_api.h"
 
+static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
+    {GP_LAYER_BLEND_NONE, "REGULAR", 0, "Regular", ""},
+    {GP_LAYER_BLEND_HARDLIGHT, "HARDLIGHT", 0, "Hard Light", ""},
+    {GP_LAYER_BLEND_ADD, "ADD", 0, "Add", ""},
+    {GP_LAYER_BLEND_SUBTRACT, "SUBTRACT", 0, "Subtract", ""},
+    {GP_LAYER_BLEND_MULTIPLY, "MULTIPLY", 0, "Multiply", ""},
+    {GP_LAYER_BLEND_DIVIDE, "DIVIDE", 0, "Divide", ""},
+    {0, nullptr, 0, nullptr, nullptr}};
+
 #ifdef RNA_RUNTIME
 
 #  include "BKE_grease_pencil.hh"
@@ -213,6 +222,13 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, "GreasePencilLayer", "opacity");
   RNA_def_property_ui_text(prop, "Opacity", "Layer Opacity");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* blend mode */
+  prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
+  RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
+  RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 

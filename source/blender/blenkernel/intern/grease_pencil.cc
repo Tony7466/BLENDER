@@ -504,6 +504,7 @@ Layer::Layer()
   this->frames_storage.values = nullptr;
   this->frames_storage.flag = 0;
 
+  this->blend_mode = GP_LAYER_BLEND_NONE;
   this->opacity = 1.0f;
 
   BLI_listbase_clear(&this->masks);
