@@ -91,7 +91,7 @@ set(SRC
   intern/collection.cc
   intern/collision.cc
   intern/colorband.cc
-  intern/colortools.c
+  intern/colortools.cc
   intern/compute_contexts.cc
   intern/constraint.c
   intern/context.cc
