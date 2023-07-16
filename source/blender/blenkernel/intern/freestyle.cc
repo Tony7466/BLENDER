@@ -47,13 +47,13 @@ void BKE_freestyle_config_free(FreestyleConfig *config, const bool do_id_user)
       if (do_id_user) {
         id_us_min(&lineset->group->id);
       }
-      lineset->group = NULL;
+      lineset->group = nullptr;
     }
     if (lineset->linestyle) {
       if (do_id_user) {
         id_us_min(&lineset->linestyle->id);
       }
-      lineset->linestyle = NULL;
+      lineset->linestyle = nullptr;
     }
   }
   BLI_freelistN(&config->linesets);
@@ -117,7 +117,7 @@ FreestyleModuleConfig *BKE_freestyle_module_add(FreestyleConfig *config)
 {
   FreestyleModuleConfig *module_conf = alloc_module();
   BLI_addtail(&config->modules, (void *)module_conf);
-  module_conf->script = NULL;
+  module_conf->script = nullptr;
   module_conf->is_displayed = 1;
   return module_conf;
 }
@@ -179,7 +179,7 @@ FreestyleLineSet *BKE_freestyle_lineset_add(struct Main *bmain,
   lineset->qi_end = 100;
   lineset->edge_types = FREESTYLE_FE_SILHOUETTE | FREESTYLE_FE_BORDER | FREESTYLE_FE_CREASE;
   lineset->exclude_edge_types = 0;
-  lineset->group = NULL;
+  lineset->group = nullptr;
   if (name) {
     STRNCPY(lineset->name, name);
   }
@@ -220,7 +220,7 @@ FreestyleLineSet *BKE_freestyle_lineset_get_active(FreestyleConfig *config)
       return lineset;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 short BKE_freestyle_lineset_get_active_index(FreestyleConfig *config)

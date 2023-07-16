@@ -130,7 +130,7 @@ set(SRC
   intern/fcurve_driver.cc
   intern/fluid.cc
   intern/fmodifier.cc
-  intern/freestyle.c
+  intern/freestyle.cc
   intern/geometry_component_curves.cc
   intern/geometry_component_edit_data.cc
   intern/geometry_component_instances.cc
