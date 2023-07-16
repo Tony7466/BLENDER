@@ -225,7 +225,7 @@ set(SRC
   intern/multires_subdiv.cc
   intern/multires_unsubdivide.cc
   intern/multires_versioning.cc
-  intern/nla.c
+  intern/nla.cc
   intern/node.cc
   intern/node_runtime.cc
   intern/node_tree_anonymous_attributes.cc
