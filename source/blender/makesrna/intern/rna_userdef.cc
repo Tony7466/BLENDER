@@ -4694,10 +4694,12 @@ static void rna_def_userdef_view(BlenderRNA *brna)
                            "overlay while animation is played back");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
-  prop = RNA_def_property(srna, "use_fresnel_effect_edit", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "gpu_flag", USER_GPU_FLAG_FRESNEL_EDIT);
-  RNA_def_property_ui_text(prop, 
-                           "Edit Mode", "Enable fresnel effect on edit mode.\n"
+  prop = RNA_def_property(srna, "fresnel_effect_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "fresnel_mix_factor");
+  RNA_def_property_range(prop, 0, 1.0); 
+  RNA_def_property_ui_text(prop,
+                           "Fresnel Factor",
+                           "Intensity of the fresnel effect on edit mesh overlays.\n"
                            "It improves a bit the shape readability of very dense meshes, "
                            "but increases eye fatigue when modeling lower poly");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");

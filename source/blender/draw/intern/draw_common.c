@@ -82,6 +82,7 @@ void DRW_globals_update(void)
   UI_GetThemeColor4fv(TH_TRANSPARENT_CHECKER_PRIMARY, gb->color_checker_primary);
   UI_GetThemeColor4fv(TH_TRANSPARENT_CHECKER_SECONDARY, gb->color_checker_secondary);
   gb->size_checker = UI_GetThemeValuef(TH_TRANSPARENT_CHECKER_SIZE);
+  gb->fresnel_mix = U.fresnel_mix_factor;
   UI_GetThemeColor4fv(TH_V3D_CLIPPING_BORDER, gb->color_clipping_border);
 
   /* Custom median color to slightly affect the edit mesh colors. */

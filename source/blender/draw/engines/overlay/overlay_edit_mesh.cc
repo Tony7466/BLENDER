@@ -65,8 +65,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool show_retopology = RETOPOLOGY_ENABLED(v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(v3d);
 
-  const bool use_fresnel_edit = (U.gpu_flag & USER_GPU_FLAG_FRESNEL_EDIT) != 0;
-
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;
 
@@ -176,7 +174,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", face_alpha);
       DRW_shgroup_uniform_bool_copy(grp, "selectFaces", select_face);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
-      DRW_shgroup_uniform_bool_copy(grp, "useFresnelEdit", use_fresnel_edit);
     }
 
     if (do_zbufclip) {
@@ -197,7 +194,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
     DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
     DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
-    DRW_shgroup_uniform_bool_copy(grp, "useFresnelEdit", use_fresnel_edit);
 
     /* Verts */
     state |= DRW_STATE_WRITE_DEPTH;
@@ -212,7 +208,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
-      DRW_shgroup_uniform_bool_copy(grp, "useFresnelEdit", use_fresnel_edit);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
@@ -228,7 +223,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
-      DRW_shgroup_uniform_bool_copy(grp, "useFresnelEdit", use_fresnel_edit);
       DRW_shgroup_state_enable(grp, DRW_STATE_WRITE_DEPTH);
     }
     else {

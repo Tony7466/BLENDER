@@ -134,6 +134,8 @@ struct GlobalsUboStorage {
   float size_vertex, size_edge, size_edge_fix, size_face_dot;
   float size_checker;
   float size_vertex_gpencil;
+  float fresnel_mix;
+  float _padd[3];
 };
 BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 
@@ -244,6 +246,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define sizeFaceDot globalsBlock.size_face_dot
 #  define sizeChecker globalsBlock.size_checker
 #  define sizeVertexGpencil globalsBlock.size_vertex_gpencil
+#  define fresnelMix globalsBlock.fresnel_mix
 #endif
 
 /* See: 'draw_cache_impl.h' for matching includes. */
