@@ -1327,16 +1327,19 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
    * anything.*/
   if (sdef_layer->num_of_frames > 0) {
     /* Copy one frame at a time, except the one we are unbinding*/
+    int g = 0;
     for (int f = 0; f < sdef_layer->num_of_frames; f++) {
-      if (sdef_layer->frames[f].frame_number == framenum) {
+      if (sdef_layer->frames[g].frame_number == framenum) {
+        g++;
         f--;
         continue;
       }
-      memcpy(&temp_frames_pointer[f], &(sdef_layer->frames[f]), sizeof(*sdef_layer->frames));
+      memcpy(&temp_frames_pointer[f], &(sdef_layer->frames[g]), sizeof(*sdef_layer->frames));
+      g++;
     }
     MEM_SAFE_FREE(sdef_layer->frames);
   }
-  
+
   sdef_layer->frames = first_frame;
   /*Set the first frame again if the first was the one being removed*/
   if (sdef_layer->frames->first != first_frame) {
@@ -1574,14 +1577,17 @@ static bool surfacedeformBind(bContext *C,
       freeData_a(smd_orig);
     }
     else {
-      uint framenum = BKE_gpencil_frame_retime_get(
-                          depsgraph, scene, ob, smd_orig->layers->blender_layer)
-                          ->framenum;
+      uint framenum = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl_active)->framenum;
       for (int l = 0; l < smd_orig->num_of_layers; l++) {
-
-        free_frame(smd_orig,
-                    smd_eval,
-                    &(smd_orig->layers[l]), framenum);
+        /*EXIT IF FRAME IS NOT ALREADY BOUND*/
+        for (int f = 0; f < smd_orig->layers[l].num_of_frames; f++) {
+          if (smd_orig->layers[l].frames[f].frame_number == framenum)
+          {
+            free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
+            break;
+          }
+        }
+        
       }
     }
     rollback_layers_a(smd_orig);
