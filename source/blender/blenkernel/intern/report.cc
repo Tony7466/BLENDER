@@ -70,7 +70,7 @@ void BKE_reports_clear(ReportList *reports)
     return;
   }
 
-  report = reports->list.first;
+  report = static_cast<Report *>(reports->list.first);
 
   while (report) {
     report_next = report->next;
@@ -95,12 +95,12 @@ void BKE_report(ReportList *reports, eReportType type, const char *_message)
 
   if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
     char *message_alloc;
-    report = MEM_callocN(sizeof(Report), "Report");
+    report = static_cast<Report *>(MEM_callocN(sizeof(Report), "Report"));
     report->type = type;
     report->typestr = BKE_report_type_str(type);
 
     len = strlen(message);
-    message_alloc = MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage");
+    message_alloc = static_cast<char *>(MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage"));
     memcpy(message_alloc, message, sizeof(char) * (len + 1));
     report->message = message_alloc;
     report->len = len;
@@ -124,7 +124,7 @@ void BKE_reportf(ReportList *reports, eReportType type, const char *_format, ...
   }
 
   if (reports && (reports->flag & RPT_STORE) && (type >= reports->storelevel)) {
-    report = MEM_callocN(sizeof(Report), "Report");
+    report = static_cast<Report *>(MEM_callocN(sizeof(Report), "Report"));
 
     va_start(args, _format);
     report->message = BLI_vsprintfN(format, args);
@@ -146,7 +146,8 @@ static void reports_prepend_impl(ReportList *reports, const char *prepend)
   /* Caller must ensure. */
   BLI_assert(reports && reports->list.first);
   const size_t prefix_len = strlen(prepend);
-  for (Report *report = reports->list.first; report; report = report->next) {
+  for (Report *report = static_cast<Report *>(reports->list.first); report; report = report->next)
+  {
     char *message = BLI_string_joinN(prepend, report->message);
     MEM_freeN((void *)report->message);
     report->message = message;
@@ -184,7 +185,7 @@ eReportType BKE_report_print_level(ReportList *reports)
     return RPT_ERROR;
   }
 
-  return reports->printlevel;
+  return eReportType(reports->printlevel);
 }
 
 void BKE_report_print_level_set(ReportList *reports, eReportType level)
@@ -202,7 +203,7 @@ eReportType BKE_report_store_level(ReportList *reports)
     return RPT_ERROR;
   }
 
-  return reports->storelevel;
+  return eReportType(reports->storelevel);
 }
 
 void BKE_report_store_level_set(ReportList *reports, eReportType level)
@@ -221,11 +222,11 @@ char *BKE_reports_string(ReportList *reports, eReportType level)
   char *cstring;
 
   if (!reports || !reports->list.first) {
-    return NULL;
+    return nullptr;
   }
 
   ds = BLI_dynstr_new();
-  for (report = reports->list.first; report; report = report->next) {
+  for (report = static_cast<Report *>(reports->list.first); report; report = report->next) {
     if (report->type >= level) {
       BLI_dynstr_appendf(ds, "%s: %s\n", report->typestr, report->message);
     }
@@ -235,7 +236,7 @@ char *BKE_reports_string(ReportList *reports, eReportType level)
     cstring = BLI_dynstr_get_cstring(ds);
   }
   else {
-    cstring = NULL;
+    cstring = nullptr;
   }
 
   BLI_dynstr_free(ds);
@@ -244,7 +245,7 @@ char *BKE_reports_string(ReportList *reports, eReportType level)
 
 bool BKE_reports_print_test(const ReportList *reports, eReportType type)
 {
-  if (reports == NULL) {
+  if (reports == nullptr) {
     return true;
   }
   if (reports->flag & RPT_PRINT_HANDLED_BY_OWNER) {
@@ -264,7 +265,7 @@ void BKE_reports_print(ReportList *reports, eReportType level)
 {
   char *cstring = BKE_reports_string(reports, level);
 
-  if (cstring == NULL) {
+  if (cstring == nullptr) {
     return;
   }
 
@@ -277,20 +278,20 @@ Report *BKE_reports_last_displayable(ReportList *reports)
 {
   Report *report;
 
-  for (report = reports->list.last; report; report = report->prev) {
+  for (report = static_cast<Report *>(reports->list.last); report; report = report->prev) {
     if (ELEM(report->type, RPT_ERROR, RPT_WARNING, RPT_INFO)) {
       return report;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool BKE_reports_contain(ReportList *reports, eReportType level)
 {
   Report *report;
-  if (reports != NULL) {
-    for (report = reports->list.first; report; report = report->next) {
+  if (reports != nullptr) {
+    for (report = static_cast<Report *>(reports->list.first); report; report = report->next) {
       if (report->type >= level) {
         return true;
       }
@@ -307,7 +308,7 @@ bool BKE_report_write_file_fp(FILE *fp, ReportList *reports, const char *header)
     fputs(header, fp);
   }
 
-  for (report = reports->list.first; report; report = report->next) {
+  for (report = static_cast<Report *>(reports->list.first); report; report = report->next) {
     fprintf((FILE *)fp, "%s  # %s\n", report->message, report->typestr);
   }
 
@@ -320,7 +321,7 @@ bool BKE_report_write_file(const char *filepath, ReportList *reports, const char
 
   errno = 0;
   fp = BLI_fopen(filepath, "wb");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     fprintf(stderr,
             "Unable to save '%s': %s\n",
             filepath,

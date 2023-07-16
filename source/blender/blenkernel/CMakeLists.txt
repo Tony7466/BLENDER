@@ -258,7 +258,7 @@ set(SRC
   intern/pointcloud.cc
   intern/pose_backup.cc
   intern/preferences.cc
-  intern/report.c
+  intern/report.cc
   intern/rigidbody.c
   intern/scene.cc
   intern/screen.c
