@@ -1049,7 +1049,8 @@ static ExprPyLike_Parsed *driver_compile_simple_expr_impl(ChannelDriver *driver)
 {
   /* Prepare parameter names. */
   int names_len = BLI_listbase_count(&driver->variables);
-  const char **names = BLI_array_alloca(names, names_len + VAR_INDEX_CUSTOM);
+  const char **names = static_cast<const char **>(
+      BLI_array_alloca(names, names_len + VAR_INDEX_CUSTOM));
   int i = VAR_INDEX_CUSTOM;
 
   names[VAR_INDEX_FRAME] = "frame";
@@ -1075,7 +1076,7 @@ static bool driver_evaluate_simple_expr(const AnimationEvalContext *anim_eval_co
 {
   /* Prepare parameter values. */
   int vars_len = BLI_listbase_count(&driver->variables);
-  double *vars = BLI_array_alloca(vars, vars_len + VAR_INDEX_CUSTOM);
+  double *vars = static_cast<double *>(BLI_array_alloca(vars, vars_len + VAR_INDEX_CUSTOM));
   int i = VAR_INDEX_CUSTOM;
 
   vars[VAR_INDEX_FRAME] = time;

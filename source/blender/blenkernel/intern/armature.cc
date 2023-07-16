@@ -843,8 +843,8 @@ static void equalize_cubic_bezier(const float control[4][3],
                                   const float *segment_scales,
                                   float *r_t_points)
 {
-  float(*coords)[3] = BLI_array_alloca(coords, temp_segments + 1);
-  float *pdist = BLI_array_alloca(pdist, temp_segments + 1);
+  float(*coords)[3] = static_cast<float(*)[3]>(BLI_array_alloca(coords, temp_segments + 1));
+  float *pdist = static_cast<float *>(BLI_array_alloca(pdist, temp_segments + 1));
 
   /* Compute the first pass of bezier point coordinates. */
   for (int i = 0; i < 3; i++) {
