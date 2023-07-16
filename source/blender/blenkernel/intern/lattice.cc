@@ -55,8 +55,8 @@ static void lattice_init_data(ID *id)
 
   MEMCPY_STRUCT_AFTER(lattice, DNA_struct_default_get(Lattice), id);
 
-  lattice->def = MEM_callocN(sizeof(BPoint), "lattvert"); /* temporary */
-  BKE_lattice_resize(lattice, 2, 2, 2, NULL);             /* creates a uniform lattice */
+  lattice->def = static_cast<BPoint *>(MEM_callocN(sizeof(BPoint), "lattvert")); /* temporary */
+  BKE_lattice_resize(lattice, 2, 2, 2, nullptr); /* creates a uniform lattice */
 }
 
 static void lattice_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
@@ -64,7 +64,7 @@ static void lattice_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const i
   Lattice *lattice_dst = (Lattice *)id_dst;
   const Lattice *lattice_src = (const Lattice *)id_src;
 
-  lattice_dst->def = MEM_dupallocN(lattice_src->def);
+  lattice_dst->def = static_cast<BPoint *>(MEM_dupallocN(lattice_src->def));
 
   if (lattice_src->key && (flag & LIB_ID_COPY_SHAPEKEY)) {
     BKE_id_copy_ex(bmain, &lattice_src->key->id, (ID **)&lattice_dst->key, flag);
@@ -76,12 +76,13 @@ static void lattice_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const i
 
   if (lattice_src->dvert) {
     int tot = lattice_src->pntsu * lattice_src->pntsv * lattice_src->pntsw;
-    lattice_dst->dvert = MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert");
+    lattice_dst->dvert = static_cast<MDeformVert *>(
+        MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert"));
     BKE_defvert_array_copy(lattice_dst->dvert, lattice_src->dvert, tot);
   }
 
-  lattice_dst->editlatt = NULL;
-  lattice_dst->batch_cache = NULL;
+  lattice_dst->editlatt = nullptr;
+  lattice_dst->batch_cache = nullptr;
 }
 
 static void lattice_free_data(ID *id)
@@ -95,7 +96,7 @@ static void lattice_free_data(ID *id)
   MEM_SAFE_FREE(lattice->def);
   if (lattice->dvert) {
     BKE_defvert_array_free(lattice->dvert, lattice->pntsu * lattice->pntsv * lattice->pntsw);
-    lattice->dvert = NULL;
+    lattice->dvert = nullptr;
   }
   if (lattice->editlatt) {
     Lattice *editlt = lattice->editlatt->latt;
@@ -109,7 +110,7 @@ static void lattice_free_data(ID *id)
 
     MEM_freeN(editlt);
     MEM_freeN(lattice->editlatt);
-    lattice->editlatt = NULL;
+    lattice->editlatt = nullptr;
   }
 }
 
@@ -124,8 +125,8 @@ static void lattice_blend_write(BlendWriter *writer, ID *id, const void *id_addr
   Lattice *lt = (Lattice *)id;
 
   /* Clean up, important in undo case to reduce false detection of changed datablocks. */
-  lt->editlatt = NULL;
-  lt->batch_cache = NULL;
+  lt->editlatt = nullptr;
+  lt->batch_cache = nullptr;
 
   /* write LibData */
   BLO_write_id_struct(writer, Lattice, id_address, &lt->id);
@@ -152,8 +153,8 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_defvert_blend_read(reader, lt->pntsu * lt->pntsv * lt->pntsw, lt->dvert);
   BLO_read_list(reader, &lt->vertex_group_names);
 
-  lt->editlatt = NULL;
-  lt->batch_cache = NULL;
+  lt->editlatt = nullptr;
+  lt->batch_cache = nullptr;
 
   BLO_read_data_address(reader, &lt->adt);
   BKE_animdata_blend_read_data(reader, lt->adt);
@@ -174,33 +175,33 @@ static void lattice_blend_read_expand(BlendExpander *expander, ID *id)
 }
 
 IDTypeInfo IDType_ID_LT = {
-    .id_code = ID_LT,
-    .id_filter = FILTER_ID_LT,
-    .main_listbase_index = INDEX_ID_LT,
-    .struct_size = sizeof(Lattice),
-    .name = "Lattice",
-    .name_plural = "lattices",
-    .translation_context = BLT_I18NCONTEXT_ID_LATTICE,
-    .flags = IDTYPE_FLAGS_APPEND_IS_REUSABLE,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_LT,
+    /*id_filter*/ FILTER_ID_LT,
+    /*main_listbase_index*/ INDEX_ID_LT,
+    /*struct_size*/ sizeof(Lattice),
+    /*name*/ "Lattice",
+    /*name_plural*/ "lattices",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_LATTICE,
+    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = lattice_init_data,
-    .copy_data = lattice_copy_data,
-    .free_data = lattice_free_data,
-    .make_local = NULL,
-    .foreach_id = lattice_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = NULL,
-    .owner_pointer_get = NULL,
+    /*init_data*/ lattice_init_data,
+    /*copy_data*/ lattice_copy_data,
+    /*free_data*/ lattice_free_data,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ lattice_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ nullptr,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = lattice_blend_write,
-    .blend_read_data = lattice_blend_read_data,
-    .blend_read_lib = lattice_blend_read_lib,
-    .blend_read_expand = lattice_blend_read_expand,
+    /*blend_write*/ lattice_blend_write,
+    /*blend_read_data*/ lattice_blend_read_data,
+    /*blend_read_lib*/ lattice_blend_read_lib,
+    /*blend_read_expand*/ lattice_blend_read_expand,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 int BKE_lattice_index_from_uvw(Lattice *lt, const int u, const int v, const int w)
@@ -283,12 +284,12 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
   BPoint *bp;
   int i, u, v, w;
   float fu, fv, fw, uc, vc, wc, du = 0.0, dv = 0.0, dw = 0.0;
-  float *co, (*vert_coords)[3] = NULL;
+  float *co, (*vert_coords)[3] = nullptr;
 
   /* vertex weight groups are just freed all for now */
   if (lt->dvert) {
     BKE_defvert_array_free(lt->dvert, lt->pntsu * lt->pntsv * lt->pntsw);
-    lt->dvert = NULL;
+    lt->dvert = nullptr;
   }
 
   while (uNew * vNew * wNew > 32000) {
@@ -303,7 +304,8 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
     }
   }
 
-  vert_coords = MEM_mallocN(sizeof(*vert_coords) * uNew * vNew * wNew, "tmp_vcos");
+  vert_coords = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*vert_coords) * uNew * vNew * wNew, "tmp_vcos"));
 
   calc_lat_fudu(lt->flag, uNew, &fu, &du);
   calc_lat_fudu(lt->flag, vNew, &fv, &dv);
@@ -358,7 +360,7 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
 
     copy_m4_m4(mat, ltOb->object_to_world);
     unit_m4(ltOb->object_to_world);
-    BKE_lattice_deform_coords(ltOb, NULL, vert_coords, uNew * vNew * wNew, 0, NULL, 1.0f);
+    BKE_lattice_deform_coords(ltOb, nullptr, vert_coords, uNew * vNew * wNew, 0, nullptr, 1.0f);
     copy_m4_m4(ltOb->object_to_world, mat);
 
     lt->typeu = typeu;
@@ -379,7 +381,8 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
 
   lt->actbp = LT_ACTBP_NONE;
   MEM_freeN(lt->def);
-  lt->def = MEM_callocN(lt->pntsu * lt->pntsv * lt->pntsw * sizeof(BPoint), "lattice bp");
+  lt->def = static_cast<BPoint *>(
+      MEM_callocN(lt->pntsu * lt->pntsv * lt->pntsw * sizeof(BPoint), "lattice bp"));
 
   bp = lt->def;
 
@@ -394,7 +397,7 @@ Lattice *BKE_lattice_add(Main *bmain, const char *name)
 {
   Lattice *lt;
 
-  lt = BKE_id_new(bmain, ID_LT, name);
+  lt = static_cast<Lattice *>(BKE_id_new(bmain, ID_LT, name));
 
   return lt;
 }
@@ -493,7 +496,8 @@ void BKE_lattice_vert_coords_get(const Lattice *lt, float (*vert_coords)[3])
 float (*BKE_lattice_vert_coords_alloc(const Lattice *lt, int *r_vert_len))[3]
 {
   const int vert_len = *r_vert_len = lt->pntsu * lt->pntsv * lt->pntsw;
-  float(*vert_coords)[3] = MEM_mallocN(sizeof(*vert_coords) * vert_len, __func__);
+  float(*vert_coords)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*vert_coords) * vert_len, __func__));
   BKE_lattice_vert_coords_get(lt, vert_coords);
   return vert_coords;
 }
@@ -519,20 +523,21 @@ void BKE_lattice_vert_coords_apply(Lattice *lt, const float (*vert_coords)[3])
 void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   BKE_object_free_derived_caches(ob);
-  if (ob->runtime.curve_cache == NULL) {
-    ob->runtime.curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for lattice");
+  if (ob->runtime.curve_cache == nullptr) {
+    ob->runtime.curve_cache = static_cast<CurveCache *>(
+        MEM_callocN(sizeof(CurveCache), "CurveCache for lattice"));
   }
 
-  Lattice *lt = ob->data;
+  Lattice *lt = static_cast<Lattice *>(ob->data);
   VirtualModifierData virtualModifierData;
   ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
-  float(*vert_coords)[3] = NULL;
+  float(*vert_coords)[3] = nullptr;
   int numVerts;
-  const bool is_editmode = (lt->editlatt != NULL);
-  const ModifierEvalContext mectx = {depsgraph, ob, 0};
+  const bool is_editmode = (lt->editlatt != nullptr);
+  const ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
 
   for (; md; md = md->next) {
-    const ModifierTypeInfo *mti = BKE_modifier_get_info(md->type);
+    const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
 
     if (!(mti->flags & eModifierTypeFlag_AcceptsVertexCosOnly)) {
       continue;
@@ -550,22 +555,22 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
       continue;
     }
 
-    if (vert_coords == NULL) {
+    if (vert_coords == nullptr) {
       /* Get either the edit-mode or regular lattice, whichever is in use now. */
       const Lattice *effective_lattice = BKE_object_get_lattice(ob);
       vert_coords = BKE_lattice_vert_coords_alloc(effective_lattice, &numVerts);
     }
 
-    mti->deformVerts(md, &mectx, NULL, vert_coords, numVerts);
+    mti->deformVerts(md, &mectx, nullptr, vert_coords, numVerts);
   }
 
-  if (vert_coords == NULL) {
+  if (vert_coords == nullptr) {
     return;
   }
 
   Lattice *lt_eval = BKE_object_get_evaluated_lattice(ob);
-  if (lt_eval == NULL) {
-    BKE_id_copy_ex(NULL, &lt->id, (ID **)&lt_eval, LIB_ID_COPY_LOCALIZE);
+  if (lt_eval == nullptr) {
+    BKE_id_copy_ex(nullptr, &lt->id, (ID **)&lt_eval, LIB_ID_COPY_LOCALIZE);
     BKE_object_eval_assign_data(ob, &lt_eval->id, true);
   }
 
@@ -594,7 +599,7 @@ BPoint *BKE_lattice_active_point_get(Lattice *lt)
     return &lt->def[lt->actbp];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void BKE_lattice_center_median(Lattice *lt, float cent[3])
@@ -621,12 +626,12 @@ static void boundbox_lattice(Object *ob)
   Lattice *lt;
   float min[3], max[3];
 
-  if (ob->runtime.bb == NULL) {
-    ob->runtime.bb = MEM_callocN(sizeof(BoundBox), "Lattice boundbox");
+  if (ob->runtime.bb == nullptr) {
+    ob->runtime.bb = static_cast<BoundBox *>(MEM_callocN(sizeof(BoundBox), "Lattice boundbox"));
   }
 
   bb = ob->runtime.bb;
-  lt = ob->data;
+  lt = static_cast<Lattice *>(ob->data);
 
   INIT_MINMAX(min, max);
   BKE_lattice_minmax_dl(ob, lt, min, max);
@@ -646,7 +651,7 @@ void BKE_lattice_minmax_dl(Object *ob, Lattice *lt, float min[3], float max[3])
 {
   DispList *dl = ob->runtime.curve_cache ?
                      BKE_displist_find(&ob->runtime.curve_cache->disp, DL_VERTS) :
-                     NULL;
+                     nullptr;
 
   if (!dl) {
     BKE_lattice_minmax(lt, min, max);
@@ -702,8 +707,8 @@ void BKE_lattice_transform(Lattice *lt, const float mat[4][4], bool do_keys)
   if (do_keys && lt->key) {
     KeyBlock *kb;
 
-    for (kb = lt->key->block.first; kb; kb = kb->next) {
-      float *fp = kb->data;
+    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+      float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         mul_m4_v3(mat, fp);
       }
@@ -732,8 +737,8 @@ void BKE_lattice_translate(Lattice *lt, const float offset[3], bool do_keys)
   if (do_keys && lt->key) {
     KeyBlock *kb;
 
-    for (kb = lt->key->block.first; kb; kb = kb->next) {
-      float *fp = kb->data;
+    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+      float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         add_v3_v3(fp, offset);
       }
@@ -759,12 +764,12 @@ bool BKE_lattice_is_any_selected(const Lattice *lt)
 
 /* **** Depsgraph evaluation **** */
 
-void BKE_lattice_eval_geometry(Depsgraph *UNUSED(depsgraph), Lattice *UNUSED(latt)) {}
+void BKE_lattice_eval_geometry(Depsgraph * /*depsgraph*/, Lattice * /*latt*/) {}
 
 /* Draw Engine */
 
-void (*BKE_lattice_batch_cache_dirty_tag_cb)(Lattice *lt, int mode) = NULL;
-void (*BKE_lattice_batch_cache_free_cb)(Lattice *lt) = NULL;
+void (*BKE_lattice_batch_cache_dirty_tag_cb)(Lattice *lt, int mode) = nullptr;
+void (*BKE_lattice_batch_cache_free_cb)(Lattice *lt) = nullptr;
 
 void BKE_lattice_batch_cache_dirty_tag(Lattice *lt, int mode)
 {
