@@ -140,7 +140,7 @@ set(SRC
   intern/geometry_fields.cc
   intern/geometry_set.cc
   intern/geometry_set_instances.cc
-  intern/gpencil_curve_legacy.c
+  intern/gpencil_curve_legacy.cc
   intern/gpencil_geom_legacy.cc
   intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c

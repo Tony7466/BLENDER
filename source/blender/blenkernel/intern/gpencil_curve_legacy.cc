@@ -37,7 +37,9 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 
+extern "C" {
 #include "curve_fit_nd.h"
+}
 
 #include "DEG_depsgraph_query.h"
 
@@ -56,8 +58,8 @@ static int gpencil_check_same_material_color(Object *ob_gp,
                                              Material **r_mat)
 {
   int index = -1;
-  Material *ma = NULL;
-  *r_mat = NULL;
+  Material *ma = nullptr;
+  *r_mat = nullptr;
   float color_cu[4];
   float hsv_stroke[4], hsv_fill[4];
 
@@ -125,7 +127,7 @@ static int gpencil_check_same_material_color(Object *ob_gp,
   }
 
   if (!match_stroke || !match_fill) {
-    *r_mat = NULL;
+    *r_mat = nullptr;
     index = -1;
   }
 
@@ -203,10 +205,10 @@ static void gpencil_add_new_points(bGPDstroke *gps,
 /* Helper: Get the first collection that includes the object. */
 static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
 {
-  Collection *mycol = NULL;
+  Collection *mycol = nullptr;
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
     LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
-      if ((mycol == NULL) && (cob->ob == ob)) {
+      if ((mycol == nullptr) && (cob->ob == ob)) {
         mycol = collection;
       }
     }
@@ -220,9 +222,9 @@ static int gpencil_get_stroke_material_fromcurve(
 {
   Curve *cu = (Curve *)ob_cu->data;
 
-  Material *mat_gp = NULL;
-  Material *mat_curve_stroke = NULL;
-  Material *mat_curve_fill = NULL;
+  Material *mat_gp = nullptr;
+  Material *mat_curve_stroke = nullptr;
+  Material *mat_curve_fill = nullptr;
 
   float color_stroke[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float color_fill[4] = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -238,17 +240,17 @@ static int gpencil_get_stroke_material_fromcurve(
   }
   else if (ob_cu->totcol == 1) {
     mat_curve_stroke = BKE_object_material_get(ob_cu, 1);
-    if ((mat_curve_stroke) && (strstr(mat_curve_stroke->id.name, "_stroke") != NULL)) {
+    if ((mat_curve_stroke) && (strstr(mat_curve_stroke->id.name, "_stroke") != nullptr)) {
       *do_stroke = true;
       *do_fill = false;
-      mat_curve_fill = NULL;
+      mat_curve_fill = nullptr;
     }
     else {
       *do_stroke = false;
       *do_fill = true;
       /* Invert materials. */
       mat_curve_fill = mat_curve_stroke;
-      mat_curve_stroke = NULL;
+      mat_curve_stroke = nullptr;
     }
   }
   else {
@@ -298,7 +300,7 @@ static void gpencil_convert_spline(Main *bmain,
   bool cyclic = true;
 
   /* Create Stroke. */
-  bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
+  bGPDstroke *gps = static_cast<bGPDstroke *>(MEM_callocN(sizeof(bGPDstroke), "bGPDstroke"));
   gps->thickness = 1.0f;
   gps->fill_opacity_fac = 1.0f;
   gps->hardeness = 1.0f;
@@ -345,7 +347,8 @@ static void gpencil_convert_spline(Main *bmain,
     case CU_POLY: {
       /* Allocate memory for storage points. */
       gps->totpoints = nu->pntsu;
-      gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+      gps->points = static_cast<bGPDspoint *>(
+          MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points"));
       /* Increase thickness for this type. */
       gps->thickness = 10.0f;
 
@@ -362,7 +365,8 @@ static void gpencil_convert_spline(Main *bmain,
     case CU_BEZIER: {
       /* Allocate memory for storage points. */
       gps->totpoints = totpoints;
-      gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+      gps->points = static_cast<bGPDspoint *>(
+          MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points"));
 
       int init = 0;
       resolu = nu->resolu + 1;
@@ -377,7 +381,8 @@ static void gpencil_convert_spline(Main *bmain,
         BezTriple *bezt = &nu->bezt[inext];
         bool last = (bool)(s == segments - 1);
 
-        float *coord_array = MEM_callocN(sizeof(float[3]) * resolu, __func__);
+        float *coord_array = static_cast<float *>(
+            MEM_callocN(sizeof(float[3]) * resolu, __func__));
         for (int j = 0; j < 3; j++) {
           BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
                                         prevbezt->vec[2][j],
@@ -420,12 +425,14 @@ static void gpencil_convert_spline(Main *bmain,
           nurb_points = (nu->pntsu - 1) * resolu;
         }
         /* Get all curve points. */
-        float *coord_array = MEM_callocN(sizeof(float[3]) * nurb_points, __func__);
-        BKE_nurb_makeCurve(nu, coord_array, NULL, NULL, NULL, resolu, sizeof(float[3]));
+        float *coord_array = static_cast<float *>(
+            MEM_callocN(sizeof(float[3]) * nurb_points, __func__));
+        BKE_nurb_makeCurve(nu, coord_array, nullptr, nullptr, nullptr, resolu, sizeof(float[3]));
 
         /* Allocate memory for storage points. */
         gps->totpoints = nurb_points;
-        gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+        gps->points = static_cast<bGPDspoint *>(
+            MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points"));
 
         /* Add points. */
         gpencil_add_new_points(gps, coord_array, 1.0f, 1.0f, 0, gps->totpoints, init_co, false);
@@ -470,33 +477,34 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                const float scale_thickness,
                                const float sample)
 {
-  if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL_LEGACY) || (ob_gp->data == NULL)) {
+  if (ELEM(nullptr, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
+      (ob_gp->data == nullptr)) {
     return;
   }
 
   Curve *cu = (Curve *)ob_cu->data;
   bGPdata *gpd = (bGPdata *)ob_gp->data;
-  bGPDlayer *gpl = NULL;
+  bGPDlayer *gpl = nullptr;
 
   /* If the curve is empty, cancel. */
-  if (cu->nurb.first == NULL) {
+  if (cu->nurb.first == nullptr) {
     return;
   }
 
   /* Check if there is an active layer. */
   if (use_collections) {
     Collection *collection = gpencil_get_parent_collection(scene, ob_cu);
-    if (collection != NULL) {
+    if (collection != nullptr) {
       gpl = BKE_gpencil_layer_named_get(gpd, collection->id.name + 2);
-      if (gpl == NULL) {
+      if (gpl == nullptr) {
         gpl = BKE_gpencil_layer_addnew(gpd, collection->id.name + 2, true, false);
       }
     }
   }
 
-  if (gpl == NULL) {
+  if (gpl == nullptr) {
     gpl = BKE_gpencil_layer_active_get(gpd);
-    if (gpl == NULL) {
+    if (gpl == nullptr) {
       gpl = BKE_gpencil_layer_addnew(gpd, DATA_("GP_Layer"), true, false);
     }
   }
@@ -610,7 +618,7 @@ static bGPDcurve *gpencil_stroke_editcurve_generate_edgecases(bGPDstroke *gps,
     return editcurve;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
@@ -623,7 +631,8 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
   }
 #define POINT_DIM 9
 
-  float *points = MEM_callocN(sizeof(float) * gps->totpoints * POINT_DIM, __func__);
+  float *points = static_cast<float *>(
+      MEM_callocN(sizeof(float) * gps->totpoints * POINT_DIM, __func__));
   float diag_length = len_v3v3(gps->boundbox_min, gps->boundbox_max);
   float tmp_vec[3];
 
@@ -646,17 +655,17 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
     calc_flag |= CURVE_FIT_CALC_CYCLIC;
   }
 
-  float *r_cubic_array = NULL;
+  float *r_cubic_array = nullptr;
   uint r_cubic_array_len = 0;
-  uint *r_cubic_orig_index = NULL;
-  uint *r_corners_index_array = NULL;
+  uint *r_cubic_orig_index = nullptr;
+  uint *r_corners_index_array = nullptr;
   uint r_corners_index_len = 0;
   int r = curve_fit_cubic_to_points_refit_fl(points,
                                              gps->totpoints,
                                              POINT_DIM,
                                              error_threshold,
                                              calc_flag,
-                                             NULL,
+                                             nullptr,
                                              0,
                                              corner_angle,
                                              &r_cubic_array,
@@ -666,7 +675,7 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
                                              &r_corners_index_len);
 
   if (r != 0 || r_cubic_array_len < 1) {
-    return NULL;
+    return nullptr;
   }
 
   uint curve_point_size = 3 * POINT_DIM;
@@ -695,7 +704,7 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
     cpt->point_index = r_cubic_orig_index[i];
   }
 
-  if (r_corners_index_len > 0 && r_corners_index_array != NULL) {
+  if (r_corners_index_len > 0 && r_corners_index_array != nullptr) {
     int start = 0, end = r_corners_index_len;
     if ((r_corners_index_len > 1) && (calc_flag & CURVE_FIT_CALC_CYCLIC) == 0) {
       start = 1;
@@ -726,11 +735,11 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
 
 void BKE_gpencil_stroke_editcurve_update(bGPdata *gpd, bGPDlayer *gpl, bGPDstroke *gps)
 {
-  if (gps == NULL || gps->totpoints < 0) {
+  if (gps == nullptr || gps->totpoints < 0) {
     return;
   }
 
-  if (gps->editcurve != NULL) {
+  if (gps->editcurve != nullptr) {
     BKE_gpencil_free_stroke_editcurve(gps);
   }
 
@@ -739,14 +748,14 @@ void BKE_gpencil_stroke_editcurve_update(bGPdata *gpd, bGPDlayer *gpl, bGPDstrok
 
   bGPDcurve *editcurve = BKE_gpencil_stroke_editcurve_generate(
       gps, gpd->curve_edit_threshold, gpd->curve_edit_corner_angle, stroke_radius);
-  if (editcurve == NULL) {
+  if (editcurve == nullptr) {
     return;
   }
 
   gps->editcurve = editcurve;
 }
 
-void BKE_gpencil_editcurve_stroke_sync_selection(bGPdata *UNUSED(gpd),
+void BKE_gpencil_editcurve_stroke_sync_selection(bGPdata * /*gpd*/,
                                                  bGPDstroke *gps,
                                                  bGPDcurve *gpc)
 {
@@ -921,7 +930,8 @@ static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
   const uint stride = sizeof(float[9]);
   const uint cpt_last = curve_point_array_len - 1;
   const uint num_segments = (is_cyclic) ? curve_point_array_len : curve_point_array_len - 1;
-  int *segment_point_lengths = MEM_callocN(sizeof(int) * num_segments, __func__);
+  int *segment_point_lengths = static_cast<int *>(
+      MEM_callocN(sizeof(int) * num_segments, __func__));
 
   uint points_len = 1;
   for (int i = 0; i < cpt_last; i++) {
@@ -946,7 +956,8 @@ static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
     points_len += segment_resolu;
   }
 
-  float(*r_points)[9] = MEM_callocN((stride * points_len * (is_cyclic ? 2 : 1)), __func__);
+  float(*r_points)[9] = static_cast<float(*)[9]>(
+      MEM_callocN((stride * points_len * (is_cyclic ? 2 : 1)), __func__));
   float *points_offset = &r_points[0][0];
   int point_index = 0;
   for (int i = 0; i < cpt_last; i++) {
@@ -992,7 +1003,8 @@ static float *gpencil_stroke_points_from_editcurve_fixed_resolu(bGPDcurve_point 
   const uint points_len = BKE_curve_calc_coords_axis_len(
       curve_point_array_len, resolution, is_cyclic, false);
 
-  float(*r_points)[9] = MEM_callocN((stride * points_len * (is_cyclic ? 2 : 1)), __func__);
+  float(*r_points)[9] = static_cast<float(*)[9]>(
+      MEM_callocN((stride * points_len * (is_cyclic ? 2 : 1)), __func__));
   float *points_offset = &r_points[0][0];
   for (uint i = 0; i < array_last; i++) {
     bGPDcurve_point *cpt_curr = &curve_point_array[i];
@@ -1021,7 +1033,7 @@ void BKE_gpencil_stroke_update_geometry_from_editcurve(bGPDstroke *gps,
                                                        const uint resolution,
                                                        const bool adaptive)
 {
-  if (gps == NULL || gps->editcurve == NULL) {
+  if (gps == nullptr || gps->editcurve == nullptr) {
     return;
   }
 
@@ -1036,9 +1048,11 @@ void BKE_gpencil_stroke_update_geometry_from_editcurve(bGPDstroke *gps,
     bGPDcurve_point *cpt = &curve_point_array[0];
     /* resize stroke point array */
     gps->totpoints = 1;
-    gps->points = MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints);
-    if (gps->dvert != NULL) {
-      gps->dvert = MEM_recallocN(gps->dvert, sizeof(MDeformVert) * gps->totpoints);
+    gps->points = static_cast<bGPDspoint *>(
+        MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints));
+    if (gps->dvert != nullptr) {
+      gps->dvert = static_cast<MDeformVert *>(
+          MEM_recallocN(gps->dvert, sizeof(MDeformVert) * gps->totpoints));
     }
 
     bGPDspoint *pt = &gps->points[0];
@@ -1060,7 +1074,7 @@ void BKE_gpencil_stroke_update_geometry_from_editcurve(bGPDstroke *gps,
   bool is_cyclic = gps->flag & GP_STROKE_CYCLIC;
 
   int points_len = 0;
-  float(*points)[9] = NULL;
+  float(*points)[9] = nullptr;
   if (adaptive) {
     points = (float(*)[9])gpencil_stroke_points_from_editcurve_adaptive_resolu(
         curve_point_array, curve_point_array_len, resolution, is_cyclic, &points_len);
@@ -1070,15 +1084,17 @@ void BKE_gpencil_stroke_update_geometry_from_editcurve(bGPDstroke *gps,
         curve_point_array, curve_point_array_len, resolution, is_cyclic, &points_len);
   }
 
-  if (points == NULL || points_len == 0) {
+  if (points == nullptr || points_len == 0) {
     return;
   }
 
   /* resize stroke point array */
   gps->totpoints = points_len;
-  gps->points = MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints);
-  if (gps->dvert != NULL) {
-    gps->dvert = MEM_recallocN(gps->dvert, sizeof(MDeformVert) * gps->totpoints);
+  gps->points = static_cast<bGPDspoint *>(
+      MEM_recallocN(gps->points, sizeof(bGPDspoint) * gps->totpoints));
+  if (gps->dvert != nullptr) {
+    gps->dvert = static_cast<MDeformVert *>(
+        MEM_recallocN(gps->dvert, sizeof(MDeformVert) * gps->totpoints));
   }
 
   /* write new data to stroke point array */
@@ -1103,7 +1119,7 @@ void BKE_gpencil_stroke_update_geometry_from_editcurve(bGPDstroke *gps,
 
 void BKE_gpencil_editcurve_recalculate_handles(bGPDstroke *gps)
 {
-  if (gps == NULL || gps->editcurve == NULL) {
+  if (gps == nullptr || gps->editcurve == nullptr) {
     return;
   }
 
@@ -1115,7 +1131,7 @@ void BKE_gpencil_editcurve_recalculate_handles(bGPDstroke *gps)
 
   if (gpc->tot_curve_points == 1) {
     BKE_nurb_handle_calc(
-        &(gpc->curve_points[0].bezt), NULL, &(gpc->curve_points[0].bezt), false, 0);
+        &(gpc->curve_points[0].bezt), nullptr, &(gpc->curve_points[0].bezt), false, 0);
     gps->flag |= GP_STROKE_NEEDS_CURVE_UPDATE;
   }
 
@@ -1159,8 +1175,8 @@ void BKE_gpencil_editcurve_recalculate_handles(bGPDstroke *gps)
       BezTriple *bezt_first_next = &gpc_first_next->bezt;
       BezTriple *bezt_last_prev = &gpc_last_prev->bezt;
 
-      BKE_nurb_handle_calc(bezt_first, NULL, bezt_first_next, false, 0);
-      BKE_nurb_handle_calc(bezt_last, bezt_last_prev, NULL, false, 0);
+      BKE_nurb_handle_calc(bezt_first, nullptr, bezt_first_next, false, 0);
+      BKE_nurb_handle_calc(bezt_last, bezt_last_prev, nullptr, false, 0);
       changed = true;
     }
   }
@@ -1231,7 +1247,7 @@ static void gpencil_editcurve_subdivide_curve_segment(bGPDcurve_point *cpt_start
 void BKE_gpencil_editcurve_subdivide(bGPDstroke *gps, const int cuts)
 {
   bGPDcurve *gpc = gps->editcurve;
-  if (gpc == NULL || gpc->tot_curve_points < 2) {
+  if (gpc == nullptr || gpc->tot_curve_points < 2) {
     return;
   }
   bool is_cyclic = gps->flag & GP_STROKE_CYCLIC;
@@ -1317,7 +1333,8 @@ void BKE_gpencil_strokes_selected_update_editcurve(bGPdata *gpd)
     if (!BKE_gpencil_layer_is_editable(gpl)) {
       continue;
     }
-    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+    bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                    gpl->actframe);
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && is_multiedit)) {
         LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
@@ -1327,10 +1344,10 @@ void BKE_gpencil_strokes_selected_update_editcurve(bGPdata *gpd)
           }
 
           /* Generate the curve if there is none or the stroke was changed */
-          if (gps->editcurve == NULL) {
+          if (gps->editcurve == nullptr) {
             BKE_gpencil_stroke_editcurve_update(gpd, gpl, gps);
             /* Continue if curve could not be generated. */
-            if (gps->editcurve == NULL) {
+            if (gps->editcurve == nullptr) {
               continue;
             }
           }
@@ -1356,12 +1373,13 @@ void BKE_gpencil_strokes_selected_sync_selection_editcurve(bGPdata *gpd)
     if (!BKE_gpencil_layer_is_editable(gpl)) {
       continue;
     }
-    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+    bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
+                                                                    gpl->actframe);
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && is_multiedit)) {
         LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           bGPDcurve *gpc = gps->editcurve;
-          if (gpc != NULL) {
+          if (gpc != nullptr) {
             /* Update the selection of every stroke that has an editcurve */
             BKE_gpencil_stroke_editcurve_sync_selection(gpd, gps, gpc);
           }
