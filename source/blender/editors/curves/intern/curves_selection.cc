@@ -18,7 +18,7 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_object.h"
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
@@ -26,13 +26,10 @@
 namespace blender::ed::curves {
 
 std::optional<Bounds<float3>> selection_bounds(
-    const Curves *curves_id, const bke::crazyspace::GeometryDeformation deformation)
+    const Curves &curves_id, const bke::crazyspace::GeometryDeformation deformation)
 {
-  if (curves_id == nullptr) {
-    return std::nullopt;
-  }
   IndexMaskMemory memory;
-  const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
   const IndexMask mask = retrieve_selected_points(curves, memory);
   return bounds::min_max(mask, deformation.positions);
 }

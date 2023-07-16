@@ -80,7 +80,7 @@ template<typename T>
       init,
       [&](const IndexRange range, const Bounds<T> &init) {
         Bounds<T> result = init;
-        mask.slice(range).foreach_index_optimized<int>(
+        mask.slice(range).foreach_index_optimized<int64_t>(
             [&](const int i) { math::min_max(values[i], result.min, result.max); });
         return result;
       },

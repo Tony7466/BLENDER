@@ -30,7 +30,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_mesh.h"
 #include "ED_particle.h"
 #include "ED_screen.h"
@@ -1386,7 +1386,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     using namespace blender::bke::crazyspace;
     const Object &ob_orig = *DEG_get_original_object(ob_eval);
     const GeometryDeformation deformation = get_evaluated_curves_deformation(ob_eval, ob_orig);
-    const Curves *curves = static_cast<const Curves *>(ob_eval->data);
+    BLI_assert(ob_eval->data);
+    const Curves &curves = *static_cast<const Curves *>(ob_orig.data);
     const std::optional<Bounds<float3>> curves_bounds = ed::curves::selection_bounds(curves,
                                                                                      deformation);
     if (curves_bounds.has_value()) {
