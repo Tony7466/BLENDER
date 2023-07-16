@@ -25,7 +25,7 @@
 
 void BKE_editlattice_free(Object *ob)
 {
-  Lattice *lt = ob->data;
+  Lattice *lt = static_cast<Lattice *>(ob->data);
 
   if (lt->editlatt) {
     Lattice *editlt = lt->editlatt->latt;
@@ -39,13 +39,13 @@ void BKE_editlattice_free(Object *ob)
     MEM_freeN(editlt);
     MEM_freeN(lt->editlatt);
 
-    lt->editlatt = NULL;
+    lt->editlatt = nullptr;
   }
 }
 
 void BKE_editlattice_make(Object *obedit)
 {
-  Lattice *lt = obedit->data;
+  Lattice *lt = static_cast<Lattice *>(obedit->data);
   KeyBlock *actkey;
 
   BKE_editlattice_free(obedit);
@@ -54,13 +54,14 @@ void BKE_editlattice_make(Object *obedit)
   if (actkey) {
     BKE_keyblock_convert_to_lattice(actkey, lt);
   }
-  lt->editlatt = MEM_callocN(sizeof(EditLatt), "editlatt");
-  lt->editlatt->latt = MEM_dupallocN(lt);
-  lt->editlatt->latt->def = MEM_dupallocN(lt->def);
+  lt->editlatt = static_cast<EditLatt *>(MEM_callocN(sizeof(EditLatt), "editlatt"));
+  lt->editlatt->latt = static_cast<Lattice *>(MEM_dupallocN(lt));
+  lt->editlatt->latt->def = static_cast<BPoint *>(MEM_dupallocN(lt->def));
 
   if (lt->dvert) {
     int tot = lt->pntsu * lt->pntsv * lt->pntsw;
-    lt->editlatt->latt->dvert = MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert");
+    lt->editlatt->latt->dvert = static_cast<MDeformVert *>(
+        MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert"));
     BKE_defvert_array_copy(lt->editlatt->latt->dvert, lt->dvert, tot);
   }
 
@@ -77,12 +78,12 @@ void BKE_editlattice_load(Object *obedit)
   float *fp;
   int tot;
 
-  lt = obedit->data;
+  lt = static_cast<Lattice *>(obedit->data);
   editlt = lt->editlatt->latt;
 
   MEM_freeN(lt->def);
 
-  lt->def = MEM_dupallocN(editlt->def);
+  lt->def = static_cast<BPoint *>(MEM_dupallocN(editlt->def));
 
   lt->flag = editlt->flag;
 
@@ -103,7 +104,7 @@ void BKE_editlattice_load(Object *obedit)
   lt->dw = editlt->dw;
 
   if (lt->editlatt->shapenr) {
-    actkey = BLI_findlink(&lt->key->block, lt->editlatt->shapenr - 1);
+    actkey = static_cast<KeyBlock *>(BLI_findlink(&lt->key->block, lt->editlatt->shapenr - 1));
 
     /* active key: vertices */
     tot = editlt->pntsu * editlt->pntsv * editlt->pntsw;
@@ -112,7 +113,7 @@ void BKE_editlattice_load(Object *obedit)
       MEM_freeN(actkey->data);
     }
 
-    fp = actkey->data = MEM_callocN(lt->key->elemsize * tot, "actkey->data");
+    fp = static_cast<float *>(actkey->data = MEM_callocN(lt->key->elemsize * tot, "actkey->data"));
     actkey->totelem = tot;
 
     bp = editlt->def;
@@ -125,13 +126,14 @@ void BKE_editlattice_load(Object *obedit)
 
   if (lt->dvert) {
     BKE_defvert_array_free(lt->dvert, lt->pntsu * lt->pntsv * lt->pntsw);
-    lt->dvert = NULL;
+    lt->dvert = nullptr;
   }
 
   if (editlt->dvert) {
     tot = lt->pntsu * lt->pntsv * lt->pntsw;
 
-    lt->dvert = MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert");
+    lt->dvert = static_cast<MDeformVert *>(
+        MEM_mallocN(sizeof(MDeformVert) * tot, "Lattice MDeformVert"));
     BKE_defvert_array_copy(lt->dvert, editlt->dvert, tot);
   }
 }
