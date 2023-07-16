@@ -100,7 +100,7 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "object_intern.h"
 
@@ -1353,7 +1353,7 @@ void OBJECT_OT_track_set(wmOperatorType *ot)
  * \{ */
 
 #if 0
-static void link_to_scene(Main * /*bmain*/, ushort  /*nr*/)
+static void link_to_scene(Main * /*bmain*/, ushort /*nr*/)
 {
   Scene *sce = (Scene *)BLI_findlink(&bmain->scene, G.curscreen->scenenr - 1);
   Base *base, *nbase;
