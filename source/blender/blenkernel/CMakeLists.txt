@@ -121,7 +121,7 @@ set(SRC
   intern/dynamicpaint.cc
   intern/editlattice.cc
   intern/editmesh.cc
-  intern/editmesh_bvh.c
+  intern/editmesh_bvh.cc
   intern/editmesh_cache.cc
   intern/editmesh_tangent.cc
   intern/effect.c
