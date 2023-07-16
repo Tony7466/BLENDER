@@ -117,7 +117,7 @@ struct ColorResampleElem {
  */
 static float color_sample_remove_cost(const struct ColorResampleElem *c)
 {
-  if (c->next == NULL || c->prev == NULL) {
+  if (c->next == nullptr || c->prev == nullptr) {
     return -1.0f;
   }
   float area = 0.0f;
@@ -161,7 +161,8 @@ static void colorband_init_from_table_rgba_resample(ColorBand *coba,
 {
   BLI_assert(array_len >= 2);
   const float eps_2x = ((1.0f / 255.0f) + 1e-6f);
-  struct ColorResampleElem *c, *carr = MEM_mallocN(sizeof(*carr) * array_len, __func__);
+  struct ColorResampleElem *c,
+      *carr = static_cast<ColorResampleElem *>(MEM_mallocN(sizeof(*carr) * array_len, __func__));
   int carr_len = array_len;
   c = carr;
   {
@@ -173,8 +174,8 @@ static void colorband_init_from_table_rgba_resample(ColorBand *coba,
       c->pos = i * step_size;
     }
   }
-  carr[0].prev = NULL;
-  carr[array_len - 1].next = NULL;
+  carr[0].prev = nullptr;
+  carr[array_len - 1].next = nullptr;
 
   /* -2 to remove endpoints. */
   Heap *heap = BLI_heap_new_ex(array_len - 2);
@@ -185,51 +186,51 @@ static void colorband_init_from_table_rgba_resample(ColorBand *coba,
       c->node = BLI_heap_insert(heap, cost, c);
     }
     else {
-      c->node = NULL;
+      c->node = nullptr;
     }
   }
 
   while ((carr_len > 1 && !BLI_heap_is_empty(heap)) &&
          ((carr_len >= MAXCOLORBAND) || (BLI_heap_top_value(heap) <= eps_2x)))
   {
-    c = BLI_heap_pop_min(heap);
+    c = static_cast<ColorResampleElem *>(BLI_heap_pop_min(heap));
     struct ColorResampleElem *c_next = c->next, *c_prev = c->prev;
     c_prev->next = c_next;
     c_next->prev = c_prev;
     /* Clear data (not essential, avoid confusion). */
-    c->prev = c->next = NULL;
-    c->node = NULL;
+    c->prev = c->next = nullptr;
+    c->node = nullptr;
 
     /* Update adjacent */
     for (int i = 0; i < 2; i++) {
       struct ColorResampleElem *c_other = i ? c_next : c_prev;
-      if (c_other->node != NULL) {
+      if (c_other->node != nullptr) {
         const float cost = color_sample_remove_cost(c_other);
         if (cost != -1.0) {
           BLI_heap_node_value_update(heap, c_other->node, cost);
         }
         else {
           BLI_heap_remove(heap, c_other->node);
-          c_other->node = NULL;
+          c_other->node = nullptr;
         }
       }
     }
     carr_len -= 1;
   }
-  BLI_heap_free(heap, NULL);
+  BLI_heap_free(heap, nullptr);
 
   /* First member is never removed. */
   int i = 0;
   BLI_assert(carr_len < MAXCOLORBAND);
   if (filter_samples == false) {
-    for (c = carr; c != NULL; c = c->next, i++) {
+    for (c = carr; c != nullptr; c = c->next, i++) {
       copy_v4_v4(&coba->data[i].r, c->rgba);
       coba->data[i].pos = c->pos;
       coba->data[i].cur = i;
     }
   }
   else {
-    for (c = carr; c != NULL; c = c->next, i++) {
+    for (c = carr; c != nullptr; c = c->next, i++) {
       const int steps_prev = c->prev ? (c - c->prev) - 1 : 0;
       const int steps_next = c->next ? (c->next - c) - 1 : 0;
       if (steps_prev == 0 && steps_next == 0) {
@@ -299,7 +300,7 @@ ColorBand *BKE_colorband_add(bool rangetype)
 {
   ColorBand *coba;
 
-  coba = MEM_callocN(sizeof(ColorBand), "colorband");
+  coba = static_cast<ColorBand *>(MEM_callocN(sizeof(ColorBand), "colorband"));
   BKE_colorband_init(coba, rangetype);
 
   return coba;
@@ -400,7 +401,7 @@ bool BKE_colorband_evaluate(const ColorBand *coba, float in, float out[4])
   int ipotype;
   int a;
 
-  if (coba == NULL || coba->tot == 0) {
+  if (coba == nullptr || coba->tot == 0) {
     return false;
   }
 
@@ -561,7 +562,7 @@ void BKE_colorband_evaluate_table_rgba(const ColorBand *coba, float **array, int
   int a;
 
   *size = CM_TABLE + 1;
-  *array = MEM_callocN(sizeof(float) * (*size) * 4, "ColorBand");
+  *array = static_cast<float *>(MEM_callocN(sizeof(float) * (*size) * 4, "ColorBand"));
 
   for (a = 0; a < *size; a++) {
     BKE_colorband_evaluate(coba, (float)a / (float)CM_TABLE, &(*array)[a * 4]);
@@ -570,7 +571,7 @@ void BKE_colorband_evaluate_table_rgba(const ColorBand *coba, float **array, int
 
 static int vergcband(const void *a1, const void *a2)
 {
-  const CBData *x1 = a1, *x2 = a2;
+  const CBData *x1 = static_cast<const CBData *>(a1), *x2 = static_cast<const CBData *>(a2);
 
   if (x1->pos > x2->pos) {
     return 1;
@@ -606,7 +607,7 @@ void BKE_colorband_update_sort(ColorBand *coba)
 CBData *BKE_colorband_element_add(ColorBand *coba, float position)
 {
   if (coba->tot == MAXCOLORBAND) {
-    return NULL;
+    return nullptr;
   }
 
   CBData *xnew;

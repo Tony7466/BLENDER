@@ -90,7 +90,7 @@ set(SRC
   intern/cloth.cc
   intern/collection.cc
   intern/collision.cc
-  intern/colorband.c
+  intern/colorband.cc
   intern/colortools.c
   intern/compute_contexts.cc
   intern/constraint.c
