@@ -219,9 +219,6 @@ void GPU_render_step()
 /** \name Backend selection
  * \{ */
 
-/* NOTE: To enable Metal API, we need to temporarily change this to `GPU_BACKEND_METAL`.
- * Until a global switch is added, Metal also needs to be enabled in GHOST_ContextCGL:
- * `m_useMetalForRendering = true`. */
 static eGPUBackendType g_backend_type = GPU_BACKEND_OPENGL;
 static std::optional<eGPUBackendType> g_backend_type_override = std::nullopt;
 static std::optional<bool> g_backend_type_supported = std::nullopt;
