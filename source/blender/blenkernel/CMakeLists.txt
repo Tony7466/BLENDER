@@ -56,7 +56,7 @@ set(SRC
   intern/action_bones.cc
   intern/action_mirror.cc
   intern/addon.cc
-  intern/anim_data.c
+  intern/anim_data.cc
   intern/anim_path.c
   intern/anim_sys.c
   intern/anim_visualization.c
