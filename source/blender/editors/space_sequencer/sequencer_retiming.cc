@@ -120,170 +120,10 @@ void SEQUENCER_OT_retiming_reset(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Retiming Move Handle
- * \{ */
-
-static int sequencer_retiming_handle_move_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  /* Pass pressed modifier key to exec function. */
-  op->customdata = POINTER_FROM_UINT(event->modifier & (KM_SHIFT | KM_CTRL));
-
-  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
-
-  WM_event_add_modal_handler(C, op);
-  return OPERATOR_RUNNING_MODAL;
-}
-
-static SeqRetimingHandle *make_speed_transition(const Scene *scene,
-                                                Sequence *seq,
-                                                SeqRetimingHandle *handle,
-                                                const int offset)
-{
-  SeqRetimingHandle *transition_handle = SEQ_retiming_add_transition(
-      scene, seq, handle, abs(offset));
-  if (transition_handle == nullptr) {
-    return nullptr;
-  }
-
-  /* New gradient handle was created - update operator properties. */
-  if (offset < 0) {
-    return transition_handle;
-  }
-
-  return transition_handle + 1;
-}
-
-static void move_handle(bContext *C, Sequence *seq, SeqRetimingHandle *handle, const int offset)
-{
-  Scene *scene = CTX_data_scene(C);
-
-  // I guess this could be moved to module code
-
-  // const bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
-  // const bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
-
-  /* When working with transition, change handles when moving past pivot point. */
-  /* if (handle_is_transition || prev_handle_is_transition)
-  {
-    SeqRetimingHandle *transition_start, *transition_end;
-    if (handle_is_transition) {
-      transition_start = handle;
-      transition_end = handle + 1;
-    }
-    else {
-      transition_start = handle - 1;
-      transition_end = handle;
-    }
-    const int offset_l = mouse_x -
-                         SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
-    const int offset_r = mouse_x -
-                         SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
-
-    if (prev_handle_is_transition && offset_l < 0) {
-      RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_start));
-    }
-    if (handle_is_transition && offset_r > 0) {
-      RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_end));
-    }
-  }*/
-  SEQ_retiming_offset_handle(scene, seq, handle, offset);
-  SEQ_relations_invalidate_cache_raw(scene, seq);
-}
-
-static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  Scene *scene = CTX_data_scene(C);
-
-  switch (event->type) {
-    case MOUSEMOVE: {
-
-      //
-      // TODO: modifier keys used op property to store quasi selection context - now we have to
-      // modify explicitly defined selection. Perhaps that would be more readable even
-      //
-
-      /*
-      uint8_t invoke_modifier = POINTER_AS_UINT(op->customdata);
-      if (invoke_modifier != 0) {
-        SeqRetimingHandle *new_handle = nullptr;
-        if ((invoke_modifier & KM_SHIFT) != 0) {
-          new_handle = make_speed_transition(scene, seq, handle, offset);
-        }
-        else if ((invoke_modifier & KM_CTRL) != 0) {
-          new_handle = SEQ_retiming_add_freeze_frame(scene, seq, handle, abs(offset));
-        }
-
-        if (new_handle != nullptr) {
-          handle = new_handle;
-          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, new_handle));
-        }
-        op->customdata = POINTER_FROM_UINT(0);
-      }
-      */
-      const View2D *v2d = UI_view2d_fromcontext(C);
-
-      float invoke_x = RNA_int_get(op->ptr, "mouse_x");
-      int offset = (event->mval[0] - invoke_x) / UI_view2d_scale_get_x(v2d);
-      RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
-
-      if (offset == 0) {
-        return OPERATOR_RUNNING_MODAL;
-      }
-
-      for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
-        move_handle(C, elem->seq, elem->handle, offset);
-      }
-
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return OPERATOR_RUNNING_MODAL;
-    }
-    case LEFTMOUSE:
-    case EVT_RETKEY:
-    case EVT_SPACEKEY: {
-      for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
-        retiming_handle_overlap(scene, elem->seq);
-      }
-      DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return OPERATOR_FINISHED;
-    }
-
-    case EVT_ESCKEY:
-    case RIGHTMOUSE: {
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return OPERATOR_CANCELLED;
-    }
-  }
-  return OPERATOR_RUNNING_MODAL;
-}
-
-void SEQUENCER_OT_retiming_handle_move(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Move Retiming Handle";
-  ot->description = "Move retiming handle";
-  ot->idname = "SEQUENCER_OT_retiming_handle_move";
-
-  /* api callbacks */
-  ot->invoke = sequencer_retiming_handle_move_invoke;
-  ot->modal = sequencer_retiming_handle_move_modal;
-  ot->poll = retiming_poll;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  PropertyRNA *prop = RNA_def_int(
-      ot->srna, "mouse_x", 0, INT_MIN, INT_MAX, "Mouse X", "", INT_MIN, INT_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Retiming Add Handle
  * \{ */
 
-static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
+static int sequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
 
@@ -329,7 +169,7 @@ void SEQUENCER_OT_retiming_handle_add(wmOperatorType *ot)
   ot->idname = "SEQUENCER_OT_retiming_handle_add";
 
   /* api callbacks */
-  ot->exec = sequesequencer_retiming_handle_add_exec;
+  ot->exec = sequencer_retiming_handle_add_exec;
   ot->poll = retiming_poll;
 
   /* flags */
@@ -342,6 +182,226 @@ void SEQUENCER_OT_retiming_handle_add(wmOperatorType *ot)
               INT_MAX,
               "Timeline Frame",
               "Frame where handle will be added",
+              0,
+              INT_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Add Freeze Frame
+ * \{ */
+
+bool freeze_frame_add_new_for_seq(
+    bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame, const int duration)
+{
+  Scene *scene = CTX_data_scene(C);
+  SEQ_retiming_data_ensure(scene, seq);
+  SeqRetimingHandle *handle = SEQ_retiming_add_handle(scene, seq, timeline_frame);
+
+  if (handle == nullptr) {
+    handle = SEQ_retiming_handle_get_by_timeline_frame(scene, seq, timeline_frame);
+  }
+
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create handle inside of speed transition");
+    return false;
+  }
+  if (handle == nullptr) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    return false;
+  }
+
+  SeqRetimingHandle *freeze = SEQ_retiming_add_freeze_frame(scene, seq, handle, duration);
+
+  if (freeze == nullptr) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    return false;
+  }
+
+  // cache
+  return true;
+}
+
+static bool freeze_frame_add_from_strip_selection(bContext *C, wmOperator *op, const int duration)
+{
+  Scene *scene = CTX_data_scene(C);
+  SeqCollection *strips = selected_strips_from_context(C);
+  const int timeline_frame = BKE_scene_frame_get(scene);
+  bool success = false;
+
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    success |= freeze_frame_add_new_for_seq(C, op, seq, timeline_frame, duration);
+  }
+
+  return success;
+}
+
+static bool freeze_frame_add_from_retiming_selection(bContext *C,
+                                                     wmOperator *op,
+                                                     const int duration)
+{
+  Scene *scene = CTX_data_scene(C);
+  bool success = false;
+
+  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+    const int timeline_frame = SEQ_retiming_handle_timeline_frame_get(
+        scene, elem->seq, elem->handle);
+    success |= freeze_frame_add_new_for_seq(C, op, elem->seq, timeline_frame, duration);
+  }
+  return success;
+}
+
+static int sequencer_retiming_freeze_frame_add_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  bool success = false;
+
+  const float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+  int duration = 4 * fps;
+
+  if (RNA_property_is_set(op->ptr, RNA_struct_find_property(op->ptr, "duration"))) {
+    duration = RNA_int_get(op->ptr, "duration");
+  }
+
+  if (sequencer_retiming_tool_is_active(C)) {
+    success = freeze_frame_add_from_retiming_selection(C, op, duration);
+  }
+  else {
+    success = freeze_frame_add_from_strip_selection(C, op, duration);
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+
+  return success ? OPERATOR_FINISHED : OPERATOR_PASS_THROUGH;
+}
+
+void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Freeze Frame";
+  ot->description = "Add freeze frame";
+  ot->idname = "SEQUENCER_OT_retiming_freeze_frame_add";
+
+  /* api callbacks */
+  ot->exec = sequencer_retiming_freeze_frame_add_exec;
+  ot->poll = retiming_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_int(ot->srna,
+              "duration",
+              0,
+              0,
+              INT_MAX,
+              "Duration",
+              "Duration of freeze frame segment",
+              0,
+              INT_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Add Speed Transition
+ * \{ */
+
+bool transition_add_new_for_seq(
+    bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame, const int duration)
+{
+  Scene *scene = CTX_data_scene(C);
+  SEQ_retiming_data_ensure(scene, seq);
+  SeqRetimingHandle *handle = SEQ_retiming_add_handle(scene, seq, timeline_frame);
+
+  if (handle == nullptr) {
+    handle = SEQ_retiming_handle_get_by_timeline_frame(scene, seq, timeline_frame);
+  }
+
+  /*
+  *  TODO conditions are different...
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create handle inside of speed transition");
+    return false;
+  }
+  if (handle == nullptr) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    return false;
+  }*/
+
+  SeqRetimingHandle *transition = SEQ_retiming_add_transition(scene, seq, handle, duration);
+
+  if (transition == nullptr) {
+    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    return false;
+  }
+
+  // cache
+  return true;
+}
+
+static bool transition_add_from_retiming_selection(bContext *C, wmOperator *op, const int duration)
+{
+  Scene *scene = CTX_data_scene(C);
+  bool success = false;
+
+  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+    const int timeline_frame = SEQ_retiming_handle_timeline_frame_get(
+        scene, elem->seq, elem->handle);
+    success |= transition_add_new_for_seq(C, op, elem->seq, timeline_frame, duration);
+  }
+  return success;
+}
+
+static int sequencer_retiming_transition_add_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  bool success = false;
+
+  const float fps = scene->r.frs_sec / scene->r.frs_sec_base;
+  int duration = 4 * fps;
+
+  if (RNA_property_is_set(op->ptr, RNA_struct_find_property(op->ptr, "duration"))) {
+    duration = RNA_int_get(op->ptr, "duration");
+  }
+
+  if (sequencer_retiming_tool_is_active(C)) {
+    success = transition_add_from_retiming_selection(C, op, duration);
+  }
+  else {
+    BKE_report(op->reports, RPT_WARNING, "Retiming key must be selected");
+    return false;
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+
+  return success ? OPERATOR_FINISHED : OPERATOR_PASS_THROUGH;
+}
+
+void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Speed Transition";
+  ot->description = "Add smooth transition between 2 retimed segments";
+  ot->idname = "SEQUENCER_OT_retiming_transition_add";
+
+  /* api callbacks */
+  ot->exec = sequencer_retiming_transition_add_exec;
+  ot->poll = retiming_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_int(ot->srna,
+              "duration",
+              0,
+              0,
+              INT_MAX,
+              "Duration",
+              "Duration of freeze frame segment",
               0,
               INT_MAX);
 }
@@ -705,7 +765,7 @@ void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
   /* Properties. */
   WM_operator_properties_gesture_box(ot);
   WM_operator_properties_select_operation_simple(ot);
-  PropertyRNA *prop = RNA_def_boolean(
+  RNA_def_boolean(
       ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
 }
 

@@ -45,10 +45,10 @@ struct SeqRetimingHandle *SEQ_retiming_last_handle_get(const struct Sequence *se
 void SEQ_retiming_remove_handle(const struct Scene *scene,
                                 struct Sequence *seq,
                                 struct SeqRetimingHandle *handle);
-void SEQ_retiming_offset_handle(const struct Scene *scene,
-                                struct Sequence *seq,
-                                struct SeqRetimingHandle *handle,
-                                const int offset);
+void SEQ_retiming_offset_transition_handle(const struct Scene *scene,
+                                           const struct Sequence *seq,
+                                           struct SeqRetimingHandle *handle,
+                                           const int offset);
 float SEQ_retiming_handle_speed_get(const struct Sequence *seq,
                                     const struct SeqRetimingHandle *handle);
 void SEQ_retiming_handle_speed_set(const struct Scene *scene,
@@ -68,9 +68,12 @@ void SEQ_retiming_handle_timeline_frame_set(const struct Scene *scene,
                                             struct Sequence *seq,
                                             struct SeqRetimingHandle *handle,
                                             const int timeline_frame);
-const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Sequence *seq,
-                                                                const int frame_index);
+SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Sequence *seq,
+                                                          const int frame_index);
 bool SEQ_retiming_handle_is_transition_type(const struct SeqRetimingHandle *handle);
+bool SEQ_retiming_handle_is_transition_start(const struct SeqRetimingHandle *handle);
+SeqRetimingHandle *SEQ_retiming_transition_start_get(struct SeqRetimingHandle *handle);
+
 bool SEQ_retiming_handle_is_freeze_frame(const struct SeqRetimingHandle *handle);
 
 bool SEQ_retiming_selection_clear(struct Editing *ed);
@@ -83,7 +86,8 @@ void SEQ_retiming_selection_remove(struct Editing *ed,
 bool SEQ_retiming_selection_contains(struct Editing *ed,
                                      const struct Sequence *seq,
                                      const struct SeqRetimingHandle *handle);
-
+bool SEQ_retiming_selection_has_whole_transition(struct Scene *scene,
+                                                 struct SeqRetimingHandle *handle);
 #ifdef __cplusplus
 }
 #endif

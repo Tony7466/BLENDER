@@ -2958,8 +2958,7 @@ def km_sequencer(params):
         ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
          {"properties": [("data_path", "space_data.show_overlays")]}),
         *_template_items_context_menu("SEQUENCER_MT_context_menu", params.context_menu_event),
-        ("sequencer.retiming_handle_add", {"type": 'I', "value": 'PRESS'}, None),
-        
+        op_menu("SEQUENCER_MT_retiming", {"type": 'I', "value": 'PRESS'}),
     ])
 
     return keymap

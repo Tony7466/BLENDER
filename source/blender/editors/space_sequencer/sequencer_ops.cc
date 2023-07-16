@@ -71,8 +71,9 @@ void sequencer_operatortypes(void)
 
   /* sequencer_retiming.c */
   WM_operatortype_append(SEQUENCER_OT_retiming_reset);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_move);
   WM_operatortype_append(SEQUENCER_OT_retiming_handle_add);
+  WM_operatortype_append(SEQUENCER_OT_retiming_freeze_frame_add);
+  WM_operatortype_append(SEQUENCER_OT_retiming_transition_add);
   WM_operatortype_append(SEQUENCER_OT_retiming_handle_remove);
   WM_operatortype_append(SEQUENCER_OT_retiming_segment_speed_set);
   WM_operatortype_append(SEQUENCER_OT_retiming_handle_select);

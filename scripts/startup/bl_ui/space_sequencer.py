@@ -1055,6 +1055,19 @@ class SEQUENCER_MT_image_apply(Menu):
         layout.operator("sequencer.strip_transform_fit", text="Stretch To Fill").fit_method = 'STRETCH'
 
 
+class SEQUENCER_MT_retiming(Menu):
+    bl_label = "Retiming"
+    bl_translation_context = i18n_contexts.operator_default
+
+    def draw(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("sequencer.retiming_handle_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+
+
 class SEQUENCER_MT_context_menu(Menu):
     bl_label = "Sequencer Context Menu"
 
@@ -1158,21 +1171,24 @@ class SEQUENCER_MT_context_menu(Menu):
 
     def draw_retime(self, context):
         layout = self.layout
-
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("sequencer.retiming_handle_add")
-        layout.separator()
 
         if context.scene.sequence_editor.selected_retiming_handles:
-            layout.operator("sequencer.retiming_handle_remove")
+            layout.operator("sequencer.retiming_freeze_frame_add")
+            layout.operator("sequencer.retiming_transition_add")
+            layout.separator()
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 25%").speed = 25
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 50%").speed = 50
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 100%").speed = 100
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 200%").speed = 200
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 400%").speed = 400
+            layout.separator()
+            layout.operator("sequencer.retiming_handle_remove")
 
         layout.separator()
+
 
     def draw(self, context):
         tool = context.workspace.tools.from_space_sequencer('SEQUENCER')
@@ -2710,6 +2726,7 @@ classes = (
     SEQUENCER_MT_context_menu,
     SEQUENCER_MT_preview_context_menu,
     SEQUENCER_MT_pivot_pie,
+    SEQUENCER_MT_retiming,
     SEQUENCER_MT_view_pie,
     SEQUENCER_MT_preview_view_pie,
 

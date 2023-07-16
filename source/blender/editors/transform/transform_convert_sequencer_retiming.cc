@@ -80,7 +80,8 @@ static void freeSeqData(TransInfo * /*t*/,
 
 static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
 {
-  if (SEQ_editing_get(t->scene) == NULL) {
+  Editing *ed = SEQ_editing_get(t->scene);
+  if (ed == nullptr) {
     return;
   }
 
@@ -106,6 +107,22 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
   }
 }
 
+static void seq_resize_speed_translation(Scene *scene,
+                                         Sequence *seq,
+                                         SeqRetimingHandle *handle,
+                                         const float loc)
+{
+  SeqRetimingHandle *handle_start = SEQ_retiming_transition_start_get(handle);
+  float offset;
+  if (handle == handle_start) {
+    offset = loc - SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  }
+  else {
+    offset = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) - loc;
+  }
+  SEQ_retiming_offset_transition_handle(scene, seq, handle_start, offset);
+}
+
 static void recalcData_sequencer_retiming(TransInfo *t)
 {
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
@@ -118,12 +135,18 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     Sequence *seq = tdseq->seq;
 
     /* Calculate translation. */
-    float translation = td2d->loc[0] - tdseq->orig_timeline_frame;
 
-    /* Apply translation. */
     blender::MutableSpan handles = SEQ_retiming_handles_get(seq);
     SeqRetimingHandle *handle = &handles[tdseq->handle_index];
-    SEQ_retiming_handle_timeline_frame_set(t->scene, seq, handle, td2d->loc[0]);
+
+    if (SEQ_retiming_handle_is_transition_type(handle) &&
+        !SEQ_retiming_selection_has_whole_transition(t->scene, handle))
+    {
+      seq_resize_speed_translation(t->scene, seq, handle, td2d->loc[0]);
+    }
+    else {
+      SEQ_retiming_handle_timeline_frame_set(t->scene, seq, handle, td2d->loc[0]);
+    }
 
     SEQ_relations_invalidate_cache_preprocessed(t->scene, seq);
   }

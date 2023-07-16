@@ -309,8 +309,9 @@ void sequencer_image_seq_reserve_frames(
 
 /* sequencer_retiming.c */
 void SEQUENCER_OT_retiming_reset(struct wmOperatorType *ot);
-void SEQUENCER_OT_retiming_handle_move(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_handle_add(struct wmOperatorType *ot);
+void SEQUENCER_OT_retiming_freeze_frame_add(struct wmOperatorType *ot);
+void SEQUENCER_OT_retiming_transition_add(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_handle_remove(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_handle_select(struct wmOperatorType *ot);

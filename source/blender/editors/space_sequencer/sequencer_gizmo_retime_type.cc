@@ -386,11 +386,20 @@ static void retime_handle_draw(const bContext *C,
     immUniform1f("outline_scale", 1.0f);
     immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
     immBegin(GPU_PRIM_POINTS, 1);
+
+    eBezTriple_KeyframeType key_type = BEZT_KEYTYPE_KEYFRAME;
+    if (SEQ_retiming_handle_is_freeze_frame(handle)) {
+      key_type = BEZT_KEYTYPE_BREAKDOWN;
+    }
+    if (SEQ_retiming_handle_is_transition_type(handle)) {
+      key_type = BEZT_KEYTYPE_MOVEHOLD;
+    }
+
     draw_keyframe_shape(handle_position,
                         bottom,
                         size,
                         is_selected && sequencer_retiming_tool_is_active(C),
-                        0,
+                        key_type,
                         KEYFRAME_SHAPE_BOTH,
                         1,
                         &sh_bindings,
@@ -547,8 +556,8 @@ static size_t label_str_get(const Sequence *seq,
                             char *r_label_str)
 {
   const SeqRetimingHandle *next_handle = handle + 1;
-  if (SEQ_retiming_handle_is_transition_type(handle)) {
-    const float prev_speed = SEQ_retiming_handle_speed_get(seq, handle - 1);
+  if (SEQ_retiming_handle_is_transition_start(handle)) {
+    const float prev_speed = SEQ_retiming_handle_speed_get(seq, handle);
     const float next_speed = SEQ_retiming_handle_speed_get(seq, next_handle + 1);
     return BLI_snprintf_rlen(r_label_str,
                              str_len,
