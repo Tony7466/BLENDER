@@ -234,7 +234,7 @@ set(SRC
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
-  intern/object_deform.c
+  intern/object_deform.cc
   intern/object_dupli.cc
   intern/object_update.cc
   intern/ocean.c

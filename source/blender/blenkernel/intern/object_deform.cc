@@ -64,7 +64,7 @@ void BKE_object_defgroup_remap_update_users(Object *ob, const int *map)
     ob->soft->vertgroup = map[ob->soft->vertgroup];
   }
 
-  for (md = ob->modifiers.first; md; md = md->next) {
+  for (md = static_cast<ModifierData *>(ob->modifiers.first); md; md = md->next) {
     if (md->type == eModifierType_Explode) {
       ExplodeModifierData *emd = (ExplodeModifierData *)md;
       emd->vgroup = map[emd->vgroup];
@@ -81,7 +81,7 @@ void BKE_object_defgroup_remap_update_users(Object *ob, const int *map)
     }
   }
 
-  for (psys = ob->particlesystem.first; psys; psys = psys->next) {
+  for (psys = static_cast<ParticleSystem *>(ob->particlesystem.first); psys; psys = psys->next) {
     for (a = 0; a < PSYS_TOT_VG; a++) {
       psys->vgroup[a] = map[psys->vgroup[a]];
     }
@@ -99,7 +99,7 @@ bDeformGroup *BKE_object_defgroup_add_name(Object *ob, const char *name)
   bDeformGroup *defgroup;
 
   if (!ob || !OB_TYPE_SUPPORT_VGROUP(ob->type)) {
-    return NULL;
+    return nullptr;
   }
 
   defgroup = BKE_object_defgroup_new(ob, name);
@@ -120,12 +120,12 @@ MDeformVert *BKE_object_defgroup_data_create(ID *id)
   }
   if (GS(id->name) == ID_LT) {
     Lattice *lt = (Lattice *)id;
-    lt->dvert = MEM_callocN(sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw,
-                            "lattice deformVert");
+    lt->dvert = static_cast<MDeformVert *>(MEM_callocN(
+        sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw, "lattice deformVert"));
     return lt->dvert;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -142,7 +142,7 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
   bool changed = false;
 
   if (ob->type == OB_MESH) {
-    Mesh *me = ob->data;
+    Mesh *me = static_cast<Mesh *>(ob->data);
 
     if (me->edit_mesh) {
       BMEditMesh *em = me->edit_mesh;
@@ -153,11 +153,11 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
         BMIter iter;
 
         BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
-          dv = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
+          dv = static_cast<MDeformVert *>(BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset));
 
           if (dv && dv->dw && (!use_selection || BM_elem_flag_test(eve, BM_ELEM_SELECT))) {
             MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
-            BKE_defvert_remove_group(dv, dw); /* dw can be NULL */
+            BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
             changed = true;
           }
         }
@@ -174,7 +174,7 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
         for (i = 0; i < me->totvert; i++, dv++) {
           if (dv->dw && (!use_selection || (select_vert && select_vert[i]))) {
             MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
-            BKE_defvert_remove_group(dv, dw); /* dw can be NULL */
+            BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
             changed = true;
           }
         }
@@ -195,7 +195,7 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
           dv = &lt->dvert[i];
 
           dw = BKE_defvert_find_index(dv, def_nr);
-          BKE_defvert_remove_group(dv, dw); /* dw can be NULL */
+          BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
           changed = true;
         }
       }
@@ -212,7 +212,7 @@ bool BKE_object_defgroup_clear_all(Object *ob, const bool use_selection)
 
   const ListBase *defbase = BKE_object_defgroup_list(ob);
 
-  for (dg = defbase->first; dg; dg = dg->next) {
+  for (dg = static_cast<bDeformGroup *>(defbase->first); dg; dg = dg->next) {
     if (BKE_object_defgroup_clear(ob, dg, use_selection)) {
       changed = true;
     }
@@ -230,7 +230,7 @@ bool BKE_object_defgroup_clear_all(Object *ob, const bool use_selection)
 static void object_defgroup_remove_update_users(Object *ob, const int idx)
 {
   int i, defbase_tot = BKE_object_defgroup_count(ob) + 1;
-  int *map = MEM_mallocN(sizeof(int) * defbase_tot, "vgroup del");
+  int *map = static_cast<int *>(MEM_mallocN(sizeof(int) * defbase_tot, "vgroup del"));
 
   map[idx] = map[0] = 0;
   for (i = 1; i < idx; i++) {
@@ -262,7 +262,7 @@ static void object_defgroup_remove_common(Object *ob, bDeformGroup *dg, const in
   /* Remove all deform-verts. */
   if (BLI_listbase_is_empty(defbase)) {
     if (ob->type == OB_MESH) {
-      Mesh *me = ob->data;
+      Mesh *me = static_cast<Mesh *>(ob->data);
       CustomData_free_layer_active(&me->vdata, CD_MDEFORMVERT, me->totvert);
     }
     else if (ob->type == OB_LATTICE) {
@@ -278,7 +278,7 @@ static void object_defgroup_remove_common(Object *ob, bDeformGroup *dg, const in
 
 static void object_defgroup_remove_object_mode(Object *ob, bDeformGroup *dg)
 {
-  MDeformVert *dvert_array = NULL;
+  MDeformVert *dvert_array = nullptr;
   int dvert_tot = 0;
   const ListBase *defbase = BKE_object_defgroup_list(ob);
 
@@ -286,7 +286,7 @@ static void object_defgroup_remove_object_mode(Object *ob, bDeformGroup *dg)
 
   BLI_assert(def_nr != -1);
 
-  BKE_object_defgroup_array_get(ob->data, &dvert_array, &dvert_tot);
+  BKE_object_defgroup_array_get(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot);
 
   if (dvert_array) {
     int i, j;
@@ -295,7 +295,7 @@ static void object_defgroup_remove_object_mode(Object *ob, bDeformGroup *dg)
       MDeformWeight *dw;
 
       dw = BKE_defvert_find_index(dv, def_nr);
-      BKE_defvert_remove_group(dv, dw); /* dw can be NULL */
+      BKE_defvert_remove_group(dv, dw); /* dw can be nullptr */
 
       /* inline, make into a function if anything else needs to do this */
       for (j = 0; j < dv->totweight; j++) {
@@ -325,7 +325,7 @@ static void object_defgroup_remove_edit_mode(Object *ob, bDeformGroup *dg)
   }
   /* Else, make sure that any groups with higher indices are adjusted accordingly */
   else if (ob->type == OB_MESH) {
-    Mesh *me = ob->data;
+    Mesh *me = static_cast<Mesh *>(ob->data);
     BMEditMesh *em = me->edit_mesh;
     const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
@@ -334,7 +334,7 @@ static void object_defgroup_remove_edit_mode(Object *ob, bDeformGroup *dg)
     MDeformVert *dvert;
 
     BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
-      dvert = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
+      dvert = static_cast<MDeformVert *>(BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset));
 
       if (dvert) {
         for (i = 0; i < dvert->totweight; i++) {
@@ -409,7 +409,7 @@ void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
   else { /* `defbase` is empty. */
     /* Remove all deform-verts. */
     if (ob->type == OB_MESH) {
-      Mesh *me = ob->data;
+      Mesh *me = static_cast<Mesh *>(ob->data);
       CustomData_free_layer_active(&me->vdata, CD_MDEFORMVERT, me->totvert);
     }
     else if (ob->type == OB_LATTICE) {
@@ -434,24 +434,26 @@ int *BKE_object_defgroup_index_map_create(Object *ob_src, Object *ob_dst, int *r
   /* Build src to merged mapping of vgroup indices. */
   if (BLI_listbase_is_empty(src_defbase) || BLI_listbase_is_empty(dst_defbase)) {
     *r_map_len = 0;
-    return NULL;
+    return nullptr;
   }
 
   bDeformGroup *dg_src;
   *r_map_len = BLI_listbase_count(src_defbase);
-  int *vgroup_index_map = MEM_malloc_arrayN(
-      *r_map_len, sizeof(*vgroup_index_map), "defgroup index map create");
+  int *vgroup_index_map = static_cast<int *>(
+      MEM_malloc_arrayN(*r_map_len, sizeof(*vgroup_index_map), "defgroup index map create"));
   bool is_vgroup_remap_needed = false;
   int i;
 
-  for (dg_src = src_defbase->first, i = 0; dg_src; dg_src = dg_src->next, i++) {
+  for (dg_src = static_cast<bDeformGroup *>(src_defbase->first), i = 0; dg_src;
+       dg_src = dg_src->next, i++)
+  {
     vgroup_index_map[i] = BKE_object_defgroup_name_index(ob_dst, dg_src->name);
     is_vgroup_remap_needed = is_vgroup_remap_needed || (vgroup_index_map[i] != i);
   }
 
   if (!is_vgroup_remap_needed) {
     MEM_freeN(vgroup_index_map);
-    vgroup_index_map = NULL;
+    vgroup_index_map = nullptr;
     *r_map_len = 0;
   }
 
@@ -463,7 +465,7 @@ void BKE_object_defgroup_index_map_apply(MDeformVert *dvert,
                                          const int *map,
                                          int map_len)
 {
-  if (map == NULL || map_len == 0) {
+  if (map == nullptr || map_len == 0) {
     return;
   }
 
@@ -483,7 +485,7 @@ void BKE_object_defgroup_index_map_apply(MDeformVert *dvert,
     }
     if (totweight != dv->totweight) {
       if (totweight) {
-        dv->dw = MEM_reallocN(dv->dw, sizeof(*dv->dw) * totweight);
+        dv->dw = static_cast<MDeformWeight *>(MEM_reallocN(dv->dw, sizeof(*dv->dw) * totweight));
       }
       else {
         MEM_SAFE_FREE(dv->dw);
@@ -514,7 +516,7 @@ bool BKE_object_defgroup_array_get(ID *id, MDeformVert **dvert_arr, int *dvert_t
     }
   }
 
-  *dvert_arr = NULL;
+  *dvert_arr = nullptr;
   *dvert_tot = 0;
   return false;
 }
@@ -528,11 +530,12 @@ bool *BKE_object_defgroup_lock_flags_get(Object *ob, const int defbase_tot)
   bool is_locked = false;
   int i;
   ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
-  bool *lock_flags = MEM_mallocN(defbase_tot * sizeof(bool), "defflags");
+  bool *lock_flags = static_cast<bool *>(MEM_mallocN(defbase_tot * sizeof(bool), "defflags"));
   bDeformGroup *defgroup;
 
-  for (i = 0, defgroup = defbase->first; i < defbase_tot && defgroup;
-       defgroup = defgroup->next, i++) {
+  for (i = 0, defgroup = static_cast<bDeformGroup *>(defbase->first); i < defbase_tot && defgroup;
+       defgroup = defgroup->next, i++)
+  {
     lock_flags[i] = ((defgroup->flag & DG_LOCK_WEIGHT) != 0);
     is_locked |= lock_flags[i];
   }
@@ -541,7 +544,7 @@ bool *BKE_object_defgroup_lock_flags_get(Object *ob, const int defbase_tot)
   }
 
   MEM_freeN(lock_flags);
-  return NULL;
+  return nullptr;
 }
 
 bool *BKE_object_defgroup_validmap_get(Object *ob, const int defbase_tot)
@@ -555,22 +558,23 @@ bool *BKE_object_defgroup_validmap_get(Object *ob, const int defbase_tot)
   VirtualModifierData virtualModifierData;
 
   if (BLI_listbase_is_empty(defbase)) {
-    return NULL;
+    return nullptr;
   }
 
   gh = BLI_ghash_str_new_ex(__func__, defbase_tot);
 
   /* add all names to a hash table */
-  for (dg = defbase->first; dg; dg = dg->next) {
-    BLI_ghash_insert(gh, dg->name, NULL);
+  for (dg = static_cast<bDeformGroup *>(defbase->first); dg; dg = dg->next) {
+    BLI_ghash_insert(gh, dg->name, nullptr);
   }
 
   BLI_assert(BLI_ghash_len(gh) == defbase_tot);
 
   /* now loop through the armature modifiers and identify deform bones */
-  for (md = ob->modifiers.first; md; md = !md->next && step1 ? (step1 = 0),
+  for (md = static_cast<ModifierData *>(ob->modifiers.first); md;
+       md = !md->next && step1 ? (step1 = 0),
       BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData) :
-                                     md->next)
+       md->next)
   {
     if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual))) {
       continue;
@@ -583,7 +587,7 @@ bool *BKE_object_defgroup_validmap_get(Object *ob, const int defbase_tot)
         bPose *pose = amd->object->pose;
         bPoseChannel *chan;
 
-        for (chan = pose->chanbase.first; chan; chan = chan->next) {
+        for (chan = static_cast<bPoseChannel *>(pose->chanbase.first); chan; chan = chan->next) {
           void **val_p;
           if (chan->bone->flag & BONE_NO_DEFORM) {
             continue;
@@ -598,23 +602,24 @@ bool *BKE_object_defgroup_validmap_get(Object *ob, const int defbase_tot)
     }
   }
 
-  defgroup_validmap = MEM_mallocN(sizeof(*defgroup_validmap) * defbase_tot, "wpaint valid map");
+  defgroup_validmap = static_cast<bool *>(
+      MEM_mallocN(sizeof(*defgroup_validmap) * defbase_tot, "wpaint valid map"));
 
   /* add all names to a hash table */
-  for (dg = defbase->first, i = 0; dg; dg = dg->next, i++) {
-    defgroup_validmap[i] = (BLI_ghash_lookup(gh, dg->name) != NULL);
+  for (dg = static_cast<bDeformGroup *>(defbase->first), i = 0; dg; dg = dg->next, i++) {
+    defgroup_validmap[i] = (BLI_ghash_lookup(gh, dg->name) != nullptr);
   }
 
   BLI_assert(i == BLI_ghash_len(gh));
 
-  BLI_ghash_free(gh, NULL, NULL);
+  BLI_ghash_free(gh, nullptr, nullptr);
 
   return defgroup_validmap;
 }
 
 bool *BKE_object_defgroup_selected_get(Object *ob, int defbase_tot, int *r_dg_flags_sel_tot)
 {
-  bool *dg_selection = MEM_mallocN(defbase_tot * sizeof(bool), __func__);
+  bool *dg_selection = static_cast<bool *>(MEM_mallocN(defbase_tot * sizeof(bool), __func__));
   bDeformGroup *defgroup;
   uint i;
   Object *armob = BKE_object_pose_armature_get(ob);
@@ -624,8 +629,10 @@ bool *BKE_object_defgroup_selected_get(Object *ob, int defbase_tot, int *r_dg_fl
 
   if (armob) {
     bPose *pose = armob->pose;
-    for (i = 0, defgroup = defbase->first; i < defbase_tot && defgroup;
-         defgroup = defgroup->next, i++) {
+    for (i = 0, defgroup = static_cast<bDeformGroup *>(defbase->first);
+         i < defbase_tot && defgroup;
+         defgroup = defgroup->next, i++)
+    {
       bPoseChannel *pchan = BKE_pose_channel_find_name(pose, defgroup->name);
       if (pchan && (pchan->bone->flag & BONE_SELECTED)) {
         dg_selection[i] = true;
@@ -655,11 +662,11 @@ bool BKE_object_defgroup_check_lock_relative_multi(int defbase_tot,
                                                    const bool *selected,
                                                    int sel_tot)
 {
-  if (lock_flags == NULL) {
+  if (lock_flags == nullptr) {
     return true;
   }
 
-  if (selected == NULL || sel_tot <= 1) {
+  if (selected == nullptr || sel_tot <= 1) {
     return true;
   }
 
@@ -706,8 +713,9 @@ void BKE_object_defgroup_mirror_selection(Object *ob,
   uint i;
   int i_mirr;
 
-  for (i = 0, defgroup = defbase->first; i < defbase_tot && defgroup;
-       defgroup = defgroup->next, i++) {
+  for (i = 0, defgroup = static_cast<bDeformGroup *>(defbase->first); i < defbase_tot && defgroup;
+       defgroup = defgroup->next, i++)
+  {
     if (dg_selection[i]) {
       char name_flip[MAXBONENAME];
 
@@ -728,14 +736,15 @@ bool *BKE_object_defgroup_subset_from_select_type(Object *ob,
                                                   int *r_defgroup_tot,
                                                   int *r_subset_count)
 {
-  bool *defgroup_validmap = NULL;
+  bool *defgroup_validmap = nullptr;
 
   *r_defgroup_tot = BKE_object_defgroup_count(ob);
 
   switch (subset_type) {
     case WT_VGROUP_ACTIVE: {
       const int def_nr_active = BKE_object_defgroup_active_index_get(ob) - 1;
-      defgroup_validmap = MEM_mallocN(*r_defgroup_tot * sizeof(*defgroup_validmap), __func__);
+      defgroup_validmap = static_cast<bool *>(
+          MEM_mallocN(*r_defgroup_tot * sizeof(*defgroup_validmap), __func__));
       memset(defgroup_validmap, false, *r_defgroup_tot * sizeof(*defgroup_validmap));
       if ((def_nr_active >= 0) && (def_nr_active < *r_defgroup_tot)) {
         *r_subset_count = 1;
@@ -775,7 +784,8 @@ bool *BKE_object_defgroup_subset_from_select_type(Object *ob,
     }
     case WT_VGROUP_ALL:
     default: {
-      defgroup_validmap = MEM_mallocN(*r_defgroup_tot * sizeof(*defgroup_validmap), __func__);
+      defgroup_validmap = static_cast<bool *>(
+          MEM_mallocN(*r_defgroup_tot * sizeof(*defgroup_validmap), __func__));
       memset(defgroup_validmap, true, *r_defgroup_tot * sizeof(*defgroup_validmap));
       *r_subset_count = *r_defgroup_tot;
       break;
