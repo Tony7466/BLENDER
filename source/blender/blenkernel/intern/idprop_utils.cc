@@ -84,7 +84,7 @@ static void idp_str_append_escape(struct ReprState *state,
 
 static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *prop)
 {
-  /* NOTE: 'strlen' will be calculated at compile time for literals. */
+/* NOTE: 'strlen' will be calculated at compile time for literals. */
 #define STR_APPEND_STR(str) state->str_append_fn(state->user_data, str, (uint)strlen(str))
 
 #define STR_APPEND_STR_QUOTE(str) idp_str_append_escape(state, str, (uint)strlen(str), true)
@@ -119,7 +119,10 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
       STR_APPEND_STR("[");
       switch (prop->subtype) {
         case IDP_INT:
-          for (const int *v = prop->data.pointer, *v_end = v + prop->len; v != v_end; v++) {
+          for (const int *v = static_cast<const int *>(prop->data.pointer), *v_end = v + prop->len;
+               v != v_end;
+               v++)
+          {
             if (v != prop->data.pointer) {
               STR_APPEND_STR(", ");
             }
@@ -127,7 +130,11 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
           }
           break;
         case IDP_FLOAT:
-          for (const float *v = prop->data.pointer, *v_end = v + prop->len; v != v_end; v++) {
+          for (const float *v = static_cast<const float *>(prop->data.pointer),
+                           *v_end = v + prop->len;
+               v != v_end;
+               v++)
+          {
             if (v != prop->data.pointer) {
               STR_APPEND_STR(", ");
             }
@@ -135,7 +142,11 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
           }
           break;
         case IDP_DOUBLE:
-          for (const double *v = prop->data.pointer, *v_end = v + prop->len; v != v_end; v++) {
+          for (const double *v = static_cast<const double *>(prop->data.pointer),
+                            *v_end = v + prop->len;
+               v != v_end;
+               v++)
+          {
             if (v != prop->data.pointer) {
               STR_APPEND_STR(", ");
             }
@@ -143,7 +154,11 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
           }
           break;
         case IDP_BOOLEAN:
-          for (const double *v = prop->data.pointer, *v_end = v + prop->len; v != v_end; v++) {
+          for (const double *v = static_cast<const double *>(prop->data.pointer),
+                            *v_end = v + prop->len;
+               v != v_end;
+               v++)
+          {
             if (v != prop->data.pointer) {
               STR_APPEND_STR(", ");
             }
@@ -156,7 +171,11 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
     }
     case IDP_IDPARRAY: {
       STR_APPEND_STR("[");
-      for (const IDProperty *v = prop->data.pointer, *v_end = v + prop->len; v != v_end; v++) {
+      for (const IDProperty *v = static_cast<const IDProperty *>(prop->data.pointer),
+                            *v_end = v + prop->len;
+           v != v_end;
+           v++)
+      {
         if (v != prop->data.pointer) {
           STR_APPEND_STR(", ");
         }
@@ -179,8 +198,8 @@ static void idp_repr_fn_recursive(struct ReprState *state, const IDProperty *pro
       break;
     }
     case IDP_ID: {
-      const ID *id = prop->data.pointer;
-      if (id != NULL) {
+      const ID *id = static_cast<const ID *>(prop->data.pointer);
+      if (id != nullptr) {
         STR_APPEND_STR("bpy.data.");
         STR_APPEND_STR(BKE_idtype_idcode_to_name_plural(GS(id->name)));
         STR_APPEND_STR("[");
@@ -208,16 +227,15 @@ void IDP_repr_fn(const IDProperty *prop,
                  void (*str_append_fn)(void *user_data, const char *str, uint str_len),
                  void *user_data)
 {
-  struct ReprState state = {
-      .str_append_fn = str_append_fn,
-      .user_data = user_data,
-  };
+  ReprState state{};
+  state.str_append_fn = str_append_fn;
+  state.user_data = user_data;
   idp_repr_fn_recursive(&state, prop);
 }
 
 static void repr_str(void *user_data, const char *str, uint len)
 {
-  BLI_dynstr_nappend(user_data, str, (int)len);
+  BLI_dynstr_nappend(static_cast<DynStr *>(user_data), str, (int)len);
 }
 
 char *IDP_reprN(const IDProperty *prop, uint *r_len)
@@ -225,7 +243,7 @@ char *IDP_reprN(const IDProperty *prop, uint *r_len)
   DynStr *ds = BLI_dynstr_new();
   IDP_repr_fn(prop, repr_str, ds);
   char *cstring = BLI_dynstr_get_cstring(ds);
-  if (r_len != NULL) {
+  if (r_len != nullptr) {
     *r_len = (uint)BLI_dynstr_get_len(ds);
   }
   BLI_dynstr_free(ds);
@@ -234,7 +252,7 @@ char *IDP_reprN(const IDProperty *prop, uint *r_len)
 
 void IDP_print(const IDProperty *prop)
 {
-  char *repr = IDP_reprN(prop, NULL);
+  char *repr = IDP_reprN(prop, nullptr);
   printf("IDProperty(%p): ", prop);
   puts(repr);
   MEM_freeN(repr);
