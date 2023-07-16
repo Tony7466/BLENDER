@@ -37,7 +37,7 @@
 
 #include "lib_intern.h" /* own include */
 
-static CLG_LogRef LOG = {.identifier = "bke.lib_remap"};
+static CLG_LogRef LOG = {"bke.lib_remap"};
 
 BKE_library_free_notifier_reference_cb free_notifier_reference_cb = nullptr;
 

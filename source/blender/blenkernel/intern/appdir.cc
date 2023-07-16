@@ -71,9 +71,7 @@ static struct {
   char temp_dirname_base[FILE_MAX];
   /** Volatile temporary directory (owned by Blender, removed on exit). */
   char temp_dirname_session[FILE_MAX];
-} g_app = {
-    .temp_dirname_session = "",
-};
+} g_app{};
 
 /** \} */
 

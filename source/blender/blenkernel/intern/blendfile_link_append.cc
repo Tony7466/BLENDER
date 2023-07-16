@@ -1099,7 +1099,8 @@ static void blendfile_link_append_proxies_convert(Main *bmain, ReportList *repor
   /* NOTE: Do not bother checking file versions here, if there are no proxies to convert this code
    * is quite fast anyway. */
 
-  BlendFileReadReport bf_reports = {.reports = reports};
+  BlendFileReadReport bf_reports{};
+  bf_reports.reports = reports;
   BKE_lib_override_library_main_proxy_convert(bmain, &bf_reports);
 
   /* Currently liboverride code can generate invalid namemap. This is a known issue, requires

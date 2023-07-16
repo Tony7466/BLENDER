@@ -265,7 +265,7 @@ static void action_flip_pchan(Object *ob_arm,
 
     /* Temporary pose channel to write values into,
      * using the `fkc_pchan` values, falling back to the values in the pose channel. */
-    bPoseChannel pchan_temp = *pchan;
+    bPoseChannel pchan_temp = blender::dna::shallow_copy(*pchan);
 
 /* Load the values into the channel. */
 #define READ_VALUE_FLT(id) \

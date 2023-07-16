@@ -686,7 +686,7 @@ bool BKE_pose_channels_is_valid(const bPose *pose)
 {
   if (pose->chanhash) {
     bPoseChannel *pchan;
-    for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+    for (pchan = static_cast<bPoseChannel *>(pose->chanbase.first); pchan; pchan = pchan->next) {
       if (BLI_ghash_lookup(pose->chanhash, pchan->name) != pchan) {
         return false;
       }

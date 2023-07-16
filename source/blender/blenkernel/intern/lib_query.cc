@@ -201,7 +201,8 @@ static bool library_foreach_ID_link(Main *bmain,
                                     int flag,
                                     LibraryForeachIDData *inherit_data)
 {
-  LibraryForeachIDData data = {.bmain = bmain};
+  LibraryForeachIDData data{};
+  data.bmain = bmain;
 
   BLI_assert(inherit_data == nullptr || data.bmain == inherit_data->bmain);
   /* `IDWALK_NO_ORIG_POINTERS_ACCESS` is mutually exclusive with both `IDWALK_READONLY` and
@@ -255,7 +256,9 @@ static bool library_foreach_ID_link(Main *bmain,
   } \
   ((void)0)
 
-  for (; id != nullptr; id = (flag & IDWALK_RECURSE) ? BLI_LINKSTACK_POP(data.ids_todo) : nullptr)
+  for (; id != nullptr; id = (flag & IDWALK_RECURSE) ?
+                                 static_cast<ID *>(BLI_LINKSTACK_POP(data.ids_todo)) :
+                                 nullptr)
   {
     data.self_id = id;
     /* Note that we may call this functions sometime directly on an embedded ID, without any
@@ -855,8 +858,8 @@ void BKE_lib_query_unused_ids_tag(Main *bmain,
 
 #ifndef NDEBUG
     /* Relation entry for the root processed ID should always be marked as processed now. */
-    MainIDRelationsEntry *id_relations = BLI_ghash_lookup(
-        bmain->relations->relations_from_pointers, id);
+    MainIDRelationsEntry *id_relations = static_cast<MainIDRelationsEntry *>(
+        BLI_ghash_lookup(bmain->relations->relations_from_pointers, id));
     if ((id_relations->tags & MAINIDRELATIONS_ENTRY_TAGS_PROCESSED) == 0) {
       BLI_assert((id_relations->tags & MAINIDRELATIONS_ENTRY_TAGS_PROCESSED) != 0);
     }

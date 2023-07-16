@@ -1905,7 +1905,7 @@ void BKE_armature_mat_pose_to_bone_ex(Depsgraph *depsgraph,
                                       const float inmat[4][4],
                                       float outmat[4][4])
 {
-  bPoseChannel work_pchan = *pchan;
+  bPoseChannel work_pchan = blender::dna::shallow_copy(*pchan);
 
   /* recalculate pose matrix with only parent transformations,
    * bone loc/sca/rot is ignored, scene and frame are not used. */

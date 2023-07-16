@@ -76,7 +76,7 @@
 #  include "PIL_time_utildefines.h"
 #endif
 
-static CLG_LogRef LOG = {.identifier = "bke.lib_id"};
+static CLG_LogRef LOG = {"bke.lib_id"};
 
 IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     /*id_code*/ ID_LINK_PLACEHOLDER,
