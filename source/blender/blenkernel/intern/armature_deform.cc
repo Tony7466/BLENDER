@@ -181,7 +181,7 @@ static float dist_bone_deform(
   const Bone *bone = pchan->bone;
   float fac, contrib = 0.0;
 
-  if (bone == NULL) {
+  if (bone == nullptr) {
     return 0.0f;
   }
 
@@ -238,7 +238,7 @@ static void pchan_bone_deform(const bPoseChannel *pchan,
  * #BKE_armature_deform_coords and related functions.
  * \{ */
 
-typedef struct ArmatureUserdata {
+struct ArmatureUserdata {
   const Object *ob_arm;
   const Mesh *me_target;
   float (*vert_coords)[3];
@@ -265,7 +265,7 @@ typedef struct ArmatureUserdata {
   struct {
     int cd_dvert_offset;
   } bmesh;
-} ArmatureUserdata;
+};
 
 static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
                                           const int i,
@@ -279,11 +279,11 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
   const bool use_dverts = data->use_dverts;
   const int armature_def_nr = data->armature_def_nr;
 
-  DualQuat sumdq, *dq = NULL;
+  DualQuat sumdq, *dq = nullptr;
   const bPoseChannel *pchan;
   float *co, dco[3];
   float sumvec[3], summat[3][3];
-  float *vec = NULL, (*smat)[3] = NULL;
+  float *vec = nullptr, (*smat)[3] = nullptr;
   float contrib = 0.0f;
   float armature_weight = 1.0f; /* default to 1 if no overall def group */
   float prevco_weight = 0.0f;   /* weight for optional cached vertexcos */
@@ -361,7 +361,9 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
     }
     /* If there are vertex-groups but not groups with bones (like for soft-body groups). */
     if (deformed == 0 && use_envelope) {
-      for (pchan = data->ob_arm->pose->chanbase.first; pchan; pchan = pchan->next) {
+      for (pchan = static_cast<const bPoseChannel *>(data->ob_arm->pose->chanbase.first); pchan;
+           pchan = pchan->next)
+      {
         if (!(pchan->bone->flag & BONE_NO_DEFORM)) {
           contrib += dist_bone_deform(pchan, vec, dq, smat, co);
         }
@@ -369,7 +371,9 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
     }
   }
   else if (use_envelope) {
-    for (pchan = data->ob_arm->pose->chanbase.first; pchan; pchan = pchan->next) {
+    for (pchan = static_cast<const bPoseChannel *>(data->ob_arm->pose->chanbase.first); pchan;
+         pchan = pchan->next)
+    {
       if (!(pchan->bone->flag & BONE_NO_DEFORM)) {
         contrib += dist_bone_deform(pchan, vec, dq, smat, co);
       }
@@ -383,13 +387,13 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
 
       if (armature_weight != 1.0f) {
         copy_v3_v3(dco, co);
-        mul_v3m3_dq(dco, (vert_deform_mats) ? summat : NULL, dq);
+        mul_v3m3_dq(dco, (vert_deform_mats) ? summat : nullptr, dq);
         sub_v3_v3(dco, co);
         mul_v3_fl(dco, armature_weight);
         add_v3_v3(co, dco);
       }
       else {
-        mul_v3m3_dq(co, (vert_deform_mats) ? summat : NULL, dq);
+        mul_v3m3_dq(co, (vert_deform_mats) ? summat : nullptr, dq);
       }
 
       smat = summat;
@@ -428,29 +432,29 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
 
 static void armature_vert_task(void *__restrict userdata,
                                const int i,
-                               const TaskParallelTLS *__restrict UNUSED(tls))
+                               const TaskParallelTLS *__restrict /*tls*/)
 {
-  const ArmatureUserdata *data = userdata;
+  const ArmatureUserdata *data = static_cast<const ArmatureUserdata *>(userdata);
   const MDeformVert *dvert;
   if (data->use_dverts || data->armature_def_nr != -1) {
     if (data->me_target) {
       BLI_assert(i < data->me_target->totvert);
-      if (data->dverts != NULL) {
+      if (data->dverts != nullptr) {
         dvert = data->dverts + i;
       }
       else {
-        dvert = NULL;
+        dvert = nullptr;
       }
     }
     else if (data->dverts && i < data->dverts_len) {
       dvert = data->dverts + i;
     }
     else {
-      dvert = NULL;
+      dvert = nullptr;
     }
   }
   else {
-    dvert = NULL;
+    dvert = nullptr;
   }
 
   armature_vert_task_with_dvert(data, i, dvert);
@@ -458,21 +462,22 @@ static void armature_vert_task(void *__restrict userdata,
 
 static void armature_vert_task_editmesh(void *__restrict userdata,
                                         MempoolIterData *iter,
-                                        const TaskParallelTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict /*tls*/)
 {
-  const ArmatureUserdata *data = userdata;
+  const ArmatureUserdata *data = static_cast<const ArmatureUserdata *>(userdata);
   BMVert *v = (BMVert *)iter;
-  const MDeformVert *dvert = BM_ELEM_CD_GET_VOID_P(v, data->bmesh.cd_dvert_offset);
+  const MDeformVert *dvert = static_cast<const MDeformVert *>(
+      BM_ELEM_CD_GET_VOID_P(v, data->bmesh.cd_dvert_offset));
   armature_vert_task_with_dvert(data, BM_elem_index_get(v), dvert);
 }
 
 static void armature_vert_task_editmesh_no_dvert(void *__restrict userdata,
                                                  MempoolIterData *iter,
-                                                 const TaskParallelTLS *__restrict UNUSED(tls))
+                                                 const TaskParallelTLS *__restrict /*tls*/)
 {
-  const ArmatureUserdata *data = userdata;
+  const ArmatureUserdata *data = static_cast<const ArmatureUserdata *>(userdata);
   BMVert *v = (BMVert *)iter;
-  armature_vert_task_with_dvert(data, BM_elem_index_get(v), NULL);
+  armature_vert_task_with_dvert(data, BM_elem_index_get(v), nullptr);
 }
 
 static void armature_deform_coords_impl(const Object *ob_arm,
@@ -487,9 +492,9 @@ static void armature_deform_coords_impl(const Object *ob_arm,
                                         BMEditMesh *em_target,
                                         bGPDstroke *gps_target)
 {
-  const bArmature *arm = ob_arm->data;
-  bPoseChannel **pchan_from_defbase = NULL;
-  const MDeformVert *dverts = NULL;
+  const bArmature *arm = static_cast<const bArmature *>(ob_arm->data);
+  bPoseChannel **pchan_from_defbase = nullptr;
+  const MDeformVert *dverts = nullptr;
   const bool use_envelope = (deformflag & ARM_DEF_ENVELOPE) != 0;
   const bool use_quaternion = (deformflag & ARM_DEF_QUATERNION) != 0;
   const bool invert_vgroup = (deformflag & ARM_DEF_INVERT_VGROUP) != 0;
@@ -500,7 +505,7 @@ static void armature_deform_coords_impl(const Object *ob_arm,
   int cd_dvert_offset = -1;
 
   /* in editmode, or not an armature */
-  if (arm->edbo || (ob_arm->pose == NULL)) {
+  if (arm->edbo || (ob_arm->pose == nullptr)) {
     return;
   }
 
@@ -512,10 +517,10 @@ static void armature_deform_coords_impl(const Object *ob_arm,
   }
 
   if (BKE_object_supports_vertex_groups(ob_target)) {
-    const ID *target_data_id = NULL;
+    const ID *target_data_id = nullptr;
     if (ob_target->type == OB_MESH) {
-      target_data_id = me_target == NULL ? (const ID *)ob_target->data : &me_target->id;
-      if (em_target == NULL) {
+      target_data_id = me_target == nullptr ? (const ID *)ob_target->data : &me_target->id;
+      if (em_target == nullptr) {
         const Mesh *me = (const Mesh *)target_data_id;
         dverts = BKE_mesh_deform_verts(me);
         if (dverts) {
@@ -524,7 +529,7 @@ static void armature_deform_coords_impl(const Object *ob_arm,
       }
     }
     else if (ob_target->type == OB_LATTICE) {
-      const Lattice *lt = ob_target->data;
+      const Lattice *lt = static_cast<const Lattice *>(ob_target->data);
       target_data_id = (const ID *)ob_target->data;
       dverts = lt->dvert;
       if (dverts) {
@@ -552,14 +557,15 @@ static void armature_deform_coords_impl(const Object *ob_arm,
         use_dverts = (cd_dvert_offset != -1);
       }
       else if (me_target) {
-        use_dverts = (BKE_mesh_deform_verts(me_target) != NULL);
+        use_dverts = (BKE_mesh_deform_verts(me_target) != nullptr);
       }
       else if (dverts) {
         use_dverts = true;
       }
 
       if (use_dverts) {
-        pchan_from_defbase = MEM_callocN(sizeof(*pchan_from_defbase) * defbase_len, "defnrToBone");
+        pchan_from_defbase = static_cast<bPoseChannel **>(
+            MEM_callocN(sizeof(*pchan_from_defbase) * defbase_len, "defnrToBone"));
         /* TODO(sergey): Some considerations here:
          *
          * - Check whether keeping this consistent across frames gives speedup.
@@ -570,7 +576,7 @@ static void armature_deform_coords_impl(const Object *ob_arm,
           /* exclude non-deforming bones */
           if (pchan_from_defbase[i]) {
             if (pchan_from_defbase[i]->bone->flag & BONE_NO_DEFORM) {
-              pchan_from_defbase[i] = NULL;
+              pchan_from_defbase[i] = nullptr;
             }
           }
         }
@@ -578,26 +584,22 @@ static void armature_deform_coords_impl(const Object *ob_arm,
     }
   }
 
-  ArmatureUserdata data = {
-      .ob_arm = ob_arm,
-      .me_target = me_target,
-      .vert_coords = vert_coords,
-      .vert_deform_mats = vert_deform_mats,
-      .vert_coords_prev = vert_coords_prev,
-      .use_envelope = use_envelope,
-      .use_quaternion = use_quaternion,
-      .invert_vgroup = invert_vgroup,
-      .use_dverts = use_dverts,
-      .armature_def_nr = armature_def_nr,
-      .dverts = dverts,
-      .dverts_len = dverts_len,
-      .pchan_from_defbase = pchan_from_defbase,
-      .defbase_len = defbase_len,
-      .bmesh =
-          {
-              .cd_dvert_offset = cd_dvert_offset,
-          },
-  };
+  ArmatureUserdata data{};
+  data.ob_arm = ob_arm;
+  data.me_target = me_target;
+  data.vert_coords = vert_coords;
+  data.vert_deform_mats = vert_deform_mats;
+  data.vert_coords_prev = vert_coords_prev;
+  data.use_envelope = use_envelope;
+  data.use_quaternion = use_quaternion;
+  data.invert_vgroup = invert_vgroup;
+  data.use_dverts = use_dverts;
+  data.armature_def_nr = armature_def_nr;
+  data.dverts = dverts;
+  data.dverts_len = dverts_len;
+  data.pchan_from_defbase = pchan_from_defbase;
+  data.defbase_len = defbase_len;
+  data.bmesh.cd_dvert_offset = cd_dvert_offset;
 
   float obinv[4][4];
   invert_m4_m4(obinv, ob_target->object_to_world);
@@ -605,7 +607,7 @@ static void armature_deform_coords_impl(const Object *ob_arm,
   mul_m4_m4m4(data.postmat, obinv, ob_arm->object_to_world);
   invert_m4_m4(data.premat, data.postmat);
 
-  if (em_target != NULL) {
+  if (em_target != nullptr) {
     /* While this could cause an extra loop over mesh data, in most cases this will
      * have already been properly set. */
     BM_mesh_elem_index_ensure(em_target->bm, BM_VERT);
@@ -652,8 +654,8 @@ void BKE_armature_deform_coords_with_gpencil_stroke(const Object *ob_arm,
                               deformflag,
                               vert_coords_prev,
                               defgrp_name,
-                              NULL,
-                              NULL,
+                              nullptr,
+                              nullptr,
                               gps_target);
 }
 
@@ -676,8 +678,8 @@ void BKE_armature_deform_coords_with_mesh(const Object *ob_arm,
                               vert_coords_prev,
                               defgrp_name,
                               me_target,
-                              NULL,
-                              NULL);
+                              nullptr,
+                              nullptr);
 }
 
 void BKE_armature_deform_coords_with_editmesh(const Object *ob_arm,
@@ -698,9 +700,9 @@ void BKE_armature_deform_coords_with_editmesh(const Object *ob_arm,
                               deformflag,
                               vert_coords_prev,
                               defgrp_name,
-                              NULL,
+                              nullptr,
                               em_target,
-                              NULL);
+                              nullptr);
 }
 
 /** \} */

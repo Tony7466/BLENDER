@@ -63,7 +63,7 @@ set(SRC
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.c
-  intern/armature_deform.c
+  intern/armature_deform.cc
   intern/armature_pose.cc
   intern/armature_selection.cc
   intern/armature_update.c
