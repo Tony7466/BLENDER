@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -12,6 +13,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_euler.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -33,7 +35,7 @@
 #include "NOD_common.h"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 #include "node_common.h"
@@ -203,6 +205,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &nt
       const auto &value = *io_socket.default_value_typed<bNodeSocketValueBoolean>();
       std::unique_ptr<decl::Bool> decl = std::make_unique<decl::Bool>();
       decl->default_value = value.value;
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_ROTATION: {
+      const auto &value = *io_socket.default_value_typed<bNodeSocketValueRotation>();
+      std::unique_ptr<decl::Rotation> decl = std::make_unique<decl::Rotation>();
+      decl->default_value = math::EulerXYZ(float3(value.value_euler));
       dst = std::move(decl);
       break;
     }

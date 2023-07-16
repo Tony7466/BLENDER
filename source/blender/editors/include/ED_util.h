@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -72,6 +73,7 @@ void ED_region_image_metadata_draw(
 /* Slider */
 
 struct tSlider;
+typedef enum SliderMode { SLIDER_MODE_PERCENT = 0, SLIDER_MODE_FLOAT = 1 } SliderMode;
 
 struct tSlider *ED_slider_create(struct bContext *C);
 /**
@@ -104,6 +106,9 @@ void ED_slider_factor_bounds_set(struct tSlider *slider, float lower_bound, floa
 
 bool ED_slider_allow_increments_get(struct tSlider *slider);
 void ED_slider_allow_increments_set(struct tSlider *slider, bool value);
+
+void ED_slider_mode_set(struct tSlider *slider, SliderMode unit);
+void ED_slider_unit_set(struct tSlider *slider, const char *unit);
 
 /* ************** XXX OLD CRUFT WARNING ************* */
 

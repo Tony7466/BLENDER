@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
@@ -13,7 +15,7 @@
 
 #include "BLT_translation.h"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_node.h"
 #include "ED_object.h"
 

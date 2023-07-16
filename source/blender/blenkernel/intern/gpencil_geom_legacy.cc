@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,6 +25,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
+#include "BLI_string_utils.h"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -1249,11 +1251,8 @@ bool BKE_gpencil_stroke_smooth_thickness(
 /** \name Stroke Smooth UV
  * \{ */
 
-bool BKE_gpencil_stroke_smooth_uv(struct bGPDstroke *gps,
-                                  int point_index,
-                                  float influence,
-                                  int iterations,
-                                  struct bGPDstroke *r_gps)
+bool BKE_gpencil_stroke_smooth_uv(
+    bGPDstroke *gps, int point_index, float influence, int iterations, bGPDstroke *r_gps)
 {
   /* If nothing to do, return early */
   if (gps->totpoints <= 2 || iterations <= 0) {
@@ -1707,7 +1706,7 @@ float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
   return total_length;
 }
 
-float BKE_gpencil_stroke_segment_length(const struct bGPDstroke *gps,
+float BKE_gpencil_stroke_segment_length(const bGPDstroke *gps,
                                         const int start_index,
                                         const int end_index,
                                         bool use_3d)
@@ -2688,7 +2687,7 @@ static void make_element_name(const char *obname, const char *name, const int ma
   SNPRINTF(str, "%s_%s", obname, name);
 
   /* Replace any point by underscore. */
-  BLI_str_replace_char(str, '.', '_');
+  BLI_string_replace_char(str, '.', '_');
 
   BLI_strncpy_utf8(r_name, str, maxlen);
 }
@@ -3656,11 +3655,11 @@ void BKE_gpencil_stroke_copy_to_keyframes(
  * \{ */
 
 struct tSamplePoint {
-  struct tSamplePoint *next, *prev;
+  tSamplePoint *next, *prev;
   float x, y, z;
   float pressure, strength, time;
   float vertex_color[4];
-  struct MDeformWeight *dw;
+  MDeformWeight *dw;
   int totweight;
 };
 
@@ -3872,7 +3871,7 @@ void BKE_gpencil_stroke_from_view_space(bGPDstroke *gps,
  * \{ */
 
 struct tPerimeterPoint {
-  struct tPerimeterPoint *next, *prev;
+  tPerimeterPoint *next, *prev;
   float x, y, z;
 };
 

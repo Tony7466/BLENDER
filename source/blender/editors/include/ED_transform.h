@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -24,7 +25,7 @@ void transform_operatortypes(void);
 /* ******************** Macros & Prototypes *********************** */
 
 /* MODE AND NUMINPUT FLAGS */
-typedef enum {
+enum eTfmMode {
   TFM_INIT = -1,
   TFM_DUMMY,
   TFM_TRANSLATION,
@@ -51,8 +52,8 @@ typedef enum {
   TFM_TIME_SLIDE,
   TFM_TIME_SCALE,
   TFM_TIME_EXTEND,
-  TFM_TIME_DUPLICATE,
-  TFM_BAKE_TIME,
+  /* TFM_TIME_DUPLICATE (deprecated). */
+  TFM_BAKE_TIME = 26,
   TFM_DEPRECATED, /* was BEVEL */
   TFM_BWEIGHT,
   TFM_ALIGN,
@@ -62,7 +63,7 @@ typedef enum {
   TFM_BONE_ENVELOPE_DIST,
   TFM_NORMAL_ROTATION,
   TFM_GPENCIL_OPACITY,
-} eTfmMode;
+};
 
 /* Standalone call to get the transformation center corresponding to the current situation
  * returns 1 if successful, 0 otherwise (usually means there's no selection)

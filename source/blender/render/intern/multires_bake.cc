@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -361,6 +362,7 @@ struct MultiresBakeThread {
   MultiresBakeRender *bkr;
   Image *image;
   void *bake_data;
+  int num_total_faces;
 
   /* thread-specific data */
   MBakeRast bake_rast;
@@ -436,7 +438,7 @@ static void *do_multires_bake_thread(void *data_v)
 
     if (bkr->progress) {
       *bkr->progress = (float(bkr->baked_objects) +
-                        float(bkr->baked_faces) / handle->queue->tot_tri) /
+                        float(bkr->baked_faces) / handle->num_total_faces) /
                        bkr->tot_obj;
     }
     BLI_spin_unlock(&handle->queue->spin);
@@ -565,6 +567,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
 
     handle->bkr = bkr;
     handle->image = ima;
+    handle->num_total_faces = queue.tot_tri * BLI_listbase_count(&ima->tiles);
     handle->queue = &queue;
 
     handle->data.vert_positions = positions;
@@ -608,11 +611,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     do_multires_bake_thread(&handles[0]);
   }
 
-  /* construct bake result */
-  result->height_min = handles[0].height_min;
-  result->height_max = handles[0].height_max;
-
-  for (i = 1; i < tot_thread; i++) {
+  for (i = 0; i < tot_thread; i++) {
     result->height_min = min_ff(result->height_min, handles[i].height_min);
     result->height_max = max_ff(result->height_max, handles[i].height_max);
   }
@@ -1040,7 +1039,7 @@ static void apply_tangmat_callback(const blender::Span<blender::float3> /*vert_p
 static ushort ao_random_table_1[MAX_NUMBER_OF_AO_RAYS];
 static ushort ao_random_table_2[MAX_NUMBER_OF_AO_RAYS];
 
-static void init_ao_random(void)
+static void init_ao_random()
 {
   int i;
 
@@ -1110,7 +1109,7 @@ static void create_ao_raytree(MultiresBakeRender *bkr, MAOBakeData *ao_data)
   grid_data = hidm->getGridData(hidm);
   hidm->getGridKey(hidm, &key);
 
-  /* face_side = (grid_size << 1) - 1; */ /* UNUSED */
+  // face_side = (grid_size << 1) - 1; /* UNUSED */
   faces_num = grids_num * (grid_size - 1) * (grid_size - 1);
 
   raytree = ao_data->raytree = RE_rayobject_create(
@@ -1140,7 +1139,7 @@ static void create_ao_raytree(MultiresBakeRender *bkr, MAOBakeData *ao_data)
   RE_rayobject_done(raytree);
 }
 
-static void *init_ao_data(MultiresBakeRender *bkr, ImBuf */*ibuf*/)
+static void *init_ao_data(MultiresBakeRender *bkr, ImBuf * /*ibuf*/)
 {
   MAOBakeData *ao_data;
   DerivedMesh *lodm = bkr->lores_dm;
@@ -1234,7 +1233,7 @@ static int trace_ao_ray(MAOBakeData *ao_data, float ray_start[3], float ray_dire
 
 static void apply_ao_callback(DerivedMesh *lores_dm,
                               DerivedMesh *hires_dm,
-                              void */*thread_data*/,
+                              void * /*thread_data*/,
                               void *bake_data,
                               ImBuf *ibuf,
                               const int tri_index,
@@ -1245,7 +1244,7 @@ static void apply_ao_callback(DerivedMesh *lores_dm,
                               const int y)
 {
   const MLoopTri *lt = lores_dm->getLoopTriArray(lores_dm) + tri_index;
-  float (*mloopuv)[2] = lores_dm->getLoopDataArray(lores_dm, CD_PROP_FLOAT2);
+  float(*mloopuv)[2] = lores_dm->getLoopDataArray(lores_dm, CD_PROP_FLOAT2);
   MAOBakeData *ao_data = (MAOBakeData *)bake_data;
 
   int i, k, perm_ofs;
@@ -1300,8 +1299,7 @@ static void apply_ao_callback(DerivedMesh *lores_dm,
     /* use N-Rooks to distribute our N ray samples across
      * a multi-dimensional domain (2D)
      */
-    const ushort I =
-        ao_data->permutation_table_1[(i + perm_ofs) % ao_data->number_of_rays];
+    const ushort I = ao_data->permutation_table_1[(i + perm_ofs) % ao_data->number_of_rays];
     const ushort J = ao_data->permutation_table_2[i];
 
     const float JitPh = (get_ao_random2(I + perm_ofs) & (MAX_NUMBER_OF_AO_RAYS - 1)) /
@@ -1469,6 +1467,10 @@ static void bake_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
 {
   LinkData *link;
 
+  /* construct bake result */
+  result->height_min = FLT_MAX;
+  result->height_max = -FLT_MAX;
+
   for (link = static_cast<LinkData *>(bkr->image.first); link; link = link->next) {
     Image *ima = (Image *)link->data;
 
@@ -1510,7 +1512,15 @@ static void bake_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
             /* TODO: restore ambient occlusion baking support. */
 #if 0
           case RE_BAKE_AO:
-            do_multires_bake(bkr, ima, tile, ibuf, false, apply_ao_callback, init_ao_data, free_ao_data, result);
+            do_multires_bake(bkr,
+                             ima,
+                             tile,
+                             ibuf,
+                             false,
+                             apply_ao_callback,
+                             init_ao_data,
+                             free_ao_data,
+                             result);
             break;
 #endif
         }

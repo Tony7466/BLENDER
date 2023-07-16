@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pybmesh
@@ -8,6 +9,7 @@
 #include "BLI_math.h"
 #include "BLI_sort.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -18,6 +20,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -1077,9 +1080,9 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject
   PyObject *py_object;
   PyObject *py_depsgraph;
   Object *ob, *ob_eval;
-  struct Depsgraph *depsgraph;
+  Depsgraph *depsgraph;
   struct Scene *scene_eval;
-  Mesh *me_eval;
+  const Mesh *me_eval;
   BMesh *bm;
   bool use_cage = false;
   bool use_fnorm = true;
@@ -1134,7 +1137,7 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject
       me_eval = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &data_masks);
     }
     else {
-      me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &data_masks);
+      me_eval = BKE_object_get_evaluated_mesh(ob_eval);
     }
   }
 
@@ -1155,7 +1158,7 @@ static PyObject *bpy_bmesh_from_object(BPy_BMesh *self, PyObject *args, PyObject
                      }));
 
   if (need_free) {
-    BKE_id_free(NULL, me_eval);
+    BKE_id_free(NULL, (Mesh *)me_eval);
   }
 
   Py_RETURN_NONE;
@@ -2795,7 +2798,7 @@ static PyObject *bpy_bmelemseq_sort(BPy_BMElemSeq *self, PyObject *args, PyObjec
   Py_RETURN_NONE;
 }
 
-static struct PyMethodDef bpy_bmesh_methods[] = {
+static PyMethodDef bpy_bmesh_methods[] = {
     /* utility */
     {"copy", (PyCFunction)bpy_bmesh_copy, METH_NOARGS, bpy_bmesh_copy_doc},
     {"clear", (PyCFunction)bpy_bmesh_clear, METH_NOARGS, bpy_bmesh_clear_doc},
@@ -2839,7 +2842,7 @@ static struct PyMethodDef bpy_bmesh_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmvert_methods[] = {
+static PyMethodDef bpy_bmvert_methods[] = {
     {"select_set", (PyCFunction)bpy_bm_elem_select_set, METH_O, bpy_bm_elem_select_set_doc},
     {"hide_set", (PyCFunction)bpy_bm_elem_hide_set, METH_O, bpy_bm_elem_hide_set_doc},
     {"copy_from", (PyCFunction)bpy_bm_elem_copy_from, METH_O, bpy_bm_elem_copy_from_doc},
@@ -2869,7 +2872,7 @@ static struct PyMethodDef bpy_bmvert_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmedge_methods[] = {
+static PyMethodDef bpy_bmedge_methods[] = {
     {"select_set", (PyCFunction)bpy_bm_elem_select_set, METH_O, bpy_bm_elem_select_set_doc},
     {"hide_set", (PyCFunction)bpy_bm_elem_hide_set, METH_O, bpy_bm_elem_hide_set_doc},
     {"copy_from", (PyCFunction)bpy_bm_elem_copy_from, METH_O, bpy_bm_elem_copy_from_doc},
@@ -2898,7 +2901,7 @@ static struct PyMethodDef bpy_bmedge_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmface_methods[] = {
+static PyMethodDef bpy_bmface_methods[] = {
     {"select_set", (PyCFunction)bpy_bm_elem_select_set, METH_O, bpy_bm_elem_select_set_doc},
     {"hide_set", (PyCFunction)bpy_bm_elem_hide_set, METH_O, bpy_bm_elem_hide_set_doc},
 
@@ -2953,7 +2956,7 @@ static struct PyMethodDef bpy_bmface_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmloop_methods[] = {
+static PyMethodDef bpy_bmloop_methods[] = {
     {"copy_from", (PyCFunction)bpy_bm_elem_copy_from, METH_O, bpy_bm_elem_copy_from_doc},
     {"copy_from_face_interp",
      (PyCFunction)bpy_bmloop_copy_from_face_interp,
@@ -2969,7 +2972,7 @@ static struct PyMethodDef bpy_bmloop_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmelemseq_methods[] = {
+static PyMethodDef bpy_bmelemseq_methods[] = {
     /* odd function, initializes index values */
     {"index_update",
      (PyCFunction)bpy_bmelemseq_index_update,
@@ -2978,7 +2981,7 @@ static struct PyMethodDef bpy_bmelemseq_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmvertseq_methods[] = {
+static PyMethodDef bpy_bmvertseq_methods[] = {
     {"new", (PyCFunction)bpy_bmvertseq_new, METH_VARARGS, bpy_bmvertseq_new_doc},
     {"remove", (PyCFunction)bpy_bmvertseq_remove, METH_O, bpy_bmvertseq_remove_doc},
 
@@ -2998,7 +3001,7 @@ static struct PyMethodDef bpy_bmvertseq_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmedgeseq_methods[] = {
+static PyMethodDef bpy_bmedgeseq_methods[] = {
     {"new", (PyCFunction)bpy_bmedgeseq_new, METH_VARARGS, bpy_bmedgeseq_new_doc},
     {"remove", (PyCFunction)bpy_bmedgeseq_remove, METH_O, bpy_bmedgeseq_remove_doc},
     /* 'bpy_bmelemseq_get' for different purpose */
@@ -3020,7 +3023,7 @@ static struct PyMethodDef bpy_bmedgeseq_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmfaceseq_methods[] = {
+static PyMethodDef bpy_bmfaceseq_methods[] = {
     {"new", (PyCFunction)bpy_bmfaceseq_new, METH_VARARGS, bpy_bmfaceseq_new_doc},
     {"remove", (PyCFunction)bpy_bmfaceseq_remove, METH_O, bpy_bmfaceseq_remove_doc},
     /* 'bpy_bmelemseq_get' for different purpose */
@@ -3042,7 +3045,7 @@ static struct PyMethodDef bpy_bmfaceseq_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static struct PyMethodDef bpy_bmloopseq_methods[] = {
+static PyMethodDef bpy_bmloopseq_methods[] = {
     /* odd function, initializes index values */
     /* no: index_update() function since we can't iterate over loops */
     /* no: sort() function since we can't iterate over loops */
@@ -3742,7 +3745,7 @@ void BPy_BM_init_types(void)
 /* bmesh.types submodule
  * ********************* */
 
-static struct PyModuleDef BPy_BM_types_module_def = {
+static PyModuleDef BPy_BM_types_module_def = {
     PyModuleDef_HEAD_INIT,
     /*m_name*/ "bmesh.types",
     /*m_doc*/ NULL,
@@ -4253,22 +4256,24 @@ int BPy_BMElem_CheckHType(PyTypeObject *type, const char htype)
 char *BPy_BMElem_StringFromHType_ex(const char htype, char ret[32])
 {
   /* zero to ensure string is always NULL terminated */
-  char *ret_ptr = ret;
+  const char *ret_array[4];
+  int i = 0;
   if (htype & BM_VERT) {
-    ret_ptr += BLI_sprintf(ret_ptr, "/%s", BPy_BMVert_Type.tp_name);
+    ret_array[i++] = BPy_BMVert_Type.tp_name;
   }
   if (htype & BM_EDGE) {
-    ret_ptr += BLI_sprintf(ret_ptr, "/%s", BPy_BMEdge_Type.tp_name);
+    ret_array[i++] = BPy_BMEdge_Type.tp_name;
   }
   if (htype & BM_FACE) {
-    ret_ptr += BLI_sprintf(ret_ptr, "/%s", BPy_BMFace_Type.tp_name);
+    ret_array[i++] = BPy_BMFace_Type.tp_name;
   }
   if (htype & BM_LOOP) {
-    ret_ptr += BLI_sprintf(ret_ptr, "/%s", BPy_BMLoop_Type.tp_name);
+    ret_array[i++] = BPy_BMLoop_Type.tp_name;
   }
   ret[0] = '(';
-  *ret_ptr++ = ')';
-  *ret_ptr = '\0';
+  int ret_ofs = BLI_string_join_array_by_sep_char(ret + 1, 30, '/', ret_array, i) + 1;
+  ret[ret_ofs] = ')';
+  ret[ret_ofs + 1] = '\0';
   return ret;
 }
 char *BPy_BMElem_StringFromHType(const char htype)

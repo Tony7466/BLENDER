@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -15,7 +16,7 @@
 
 #include "BKE_context.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "sculpt_intern.hh"
 
@@ -182,7 +183,6 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
 {
   SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
   SculptSession *ss = data->ob->sculpt;
-  Sculpt *sd = data->sd;
   const Brush *brush = data->brush;
 
   PBVHVertexIter vd;
@@ -267,7 +267,6 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
 {
   SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
   SculptSession *ss = data->ob->sculpt;
-  Sculpt *sd = data->sd;
   const Brush *brush = data->brush;
   const bool smooth_mask = data->smooth_mask;
   float bstrength = data->strength;
@@ -331,7 +330,6 @@ void SCULPT_smooth(
 
   const int max_iterations = 4;
   const float fract = 1.0f / max_iterations;
-  PBVHType type = BKE_pbvh_type(ss->pbvh);
   int iteration, count;
   float last;
 
@@ -339,11 +337,6 @@ void SCULPT_smooth(
 
   count = int(bstrength * max_iterations);
   last = max_iterations * (bstrength - count * fract);
-
-  if (type == PBVH_FACES && !ss->pmap) {
-    BLI_assert_msg(0, "sculpt smooth: pmap missing");
-    return;
-  }
 
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);

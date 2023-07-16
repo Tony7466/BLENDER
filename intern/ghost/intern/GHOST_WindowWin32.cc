@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -23,6 +24,9 @@
 
 #include <assert.h>
 #include <math.h>
+#include <propkey.h>
+#include <propvarutil.h>
+#include <shellapi.h>
 #include <shellscalingapi.h>
 #include <string.h>
 #include <windowsx.h>
@@ -113,6 +117,8 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   if (m_hWnd == NULL) {
     return;
   }
+
+  registerWindowAppUserModelProperties();
 
   /*  Store the device context. */
   m_hDC = ::GetDC(m_hWnd);
@@ -248,6 +254,10 @@ GHOST_TTrackpadInfo GHOST_WindowWin32::getTrackpadInfo()
 
 GHOST_WindowWin32::~GHOST_WindowWin32()
 {
+  if (m_hWnd) {
+    unregisterWindowAppUserModelProperties();
+  }
+
   if (m_Bar) {
     m_Bar->SetProgressState(m_hWnd, TBPF_NOPROGRESS);
     m_Bar->Release();
@@ -585,11 +595,7 @@ GHOST_Context *GHOST_WindowWin32::newDrawingContext(GHOST_TDrawingContextType ty
   if (type == GHOST_kDrawingContextTypeOpenGL) {
     GHOST_Context *context;
 
-    /* - AMD and Intel give us exactly this version
-     * - NVIDIA gives at least this version <-- desired behavior
-     * So we ask for 4.5, 4.4 ... 3.3 in descending order
-     * to get the best version on the user's system. */
-    for (int minor = 5; minor >= 0; --minor) {
+    for (int minor = 6; minor >= 3; --minor) {
       context = new GHOST_ContextWGL(m_wantStereoVisual,
                                      m_wantAlphaBackground,
                                      m_hWnd,
@@ -605,23 +611,9 @@ GHOST_Context *GHOST_WindowWin32::newDrawingContext(GHOST_TDrawingContextType ty
       }
       else {
         delete context;
+        context = nullptr;
       }
     }
-    context = new GHOST_ContextWGL(m_wantStereoVisual,
-                                   m_wantAlphaBackground,
-                                   m_hWnd,
-                                   m_hDC,
-                                   WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                   3,
-                                   3,
-                                   (m_debug_context ? WGL_CONTEXT_DEBUG_BIT_ARB : 0),
-                                   GHOST_OPENGL_WGL_RESET_NOTIFICATION_STRATEGY);
-
-    if (context && !context->initializeDrawingContext()) {
-      delete context;
-      context = nullptr;
-    }
-
     return context;
   }
   else if (type == GHOST_kDrawingContextTypeD3D) {
@@ -1192,3 +1184,55 @@ void GHOST_WindowWin32::endIME()
   m_imeInput.EndIME(m_hWnd);
 }
 #endif /* WITH_INPUT_IME */
+
+void GHOST_WindowWin32::registerWindowAppUserModelProperties()
+{
+  IPropertyStore *pstore;
+  char blender_path[MAX_PATH];
+  wchar_t shell_command[MAX_PATH];
+
+  /* Find the current executable, and see if it's blender.exe if not bail out. */
+  GetModuleFileName(0, blender_path, sizeof(blender_path));
+  char *blender_app = strstr(blender_path, "blender.exe");
+  if (!blender_app) {
+    return;
+  }
+
+  HRESULT hr = SHGetPropertyStoreForWindow(m_hWnd, IID_PPV_ARGS(&pstore));
+  if (!SUCCEEDED(hr)) {
+    return;
+  }
+
+  /* Set the launcher as the shell command so the console window will not flash.
+   * when people pin blender to the taskbar. */
+  strcpy(blender_app, "blender-launcher.exe");
+  wsprintfW(shell_command, L"\"%S\"", blender_path);
+  UTF16_ENCODE(BLENDER_WIN_APPID);
+  UTF16_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
+  PROPVARIANT propvar;
+  hr = InitPropVariantFromString(BLENDER_WIN_APPID_16, &propvar);
+  hr = pstore->SetValue(PKEY_AppUserModel_ID, propvar);
+  hr = InitPropVariantFromString(shell_command, &propvar);
+  hr = pstore->SetValue(PKEY_AppUserModel_RelaunchCommand, propvar);
+  hr = InitPropVariantFromString(BLENDER_WIN_APPID_FRIENDLY_NAME_16, &propvar);
+  hr = pstore->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, propvar);
+  pstore->Release();
+  UTF16_UN_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);
+  UTF16_UN_ENCODE(BLENDER_WIN_APPID);
+}
+
+/* as per MSDN: Any property not cleared before closing the window, will be leaked and NOT be
+ * returned to the OS. */
+void GHOST_WindowWin32::unregisterWindowAppUserModelProperties()
+{
+  IPropertyStore *pstore;
+  HRESULT hr = SHGetPropertyStoreForWindow(m_hWnd, IID_PPV_ARGS(&pstore));
+  if (SUCCEEDED(hr)) {
+    PROPVARIANT value;
+    PropVariantInit(&value);
+    pstore->SetValue(PKEY_AppUserModel_ID, value);
+    pstore->SetValue(PKEY_AppUserModel_RelaunchCommand, value);
+    pstore->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, value);
+    pstore->Release();
+  }
+}

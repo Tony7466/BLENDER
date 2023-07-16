@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -47,8 +49,8 @@ static char IncreasingColorShader___doc__[] =
     "\n"
     ".. method:: shade(stroke)\n"
     "\n"
-    "   Assigns a varying color to the stroke.  The user specifies two\n"
-    "   colors A and B.  The stroke color will change linearly from A to B\n"
+    "   Assigns a varying color to the stroke. The user specifies two\n"
+    "   colors A and B. The stroke color will change linearly from A to B\n"
     "   between the first and the last vertex.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"

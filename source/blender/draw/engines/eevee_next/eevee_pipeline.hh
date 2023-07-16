@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -23,23 +23,51 @@ namespace blender::eevee {
 class Instance;
 
 /* -------------------------------------------------------------------- */
-/** \name World Pipeline
+/** \name World Background Pipeline
  *
- * Render world values.
+ * Render world background values.
  * \{ */
 
-class WorldPipeline {
+class BackgroundPipeline {
  private:
   Instance &inst_;
 
   PassSimple world_ps_ = {"World.Background"};
 
  public:
+  BackgroundPipeline(Instance &inst) : inst_(inst){};
+
+  void sync(GPUMaterial *gpumat, float background_opacity);
+  void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name World Probe Pipeline
+ *
+ * Renders a single side for the world reflection probe.
+ * \{ */
+
+class WorldPipeline {
+ private:
+  Instance &inst_;
+
+  /* Dummy textures: required to reuse background shader and avoid another shader variation. */
+  Texture dummy_renderpass_tx_;
+  Texture dummy_cryptomatte_tx_;
+  Texture dummy_aov_color_tx_;
+  Texture dummy_aov_value_tx_;
+
+  PassSimple cubemap_face_ps_ = {"World.Probe"};
+
+ public:
   WorldPipeline(Instance &inst) : inst_(inst){};
 
   void sync(GPUMaterial *gpumat);
   void render(View &view);
-};
+
+};  // namespace blender::eevee
 
 /** \} */
 
@@ -134,7 +162,7 @@ class DeferredLayer {
   PassSimple eval_light_ps_ = {"EvalLights"};
 
   /* Closures bits from the materials in this pass. */
-  eClosureBits closure_bits_;
+  eClosureBits closure_bits_ = CLOSURE_NONE;
 
   /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
@@ -178,6 +206,80 @@ class DeferredPipeline {
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
   void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Deferred Probe Capture.
+ * \{ */
+class DeferredProbeLayer {
+ private:
+  Instance &inst_;
+
+  PassMain prepass_ps_ = {"Prepass"};
+  PassMain::Sub *prepass_single_sided_ps_ = nullptr;
+  PassMain::Sub *prepass_double_sided_ps_ = nullptr;
+
+  PassMain gbuffer_ps_ = {"Shading"};
+  PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
+  PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
+
+  PassSimple eval_light_ps_ = {"EvalLights"};
+
+  /* Closures bits from the materials in this pass. */
+  eClosureBits closure_bits_;
+
+  Texture dummy_light_tx_ = {"dummy_light_accum_tx"};
+
+ public:
+  DeferredProbeLayer(Instance &inst) : inst_(inst){};
+
+  void begin_sync();
+  void end_sync();
+
+  PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat);
+  PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+class DeferredProbePipeline {
+ private:
+  DeferredProbeLayer opaque_layer_;
+
+ public:
+  DeferredProbePipeline(Instance &inst) : opaque_layer_(inst){};
+
+  void begin_sync();
+  void end_sync();
+
+  PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
+  PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture Pipeline
+ *
+ * \{ */
+
+class CapturePipeline {
+ private:
+  Instance &inst_;
+
+  PassMain surface_ps_ = {"Capture.Surface"};
+
+ public:
+  CapturePipeline(Instance &inst) : inst_(inst){};
+
+  PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
+
+  void sync();
+  void render(View &view);
 };
 
 /** \} */
@@ -265,33 +367,58 @@ class UtilityTexture : public Texture {
 
 class PipelineModule {
  public:
+  BackgroundPipeline background;
   WorldPipeline world;
+  DeferredProbePipeline probe;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
+  CapturePipeline capture;
 
   UtilityTexture utility_tx;
 
  public:
-  PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
+  PipelineModule(Instance &inst)
+      : background(inst),
+        world(inst),
+        probe(inst),
+        deferred(inst),
+        forward(inst),
+        shadow(inst),
+        capture(inst){};
 
   void begin_sync()
   {
+    probe.begin_sync();
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
+    capture.sync();
   }
 
   void end_sync()
   {
+    probe.end_sync();
     deferred.end_sync();
   }
 
   PassMain::Sub *material_add(Object *ob,
                               ::Material *blender_mat,
                               GPUMaterial *gpumat,
-                              eMaterialPipeline pipeline_type)
+                              eMaterialPipeline pipeline_type,
+                              bool probe_capture)
   {
+    if (probe_capture) {
+      switch (pipeline_type) {
+        case MAT_PIPE_DEFERRED_PREPASS:
+          return probe.prepass_add(blender_mat, gpumat);
+        case MAT_PIPE_DEFERRED:
+          return probe.material_add(blender_mat, gpumat);
+        default:
+          break;
+      }
+    }
+
     switch (pipeline_type) {
       case MAT_PIPE_DEFERRED_PREPASS:
         return deferred.prepass_add(blender_mat, gpumat, false);
@@ -322,6 +449,8 @@ class PipelineModule {
         return nullptr;
       case MAT_PIPE_SHADOW:
         return shadow.surface_material_add(gpumat);
+      case MAT_PIPE_CAPTURE:
+        return capture.surface_material_add(gpumat);
     }
     return nullptr;
   }

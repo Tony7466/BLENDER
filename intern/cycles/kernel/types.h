@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -48,6 +49,9 @@ CCL_NAMESPACE_BEGIN
 #define PASS_UNUSED (~0)
 #define LIGHTGROUP_NONE (~0)
 
+#define LIGHT_LINK_SET_MAX 64
+#define LIGHT_LINK_MASK_ALL (~uint64_t(0))
+
 #define INTEGRATOR_SHADOW_ISECT_SIZE_CPU 1024U
 #define INTEGRATOR_SHADOW_ISECT_SIZE_GPU 4U
 
@@ -64,6 +68,8 @@ CCL_NAMESPACE_BEGIN
 #define __DENOISING_FEATURES__
 #define __DPDU__
 #define __HAIR__
+#define __LIGHT_LINKING__
+#define __SHADOW_LINKING__
 #define __LIGHT_TREE__
 #define __OBJECT_MOTION__
 #define __PASSES__
@@ -78,11 +84,6 @@ CCL_NAMESPACE_BEGIN
 #define __TRANSPARENT_SHADOWS__
 #define __VISIBILITY_FLAG__
 #define __VOLUME__
-
-/* TODO: solve internal compiler perf issue and enable light tree on Metal/AMD. */
-#if defined(__KERNEL_METAL_AMD__)
-#  undef __LIGHT_TREE__
-#endif
 
 /* Device specific features */
 #ifdef WITH_OSL
@@ -103,6 +104,13 @@ CCL_NAMESPACE_BEGIN
  * in spill buffer allocation sizing. */
 #if !defined(__KERNEL_METAL__) || (__KERNEL_METAL_MACOS__ >= 13)
 #  define __MNEE__
+#endif
+
+#if defined(__KERNEL_METAL_AMD__)
+/* Disabled due to internal compiler perf issue and enable light tree on Metal/AMD. */
+#  undef __LIGHT_TREE__
+/* Disabled due to compiler crash on Metal/AMD. */
+#  undef __MNEE__
 #endif
 
 /* Scene-based selective features compilation. */
@@ -313,6 +321,8 @@ enum PathRayFlag : uint32_t {
 
 // 8bit enum, just in case we need to move more variables in it
 enum PathRayMNEE {
+  PATH_MNEE_NONE = 0,
+
   PATH_MNEE_VALID = (1U << 0U),
   PATH_MNEE_RECEIVER_ANCESTOR = (1U << 1U),
   PATH_MNEE_CULL_LIGHT_CONNECTION = (1U << 2U),
@@ -579,6 +589,7 @@ typedef struct RaySelfPrimitives {
   int object;       /* Instance prim is a part of */
   int light_prim;   /* Light primitive */
   int light_object; /* Light object */
+  int light;        /* Light ID (the light the shadow ray is traced towards to) */
 } RaySelfPrimitives;
 
 typedef struct Ray {
@@ -1216,7 +1227,13 @@ typedef enum KernelBVHLayout {
 
 typedef struct KernelTables {
   int filter_table_offset;
-  int pad1, pad2, pad3;
+  int ggx_E;
+  int ggx_Eavg;
+  int ggx_glass_E;
+  int ggx_glass_Eavg;
+  int ggx_glass_inv_E;
+  int ggx_glass_inv_Eavg;
+  int pad1;
 } KernelTables;
 static_assert_align(KernelTables, 16);
 
@@ -1227,6 +1244,10 @@ typedef struct KernelBake {
   int use_camera;
 } KernelBake;
 static_assert_align(KernelBake, 16);
+
+typedef struct KernelLightLinkSet {
+  uint light_tree_root;
+} KernelLightLinkSet;
 
 typedef struct KernelData {
   /* Features and limits. */
@@ -1239,6 +1260,7 @@ typedef struct KernelData {
   KernelCamera cam;
   KernelBake bake;
   KernelTables tables;
+  KernelLightLinkSet light_link_sets[LIGHT_LINK_SET_MAX];
 
   /* Potentially specialized data members. */
 #define KERNEL_STRUCT_BEGIN(name, parent) name parent;
@@ -1304,6 +1326,12 @@ typedef struct KernelObject {
 
   /* Volume velocity scale. */
   float velocity_scale;
+
+  /* TODO: separate array to avoid memory overhead when not used. */
+  uint64_t light_set_membership;
+  uint receiver_light_set;
+  uint64_t shadow_set_membership;
+  uint blocker_shadow_set;
 } KernelObject;
 static_assert_align(KernelObject, 16);
 
@@ -1322,14 +1350,16 @@ typedef struct KernelCurveSegment {
 static_assert_align(KernelCurveSegment, 8);
 
 typedef struct KernelSpotLight {
-  packed_float3 axis_u;
+  packed_float3 scaled_axis_u;
   float radius;
-  packed_float3 axis_v;
-  float invarea;
+  packed_float3 scaled_axis_v;
+  float eval_fac;
   packed_float3 dir;
   float cos_half_spot_angle;
-  packed_float3 len;
+  float half_cot_half_spot_angle;
+  float inv_len_z;
   float spot_smooth;
+  float pad;
 } KernelSpotLight;
 
 /* PointLight is SpotLight with only radius and invarea being used. */
@@ -1347,10 +1377,12 @@ typedef struct KernelAreaLight {
 } KernelAreaLight;
 
 typedef struct KernelDistantLight {
-  float radius;
-  float cosangle;
-  float invarea;
-  float pad;
+  float angle;
+  float one_minus_cosangle;
+  float half_inv_sin_half_angle;
+  float pdf;
+  float eval_fac;
+  float pad[3];
 } KernelDistantLight;
 
 typedef struct KernelLight {
@@ -1369,6 +1401,8 @@ typedef struct KernelLight {
     KernelAreaLight area;
     KernelDistantLight distant;
   };
+  uint64_t light_set_membership;
+  uint64_t shadow_set_membership;
 } KernelLight;
 static_assert_align(KernelLight, 16);
 
@@ -1423,7 +1457,9 @@ typedef struct KernelLightTreeNode {
       int first_emitter; /* The index of the first emitter. */
     } leaf;
     struct {
-      int right_child; /* The index of the right child. */
+      /* Indices of the children. */
+      int left_child;
+      int right_child;
     } inner;
     struct {
       int reference; /* A reference to the node with the subtree. */
@@ -1432,6 +1468,12 @@ typedef struct KernelLightTreeNode {
 
   /* Bit trail. */
   uint bit_trail;
+
+  /* Bits to skip in the bit trail, to skip nodes in for specialized trees. */
+  uint8_t bit_skip;
+
+  /* Padding. */
+  uint8_t pad[11];
 } KernelLightTreeNode;
 static_assert_align(KernelLightTreeNode, 16);
 
@@ -1554,6 +1596,7 @@ typedef enum DeviceKernel : int {
   DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,
   DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE,
   DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK,
+  DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT,
   DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND,
   DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT,
   DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,
@@ -1561,6 +1604,7 @@ typedef enum DeviceKernel : int {
   DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE,
   DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,
   DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,
+  DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT,
   DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL,
 
   DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY,
@@ -1662,7 +1706,7 @@ enum KernelFeatureFlag : uint32_t {
   KERNEL_FEATURE_TRANSPARENT = (1U << 19U),
 
   /* Use shadow catcher. */
-  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 29U),
+  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 20U),
 
   /* Light render passes. */
   KERNEL_FEATURE_LIGHT_PASSES = (1U << 21U),
@@ -1680,6 +1724,10 @@ enum KernelFeatureFlag : uint32_t {
 
   /* OSL. */
   KERNEL_FEATURE_OSL = (1U << 26U),
+
+  /* Light and shadow linking. */
+  KERNEL_FEATURE_LIGHT_LINKING = (1U << 27U),
+  KERNEL_FEATURE_SHADOW_LINKING = (1U << 28U),
 };
 
 /* Shader node feature mask, to specialize shader evaluation for kernels. */
@@ -1690,9 +1738,9 @@ enum KernelFeatureFlag : uint32_t {
 #define KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND \
   (KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT | KERNEL_FEATURE_NODE_AOV)
 #define KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW \
-  (KERNEL_FEATURE_NODE_BSDF | KERNEL_FEATURE_NODE_EMISSION | KERNEL_FEATURE_NODE_VOLUME | \
-   KERNEL_FEATURE_NODE_BUMP | KERNEL_FEATURE_NODE_BUMP_STATE | \
-   KERNEL_FEATURE_NODE_VORONOI_EXTRA | KERNEL_FEATURE_NODE_LIGHT_PATH)
+  (KERNEL_FEATURE_NODE_BSDF | KERNEL_FEATURE_NODE_EMISSION | KERNEL_FEATURE_NODE_BUMP | \
+   KERNEL_FEATURE_NODE_BUMP_STATE | KERNEL_FEATURE_NODE_VORONOI_EXTRA | \
+   KERNEL_FEATURE_NODE_LIGHT_PATH)
 #define KERNEL_FEATURE_NODE_MASK_SURFACE \
   (KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW | KERNEL_FEATURE_NODE_RAYTRACE | \
    KERNEL_FEATURE_NODE_AOV | KERNEL_FEATURE_NODE_LIGHT_PATH)

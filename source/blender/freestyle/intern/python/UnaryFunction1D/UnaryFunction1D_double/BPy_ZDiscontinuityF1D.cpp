@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -35,7 +37,7 @@ static char ZDiscontinuityF1D___doc__[] =
     ".. method:: __call__(inter)\n"
     "\n"
     "   Returns a real value giving the distance between an Interface1D\n"
-    "   and the shape that lies behind (occludee).  This distance is\n"
+    "   and the shape that lies behind (occludee). This distance is\n"
     "   evaluated in the camera space and normalized between 0 and 1.\n"
     "   Therefore, if no object is occluded by the shape to which the\n"
     "   Interface1D belongs to, 1 is returned.\n"

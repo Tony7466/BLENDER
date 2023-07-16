@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -7,6 +9,8 @@
 #include "interface_intern.hh"
 
 #include "UI_abstract_view.hh"
+
+using namespace blender;
 
 namespace blender::ui {
 
@@ -62,7 +66,7 @@ void AbstractView::update_from_old(uiBlock &new_block)
 /** \name Default implementations of virtual functions
  * \{ */
 
-std::unique_ptr<AbstractViewDropTarget> AbstractView::create_drop_target()
+std::unique_ptr<DropTargetInterface> AbstractView::create_drop_target()
 {
   /* There's no drop target (and hence no drop support) by default. */
   return nullptr;
@@ -72,6 +76,16 @@ bool AbstractView::listen(const wmNotifier & /*notifier*/) const
 {
   /* Nothing by default. */
   return false;
+}
+
+bool AbstractView::begin_filtering(const bContext & /*C*/) const
+{
+  return false;
+}
+
+void AbstractView::draw_overlays(const ARegion & /*region*/) const
+{
+  /* Nothing by default. */
 }
 
 /** \} */
@@ -117,9 +131,13 @@ std::optional<rcti> AbstractView::get_bounds() const
 
 /** \} */
 
+}  // namespace blender::ui
+
 /* ---------------------------------------------------------------------- */
 /** \name General API functions
  * \{ */
+
+namespace blender::ui {
 
 std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle)
 {
@@ -127,6 +145,12 @@ std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle)
   return view.create_drop_target();
 }
 
-/** \} */
-
 }  // namespace blender::ui
+
+bool UI_view_begin_filtering(const bContext *C, const uiViewHandle *view_handle)
+{
+  const ui::AbstractView &view = reinterpret_cast<const ui::AbstractView &>(*view_handle);
+  return view.begin_filtering(*C);
+}
+
+/** \} */

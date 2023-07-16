@@ -1,25 +1,24 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation
 
 
 set(INC
   .
   intern
-  ../blenkernel
-  ../blenlib
   ../blentranslation
+  ../compositor/realtime_compositor
+  ../compositor/realtime_compositor/cached_resources
   ../depsgraph
   ../draw
   ../gpu
+  ../gpu/intern
   ../imbuf
-  ../makesdna
   ../makesrna
   ../nodes
   ../sequencer
   ../simulation
   ../windowmanager
-  ../../../intern/atomic
-  ../../../intern/guardedalloc
   ../../../intern/mikktspace
   ../../../intern/mantaflow/extern
 )
@@ -29,6 +28,7 @@ set(INC_SYS
 
 set(SRC
   intern/bake.cc
+  intern/compositor.cc
   intern/engine.cc
   intern/initrender.cc
   intern/multires_bake.cc
@@ -41,6 +41,7 @@ set(SRC
   intern/zbuf.c
 
   RE_bake.h
+  RE_compositor.hh
   RE_engine.h
   RE_multires_bake.h
   RE_pipeline.h
@@ -55,6 +56,12 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  bf_realtime_compositor
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_PYTHON)

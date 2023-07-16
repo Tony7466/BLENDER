@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -950,7 +951,7 @@ static bool bake_targets_output_external(const BakeAPIRender *bkr,
     }
 
     if (bk_image->tile_number) {
-      char tmp[FILE_MAX];
+      char tmp[12];
       SNPRINTF(tmp, "%d", bk_image->tile_number);
       BLI_path_suffix(filepath, FILE_MAX, tmp, "_");
     }
@@ -1181,8 +1182,8 @@ static bool bake_targets_output_vertex_colors(BakeTargets *targets, Object *ob)
 {
   Mesh *me = static_cast<Mesh *>(ob->data);
   BMEditMesh *em = me->edit_mesh;
-  CustomDataLayer *active_color_layer = BKE_id_attributes_color_find(&me->id,
-                                                                     me->active_color_attribute);
+  const CustomDataLayer *active_color_layer = BKE_id_attributes_color_find(
+      &me->id, me->active_color_attribute);
   BLI_assert(active_color_layer != nullptr);
   const eAttrDomain domain = BKE_id_attribute_domain(&me->id, active_color_layer);
 

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Global settings used by all scripts in this dir.
@@ -428,6 +430,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "normal",
     "on {:%Y-%m-%d}",
     "or AMD with macOS %s or newer",
+    "parent",
     "performance impact!",
     "positions", "no positions",
     "read",
@@ -444,7 +447,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "unable to load text",
     "unable to open the file",
     "unknown error reading file",
-    "unknown error stating file",
+    "unknown error statting file",
     "unknown error writing file",
     "unselected",
     "unsupported font format",

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -16,7 +17,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 
@@ -368,10 +369,10 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
       const float(*vert_normals)[3] = nullptr;
       const float(*poly_normals)[3] = nullptr;
 
-      if (mr->edit_data && mr->edit_data->vertexCos) {
-        vert_coords = mr->bm_vert_coords;
-        vert_normals = mr->bm_vert_normals;
-        poly_normals = mr->bm_poly_normals;
+      if (mr->edit_data && !mr->edit_data->vertexCos.is_empty()) {
+        vert_coords = reinterpret_cast<const float(*)[3]>(mr->bm_vert_coords.data());
+        vert_normals = reinterpret_cast<const float(*)[3]>(mr->bm_vert_normals.data());
+        poly_normals = reinterpret_cast<const float(*)[3]>(mr->bm_poly_normals.data());
       }
 
       mr->loop_normals.reinitialize(mr->loop_len);
@@ -430,8 +431,8 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->hide_unmapped_edges = !do_final || editmesh_eval_final == editmesh_eval_cage;
 
     if (mr->edit_data) {
-      EditMeshData *emd = mr->edit_data;
-      if (emd->vertexCos) {
+      blender::bke::EditMeshData *emd = mr->edit_data;
+      if (!emd->vertexCos.is_empty()) {
         BKE_editmesh_cache_ensure_vert_normals(mr->edit_bmesh, emd);
         BKE_editmesh_cache_ensure_poly_normals(mr->edit_bmesh, emd);
       }
@@ -452,8 +453,10 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->eed_act = BM_mesh_active_edge_get(mr->bm);
     mr->eve_act = BM_mesh_active_vert_get(mr->bm);
 
-    mr->vert_crease_ofs = CustomData_get_offset(&mr->bm->vdata, CD_CREASE);
-    mr->edge_crease_ofs = CustomData_get_offset(&mr->bm->edata, CD_CREASE);
+    mr->vert_crease_ofs = CustomData_get_offset_named(
+        &mr->bm->vdata, CD_PROP_FLOAT, "crease_vert");
+    mr->edge_crease_ofs = CustomData_get_offset_named(
+        &mr->bm->edata, CD_PROP_FLOAT, "crease_edge");
     mr->bweight_ofs = CustomData_get_offset_named(
         &mr->bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");
 #ifdef WITH_FREESTYLE

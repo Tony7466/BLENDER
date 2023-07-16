@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -119,7 +120,7 @@ enum class OperationCode {
   /* Bone. ---------------------------------------------------------------- */
   /* Bone local transforms - entry point */
   BONE_LOCAL,
-  /* Pose-space conversion (includes parent + restpose, */
+  /* Pose-space conversion (includes parent + rest-pose. */
   BONE_POSE_PARENT,
   /* Constraints */
   BONE_CONSTRAINTS,
@@ -166,6 +167,9 @@ enum class OperationCode {
   LIGHT_UPDATE,
   WORLD_UPDATE,
 
+  /* Light linking. ------------------------------------------------------- */
+  LIGHT_LINKING_UPDATE,
+
   /* Node Tree. ----------------------------------------------------------- */
   NTREE_OUTPUT,
   NTREE_GEOMETRY_PREPROCESS,
@@ -195,9 +199,6 @@ enum class OperationCode {
 
   /* Duplication/instancing system. --------------------------------------- */
   DUPLI,
-
-  /* Simulation. ---------------------------------------------------------- */
-  SIMULATION_EVAL,
 };
 const char *operationCodeAsString(OperationCode opcode);
 

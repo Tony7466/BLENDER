@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -38,7 +39,7 @@
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.h"
 
 #include "GPU_batch.h"
@@ -344,8 +345,7 @@ struct PBVHBatches {
         flat = sharp_faces && sharp_faces[poly_i];
         if (flat) {
           const float3 fno = blender::bke::mesh::poly_normal_calc(
-              {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
-              args->corner_verts.slice(args->polys[poly_i]));
+              args->vert_positions, args->corner_verts.slice(args->polys[poly_i]));
           normal_float_to_short_v3(no, fno);
         }
       }
@@ -1371,12 +1371,12 @@ GPUBatch *DRW_pbvh_lines_get(PBVHBatches *batches,
   return batch.lines;
 }
 
-void DRW_pbvh_update_pre(struct PBVHBatches *batches, struct PBVH_GPU_Args *args)
+void DRW_pbvh_update_pre(PBVHBatches *batches, PBVH_GPU_Args *args)
 {
   batches->update_pre(args);
 }
 
-int drw_pbvh_material_index_get(struct PBVHBatches *batches)
+int drw_pbvh_material_index_get(PBVHBatches *batches)
 {
   return batches->material_index;
 }

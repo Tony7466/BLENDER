@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -60,7 +61,7 @@ void UI_draw_roundbox_corner_set(int type)
 }
 
 #if 0 /* unused */
-int UI_draw_roundbox_corner_get(void)
+int UI_draw_roundbox_corner_get()
 {
   return roundboxtype;
 }
@@ -2073,7 +2074,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
     GPU_scissor(rect.xmin, rect.ymin, scissor[2], scissor[3]);
 
     if (width > 0 && height > 0) {
-      ImBuf *drawibuf = scopes->track_preview;
+      const ImBuf *drawibuf = scopes->track_preview;
       float col_sel[4], col_outline[4];
 
       if (scopes->use_track_mask) {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -134,7 +135,7 @@ typedef struct tGPsdata {
   Main *bmain;
   /** current scene from context. */
   Scene *scene;
-  struct Depsgraph *depsgraph;
+  Depsgraph *depsgraph;
 
   /** Current object. */
   Object *ob;
@@ -1911,7 +1912,8 @@ static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
     if (brush->gpencil_settings == NULL) {
       continue;
     }
-    if ((brush->ob_mode == OB_MODE_PAINT_GPENCIL) && (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
+    if ((brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
       /* save first eraser to use later if no default */
       if (brush_dft == NULL) {
         brush_dft = brush;
@@ -1929,7 +1931,7 @@ static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
   }
   /* create a new soft eraser brush */
 
-  brush_dft = BKE_brush_add_gpencil(bmain, ts, "Soft Eraser", OB_MODE_PAINT_GPENCIL);
+  brush_dft = BKE_brush_add_gpencil(bmain, ts, "Soft Eraser", OB_MODE_PAINT_GPENCIL_LEGACY);
   brush_dft->size = 30.0f;
   brush_dft->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
   brush_dft->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_SOFT;
@@ -3334,7 +3336,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     p->gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
     /* set workspace mode */
     ob->restore_mode = ob->mode;
-    ob->mode = OB_MODE_PAINT_GPENCIL;
+    ob->mode = OB_MODE_PAINT_GPENCIL_LEGACY;
     /* redraw mode on screen */
     WM_event_add_notifier(C, NC_SCENE | ND_MODE, NULL);
   }

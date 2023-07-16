@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup EEVEE
@@ -44,6 +45,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
+
+#include "IMB_imbuf_types.h"
 
 #include "eevee_private.h"
 
@@ -290,13 +293,12 @@ void EEVEE_cryptomatte_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *s
 
   if ((cryptomatte_layers & VIEW_LAYER_CRYPTOMATTE_MATERIAL) != 0) {
     const int materials_len = DRW_cache_object_material_count_get(ob);
-    struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
+    GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
     memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
-    struct GPUBatch **geoms = DRW_cache_object_surface_material_get(
-        ob, gpumat_array, materials_len);
+    GPUBatch **geoms = DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
     if (geoms) {
       for (int i = 0; i < materials_len; i++) {
-        struct GPUBatch *geom = geoms[i];
+        GPUBatch *geom = geoms[i];
         if (geom == NULL) {
           continue;
         }
@@ -582,7 +584,7 @@ static void eevee_cryptomatte_extract_render_passes(
     const int pass_offset = pass * 2;
     SNPRINTF_RLEN(cryptomatte_pass_name, render_pass_name_format, pass);
     RenderPass *rp_object = RE_pass_find_by_name(rl, cryptomatte_pass_name, viewname);
-    float *rp_buffer_data = rp_object->buffer.data;
+    float *rp_buffer_data = rp_object->ibuf->float_buffer.data;
     for (int y = 0; y < rect_height; y++) {
       for (int x = 0; x < rect_width; x++) {
         const int accum_buffer_offset = (rect_offset_x + x +

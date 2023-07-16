@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -142,9 +143,9 @@ struct DerivedMesh {
   DMFlagMat *(*getGridFlagMats)(DerivedMesh *dm);
   unsigned int **(*getGridHidden)(DerivedMesh *dm);
 
-  /** Direct Access Operations
+  /* Direct Access Operations
    * - Can be undefined
-   * - Must be defined for modifiers that only deform however */
+   * - Must be defined for modifiers that only deform however. */
 
   /** Release reference to the DerivedMesh. This function decides internally
    * if the DerivedMesh will be freed, or cached for later use. */
@@ -245,7 +246,6 @@ struct Mesh *editbmesh_get_eval_cage_from_orig(struct Depsgraph *depsgraph,
                                                struct Object *obedit,
                                                const struct CustomData_MeshMasks *dataMask);
 
-float (*editbmesh_vert_coords_alloc(struct BMEditMesh *em, int *r_vert_len))[3];
 bool editbmesh_modifier_is_enabled(const struct Scene *scene,
                                    const struct Object *ob,
                                    struct ModifierData *md,

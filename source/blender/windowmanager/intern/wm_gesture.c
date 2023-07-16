@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -45,7 +46,7 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
   gesture->event_modifier = event->modifier;
   gesture->event_keymodifier = event->keymodifier;
   gesture->winrct = region->winrct;
-  gesture->user_data.use_free = true; /* Free if userdata is set. */
+  gesture->user_data.use_free = true; /* Free if user-data is set. */
   gesture->modal_state = GESTURE_MODAL_NOP;
   gesture->move = false;
 
@@ -436,7 +437,7 @@ void wm_gesture_draw(wmWindow *win)
 
   GPU_line_width(1.0f);
   for (; gt; gt = gt->next) {
-    /* all in subwindow space */
+    /* All in sub-window space. */
     wmViewport(&gt->winrct);
 
     if (gt->type == WM_GESTURE_RECT) {

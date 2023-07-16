@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_function_util.hh"
 
@@ -79,7 +81,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes::node_fn_combine_color_cc
 
-void register_node_type_fn_combine_color(void)
+void register_node_type_fn_combine_color()
 {
   namespace file_ns = blender::nodes::node_fn_combine_color_cc;
 
