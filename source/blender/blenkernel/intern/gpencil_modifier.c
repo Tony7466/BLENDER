@@ -1095,25 +1095,31 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
     else if (md->type == eGpencilModifierType_SurDeform) 
     {
       SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
-      
+      SDefGPLayer *first_layer;
+      SDefGPFrame *first_frame;
+      SDefGPStroke *first_stroke;
 
       BLO_read_data_address(reader, &smd->layers);
       if (smd->layers != NULL)
-      {  
+      {
+        first_layer = smd->layers;
         for (int l = 0; l < smd->num_of_layers; l++) 
         {
+          smd->layers[l].first = first_layer;
           BLO_read_data_address(reader, &(smd->layers[l].frames));
           if (smd->layers[l].frames != NULL)
           {
-            
+            first_frame = smd->layers[l].frames;
             for (int f = 0; f < smd->layers[l].num_of_frames; f++)
-            { 
+            {
+              smd->layers[l].frames[f].first = first_frame;
               BLO_read_data_address(reader, &(smd->layers[l].frames[f].strokes));
               if (smd->layers[l].frames[f].strokes != NULL) 
               {
-                
+                first_stroke = smd->layers[l].frames[f].strokes;
                 for (int k = 0; k < smd->layers[l].frames[f].strokes_num; k++) 
                 {
+                  smd->layers[l].frames[f].strokes[k].first = first_stroke;
                   BLO_read_data_address(reader, &smd->layers[l].frames[f].strokes[k].verts);
                   SDefGPVert *bind_verts = smd->layers[l].frames[f].strokes[k].verts;
                   if (smd->layers[l].frames[f].strokes[k].verts != NULL) 

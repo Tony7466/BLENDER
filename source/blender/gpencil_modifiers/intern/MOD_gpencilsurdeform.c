@@ -286,7 +286,7 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
   bGPdata *gpd = ob_orig->data;
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   bGPDlayer *blender_layer;
-  bGPDframe *blender_frame;
+  //bGPDframe *blender_frame;
 
   int num_of_layers_with_all_their_frames_bound = 0;
   int num_of_layers_with_their_curr_frame_bound = 0;
@@ -624,9 +624,9 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   }
 
   /* Points count on the deforming Stroke. */
-  if (smd->layers->frames->strokes->stroke_verts_num != smd->layers->frames->strokes->blender_stroke->totpoints) {
+  if (smd->layers->frames->strokes->stroke_verts_num != gps->totpoints) {
     BKE_gpencil_modifier_set_error(
-        md, "Stroke %u: Points changed from %i to %i", smd->layers->frames->strokes->stroke_idx, smd->layers->frames->strokes->stroke_verts_num, smd->layers->frames->strokes->blender_stroke->totpoints);
+        md, "Stroke %u: Points changed from %i to %i", smd->layers->frames->strokes->stroke_idx, smd->layers->frames->strokes->stroke_verts_num, gps->totpoints);
     return;
   } 
 
