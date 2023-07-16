@@ -114,7 +114,7 @@ set(SRC
   intern/curves_geometry.cc
   intern/curves_utils.cc
   intern/customdata.cc
-  intern/customdata_file.c
+  intern/customdata_file.cc
   intern/data_transfer.cc
   intern/deform.cc
   intern/displist.cc

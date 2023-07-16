@@ -27,7 +27,7 @@
 
 #define CDF_DATA_FLOAT 0
 
-typedef struct CDataFileHeader {
+struct CDataFileHeader {
   char ID[4];      /* "BCDF" */
   char endian;     /* little, big */
   char version;    /* non-compatible versions */
@@ -37,18 +37,18 @@ typedef struct CDataFileHeader {
   int structbytes; /* size of this struct in bytes */
   int type;        /* image, mesh */
   int totlayer;    /* number of layers in the file */
-} CDataFileHeader;
+};
 
-typedef struct CDataFileImageHeader {
+struct CDataFileImageHeader {
   int structbytes; /* size of this struct in bytes */
   int width;       /* image width */
   int height;      /* image height */
   int tile_size;   /* tile size (required power of 2) */
-} CDataFileImageHeader;
+};
 
-typedef struct CDataFileMeshHeader {
+struct CDataFileMeshHeader {
   int structbytes; /* size of this struct in bytes */
-} CDataFileMeshHeader;
+};
 
 struct CDataFileLayer {
   int structbytes;               /* size of this struct in bytes */
@@ -95,7 +95,7 @@ static int cdf_endian(void)
 
 CDataFile *cdf_create(int type)
 {
-  CDataFile *cdf = MEM_callocN(sizeof(CDataFile), "CDataFile");
+  CDataFile *cdf = static_cast<CDataFile *>(MEM_callocN(sizeof(CDataFile), "CDataFile"));
 
   cdf->type = type;
 
@@ -193,7 +193,8 @@ static bool cdf_read_header(CDataFile *cdf)
     return false;
   }
 
-  cdf->layer = MEM_calloc_arrayN(header->totlayer, sizeof(CDataFileLayer), "CDataFileLayer");
+  cdf->layer = static_cast<CDataFileLayer *>(
+      MEM_calloc_arrayN(header->totlayer, sizeof(CDataFileLayer), "CDataFileLayer"));
   cdf->totlayer = header->totlayer;
 
   if (!cdf->layer) {
@@ -321,7 +322,7 @@ bool cdf_read_data(CDataFile *cdf, uint size, void *data)
 
   /* switch endian if necessary */
   if (cdf->switchendian) {
-    BLI_endian_switch_float_array(data, size / sizeof(float));
+    BLI_endian_switch_float_array(static_cast<float *>(data), size / sizeof(float));
   }
 
   return true;
@@ -331,7 +332,7 @@ void cdf_read_close(CDataFile *cdf)
 {
   if (cdf->readf) {
     fclose(cdf->readf);
-    cdf->readf = NULL;
+    cdf->readf = nullptr;
   }
 }
 
@@ -381,7 +382,7 @@ bool cdf_write_open(CDataFile *cdf, const char *filepath)
   return true;
 }
 
-bool cdf_write_layer(CDataFile *UNUSED(cdf), CDataFileLayer *UNUSED(blay))
+bool cdf_write_layer(CDataFile * /*cdf*/, CDataFileLayer * /*blay*/)
 {
   return true;
 }
@@ -400,7 +401,7 @@ void cdf_write_close(CDataFile *cdf)
 {
   if (cdf->writef) {
     fclose(cdf->writef);
-    cdf->writef = NULL;
+    cdf->writef = nullptr;
   }
 }
 
@@ -424,7 +425,7 @@ CDataFileLayer *cdf_layer_find(CDataFile *cdf, int type, const char *name)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 CDataFileLayer *cdf_layer_add(CDataFile *cdf, int type, const char *name, size_t datasize)
@@ -432,7 +433,8 @@ CDataFileLayer *cdf_layer_add(CDataFile *cdf, int type, const char *name, size_t
   CDataFileLayer *newlayer, *layer;
 
   /* expand array */
-  newlayer = MEM_calloc_arrayN((cdf->totlayer + 1), sizeof(CDataFileLayer), "CDataFileLayer");
+  newlayer = static_cast<CDataFileLayer *>(
+      MEM_calloc_arrayN((cdf->totlayer + 1), sizeof(CDataFileLayer), "CDataFileLayer"));
   if (cdf->totlayer > 0) {
     memcpy(newlayer, cdf->layer, sizeof(CDataFileLayer) * cdf->totlayer);
   }
