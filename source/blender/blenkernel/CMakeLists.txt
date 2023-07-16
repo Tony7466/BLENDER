@@ -246,7 +246,7 @@ set(SRC
   intern/paint_toolslots.cc
   intern/particle.cc
   intern/particle_child.cc
-  intern/particle_distribute.c
+  intern/particle_distribute.cc
   intern/particle_system.c
   intern/pbvh.cc
   intern/pbvh_bmesh.cc
