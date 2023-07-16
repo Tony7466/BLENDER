@@ -1175,7 +1175,7 @@ GHOST_WindowX11::~GHOST_WindowX11()
 
 GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type)
 {
-  switch (gpuSettings.context_type) {
+  switch (type) {
 #ifdef WITH_VULKAN_BACKEND
     case GHOST_kDrawingContextTypeVulkan: {
       GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual,

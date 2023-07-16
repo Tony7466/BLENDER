@@ -594,7 +594,7 @@ GHOST_TSuccess GHOST_WindowWin32::invalidate()
 
 GHOST_Context *GHOST_WindowWin32::newDrawingContext(GHOST_TDrawingContextType type)
 {
-  switch (gpuSettings.context_type) {
+  switch (type) {
 #ifdef WITH_VULKAN_BACKEND
     case GHOST_kDrawingContextTypeVulkan: {
       GHOST_Context *context = new GHOST_ContextVK(false, m_hWnd, 1, 2, m_debug_context);

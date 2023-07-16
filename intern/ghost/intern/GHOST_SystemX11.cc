@@ -355,7 +355,7 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
 GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
   const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
-  switch (type) {
+  switch (gpuSettings.context_type) {
 #ifdef WITH_VULKAN_BACKEND
     case GHOST_kDrawingContextTypeVulkan: {
       GHOST_Context *context = new GHOST_ContextVK(
@@ -374,7 +374,7 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GPUSettings gpuSet
         GHOST_Context *context = new GHOST_ContextGLX(
             false,
             (Window) nullptr,
-            display,
+            m_display,
             (GLXFBConfig) nullptr,
             GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
             4,
