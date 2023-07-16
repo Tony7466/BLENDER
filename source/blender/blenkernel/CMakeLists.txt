@@ -166,7 +166,7 @@ set(SRC
   intern/key.cc
   intern/keyconfig.cc
   intern/lattice.c
-  intern/lattice_deform.c
+  intern/lattice_deform.cc
   intern/layer.cc
   intern/layer_utils.c
   intern/lib_id.c
