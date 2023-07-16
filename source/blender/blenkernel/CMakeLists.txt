@@ -259,7 +259,7 @@ set(SRC
   intern/pose_backup.cc
   intern/preferences.cc
   intern/report.cc
-  intern/rigidbody.c
+  intern/rigidbody.cc
   intern/scene.cc
   intern/screen.c
   intern/shader_fx.c
