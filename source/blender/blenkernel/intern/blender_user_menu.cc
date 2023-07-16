@@ -31,14 +31,14 @@ bUserMenu *BKE_blender_user_menu_find(ListBase *lb, char space_type, const char 
       return um;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 bUserMenu *BKE_blender_user_menu_ensure(ListBase *lb, char space_type, const char *context)
 {
   bUserMenu *um = BKE_blender_user_menu_find(lb, space_type, context);
-  if (um == NULL) {
-    um = MEM_callocN(sizeof(bUserMenu), __func__);
+  if (um == nullptr) {
+    um = static_cast<bUserMenu *>(MEM_callocN(sizeof(bUserMenu), __func__));
     um->space_type = space_type;
     STRNCPY(um->context, context);
     BLI_addhead(lb, um);
@@ -73,7 +73,7 @@ bUserMenuItem *BKE_blender_user_menu_item_add(ListBase *lb, int type)
     BLI_assert(0);
   }
 
-  bUserMenuItem *umi = MEM_callocN(size, __func__);
+  bUserMenuItem *umi = static_cast<bUserMenuItem *>(MEM_callocN(size, __func__));
   umi->type = type;
   BLI_addtail(lb, umi);
   return umi;
@@ -92,7 +92,8 @@ void BKE_blender_user_menu_item_free(bUserMenuItem *umi)
 
 void BKE_blender_user_menu_item_free_list(ListBase *lb)
 {
-  for (bUserMenuItem *umi = lb->first, *umi_next; umi; umi = umi_next) {
+  for (bUserMenuItem *umi = static_cast<bUserMenuItem *>(lb->first), *umi_next; umi;
+       umi = umi_next) {
     umi_next = umi->next;
     BKE_blender_user_menu_item_free(umi);
   }
