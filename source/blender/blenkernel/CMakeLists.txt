@@ -73,7 +73,7 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
-  intern/blender.c
+  intern/blender.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc
   intern/blender_user_menu.cc

@@ -58,15 +58,15 @@ UserDef U;
 
 void BKE_blender_free(void)
 {
-  /* samples are in a global list..., also sets G_MAIN->sound->sample NULL */
+  /* samples are in a global list..., also sets G_MAIN->sound->sample nullptr */
 
   /* Needs to run before main free as window-manager is still referenced for icons preview jobs. */
   BKE_studiolight_free();
 
   BKE_blender_globals_clear();
 
-  if (G.log.file != NULL) {
-    fclose(G.log.file);
+  if (G.log.file != nullptr) {
+    fclose(static_cast<FILE *>(G.log.file));
   }
 
   BKE_spacetypes_free(); /* after free main, it uses space callbacks */
@@ -160,13 +160,13 @@ void BKE_blender_globals_init(void)
 
 void BKE_blender_globals_clear(void)
 {
-  if (G_MAIN == NULL) {
+  if (G_MAIN == nullptr) {
     return;
   }
   BLI_assert(G_MAIN->is_global_main);
   BKE_main_free(G_MAIN); /* free all lib data */
 
-  G_MAIN = NULL;
+  G_MAIN = nullptr;
 }
 
 void BKE_blender_globals_main_replace(Main *bmain)
@@ -206,7 +206,7 @@ static void keymap_item_free(wmKeyMapItem *kmi)
 
 void BKE_blender_userdef_data_swap(UserDef *userdef_a, UserDef *userdef_b)
 {
-  SWAP(UserDef, *userdef_a, *userdef_b);
+  blender::dna::shallow_swap(*userdef_a, *userdef_b);
 }
 
 void BKE_blender_userdef_data_set(UserDef *userdef)
@@ -223,7 +223,9 @@ void BKE_blender_userdef_data_set_and_free(UserDef *userdef)
 
 static void userdef_free_keymaps(UserDef *userdef)
 {
-  for (wmKeyMap *km = userdef->user_keymaps.first, *km_next; km; km = km_next) {
+  for (wmKeyMap *km = static_cast<wmKeyMap *>(userdef->user_keymaps.first), *km_next; km;
+       km = km_next)
+  {
     km_next = km->next;
     LISTBASE_FOREACH (wmKeyMapDiffItem *, kmdi, &km->diff_items) {
       if (kmdi->add_item) {
@@ -250,7 +252,10 @@ static void userdef_free_keymaps(UserDef *userdef)
 
 static void userdef_free_keyconfig_prefs(UserDef *userdef)
 {
-  for (wmKeyConfigPref *kpt = userdef->user_keyconfig_prefs.first, *kpt_next; kpt; kpt = kpt_next)
+  for (wmKeyConfigPref *kpt = static_cast<wmKeyConfigPref *>(userdef->user_keyconfig_prefs.first),
+                       *kpt_next;
+       kpt;
+       kpt = kpt_next)
   {
     kpt_next = kpt->next;
     IDP_FreeProperty(kpt->prop);
@@ -261,7 +266,9 @@ static void userdef_free_keyconfig_prefs(UserDef *userdef)
 
 static void userdef_free_user_menus(UserDef *userdef)
 {
-  for (bUserMenu *um = userdef->user_menus.first, *um_next; um; um = um_next) {
+  for (bUserMenu *um = static_cast<bUserMenu *>(userdef->user_menus.first), *um_next; um;
+       um = um_next)
+  {
     um_next = um->next;
     BKE_blender_user_menu_item_free_list(&um->items);
     MEM_freeN(um);
@@ -270,7 +277,9 @@ static void userdef_free_user_menus(UserDef *userdef)
 
 static void userdef_free_addons(UserDef *userdef)
 {
-  for (bAddon *addon = userdef->addons.first, *addon_next; addon; addon = addon_next) {
+  for (bAddon *addon = static_cast<bAddon *>(userdef->addons.first), *addon_next; addon;
+       addon = addon_next)
+  {
     addon_next = addon->next;
     BKE_addon_free(addon);
   }
@@ -394,11 +403,11 @@ static struct AtExitData {
 
   void (*func)(void *user_data);
   void *user_data;
-} *g_atexit = NULL;
+} *g_atexit = nullptr;
 
 void BKE_blender_atexit_register(void (*func)(void *user_data), void *user_data)
 {
-  struct AtExitData *ae = malloc(sizeof(*ae));
+  struct AtExitData *ae = static_cast<AtExitData *>(malloc(sizeof(*ae)));
   ae->next = g_atexit;
   ae->func = func;
   ae->user_data = user_data;
@@ -432,7 +441,7 @@ void BKE_blender_atexit(void)
     free(ae);
     ae = ae_next;
   }
-  g_atexit = NULL;
+  g_atexit = nullptr;
 }
 
 /** \} */
