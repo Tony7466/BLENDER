@@ -36,7 +36,7 @@ EHash *ccg_ehash_new(int estimatedNumEntries,
                      CCGAllocatorIFC *allocatorIFC,
                      CCGAllocatorHDL allocator)
 {
-  EHash *eh = allocatorIFC->alloc(allocator, sizeof(*eh));
+  EHash *eh = static_cast<EHash *>(allocatorIFC->alloc(allocator, sizeof(*eh)));
   eh->allocatorIFC = *allocatorIFC;
   eh->allocator = allocator;
   eh->numEntries = 0;
@@ -108,14 +108,14 @@ void *ccg_ehash_lookupWithPrev(EHash *eh, void *key, void ***prevp_r)
   void **prevp = (void **)&eh->buckets[hash];
   EHEntry *entry;
 
-  for (; (entry = *prevp); prevp = (void **)&entry->next) {
+  for (; (entry = static_cast<EHEntry *>(*prevp)); prevp = (void **)&entry->next) {
     if (entry->key == key) {
       *prevp_r = (void **)prevp;
       return entry;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void *ccg_ehash_lookup(EHash *eh, void *key)
@@ -143,7 +143,7 @@ void ccg_ehashIterator_init(EHash *eh, EHashIterator *ehi)
   /* fill all members */
   ehi->eh = eh;
   ehi->curBucket = -1;
-  ehi->curEntry = NULL;
+  ehi->curEntry = nullptr;
 
   while (!ehi->curEntry) {
     ehi->curBucket++;
@@ -183,20 +183,17 @@ int ccg_ehashIterator_isStopped(EHashIterator *ehi)
 /** \name Standard allocator implementation
  * \{ */
 
-static void *_stdAllocator_alloc(CCGAllocatorHDL UNUSED(a), int numBytes)
+static void *_stdAllocator_alloc(CCGAllocatorHDL /*a*/, int numBytes)
 {
   return MEM_mallocN(numBytes, "CCG standard alloc");
 }
 
-static void *_stdAllocator_realloc(CCGAllocatorHDL UNUSED(a),
-                                   void *ptr,
-                                   int newSize,
-                                   int UNUSED(oldSize))
+static void *_stdAllocator_realloc(CCGAllocatorHDL /*a*/, void *ptr, int newSize, int /*oldSize*/)
 {
   return MEM_reallocN(ptr, newSize);
 }
 
-static void _stdAllocator_free(CCGAllocatorHDL UNUSED(a), void *ptr)
+static void _stdAllocator_free(CCGAllocatorHDL /*a*/, void *ptr)
 {
   MEM_freeN(ptr);
 }
@@ -208,7 +205,7 @@ CCGAllocatorIFC *ccg_getStandardAllocatorIFC(void)
   ifc.alloc = _stdAllocator_alloc;
   ifc.realloc = _stdAllocator_realloc;
   ifc.free = _stdAllocator_free;
-  ifc.release = NULL;
+  ifc.release = nullptr;
 
   return &ifc;
 }

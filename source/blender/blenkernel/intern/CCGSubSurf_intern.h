@@ -51,7 +51,7 @@ typedef struct _EHash {
 
 typedef void (*EHEntryFreeFP)(EHEntry *, void *);
 
-#define EHASH_alloc(eh, nb) ((eh)->allocatorIFC.alloc((eh)->allocator, nb))
+#define EHASH_alloc(eh, nb) (EHEntry **)((eh)->allocatorIFC.alloc((eh)->allocator, nb))
 #define EHASH_free(eh, ptr) ((eh)->allocatorIFC.free((eh)->allocator, ptr))
 #define EHASH_hash(eh, item) (((uintptr_t)(item)) % ((unsigned int)(eh)->curSize))
 

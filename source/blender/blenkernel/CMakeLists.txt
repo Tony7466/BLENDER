@@ -50,7 +50,7 @@ set(SRC
   ${CMAKE_SOURCE_DIR}/release/datafiles/userdef/userdef_default.c
   intern/CCGSubSurf.c
   intern/CCGSubSurf_legacy.cc
-  intern/CCGSubSurf_util.c
+  intern/CCGSubSurf_util.cc
   intern/DerivedMesh.cc
   intern/action.cc
   intern/action_bones.cc
