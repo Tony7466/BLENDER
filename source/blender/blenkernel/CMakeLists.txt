@@ -247,7 +247,7 @@ set(SRC
   intern/particle.cc
   intern/particle_child.cc
   intern/particle_distribute.cc
-  intern/particle_system.c
+  intern/particle_system.cc
   intern/pbvh.cc
   intern/pbvh_bmesh.cc
   intern/pbvh_colors.cc
