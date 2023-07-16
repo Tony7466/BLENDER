@@ -36,7 +36,9 @@ bool BKE_autoexec_match(const char *path)
 
   BLI_assert((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0);
 
-  for (path_cmp = U.autoexec_paths.first; path_cmp; path_cmp = path_cmp->next) {
+  for (path_cmp = static_cast<bPathCompare *>(U.autoexec_paths.first); path_cmp;
+       path_cmp = path_cmp->next)
+  {
     if (path_cmp->path[0] == '\0') {
       /* pass */
     }
