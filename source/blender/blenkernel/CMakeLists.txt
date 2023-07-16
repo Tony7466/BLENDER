@@ -261,7 +261,7 @@ set(SRC
   intern/report.cc
   intern/rigidbody.cc
   intern/scene.cc
-  intern/screen.c
+  intern/screen.cc
   intern/shader_fx.c
   intern/shrinkwrap.cc
   intern/simulation_state.cc
