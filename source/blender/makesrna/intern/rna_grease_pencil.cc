@@ -208,6 +208,14 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Use Lights */
+  prop = RNA_def_property(srna, "use_lights", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LIGHTS);
+  RNA_def_property_ui_text(
+      prop, "Use Lights", "Enable the use of lights on stroke and fill materials");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)

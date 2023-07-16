@@ -414,7 +414,7 @@ TreeNode::TreeNode()
   this->parent = nullptr;
 
   this->name = nullptr;
-  this->flag = 0;
+  this->flag = GP_LAYER_TREE_NODE_USE_LIGHTS;
   this->color[0] = this->color[1] = this->color[2] = 0;
 }
 
@@ -568,6 +568,11 @@ bool Layer::is_locked() const
 bool Layer::is_editable() const
 {
   return !this->is_locked() && this->is_visible();
+}
+
+bool Layer::use_lights() const
+{
+  return (this->base.flag & GP_LAYER_TREE_NODE_USE_LIGHTS) != 0;
 }
 
 GreasePencilFrame *Layer::add_frame_internal(const int frame_number, const int drawing_index)

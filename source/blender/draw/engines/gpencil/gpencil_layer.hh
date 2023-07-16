@@ -31,7 +31,7 @@ class LayerModule {
   }
 
   void sync(const Object * /*object*/,
-            const bke::greasepencil::Layer & /*layer*/,
+            const bke::greasepencil::Layer &layer,
             bool &do_layer_blending)
   {
     /* TODO(fclem): All of this is placeholder. */
@@ -42,9 +42,18 @@ class LayerModule {
     gp_layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
     gp_layer.stroke_index_offset = 0.0f;
 
-    layers_buf_.append(gp_layer);
+    bool ob_shadeless = false;  // TODO: ob.is_shadeless
+    if (ob_shadeless) {
+      gp_layer.use_lights = false;
+    }
+    else {
+      gp_layer.use_lights = layer.use_lights();
+      if (!gp_layer.use_lights) {
+        do_layer_blending = true;
+      }
+    }
 
-    do_layer_blending = false;
+    layers_buf_.append(gp_layer);
   }
 
   void end_sync()

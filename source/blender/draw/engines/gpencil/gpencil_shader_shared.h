@@ -161,6 +161,9 @@ struct gpLayer {
   float stroke_index_offset;
   /** Color to multiply to the final mixed color. */
   float4 tint;
+  /** If the layer uses the scene lights. */
+  bool1 use_lights;
+  bool1 _pad0[3];
 };
 BLI_STATIC_ASSERT_ALIGN(gpLayer, 16)
 
