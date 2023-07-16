@@ -22,7 +22,8 @@
 
 static GPencilUpdateCache *update_cache_alloc(int index, int flag, void *data)
 {
-  GPencilUpdateCache *new_cache = MEM_callocN(sizeof(GPencilUpdateCache), __func__);
+  GPencilUpdateCache *new_cache = static_cast<GPencilUpdateCache *>(
+      MEM_callocN(sizeof(GPencilUpdateCache), __func__));
   new_cache->children = BLI_dlrbTree_new();
   new_cache->flag = flag;
   new_cache->index = index;
@@ -43,7 +44,8 @@ static short cache_node_compare(void *node, void *data)
 
 static DLRBT_Node *cache_node_alloc(void *data)
 {
-  GPencilUpdateCacheNode *new_node = MEM_callocN(sizeof(GPencilUpdateCacheNode), __func__);
+  GPencilUpdateCacheNode *new_node = static_cast<GPencilUpdateCacheNode *>(
+      MEM_callocN(sizeof(GPencilUpdateCacheNode), __func__));
   new_node->cache = ((GPencilUpdateCache *)data);
   return (DLRBT_Node *)new_node;
 }
@@ -60,7 +62,7 @@ static void update_cache_free(GPencilUpdateCache *cache)
 static void cache_node_free(void *node)
 {
   GPencilUpdateCache *cache = ((GPencilUpdateCacheNode *)node)->cache;
-  if (cache != NULL) {
+  if (cache != nullptr) {
     update_cache_free(cache);
   }
   MEM_freeN(node);
@@ -115,14 +117,14 @@ static void update_cache_node_create_ex(GPencilUpdateCache *root_cache,
   }
 
   const bool is_layer_update_node = (gpf_index == -1);
-  /* If the data pointer in #GPencilUpdateCache is NULL, this element is not actually cached
+  /* If the data pointer in #GPencilUpdateCache is nullptr, this element is not actually cached
    * and does not need to be updated, but we do need the index to find elements that are in
    * levels below. E.g. if a stroke needs to be updated, the frame it is in would not hold a
    * pointer to it's data. */
   GPencilUpdateCache *gpl_cache = update_cache_alloc(
       gpl_index,
       is_layer_update_node ? node_flag : GP_UPDATE_NODE_NO_COPY,
-      is_layer_update_node ? (bGPDlayer *)data : NULL);
+      is_layer_update_node ? (bGPDlayer *)data : nullptr);
   GPencilUpdateCacheNode *gpl_node = (GPencilUpdateCacheNode *)BLI_dlrbTree_add(
       root_cache->children, cache_node_compare, cache_node_alloc, cache_node_update, gpl_cache);
 
@@ -135,7 +137,7 @@ static void update_cache_node_create_ex(GPencilUpdateCache *root_cache,
   GPencilUpdateCache *gpf_cache = update_cache_alloc(
       gpf_index,
       is_frame_update_node ? node_flag : GP_UPDATE_NODE_NO_COPY,
-      is_frame_update_node ? (bGPDframe *)data : NULL);
+      is_frame_update_node ? (bGPDframe *)data : nullptr);
   GPencilUpdateCacheNode *gpf_node = (GPencilUpdateCacheNode *)BLI_dlrbTree_add(
       gpl_node->cache->children,
       cache_node_compare,
@@ -161,13 +163,13 @@ static void update_cache_node_create_ex(GPencilUpdateCache *root_cache,
 static void update_cache_node_create(
     bGPdata *gpd, bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps, bool full_copy)
 {
-  if (gpd == NULL) {
+  if (gpd == nullptr) {
     return;
   }
 
   GPencilUpdateCache *root_cache = gpd->runtime.update_cache;
-  if (root_cache == NULL) {
-    gpd->runtime.update_cache = update_cache_alloc(0, GP_UPDATE_NODE_NO_COPY, NULL);
+  if (root_cache == nullptr) {
+    gpd->runtime.update_cache = update_cache_alloc(0, GP_UPDATE_NODE_NO_COPY, nullptr);
     root_cache = gpd->runtime.update_cache;
   }
 
@@ -177,9 +179,10 @@ static void update_cache_node_create(
     return;
   }
 
-  const int gpl_index = (gpl != NULL) ? BLI_findindex(&gpd->layers, gpl) : -1;
-  const int gpf_index = (gpl != NULL && gpf != NULL) ? BLI_findindex(&gpl->frames, gpf) : -1;
-  const int gps_index = (gpf != NULL && gps != NULL) ? BLI_findindex(&gpf->strokes, gps) : -1;
+  const int gpl_index = (gpl != nullptr) ? BLI_findindex(&gpd->layers, gpl) : -1;
+  const int gpf_index = (gpl != nullptr && gpf != nullptr) ? BLI_findindex(&gpl->frames, gpf) : -1;
+  const int gps_index = (gpf != nullptr && gps != nullptr) ? BLI_findindex(&gpf->strokes, gps) :
+                                                             -1;
 
   void *data = gps;
   if (!data) {
@@ -208,7 +211,7 @@ static void gpencil_traverse_update_cache_ex(GPencilUpdateCache *parent_cache,
     GPencilUpdateCache *cache = cache_node->cache;
 
     GPencilUpdateCacheIter_Cb cb = ts->update_cache_cb[depth];
-    if (cb != NULL) {
+    if (cb != nullptr) {
       bool skip = cb(cache, user_data);
       if (skip) {
         continue;
@@ -252,7 +255,7 @@ void BKE_gpencil_free_update_cache(bGPdata *gpd)
   GPencilUpdateCache *gpd_cache = gpd->runtime.update_cache;
   if (gpd_cache) {
     update_cache_free(gpd_cache);
-    gpd->runtime.update_cache = NULL;
+    gpd->runtime.update_cache = nullptr;
   }
 }
 
