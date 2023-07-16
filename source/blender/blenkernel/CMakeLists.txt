@@ -307,7 +307,7 @@ set(SRC
   intern/volume_render.cc
   intern/volume_to_mesh.cc
   intern/workspace.cc
-  intern/world.c
+  intern/world.cc
   intern/writeavi.c
 
   BKE_DerivedMesh.h

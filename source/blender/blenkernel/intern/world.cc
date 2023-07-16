@@ -53,7 +53,7 @@ static void world_free_data(ID *id)
   if (wrld->nodetree) {
     ntreeFreeEmbeddedTree(wrld->nodetree);
     MEM_freeN(wrld->nodetree);
-    wrld->nodetree = NULL;
+    wrld->nodetree = nullptr;
   }
 
   GPU_material_free(&wrld->gpumaterial);
@@ -109,7 +109,7 @@ static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
     BKE_previewimg_id_copy(&wrld_dst->id, &wrld_src->id);
   }
   else {
-    wrld_dst->preview = NULL;
+    wrld_dst->preview = nullptr;
   }
 
   if (wrld_src->lightgroup) {
@@ -189,40 +189,40 @@ static void world_blend_read_expand(BlendExpander *expander, ID *id)
 }
 
 IDTypeInfo IDType_ID_WO = {
-    .id_code = ID_WO,
-    .id_filter = FILTER_ID_WO,
-    .main_listbase_index = INDEX_ID_WO,
-    .struct_size = sizeof(World),
-    .name = "World",
-    .name_plural = "worlds",
-    .translation_context = BLT_I18NCONTEXT_ID_WORLD,
-    .flags = IDTYPE_FLAGS_APPEND_IS_REUSABLE,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_WO,
+    /*id_filter*/ FILTER_ID_WO,
+    /*main_listbase_index*/ INDEX_ID_WO,
+    /*struct_size*/ sizeof(World),
+    /*name*/ "World",
+    /*name_plural*/ "worlds",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_WORLD,
+    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = world_init_data,
-    .copy_data = world_copy_data,
-    .free_data = world_free_data,
-    .make_local = NULL,
-    .foreach_id = world_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = NULL,
-    .owner_pointer_get = NULL,
+    /*init_data*/ world_init_data,
+    /*copy_data*/ world_copy_data,
+    /*free_data*/ world_free_data,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ world_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ nullptr,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = world_blend_write,
-    .blend_read_data = world_blend_read_data,
-    .blend_read_lib = world_blend_read_lib,
-    .blend_read_expand = world_blend_read_expand,
+    /*blend_write*/ world_blend_write,
+    /*blend_read_data*/ world_blend_read_data,
+    /*blend_read_lib*/ world_blend_read_lib,
+    /*blend_read_expand*/ world_blend_read_expand,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 World *BKE_world_add(Main *bmain, const char *name)
 {
   World *wrld;
 
-  wrld = BKE_id_new(bmain, ID_WO, name);
+  wrld = static_cast<World *>(BKE_id_new(bmain, ID_WO, name));
 
   return wrld;
 }
