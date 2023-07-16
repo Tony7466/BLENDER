@@ -55,7 +55,7 @@ static CLG_LogRef LOG = {"bke.fmodifier"};
  * - although the naming of functions doesn't matter, it would help for code
  *   readability, to follow the same naming convention as is presented here
  * - any functions that a constraint doesn't need to define, don't define
- *   for such cases, just use NULL
+ *   for such cases, just use nullptr
  * - these should be defined after all the functions have been defined, so that
  *   forward-definitions/prototypes don't need to be used!
  * - keep this copy #if-def'd so that future modifier can get based off this
@@ -105,7 +105,7 @@ static void fcm_generator_copy(FModifier *fcm, const FModifier *src)
 
   /* copy coefficients array? */
   if (ogen->coefficients) {
-    gen->coefficients = MEM_dupallocN(ogen->coefficients);
+    gen->coefficients = static_cast<float *>(MEM_dupallocN(ogen->coefficients));
   }
 }
 
@@ -117,7 +117,8 @@ static void fcm_generator_new_data(void *mdata)
   /* set default generator to be linear 0-1 (gradient = 1, y-offset = 0) */
   data->poly_order = 1;
   data->arraysize = 2;
-  cp = data->coefficients = MEM_callocN(sizeof(float) * 2, "FMod_Generator_Coefs");
+  cp = data->coefficients = static_cast<float *>(
+      MEM_callocN(sizeof(float) * 2, "FMod_Generator_Coefs"));
   cp[0] = 0; /* y-offset */
   cp[1] = 1; /* gradient */
 }
@@ -133,7 +134,8 @@ static void fcm_generator_verify(FModifier *fcm)
       const int arraysize_new = data->poly_order + 1;
       /* arraysize needs to be order+1, so resize if not */
       if (data->arraysize != arraysize_new) {
-        data->coefficients = MEM_recallocN(data->coefficients, sizeof(float) * arraysize_new);
+        data->coefficients = static_cast<float *>(
+            MEM_recallocN(data->coefficients, sizeof(float) * arraysize_new));
         data->arraysize = arraysize_new;
       }
       break;
@@ -143,7 +145,8 @@ static void fcm_generator_verify(FModifier *fcm)
       const int arraysize_new = data->poly_order * 2;
       /* arraysize needs to be (2 * order), so resize if not */
       if (data->arraysize != arraysize_new) {
-        data->coefficients = MEM_recallocN(data->coefficients, sizeof(float) * arraysize_new);
+        data->coefficients = static_cast<float *>(
+            MEM_recallocN(data->coefficients, sizeof(float) * arraysize_new));
         data->arraysize = arraysize_new;
       }
       break;
@@ -152,7 +155,7 @@ static void fcm_generator_verify(FModifier *fcm)
 }
 
 static void fcm_generator_evaluate(
-    FCurve *UNUSED(fcu), FModifier *fcm, float *cvalue, float evaltime, void *UNUSED(storage))
+    FCurve * /*fcu*/, FModifier *fcm, float *cvalue, float evaltime, void * /*storage*/)
 {
   FMod_Generator *data = (FMod_Generator *)fcm->data;
 
@@ -163,7 +166,8 @@ static void fcm_generator_evaluate(
     case FCM_GENERATOR_POLYNOMIAL: /* expanded polynomial expression */
     {
       /* we overwrite cvalue with the sum of the polynomial */
-      float *powers = MEM_callocN(sizeof(float) * data->arraysize, "Poly Powers");
+      float *powers = static_cast<float *>(
+          MEM_callocN(sizeof(float) * data->arraysize, "Poly Powers"));
       float value = 0.0f;
 
       /* for each x^n, precalculate value based on previous one first... this should be
@@ -202,7 +206,7 @@ static void fcm_generator_evaluate(
     }
     case FCM_GENERATOR_POLYNOMIAL_FACTORISED: /* Factorized polynomial */
     {
-      float value = 1.0f, *cp = NULL;
+      float value = 1.0f, *cp = nullptr;
       uint i;
 
       /* For each coefficient pair,
@@ -237,7 +241,7 @@ static FModifierTypeInfo FMI_GENERATOR = {
     /*copy_data*/ fcm_generator_copy,
     /*new_data*/ fcm_generator_new_data,
     /*verify_data*/ fcm_generator_verify,
-    /*evaluate_modifier_time*/ NULL,
+    /*evaluate_modifier_time*/ nullptr,
     /*evaluate_modifier*/ fcm_generator_evaluate,
 };
 
@@ -276,11 +280,11 @@ static double sinc(double x)
 }
 
 static void fcm_fn_generator_evaluate(
-    FCurve *UNUSED(fcu), FModifier *fcm, float *cvalue, float evaltime, void *UNUSED(storage))
+    FCurve * /*fcu*/, FModifier *fcm, float *cvalue, float evaltime, void * /*storage*/)
 {
   FMod_FunctionGenerator *data = (FMod_FunctionGenerator *)fcm->data;
   double arg = data->phase_multiplier * evaltime + data->phase_offset;
-  double (*fn)(double v) = NULL;
+  double (*fn)(double v) = nullptr;
 
   /* get function pointer to the func to use:
    * WARNING: must perform special argument validation hereto guard against crashes
@@ -363,11 +367,11 @@ static FModifierTypeInfo FMI_FN_GENERATOR = {
     /*name*/ N_("Built-In Function"),
     /*structName*/ "FMod_FunctionGenerator",
     /*storage_size*/ 0,
-    /*free_data*/ NULL,
-    /*copy_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*copy_data*/ nullptr,
     /*new_data*/ fcm_fn_generator_new_data,
-    /*verify_data*/ NULL,
-    /*evaluate_modifier_time*/ NULL,
+    /*verify_data*/ nullptr,
+    /*evaluate_modifier_time*/ nullptr,
     /*evaluate_modifier*/ fcm_fn_generator_evaluate,
 };
 
@@ -390,7 +394,7 @@ static void fcm_envelope_copy(FModifier *fcm, const FModifier *src)
 
   /* copy envelope data array */
   if (oenv->data) {
-    env->data = MEM_dupallocN(oenv->data);
+    env->data = static_cast<FCM_EnvelopeData *>(MEM_dupallocN(oenv->data));
   }
 }
 
@@ -414,7 +418,7 @@ static void fcm_envelope_verify(FModifier *fcm)
 }
 
 static void fcm_envelope_evaluate(
-    FCurve *UNUSED(fcu), FModifier *fcm, float *cvalue, float evaltime, void *UNUSED(storage))
+    FCurve * /*fcu*/, FModifier *fcm, float *cvalue, float evaltime, void * /*storage*/)
 {
   FMod_Envelope *env = (FMod_Envelope *)fcm->data;
   FCM_EnvelopeData *fed, *prevfed, *lastfed;
@@ -422,7 +426,7 @@ static void fcm_envelope_evaluate(
   int a;
 
   /* get pointers */
-  if (env->data == NULL) {
+  if (env->data == nullptr) {
     return;
   }
   prevfed = env->data;
@@ -480,7 +484,7 @@ static FModifierTypeInfo FMI_ENVELOPE = {
     /*copy_data*/ fcm_envelope_copy,
     /*new_data*/ fcm_envelope_new_data,
     /*verify_data*/ fcm_envelope_verify,
-    /*evaluate_modifier_time*/ NULL,
+    /*evaluate_modifier_time*/ nullptr,
     /*evaluate_modifier*/ fcm_envelope_evaluate,
 };
 
@@ -506,7 +510,7 @@ int BKE_fcm_envelope_find_index(FCM_EnvelopeData array[],
    * - keyframe to be added is to be added out of current bounds
    * - keyframe to be added would replace one of the existing ones on bounds
    */
-  if ((arraylen <= 0) || (array == NULL)) {
+  if ((arraylen <= 0) || (array == nullptr)) {
     CLOG_WARN(&LOG, "encountered invalid array");
     return 0;
   }
@@ -593,9 +597,9 @@ int BKE_fcm_envelope_find_index(FCM_EnvelopeData array[],
  */
 
 /* temp data used during evaluation */
-typedef struct tFCMED_Cycles {
+struct tFCMED_Cycles {
   float cycyofs; /* y-offset to apply */
-} tFCMED_Cycles;
+};
 
 static void fcm_cycles_new_data(void *mdata)
 {
@@ -606,10 +610,10 @@ static void fcm_cycles_new_data(void *mdata)
 }
 
 static float fcm_cycles_time(
-    FCurve *fcu, FModifier *fcm, float UNUSED(cvalue), float evaltime, void *storage_)
+    FCurve *fcu, FModifier *fcm, float /*cvalue*/, float evaltime, void *storage_)
 {
   const FMod_Cycles *data = (FMod_Cycles *)fcm->data;
-  tFCMED_Cycles *storage = storage_;
+  tFCMED_Cycles *storage = static_cast<tFCMED_Cycles *>(storage_);
   float prevkey[2], lastkey[2], cycyofs = 0.0f;
   short side = 0, mode = 0;
   int cycles = 0;
@@ -625,7 +629,7 @@ static float fcm_cycles_time(
     return evaltime;
   }
 
-  if (fcu == NULL || (fcu->bezt == NULL && fcu->fpt == NULL)) {
+  if (fcu == nullptr || (fcu->bezt == nullptr && fcu->fpt == nullptr)) {
     return evaltime;
   }
 
@@ -641,7 +645,7 @@ static float fcm_cycles_time(
     lastkey[1] = lastbezt->vec[1][1];
   }
   else {
-    BLI_assert(fcu->fpt != NULL);
+    BLI_assert(fcu->fpt != nullptr);
     const FPoint *prevfpt = fcu->fpt;
     const FPoint *lastfpt = prevfpt + fcu->totvert - 1;
 
@@ -757,13 +761,10 @@ static float fcm_cycles_time(
   return evaltime;
 }
 
-static void fcm_cycles_evaluate(FCurve *UNUSED(fcu),
-                                FModifier *UNUSED(fcm),
-                                float *cvalue,
-                                float UNUSED(evaltime),
-                                void *storage_)
+static void fcm_cycles_evaluate(
+    FCurve * /*fcu*/, FModifier * /*fcm*/, float *cvalue, float /*evaltime*/, void *storage_)
 {
-  tFCMED_Cycles *storage = storage_;
+  tFCMED_Cycles *storage = static_cast<tFCMED_Cycles *>(storage_);
   *cvalue += storage->cycyofs;
 }
 
@@ -775,10 +776,10 @@ static FModifierTypeInfo FMI_CYCLES = {
     /*name*/ CTX_N_(BLT_I18NCONTEXT_ID_ACTION, "Cycles"),
     /*structName*/ "FMod_Cycles",
     /*storage_size*/ sizeof(tFCMED_Cycles),
-    /*free_data*/ NULL,
-    /*copy_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*copy_data*/ nullptr,
     /*new_data*/ fcm_cycles_new_data,
-    /*verify_data*/ NULL /*fcm_cycles_verify*/,
+    /*verify_data*/ nullptr /*fcm_cycles_verify*/,
     /*evaluate_modifier_time*/ fcm_cycles_time,
     /*evaluate_modifier*/ fcm_cycles_evaluate,
 };
@@ -799,7 +800,7 @@ static void fcm_noise_new_data(void *mdata)
 }
 
 static void fcm_noise_evaluate(
-    FCurve *UNUSED(fcu), FModifier *fcm, float *cvalue, float evaltime, void *UNUSED(storage))
+    FCurve * /*fcu*/, FModifier *fcm, float *cvalue, float evaltime, void * /*storage*/)
 {
   FMod_Noise *data = (FMod_Noise *)fcm->data;
   float noise;
@@ -837,11 +838,11 @@ static FModifierTypeInfo FMI_NOISE = {
     /*name*/ N_("Noise"),
     /*structName*/ "FMod_Noise",
     /*storage_size*/ 0,
-    /*free_data*/ NULL,
-    /*copy_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*copy_data*/ nullptr,
     /*new_data*/ fcm_noise_new_data,
-    /*verify_data*/ NULL /*fcm_noise_verify*/,
-    /*evaluate_modifier_time*/ NULL,
+    /*verify_data*/ nullptr /*fcm_noise_verify*/,
+    /*evaluate_modifier_time*/ nullptr,
     /*evaluate_modifier*/ fcm_noise_evaluate,
 };
 
@@ -860,7 +861,7 @@ static void fcm_python_new_data(void *mdata)
   FMod_Python *data = (FMod_Python *)mdata;
 
   /* Everything should be set correctly by calloc, except for the prop->type constant. */
-  data->prop = MEM_callocN(sizeof(IDProperty), "PyFModifierProps");
+  data->prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "PyFModifierProps"));
   data->prop->type = IDP_GROUP;
 }
 
@@ -872,18 +873,18 @@ static void fcm_python_copy(FModifier *fcm, const FModifier *src)
   pymod->prop = IDP_CopyProperty(opymod->prop);
 }
 
-static void fcm_python_evaluate(FCurve *UNUSED(fcu),
-                                FModifier *UNUSED(fcm),
-                                float *UNUSED(cvalue),
-                                float UNUSED(evaltime),
-                                void *UNUSED(storage))
+static void fcm_python_evaluate(FCurve * /*fcu*/,
+                                FModifier * /*fcm*/,
+                                float * /*cvalue*/,
+                                float /*evaltime*/,
+                                void * /*storage*/)
 {
 #ifdef WITH_PYTHON
-  // FMod_Python *data = (FMod_Python *)fcm->data;
+// FMod_Python *data = (FMod_Python *)fcm->data;
 
-  /* FIXME... need to implement this modifier...
-   * It will need it execute a script using the custom properties
-   */
+/* FIXME... need to implement this modifier...
+ * It will need it execute a script using the custom properties
+ */
 #endif /* WITH_PYTHON */
 }
 
@@ -898,18 +899,15 @@ static FModifierTypeInfo FMI_PYTHON = {
     /*free_data*/ fcm_python_free,
     /*copy_data*/ fcm_python_copy,
     /*new_data*/ fcm_python_new_data,
-    /*verify_data*/ NULL /*fcm_python_verify*/,
-    /*evaluate_modifier_time*/ NULL /*fcm_python_time*/,
+    /*verify_data*/ nullptr /*fcm_python_verify*/,
+    /*evaluate_modifier_time*/ nullptr /*fcm_python_time*/,
     /*evaluate_modifier*/ fcm_python_evaluate,
 };
 
 /* Limits F-Curve Modifier --------------------------- */
 
-static float fcm_limits_time(FCurve *UNUSED(fcu),
-                             FModifier *fcm,
-                             float UNUSED(cvalue),
-                             float evaltime,
-                             void *UNUSED(storage))
+static float fcm_limits_time(
+    FCurve * /*fcu*/, FModifier *fcm, float /*cvalue*/, float evaltime, void * /*storage*/)
 {
   FMod_Limits *data = (FMod_Limits *)fcm->data;
 
@@ -925,11 +923,8 @@ static float fcm_limits_time(FCurve *UNUSED(fcu),
   return evaltime;
 }
 
-static void fcm_limits_evaluate(FCurve *UNUSED(fcu),
-                                FModifier *fcm,
-                                float *cvalue,
-                                float UNUSED(evaltime),
-                                void *UNUSED(storage))
+static void fcm_limits_evaluate(
+    FCurve * /*fcu*/, FModifier *fcm, float *cvalue, float /*evaltime*/, void * /*storage*/)
 {
   FMod_Limits *data = (FMod_Limits *)fcm->data;
 
@@ -950,10 +945,10 @@ static FModifierTypeInfo FMI_LIMITS = {
     /*name*/ N_("Limits"),
     /*structName*/ "FMod_Limits",
     /*storage_size*/ 0,
-    /*free_data*/ NULL,
-    /*copy_data*/ NULL,
-    /*new_data*/ NULL,
-    /*verify_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*copy_data*/ nullptr,
+    /*new_data*/ nullptr,
+    /*verify_data*/ nullptr,
     /*evaluate_modifier_time*/ fcm_limits_time,
     /*evaluate_modifier*/ fcm_limits_evaluate,
 };
@@ -969,11 +964,8 @@ static void fcm_stepped_new_data(void *mdata)
   data->step_size = 2.0f;
 }
 
-static float fcm_stepped_time(FCurve *UNUSED(fcu),
-                              FModifier *fcm,
-                              float UNUSED(cvalue),
-                              float evaltime,
-                              void *UNUSED(storage))
+static float fcm_stepped_time(
+    FCurve * /*fcu*/, FModifier *fcm, float /*cvalue*/, float evaltime, void * /*storage*/)
 {
   FMod_Stepped *data = (FMod_Stepped *)fcm->data;
   int snapblock;
@@ -1010,12 +1002,12 @@ static FModifierTypeInfo FMI_STEPPED = {
     /*name*/ N_("Stepped"),
     /*structName*/ "FMod_Stepped",
     /*storage_size*/ 0,
-    /*free_data*/ NULL,
-    /*copy_data*/ NULL,
+    /*free_data*/ nullptr,
+    /*copy_data*/ nullptr,
     /*new_data*/ fcm_stepped_new_data,
-    /*verify_data*/ NULL,
+    /*verify_data*/ nullptr,
     /*evaluate_modifier_time*/ fcm_stepped_time,
-    /*evaluate_modifier*/ NULL,
+    /*evaluate_modifier*/ nullptr,
 };
 
 /** \} */
@@ -1034,13 +1026,13 @@ static short FMI_INIT = 1; /* when non-zero, the list needs to be updated */
 /** This function only gets called when #FMI_INIT is non-zero. */
 static void fmods_init_typeinfo(void)
 {
-  fmodifiersTypeInfo[0] = NULL;              /* 'Null' F-Curve Modifier */
+  fmodifiersTypeInfo[0] = nullptr;           /* 'Null' F-Curve Modifier */
   fmodifiersTypeInfo[1] = &FMI_GENERATOR;    /* Generator F-Curve Modifier */
   fmodifiersTypeInfo[2] = &FMI_FN_GENERATOR; /* Built-In Function Generator F-Curve Modifier */
   fmodifiersTypeInfo[3] = &FMI_ENVELOPE;     /* Envelope F-Curve Modifier */
   fmodifiersTypeInfo[4] = &FMI_CYCLES;       /* Cycles F-Curve Modifier */
   fmodifiersTypeInfo[5] = &FMI_NOISE;        /* Apply-Noise F-Curve Modifier */
-  fmodifiersTypeInfo[6] = NULL /*&FMI_FILTER*/;
+  fmodifiersTypeInfo[6] = nullptr /*&FMI_FILTER*/;
   /* Filter F-Curve Modifier */         /* XXX unimplemented. */
   fmodifiersTypeInfo[7] = &FMI_PYTHON;  /* Custom Python F-Curve Modifier */
   fmodifiersTypeInfo[8] = &FMI_LIMITS;  /* Limits F-Curve Modifier */
@@ -1063,7 +1055,7 @@ const FModifierTypeInfo *get_fmodifier_typeinfo(const int type)
 
   CLOG_ERROR(&LOG, "No valid F-Curve Modifier type-info data available. Type = %i", type);
 
-  return NULL;
+  return nullptr;
 }
 
 const FModifierTypeInfo *fmodifier_get_typeinfo(const FModifier *fcm)
@@ -1073,7 +1065,7 @@ const FModifierTypeInfo *fmodifier_get_typeinfo(const FModifier *fcm)
     return get_fmodifier_typeinfo(fcm->type);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -1088,8 +1080,8 @@ FModifier *add_fmodifier(ListBase *modifiers, int type, FCurve *owner_fcu)
   FModifier *fcm;
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, fmi)) {
-    return NULL;
+  if (ELEM(nullptr, modifiers, fmi)) {
+    return nullptr;
   }
 
   /* special checks for whether modifier can be added */
@@ -1099,11 +1091,11 @@ FModifier *add_fmodifier(ListBase *modifiers, int type, FCurve *owner_fcu)
     CLOG_STR_ERROR(&LOG,
                    "Cannot add 'Cycles' modifier to F-Curve, as 'Cycles' modifier can only be "
                    "first in stack.");
-    return NULL;
+    return nullptr;
   }
 
   /* add modifier itself */
-  fcm = MEM_callocN(sizeof(FModifier), "F-Curve Modifier");
+  fcm = static_cast<FModifier *>(MEM_callocN(sizeof(FModifier), "F-Curve Modifier"));
   fcm->type = type;
   fcm->ui_expand_flag = UI_PANEL_DATA_EXPAND_ROOT; /* Expand the main panel, not the sub-panels. */
   fcm->curve = owner_fcu;
@@ -1141,14 +1133,14 @@ FModifier *copy_fmodifier(const FModifier *src)
   FModifier *dst;
 
   /* sanity check */
-  if (src == NULL) {
-    return NULL;
+  if (src == nullptr) {
+    return nullptr;
   }
 
   /* copy the base data, clearing the links */
-  dst = MEM_dupallocN(src);
-  dst->next = dst->prev = NULL;
-  dst->curve = NULL;
+  dst = static_cast<FModifier *>(MEM_dupallocN(src));
+  dst->next = dst->prev = nullptr;
+  dst->curve = nullptr;
 
   /* make a new copy of the F-Modifier's data */
   dst->data = MEM_dupallocN(src->data);
@@ -1166,20 +1158,22 @@ void copy_fmodifiers(ListBase *dst, const ListBase *src)
 {
   FModifier *fcm, *srcfcm;
 
-  if (ELEM(NULL, dst, src)) {
+  if (ELEM(nullptr, dst, src)) {
     return;
   }
 
   BLI_listbase_clear(dst);
   BLI_duplicatelist(dst, src);
 
-  for (fcm = dst->first, srcfcm = src->first; fcm && srcfcm;
-       srcfcm = srcfcm->next, fcm = fcm->next) {
+  for (fcm = static_cast<FModifier *>(dst->first), srcfcm = static_cast<FModifier *>(src->first);
+       fcm && srcfcm;
+       srcfcm = srcfcm->next, fcm = fcm->next)
+  {
     const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
 
     /* make a new copy of the F-Modifier's data */
     fcm->data = MEM_dupallocN(fcm->data);
-    fcm->curve = NULL;
+    fcm->curve = nullptr;
 
     /* only do specific constraints if required */
     if (fmi && fmi->copy_data) {
@@ -1193,12 +1187,12 @@ bool remove_fmodifier(ListBase *modifiers, FModifier *fcm)
   const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
 
   /* sanity check */
-  if (fcm == NULL) {
+  if (fcm == nullptr) {
     return false;
   }
 
   /* removing the cycles modifier requires a handle update */
-  FCurve *update_fcu = (fcm->type == FMODIFIER_TYPE_CYCLES) ? fcm->curve : NULL;
+  FCurve *update_fcu = (fcm->type == FMODIFIER_TYPE_CYCLES) ? fcm->curve : nullptr;
 
   /* free modifier's special data (stored inside fcm->data) */
   if (fcm->data) {
@@ -1233,12 +1227,12 @@ void free_fmodifiers(ListBase *modifiers)
   FModifier *fcm, *fmn;
 
   /* sanity check */
-  if (modifiers == NULL) {
+  if (modifiers == nullptr) {
     return;
   }
 
   /* free each modifier in order - modifier is unlinked from list and freed */
-  for (fcm = modifiers->first; fcm; fcm = fmn) {
+  for (fcm = static_cast<FModifier *>(modifiers->first); fcm; fcm = fmn) {
     fmn = fcm->next;
     remove_fmodifier(modifiers, fcm);
   }
@@ -1249,19 +1243,19 @@ FModifier *find_active_fmodifier(ListBase *modifiers)
   FModifier *fcm;
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
-    return NULL;
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
+    return nullptr;
   }
 
   /* loop over modifiers until 'active' one is found */
-  for (fcm = modifiers->first; fcm; fcm = fcm->next) {
+  for (fcm = static_cast<FModifier *>(modifiers->first); fcm; fcm = fcm->next) {
     if (fcm->flag & FMODIFIER_FLAG_ACTIVE) {
       return fcm;
     }
   }
 
   /* no modifier is active */
-  return NULL;
+  return nullptr;
 }
 
 void set_active_fmodifier(ListBase *modifiers, FModifier *fcm)
@@ -1269,12 +1263,12 @@ void set_active_fmodifier(ListBase *modifiers, FModifier *fcm)
   FModifier *fm;
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
     return;
   }
 
   /* deactivate all, and set current one active */
-  for (fm = modifiers->first; fm; fm = fm->next) {
+  for (fm = static_cast<FModifier *>(modifiers->first); fm; fm = fm->next) {
     fm->flag &= ~FMODIFIER_FLAG_ACTIVE;
   }
 
@@ -1294,12 +1288,12 @@ bool list_has_suitable_fmodifier(const ListBase *modifiers, int mtype, short act
   }
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
     return false;
   }
 
   /* Find the first modifier fitting these criteria. */
-  for (fcm = modifiers->first; fcm; fcm = fcm->next) {
+  for (fcm = static_cast<FModifier *>(modifiers->first); fcm; fcm = fcm->next) {
     const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
     short mOk = 1, aOk = 1; /* by default 1, so that when only one test, won't fail */
 
@@ -1326,7 +1320,7 @@ bool list_has_suitable_fmodifier(const ListBase *modifiers, int mtype, short act
 uint evaluate_fmodifiers_storage_size_per_modifier(ListBase *modifiers)
 {
   /* Sanity checks. */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
     return 0;
   }
 
@@ -1335,7 +1329,7 @@ uint evaluate_fmodifiers_storage_size_per_modifier(ListBase *modifiers)
   LISTBASE_FOREACH (FModifier *, fcm, modifiers) {
     const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
 
-    if (fmi == NULL) {
+    if (fmi == nullptr) {
       continue;
     }
 
@@ -1353,7 +1347,7 @@ static float eval_fmodifier_influence(FModifier *fcm, float evaltime)
   float influence;
 
   /* sanity check */
-  if (fcm == NULL) {
+  if (fcm == nullptr) {
     return 0.0f;
   }
 
@@ -1400,7 +1394,7 @@ float evaluate_time_fmodifiers(FModifiersStackStorage *storage,
                                float evaltime)
 {
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->last)) {
+  if (ELEM(nullptr, modifiers, modifiers->last)) {
     return evaltime;
   }
 
@@ -1419,10 +1413,11 @@ float evaluate_time_fmodifiers(FModifiersStackStorage *storage,
    * (such as multiple 'stepped' modifiers in sequence, causing different stepping rates)
    */
   uint fcm_index = storage->modifier_count - 1;
-  for (FModifier *fcm = modifiers->last; fcm; fcm = fcm->prev, fcm_index--) {
+  for (FModifier *fcm = static_cast<FModifier *>(modifiers->last); fcm;
+       fcm = fcm->prev, fcm_index--) {
     const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
 
-    if (fmi == NULL) {
+    if (fmi == nullptr) {
       continue;
     }
 
@@ -1460,7 +1455,7 @@ void evaluate_value_fmodifiers(FModifiersStackStorage *storage,
   FModifier *fcm;
 
   /* sanity checks */
-  if (ELEM(NULL, modifiers, modifiers->first)) {
+  if (ELEM(nullptr, modifiers, modifiers->first)) {
     return;
   }
 
@@ -1470,10 +1465,10 @@ void evaluate_value_fmodifiers(FModifiersStackStorage *storage,
 
   /* evaluate modifiers */
   uint fcm_index = 0;
-  for (fcm = modifiers->first; fcm; fcm = fcm->next, fcm_index++) {
+  for (fcm = static_cast<FModifier *>(modifiers->first); fcm; fcm = fcm->next, fcm_index++) {
     const FModifierTypeInfo *fmi = fmodifier_get_typeinfo(fcm);
 
-    if (fmi == NULL) {
+    if (fmi == nullptr) {
       continue;
     }
 
@@ -1506,17 +1501,17 @@ void fcurve_bake_modifiers(FCurve *fcu, int start, int end)
 
   /* sanity checks */
   /* TODO: make these tests report errors using reports not CLOG's */
-  if (ELEM(NULL, fcu, fcu->modifiers.first)) {
+  if (ELEM(nullptr, fcu, fcu->modifiers.first)) {
     CLOG_ERROR(&LOG, "No F-Curve with F-Curve Modifiers to Bake");
     return;
   }
 
   /* temporarily, disable driver while we sample, so that they don't influence the outcome */
   driver = fcu->driver;
-  fcu->driver = NULL;
+  fcu->driver = nullptr;
 
   /* bake the modifiers, by sampling the curve at each frame */
-  fcurve_store_samples(fcu, NULL, start, end, fcurve_samplingcb_evalcurve);
+  fcurve_store_samples(fcu, nullptr, start, end, fcurve_samplingcb_evalcurve);
 
   /* free the modifiers now */
   free_fmodifiers(&fcu->modifiers);
