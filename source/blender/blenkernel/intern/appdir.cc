@@ -138,7 +138,7 @@ const char *BKE_appdir_folder_default(void)
     return documentfolder;
   }
 
-  return NULL;
+  return nullptr;
 #endif /* WIN32 */
 }
 
@@ -156,7 +156,7 @@ const char *BKE_appdir_folder_root(void)
 const char *BKE_appdir_folder_default_or_root(void)
 {
   const char *path = BKE_appdir_folder_default();
-  if (path == NULL) {
+  if (path == nullptr) {
     path = BKE_appdir_folder_root();
   }
   return path;
@@ -208,10 +208,10 @@ bool BKE_appdir_folder_caches(char *path, const size_t path_maxncpy)
   path[0] = '\0';
 
   const char *caches_root_path = GHOST_getUserSpecialDir(GHOST_kUserSpecialDirCaches);
-  if (caches_root_path == NULL || !BLI_is_dir(caches_root_path)) {
+  if (caches_root_path == nullptr || !BLI_is_dir(caches_root_path)) {
     caches_root_path = BKE_tempdir_base();
   }
-  if (caches_root_path == NULL || !BLI_is_dir(caches_root_path)) {
+  if (caches_root_path == nullptr || !BLI_is_dir(caches_root_path)) {
     return false;
   }
 
@@ -260,7 +260,7 @@ bool BKE_appdir_font_folder_default(char *dir, size_t dir_maxncpy)
  * Concatenates paths into \a targetpath,
  * returning true if result points to a directory.
  *
- * \param path_base: Path base, never NULL.
+ * \param path_base: Path base, never nullptr.
  * \param folder_name: First sub-directory (optional).
  * \param subfolder_name: Second sub-directory (optional).
  * \param check_is_dir: When false, return true even if the path doesn't exist.
@@ -280,8 +280,8 @@ static bool test_path(char *targetpath,
 {
   ASSERT_IS_INIT();
 
-  /* Only the last argument should be NULL. */
-  BLI_assert(!(folder_name == NULL && (subfolder_name != NULL)));
+  /* Only the last argument should be nullptr. */
+  BLI_assert(!(folder_name == nullptr && (subfolder_name != nullptr)));
   const char *path_array[] = {path_base, folder_name, subfolder_name};
   const int path_array_num = (folder_name ? (subfolder_name ? 3 : 2) : 1);
   BLI_path_join_array(targetpath, targetpath_maxncpy, path_array, path_array_num);
@@ -315,7 +315,7 @@ static bool test_env_path(char *path, const char *envvar, const bool check_is_di
 {
   ASSERT_IS_INIT();
 
-  const char *env_path = envvar ? BLI_getenv(envvar) : NULL;
+  const char *env_path = envvar ? BLI_getenv(envvar) : nullptr;
   if (!env_path) {
     return false;
   }
@@ -367,7 +367,7 @@ static bool get_path_local_ex(char *targetpath,
             STR_OR_FALLBACK(folder_name),
             STR_OR_FALLBACK(subfolder_name));
 
-  if (folder_name) { /* `subfolder_name` may be NULL. */
+  if (folder_name) { /* `subfolder_name` may be nullptr. */
     const char *path_array[] = {folder_name, subfolder_name};
     const int path_array_num = subfolder_name ? 2 : 1;
     BLI_path_join_array(relfolder, sizeof(relfolder), path_array, path_array_num);
@@ -411,7 +411,7 @@ bool BKE_appdir_app_is_portable_install(void)
 {
   /* Detect portable install by the existence of `config` folder. */
   char dirpath[FILE_MAX];
-  return get_path_local(dirpath, sizeof(dirpath), "config", NULL);
+  return get_path_local(dirpath, sizeof(dirpath), "config", nullptr);
 }
 
 /**
@@ -432,9 +432,9 @@ static bool get_path_environment_ex(char *targetpath,
   char user_path[FILE_MAX];
 
   if (test_env_path(user_path, envvar, check_is_dir)) {
-    /* Note that `subfolder_name` may be NULL, in this case we use `user_path` as-is. */
+    /* Note that `subfolder_name` may be nullptr, in this case we use `user_path` as-is. */
     return test_path(
-        targetpath, targetpath_maxncpy, check_is_dir, user_path, subfolder_name, NULL);
+        targetpath, targetpath_maxncpy, check_is_dir, user_path, subfolder_name, nullptr);
   }
   return false;
 }
@@ -495,7 +495,7 @@ static bool get_path_user_ex(char *targetpath,
             STR_OR_FALLBACK(folder_name),
             STR_OR_FALLBACK(subfolder_name));
 
-  /* `subfolder_name` may be NULL. */
+  /* `subfolder_name` may be nullptr. */
   return test_path(
       targetpath, targetpath_maxncpy, check_is_dir, user_path, folder_name, subfolder_name);
 }
@@ -530,7 +530,7 @@ static bool get_path_system_ex(char *targetpath,
   char system_path[FILE_MAX];
   char relfolder[FILE_MAX];
 
-  if (folder_name) { /* `subfolder_name` may be NULL. */
+  if (folder_name) { /* `subfolder_name` may be nullptr. */
     const char *path_array[] = {folder_name, subfolder_name};
     const int path_array_num = subfolder_name ? 2 : 1;
     BLI_path_join_array(relfolder, sizeof(relfolder), path_array, path_array_num);
@@ -561,7 +561,7 @@ static bool get_path_system_ex(char *targetpath,
             STR_OR_FALLBACK(folder_name),
             STR_OR_FALLBACK(subfolder_name));
 
-  /* Try `$BLENDERPATH/folder_name/subfolder_name`, `subfolder_name` may be NULL. */
+  /* Try `$BLENDERPATH/folder_name/subfolder_name`, `subfolder_name` may be nullptr. */
   return test_path(
       targetpath, targetpath_maxncpy, check_is_dir, system_path, folder_name, subfolder_name);
 }
@@ -693,7 +693,7 @@ const char *BKE_appdir_folder_id(const int folder_id, const char *subfolder)
   if (BKE_appdir_folder_id_ex(folder_id, subfolder, path, sizeof(path))) {
     return path;
   }
-  return NULL;
+  return nullptr;
 }
 
 const char *BKE_appdir_folder_id_user_notest(const int folder_id, const char *subfolder)
@@ -737,7 +737,7 @@ const char *BKE_appdir_folder_id_user_notest(const int folder_id, const char *su
   }
 
   if ('\0' == path[0]) {
-    return NULL;
+    return nullptr;
   }
   return path;
 }
@@ -754,7 +754,7 @@ const char *BKE_appdir_folder_id_create(const int folder_id, const char *subfold
             BLENDER_USER_AUTOSAVE))
   {
     BLI_assert_unreachable();
-    return NULL;
+    return nullptr;
   }
 
   path = BKE_appdir_folder_id(folder_id, subfolder);
@@ -777,13 +777,13 @@ const char *BKE_appdir_resource_path_id_with_version(const int folder_id,
   bool ok;
   switch (folder_id) {
     case BLENDER_RESOURCE_PATH_USER:
-      ok = get_path_user_ex(path, sizeof(path), NULL, NULL, version, check_is_dir);
+      ok = get_path_user_ex(path, sizeof(path), nullptr, nullptr, version, check_is_dir);
       break;
     case BLENDER_RESOURCE_PATH_LOCAL:
-      ok = get_path_local_ex(path, sizeof(path), NULL, NULL, version, check_is_dir);
+      ok = get_path_local_ex(path, sizeof(path), nullptr, nullptr, version, check_is_dir);
       break;
     case BLENDER_RESOURCE_PATH_SYSTEM:
-      ok = get_path_system_ex(path, sizeof(path), NULL, NULL, version, check_is_dir);
+      ok = get_path_system_ex(path, sizeof(path), nullptr, nullptr, version, check_is_dir);
       break;
     default:
       path[0] = '\0'; /* in case check_is_dir is false */
@@ -791,7 +791,7 @@ const char *BKE_appdir_resource_path_id_with_version(const int folder_id,
       BLI_assert_msg(0, "incorrect ID");
       break;
   }
-  return ok ? path : NULL;
+  return ok ? path : nullptr;
 }
 
 const char *BKE_appdir_resource_path_id(const int folder_id, const bool check_is_dir)
@@ -825,10 +825,10 @@ static void where_am_i(char *program_filepath,
                        const char *program_name)
 {
 #  ifdef WITH_BINRELOC
-  /* Linux uses `binreloc` since `argv[0]` is not reliable, call `br_init(NULL)` first. */
+  /* Linux uses `binreloc` since `argv[0]` is not reliable, call `br_init(nullptr)` first. */
   {
-    const char *path = NULL;
-    path = br_find_exe(NULL);
+    const char *path = nullptr;
+    path = br_find_exe(nullptr);
     if (path) {
       BLI_strncpy(program_filepath, path, program_filepath_maxncpy);
       free((void *)path);
@@ -847,8 +847,10 @@ static void where_am_i(char *program_filepath,
                    "path can't be found: \"%.*s\"",
                    (int)program_filepath_maxncpy,
                    program_filepath);
-        MessageBox(
-            NULL, "path contains invalid characters or is too long (see console)", "Error", MB_OK);
+        MessageBox(nullptr,
+                   "path contains invalid characters or is too long (see console)",
+                   "Error",
+                   MB_OK);
       }
       MEM_freeN(fullname_16);
       return;
@@ -1079,8 +1081,8 @@ void BKE_appdir_app_templates(ListBase *templates)
     const uint dir_num = BLI_filelist_dir_contents(subdir, &dirs);
     for (int f = 0; f < dir_num; f++) {
       if (!FILENAME_IS_CURRPAR(dirs[f].relname) && S_ISDIR(dirs[f].type)) {
-        char *template = BLI_strdup(dirs[f].relname);
-        BLI_addtail(templates, BLI_genericNodeN(template));
+        char *app_template = BLI_strdup(dirs[f].relname);
+        BLI_addtail(templates, BLI_genericNodeN(app_template));
       }
     }
 
@@ -1102,7 +1104,7 @@ void BKE_appdir_app_templates(ListBase *templates)
  *
  * \param tempdir: The full path to the temporary temp directory.
  * \param tempdir_maxncpy: The size of the \a tempdir buffer.
- * \param userdir: Directory specified in user preferences (may be NULL).
+ * \param userdir: Directory specified in user preferences (may be nullptr).
  * note that by default this is an empty string, only use when non-empty.
  */
 static void where_is_temp(char *tempdir, const size_t tempdir_maxncpy, const char *userdir)
@@ -1141,7 +1143,7 @@ static void tempdir_session_create(char *tempdir_session,
 #ifdef WIN32
     const bool needs_create = (_mktemp_s(tempdir_session, tempdir_session_len_required) == 0);
 #else
-    const bool needs_create = (mkdtemp(tempdir_session) == NULL);
+    const bool needs_create = (mkdtemp(tempdir_session) == nullptr);
 #endif
     if (needs_create) {
       BLI_dir_create_recursive(tempdir_session);

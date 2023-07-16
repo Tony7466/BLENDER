@@ -61,7 +61,7 @@ set(SRC
   intern/anim_sys.cc
   intern/anim_visualization.cc
   intern/anonymous_attribute_id.cc
-  intern/appdir.c
+  intern/appdir.cc
   intern/armature.c
   intern/armature_deform.c
   intern/armature_pose.cc
