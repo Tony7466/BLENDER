@@ -57,7 +57,7 @@ set(SRC
   intern/action_mirror.cc
   intern/addon.cc
   intern/anim_data.cc
-  intern/anim_path.c
+  intern/anim_path.cc
   intern/anim_sys.c
   intern/anim_visualization.c
   intern/anonymous_attribute_id.cc

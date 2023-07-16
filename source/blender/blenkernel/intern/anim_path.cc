@@ -39,11 +39,11 @@ static int get_bevlist_seg_array_size(const BevList *bl)
 
 int BKE_anim_path_get_array_size(const CurveCache *curve_cache)
 {
-  BLI_assert(curve_cache != NULL);
+  BLI_assert(curve_cache != nullptr);
 
-  BevList *bl = curve_cache->bev.first;
+  BevList *bl = static_cast<BevList *>(curve_cache->bev.first);
 
-  BLI_assert(bl != NULL && bl->nr > 1);
+  BLI_assert(bl != nullptr && bl->nr > 1);
 
   return get_bevlist_seg_array_size(bl);
 }
@@ -56,16 +56,16 @@ float BKE_anim_path_get_length(const CurveCache *curve_cache)
 
 void BKE_anim_path_calc_data(Object *ob)
 {
-  if (ob == NULL || ob->type != OB_CURVES_LEGACY) {
+  if (ob == nullptr || ob->type != OB_CURVES_LEGACY) {
     return;
   }
-  if (ob->runtime.curve_cache == NULL) {
+  if (ob->runtime.curve_cache == nullptr) {
     CLOG_WARN(&LOG, "No curve cache!");
     return;
   }
   /* We only use the first curve. */
-  BevList *bl = ob->runtime.curve_cache->bev.first;
-  if (bl == NULL || !bl->nr) {
+  BevList *bl = static_cast<BevList *>(ob->runtime.curve_cache->bev.first);
+  if (bl == nullptr || !bl->nr) {
     CLOG_WARN(&LOG, "No bev list data!");
     return;
   }
@@ -223,21 +223,21 @@ bool BKE_where_on_path(const Object *ob,
                        float *r_radius,
                        float *r_weight)
 {
-  if (ob == NULL || ob->type != OB_CURVES_LEGACY) {
+  if (ob == nullptr || ob->type != OB_CURVES_LEGACY) {
     return false;
   }
-  Curve *cu = ob->data;
-  if (ob->runtime.curve_cache == NULL) {
+  Curve *cu = static_cast<Curve *>(ob->data);
+  if (ob->runtime.curve_cache == nullptr) {
     CLOG_WARN(&LOG, "No curve cache!");
     return false;
   }
-  if (ob->runtime.curve_cache->anim_path_accum_length == NULL) {
+  if (ob->runtime.curve_cache->anim_path_accum_length == nullptr) {
     CLOG_WARN(&LOG, "No anim path!");
     return false;
   }
   /* We only use the first curve. */
-  BevList *bl = ob->runtime.curve_cache->bev.first;
-  if (bl == NULL || !bl->nr) {
+  BevList *bl = static_cast<BevList *>(ob->runtime.curve_cache->bev.first);
+  if (bl == nullptr || !bl->nr) {
     CLOG_WARN(&LOG, "No bev list data!");
     return false;
   }
@@ -308,7 +308,7 @@ bool BKE_where_on_path(const Object *ob,
   if (!nurbs) {
     nurbs = &cu->nurb;
   }
-  const Nurb *nu = nurbs->first;
+  const Nurb *nu = static_cast<const Nurb *>(nurbs->first);
 
   /* Make sure that first and last frame are included in the vectors here. */
   if (ELEM(nu->type, CU_POLY, CU_BEZIER, CU_NURBS)) {
