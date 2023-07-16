@@ -36,7 +36,7 @@ static float len_squared_v3v3_with_normal_bias(const float co_search[3],
                                                const float co_test[3],
                                                const void *user_data)
 {
-  const float *normal = user_data;
+  const float *normal = static_cast<const float *>(user_data);
   float d[3], dist;
 
   sub_v3_v3v3(d, co_test, co_search);
@@ -50,19 +50,19 @@ static float len_squared_v3v3_with_normal_bias(const float co_search[3],
   return dist;
 }
 
-typedef struct BoidValues {
+struct BoidValues {
   float max_speed, max_acc;
   float max_ave, min_speed;
   float personal_space, jump_speed;
-} BoidValues;
+};
 
 static bool apply_boid_rule(
     BoidBrainData *bbd, BoidRule *rule, BoidValues *val, ParticleData *pa, float fuzziness);
 
-static bool rule_none(BoidRule *UNUSED(rule),
-                      BoidBrainData *UNUSED(data),
-                      BoidValues *UNUSED(val),
-                      ParticleData *UNUSED(pa))
+static bool rule_none(BoidRule * /*rule*/,
+                      BoidBrainData * /*data*/,
+                      BoidValues * /*val*/,
+                      ParticleData * /*pa*/)
 {
   return false;
 }
@@ -74,7 +74,7 @@ static bool rule_goal_avoid(BoidRule *rule, BoidBrainData *bbd, BoidValues *val,
   BoidParticle *bpa = pa->boid;
   EffectedPoint epoint;
   ListBase *effectors = bbd->sim->psys->effectors;
-  EffectorCache *cur, *eff = NULL;
+  EffectorCache *cur, *eff = nullptr;
   EffectorCache temp_eff;
   EffectorData efd, cur_efd;
   float mul = (rule->type == eBoidRuleType_Avoid ? 1.0 : -1.0);
@@ -88,7 +88,7 @@ static bool rule_goal_avoid(BoidRule *rule, BoidBrainData *bbd, BoidValues *val,
 
   /* first find out goal/predator with highest priority */
   if (effectors) {
-    for (cur = effectors->first; cur; cur = cur->next) {
+    for (cur = static_cast<EffectorCache *>(effectors->first); cur; cur = cur->next) {
       Object *eob = cur->ob;
       PartDeflect *pd = cur->pd;
 
@@ -138,7 +138,7 @@ static bool rule_goal_avoid(BoidRule *rule, BoidBrainData *bbd, BoidValues *val,
   }
 
   /* if the object doesn't have effector data we have to fake it */
-  if (eff == NULL && gabr->ob) {
+  if (eff == nullptr && gabr->ob) {
     memset(&temp_eff, 0, sizeof(EffectorCache));
     temp_eff.ob = gabr->ob;
     temp_eff.depsgraph = bbd->sim->depsgraph;
@@ -210,7 +210,7 @@ static bool rule_avoid_collision(BoidRule *rule,
 {
   const int raycast_flag = BVH_RAYCAST_DEFAULT & ~BVH_RAYCAST_WATERTIGHT;
   BoidRuleAvoidCollision *acbr = (BoidRuleAvoidCollision *)rule;
-  KDTreeNearest_3d *ptn = NULL;
+  KDTreeNearest_3d *ptn = nullptr;
   ParticleTarget *pt;
   BoidParticle *bpa = pa->boid;
   ColliderCache *coll;
@@ -237,7 +237,8 @@ static bool rule_avoid_collision(BoidRule *rule,
     hit.dist = col.original_ray_length = normalize_v3(ray_dir);
 
     /* find out closest deflector object */
-    for (coll = bbd->sim->colliders->first; coll; coll = coll->next) {
+    for (coll = static_cast<ColliderCache *>(bbd->sim->colliders->first); coll; coll = coll->next)
+    {
       /* don't check with current ground object */
       if (coll->ob == bpa->ground) {
         continue;
@@ -334,11 +335,11 @@ static bool rule_avoid_collision(BoidRule *rule,
   MEM_SAFE_FREE(ptn);
 
   /* check boids in other systems */
-  for (pt = bbd->sim->psys->targets.first; pt; pt = pt->next) {
+  for (pt = static_cast<ParticleTarget *>(bbd->sim->psys->targets.first); pt; pt = pt->next) {
     ParticleSystem *epsys = psys_get_target_system(bbd->sim->ob, pt);
 
     if (epsys) {
-      BLI_assert(epsys->tree != NULL);
+      BLI_assert(epsys->tree != nullptr);
       neighbors = BLI_kdtree_3d_range_search_with_len_squared_cb(epsys->tree,
                                                                  pa->prev_state.co,
                                                                  &ptn,
@@ -397,12 +398,12 @@ static bool rule_avoid_collision(BoidRule *rule,
 
   return ret;
 }
-static bool rule_separate(BoidRule *UNUSED(rule),
+static bool rule_separate(BoidRule * /*rule*/,
                           BoidBrainData *bbd,
                           BoidValues *val,
                           ParticleData *pa)
 {
-  KDTreeNearest_3d *ptn = NULL;
+  KDTreeNearest_3d *ptn = nullptr;
   ParticleTarget *pt;
   float len = 2.0f * val->personal_space * pa->size + 1.0f;
   float vec[3] = {0.0f, 0.0f, 0.0f};
@@ -421,7 +422,7 @@ static bool rule_separate(BoidRule *UNUSED(rule),
   MEM_SAFE_FREE(ptn);
 
   /* check other boid systems */
-  for (pt = bbd->sim->psys->targets.first; pt; pt = pt->next) {
+  for (pt = static_cast<ParticleTarget *>(bbd->sim->psys->targets.first); pt; pt = pt->next) {
     ParticleSystem *epsys = psys_get_target_system(bbd->sim->ob, pt);
 
     if (epsys) {
@@ -442,9 +443,9 @@ static bool rule_separate(BoidRule *UNUSED(rule),
   }
   return ret;
 }
-static bool rule_flock(BoidRule *UNUSED(rule),
+static bool rule_flock(BoidRule * /*rule*/,
                        BoidBrainData *bbd,
-                       BoidValues *UNUSED(val),
+                       BoidValues * /*val*/,
                        ParticleData *pa)
 {
   KDTreeNearest_3d ptn[11];
@@ -677,10 +678,10 @@ static bool rule_average_speed(BoidRule *rule,
 static bool rule_fight(BoidRule *rule, BoidBrainData *bbd, BoidValues *val, ParticleData *pa)
 {
   BoidRuleFight *fbr = (BoidRuleFight *)rule;
-  KDTreeNearest_3d *ptn = NULL;
+  KDTreeNearest_3d *ptn = nullptr;
   ParticleTarget *pt;
   ParticleData *epars;
-  ParticleData *enemy_pa = NULL;
+  ParticleData *enemy_pa = nullptr;
   BoidParticle *bpa;
   /* friends & enemies */
   float closest_enemy[3] = {0.0f, 0.0f, 0.0f};
@@ -703,7 +704,7 @@ static bool rule_fight(BoidRule *rule, BoidBrainData *bbd, BoidValues *val, Part
   MEM_SAFE_FREE(ptn);
 
   /* add other friendlies and calculate enemy strength and find closest enemy */
-  for (pt = bbd->sim->psys->targets.first; pt; pt = pt->next) {
+  for (pt = static_cast<ParticleTarget *>(bbd->sim->psys->targets.first); pt; pt = pt->next) {
     ParticleSystem *epsys = psys_get_target_system(bbd->sim->ob, pt);
     if (epsys) {
       epars = epsys->particles;
@@ -835,17 +836,17 @@ static Object *boid_find_ground(BoidBrainData *bbd,
   BoidParticle *bpa = pa->boid;
 
   if (bpa->data.mode == eBoidMode_Climbing) {
-    SurfaceModifierData *surmd = NULL;
+    SurfaceModifierData *surmd = nullptr;
     float x[3], v[3];
 
     surmd = (SurfaceModifierData *)BKE_modifiers_findby_type(bpa->ground, eModifierType_Surface);
 
     /* take surface velocity into account */
-    closest_point_on_surface(surmd, pa->state.co, x, NULL, v);
+    closest_point_on_surface(surmd, pa->state.co, x, nullptr, v);
     add_v3_v3(x, v);
 
     /* get actual position on surface */
-    closest_point_on_surface(surmd, x, ground_co, ground_nor, NULL);
+    closest_point_on_surface(surmd, x, ground_co, ground_nor, nullptr);
 
     return bpa->ground;
   }
@@ -857,7 +858,7 @@ static Object *boid_find_ground(BoidBrainData *bbd,
   float radius = 0.0f, t, ray_dir[3];
 
   if (!bbd->sim->colliders) {
-    return NULL;
+    return nullptr;
   }
 
   memset(&col, 0, sizeof(ParticleCollision));
@@ -871,7 +872,7 @@ static Object *boid_find_ground(BoidBrainData *bbd,
   hit.dist = col.original_ray_length = normalize_v3(ray_dir);
   col.pce.inside = 0;
 
-  for (coll = bbd->sim->colliders->first; coll; coll = coll->next) {
+  for (coll = static_cast<ColliderCache *>(bbd->sim->colliders->first); coll; coll = coll->next) {
     col.current = coll->ob;
     col.md = coll->collmd;
     col.fac1 = col.fac2 = 0.0f;
@@ -904,7 +905,7 @@ static Object *boid_find_ground(BoidBrainData *bbd,
   hit.index = -1;
   hit.dist = col.original_ray_length = normalize_v3(ray_dir);
 
-  for (coll = bbd->sim->colliders->first; coll; coll = coll->next) {
+  for (coll = static_cast<ColliderCache *>(bbd->sim->colliders->first); coll; coll = coll->next) {
     col.current = coll->ob;
     col.md = coll->collmd;
 
@@ -932,13 +933,13 @@ static Object *boid_find_ground(BoidBrainData *bbd,
   ground_co[2] = 0;
   ground_nor[0] = ground_nor[1] = 0.0f;
   ground_nor[2] = 1.0f;
-  return NULL;
+  return nullptr;
 }
-static bool boid_rule_applies(ParticleData *pa, BoidSettings *UNUSED(boids), BoidRule *rule)
+static bool boid_rule_applies(ParticleData *pa, BoidSettings * /*boids*/, BoidRule *rule)
 {
   BoidParticle *bpa = pa->boid;
 
-  if (rule == NULL) {
+  if (rule == nullptr) {
     return false;
   }
 
@@ -955,10 +956,10 @@ static bool boid_rule_applies(ParticleData *pa, BoidSettings *UNUSED(boids), Boi
 }
 void boids_precalc_rules(ParticleSettings *part, float cfra)
 {
-  BoidState *state = part->boids->states.first;
+  BoidState *state = static_cast<BoidState *>(part->boids->states.first);
   BoidRule *rule;
   for (; state; state = state->next) {
-    for (rule = state->rules.first; rule; rule = rule->next) {
+    for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
       if (rule->type == eBoidRuleType_FollowLeader) {
         BoidRuleFollowLeader *flbr = (BoidRuleFollowLeader *)rule;
 
@@ -1005,7 +1006,7 @@ static float boid_goal_signed_dist(float *boid_co, float *goal_co, float *goal_n
 static bool apply_boid_rule(
     BoidBrainData *bbd, BoidRule *rule, BoidValues *val, ParticleData *pa, float fuzziness)
 {
-  if (rule == NULL) {
+  if (rule == nullptr) {
     return false;
   }
 
@@ -1027,7 +1028,7 @@ static bool apply_boid_rule(
 }
 static BoidState *get_boid_state(BoidSettings *boids, ParticleData *pa)
 {
-  BoidState *state = boids->states.first;
+  BoidState *state = static_cast<BoidState *>(boids->states.first);
   BoidParticle *bpa = pa->boid;
 
   for (; state; state = state->next) {
@@ -1037,7 +1038,7 @@ static BoidState *get_boid_state(BoidSettings *boids, ParticleData *pa)
   }
 
   /* for some reason particle isn't at a valid state */
-  state = boids->states.first;
+  state = static_cast<BoidState *>(boids->states.first);
   if (state) {
     bpa->data.state_id = state->id;
   }
@@ -1048,7 +1049,7 @@ static BoidState *get_boid_state(BoidSettings *boids, ParticleData *pa)
 #if 0 /* TODO */
 static int boid_condition_is_true(BoidCondition *cond)
 {
- return 0;
+  return 0;
 }
 #endif
 
@@ -1068,7 +1069,7 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
     return;
   }
 
-  /* Planned for near future. */
+/* Planned for near future. */
 #if 0
   BoidCondition *cond = state->conditions.first;
   for (; cond; cond = cond->next) {
@@ -1092,7 +1093,7 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
   /* go through rules */
   switch (state->ruleset_type) {
     case eBoidRulesetType_Fuzzy: {
-      for (rule = state->rules.first; rule; rule = rule->next) {
+      for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
         if (apply_boid_rule(bbd, rule, &val, pa, state->rule_fuzziness)) {
           break; /* only first nonzero rule that comes through fuzzy rule is applied */
         }
@@ -1103,7 +1104,7 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
       /* use random rule for each particle (always same for same particle though) */
       const int n = BLI_listbase_count(&state->rules);
       if (n) {
-        rule = BLI_findlink(&state->rules, rand % n);
+        rule = static_cast<BoidRule *>(BLI_findlink(&state->rules, rand % n));
         apply_boid_rule(bbd, rule, &val, pa, -1.0);
       }
       break;
@@ -1111,7 +1112,7 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
     case eBoidRulesetType_Average: {
       float wanted_co[3] = {0.0f, 0.0f, 0.0f}, wanted_speed = 0.0f;
       int n = 0;
-      for (rule = state->rules.first; rule; rule = rule->next) {
+      for (rule = static_cast<BoidRule *>(state->rules.first); rule; rule = rule->next) {
         if (apply_boid_rule(bbd, rule, &val, pa, -1.0f)) {
           add_v3_v3(wanted_co, bbd->wanted_co);
           wanted_speed += bbd->wanted_speed;
@@ -1365,8 +1366,8 @@ void boid_body(BoidBrainData *bbd, ParticleData *pa)
                       bbd->part->effector_weights,
                       &epoint,
                       force,
-                      NULL,
-                      NULL);
+                      nullptr,
+                      nullptr);
 
   if (ELEM(bpa->data.mode, eBoidMode_OnLand, eBoidMode_Climbing)) {
     float length = normalize_v3(force);
@@ -1584,35 +1585,38 @@ void boid_body(BoidBrainData *bbd, ParticleData *pa)
 
 BoidRule *boid_new_rule(int type)
 {
-  BoidRule *rule = NULL;
+  BoidRule *rule = nullptr;
   if (type <= 0) {
-    return NULL;
+    return nullptr;
   }
 
   switch (type) {
     case eBoidRuleType_Goal:
     case eBoidRuleType_Avoid:
-      rule = MEM_callocN(sizeof(BoidRuleGoalAvoid), "BoidRuleGoalAvoid");
+      rule = static_cast<BoidRule *>(MEM_callocN(sizeof(BoidRuleGoalAvoid), "BoidRuleGoalAvoid"));
       break;
     case eBoidRuleType_AvoidCollision:
-      rule = MEM_callocN(sizeof(BoidRuleAvoidCollision), "BoidRuleAvoidCollision");
+      rule = static_cast<BoidRule *>(
+          MEM_callocN(sizeof(BoidRuleAvoidCollision), "BoidRuleAvoidCollision"));
       ((BoidRuleAvoidCollision *)rule)->look_ahead = 2.0f;
       break;
     case eBoidRuleType_FollowLeader:
-      rule = MEM_callocN(sizeof(BoidRuleFollowLeader), "BoidRuleFollowLeader");
+      rule = static_cast<BoidRule *>(
+          MEM_callocN(sizeof(BoidRuleFollowLeader), "BoidRuleFollowLeader"));
       ((BoidRuleFollowLeader *)rule)->distance = 1.0f;
       break;
     case eBoidRuleType_AverageSpeed:
-      rule = MEM_callocN(sizeof(BoidRuleAverageSpeed), "BoidRuleAverageSpeed");
+      rule = static_cast<BoidRule *>(
+          MEM_callocN(sizeof(BoidRuleAverageSpeed), "BoidRuleAverageSpeed"));
       ((BoidRuleAverageSpeed *)rule)->speed = 0.5f;
       break;
     case eBoidRuleType_Fight:
-      rule = MEM_callocN(sizeof(BoidRuleFight), "BoidRuleFight");
+      rule = static_cast<BoidRule *>(MEM_callocN(sizeof(BoidRuleFight), "BoidRuleFight"));
       ((BoidRuleFight *)rule)->distance = 100.0f;
       ((BoidRuleFight *)rule)->flee_distance = 100.0f;
       break;
     default:
-      rule = MEM_callocN(sizeof(BoidRule), "BoidRule");
+      rule = static_cast<BoidRule *>(MEM_callocN(sizeof(BoidRule), "BoidRule"));
       break;
   }
 
@@ -1650,7 +1654,7 @@ void boid_default_settings(BoidSettings *boids)
 
 BoidState *boid_new_state(BoidSettings *boids)
 {
-  BoidState *state = MEM_callocN(sizeof(BoidState), "BoidState");
+  BoidState *state = static_cast<BoidState *>(MEM_callocN(sizeof(BoidState), "BoidState"));
 
   state->id = boids->last_state_id++;
   if (state->id) {
@@ -1669,7 +1673,7 @@ BoidState *boid_new_state(BoidSettings *boids)
 
 BoidState *boid_duplicate_state(BoidSettings *boids, BoidState *state)
 {
-  BoidState *staten = MEM_dupallocN(state);
+  BoidState *staten = static_cast<BoidState *>(MEM_dupallocN(state));
 
   BLI_duplicatelist(&staten->rules, &state->rules);
   BLI_duplicatelist(&staten->conditions, &state->conditions);
@@ -1682,7 +1686,7 @@ BoidState *boid_duplicate_state(BoidSettings *boids, BoidState *state)
 void boid_free_settings(BoidSettings *boids)
 {
   if (boids) {
-    BoidState *state = boids->states.first;
+    BoidState *state = static_cast<BoidState *>(boids->states.first);
 
     for (; state; state = state->next) {
       BLI_freelistN(&state->rules);
@@ -1697,18 +1701,18 @@ void boid_free_settings(BoidSettings *boids)
 }
 BoidSettings *boid_copy_settings(const BoidSettings *boids)
 {
-  BoidSettings *nboids = NULL;
+  BoidSettings *nboids = nullptr;
 
   if (boids) {
     BoidState *state;
     BoidState *nstate;
 
-    nboids = MEM_dupallocN(boids);
+    nboids = static_cast<BoidSettings *>(MEM_dupallocN(boids));
 
     BLI_duplicatelist(&nboids->states, &boids->states);
 
-    state = boids->states.first;
-    nstate = nboids->states.first;
+    state = static_cast<BoidState *>(boids->states.first);
+    nstate = static_cast<BoidState *>(nboids->states.first);
     for (; state; state = state->next, nstate = nstate->next) {
       BLI_duplicatelist(&nstate->rules, &state->rules);
       BLI_duplicatelist(&nstate->conditions, &state->conditions);
@@ -1720,7 +1724,7 @@ BoidSettings *boid_copy_settings(const BoidSettings *boids)
 }
 BoidState *boid_get_current_state(BoidSettings *boids)
 {
-  BoidState *state = boids->states.first;
+  BoidState *state = static_cast<BoidState *>(boids->states.first);
 
   for (; state; state = state->next) {
     if (state->flag & BOIDSTATE_CURRENT) {

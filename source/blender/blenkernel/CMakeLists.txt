@@ -79,7 +79,7 @@ set(SRC
   intern/blender_user_menu.cc
   intern/blendfile.cc
   intern/blendfile_link_append.cc
-  intern/boids.c
+  intern/boids.cc
   intern/bpath.c
   intern/brush.cc
   intern/bvhutils.cc
