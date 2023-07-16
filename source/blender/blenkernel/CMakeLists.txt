@@ -149,7 +149,7 @@ set(SRC
   intern/grease_pencil_convert_legacy.cc
   intern/icons.cc
   intern/icons_rasterize.cc
-  intern/idprop.c
+  intern/idprop.cc
   intern/idprop_create.cc
   intern/idprop_serialize.cc
   intern/idprop_utils.cc

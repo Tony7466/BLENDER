@@ -63,7 +63,8 @@ static size_t idp_size_table[] = {
 
 IDProperty *IDP_NewIDPArray(const char *name)
 {
-  IDProperty *prop = MEM_callocN(sizeof(IDProperty), "IDProperty prop array");
+  IDProperty *prop = static_cast<IDProperty *>(
+      MEM_callocN(sizeof(IDProperty), "IDProperty prop array"));
   prop->type = IDP_IDPARRAY;
   prop->len = 0;
   STRNCPY(prop->name, name);
@@ -76,7 +77,7 @@ IDProperty *IDP_CopyIDPArray(const IDProperty *array, const int flag)
   /* don't use MEM_dupallocN because this may be part of an array */
   BLI_assert(array->type == IDP_IDPARRAY);
 
-  IDProperty *narray = MEM_mallocN(sizeof(IDProperty), __func__);
+  IDProperty *narray = static_cast<IDProperty *>(MEM_mallocN(sizeof(IDProperty), __func__));
   *narray = *array;
 
   narray->data.pointer = MEM_dupallocN(array->data.pointer);
@@ -191,7 +192,7 @@ static void idp_resize_group_array(IDProperty *prop, int newlen, void *newarr)
 
   if (newlen >= prop->len) {
     /* bigger */
-    IDProperty **array = newarr;
+    IDProperty **array = static_cast<IDProperty **>(newarr);
     IDPropertyTemplate val;
 
     for (int a = prop->len; a < newlen; a++) {
@@ -201,7 +202,7 @@ static void idp_resize_group_array(IDProperty *prop, int newlen, void *newarr)
   }
   else {
     /* smaller */
-    IDProperty **array = prop->data.pointer;
+    IDProperty **array = static_cast<IDProperty **>(prop->data.pointer);
 
     for (int a = newlen; a < prop->len; a++) {
       IDP_FreeProperty(array[a]);
@@ -249,21 +250,21 @@ void IDP_ResizeArray(IDProperty *prop, int newlen)
 void IDP_FreeArray(IDProperty *prop)
 {
   if (prop->data.pointer) {
-    idp_resize_group_array(prop, 0, NULL);
+    idp_resize_group_array(prop, 0, nullptr);
     MEM_freeN(prop->data.pointer);
   }
 }
 
 IDPropertyUIData *IDP_ui_data_copy(const IDProperty *prop)
 {
-  IDPropertyUIData *dst_ui_data = MEM_dupallocN(prop->ui_data);
+  IDPropertyUIData *dst_ui_data = static_cast<IDPropertyUIData *>(MEM_dupallocN(prop->ui_data));
 
   /* Copy extra type specific data. */
   switch (IDP_ui_data_type(prop)) {
     case IDP_UI_DATA_TYPE_STRING: {
       const IDPropertyUIDataString *src = (const IDPropertyUIDataString *)prop->ui_data;
       IDPropertyUIDataString *dst = (IDPropertyUIDataString *)dst_ui_data;
-      dst->default_value = MEM_dupallocN(src->default_value);
+      dst->default_value = static_cast<char *>(MEM_dupallocN(src->default_value));
       break;
     }
     case IDP_UI_DATA_TYPE_ID: {
@@ -272,19 +273,19 @@ IDPropertyUIData *IDP_ui_data_copy(const IDProperty *prop)
     case IDP_UI_DATA_TYPE_INT: {
       const IDPropertyUIDataInt *src = (const IDPropertyUIDataInt *)prop->ui_data;
       IDPropertyUIDataInt *dst = (IDPropertyUIDataInt *)dst_ui_data;
-      dst->default_array = MEM_dupallocN(src->default_array);
+      dst->default_array = static_cast<int *>(MEM_dupallocN(src->default_array));
       break;
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
       const IDPropertyUIDataBool *src = (const IDPropertyUIDataBool *)prop->ui_data;
       IDPropertyUIDataBool *dst = (IDPropertyUIDataBool *)dst_ui_data;
-      dst->default_array = MEM_dupallocN(src->default_array);
+      dst->default_array = static_cast<int8_t *>(MEM_dupallocN(src->default_array));
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
       const IDPropertyUIDataFloat *src = (const IDPropertyUIDataFloat *)prop->ui_data;
       IDPropertyUIDataFloat *dst = (IDPropertyUIDataFloat *)dst_ui_data;
-      dst->default_array = MEM_dupallocN(src->default_array);
+      dst->default_array = static_cast<double *>(MEM_dupallocN(src->default_array));
       break;
     }
     case IDP_UI_DATA_TYPE_UNSUPPORTED: {
@@ -292,14 +293,14 @@ IDPropertyUIData *IDP_ui_data_copy(const IDProperty *prop)
     }
   }
 
-  dst_ui_data->description = MEM_dupallocN(prop->ui_data->description);
+  dst_ui_data->description = static_cast<char *>(MEM_dupallocN(prop->ui_data->description));
 
   return dst_ui_data;
 }
 
-static IDProperty *idp_generic_copy(const IDProperty *prop, const int UNUSED(flag))
+static IDProperty *idp_generic_copy(const IDProperty *prop, const int /*flag*/)
 {
-  IDProperty *newp = MEM_callocN(sizeof(IDProperty), __func__);
+  IDProperty *newp = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), __func__));
 
   STRNCPY(newp->name, prop->name);
   newp->type = prop->type;
@@ -307,7 +308,7 @@ static IDProperty *idp_generic_copy(const IDProperty *prop, const int UNUSED(fla
   newp->data.val = prop->data.val;
   newp->data.val2 = prop->data.val2;
 
-  if (prop->ui_data != NULL) {
+  if (prop->ui_data != nullptr) {
     newp->ui_data = IDP_ui_data_copy(prop);
   }
 
@@ -322,7 +323,7 @@ static IDProperty *IDP_CopyArray(const IDProperty *prop, const int flag)
     newp->data.pointer = MEM_dupallocN(prop->data.pointer);
 
     if (prop->type == IDP_GROUP) {
-      IDProperty **array = newp->data.pointer;
+      IDProperty **array = static_cast<IDProperty **>(newp->data.pointer);
       int a;
 
       for (a = 0; a < prop->len; a++) {
@@ -345,13 +346,14 @@ static IDProperty *IDP_CopyArray(const IDProperty *prop, const int flag)
 
 IDProperty *IDP_NewStringMaxSize(const char *st, const char *name, int maxncpy)
 {
-  IDProperty *prop = MEM_callocN(sizeof(IDProperty), "IDProperty string");
+  IDProperty *prop = static_cast<IDProperty *>(
+      MEM_callocN(sizeof(IDProperty), "IDProperty string"));
 
-  if (st == NULL) {
+  if (st == nullptr) {
     prop->data.pointer = MEM_mallocN(DEFAULT_ALLOC_FOR_NULL_STRINGS, "id property string 1");
     *IDP_String(prop) = '\0';
     prop->totallen = DEFAULT_ALLOC_FOR_NULL_STRINGS;
-    prop->len = 1; /* NULL string, has len of 1 to account for null byte. */
+    prop->len = 1; /* nullptr string, has len of 1 to account for null byte. */
   }
   else {
     /* include null terminator '\0' */
@@ -449,7 +451,7 @@ void IDP_AssignID(IDProperty *prop, ID *id, const int flag)
 {
   BLI_assert(prop->type == IDP_ID);
 
-  if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0 && IDP_Id(prop) != NULL) {
+  if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0 && IDP_Id(prop) != nullptr) {
     id_us_min(IDP_Id(prop));
   }
 
@@ -489,7 +491,8 @@ void IDP_SyncGroupValues(IDProperty *dest, const IDProperty *src)
   BLI_assert(src->type == IDP_GROUP);
 
   LISTBASE_FOREACH (IDProperty *, prop, &src->data.group) {
-    IDProperty *other = BLI_findstring(&dest->data.group, prop->name, offsetof(IDProperty, name));
+    IDProperty *other = static_cast<IDProperty *>(
+        BLI_findstring(&dest->data.group, prop->name, offsetof(IDProperty, name)));
     if (other && prop->type == other->type) {
       switch (prop->type) {
         case IDP_INT:
@@ -515,7 +518,7 @@ void IDP_SyncGroupTypes(IDProperty *dest, const IDProperty *src, const bool do_a
 {
   LISTBASE_FOREACH_MUTABLE (IDProperty *, prop_dst, &dest->data.group) {
     const IDProperty *prop_src = IDP_GetPropertyFromGroup((IDProperty *)src, prop_dst->name);
-    if (prop_src != NULL) {
+    if (prop_src != nullptr) {
       /* check of we should replace? */
       if ((prop_dst->type != prop_src->type || prop_dst->subtype != prop_src->subtype) ||
           (do_arraylen && ELEM(prop_dst->type, IDP_ARRAY, IDP_IDPARRAY) &&
@@ -541,7 +544,7 @@ void IDP_ReplaceGroupInGroup(IDProperty *dest, const IDProperty *src)
 
   LISTBASE_FOREACH (IDProperty *, prop, &src->data.group) {
     IDProperty *loop;
-    for (loop = dest->data.group.first; loop; loop = loop->next) {
+    for (loop = static_cast<IDProperty *>(dest->data.group.first); loop; loop = loop->next) {
       if (STREQ(loop->name, prop->name)) {
         BLI_insertlinkreplace(&dest->data.group, loop, IDP_CopyProperty(prop));
         IDP_FreeProperty(loop);
@@ -550,7 +553,7 @@ void IDP_ReplaceGroupInGroup(IDProperty *dest, const IDProperty *src)
     }
 
     /* only add at end if not added yet */
-    if (loop == NULL) {
+    if (loop == nullptr) {
       IDProperty *copy = IDP_CopyProperty(prop);
       dest->len++;
       BLI_addtail(&dest->data.group, copy);
@@ -563,7 +566,7 @@ void IDP_ReplaceInGroup_ex(IDProperty *group, IDProperty *prop, IDProperty *prop
   BLI_assert(group->type == IDP_GROUP);
   BLI_assert(prop_exist == IDP_GetPropertyFromGroup(group, prop->name));
 
-  if (prop_exist != NULL) {
+  if (prop_exist != nullptr) {
     BLI_insertlinkreplace(&group->data.group, prop_exist, prop);
     IDP_FreeProperty(prop_exist);
   }
@@ -593,7 +596,7 @@ void IDP_MergeGroup_ex(IDProperty *dest,
       if (prop->type == IDP_GROUP) {
         IDProperty *prop_exist = IDP_GetPropertyFromGroup(dest, prop->name);
 
-        if (prop_exist != NULL) {
+        if (prop_exist != nullptr) {
           IDP_MergeGroup_ex(prop_exist, prop, do_overwrite, flag);
           continue;
         }
@@ -606,7 +609,7 @@ void IDP_MergeGroup_ex(IDProperty *dest,
   else {
     LISTBASE_FOREACH (IDProperty *, prop, &src->data.group) {
       IDProperty *prop_exist = IDP_GetPropertyFromGroup(dest, prop->name);
-      if (prop_exist != NULL) {
+      if (prop_exist != nullptr) {
         if (prop->type == IDP_GROUP) {
           IDP_MergeGroup_ex(prop_exist, prop, do_overwrite, flag);
           continue;
@@ -630,7 +633,7 @@ bool IDP_AddToGroup(IDProperty *group, IDProperty *prop)
 {
   BLI_assert(group->type == IDP_GROUP);
 
-  if (IDP_GetPropertyFromGroup(group, prop->name) == NULL) {
+  if (IDP_GetPropertyFromGroup(group, prop->name) == nullptr) {
     group->len++;
     BLI_addtail(&group->data.group, prop);
     return true;
@@ -643,7 +646,7 @@ bool IDP_InsertToGroup(IDProperty *group, IDProperty *previous, IDProperty *pnew
 {
   BLI_assert(group->type == IDP_GROUP);
 
-  if (IDP_GetPropertyFromGroup(group, pnew->name) == NULL) {
+  if (IDP_GetPropertyFromGroup(group, pnew->name) == nullptr) {
     group->len++;
     BLI_insertlinkafter(&group->data.group, previous, pnew);
     return true;
@@ -676,7 +679,7 @@ IDProperty *IDP_GetPropertyFromGroup(const IDProperty *prop, const char *name)
 IDProperty *IDP_GetPropertyTypeFromGroup(const IDProperty *prop, const char *name, const char type)
 {
   IDProperty *idprop = IDP_GetPropertyFromGroup(prop, name);
-  return (idprop && idprop->type == type) ? idprop : NULL;
+  return (idprop && idprop->type == type) ? idprop : nullptr;
 }
 
 /* Ok, the way things work, Groups free the ID Property structs of their children.
@@ -786,7 +789,7 @@ IDProperty *IDP_GetProperties(ID *id, const bool create_if_needed)
   }
 
   if (create_if_needed) {
-    id->properties = MEM_callocN(sizeof(IDProperty), "IDProperty");
+    id->properties = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty"));
     id->properties->type = IDP_GROUP;
     /* NOTE(@ideasman42): Don't overwrite the data's name and type
      * some functions might need this if they
@@ -800,10 +803,10 @@ bool IDP_EqualsProperties_ex(const IDProperty *prop1,
                              const IDProperty *prop2,
                              const bool is_strict)
 {
-  if (prop1 == NULL && prop2 == NULL) {
+  if (prop1 == nullptr && prop2 == nullptr) {
     return true;
   }
-  if (prop1 == NULL || prop2 == NULL) {
+  if (prop1 == nullptr || prop2 == nullptr) {
     return is_strict ? false : true;
   }
   if (prop1->type != prop2->type) {
@@ -894,28 +897,28 @@ bool IDP_EqualsProperties(const IDProperty *prop1, const IDProperty *prop2)
 
 IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *name)
 {
-  IDProperty *prop = NULL;
+  IDProperty *prop = nullptr;
 
   switch (type) {
     case IDP_INT:
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty int");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty int"));
       prop->data.val = val->i;
       break;
     case IDP_FLOAT:
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty float");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty float"));
       *(float *)&prop->data.val = val->f;
       break;
     case IDP_DOUBLE:
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty double");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty double"));
       *(double *)&prop->data.val = val->d;
       break;
     case IDP_BOOLEAN:
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty boolean");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty boolean"));
       prop->data.val = (bool)val->i;
       break;
     case IDP_ARRAY: {
       if (ELEM(val->array.type, IDP_FLOAT, IDP_INT, IDP_DOUBLE, IDP_GROUP, IDP_BOOLEAN)) {
-        prop = MEM_callocN(sizeof(IDProperty), "IDProperty array");
+        prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty array"));
         prop->subtype = val->array.type;
         if (val->array.len) {
           prop->data.pointer = MEM_callocN(
@@ -925,15 +928,15 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
         break;
       }
       CLOG_ERROR(&LOG, "bad array type.");
-      return NULL;
+      return nullptr;
     }
     case IDP_STRING: {
       const char *st = val->string.str;
 
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty string");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty string"));
       if (val->string.subtype == IDP_STRING_SUB_BYTE) {
         /* NOTE: Intentionally not null terminated. */
-        if (st == NULL) {
+        if (st == nullptr) {
           prop->data.pointer = MEM_mallocN(DEFAULT_ALLOC_FOR_NULL_STRINGS, "id property string 1");
           *IDP_String(prop) = '\0';
           prop->totallen = DEFAULT_ALLOC_FOR_NULL_STRINGS;
@@ -947,11 +950,11 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
         prop->subtype = IDP_STRING_SUB_BYTE;
       }
       else {
-        if (st == NULL || val->string.len <= 1) {
+        if (st == nullptr || val->string.len <= 1) {
           prop->data.pointer = MEM_mallocN(DEFAULT_ALLOC_FOR_NULL_STRINGS, "id property string 1");
           *IDP_String(prop) = '\0';
           prop->totallen = DEFAULT_ALLOC_FOR_NULL_STRINGS;
-          /* NULL string, has len of 1 to account for null byte. */
+          /* nullptr string, has len of 1 to account for null byte. */
           prop->len = 1;
         }
         else {
@@ -967,18 +970,18 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
     }
     case IDP_GROUP: {
       /* Values are set properly by calloc. */
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty group");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty group"));
       break;
     }
     case IDP_ID: {
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty datablock");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty datablock"));
       prop->data.pointer = (void *)val->id;
       prop->type = IDP_ID;
       id_us_plus(IDP_Id(prop));
       break;
     }
     default: {
-      prop = MEM_callocN(sizeof(IDProperty), "IDProperty array");
+      prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty array"));
       break;
     }
   }
@@ -1073,7 +1076,7 @@ void IDP_ui_data_free(IDProperty *prop)
   MEM_SAFE_FREE(prop->ui_data->description);
 
   MEM_freeN(prop->ui_data);
-  prop->ui_data = NULL;
+  prop->ui_data = nullptr;
 }
 
 void IDP_FreePropertyContent_ex(IDProperty *prop, const bool do_id_user)
@@ -1098,7 +1101,7 @@ void IDP_FreePropertyContent_ex(IDProperty *prop, const bool do_id_user)
       break;
   }
 
-  if (prop->ui_data != NULL) {
+  if (prop->ui_data != nullptr) {
     IDP_ui_data_free(prop);
   }
 }
@@ -1123,17 +1126,17 @@ void IDP_FreeProperty(IDProperty *prop)
 void IDP_ClearProperty(IDProperty *prop)
 {
   IDP_FreePropertyContent(prop);
-  prop->data.pointer = NULL;
+  prop->data.pointer = nullptr;
   prop->len = prop->totallen = 0;
 }
 
 void IDP_Reset(IDProperty *prop, const IDProperty *reference)
 {
-  if (prop == NULL) {
+  if (prop == nullptr) {
     return;
   }
   IDP_ClearProperty(prop);
-  if (reference != NULL) {
+  if (reference != nullptr) {
     IDP_MergeGroup(prop, reference, true);
   }
 }
@@ -1160,7 +1163,7 @@ void IDP_foreach_property(IDProperty *id_property_root,
       break;
     }
     case IDP_IDPARRAY: {
-      IDProperty *loop = IDP_Array(id_property_root);
+      IDProperty *loop = static_cast<IDProperty *>(IDP_Array(id_property_root));
       for (int i = 0; i < id_property_root->len; i++) {
         IDP_foreach_property(&loop[i], type_filter, callback, user_data);
       }
@@ -1232,7 +1235,7 @@ static void IDP_WriteArray(const IDProperty *prop, BlendWriter *writer)
     BLO_write_raw(writer, MEM_allocN_len(prop->data.pointer), prop->data.pointer);
 
     if (prop->subtype == IDP_GROUP) {
-      IDProperty **array = prop->data.pointer;
+      IDProperty **array = static_cast<IDProperty **>(prop->data.pointer);
       int a;
 
       for (a = 0; a < prop->len; a++) {
@@ -1246,7 +1249,7 @@ static void IDP_WriteIDPArray(const IDProperty *prop, BlendWriter *writer)
 {
   /* Remember to set #IDProperty.totallen to len in the linking code! */
   if (prop->data.pointer) {
-    const IDProperty *array = prop->data.pointer;
+    const IDProperty *array = static_cast<const IDProperty *>(prop->data.pointer);
 
     BLO_write_struct_array(writer, IDProperty, prop->len, array);
 
@@ -1286,7 +1289,7 @@ void IDP_WriteProperty_OnlyData(const IDProperty *prop, BlendWriter *writer)
       IDP_WriteIDPArray(prop, writer);
       break;
   }
-  if (prop->ui_data != NULL) {
+  if (prop->ui_data != nullptr) {
     write_ui_data(prop, writer);
   }
 }
@@ -1354,7 +1357,7 @@ static void IDP_DirectLinkIDPArray(IDProperty *prop, BlendDataReader *reader)
 
   /* NOTE:, idp-arrays didn't exist in 2.4x, so the pointer will be cleared
    * there's not really anything we can do to correct this, at least don't crash */
-  if (array == NULL) {
+  if (array == nullptr) {
     prop->len = 0;
     prop->totallen = 0;
   }
@@ -1371,7 +1374,7 @@ static void IDP_DirectLinkArray(IDProperty *prop, BlendDataReader *reader)
 
   if (prop->subtype == IDP_GROUP) {
     BLO_read_pointer_array(reader, &prop->data.pointer);
-    IDProperty **array = prop->data.pointer;
+    IDProperty **array = static_cast<IDProperty **>(prop->data.pointer);
 
     for (int i = 0; i < prop->len; i++) {
       IDP_DirectLinkProperty(array[i], reader);
@@ -1453,7 +1456,7 @@ static void IDP_DirectLinkProperty(IDProperty *prop, BlendDataReader *reader)
       IDP_Int(prop) = 0;
   }
 
-  if (prop->ui_data != NULL) {
+  if (prop->ui_data != nullptr) {
     read_ui_data(prop, reader);
   }
 }
@@ -1469,7 +1472,7 @@ void IDP_BlendReadData_impl(BlendDataReader *reader, IDProperty **prop, const ch
       printf("%s: found non group data, freeing type %d!\n", caller_func_id, (*prop)->type);
       /* don't risk id, data's likely corrupt. */
       // IDP_FreePropertyContent(*prop);
-      *prop = NULL;
+      *prop = nullptr;
     }
   }
 }
@@ -1565,22 +1568,25 @@ bool IDP_ui_data_supported(const IDProperty *prop)
 
 IDPropertyUIData *IDP_ui_data_ensure(IDProperty *prop)
 {
-  if (prop->ui_data != NULL) {
+  if (prop->ui_data != nullptr) {
     return prop->ui_data;
   }
 
   switch (IDP_ui_data_type(prop)) {
     case IDP_UI_DATA_TYPE_STRING: {
-      prop->ui_data = MEM_callocN(sizeof(IDPropertyUIDataString), __func__);
+      prop->ui_data = static_cast<IDPropertyUIData *>(
+          MEM_callocN(sizeof(IDPropertyUIDataString), __func__));
       break;
     }
     case IDP_UI_DATA_TYPE_ID: {
-      IDPropertyUIDataID *ui_data = MEM_callocN(sizeof(IDPropertyUIDataID), __func__);
+      IDPropertyUIDataID *ui_data = static_cast<IDPropertyUIDataID *>(
+          MEM_callocN(sizeof(IDPropertyUIDataID), __func__));
       prop->ui_data = (IDPropertyUIData *)ui_data;
       break;
     }
     case IDP_UI_DATA_TYPE_INT: {
-      IDPropertyUIDataInt *ui_data = MEM_callocN(sizeof(IDPropertyUIDataInt), __func__);
+      IDPropertyUIDataInt *ui_data = static_cast<IDPropertyUIDataInt *>(
+          MEM_callocN(sizeof(IDPropertyUIDataInt), __func__));
       ui_data->min = INT_MIN;
       ui_data->max = INT_MAX;
       ui_data->soft_min = INT_MIN;
@@ -1590,12 +1596,14 @@ IDPropertyUIData *IDP_ui_data_ensure(IDProperty *prop)
       break;
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
-      IDPropertyUIDataBool *ui_data = MEM_callocN(sizeof(IDPropertyUIDataBool), __func__);
+      IDPropertyUIDataBool *ui_data = static_cast<IDPropertyUIDataBool *>(
+          MEM_callocN(sizeof(IDPropertyUIDataBool), __func__));
       prop->ui_data = (IDPropertyUIData *)ui_data;
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
-      IDPropertyUIDataFloat *ui_data = MEM_callocN(sizeof(IDPropertyUIDataFloat), __func__);
+      IDPropertyUIDataFloat *ui_data = static_cast<IDPropertyUIDataFloat *>(
+          MEM_callocN(sizeof(IDPropertyUIDataFloat), __func__));
       ui_data->min = -FLT_MAX;
       ui_data->max = FLT_MAX;
       ui_data->soft_min = -FLT_MAX;
