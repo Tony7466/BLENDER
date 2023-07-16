@@ -371,8 +371,8 @@ static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
     BLI_assert(CustomData_get_layer(&me_src->ldata, CD_NORMAL) != nullptr);
     (void)me_src;
 
-    blender::short2 *custom_nors_dst = static_cast<blender::short2 *>(
-        CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
+    const blender::short2 *custom_nors_dst = static_cast<const blender::short2 *>(
+        CustomData_get_layer(ldata_dst, CD_CUSTOMLOOPNORMAL));
 
     /* Cache loop nors into a temp CDLayer. */
     blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
