@@ -48,31 +48,31 @@ void BKE_libblock_free_data(ID *id, const bool do_id_user)
   if (id->properties) {
     IDP_FreePropertyContent_ex(id->properties, do_id_user);
     MEM_freeN(id->properties);
-    id->properties = NULL;
+    id->properties = nullptr;
   }
 
   if (id->override_library) {
     BKE_lib_override_library_free(&id->override_library, do_id_user);
-    id->override_library = NULL;
+    id->override_library = nullptr;
   }
 
   if (id->asset_data) {
     BKE_asset_metadata_free(&id->asset_data);
   }
 
-  if (id->library_weak_reference != NULL) {
+  if (id->library_weak_reference != nullptr) {
     MEM_freeN(id->library_weak_reference);
   }
 
   BKE_animdata_free(id, do_id_user);
 }
 
-void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
+void BKE_libblock_free_datablock(ID *id, const int /*flag*/)
 {
   const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_id(id);
 
-  if (idtype_info != NULL) {
-    if (idtype_info->free_data != NULL) {
+  if (idtype_info != nullptr) {
+    if (idtype_info->free_data != nullptr) {
       idtype_info->free_data(id);
     }
     return;
@@ -83,7 +83,7 @@ void BKE_libblock_free_datablock(ID *id, const int UNUSED(flag))
 
 void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_idtag)
 {
-  ID *id = idv;
+  ID *id = static_cast<ID *>(idv);
 
   if (use_flag_from_idtag) {
     if ((id->tag & LIB_TAG_NO_MAIN) != 0) {
@@ -108,7 +108,7 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
     }
   }
 
-  BLI_assert((flag & LIB_ID_FREE_NO_MAIN) != 0 || bmain != NULL);
+  BLI_assert((flag & LIB_ID_FREE_NO_MAIN) != 0 || bmain != nullptr);
   BLI_assert((flag & LIB_ID_FREE_NO_MAIN) != 0 || (flag & LIB_ID_FREE_NOT_ALLOCATED) == 0);
   BLI_assert((flag & LIB_ID_FREE_NO_MAIN) != 0 || (flag & LIB_ID_FREE_NO_USER_REFCOUNT) == 0);
 
@@ -122,13 +122,13 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 
   BKE_libblock_free_data_py(id);
 
-  Key *key = ((flag & LIB_ID_FREE_NO_MAIN) == 0) ? BKE_key_from_id(id) : NULL;
+  Key *key = ((flag & LIB_ID_FREE_NO_MAIN) == 0) ? BKE_key_from_id(id) : nullptr;
 
   if ((flag & LIB_ID_FREE_NO_USER_REFCOUNT) == 0) {
-    BKE_libblock_relink_ex(bmain, id, NULL, NULL, ID_REMAP_SKIP_USER_CLEAR);
+    BKE_libblock_relink_ex(bmain, id, nullptr, nullptr, ID_REMAP_SKIP_USER_CLEAR);
   }
 
-  if ((flag & LIB_ID_FREE_NO_MAIN) == 0 && key != NULL) {
+  if ((flag & LIB_ID_FREE_NO_MAIN) == 0 && key != nullptr) {
     BKE_id_free_ex(bmain, &key->id, flag, use_flag_from_idtag);
   }
 
@@ -146,7 +146,7 @@ void BKE_id_free_ex(Main *bmain, void *idv, int flag, const bool use_flag_from_i
 
     if (remap_editor_id_reference_cb) {
       struct IDRemapper *remapper = BKE_id_remapper_create();
-      BKE_id_remapper_add(remapper, id, NULL);
+      BKE_id_remapper_add(remapper, id, nullptr);
       remap_editor_id_reference_cb(remapper);
       BKE_id_remapper_free(remapper);
     }
@@ -178,7 +178,7 @@ void BKE_id_free(Main *bmain, void *idv)
 
 void BKE_id_free_us(Main *bmain, void *idv) /* test users */
 {
-  ID *id = idv;
+  ID *id = static_cast<ID *>(idv);
 
   id_us_min(id);
 
@@ -217,7 +217,7 @@ static size_t id_delete(Main *bmain,
                                               0);
   const int remapping_flags = (ID_REMAP_FLAG_NEVER_NULL_USAGE | ID_REMAP_FORCE_NEVER_NULL_USAGE |
                                ID_REMAP_FORCE_INTERNAL_RUNTIME_POINTERS | extra_remapping_flags);
-  ListBase tagged_deleted_ids = {NULL};
+  ListBase tagged_deleted_ids = {nullptr};
 
   base_count = set_listbasepointers(bmain, lbarray);
 
@@ -244,14 +244,14 @@ static size_t id_delete(Main *bmain,
       for (i = 0; i < base_count; i++) {
         ListBase *lb = lbarray[i];
 
-        for (id = lb->first; id; id = id_next) {
-          id_next = id->next;
+        for (id = static_cast<ID *>(lb->first); id; id = id_next) {
+          id_next = static_cast<ID *>(id->next);
           /* NOTE: in case we delete a library, we also delete all its datablocks! */
           if ((id->tag & tag) || (ID_IS_LINKED(id) && (id->lib->id.tag & tag))) {
             BLI_remlink(lb, id);
             BKE_main_namemap_remove_name(bmain, id, id->name + 2);
             BLI_addtail(&tagged_deleted_ids, id);
-            BKE_id_remapper_add(id_remapper, id, NULL);
+            BKE_id_remapper_add(id_remapper, id, nullptr);
             /* Do not tag as no_main now, we want to unlink it first (lower-level ID management
              * code has some specific handling of 'no main' IDs that would be a problem in that
              * case). */
@@ -261,7 +261,7 @@ static size_t id_delete(Main *bmain,
         }
       }
 
-      /* Will tag 'never NULL' users of this ID too.
+      /* Will tag 'never nullptr' users of this ID too.
        *
        * NOTE: #BKE_libblock_unlink() cannot be used here, since it would ignore indirect
        * links, this can lead to nasty crashing here in second, actual deleting loop.
@@ -272,8 +272,9 @@ static size_t id_delete(Main *bmain,
     }
 
     /* Since we removed IDs from Main, their own other IDs usages need to be removed 'manually'. */
-    LinkNode *cleanup_ids = NULL;
-    for (ID *id = tagged_deleted_ids.first; id; id = id->next) {
+    LinkNode *cleanup_ids = nullptr;
+    for (ID *id = static_cast<ID *>(tagged_deleted_ids.first); id;
+         id = static_cast<ID *>(id->next)) {
       BLI_linklist_prepend(&cleanup_ids, id);
     }
     BKE_libblock_relink_multiple(bmain,
@@ -284,7 +285,7 @@ static size_t id_delete(Main *bmain,
                                      ID_REMAP_SKIP_USER_CLEAR);
 
     BKE_id_remapper_free(id_remapper);
-    BLI_linklist_free(cleanup_ids, NULL);
+    BLI_linklist_free(cleanup_ids, nullptr);
 
     BKE_layer_collection_resync_allow();
     BKE_main_collection_sync_remap(bmain);
@@ -293,7 +294,8 @@ static size_t id_delete(Main *bmain,
     /* NOTE: This needs to be done in a separate loop than above, otherwise some user-counts of
      * deleted IDs may not be properly decreased by the remappings (since `NO_MAIN` ID user-counts
      * is never affected). */
-    for (ID *id = tagged_deleted_ids.first; id; id = id->next) {
+    for (ID *id = static_cast<ID *>(tagged_deleted_ids.first); id;
+         id = static_cast<ID *>(id->next)) {
       id->tag |= LIB_TAG_NO_MAIN;
       /* User-count needs to be reset artificially, since some usages may not be cleared in batch
        * deletion (typically, if one deleted ID uses another deleted ID, this may not be cleared by
@@ -312,12 +314,12 @@ static size_t id_delete(Main *bmain,
       ID *id, *id_next;
       BKE_id_remapper_clear(remapper);
 
-      for (id = lb->first; id; id = id_next) {
-        id_next = id->next;
+      for (id = static_cast<ID *>(lb->first); id; id = id_next) {
+        id_next = static_cast<ID *>(id->next);
         /* NOTE: in case we delete a library, we also delete all its datablocks! */
         if ((id->tag & tag) || (ID_IS_LINKED(id) && (id->lib->id.tag & tag))) {
           id->tag |= tag;
-          BKE_id_remapper_add(remapper, id, NULL);
+          BKE_id_remapper_add(remapper, id, nullptr);
         }
       }
 
@@ -325,7 +327,7 @@ static size_t id_delete(Main *bmain,
         continue;
       }
 
-      /* Will tag 'never NULL' users of this ID too.
+      /* Will tag 'never nullptr' users of this ID too.
        *
        * NOTE: #BKE_libblock_unlink() cannot be used here, since it would ignore indirect
        * links, this can lead to nasty crashing here in second, actual deleting loop.
@@ -338,7 +340,7 @@ static size_t id_delete(Main *bmain,
 
   BKE_main_unlock(bmain);
 
-  /* In usual reversed order, such that all usage of a given ID, even 'never NULL' ones,
+  /* In usual reversed order, such that all usage of a given ID, even 'never nullptr' ones,
    * have been already cleared when we reach it
    * (e.g. Objects being processed before meshes, they'll have already released their 'reference'
    * over meshes when we come to freeing obdata). */
@@ -347,8 +349,10 @@ static size_t id_delete(Main *bmain,
     ListBase *lb = lbarray[i];
     ID *id, *id_next;
 
-    for (id = do_tagged_deletion ? tagged_deleted_ids.first : lb->first; id; id = id_next) {
-      id_next = id->next;
+    for (id = static_cast<ID *>(do_tagged_deletion ? tagged_deleted_ids.first : lb->first); id;
+         id = id_next)
+    {
+      id_next = static_cast<ID *>(id->next);
       if (id->tag & tag) {
         if (((id->tag & LIB_TAG_EXTRAUSER_SET) == 0 && ID_REAL_USERS(id) != 0) ||
             ((id->tag & LIB_TAG_EXTRAUSER_SET) != 0 && ID_REAL_USERS(id) != 1))
