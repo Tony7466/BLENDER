@@ -33,7 +33,7 @@
 /* ********************** SPLINE IK SOLVER ******************* */
 
 /* Temporary evaluation tree data used for Spline IK */
-typedef struct tSplineIK_Tree {
+struct tSplineIK_Tree {
   struct tSplineIK_Tree *next, *prev;
 
   int type; /* type of IK that this serves (CONSTRAINT_TYPE_KINEMATIC or ..._SPLINEIK) */
@@ -48,30 +48,30 @@ typedef struct tSplineIK_Tree {
 
   bConstraint *con;             /* constraint for this chain */
   bSplineIKConstraint *ik_data; /* constraint settings for this chain */
-} tSplineIK_Tree;
+};
 
 /* ----------- */
 
 /* Tag the bones in the chain formed by the given bone for IK. */
-static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
-                                          Object *UNUSED(ob),
+static void splineik_init_tree_from_pchan(Scene * /*scene*/,
+                                          Object * /*ob*/,
                                           bPoseChannel *pchan_tip)
 {
-  bPoseChannel *pchan, *pchan_root = NULL;
+  bPoseChannel *pchan, *pchan_root = nullptr;
   bPoseChannel *pchan_chain[255];
-  bConstraint *con = NULL;
-  bSplineIKConstraint *ik_data = NULL;
+  bConstraint *con = nullptr;
+  bSplineIKConstraint *ik_data = nullptr;
   float bone_lengths[255];
   float totlength = 0.0f;
   int segcount = 0;
 
   /* Find the SplineIK constraint. */
-  for (con = pchan_tip->constraints.first; con; con = con->next) {
+  for (con = static_cast<bConstraint *>(pchan_tip->constraints.first); con; con = con->next) {
     if (con->type == CONSTRAINT_TYPE_SPLINEIK) {
-      ik_data = con->data;
+      ik_data = static_cast<bSplineIKConstraint *>(con->data);
 
       /* Target can only be a curve. */
-      if ((ik_data->tar == NULL) || (ik_data->tar->type != OB_CURVES_LEGACY)) {
+      if ((ik_data->tar == nullptr) || (ik_data->tar->type != OB_CURVES_LEGACY)) {
         continue;
       }
       /* Skip if disabled. */
@@ -83,7 +83,7 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
       break;
     }
   }
-  if (con == NULL) {
+  if (con == nullptr) {
     return;
   }
 
@@ -114,7 +114,8 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
       MEM_freeN(ik_data->points);
     }
     ik_data->numpoints = ik_data->chainlen + 1;
-    ik_data->points = MEM_mallocN(sizeof(float) * ik_data->numpoints, "Spline IK Binding");
+    ik_data->points = static_cast<float *>(
+        MEM_mallocN(sizeof(float) * ik_data->numpoints, "Spline IK Binding"));
 
     /* Bind 'tip' of chain (i.e. first joint = tip of bone with the Spline IK Constraint). */
     ik_data->points[0] = 1.0f;
@@ -150,14 +151,16 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
    * since that would take precedence... */
   {
     /* Make a new tree. */
-    tSplineIK_Tree *tree = MEM_callocN(sizeof(tSplineIK_Tree), "SplineIK Tree");
+    tSplineIK_Tree *tree = static_cast<tSplineIK_Tree *>(
+        MEM_callocN(sizeof(tSplineIK_Tree), "SplineIK Tree"));
     tree->type = CONSTRAINT_TYPE_SPLINEIK;
 
     tree->chainlen = segcount;
     tree->totlength = totlength;
 
     /* Copy over the array of links to bones in the chain (from tip to root). */
-    tree->chain = MEM_mallocN(sizeof(bPoseChannel *) * segcount, "SplineIK Chain");
+    tree->chain = static_cast<bPoseChannel **>(
+        MEM_mallocN(sizeof(bPoseChannel *) * segcount, "SplineIK Chain"));
     memcpy(tree->chain, pchan_chain, sizeof(bPoseChannel *) * segcount);
 
     /* Store reference to joint position array. */
@@ -177,13 +180,13 @@ static void splineik_init_tree_from_pchan(Scene *UNUSED(scene),
 }
 
 /* Tag which bones are members of Spline IK chains. */
-static void splineik_init_tree(Scene *scene, Object *ob, float UNUSED(ctime))
+static void splineik_init_tree(Scene *scene, Object *ob, float /*ctime*/)
 {
   bPoseChannel *pchan;
 
   /* Find the tips of Spline IK chains,
    * which are simply the bones which have been tagged as such. */
-  for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
     if (pchan->constflag & PCHAN_HAS_SPLINEIK) {
       splineik_init_tree_from_pchan(scene, ob, pchan);
     }
@@ -192,14 +195,14 @@ static void splineik_init_tree(Scene *scene, Object *ob, float UNUSED(ctime))
 
 /* ----------- */
 
-typedef struct tSplineIk_EvalState {
+struct tSplineIk_EvalState {
   float curve_position;      /* Current position along the curve. */
   float curve_scale;         /* Global scale to apply to curve positions. */
   float locrot_offset[4][4]; /* Bone rotation and location offset inherited from parent. */
   float prev_tail_loc[3];    /* Tail location of the previous bone. */
   float prev_tail_radius;    /* Tail curve radius of the previous bone. */
   int prev_tail_seg_idx;     /* Curve segment the previous tail bone belongs to. */
-} tSplineIk_EvalState;
+};
 
 /* Prepare data to evaluate spline IK. */
 static bool splineik_evaluate_init(tSplineIK_Tree *tree, tSplineIk_EvalState *state)
@@ -209,13 +212,13 @@ static bool splineik_evaluate_init(tSplineIK_Tree *tree, tSplineIk_EvalState *st
   /* Make sure that the constraint targets are ok, to avoid crashes
    * in case of a depsgraph bug or dependency cycle.
    */
-  if (ik_data->tar == NULL) {
+  if (ik_data->tar == nullptr) {
     return false;
   }
 
   CurveCache *cache = ik_data->tar->runtime.curve_cache;
 
-  if (ELEM(NULL, cache, cache->anim_path_accum_length)) {
+  if (ELEM(nullptr, cache, cache->anim_path_accum_length)) {
     return false;
   }
 
@@ -307,7 +310,7 @@ static int position_tail_on_spline(bSplineIKConstraint *ik_data,
    */
   int bp_idx = cur_seg_idx + 1;
 
-  const BevList *bl = cache->bev.first;
+  const BevList *bl = static_cast<const BevList *>(cache->bev.first);
   bool is_cyclic = bl->poly >= 0;
   BevPoint *bp = bl->bevpoints;
   BevPoint *prev_bp;
@@ -407,7 +410,8 @@ static void splineik_evaluate_bone(
   if (pchan->bone->length < FLT_EPSILON) {
     /* Only move the bone position with zero length bones. */
     float bone_pos[4], rad;
-    BKE_where_on_path(ik_data->tar, state->curve_position, bone_pos, NULL, NULL, &rad, NULL);
+    BKE_where_on_path(
+        ik_data->tar, state->curve_position, bone_pos, nullptr, nullptr, &rad, nullptr);
 
     apply_curve_transform(ik_data, ob, rad, bone_pos, &rad);
 
@@ -452,7 +456,7 @@ static void splineik_evaluate_bone(
     /* Calculate head position. */
     if (point_start == 0.0f) {
       /* Start of the path. We have no previous tail position to copy. */
-      BKE_where_on_path(ik_data->tar, point_start, vec, NULL, NULL, &rad, NULL);
+      BKE_where_on_path(ik_data->tar, point_start, vec, nullptr, nullptr, &rad, nullptr);
     }
     else {
       copy_v3_v3(vec, state->prev_tail_loc);
@@ -487,7 +491,7 @@ static void splineik_evaluate_bone(
     }
     else {
       /* Scale to fit curve end position. */
-      if (BKE_where_on_path(ik_data->tar, point_end, vec, NULL, NULL, &rad, NULL)) {
+      if (BKE_where_on_path(ik_data->tar, point_end, vec, nullptr, nullptr, &rad, nullptr)) {
         state->prev_tail_radius = rad;
         copy_v3_v3(state->prev_tail_loc, vec);
         copy_v3_v3(pose_tail, vec);
@@ -742,7 +746,7 @@ static void splineik_execute_tree(
   tSplineIK_Tree *tree;
 
   /* for each pose-tree, execute it if it is spline, otherwise just free it */
-  while ((tree = pchan_root->siktree.first) != NULL) {
+  while ((tree = static_cast<tSplineIK_Tree *>(pchan_root->siktree.first)) != nullptr) {
     /* Firstly, calculate the bone matrix the standard way,
      * since this is needed for roll control. */
     for (int i = tree->chainlen - 1; i >= 0; i--) {
@@ -790,9 +794,12 @@ void BKE_pose_pchan_index_rebuild(bPose *pose)
 {
   MEM_SAFE_FREE(pose->chan_array);
   const int num_channels = BLI_listbase_count(&pose->chanbase);
-  pose->chan_array = MEM_malloc_arrayN(num_channels, sizeof(bPoseChannel *), "pose->chan_array");
+  pose->chan_array = static_cast<bPoseChannel **>(
+      MEM_malloc_arrayN(num_channels, sizeof(bPoseChannel *), "pose->chan_array"));
   int pchan_index = 0;
-  for (bPoseChannel *pchan = pose->chanbase.first; pchan != NULL; pchan = pchan->next) {
+  for (bPoseChannel *pchan = static_cast<bPoseChannel *>(pose->chanbase.first); pchan != nullptr;
+       pchan = pchan->next)
+  {
     pose->chan_array[pchan_index++] = pchan;
   }
 }
@@ -800,40 +807,42 @@ void BKE_pose_pchan_index_rebuild(bPose *pose)
 BLI_INLINE bPoseChannel *pose_pchan_get_indexed(Object *ob, int pchan_index)
 {
   bPose *pose = ob->pose;
-  BLI_assert(pose != NULL);
-  BLI_assert(pose->chan_array != NULL);
+  BLI_assert(pose != nullptr);
+  BLI_assert(pose->chan_array != nullptr);
   BLI_assert(pchan_index >= 0);
   BLI_assert(pchan_index < MEM_allocN_len(pose->chan_array) / sizeof(bPoseChannel *));
   return pose->chan_array[pchan_index];
 }
 
-void BKE_pose_eval_init(Depsgraph *depsgraph, Scene *UNUSED(scene), Object *object)
+void BKE_pose_eval_init(Depsgraph *depsgraph, Scene * /*scene*/, Object *object)
 {
   bPose *pose = object->pose;
-  BLI_assert(pose != NULL);
+  BLI_assert(pose != nullptr);
 
   DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
 
   BLI_assert(object->type == OB_ARMATURE);
 
   /* We demand having proper pose. */
-  BLI_assert(object->pose != NULL);
+  BLI_assert(object->pose != nullptr);
   BLI_assert((object->pose->flag & POSE_RECALC) == 0);
 
   /* world_to_object is needed for solvers. */
   invert_m4_m4(object->world_to_object, object->object_to_world);
 
   /* clear flags */
-  for (bPoseChannel *pchan = pose->chanbase.first; pchan != NULL; pchan = pchan->next) {
+  for (bPoseChannel *pchan = static_cast<bPoseChannel *>(pose->chanbase.first); pchan != nullptr;
+       pchan = pchan->next)
+  {
     pchan->flag &= ~(POSE_DONE | POSE_CHAIN | POSE_IKTREE | POSE_IKSPLINE);
 
     /* Free B-Bone shape data cache if it's not a B-Bone. */
-    if (pchan->bone == NULL || pchan->bone->segments <= 1) {
+    if (pchan->bone == nullptr || pchan->bone->segments <= 1) {
       BKE_pose_channel_free_bbone_cache(&pchan->runtime);
     }
   }
 
-  BLI_assert(pose->chan_array != NULL || BLI_listbase_is_empty(&pose->chanbase));
+  BLI_assert(pose->chan_array != nullptr || BLI_listbase_is_empty(&pose->chanbase));
 }
 
 void BKE_pose_eval_init_ik(Depsgraph *depsgraph, Scene *scene, Object *object)
@@ -856,7 +865,7 @@ void BKE_pose_eval_init_ik(Depsgraph *depsgraph, Scene *scene, Object *object)
 void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int pchan_index)
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *pchan = pose_pchan_get_indexed(object, pchan_index);
@@ -874,7 +883,7 @@ void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int 
   else {
     /* TODO(sergey): Currently if there are constraints full transform is
      * being evaluated in BKE_pose_constraints_evaluate. */
-    if (pchan->constraints.first == NULL) {
+    if (pchan->constraints.first == nullptr) {
       if (pchan->flag & POSE_IKTREE || pchan->flag & POSE_IKSPLINE) {
         /* pass */
       }
@@ -895,7 +904,7 @@ void BKE_pose_constraints_evaluate(Depsgraph *depsgraph,
                                    int pchan_index)
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *pchan = pose_pchan_get_indexed(object, pchan_index);
@@ -923,7 +932,7 @@ static void pose_channel_flush_to_orig_if_needed(Depsgraph *depsgraph,
     return;
   }
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *pchan_orig = pchan->orig_pchan;
@@ -938,7 +947,7 @@ static void pose_channel_flush_to_orig_if_needed(Depsgraph *depsgraph,
 void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *pchan = pose_pchan_get_indexed(object, pchan_index);
@@ -955,7 +964,7 @@ void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)
   pose_channel_flush_to_orig_if_needed(depsgraph, object, pchan);
   if (DEG_is_active(depsgraph)) {
     bPoseChannel *pchan_orig = pchan->orig_pchan;
-    if (pchan->bone == NULL || pchan->bone->segments <= 1) {
+    if (pchan->bone == nullptr || pchan->bone->segments <= 1) {
       BKE_pose_channel_free_bbone_cache(&pchan_orig->runtime);
     }
   }
@@ -964,13 +973,13 @@ void BKE_pose_bone_done(Depsgraph *depsgraph, Object *object, int pchan_index)
 void BKE_pose_eval_bbone_segments(Depsgraph *depsgraph, Object *object, int pchan_index)
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *pchan = pose_pchan_get_indexed(object, pchan_index);
   DEG_debug_print_eval_subdata(
       depsgraph, __func__, object->id.name, object, "pchan", pchan->name, pchan);
-  if (pchan->bone != NULL && pchan->bone->segments > 1) {
+  if (pchan->bone != nullptr && pchan->bone->segments > 1) {
     BKE_pchan_bbone_segments_cache_compute(pchan);
     if (DEG_is_active(depsgraph)) {
       BKE_pchan_bbone_segments_cache_copy(pchan->orig_pchan, pchan);
@@ -984,7 +993,7 @@ void BKE_pose_iktree_evaluate(Depsgraph *depsgraph,
                               int rootchan_index)
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *rootchan = pose_pchan_get_indexed(object, rootchan_index);
@@ -1005,7 +1014,7 @@ void BKE_pose_splineik_evaluate(Depsgraph *depsgraph,
 
 {
   const bArmature *armature = (bArmature *)object->data;
-  if (armature->edbo != NULL) {
+  if (armature->edbo != nullptr) {
     return;
   }
   bPoseChannel *rootchan = pose_pchan_get_indexed(object, rootchan_index);
@@ -1022,15 +1031,15 @@ void BKE_pose_splineik_evaluate(Depsgraph *depsgraph,
 static void pose_eval_cleanup_common(Object *object)
 {
   bPose *pose = object->pose;
-  BLI_assert(pose != NULL);
-  BLI_assert(pose->chan_array != NULL || BLI_listbase_is_empty(&pose->chanbase));
+  BLI_assert(pose != nullptr);
+  BLI_assert(pose->chan_array != nullptr || BLI_listbase_is_empty(&pose->chanbase));
   UNUSED_VARS_NDEBUG(pose);
 }
 
 void BKE_pose_eval_done(Depsgraph *depsgraph, Object *object)
 {
   bPose *pose = object->pose;
-  BLI_assert(pose != NULL);
+  BLI_assert(pose != nullptr);
   UNUSED_VARS_NDEBUG(pose);
   DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
   BLI_assert(object->type == OB_ARMATURE);
@@ -1039,7 +1048,7 @@ void BKE_pose_eval_done(Depsgraph *depsgraph, Object *object)
 void BKE_pose_eval_cleanup(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
   bPose *pose = object->pose;
-  BLI_assert(pose != NULL);
+  BLI_assert(pose != nullptr);
   UNUSED_VARS_NDEBUG(pose);
   const float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
   DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);

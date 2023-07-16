@@ -66,7 +66,7 @@ set(SRC
   intern/armature_deform.cc
   intern/armature_pose.cc
   intern/armature_selection.cc
-  intern/armature_update.c
+  intern/armature_update.cc
   intern/asset.cc
   intern/asset_weak_reference.cc
   intern/attribute.cc
