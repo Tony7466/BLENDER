@@ -59,7 +59,7 @@ set(SRC
   intern/anim_data.cc
   intern/anim_path.cc
   intern/anim_sys.cc
-  intern/anim_visualization.c
+  intern/anim_visualization.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.c
   intern/armature.c
