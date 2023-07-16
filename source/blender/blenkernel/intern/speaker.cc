@@ -79,40 +79,40 @@ static void speaker_blend_read_expand(BlendExpander *expander, ID *id)
 }
 
 IDTypeInfo IDType_ID_SPK = {
-    .id_code = ID_SPK,
-    .id_filter = FILTER_ID_SPK,
-    .main_listbase_index = INDEX_ID_SPK,
-    .struct_size = sizeof(Speaker),
-    .name = "Speaker",
-    .name_plural = "speakers",
-    .translation_context = BLT_I18NCONTEXT_ID_SPEAKER,
-    .flags = IDTYPE_FLAGS_APPEND_IS_REUSABLE,
-    .asset_type_info = NULL,
+    /*id_code*/ ID_SPK,
+    /*id_filter*/ FILTER_ID_SPK,
+    /*main_listbase_index*/ INDEX_ID_SPK,
+    /*struct_size*/ sizeof(Speaker),
+    /*name*/ "Speaker",
+    /*name_plural*/ "speakers",
+    /*translation_context*/ BLT_I18NCONTEXT_ID_SPEAKER,
+    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*asset_type_info*/ nullptr,
 
-    .init_data = speaker_init_data,
-    .copy_data = NULL,
-    .free_data = NULL,
-    .make_local = NULL,
-    .foreach_id = speaker_foreach_id,
-    .foreach_cache = NULL,
-    .foreach_path = NULL,
-    .owner_pointer_get = NULL,
+    /*init_data*/ speaker_init_data,
+    /*copy_data*/ nullptr,
+    /*free_data*/ nullptr,
+    /*make_local*/ nullptr,
+    /*foreach_id*/ speaker_foreach_id,
+    /*foreach_cache*/ nullptr,
+    /*foreach_path*/ nullptr,
+    /*owner_pointer_get*/ nullptr,
 
-    .blend_write = speaker_blend_write,
-    .blend_read_data = speaker_blend_read_data,
-    .blend_read_lib = speaker_blend_read_lib,
-    .blend_read_expand = speaker_blend_read_expand,
+    /*blend_write*/ speaker_blend_write,
+    /*blend_read_data*/ speaker_blend_read_data,
+    /*blend_read_lib*/ speaker_blend_read_lib,
+    /*blend_read_expand*/ speaker_blend_read_expand,
 
-    .blend_read_undo_preserve = NULL,
+    /*blend_read_undo_preserve*/ nullptr,
 
-    .lib_override_apply_post = NULL,
+    /*lib_override_apply_post*/ nullptr,
 };
 
 void *BKE_speaker_add(Main *bmain, const char *name)
 {
   Speaker *spk;
 
-  spk = BKE_id_new(bmain, ID_SPK, name);
+  spk = static_cast<Speaker *>(BKE_id_new(bmain, ID_SPK, name));
 
   return spk;
 }

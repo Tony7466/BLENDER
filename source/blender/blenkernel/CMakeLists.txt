@@ -268,7 +268,7 @@ set(SRC
   intern/simulation_state_serialize.cc
   intern/softbody.cc
   intern/sound.cc
-  intern/speaker.c
+  intern/speaker.cc
   intern/studiolight.c
   intern/subdiv.cc
   intern/subdiv_ccg.cc
