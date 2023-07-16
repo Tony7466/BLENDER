@@ -52,7 +52,7 @@ set(SRC
   intern/CCGSubSurf_legacy.c
   intern/CCGSubSurf_util.c
   intern/DerivedMesh.cc
-  intern/action.c
+  intern/action.cc
   intern/action_bones.cc
   intern/action_mirror.cc
   intern/addon.c
