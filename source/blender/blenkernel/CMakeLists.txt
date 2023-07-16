@@ -124,7 +124,7 @@ set(SRC
   intern/editmesh_bvh.cc
   intern/editmesh_cache.cc
   intern/editmesh_tangent.cc
-  intern/effect.c
+  intern/effect.cc
   intern/fcurve.c
   intern/fcurve_cache.c
   intern/fcurve_driver.c
