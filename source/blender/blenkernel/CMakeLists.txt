@@ -54,7 +54,7 @@ set(SRC
   intern/DerivedMesh.cc
   intern/action.c
   intern/action_bones.cc
-  intern/action_mirror.c
+  intern/action_mirror.cc
   intern/addon.c
   intern/anim_data.c
   intern/anim_path.c
