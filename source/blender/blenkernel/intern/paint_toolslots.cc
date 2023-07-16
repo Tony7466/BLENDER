@@ -33,23 +33,26 @@ void BKE_paint_toolslots_len_ensure(Paint *paint, int len)
   /* Tool slots are 'uchar'. */
   BLI_assert(len <= UCHAR_MAX);
   if (paint->tool_slots_len < len) {
-    paint->tool_slots = MEM_recallocN(paint->tool_slots, sizeof(*paint->tool_slots) * len);
+    paint->tool_slots = static_cast<PaintToolSlot *>(
+        MEM_recallocN(paint->tool_slots, sizeof(*paint->tool_slots) * len));
     paint->tool_slots_len = len;
   }
 }
 
 static void paint_toolslots_init(Main *bmain, Paint *paint)
 {
-  if (paint == NULL) {
+  if (paint == nullptr) {
     return;
   }
-  const eObjectMode ob_mode = paint->runtime.ob_mode;
+  const eObjectMode ob_mode = eObjectMode(paint->runtime.ob_mode);
   BLI_assert(paint->runtime.tool_offset && ob_mode);
-  for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+  for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
+       brush = static_cast<Brush *>(brush->id.next))
+  {
     if (brush->ob_mode & ob_mode) {
       const int slot_index = BKE_brush_tool_get(brush, paint);
       BKE_paint_toolslots_len_ensure(paint, slot_index + 1);
-      if (paint->tool_slots[slot_index].brush == NULL) {
+      if (paint->tool_slots[slot_index].brush == nullptr) {
         paint->tool_slots[slot_index].brush = brush;
         id_us_plus(&brush->id);
       }
@@ -62,7 +65,7 @@ static void paint_toolslots_init(Main *bmain, Paint *paint)
  */
 static void paint_toolslots_init_with_runtime(Main *bmain, ToolSettings *ts, Paint *paint)
 {
-  if (paint == NULL) {
+  if (paint == nullptr) {
     return;
   }
 
@@ -73,7 +76,9 @@ static void paint_toolslots_init_with_runtime(Main *bmain, ToolSettings *ts, Pai
 
 void BKE_paint_toolslots_init_from_main(Main *bmain)
 {
-  for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+  for (Scene *scene = static_cast<Scene *>(bmain->scenes.first); scene;
+       scene = static_cast<Scene *>(scene->id.next))
+  {
     ToolSettings *ts = scene->toolsettings;
     paint_toolslots_init_with_runtime(bmain, ts, &ts->imapaint.paint);
     if (ts->sculpt) {
@@ -125,7 +130,7 @@ void BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush)
 
 void BKE_paint_toolslots_brush_update(Paint *paint)
 {
-  if (paint->brush == NULL) {
+  if (paint->brush == nullptr) {
     return;
   }
   BKE_paint_toolslots_brush_update_ex(paint, paint->brush);
@@ -136,7 +141,7 @@ void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint)
   /* Clear slots with invalid slots or mode (unlikely but possible). */
   const uint tool_offset = paint->runtime.tool_offset;
   UNUSED_VARS_NDEBUG(tool_offset);
-  const eObjectMode ob_mode = paint->runtime.ob_mode;
+  const eObjectMode ob_mode = eObjectMode(paint->runtime.ob_mode);
   BLI_assert(tool_offset && ob_mode);
   for (int i = 0; i < paint->tool_slots_len; i++) {
     PaintToolSlot *tslot = &paint->tool_slots[i];
@@ -144,7 +149,7 @@ void BKE_paint_toolslots_brush_validate(Main *bmain, Paint *paint)
       if ((i != BKE_brush_tool_get(tslot->brush, paint)) || (tslot->brush->ob_mode & ob_mode) == 0)
       {
         id_us_min(&tslot->brush->id);
-        tslot->brush = NULL;
+        tslot->brush = nullptr;
       }
     }
   }
@@ -162,5 +167,5 @@ Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index)
     PaintToolSlot *tslot = &paint->tool_slots[slot_index];
     return tslot->brush;
   }
-  return NULL;
+  return nullptr;
 }

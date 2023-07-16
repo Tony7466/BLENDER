@@ -243,7 +243,7 @@ set(SRC
   intern/packedFile.cc
   intern/paint.cc
   intern/paint_canvas.cc
-  intern/paint_toolslots.c
+  intern/paint_toolslots.cc
   intern/particle.cc
   intern/particle_child.c
   intern/particle_distribute.c
