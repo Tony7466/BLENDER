@@ -19,14 +19,14 @@
 
 /* ------------------------------------------------------------------------- */
 
-typedef struct ParticlePathIterator {
+struct ParticlePathIterator {
   ParticleCacheKey *key;
   int index;
   float time;
 
   ParticleCacheKey *parent_key;
   float parent_rotation[4];
-} ParticlePathIterator;
+};
 
 static void psys_path_iter_get(ParticlePathIterator *iter,
                                ParticleCacheKey *keys,
@@ -50,7 +50,7 @@ static void psys_path_iter_get(ParticlePathIterator *iter,
     }
   }
   else {
-    iter->parent_key = NULL;
+    iter->parent_key = nullptr;
     unit_qt(iter->parent_rotation);
   }
 }
@@ -185,7 +185,7 @@ static void do_kink_spiral(ParticleThreadContext *ctx,
   mul_mat3_m4_v3(ctx->sim.ob->object_to_world, kink_base);
 
   /* Fill in invariant part of modifier context. */
-  ParticleChildModifierContext modifier_ctx = {NULL};
+  ParticleChildModifierContext modifier_ctx = {nullptr};
   modifier_ctx.thread_ctx = ctx;
   modifier_ctx.sim = &ctx->sim;
   modifier_ctx.ptex = ptex;
@@ -197,7 +197,7 @@ static void do_kink_spiral(ParticleThreadContext *ctx,
     float par_time;
     float *par_co, *par_vel, *par_rot;
 
-    psys_path_iter_get(&iter, keys, end_index, NULL, k);
+    psys_path_iter_get(&iter, keys, end_index, nullptr, k);
     if (k < start_index) {
       sub_v3_v3v3(dir, (key + 1)->co, key->co);
       normalize_v3(dir);
@@ -283,7 +283,7 @@ static bool check_path_length(int k,
 }
 
 void psys_apply_child_modifiers(ParticleThreadContext *ctx,
-                                ListBase *UNUSED(modifiers),
+                                ListBase * /*modifiers*/,
                                 ChildParticle *cpa,
                                 ParticleTexture *ptex,
                                 const float orco[3],
@@ -310,7 +310,7 @@ void psys_apply_child_modifiers(ParticleThreadContext *ctx,
   }
   else {
     /* Fill in invariant part of modifier context. */
-    ParticleChildModifierContext modifier_ctx = {NULL};
+    ParticleChildModifierContext modifier_ctx = {nullptr};
     modifier_ctx.thread_ctx = ctx;
     modifier_ctx.sim = &ctx->sim;
     modifier_ctx.ptex = ptex;
@@ -699,7 +699,7 @@ static void do_rough_curve(const float loc[3],
 static int twist_num_segments(const ParticleChildModifierContext *modifier_ctx)
 {
   ParticleThreadContext *thread_ctx = modifier_ctx->thread_ctx;
-  return (thread_ctx != NULL) ? thread_ctx->segments : modifier_ctx->sim->psys->part->draw_step;
+  return (thread_ctx != nullptr) ? thread_ctx->segments : modifier_ctx->sim->psys->part->draw_step;
 }
 
 static void twist_get_axis(const ParticleChildModifierContext *modifier_ctx,
@@ -744,7 +744,7 @@ static void do_twist(const ParticleChildModifierContext *modifier_ctx,
   ParticleTexture *ptex = modifier_ctx->ptex;
   ParticleSettings *part = sim->psys->part;
   /* Early output checks. */
-  if (modifier_ctx->parent_keys == NULL) {
+  if (modifier_ctx->parent_keys == nullptr) {
     /* Cannot get axis of rotation... */
     return;
   }
@@ -759,19 +759,19 @@ static void do_twist(const ParticleChildModifierContext *modifier_ctx,
   /* Dependent on whether it's threaded update or not, curve comes
    * from different places.
    */
-  CurveMapping *twist_curve = NULL;
+  CurveMapping *twist_curve = nullptr;
   if (part->child_flag & PART_CHILD_USE_TWIST_CURVE) {
-    twist_curve = (thread_ctx != NULL) ? thread_ctx->twistcurve : part->twistcurve;
+    twist_curve = (thread_ctx != nullptr) ? thread_ctx->twistcurve : part->twistcurve;
   }
   /* Axis of rotation. */
   float axis[3];
   twist_get_axis(modifier_ctx, time, axis);
   /* Angle of rotation. */
   float angle = part->twist;
-  if (ptex != NULL) {
+  if (ptex != nullptr) {
     angle *= (ptex->twist - 0.5f) * 2.0f;
   }
-  if (twist_curve != NULL) {
+  if (twist_curve != nullptr) {
     const int num_segments = twist_num_segments(modifier_ctx);
     angle *= BKE_curvemapping_integrate_clamped(twist_curve, 0.0f, time, 1.0f / num_segments);
   }
@@ -795,15 +795,15 @@ void do_child_modifiers(const ParticleChildModifierContext *modifier_ctx,
   ParticleTexture *ptex = modifier_ctx->ptex;
   ChildParticle *cpa = modifier_ctx->cpa;
   ParticleSettings *part = sim->psys->part;
-  CurveMapping *clumpcurve = NULL, *roughcurve = NULL;
+  CurveMapping *clumpcurve = nullptr, *roughcurve = nullptr;
   int i = cpa - sim->psys->child;
   int guided = 0;
 
   if (part->child_flag & PART_CHILD_USE_CLUMP_CURVE) {
-    clumpcurve = (ctx != NULL) ? ctx->clumpcurve : part->clumpcurve;
+    clumpcurve = (ctx != nullptr) ? ctx->clumpcurve : part->clumpcurve;
   }
   if (part->child_flag & PART_CHILD_USE_ROUGH_CURVE) {
-    roughcurve = (ctx != NULL) ? ctx->roughcurve : part->roughcurve;
+    roughcurve = (ctx != nullptr) ? ctx->roughcurve : part->roughcurve;
   }
 
   float kink_amp = part->kink_amp;
