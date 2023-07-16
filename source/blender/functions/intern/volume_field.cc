@@ -47,20 +47,24 @@ template<typename ValueType>
 using TreeCommon = typename openvdb::tree::Tree4<ValueType, 5, 4, 3>::Type;
 template<typename ValueType> using GridCommon = typename openvdb::Grid<TreeCommon<ValueType>>;
 
+/* TODO add more as needed. */
+/* TODO could use template magic to generate all from 1 list, but not worth it for now. */
+/* TODO some types disabled because of missing CPPType registration. */
+
 using BoolTree = TreeCommon<bool>;
 using MaskTree = TreeCommon<openvdb::ValueMask>;
 using FloatTree = TreeCommon<float>;
 using Float2Tree = TreeCommon<float2>;
 using Float3Tree = TreeCommon<float3>;
-using Float4Tree = TreeCommon<float4>;
+// using Float4Tree = TreeCommon<float4>;
 using IntTree = TreeCommon<int32_t>;
 using Int2Tree = TreeCommon<int2>;
-using Int3Tree = TreeCommon<int3>;
-using Int4Tree = TreeCommon<int4>;
+// using Int3Tree = TreeCommon<int3>;
+// using Int4Tree = TreeCommon<int4>;
 using UIntTree = TreeCommon<uint32_t>;
-using UInt2Tree = TreeCommon<uint2>;
-using UInt3Tree = TreeCommon<uint3>;
-using UInt4Tree = TreeCommon<uint4>;
+// using UInt2Tree = TreeCommon<uint2>;
+// using UInt3Tree = TreeCommon<uint3>;
+// using UInt4Tree = TreeCommon<uint4>;
 using ScalarTree = FloatTree;
 using TopologyTree = MaskTree;
 
@@ -69,38 +73,44 @@ using MaskGrid = openvdb::Grid<MaskTree>;
 using FloatGrid = openvdb::Grid<FloatTree>;
 using Float2Grid = openvdb::Grid<Float2Tree>;
 using Float3Grid = openvdb::Grid<Float3Tree>;
-using Float4Grid = openvdb::Grid<Float4Tree>;
+// using Float4Grid = openvdb::Grid<Float4Tree>;
 using IntGrid = openvdb::Grid<IntTree>;
 using Int2Grid = openvdb::Grid<Int2Tree>;
-using Int3Grid = openvdb::Grid<Int3Tree>;
-using Int4Grid = openvdb::Grid<Int4Tree>;
+// using Int3Grid = openvdb::Grid<Int3Tree>;
+// using Int4Grid = openvdb::Grid<Int4Tree>;
 using UIntGrid = openvdb::Grid<UIntTree>;
-using UInt2Grid = openvdb::Grid<UInt2Tree>;
-using UInt3Grid = openvdb::Grid<UInt3Tree>;
-using UInt4Grid = openvdb::Grid<UInt4Tree>;
+// using UInt2Grid = openvdb::Grid<UInt2Tree>;
+// using UInt3Grid = openvdb::Grid<UInt3Tree>;
+// using UInt4Grid = openvdb::Grid<UInt4Tree>;
 using ScalarGrid = openvdb::Grid<ScalarTree>;
 using TopologyGrid = openvdb::Grid<TopologyTree>;
 
-/* TODO add more */
-/* TODO could use template magic to generate all from 1 list, but not worth it for now. */
-
-using SupportedGridValueTypes = std::
-    tuple<bool, float, float2, float3, int32_t, int2, int3, int4, uint32_t, uint2, uint3, uint4>;
+using SupportedGridValueTypes = std::tuple<bool,
+                                           float,
+                                           float2,
+                                           float3,
+                                           /*float4,*/
+                                           int32_t,
+                                           int2,
+                                           /*int3,*/ /*int4,*/ uint32_t
+                                           /*,uint2*/
+                                           /*,uint3*/
+                                           /*,uint4*/>;
 
 using SupportedGridTypes = openvdb::TypeList<BoolGrid,
                                              MaskGrid,
                                              FloatGrid,
                                              Float2Grid,
                                              Float3Grid,
-                                             Float4Grid,
+                                             /*Float4Grid,*/
                                              IntGrid,
                                              Int2Grid,
-                                             Int3Grid,
-                                             Int4Grid,
+                                             /*Int3Grid,*/
+                                             /*Int4Grid,*/
                                              UIntGrid,
-                                             UInt2Grid,
-                                             UInt3Grid,
-                                             UInt4Grid,
+                                             /*UInt2Grid,*/
+                                             /*UInt3Grid,*/
+                                             /*UInt4Grid,*/
                                              ScalarGrid,
                                              TopologyGrid>;
 
