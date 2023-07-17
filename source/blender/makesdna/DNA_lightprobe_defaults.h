@@ -21,6 +21,8 @@
     .grid_resolution_y = 4, \
     .grid_resolution_z = 4, \
     .grid_bake_samples = 2048, \
+    .grid_min_distance_to_surface = 0.05, \
+    .grid_max_capture_offset = 0.1, \
     .surfel_density = 1.0f, \
     .distinf = 2.5f, \
     .distpar = 2.5f, \

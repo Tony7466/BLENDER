@@ -109,6 +109,8 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.separator()
 
             col.prop(probe, "grid_bake_samples")
+            col.prop(probe, "grid_min_distance_to_surface")
+            col.prop(probe, "grid_max_capture_offset")
             col.prop(probe, "surfel_density")
 
         elif probe.type == 'CUBEMAP':

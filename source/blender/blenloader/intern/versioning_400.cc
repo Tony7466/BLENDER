@@ -377,7 +377,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Keep this block, even when empty. */
 
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_sample_count")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_samples")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
         lightprobe->grid_bake_samples = 2048;
         lightprobe->surfel_density = 1.0f;
@@ -394,6 +394,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
         world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_min_distance_to_surface"))
+    {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->grid_min_distance_to_surface = 0.05f;
+        lightprobe->grid_max_capture_offset = 0.1f;
       }
     }
 

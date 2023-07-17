@@ -42,6 +42,8 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   Vector<IrradianceBrickPacked> bricks;
   /** Index of the grid inside the grid UBO. */
   int grid_index;
+  /** Copy of surfel density for debugging purpose. */
+  float surfel_density;
 };
 
 struct ReflectionCube : public LightProbe {

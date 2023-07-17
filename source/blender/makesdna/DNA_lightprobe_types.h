@@ -57,6 +57,9 @@ typedef struct LightProbe {
   int grid_resolution_z;
   /** Irradiance grid: number of directions to evaluate light transfer in. */
   int grid_bake_samples;
+  /** Virtual offset parameters. */
+  float grid_min_distance_to_surface;
+  float grid_max_capture_offset;
 
   /** Surface element density for scene surface cache. In surfel per unit distance. */
   float surfel_density;
@@ -236,6 +239,8 @@ typedef struct LightProbeBakingData {
   float (*L1_a)[4];
   float (*L1_b)[4];
   float (*L1_c)[4];
+  /* Capture offset. Only for debugging. */
+  float (*virtual_offset)[4];
 } LightProbeBakingData;
 
 /**
