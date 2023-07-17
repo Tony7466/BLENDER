@@ -95,35 +95,23 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
  * \{ */
 
 template<typename T>
-static void gaussian_blur_1D(const IndexRange curve_points,
-                             const int iterations,
+static void gaussian_blur_1D(const Span<T> src,
+                             const int64_t iterations,
                              const float influence,
                              const bool smooth_ends,
                              const bool keep_shape,
                              const bool is_cyclic,
-                             const Span<T> src,
-                             const IndexMask &mask,
                              MutableSpan<T> dst)
 {
   /* 1D Gaussian-like smoothing function.
    *
-   * Note : This is the same algorithm used by BKE_gpencil_stroke_smooth_point (Legacy)
-   * Overview of the algorithm here and in the following smooth functions:
-   *
-   *   The smooth functions return the new attribute in question for a single point.
-   *   The result is stored in r_gps->points[point_index], while the data is read from gps.
-   *   To get a correct result, duplicate the stroke point data and read from the copy,
-   *   while writing to the real stroke. Not doing that will result in acceptable, but
-   *   asymmetric results.
-   *
-   * This algorithm works as long as all points are being smoothed. If there is
-   * points that should not get smoothed, use the old repeat smooth pattern with
-   * the parameter "iterations" set to 1 or 2. (2 matches the old algorithm).
+   * Note : This is the algorithm used by BKE_gpencil_stroke_smooth_point (legacy),
+   *        but generalized and written in C++.
    *
    * This function uses a binomial kernel, which is the discrete version of gaussian blur.
-   * The weight for a vertex at the relative index point_index is
+   * The weight for a value at the relative index is:
    * w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n
-   * All weights together sum up to 1
+   * All weights together sum up to 1.
    * This is equivalent to doing multiple iterations of averaging neighbors,
    * where n = iterations * 2 and -n/2 <= j <= n/2
    *
@@ -131,90 +119,90 @@ static void gaussian_blur_1D(const IndexRange curve_points,
    * double precision isn't sufficient. A very good robust approximation for n > 20 is
    * nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)
    *
-   * There is one more problem left: The old smooth algorithm was doing a more aggressive
-   * smooth. To solve that problem, choose a different n/2, which does not match the range and
-   * normalize the weights on finish. This may cause some artifacts at low values.
-   *
-   * keep_shape is a new option to stop the stroke from severely deforming.
+   * `keep_shape` is a new option to stop the points from severely deforming.
    * It uses different partially negative weights.
    * w = 2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))
    *   ~ 2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))
    * All weights still sum up to 1.
-   * Note these weights only work because the averaging is done in relative coordinates.
+   * Note that these weights only work because the averaging is done in relative coordinates.
    */
 
-  /* Avoid computation if the mask is empty. */
-  if (mask.is_empty()) {
+  BLI_assert(!src.is_empty());
+  BLI_assert(src.size() == dst.size());
+
+  /* Avoid computation if the there is just one point. */
+  if (src.size() == 1) {
     return;
   }
 
   /* Weight Initialization. */
-  const int n_half = keep_shape ? (iterations * iterations) / 8 + iterations :
-                                  (iterations * iterations) / 4 + 2 * iterations + 12;
+  const int64_t n_half = keep_shape ? (iterations * iterations) / 8 + iterations :
+                                      (iterations * iterations) / 4 + 2 * iterations + 12;
   double w = keep_shape ? 2.0 : 1.0;
   double w2 = keep_shape ?
                   (1.0 / M_SQRT3) * exp((2 * iterations * iterations) / double(n_half * 3)) :
                   0.0;
-  Array<double> total_weight(mask.size(), 0.0);
+  Array<double> total_weight(src.size(), 0.0);
 
-  const int64_t first_pt = curve_points.first();
-  const int64_t last_pt = curve_points.last();
-  const int64_t total_points = curve_points.size();
+  const int64_t total_points = src.size();
+  const int64_t last_pt = total_points - 1;
 
-  auto is_end_and_fixed = [smooth_ends, is_cyclic, first_pt, last_pt](int point_index) {
-    return !smooth_ends && !is_cyclic && ((point_index == first_pt) || (point_index == last_pt));
+  auto is_end_and_fixed = [smooth_ends, is_cyclic, last_pt](int index) {
+    return !smooth_ends && !is_cyclic && ((index == 0) || (index == last_pt));
   };
 
   /* Initialize at zero. */
-  mask.foreach_index(GrainSize(256), [&](const int64_t point_index) {
-    if (!is_end_and_fixed(point_index)) {
-      dst[point_index] = T(0);
+  threading::parallel_for(dst.index_range(), 256, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      if (!is_end_and_fixed(index)) {
+        dst[index] = T(0);
+      }
     }
   });
 
-  for (const int step : IndexRange(iterations)) {
-    const int offset = iterations - step;
-
-    mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
-      /* Filter out endpoints if smooth ends is disabled. */
-      if (is_end_and_fixed(point_index)) {
-        return;
-      }
-
-      double w_before = w - w2;
-      double w_after = w - w2;
-
-      /* Compute the neighboring points. */
-      int64_t before = point_index - offset;
-      int64_t after = point_index + offset;
-      if (is_cyclic) {
-        before = ((before - first_pt) % total_points + total_points) % total_points + first_pt;
-        after = (after - first_pt) % total_points + first_pt;
-      }
-      else {
-        if (!smooth_ends && (before < first_pt)) {
-          w_before *= -(before - first_pt) / float(point_index - first_pt);
+  for (const int64_t step : IndexRange(iterations)) {
+    const int64_t offset = iterations - step;
+    threading::parallel_for(dst.index_range(), 256, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        /* Filter out endpoints. */
+        if (is_end_and_fixed(index)) {
+          continue;
         }
-        before = std::max(before, first_pt);
 
-        if (!smooth_ends && (after > last_pt)) {
-          w_after *= (after - first_pt - (total_points - 1)) /
-                     float(total_points - 1 - point_index + first_pt);
+        double w_before = w - w2;
+        double w_after = w - w2;
+
+        /* Compute the neighboring points. */
+        int64_t before = index - offset;
+        int64_t after = index + offset;
+        if (is_cyclic) {
+          before = (before % total_points + total_points) % total_points;
+          after = after % total_points;
         }
-        after = std::min(after, last_pt);
+        else {
+          if (!smooth_ends && (before < 0)) {
+            w_before *= -before / float(index);
+          }
+          before = std::max(before, 0L);
+
+          if (!smooth_ends && (after > last_pt)) {
+            w_after *= (after - (total_points - 1)) / float(total_points - 1 - index);
+          }
+          after = std::min(after, last_pt);
+        }
+
+        /* Add the neighboring values. */
+        const T bval = src[before];
+        const T aval = src[after];
+        const T cval = src[index];
+
+        dst[index] += (bval - cval) * w_before;
+        dst[index] += (aval - cval) * w_after;
+
+        /* Update the weight values. */
+        total_weight[index] += w_before;
+        total_weight[index] += w_after;
       }
-
-      /* Add the neighboring values. */
-      const T bval = src[before];
-      const T aval = src[after];
-      const T cval = src[point_index];
-
-      dst[point_index] += (bval - cval) * w_before;
-      dst[point_index] += (aval - cval) * w_after;
-
-      /* Update the weight values. */
-      total_weight[mask_index] += w_before;
-      total_weight[mask_index] += w_after;
     });
 
     w *= (n_half + offset) / double(n_half + 1 - offset);
@@ -222,41 +210,77 @@ static void gaussian_blur_1D(const IndexRange curve_points,
   }
 
   /* Normalize the weights. */
-  mask.foreach_index(GrainSize(256), [&](const int64_t point_index, const int64_t mask_index) {
-    if (!is_end_and_fixed(point_index)) {
-      total_weight[mask_index] += w - w2;
-      dst[point_index] = src[point_index] +
-                         influence * dst[point_index] / total_weight[mask_index];
+  threading::parallel_for(dst.index_range(), 256, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      if (!is_end_and_fixed(index)) {
+        total_weight[index] += w - w2;
+        dst[index] = src[index] + influence * dst[index] / total_weight[index];
+      }
     }
   });
 }
 
-void gaussian_blur_1D(const IndexRange curve_points,
-                      const int iterations,
+void gaussian_blur_1D(const GSpan src,
+                      const int64_t iterations,
                       const float influence,
                       const bool smooth_ends,
                       const bool keep_shape,
                       const bool is_cyclic,
-                      const Span<float3> src,
-                      const IndexMask &mask,
-                      MutableSpan<float3> dst)
+                      GMutableSpan dst)
 {
-  gaussian_blur_1D<float3>(
-      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, src, mask, dst);
+  bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    /* Reduces unnecessary code generation. */
+    if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float3>) {
+      gaussian_blur_1D(src.typed<T>(),
+                       iterations,
+                       influence,
+                       smooth_ends,
+                       keep_shape,
+                       is_cyclic,
+                       dst.typed<T>());
+    }
+  });
 }
 
-void gaussian_blur_1D(const IndexRange curve_points,
-                      const int iterations,
-                      const float influence,
-                      const bool smooth_ends,
-                      const bool keep_shape,
-                      const bool is_cyclic,
-                      const Span<float> src,
-                      const IndexMask &mask,
-                      MutableSpan<float> dst)
+static void smooth_curve_attribute(bke::CurvesGeometry &curves,
+                                   bke::GSpanAttributeWriter &attribute,
+                                   const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> selection,
+                                   const VArray<bool> cyclic,
+                                   const int64_t iterations,
+                                   const float influence,
+                                   const bool smooth_ends,
+                                   const bool keep_shape)
 {
-  gaussian_blur_1D<float>(
-      curve_points, iterations, influence, smooth_ends, keep_shape, is_cyclic, src, mask, dst);
+  GMutableSpan data = attribute.span;
+  if (data.is_empty()) {
+    return;
+  }
+  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+    Vector<std::byte> orig_data;
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      IndexMaskMemory memory;
+      const IndexMask selection_mask = IndexMask::from_bools(points, selection, memory);
+      if (selection_mask.is_empty()) {
+        continue;
+      }
+
+      Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
+      for (const IndexRange range : selection_ranges) {
+        GMutableSpan dst_data = data.slice(range);
+        orig_data.resize(dst_data.size_in_bytes());
+        dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
+
+        GSpan src_data(dst_data.type(), orig_data.data(), range.size());
+        gaussian_blur_1D(
+            src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
+      }
+    }
+  });
+
+  attribute.finish();
 }
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
@@ -282,88 +306,56 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
-        /* Smooth all selected curves in the current drawing. */
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
         if (curves.points_num() == 0) {
           return;
         }
 
-        bke::AttributeAccessor attributes = curves.attributes();
-        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
-        MutableSpan<float3> positions = curves.positions_for_write();
-        MutableSpan<float> opacities = drawing.opacities_for_write();
-        MutableSpan<float> radii = drawing.radii_for_write();
+        bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+        const OffsetIndices points_by_curve = curves.points_by_curve();
         const VArray<bool> cyclic = curves.cyclic();
-        const VArray<bool> selection = *attributes.lookup_or_default<bool>(
+        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
-        Array<float3> orig_positions;
         if (smooth_position) {
-          orig_positions = curves.positions();
+          bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
+          smooth_curve_attribute(curves,
+                                 positions,
+                                 points_by_curve,
+                                 selection,
+                                 cyclic,
+                                 iterations,
+                                 influence,
+                                 smooth_ends,
+                                 keep_shape);
+          positions.finish();
         }
-        Array<float> orig_opacities;
         if (smooth_opacity && drawing.opacities().is_span()) {
-          orig_opacities = drawing.opacities().get_internal_span();
+          bke::GSpanAttributeWriter opcities = attributes.lookup_for_write_span("opacity");
+          smooth_curve_attribute(curves,
+                                 opcities,
+                                 points_by_curve,
+                                 selection,
+                                 cyclic,
+                                 iterations,
+                                 influence,
+                                 smooth_ends,
+                                 false);
+          opcities.finish();
         }
-        Array<float> orig_radii;
         if (smooth_radius && drawing.radii().is_span()) {
-          orig_radii = drawing.radii().get_internal_span();
+          bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
+          smooth_curve_attribute(curves,
+                                 radii,
+                                 points_by_curve,
+                                 selection,
+                                 cyclic,
+                                 iterations,
+                                 influence,
+                                 smooth_ends,
+                                 false);
+          radii.finish();
         }
-
-        if (!ed::curves::has_anything_selected(selection, curves.points_range()) ||
-            (orig_positions.is_empty() && orig_opacities.is_empty() && orig_radii.is_empty()))
-        {
-          /* If nothing is selected or none of the attributes should be smoothed, return. */
-          return;
-        }
-
-        threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-          for (const int curve_i : range) {
-            /* Smooth a single curve. */
-            const IndexRange points = points_by_curve[curve_i];
-            const bool is_cyclic = cyclic[curve_i];
-
-            IndexMaskMemory memory;
-            const IndexMask curve_mask = IndexMask::from_bools(points, selection, memory);
-
-            if (!orig_positions.is_empty()) {
-              gaussian_blur_1D(points,
-                               iterations,
-                               influence,
-                               smooth_ends,
-                               keep_shape,
-                               is_cyclic,
-                               orig_positions,
-                               curve_mask,
-                               positions);
-            }
-
-            if (!orig_opacities.is_empty()) {
-              gaussian_blur_1D(points,
-                               iterations,
-                               influence,
-                               smooth_ends,
-                               false,
-                               is_cyclic,
-                               orig_opacities,
-                               curve_mask,
-                               opacities);
-            }
-
-            if (!orig_radii.is_empty()) {
-              gaussian_blur_1D(points,
-                               iterations,
-                               influence,
-                               smooth_ends,
-                               false,
-                               is_cyclic,
-                               orig_radii,
-                               curve_mask,
-                               radii);
-            }
-          }
-        });
       });
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);

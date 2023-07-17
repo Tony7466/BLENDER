@@ -50,6 +50,7 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 #ifdef __cplusplus
 
+#  include "BLI_generic_span.hh"
 #  include "BLI_math_matrix_types.hh"
 
 namespace blender::ed::greasepencil {
@@ -63,25 +64,13 @@ void create_blank(Main &bmain, Object &object, int frame_number);
 void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
 void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_number);
 
-void gaussian_blur_1D(const IndexRange curve_points,
-                      const int iterations,
-                      const float influence,
-                      const bool smooth_ends,
-                      const bool keep_shape,
-                      const bool is_cyclic,
-                      const Span<float3> src,
-                      const IndexMask &mask,
-                      MutableSpan<float3> dst);
-
-void gaussian_blur_1D(const IndexRange curve_points,
-                      const int iterations,
-                      const float influence,
-                      const bool smooth_ends,
-                      const bool keep_shape,
-                      const bool is_cyclic,
-                      const Span<float> src,
-                      const IndexMask &mask,
-                      MutableSpan<float> dst);
+void gaussian_blur_1D(const GSpan src,
+                      int64_t iterations,
+                      float influence,
+                      bool smooth_ends,
+                      bool keep_shape,
+                      bool is_cyclic,
+                      GMutableSpan dst);
 
 }  // namespace blender::ed::greasepencil
 #endif
