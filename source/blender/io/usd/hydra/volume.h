@@ -7,12 +7,12 @@
 
 #include "object.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class VolumeData : public ObjectData {
 
  public:
-  VolumeData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  VolumeData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -34,4 +34,4 @@ class VolumeData : public ObjectData {
   MaterialData *mat_data_ = nullptr;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

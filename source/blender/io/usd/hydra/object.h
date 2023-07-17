@@ -15,18 +15,18 @@
 #include "id.h"
 #include "material.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class ObjectData : public IdData {
  public:
-  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  ObjectData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
-  static std::unique_ptr<ObjectData> create(BlenderSceneDelegate *scene_delegate,
+  static std::unique_ptr<ObjectData> create(HydraSceneDelegate *scene_delegate,
                                             Object *object,
                                             pxr::SdfPath const &prim_id);
   static bool is_supported(Object *object);
   static bool is_mesh(Object *object);
-  static bool is_visible(BlenderSceneDelegate *scene_delegate,
+  static bool is_visible(HydraSceneDelegate *scene_delegate,
                          Object *object,
                          int mode = OB_VISIBLE_SELF);
 
@@ -49,4 +49,4 @@ using ObjectDataMap = Map<pxr::SdfPath, std::unique_ptr<ObjectData>>;
 
 pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4]);
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

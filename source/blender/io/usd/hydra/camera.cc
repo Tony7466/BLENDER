@@ -1,15 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "camera.h"
+
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
-#include "camera.h"
-#include "scene_delegate/object.h"
+#include "hydra/object.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 CameraData::CameraData(View3D *v3d, ARegion *region)
 {
@@ -280,4 +281,4 @@ pxr::GfCamera CameraData::gf_camera(pxr::GfVec4f tile)
   return gf_camera;
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

@@ -10,9 +10,9 @@ struct Scene;
 struct Image;
 struct ImageUser;
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 std::string cache_or_get_image_file(Main *bmain, Scene *Scene, Image *image, ImageUser *iuser);
 std::string cache_image_color(float color[4]);
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

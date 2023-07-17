@@ -3,23 +3,23 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "blender_scene_delegate.h"
 #include "curves.h"
+#include "hydra_scene_delegate.h"
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
 #include "volume.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate,
+ObjectData::ObjectData(HydraSceneDelegate *scene_delegate,
                        Object *object,
                        pxr::SdfPath const &prim_id)
     : IdData(scene_delegate, (ID *)object, prim_id), transform(pxr::GfMatrix4d(1.0))
 {
 }
 
-std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_delegate,
+std::unique_ptr<ObjectData> ObjectData::create(HydraSceneDelegate *scene_delegate,
                                                Object *object,
                                                pxr::SdfPath const &prim_id)
 {
@@ -90,7 +90,7 @@ bool ObjectData::is_mesh(Object *object)
   return false;
 }
 
-bool ObjectData::is_visible(BlenderSceneDelegate *scene_delegate, Object *object, int mode)
+bool ObjectData::is_visible(HydraSceneDelegate *scene_delegate, Object *object, int mode)
 {
   eEvaluationMode deg_mode = DEG_get_mode(scene_delegate->depsgraph);
   bool ret = BKE_object_visibility(object, deg_mode) & mode;
@@ -154,4 +154,4 @@ pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4])
   return ret;
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

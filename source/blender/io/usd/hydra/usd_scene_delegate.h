@@ -12,7 +12,7 @@
 
 struct Depsgraph;
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 /* Populate Hydra render index using USD file export, for testing. */
 class USDSceneDelegate {
@@ -20,7 +20,7 @@ class USDSceneDelegate {
   pxr::SdfPath const delegate_id_;
   pxr::UsdStageRefPtr stage_;
   std::unique_ptr<pxr::UsdImagingDelegate> delegate_;
-  const SceneDelegateSettings &settings_;
+  const HydraDelegateSettings &settings_;
 
   std::string temp_dir_;
   std::string temp_file_;
@@ -28,10 +28,10 @@ class USDSceneDelegate {
  public:
   USDSceneDelegate(pxr::HdRenderIndex *render_index,
                    pxr::SdfPath const &delegate_id,
-                   const SceneDelegateSettings &settings_);
+                   const HydraDelegateSettings &settings_);
   ~USDSceneDelegate();
 
   void populate(Depsgraph *depsgraph);
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

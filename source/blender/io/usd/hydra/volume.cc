@@ -13,12 +13,12 @@
 #include "BLI_index_range.hh"
 #include "DNA_volume_types.h"
 
-#include "blender_scene_delegate.h"
+#include "hydra_scene_delegate.h"
 #include "volume.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-VolumeData::VolumeData(BlenderSceneDelegate *scene_delegate,
+VolumeData::VolumeData(HydraSceneDelegate *scene_delegate,
                        Object *object,
                        pxr::SdfPath const &prim_id)
     : ObjectData(scene_delegate, object, prim_id)
@@ -159,4 +159,4 @@ void VolumeData::write_materials()
   mat_data_ = get_or_create_material(mat);
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

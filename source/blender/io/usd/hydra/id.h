@@ -24,13 +24,13 @@ template<> struct blender::DefaultHash<pxr::TfToken> {
   }
 };
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-class BlenderSceneDelegate;
+class HydraSceneDelegate;
 
 class IdData {
  public:
-  IdData(BlenderSceneDelegate *scene_delegate, ID *id, pxr::SdfPath const &prim_id);
+  IdData(HydraSceneDelegate *scene_delegate, ID *id, pxr::SdfPath const &prim_id);
   virtual ~IdData() = default;
 
   virtual void init() = 0;
@@ -44,7 +44,7 @@ class IdData {
   pxr::SdfPath prim_id;
 
  protected:
-  BlenderSceneDelegate *scene_delegate_;
+  HydraSceneDelegate *scene_delegate_;
 };
 
 #define ID_LOG(level, msg, ...) \
@@ -58,4 +58,4 @@ class IdData {
             id ? id->name : "", \
             ##__VA_ARGS__);
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

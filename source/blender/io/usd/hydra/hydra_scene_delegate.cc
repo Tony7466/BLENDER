@@ -1,19 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "hydra_scene_delegate.h"
+
 #include <bitset>
 
-#include "BLI_set.hh"
-#include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
 
-#include "blender_scene_delegate.h"
+#include "BLI_set.hh"
 
-namespace blender::render::hydra {
+#include "DEG_depsgraph_query.h"
+
+namespace blender::io::hydra {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 
-bool BlenderSceneDelegate::ShadingSettings::operator==(const ShadingSettings &other)
+bool HydraSceneDelegate::ShadingSettings::operator==(const ShadingSettings &other)
 {
   bool ret = use_scene_lights == other.use_scene_lights &&
              use_scene_world == other.use_scene_world;
@@ -26,29 +28,29 @@ bool BlenderSceneDelegate::ShadingSettings::operator==(const ShadingSettings &ot
   return ret;
 }
 
-BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
-                                           pxr::SdfPath const &delegate_id,
-                                           const SceneDelegateSettings &settings)
+HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
+                                       pxr::SdfPath const &delegate_id,
+                                       const HydraDelegateSettings &settings)
     : HdSceneDelegate(parent_index, delegate_id), settings(settings)
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
 }
 
-pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
+pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MeshData *m_data = mesh_data(id);
   return m_data->topology(id);
 }
 
-pxr::HdBasisCurvesTopology BlenderSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
+pxr::HdBasisCurvesTopology HydraSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   CurvesData *c_data = curves_data(id);
   return c_data->topology();
 };
 
-pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
+pxr::GfMatrix4d HydraSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   InstancerData *i_data = instancer_data(id, true);
@@ -65,7 +67,7 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
   return pxr::GfMatrix4d();
 }
 
-pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
+pxr::VtValue HydraSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
   ObjectData *obj_data = object_data(id);
@@ -83,8 +85,8 @@ pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken cons
   return pxr::VtValue();
 }
 
-pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
-                                                      pxr::TfToken const &key)
+pxr::VtValue HydraSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
+                                                    pxr::TfToken const &key)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
   LightData *l_data = light_data(id);
@@ -94,7 +96,7 @@ pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
   return pxr::VtValue();
 }
 
-pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
+pxr::HdPrimvarDescriptorVector HydraSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
@@ -113,7 +115,7 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
   return pxr::HdPrimvarDescriptorVector();
 }
 
-pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
+pxr::SdfPath HydraSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
   ObjectData *obj_data = object_data(rprim_id);
@@ -123,7 +125,7 @@ pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
   return pxr::SdfPath();
 }
 
-pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
+pxr::VtValue HydraSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MaterialData *mat_data = material_data(id);
@@ -133,7 +135,7 @@ pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
   return pxr::VtValue();
 }
 
-bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
+bool HydraSceneDelegate::GetVisible(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   if (id == world_prim_id()) {
@@ -146,19 +148,19 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
   return object_data(id)->visible;
 }
 
-bool BlenderSceneDelegate::GetDoubleSided(pxr::SdfPath const &id)
+bool HydraSceneDelegate::GetDoubleSided(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   return mesh_data(id)->double_sided(id);
 }
 
-pxr::HdCullStyle BlenderSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
+pxr::HdCullStyle HydraSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   return mesh_data(id)->cull_style(id);
 }
 
-pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
+pxr::SdfPath HydraSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", prim_id.GetText());
   InstancerData *i_data = instancer_data(prim_id, true);
@@ -168,29 +170,29 @@ pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
   return pxr::SdfPath();
 }
 
-pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath const &instancer_id)
+pxr::SdfPathVector HydraSceneDelegate::GetInstancerPrototypes(pxr::SdfPath const &instancer_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->prototypes();
 }
 
-pxr::VtIntArray BlenderSceneDelegate::GetInstanceIndices(pxr::SdfPath const &instancer_id,
-                                                         pxr::SdfPath const &prototype_id)
+pxr::VtIntArray HydraSceneDelegate::GetInstanceIndices(pxr::SdfPath const &instancer_id,
+                                                       pxr::SdfPath const &prototype_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", instancer_id.GetText(), prototype_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->indices(prototype_id);
 }
 
-pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &instancer_id)
+pxr::GfMatrix4d HydraSceneDelegate::GetInstancerTransform(pxr::SdfPath const &instancer_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->transform(instancer_id);
 }
 
-pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescriptors(
+pxr::HdVolumeFieldDescriptorVector HydraSceneDelegate::GetVolumeFieldDescriptors(
     pxr::SdfPath const &volume_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", volume_id.GetText());
@@ -198,7 +200,7 @@ pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescripto
   return v_data->field_descriptors();
 }
 
-void BlenderSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
+void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
 {
   bool is_populated = depsgraph != nullptr;
 
@@ -218,7 +220,7 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
   }
 }
 
-void BlenderSceneDelegate::clear()
+void HydraSceneDelegate::clear()
 {
   for (auto &obj_data : objects_.values()) {
     obj_data->remove();
@@ -236,7 +238,7 @@ void BlenderSceneDelegate::clear()
   view3d = nullptr;
 }
 
-pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
+pxr::SdfPath HydraSceneDelegate::prim_id(ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
@@ -244,27 +246,27 @@ pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
   return GetDelegateID().AppendElementString(name);
 }
 
-pxr::SdfPath BlenderSceneDelegate::object_prim_id(Object *object) const
+pxr::SdfPath HydraSceneDelegate::object_prim_id(Object *object) const
 {
   return prim_id((ID *)object, "O");
 }
 
-pxr::SdfPath BlenderSceneDelegate::material_prim_id(Material *mat) const
+pxr::SdfPath HydraSceneDelegate::material_prim_id(Material *mat) const
 {
   return prim_id((ID *)mat, "M");
 }
 
-pxr::SdfPath BlenderSceneDelegate::instancer_prim_id() const
+pxr::SdfPath HydraSceneDelegate::instancer_prim_id() const
 {
   return GetDelegateID().AppendElementString("Instancer");
 }
 
-pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
+pxr::SdfPath HydraSceneDelegate::world_prim_id() const
 {
   return GetDelegateID().AppendElementString("World");
 }
 
-ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
+ObjectData *HydraSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
   if (id == world_prim_id()) {
     return world_data_.get();
@@ -285,27 +287,27 @@ ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
   return nullptr;
 }
 
-MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id) const
+MeshData *HydraSceneDelegate::mesh_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<MeshData *>(object_data(id));
 }
 
-CurvesData *BlenderSceneDelegate::curves_data(pxr::SdfPath const &id) const
+CurvesData *HydraSceneDelegate::curves_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<CurvesData *>(object_data(id));
 }
 
-VolumeData *BlenderSceneDelegate::volume_data(pxr::SdfPath const &id) const
+VolumeData *HydraSceneDelegate::volume_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<VolumeData *>(object_data(id));
 }
 
-LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id) const
+LightData *HydraSceneDelegate::light_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<LightData *>(object_data(id));
 }
 
-MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id) const
+MaterialData *HydraSceneDelegate::material_data(pxr::SdfPath const &id) const
 {
   auto mat_data = materials_.lookup_ptr(id);
   if (!mat_data) {
@@ -314,7 +316,7 @@ MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id) const
   return mat_data->get();
 }
 
-InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
+InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
 {
   pxr::SdfPath p_id;
   if (child_id) {
@@ -338,7 +340,7 @@ InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool
   return nullptr;
 }
 
-void BlenderSceneDelegate::update_world()
+void HydraSceneDelegate::update_world()
 {
   if (!world_data_) {
     if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
@@ -358,7 +360,7 @@ void BlenderSceneDelegate::update_world()
   }
 }
 
-void BlenderSceneDelegate::check_updates()
+void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
   bool do_update_world = false;
@@ -427,7 +429,7 @@ void BlenderSceneDelegate::check_updates()
   }
 }
 
-void BlenderSceneDelegate::update_collection()
+void HydraSceneDelegate::update_collection()
 {
   Set<std::string> available_objects;
 
@@ -519,7 +521,7 @@ void BlenderSceneDelegate::update_collection()
   });
 }
 
-bool BlenderSceneDelegate::set_light_shading_settings()
+bool HydraSceneDelegate::set_light_shading_settings()
 {
   if (!view3d) {
     return false;
@@ -529,7 +531,7 @@ bool BlenderSceneDelegate::set_light_shading_settings()
   return !(shading_settings == prev_settings);
 }
 
-bool BlenderSceneDelegate::set_world_shading_settings()
+bool HydraSceneDelegate::set_world_shading_settings()
 {
   if (!view3d) {
     return false;
@@ -542,4 +544,4 @@ bool BlenderSceneDelegate::set_world_shading_settings()
   return !(shading_settings == prev_settings);
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

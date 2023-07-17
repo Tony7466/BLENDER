@@ -11,8 +11,8 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "camera.h"
 #include "final_engine.h"
+#include "hydra/camera.h"
 
 namespace blender::render::hydra {
 
@@ -39,7 +39,7 @@ void FinalEngine::render(Depsgraph *depsgraph)
   pxr::GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
   resolution_ = pxr::GfVec2i(int(image_res[0] * border[2]), int(image_res[1] * border[3]));
   pxr::GfCamera camera =
-      CameraData(scene->camera, image_res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(border);
+      io::hydra::CameraData(scene->camera, image_res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(border);
 
   free_camera_delegate_->SetCamera(camera);
   render_task_delegate_->set_viewport(pxr::GfVec4d(0, 0, resolution_[0], resolution_[1]));

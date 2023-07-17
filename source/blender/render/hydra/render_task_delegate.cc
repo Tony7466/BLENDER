@@ -1,15 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "render_task_delegate.h"
+
 #include <epoxy/gl.h>
+
+#include "GPU_context.h"
 
 #include <pxr/imaging/hd/renderBuffer.h>
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/imaging/hdx/renderTask.h>
 
 #include "MEM_guardedalloc.h"
-
-#include "render_task_delegate.h"
 
 namespace blender::render::hydra {
 
@@ -249,15 +251,19 @@ void GPURenderTaskDelegate::bind()
 
   /* Important: we have to create and bind at least one Vertex Array Object (VAO) before render
      execution: More info at https://open.gl/drawing */
-  if (VAO_ == 0) {
-    glGenVertexArrays(1, &VAO_);
+  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+    if (VAO_ == 0) {
+      glGenVertexArrays(1, &VAO_);
+    }
+    glBindVertexArray(VAO_);
   }
-  glBindVertexArray(VAO_);
 }
 
 void GPURenderTaskDelegate::unbind()
 {
-  glDeleteVertexArrays(1, &VAO_);
+  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+    glDeleteVertexArrays(1, &VAO_);
+  }
   GPU_framebuffer_free(framebuffer_);
   GPU_texture_free(tex_color_);
   GPU_texture_free(tex_depth_);

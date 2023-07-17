@@ -11,7 +11,7 @@
 
 #include "object.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class InstancerData;
 
@@ -19,7 +19,7 @@ class LightData : public ObjectData {
   friend InstancerData;
 
  public:
-  LightData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  LightData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -35,4 +35,4 @@ class LightData : public ObjectData {
   pxr::TfToken prim_type_;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

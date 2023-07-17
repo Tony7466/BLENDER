@@ -1,17 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "curves.h"
+
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/tokens.h>
 
 #include "BKE_customdata.h"
 #include "BKE_material.h"
 
-#include "blender_scene_delegate.h"
+#include "hydra_scene_delegate.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-CurvesData::CurvesData(BlenderSceneDelegate *scene_delegate,
+CurvesData::CurvesData(HydraSceneDelegate *scene_delegate,
                        Object *object,
                        pxr::SdfPath const &prim_id)
     : ObjectData(scene_delegate, object, prim_id)
@@ -178,4 +180,4 @@ void CurvesData::write_uv_maps(Curves *curves)
   }
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

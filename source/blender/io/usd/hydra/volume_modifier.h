@@ -7,12 +7,12 @@
 
 #include "volume.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class VolumeModifierData : public VolumeData {
 
  public:
-  VolumeModifierData(BlenderSceneDelegate *scene_delegate,
+  VolumeModifierData(HydraSceneDelegate *scene_delegate,
                      Object *object,
                      pxr::SdfPath const &prim_id);
   static bool is_volume_modifier(Object *object);
@@ -29,4 +29,4 @@ class VolumeModifierData : public VolumeData {
   FluidModifierData *modifier_;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "viewport_engine.h"
+
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
@@ -22,8 +24,7 @@
 #include "GPU_matrix.h"
 #include "PIL_time.h"
 
-#include "camera.h"
-#include "viewport_engine.h"
+#include "hydra/camera.h"
 
 namespace blender::render::hydra {
 
@@ -35,7 +36,7 @@ struct ViewSettings {
 
   pxr::GfCamera gf_camera();
 
-  CameraData camera_data;
+  io::hydra::CameraData camera_data;
 
   int screen_width;
   int screen_height;

@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "engine.h"
+
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/registry.h>
 #include <pxr/imaging/hd/rendererPluginRegistry.h>
@@ -15,8 +17,6 @@
 #include "GPU_context.h"
 
 #include "DEG_depsgraph_query.h"
-
-#include "engine.h"
 
 namespace blender::render::hydra {
 
@@ -82,7 +82,7 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
 
     if (!hydra_scene_delegate_) {
       pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene");
-      hydra_scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
+      hydra_scene_delegate_ = std::make_unique<io::hydra::HydraSceneDelegate>(
           render_index_.get(), scene_path, scene_delegate_settings_);
     }
     hydra_scene_delegate_->populate(depsgraph, CTX_wm_view3d(context));
@@ -97,7 +97,7 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
 
     if (!usd_scene_delegate_) {
       pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("usd_scene");
-      usd_scene_delegate_ = std::make_unique<USDSceneDelegate>(
+      usd_scene_delegate_ = std::make_unique<io::hydra::USDSceneDelegate>(
           render_index_.get(), scene_path, scene_delegate_settings_);
     }
     usd_scene_delegate_->populate(depsgraph);

@@ -20,8 +20,9 @@
 #include "light_tasks_delegate.h"
 #include "render_task_delegate.h"
 
-#include "scene_delegate/blender_scene_delegate.h"
-#include "scene_delegate/usd_scene_delegate.hh"
+#include "hydra/hydra_scene_delegate.h"
+#include "hydra/settings.h"
+#include "hydra/usd_scene_delegate.h"
 
 namespace blender::render::hydra {
 
@@ -51,9 +52,9 @@ class Engine {
   pxr::HdPluginRenderDelegateUniqueHandle render_delegate_;
   std::unique_ptr<pxr::HdRenderIndex> render_index_;
 
-  SceneDelegateSettings scene_delegate_settings_;
-  std::unique_ptr<BlenderSceneDelegate> hydra_scene_delegate_;
-  std::unique_ptr<USDSceneDelegate> usd_scene_delegate_;
+  io::hydra::HydraDelegateSettings scene_delegate_settings_;
+  std::unique_ptr<io::hydra::HydraSceneDelegate> hydra_scene_delegate_;
+  std::unique_ptr<io::hydra::USDSceneDelegate> usd_scene_delegate_;
 
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;

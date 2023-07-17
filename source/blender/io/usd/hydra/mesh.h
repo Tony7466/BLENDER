@@ -12,7 +12,7 @@
 #include "material.h"
 #include "object.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class MeshData : public ObjectData {
   struct SubMesh {
@@ -25,7 +25,7 @@ class MeshData : public ObjectData {
   };
 
  public:
-  MeshData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  MeshData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -58,4 +58,4 @@ class MeshData : public ObjectData {
   int submeshes_count_ = 0;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

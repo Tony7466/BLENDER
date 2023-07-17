@@ -1,21 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <boost/algorithm/string/predicate.hpp>
+#include "light.h"
 
 #include <pxr/imaging/hd/light.h>
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usdLux/tokens.h>
 
-#include "BLI_math_rotation.h"
 #include "DNA_light_types.h"
 
-#include "blender_scene_delegate.h"
-#include "light.h"
+#include "BLI_math_rotation.h"
 
-namespace blender::render::hydra {
+#include "hydra_scene_delegate.h"
 
-LightData::LightData(BlenderSceneDelegate *scene_delegate,
+namespace blender::io::hydra {
+
+LightData::LightData(HydraSceneDelegate *scene_delegate,
                      Object *object,
                      pxr::SdfPath const &prim_id)
     : ObjectData(scene_delegate, object, prim_id)
@@ -179,4 +179,4 @@ pxr::TfToken LightData::prim_type(Light *light)
   }
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

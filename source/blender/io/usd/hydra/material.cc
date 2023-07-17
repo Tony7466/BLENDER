@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "material.h"
+
 #include <Python.h>
 #include <unicodeobject.h>
 
@@ -8,21 +10,38 @@
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/imaging/hd/tokens.h>
 
+#ifdef WITH_MATERIALX
+#  include <pxr/base/arch/fileSystem.h>
+
+#  include <pxr/usd/ar/resolver.h>
+#  include <pxr/usd/ar/resolverContextBinder.h>
+#  include <pxr/usd/ar/resolverScopedCache.h>
+
+#  include <pxr/usd/usdMtlx/reader.h>
+#  include <pxr/usd/usdMtlx/utils.h>
+
+#  include <pxr/usd/usdShade/material.h>
+#  include <pxr/usd/usdShade/shader.h>
+
+#  include <pxr/usdImaging/usdImaging/materialParamUtils.h>
+#endif
+
+#include "MEM_guardedalloc.h"
+
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 
-#include "MEM_guardedalloc.h"
-#include "RNA_blender_cpp.h"
+#include "RNA_access.h"
+#include "RNA_prototypes.h"
+#include "RNA_types.h"
+
 #include "bpy_rna.h"
 
-#include "../engine.h"
-#include "blender_scene_delegate.h"
-#include "material.h"
-#include "mtlx_hydra_adapter.h"
+#include "hydra_scene_delegate.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate,
+MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
                            Material *material,
                            pxr::SdfPath const &prim_id)
     : IdData(scene_delegate, (ID *)material, prim_id)
@@ -152,6 +171,64 @@ void MaterialData::export_mtlx()
   ID_LOGN(1, "mtlx=%s", mtlx_path_.GetResolvedPath().c_str());
 }
 
+#ifdef WITH_MATERIALX
+static void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
+                                                 pxr::TfTokenVector const &shader_source_types,
+                                                 pxr::TfTokenVector const &render_contexts,
+                                                 pxr::HdMaterialNetworkMap *out)
+{
+  if (mtlx_path.empty()) {
+    return;
+  }
+
+  std::string basePath = pxr::TfGetPathName(mtlx_path);
+
+  pxr::ArResolver &resolver = pxr::ArGetResolver();
+  const pxr::ArResolverContext context = resolver.CreateDefaultContextForAsset(mtlx_path);
+  pxr::ArResolverContextBinder binder(context);
+  pxr::ArResolverScopedCache resolver_cache;
+
+  std::string mtlxName = pxr::TfGetBaseName(mtlx_path);
+  std::string stage_id = pxr::TfStringPrintf(
+      "%s%s%s.usda", basePath.c_str(), ARCH_PATH_SEP, mtlxName.c_str());
+  pxr::UsdStageRefPtr stage = pxr::UsdStage::CreateInMemory(stage_id, context);
+
+  try {
+    MaterialX::DocumentPtr doc = pxr::UsdMtlxReadDocument(mtlx_path);
+    pxr::UsdMtlxRead(doc, stage);
+  }
+  catch (MaterialX::ExceptionFoundCycle &x) {
+    Tf_PostErrorHelper(pxr::TF_CALL_CONTEXT,
+                       pxr::TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
+                       "MaterialX cycle found: %s\n",
+                       x.what());
+    return;
+  }
+  catch (MaterialX::Exception &x) {
+    Tf_PostErrorHelper(pxr::TF_CALL_CONTEXT,
+                       pxr::TF_DIAGNOSTIC_RUNTIME_ERROR_TYPE,
+                       "MaterialX error: %s\n",
+                       x.what());
+    return;
+  }
+
+  if (pxr::UsdPrim materials = stage->GetPrimAtPath(pxr::SdfPath("/MaterialX/Materials"))) {
+    if (pxr::UsdPrimSiblingRange children = materials.GetChildren()) {
+      if (auto material = pxr::UsdShadeMaterial(*children.begin())) {
+        if (pxr::UsdShadeShader mtlx_surface = material.ComputeSurfaceSource(render_contexts)) {
+          UsdImagingBuildHdMaterialNetworkFromTerminal(mtlx_surface.GetPrim(),
+                                                       pxr::HdMaterialTerminalTokens->surface,
+                                                       shader_source_types,
+                                                       render_contexts,
+                                                       out,
+                                                       pxr::UsdTimeCode::Default());
+        }
+      }
+    }
+  }
+}
+#endif
+
 void MaterialData::write_material_network_map()
 {
   ID_LOGN(1, "");
@@ -165,10 +242,12 @@ void MaterialData::write_material_network_map()
   pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
 
   pxr::HdMaterialNetworkMap network_map;
+#ifdef WITH_MATERIALX
   hdmtlx_convert_to_materialnetworkmap(
       mtlx_path_.GetResolvedPath(), shader_source_types, render_contexts, &network_map);
+#endif
 
   material_network_map_ = network_map;
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

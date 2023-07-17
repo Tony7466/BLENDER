@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <filesystem>
+#include "world.h"
 
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec2f.h>
@@ -23,18 +23,16 @@
 
 #include "NOD_shader.h"
 
-#include "../engine.h"
-#include "blender_scene_delegate.h"
+#include "hydra_scene_delegate.h"
 #include "image.h"
-#include "world.h"
 
 /* TODO : add custom tftoken "transparency"? */
 
 /* NOTE: opacity and blur aren't supported by USD */
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-WorldData::WorldData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id)
+WorldData::WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id)
     : LightData(scene_delegate, nullptr, prim_id)
 {
   prim_type_ = pxr::HdPrimTypeTokens->domeLight;
@@ -81,8 +79,8 @@ void WorldData::init()
         return;
       }
 
-      bNodeSocket color_input = input_node->input_by_identifier("Color");
-      bNodeSocket strength_input = input_node->input_by_identifier("Strength");
+      const bNodeSocket &color_input = input_node->input_by_identifier("Color");
+      const bNodeSocket &strength_input = input_node->input_by_identifier("Strength");
 
       float const *strength = strength_input.default_value_typed<float>();
       float const *input_color = color_input.default_value_typed<float>();
@@ -155,4 +153,4 @@ void WorldData::write_transform()
   }
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

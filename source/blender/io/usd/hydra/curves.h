@@ -13,11 +13,11 @@
 #include "material.h"
 #include "object.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class CurvesData : public ObjectData {
  public:
-  CurvesData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  CurvesData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -46,4 +46,4 @@ class CurvesData : public ObjectData {
   MaterialData *mat_data_ = nullptr;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

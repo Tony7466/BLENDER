@@ -9,7 +9,7 @@
 
 #include "mesh.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class InstancerData : public IdData {
   struct MeshInstance {
@@ -24,7 +24,7 @@ class InstancerData : public IdData {
   };
 
  public:
-  InstancerData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
+  InstancerData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -63,4 +63,4 @@ class InstancerData : public IdData {
   pxr::VtMatrix4dArray mesh_transforms_;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

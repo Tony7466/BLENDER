@@ -16,11 +16,11 @@
 
 #include "light.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class WorldData : public LightData {
  public:
-  WorldData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
+  WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;
   void update() override;
@@ -29,4 +29,4 @@ class WorldData : public LightData {
   void write_transform() override;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

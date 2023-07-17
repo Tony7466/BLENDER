@@ -12,7 +12,7 @@ struct ARegion;
 struct Object;
 struct View3D;
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class CameraData {
  public:
@@ -33,4 +33,4 @@ class CameraData {
   std::tuple<float, float, int> dof_data_;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

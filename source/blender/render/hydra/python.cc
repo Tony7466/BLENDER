@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "final_engine.h"
+#include "preview_engine.h"
+#include "viewport_engine.h"
+
 #include <Python.h>
 
 #include <boost/python/extract.hpp>
@@ -16,10 +20,7 @@
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 
-#include "final_engine.h"
-#include "preview_engine.h"
-#include "scene_delegate/image.h"
-#include "viewport_engine.h"
+#include "hydra/image.h"
 
 namespace blender::render::hydra {
 
@@ -222,7 +223,7 @@ static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *arg
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
   Image *image = (Image *)PyLong_AsVoidPtr(pyimage);
 
-  std::string image_path = cache_or_get_image_file(
+  std::string image_path = io::hydra::cache_or_get_image_file(
       CTX_data_main(context), CTX_data_scene(context), image, nullptr);
   return PyUnicode_FromString(image_path.c_str());
 }

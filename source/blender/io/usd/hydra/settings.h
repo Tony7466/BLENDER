@@ -7,11 +7,11 @@
 
 #include "BLI_map.hh"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-struct SceneDelegateSettings {
+struct HydraDelegateSettings {
   pxr::TfToken mx_filename_key;
   Map<pxr::TfToken, pxr::VtValue> render_tokens;
 };
 
-};  // namespace blender::render::hydra
+};  // namespace blender::io::hydra

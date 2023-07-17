@@ -1,21 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "image.h"
+
 #include <pxr/imaging/hio/imageRegistry.h>
+
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 
 #include "BKE_appdir.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
-#include "BLI_fileops.h"
-#include "BLI_path_util.h"
+
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "blender_scene_delegate.h"
-#include "image.h"
+#include "hydra_scene_delegate.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 static std::string get_cache_file(const std::string &file_name, bool mkdir = true)
 {
@@ -117,4 +120,4 @@ std::string cache_image_color(float color[4])
   return file_path;
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

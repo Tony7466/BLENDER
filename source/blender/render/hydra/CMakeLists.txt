@@ -51,7 +51,6 @@ set(INC
   ../../gpu/intern
   ../../python/intern
   ..
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna/intern
 )
 
 set(INC_SYS
@@ -69,63 +68,24 @@ set(LIB
   ${BOOST_LIBRARIES}
   ${USD_LIBRARIES}
   ${TBB_LIBRARIES}
+  bf_usd
 )
 
-if(WITH_MATERIALX)
-  add_definitions(-DWITH_MATERIALX)
-  list(APPEND LIB MaterialXCore)
-endif()
-
 set(SRC
-  python.cc
-
-  camera.h
-  camera.cc
-  engine.h
   engine.cc
-  final_engine.h
   final_engine.cc
-  preview_engine.h
+  light_tasks_delegate.cc
   preview_engine.cc
-  viewport_engine.h
+  python.cc
+  render_task_delegate.cc
   viewport_engine.cc
 
-  render_task_delegate.cc
-  render_task_delegate.h
-  light_tasks_delegate.cc
+  engine.h
+  final_engine.h
   light_tasks_delegate.h
-
-  scene_delegate/blender_scene_delegate.cc
-  scene_delegate/blender_scene_delegate.h
-  scene_delegate/curves.cc
-  scene_delegate/curves.h
-  scene_delegate/id.cc
-  scene_delegate/id.h
-  scene_delegate/image.cc
-  scene_delegate/image.h
-  scene_delegate/instancer.cc
-  scene_delegate/instancer.h
-  scene_delegate/light.cc
-  scene_delegate/light.h
-  scene_delegate/material.cc
-  scene_delegate/material.h
-  scene_delegate/mesh.cc
-  scene_delegate/mesh.h
-  scene_delegate/mtlx_hydra_adapter.cc
-  scene_delegate/mtlx_hydra_adapter.h
-  scene_delegate/object.cc
-  scene_delegate/object.h
-  scene_delegate/settings.h
-  scene_delegate/usd_scene_delegate.cc
-  scene_delegate/usd_scene_delegate.hh
-  scene_delegate/volume.cc
-  scene_delegate/volume.h
-  scene_delegate/volume_modifier.cc
-  scene_delegate/volume_modifier.h
-  scene_delegate/world.cc
-  scene_delegate/world.h
+  preview_engine.h
+  render_task_delegate.h
+  viewport_engine.h
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-
-add_dependencies(bf_render_hydra bf_rna)

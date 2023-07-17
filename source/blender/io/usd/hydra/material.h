@@ -12,11 +12,11 @@
 
 #include "id.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 class MaterialData : public IdData {
  public:
-  MaterialData(BlenderSceneDelegate *scene_delegate,
+  MaterialData(HydraSceneDelegate *scene_delegate,
                Material *material,
                pxr::SdfPath const &prim_id);
 
@@ -41,4 +41,4 @@ class MaterialData : public IdData {
 
 using MaterialDataMap = Map<pxr::SdfPath, std::unique_ptr<MaterialData>>;
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

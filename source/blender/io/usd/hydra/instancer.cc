@@ -1,17 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "instancer.h"
+
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
 
 #include "DEG_depsgraph_query.h"
 
-#include "blender_scene_delegate.h"
-#include "instancer.h"
+#include "hydra_scene_delegate.h"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id)
+InstancerData::InstancerData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id)
     : IdData(scene_delegate, nullptr, prim_id)
 {
 }
@@ -282,4 +283,4 @@ InstancerData::NonmeshInstance *InstancerData::nonmesh_instance(pxr::SdfPath con
   return const_cast<NonmeshInstance *>(nm_inst);
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

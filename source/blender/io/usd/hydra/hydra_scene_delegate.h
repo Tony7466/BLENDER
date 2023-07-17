@@ -27,13 +27,13 @@ struct Main;
 struct Scene;
 struct View3D;
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE;
 
 class Engine;
 
-class BlenderSceneDelegate : public pxr::HdSceneDelegate {
+class HydraSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
 
@@ -48,10 +48,10 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
     bool operator==(const ShadingSettings &other);
   };
 
-  BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
-                       pxr::SdfPath const &delegate_id,
-                       const SceneDelegateSettings &settings);
-  ~BlenderSceneDelegate() override = default;
+  HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
+                     pxr::SdfPath const &delegate_id,
+                     const HydraDelegateSettings &settings);
+  ~HydraSceneDelegate() override = default;
 
   /* Delegate methods */
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;
@@ -81,7 +81,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   View3D *view3d = nullptr;
   Main *bmain = nullptr;
   Scene *scene = nullptr;
-  const SceneDelegateSettings &settings;
+  const HydraDelegateSettings &settings;
   ShadingSettings shading_settings;
 
  private:
@@ -111,4 +111,4 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   std::unique_ptr<WorldData> world_data_;
 };
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

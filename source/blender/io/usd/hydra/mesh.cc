@@ -9,18 +9,16 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 
-#include "blender_scene_delegate.h"
+#include "hydra_scene_delegate.h"
 #include "mesh.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 TF_DEFINE_PRIVATE_TOKENS(tokens_, (st));
 PXR_NAMESPACE_CLOSE_SCOPE
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-MeshData::MeshData(BlenderSceneDelegate *scene_delegate,
-                   Object *object,
-                   pxr::SdfPath const &prim_id)
+MeshData::MeshData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id)
     : ObjectData(scene_delegate, object, prim_id)
 {
 }
@@ -301,4 +299,4 @@ void MeshData::update_prims()
   submeshes_count_ = submeshes_.size();
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

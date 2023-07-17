@@ -1,24 +1,27 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "volume_modifier.h"
+
 #include <pxr/usdImaging/usdVolImaging/tokens.h>
 
-#include "BKE_mesh.h"
-#include "BKE_modifier.h"
-#include "BLI_path_util.h"
 #include "DNA_scene_types.h"
 #include "DNA_volume_types.h"
 
-#include "blender_scene_delegate.h"
-#include "volume_modifier.h"
+#include "BLI_path_util.h"
+
+#include "BKE_mesh.h"
+#include "BKE_modifier.h"
+
+#include "hydra_scene_delegate.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 TF_DEFINE_PRIVATE_TOKENS(grid_tokens_, (density)(flame)(shadow)(temperature)(velocity));
 PXR_NAMESPACE_CLOSE_SCOPE
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
-VolumeModifierData::VolumeModifierData(BlenderSceneDelegate *scene_delegate,
+VolumeModifierData::VolumeModifierData(HydraSceneDelegate *scene_delegate,
                                        Object *object,
                                        pxr::SdfPath const &prim_id)
     : VolumeData(scene_delegate, object, prim_id)
@@ -128,4 +131,4 @@ std::string VolumeModifierData::get_cached_file_path(std::string directory, int 
   return file_path;
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

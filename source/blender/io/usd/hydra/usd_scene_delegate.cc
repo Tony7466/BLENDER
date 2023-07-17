@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include "usd_scene_delegate.hh"
+#include "usd_scene_delegate.h"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
@@ -14,11 +14,11 @@
 #include "usd.h"
 #include "usd.hh"
 
-namespace blender::render::hydra {
+namespace blender::io::hydra {
 
 USDSceneDelegate::USDSceneDelegate(pxr::HdRenderIndex *render_index,
                                    pxr::SdfPath const &delegate_id,
-                                   const SceneDelegateSettings &settings)
+                                   const HydraDelegateSettings &settings)
     : render_index_(render_index), delegate_id_(delegate_id), settings_(settings)
 {
   /* Temporary directory to write any additional files to, like image or VDB files. */
@@ -76,4 +76,4 @@ void USDSceneDelegate::populate(Depsgraph *depsgraph)
   delegate_->Populate(stage_->GetPseudoRoot());
 }
 
-}  // namespace blender::render::hydra
+}  // namespace blender::io::hydra

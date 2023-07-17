@@ -64,8 +64,13 @@ set(INC
   ../../editors/include
   ../../imbuf
   ../../makesrna
+  ../../nodes
+  ../../python/intern
   ../../windowmanager
   ../../../../intern/utfconv
+  ../../../../intern/clog
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -135,6 +140,41 @@ set(SRC
   intern/usd_reader_xform.h
 )
 
+if(WITH_HYDRA)
+  list(APPEND SRC
+    hydra/camera.cc
+    hydra/curves.cc
+    hydra/hydra_scene_delegate.cc
+    hydra/id.cc
+    hydra/image.cc
+    hydra/instancer.cc
+    hydra/light.cc
+    hydra/material.cc
+    hydra/mesh.cc
+    hydra/object.cc
+    hydra/usd_scene_delegate.cc
+    hydra/volume.cc
+    hydra/volume_modifier.cc
+    hydra/world.cc
+
+    hydra/camera.h
+    hydra/curves.h
+    hydra/hydra_scene_delegate.h
+    hydra/id.h
+    hydra/image.h
+    hydra/instancer.h
+    hydra/light.h
+    hydra/material.h
+    hydra/mesh.h
+    hydra/object.h
+    hydra/settings.h
+    hydra/usd_scene_delegate.h
+    hydra/volume.h
+    hydra/volume_modifier.h
+    hydra/world.h
+  )
+endif()
+
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
@@ -162,7 +202,15 @@ if(WITH_OPENVDB)
   )
 endif()
 
+if(WITH_MATERIALX)
+  add_definitions(-DWITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+endif()
+
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# RNA_prototypes.h
+add_dependencies(bf_usd bf_rna)
 
 if(COMMAND target_precompile_headers)
   target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
