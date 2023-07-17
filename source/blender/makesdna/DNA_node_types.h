@@ -2221,7 +2221,7 @@ typedef enum NodeEasingOperation {
   NODE_EASING_SAWTOOTH = 17,
   NODE_EASING_TRIANGLE = 18,
   NODE_EASING_SQUARE = 19,
-  NODE_EASING_END = 20,
+  NODE_EASING_SNAKE = 20
 } NodeEasingOperation;
 
 typedef enum FloatToIntRoundingMode {

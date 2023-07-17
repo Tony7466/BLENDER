@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_easing.h"
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -15,9 +14,9 @@ NODE_STORAGE_FUNCS(NodeEasing)
 static void node_easing_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>("Value").min(-10000.0f).max(10000.0f).is_default_link_socket();
+  b.add_input<decl::Float>("Value").min(0.0f).max(1.0f).is_default_link_socket();
   b.add_input<decl::Float>("Strength")
-      .description("Controls strength of curve shape")
+      .description("Controls curvature or shape of the easing")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
@@ -25,8 +24,8 @@ static void node_easing_declare(NodeDeclarationBuilder &b)
       .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
   b.add_input<decl::Float>("Frequency")
       .default_value(1.0f)
-      .min(-25.0f)
-      .max(25.0f)
+      .min(-10.0f)
+      .max(10.0f)
       .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_SAWTOOTH; });
   b.add_input<decl::Int>("Count").default_value(4).min(1).max(8).make_available(
       [](bNode &node) { node_storage(node).operation = NODE_EASING_BOUNCE; });
@@ -60,13 +59,13 @@ static void node_easing_declare(NodeDeclarationBuilder &b)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
   b.add_input<decl::Float>("Inflection")
-      .description("Inflection point for In-Out/Out-In transition")
+      .description("Inflection point where In-Out/Out-In transition occurs")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
-  b.add_input<decl::Bool>("Invert").description("Change easing direction from In-Out to Out-In");
+  b.add_input<decl::Bool>("Invert").description("Invert easing direction from In-Out to Out-In");
   b.add_input<decl::Float>("Mirror")
       .min(0.0f)
       .max(1.0f)
@@ -100,12 +99,12 @@ static void node_easing_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sockInflection = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
   bNodeSocket *sockInvert = (bNodeSocket *)BLI_findlink(&node->inputs, sock++);
 
-  const bool use_step_control = ELEM(operation, NODE_EASING_STEPS);
   const bool use_strength = ELEM(operation,
                                  NODE_EASING_ELASTIC,
                                  NODE_EASING_BACK,
                                  NODE_EASING_VARIABLE,
                                  NODE_EASING_BOUNCE,
+                                 NODE_EASING_SNAKE,
                                  NODE_EASING_BIAS,
                                  NODE_EASING_SPRING,
                                  NODE_EASING_SQUARE,
@@ -120,11 +119,11 @@ static void node_easing_update(bNodeTree *ntree, bNode *node)
                                        NODE_EASING_CIRC,
                                        NODE_EASING_SPRING,
                                        NODE_EASING_BOUNCE,
+                                       NODE_EASING_SNAKE,
                                        NODE_EASING_BACK,
                                        NODE_EASING_ELASTIC,
                                        NODE_EASING_VARIABLE,
                                        NODE_EASING_BIAS);
-  const bool use_handles = ELEM(operation, NODE_EASING_CUBIC_BEZIER);
   const bool use_frequency = ELEM(operation,
                                   NODE_EASING_ELASTIC,
                                   NODE_EASING_STEPS,
@@ -132,19 +131,21 @@ static void node_easing_update(bNodeTree *ntree, bNode *node)
                                   NODE_EASING_TRIANGLE,
                                   NODE_EASING_SQUARE,
                                   NODE_EASING_SINEWAVE);
-  const bool use_test = operation == NODE_EASING_END;
 
-  bke::nodeSetSocketAvailability(ntree, sockInflection, use_inout_controls || use_test);
-  bke::nodeSetSocketAvailability(ntree, sockInvert, use_inout_controls || use_test);
-  bke::nodeSetSocketAvailability(ntree, sockStrength, use_strength || use_test);
-  bke::nodeSetSocketAvailability(ntree, sockCount, operation == NODE_EASING_BOUNCE || use_test);
+  bke::nodeSetSocketAvailability(ntree, sockInflection, use_inout_controls);
+  bke::nodeSetSocketAvailability(ntree, sockInvert, use_inout_controls);
+  bke::nodeSetSocketAvailability(ntree, sockStrength, use_strength);
+  bke::nodeSetSocketAvailability(
+      ntree, sockCount, ELEM(operation, NODE_EASING_BOUNCE, NODE_EASING_SNAKE));
   bke::nodeSetSocketAvailability(ntree, sockFrequency, use_frequency);
-  bke::nodeSetSocketAvailability(ntree, sockJumpStart, use_step_control);
-  bke::nodeSetSocketAvailability(ntree, sockJumpEnd, use_step_control);
-  bke::nodeSetSocketAvailability(ntree, sockP1X, use_handles || operation == NODE_EASING_LINEAR);
-  bke::nodeSetSocketAvailability(ntree, sockP1Y, use_handles || operation == NODE_EASING_LINEAR);
-  bke::nodeSetSocketAvailability(ntree, sockP2X, use_handles);
-  bke::nodeSetSocketAvailability(ntree, sockP2Y, use_handles);
+  bke::nodeSetSocketAvailability(ntree, sockJumpStart, operation == NODE_EASING_STEPS);
+  bke::nodeSetSocketAvailability(ntree, sockJumpEnd, operation == NODE_EASING_STEPS);
+  bke::nodeSetSocketAvailability(
+      ntree, sockP1X, ELEM(operation, NODE_EASING_CUBIC_BEZIER, NODE_EASING_LINEAR));
+  bke::nodeSetSocketAvailability(
+      ntree, sockP1Y, ELEM(operation, NODE_EASING_CUBIC_BEZIER, NODE_EASING_LINEAR));
+  bke::nodeSetSocketAvailability(ntree, sockP2X, operation == NODE_EASING_CUBIC_BEZIER);
+  bke::nodeSetSocketAvailability(ntree, sockP2Y, operation == NODE_EASING_CUBIC_BEZIER);
 
   switch (operation) {
     case NODE_EASING_SQUARE:
@@ -152,6 +153,9 @@ static void node_easing_update(bNodeTree *ntree, bNode *node)
       break;
     case NODE_EASING_BACK:
       node_sock_label(sockStrength, "Overshoot");
+      break;
+    case NODE_EASING_ELASTIC:
+      node_sock_label(sockStrength, "Amplitude");
       break;
     default:
       node_sock_label_clear(sockStrength);
@@ -343,7 +347,7 @@ class UnitBezier {
 
 /* Ease functions. */
 
-/* Ease functions are mostly based on Robert Penner functions,
+/* Ease functions unless stated are based on Robert Penner functions,
  * BSD-3-Clause Copyright 2001 Robert Penner. All rights reserved. */
 
 /* Adapted from Godot spring function, easing_equations.h with strength control.
@@ -380,14 +384,15 @@ static float easing_linear(const float t, const float x, const float y)
   if (t >= 1.0f) {
     return 1.0f;
   }
-  if (x == y) {
+  const float cx = math::clamp(x, 0.0f, 1.0f);
+  if (cx == y) {
     return t;
   }
-  if (t < x) {
-    return map(t, 0.0f, x, 0.0f, y);
+  if (t < cx) {
+    return map(t, 0.0f, cx, 0.0f, y);
   }
   else {
-    return map(t, x, 1.0f, y, 1.0f);
+    return map(t, cx, 1.0f, y, 1.0f);
   }
 }
 
@@ -413,7 +418,8 @@ static float easing_bias(const float t, const float s)
   return t / ((((1.0f / math::clamp(s, 0.0f, 1.0f)) - 2.0f) * (1.0f - t)) + 1.0f);
 }
 
-/* Piecewise polynomial. */
+/* Variable power curve with exponent mapped to [0-1] range.
+ * When s=0 (linear), s=0.5 (smoothstep), s=1.0 (step).*/
 static float easing_variable(const float t, const float s)
 {
   if (s <= 0.0f) {
@@ -422,60 +428,26 @@ static float easing_variable(const float t, const float s)
   if (s >= 1.0f) {
     return 0.0f;
   }
-  const float c = math::safe_divide(2.0f, (1.0f - s)) - 1.0f;
-  return math::pow(t, c);
+  return math::pow(t, math::safe_divide(2.0f, (1.0f - s)) - 1.0f);
 }
 
-/* Adapted from bounce but with alternating pos/neg bounces. */
-static float easing_whip_in(const float t, const float s)
-{
-  float dt = 1.0f - t;
-  if (dt < (1.0f / 2.75f)) {
-    return 1.0f - (7.5625f * dt * dt);
-  }
-  if (dt < (2.0f / 2.75f)) {
-    dt -= (1.5f / 2.75f);
-    return (1.0f - ((7.5625f * dt) * dt + 0.75f)) * -s * 2.0f;
-  }
-  if (dt < (2.5f / 2.75f)) {
-    dt -= (2.25f / 2.75f);
-    return (1.0f - ((7.5625f * dt) * dt + 0.9375f)) * s * 2.0f;
-  }
-  dt -= (2.625f / 2.75f);
-  return (1.0f - ((7.5625f * dt) * dt + 0.984375f)) * -s * 2.0f;
-}
-
-static float easing_bounce_in(const float t, const float s)
-{
-  float dt = 1.0f - t;
-  if (dt < (1.0f / 2.75f)) {
-    return 1.0f - (7.5625f * dt * dt);
-  }
-  if (dt < (2.0f / 2.75f)) {
-    dt -= (1.5f / 2.75f);
-    return (1.0f - ((7.5625f * dt) * dt + 0.75f)) * s;
-  }
-  if (dt < (2.5f / 2.75f)) {
-    dt -= (2.25f / 2.75f);
-    return (1.0f - ((7.5625f * dt) * dt + 0.9375f)) * s;
-  }
-  dt -= (2.625f / 2.75f);
-  return (1.0f - ((7.5625f * dt) * dt + 0.984375f)) * s;
-}
-
-/* Adapted from Animation Nodes.Copyright(C) 2017 Jacques Lucke.
- * Output matches classic Penner when s=0.5 and bounces=4. */
-static float easing_dynamic_bounce_in(const float t, const float s, const int bounces)
+/* Adapted from Animation Nodes. Copyright(C) 2017 Jacques Lucke.
+/* Flip_bounce alternaties heights pos/neg to create a snake like curve.
+ * Output matches classic Penner when flip=false, s=0.5 and bounces=4. */
+static float easing_bounce_in(const float t,
+                              const float s,
+                              const int bounces,
+                              const bool flip_bounce)
 {
   float dt = 1.0f - t;
 
   static constexpr int MAX_BOUNCE = 8;
-  /* a=2^(bounce-1), b=2^bounce-s^(bounce-2)-1, c=a/b, heights=1/4^i*/
+  /* Precomputed cab and heights: c=a/b, a=2^(bounce-1), b=2^bounce-s^(bounce-2)-1, heights=1/4^i*/
   static constexpr float cab[MAX_BOUNCE] = {
       2.0f, 1.0f, 0.8f, 0.72727f, 0.69565f, 0.68085f, 0.67368f, 0.67016f};
   static constexpr float heights[MAX_BOUNCE] = {
       1.0f, 0.25f, 0.0625f, 0.01563f, 0.00391f, 0.00098f, 0.00024f, 0.00006f};
-  float widths[MAX_BOUNCE];
+  float widths[MAX_BOUNCE] = {0.0f};
 
   const int bounce_num = math::clamp(bounces, 1, MAX_BOUNCE);
 
@@ -497,12 +469,15 @@ static float easing_dynamic_bounce_in(const float t, const float s, const int bo
         height = 0.0f;
       }
       else {
-        if (s >= 0.5f) {
+        if (s > 0.5f) {
           height = 1.0f / math::pow(s, float(i) * -2.0f);
         }
         else {
           height = heights[i] * s * 2.0f;
         }
+      }
+      if (flip_bounce && math::mod(i, 2) != 0) {
+        height = -height;
       }
       break;
     }
@@ -518,7 +493,7 @@ static float easing_elastic_in(const float t, const float strength, const float 
     return 0.0f;
   }
   const float dt = 1.0f - t;
-  const float amp = math::max(strength * 2.0f, FLT_MIN);
+  const float amp = math::max(strength, FLT_MIN);
 
   float s;
   float fac = 1.0f;
@@ -542,9 +517,8 @@ static float easing_elastic_in(const float t, const float strength, const float 
                   math::sin((dt - s) * (2.0f * float(M_PI)) * frequency)));
 }
 
-static float easing_back_in(const float t, const float strength)
+static float easing_back_in(const float t, const float overshoot)
 {
-  const float overshoot = strength * 5.0f;
   return 1.0f * t * t * ((overshoot + 1.0f) * t - overshoot);
 }
 
@@ -563,17 +537,12 @@ static float easing_circ(const float t, const float s)
 
 /* Ease wrapper functions. */
 
-/* Simplified ease in functions are unit based, designed to work on an input range
- * of [0-1]. Ease out can be obtained by flipping the ease in calculations.
- * Based on Robert Penner functions, BSD-3-Clause Copyright 2001 Robert Penner.
- * All rights reserved.
- */
+/* Simplified ease_in functions are unit based with an input range of [0-1]. */
 static float ease_in(const NodeEasingOperation operation,
                      const float t,
                      const float strength,
                      const float frequency,
-                     const int count,
-                     const float inflection)
+                     const int count)
 {
   if (t == 0.0f || t == 1.0f) {
     return t;
@@ -610,16 +579,21 @@ static float ease_in(const NodeEasingOperation operation,
       return easing_spring_in(t, strength);
     }
     case NODE_EASING_BACK: {
-      return easing_back_in(t, strength);
+      const float ui_fac = 5.0f;
+      return easing_back_in(t, strength * ui_fac);
     }
     case NODE_EASING_BOUNCE: {
-      return easing_dynamic_bounce_in(t, strength, count);
+      return easing_bounce_in(t, strength, count, false);
+    }
+    case NODE_EASING_SNAKE: {
+      return easing_bounce_in(t, strength, count, true);
     }
     case NODE_EASING_VARIABLE: {
       return easing_variable(t, strength);
     }
     case NODE_EASING_ELASTIC: {
-      return easing_elastic_in(t, strength, frequency);
+      const float ui_fac = 2.0f;
+      return easing_elastic_in(t, strength * ui_fac, frequency);
     }
     default:
       BLI_assert_unreachable();
@@ -627,14 +601,14 @@ static float ease_in(const NodeEasingOperation operation,
   }
 }
 
+/* Ease_out can be obtained by flipping the ease_in calculations.*/
 static float ease_out(const NodeEasingOperation operation,
                       const float t,
                       const float strength,
                       const float frequency,
-                      const int count,
-                      const float inflection)
+                      const int count)
 {
-  return 1.0f - ease_in(operation, 1.0f - t, strength, frequency, count, inflection);
+  return 1.0f - ease_in(operation, 1.0f - t, strength, frequency, count);
 }
 
 static float ease_inout(const NodeEasingOperation operation,
@@ -644,15 +618,14 @@ static float ease_inout(const NodeEasingOperation operation,
                         const int count,
                         const float inflection)
 {
-  const float cinflection = math::clamp(inflection, 0.0f, 1.0f);
-  if (t < cinflection) {
-    const float dt = map(t, 0.0f, cinflection, 0.0f, 1.0f);
-    return ease_in(operation, dt, strength, frequency, count, inflection) * cinflection;
+  const float pos = math::clamp(inflection, 0.0f, 1.0f);
+  if (t < pos) {
+    const float dt = map(t, 0.0f, pos, 0.0f, 1.0f);
+    return ease_in(operation, dt, strength, frequency, count) * pos;
   }
   else {
-    const float dt = map(t, cinflection, 1.0f, 0.0f, 1.0f);
-    return ease_out(operation, dt, strength, frequency, count, inflection) * (1.0f - cinflection) +
-           cinflection;
+    const float dt = map(t, pos, 1.0f, 0.0f, 1.0f);
+    return ease_out(operation, dt, strength, frequency, count) * (1.0f - pos) + pos;
   }
 }
 
@@ -663,15 +636,14 @@ static float ease_outin(const NodeEasingOperation operation,
                         const int count,
                         const float inflection)
 {
-  const float cinflection = math::clamp(inflection, 0.0f, 1.0f);
-  if (t < cinflection) {
-    const float dt = map(t, 0.0f, cinflection, 0.0f, 1.0f);
-    return ease_out(operation, dt, strength, frequency, count, inflection) * cinflection;
+  const float pos = math::clamp(inflection, 0.0f, 1.0f);
+  if (t < pos) {
+    const float dt = map(t, 0.0f, pos, 0.0f, 1.0f);
+    return ease_out(operation, dt, strength, frequency, count) * pos;
   }
   else {
-    const float dt = map(t, cinflection, 1.0f, 0.0f, 1.0f);
-    return ease_in(operation, dt, strength, frequency, count, inflection) * (1.0f - cinflection) +
-           cinflection;
+    const float dt = map(t, pos, 1.0f, 0.0f, 1.0f);
+    return ease_in(operation, dt, strength, frequency, count) * (1.0f - pos) + pos;
   }
 }
 
@@ -713,8 +685,6 @@ static float node_periodic(const NodeEasingOperation operation,
       BLI_assert_unreachable();
       return 0.0f;
   }
-  BLI_assert_unreachable();
-  return 0.0f;
 }
 
 static float node_easing(const NodeEasingOperation operation,
@@ -765,6 +735,17 @@ static auto build_periodic(const char *fn_name, const NodeEasingOperation operat
       fn_name,
       [operation](float t, float frequency, float mirror) -> float {
         return node_periodic(operation, t, frequency, 0.0f, mirror);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
+}
+
+static auto build_easing_with_count(const char *fn_name, const NodeEasingOperation operation)
+{
+  return mf::build::SI6_SO<float, float, int, float, bool, float, float>(
+      "Easing Bounce",
+      [operation](float t, float strength, int count, float inflection, bool invert, float mirror)
+          -> float {
+        return node_easing(operation, t, strength, 0.0f, count, inflection, invert, mirror);
       },
       mf::build::exec_presets::SomeSpanOrSingle<0>());
 }
@@ -846,6 +827,16 @@ static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBu
       builder.set_matching_fn(fn);
       break;
     }
+    case NODE_EASING_BOUNCE: {
+      static auto fn = build_easing_with_count("Easing Bounce", operation);
+      builder.set_matching_fn(fn);
+      break;
+    }
+    case NODE_EASING_SNAKE: {
+      static auto fn = build_easing_with_count("Easing Snake", operation);
+      builder.set_matching_fn(fn);
+      break;
+    }
     case NODE_EASING_SQUARE: {
       static auto fn = mf::build::SI4_SO<float, float, float, float, float>(
           "Easing Square",
@@ -883,18 +874,6 @@ static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBu
       builder.set_matching_fn(fn);
       break;
     }
-    case NODE_EASING_BOUNCE: {
-      static auto fn = mf::build::SI6_SO<float, float, int, float, bool, float, float>(
-          "Easing Bounce",
-          [operation](
-              float t, float strength, int count, float inflection, bool invert, float mirror)
-              -> float {
-            return node_easing(operation, t, strength, 0.0f, count, inflection, invert, mirror);
-          },
-          exec_preset);
-      builder.set_matching_fn(fn);
-      break;
-    }
     case NODE_EASING_LINEAR: {
       static auto fn = mf::build::SI4_SO<float, float, float, float, float>(
           "Easing Linear",
@@ -912,20 +891,6 @@ static void node_easing_build_multi_function(blender::nodes::NodeMultiFunctionBu
           [operation](float value, float ax, float ay, float bx, float by, float mirror) -> float {
             const float p = process_input(value, mirror);
             return easing_cubic_bezier(p, ax, ay, bx, by);
-          },
-          exec_preset);
-      builder.set_matching_fn(fn);
-      break;
-    }
-    case NODE_EASING_END: {
-      static auto fn = mf::build::SI6_SO<float, float, int, float, bool, float, float>(
-          "Easing Test",
-          [operation](
-              float t, float strength, int count, float inflection, bool invert, float mirror)
-              -> float {
-            const float p = process_input(t, mirror);
-            return easing_bounce_in(p, strength);
-            return easing_whip_in(p, strength);
           },
           exec_preset);
       builder.set_matching_fn(fn);
