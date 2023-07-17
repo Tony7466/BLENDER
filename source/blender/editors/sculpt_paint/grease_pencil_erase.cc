@@ -89,48 +89,17 @@ struct EraseOperationExecutor {
     return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
   }
 
-  void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
+  void hard_eraser(const blender::bke::CurvesGeometry &src,
+                   const Array<float2> &screen_space_positions,
+                   blender::bke::CurvesGeometry &dst,
+                   const bool keep_caps) const
   {
     using namespace blender::bke;
-    Scene *scene = CTX_data_scene(&C);
-    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    ARegion *region = CTX_wm_region(&C);
-    Object *obact = CTX_data_active_object(&C);
-    Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
-    /* Get the tool's data. */
-    this->mouse_position = extension_sample.mouse_position;
-    this->eraser_radius = extension_sample.pressure * self.radius;
-
-    /* Get the grease pencil drawing. */
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
-    const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
-    blender::bke::greasepencil::Drawing &drawing =
-        *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
-            grease_pencil.drawings_for_write()[drawing_index]);
-
-    /* Evaluated geometry. */
-    bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            ob_eval, *obact, drawing_index);
-
-    /* Compute some useful curves geometry data. */
-    const CurvesGeometry &src = drawing.strokes();
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_points_num = src.points_num();
     const int src_curves_num = src.curves_num();
     const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
-
-    /* Compute screen space positions. */
-    Array<float2> screen_space_positions(src_points_num);
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
-      for (const int src_point : src_points) {
-        ED_view3d_project_float_global(region,
-                                       deformation.positions[src_point],
-                                       screen_space_positions[src_point],
-                                       V3D_PROJ_TEST_NOP);
-      }
-    });
 
     /* Compute intersections between the eraser and the curves in the source domain. */
     Array<int> nb_intersections(src_points_num, 0);
@@ -171,7 +140,6 @@ struct EraseOperationExecutor {
         }
       }
     });
-
     /* Compute total number of intersections. */
     int total_intersections = 0;
     for (const int src_point : src.points_range()) {
@@ -307,7 +275,7 @@ struct EraseOperationExecutor {
     const int dst_curves_num = dst_curves_offset.size() - 1;
 
     /* Create the new curves geometry. */
-    CurvesGeometry dst(dst_points_num, dst_curves_num);
+    dst.resize(dst_points_num, dst_curves_num);
     array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write(), 256);
 
     /* Attributes. */
@@ -332,7 +300,7 @@ struct EraseOperationExecutor {
 
     /* Display intersections with flat caps. */
     const OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
-    if (!self.keep_caps) {
+    if (!keep_caps) {
       SpanAttributeWriter<int8_t> dst_start_caps =
           dst_attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
       SpanAttributeWriter<int8_t> dst_end_caps =
@@ -399,6 +367,50 @@ struct EraseOperationExecutor {
         attribute.dst.finish();
       });
     }
+  }
+
+  void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
+  {
+    using namespace blender::bke;
+    Scene *scene = CTX_data_scene(&C);
+    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+    ARegion *region = CTX_wm_region(&C);
+    Object *obact = CTX_data_active_object(&C);
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+
+    /* Get the tool's data. */
+    this->mouse_position = extension_sample.mouse_position;
+    this->eraser_radius = extension_sample.pressure * self.radius;
+
+    /* Get the grease pencil drawing. */
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
+    const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
+    blender::bke::greasepencil::Drawing &drawing =
+        *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
+            grease_pencil.drawings_for_write()[drawing_index]);
+
+    const CurvesGeometry &src = drawing.strokes();
+
+    /* Evaluated geometry. */
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *obact, drawing_index);
+
+    /* Compute screen space positions. */
+    Array<float2> screen_space_positions(src.points_num());
+    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+      for (const int src_point : src_points) {
+        ED_view3d_project_float_global(region,
+                                       deformation.positions[src_point],
+                                       screen_space_positions[src_point],
+                                       V3D_PROJ_TEST_NOP);
+      }
+    });
+
+    /* Erasing operator */
+    CurvesGeometry dst;
+
+    hard_eraser(src, screen_space_positions, dst, self.keep_caps);
 
     /* Set the new geometry. */
     drawing.geometry.wrap() = std::move(dst);
