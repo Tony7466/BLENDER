@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_brush.h"
+#include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
@@ -53,6 +54,16 @@ struct PaintOperationExecutor {
     Brush *brush = BKE_paint_brush(paint);
     int brush_size = BKE_brush_size_get(scene, brush);
     float brush_alpha = BKE_brush_alpha_get(scene, brush);
+
+    const bool use_vertex_color = (scene->toolsettings->gp_paint->mode ==
+                                   GPPAINT_FLAG_USE_VERTEXCOLOR);
+    const bool use_vertex_color_stroke = use_vertex_color &&
+                                         ELEM(brush->gpencil_settings->vertex_mode,
+                                              GPPAINT_MODE_STROKE,
+                                              GPPAINT_MODE_BOTH);
+    // const bool use_vertex_color_fill = use_vertex_color && ELEM(
+    //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
+
     /**
      * Note: We write to the evaluated object here, so that the additional copy from orig ->
      * eval is not needed for every update. After the stroke is done, the result is written to
@@ -68,7 +79,12 @@ struct PaintOperationExecutor {
                    (BKE_brush_use_size_pressure(brush) ? extension_sample.pressure : 1.0f);
     float opacity = brush_alpha *
                     (BKE_brush_use_alpha_pressure(brush) ? extension_sample.pressure : 1.0f);
-    float4 vertex_color(1.0f);
+    float4 vertex_color = use_vertex_color_stroke ?
+                              float4(brush->rgb[0],
+                                     brush->rgb[1],
+                                     brush->rgb[2],
+                                     brush->gpencil_settings->vertex_factor) :
+                              float4(0.0f);
 
     bke::greasepencil::StrokePoint new_point;
     new_point.position = proj_pos;
@@ -85,6 +101,7 @@ struct PaintOperationExecutor {
 void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+  Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
   /**
@@ -94,6 +111,9 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
    */
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
   stroke_cache_ = &grease_pencil->runtime->stroke_cache;
+
+  Paint *paint = &scene->toolsettings->gp_paint->paint;
+  Brush *brush = BKE_paint_brush(paint);
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -147,12 +167,20 @@ void PaintOperation::on_stroke_done(const bContext &C)
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float> radii = drawing_orig.radii_for_write();
   MutableSpan<float> opacities = drawing_orig.opacities_for_write();
+  SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
+          "vertex_color",
+          ATTR_DOMAIN_POINT,
+          AttributeInitVArray(
+              VArray<ColorGeometry4f>::ForSingle(ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f),
+                                                 attributes.domain_size(ATTR_DOMAIN_POINT))));
   for (const int i : IndexRange(stroke_points.size())) {
     const bke::greasepencil::StrokePoint &point = stroke_points[i];
     const int point_i = new_points_range[i];
     positions[point_i] = point.position;
     radii[point_i] = point.radius;
     opacities[point_i] = point.opacity;
+    vertex_colors.span[point_i] = ColorGeometry4f(point.color);
   }
 
   /* TODO: Set material index attribute. */
@@ -167,7 +195,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   /* Explicitly set all other attributes besides those processed above to default values. */
   Set<std::string> attributes_to_skip{
-      {"position", "radius", "opacity", "material_index", "curve_type"}};
+      {"position", "radius", "opacity", "vertex_color", "material_index", "curve_type"}};
   attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
         if (attributes_to_skip.contains(id.name())) {
@@ -185,6 +213,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   grease_pencil_eval.runtime->stroke_cache.clear();
   drawing_orig.tag_positions_changed();
 
+  vertex_colors.finish();
   materials.finish();
 
   DEG_id_tag_update(&grease_pencil_orig.id, ID_RECALC_GEOMETRY);

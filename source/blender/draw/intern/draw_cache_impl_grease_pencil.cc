@@ -317,6 +317,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     const VArray<bool> cyclic = curves.cyclic();
     const VArray<float> radii = drawing.radii();
     const VArray<float> opacities = drawing.opacities();
+    const VArray<ColorGeometry4f> vertex_colors = *attributes.lookup_or_default<ColorGeometry4f>(
+        "vertex_color", ATTR_DOMAIN_POINT, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
         ".selection", ATTR_DOMAIN_POINT, true);
@@ -359,9 +361,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       /* TODO: Populate fill UVs. */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
-      /* TODO: Populate vertex color and fill color. */
-      copy_v4_v4(c_vert.vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-      copy_v4_v4(c_vert.fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+      copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);
+      copy_v4_v4(c_vert.fcol, vertex_colors[point_i]);
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
@@ -455,11 +456,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       /* TODO */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
-      /* TODO */
-      copy_v4_v4(c_vert.vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-      copy_v4_v4(c_vert.fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-
-      /* TODO */
+      copy_v4_v4(c_vert.vcol, point.color);
+      copy_v4_v4(c_vert.fcol, point.color);
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
