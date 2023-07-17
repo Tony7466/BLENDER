@@ -25,6 +25,8 @@ const char *bNodeTreeInterfaceSocketObject::socket_type_static = "NodeSocketObje
 
 namespace detail {
 
+static void item_write_struct(BlendWriter *writer, bNodeTreeInterfaceItem &item);
+
 template<typename SocketT>
 static bNodeTreeInterfaceSocket *try_alloc_socket_type(blender::StringRef socket_type)
 {
@@ -122,14 +124,11 @@ static void item_free(bNodeTreeInterfaceItem &item)
   MEM_freeN(&item);
 }
 
-static void item_write(BlendWriter *writer, bNodeTreeInterfaceItem &item, bool write_item)
+static void item_write_data(BlendWriter *writer, bNodeTreeInterfaceItem &item)
 {
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
-      if (write_item) {
-        BLO_write_struct(writer, bNodeTreeInterfaceSocket, &socket);
-      }
       BLO_write_string(writer, socket.name);
       BLO_write_string(writer, socket.description);
       BLO_write_string(writer, socket.socket_type);
@@ -144,17 +143,51 @@ static void item_write(BlendWriter *writer, bNodeTreeInterfaceItem &item, bool w
     }
     case NODE_INTERFACE_PANEL: {
       bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
-      if (write_item) {
-        BLO_write_struct(writer, bNodeTreeInterfacePanel, &panel);
-      }
       BLO_write_string(writer, panel.name);
       BLO_write_pointer_array(writer, panel.items_num, panel.items_array);
       for (bNodeTreeInterfaceItem *child_item : panel.items()) {
-        item_write(writer, *child_item, true);
+        item_write_struct(writer, *child_item);
       }
       break;
     }
   }
+}
+
+static void item_write_struct(BlendWriter *writer, bNodeTreeInterfaceItem &item)
+{
+  switch (item.item_type) {
+    case NODE_INTERFACE_SOCKET: {
+      bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+
+      if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketFloat::socket_type_static)) {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocketFloat, &socket);
+      }
+      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketInt::socket_type_static)) {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocketInt, &socket);
+      }
+      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketBool::socket_type_static)) {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocketBool, &socket);
+      }
+      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketString::socket_type_static)) {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocketString, &socket);
+      }
+      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketObject::socket_type_static)) {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocketObject, &socket);
+      }
+      else {
+        BLO_write_struct(writer, bNodeTreeInterfaceSocket, &socket);
+      }
+      break;
+    }
+    case NODE_INTERFACE_PANEL: {
+      bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
+
+      BLO_write_struct(writer, bNodeTreeInterfacePanel, &panel);
+      break;
+    }
+  }
+
+  item_write_data(writer, item);
 }
 
 static void item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem &item)
@@ -674,7 +707,8 @@ void BKE_nodetree_interface_free(bNodeTreeInterface *interface)
 void BKE_nodetree_interface_write(BlendWriter *writer, bNodeTreeInterface *interface)
 {
   BLO_write_struct(writer, bNodeTreeInterface, interface);
-  detail::item_write(writer, interface->root_panel.item, false);
+  /* Don't write the root panel struct itself, it's nested in the interface struct. */
+  detail::item_write_data(writer, interface->root_panel.item);
 }
 
 void BKE_nodetree_interface_read_data(BlendDataReader *reader, bNodeTreeInterface *interface)
