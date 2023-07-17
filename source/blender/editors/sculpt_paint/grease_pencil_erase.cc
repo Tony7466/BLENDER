@@ -222,6 +222,10 @@ struct EraseOperationExecutor {
      *   - points that are inside the erase are removed.
      */
     const int dst_points_num = src_points_num + total_intersections - total_points_inside;
+    if (dst_points_num == 0) {
+      /* Return early if no points left */
+      return;
+    }
 
     /* Set the intersection parameters in the destination domain : a float number for which
      * the integer part is the index of the corresponding segment in the source curves,
