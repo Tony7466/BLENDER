@@ -107,8 +107,19 @@ void main()
 
 #ifndef SELECT_EDGES
   edgePos = edgeStart;
+#else 
+    /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
+   * wire to at least create one fragment that will pass the occlusion query. */
+  gl_Position.xy += sizeViewportInv * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
+#endif
+  
+  /* Cull flat edges below threshold. */
+  if (!no_attr && !is_edge_sharpness_visible(wd)) {
+    edgeStart = vec2(-1.0);
+  }
 
   vec3 rim_col, wire_col;
+
   if (isObjectColor || isRandomColor) {
     wire_object_color_get(rim_col, wire_col);
   }
@@ -124,20 +135,9 @@ void main()
   vec3 final_front_col = mix(rim_col, wire_col, 0.35);
   finalColor.rgb = mix(rim_col, final_front_col, facing);
   finalColor.rgb = pow(finalColor.rgb, vec3(2.2));
+
   finalColor.a = wireOpacity;
   finalColor.rgb *= wireOpacity;
-#endif
-
-  /* Cull flat edges below threshold. */
-  if (!no_attr && !is_edge_sharpness_visible(wd)) {
-    edgeStart = vec2(-1.0);
-  }
-
-#ifdef SELECT_EDGES
-  /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
-   * wire to at least create one fragment that will pass the occlusion query. */
-  gl_Position.xy += sizeViewportInv * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
-#endif
 
   view_clipping_distances(wpos);
 }
