@@ -467,11 +467,12 @@ struct EraseOperationExecutor {
     hard_eraser(src, screen_space_positions, dst, self.keep_caps);
 
     switch (self.eraser_mode) {
+      case GP_BRUSH_ERASER_SOFT:
+        // TBI
       case GP_BRUSH_ERASER_HARD:
         hard_eraser(src, screen_space_positions, dst, self.keep_caps);
         break;
 
-      case GP_BRUSH_ERASER_SOFT:
       case GP_BRUSH_ERASER_STROKE:
         // TBI
         return;
