@@ -88,6 +88,8 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"composite_pre", "on a compositing background job (before)"},
     {"composite_post", "on a compositing background job (after)"},
     {"composite_cancel", "on a compositing background job (cancel)"},
+    {"animation_playback_pre", "on starting animation playback"},
+    {"animation_playback_post", "on ending animation playback"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1
@@ -152,11 +154,10 @@ static PyObject *bpy_app_handlers_persistent_new(PyTypeObject *UNUSED(type),
 
 /** Dummy type because decorators can't be a #PyCFunction. */
 static PyTypeObject BPyPersistent_Type = {
-
 #if defined(_MSC_VER)
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
 #else
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(&PyType_Type, 0)
 #endif
     /*tp_name*/ "persistent",
     /*tp_basicsize*/ 0,

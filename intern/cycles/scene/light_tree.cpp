@@ -167,7 +167,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
       measure.bbox.grow(centroid - half_extentu + half_extentv);
       measure.bbox.grow(centroid - half_extentu - half_extentv);
 
-      strength *= 0.25f; /* eval_fac scaling in `area.h` */
+      /* Convert irradiance to radiance. */
+      strength *= M_1_PI_F;
     }
     else if (type == LIGHT_POINT) {
       measure.bcone.theta_o = M_PI_F;
@@ -457,7 +458,7 @@ void LightTree::recursive_build(const Child child,
   if (should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim)) {
 
     if (split_dim != -1) {
-      /* Partition the emitters between start and end based on the centroids.  */
+      /* Partition the emitters between start and end based on the centroids. */
       std::nth_element(emitters + start,
                        emitters + middle,
                        emitters + end,

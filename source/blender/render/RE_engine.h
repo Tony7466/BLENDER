@@ -138,7 +138,7 @@ typedef struct RenderEngine {
 
   struct Render *re;
   ListBase fullresult;
-  char text[512]; /* IMA_MAX_RENDER_TEXT */
+  char text[512]; /* IMA_MAX_RENDER_TEXT_SIZE */
 
   int resolution_x, resolution_y;
 
@@ -162,7 +162,7 @@ typedef struct RenderEngine {
   void *update_render_passes_data;
 
   /* GPU context. */
-  void *wm_blender_gpu_context; /* WindowManager GPU context -> GHOSTContext. */
+  void *system_gpu_context; /* WindowManager GPU context -> GHOSTContext. */
   ThreadMutex blender_gpu_context_mutex;
   bool use_drw_render_context;
   struct GPUContext *blender_gpu_context;
