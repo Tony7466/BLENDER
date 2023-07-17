@@ -10,6 +10,7 @@
 
 #include "tree_element.hh"
 
+struct Object;
 struct bDeformGroup;
 
 namespace blender::ed::outliner {
