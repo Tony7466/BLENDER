@@ -16,6 +16,8 @@
 
 #include "MOD_nodes.hh"
 
+#include "RNA_prototypes.h"
+
 #include "WM_api.h"
 
 namespace blender::nodes::node_geo_bake_cc {
@@ -69,18 +71,6 @@ static int32_t find_nested_node_id_in_root(SpaceNode *snode, const bNode *node)
   return id_in_node;
 }
 
-static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id)
-{
-  if (!nmd.runtime->bakes) {
-    return false;
-  }
-  const bke::BakeNodeStorage *bake_storage = nmd.runtime->bakes->get_storage(bake_id);
-  if (bake_storage == nullptr) {
-    return false;
-  }
-  return bake_storage->geometry.has_value();
-}
-
 static const bke::BakeNodeStorage *get_bake_storage(const NodesModifierData &nmd,
                                                     const int32_t bake_id)
 {
@@ -107,6 +97,11 @@ static void draw_bake_ui(uiLayout *layout,
                          const bke::BakeNodeStorage *bake_storage)
 {
   const bool is_baked = bake_storage ? bake_storage->geometry.has_value() : false;
+
+  PointerRNA bake_ptr;
+  RNA_pointer_create(&object.id, &RNA_NodesModifierBake, &bake, &bake_ptr);
+
+  uiItemR(layout, &bake_ptr, "bake_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   uiLayout *row = uiLayoutRow(layout, true);
   {
