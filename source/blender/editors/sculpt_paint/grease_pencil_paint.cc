@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_brush.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
@@ -20,6 +21,10 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class PaintOperation : public GreasePencilStrokeOperation {
+ private:
+  bke::greasepencil::StrokeCache *stroke_cache_;
+
+  friend struct PaintOperationExecutor;
 
  public:
   ~PaintOperation() override {}
@@ -34,44 +39,61 @@ class PaintOperation : public GreasePencilStrokeOperation {
  * because it avoids passing a very large number of parameters between functions.
  */
 struct PaintOperationExecutor {
-  Object *object_ = nullptr;
-  ARegion *region_ = nullptr;
-  GreasePencil *grease_pencil_ = nullptr;
-  bke::greasepencil::StrokeCache *stroke_cache_ = nullptr;
+  PaintOperationExecutor(const bContext & /*C*/) {}
 
-  PaintOperationExecutor(const bContext &C)
+  void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
   {
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    object_ = CTX_data_active_object(&C);
-    Object *object_eval = DEG_get_evaluated_object(depsgraph, object_);
-    region_ = CTX_wm_region(&C);
+    Scene *scene = CTX_data_scene(&C);
+    Object *object = CTX_data_active_object(&C);
+    Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+    ARegion *region = CTX_wm_region(&C);
 
+    Paint *paint = &scene->toolsettings->gp_paint->paint;
+    Brush *brush = BKE_paint_brush(paint);
+    int brush_size = BKE_brush_size_get(scene, brush);
+    float brush_alpha = BKE_brush_alpha_get(scene, brush);
     /**
-     * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
-     * is not needed for every update. After the stroke is done, the result is written to the
-     * original object.
+     * Note: We write to the evaluated object here, so that the additional copy from orig ->
+     * eval is not needed for every update. After the stroke is done, the result is written to
+     * the original object.
      */
-    grease_pencil_ = static_cast<GreasePencil *>(object_eval->data);
-    stroke_cache_ = &grease_pencil_->runtime->stroke_cache;
-  }
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
 
-  void execute(PaintOperation & /*self*/, const bContext &C, const InputSample &extension_sample)
-  {
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     float3 proj_pos;
-    ED_view3d_win_to_3d_on_plane(region_, plane, extension_sample.mouse_position, false, proj_pos);
+    ED_view3d_win_to_3d_on_plane(region, plane, extension_sample.mouse_position, false, proj_pos);
 
-    bke::greasepencil::StrokePoint new_point{
-        proj_pos, extension_sample.pressure * 100.0f, 1.0f, float4(1.0f)};
+    float radius = (brush_size / 2.0f) *
+                   (BKE_brush_use_size_pressure(brush) ? extension_sample.pressure : 1.0f);
+    float opacity = brush_alpha *
+                    (BKE_brush_use_alpha_pressure(brush) ? extension_sample.pressure : 1.0f);
+    float4 vertex_color(1.0f);
 
-    stroke_cache_->points.append(std::move(new_point));
+    bke::greasepencil::StrokePoint new_point;
+    new_point.position = proj_pos;
+    new_point.radius = radius;
+    new_point.opacity = opacity;
+    new_point.color = vertex_color;
 
-    BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil_, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
+    self.stroke_cache_->points.append(std::move(new_point));
+
+    BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
 };
 
-void PaintOperation::on_stroke_begin(const bContext & /*C*/, const InputSample & /*start_sample*/)
+void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+  Object *object = CTX_data_active_object(&C);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+  /**
+   * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
+   * is not needed for every update. After the stroke is done, the result is written to the
+   * original object.
+   */
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
+  stroke_cache_ = &grease_pencil->runtime->stroke_cache;
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -91,8 +113,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
 
-  const Span<bke::greasepencil::StrokePoint> stroke_points =
-      grease_pencil_eval.runtime->stroke_buffer();
+  const Span<bke::greasepencil::StrokePoint> stroke_points = stroke_cache_->points;
 
   /* No stroke to create, return. */
   if (stroke_points.size() == 0) {
