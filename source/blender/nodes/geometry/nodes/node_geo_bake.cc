@@ -81,6 +81,71 @@ static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id
   return bake_storage->geometry.has_value();
 }
 
+static const bke::BakeNodeStorage *get_bake_storage(const NodesModifierData &nmd,
+                                                    const int32_t bake_id)
+{
+  if (!nmd.runtime->bakes) {
+    return nullptr;
+  }
+  return nmd.runtime->bakes->get_storage(bake_id);
+}
+
+static NodesModifierBake *get_bake(NodesModifierData &nmd, const int32_t bake_id)
+{
+  for (NodesModifierBake &bake : MutableSpan(nmd.bakes, nmd.bakes_num)) {
+    if (bake.id == bake_id) {
+      return &bake;
+    }
+  }
+  return nullptr;
+}
+
+static void draw_bake_ui(uiLayout *layout,
+                         Object &object,
+                         NodesModifierData &nmd,
+                         NodesModifierBake &bake,
+                         const bke::BakeNodeStorage *bake_storage)
+{
+  const bool is_baked = bake_storage ? bake_storage->geometry.has_value() : false;
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  {
+    PointerRNA op_ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake",
+                "Bake",
+                ICON_NONE,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &op_ptr);
+    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object.id);
+    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
+    RNA_int_set(&op_ptr, "bake_id", bake.id);
+  }
+  {
+    PointerRNA op_ptr;
+    uiItemFullO(row,
+                "OBJECT_OT_geometry_node_bake_delete",
+                "",
+                ICON_TRASH,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &op_ptr);
+    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object.id);
+    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
+    RNA_int_set(&op_ptr, "bake_id", bake.id);
+  }
+
+  if (is_baked) {
+    uiItemL(layout, "Baked", ICON_LOCKED);
+  }
+  else {
+    uiItemL(layout, "Not Baked", ICON_UNLOCKED);
+  }
+}
+
 static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   const bNode *node = static_cast<bNode *>(ptr->data);
@@ -107,45 +172,13 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   if (nested_node_id == -1) {
     return;
   }
-
-  const bool is_baked = bake_id_is_baked(nmd, nested_node_id);
-
-  uiLayout *row = uiLayoutRow(layout, true);
-  {
-    PointerRNA op_ptr;
-    uiItemFullO(row,
-                "OBJECT_OT_geometry_node_bake",
-                "Bake",
-                ICON_NONE,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                0,
-                &op_ptr);
-    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object->id);
-    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
-    RNA_int_set(&op_ptr, "bake_id", nested_node_id);
-  }
-  {
-    PointerRNA op_ptr;
-    uiItemFullO(row,
-                "OBJECT_OT_geometry_node_bake_delete",
-                "",
-                ICON_TRASH,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                0,
-                &op_ptr);
-    WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object->id);
-    RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
-    RNA_int_set(&op_ptr, "bake_id", nested_node_id);
+  const bke::BakeNodeStorage *bake_storage = get_bake_storage(nmd, nested_node_id);
+  NodesModifierBake *bake = get_bake(nmd, nested_node_id);
+  if (bake == nullptr) {
+    return;
   }
 
-  if (is_baked) {
-    uiItemL(layout, "Baked", ICON_LOCKED);
-  }
-  else {
-    uiItemL(layout, "Not Baked", ICON_UNLOCKED);
-  }
+  draw_bake_ui(layout, *object, nmd, *bake, bake_storage);
 }
 
 class LazyFunctionForBakeNode : public LazyFunction {
