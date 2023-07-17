@@ -1062,6 +1062,8 @@ struct ReflectionProbeData {
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
 struct ReflectionProbesData {
+  /* NOTE: packed_world_cooefs must be the first attribute as it is bound as UBO and SSBO (for
+   * updating). */
   float4 packed_world_cooefs[4];
   ReflectionProbeData probes[REFLECTION_PROBES_MAX];
 };
