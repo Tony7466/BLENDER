@@ -96,8 +96,8 @@ struct EraseOperationExecutor {
 
     const auto compute_intersection_parameter =
         [](const float2 p0, const float2 p1, const float2 inter) {
-          const float mu = (len_v2(inter - p0) / len_v2(p1 - p0));
-          const float sign_mu = (dot_v2v2(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
+          const float mu = (math::length(inter - p0) / math::length(p1 - p0));
+          const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
           return sign_mu * mu;
         };
 
@@ -172,7 +172,7 @@ struct EraseOperationExecutor {
     threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         const float2 pos_view = screen_space_positions[src_point];
-        is_point_inside[src_point] = (len_squared_v2v2(pos_view, mouse_position) <=
+        is_point_inside[src_point] = (math::distance_squared(pos_view, mouse_position) <=
                                       eraser_radius * eraser_radius);
       }
     });
