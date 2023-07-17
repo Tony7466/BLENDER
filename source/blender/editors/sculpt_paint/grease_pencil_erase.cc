@@ -214,8 +214,7 @@ struct EraseOperationExecutor {
     Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     int dst_point = -1;
     for (const int src_curve : src.curves_range()) {
-      IndexRange src_points = src_points_by_curves[src_curve];
-      const int src_point_last = src_points.last();
+      const IndexRange src_points = src_points_by_curves[src_curve];
 
       for (const int src_point : src_points) {
         if (!is_point_inside[src_point]) {
