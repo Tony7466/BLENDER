@@ -11,6 +11,8 @@
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
 #include "BKE_appdir.h"
+#include "BKE_context.h"
+
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 
@@ -220,7 +222,8 @@ static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *arg
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
   Image *image = (Image *)PyLong_AsVoidPtr(pyimage);
 
-  std::string image_path = cache_or_get_image_file(image, context, nullptr);
+  std::string image_path = cache_or_get_image_file(
+      CTX_data_main(context), CTX_data_scene(context), image, nullptr);
   return PyUnicode_FromString(image_path.c_str());
 }
 

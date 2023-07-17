@@ -6,12 +6,16 @@
 #include <pxr/usd/usdGeom/camera.h>
 
 #include "DNA_vec_types.h" /* this include must be before BKE_camera.h due to "rctf" type */
+#include "DNA_view3d_types.h"
 
 #include "BKE_camera.h"
+#include "BKE_context.h"
+
 #include "BLI_math_matrix.h"
 #include "BLI_timecode.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_camera_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "GPU_context.h"
@@ -38,7 +42,8 @@ struct ViewSettings {
   pxr::GfVec4i border;
 };
 
-ViewSettings::ViewSettings(bContext *context) : camera_data(context)
+ViewSettings::ViewSettings(bContext *context)
+    : camera_data(CTX_wm_view3d(context), CTX_wm_region(context))
 {
   View3D *view3d = CTX_wm_view3d(context);
   RegionView3D *region_data = (RegionView3D *)CTX_wm_region_data(context);

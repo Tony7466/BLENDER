@@ -30,8 +30,7 @@ void VolumeData::init()
   field_descriptors_.clear();
 
   Volume *volume = (Volume *)((Object *)this->id)->data;
-  Main *main = CTX_data_main(scene_delegate_->context);
-  if (!BKE_volume_load(volume, main)) {
+  if (!BKE_volume_load(volume, scene_delegate_->bmain)) {
     return;
   }
   filepath_ = BKE_volume_grids_frame_filepath(volume);

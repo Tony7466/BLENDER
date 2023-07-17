@@ -11,7 +11,6 @@
 #include "settings.h"
 
 struct Depsgraph;
-struct bContext;
 
 namespace blender::render::hydra {
 
@@ -32,7 +31,7 @@ class USDSceneDelegate {
                    const SceneDelegateSettings &settings_);
   ~USDSceneDelegate();
 
-  void populate(Depsgraph *depsgraph, bContext *context);
+  void populate(Depsgraph *depsgraph);
 };
 
 }  // namespace blender::render::hydra

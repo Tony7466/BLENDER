@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include "DNA_camera_types.h"
+#include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
@@ -10,11 +11,9 @@
 
 namespace blender::render::hydra {
 
-CameraData::CameraData(bContext *context)
+CameraData::CameraData(View3D *v3d, ARegion *region)
 {
-  View3D *view3d = CTX_wm_view3d(context);
-  RegionView3D *region_data = (RegionView3D *)CTX_wm_region_data(context);
-  ARegion *region = CTX_wm_region(context);
+  RegionView3D *region_data = (RegionView3D *)region->regiondata;
 
   /* This constant was found experimentally, didn't find such option in
    * context.view3d or context.region_data. */
@@ -27,9 +26,9 @@ CameraData::CameraData(bContext *context)
   switch (region_data->persp) {
     case RV3D_PERSP: {
       mode_ = CAM_PERSP;
-      clip_range_ = pxr::GfRange1f(view3d->clip_start, view3d->clip_end);
+      clip_range_ = pxr::GfRange1f(v3d->clip_start, v3d->clip_end);
       lens_shift_ = pxr::GfVec2f(0.0, 0.0);
-      focal_length_ = view3d->lens;
+      focal_length_ = v3d->lens;
 
       if (ratio > 1.0) {
         sensor_size_ = pxr::GfVec2f(VIEWPORT_SENSOR_SIZE, VIEWPORT_SENSOR_SIZE / ratio);
@@ -44,8 +43,8 @@ CameraData::CameraData(bContext *context)
       mode_ = CAM_ORTHO;
       lens_shift_ = pxr::GfVec2f(0.0f, 0.0f);
 
-      float o_size = region_data->dist * VIEWPORT_SENSOR_SIZE / view3d->lens;
-      float o_depth = view3d->clip_end;
+      float o_size = region_data->dist * VIEWPORT_SENSOR_SIZE / v3d->lens;
+      float o_depth = v3d->clip_end;
 
       clip_range_ = pxr::GfRange1f(-o_depth * 0.5, o_depth * 0.5);
 
@@ -60,7 +59,7 @@ CameraData::CameraData(bContext *context)
 
     case RV3D_CAMOB: {
       pxr::GfMatrix4d mat = transform_;
-      *this = CameraData(view3d->camera, res, pxr::GfVec4f(0, 0, 1, 1));
+      *this = CameraData(v3d->camera, res, pxr::GfVec4f(0, 0, 1, 1));
       transform_ = mat;
 
       /* This formula was taken from previous plugin with corresponded comment.

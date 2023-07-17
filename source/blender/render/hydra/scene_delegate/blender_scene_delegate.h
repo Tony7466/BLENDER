@@ -6,8 +6,8 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
 
-#include "BKE_context.h"
 #include "BLI_map.hh"
+
 #include "DEG_depsgraph.h"
 
 #include "CLG_log.h"
@@ -21,6 +21,11 @@
 #include "volume.h"
 #include "volume_modifier.h"
 #include "world.h"
+
+struct Depsgraph;
+struct Main;
+struct Scene;
+struct View3D;
 
 namespace blender::render::hydra {
 
@@ -69,12 +74,12 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   pxr::HdVolumeFieldDescriptorVector GetVolumeFieldDescriptors(
       pxr::SdfPath const &volume_id) override;
 
-  void populate(Depsgraph *depsgraph, bContext *context);
+  void populate(Depsgraph *depsgraph, View3D *v3d);
   void clear();
 
   Depsgraph *depsgraph = nullptr;
-  bContext *context = nullptr;
   View3D *view3d = nullptr;
+  Main *bmain = nullptr;
   Scene *scene = nullptr;
   const SceneDelegateSettings &settings;
   ShadingSettings shading_settings;

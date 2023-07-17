@@ -10,6 +10,8 @@
 
 #include "BLI_path_util.h"
 
+#include "BKE_context.h"
+
 #include "GPU_context.h"
 
 #include "DEG_depsgraph_query.h"
@@ -83,7 +85,7 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
       hydra_scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
           render_index_.get(), scene_path, scene_delegate_settings_);
     }
-    hydra_scene_delegate_->populate(depsgraph, context);
+    hydra_scene_delegate_->populate(depsgraph, CTX_wm_view3d(context));
   }
   else {
     /* Slow USD export for reference. */
@@ -98,7 +100,7 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
       usd_scene_delegate_ = std::make_unique<USDSceneDelegate>(
           render_index_.get(), scene_path, scene_delegate_settings_);
     }
-    usd_scene_delegate_->populate(depsgraph, context);
+    usd_scene_delegate_->populate(depsgraph);
   }
 }
 

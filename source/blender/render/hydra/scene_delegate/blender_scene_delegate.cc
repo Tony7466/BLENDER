@@ -198,14 +198,14 @@ pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescripto
   return v_data->field_descriptors();
 }
 
-void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
+void BlenderSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
 {
   bool is_populated = depsgraph != nullptr;
 
   depsgraph = deps;
-  context = cont;
+  bmain = DEG_get_bmain(deps);
   scene = DEG_get_input_scene(depsgraph);
-  view3d = CTX_wm_view3d(context);
+  view3d = v3d;
 
   if (is_populated) {
     check_updates();
@@ -231,7 +231,7 @@ void BlenderSceneDelegate::clear()
   materials_.clear();
 
   depsgraph = nullptr;
-  context = nullptr;
+  bmain = nullptr;
   scene = nullptr;
   view3d = nullptr;
 }

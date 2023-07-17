@@ -42,7 +42,7 @@ USDSceneDelegate::~USDSceneDelegate()
   BLI_delete(temp_dir_.c_str(), true, true);
 }
 
-void USDSceneDelegate::populate(Depsgraph *depsgraph, bContext * /*context*/)
+void USDSceneDelegate::populate(Depsgraph *depsgraph)
 {
   /* TODO: implement MaterialX support in USD exporter. */
   const bool use_materialx = !settings_.mx_filename_key.IsEmpty();

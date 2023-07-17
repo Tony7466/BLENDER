@@ -4,6 +4,7 @@
 #include <pxr/imaging/hio/imageRegistry.h>
 
 #include "BKE_appdir.h"
+#include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
 #include "BLI_fileops.h"
@@ -29,16 +30,12 @@ static std::string get_cache_file(const std::string &file_name, bool mkdir = tru
   return file_path;
 }
 
-static std::string cache_image_file(Image *image,
-                                    bContext *context,
-                                    ImageUser *iuser,
-                                    bool check_exist)
+static std::string cache_image_file(
+    Main *bmain, Scene *scene, Image *image, ImageUser *iuser, bool check_exist)
 {
   std::string file_path;
-  Main *main = CTX_data_main(context);
-  Scene *scene = CTX_data_scene(context);
   ImageSaveOptions opts;
-  if (BKE_image_save_options_init(&opts, main, scene, image, iuser, false, false)) {
+  if (BKE_image_save_options_init(&opts, bmain, scene, image, iuser, false, false)) {
     char file_name[32];
     const char *r_ext = BLI_path_extension_or_end(image->id.name);
     if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(image->id.name)) {
@@ -55,7 +52,7 @@ static std::string cache_image_file(Image *image,
 
     opts.save_copy = true;
     STRNCPY(opts.filepath, file_path.c_str());
-    if (BKE_image_save(nullptr, main, image, iuser, &opts)) {
+    if (BKE_image_save(nullptr, bmain, image, iuser, &opts)) {
       CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
     }
     else {
@@ -67,23 +64,22 @@ static std::string cache_image_file(Image *image,
   return file_path;
 }
 
-std::string cache_or_get_image_file(Image *image, bContext *context, ImageUser *iuser)
+std::string cache_or_get_image_file(Main *bmain, Scene *scene, Image *image, ImageUser *iuser)
 {
   std::string file_path;
   if (image->source == IMA_SRC_GENERATED) {
-    file_path = cache_image_file(image, context, iuser, false);
+    file_path = cache_image_file(bmain, scene, image, iuser, false);
   }
   else if (BKE_image_has_packedfile(image)) {
-    file_path = cache_image_file(image, context, iuser, true);
+    file_path = cache_image_file(bmain, scene, image, iuser, true);
   }
   else {
-    Main *main = CTX_data_main(context);
     char str[FILE_MAX];
-    BKE_image_user_file_path_ex(main, iuser, image, str, false, true);
+    BKE_image_user_file_path_ex(bmain, iuser, image, str, false, true);
     file_path = str;
 
     if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(file_path)) {
-      file_path = cache_image_file(image, context, iuser, true);
+      file_path = cache_image_file(bmain, scene, image, iuser, true);
     }
   }
 

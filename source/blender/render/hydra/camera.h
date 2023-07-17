@@ -8,15 +8,15 @@
 #include <pxr/base/gf/camera.h>
 #include <pxr/base/gf/vec2f.h>
 
-#include "BKE_context.h"
-
-#include "DNA_object_types.h"
+struct ARegion;
+struct Object;
+struct View3D;
 
 namespace blender::render::hydra {
 
 class CameraData {
  public:
-  CameraData(bContext *context);
+  CameraData(View3D *v3d, ARegion *region);
   CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
 
   pxr::GfCamera gf_camera();

@@ -11,14 +11,16 @@
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usdLux/tokens.h>
 
-#include "BKE_context.h"
 #include "DNA_node_types.h"
+#include "DNA_scene_types.h"
+
+#include "BLI_math_rotation.h"
+#include "BLI_path_util.h"
 
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_studiolight.h"
-#include "BLI_math_rotation.h"
-#include "BLI_path_util.h"
+
 #include "NOD_shader.h"
 
 #include "../engine.h"
@@ -94,7 +96,7 @@ void WorldData::init()
           Image *image = (Image *)color_input_node->id;
           if (image) {
             std::string image_path = cache_or_get_image_file(
-                image, scene_delegate_->context, &tex->iuser);
+                scene_delegate_->bmain, scene_delegate_->scene, image, &tex->iuser);
             if (!image_path.empty()) {
               texture_file = pxr::SdfAssetPath(image_path, image_path);
             }
