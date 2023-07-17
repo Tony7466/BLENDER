@@ -57,28 +57,28 @@ static int isect_segment_sphere_v2(const float2 &circle_center,
                                    float &mu0,
                                    float &mu1)
 {
+  /* Compute the intersection points. */
+  float2 inter0{};
+  float2 inter1{};
+  const int nb_inter = isect_line_sphere_v2(
+      point, point_after, circle_center, circle_radius, inter0, inter1);
+
+  /* Retrieve the line factor from the coordinates of the intersection points. */
   const auto compute_intersection_parameter =
       [](const float2 p0, const float2 p1, const float2 inter) {
         const float mu = (math::length(inter - p0) / math::length(p1 - p0));
         const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
         return sign_mu * mu;
       };
-
-  /* Compute intersections between the current segment and the eraser's area. */
-  float2 inter0{};
-  float2 inter1{};
-  const int nb_inter = isect_line_sphere_v2(
-      point, point_after, circle_center, circle_radius, inter0, inter1);
-
-  /* The function above returns the intersections with the (infinite) line,
-   * so we have to make sure they lie within the segment.  */
   mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
   mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
 
+  /* Sort intersections by line factor. */
   if ((nb_inter > 1) && (mu0 > mu1)) {
     std::swap(mu0, mu1);
   }
 
+  /* Return the number of intersections that actually lies within the segment. */
   return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
 }
 
@@ -133,7 +133,7 @@ struct EraseOperationExecutor {
       }
     });
 
-    /* Check segments that have an intersection. */
+    /* Compute intersections between the eraser and the curves in the source domain. */
     Array<int> nb_intersections(src_points_num, 0);
     Array<float2> src_intersections_parameters(src_points_num);
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
@@ -384,9 +384,10 @@ struct EraseOperationExecutor {
             const float src_pt_factor = dst_param - src_point;
 
             const int src_curve = src_points_to_curve[src_point];
-            const IndexRange src_curves = src_points_by_curves[src_curve];
-            const int src_next_point = (src_point == src_curves.last()) ? src_curves.first() :
-                                                                          (src_point + 1);
+            const IndexRange src_curve_points = src_points_by_curves[src_curve];
+            const int src_next_point = (src_point == src_curve_points.last()) ?
+                                           src_curve_points.first() :
+                                           (src_point + 1);
 
             dst_attr[dst_point] = bke::attribute_math::mix2<T>(
                 src_pt_factor, src_attr[src_point], src_attr[src_next_point]);
