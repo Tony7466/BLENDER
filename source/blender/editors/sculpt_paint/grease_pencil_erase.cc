@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
@@ -320,12 +321,7 @@ struct EraseOperationExecutor {
 
     /* Create the new curves geometry. */
     CurvesGeometry dst(dst_points_num, dst_curves_num);
-    MutableSpan<int> dst_offsets_for_write = dst.offsets_for_write();
-    threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
-      for (const int dst_curve : dst_curves) {
-        dst_offsets_for_write[dst_curve] = dst_curves_offset[dst_curve];
-      }
-    });
+    array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write(), 256);
 
     /* Attributes. */
     const bke::AttributeAccessor src_attributes = src.attributes();
