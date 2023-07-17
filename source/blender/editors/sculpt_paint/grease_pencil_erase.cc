@@ -75,7 +75,7 @@ static int isect_segment_sphere_v2(const float2 &circle_center,
   mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
   mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
 
-  if (mu0 > mu1) {
+  if ((nb_inter > 1) && (mu0 > mu1)) {
     std::swap(mu0, mu1);
   }
 
