@@ -136,6 +136,7 @@ struct EraseOperationExecutor {
     /* Check segments that have an intersection. */
     Array<bool> has_intersection(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
+    Array<float2> src_intersections_parameters(src_points_num);
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const IndexRange src_curve_points = src_points_by_curves[src_curve];
@@ -155,6 +156,7 @@ struct EraseOperationExecutor {
                     mu1);
 
                 has_intersection[src_point] = (nb_intersections[src_point] > 0);
+                src_intersections_parameters[src_point] = float2(mu0, mu1);
               }
             });
 
@@ -173,6 +175,7 @@ struct EraseOperationExecutor {
               mu1);
 
           has_intersection[src_last_point] = (nb_intersections[src_last_point] > 0);
+          src_intersections_parameters[src_last_point] = float2(mu0, mu1);
         }
       }
     });
@@ -223,18 +226,8 @@ struct EraseOperationExecutor {
           dst_points_parameters[++dst_point] = float(src_point);
         }
         if (has_intersection[src_point]) {
-          const int src_next_point = (src_point != src_point_last) ? (src_point + 1) :
-                                                                     (src_points.first());
-
-          float mu0;
-          float mu1;
-          nb_intersections[src_point] = isect_segment_sphere_v2(
-              mouse_position,
-              eraser_radius,
-              screen_space_positions[src_point],
-              screen_space_positions[src_next_point],
-              mu0,
-              mu1);
+          float mu0 = src_intersections_parameters[src_point].x;
+          float mu1 = src_intersections_parameters[src_point].y;
 
           if (IN_RANGE(mu0, 0, 1)) {
             /* Add an intersection with the eraser and mark it as a cut. */
