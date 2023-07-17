@@ -354,7 +354,7 @@ struct EraseOperationExecutor {
 
       threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
         for (const int dst_curve : dst_curves) {
-          IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
+          const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
           if (is_cut[dst_curve_points.first()]) {
             dst_start_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
           }
