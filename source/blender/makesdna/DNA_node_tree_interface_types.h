@@ -21,11 +21,7 @@
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
-struct bNodeTreeInterfaceSocketFloat;
-struct bNodeTreeInterfaceSocketInt;
-struct bNodeTreeInterfaceSocketBool;
-struct bNodeTreeInterfaceSocketString;
-struct bNodeTreeInterfaceSocketObject;
+struct LibraryForeachIDData;
 
 /** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {
@@ -74,73 +70,18 @@ typedef struct bNodeTreeInterfaceSocket {
   int uid;
   char _pad[4];
 
+  void *socket_data;
+
 #ifdef __cplusplus
   std::string socket_identifier() const;
   blender::ColorGeometry4f socket_color() const;
+
+  template<typename T> T &get_data();
+  template<typename T> const T &get_data() const;
+
+  bool set_socket_type(const char *new_socket_type);
 #endif
 } bNodeTreeInterfaceSocket;
-
-typedef struct bNodeTreeInterfaceSocketFloat {
-  bNodeTreeInterfaceSocket base;
-
-  int subtype;
-  float default_value;
-  float min_value;
-  float max_value;
-
-#ifdef __cplusplus
-  static const char *socket_type_static;
-#endif
-} bNodeTreeInterfaceSocketFloat;
-
-typedef struct bNodeTreeInterfaceSocketInt {
-  bNodeTreeInterfaceSocket base;
-
-  int subtype;
-  int default_value;
-  int min_value;
-  int max_value;
-
-#ifdef __cplusplus
-  static const char *socket_type_static;
-#endif
-} bNodeTreeInterfaceSocketInt;
-
-typedef struct bNodeTreeInterfaceSocketBool {
-  bNodeTreeInterfaceSocket base;
-
-  int subtype;
-  char default_value;
-  char _pad[3];
-
-#ifdef __cplusplus
-  static const char *socket_type_static;
-#endif
-} bNodeTreeInterfaceSocketBool;
-
-typedef struct bNodeTreeInterfaceSocketString {
-  bNodeTreeInterfaceSocket base;
-
-  int subtype;
-  char _pad[4];
-  char *default_value;
-
-#ifdef __cplusplus
-  static const char *socket_type_static;
-#endif
-} bNodeTreeInterfaceSocketString;
-
-typedef struct bNodeTreeInterfaceSocketObject {
-  bNodeTreeInterfaceSocket base;
-
-  int subtype;
-  char _pad[4];
-  struct Object *default_value;
-
-#ifdef __cplusplus
-  static const char *socket_type_static;
-#endif
-} bNodeTreeInterfaceSocketObject;
 
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;
@@ -338,6 +279,8 @@ typedef struct bNodeTreeInterface {
   {
     root_panel.foreach_item(op);
   }
+
+  void foreach_id(LibraryForeachIDData *cb);
 
 #endif
 } bNodeTreeInterface;

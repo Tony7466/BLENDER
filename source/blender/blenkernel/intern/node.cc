@@ -387,23 +387,6 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
   }
 }
 
-static void library_foreach_node_interface_item(LibraryForeachIDData *data,
-                                                bNodeTreeInterfaceItem &item)
-{
-  switch (item.item_type) {
-    case NODE_INTERFACE_SOCKET: {
-      bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
-
-      if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketObject::socket_type_static)) {
-        bNodeTreeInterfaceSocketObject &socket_object =
-            reinterpret_cast<bNodeTreeInterfaceSocketObject &>(socket);
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, socket_object.default_value, IDWALK_CB_USER);
-      }
-      break;
-    }
-  }
-}
-
 static void node_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -436,10 +419,7 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
   }
 
-  ntree->interface.foreach_item([data](bNodeTreeInterfaceItem &item) -> bool {
-    library_foreach_node_interface_item(data, item);
-    return !BKE_lib_query_foreachid_iter_stop(data);
-  });
+  ntree->interface.foreach_id(data);
 }
 
 static void node_foreach_cache(ID *id,

@@ -5,7 +5,9 @@
 #pragma once
 
 #include "DNA_node_tree_interface_types.h"
+#include "DNA_node_types.h"
 
+#include "BLI_parameter_pack_utils.hh"
 #include "BLI_vector.hh"
 
 #ifdef __cplusplus
@@ -90,33 +92,11 @@ template<typename T> static bool item_is_type(const bNodeTreeInterfaceItem &item
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       match |= std::is_same<T, bNodeTreeInterfaceSocket>::value;
-
-      const bNodeTreeInterfaceSocket &socket = reinterpret_cast<const bNodeTreeInterfaceSocket &>(
-          item);
-      if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketFloat::socket_type_static)) {
-        match |= std::is_same<T, bNodeTreeInterfaceSocketFloat>::value;
-      }
-      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketInt::socket_type_static)) {
-        match |= std::is_same<T, bNodeTreeInterfaceSocketInt>::value;
-      }
-      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketBool::socket_type_static)) {
-        match |= std::is_same<T, bNodeTreeInterfaceSocketBool>::value;
-      }
-      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketString::socket_type_static)) {
-        match |= std::is_same<T, bNodeTreeInterfaceSocketString>::value;
-      }
-      else if (STREQ(socket.socket_type, bNodeTreeInterfaceSocketObject::socket_type_static)) {
-        match |= std::is_same<T, bNodeTreeInterfaceSocketObject>::value;
-      }
-      else {
-        /* Unhandled socket type. */
-        BLI_assert_unreachable();
-      }
-
       break;
     }
     case NODE_INTERFACE_PANEL: {
       match |= std::is_same<T, bNodeTreeInterfacePanel>::value;
+      break;
     }
   }
   return match;
@@ -153,7 +133,116 @@ template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
   return nullptr;
 }
 
+namespace blender::bke::node_interface {
+
+namespace socket_types {
+
+constexpr const char *node_socket_data_float = "NodeSocketFloat";
+constexpr const char *node_socket_data_int = "NodeSocketInt";
+constexpr const char *node_socket_data_bool = "NodeSocketBoolean";
+constexpr const char *node_socket_data_rotation = "NodeSocketRotation";
+constexpr const char *node_socket_data_vector = "NodeSocketVector";
+constexpr const char *node_socket_data_color = "NodeSocketColor";
+constexpr const char *node_socket_data_string = "NodeSocketString";
+constexpr const char *node_socket_data_object = "NodeSocketObject";
+constexpr const char *node_socket_data_image = "NodeSocketImage";
+constexpr const char *node_socket_data_collection = "NodeSocketCollection";
+constexpr const char *node_socket_data_texture = "NodeSocketTexture";
+constexpr const char *node_socket_data_material = "NodeSocketMaterial";
+
+template<typename Fn> static void socket_data_to_static_type(const char *socket_type, const Fn &fn)
+{
+  if (STREQ(socket_type, socket_types::node_socket_data_float)) {
+    fn.template operator()<bNodeSocketValueFloat>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_int)) {
+    fn.template operator()<bNodeSocketValueInt>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_bool)) {
+    fn.template operator()<bNodeSocketValueBoolean>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_rotation)) {
+    fn.template operator()<bNodeSocketValueRotation>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_vector)) {
+    fn.template operator()<bNodeSocketValueVector>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_color)) {
+    fn.template operator()<bNodeSocketValueRGBA>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_string)) {
+    fn.template operator()<bNodeSocketValueString>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_object)) {
+    fn.template operator()<bNodeSocketValueObject>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_image)) {
+    fn.template operator()<bNodeSocketValueImage>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_collection)) {
+    fn.template operator()<bNodeSocketValueCollection>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_texture)) {
+    fn.template operator()<bNodeSocketValueTexture>();
+  }
+  else if (STREQ(socket_type, socket_types::node_socket_data_material)) {
+    fn.template operator()<bNodeSocketValueMaterial>();
+  }
+  else {
+    /* Unhandled type */
+    BLI_assert_unreachable();
+  }
+}
+
 namespace detail {
+
+template<typename Fn> struct TypeTagExecutor {
+  const Fn &fn;
+
+  TypeTagExecutor(const Fn &fn_) : fn(fn_) {}
+
+  template<typename T> void operator()() const
+  {
+    fn(TypeTag<T>{});
+  }
+};
+
+}  // namespace detail
+
+template<typename Fn>
+static void socket_data_to_static_type_tag(const char *socket_type, const Fn &fn)
+{
+  detail::TypeTagExecutor executor{fn};
+  socket_data_to_static_type(socket_type, executor);
+}
+
+}  // namespace socket_types
+
+template<typename T> static bool socket_data_is_type(const char *socket_type)
+{
+  bool match = false;
+  socket_data_to_static_type_tag(socket_type, [&match](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    match |= std::is_same<T, SocketDataType>::value;
+  });
+  return match;
+}
+
+}  // namespace blender::bke::node_interface
+
+template<typename T> T &bNodeTreeInterfaceSocket::get_data()
+{
+  BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
+  return *static_cast<T *>(socket_data);
+}
+
+template<typename T> const T &bNodeTreeInterfaceSocket::get_data() const
+{
+  BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
+  return *static_cast<const T *>(socket_data);
+}
+
+namespace blender::bke::node_interface::detail {
 
 template<typename Func, typename ReturnT> struct PanelForeachExecutor {
   void operator()(bNodeTreeInterfacePanel &panel, Func op)
@@ -207,12 +296,12 @@ template<typename Func> struct PanelForeachExecutor<Func, void> {
   }
 };
 
-}  // namespace detail
+}  // namespace blender::bke::node_interface::detail
 
 template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
 {
   using ResultT = std::result_of<Func(bNodeTreeInterfaceItem &)>;
-  detail::PanelForeachExecutor<Func, ResultT> executor;
+  blender::bke::node_interface::detail::PanelForeachExecutor<Func, ResultT> executor;
   executor(*this, op);
 }
 
