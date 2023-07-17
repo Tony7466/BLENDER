@@ -22,6 +22,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
+namespace blender::bke::node_interface {
+
 namespace socket_types {
 
 /* -------------------------------------------------------------------- */
@@ -91,13 +93,12 @@ template<typename T> static void socket_data_init_impl(T & /*data*/) {}
 static void *make_socket_data(const char *socket_type)
 {
   void *socket_data = nullptr;
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket_type, [&socket_data](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        SocketDataType *new_socket_data = MEM_cnew<SocketDataType>(__func__);
-        socket_types::socket_data_init_impl(*new_socket_data);
-        socket_data = new_socket_data;
-      });
+  socket_data_to_static_type_tag(socket_type, [&socket_data](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    SocketDataType *new_socket_data = MEM_cnew<SocketDataType>(__func__);
+    socket_types::socket_data_init_impl(*new_socket_data);
+    socket_data = new_socket_data;
+  });
   return socket_data;
 }
 
@@ -146,11 +147,10 @@ template<typename T> static void socket_data_free_impl(T & /*data*/) {}
 
 static void socket_data_free(bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_free_impl(socket.get_data<SocketDataType>());
-      });
+  socket_types::socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_free_impl(socket.get_data<SocketDataType>());
+  });
 }
 
 /** \} */
@@ -210,11 +210,10 @@ static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMaterial
 
 static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_write_impl(writer, socket.get_data<SocketDataType>());
-      });
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_write_impl(writer, socket.get_data<SocketDataType>());
+  });
 }
 
 /* Note: no default implementation, every used type must write at least the base struct. */
@@ -233,11 +232,10 @@ static void socket_data_read_data_impl(BlendDataReader * /*reader*/, T & /*data*
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_read_data_impl(reader, socket.get_data<SocketDataType>());
-      });
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_read_data_impl(reader, socket.get_data<SocketDataType>());
+  });
 }
 
 /** \} */
@@ -254,11 +252,10 @@ static void socket_data_read_lib_impl(BlendLibReader * /*reader*/, ID * /*id*/, 
 
 static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_read_lib_impl(reader, id, socket.get_data<SocketDataType>());
-      });
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_read_lib_impl(reader, id, socket.get_data<SocketDataType>());
+  });
 }
 
 /** \} */
@@ -272,11 +269,10 @@ template<typename T> static void socket_data_expand(BlendExpander * /*expander*/
 
 static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_expand(expander, socket.get_data<SocketDataType>());
-      });
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_expand(expander, socket.get_data<SocketDataType>());
+  });
 }
 
 /** \} */
@@ -313,11 +309,10 @@ static void socket_data_foreach_id_impl(LibraryForeachIDData * /*data*/, T & /*d
 
 static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceSocket &socket)
 {
-  blender::bke::node_interface::socket_data_to_static_type_tag(
-      socket.socket_type, [&](auto type_tag) {
-        using SocketDataType = typename decltype(type_tag)::type;
-        socket_types::socket_data_foreach_id_impl(data, socket.get_data<SocketDataType>());
-      });
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    socket_types::socket_data_foreach_id_impl(data, socket.get_data<SocketDataType>());
+  });
 }
 
 /** \} */
@@ -516,6 +511,10 @@ static void item_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceItem &
 }
 
 }  // namespace item_types
+
+}  // namespace blender::bke::node_interface
+
+using namespace blender::bke::node_interface;
 
 std::string bNodeTreeInterfaceSocket::socket_identifier() const
 {
