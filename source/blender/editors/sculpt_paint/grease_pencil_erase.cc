@@ -491,7 +491,7 @@ struct EraseOperationExecutor {
 
     /* Set the new geometry. */
     drawing.geometry.wrap() = std::move(dst);
-    drawing.tag_positions_changed();
+    drawing.tag_topology_changed();
 
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
