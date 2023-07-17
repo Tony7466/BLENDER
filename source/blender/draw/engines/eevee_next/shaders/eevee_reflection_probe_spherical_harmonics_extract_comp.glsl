@@ -23,7 +23,7 @@ void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf.probes[reflection_probe_index];
+  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
 
   SphericalHarmonicL1 cooefs;
   cooefs.L0.M0 = vec4(0.0);

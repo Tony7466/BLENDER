@@ -1033,10 +1033,8 @@ struct ReflectionProbeData {
   /**
    * Position of the light probe in world space.
    * World probe uses origin.
-   *
-   * 4th component is not used.
    */
-  float4 pos;
+  packed_float3 pos;
 
   /** On which layer of the texture array is this reflection probe stored. */
   int layer;
@@ -1058,14 +1056,10 @@ struct ReflectionProbeData {
    * LOD factor for mipmap selection.
    */
   float lod_factor;
+
+  float _pad0[1];
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
-
-/* TODO: Remove ReflectionProbesData */
-struct ReflectionProbesData {
-  ReflectionProbeData probes[REFLECTION_PROBES_MAX];
-};
-BLI_STATIC_ASSERT_ALIGN(ReflectionProbesData, 16)
 
 /** \} */
 
@@ -1133,7 +1127,8 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
-using ReflectionProbesDataBuf = draw::UniformBuffer<ReflectionProbesData>;
+using ReflectionProbeDataBuf =
+    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
