@@ -512,7 +512,6 @@ void ReflectionProbeModule::extract_spherical_harmonics(uint64_t object_key)
   reflection_probe_index_ = probe.index;
 
   instance_.manager->submit(extract_ps_);
-  GPU_memory_barrier(GPU_BARRIER_UNIFORM);
 }
 
 void ReflectionProbeModule::update_probes_texture_mipmaps()
