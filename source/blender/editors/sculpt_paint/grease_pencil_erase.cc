@@ -46,6 +46,43 @@ class EraseOperation : public GreasePencilStrokeOperation {
 };
 
 /**
+ * Computes the intersection between a circle and a line segment
+ * Note : the difference with `isect_line_sphere_v2` is that it actually checks if the intersection
+ * points lie inside the line segment instead of considering the line as infinite.
+ */
+static int isect_segment_sphere_v2(const float2 &circle_center,
+                                   const float circle_radius,
+                                   const float2 &point,
+                                   const float2 &point_after,
+                                   float &mu0,
+                                   float &mu1)
+{
+  const auto compute_intersection_parameter =
+      [](const float2 p0, const float2 p1, const float2 inter) {
+        const float mu = (math::length(inter - p0) / math::length(p1 - p0));
+        const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
+        return sign_mu * mu;
+      };
+
+  /* Compute intersections between the current segment and the eraser's area. */
+  float2 inter0{};
+  float2 inter1{};
+  const int nb_inter = isect_line_sphere_v2(
+      point, point_after, circle_center, circle_radius, inter0, inter1);
+
+  /* The function above returns the intersections with the (infinite) line,
+   * so we have to make sure they lie within the segment.  */
+  mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
+  mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
+
+  if (mu0 > mu1) {
+    std::swap(mu0, mu1);
+  }
+
+  return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
+}
+
+/**
  * Utility class that actually executes the update when the stroke is updated. That's useful
  * because it avoids passing a very large number of parameters between functions.
  */
@@ -113,52 +150,36 @@ struct EraseOperationExecutor {
         threading::parallel_for(
             src_curve_points.drop_back(1), 256, [&](const IndexRange src_points) {
               for (int src_point : src_points) {
-                const float2 pos_view = screen_space_positions[src_point];
-                const float2 pos_after_view = screen_space_positions[src_point + 1];
 
-                /* Compute intersections between the current segment and the eraser's area. */
-                float2 inter0{};
-                float2 inter1{};
-                const int nb_inter = isect_line_sphere_v2(
-                    pos_view, pos_after_view, mouse_position, eraser_radius, inter0, inter1);
+                float mu0;
+                float mu1;
+                nb_intersections[src_point] = isect_segment_sphere_v2(
+                    mouse_position,
+                    eraser_radius,
+                    screen_space_positions[src_point],
+                    screen_space_positions[src_point + 1],
+                    mu0,
+                    mu1);
 
-                /* The function above returns the intersections with the (infinite) line,
-                 * so we have to make sure they lie within the segment.  */
-                const float mu0 = (nb_inter > 0) ? compute_intersection_parameter(
-                                                       pos_view, pos_after_view, inter0) :
-                                                   -1.0;
-                const float mu1 = (nb_inter > 1) ? compute_intersection_parameter(
-                                                       pos_view, pos_after_view, inter1) :
-                                                   -1.0;
-
-                has_intersection[src_point] = IN_RANGE(mu0, 0, 1) || IN_RANGE(mu1, 0, 1);
-                nb_intersections[src_point] = int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
+                has_intersection[src_point] = (nb_intersections[src_point] > 0);
               }
             });
 
         if (src_cyclic[src_curve]) {
           /* If the curve is cyclic, we need to check for the closing segment. */
           const int src_last_point = src_curve_points.last();
-          const float2 pos_view = screen_space_positions[src_last_point];
-          const float2 pos_after_view = screen_space_positions[src_curve_points.first()];
 
-          /* Compute intersections between the current segment and the eraser's area. */
-          float2 inter0{};
-          float2 inter1{};
-          const int nb_inter = isect_line_sphere_v2(
-              pos_view, pos_after_view, mouse_position, eraser_radius, inter0, inter1);
+          float mu0;
+          float mu1;
+          nb_intersections[src_last_point] = isect_segment_sphere_v2(
+              mouse_position,
+              eraser_radius,
+              screen_space_positions[src_last_point],
+              screen_space_positions[src_curve_points.first()],
+              mu0,
+              mu1);
 
-          /* The function above returns the intersections with the (infinite) line,
-           * so we have to make sure they lie within the segment.  */
-          const float mu0 = (nb_inter > 0) ?
-                                compute_intersection_parameter(pos_view, pos_after_view, inter0) :
-                                -1.0;
-          const float mu1 = (nb_inter > 1) ?
-                                compute_intersection_parameter(pos_view, pos_after_view, inter1) :
-                                -1.0;
-
-          has_intersection[src_last_point] = IN_RANGE(mu0, 0, 1) || IN_RANGE(mu1, 0, 1);
-          nb_intersections[src_last_point] = int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
+          has_intersection[src_last_point] = (nb_intersections[src_last_point] > 0);
         }
       }
     });
@@ -209,30 +230,18 @@ struct EraseOperationExecutor {
           dst_points_parameters[++dst_point] = float(src_point);
         }
         if (has_intersection[src_point]) {
-          const float2 pos_view = screen_space_positions[src_point];
           const int src_next_point = (src_point != src_point_last) ? (src_point + 1) :
                                                                      (src_points.first());
-          const float2 pos_after_view = screen_space_positions[src_next_point];
 
-          /* Compute intersections between the current segment and the eraser's area. */
-          float2 inter0{};
-          float2 inter1{};
-          const int nb_inter = isect_line_sphere_v2(
-              pos_view, pos_after_view, mouse_position, eraser_radius, inter0, inter1);
-
-          /* The function above returns the intersections with the (infinite) line,
-           * so we have to make sure they lie within the segment.  */
-          float mu0 = (nb_inter > 0) ?
-                          compute_intersection_parameter(pos_view, pos_after_view, inter0) :
-                          -1.0;
-          float mu1 = (nb_inter > 1) ?
-                          compute_intersection_parameter(pos_view, pos_after_view, inter1) :
-                          -1.0;
-
-          /* Sort the intersections by position in the segment. */
-          if (mu0 > mu1) {
-            std::swap(mu0, mu1);
-          }
+          float mu0;
+          float mu1;
+          nb_intersections[src_point] = isect_segment_sphere_v2(
+              mouse_position,
+              eraser_radius,
+              screen_space_positions[src_point],
+              screen_space_positions[src_next_point],
+              mu0,
+              mu1);
 
           if (IN_RANGE(mu0, 0, 1)) {
             /* Add an intersection with the eraser and mark it as a cut. */
