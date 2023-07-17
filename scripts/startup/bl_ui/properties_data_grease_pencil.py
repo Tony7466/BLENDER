@@ -49,7 +49,7 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         ob = context.object
         grease_pencil = context.grease_pencil
-        gpl = grease_pencil.layers.active
+        layer = grease_pencil.layers.active
 
         row = layout.row()
         row.template_grease_pencil_layer_tree()
@@ -62,17 +62,13 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
 
         # Layer main properties
-        row = layout.row()
-        col = layout.column(align=True)
-
-        if gpl:
-            layout = self.layout
+        if layer:
             layout.use_property_split = True
             layout.use_property_decorate = True
             col = layout.column(align=True)
 
             col = layout.row(align=True)
-            col.prop(gpl, "opacity", text="Opacity", slider=True)
+            col.prop(layer, "opacity", text="Opacity", slider=True)
 
 
 classes = (
