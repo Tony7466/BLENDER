@@ -159,6 +159,41 @@ struct EraseOperationExecutor {
     return total_intersections;
   }
 
+  /**
+   * Checks if each point is inside the eraser or not.
+   *
+   * \param screen_space_positions: input parameter containing the 2D positions of the geometry in
+   * screen space.
+   * \param points_range: ranges of points to check.
+   *
+   * \param point_inside: output parameter filled with booleans : true if the point is inside the
+   * eraser, false otherwise.
+   * \returns total number of inside points.
+   *
+   * Note that for the two output arrays the last element may contain intersections if the
+   * corresponding curve is cyclic.
+   */
+  int compute_points_inside(const Array<float2> &screen_space_positions,
+                            const IndexRange points_range,
+                            Array<bool> &point_inside) const
+  {
+    /* Check if points are inside the eraser. */
+    threading::parallel_for(points_range, 256, [&](const IndexRange src_points) {
+      for (const int src_point : src_points) {
+        const float2 pos_view = screen_space_positions[src_point];
+        point_inside[src_point] = (math::distance_squared(pos_view, mouse_position) <=
+                                   eraser_radius * eraser_radius);
+      }
+    });
+    /* Compute total number of points inside the eraser. */
+    int total_points_inside = 0;
+    for (const int src_point : points_range) {
+      total_points_inside += point_inside[src_point] ? 1 : 0;
+    }
+
+    return total_points_inside;
+  }
+
   void hard_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
@@ -179,18 +214,8 @@ struct EraseOperationExecutor {
 
     /* Check if points are inside the eraser. */
     Array<bool> is_point_inside(src_points_num, false);
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
-      for (const int src_point : src_points) {
-        const float2 pos_view = screen_space_positions[src_point];
-        is_point_inside[src_point] = (math::distance_squared(pos_view, mouse_position) <=
-                                      eraser_radius * eraser_radius);
-      }
-    });
-    /* Compute total number of points inside the eraser. */
-    int total_points_inside = 0;
-    for (const int src_point : src.points_range()) {
-      total_points_inside += is_point_inside[src_point] ? 1 : 0;
-    }
+    const int total_points_inside = compute_points_inside(
+        screen_space_positions, src.points_range(), is_point_inside);
 
     /* Total number of points in the destination :
      *   - intersections with the eraser are added,
@@ -198,7 +223,7 @@ struct EraseOperationExecutor {
      */
     const int dst_points_num = src_points_num + total_intersections - total_points_inside;
 
-    /* Compute the parameter of each point in the destination : a float number for which
+    /* Set the intersection parameters in the destination domain : a float number for which
      * the integer part is the index of the corresponding segment in the source curves,
      * and the fractional part is the (0,1) factor representing its position in the segment.
      */
