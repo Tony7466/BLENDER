@@ -115,7 +115,7 @@ struct EraseOperationExecutor {
             ob_eval, *obact, drawing_index);
 
     /* Compute some useful curves geometry data. */
-    const CurvesGeometry &src = drawing.strokes_for_write();
+    const CurvesGeometry &src = drawing.strokes();
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_points_num = src.points_num();
     const int src_curves_num = src.curves_num();
