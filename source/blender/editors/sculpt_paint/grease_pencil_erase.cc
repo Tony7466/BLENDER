@@ -133,13 +133,6 @@ struct EraseOperationExecutor {
       }
     });
 
-    const auto compute_intersection_parameter =
-        [](const float2 p0, const float2 p1, const float2 inter) {
-          const float mu = (math::length(inter - p0) / math::length(p1 - p0));
-          const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
-          return sign_mu * mu;
-        };
-
     /* Check segments that have an intersection. */
     Array<bool> has_intersection(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
