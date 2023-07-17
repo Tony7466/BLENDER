@@ -10,10 +10,7 @@
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
-    .storage_buf(REFLECTION_PROBE_BUF_SLOT,
-                 Qualifier::READ,
-                 "ReflectionProbeData",
-                 "reflection_probe_buf[]")
+    .uniform_buf(REFLECTION_PROBE_BUF_SLOT, "ReflectionProbesData", "reflection_probe_buf")
     .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflectionProbes");
 
 /* Sample cubemap and remap into an octahedral texture. */
@@ -34,7 +31,12 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_spherical_harmonics_extract)
     .local_group_size(1, 1, 1)
     .push_constant(Type::INT, "reflection_probe_index")
-    .additional_info("eevee_shared", "eevee_reflection_probe_data")
+    .storage_buf(REFLECTION_PROBE_BUF_SLOT,
+                 Qualifier::READ_WRITE,
+                 "ReflectionProbesData",
+                 "reflection_probe_buf")
+    .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflectionProbes")
+    .additional_info("eevee_shared")
     .compute_source("eevee_reflection_probe_spherical_harmonics_extract_comp.glsl")
     .do_static_compilation(true);
 

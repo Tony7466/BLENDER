@@ -9,7 +9,7 @@
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
+  ReflectionProbeData probe_data = reflection_probe_buf.probes[reflection_probe_index];
 
   SphericalHarmonicL1 cooefs;
   cooefs.L0.M0 = vec4(0.0);
@@ -35,5 +35,9 @@ void main()
     }
   }
 
-  // TODO(jbakker): Store result
+  spherical_harmonics_pack(cooefs,
+                           reflection_probe_buf.packed_world_cooefs[0],
+                           reflection_probe_buf.packed_world_cooefs[1],
+                           reflection_probe_buf.packed_world_cooefs[2],
+                           reflection_probe_buf.packed_world_cooefs[3]);
 }

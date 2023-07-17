@@ -1061,6 +1061,12 @@ struct ReflectionProbeData {
 };
 BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 
+struct ReflectionProbesData {
+  float4 packed_world_cooefs[4];
+  ReflectionProbeData probes[REFLECTION_PROBES_MAX];
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbesData, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1127,8 +1133,7 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
-using ReflectionProbeDataBuf =
-    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
+using ReflectionProbeDataBuf = draw::UniformBuffer<ReflectionProbesData>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;
