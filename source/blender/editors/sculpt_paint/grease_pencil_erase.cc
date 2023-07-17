@@ -456,6 +456,7 @@ struct EraseOperationExecutor {
                      blender::bke::CurvesGeometry &dst) const
   {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
+    const VArray<bool> src_cyclic = src.cyclic();
 
     IndexMaskMemory memory;
     IndexMask strokes_to_remove = IndexMask::from_predicate(
@@ -472,12 +473,25 @@ struct EraseOperationExecutor {
           }
 
           /* If any segment of the stroke intersects the eraser, then remove it */
-          for (const int src_point : src_curve_points) {
+          for (const int src_point : src_curve_points.drop_back(1)) {
             float mu0;
             float mu1;
             const int nb_intersections = intersections_with_segment(
                 screen_space_positions[src_point],
                 screen_space_positions[src_point + 1],
+                mu0,
+                mu1);
+            if (nb_intersections > 0) {
+              return true;
+            }
+          }
+
+          if (src_cyclic[src_curve]) {
+            float mu0;
+            float mu1;
+            const int nb_intersections = intersections_with_segment(
+                screen_space_positions[src_curve_points.last()],
+                screen_space_positions[src_curve_points.first()],
                 mu0,
                 mu1);
             if (nb_intersections > 0) {
