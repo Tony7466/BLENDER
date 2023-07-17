@@ -332,19 +332,8 @@ struct EraseOperationExecutor {
     for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_CURVE, propagation_info, {"cyclic"}))
     {
-      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
-        using T = decltype(dummy);
-        auto src_attr = attribute.src.typed<T>();
-        auto dst_attr = attribute.dst.span.typed<T>();
-
-        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
-          for (const int dst_curve : dst_curves) {
-            const int src_curve = dst_to_src_curve[dst_curve];
-            dst_attr[dst_curve] = src_attr[src_curve];
-          }
-        });
-        attribute.dst.finish();
-      });
+      bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
+      attribute.dst.finish();
     }
 
     /* Update the cyclic attribute : cyclic curves that have been cut are not cyclic anymore. */
