@@ -75,10 +75,16 @@ struct PaintOperationExecutor {
     float3 proj_pos;
     ED_view3d_win_to_3d_on_plane(region, plane, extension_sample.mouse_position, false, proj_pos);
 
-    float radius = (brush_size / 2.0f) *
-                   (BKE_brush_use_size_pressure(brush) ? extension_sample.pressure : 1.0f);
-    float opacity = brush_alpha *
-                    (BKE_brush_use_alpha_pressure(brush) ? extension_sample.pressure : 1.0f);
+    float radius = brush_size / 2.0f;
+    if (BKE_brush_use_size_pressure(brush)) {
+      radius *= BKE_curvemapping_evaluateF(
+          brush->gpencil_settings->curve_sensitivity, 0, extension_sample.pressure);
+    }
+    float opacity = brush_alpha;
+    if (BKE_brush_use_alpha_pressure(brush)) {
+      opacity *= BKE_curvemapping_evaluateF(
+          brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
+    }
     float4 vertex_color = use_vertex_color_stroke ?
                               float4(brush->rgb[0],
                                      brush->rgb[1],
@@ -114,6 +120,16 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
 
   Paint *paint = &scene->toolsettings->gp_paint->paint;
   Brush *brush = BKE_paint_brush(paint);
+
+  BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_jitter);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
