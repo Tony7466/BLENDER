@@ -46,49 +46,48 @@ class EraseOperation : public GreasePencilStrokeOperation {
 };
 
 /**
- * Computes the intersection between a circle and a line segment
- * Note : the difference with `isect_line_sphere_v2` is that it actually checks if the intersection
- * points lie inside the line segment instead of considering the line as infinite.
- */
-static int isect_segment_sphere_v2(const float2 &circle_center,
-                                   const float circle_radius,
-                                   const float2 &point,
-                                   const float2 &point_after,
-                                   float &mu0,
-                                   float &mu1)
-{
-  /* Compute the intersection points. */
-  float2 inter0{};
-  float2 inter1{};
-  const int nb_inter = isect_line_sphere_v2(
-      point, point_after, circle_center, circle_radius, inter0, inter1);
-
-  /* Retrieve the line factor from the coordinates of the intersection points. */
-  const auto compute_intersection_parameter =
-      [](const float2 p0, const float2 p1, const float2 inter) {
-        const float mu = (math::length(inter - p0) / math::length(p1 - p0));
-        const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
-        return sign_mu * mu;
-      };
-  mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
-  mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
-
-  /* Sort intersections by line factor. */
-  if ((nb_inter > 1) && (mu0 > mu1)) {
-    std::swap(mu0, mu1);
-  }
-
-  /* Return the number of intersections that actually lies within the segment. */
-  return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
-}
-
-/**
  * Utility class that actually executes the update when the stroke is updated. That's useful
  * because it avoids passing a very large number of parameters between functions.
  */
 struct EraseOperationExecutor {
 
+  float2 mouse_position;
+  float eraser_radius;
+
   EraseOperationExecutor(const bContext & /*C*/) {}
+
+  /**
+   * Computes the intersection between the eraser tool and a segment
+   */
+  int compute_intersections(const float2 &point,
+                            const float2 &point_after,
+                            float &mu0,
+                            float &mu1) const
+  {
+    /* Compute the intersection points. */
+    float2 inter0{};
+    float2 inter1{};
+    const int nb_inter = isect_line_sphere_v2(
+        point, point_after, this->mouse_position, this->eraser_radius, inter0, inter1);
+
+    /* Retrieve the line factor from the coordinates of the intersection points. */
+    const auto compute_intersection_parameter =
+        [](const float2 p0, const float2 p1, const float2 inter) {
+          const float mu = (math::length(inter - p0) / math::length(p1 - p0));
+          const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
+          return sign_mu * mu;
+        };
+    mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
+    mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
+
+    /* Sort intersections by line factor. */
+    if ((nb_inter > 1) && (mu0 > mu1)) {
+      std::swap(mu0, mu1);
+    }
+
+    /* Return the number of intersections that actually lies within the segment. */
+    return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
+  }
 
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
@@ -100,8 +99,8 @@ struct EraseOperationExecutor {
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
     /* Get the tool's data. */
-    const float2 mouse_position = extension_sample.mouse_position;
-    const float eraser_radius = extension_sample.pressure * self.radius;
+    this->mouse_position = extension_sample.mouse_position;
+    this->eraser_radius = extension_sample.pressure * self.radius;
 
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
@@ -146,9 +145,7 @@ struct EraseOperationExecutor {
 
                 float mu0;
                 float mu1;
-                nb_intersections[src_point] = isect_segment_sphere_v2(
-                    mouse_position,
-                    eraser_radius,
+                nb_intersections[src_point] = compute_intersections(
                     screen_space_positions[src_point],
                     screen_space_positions[src_point + 1],
                     mu0,
@@ -164,9 +161,7 @@ struct EraseOperationExecutor {
 
           float mu0;
           float mu1;
-          nb_intersections[src_last_point] = isect_segment_sphere_v2(
-              mouse_position,
-              eraser_radius,
+          nb_intersections[src_last_point] = compute_intersections(
               screen_space_positions[src_last_point],
               screen_space_positions[src_curve_points.first()],
               mu0,
