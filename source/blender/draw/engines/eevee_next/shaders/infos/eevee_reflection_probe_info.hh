@@ -28,9 +28,8 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_spherical_harmonics_extract)
     .local_group_size(1, 1)
     .push_constant(Type::INT, "reflection_probe_index")
-    .storage_buf(0, Qualifier::READ_WRITE, "ReflectionProbesData", "reflection_probe_buf")
-    .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflectionProbes")
-    .additional_info("eevee_shared")
+    .image(0, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_atlas_img")
+    .additional_info("eevee_shared", "eevee_reflection_probe_data")
     .compute_source("eevee_reflection_probe_spherical_harmonics_extract_comp.glsl")
     .do_static_compilation(true);
 

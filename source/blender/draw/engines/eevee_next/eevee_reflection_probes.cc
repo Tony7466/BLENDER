@@ -59,9 +59,9 @@ void ReflectionProbeModule::init()
     PassSimple &pass = extract_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_EXTRACT));
-    pass.bind_texture("reflectionProbes", &probes_tx_);
-    pass.bind_ssbo("reflection_probe_buf", data_buf_);
     pass.push_constant("reflection_probe_index", &reflection_probe_index_);
+    pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
+    bind_resources(&pass);
     pass.dispatch(int2(1, 1));
   }
 }

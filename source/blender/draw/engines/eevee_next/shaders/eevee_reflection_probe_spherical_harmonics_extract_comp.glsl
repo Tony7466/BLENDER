@@ -7,6 +7,20 @@
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
+void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
+{
+  for (int x = 0; x < IRRADIANCE_GRID_BRICK_SIZE; x++) {
+    for (int y = 0; y < IRRADIANCE_GRID_BRICK_SIZE; y++) {
+      for (int z = 0; z < IRRADIANCE_GRID_BRICK_SIZE; z++) {
+        ivec3 brick_coord = ivec3(x, y, z);
+        imageStore(irradiance_atlas_img,
+                   ivec3(atlas_coord, layer * IRRADIANCE_GRID_BRICK_SIZE) + brick_coord,
+                   sh_coefficient);
+      }
+    }
+  }
+}
+
 void main()
 {
   ReflectionProbeData probe_data = reflection_probe_buf.probes[reflection_probe_index];
@@ -35,9 +49,9 @@ void main()
     }
   }
 
-  spherical_harmonics_pack(cooefs,
-                           reflection_probe_buf.packed_world_cooefs[0],
-                           reflection_probe_buf.packed_world_cooefs[1],
-                           reflection_probe_buf.packed_world_cooefs[2],
-                           reflection_probe_buf.packed_world_cooefs[3]);
+  ivec2 atlas_coord = ivec2(0, 0);
+  atlas_store(cooefs.L0.M0, atlas_coord, 0);
+  atlas_store(cooefs.L1.Mn1, atlas_coord, 1);
+  atlas_store(cooefs.L1.M0, atlas_coord, 2);
+  atlas_store(cooefs.L1.Mp1, atlas_coord, 3);
 }
