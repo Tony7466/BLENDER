@@ -106,9 +106,9 @@ class ReflectionProbeModule {
   int3 dispatch_probe_pack_ = int3(0);
 
   /**
-   * Texture containing a cubemap where the probe should be rendering to.
+   * Texture containing a cube-map where the probe should be rendering to.
    *
-   * NOTE: TextureFromPool doesn't support cubemaps.
+   * NOTE: TextureFromPool doesn't support cube-maps.
    */
   Texture cubemap_tx_ = {"Probe.Cubemap"};
   int reflection_probe_index_ = 0;
@@ -128,7 +128,7 @@ class ReflectionProbeModule {
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, probes_tx_);
-    pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass->bind_ubo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }
 
   bool do_world_update_get() const;
