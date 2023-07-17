@@ -455,7 +455,6 @@ struct EraseOperationExecutor {
                      const Array<float2> &screen_space_positions,
                      blender::bke::CurvesGeometry &dst) const
   {
-    const int src_points_num = src.points_num();
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
 
     IndexMaskMemory memory;
