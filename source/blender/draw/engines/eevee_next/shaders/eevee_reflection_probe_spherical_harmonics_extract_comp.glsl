@@ -34,13 +34,12 @@ void main()
   ivec3 texture_size = textureSize(reflectionProbes, 0);
   int resolution = (texture_size.x >> probe_data.layer_subdivision) -
                    int(2 * REFLECTION_PROBE_BORDER_SIZE);
-  float sample_weight = 1.0 / float(resolution * resolution);
+  float sample_weight = 4.0 * M_PI / float(resolution * resolution);
   vec2 texel_size = vec2(1.0 / resolution);
 
   for (int x = 0; x < resolution; x++) {
     for (int y = 0; y < resolution; y++) {
-      vec2 packed_uv = (vec2(REFLECTION_PROBE_BORDER_SIZE) + vec2(float(x), float(y))) *
-                       texel_size;
+      vec2 packed_uv = (vec2(REFLECTION_PROBE_BORDER_SIZE) + vec2(x, y)) * texel_size;
       vec2 octahedral_uv = octahedral_uv_from_layer_texture_coords(
           packed_uv, probe_data, texel_size);
       vec3 direction = octahedral_uv_to_direction(octahedral_uv);
