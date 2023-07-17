@@ -21,7 +21,7 @@ void ReflectionProbeModule::init()
     world_probe_data.layer = 0;
     world_probe_data.layer_subdivision = 0;
     world_probe_data.area_index = 0;
-    world_probe_data.pos = float3(0.0f);
+    world_probe_data.pos = float4(0.0f);
     data_buf_[0] = world_probe_data;
 
     ReflectionProbe world_probe;
@@ -135,7 +135,7 @@ void ReflectionProbeModule::sync_object(Object *ob, ObjectHandle &ob_handle)
     probe_data.area_index = new_probe_data.area_index;
   }
 
-  probe_data.pos = float3(float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0));
+  probe_data.pos = float4x4(ob->object_to_world) * float4(0.0, 0.0, 0.0, 1.0);
 }
 
 ReflectionProbe &ReflectionProbeModule::find_or_insert(ObjectHandle &ob_handle,
