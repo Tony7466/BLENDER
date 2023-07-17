@@ -489,6 +489,30 @@ static inline float view_z_to_volume_z(
   }
 }
 
+static inline float3 ndc_to_volume(float4x4 projection_matrix,
+                                   float near,
+                                   float far,
+                                   float distribution,
+                                   float2 coord_scale,
+                                   float3 coord)
+{
+  bool is_persp = projection_matrix[3][3] == 0.0;
+
+  /* get_view_z_from_depth */
+  float d = 2.0 * coord.z - 1.0;
+  if (is_persp) {
+    coord.z = -projection_matrix[3][2] / (d + projection_matrix[2][2]);
+  }
+  else {
+    coord.z = (d - projection_matrix[3][2]) / projection_matrix[2][2];
+  }
+
+  coord.z = view_z_to_volume_z(near, far, distribution, is_persp, coord.z);
+  coord.x *= coord_scale.x;
+  coord.y *= coord_scale.y;
+  return coord;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

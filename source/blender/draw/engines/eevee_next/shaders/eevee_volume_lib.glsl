@@ -42,11 +42,12 @@ vec3 volume_to_ndc(vec3 coord)
 
 vec3 ndc_to_volume(vec3 coord)
 {
-  /** NOTE: Keep in sync with to_global_grid_coords. */
-  coord.z = get_view_z_from_depth(coord.z);
-  coord.z = view_z_to_volume_z(coord.z);
-  coord.xy *= volumes_info_buf.coord_scale;
-  return coord;
+  float near = volumes_info_buf.depth_near;
+  float far = volumes_info_buf.depth_far;
+  float distribution = volumes_info_buf.depth_distribution;
+  vec2 coord_scale = volumes_info_buf.coord_scale;
+  /* Implemented in eevee_shader_shared.cc */
+  return ndc_to_volume(ProjectionMatrix, near, far, distribution, coord_scale, coord);
 }
 
 float volume_phase_function_isotropic()

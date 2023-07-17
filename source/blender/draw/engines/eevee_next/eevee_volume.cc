@@ -58,17 +58,17 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
   /* Returns the unified volume grid cell index of a world space coordinate. */
   auto to_global_grid_coords = [&](float3 wP) -> int3 {
     const float4x4 &view_matrix = camera.data_get().viewmat;
-    const float4x4 &perspective_matrix = camera.data_get().winmat * view_matrix;
+    const float4x4 &projection_matrix = camera.data_get().winmat;
 
-    /** NOTE: Keep in sync with ndc_to_volume. */
-    float view_z = math::transform_point(view_matrix, wP).z;
-    float volume_z = view_z_to_volume_z(
-        data.depth_near, data.depth_far, data.depth_distribution, camera.is_perspective(), view_z);
-    float3 grid_coords = math::project_point(perspective_matrix, wP);
-    grid_coords = (grid_coords * 0.5f) + float3(0.5f);
-    grid_coords.x *= data.coord_scale.x;
-    grid_coords.y *= data.coord_scale.y;
-    grid_coords.z = volume_z;
+    float3 ndc_coords = math::project_point(projection_matrix * view_matrix, wP);
+    ndc_coords = (ndc_coords * 0.5f) + float3(0.5f);
+
+    float3 grid_coords = ndc_to_volume(projection_matrix,
+                                       data.depth_near,
+                                       data.depth_far,
+                                       data.depth_distribution,
+                                       data.coord_scale,
+                                       ndc_coords);
 
     return int3(grid_coords * float3(data.tex_size));
   };
