@@ -89,21 +89,31 @@ struct EraseOperationExecutor {
     return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
   }
 
-  void hard_eraser(const blender::bke::CurvesGeometry &src,
-                   const Array<float2> &screen_space_positions,
-                   blender::bke::CurvesGeometry &dst,
-                   const bool keep_caps) const
+  /**
+   * Compute intersections between the eraser and the input Curves Geometry.
+   *
+   * \param screen_space_positions: input parameter containing the 2D positions of the geometry in
+   * screen space.
+   *
+   * \param nb_intersection: output parameter filled with the number of intersections
+   * per-segment. Should be the size of the source point range.
+   * \param intersections_parameter: output parameter filled with the factors of the potential
+   * intersections with each segment. Should be the size of the source point range.
+   * \returns total number of intersections found.
+   *
+   * Note that for the two output arrays the last element may contain intersections if the
+   * corresponding curve is cyclic.
+   */
+  int intersections_with_curves(const blender::bke::CurvesGeometry &src,
+                                const Array<float2> &screen_space_positions,
+                                Array<int> &nb_intersections,
+                                Array<float2> &intersections_parameters) const
   {
     using namespace blender::bke;
 
-    const VArray<bool> src_cyclic = src.cyclic();
-    const int src_points_num = src.points_num();
-    const int src_curves_num = src.curves_num();
     const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+    const VArray<bool> src_cyclic = src.cyclic();
 
-    /* Compute intersections between the eraser and the curves in the source domain. */
-    Array<int> nb_intersections(src_points_num, 0);
-    Array<float2> src_intersections_parameters(src_points_num);
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const IndexRange src_curve_points = src_points_by_curves[src_curve];
@@ -120,7 +130,7 @@ struct EraseOperationExecutor {
                     mu0,
                     mu1);
 
-                src_intersections_parameters[src_point] = float2(mu0, mu1);
+                intersections_parameters[src_point] = float2(mu0, mu1);
               }
             });
 
@@ -136,15 +146,36 @@ struct EraseOperationExecutor {
               mu0,
               mu1);
 
-          src_intersections_parameters[src_last_point] = float2(mu0, mu1);
+          intersections_parameters[src_last_point] = float2(mu0, mu1);
         }
       }
     });
+
     /* Compute total number of intersections. */
     int total_intersections = 0;
     for (const int src_point : src.points_range()) {
       total_intersections += nb_intersections[src_point];
     }
+    return total_intersections;
+  }
+
+  void hard_eraser(const blender::bke::CurvesGeometry &src,
+                   const Array<float2> &screen_space_positions,
+                   blender::bke::CurvesGeometry &dst,
+                   const bool keep_caps) const
+  {
+    using namespace blender::bke;
+
+    const VArray<bool> src_cyclic = src.cyclic();
+    const int src_points_num = src.points_num();
+    const int src_curves_num = src.curves_num();
+    const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+
+    /* Compute intersections between the eraser and the curves in the source domain. */
+    Array<int> nb_intersections(src_points_num, 0);
+    Array<float2> src_intersections_parameters(src_points_num);
+    const int total_intersections = intersections_with_curves(
+        src, screen_space_positions, nb_intersections, src_intersections_parameters);
 
     /* Check if points are inside the eraser. */
     Array<bool> is_point_inside(src_points_num, false);
