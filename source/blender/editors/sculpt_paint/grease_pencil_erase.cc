@@ -77,11 +77,11 @@ struct EraseOperationExecutor {
             ob_eval, *obact, drawing_index);
 
     /* Compute some useful curves geometry data. */
-    CurvesGeometry &src = drawing.strokes_for_write();
+    const CurvesGeometry &src = drawing.strokes_for_write();
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_points_num = src.points_num();
     const int src_curves_num = src.curves_num();
-    offset_indices::OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+    const offset_indices::OffsetIndices<int> src_points_by_curves = src.points_by_curve();
 
     /* Compute screen space positions. */
     Array<float2> screen_space_positions(src_points_num);
@@ -106,7 +106,7 @@ struct EraseOperationExecutor {
     Array<int> nb_intersections(src_points_num, 0);
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves_range) {
       for (const int src_curve_index : src_curves_range) {
-        IndexRange src_curve_point_range = src_points_by_curves[src_curve_index];
+        const IndexRange src_curve_point_range = src_points_by_curves[src_curve_index];
 
         threading::parallel_for(
             src_curve_point_range.drop_back(1), 256, [&](const IndexRange src_points_range) {
