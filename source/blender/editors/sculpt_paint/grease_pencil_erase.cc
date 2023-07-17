@@ -450,6 +450,49 @@ struct EraseOperationExecutor {
 
     return true;
   }
+
+  void stroke_eraser(const blender::bke::CurvesGeometry &src,
+                     const Array<float2> &screen_space_positions,
+                     blender::bke::CurvesGeometry &dst) const
+  {
+    const int src_points_num = src.points_num();
+    const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
+
+    IndexMaskMemory memory;
+    IndexMask strokes_to_remove = IndexMask::from_predicate(
+        src.curves_range(), GrainSize(256), memory, [&](const int64_t src_curve) {
+          const IndexRange src_curve_points = src_points_by_curve[src_curve];
+
+          /* If any point of the stroke lies inside the eraser, then remove it */
+          for (const int src_point : src_curve_points) {
+            if (math::distance_squared(screen_space_positions[src_point], mouse_position) <=
+                eraser_radius * eraser_radius)
+            {
+              return true;
+            }
+          }
+
+          /* If any segment of the stroke intersects the eraser, then remove it */
+          for (const int src_point : src_curve_points) {
+            float mu0;
+            float mu1;
+            const int nb_intersections = intersections_with_segment(
+                screen_space_positions[src_point],
+                screen_space_positions[src_point + 1],
+                mu0,
+                mu1);
+            if (nb_intersections > 0) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+    dst = std::move(src);
+    dst.remove_curves(strokes_to_remove);
+  }
+
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
     using namespace blender::bke::greasepencil;
@@ -491,7 +534,7 @@ struct EraseOperationExecutor {
       bool erased = false;
       switch (self.eraser_mode) {
         case GP_BRUSH_ERASER_STROKE:
-          // To be implemented
+          stroke_eraser(src, screen_space_positions, dst);
           return;
         case GP_BRUSH_ERASER_HARD:
           erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
