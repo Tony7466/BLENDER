@@ -105,7 +105,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   Py_RETURN_NONE;
 }
 
-static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
+static PyObject *engine_update_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyengine, *pydepsgraph, *pycontext;
   if (!PyArg_ParseTuple(args, "OOO", &pyengine, &pydepsgraph, &pycontext)) {
@@ -234,7 +234,7 @@ static PyMethodDef methods[] = {
 
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},
-    {"engine_sync", engine_sync_func, METH_VARARGS, ""},
+    {"engine_update", engine_update_func, METH_VARARGS, ""},
     {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
     {"engine_set_sync_setting", engine_set_sync_setting_func, METH_VARARGS, ""},

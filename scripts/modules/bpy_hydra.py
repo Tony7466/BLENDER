@@ -91,7 +91,7 @@ class HydraRenderEngine(bpy.types.RenderEngine):
         return {}
 
     # final render
-    def _update(self, depsgraph):
+    def update(self, data, depsgraph):
         """This function is preferable to override in child classes instead of update()"""
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
         self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.delegate_id)
@@ -101,17 +101,9 @@ class HydraRenderEngine(bpy.types.RenderEngine):
         for key, val in self.get_sync_settings(engine_type).items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), bpy.context.as_pointer())
-
-    def update(self, data, depsgraph):
-        # If bl_use_gpu_context is true, this function is ignored and render() is used
-        if not self.bl_use_gpu_context:
-            self._update(depsgraph)
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), None)
 
     def render(self, depsgraph):
-        if self.bl_use_gpu_context:
-            self._update(depsgraph)
-
         if not self.engine_ptr:
             return
 
@@ -130,7 +122,7 @@ class HydraRenderEngine(bpy.types.RenderEngine):
         for key, val in self.get_sync_settings('VIEWPORT').items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
 
         for key, val in self.get_render_settings('VIEWPORT').items():
             _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
