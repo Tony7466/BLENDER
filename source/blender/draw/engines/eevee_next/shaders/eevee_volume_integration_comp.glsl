@@ -34,8 +34,8 @@ void main()
     orig_ray_len = prev_ray_len / view_cell.z;
   }
   else {
-    float prev_ray_len = view_cell.z;
-    float orig_ray_len = 1.0;
+    prev_ray_len = view_cell.z;
+    orig_ray_len = 1.0;
   }
 
   for (int i = 0; i <= tex_size.z; i++) {
