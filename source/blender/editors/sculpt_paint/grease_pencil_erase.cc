@@ -478,7 +478,16 @@ struct EraseOperationExecutor {
     /* Erasing operator */
     CurvesGeometry dst;
 
-    hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+    switch (self.eraser_mode) {
+      case GP_BRUSH_ERASER_HARD:
+        hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+        break;
+
+      case GP_BRUSH_ERASER_SOFT:
+      case GP_BRUSH_ERASER_STROKE:
+        // TBI
+        return;
+    }
 
     /* Set the new geometry. */
     drawing.geometry.wrap() = std::move(dst);
