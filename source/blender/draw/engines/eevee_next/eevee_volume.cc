@@ -134,8 +134,6 @@ void VolumeModule::init()
     data_.inv_tex_size = 1.0f / float3(tex_size);
   }
 
-  data_.jitter = inst_.sampling.rng_3d_get(eSamplingDimension::SAMPLING_TRANSPARENCY);
-
   if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
     data_.shadow_steps = 0;
   }
@@ -303,6 +301,7 @@ void VolumeModule::end_sync()
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
   inst_.lights.bind_resources(&scatter_ps_);
   inst_.shadows.bind_resources(&scatter_ps_);
+  inst_.sampling.bind_resources(&scatter_ps_);
   scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
   scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
   scatter_ps_.bind_image("in_emission_img", &prop_emission_tx_);

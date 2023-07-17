@@ -1,5 +1,6 @@
 
 #pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
@@ -51,8 +52,8 @@ void main()
   vec3 transmittance = imageLoad(in_extinction_img, froxel).rgb;
   vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
-  vec3 volume_ndc = volume_to_ndc((vec3(froxel) + volumes_info_buf.jitter) *
-                                  volumes_info_buf.inv_tex_size);
+  vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
+  vec3 volume_ndc = volume_to_ndc((vec3(froxel) + jitter) * volumes_info_buf.inv_tex_size);
   vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 P = point_view_to_world(vP);
   vec3 V = cameraVec(P);

@@ -453,12 +453,14 @@ struct VolumesInfoData {
   float light_clamp;
   packed_float3 inv_tex_size;
   float shadow_steps;
-  packed_float3 jitter;
   int use_lights;
   int use_soft_shadows;
   float depth_near;
   float depth_far;
   float depth_distribution;
+  float _pad0;
+  float _pad1;
+  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
