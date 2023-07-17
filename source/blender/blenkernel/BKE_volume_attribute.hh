@@ -17,23 +17,81 @@
 #  include <openvdb/openvdb.h>
 #endif
 
-#if 0
-struct VolumeGeometryGrid {
- public:
-  VolumeGeometryGrid();
-  ~VolumeGeometryGrid();
+namespace blender::bke {
 
-  VolumeGridType type() const;
+#ifdef WITH_OPENVDB
 
-  int64_t active_voxel_num() const;
+/**
+ * Result when looking up an attribute from some geometry with read and write access. After writing
+ * to the attribute, the #finish method has to be called. This may invalidate caches based on this
+ * attribute.
+ */
+template<typename T> struct AttributeGridWriter {
+  // using GridType =
 
-#  ifdef WITH_OPENVDB
-  openvdb::GridBase::Ptr grid_;
-#  endif
+  /**
+   * Grid pointer giving read and write access to the attribute. This may be empty.
+   */
+  GridT::Ptr VMutableArray<T> varray;
+  /**
+   * Domain where the attribute is stored on the geometry. Also determines the size of the virtual
+   * array.
+   */
+  eAttrDomain domain;
+  /**
+   * A function that has to be called after the attribute has been edited. This may be empty.
+   */
+  std::function<void()> tag_modified_fn;
+
+  operator bool() const
+  {
+    return this->varray;
+  }
+
+  /**
+   * Has to be called after the attribute has been modified.
+   */
+  void finish()
+  {
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
 };
+
 #endif
 
-namespace blender::bke {
+/**
+ * A generic version of #AttributeWriter.
+ */
+struct GAttributeGridWriter {
+  VolumeGrid *grid;
+  eAttrDomain domain;
+  std::function<void()> tag_modified_fn;
+
+  operator bool() const
+  {
+    return this->grid;
+  }
+
+  void finish()
+  {
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
+
+  template<typename T> AttributeWriter<T> typed() const
+  {
+    return {grid.typed<T>(), domain, tag_modified_fn};
+  }
+};
+
+/* OLD CODE
+ * OLD CODE
+ * OLD CODE
+ * OLD CODE
+ * OLD CODE */
 
 #ifdef WITH_OPENVDB
 

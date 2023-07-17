@@ -19,6 +19,7 @@
 
 struct Mesh;
 struct PointCloud;
+struct VolumeGrid;
 namespace blender::fn {
 namespace multi_function {
 class MultiFunction;
