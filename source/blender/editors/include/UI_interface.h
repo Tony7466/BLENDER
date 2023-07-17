@@ -289,8 +289,14 @@ enum {
   UI_BUT_TEXT_RIGHT = 1 << 3,
   /** Prevent the button to show any tooltip. */
   UI_BUT_NO_TOOLTIP = 1 << 4,
+  /** Show a quick tooltip label, that is, a short tooltip that appears faster than the full one
+   * and only shows the label. After a short delay the full toolitp is shown if any. */
+  UI_BUT_HAS_TOOLTIP_LABEL = 1 << 5,
+  /** Always show the tooltip label even when the button may already draw the label. Requires
+   * #UI_BUT_HAS_TOOLTIP_LABEL drawflag. */
+  UI_BUT_FORCE_TOOLTIP_LABEL = 1 << 6,
   /** Do not add the usual horizontal padding for text drawing. */
-  UI_BUT_NO_TEXT_PADDING = 1 << 5,
+  UI_BUT_NO_TEXT_PADDING = 1 << 7,
 
   /* Button align flag, for drawing groups together.
    * Used in 'uiBlock.flag', take care! */
