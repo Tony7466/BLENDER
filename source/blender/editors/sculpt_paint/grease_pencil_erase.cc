@@ -346,11 +346,9 @@ struct EraseOperationExecutor {
     /* Display intersections with flat caps. */
     if (!self.keep_caps) {
       SpanAttributeWriter<int8_t> dst_start_caps =
-          dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("start_cap",
-                                                                          ATTR_DOMAIN_CURVE);
+          dst_attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
       SpanAttributeWriter<int8_t> dst_end_caps =
-          dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("end_cap",
-                                                                          ATTR_DOMAIN_CURVE);
+          dst_attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
 
       OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
 
