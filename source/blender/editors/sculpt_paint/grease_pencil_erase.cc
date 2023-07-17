@@ -85,8 +85,8 @@ struct EraseOperationExecutor {
 
     /* Compute screen space positions. */
     Array<float2> screen_space_positions(src_points_num);
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points_range) {
-      for (const int point_index : src_points_range) {
+    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+      for (const int point_index : src_points) {
         ED_view3d_project_float_global(region,
                                        deformation.positions[point_index],
                                        screen_space_positions[point_index],
@@ -104,13 +104,13 @@ struct EraseOperationExecutor {
     /* Check segments that have an intersection. */
     Array<bool> has_intersection(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
-    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves_range) {
-      for (const int src_curve_index : src_curves_range) {
-        const IndexRange src_curve_point_range = src_points_by_curves[src_curve_index];
+    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
+      for (const int src_curve_index : src_curves) {
+        const IndexRange src_curve_points = src_points_by_curves[src_curve_index];
 
         threading::parallel_for(
-            src_curve_point_range.drop_back(1), 256, [&](const IndexRange src_points_range) {
-              for (int src_point_index : src_points_range) {
+            src_curve_points.drop_back(1), 256, [&](const IndexRange src_points) {
+              for (int src_point_index : src_points) {
                 const float2 pos_view = screen_space_positions[src_point_index];
                 const float2 pos_after_view = screen_space_positions[src_point_index + 1];
 
@@ -137,9 +137,9 @@ struct EraseOperationExecutor {
 
         if (src_cyclic[src_curve_index]) {
           /* If the curve is cyclic, we need to check for the closing segment. */
-          const int src_last_point = src_curve_point_range.last();
+          const int src_last_point = src_curve_points.last();
           const float2 pos_view = screen_space_positions[src_last_point];
-          const float2 pos_after_view = screen_space_positions[src_curve_point_range.first()];
+          const float2 pos_after_view = screen_space_positions[src_curve_points.first()];
 
           /* Compute intersections between the current segment and the eraser's area. */
           float2 inter0{};
@@ -170,8 +170,8 @@ struct EraseOperationExecutor {
 
     /* Check if points are inside the eraser. */
     Array<bool> is_point_inside(src_points_num, false);
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points_range) {
-      for (const int src_point_index : src_points_range) {
+    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+      for (const int src_point_index : src_points) {
         const float2 pos_view = screen_space_positions[src_point_index];
         is_point_inside[src_point_index] = (len_squared_v2v2(pos_view, mouse_position) <=
                                             eraser_radius * eraser_radius);
@@ -199,10 +199,10 @@ struct EraseOperationExecutor {
     Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     int dst_point_index = -1;
     for (const int src_curve_index : src.curves_range()) {
-      IndexRange src_point_range = src_points_by_curves[src_curve_index];
-      const int src_point_last = src_point_range.last();
+      IndexRange src_points = src_points_by_curves[src_curve_index];
+      const int src_point_last = src_points.last();
 
-      for (const int src_point_index : src_point_range) {
+      for (const int src_point_index : src_points) {
         if (!is_point_inside[src_point_index]) {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_points_parameters[++dst_point_index] = float(src_point_index);
@@ -211,7 +211,7 @@ struct EraseOperationExecutor {
           const float2 pos_view = screen_space_positions[src_point_index];
           const int src_next_point_index = (src_point_index != src_point_last) ?
                                                (src_point_index + 1) :
-                                               (src_point_range.first());
+                                               (src_points.first());
           const float2 pos_after_view = screen_space_positions[src_next_point_index];
 
           /* Compute intersections between the current segment and the eraser's area. */
@@ -265,8 +265,8 @@ struct EraseOperationExecutor {
     /* Cyclic curves. */
     Array<bool> src_now_cyclic(src_curves_num);
 
-    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves_range) {
-      for (const int src_curve_index : src_curves_range) {
+    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
+      for (const int src_curve_index : src_curves) {
         const int pivot_point = src_pivot_point[src_curve_index];
 
         if (pivot_point == -1) {
@@ -297,12 +297,12 @@ struct EraseOperationExecutor {
     Vector<int> dst_to_src_curve_index;
     dst_curves_offset.append(0);
     for (int src_curve_index : src.curves_range()) {
-      const IndexRange dst_point_range(dst_interm_curves_offsets[src_curve_index],
-                                       dst_interm_curves_offsets[src_curve_index + 1] -
-                                           dst_interm_curves_offsets[src_curve_index]);
+      const IndexRange dst_points(dst_interm_curves_offsets[src_curve_index],
+                                  dst_interm_curves_offsets[src_curve_index + 1] -
+                                      dst_interm_curves_offsets[src_curve_index]);
       int length_of_current = 0;
 
-      for (int dst_point_index : dst_point_range) {
+      for (int dst_point_index : dst_points) {
         const int src_point_index = std::floor(dst_points_parameters[dst_point_index]);
         if ((length_of_current > 0) && is_cut[dst_point_index] && is_point_inside[src_point_index])
         {
@@ -316,7 +316,7 @@ struct EraseOperationExecutor {
 
       if (length_of_current != 0) {
         /* End of a source curve. */
-        dst_curves_offset.append(dst_point_range.one_after_last());
+        dst_curves_offset.append(dst_points.one_after_last());
         dst_to_src_curve_index.append(src_curve_index);
       }
     }
@@ -325,8 +325,8 @@ struct EraseOperationExecutor {
     /* Create the new curves geometry. */
     CurvesGeometry dst(dst_points_num, dst_curves_num);
     MutableSpan<int> dst_offsets_for_write = dst.offsets_for_write();
-    threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves_range) {
-      for (const int dst_curve_index : dst_curves_range) {
+    threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+      for (const int dst_curve_index : dst_curves) {
         dst_offsets_for_write[dst_curve_index] = dst_curves_offset[dst_curve_index];
       }
     });
@@ -345,8 +345,8 @@ struct EraseOperationExecutor {
         auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
-        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves_range) {
-          for (const int dst_curve_index : dst_curves_range) {
+        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+          for (const int dst_curve_index : dst_curves) {
             const int src_curve_index = dst_to_src_curve_index[dst_curve_index];
             dst_attr[dst_curve_index] = src_attr[src_curve_index];
           }
@@ -373,13 +373,13 @@ struct EraseOperationExecutor {
 
       OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
 
-      threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves_range) {
-        for (const int dst_curve_index : dst_curves_range) {
-          IndexRange dst_curve_range = dst_points_by_curve[dst_curve_index];
-          if (is_cut[dst_curve_range.first()]) {
+      threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+        for (const int dst_curve_index : dst_curves) {
+          IndexRange dst_curve_points = dst_points_by_curve[dst_curve_index];
+          if (is_cut[dst_curve_points.first()]) {
             dst_start_caps.span[dst_curve_index] = GP_STROKE_CAP_TYPE_FLAT;
           }
-          if (is_cut[dst_curve_range.last()]) {
+          if (is_cut[dst_curve_points.last()]) {
             dst_end_caps.span[dst_curve_index] = GP_STROKE_CAP_TYPE_FLAT;
           }
         }
@@ -399,8 +399,8 @@ struct EraseOperationExecutor {
         auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
-        threading::parallel_for(dst.points_range(), 256, [&](const IndexRange dst_points_range) {
-          for (const int dst_point_index : dst_points_range) {
+        threading::parallel_for(dst.points_range(), 256, [&](const IndexRange dst_points) {
+          for (const int dst_point_index : dst_points) {
             const float dst_param = dst_points_parameters[dst_point_index];
             const int src_point_index = std::floor(dst_param);
 
@@ -412,9 +412,9 @@ struct EraseOperationExecutor {
             const float src_pt_factor = dst_param - src_point_index;
 
             const int src_curve_index = src_points_to_curve[src_point_index];
-            const IndexRange src_curve_range = src_points_by_curves[src_curve_index];
-            const int src_next_point_index = (src_point_index == src_curve_range.last()) ?
-                                                 src_curve_range.first() :
+            const IndexRange src_curves = src_points_by_curves[src_curve_index];
+            const int src_next_point_index = (src_point_index == src_curves.last()) ?
+                                                 src_curves.first() :
                                                  (src_point_index + 1);
 
             dst_attr[dst_point_index] = bke::attribute_math::mix2<T>(
