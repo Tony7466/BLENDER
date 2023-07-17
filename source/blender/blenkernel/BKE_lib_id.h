@@ -634,7 +634,7 @@ void BKE_library_make_local(struct Main *bmain,
                             struct GHash *old_to_new_ids,
                             bool untagged_only,
                             bool set_fake,
-                            const bool clear_asset_data);
+                            bool clear_asset_data);
 
 void BKE_id_tag_set_atomic(struct ID *id, int tag);
 void BKE_id_tag_clear_atomic(struct ID *id, int tag);
