@@ -337,13 +337,12 @@ struct EraseOperationExecutor {
     }
 
     /* Display intersections with flat caps. */
+    const OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
     if (!self.keep_caps) {
       SpanAttributeWriter<int8_t> dst_start_caps =
           dst_attributes.lookup_or_add_for_write_span<int8_t>("start_cap", ATTR_DOMAIN_CURVE);
       SpanAttributeWriter<int8_t> dst_end_caps =
           dst_attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
-
-      OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
 
       threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
         for (const int dst_curve : dst_curves) {
@@ -362,7 +361,6 @@ struct EraseOperationExecutor {
     }
 
     /* Copy/Interpolate point attributes. */
-    const Array<int> src_points_to_curve = src.point_to_curve_map();
     for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
     {
@@ -371,28 +369,39 @@ struct EraseOperationExecutor {
         auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
-        threading::parallel_for(dst.points_range(), 256, [&](const IndexRange dst_points) {
-          for (const int dst_point : dst_points) {
-            const float dst_param = dst_points_parameters[dst_point];
-            const int src_point = std::floor(dst_param);
+        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+          for (const int dst_curve : dst_curves) {
+            const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
 
-            if (!is_cut[dst_point]) {
-              dst_attr[dst_point] = src_attr[src_point];
-              continue;
-            }
-
-            const float src_pt_factor = dst_param - src_point;
-
-            const int src_curve = src_points_to_curve[src_point];
+            const int src_curve = dst_to_src_curve[dst_curve];
             const IndexRange src_curve_points = src_points_by_curves[src_curve];
-            const int src_next_point = (src_point == src_curve_points.last()) ?
-                                           src_curve_points.first() :
-                                           (src_point + 1);
 
-            dst_attr[dst_point] = bke::attribute_math::mix2<T>(
-                src_pt_factor, src_attr[src_point], src_attr[src_next_point]);
+            threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
+              for (const int dst_point : dst_points) {
+                const float dst_param = dst_points_parameters[dst_point];
+                const int src_point = std::floor(dst_param);
+
+                if (!is_cut[dst_point]) {
+                  dst_attr[dst_point] = src_attr[src_point];
+                  continue;
+                }
+
+                const float src_pt_factor = dst_param - src_point;
+
+                /* Compute the endpoint of the segment in the source domain.
+                 * Note that if this is the closing segment of a cyclic curve, then the
+                 * endpoint of the segment in the first point of the curve */
+                const int src_next_point = (src_point == src_curve_points.last()) ?
+                                               src_curve_points.first() :
+                                               (src_point + 1);
+
+                dst_attr[dst_point] = bke::attribute_math::mix2<T>(
+                    src_pt_factor, src_attr[src_point], src_attr[src_next_point]);
+              }
+            });
           }
         });
+
         attribute.dst.finish();
       });
     }
