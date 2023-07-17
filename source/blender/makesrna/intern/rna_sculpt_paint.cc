@@ -113,7 +113,6 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_object.h"
 #  include "BKE_particle.h"
-#  include "BKE_pbvh.h"
 #  include "BKE_pointcache.h"
 
 #  include "DEG_depsgraph.h"
@@ -296,7 +295,7 @@ static bool rna_Brush_mode_poll(PointerRNA *ptr, PointerRNA value)
 static bool paint_contains_brush_slot(const Paint *paint, const PaintToolSlot *tslot, int *r_index)
 {
   if ((tslot >= paint->tool_slots) && (tslot < (paint->tool_slots + paint->tool_slots_len))) {
-    *r_index = (int)(tslot - paint->tool_slots);
+    *r_index = int(tslot - paint->tool_slots);
     return true;
   }
   return false;
@@ -345,25 +344,30 @@ static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
     if (slot_index != brush->gpencil_tool) {
       return false;
     }
-    mode = OB_MODE_PAINT_GPENCIL;
+    if (U.experimental.use_grease_pencil_version3) {
+      mode = OB_MODE_PAINT_GREASE_PENCIL;
+    }
+    else {
+      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+    }
   }
   else if (paint_contains_brush_slot(&ts->gp_vertexpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_vertex_tool) {
       return false;
     }
-    mode = OB_MODE_VERTEX_GPENCIL;
+    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_sculptpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_sculpt_tool) {
       return false;
     }
-    mode = OB_MODE_SCULPT_GPENCIL;
+    mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_weightpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_weight_tool) {
       return false;
     }
-    mode = OB_MODE_WEIGHT_GPENCIL;
+    mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->curves_sculpt->paint, tslot, &slot_index)) {
     if (slot_index != brush->curves_sculpt_tool) {

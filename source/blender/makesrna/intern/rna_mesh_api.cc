@@ -89,7 +89,7 @@ static void rna_Mesh_free_tangents(Mesh *mesh)
 
 static void rna_Mesh_calc_looptri(Mesh *mesh)
 {
-  BKE_mesh_runtime_looptri_ensure(mesh);
+  mesh->looptris();
 }
 
 static void rna_Mesh_calc_smooth_groups(
@@ -122,7 +122,7 @@ static void rna_Mesh_normals_split_custom_set(Mesh *mesh,
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Number of custom normals is not number of loops (%f / %d)",
-                (float)normals_len / 3.0f,
+                float(normals_len) / 3.0f,
                 numloops);
     return;
   }
@@ -143,7 +143,7 @@ static void rna_Mesh_normals_split_custom_set_from_vertices(Mesh *mesh,
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Number of custom normals is not number of vertices (%f / %d)",
-                (float)normals_len / 3.0f,
+                float(normals_len) / 3.0f,
                 numverts);
     return;
   }

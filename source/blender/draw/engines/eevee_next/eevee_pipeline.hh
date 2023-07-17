@@ -37,7 +37,7 @@ class BackgroundPipeline {
  public:
   BackgroundPipeline(Instance &inst) : inst_(inst){};
 
-  void sync(GPUMaterial *gpumat);
+  void sync(GPUMaterial *gpumat, float background_opacity);
   void render(View &view);
 };
 
@@ -184,7 +184,7 @@ class DeferredLayer {
   PassSimple eval_light_ps_ = {"EvalLights"};
 
   /* Closures bits from the materials in this pass. */
-  eClosureBits closure_bits_;
+  eClosureBits closure_bits_ = CLOSURE_NONE;
 
   /**
    * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
@@ -250,6 +250,58 @@ class VolumePipeline {
 
   void sync();
   void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Deferred Probe Capture.
+ * \{ */
+class DeferredProbeLayer {
+ private:
+  Instance &inst_;
+
+  PassMain prepass_ps_ = {"Prepass"};
+  PassMain::Sub *prepass_single_sided_ps_ = nullptr;
+  PassMain::Sub *prepass_double_sided_ps_ = nullptr;
+
+  PassMain gbuffer_ps_ = {"Shading"};
+  PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
+  PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
+
+  PassSimple eval_light_ps_ = {"EvalLights"};
+
+  /* Closures bits from the materials in this pass. */
+  eClosureBits closure_bits_;
+
+  Texture dummy_light_tx_ = {"dummy_light_accum_tx"};
+
+ public:
+  DeferredProbeLayer(Instance &inst) : inst_(inst){};
+
+  void begin_sync();
+  void end_sync();
+
+  PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat);
+  PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+class DeferredProbePipeline {
+ private:
+  DeferredProbeLayer opaque_layer_;
+
+ public:
+  DeferredProbePipeline(Instance &inst) : opaque_layer_(inst){};
+
+  void begin_sync();
+  void end_sync();
+
+  PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
+  PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
 };
 
 /** \} */
@@ -362,6 +414,7 @@ class PipelineModule {
   BackgroundPipeline background;
   WorldPipeline world;
   WorldVolumePipeline world_volume;
+  DeferredProbePipeline probe;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
@@ -375,6 +428,7 @@ class PipelineModule {
       : background(inst),
         world(inst),
         world_volume(inst),
+        probe(inst),
         deferred(inst),
         forward(inst),
         shadow(inst),
@@ -383,6 +437,7 @@ class PipelineModule {
 
   void begin_sync()
   {
+    probe.begin_sync();
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
@@ -392,14 +447,27 @@ class PipelineModule {
 
   void end_sync()
   {
+    probe.end_sync();
     deferred.end_sync();
   }
 
   PassMain::Sub *material_add(Object *ob,
                               ::Material *blender_mat,
                               GPUMaterial *gpumat,
-                              eMaterialPipeline pipeline_type)
+                              eMaterialPipeline pipeline_type,
+                              bool probe_capture)
   {
+    if (probe_capture) {
+      switch (pipeline_type) {
+        case MAT_PIPE_DEFERRED_PREPASS:
+          return probe.prepass_add(blender_mat, gpumat);
+        case MAT_PIPE_DEFERRED:
+          return probe.material_add(blender_mat, gpumat);
+        default:
+          break;
+      }
+    }
+
     switch (pipeline_type) {
       case MAT_PIPE_DEFERRED_PREPASS:
         return deferred.prepass_add(blender_mat, gpumat, false);

@@ -25,6 +25,7 @@
 #include "eevee_irradiance_cache.hh"
 #include "eevee_light.hh"
 #include "eevee_lightprobe.hh"
+#include "eevee_lookdev.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
@@ -72,6 +73,7 @@ class Instance {
   MainView main_view;
   CaptureView capture_view;
   World world;
+  LookdevModule lookdev;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
   VolumeModule volume;
@@ -126,6 +128,7 @@ class Instance {
         main_view(*this),
         capture_view(*this),
         world(*this),
+        lookdev(*this),
         light_probes(*this),
         irradiance_cache(*this),
         volume(*this){};
@@ -146,6 +149,11 @@ class Instance {
   void begin_sync();
   void object_sync(Object *ob);
   void end_sync();
+
+  /**
+   * Return true when probe pipeline is used during this sample.
+   */
+  bool do_probe_sync() const;
 
   /* Render. */
 

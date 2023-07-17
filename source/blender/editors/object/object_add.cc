@@ -103,7 +103,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_gpencil_legacy.h"
 #include "ED_grease_pencil.h"
 #include "ED_mball.h"
@@ -2577,7 +2577,9 @@ static uint dupliobject_instancer_hash(const void *ptr)
   return hash;
 }
 
-/* Compare function that matches dupliobject_hash */
+/**
+ * Compare function that matches #dupliobject_hash.
+ */
 static bool dupliobject_cmp(const void *a_, const void *b_)
 {
   const DupliObject *a = static_cast<const DupliObject *>(a_);
