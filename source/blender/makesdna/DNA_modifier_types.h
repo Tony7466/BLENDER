@@ -2328,9 +2328,17 @@ typedef struct NodesModifierSettings {
 
 typedef struct NodesModifierBake {
   int id;
-  char _pad[4];
+  /** #NodesModifierBakeType. */
+  uint32_t bake_type;
+  int frame_start;
+  int frame_end;
   char *directory;
 } NodesModifierBake;
+
+typedef enum NodesModifierBakeType {
+  NODES_MODIFIER_BAKE_TYPE_STILL = 0,
+  NODES_MODIFIER_BAKE_TYPE_ANIMATED = 1,
+} NodesModifierBakeFlag;
 
 typedef struct NodesModifierData {
   ModifierData modifier;

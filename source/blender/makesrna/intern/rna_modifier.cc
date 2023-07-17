@@ -7056,6 +7056,20 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
 
 static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 {
+  static EnumPropertyItem bake_type_items[] = {
+      {NODES_MODIFIER_BAKE_TYPE_STILL,
+       "STILL",
+       0,
+       "Still",
+       "Bake the geometry at one frame and use it for all frames"},
+      {NODES_MODIFIER_BAKE_TYPE_ANIMATED,
+       "ANIMATED",
+       0,
+       "Animated",
+       "Bake the geometry at multiple frames"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -7065,6 +7079,21 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
   prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(prop, "Directory", "Location on disk where the bake data is stored");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bake_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Bake Type", "");
+  RNA_def_property_enum_items(prop, bake_type_items);
+  RNA_def_property_update(prop, 0, nullptr);
+
+  prop = RNA_def_property(srna, "frame_start", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Frame Start", "Frame to start baking at");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, nullptr);
+
+  prop = RNA_def_property(srna, "frame_end", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Frame End", "Frame to end baking at");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, nullptr);
 }
 
 static void rna_def_modifier_nodes_bakes(BlenderRNA *brna)
