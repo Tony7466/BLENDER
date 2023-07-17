@@ -5,8 +5,6 @@
 set(INC
   ../include
   ../uvedit
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
@@ -21,7 +19,6 @@ set(INC
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/eigen
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -62,6 +59,7 @@ set(SRC
   paint_vertex_proj.cc
   paint_vertex_weight_ops.cc
   paint_vertex_weight_utils.cc
+  paint_weight.cc
   sculpt.cc
   sculpt_automasking.cc
   sculpt_boundary.cc
@@ -94,10 +92,11 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_TBB)
