@@ -134,7 +134,6 @@ struct EraseOperationExecutor {
     });
 
     /* Check segments that have an intersection. */
-    Array<bool> has_intersection(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
     Array<float2> src_intersections_parameters(src_points_num);
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
@@ -155,7 +154,6 @@ struct EraseOperationExecutor {
                     mu0,
                     mu1);
 
-                has_intersection[src_point] = (nb_intersections[src_point] > 0);
                 src_intersections_parameters[src_point] = float2(mu0, mu1);
               }
             });
@@ -174,7 +172,6 @@ struct EraseOperationExecutor {
               mu0,
               mu1);
 
-          has_intersection[src_last_point] = (nb_intersections[src_last_point] > 0);
           src_intersections_parameters[src_last_point] = float2(mu0, mu1);
         }
       }
@@ -225,7 +222,7 @@ struct EraseOperationExecutor {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_points_parameters[++dst_point] = float(src_point);
         }
-        if (has_intersection[src_point]) {
+        if (nb_intersections[src_point] > 0) {
           float mu0 = src_intersections_parameters[src_point].x;
           float mu1 = src_intersections_parameters[src_point].y;
 
