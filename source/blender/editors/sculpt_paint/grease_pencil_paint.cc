@@ -34,34 +34,39 @@ class PaintOperation : public GreasePencilStrokeOperation {
  * because it avoids passing a very large number of parameters between functions.
  */
 struct PaintOperationExecutor {
+  Object *object_ = nullptr;
+  ARegion *region_ = nullptr;
+  GreasePencil *grease_pencil_ = nullptr;
+  bke::greasepencil::StrokeCache *stroke_cache_ = nullptr;
 
-  PaintOperationExecutor(const bContext & /*C*/) {}
-
-  void execute(PaintOperation & /*self*/, const bContext &C, const InputSample &extension_sample)
+  PaintOperationExecutor(const bContext &C)
   {
-    using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    ARegion *region = CTX_wm_region(&C);
-    Object *obact = CTX_data_active_object(&C);
-    Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+    object_ = CTX_data_active_object(&C);
+    Object *object_eval = DEG_get_evaluated_object(depsgraph, object_);
+    region_ = CTX_wm_region(&C);
 
     /**
      * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
      * is not needed for every update. After the stroke is done, the result is written to the
      * original object.
      */
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
+    grease_pencil_ = static_cast<GreasePencil *>(object_eval->data);
+    stroke_cache_ = &grease_pencil_->runtime->stroke_cache;
+  }
 
+  void execute(PaintOperation & /*self*/, const bContext &C, const InputSample &extension_sample)
+  {
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     float3 proj_pos;
-    ED_view3d_win_to_3d_on_plane(region, plane, extension_sample.mouse_position, false, proj_pos);
+    ED_view3d_win_to_3d_on_plane(region_, plane, extension_sample.mouse_position, false, proj_pos);
 
     bke::greasepencil::StrokePoint new_point{
         proj_pos, extension_sample.pressure * 100.0f, 1.0f, float4(1.0f)};
 
-    grease_pencil.runtime->stroke_cache.points.append(std::move(new_point));
+    stroke_cache_->points.append(std::move(new_point));
 
-    BKE_grease_pencil_batch_cache_dirty_tag(&grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
+    BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil_, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
 };
 
@@ -80,11 +85,11 @@ void PaintOperation::on_stroke_done(const bContext &C)
   using namespace blender::bke;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   Scene *scene = CTX_data_scene(&C);
-  Object *obact = CTX_data_active_object(&C);
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+  Object *object = CTX_data_active_object(&C);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
 
-  GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
-  GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
+  GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
+  GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
 
   const Span<bke::greasepencil::StrokePoint> stroke_points =
       grease_pencil_eval.runtime->stroke_buffer();
