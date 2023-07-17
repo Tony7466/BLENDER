@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "BKE_duplilist.h"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 
@@ -22,6 +21,11 @@ class InstancerData : public IdData {
     pxr::VtMatrix4dArray transforms;
     int count = 0;
   };
+
+ private:
+  Map<pxr::SdfPath, MeshInstance> mesh_instances_;
+  Map<pxr::SdfPath, NonmeshInstance> nonmesh_instances_;
+  pxr::VtMatrix4dArray mesh_transforms_;
 
  public:
   InstancerData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
@@ -57,10 +61,6 @@ class InstancerData : public IdData {
   void update_nonmesh_instance(NonmeshInstance &inst);
   MeshInstance *mesh_instance(pxr::SdfPath const &id) const;
   NonmeshInstance *nonmesh_instance(pxr::SdfPath const &id) const;
-
-  Map<pxr::SdfPath, MeshInstance> mesh_instances_;
-  Map<pxr::SdfPath, NonmeshInstance> nonmesh_instances_;
-  pxr::VtMatrix4dArray mesh_transforms_;
 };
 
 }  // namespace blender::io::hydra

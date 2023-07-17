@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include <chrono>
+#include <memory>
+#include <string>
 
 #include <pxr/imaging/hd/driver.h>
 #include <pxr/imaging/hd/engine.h>
@@ -13,37 +14,24 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usdImaging/usdImaging/delegate.h>
 
-#include "RE_engine.h"
-
-#include "CLG_log.h"
+#include "hydra/hydra_scene_delegate.h"
+#include "hydra/settings.h"
+#include "hydra/usd_scene_delegate.h"
 
 #include "light_tasks_delegate.h"
 #include "render_task_delegate.h"
 
-#include "hydra/hydra_scene_delegate.h"
-#include "hydra/settings.h"
-#include "hydra/usd_scene_delegate.h"
+struct bContext;
+struct RenderEngine;
+struct CLG_LogRef;
 
 namespace blender::render::hydra {
 
 extern struct CLG_LogRef *LOG_RENDER_HYDRA;
 
 class Engine {
- public:
-  Engine(RenderEngine *bl_engine, const std::string &render_delegate_name);
-  virtual ~Engine() = default;
-
-  void sync(Depsgraph *depsgraph, bContext *context);
-  virtual void render(Depsgraph *depsgraph) = 0;
-
-  void set_sync_setting(const std::string &key, const pxr::VtValue &val);
-  void set_render_setting(const std::string &key, const pxr::VtValue &val);
-
-  std::string render_delegate_name;
-
  protected:
-  float renderer_percent_done();
-
+  std::string render_delegate_name_;
   RenderEngine *bl_engine_ = nullptr;
 
   /* The order is important due to deletion order */
@@ -60,6 +48,19 @@ class Engine {
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<LightTasksDelegate> light_tasks_delegate_;
   std::unique_ptr<pxr::HdEngine> engine_;
+
+ public:
+  Engine(RenderEngine *bl_engine, const std::string &render_delegate_name);
+  virtual ~Engine() = default;
+
+  void sync(Depsgraph *depsgraph, bContext *context);
+  virtual void render(Depsgraph *depsgraph) = 0;
+
+  void set_sync_setting(const std::string &key, const pxr::VtValue &val);
+  void set_render_setting(const std::string &key, const pxr::VtValue &val);
+
+ protected:
+  float renderer_percent_done();
 };
 
 }  // namespace blender::render::hydra

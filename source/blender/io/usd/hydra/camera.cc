@@ -16,9 +16,8 @@ CameraData::CameraData(View3D *v3d, ARegion *region)
 {
   RegionView3D *region_data = (RegionView3D *)region->regiondata;
 
-  /* This constant was found experimentally, didn't find such option in
-   * context.view3d or context.region_data. */
-  float VIEWPORT_SENSOR_SIZE = 72.0;
+  /* TODO: refactor use BKE_camera_params API. */
+  float VIEWPORT_SENSOR_SIZE = DEFAULT_SENSOR_WIDTH * 2.0f;
 
   pxr::GfVec2i res(region->winx, region->winy);
   float ratio = (float)res[0] / res[1];

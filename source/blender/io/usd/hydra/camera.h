@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <map>
+#include <tuple>
 
 #include <pxr/base/gf/camera.h>
 #include <pxr/base/gf/vec2f.h>
@@ -15,13 +15,6 @@ struct View3D;
 namespace blender::io::hydra {
 
 class CameraData {
- public:
-  CameraData(View3D *v3d, ARegion *region);
-  CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
-
-  pxr::GfCamera gf_camera();
-  pxr::GfCamera gf_camera(pxr::GfVec4f tile);
-
  private:
   int mode_;
   pxr::GfRange1f clip_range_;
@@ -31,6 +24,13 @@ class CameraData {
   pxr::GfVec2f lens_shift_;
   pxr::GfVec2f ortho_size_;
   std::tuple<float, float, int> dof_data_;
+
+ public:
+  CameraData(View3D *v3d, ARegion *region);
+  CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
+
+  pxr::GfCamera gf_camera();
+  pxr::GfCamera gf_camera(pxr::GfVec4f tile);
 };
 
 }  // namespace blender::io::hydra

@@ -14,11 +14,12 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
-#include "BKE_appdir.h"
-#include "BKE_context.h"
-
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
+
+#include "BKE_appdir.h"
+
+#include "RE_engine.h"
 
 #include "hydra/image.h"
 
@@ -66,7 +67,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  RenderEngine *bl_engine = (RenderEngine *)PyLong_AsVoidPtr(pyengine);
+  RenderEngine *bl_engine = static_cast<RenderEngine *>(PyLong_AsVoidPtr(pyengine));
 
   Engine *engine = nullptr;
   try {
@@ -97,7 +98,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
   delete engine;
 
   CLOG_INFO(LOG_RENDER_HYDRA, 1, "Engine %p", engine);
@@ -111,9 +112,9 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
-  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
+  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
+  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
+  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
   engine->sync(depsgraph, context);
@@ -129,8 +130,8 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
+  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
+  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
 
@@ -149,9 +150,9 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  ViewportEngine *engine = (ViewportEngine *)PyLong_AsVoidPtr(pyengine);
-  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
-  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
+  ViewportEngine *engine = static_cast<ViewportEngine *>(PyLong_AsVoidPtr(pyengine));
+  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
+  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p", engine);
 
@@ -189,7 +190,7 @@ static PyObject *engine_set_sync_setting_func(PyObject * /*self*/, PyObject *arg
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p: %s", engine, key);
   engine->set_sync_setting(key, get_setting_val(pyval));
@@ -205,7 +206,7 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p: %s", engine, key);
   engine->set_render_setting(key, get_setting_val(pyval));
@@ -220,8 +221,8 @@ static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *arg
     Py_RETURN_NONE;
   }
 
-  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
-  Image *image = (Image *)PyLong_AsVoidPtr(pyimage);
+  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
+  Image *image = static_cast<Image *>(PyLong_AsVoidPtr(pyimage));
 
   std::string image_path = io::hydra::cache_or_get_image_file(
       CTX_data_main(context), CTX_data_scene(context), image, nullptr);

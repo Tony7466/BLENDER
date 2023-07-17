@@ -10,6 +10,10 @@
 namespace blender::io::hydra {
 
 class VolumeData : public ObjectData {
+ protected:
+  std::string filepath_;
+  pxr::HdVolumeFieldDescriptorVector field_descriptors_;
+  MaterialData *mat_data_ = nullptr;
 
  public:
   VolumeData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
@@ -28,10 +32,6 @@ class VolumeData : public ObjectData {
 
  protected:
   void write_materials() override;
-
-  std::string filepath_;
-  pxr::HdVolumeFieldDescriptorVector field_descriptors_;
-  MaterialData *mat_data_ = nullptr;
 };
 
 }  // namespace blender::io::hydra

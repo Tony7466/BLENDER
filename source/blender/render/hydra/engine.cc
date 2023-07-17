@@ -18,12 +18,16 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "RE_engine.h"
+
+#include "CLG_log.h"
+
 namespace blender::render::hydra {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA, "render.hydra");
 
 Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
-    : render_delegate_name(render_delegate_name), bl_engine_(bl_engine)
+    : render_delegate_name_(render_delegate_name), bl_engine_(bl_engine)
 {
   pxr::HdRendererPluginRegistry &registry = pxr::HdRendererPluginRegistry::GetInstance();
 
@@ -43,10 +47,10 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
 
     hd_drivers.push_back(&hgi_driver_);
   }
-  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name));
+  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name_));
 
   if (!render_delegate_) {
-    throw std::runtime_error("Cannot create render delegate: " + render_delegate_name);
+    throw std::runtime_error("Cannot create render delegate: " + render_delegate_name_);
   }
 
   render_index_.reset(pxr::HdRenderIndex::New(render_delegate_.Get(), hd_drivers));
@@ -63,7 +67,7 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   }
   render_task_delegate_->set_camera(free_camera_delegate_->GetCameraId());
 
-  if (render_delegate_name == "HdStormRendererPlugin") {
+  if (render_delegate_name_ == "HdStormRendererPlugin") {
     light_tasks_delegate_ = std::make_unique<LightTasksDelegate>(
         render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("lightTasks"));
     light_tasks_delegate_->set_camera(free_camera_delegate_->GetCameraId());

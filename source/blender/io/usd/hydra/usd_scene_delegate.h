@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include <string>
+
 #include <pxr/imaging/hd/renderIndex.h>
 #include <pxr/usdImaging/usdImaging/delegate.h>
-
-#include <string>
 
 #include "settings.h"
 
@@ -16,6 +16,7 @@ namespace blender::io::hydra {
 
 /* Populate Hydra render index using USD file export, for testing. */
 class USDSceneDelegate {
+ private:
   pxr::HdRenderIndex *render_index_;
   pxr::SdfPath const delegate_id_;
   pxr::UsdStageRefPtr stage_;

@@ -11,7 +11,15 @@
 
 namespace blender::render::hydra {
 
+/* Delegate to create a render task with given camera, viewport and AOVs. */
+
 class RenderTaskDelegate : public pxr::HdSceneDelegate {
+ protected:
+  pxr::SdfPath task_id_;
+  pxr::HdxRenderTaskParams task_params_;
+  pxr::TfHashMap<pxr::SdfPath, pxr::HdRenderBufferDescriptor, pxr::SdfPath::Hash>
+      buffer_descriptors_;
+
  public:
   RenderTaskDelegate(pxr::HdRenderIndex *parent_index, pxr::SdfPath const &delegate_id);
   ~RenderTaskDelegate() override = default;
@@ -33,14 +41,15 @@ class RenderTaskDelegate : public pxr::HdSceneDelegate {
 
  protected:
   pxr::SdfPath buffer_id(pxr::TfToken const &aov_key) const;
-
-  pxr::SdfPath task_id_;
-  pxr::HdxRenderTaskParams task_params_;
-  pxr::TfHashMap<pxr::SdfPath, pxr::HdRenderBufferDescriptor, pxr::SdfPath::Hash>
-      buffer_descriptors_;
 };
 
 class GPURenderTaskDelegate : public RenderTaskDelegate {
+ private:
+  GPUFrameBuffer *framebuffer_ = nullptr;
+  GPUTexture *tex_color_ = nullptr;
+  GPUTexture *tex_depth_ = nullptr;
+  unsigned int VAO_ = 0;
+
  public:
   using RenderTaskDelegate::RenderTaskDelegate;
 
@@ -50,12 +59,6 @@ class GPURenderTaskDelegate : public RenderTaskDelegate {
   void read_aov(pxr::TfToken const &aov_key, GPUTexture *texture) override;
   void bind() override;
   void unbind() override;
-
- private:
-  GPUFrameBuffer *framebuffer_ = nullptr;
-  GPUTexture *tex_color_ = nullptr;
-  GPUTexture *tex_depth_ = nullptr;
-  unsigned int VAO_ = 0;
 };
 
 }  // namespace blender::render::hydra

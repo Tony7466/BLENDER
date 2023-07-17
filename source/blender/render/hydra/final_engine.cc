@@ -1,17 +1,24 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "final_engine.h"
+
 #include <pxr/imaging/hd/light.h>
 #include <pxr/imaging/hd/renderBuffer.h>
 
-#include "BKE_lib_id.h"
+#include "DNA_scene_types.h"
+
 #include "BLI_timecode.h"
-#include "DEG_depsgraph_query.h"
 #include "PIL_time.h"
+
+#include "BKE_lib_id.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "IMB_imbuf_types.h"
 
-#include "final_engine.h"
+#include "RE_engine.h"
+
 #include "hydra/camera.h"
 
 namespace blender::render::hydra {

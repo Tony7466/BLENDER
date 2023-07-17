@@ -6,8 +6,9 @@
 #include <pxr/base/vt/array.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
 
-#include "BKE_duplilist.h"
 #include "BLI_set.hh"
+
+#include "BKE_duplilist.h"
 
 #include "material.h"
 #include "object.h"
@@ -23,6 +24,11 @@ class MeshData : public ObjectData {
     int mat_index = 0;
     MaterialData *mat_data = nullptr;
   };
+
+ private:
+  pxr::VtVec3fArray vertices_;
+  std::vector<SubMesh> submeshes_;
+  int submeshes_count_ = 0;
 
  public:
   MeshData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
@@ -52,10 +58,6 @@ class MeshData : public ObjectData {
   const SubMesh &submesh(pxr::SdfPath const &id) const;
   void write_submeshes(Mesh *mesh);
   void update_prims();
-
-  pxr::VtVec3fArray vertices_;
-  std::vector<SubMesh> submeshes_;
-  int submeshes_count_ = 0;
 };
 
 }  // namespace blender::io::hydra

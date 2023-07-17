@@ -48,6 +48,20 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
     bool operator==(const ShadingSettings &other);
   };
 
+  Depsgraph *depsgraph = nullptr;
+  View3D *view3d = nullptr;
+  Main *bmain = nullptr;
+  Scene *scene = nullptr;
+  const HydraDelegateSettings &settings;
+  ShadingSettings shading_settings;
+
+ private:
+  ObjectDataMap objects_;
+  MaterialDataMap materials_;
+  std::unique_ptr<InstancerData> instancer_data_;
+  std::unique_ptr<WorldData> world_data_;
+
+ public:
   HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
                      pxr::SdfPath const &delegate_id,
                      const HydraDelegateSettings &settings);
@@ -77,13 +91,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   void populate(Depsgraph *depsgraph, View3D *v3d);
   void clear();
 
-  Depsgraph *depsgraph = nullptr;
-  View3D *view3d = nullptr;
-  Main *bmain = nullptr;
-  Scene *scene = nullptr;
-  const HydraDelegateSettings &settings;
-  ShadingSettings shading_settings;
-
  private:
   pxr::SdfPath prim_id(ID *id, const char *prefix) const;
   pxr::SdfPath object_prim_id(Object *object) const;
@@ -104,11 +111,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   void update_collection();
   bool set_light_shading_settings();
   bool set_world_shading_settings();
-
-  ObjectDataMap objects_;
-  MaterialDataMap materials_;
-  std::unique_ptr<InstancerData> instancer_data_;
-  std::unique_ptr<WorldData> world_data_;
 };
 
 }  // namespace blender::io::hydra

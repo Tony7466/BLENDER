@@ -64,7 +64,7 @@ void RenderTaskDelegate::set_camera(pxr::SdfPath const &camera_id)
 
 bool RenderTaskDelegate::is_converged()
 {
-  return ((pxr::HdxRenderTask *)task().get())->IsConverged();
+  return static_cast<pxr::HdxRenderTask *>(task().get())->IsConverged();
 }
 
 void RenderTaskDelegate::set_viewport(pxr::GfVec4d const &viewport)
@@ -111,8 +111,8 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
 
 void RenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, void *data)
 {
-  pxr::HdRenderBuffer *buffer = (pxr::HdRenderBuffer *)GetRenderIndex().GetBprim(
-      pxr::HdPrimTypeTokens->renderBuffer, buffer_id(aov_key));
+  pxr::HdRenderBuffer *buffer = static_cast<pxr::HdRenderBuffer *>(
+      GetRenderIndex().GetBprim(pxr::HdPrimTypeTokens->renderBuffer, buffer_id(aov_key)));
   if (!buffer) {
     return;
   }

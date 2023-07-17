@@ -5,8 +5,8 @@
 
 #include <map>
 
-#include "pxr/base/tf/staticTokens.h"
 #include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/tf/staticTokens.h>
 #include <pxr/base/vt/value.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
@@ -20,6 +20,8 @@ namespace blender::io::hydra {
 
 class WorldData : public LightData {
  public:
+  pxr::GfMatrix4d transform;
+
   WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;

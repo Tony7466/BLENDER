@@ -7,8 +7,9 @@
 #include <pxr/base/vt/value.h>
 #include <pxr/usd/sdf/path.h>
 
-#include "BLI_hash.hh"
 #include "DNA_ID.h"
+
+#include "BLI_hash.hh"
 
 template<> struct blender::DefaultHash<pxr::SdfPath> {
   uint64_t operator()(const pxr::SdfPath &value) const
@@ -30,6 +31,13 @@ class HydraSceneDelegate;
 
 class IdData {
  public:
+  ID *id;
+  pxr::SdfPath prim_id;
+
+ protected:
+  HydraSceneDelegate *scene_delegate_;
+
+ public:
   IdData(HydraSceneDelegate *scene_delegate, ID *id, pxr::SdfPath const &prim_id);
   virtual ~IdData() = default;
 
@@ -39,12 +47,6 @@ class IdData {
   virtual void update() = 0;
 
   virtual pxr::VtValue get_data(pxr::TfToken const &key) const = 0;
-
-  ID *id;
-  pxr::SdfPath prim_id;
-
- protected:
-  HydraSceneDelegate *scene_delegate_;
 };
 
 #define ID_LOG(level, msg, ...) \

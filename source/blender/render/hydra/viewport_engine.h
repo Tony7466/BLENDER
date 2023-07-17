@@ -14,6 +14,10 @@
 namespace blender::render::hydra {
 
 class DrawTexture {
+ private:
+  GPUTexture *texture_ = nullptr;
+  GPUBatch *batch_;
+
  public:
   DrawTexture();
   ~DrawTexture();
@@ -24,11 +28,13 @@ class DrawTexture {
   GPUTexture *texture() const;
 
  private:
-  GPUTexture *texture_ = nullptr;
-  GPUBatch *batch_;
 };
 
 class ViewportEngine : public Engine {
+ private:
+  double time_begin_;
+  DrawTexture draw_texture_;
+
  public:
   using Engine::Engine;
 
@@ -37,11 +43,6 @@ class ViewportEngine : public Engine {
 
  private:
   void notify_status(const std::string &title, const std::string &info);
-
- private:
-  double time_begin_;
-
-  DrawTexture draw_texture_;
 };
 
 }  // namespace blender::render::hydra

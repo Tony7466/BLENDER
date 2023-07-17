@@ -3,14 +3,16 @@
 
 #pragma once
 
-#include "pxr/base/tf/hashmap.h"
 #include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/tf/hashmap.h>
+
+#include "DNA_object_types.h"
+
+#include "BLI_map.hh"
+#include "BLI_set.hh"
 
 #include "BKE_layer.h"
 #include "BKE_object.h"
-#include "BLI_map.hh"
-#include "BLI_set.hh"
-#include "DNA_object_types.h"
 
 #include "id.h"
 #include "material.h"

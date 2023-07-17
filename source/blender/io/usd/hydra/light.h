@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "pxr/base/tf/hashmap.h"
+#include <pxr/base/tf/hashmap.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
 
@@ -18,6 +18,10 @@ class InstancerData;
 class LightData : public ObjectData {
   friend InstancerData;
 
+ protected:
+  std::map<pxr::TfToken, pxr::VtValue> data_;
+  pxr::TfToken prim_type_;
+
  public:
   LightData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
@@ -30,9 +34,6 @@ class LightData : public ObjectData {
 
  protected:
   pxr::TfToken prim_type(Light *light);
-
-  std::map<pxr::TfToken, pxr::VtValue> data_;
-  pxr::TfToken prim_type_;
 };
 
 }  // namespace blender::io::hydra

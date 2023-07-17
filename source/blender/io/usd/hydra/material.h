@@ -7,14 +7,19 @@
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
 
-#include "BLI_map.hh"
 #include "DNA_material_types.h"
+
+#include "BLI_map.hh"
 
 #include "id.h"
 
 namespace blender::io::hydra {
 
 class MaterialData : public IdData {
+ private:
+  pxr::SdfAssetPath mtlx_path_;
+  pxr::VtValue material_network_map_;
+
  public:
   MaterialData(HydraSceneDelegate *scene_delegate,
                Material *material,
@@ -34,9 +39,6 @@ class MaterialData : public IdData {
  private:
   void export_mtlx();
   void write_material_network_map();
-
-  pxr::SdfAssetPath mtlx_path_;
-  pxr::VtValue material_network_map_;
 };
 
 using MaterialDataMap = Map<pxr::SdfPath, std::unique_ptr<MaterialData>>;
