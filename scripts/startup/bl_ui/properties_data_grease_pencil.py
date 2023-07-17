@@ -4,6 +4,9 @@
 import bpy
 from bpy.types import Panel, Menu
 
+from bl_ui.properties_grease_pencil_common import (
+    GreasePencilLayerAdjustmentsPanel,
+)
 
 class DataButtonsPanel:
     bl_space_type = 'PROPERTIES'
@@ -57,10 +60,15 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
 
+class DATA_PT_grease_pencil_layer_adjustments(DataButtonsPanel, GreasePencilLayerAdjustmentsPanel, Panel):
+    bl_label = "Adjustments"
+    bl_parent_id = 'DATA_PT_grease_pencil_layers'
+    bl_options = {'DEFAULT_CLOSED'}
 
 classes = (
     DATA_PT_context_grease_pencil,
     DATA_PT_grease_pencil_layers,
+    DATA_PT_grease_pencil_layer_adjustments,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
 )
 

@@ -173,7 +173,6 @@ GPU_SHADER_CREATE_INFO(draw_gpencil_new)
     .define("gpThicknessWorldScale", "1.0 / 2000.0") /* TODO(fclem): Same as above. */
     .define("gpThicknessIsScreenSpace", "(gpThicknessWorldScale < 0.0)")
     /* Per Layer */
-    .define("gpThicknessOffset", "0.0") /* TODO(fclem): Remove. */
     .additional_info("draw_modelmat_new",
                      "draw_resource_id_varying",
                      "draw_view",

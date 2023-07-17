@@ -282,6 +282,11 @@ typedef struct GreasePencilLayer {
    * Opacity of the layer.
    */
   float opacity;
+  /** Color used to tint layer, alpha value is used as factor. */
+  float tintcolor[4];
+  /** Thickness adjustment. */
+  short thickness_offset;
+  short _pad0[3];
   /**
    * List of `GreasePencilLayerMask`.
    */

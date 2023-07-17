@@ -31,20 +31,27 @@ class LayerModule {
   }
 
   void sync(const Object * /*object*/,
-            const bke::greasepencil::Layer & /*layer*/,
+            const bke::greasepencil::Layer &layer,
             bool &do_layer_blending)
   {
     /* TODO(fclem): All of this is placeholder. */
     gpLayer gp_layer;
     gp_layer.vertex_color_opacity = 0.0f;
     gp_layer.opacity = 1.0f;
-    gp_layer.thickness_offset = 0.0f;
-    gp_layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
     gp_layer.stroke_index_offset = 0.0f;
 
-    layers_buf_.append(gp_layer);
+    gp_layer.tint = float4(layer.tintcolor);
+    gp_layer.thickness_offset = layer.thickness_offset;
 
-    do_layer_blending = false;
+    if (layer.tintcolor[3] != 0.0f) {
+      do_layer_blending = true;
+    }
+
+    if (gp_layer.thickness_offset != 0) {
+      do_layer_blending = true;
+    }
+
+    layers_buf_.append(gp_layer);
   }
 
   void end_sync()

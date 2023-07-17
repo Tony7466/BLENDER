@@ -499,6 +499,9 @@ Layer::Layer()
   this->frames_storage.values = nullptr;
   this->frames_storage.flag = 0;
 
+  zero_v4(this->tintcolor);
+  this->thickness_offset = 0;
+
   BLI_listbase_clear(&this->masks);
 
   this->runtime = MEM_new<LayerRuntime>(__func__);
@@ -519,6 +522,8 @@ Layer::Layer(const Layer &other) : Layer()
 
   this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
+  this->thickness_offset = other.thickness_offset;
+  copy_v4_v4(this->tintcolor, other.tintcolor);
 
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;

@@ -208,6 +208,30 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Tint Color */
+  prop = RNA_def_property(srna, "tint_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, "GreasePencilLayer", "tintcolor");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Tint Color", "Color for tinting stroke colors");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Tint factor */
+  prop = RNA_def_property(srna, "tint_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, "GreasePencilLayer", "tintcolor[3]");
+  RNA_def_property_range(prop, 0.0, 1.0f);
+  RNA_def_property_ui_text(prop, "Tint Factor", "Factor of tinting color");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Line Thickness Change */
+  prop = RNA_def_property(srna, "line_change", PROP_INT, PROP_PIXEL);
+  RNA_def_property_int_sdna(prop, nullptr, "thickness_offset");
+  RNA_def_property_range(prop, -300, 300);
+  RNA_def_property_ui_range(prop, -100, 100, 1.0, 1);
+  RNA_def_property_ui_text(
+      prop, "Thickness Change", "Thickness change to apply to current strokes (in pixels)");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
