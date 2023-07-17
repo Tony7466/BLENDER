@@ -96,7 +96,7 @@ static void draw_bake_ui(uiLayout *layout,
                          NodesModifierBake &bake,
                          const bke::BakeNodeStorage *bake_storage)
 {
-  const bool is_baked = bake_storage ? bake_storage->geometry.has_value() : false;
+  const bool is_baked = bake_storage ? !bake_storage->states.is_empty() : false;
 
   PointerRNA bake_ptr;
   RNA_pointer_create(&object.id, &RNA_NodesModifierBake, &bake, &bake_ptr);
@@ -221,26 +221,28 @@ class LazyFunctionForBakeNode : public LazyFunction {
       return;
     }
 
-    if (bake_storage->geometry.has_value()) {
-      params.set_output(0, *bake_storage->geometry);
-      return;
+    if (bake_storage->current_bake_state) {
+      GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
+      if (geometry == nullptr) {
+        /* Wait until value is available. */
+        return;
+      }
+      clean_geometry_for_cache(*geometry);
+      bake_storage->current_bake_state->geometry.emplace(*geometry);
+      params.set_output(0, std::move(*geometry));
     }
-
-    const bool is_baking = user_data.modifier_data->bakes->requested_bake_ids.contains(
-        nested_node_id);
-    if (!is_baking) {
-      this->pass_through(params);
-      return;
+    else {
+      if (bake_storage->states.is_empty()) {
+        this->pass_through(params);
+        return;
+      }
+      const bke::BakeNodeState &state = *bake_storage->states[0].state;
+      if (!state.geometry.has_value()) {
+        this->pass_through(params);
+        return;
+      }
+      params.set_output(0, *state.geometry);
     }
-
-    GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
-    if (geometry == nullptr) {
-      /* Wait until value is available. */
-      return;
-    }
-    clean_geometry_for_cache(*geometry);
-    bake_storage->newly_baked_geometry.emplace(*geometry);
-    params.set_output(0, std::move(*geometry));
   }
 
   void pass_through(lf::Params &params) const
@@ -288,7 +290,10 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
     if (storage == nullptr) {
       return true;
     }
-    if (!storage->geometry.has_value()) {
+    if (storage->states.is_empty()) {
+      return true;
+    }
+    if (storage->current_bake_state) {
       return true;
     }
     return false;

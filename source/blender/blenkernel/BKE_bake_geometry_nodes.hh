@@ -6,19 +6,27 @@
 
 #include "BLI_compute_context.hh"
 #include "BLI_map.hh"
+#include "BLI_sub_frame.hh"
 
 #include "BKE_geometry_set.hh"
 
 namespace blender::bke {
 
-class BakeNodeStorage {
+class BakeNodeState {
  public:
   std::optional<GeometrySet> geometry;
-  /**
-   * Store data during baking here to avoid race conditions with other nodes that access the
-   * geometry above.
-   */
-  std::optional<GeometrySet> newly_baked_geometry;
+};
+
+class BakeNodeStateAtFrame {
+ public:
+  SubFrame frame;
+  std::unique_ptr<BakeNodeState> state;
+};
+
+class BakeNodeStorage {
+ public:
+  Vector<BakeNodeStateAtFrame> states;
+  std::unique_ptr<BakeNodeState> current_bake_state;
 };
 
 class GeometryNodesModifierBakes {

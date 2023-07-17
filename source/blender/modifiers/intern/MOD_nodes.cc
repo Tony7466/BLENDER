@@ -1632,7 +1632,7 @@ static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id
   if (bake_storage == nullptr) {
     return false;
   }
-  return bake_storage->geometry.has_value();
+  return !bake_storage->states.is_empty();
 }
 
 static void bake_list_item_draw(uiList * /*ui_list*/,

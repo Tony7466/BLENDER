@@ -94,8 +94,8 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   bke::GeometryNodesModifierBakes &bakes = *nmd.runtime->bakes;
   bke::BakeNodeStorage &bake_storage = *bakes.storage_by_id.lookup_or_add_cb(
       bake->id, []() { return std::make_unique<bke::BakeNodeStorage>(); });
-  bake_storage.geometry.reset();
-  bake_storage.newly_baked_geometry.reset();
+  bake_storage.states.clear();
+  bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
 
   bakes.requested_bake_ids.add(bake->id);
 
@@ -104,8 +104,7 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
 
   bakes.requested_bake_ids.clear();
 
-  bake_storage.geometry = std::move(bake_storage.newly_baked_geometry);
-  bake_storage.newly_baked_geometry.reset();
+  bake_storage.states.append({0, std::move(bake_storage.current_bake_state)});
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 
