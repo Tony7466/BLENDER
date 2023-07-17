@@ -98,23 +98,26 @@ void FinalEngine::notify_status(float progress, const std::string &title, const 
 
 void FinalEngine::update_render_result()
 {
-  RenderResult *result = RE_engine_begin_result(
+  RenderResult *rr = RE_engine_begin_result(
       bl_engine_, 0, 0, resolution_[0], resolution_[1], layer_name_.c_str(), nullptr);
 
-  /* TODO: only for the first render layer */
-  RenderLayer *layer = (RenderLayer *)result->layers.first;
-  for (RenderPass *pass = (RenderPass *)layer->passes.first; pass != nullptr; pass = pass->next) {
-    pxr::TfToken aov_key;
-    if (STREQ(pass->name, "Combined")) {
-      aov_key = pxr::HdAovTokens->color;
+  RenderLayer *rlayer = static_cast<RenderLayer *>(
+      BLI_findstring(&rr->layers, layer_name_.c_str(), offsetof(RenderLayer, name)));
+
+  if (rlayer) {
+    LISTBASE_FOREACH (RenderPass *, rpass, &rlayer->passes) {
+      pxr::TfToken aov_key;
+      if (STREQ(rpass->name, "Combined")) {
+        aov_key = pxr::HdAovTokens->color;
+      }
+      else if (STREQ(rpass->name, "Depth")) {
+        aov_key = pxr::HdAovTokens->depth;
+      }
+      render_task_delegate_->read_aov(aov_key, rpass->ibuf->float_buffer.data);
     }
-    else if (STREQ(pass->name, "Depth")) {
-      aov_key = pxr::HdAovTokens->depth;
-    }
-    render_task_delegate_->read_aov(aov_key, pass->ibuf->float_buffer.data);
   }
 
-  RE_engine_end_result(bl_engine_, result, false, false, false);
+  RE_engine_end_result(bl_engine_, rr, false, false, false);
 }
 
 }  // namespace blender::render::hydra
