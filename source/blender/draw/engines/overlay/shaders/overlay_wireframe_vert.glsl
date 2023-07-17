@@ -136,8 +136,7 @@ void main()
   finalColor.rgb = mix(rim_col, final_front_col, facing);
   finalColor.rgb = pow(finalColor.rgb, vec3(2.2));
 
-  finalColor.a = wireOpacity;
-  finalColor.rgb *= wireOpacity;
-
+  finalColor.a = wireOpacity; //multiplicar com opacidade da cor do obj
+  finalColor.rgb *= wireOpacity; //should be finalColor.rgb = mix(backgroundcolor,finalColor.rgb, wireOpacity); pra arrumar a cor do wireframe mode com xray 
   view_clipping_distances(wpos);
 }
