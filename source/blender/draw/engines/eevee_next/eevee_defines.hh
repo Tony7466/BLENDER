@@ -145,6 +145,7 @@
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
+/* Slot 8 is GPU_NODE_TREE_UBO_SLOT. */
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
@@ -160,7 +161,8 @@
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 6
 #define CRYPTOMATTE_BUF_SLOT 7
-#define SHADOW_ATLAS_BUF_SLOT 8
+/* Only required by Metal for shadow writing so can exceed limit of 12 SSBOs.*/
+#define SHADOW_ATLAS_BUF_SLOT 5
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0

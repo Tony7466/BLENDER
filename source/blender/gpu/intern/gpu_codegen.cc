@@ -473,7 +473,7 @@ void GPUCodegen::generate_resources()
 
     /* TODO(fclem): Use the macro for length. Currently not working for EEVEE. */
     /* DRW_RESOURCE_CHUNK_LEN = 512 */
-    info.uniform_buf(2, "UniformAttrs", GPU_ATTRIBUTE_UBO_BLOCK_NAME "[512]", Frequency::BATCH);
+    info.uniform_buf(GPU_UNIFORM_ATTRIBUTES_SLOT, "UniformAttrs", GPU_ATTRIBUTE_UBO_BLOCK_NAME "[512]", Frequency::BATCH);
   }
 
   if (!BLI_listbase_is_empty(&graph.layer_attrs)) {
