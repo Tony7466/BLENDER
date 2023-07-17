@@ -18,6 +18,9 @@
 #include "RNA_types.h"
 #include "bpy_rna.h"
 
+#include "WM_api.h"
+#include "WM_types.h"
+
 #include <list>
 
 using namespace boost;
@@ -172,6 +175,42 @@ void register_export_hook_converters()
   PyGILState_Release(gilstate);
 }
 
+static void handle_python_error(USDHook *hook)
+{
+  PyObject *ptype = nullptr;
+  PyObject *pvalue = nullptr;
+  PyObject *ptraceback = nullptr;
+
+  PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+  if (ptype == nullptr) {
+    /* There was no error, which is unexpected. */
+    WM_reportf(RPT_ERROR,
+               "A Python exception occurred invoking USD hook '%s' but couldn't fetch the error",
+               hook->name);
+    return;
+  }
+
+  PyErr_NormalizeException(&ptype, &pvalue, &ptraceback);
+  if (ptraceback != nullptr) {
+    PyException_SetTraceback(pvalue, ptraceback);
+  }
+
+  python::handle<> htype(ptype);
+  python::handle<> hvalue(python::allow_null(pvalue));
+  python::handle<> htraceback(python::allow_null(ptraceback));
+
+  python::object traceback = python::import("traceback");
+  python::object format_exception = traceback.attr("format_exception");
+  python::object formatted_list = format_exception(htype, hvalue, htraceback);
+  python::object formatted = python::str("\n").join(formatted_list);
+  std::string err_msg = python::extract<std::string>(formatted);
+
+  WM_reportf(RPT_ERROR,
+             "An exception occurred invoking USD hook '%s':\n%s",
+             hook->name,
+             err_msg.c_str());
+}
+
 /* Invoke the member function with the given name of all registered hook instances.
  * The given context will be provided as the function argument. */
 template<class T> void call_hooks(const char *func_name, T &hook_context)
@@ -207,10 +246,11 @@ template<class T> void call_hooks(const char *func_name, T &hook_context)
 
       python::call_method<void>(hook_obj, func_name, hook_context);
     }
+    catch (python::error_already_set const &) {
+      handle_python_error(hook);
+    }
     catch (...) {
-      if (PyErr_Occurred()) {
-        PyErr_Print();
-      }
+      WM_reportf(RPT_ERROR, "An exception occurred invoking USD hook '%s'", hook->name);
     }
   }
 
