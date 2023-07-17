@@ -59,10 +59,10 @@ struct EraseOperationExecutor {
   /**
    * Computes the intersection between the eraser tool and a segment
    */
-  int compute_intersections(const float2 &point,
-                            const float2 &point_after,
-                            float &mu0,
-                            float &mu1) const
+  int intersections_with_segment(const float2 &point,
+                                 const float2 &point_after,
+                                 float &mu0,
+                                 float &mu1) const
   {
     /* Compute the intersection points. */
     float2 inter0{};
@@ -145,7 +145,7 @@ struct EraseOperationExecutor {
 
                 float mu0;
                 float mu1;
-                nb_intersections[src_point] = compute_intersections(
+                nb_intersections[src_point] = intersections_with_segment(
                     screen_space_positions[src_point],
                     screen_space_positions[src_point + 1],
                     mu0,
@@ -161,7 +161,7 @@ struct EraseOperationExecutor {
 
           float mu0;
           float mu1;
-          nb_intersections[src_last_point] = compute_intersections(
+          nb_intersections[src_last_point] = intersections_with_segment(
               screen_space_positions[src_last_point],
               screen_space_positions[src_curve_points.first()],
               mu0,
