@@ -2220,7 +2220,7 @@ static void node_draw_basis(const bContext &C,
     bNodePreview *preview_compositor = static_cast<bNodePreview *>(
         BKE_node_instance_hash_lookup(previews, key));
     if (preview_compositor) {
-      preview = preview_compositor->image;
+      preview = preview_compositor->ibuf;
     }
   }
   if (!preview || !(preview->x && preview->y)) {

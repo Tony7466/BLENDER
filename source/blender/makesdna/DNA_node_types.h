@@ -515,7 +515,7 @@ typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;
 
-  struct ImBuf *image;
+  struct ImBuf *ibuf;
 } bNodePreview;
 
 typedef struct bNodeLink {

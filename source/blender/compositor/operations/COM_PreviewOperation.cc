@@ -40,10 +40,10 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
 void PreviewOperation::init_execution()
 {
   input_ = get_input_socket_reader(0);
-  output_image_ = preview_->image;
+  output_image_ = preview_->ibuf;
 
-  if (this->get_width() == uint(preview_->image->x) &&
-      this->get_height() == uint(preview_->image->y))
+  if (this->get_width() == uint(preview_->ibuf->x) &&
+      this->get_height() == uint(preview_->ibuf->y))
   {
     return;
   }

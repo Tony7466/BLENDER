@@ -3113,7 +3113,7 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
   if (!preview) {
     if (create) {
       preview = MEM_cnew<bNodePreview>("node preview");
-      preview->image = IMB_allocImBuf(xsize, ysize, 32, IB_rect);
+      preview->ibuf = IMB_allocImBuf(xsize, ysize, 32, IB_rect);
       BKE_node_instance_hash_insert(previews, key, preview);
     }
     else {
@@ -3128,9 +3128,9 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
 
   /* sanity checks & initialize */
   const uint size[2] = {(uint)xsize, (uint)ysize};
-  IMB_rect_size_set(preview->image, size);
-  if (preview->image->byte_buffer.data == nullptr) {
-    imb_addrectImBuf(preview->image);
+  IMB_rect_size_set(preview->ibuf, size);
+  if (preview->ibuf->byte_buffer.data == nullptr) {
+    imb_addrectImBuf(preview->ibuf);
   }
   /* no clear, makes nicer previews */
 
@@ -3140,14 +3140,14 @@ bNodePreview *node_preview_verify(bNodeInstanceHash *previews,
 bNodePreview *node_preview_copy(bNodePreview *preview)
 {
   bNodePreview *new_preview = static_cast<bNodePreview *>(MEM_dupallocN(preview));
-  new_preview->image = IMB_dupImBuf(preview->image);
+  new_preview->ibuf = IMB_dupImBuf(preview->ibuf);
   return new_preview;
 }
 
 void node_preview_free(bNodePreview *preview)
 {
-  if (preview->image) {
-    IMB_freeImBuf(preview->image);
+  if (preview->ibuf) {
+    IMB_freeImBuf(preview->ibuf);
   }
   MEM_freeN(preview);
 }
