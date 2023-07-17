@@ -111,12 +111,12 @@ struct EraseOperationExecutor {
   {
     using namespace blender::bke;
 
-    const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+    const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
 
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
-        const IndexRange src_curve_points = src_points_by_curves[src_curve];
+        const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
         threading::parallel_for(
             src_curve_points.drop_back(1), 256, [&](const IndexRange src_points) {
@@ -194,61 +194,6 @@ struct EraseOperationExecutor {
     return total_points_inside;
   }
 
-  void interpolate_point_attributes(const blender::bke::CurvesGeometry &src,
-                                    blender::bke::CurvesGeometry &dst,
-                                    const Span<float> dst_point_parameters,
-                                    const Span<int> dst_to_src_curves) const
-  {
-    const bke::AttributeAccessor src_attributes = src.attributes();
-    bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
-    const bke::AnonymousAttributePropagationInfo propagation_info{};
-
-    for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
-             src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
-    {
-      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
-        using T = decltype(dummy);
-        auto src_attr = attribute.src.typed<T>();
-        auto dst_attr = attribute.dst.span.typed<T>();
-
-        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
-          for (const int dst_curve : dst_curves) {
-            const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
-
-            const int src_curve = dst_to_src_curve[dst_curve];
-            const IndexRange src_curve_points = src_points_by_curves[src_curve];
-
-            threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
-              for (const int dst_point : dst_points) {
-                const float dst_param = dst_points_parameters[dst_point];
-                const int src_point = std::floor(dst_param);
-
-                if (!is_cut[dst_point]) {
-                  dst_attr[dst_point] = src_attr[src_point];
-                  continue;
-                }
-
-                const float src_pt_factor = dst_param - src_point;
-
-                /* Compute the endpoint of the segment in the source domain.
-                 * Note that if this is the closing segment of a cyclic curve, then the
-                 * endpoint of the segment in the first point of the curve */
-                const int src_next_point = (src_point == src_curve_points.last()) ?
-                                               src_curve_points.first() :
-                                               (src_point + 1);
-
-                dst_attr[dst_point] = bke::attribute_math::mix2<T>(
-                    src_pt_factor, src_attr[src_point], src_attr[src_next_point]);
-              }
-            });
-          }
-        });
-
-        attribute.dst.finish();
-      });
-    }
-  }
-
   void hard_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
@@ -259,7 +204,7 @@ struct EraseOperationExecutor {
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_points_num = src.points_num();
     const int src_curves_num = src.curves_num();
-    const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+    const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
 
     /* Compute intersections between the eraser and the curves in the source domain. */
     Array<int> nb_intersections(src_points_num, 0);
@@ -288,7 +233,7 @@ struct EraseOperationExecutor {
     Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     int dst_point = -1;
     for (const int src_curve : src.curves_range()) {
-      const IndexRange src_points = src_points_by_curves[src_curve];
+      const IndexRange src_points = src_points_by_curve[src_curve];
 
       for (const int src_point : src_points) {
         if (!is_point_inside[src_point]) {
@@ -433,8 +378,50 @@ struct EraseOperationExecutor {
     }
 
     /* Copy/Interpolate point attributes. */
-    interpolate_point_attributes(
-        src, dst, dst_points_parameters.as_span(), dst_to_src_curve.as_span());
+    for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
+             src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
+    {
+      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        auto src_attr = attribute.src.typed<T>();
+        auto dst_attr = attribute.dst.span.typed<T>();
+
+        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+          for (const int dst_curve : dst_curves) {
+            const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
+
+            const int src_curve = dst_to_src_curve[dst_curve];
+            const IndexRange src_curve_points = src_points_by_curve[src_curve];
+
+            threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
+              for (const int dst_point : dst_points) {
+                const float dst_param = dst_points_parameters[dst_point];
+                const int src_point = std::floor(dst_param);
+
+                if (!is_cut[dst_point]) {
+                  dst_attr[dst_point] = src_attr[src_point];
+                  continue;
+                }
+
+                const float src_pt_factor = dst_param - src_point;
+
+                /* Compute the endpoint of the segment in the source domain.
+                 * Note that if this is the closing segment of a cyclic curve, then the
+                 * endpoint of the segment in the first point of the curve */
+                const int src_next_point = (src_point == src_curve_points.last()) ?
+                                               src_curve_points.first() :
+                                               (src_point + 1);
+
+                dst_attr[dst_point] = bke::attribute_math::mix2<T>(
+                    src_pt_factor, src_attr[src_point], src_attr[src_next_point]);
+              }
+            });
+          }
+        });
+
+        attribute.dst.finish();
+      });
+    }
   }
 
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -477,6 +464,7 @@ struct EraseOperationExecutor {
 
     /* Erasing operator */
     CurvesGeometry dst;
+    hard_eraser(src, screen_space_positions, dst, self.keep_caps);
 
     switch (self.eraser_mode) {
       case GP_BRUSH_ERASER_HARD:
