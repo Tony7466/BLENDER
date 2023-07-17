@@ -856,7 +856,7 @@ static void gpencil_interpolate_fl_from_to(
     float fac = (float)i / (float)it;
     fac = 3.0f * fac * fac - 2.0f * fac * fac * fac; /* Smooth. */
     *r = interpf(to, from, fac);
-    r = POINTER_OFFSET(r, stride);
+    r = static_cast<float *>(POINTER_OFFSET(r, stride));
   }
 }
 
@@ -869,7 +869,7 @@ static void gpencil_interpolate_v4_from_to(
     float fac = (float)i / (float)it;
     fac = 3.0f * fac * fac - 2.0f * fac * fac * fac; /* Smooth. */
     interp_v4_v4v4(r, from, to, fac);
-    r = POINTER_OFFSET(r, stride);
+    r = static_cast<float *>(POINTER_OFFSET(r, stride));
   }
 }
 
@@ -892,31 +892,35 @@ static void gpencil_calculate_stroke_points_curve_segment(
 {
   /* sample points on all 3 axis between two curve points */
   for (uint axis = 0; axis < 3; axis++) {
-    BKE_curve_forward_diff_bezier(cpt->bezt.vec[1][axis],
-                                  cpt->bezt.vec[2][axis],
-                                  cpt_next->bezt.vec[0][axis],
-                                  cpt_next->bezt.vec[1][axis],
-                                  POINTER_OFFSET(points_offset, sizeof(float) * axis),
-                                  (int)resolu,
-                                  stride);
+    BKE_curve_forward_diff_bezier(
+        cpt->bezt.vec[1][axis],
+        cpt->bezt.vec[2][axis],
+        cpt_next->bezt.vec[0][axis],
+        cpt_next->bezt.vec[1][axis],
+        static_cast<float *>(POINTER_OFFSET(points_offset, sizeof(float) * axis)),
+        (int)resolu,
+        stride);
   }
 
   /* interpolate other attributes */
-  gpencil_interpolate_fl_from_to(cpt->pressure,
-                                 cpt_next->pressure,
-                                 POINTER_OFFSET(points_offset, sizeof(float) * 3),
-                                 resolu,
-                                 stride);
-  gpencil_interpolate_fl_from_to(cpt->strength,
-                                 cpt_next->strength,
-                                 POINTER_OFFSET(points_offset, sizeof(float) * 4),
-                                 resolu,
-                                 stride);
-  gpencil_interpolate_v4_from_to(cpt->vert_color,
-                                 cpt_next->vert_color,
-                                 POINTER_OFFSET(points_offset, sizeof(float) * 5),
-                                 resolu,
-                                 stride);
+  gpencil_interpolate_fl_from_to(
+      cpt->pressure,
+      cpt_next->pressure,
+      static_cast<float *>(POINTER_OFFSET(points_offset, sizeof(float) * 3)),
+      resolu,
+      stride);
+  gpencil_interpolate_fl_from_to(
+      cpt->strength,
+      cpt_next->strength,
+      static_cast<float *>(POINTER_OFFSET(points_offset, sizeof(float) * 4)),
+      resolu,
+      stride);
+  gpencil_interpolate_v4_from_to(
+      cpt->vert_color,
+      cpt_next->vert_color,
+      static_cast<float *>(POINTER_OFFSET(points_offset, sizeof(float) * 5)),
+      resolu,
+      stride);
 }
 
 static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
@@ -969,7 +973,7 @@ static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
     /* update the index */
     cpt_curr->point_index = point_index;
     point_index += segment_resolu;
-    points_offset = POINTER_OFFSET(points_offset, segment_resolu * stride);
+    points_offset = static_cast<float *>(POINTER_OFFSET(points_offset, segment_resolu * stride));
   }
 
   bGPDcurve_point *cpt_curr = &curve_point_array[cpt_last];
@@ -1014,7 +1018,7 @@ static float *gpencil_stroke_points_from_editcurve_fixed_resolu(bGPDcurve_point 
         cpt_curr, cpt_next, points_offset, resolution, stride);
     /* update the index */
     cpt_curr->point_index = i * resolution;
-    points_offset = POINTER_OFFSET(points_offset, resolu_stride);
+    points_offset = static_cast<float *>(POINTER_OFFSET(points_offset, resolu_stride));
   }
 
   bGPDcurve_point *cpt_curr = &curve_point_array[array_last];
