@@ -81,7 +81,7 @@ struct EraseOperationExecutor {
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_points_num = src.points_num();
     const int src_curves_num = src.curves_num();
-    const offset_indices::OffsetIndices<int> src_points_by_curves = src.points_by_curve();
+    const OffsetIndices<int> src_points_by_curves = src.points_by_curve();
 
     /* Compute screen space positions. */
     Array<float2> screen_space_positions(src_points_num);
@@ -371,7 +371,7 @@ struct EraseOperationExecutor {
           dst.attributes_for_write().lookup_or_add_for_write_span<int8_t>("end_cap",
                                                                           ATTR_DOMAIN_CURVE);
 
-      offset_indices::OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
+      OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
 
       threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves_range) {
         for (const int dst_curve_index : dst_curves_range) {
