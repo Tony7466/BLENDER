@@ -224,6 +224,7 @@ void CaptureView::render_world()
 
   inst_.reflection_probes.remap_to_octahedral_projection(update_info->object_key);
   inst_.reflection_probes.update_probes_texture_mipmaps();
+  inst_.reflection_probes.extract_spherical_harmonics(update_info->object_key);
 
   GPU_debug_group_end();
 }

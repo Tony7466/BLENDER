@@ -5,7 +5,7 @@
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
+  ReflectionProbeData probe_data = reflection_probe_buf.probes[reflection_probe_index];
 
   ivec3 texture_coord = ivec3(gl_GlobalInvocationID.xyz);
   ivec3 texture_size = imageSize(octahedral_img);

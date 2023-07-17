@@ -50,9 +50,19 @@ void ReflectionProbeModule::init()
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_REMAP));
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_image("octahedral_img", &probes_tx_);
-    pass.bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass.bind_ubo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
     pass.push_constant("reflection_probe_index", &reflection_probe_index_);
     pass.dispatch(&dispatch_probe_pack_);
+  }
+
+  {
+    PassSimple &pass = extract_ps_;
+    pass.init();
+    pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_EXTRACT));
+    pass.bind_texture("reflectionProbes", &probes_tx_);
+    pass.bind_ssbo("reflection_probe_buf", data_buf_);
+    pass.push_constant("reflection_probe_index", &reflection_probe_index_);
+    pass.dispatch(int2(1, 1));
   }
 }
 void ReflectionProbeModule::begin_sync()
@@ -492,6 +502,17 @@ void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
                               1);
 
   instance_.manager->submit(remap_ps_);
+}
+
+void ReflectionProbeModule::extract_spherical_harmonics(uint64_t object_key)
+{
+  const ReflectionProbe &probe = probes_.lookup(object_key);
+
+  /* Update shader parameters that change per dispatch. */
+  reflection_probe_index_ = probe.index;
+
+  instance_.manager->submit(extract_ps_);
+  GPU_memory_barrier(GPU_BARRIER_UNIFORM);
 }
 
 void ReflectionProbeModule::update_probes_texture_mipmaps()

@@ -17,10 +17,7 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
     .local_group_size(REFLECTION_PROBE_GROUP_SIZE, REFLECTION_PROBE_GROUP_SIZE)
     .push_constant(Type::INT, "reflection_probe_index")
-    .storage_buf(REFLECTION_PROBE_BUF_SLOT,
-                 Qualifier::READ,
-                 "ReflectionProbeData",
-                 "reflection_probe_buf[]")
+    .uniform_buf(REFLECTION_PROBE_BUF_SLOT, "ReflectionProbesData", "reflection_probe_buf")
     .sampler(0, ImageType::FLOAT_CUBE, "cubemap_tx")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D_ARRAY, "octahedral_img")
     .compute_source("eevee_reflection_probe_remap_comp.glsl")
@@ -29,12 +26,9 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
 
 /* Extract spherical harmonics band L0 + L1 from octahedral mapped reflection probe. */
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_spherical_harmonics_extract)
-    .local_group_size(1, 1, 1)
+    .local_group_size(1, 1)
     .push_constant(Type::INT, "reflection_probe_index")
-    .storage_buf(REFLECTION_PROBE_BUF_SLOT,
-                 Qualifier::READ_WRITE,
-                 "ReflectionProbesData",
-                 "reflection_probe_buf")
+    .storage_buf(0, Qualifier::READ_WRITE, "ReflectionProbesData", "reflection_probe_buf")
     .sampler(REFLECTION_PROBE_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "reflectionProbes")
     .additional_info("eevee_shared")
     .compute_source("eevee_reflection_probe_spherical_harmonics_extract_comp.glsl")

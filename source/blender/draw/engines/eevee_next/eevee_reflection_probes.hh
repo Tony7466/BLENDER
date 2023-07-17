@@ -102,6 +102,7 @@ class ReflectionProbeModule {
   Texture probes_tx_ = {"Probes"};
 
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
+  PassSimple extract_ps_ = {"Probe.ExtractSH"};
 
   int3 dispatch_probe_pack_ = int3(0);
 
@@ -128,7 +129,7 @@ class ReflectionProbeModule {
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, probes_tx_);
-    pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass->bind_ubo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }
 
   bool do_world_update_get() const;
@@ -166,6 +167,7 @@ class ReflectionProbeModule {
    */
   std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
   void remap_to_octahedral_projection(uint64_t object_key);
+  void extract_spherical_harmonics(uint64_t object_key);
   void update_probes_texture_mipmaps();
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
