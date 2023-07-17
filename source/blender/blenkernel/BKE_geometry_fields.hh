@@ -168,11 +168,11 @@ class GeometryFieldInput : public fn::FieldInput {
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const GeometryFieldContext &context,
                                          const IndexMask &mask) const = 0;
-  virtual fn::VolumeGrid get_volume_grid_for_context(const fn::FieldContext &context,
-                                                     const fn::VolumeMask &mask,
-                                                     ResourceScope &scope) const override;
-  virtual fn::VolumeGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
-                                                     const fn::VolumeMask & /*mask*/) const
+  virtual volume::VolumeGrid get_volume_grid_for_context(const fn::FieldContext &context,
+                                                         const volume::VolumeMask &mask,
+                                                         ResourceScope &scope) const override;
+  virtual volume::VolumeGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
+                                                         const volume::VolumeMask & /*mask*/) const
   {
     return {};
   }
@@ -225,6 +225,9 @@ class InstancesFieldInput : public fn::FieldInput {
 
 class VolumeFieldInput : public fn::FieldInput {
  public:
+  using VolumeGrid = volume::VolumeGrid;
+  using VolumeMask = volume::VolumeMask;
+
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext & /*context*/,
                                  const IndexMask & /*mask*/,
@@ -232,11 +235,11 @@ class VolumeFieldInput : public fn::FieldInput {
   {
     return {};
   }
-  virtual fn::VolumeGrid get_volume_grid_for_context(const fn::FieldContext &context,
-                                                     const fn::VolumeMask &mask,
-                                                     ResourceScope &scope) const override;
-  virtual fn::VolumeGrid get_volume_grid_for_context(const VolumeGridVector &grids,
-                                                     const fn::VolumeMask &mask) const = 0;
+  virtual VolumeGrid get_volume_grid_for_context(const fn::FieldContext &context,
+                                                 const VolumeMask &mask,
+                                                 ResourceScope &scope) const override;
+  virtual VolumeGrid get_volume_grid_for_context(const VolumeGridVector &grids,
+                                                 const VolumeMask &mask) const = 0;
 };
 
 class AttributeFieldInput : public GeometryFieldInput {

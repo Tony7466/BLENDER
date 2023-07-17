@@ -259,6 +259,9 @@ class FieldContext;
  */
 class FieldInput : public FieldNode {
  public:
+  using VolumeGrid = volume::VolumeGrid;
+  using VolumeMask = volume::VolumeMask;
+
   /* The order is also used for sorting in socket inspection. */
   enum class Category {
     NamedAttribute = 0,
@@ -334,6 +337,9 @@ struct FieldInputs {
  */
 class FieldContext {
  public:
+  using VolumeMask = volume::VolumeMask;
+  using VolumeGrid = volume::VolumeGrid;
+
   virtual ~FieldContext() = default;
 
   virtual GVArray get_varray_for_input(const FieldInput &field_input,
@@ -524,11 +530,11 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  * \return The computed virtual arrays for each provided field. If #dst_varrays is passed,
  *   the provided virtual arrays are returned.
  */
-Vector<VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
-                                          Span<GFieldRef> fields_to_evaluate,
-                                          const VolumeMask &mask,
-                                          const FieldContext &context,
-                                          Span<VolumeGrid> dst_grids = {});
+Vector<volume::VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
+                                                  Span<GFieldRef> fields_to_evaluate,
+                                                  const volume::VolumeMask &mask,
+                                                  const FieldContext &context,
+                                                  Span<volume::VolumeGrid> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation

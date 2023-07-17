@@ -157,6 +157,7 @@ set(SRC
   intern/timeit.cc
   intern/uuid.cc
   intern/uvproject.c
+  intern/volume.cc
   intern/voronoi_2d.c
   intern/voxel.c
   intern/winstuff.c

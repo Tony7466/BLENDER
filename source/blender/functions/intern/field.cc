@@ -18,6 +18,9 @@
 
 namespace blender::fn {
 
+using VolumeGrid = volume::VolumeGrid;
+using VolumeMask = volume::VolumeMask;
+
 /* -------------------------------------------------------------------- */
 /** \name Field Evaluation
  * \{ */
