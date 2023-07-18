@@ -258,9 +258,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
   }
 
   if (grease_pencil.runtime->has_stroke_cache()) {
-    const int num_buffer_points = grease_pencil.runtime->stroke_cache.size;
-    total_verts_num += 1 + num_buffer_points + 1;
-    total_triangles_num += num_buffer_points * 2;
+    total_verts_num += 1 + grease_pencil.runtime->stroke_cache.size + 1;
+    total_triangles_num += grease_pencil.runtime->stroke_cache.size * 2;
     /* TODO: triangles for stroke buffer. */
   }
 
