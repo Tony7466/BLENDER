@@ -45,7 +45,7 @@
     (typeof(var##_type_))(var ? BLI_linklist_pop_pool(&(var), var##_pool_) : NULL)
 #  define BLI_LINKSTACK_POP_DEFAULT(var, r) \
     (typeof(var##_type_))(var ? BLI_linklist_pop_pool(&(var), var##_pool_) : r)
-#elif define(_MSC_VER) && defined(__cplusplus)
+#elif defined(_MSC_VER) && defined(__cplusplus)
 #  define BLI_LINKSTACK_PUSH(var, ptr) \
     (CHECK_TYPE_INLINE_NONCONST(ptr, decltype(var##_type_)), \
      BLI_linklist_prepend_pool(&(var), ptr, var##_pool_))
