@@ -673,6 +673,34 @@ struct EraseOperationExecutor {
             this->eraser_radius * this->eraser_radius);
   }
 
+  /* Computes the new curve topology of a curves geometry after the removal of a set of points.
+   */
+  struct CurvesTopologyTransferData {
+    int dst_curves_num;
+    Array<int> dst_to_src_curve;
+    Array<int> dst_curve_offsets;
+
+    CurvesTopologyTransferData(const int size)
+        : dst_curves_num(size), dst_to_src_curve(size), dst_curve_offsets(size + 1)
+    {
+    }
+  };
+
+  CurvesTopologyTransferData split_curves(const blender::bke::CurvesGeometry &src,
+                                          const IndexMask &src_points_to_remove) const
+  {
+    const int dst_curves_num = src.curves_num();
+    CurvesTopologyTransferData dst_transfer(dst_curves_num);
+
+    array_utils::copy(src.offsets(), dst_transfer.dst_curve_offsets.as_mutable_span(), 256);
+
+    for (const int dst_curve : IndexRange(dst_curves_num)) {
+      dst_transfer.dst_to_src_curve[dst_curve] = dst_curve;
+    }
+
+    return dst_transfer;
+  }
+
   void soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
@@ -686,6 +714,7 @@ struct EraseOperationExecutor {
     const std::string opacity_attr = "opacity";
 
     const int src_points_num = src.points_num();
+    const int src_curves_num = src.curves_num();
 
     const bke::AttributeAccessor src_attributes = src.attributes();
     VArray<float> src_opacity = *(
@@ -715,14 +744,72 @@ struct EraseOperationExecutor {
     });
 
     /* Mark points for removal. */
+    IndexMaskMemory memory;
+    IndexMask src_points_to_remove = IndexMask::from_predicate(
+        src.points_range(), GrainSize(256), memory, [&](const int64_t src_point) {
+          return (src_new_opacity[src_point] < opacity_threshold);
+        });
 
-    /* Remove points for which opacity is under a given threshold. */
+    const int dst_points_num = src_points_num;
+
+    /* Compute the destination's curve topology. */
+    CurvesTopologyTransferData dst_transfer = split_curves(src, src_points_to_remove);
+
+    const Array<int> &dst_curves_offset = dst_transfer.dst_curve_offsets;
+    const Array<int> &dst_to_src_curve = dst_transfer.dst_to_src_curve;
+    const int dst_curves_num = dst_transfer.dst_curves_num;
 
     /* Build destination curves geometry. */
-    dst = std::move(src);
+    dst.resize(dst_points_num, dst_curves_num);
+    array_utils::copy(dst_transfer.dst_curve_offsets.as_span(), dst.offsets_for_write(), 256);
+
+    /* For now, we don't remove points. */
+    Array<std::pair<int, float>> dst_points_parameters(dst_points_num);
+    for (const int dst_point : dst.points_range()) {
+      dst_points_parameters[dst_point] = {dst_point, 0.0f};
+    }
+
+    const OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
+
+    bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
+
+    const AnonymousAttributePropagationInfo propagation_info{};
+
+    /* Copy curves attributes. */
+    for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
+             src_attributes, dst_attributes, ATTR_DOMAIN_MASK_CURVE, propagation_info))
+    {
+      bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
+      attribute.dst.finish();
+    }
+
+    /* Copy points attributes. */
+    for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
+             src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
+    {
+      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        auto src_attr = attribute.src.typed<T>();
+        auto dst_attr = attribute.dst.span.typed<T>();
+
+        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+          for (const int dst_curve : dst_curves) {
+            const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
+
+            threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
+              for (const int dst_point : dst_points) {
+                const int src_point = dst_points_parameters[dst_point].first;
+                dst_attr[dst_point] = src_attr[src_point];
+              }
+            });
+          }
+        });
+
+        attribute.dst.finish();
+      });
+    }
 
     /* Write the opacity attribute*/
-    bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
     SpanAttributeWriter<float> dst_opacity = dst_attributes.lookup_or_add_for_write_span<float>(
         opacity_attr, ATTR_DOMAIN_POINT);
 
