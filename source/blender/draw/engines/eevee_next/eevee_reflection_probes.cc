@@ -383,6 +383,13 @@ void ReflectionProbeModule::do_world_update_set(bool value)
 {
   ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
   world_probe.do_render = value;
+  world_probe.do_update_irradiance = value;
+}
+
+void ReflectionProbeModule::do_world_update_irradiance_set(bool value)
+{
+  ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
+  world_probe.do_update_irradiance = value;
 }
 
 /* -------------------------------------------------------------------- */
@@ -447,7 +454,7 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
   const bool do_probe_sync = instance_.do_probe_sync();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-    if (!item.value.do_render) {
+    if (!item.value.do_render && !item.value.do_update_irradiance) {
       continue;
     }
     if (probe_type == ReflectionProbe::Type::World && item.value.type != probe_type) {
@@ -460,7 +467,6 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     if (item.value.type == ReflectionProbe::Type::Probe && !do_probe_sync) {
       continue;
     }
-    probes_.lookup(item.key).do_render = false;
 
     ReflectionProbeData &probe_data = data_buf_[item.value.index];
     ReflectionProbeUpdateInfo info = {};
@@ -469,6 +475,12 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.resolution = 1 << (max_shift - probe_data.layer_subdivision - 1);
     info.clipping_distances = item.value.clipping_distances;
     info.probe_pos = float3(probe_data.pos);
+    info.do_render = item.value.do_render;
+    info.do_update_irradiance = item.value.do_update_irradiance;
+
+    ReflectionProbe &probe = probes_.lookup(item.key);
+    probe.do_render = false;
+    probe.do_update_irradiance = false;
 
     if (cubemap_tx_.ensure_cube(GPU_RGBA16F,
                                 info.resolution,

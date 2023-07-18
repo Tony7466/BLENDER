@@ -38,6 +38,7 @@ struct ReflectionProbe {
   bool do_update_data = false;
   /* Should the area in the probes_tx_ be updated? */
   bool do_render = false;
+  bool do_update_irradiance = false;
 
   /**
    * Probes that aren't used during a draw can be cleared.
@@ -134,6 +135,7 @@ class ReflectionProbeModule {
 
   bool do_world_update_get() const;
   void do_world_update_set(bool value);
+  void do_world_update_irradiance_set(bool value);
 
   void debug_print() const;
 
@@ -196,6 +198,9 @@ struct ReflectionProbeUpdateInfo {
 
   float2 clipping_distances;
   uint64_t object_key;
+
+  bool do_render;
+  bool do_update_irradiance;
 };
 
 /** \} */

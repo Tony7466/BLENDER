@@ -70,7 +70,7 @@ void IrradianceCache::init()
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
 
-    inst_.reflection_probes.do_world_update_set(true);
+    inst_.reflection_probes.do_world_update_irradiance_set(true);
   }
 
   if (irradiance_atlas_tx_.is_valid() == false) {
