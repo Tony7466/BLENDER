@@ -3654,10 +3654,33 @@ static bNode *find_node_by_repeat_item(PointerRNA *ptr)
   return nullptr;
 }
 
+static bNode *find_node_by_bake_item(PointerRNA *ptr)
+{
+  const NodeGeometryBakeItem *item = static_cast<const NodeGeometryBakeItem *>(ptr->data);
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  ntree->ensure_topology_cache();
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeBake")) {
+    auto *storage = static_cast<NodeGeometryBake *>(node->storage);
+    if (storage->items_span().contains_ptr(item)) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
 static void rna_RepeatItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = find_node_by_repeat_item(ptr);
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+}
+
+static void rna_NodeGeometryBakeItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode *node = find_node_by_bake_item(ptr);
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
@@ -3693,6 +3716,21 @@ static const EnumPropertyItem *rna_RepeatItem_socket_type_itemf(bContext * /*C*/
   return itemf_function_check(node_socket_data_type_items, rna_RepeatItem_socket_type_supported);
 }
 
+static bool rna_NodeGeometryBakeItem_socket_type_supported(const EnumPropertyItem *item)
+{
+  return NodeGeometryBakeItem::supports_type(eNodeSocketDatatype(item->value));
+}
+
+static const EnumPropertyItem *rna_NodeGeometryBakeItem_socket_type_itemf(bContext * /*C*/,
+                                                                          PointerRNA * /*ptr*/,
+                                                                          PropertyRNA * /*prop*/,
+                                                                          bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(node_socket_data_type_items,
+                              rna_NodeGeometryBakeItem_socket_type_supported);
+}
+
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
@@ -3712,6 +3750,14 @@ static void rna_RepeatItem_name_set(PointerRNA *ptr, const char *value)
   storage->set_item_name(*item, value);
 }
 
+static void rna_NodeGeometryBakeItem_name_set(PointerRNA *ptr, const char *value)
+{
+  bNode *node = find_node_by_bake_item(ptr);
+  NodeGeometryBakeItem *item = static_cast<NodeGeometryBakeItem *>(ptr->data);
+  auto *storage = static_cast<NodeGeometryBake *>(node->storage);
+  storage->set_item_name(*item, value);
+}
+
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
   NodeSimulationItem *item = static_cast<NodeSimulationItem *>(ptr->data);
@@ -3723,6 +3769,14 @@ static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 static void rna_RepeatItem_color_get(PointerRNA *ptr, float *values)
 {
   NodeRepeatItem *item = static_cast<NodeRepeatItem *>(ptr->data);
+
+  const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
+  ED_node_type_draw_color(socket_type_idname, values);
+}
+
+static void rna_NodeGeometryBakeItem_color_get(PointerRNA *ptr, float *values)
+{
+  NodeGeometryBakeItem *item = static_cast<NodeGeometryBakeItem *>(ptr->data);
 
   const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
   ED_node_type_draw_color(socket_type_idname, values);
@@ -3829,6 +3883,24 @@ static NodeRepeatItem *rna_NodeGeometryRepeatOutput_items_new(
   return item;
 }
 
+static NodeGeometryBakeItem *rna_NodeGeometryBake_items_new(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
+{
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  NodeGeometryBakeItem *item = storage->add_item(name, eNodeSocketDatatype(socket_type));
+  if (item == nullptr) {
+    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  }
+  else {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return item;
+}
+
 static void rna_NodeGeometrySimulationOutput_items_remove(
     ID *id, bNode *node, Main *bmain, ReportList *reports, NodeSimulationItem *item)
 {
@@ -3873,6 +3945,33 @@ static void rna_NodeGeometryRepeatOutput_items_remove(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+static void rna_NodeGeometryBake_items_remove(
+    ID *id, bNode *node, Main *bmain, ReportList *reports, NodeGeometryBakeItem *item)
+{
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  if (!storage->items_span().contains_ptr(item)) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
+    return;
+  }
+
+  const int remove_index = item - storage->items;
+  NodeGeometryBakeItem *old_items = storage->items;
+  storage->items = MEM_cnew_array<NodeGeometryBakeItem>(storage->items_num - 1, __func__);
+  std::copy_n(old_items, remove_index, storage->items);
+  std::copy_n(old_items + remove_index + 1,
+              storage->items_num - remove_index - 1,
+              storage->items + remove_index);
+
+  MEM_SAFE_FREE(old_items[remove_index].name);
+  storage->items_num--;
+  MEM_SAFE_FREE(old_items);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id, bNode *node, Main *bmain)
 {
   NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
@@ -3888,6 +3987,17 @@ static void rna_NodeGeometryRepeatOutput_items_clear(ID * /*id*/, bNode *node, M
 {
   NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
   for (NodeRepeatItem &item : storage->items_span()) {
+    MEM_SAFE_FREE(item.name);
+  }
+  MEM_SAFE_FREE(storage->items);
+  storage->items_num = 0;
+  storage->active_index = 0;
+}
+
+static void rna_NodeGeometryBake_items_clear(ID * /*id*/, bNode *node, Main * /*bmain*/)
+{
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  for (NodeGeometryBakeItem &item : storage->items_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(storage->items);
@@ -3944,6 +4054,37 @@ static void rna_NodeGeometryRepeatOutput_items_move(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+static void rna_NodeGeometryBake_items_move(
+    ID *id, bNode *node, Main *bmain, int from_index, int to_index)
+{
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  if (from_index < 0 || from_index >= storage->items_num || to_index < 0 ||
+      to_index >= storage->items_num)
+  {
+    return;
+  }
+
+  if (from_index < to_index) {
+    const NodeGeometryBakeItem tmp = storage->items[from_index];
+    for (int i = from_index; i < to_index; i++) {
+      storage->items[i] = storage->items[i + 1];
+    }
+    storage->items[to_index] = tmp;
+  }
+  else if (from_index > to_index) {
+    const NodeGeometryBakeItem tmp = storage->items[from_index];
+    for (int i = from_index; i > to_index; i--) {
+      storage->items[i] = storage->items[i - 1];
+    }
+    storage->items[to_index] = tmp;
+  }
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
 static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
@@ -3966,6 +4107,19 @@ static PointerRNA rna_NodeGeometryRepeatOutput_active_item_get(PointerRNA *ptr)
   return r_ptr;
 }
 
+static PointerRNA rna_NodeGeometryBake_active_item_get(PointerRNA *ptr)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  blender::MutableSpan<NodeGeometryBakeItem> items = storage->items_span();
+  PointerRNA r_ptr{};
+  if (items.index_range().contains(storage->active_index)) {
+    RNA_pointer_create(
+        ptr->owner_id, &RNA_NodeGeometryBakeItem, &items[storage->active_index], &r_ptr);
+  }
+  return r_ptr;
+}
+
 static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr,
                                                              PointerRNA value,
                                                              ReportList * /*reports*/)
@@ -3983,6 +4137,18 @@ static void rna_NodeGeometryRepeatOutput_active_item_set(PointerRNA *ptr,
   bNode *node = static_cast<bNode *>(ptr->data);
   NodeGeometryRepeatOutput *storage = static_cast<NodeGeometryRepeatOutput *>(node->storage);
   NodeRepeatItem *item = static_cast<NodeRepeatItem *>(value.data);
+  if (storage->items_span().contains_ptr(item)) {
+    storage->active_index = item - storage->items;
+  }
+}
+
+static void rna_NodeGeometryBake_active_item_set(PointerRNA *ptr,
+                                                 PointerRNA value,
+                                                 ReportList * /*reports*/)
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeGeometryBake *storage = static_cast<NodeGeometryBake *>(node->storage);
+  NodeGeometryBakeItem *item = static_cast<NodeGeometryBakeItem *>(value.data);
   if (storage->items_span().contains_ptr(item)) {
     storage->active_index = item - storage->items;
   }
@@ -9920,6 +10086,113 @@ static void def_geo_repeat_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
+static void rna_def_bake_item(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+
+  StructRNA *srna = RNA_def_struct(brna, "NodeGeometryBakeItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Bake Item", "");
+  RNA_def_struct_sdna(srna, "NodeGeometryBakeItem");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_NodeGeometryBakeItem_name_set");
+  RNA_def_property_ui_text(prop, "Name", "");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeGeometryBakeItem_update");
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, node_socket_data_type_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_NodeGeometryBakeItem_socket_type_itemf");
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeGeometryBakeItem_update");
+
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_NodeGeometryBakeItem_color_get", nullptr, nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Color", "Color of the corresponding socket type in the node editor");
+}
+
+static void rna_def_geo_bake_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *parm;
+  FunctionRNA *func;
+
+  srna = RNA_def_struct(brna, "NodeGeometryBakeItems", nullptr);
+  RNA_def_struct_sdna(srna, "bNode");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of bake items");
+
+  func = RNA_def_function(srna, "new", "rna_NodeGeometryBake_items_new");
+  RNA_def_function_ui_description(func, "Add a item to this bake node");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_enum(func,
+                      "socket_type",
+                      node_socket_data_type_items,
+                      SOCK_GEOMETRY,
+                      "Socket Type",
+                      "Socket type of the item");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(func, "item", "NodeGeometryBakeItem", "Item", "New item");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_NodeGeometryBake_items_remove");
+  RNA_def_function_ui_description(func, "Remove an item from this bake node");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", "NodeGeometryBakeItem", "Item", "The item to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", "rna_NodeGeometryBake_items_clear");
+  RNA_def_function_ui_description(func, "Remove all items from this bake node");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+
+  func = RNA_def_function(srna, "move", "rna_NodeGeometryBake_items_move");
+  RNA_def_function_ui_description(func, "Move an item to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
+static void def_geo_bake(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryBake", "storage");
+
+  prop = RNA_def_property(srna, "bake_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
+  RNA_def_property_struct_type(prop, "NodeGeometryBakeItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryBakeItems");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "NodeGeometryBakeItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeGeometryBake_active_item_get",
+                                 "rna_NodeGeometryBake_active_item_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Active Item", "");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+}
+
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -12395,6 +12668,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
 
   rna_def_simulation_state_item(brna);
   rna_def_repeat_item(brna);
+  rna_def_bake_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -12448,6 +12722,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_cmp_output_file_slot_layer(brna);
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
+  rna_def_geo_bake_items(brna);
 
   rna_def_node_instance_hash(brna);
 }
