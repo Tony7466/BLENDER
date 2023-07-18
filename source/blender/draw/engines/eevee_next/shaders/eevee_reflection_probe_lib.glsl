@@ -16,3 +16,10 @@ vec3 reflection_probes_world_sample(vec3 L, float lod)
   ReflectionProbeData probe_data = reflection_probe_buf[0];
   return reflection_probes_sample(L, lod, probe_data).rgb;
 }
+
+vec4 reflection_probes_clamp_brightness(vec4 light)
+{
+  float luma = max(1e-8, max(light.x, max(light.y, light.z)));
+  light.xyz *= 1.0 - max(0.0, luma - REFLECTION_PROBE_MAX_LIGHT) / luma;
+  return light;
+}

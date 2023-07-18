@@ -48,6 +48,7 @@ void main()
     vec2 rand = hammersley_2d(sample_index + sample_offset, total_samples);
     vec3 direction = sample_sphere(rand);
     vec4 light = reflection_probes_sample(direction, 0.0, probe_data);
+    light = reflection_probes_clamp_brightness(light);
     spherical_harmonics_encode_signal_sample(
         direction, light * sample_weight, cooefs[store_index]);
   }
