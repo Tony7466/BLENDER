@@ -24,10 +24,9 @@ shared SphericalHarmonicL1 cooefs[gl_WorkGroupSize.x];
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
 
   /* Initialize workgroup result. */
-  if (gl_GlobalInvocationID.x == 0) {
+  if (gl_LocalInvocationID.x == 0) {
     for (int i = 0; i < gl_WorkGroupSize.x; i++) {
       cooefs[i].L0.M0 = vec4(0.0);
       cooefs[i].L1.Mn1 = vec4(0.0);
@@ -36,20 +35,25 @@ void main()
     }
   }
 
-  memoryBarrierShared();
+  barrier();
 
-  /* Perform one sample. */
-  uint store_index = gl_WorkGroupID.x;
-  float total_samples = float(gl_NumWorkGroups.x * gl_WorkGroupSize.x);
-  float sample_index = float(gl_GlobalInvocationID.x);
+  /* Perform multiple sample. */
+  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
+  uint store_index = gl_LocalInvocationID.x;
+  float total_samples = float(gl_WorkGroupSize.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
   float sample_weight = 4.0 * M_PI / total_samples;
-  vec2 rand = hammersley_2d(sample_index, total_samples);
-  vec3 direction = sample_sphere(rand);
-  vec4 light = reflection_probes_sample(direction, 0.0, probe_data);
-  spherical_harmonics_encode_signal_sample(direction, light * sample_weight, cooefs[store_index]);
+  float sample_offset = float(gl_LocalInvocationID.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
+  for (int sample_index = 0; sample_index < REFLECTION_PROBE_SH_SAMPLES_PER_GROUP; sample_index++)
+  {
+    vec2 rand = hammersley_2d(sample_index + sample_offset, total_samples);
+    vec3 direction = sample_sphere(rand);
+    vec4 light = reflection_probes_sample(direction, 0.0, probe_data);
+    spherical_harmonics_encode_signal_sample(
+        direction, light * sample_weight, cooefs[store_index]);
+  }
 
-  memoryBarrierShared();
-  if (gl_GlobalInvocationID.x != 0) {
+  barrier();
+  if (gl_LocalInvocationID.x != 0) {
     return;
   }
 
@@ -59,7 +63,7 @@ void main()
   result.L1.Mn1 = vec4(0.0);
   result.L1.M0 = vec4(0.0);
   result.L1.Mp1 = vec4(0.0);
-  for (int i = 0; i < gl_NumWorkGroups.x; i++) {
+  for (int i = 0; i < gl_WorkGroupSize.x; i++) {
     result.L0.M0 += cooefs[i].L0.M0;
     result.L1.Mn1 += cooefs[i].L1.Mn1;
     result.L1.M0 += cooefs[i].L1.M0;

@@ -63,7 +63,7 @@ void ReflectionProbeModule::init()
     pass.push_constant("reflection_probe_index", &reflection_probe_index_);
     pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
     bind_resources(&pass);
-    pass.dispatch(int2(REFLECTION_PROBE_SH_DISPATCH_SIZE, 1));
+    pass.dispatch(int2(1, 1));
   }
 }
 void ReflectionProbeModule::begin_sync()
