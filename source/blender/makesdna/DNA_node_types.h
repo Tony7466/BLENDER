@@ -2597,6 +2597,11 @@ typedef enum GeometryNodeCurveSampleMode {
   GEO_NODE_CURVE_SAMPLE_LENGTH = 1,
 } GeometryNodeCurveSampleMode;
 
+typedef enum GeometryNodeShiftForCurveMode {
+  GEO_NODE_SHIFT_FOR_CURVE_FACTOR = 0,
+  GEO_NODE_SHIFT_FOR_CURVE_LENGTH = 1,
+} GeometryNodeShiftForCurveMode;
+
 typedef enum GeometryNodeCurveFilletMode {
   GEO_NODE_CURVE_FILLET_BEZIER = 0,
   GEO_NODE_CURVE_FILLET_POLY = 1,

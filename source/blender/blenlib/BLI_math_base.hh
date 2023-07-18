@@ -30,6 +30,11 @@ template<typename T> inline bool is_any_zero(const T &a)
   return is_zero(a);
 }
 
+template<typename T> inline bool is_in_range(const T &a, const T &min, const T &max)
+{
+  return min <= a && a <= max;
+}
+
 template<typename T> inline T abs(const T &a)
 {
   return std::abs(a);

@@ -9349,6 +9349,22 @@ static void def_geo_curve_sample(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_shift_for_curve(StructRNA *srna)
+{
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_SHIFT_FOR_CURVE_FACTOR, "FACTOR", 0, "Factor", ""},
+      {GEO_NODE_SHIFT_FOR_CURVE_LENGTH, "LENGTH", 0, "Length", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Method for sampling input");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
 static void def_geo_triangulate(StructRNA *srna)
 {
   PropertyRNA *prop;
