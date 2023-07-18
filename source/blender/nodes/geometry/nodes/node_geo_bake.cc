@@ -149,10 +149,21 @@ static void draw_bake_ui(uiLayout *layout,
   }
 
   if (is_baked) {
-    uiItemL(layout, "Baked", ICON_LOCKED);
+    const SubFrame bake_start = bake_storage->states.first().frame;
+    const SubFrame bake_end = bake_storage->states.last().frame;
+
+    if (bake_start == bake_end) {
+      uiItemL(layout, "Baked still", ICON_LOCKED);
+    }
+    else {
+      char message[1024];
+      BLI_snprintf(
+          message, sizeof(message), N_("Baked %d - %d"), bake_start.frame(), bake_end.frame());
+      uiItemL(layout, message, ICON_LOCKED);
+    }
   }
   else {
-    uiItemL(layout, "Not Baked", ICON_UNLOCKED);
+    uiItemL(layout, "Not baked", ICON_UNLOCKED);
   }
 }
 
