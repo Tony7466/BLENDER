@@ -190,8 +190,8 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
     base_initialized = true;
   }
   if (!base_initialized_gpencil && with_gpencil) {
-    G_pr_main_grease_pencil = load_main_from_memory(
-        datatoc_preview_grease_pencil_blend, datatoc_preview_grease_pencil_blend_size);
+    G_pr_main_grease_pencil = load_main_from_memory(datatoc_preview_grease_pencil_blend,
+                                                    datatoc_preview_grease_pencil_blend_size);
     base_initialized_gpencil = true;
   }
 #endif

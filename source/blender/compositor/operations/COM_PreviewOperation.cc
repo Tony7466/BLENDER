@@ -6,6 +6,7 @@
 
 #include "BKE_node.hh"
 #include "IMB_colormanagement.h"
+#include "IMB_imbuf.h"
 
 namespace blender::compositor {
 
@@ -17,7 +18,7 @@ PreviewOperation::PreviewOperation(const ColorManagedViewSettings *view_settings
 {
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   preview_ = nullptr;
-  output_buffer_ = nullptr;
+  output_image_ = nullptr;
   input_ = nullptr;
   divider_ = 1.0f;
   view_settings_ = view_settings;
@@ -39,28 +40,22 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
 void PreviewOperation::init_execution()
 {
   input_ = get_input_socket_reader(0);
+  output_image_ = preview_->ibuf;
 
-  if (this->get_width() == uint(preview_->image.xsize) &&
-      this->get_height() == uint(preview_->image.ysize))
-  {
-    output_buffer_ = preview_->image.rect;
+  if (this->get_width() == uint(preview_->ibuf->x) &&
+      this->get_height() == uint(preview_->ibuf->y)) {
+    return;
   }
-
-  if (output_buffer_ == nullptr) {
-    output_buffer_ = (uchar *)MEM_callocN(sizeof(uchar) * 4 * get_width() * get_height(),
-                                          "PreviewOperation");
-    if (preview_->image.rect) {
-      MEM_freeN(preview_->image.rect);
-    }
-    preview_->image.xsize = get_width();
-    preview_->image.ysize = get_height();
-    preview_->image.rect = output_buffer_;
+  const uint size[2] = {get_width(), get_height()};
+  IMB_rect_size_set(output_image_, size);
+  if (output_image_->byte_buffer.data == nullptr) {
+    imb_addrectImBuf(output_image_);
   }
 }
 
 void PreviewOperation::deinit_execution()
 {
-  output_buffer_ = nullptr;
+  output_image_ = nullptr;
   input_ = nullptr;
 }
 
@@ -84,7 +79,7 @@ void PreviewOperation::execute_region(rcti *rect, uint /*tile_number*/)
       color[3] = 1.0f;
       input_->read_sampled(color, rx, ry, PixelSampler::Nearest);
       IMB_colormanagement_processor_apply_v4(cm_processor, color);
-      rgba_float_to_uchar(output_buffer_ + offset, color);
+      rgba_float_to_uchar(output_image_->byte_buffer.data + offset, color);
       offset += 4;
     }
   }
@@ -167,8 +162,10 @@ void PreviewOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/,
 
   rcti buffer_area;
   BLI_rcti_init(&buffer_area, 0, this->get_width(), 0, this->get_height());
-  BuffersIteratorBuilder<uchar> it_builder(
-      output_buffer_, buffer_area, area, COM_data_type_num_channels(DataType::Color));
+  BuffersIteratorBuilder<uchar> it_builder(output_image_->byte_buffer.data,
+                                           buffer_area,
+                                           area,
+                                           COM_data_type_num_channels(DataType::Color));
 
   for (BuffersIterator<uchar> it = it_builder.build(); !it.is_end(); ++it) {
     const float rx = it.x / divider_;

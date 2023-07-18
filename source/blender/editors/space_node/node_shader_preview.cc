@@ -112,9 +112,7 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
   return compute_context_builder.hash();
 }
 
-NodePreviewImage *ED_node_get_preview_rect(bNodeTree *ntree,
-                                           NestedNodePreviewMap *data,
-                                           const bNode *node)
+ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, const bNode *node)
 {
   return &data->node_previews.lookup_or_add_cb(node->identifier, [&]() {
     NodePreviewImage image;
@@ -584,7 +582,7 @@ static void shader_preview_startjob(void *customdata,
       continue;
     }
 
-    NodePreviewImage *image = ED_node_get_preview_rect(active_nodetree, job_data->ng_data, node);
+    NodePreviewImage *image = ED_node_get_preview_ibuf(active_nodetree, job_data->ng_data, node);
     if (size_changed) {
       if (image->xsize != job_data->ng_data->pr_size) {
         if (image->rect) {

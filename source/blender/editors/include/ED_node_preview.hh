@@ -13,6 +13,7 @@ extern "C" {
 
 struct bContext;
 struct bNodeTree;
+struct ImBuf;
 
 struct NestedNodePreviewMap {
   blender::Map<int, NodePreviewImage> node_previews;
@@ -30,9 +31,7 @@ struct NestedNodePreviewMap {
 };
 
 void ED_spacenode_free_previews(SpaceNode *sn);
-NodePreviewImage *ED_node_get_preview_rect(bNodeTree *ntree,
-                                           NestedNodePreviewMap *data,
-                                           const bNode *node);
+ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, const bNode *node);
 NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
 
 #ifdef __cplusplus

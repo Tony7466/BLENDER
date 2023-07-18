@@ -218,7 +218,7 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
     TransData *td = tc->data;
     for (a = 0; a < tc->data_len; a++, td++) {
       if (td->flag & TD_SELECTED) {
-        /* Initialize, it was mallocced. */
+        /* Initialize, it was malloced. */
         float vec[3];
         td->rdist = 0.0f;
 
@@ -421,7 +421,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
     }
   }
 
-  while ((td = static_cast<TransData *>(BLI_LINKSTACK_POP(queue)))) {
+  while ((td = BLI_LINKSTACK_POP(queue))) {
     float dist;
     float vec[3];
 
