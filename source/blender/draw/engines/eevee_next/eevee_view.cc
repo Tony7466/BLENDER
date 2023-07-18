@@ -203,8 +203,6 @@ void CaptureView::render_world()
     return;
   }
 
-  GPU_debug_capture_begin();
-
   View view = {"Capture.View"};
   GPU_debug_group_begin("World.Capture");
 
@@ -228,8 +226,6 @@ void CaptureView::render_world()
   inst_.reflection_probes.update_probes_texture_mipmaps();
 
   GPU_debug_group_end();
-
-  GPU_debug_capture_end();
 }
 
 void CaptureView::render_probes()
