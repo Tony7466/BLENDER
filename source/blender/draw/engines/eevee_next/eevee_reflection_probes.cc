@@ -534,14 +534,12 @@ void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
 
 void ReflectionProbeModule::update_irradiance(uint64_t object_key)
 {
-  GPU_debug_capture_begin();
   const ReflectionProbe &probe = probes_.lookup(object_key);
 
   /* Update shader parameters that change per dispatch. */
   reflection_probe_index_ = probe.index;
 
   instance_.manager->submit(update_irradiance_ps_);
-  GPU_debug_capture_end();
 }
 
 void ReflectionProbeModule::update_probes_texture_mipmaps()
