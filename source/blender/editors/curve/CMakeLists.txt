@@ -19,7 +19,7 @@ set(INC_SYS
 )
 
 set(SRC
-  curve_ops.c
+  curve_ops.cc
   editcurve.c
   editcurve_add.c
   editcurve_paint.c
