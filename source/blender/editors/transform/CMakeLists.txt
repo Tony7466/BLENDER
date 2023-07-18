@@ -10,12 +10,9 @@ set(INC
   ../../depsgraph
   ../../gpu
   ../../ikplugin
-  ../../makesrna
   ../../render
   ../../sequencer
   ../../windowmanager
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 set(INC_SYS
 )
@@ -122,10 +119,9 @@ set(LIB
   bf_editor_mask
   bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 
 blender_add_lib(bf_editor_transform "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_transform bf_rna)

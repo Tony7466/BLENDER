@@ -9,7 +9,6 @@ set(INC
   ../../blentranslation
   ../../editors/include
   ../../functions
-  ../../makesrna
   ../../windowmanager
 )
 
@@ -49,6 +48,7 @@ set(LIB
   PRIVATE bf::dna
   bf_functions
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_nodes_function "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

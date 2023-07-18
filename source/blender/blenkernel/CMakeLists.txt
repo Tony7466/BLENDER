@@ -16,7 +16,6 @@ set(INC
   ../gpu
   ../ikplugin
   ../imbuf
-  ../makesrna
   ../modifiers
   ../nodes
   ../render
@@ -35,8 +34,6 @@ set(INC
   ../../../extern/curve_fit_nd
   ../../../extern/fmtlib/include
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -547,7 +544,7 @@ set(LIB
   bf_intern_opensubdiv  # Uses stub when disabled.
   bf_modifiers
   bf_nodes
-  bf_rna
+  PRIVATE bf::rna
   bf_shader_fx
   bf_simulation
   extern_fmtlib
@@ -814,8 +811,6 @@ endif()
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 add_library(bf::blenkernel ALIAS bf_blenkernel)
 
-# RNA_prototypes.h
-add_dependencies(bf_blenkernel bf_rna)
 
 
 if(WITH_GTESTS)

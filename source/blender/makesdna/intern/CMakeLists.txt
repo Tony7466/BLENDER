@@ -133,6 +133,13 @@ set(SRC
   dna_utils.h
 )
 
+set(LIB
+  PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::guardedalloc
+  PUBLIC bf::blenlib
+)
+
+
 set_source_files_properties(
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
   ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h

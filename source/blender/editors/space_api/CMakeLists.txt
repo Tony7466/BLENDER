@@ -7,7 +7,6 @@ set(INC
   ../io
   ../../asset_system
   ../../gpu
-  ../../makesrna
   ../../windowmanager
 )
 
@@ -44,6 +43,7 @@ set(LIB
   bf_editor_space_userpref
   bf_editor_space_view3d
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_editor_space_api "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

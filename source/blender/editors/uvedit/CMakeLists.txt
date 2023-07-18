@@ -9,11 +9,8 @@ set(INC
   ../../depsgraph
   ../../geometry
   ../../gpu
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/eigen
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -42,10 +39,9 @@ set(LIB
   bf_bmesh
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 
 blender_add_lib(bf_editor_uvedit "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_uvedit bf_rna)

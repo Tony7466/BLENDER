@@ -10,7 +10,6 @@ set(INC
   ../../depsgraph
   ../../editors/include
   ../../makesdna
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/guardedalloc
@@ -40,6 +39,7 @@ set(LIB
   PRIVATE bf::extern::nanosvg
   PRIVATE bf::intern::guardedalloc
   bf_io_common
+  PRIVATE bf::rna
 )
 
 if(WITH_PUGIXML)

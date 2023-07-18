@@ -6,7 +6,6 @@ set(INC
   ../include
   ../../blentranslation
   ../../depsgraph
-  ../../makesrna
   ../../sequencer
   ../../windowmanager
 )
@@ -24,6 +23,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 

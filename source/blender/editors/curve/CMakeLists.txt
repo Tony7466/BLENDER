@@ -7,12 +7,9 @@ set(INC
   ../../blentranslation
   ../../depsgraph
   ../../gpu
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../../../extern/curve_fit_nd
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -38,11 +35,10 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
   extern_curve_fit_nd
 )
 
 
 blender_add_lib(bf_editor_curve "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_curve bf_rna)

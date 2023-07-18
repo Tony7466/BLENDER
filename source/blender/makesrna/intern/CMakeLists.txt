@@ -214,8 +214,8 @@ set(SRC
 )
 
 set(INC
-  .
-  ..
+  PRIVATE .
+  PUBLIC ..
   ../../asset_system
   ../../blenfont
   ../../blenkernel
@@ -242,7 +242,7 @@ set(INC
 
 
   # RNA_prototypes.h
-  ${CMAKE_CURRENT_BINARY_DIR}/../../makesrna/
+  PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../../makesrna/
 )
 
 set(INC_SYS
@@ -450,13 +450,24 @@ add_custom_command(
   DEPENDS makesrna
 )
 
+# The code below exposes RNA_prototypes.h though the bf::rna::prototypes target and ensures
+# makesrna runs before trying to build any project that relies on it.
+add_custom_target(run_makesrna
+  DEPENDS ${GENSRC}
+)
+
+add_library(bf_rna_prototypes INTERFACE)
+target_include_directories(bf_rna_prototypes INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+add_dependencies(bf_rna_prototypes run_makesrna)
+add_library(bf::rna::prototypes ALIAS bf_rna_prototypes)
+
+
 # Build bf_rna
 set(SRC
   rna_access.cc
   rna_access_compare_override.cc
   rna_path.cc
   ${GENSRC}
-
   ${SRC_RNA_INC}
   rna_access_internal.h
   rna_internal.h
@@ -466,6 +477,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::dna
+  PUBLIC bf::rna::prototypes
   bf_editor_space_api
 
   bf_editor_animation
@@ -489,4 +501,4 @@ set(LIB
 )
 
 blender_add_lib(bf_rna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-
+add_library(bf::rna ALIAS bf_rna)

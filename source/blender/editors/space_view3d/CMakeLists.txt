@@ -13,13 +13,10 @@ set(INC
   ../../draw
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../render
   ../../windowmanager
   ../../../../intern/mantaflow/extern
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -77,6 +74,7 @@ set(LIB
   bf_editor_lattice
   bf_editor_mesh
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_PYTHON)
@@ -94,5 +92,3 @@ endif()
 
 blender_add_lib(bf_editor_space_view3d "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_space_view3d bf_rna)

@@ -9,13 +9,10 @@ set(INC
   ../../functions
   ../../geometry
   ../../gpu
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../bmesh
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(SRC
@@ -33,6 +30,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_TBB)
@@ -48,4 +46,3 @@ if(WITH_TBB)
 endif()
 
 blender_add_lib(bf_editor_curves "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_dependencies(bf_editor_curves bf_rna)

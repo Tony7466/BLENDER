@@ -6,7 +6,6 @@ set(INC
   .
   ../blenloader
   ../gpu
-  ../makesrna
   ../sequencer
   ../../../intern/memutil
 )
@@ -84,6 +83,7 @@ set(LIB
   PRIVATE bf::extern::nanosvg
 
   ${JPEG_LIBRARIES}
+  PRIVATE bf::rna
 )
 
 if(WITH_IMAGE_OPENEXR)

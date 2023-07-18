@@ -14,7 +14,6 @@ set(INC
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../nodes
   ../../python
   ../../render
@@ -22,8 +21,6 @@ set(INC
   ../../../../intern/ghost
   ../../../../extern/fmtlib/include
   ../../bmesh
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -99,6 +96,7 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_datafiles
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_INTERNATIONAL)
@@ -122,5 +120,3 @@ endif()
 
 blender_add_lib(bf_editor_interface "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_interface bf_rna)

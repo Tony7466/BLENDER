@@ -13,7 +13,6 @@ if(WITH_COMPOSITOR_CPU)
     ../blentranslation
     ../depsgraph
     ../imbuf
-    ../makesrna
     ../nodes
     ../windowmanager
     ../nodes/composite
@@ -23,8 +22,6 @@ if(WITH_COMPOSITOR_CPU)
     ../../../extern/clew/include
     ../../../intern/clog
 
-    # RNA_prototypes.h
-    ${CMAKE_BINARY_DIR}/source/blender/makesrna
   )
 
   set(INC_SYS
@@ -597,6 +594,7 @@ if(WITH_COMPOSITOR_CPU)
     PRIVATE bf::blenlib
     PRIVATE bf::dna
     PRIVATE bf::intern::guardedalloc
+    PRIVATE bf::rna
     extern_clew
     PRIVATE bf::intern::atomic
   )
@@ -671,8 +669,6 @@ if(WITH_COMPOSITOR_CPU)
     blender_add_test_lib(bf_compositor_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
   endif()
 
-  # RNA_prototypes.h
-  add_dependencies(bf_compositor bf_rna)
 
 # End WITH_COMPOSITOR_CPU.
 endif()

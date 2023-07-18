@@ -7,7 +7,6 @@ set(INC
   ../blentranslation
   ../gpu
   ../imbuf
-  ../makesrna
 )
 
 set(INC_SYS
@@ -37,6 +36,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
 
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
+  PRIVATE bf::rna
 )
 
 if(WIN32)

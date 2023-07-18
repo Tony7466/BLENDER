@@ -12,15 +12,12 @@ set(INC
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../render
   ../../windowmanager
   ../../compositor/realtime_compositor
   ../../compositor/realtime_compositor/algorithms
   ../../compositor/realtime_compositor/cached_resources
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -131,6 +128,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
+  PRIVATE bf::rna
 )
 
 if(WITH_IMAGE_OPENEXR)
@@ -164,5 +162,3 @@ if(WITH_UNITY_BUILD)
   set_target_properties(bf_nodes_composite PROPERTIES UNITY_BUILD_BATCH_SIZE 10)
 endif()
 
-# RNA_prototypes.h
-add_dependencies(bf_nodes_composite bf_rna)

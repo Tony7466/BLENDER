@@ -17,7 +17,6 @@ set(INC
   ../gpu
   ../gpu/intern
   ../imbuf
-  ../makesrna
   ../nodes
   ../render
   ../render/intern
@@ -356,6 +355,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
+  PRIVATE bf::rna
   bf_windowmanager
   PRIVATE bf::intern::atomic
 )

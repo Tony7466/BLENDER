@@ -11,13 +11,10 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../imbuf/intern/oiio
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/mantaflow/extern
   ../../../../intern/opencolorio
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -130,6 +127,7 @@ set(LIB
 
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf::rna
 )
 
 # only to check if buildinfo is available
@@ -366,5 +364,3 @@ endif()
 
 blender_add_lib(bf_python "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_python bf_rna)

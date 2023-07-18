@@ -6,7 +6,6 @@ set(INC
   ../include
   ../../depsgraph
   ../../gpu
-  ../../makesrna
   ../../render
   ../../windowmanager
   ../../../../intern/clog
@@ -29,6 +28,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_editor_metaball "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

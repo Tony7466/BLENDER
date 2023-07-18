@@ -24,14 +24,11 @@ set(INC
   ../geometry
   ../gpu
   ../imbuf
-  ../makesrna
   ../modifiers
   ../render
   ../windowmanager
   ../../../extern/fmtlib/include
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 
@@ -90,6 +87,7 @@ set(LIB
   bf_nodes_geometry
   bf_nodes_shader
   bf_nodes_texture
+  PRIVATE bf::rna
   extern_fmtlib
 )
 
@@ -149,5 +147,3 @@ endif()
 
 blender_add_lib(bf_nodes "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_nodes bf_rna)

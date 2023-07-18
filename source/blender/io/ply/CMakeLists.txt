@@ -11,7 +11,6 @@ set(INC
   ../../bmesh
   ../../depsgraph
   ../../geometry
-  ../../makesrna
   ../../windowmanager
 )
 
@@ -56,6 +55,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_io_common
+  PRIVATE bf::rna
   extern_fmtlib
 )
 

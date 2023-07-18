@@ -13,14 +13,11 @@ set(INC
   ../../geometry
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../nodes
   ../../render
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/eigen
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(SRC
@@ -97,6 +94,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_TBB)
@@ -112,5 +110,3 @@ endif()
 
 blender_add_lib(bf_editor_sculpt_paint "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_sculpt_paint bf_rna)

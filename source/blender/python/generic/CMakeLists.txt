@@ -5,7 +5,6 @@
 set(INC
   .
   ../../gpu
-  ../../makesrna
   ../../../../intern/clog
 )
 
@@ -46,6 +45,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_PYTHON_MODULE)

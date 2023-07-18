@@ -11,13 +11,10 @@ set(INC
   ../../blentranslation
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../render
   ../../windowmanager
   ../../../../extern/fmtlib/include
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -47,6 +44,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
   extern_fmtlib
   PRIVATE bf::intern::atomic
 )
@@ -85,5 +83,3 @@ endif()
 
 blender_add_lib(bf_editor_space_file "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h dna_type_offsets.h
-add_dependencies(bf_editor_space_file bf_rna)

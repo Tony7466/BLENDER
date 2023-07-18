@@ -7,7 +7,6 @@ set(INC
   ../../asset_system
   ../../blenloader
   ../../blentranslation
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../bmesh
@@ -35,6 +34,7 @@ set(LIB
   bf_editor_metaball
   bf_editor_physics
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_editor_undo "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

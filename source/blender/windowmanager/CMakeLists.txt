@@ -16,7 +16,6 @@ set(INC
   ../draw
   ../gpu
   ../imbuf
-  ../makesrna
   ../nodes
   ../render
   ../sequencer
@@ -25,8 +24,6 @@ set(INC
   ../../../intern/memutil
   ../bmesh
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(SRC
@@ -101,6 +98,7 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
   bf_sequencer
 )
 
@@ -206,5 +204,3 @@ endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_windowmanager bf_rna)

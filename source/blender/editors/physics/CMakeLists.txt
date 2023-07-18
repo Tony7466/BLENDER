@@ -7,12 +7,9 @@ set(INC
   ../../blentranslation
   ../../depsgraph
   ../../gpu
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/mantaflow/extern
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -40,6 +37,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_MOD_FLUID)
@@ -59,5 +57,3 @@ endif()
 
 blender_add_lib(bf_editor_physics "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_editor_physics bf_rna)

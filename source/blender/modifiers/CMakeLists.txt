@@ -13,14 +13,11 @@ set(INC
   ../editors/include
   ../functions
   ../geometry
-  ../makesrna
   ../nodes
   ../render
   ../windowmanager
   ../../../intern/eigen
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -110,6 +107,7 @@ set(LIB
   PRIVATE bf::blenlib
   PUBLIC bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_ALEMBIC)
@@ -216,5 +214,3 @@ endif()
 
 blender_add_lib(bf_modifiers "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_modifiers bf_rna)

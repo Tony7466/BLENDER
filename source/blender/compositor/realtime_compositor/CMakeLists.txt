@@ -10,7 +10,6 @@ set(INC
   ../../draw
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../nodes
   ../../render
   ../../gpu/intern
@@ -103,6 +102,7 @@ set(LIB
   bf_render
   PRIVATE bf::blenlib
   PRIVATE bf::blenkernel
+  PRIVATE bf::rna
 )
 
 set(GLSL_SRC

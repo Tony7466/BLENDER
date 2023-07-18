@@ -8,11 +8,8 @@ set(INC
   ../../blentranslation
   ../../depsgraph
   ../../gpu
-  ../../makesrna
   ../../windowmanager
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -37,6 +34,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_AUDASPACE)
@@ -58,5 +56,3 @@ endif()
 
 blender_add_lib(bf_editor_space_graph "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h dna_type_offsets.h
-add_dependencies(bf_editor_space_graph bf_rna)

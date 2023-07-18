@@ -11,7 +11,6 @@ set(INC
   ../bmesh
   ../draw
   ../imbuf
-  ../makesrna
 
   # For theme color access.
   ../editors/include
@@ -320,6 +319,7 @@ set(LIB
   PRIVATE bf::intern::atomic
   ${Epoxy_LIBRARIES}
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 # Select Backend source based on availability

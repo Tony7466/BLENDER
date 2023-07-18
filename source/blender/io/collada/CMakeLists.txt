@@ -25,7 +25,6 @@ set(INC
   ../../depsgraph
   ../../editors/include
   ../../imbuf
-  ../../makesrna
   ../../windowmanager
   ../../ikplugin
   ../../../../intern/iksolver/extern
@@ -117,6 +116,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 if(WITH_BUILDINFO)

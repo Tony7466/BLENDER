@@ -5,7 +5,6 @@
 set(INC
   .
   ../../depsgraph
-  ../../makesrna
 )
 
 set(INC_SYS
@@ -33,6 +32,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_io_common "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

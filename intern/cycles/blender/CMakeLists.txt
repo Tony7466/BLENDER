@@ -5,10 +5,8 @@
 set(INC
   ..
   ../../mikktspace
-  ../../../source/blender/makesrna
   ../../../source/blender/gpu
   ../../../source/blender/render
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna/intern
 )
 
 set(INC_SYS
@@ -60,6 +58,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
   cycles_bvh
   cycles_device
   cycles_graph
@@ -140,6 +139,5 @@ endif()
 
 blender_add_lib(bf_intern_cycles "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-add_dependencies(bf_intern_cycles bf_rna)
 
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${ADDON_FILES}" ${CYCLES_INSTALL_PATH})

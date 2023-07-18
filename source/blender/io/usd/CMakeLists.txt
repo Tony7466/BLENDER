@@ -52,7 +52,6 @@ set(INC
   ../../depsgraph
   ../../editors/include
   ../../imbuf
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/utfconv
 )
@@ -130,6 +129,7 @@ set(LIB
   bf_imbuf
   PRIVATE bf::intern::guardedalloc
   bf_io_common
+  PRIVATE bf::rna
 )
 
 list(APPEND LIB

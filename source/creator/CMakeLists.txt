@@ -10,7 +10,6 @@ set(INC
   ../blender/imbuf
   ../blender/io/usd
   ../blender/bmesh
-  ../blender/makesrna
   ../blender/render
   ../blender/windowmanager
 )
@@ -20,6 +19,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
   bf_windowmanager
 )
 

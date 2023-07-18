@@ -14,7 +14,6 @@ set(INC
   ../gpu
   ../gpu/intern
   ../imbuf
-  ../makesrna
   ../nodes
   ../sequencer
   ../simulation
@@ -62,6 +61,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
   PRIVATE bf::intern::atomic
+  PRIVATE bf::rna
 )
 
 if(WITH_PYTHON)

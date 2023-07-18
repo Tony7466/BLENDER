@@ -14,12 +14,9 @@ set(INC
   ../../geometry
   ../../gpu
   ../../imbuf
-  ../../makesrna
   ../../render
   ../../windowmanager
   ../../../../extern/fmtlib/include
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 
@@ -207,6 +204,7 @@ set(LIB
   bf_geometry
   PRIVATE bf::intern::guardedalloc
   bf_nodes
+  PRIVATE bf::rna
   extern_fmtlib
 )
 
@@ -267,5 +265,3 @@ if(WITH_UNITY_BUILD)
   set_target_properties(bf_nodes_geometry PROPERTIES UNITY_BUILD_BATCH_SIZE 10)
 endif()
 
-# RNA_prototypes.h
-add_dependencies(bf_nodes_geometry bf_rna)

@@ -10,13 +10,10 @@ set(INC
   ../bmesh
   ../depsgraph
   ../editors/include
-  ../makesrna
   ../render
   ../windowmanager
   ../../../intern/eigen
 
-  # RNA_prototypes.h
-  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -91,9 +88,8 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::rna
 )
 
 blender_add_lib(bf_gpencil_modifiers_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
-add_dependencies(bf_gpencil_modifiers_legacy bf_rna)

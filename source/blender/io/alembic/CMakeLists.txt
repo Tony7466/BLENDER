@@ -10,7 +10,6 @@ set(INC
   ../../bmesh
   ../../depsgraph
   ../../editors/include
-  ../../makesrna
   ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/utfconv
@@ -95,6 +94,7 @@ set(LIB
 
   ${ALEMBIC_LIBRARIES}
   ${OPENEXR_LIBRARIES}
+  PRIVATE bf::rna
 )
 
 if(WITH_BOOST)
