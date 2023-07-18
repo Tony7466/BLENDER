@@ -227,11 +227,11 @@ struct EraseOperationExecutor {
       return;
     }
 
-    /* Set the intersection parameters in the destination domain : a float number for which
-     * the integer part is the index of the corresponding segment in the source curves,
-     * and the fractional part is the (0,1) factor representing its position in the segment.
+    /* Set the intersection parameters in the destination domain : a pair of int and float numbers
+     * for which the integer is the index of the corresponding segment in the source curves, and
+     * the float part is the (0,1) factor representing its position in the segment.
      */
-    Array<float> dst_points_parameters(dst_points_num);
+    Array<std::pair<int, float>> dst_points_parameters(dst_points_num);
     Array<bool> is_cut(dst_points_num, false);
     Array<int> src_pivot_point(src_curves_num, -1);
     Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
@@ -242,7 +242,7 @@ struct EraseOperationExecutor {
       for (const int src_point : src_points) {
         if (!is_point_inside[src_point]) {
           /* Add a point from the source : the factor is only the index in the source. */
-          dst_points_parameters[++dst_point] = float(src_point);
+          dst_points_parameters[++dst_point] = {src_point, 0.0};
         }
         if (nb_intersections[src_point] > 0) {
           float mu0 = src_intersections_parameters[src_point].x;
@@ -250,12 +250,12 @@ struct EraseOperationExecutor {
 
           if (IN_RANGE(mu0, 0, 1)) {
             /* Add an intersection with the eraser and mark it as a cut. */
-            dst_points_parameters[++dst_point] = src_point + mu0;
+            dst_points_parameters[++dst_point] = {src_point, mu0};
             is_cut[dst_point] = true;
           }
           if (IN_RANGE(mu1, 0, 1)) {
             /* Add an intersection with the eraser and mark it as a cut. */
-            dst_points_parameters[++dst_point] = src_point + mu1;
+            dst_points_parameters[++dst_point] = {src_point, mu1};
             is_cut[dst_point] = true;
           }
 
@@ -315,7 +315,7 @@ struct EraseOperationExecutor {
       int length_of_current = 0;
 
       for (int dst_point : dst_points) {
-        const int src_point = std::floor(dst_points_parameters[dst_point]);
+        const int src_point = dst_points_parameters[dst_point].first;
         if ((length_of_current > 0) && is_cut[dst_point] && is_point_inside[src_point]) {
           /* This is the new first point of a curve. */
           dst_curves_offset.append(dst_point);
@@ -399,15 +399,14 @@ struct EraseOperationExecutor {
 
             threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
               for (const int dst_point : dst_points) {
-                const float dst_param = dst_points_parameters[dst_point];
-                const int src_point = std::floor(dst_param);
+                const int src_point = dst_points_parameters[dst_point].first;
 
                 if (!is_cut[dst_point]) {
                   dst_attr[dst_point] = src_attr[src_point];
                   continue;
                 }
 
-                const float src_pt_factor = dst_param - src_point;
+                const float src_pt_factor = dst_points_parameters[dst_point].second;
 
                 /* Compute the endpoint of the segment in the source domain.
                  * Note that if this is the closing segment of a cyclic curve, then the
