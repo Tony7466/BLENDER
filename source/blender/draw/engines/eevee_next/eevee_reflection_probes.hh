@@ -128,7 +128,7 @@ class ReflectionProbeModule {
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, probes_tx_);
-    pass->bind_ssbo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
+    pass->bind_ubo(REFLECTION_PROBE_BUF_SLOT, data_buf_);
   }
 
   bool do_world_update_get() const;
@@ -167,6 +167,8 @@ class ReflectionProbeModule {
   std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
   void remap_to_octahedral_projection(uint64_t object_key);
   void update_probes_texture_mipmaps();
+
+  bool has_only_world_probe() const;
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
