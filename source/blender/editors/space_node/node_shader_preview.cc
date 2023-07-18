@@ -139,7 +139,7 @@ NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *C, SpaceN
 /** \name Preview scene
  * \{ */
 
-static Material *duplicate_material(Material *mat)
+static Material *duplicate_material(const Material *mat)
 {
   if (mat == nullptr) {
     return nullptr;
@@ -153,7 +153,10 @@ static Material *duplicate_material(Material *mat)
   return ma_copy;
 }
 
-static Scene *preview_prepare_scene(Main *bmain, Scene *scene, Main *pr_main, Material *matcopy)
+static Scene *preview_prepare_scene(const Main *bmain,
+                                    const Scene *scene,
+                                    Main *pr_main,
+                                    Material *matcopy)
 {
   Scene *sce;
 
@@ -290,7 +293,7 @@ ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, co
  * nested nodegroup. To do so we cover all nested nodetrees starting from the farthest, and
  * update the `nested_node` pointer to the current nodegroup instance used for linking. We stop
  * before getting to the main nodetree because the output type is different. */
-static void connect_nested_node_to_node(Vector<const bNodeTreePath *> &treepath,
+static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &treepath,
                                         bNode *nested_node,
                                         bNodeSocket *nested_socket,
                                         bNode *final_node,
@@ -335,7 +338,7 @@ static void connect_nested_node_to_node(Vector<const bNodeTreePath *> &treepath,
 
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
  * should be the path to the node's nodetree */
-static void connect_node_to_surface_output(Vector<const bNodeTreePath *> &treepath, bNode *node)
+static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepath, bNode *node)
 {
   bNodeSocket *node_preview_socket = nullptr;
   bNode *output_node = nullptr;
@@ -387,7 +390,8 @@ static void connect_node_to_surface_output(Vector<const bNodeTreePath *> &treepa
 
 /* Connect the nodes to some aov nodes located in the first nodetree from `treepath`. Last element
  * of `treepath` should be the path to the nodes nodetree. */
-static void connect_nodes_to_aovs(Vector<const bNodeTreePath *> &treepath, Vector<bNode *> &nodes)
+static void connect_nodes_to_aovs(const Vector<const bNodeTreePath *> &treepath,
+                                  const Vector<bNode *> &nodes)
 {
   if (nodes.size() == 0) {
     return;
@@ -538,7 +542,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 /** \name Preview job management
  * \{ */
 
-static void update_needed_flag(bNodeTree *nt, NestedNodePreviewMap *ng_data)
+static void update_needed_flag(const bNodeTree *nt, NestedNodePreviewMap *ng_data)
 {
   if (nt->preview_refresh_state != ng_data->preview_refresh_state ||
       ng_data->pr_size != U.node_preview_res)
