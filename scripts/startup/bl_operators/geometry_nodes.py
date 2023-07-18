@@ -449,6 +449,92 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, Operator):
         return {'FINISHED'}
 
 
+class BakeNodeOperator:
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
+            return False
+        node = context.active_node
+        if node is None:
+            return False
+        if node.bl_idname != "GeometryNodeBake":
+            return False
+        return True
+
+
+class BakeItemAddOperator(BakeNodeOperator, Operator):
+    """Add a bake item to the bake node"""
+    bl_idname = "node.bake_item_add"
+    bl_label = "Add Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    default_socket_type = 'GEOMETRY'
+
+    def execute(self, context):
+        node = context.active_node
+        bake_items = node.bake_items
+
+        # Remember index to move the item.
+        if node.active_item:
+            dst_index = node.active_index + 1
+            dst_type = node.active_item.socket_type
+            dst_name = node.active_item.name
+        else:
+            dst_index = len(bake_items)
+            dst_type = self.default_socket_type
+            # Empty name so it is based on the type.
+            dst_name = ""
+        bake_items.new(dst_type, dst_name)
+        bake_items.move(len(bake_items) - 1, dst_index)
+        node.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class BakeItemRemoveOperator(BakeNodeOperator, Operator):
+    """Remove a bake item from the bake node"""
+    bl_idname = "node.bake_item_remove"
+    bl_label = "Remove Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        bake_items = node.bake_items
+
+        if node.active_item:
+            bake_items.remove(node.active_item)
+            node.active_index = min(node.active_index, len(bake_items) - 1)
+
+        return {'FINISHED'}
+
+
+class BakeItemMoveOperator(BakeNodeOperator, Operator):
+    """Move a bake item up or down in the list"""
+    bl_idname = "node.bake_item_move"
+    bl_label = "Move Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        node = context.active_node
+        bake_items = node.bake_items
+
+        if self.direction == 'UP' and node.active_index > 0:
+            bake_items.move(node.active_index, node.active_index - 1)
+            node.active_index = node.active_index - 1
+        elif self.direction == 'DOWN' and node.active_index < len(bake_items) - 1:
+            bake_items.move(node.active_index, node.active_index + 1)
+            node.active_index = node.active_index + 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
@@ -459,4 +545,7 @@ classes = (
     RepeatZoneItemAddOperator,
     RepeatZoneItemRemoveOperator,
     RepeatZoneItemMoveOperator,
+    BakeItemAddOperator,
+    BakeItemRemoveOperator,
+    BakeItemMoveOperator,
 )

@@ -403,6 +403,20 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
                  UILST_LAYOUT_DEFAULT,
                  0,
                  UI_TEMPLATE_LIST_FLAG_NONE);
+
+  {
+    uiLayout *list_ops_col = uiLayoutColumn(list_row, false);
+    uiLayout *add_remove_col = uiLayoutColumn(list_ops_col, true);
+
+    uiItemO(add_remove_col, "", ICON_ADD, "NODE_OT_bake_item_add");
+    uiItemO(add_remove_col, "", ICON_REMOVE, "NODE_OT_bake_item_remove");
+
+    uiItemS(list_ops_col);
+
+    uiLayout *up_down_col = uiLayoutColumn(list_ops_col, true);
+    uiItemEnumO(up_down_col, "NODE_OT_bake_item_move", "", ICON_TRIA_UP, "direction", 0);
+    uiItemEnumO(up_down_col, "NODE_OT_bake_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+  }
 }
 
 class LazyFunctionForBakeNode : public LazyFunction {
