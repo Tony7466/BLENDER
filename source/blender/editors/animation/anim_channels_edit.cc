@@ -240,11 +240,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
         ACHANNEL_SET_FLAG(gpl, ACHANNEL_SETFLAG_CLEAR, GP_LAYER_ACTIVE);
         break;
       }
-      case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
-        layer->base.flag &= ~GP_LAYER_TREE_NODE_ACTIVE;
-        break;
-      }
     }
   }
 
@@ -300,11 +295,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
       case ANIMTYPE_GPLAYER: {
         bGPDlayer *gpl = (bGPDlayer *)channel_data;
         gpl->flag |= GP_LAYER_ACTIVE;
-        break;
-      }
-      case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)channel_data;
-        layer->base.flag |= GP_LAYER_TREE_NODE_ACTIVE;
         break;
       }
       /* unhandled currently, but may be interesting */
@@ -3671,12 +3661,6 @@ static int click_select_channel_grease_pencil_layer(
 
   /* Clear previous channel selection and set active flag on current selection */
   ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
-  ANIM_set_active_channel(ac,
-                          ac->data,
-                          eAnimCont_Types(ac->datatype),
-                          eAnimFilter_Flags(filter),
-                          layer,
-                          ANIMTYPE_GREASE_PENCIL_LAYER);
 
   layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
   grease_pencil->active_layer = layer;
