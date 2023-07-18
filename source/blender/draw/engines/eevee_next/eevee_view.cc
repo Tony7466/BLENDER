@@ -229,7 +229,7 @@ void CaptureView::render_world()
   }
 
   if (update_info->do_update_irradiance) {
-    inst_.reflection_probes.extract_spherical_harmonics(update_info->object_key);
+    inst_.reflection_probes.update_irradiance(update_info->object_key);
   }
 
   GPU_debug_group_end();

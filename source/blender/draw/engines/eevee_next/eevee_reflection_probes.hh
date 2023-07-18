@@ -169,8 +169,8 @@ class ReflectionProbeModule {
    */
   std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
   void remap_to_octahedral_projection(uint64_t object_key);
-  void extract_spherical_harmonics(uint64_t object_key);
   void update_probes_texture_mipmaps();
+  void update_irradiance(uint64_t object_key);
 
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;

@@ -516,7 +516,7 @@ void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
   instance_.manager->submit(remap_ps_);
 }
 
-void ReflectionProbeModule::extract_spherical_harmonics(uint64_t object_key)
+void ReflectionProbeModule::update_irradiance(uint64_t object_key)
 {
   const ReflectionProbe &probe = probes_.lookup(object_key);
 
