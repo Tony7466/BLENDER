@@ -667,11 +667,71 @@ struct EraseOperationExecutor {
     return true;
   }
 
+  bool contains_point(const float2 &point) const
+  {
+    return (math::distance_squared(point, this->mouse_position) <=
+            this->eraser_radius * this->eraser_radius);
+  }
+
   void soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
                    const bool keep_caps)
   {
+    using namespace blender::bke;
+
+    const float opacity_threshold = 0.01f;
+    // TODO : this should be driven by the brush strength.
+    const float opacity_decrease_step = 0.1f;
+    const std::string opacity_attr = "opacity";
+
+    const int src_points_num = src.points_num();
+
+    const bke::AttributeAccessor src_attributes = src.attributes();
+    VArray<float> src_opacity = *(
+        src_attributes.lookup_or_default<float>(opacity_attr, ATTR_DOMAIN_POINT, 1.0f));
+
+    /* Get opacity of the source points.
+     * Note : we need to store the opacities in a array even if it's a single value because we may
+     * change some of the values.
+     */
+    Array<float> src_new_opacity(src_points_num);
+    if (src_opacity.is_single()) {
+      src_new_opacity.fill(src_opacity.get_internal_single());
+    }
+    else {
+      Span<float> src_opacity_span = src_opacity.get_internal_span();
+      array_utils::copy<float>(src_opacity_span, src_new_opacity.as_mutable_span());
+    }
+
+    /* Decrease the opacities. */
+    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+      for (const int src_point : src_points) {
+        if (contains_point(screen_space_positions[src_point])) {
+          const float point_opacity = src_opacity[src_point];
+          src_new_opacity[src_point] = std::max(0.0f, point_opacity - opacity_decrease_step);
+        }
+      }
+    });
+
+    /* Mark points for removal. */
+
+    /* Remove points for which opacity is under a given threshold. */
+
+    /* Build destination curves geometry. */
+    dst = std::move(src);
+
+    /* Write the opacity attribute*/
+    bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
+    SpanAttributeWriter<float> dst_opacity = dst_attributes.lookup_or_add_for_write_span<float>(
+        opacity_attr, ATTR_DOMAIN_POINT);
+
+    threading::parallel_for(dst.points_range(), 256, [&](const IndexRange dst_points) {
+      for (const int dst_point : dst_points) {
+        dst_opacity.span[dst_point] = src_new_opacity[dst_point];
+      }
+    });
+    dst_opacity.finish();
   }
 
   bool stroke_eraser(const bke::CurvesGeometry &src,
