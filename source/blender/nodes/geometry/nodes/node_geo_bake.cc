@@ -266,6 +266,8 @@ static void draw_bake_ui(uiLayout *layout,
     uiItemR(subcol, &bake_ptr, "frame_end", 0, "End", ICON_NONE);
   }
 
+  uiItemR(settings_col, &bake_ptr, "directory", 0, "", ICON_NONE);
+
   uiLayout *row = uiLayoutRow(layout, true);
   {
     PointerRNA op_ptr;
@@ -369,7 +371,8 @@ static void bake_items_list_draw_item(uiList * /*ui_list*/,
 
   uiLayout *row = uiLayoutRow(layout, true);
   uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
-  uiItemL(layout, item.name, ICON_NONE);
+  uiLayoutSetEmboss(layout, UI_EMBOSS_NONE);
+  uiItemR(layout, itemptr, "name", 0, "", ICON_NONE);
 }
 
 static uiListType *create_items_ui_list()
