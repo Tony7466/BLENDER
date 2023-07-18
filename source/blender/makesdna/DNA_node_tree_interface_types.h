@@ -18,6 +18,7 @@
 #  include <memory>
 #endif
 
+struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
@@ -74,6 +75,7 @@ typedef struct bNodeTreeInterfaceSocket {
 
 #ifdef __cplusplus
   std::string socket_identifier() const;
+  bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
 
   template<typename T> T &get_data();

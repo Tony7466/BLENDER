@@ -26,6 +26,7 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "BKE_node.h"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
+#  include "BLI_math.h"
 #  include "ED_node.h"
 #  include "WM_api.h"
 
@@ -517,6 +518,8 @@ void RNA_def_node_tree_interface(BlenderRNA *brna)
   rna_def_node_interface_socket(brna);
   rna_def_node_interface_panel(brna);
   rna_def_node_tree_interface(brna);
+
+  rna_def_node_socket_interface_subtypes(brna);
 }
 
 #endif
