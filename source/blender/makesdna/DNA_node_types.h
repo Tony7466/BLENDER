@@ -2181,6 +2181,15 @@ typedef enum NodeCompareMode {
   NODE_COMPARE_MODE_DIRECTION = 4
 } NodeCompareMode;
 
+typedef enum NodeTransformOrder {
+  NODE_TRANSFORM_ORDER_SRT = 0,
+  NODE_TRANSFORM_ORDER_RST = 1,
+  NODE_TRANSFORM_ORDER_TSR = 2,
+  NODE_TRANSFORM_ORDER_TRS = 3,
+  NODE_TRANSFORM_ORDER_STR = 4,
+  NODE_TRANSFORM_ORDER_RTS = 5,
+} NodeTransformOrder;
+
 typedef enum NodeCompareOperation {
   NODE_COMPARE_LESS_THAN = 0,
   NODE_COMPARE_LESS_EQUAL = 1,

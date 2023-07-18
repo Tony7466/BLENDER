@@ -23,6 +23,9 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "UI_interface.h"
+#include "UI_resources.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -273,6 +276,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "transform_order", 0, "", ICON_NONE);
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
@@ -285,10 +293,45 @@ static void node_geo_exec(GeoNodeExecParams params)
     translate_geometry_set(params, geometry_set, translation, *params.depsgraph());
   }
   else {
-    transform_geometry_set(params,
-                           geometry_set,
-                           math::from_loc_rot_scale<float4x4>(translation, rotation, scale),
-                           *params.depsgraph());
+    const int transform_order = params.node().custom1;
+    BLI_assert(transform_order >= 0 && transform_order <= 5);
+    float4x4 mat = float4x4::identity();
+    /* Scale (S), Rotate (R), Translate (T)
+     * Transform Order transform_order 0-SRT, 1-RST, 2-TSR, 3-TRS, 4-STR, 5-RTS */
+    switch (transform_order) {
+      case NODE_TRANSFORM_ORDER_RST: { /* 1-RST */
+        mat = math::from_scale<float4x4>(scale) * math::from_rotation<float4x4>(rotation);
+        mat.location() = translation;
+        break;
+      }
+      case NODE_TRANSFORM_ORDER_TSR: { /* 2-TSR */
+        mat = math::from_rotation<float4x4>(rotation) * math::from_scale<float4x4>(scale) *
+              math::from_location<float4x4>(translation);
+        break;
+      }
+      case NODE_TRANSFORM_ORDER_TRS: { /* 3-TRS */
+        mat = math::from_scale<float4x4>(scale) * math::from_rotation<float4x4>(rotation) *
+              math::from_location<float4x4>(translation);
+        break;
+      }
+      case NODE_TRANSFORM_ORDER_STR: { /* 4-STR */
+        mat = math::from_rotation<float4x4>(rotation) *
+              math::from_location<float4x4>(translation) * math::from_scale<float4x4>(scale);
+        break;
+      }
+      case NODE_TRANSFORM_ORDER_RTS: { /* 5-RTS */
+        mat = math::from_scale<float4x4>(scale) * math::from_location<float4x4>(translation) *
+              math::from_rotation<float4x4>(rotation);
+        break;
+      }
+      case NODE_TRANSFORM_ORDER_SRT:
+      default: { /* 0-SRT Default */
+        mat = math::from_rotation<float4x4>(rotation) * math::from_scale<float4x4>(scale);
+        mat.location() = translation;
+        break;
+      }
+    }
+    transform_geometry_set(params, geometry_set, mat, *params.depsgraph());
   }
 
   params.set_output("Geometry", std::move(geometry_set));
@@ -304,6 +347,7 @@ void register_node_type_geo_transform_geometry()
   geo_node_type_base(
       &ntype, GEO_NODE_TRANSFORM_GEOMETRY, "Transform Geometry", NODE_CLASS_GEOMETRY);
   ntype.declare = file_ns::node_declare;
+  ntype.draw_buttons = file_ns::node_layout;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }

@@ -4766,6 +4766,27 @@ static void def_boolean_math(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_transform(StructRNA *srna)
+{
+  static const EnumPropertyItem rna_enum_node_transform_order_items[] = {
+      {NODE_TRANSFORM_ORDER_SRT, "SRT", 0, "SRT", "Scale > Rotate > Translate"},
+      {NODE_TRANSFORM_ORDER_STR, "STR", 0, "STR", "Scale > Translate > Rotate"},
+      {NODE_TRANSFORM_ORDER_RST, "RST", 0, "RST", "Rotate > Scale > Translate"},
+      {NODE_TRANSFORM_ORDER_RTS, "RTS", 0, "RTS", "Rotate > Translate > Scale"},
+      {NODE_TRANSFORM_ORDER_TSR, "TSR", 0, "TSR", "Translate > Scale > Rotate"},
+      {NODE_TRANSFORM_ORDER_TRS, "TRS", 0, "TRS", "Translate > Rotate > Scale"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "transform_order", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_node_transform_order_items);
+  RNA_def_property_ui_text(prop, "Transform Order", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_compare(StructRNA *srna)
 {
 
