@@ -116,6 +116,7 @@ static void stroke_done(const bContext *C, PaintStroke *stroke)
   GreasePencilStrokeOperation *operation = static_cast<GreasePencilStrokeOperation *>(
       paint_stroke_mode_data(stroke));
   operation->on_stroke_done(*C);
+  operation->~GreasePencilStrokeOperation();
 }
 
 static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
