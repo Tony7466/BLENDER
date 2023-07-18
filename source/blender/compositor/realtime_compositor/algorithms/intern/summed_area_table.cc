@@ -18,6 +18,18 @@
 
 namespace blender::realtime_compositor {
 
+/* ------------------------------------------------------------------------------------------------
+ * Summed Area Table
+ *
+ * An implementation of the summed area table algorithm from the paper:
+ *
+ *   Nehab, Diego, et al. "GPU-efficient recursive filtering and summed-area tables."
+ *
+ * This file is a straightforward implementation of each of the four passes described in
+ * Algorithm SAT in section 6 of the paper. Note that we use Blender's convention of first
+ * quadrant images, so we call prologues horizontal or X prologues, and we call transposed
+ * prologues vertical or Y prologues. See each of the functions for more details. */
+
 static const char *get_compute_incomplete_prologues_shader(SummedAreaTableOperation operation)
 {
   switch (operation) {
@@ -179,14 +191,6 @@ static void compute_complete_blocks(Context &context,
   output.unbind_as_image();
 }
 
-/* An implementation of the summed area table algorithm from the paper:
- *
- *   Nehab, Diego, et al. "GPU-efficient recursive filtering and summed-area tables."
- *
- * This function is a straightforward implementation of each of the four passes described in
- * Algorithm SAT in section 6 of the paper. Note that we use Blender's convention of first
- * quadrant images, so we call prologues horizontal or X prologues, and we call transposed
- * prologues vertical or Y prologues. See each of the functions for more details. */
 void summed_area_table(Context &context,
                        Result &input,
                        Result &output,
