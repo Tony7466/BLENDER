@@ -582,9 +582,9 @@ void DepthOfField::render(View &view,
 
   Manager &drw = *inst_.manager;
 
+  eGPUTextureUsage usage_readwrite = GPU_TEXTURE_USAGE_SHADER_READ |
+                                     GPU_TEXTURE_USAGE_SHADER_WRITE;
   {
-    eGPUTextureUsage usage_readwrite = GPU_TEXTURE_USAGE_SHADER_READ |
-                                       GPU_TEXTURE_USAGE_SHADER_WRITE;
     DRW_stats_group_start("Setup");
     {
       bokeh_gather_lut_tx_.acquire(int2(DOF_BOKEH_LUT_SIZE), GPU_RG16F);
@@ -627,8 +627,8 @@ void DepthOfField::render(View &view,
       DRW_stats_group_start("Tile Prepare");
 
       /* WARNING: If format changes, make sure dof_tile_* GLSL constants are properly encoded. */
-      tiles_fg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F);
-      tiles_bg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F);
+      tiles_fg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
+      tiles_bg_tx_.previous().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
       tiles_fg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
       tiles_bg_tx_.current().acquire(tile_res, GPU_R11F_G11F_B10F, usage_readwrite);
 

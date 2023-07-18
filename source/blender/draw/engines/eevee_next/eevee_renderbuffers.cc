@@ -107,7 +107,7 @@ void RenderBuffers::acquire(int2 extent)
                                                        EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET |
                                                        EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL)),
       cryptomatte_format,
-      usage_attachment_read_write);
+      GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE);
 }
 
 void RenderBuffers::release()
