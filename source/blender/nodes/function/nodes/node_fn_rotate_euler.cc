@@ -31,6 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_XYZ)
       .make_available(enable_axis_angle);
   b.add_input<decl::Float>("Angle").subtype(PROP_ANGLE).make_available(enable_axis_angle);
+  b.add_input<decl::Bool>(N_("Invert"));
   b.add_output<decl::Vector>("Rotation");
 }
 
@@ -56,8 +57,9 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
-  static auto obj_euler_rot = mf::build::SI2_SO<float3, float3, float3>(
-      "Rotate Euler by Euler/Object", [](const float3 &input, const float3 &rotation) {
+  static auto obj_euler_rot = mf::build::SI3_SO<float3, float3, bool, float3>(
+      "Rotate Euler by Euler/Object",
+      [](const float3 &input, const float3 &rotation, const bool invert) {
         float input_mat[3][3];
         eul_to_mat3(input_mat, input);
         float rot_mat[3][3];
@@ -65,12 +67,15 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
         float mat_res[3][3];
         mul_m3_m3m3(mat_res, rot_mat, input_mat);
         float3 result;
+        if (invert) {
+          invert_m3(mat_res);
+        }
         mat3_to_eul(result, mat_res);
         return result;
       });
-  static auto obj_AA_rot = mf::build::SI3_SO<float3, float3, float, float3>(
+  static auto obj_AA_rot = mf::build::SI4_SO<float3, float3, float, bool, float3>(
       "Rotate Euler by AxisAngle/Object",
-      [](const float3 &input, const float3 &axis, float angle) {
+      [](const float3 &input, const float3 &axis, float angle, const bool invert) {
         float input_mat[3][3];
         eul_to_mat3(input_mat, input);
         float rot_mat[3][3];
@@ -78,11 +83,15 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
         float mat_res[3][3];
         mul_m3_m3m3(mat_res, rot_mat, input_mat);
         float3 result;
+        if (invert) {
+          invert_m3(mat_res);
+        }
         mat3_to_eul(result, mat_res);
         return result;
       });
-  static auto local_euler_rot = mf::build::SI2_SO<float3, float3, float3>(
-      "Rotate Euler by Euler/Local", [](const float3 &input, const float3 &rotation) {
+  static auto local_euler_rot = mf::build::SI3_SO<float3, float3, bool, float3>(
+      "Rotate Euler by Euler/Local",
+      [](const float3 &input, const float3 &rotation, const bool invert) {
         float input_mat[3][3];
         eul_to_mat3(input_mat, input);
         float rot_mat[3][3];
@@ -90,11 +99,15 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
         float mat_res[3][3];
         mul_m3_m3m3(mat_res, input_mat, rot_mat);
         float3 result;
+        if (invert) {
+          invert_m3(mat_res);
+        }
         mat3_to_eul(result, mat_res);
         return result;
       });
-  static auto local_AA_rot = mf::build::SI3_SO<float3, float3, float, float3>(
-      "Rotate Euler by AxisAngle/Local", [](const float3 &input, const float3 &axis, float angle) {
+  static auto local_AA_rot = mf::build::SI4_SO<float3, float3, float, bool, float3>(
+      "Rotate Euler by AxisAngle/Local",
+      [](const float3 &input, const float3 &axis, float angle, const bool invert) {
         float input_mat[3][3];
         eul_to_mat3(input_mat, input);
         float rot_mat[3][3];
@@ -102,6 +115,9 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
         float mat_res[3][3];
         mul_m3_m3m3(mat_res, input_mat, rot_mat);
         float3 result;
+        if (invert) {
+          invert_m3(mat_res);
+        }
         mat3_to_eul(result, mat_res);
         return result;
       });
