@@ -505,7 +505,7 @@ enum {
 
 /** #ImageFormatData::flag */
 enum {
-  R_IMF_FLAG_ZBUF = 1 << 0,
+  // R_IMF_FLAG_ZBUF = 1 << 0, /* DEPRECATED, and cleared. */
   R_IMF_FLAG_PREVIEW_JPG = 1 << 1,
 };
 
@@ -1872,7 +1872,8 @@ typedef struct SceneEEVEE {
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
-  char light_cache_info[64];
+  /* Need a 128 byte string for some translations of some messages. */
+  char light_cache_info[128];
 
   float overscan;
   float light_threshold;
