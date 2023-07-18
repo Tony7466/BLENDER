@@ -1749,6 +1749,7 @@ class _defs_paint_grease_pencil:
             brush = paint.brush
             if not brush:
                 return
+            layout.prop(brush.gpencil_settings, "eraser_mode", expand=True)
             layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
         return dict(
             idname="builtin_brush.Erase",

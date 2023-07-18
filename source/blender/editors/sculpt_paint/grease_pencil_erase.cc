@@ -466,18 +466,17 @@ struct EraseOperationExecutor {
       }
     });
 
-    /* Erasing operator */
+    /* Erasing operator. */
     CurvesGeometry dst;
-
     switch (self.eraser_mode) {
-      case GP_BRUSH_ERASER_SOFT:
-        // TBI
+      case GP_BRUSH_ERASER_STROKE:
+        // To be implemented
+        return;
       case GP_BRUSH_ERASER_HARD:
         hard_eraser(src, screen_space_positions, dst, self.keep_caps);
         break;
-
-      case GP_BRUSH_ERASER_STROKE:
-        // TBI
+      case GP_BRUSH_ERASER_SOFT:
+        // To be implemented
         return;
     }
 
