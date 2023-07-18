@@ -667,6 +667,13 @@ struct EraseOperationExecutor {
     return true;
   }
 
+  void soft_eraser(const blender::bke::CurvesGeometry &src,
+                   const Array<float2> &screen_space_positions,
+                   blender::bke::CurvesGeometry &dst,
+                   const bool keep_caps)
+  {
+  }
+
   bool stroke_eraser(const bke::CurvesGeometry &src,
                      const Span<float2> screen_space_positions,
                      bke::CurvesGeometry &dst) const
@@ -778,8 +785,8 @@ struct EraseOperationExecutor {
           erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
           break;
         case GP_BRUSH_ERASER_SOFT:
-          // To be implemented
-          return;
+          soft_eraser(src, screen_space_positions, dst, self.keep_caps);
+          break;
       }
 
       if (erased) {
