@@ -56,6 +56,7 @@ struct AnimData;
 struct Collection;
 struct ID;
 struct Image;
+struct ImBuf;
 struct ListBase;
 struct Material;
 struct PreviewImage;
@@ -515,8 +516,7 @@ typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;
 
-  unsigned char *rect;
-  short xsize, ysize;
+  struct ImBuf *ibuf;
 } bNodePreview;
 
 typedef struct bNodeLink {
