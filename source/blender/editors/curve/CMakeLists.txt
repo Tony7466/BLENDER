@@ -21,7 +21,7 @@ set(INC_SYS
 set(SRC
   curve_ops.cc
   editcurve.c
-  editcurve_add.c
+  editcurve_add.cc
   editcurve_paint.c
   editcurve_pen.c
   editcurve_query.c
