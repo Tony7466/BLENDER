@@ -33,6 +33,7 @@
  * Border size requires depends on the max number of mipmap levels. */
 #define REFLECTION_PROBE_MIPMAP_LEVELS 5
 #define REFLECTION_PROBE_BORDER_SIZE float(1 << (REFLECTION_PROBE_MIPMAP_LEVELS - 1))
+#define REFLECTION_PROBE_MAX_LIGHT 32.0
 
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
