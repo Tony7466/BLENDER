@@ -529,7 +529,7 @@ static void *ocio_transform_ibuf(const PlayDisplayContext *display_ctx,
 
 static void draw_display_buffer(const PlayDisplayContext *display_ctx,
                                 ImBuf *ibuf,
-                                rctf *canvas,
+                                const rctf *canvas,
                                 const bool draw_flip[2])
 {
   void *display_buffer;
