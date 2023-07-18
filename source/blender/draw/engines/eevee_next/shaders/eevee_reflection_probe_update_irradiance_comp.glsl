@@ -1,8 +1,6 @@
 
 /* Shader to extract spherical harmonics cooefs from octahedral mapped reflection probe. */
-/* NOTE: this is a stupid implementation as it uses a single thread. Eventually this should
- * be done using a 16*16 group size.
- */
+/* TODO(jbakker): Use larger dispatch size and atomic add. */
 
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
