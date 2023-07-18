@@ -12,6 +12,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
 #include "WM_api.hh"
@@ -92,14 +93,7 @@ struct PaintOperationExecutor {
                                      brush->gpencil_settings->vertex_factor) :
                               float4(0.0f);
 
-    bke::greasepencil::StrokePoint new_point;
-    new_point.position = proj_pos;
-    new_point.radius = radius;
-    new_point.opacity = opacity;
-    new_point.color = vertex_color;
-
-    self.stroke_cache_->points.append(std::move(new_point));
-
+    self.stroke_cache_->append(proj_pos, radius, opacity, ColorGeometry4f(vertex_color));
     BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
 };
@@ -149,10 +143,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
 
-  const Span<bke::greasepencil::StrokePoint> stroke_points = stroke_cache_->points;
-
   /* No stroke to create, return. */
-  if (stroke_points.size() == 0) {
+  if (stroke_cache_->size == 0) {
     return;
   }
 
@@ -169,10 +161,10 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   const int num_old_curves = curves.curves_num();
   const int num_old_points = curves.points_num();
-  curves.resize(num_old_points + stroke_points.size(), num_old_curves + 1);
+  curves.resize(num_old_points + stroke_cache_->size, num_old_curves + 1);
 
   curves.offsets_for_write()[num_old_curves] = num_old_points;
-  curves.offsets_for_write()[num_old_curves + 1] = num_old_points + stroke_points.size();
+  curves.offsets_for_write()[num_old_curves + 1] = num_old_points + stroke_cache_->size;
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const IndexRange new_points_range = points_by_curve[curves.curves_num() - 1];
@@ -190,14 +182,10 @@ void PaintOperation::on_stroke_done(const bContext &C)
           AttributeInitVArray(
               VArray<ColorGeometry4f>::ForSingle(ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f),
                                                  attributes.domain_size(ATTR_DOMAIN_POINT))));
-  for (const int i : IndexRange(stroke_points.size())) {
-    const bke::greasepencil::StrokePoint &point = stroke_points[i];
-    const int point_i = new_points_range[i];
-    positions[point_i] = point.position;
-    radii[point_i] = point.radius;
-    opacities[point_i] = point.opacity;
-    vertex_colors.span[point_i] = ColorGeometry4f(point.color);
-  }
+  positions.slice(new_points_range).copy_from(stroke_cache_->positions);
+  radii.slice(new_points_range).copy_from(stroke_cache_->radii);
+  opacities.slice(new_points_range).copy_from(stroke_cache_->opacities);
+  vertex_colors.span.slice(new_points_range).copy_from(stroke_cache_->vertex_colors);
 
   /* TODO: Set material index attribute. */
   int material_index = 0;

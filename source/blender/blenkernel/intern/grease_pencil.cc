@@ -1366,15 +1366,9 @@ void BKE_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
 /** \name Grease Pencil runtime API
  * \{ */
 
-bool blender::bke::GreasePencilRuntime::has_stroke_buffer() const
+bool blender::bke::GreasePencilRuntime::has_stroke_cache() const
 {
-  return this->stroke_cache.points.size() > 0;
-}
-
-blender::Span<blender::bke::greasepencil::StrokePoint> blender::bke::GreasePencilRuntime::
-    stroke_buffer() const
-{
-  return this->stroke_cache.points.as_span();
+  return this->stroke_cache.size > 0;
 }
 
 /** \} */

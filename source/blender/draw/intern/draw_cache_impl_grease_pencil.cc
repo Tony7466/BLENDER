@@ -257,8 +257,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   }
 
-  if (grease_pencil.runtime->has_stroke_buffer()) {
-    const int num_buffer_points = grease_pencil.runtime->stroke_buffer().size();
+  if (grease_pencil.runtime->has_stroke_cache()) {
+    const int num_buffer_points = grease_pencil.runtime->stroke_cache.size;
     total_verts_num += 1 + num_buffer_points + 1;
     total_triangles_num += num_buffer_points * 2;
     /* TODO: triangles for stroke buffer. */
@@ -426,25 +426,24 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     });
   }
 
-  if (grease_pencil.runtime->has_stroke_buffer()) {
-    Span<bke::greasepencil::StrokePoint> points = grease_pencil.runtime->stroke_buffer();
+  if (grease_pencil.runtime->has_stroke_cache()) {
+    bke::greasepencil::StrokeCache &stroke_cache = grease_pencil.runtime->stroke_cache;
     const int verts_start_offset = v_offset;
-    const int num_verts = 1 + points.size() + 1;
+    const int num_verts = 1 + stroke_cache.size + 1;
     IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
     MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
     MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-    const int material_nr = grease_pencil.runtime->stroke_cache.mat;
+    const int material_nr = stroke_cache.mat;
 
     verts_slice.first().mat = -1;
-    for (const int i : IndexRange(points.size())) {
+    for (const int i : IndexRange(stroke_cache.size)) {
       const int idx = i + 1;
       GreasePencilStrokeVert &s_vert = verts_slice[idx];
       GreasePencilColorVert &c_vert = cols_slice[idx];
-      const bke::greasepencil::StrokePoint &point = points[i];
 
-      copy_v3_v3(s_vert.pos, point.position);
-      s_vert.radius = point.radius;
-      s_vert.opacity = point.opacity;
+      copy_v3_v3(s_vert.pos, stroke_cache.positions[i]);
+      s_vert.radius = stroke_cache.radii[i];
+      s_vert.opacity = stroke_cache.opacities[i];
       s_vert.point_id = verts_range[idx];
       s_vert.stroke_id = verts_range.first();
       s_vert.mat = material_nr;
@@ -456,8 +455,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       /* TODO */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
-      copy_v4_v4(c_vert.vcol, point.color);
-      copy_v4_v4(c_vert.fcol, point.color);
+      copy_v4_v4(c_vert.vcol, stroke_cache.vertex_colors[i]);
+      copy_v4_v4(c_vert.fcol, stroke_cache.vertex_colors[i]);
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;

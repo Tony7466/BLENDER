@@ -11,6 +11,8 @@
 
 #include <atomic>
 
+#include "BLI_array_utils.hh"
+#include "BLI_color.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
@@ -33,28 +35,37 @@ namespace blender::bke {
 namespace greasepencil {
 
 /**
- * A single point for a stroke that is currently being drawn.
- */
-struct StrokePoint {
-  float3 position;
-  float radius;
-  float opacity;
-  float4 color;
-};
-
-/**
  * Stroke cache for a stroke that is currently being drawn.
  */
 struct StrokeCache {
-  Vector<StrokePoint> points;
+  /* Stroke cache attributes. */
+  Vector<float3> positions;
+  Vector<float> radii;
+  Vector<float> opacities;
+  Vector<ColorGeometry4f> vertex_colors;
+  int64_t size = 0;
+
   Vector<uint3> triangles;
   int mat = 0;
 
+  void append(float3 position, float radius, float opacity, ColorGeometry4f vertex_color)
+  {
+    this->positions.append(position);
+    this->radii.append(radius);
+    this->opacities.append(opacity);
+    this->vertex_colors.append(vertex_color);
+    this->size++;
+  }
+
   void clear()
   {
-    this->points.clear_and_shrink();
+    this->positions.clear_and_shrink();
+    this->radii.clear_and_shrink();
+    this->opacities.clear_and_shrink();
+    this->vertex_colors.clear_and_shrink();
     this->triangles.clear_and_shrink();
     this->mat = 0;
+    this->size = 0;
   }
 };
 
@@ -668,6 +679,10 @@ class GreasePencilRuntime {
    * Allocated and freed by the drawing code. See `DRW_grease_pencil_batch_cache_*` functions.
    */
   void *batch_cache = nullptr;
+
+  /**
+   * A buffer for a single stroke while drawing.
+   */
   bke::greasepencil::StrokeCache stroke_cache;
   /* The frame on which the object was evaluated (only valid for evaluated object). */
   int eval_frame;
@@ -676,11 +691,7 @@ class GreasePencilRuntime {
   GreasePencilRuntime() {}
   ~GreasePencilRuntime() {}
 
-  /**
-   * A buffer for a single stroke while drawing.
-   */
-  Span<bke::greasepencil::StrokePoint> stroke_buffer() const;
-  bool has_stroke_buffer() const;
+  bool has_stroke_cache() const;
 };
 
 }  // namespace blender::bke
