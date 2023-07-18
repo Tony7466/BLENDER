@@ -10,6 +10,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_scene.h"
 
+#include "BLI_math_base.hh"
+
 #include "DEG_depsgraph_query.h"
 
 #include "ED_grease_pencil.hh"
@@ -24,13 +26,13 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
+  Vector<float3> sampled_positions_;
+  Vector<float> sampled_radii_;
   bke::greasepencil::StrokeCache *stroke_cache_;
 
   friend struct PaintOperationExecutor;
 
  public:
-  ~PaintOperation() override {}
-
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
@@ -94,6 +96,34 @@ struct PaintOperationExecutor {
                               float4(0.0f);
 
     self.stroke_cache_->append(proj_pos, radius, opacity, ColorGeometry4f(vertex_color));
+
+    self.sampled_positions_.append(proj_pos);
+    self.sampled_radii_.append(radius);
+
+    const int64_t active_window_size = 64;
+    const int64_t inverted_active_window_size = math::max(
+        self.stroke_cache_->size - active_window_size, int64_t(0));
+
+    Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
+        inverted_active_window_size);
+    MutableSpan<float3> dst_positions = self.stroke_cache_->positions.as_mutable_span().drop_front(
+        inverted_active_window_size);
+
+    Span<float> src_radii = self.sampled_radii_.as_span().drop_front(inverted_active_window_size);
+    MutableSpan<float> dst_radii = self.stroke_cache_->radii.as_mutable_span().drop_front(
+        inverted_active_window_size);
+
+    ed::greasepencil::gaussian_blur_1D(src_positions, 8, 0.75f, false, true, false, dst_positions);
+    ed::greasepencil::gaussian_blur_1D(src_radii, 10, 1.0f, false, false, false, dst_radii);
+
+#ifdef DEBUG
+    /* Visualize active window. */
+    self.stroke_cache_->vertex_colors.fill(ColorGeometry4f(float4(0.0f)));
+    self.stroke_cache_->vertex_colors.as_mutable_span()
+        .drop_front(inverted_active_window_size)
+        .fill(ColorGeometry4f(float4(1.0f, 0.1f, 0.1f, 1.0f)));
+#endif
+
     BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
 };
