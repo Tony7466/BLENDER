@@ -39,9 +39,9 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
+#include "BLI_volume.hh"
 
 #include "FN_multi_function.hh"
-#include "FN_volume_field.hh"
 
 namespace blender::fn {
 
@@ -259,8 +259,8 @@ class FieldContext;
  */
 class FieldInput : public FieldNode {
  public:
-  using VolumeGrid = volume::VolumeGrid;
-  using VolumeMask = volume::VolumeMask;
+  using Grid = volume::Grid;
+  using GridMask = volume::GridMask;
 
   /* The order is also used for sorting in socket inspection. */
   enum class Category {
@@ -290,9 +290,9 @@ class FieldInput : public FieldNode {
    * Get the value of this specific input based on the given context. The returned grid should live
    * at least as long as the passed in #scope. May return null.
    */
-  virtual VolumeGrid get_volume_grid_for_context(const FieldContext & /*context*/,
-                                                 const VolumeMask & /*mask*/,
-                                                 ResourceScope & /*scope*/) const
+  virtual Grid get_volume_grid_for_context(const FieldContext & /*context*/,
+                                           const GridMask & /*mask*/,
+                                           ResourceScope & /*scope*/) const
   {
     return {};
   }
@@ -337,8 +337,8 @@ struct FieldInputs {
  */
 class FieldContext {
  public:
-  using VolumeMask = volume::VolumeMask;
-  using VolumeGrid = volume::VolumeGrid;
+  using GridMask = volume::GridMask;
+  using Grid = volume::Grid;
 
   virtual ~FieldContext() = default;
 
@@ -346,9 +346,9 @@ class FieldContext {
                                        const IndexMask &mask,
                                        ResourceScope &scope) const;
 
-  virtual VolumeGrid get_volume_grid_for_input(const FieldInput &field_input,
-                                               const VolumeMask &mask,
-                                               ResourceScope &scope) const;
+  virtual Grid get_volume_grid_for_input(const FieldInput &field_input,
+                                         const GridMask &mask,
+                                         ResourceScope &scope) const;
 };
 
 /**
@@ -530,11 +530,11 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  * \return The computed virtual arrays for each provided field. If #dst_varrays is passed,
  *   the provided virtual arrays are returned.
  */
-Vector<volume::VolumeGrid> evaluate_volume_fields(ResourceScope &scope,
-                                                  Span<GFieldRef> fields_to_evaluate,
-                                                  const volume::VolumeMask &mask,
-                                                  const FieldContext &context,
-                                                  Span<volume::VolumeGrid> dst_grids = {});
+Vector<volume::Grid> evaluate_volume_fields(ResourceScope &scope,
+                                            Span<GFieldRef> fields_to_evaluate,
+                                            const volume::GridMask &mask,
+                                            const FieldContext &context,
+                                            Span<volume::Grid> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation

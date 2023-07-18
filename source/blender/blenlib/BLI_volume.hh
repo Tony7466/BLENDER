@@ -38,7 +38,7 @@ template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
 namespace volume {
 
 /* Mask defined by active voxels of the grid. */
-class VolumeMask {
+class GridMask {
 #ifdef WITH_OPENVDB
   const openvdb::MaskGrid &grid_;
 #endif
@@ -55,23 +55,21 @@ class VolumeMask {
 #endif
 };
 
-struct VolumeGrid {
+struct Grid {
 #ifdef WITH_OPENVDB
   openvdb::GridBase::Ptr grid_ = nullptr;
 #endif
 
   /* Create an empty grid with a background value. */
-  static VolumeGrid create(ResourceScope &scope,
-                           const CPPType &type,
-                           const void *background_value);
+  static Grid create(ResourceScope &scope, const CPPType &type, const void *background_value);
   /* Create an empty grid with the type default as background value. */
-  static VolumeGrid create(ResourceScope &scope, const CPPType &type);
+  static Grid create(ResourceScope &scope, const CPPType &type);
   /* Create a grid with the active volume mask voxels. */
-  static VolumeGrid create(ResourceScope &scope,
-                           const CPPType &type,
-                           const VolumeMask &mask,
-                           const void *inactive_value,
-                           const void *active_value);
+  static Grid create(ResourceScope &scope,
+                     const CPPType &type,
+                     const GridMask &mask,
+                     const void *inactive_value,
+                     const void *active_value);
 
   int64_t voxel_count() const;
   bool is_empty() const;
@@ -194,8 +192,8 @@ template<typename Func> void grid_to_static_type(const openvdb::GridBase::Ptr &g
   grid->apply<grid_types::SupportedGridTypes>(func);
 }
 
-}  // namespace volume
-
 #endif
+
+}  // namespace volume
 
 }  // namespace blender

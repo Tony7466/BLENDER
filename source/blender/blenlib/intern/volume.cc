@@ -11,40 +11,36 @@
 #include "BLI_resource_scope.hh"
 #include "BLI_volume.hh"
 
-namespace blender {
+namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
-namespace volume {
-
-bool VolumeMask::is_empty() const
+bool GridMask::is_empty() const
 {
   return grid_.empty();
 }
 
-int64_t VolumeMask::min_voxel_count() const
+int64_t GridMask::min_voxel_count() const
 {
   return grid_.activeVoxelCount();
 }
 
-int64_t VolumeGrid::voxel_count() const
+int64_t Grid::voxel_count() const
 {
   return grid_ ? grid_->activeVoxelCount() : 0;
 }
 
-bool VolumeGrid::is_empty() const
+bool Grid::is_empty() const
 {
   return grid_ ? grid_->empty() : true;
 }
 
-VolumeGrid::operator bool() const
+Grid::operator bool() const
 {
   return grid_ != nullptr;
 }
 
-VolumeGrid VolumeGrid::create(ResourceScope &scope,
-                              const CPPType &type,
-                              const void *background_value)
+Grid Grid::create(ResourceScope &scope, const CPPType &type, const void *background_value)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid, background_value](auto type_tag) {
@@ -53,10 +49,10 @@ VolumeGrid VolumeGrid::create(ResourceScope &scope,
     grid = grid_types::GridCommon<ValueType>::create(value);
   });
 
-  return VolumeGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return Grid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
 }
 
-VolumeGrid VolumeGrid::create(ResourceScope &scope, const CPPType &type)
+Grid Grid::create(ResourceScope &scope, const CPPType &type)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid](auto type_tag) {
@@ -66,14 +62,14 @@ VolumeGrid VolumeGrid::create(ResourceScope &scope, const CPPType &type)
     grid = grid_types::GridCommon<ValueType>::create(value);
   });
 
-  return VolumeGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return Grid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
 }
 
-VolumeGrid VolumeGrid::create(ResourceScope &scope,
-                              const CPPType &type,
-                              const VolumeMask &mask,
-                              const void *inactive_value,
-                              const void *active_value)
+Grid Grid::create(ResourceScope &scope,
+                  const CPPType &type,
+                  const GridMask &mask,
+                  const void *inactive_value,
+                  const void *active_value)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&](auto type_tag) {
@@ -88,59 +84,51 @@ VolumeGrid VolumeGrid::create(ResourceScope &scope,
     grid = GridType::Ptr(new GridType(tree));
   });
 
-  return VolumeGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return Grid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
 }
-
-}  // namespace volume
 
 #else
 
-namespace volume {
-
-bool VolumeMask::is_empty() const
+bool GridMask::is_empty() const
 {
   return true;
 }
 
-int64_t VolumeMask::min_voxel_count() const
+int64_t GridMask::min_voxel_count() const
 {
   return 0;
 }
 
-VolumeGrid::operator bool() const
+Grid::operator bool() const
 {
   return false;
 }
 
-int64_t VolumeGrid::voxel_count() const
+int64_t Grid::voxel_count() const
 {
   return 0;
 }
 
-bool VolumeGrid::is_empty() const
+bool Grid::is_empty() const
 {
   return true;
 }
 
-VolumeGrid::operator bool() const
+Grid::operator bool() const
 {
   return false;
 }
 
-VolumeGrid VolumeGrid::create(ResourceScope &scope, const CPPType &type, const int64_t voxel_count)
+Grid Grid::create(ResourceScope &scope, const CPPType &type, const int64_t voxel_count)
 {
-  return VolumeGrid{};
+  return Grid{};
 }
 
-VolumeGrid VolumeGrid::create(ResourceScope &scope,
-                              const CPPType &type,
-                              const void *background_value)
+Grid Grid::create(ResourceScope &scope, const CPPType &type, const void *background_value)
 {
-  return VolumeGrid{};
+  return Grid{};
 }
-
-}  // namespace volume
 
 #endif
 
-}  // namespace blender
+}  // namespace blender::volume

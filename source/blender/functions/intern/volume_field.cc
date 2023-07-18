@@ -21,6 +21,8 @@
 
 namespace blender::fn {
 
+namespace mf = multi_function;
+
 /* A VArray implementation using OpenVDB grid accessors.
  * The index is converted to global voxel coordinate
  * by interpreting it as a leaf buffer index. */
@@ -177,8 +179,8 @@ struct TypedAccessorWrapper : public AccessorWrapper<LeafNodeType> {
 };
 
 template<typename GridType> struct EvalPerLeafOp {
-  using VolumeGrid = volume::VolumeGrid;
-  using VolumeMask = volume::VolumeMask;
+  using Grid = volume::Grid;
+  using GridMask = volume::GridMask;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
 
@@ -203,7 +205,7 @@ template<typename GridType> struct EvalPerLeafOp {
    */
   Array<std::shared_ptr<AccessorWrapperType>> input_accessors_;
 
-  void make_input_accessors(Span<VolumeGrid> field_context_inputs)
+  void make_input_accessors(Span<Grid> field_context_inputs)
   {
     input_accessors_.reinitialize(field_context_inputs.size());
 
@@ -220,7 +222,7 @@ template<typename GridType> struct EvalPerLeafOp {
     }
   }
 
-  EvalPerLeafOp(Span<VolumeGrid> field_context_inputs,
+  EvalPerLeafOp(Span<Grid> field_context_inputs,
                 const mf::ProcedureExecutor &procedure_executor,
                 const MaskGrid &mask)
       : procedure_executor_(procedure_executor), mask_accessor_(mask.getAccessor())
@@ -266,28 +268,28 @@ template<typename GridType> struct EvalPerLeafOp {
 };
 
 void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
-                                                 const volume::VolumeMask &mask,
+                                                 const volume::GridMask &mask,
                                                  const mf::Procedure &procedure,
-                                                 Span<volume::VolumeGrid> field_context_inputs,
+                                                 Span<volume::Grid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::VolumeGrid> dst_grids,
-                                                 MutableSpan<volume::VolumeGrid> r_grids,
+                                                 Span<volume::Grid> dst_grids,
+                                                 MutableSpan<volume::Grid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst)
 {
   /* Execute a multifunction procedure on each leaf buffer of the mask.
    * Each leaf buffer is a contiguous array that can be used as a span.
    * The leaf buffers' active voxel masks are used as index masks. */
 
-  using volume::VolumeGrid;
-  using volume::VolumeMask;
+  using volume::Grid;
+  using volume::GridMask;
 
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> VolumeGrid {
+  auto get_dst_grid = [&](int index) -> Grid {
     if (dst_grids.is_empty()) {
       return {};
     }
-    const VolumeGrid &grid = dst_grids[index];
+    const Grid &grid = dst_grids[index];
     if (!grid) {
       return {};
     }
@@ -303,10 +305,10 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     const int out_index = field_indices[i];
 
     /* Try to get an existing virtual array that the result should be written into. */
-    VolumeGrid dst_grid = get_dst_grid(out_index);
+    Grid dst_grid = get_dst_grid(out_index);
     if (!dst_grid) {
       /* Create a destination grid for the computed result. */
-      dst_grid = VolumeGrid::create(scope, type, mask, type.default_value(), type.default_value());
+      dst_grid = Grid::create(scope, type, mask, type.default_value(), type.default_value());
       r_grids[out_index] = dst_grid;
     }
     else {
@@ -333,13 +335,13 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
 void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
                                                   const mf::Procedure &procedure,
-                                                  Span<volume::VolumeGrid> field_context_inputs,
+                                                  Span<volume::Grid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  MutableSpan<volume::VolumeGrid> r_grids)
+                                                  MutableSpan<volume::Grid> r_grids)
 {
-  using volume::VolumeGrid;
-  using volume::VolumeMask;
+  using volume::Grid;
+  using volume::GridMask;
 
   mf::ProcedureExecutor procedure_executor{procedure};
   const IndexMask mask(1);
@@ -386,7 +388,7 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
       using ValueType = typename decltype(type_tag)::type;
 
       const ValueType &value = *static_cast<ValueType *>(output_buffers[i]);
-      r_grids[out_index] = VolumeGrid{volume::grid_types::GridCommon<ValueType>::create(value)};
+      r_grids[out_index] = Grid{volume::grid_types::GridCommon<ValueType>::create(value)};
     });
 
     /* Destruct output value buffers, value is stored in grid backgrounds now. */

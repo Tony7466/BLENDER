@@ -193,9 +193,9 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   return {};
 }
 
-fn::VolumeGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                               const fn::VolumeMask &mask,
-                                                               ResourceScope & /*scope*/) const
+volume::Grid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                             const volume::GridMask &mask,
+                                                             ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
@@ -301,9 +301,9 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
   return {};
 }
 
-fn::VolumeGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                             const fn::VolumeMask &mask,
-                                                             ResourceScope & /*scope*/) const
+volume::Grid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                           const volume::GridMask &mask,
+                                                           ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))

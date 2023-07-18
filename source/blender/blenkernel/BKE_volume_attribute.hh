@@ -68,7 +68,7 @@ namespace blender::bke {
 // * A generic version of #AttributeWriter.
 // */
 // struct GAttributeGridWriter {
-//  VolumeGrid *grid;
+//  Grid *grid;
 //  eAttrDomain domain;
 //  std::function<void()> tag_modified_fn;
 //
