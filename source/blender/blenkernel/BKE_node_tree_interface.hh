@@ -150,7 +150,7 @@ constexpr const char *node_socket_data_collection = "NodeSocketCollection";
 constexpr const char *node_socket_data_texture = "NodeSocketTexture";
 constexpr const char *node_socket_data_material = "NodeSocketMaterial";
 
-template<typename Fn> static void socket_data_to_static_type(const char *socket_type, const Fn &fn)
+template<typename Fn> void socket_data_to_static_type(const char *socket_type, const Fn &fn)
 {
   if (STREQ(socket_type, socket_types::node_socket_data_float)) {
     fn.template operator()<bNodeSocketValueFloat>();
@@ -209,8 +209,7 @@ template<typename Fn> struct TypeTagExecutor {
 
 }  // namespace detail
 
-template<typename Fn>
-static void socket_data_to_static_type_tag(const char *socket_type, const Fn &fn)
+template<typename Fn> void socket_data_to_static_type_tag(const char *socket_type, const Fn &fn)
 {
   detail::TypeTagExecutor executor{fn};
   socket_data_to_static_type(socket_type, executor);
@@ -218,10 +217,10 @@ static void socket_data_to_static_type_tag(const char *socket_type, const Fn &fn
 
 }  // namespace socket_types
 
-template<typename T> static bool socket_data_is_type(const char *socket_type)
+template<typename T> bool socket_data_is_type(const char *socket_type)
 {
   bool match = false;
-  socket_data_to_static_type_tag(socket_type, [&match](auto type_tag) {
+  socket_types::socket_data_to_static_type_tag(socket_type, [&match](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     match |= std::is_same<T, SocketDataType>::value;
   });

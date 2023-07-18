@@ -30,26 +30,26 @@ namespace socket_types {
 /** \name Initialize socket data
  * \{ */
 
-static void socket_data_init_impl(bNodeSocketValueFloat &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueFloat &data)
 {
   data.subtype = PROP_NONE;
   data.value = 0.0f;
   data.min = -FLT_MAX;
   data.max = FLT_MAX;
 }
-static void socket_data_init_impl(bNodeSocketValueInt &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueInt &data)
 {
   data.subtype = PROP_NONE;
   data.value = 0;
   data.min = INT_MIN;
   data.max = INT_MAX;
 }
-static void socket_data_init_impl(bNodeSocketValueBoolean &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueBoolean &data)
 {
   data.value = false;
 }
-static void socket_data_init_impl(bNodeSocketValueRotation & /*data*/) {}
-static void socket_data_init_impl(bNodeSocketValueVector &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueRotation & /*data*/) {}
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueVector &data)
 {
   static float default_value[] = {0.0f, 0.0f, 0.0f};
   data.subtype = PROP_NONE;
@@ -57,33 +57,33 @@ static void socket_data_init_impl(bNodeSocketValueVector &data)
   data.min = -FLT_MAX;
   data.max = FLT_MAX;
 }
-static void socket_data_init_impl(bNodeSocketValueRGBA &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueRGBA &data)
 {
   static float default_value[] = {0.0f, 0.0f, 0.0f, 1.0f};
   copy_v4_v4(data.value, default_value);
 }
-static void socket_data_init_impl(bNodeSocketValueString &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueString &data)
 {
   data.subtype = PROP_NONE;
   data.value[0] = '\0';
 }
-static void socket_data_init_impl(bNodeSocketValueObject &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueObject &data)
 {
   data.value = nullptr;
 }
-static void socket_data_init_impl(bNodeSocketValueImage &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueImage &data)
 {
   data.value = nullptr;
 }
-static void socket_data_init_impl(bNodeSocketValueCollection &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueCollection &data)
 {
   data.value = nullptr;
 }
-static void socket_data_init_impl(bNodeSocketValueTexture &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueTexture &data)
 {
   data.value = nullptr;
 }
-static void socket_data_init_impl(bNodeSocketValueMaterial &data)
+[[maybe_unused]] static void socket_data_init_impl(bNodeSocketValueMaterial &data)
 {
   data.value = nullptr;
 }
@@ -96,7 +96,7 @@ static void *make_socket_data(const char *socket_type)
   socket_data_to_static_type_tag(socket_type, [&socket_data](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     SocketDataType *new_socket_data = MEM_cnew<SocketDataType>(__func__);
-    socket_types::socket_data_init_impl(*new_socket_data);
+    socket_data_init_impl(*new_socket_data);
     socket_data = new_socket_data;
   });
   return socket_data;
@@ -108,28 +108,28 @@ static void *make_socket_data(const char *socket_type)
 /** \name Copy allocated socket data
  * \{ */
 
-static void socket_data_copy_impl(bNodeSocketValueObject &dst,
-                                  const bNodeSocketValueObject & /*src*/)
+[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueObject &dst,
+                                                   const bNodeSocketValueObject & /*src*/)
 {
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
-static void socket_data_copy_impl(bNodeSocketValueImage &dst,
-                                  const bNodeSocketValueImage & /*src*/)
+[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueImage &dst,
+                                                   const bNodeSocketValueImage & /*src*/)
 {
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
-static void socket_data_copy_impl(bNodeSocketValueCollection &dst,
-                                  const bNodeSocketValueCollection & /*src*/)
+[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueCollection &dst,
+                                                   const bNodeSocketValueCollection & /*src*/)
 {
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
-static void socket_data_copy_impl(bNodeSocketValueTexture &dst,
-                                  const bNodeSocketValueTexture & /*src*/)
+[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueTexture &dst,
+                                                   const bNodeSocketValueTexture & /*src*/)
 {
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
-static void socket_data_copy_impl(bNodeSocketValueMaterial &dst,
-                                  const bNodeSocketValueMaterial & /*src*/)
+[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueMaterial &dst,
+                                                   const bNodeSocketValueMaterial & /*src*/)
 {
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
@@ -147,9 +147,9 @@ template<typename T> static void socket_data_free_impl(T & /*data*/) {}
 
 static void socket_data_free(bNodeTreeInterfaceSocket &socket)
 {
-  socket_types::socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_free_impl(socket.get_data<SocketDataType>());
+    socket_data_free_impl(socket.get_data<SocketDataType>());
   });
 }
 
@@ -159,51 +159,62 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket)
 /** \name Write socket data to blend file
  * \{ */
 
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueFloat &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueFloat &data)
 {
   BLO_write_struct(writer, bNodeSocketValueFloat, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueInt &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueInt &data)
 {
   BLO_write_struct(writer, bNodeSocketValueInt, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueBoolean &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueBoolean &data)
 {
   BLO_write_struct(writer, bNodeSocketValueBoolean, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueRotation &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueRotation &data)
 {
   BLO_write_struct(writer, bNodeSocketValueRotation, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueVector &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueVector &data)
 {
   BLO_write_struct(writer, bNodeSocketValueVector, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueRGBA &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueRGBA &data)
 {
   BLO_write_struct(writer, bNodeSocketValueRGBA, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueString &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueString &data)
 {
   BLO_write_struct(writer, bNodeSocketValueString, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueObject &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueObject &data)
 {
   BLO_write_struct(writer, bNodeSocketValueObject, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueImage &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueImage &data)
 {
   BLO_write_struct(writer, bNodeSocketValueImage, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueCollection &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueCollection &data)
 {
   BLO_write_struct(writer, bNodeSocketValueCollection, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueTexture &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueTexture &data)
 {
   BLO_write_struct(writer, bNodeSocketValueTexture, &data);
 }
-static void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMaterial &data)
+[[maybe_unused]] static void socket_data_write_impl(BlendWriter *writer,
+                                                    bNodeSocketValueMaterial &data)
 {
   BLO_write_struct(writer, bNodeSocketValueMaterial, &data);
 }
@@ -212,7 +223,7 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_write_impl(writer, socket.get_data<SocketDataType>());
+    socket_data_write_impl(writer, socket.get_data<SocketDataType>());
   });
 }
 
@@ -234,7 +245,7 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_read_data_impl(reader, socket.get_data<SocketDataType>());
+    socket_data_read_data_impl(reader, socket.get_data<SocketDataType>());
   });
 }
 
@@ -254,7 +265,7 @@ static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterf
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_read_lib_impl(reader, id, socket.get_data<SocketDataType>());
+    socket_data_read_lib_impl(reader, id, socket.get_data<SocketDataType>());
   });
 }
 
@@ -271,7 +282,7 @@ static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_expand(expander, socket.get_data<SocketDataType>());
+    socket_data_expand(expander, socket.get_data<SocketDataType>());
   });
 }
 
@@ -281,23 +292,28 @@ static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket
 /** \name Callback per ID pointer
  * \{ */
 
-static void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueObject &data)
+[[maybe_unused]] static void socket_data_foreach_id_impl(LibraryForeachIDData *cb,
+                                                         bNodeSocketValueObject &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-static void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueImage &data)
+[[maybe_unused]] static void socket_data_foreach_id_impl(LibraryForeachIDData *cb,
+                                                         bNodeSocketValueImage &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-static void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueCollection &data)
+[[maybe_unused]] static void socket_data_foreach_id_impl(LibraryForeachIDData *cb,
+                                                         bNodeSocketValueCollection &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-static void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueTexture &data)
+[[maybe_unused]] static void socket_data_foreach_id_impl(LibraryForeachIDData *cb,
+                                                         bNodeSocketValueTexture &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
-static void socket_data_foreach_id_impl(LibraryForeachIDData *cb, bNodeSocketValueMaterial &data)
+[[maybe_unused]] static void socket_data_foreach_id_impl(LibraryForeachIDData *cb,
+                                                         bNodeSocketValueMaterial &data)
 {
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(cb, data.value, IDWALK_CB_USER);
 }
@@ -311,7 +327,7 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_types::socket_data_foreach_id_impl(data, socket.get_data<SocketDataType>());
+    socket_data_foreach_id_impl(data, socket.get_data<SocketDataType>());
   });
 }
 
