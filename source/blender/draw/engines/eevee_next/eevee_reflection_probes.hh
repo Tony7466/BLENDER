@@ -172,6 +172,8 @@ class ReflectionProbeModule {
   void update_probes_texture_mipmaps();
   void update_irradiance(uint64_t object_key);
 
+  bool has_only_world_probe() const;
+
   /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
   friend class CaptureView;
   /* Instance requires access to #update_probes_this_sample_ */
