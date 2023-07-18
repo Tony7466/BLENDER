@@ -57,13 +57,13 @@ void ReflectionProbeModule::init()
   }
 
   {
-    PassSimple &pass = extract_ps_;
+    PassSimple &pass = update_irradiance_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(REFLECTION_PROBE_UPDATE_IRRADIANCE));
     pass.push_constant("reflection_probe_index", &reflection_probe_index_);
     pass.bind_image("irradiance_atlas_img", &instance_.irradiance_cache.irradiance_atlas_tx_);
     bind_resources(&pass);
-    pass.dispatch(int2(1, 1));
+    pass.dispatch(int2(REFLECTION_PROBE_SH_DISPATCH_SIZE, 1));
   }
 }
 void ReflectionProbeModule::begin_sync()
@@ -534,12 +534,14 @@ void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
 
 void ReflectionProbeModule::update_irradiance(uint64_t object_key)
 {
+  GPU_debug_capture_begin();
   const ReflectionProbe &probe = probes_.lookup(object_key);
 
   /* Update shader parameters that change per dispatch. */
   reflection_probe_index_ = probe.index;
 
-  instance_.manager->submit(extract_ps_);
+  instance_.manager->submit(update_irradiance_ps_);
+  GPU_debug_capture_end();
 }
 
 void ReflectionProbeModule::update_probes_texture_mipmaps()

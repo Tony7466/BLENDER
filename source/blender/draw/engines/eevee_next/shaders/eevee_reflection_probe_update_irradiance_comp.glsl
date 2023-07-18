@@ -4,6 +4,7 @@
 
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
 {
@@ -19,45 +20,55 @@ void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
   }
 }
 
+shared SphericalHarmonicL1 cooefs[gl_WorkGroupSize.x];
+
 void main()
 {
   ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
 
-  SphericalHarmonicL1 cooefs;
-  cooefs.L0.M0 = vec4(0.0);
-  cooefs.L1.Mn1 = vec4(0.0);
-  cooefs.L1.M0 = vec4(0.0);
-  cooefs.L1.Mp1 = vec4(0.0);
-
-  ivec3 texture_size = textureSize(reflectionProbes, 0);
-  int max_subdivisions = int(log2(texture_size.x));
-  /* Find out at what subdivision level the probe has its 64x64 probe texture stored.
-   * Currently all probe resolutions have somewhere stored this resolution. */
-  const int subdivision_64 = 6;
-  int layer_i = clamp(
-      subdivision_64 - probe_data.layer_subdivision, 0, REFLECTION_PROBE_MIPMAP_LEVELS - 1);
-  float layer_fl = float(layer_i);
-
-  int base_resolution = (texture_size.x >> layer_i);
-  int resolution = base_resolution - int(2 * REFLECTION_PROBE_BORDER_SIZE);
-  float sample_weight = 4.0 * M_PI / float(resolution * resolution);
-  vec2 texel_size = vec2(1.0 / base_resolution);
-
-  for (int x = 0; x < resolution; x++) {
-    for (int y = 0; y < resolution; y++) {
-      vec2 packed_uv = (vec2(REFLECTION_PROBE_BORDER_SIZE) + vec2(x, y)) * texel_size;
-      vec2 octahedral_uv = octahedral_uv_from_layer_texture_coords(
-          packed_uv, probe_data, texel_size);
-      vec3 direction = octahedral_uv_to_direction(octahedral_uv);
-      vec4 light = reflection_probes_sample(direction, layer_fl, probe_data);
-      light.xyz = min(light.xyz, vec3(REFLECTION_PROBE_MAX_LIGHT));
-      spherical_harmonics_encode_signal_sample(direction, light * sample_weight, cooefs);
+  /* Initialize workgroup result. */
+  if (gl_GlobalInvocationID.x == 0) {
+    for (int i = 0; i < gl_WorkGroupSize.x; i++) {
+      cooefs[i].L0.M0 = vec4(0.0);
+      cooefs[i].L1.Mn1 = vec4(0.0);
+      cooefs[i].L1.M0 = vec4(0.0);
+      cooefs[i].L1.Mp1 = vec4(0.0);
     }
   }
 
+  memoryBarrierShared();
+
+  /* Perform one sample. */
+  uint store_index = gl_WorkGroupID.x;
+  float total_samples = float(gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+  float sample_index = float(gl_GlobalInvocationID.x);
+  float sample_weight = 4.0 * M_PI / total_samples;
+  vec2 rand = hammersley_2d(sample_index, total_samples);
+  vec3 direction = sample_sphere(rand);
+  vec4 light = reflection_probes_sample(direction, 0.0, probe_data);
+  spherical_harmonics_encode_signal_sample(direction, light * sample_weight, cooefs[store_index]);
+
+  memoryBarrierShared();
+  if (gl_GlobalInvocationID.x != 0) {
+    return;
+  }
+
+  /* Join results */
+  SphericalHarmonicL1 result;
+  result.L0.M0 = vec4(0.0);
+  result.L1.Mn1 = vec4(0.0);
+  result.L1.M0 = vec4(0.0);
+  result.L1.Mp1 = vec4(0.0);
+  for (int i = 0; i < gl_NumWorkGroups.x; i++) {
+    result.L0.M0 += cooefs[i].L0.M0;
+    result.L1.Mn1 += cooefs[i].L1.Mn1;
+    result.L1.M0 += cooefs[i].L1.M0;
+    result.L1.Mp1 += cooefs[i].L1.Mp1;
+  }
+
   ivec2 atlas_coord = ivec2(0, 0);
-  atlas_store(cooefs.L0.M0, atlas_coord, 0);
-  atlas_store(cooefs.L1.Mn1, atlas_coord, 1);
-  atlas_store(cooefs.L1.M0, atlas_coord, 2);
-  atlas_store(cooefs.L1.Mp1, atlas_coord, 3);
+  atlas_store(result.L0.M0, atlas_coord, 0);
+  atlas_store(result.L1.Mn1, atlas_coord, 1);
+  atlas_store(result.L1.M0, atlas_coord, 2);
+  atlas_store(result.L1.Mp1, atlas_coord, 3);
 }
