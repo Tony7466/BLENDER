@@ -11,6 +11,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BKE_screen.h"
 
 #include "BLI_binary_search.hh"
 #include "BLI_string_utils.h"
@@ -18,11 +19,15 @@
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
 
+#include "ED_node.hh"
+
 #include "MOD_nodes.hh"
 
 #include "NOD_socket.hh"
 
 #include "RNA_prototypes.h"
+
+#include "WM_api.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -345,6 +350,61 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   draw_bake_ui(layout, *object, nmd, *bake, bake_storage);
 }
 
+static void bake_items_list_draw_item(uiList * /*ui_list*/,
+                                      const bContext *C,
+                                      uiLayout *layout,
+                                      PointerRNA * /*idataptr*/,
+                                      PointerRNA *itemptr,
+                                      int /*icon*/,
+                                      PointerRNA * /*active_dataptr*/,
+                                      const char * /*active_propname*/,
+                                      int /*index*/,
+                                      int /*flt_flag*/)
+{
+  const NodeGeometryBakeItem &item = *static_cast<NodeGeometryBakeItem *>(itemptr->data);
+
+  float4 color;
+  const char *socket_type_idname = nodeStaticSocketType(item.socket_type, 0);
+  ED_node_type_draw_color(socket_type_idname, color);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiItemL(layout, item.name, ICON_NONE);
+}
+
+static uiListType *create_items_ui_list()
+{
+  uiListType *items_list = MEM_cnew<uiListType>(__func__);
+  STRNCPY(items_list->idname, "NODE_UL_bake_items");
+  items_list->draw_item = bake_items_list_draw_item;
+  WM_uilisttype_add(items_list);
+  return items_list;
+}
+
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  static const uiListType *items_list = create_items_ui_list();
+
+  PointerRNA items_ptr;
+  RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryBakeItems, ptr->data, &items_ptr);
+
+  uiLayout *list_row = uiLayoutRow(layout, false);
+  uiTemplateList(list_row,
+                 C,
+                 items_list->idname,
+                 "",
+                 ptr,
+                 "bake_items",
+                 ptr,
+                 "active_index",
+                 nullptr,
+                 3,
+                 5,
+                 UILST_LAYOUT_DEFAULT,
+                 0,
+                 UI_TEMPLATE_LIST_FLAG_NONE);
+}
+
 class LazyFunctionForBakeNode : public LazyFunction {
   const bNode &node_;
 
@@ -599,6 +659,7 @@ void register_node_type_geo_bake()
   ntype.initfunc = file_ns::node_init;
   ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.draw_buttons_ex = file_ns::node_layout_ex;
   ntype.insert_link = file_ns::node_insert_link;
   node_type_storage(
       &ntype, "NodeGeometryBake", file_ns::node_free_storage, file_ns::node_copy_storage);
