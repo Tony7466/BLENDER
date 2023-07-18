@@ -463,16 +463,7 @@ struct EraseOperationExecutor {
         src.curves_range(), GrainSize(256), memory, [&](const int64_t src_curve) {
           const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
-          /* If any point of the stroke lies inside the eraser, then remove it */
-          for (const int src_point : src_curve_points) {
-            if (math::distance_squared(screen_space_positions[src_point], mouse_position) <=
-                eraser_radius * eraser_radius)
-            {
-              return true;
-            }
-          }
-
-          /* If any segment of the stroke intersects the eraser, then remove it */
+          /* If any segment of the stroke intersects the eraser, then remove it. */
           for (const int src_point : src_curve_points.drop_back(1)) {
             float mu0;
             float mu1;
@@ -486,6 +477,7 @@ struct EraseOperationExecutor {
             }
           }
 
+          /* For cyclic curves, check for intersections with the closing segment. */
           if (src_cyclic[src_curve]) {
             float mu0;
             float mu1;
@@ -495,6 +487,15 @@ struct EraseOperationExecutor {
                 mu0,
                 mu1);
             if (nb_intersections > 0) {
+              return true;
+            }
+          }
+
+          /* If any point of the stroke lies inside the eraser, then remove it. */
+          for (const int src_point : src_curve_points) {
+            if (math::distance_squared(screen_space_positions[src_point], mouse_position) <=
+                eraser_radius * eraser_radius)
+            {
               return true;
             }
           }
