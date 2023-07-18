@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "RE_pipeline.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,23 +16,17 @@ extern "C" {
 struct bContext;
 struct bNodeTree;
 struct ImBuf;
+struct Render;
 
 struct NestedNodePreviewMap {
-  blender::Map<int, NodePreviewImage> node_previews;
+  Render *previews_render;
   int pr_size;
   bool rendering;
   bool restart_needed;
   uint16_t preview_refresh_state;
-
-  ~NestedNodePreviewMap()
-  {
-    for (NodePreviewImage image : node_previews.values()) {
-      MEM_freeN(image.rect);
-    }
-  }
 };
 
-void ED_spacenode_free_previews(SpaceNode *sn);
+void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode);
 ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, const bNode *node);
 NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
 

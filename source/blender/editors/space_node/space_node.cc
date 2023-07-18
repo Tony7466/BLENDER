@@ -317,7 +317,6 @@ static void node_free(SpaceLink *sl)
 
   if (snode->runtime) {
     snode->runtime->linkdrag.reset();
-    ED_spacenode_free_previews(snode);
     MEM_delete(snode->runtime);
   }
 }
@@ -329,6 +328,15 @@ static void node_init(wmWindowManager * /*wm*/, ScrArea *area)
 
   if (snode->runtime == nullptr) {
     snode->runtime = MEM_new<SpaceNode_Runtime>(__func__);
+  }
+}
+
+static void node_exit(wmWindowManager *wm, ScrArea *area)
+{
+  SpaceNode *snode = (SpaceNode *)area->spacedata.first;
+
+  if (snode->runtime) {
+    ED_spacenode_free_previews(wm, snode);
   }
 }
 
@@ -1133,6 +1141,7 @@ void ED_spacetype_node()
   st->create = node_create;
   st->free = node_free;
   st->init = node_init;
+  st->exit = node_exit;
   st->duplicate = node_duplicate;
   st->operatortypes = node_operatortypes;
   st->keymap = node_keymap;
