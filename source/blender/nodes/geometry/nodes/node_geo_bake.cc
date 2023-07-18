@@ -10,6 +10,9 @@
 #include "BKE_context.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
+#include "BKE_scene.h"
+
+#include "BLI_binary_search.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
@@ -17,6 +20,8 @@
 #include "MOD_nodes.hh"
 
 #include "RNA_prototypes.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "WM_api.h"
 
@@ -101,7 +106,17 @@ static void draw_bake_ui(uiLayout *layout,
   PointerRNA bake_ptr;
   RNA_pointer_create(&object.id, &RNA_NodesModifierBake, &bake, &bake_ptr);
 
-  uiItemR(layout, &bake_ptr, "bake_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  uiLayout *settings_col = uiLayoutColumn(layout, false);
+  uiLayoutSetActive(settings_col, !is_baked);
+  {
+    uiLayout *row = uiLayoutRow(settings_col, false);
+    uiItemR(row, &bake_ptr, "bake_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  }
+  if (bake.bake_type == NODES_MODIFIER_BAKE_TYPE_ANIMATED) {
+    uiLayout *subcol = uiLayoutColumn(settings_col, true);
+    uiItemR(subcol, &bake_ptr, "frame_start", 0, "Start", ICON_NONE);
+    uiItemR(subcol, &bake_ptr, "frame_end", 0, "End", ICON_NONE);
+  }
 
   uiLayout *row = uiLayoutRow(layout, true);
   {
@@ -206,6 +221,10 @@ class LazyFunctionForBakeNode : public LazyFunction {
       return;
     }
 
+    const Depsgraph *depsgraph = user_data.modifier_data->depsgraph;
+    const Scene *scene = DEG_get_input_scene(depsgraph);
+    const SubFrame frame = BKE_scene_ctime_get(scene);
+
     const int32_t nested_node_id =
         user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
             {user_data.compute_context->hash(), node_.identifier}, -1);
@@ -236,9 +255,20 @@ class LazyFunctionForBakeNode : public LazyFunction {
         this->pass_through(params);
         return;
       }
-      const bke::BakeNodeState &state = *bake_storage->states[0].state;
+
+      int state_index = binary_search::find_predicate_begin(
+          bake_storage->states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
+            return state_at_frame.frame > frame;
+          });
+      /* Use the first state at the same or previous frame. When the current frame is before any
+       * baked frame, use the first baked frame.*/
+      if (state_index > 0) {
+        state_index--;
+      }
+
+      const bke::BakeNodeState &state = *bake_storage->states[state_index].state;
       if (!state.geometry.has_value()) {
-        this->pass_through(params);
+        params.set_output(0, GeometrySet());
         return;
       }
       params.set_output(0, *state.geometry);

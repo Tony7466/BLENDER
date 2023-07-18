@@ -78,6 +78,7 @@ static void bake_operator_props(wmOperatorType *ot)
 static int geometry_node_bake_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
 
   Object *object;
   NodesModifierData *modifier;
@@ -91,20 +92,42 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   if (!nmd.runtime->bakes) {
     nmd.runtime->bakes = std::make_shared<bke::GeometryNodesModifierBakes>();
   }
+
   bke::GeometryNodesModifierBakes &bakes = *nmd.runtime->bakes;
   bke::BakeNodeStorage &bake_storage = *bakes.storage_by_id.lookup_or_add_cb(
       bake->id, []() { return std::make_unique<bke::BakeNodeStorage>(); });
   bake_storage.states.clear();
-  bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
 
-  bakes.requested_bake_ids.add(bake->id);
+  switch (NodesModifierBakeType(bake->bake_type)) {
+    case NODES_MODIFIER_BAKE_TYPE_STILL: {
+      bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
+      bakes.requested_bake_ids.add(bake->id);
 
-  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
-  BKE_scene_graph_update_tagged(depsgraph, bmain);
+      DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+      BKE_scene_graph_update_tagged(depsgraph, bmain);
 
-  bakes.requested_bake_ids.clear();
+      bakes.requested_bake_ids.clear();
+      bake_storage.states.append({0, std::move(bake_storage.current_bake_state)});
+      break;
+    }
+    case NODES_MODIFIER_BAKE_TYPE_ANIMATED: {
+      for (int frame_i = bake->frame_start; frame_i <= bake->frame_end; frame_i++) {
+        const SubFrame frame{frame_i};
+        bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
+        bakes.requested_bake_ids.add(bake->id);
+        DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 
-  bake_storage.states.append({0, std::move(bake_storage.current_bake_state)});
+        scene->r.cfra = frame.frame();
+        scene->r.subframe = frame.subframe();
+
+        BKE_scene_graph_update_for_newframe(depsgraph);
+
+        bakes.requested_bake_ids.clear();
+        bake_storage.states.append({frame, std::move(bake_storage.current_bake_state)});
+      }
+      break;
+    }
+  }
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 
