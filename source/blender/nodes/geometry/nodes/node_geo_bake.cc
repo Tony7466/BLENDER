@@ -13,11 +13,14 @@
 #include "BKE_scene.h"
 
 #include "BLI_binary_search.hh"
+#include "BLI_string_utils.h"
 
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
 
 #include "MOD_nodes.hh"
+
+#include "NOD_socket.hh"
 
 #include "RNA_prototypes.h"
 
@@ -27,10 +30,150 @@
 
 namespace blender::nodes::node_geo_bake_cc {
 
-static void node_declare(NodeDeclarationBuilder &b)
+NODE_STORAGE_FUNCS(NodeGeometryBake);
+
+static std::unique_ptr<SocketDeclaration> socket_declaration_for_bake_item(
+    const NodeGeometryBakeItem &item,
+    const eNodeSocketInOut in_out,
+    const int corresponding_input = -1)
 {
-  b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Geometry");
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+
+  std::unique_ptr<SocketDeclaration> decl;
+
+  auto handle_field_decl = [&](SocketDeclaration &decl) {
+    if (in_out == SOCK_IN) {
+      decl.input_field_type = InputSocketFieldType::IsSupported;
+    }
+    else {
+      decl.output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
+          {corresponding_input});
+    }
+  };
+
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      decl = std::make_unique<decl::Float>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_VECTOR:
+      decl = std::make_unique<decl::Vector>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_RGBA:
+      decl = std::make_unique<decl::Color>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_BOOLEAN:
+      decl = std::make_unique<decl::Bool>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_ROTATION:
+      decl = std::make_unique<decl::Rotation>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_INT:
+      decl = std::make_unique<decl::Int>();
+      handle_field_decl(*decl);
+      break;
+    case SOCK_GEOMETRY:
+      decl = std::make_unique<decl::Geometry>();
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  decl->name = item.name ? item.name : "";
+  decl->identifier = item.identifier_str();
+  decl->in_out = in_out;
+  return decl;
+}
+
+static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
+                                 const bNode &node,
+                                 NodeDeclaration &r_declaration)
+{
+  const NodeGeometryBake &storage = node_storage(node);
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeGeometryBakeItem &item = storage.items[i];
+    r_declaration.inputs.append(socket_declaration_for_bake_item(item, SOCK_IN));
+    r_declaration.outputs.append(socket_declaration_for_bake_item(item, SOCK_OUT, i));
+  }
+  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
+  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  NodeGeometryBake *data = MEM_cnew<NodeGeometryBake>(__func__);
+  data->next_identifier = 0;
+  data->items = MEM_cnew_array<NodeGeometryBakeItem>(1, __func__);
+  data->items[0].name = BLI_strdup(DATA_("Geometry"));
+  data->items[0].socket_type = SOCK_GEOMETRY;
+  data->items[0].identifier = data->next_identifier++;
+  data->items_num = 1;
+
+  node->storage = data;
+}
+
+static void node_free_storage(bNode *node)
+{
+  NodeGeometryBake &storage = node_storage(*node);
+  for (NodeGeometryBakeItem &item : storage.items_span()) {
+    MEM_SAFE_FREE(item.name);
+  }
+  MEM_SAFE_FREE(storage.items);
+  MEM_freeN(node->storage);
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeGeometryBake &src_storage = node_storage(*src_node);
+  NodeGeometryBake *dst_storage = MEM_new<NodeGeometryBake>(__func__, src_storage);
+
+  dst_storage->items = MEM_cnew_array<NodeGeometryBakeItem>(src_storage.items_num, __func__);
+  for (const int i : IndexRange(src_storage.items_num)) {
+    dst_storage->items[i] = src_storage.items[i];
+    if (dst_storage->items[i].name) {
+      dst_storage->items[i].name = BLI_strdup(dst_storage->items[i].name);
+    }
+  }
+  dst_node->storage = dst_storage;
+}
+
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  NodeGeometryBake &storage = node_storage(*node);
+  if (link->tonode == node) {
+    if (link->tosock->identifier == StringRef("__extend__")) {
+      if (const NodeGeometryBakeItem *item = storage.add_item(
+              link->fromsock->name, eNodeSocketDatatype(link->fromsock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->tosock = nodeFindSocket(node, SOCK_IN, item->identifier_str().c_str());
+        return true;
+      }
+    }
+    else {
+      return true;
+    }
+  }
+  if (link->fromnode == node) {
+    if (link->fromsock->identifier == StringRef("__extend__")) {
+      if (const NodeGeometryBakeItem *item = storage.add_item(
+              link->tosock->name, eNodeSocketDatatype(link->tosock->type)))
+      {
+        update_node_declaration_and_sockets(*ntree, *node);
+        link->fromsock = nodeFindSocket(node, SOCK_OUT, item->identifier_str().c_str());
+        return true;
+      }
+    }
+    else {
+      return true;
+    }
+  }
+  return false;
 }
 
 static const bNode *group_node_by_name(const bNodeTree &ntree, StringRef name)
@@ -362,6 +505,90 @@ std::unique_ptr<LazyFunction> get_bake_node_input_usage_lazy_function(const bNod
 
 }  // namespace blender::nodes
 
+blender::Span<NodeGeometryBakeItem> NodeGeometryBake::items_span() const
+{
+  return blender::Span<NodeGeometryBakeItem>(items, items_num);
+}
+
+blender::MutableSpan<NodeGeometryBakeItem> NodeGeometryBake::items_span()
+{
+  return blender::MutableSpan<NodeGeometryBakeItem>(items, items_num);
+}
+
+bool NodeGeometryBakeItem::supports_type(const eNodeSocketDatatype type)
+{
+  return ELEM(type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_ROTATION,
+              SOCK_INT,
+              SOCK_GEOMETRY);
+}
+
+std::string NodeGeometryBakeItem::identifier_str() const
+{
+  return "Item_" + std::to_string(this->identifier);
+}
+
+NodeGeometryBakeItem *NodeGeometryBake::add_item(const char *name, const eNodeSocketDatatype type)
+{
+  if (!NodeGeometryBakeItem::supports_type(type)) {
+    return nullptr;
+  }
+  const int insert_index = this->items_num;
+  NodeGeometryBakeItem *old_items = this->items;
+
+  this->items = MEM_cnew_array<NodeGeometryBakeItem>(this->items_num + 1, __func__);
+  std::copy_n(old_items, insert_index, this->items);
+  NodeGeometryBakeItem &new_item = this->items[insert_index];
+  std::copy_n(old_items + insert_index + 1,
+              this->items_num - insert_index,
+              this->items + insert_index + 1);
+
+  new_item.identifier = this->next_identifier++;
+  this->set_item_name(new_item, name);
+  new_item.socket_type = type;
+
+  this->items_num++;
+  MEM_SAFE_FREE(old_items);
+  return &new_item;
+}
+
+void NodeGeometryBake::set_item_name(NodeGeometryBakeItem &item, const char *name)
+{
+  char unique_name[MAX_NAME + 4];
+  STRNCPY(unique_name, name);
+
+  struct Args {
+    NodeGeometryBake *storage;
+    const NodeGeometryBakeItem *item;
+  } args = {this, &item};
+
+  const char *default_name = nodeStaticSocketLabel(item.socket_type, 0);
+  BLI_uniquename_cb(
+      [](void *arg, const char *name) {
+        const Args &args = *static_cast<Args *>(arg);
+        for (const NodeGeometryBakeItem &item : args.storage->items_span()) {
+          if (&item != args.item) {
+            if (STREQ(item.name, name)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      &args,
+      default_name,
+      '.',
+      unique_name,
+      ARRAY_SIZE(unique_name));
+
+  MEM_SAFE_FREE(item.name);
+  item.name = BLI_strdup(unique_name);
+}
+
 void register_node_type_geo_bake()
 {
   namespace file_ns = blender::nodes::node_geo_bake_cc;
@@ -369,7 +596,11 @@ void register_node_type_geo_bake()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_BAKE, "Bake", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
+  ntype.initfunc = file_ns::node_init;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.insert_link = file_ns::node_insert_link;
+  node_type_storage(
+      &ntype, "NodeGeometryBake", file_ns::node_free_storage, file_ns::node_copy_storage);
   nodeRegisterType(&ntype);
 }

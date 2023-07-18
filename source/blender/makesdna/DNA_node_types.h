@@ -1785,6 +1785,38 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct NodeGeometryBakeItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+
+#ifdef __cplusplus
+  static bool supports_type(eNodeSocketDatatype type);
+  std::string identifier_str() const;
+#endif
+} NodeGeometryBakeItem;
+
+typedef struct NodeGeometryBake {
+  NodeGeometryBakeItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  blender::Span<NodeGeometryBakeItem> items_span() const;
+  blender::MutableSpan<NodeGeometryBakeItem> items_span();
+  NodeGeometryBakeItem *add_item(const char *name, eNodeSocketDatatype type);
+  void set_item_name(NodeGeometryBakeItem &item, const char *name);
+#endif
+} NodeGeometryBake;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;

@@ -685,6 +685,13 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         BLO_write_string(writer, item.name);
       }
     }
+    if (node->type == GEO_NODE_BAKE) {
+      const NodeGeometryBake &storage = *static_cast<const NodeGeometryBake *>(node->storage);
+      BLO_write_struct_array(writer, NodeGeometryBakeItem, storage.items_num, storage.items);
+      for (const NodeGeometryBakeItem &item : storage.items_span()) {
+        BLO_write_string(writer, item.name);
+      }
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -886,6 +893,14 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
               node->storage);
           BLO_read_data_address(reader, &storage.items);
           for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+            BLO_read_data_address(reader, &item.name);
+          }
+          break;
+        }
+        case GEO_NODE_BAKE: {
+          NodeGeometryBake &storage = *static_cast<NodeGeometryBake *>(node->storage);
+          BLO_read_data_address(reader, &storage.items);
+          for (const NodeGeometryBakeItem &item : storage.items_span()) {
             BLO_read_data_address(reader, &item.name);
           }
           break;
