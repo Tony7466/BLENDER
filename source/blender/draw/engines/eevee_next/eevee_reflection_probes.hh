@@ -103,7 +103,7 @@ class ReflectionProbeModule {
   Texture probes_tx_ = {"Probes"};
 
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
-  PassSimple update_irradiance_ps_ = {"Probe.ExtractSH"};
+  PassSimple update_irradiance_ps_ = {"Probe.UpdateIrradiance"};
 
   int3 dispatch_probe_pack_ = int3(0);
 
