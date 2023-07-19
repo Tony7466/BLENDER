@@ -66,7 +66,7 @@ set(SRC
   intern/render.cc
   intern/render.h
   intern/sequence_lookup.cc
-  intern/sequencer.c
+  intern/sequencer.cc
   intern/sequencer.h
   intern/sound.c
   intern/strip_add.c
