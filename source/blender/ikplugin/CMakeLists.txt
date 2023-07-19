@@ -13,7 +13,7 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/ikplugin_api.c
+  intern/ikplugin_api.cc
 
   BIK_api.h
   intern/ikplugin_api.h
