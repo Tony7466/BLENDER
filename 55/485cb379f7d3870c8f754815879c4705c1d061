@@ -21,3 +21,4 @@ Referenced by issue #106657, Regression: Image rendering fails while viewport re
 Referenced by issue #105810, blender don't launch
 Referenced by issue #108455, Crash without warning when opening material properties panel.
 Referenced by issue #108516, crash when rendering with optics
+Referenced by issue #110257, Crash so often when modeling
