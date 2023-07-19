@@ -76,7 +76,7 @@ set(SRC
   intern/strip_select.cc
   intern/strip_time.cc
   intern/strip_time.h
-  intern/strip_transform.c
+  intern/strip_transform.cc
   intern/utils.c
   intern/utils.h
 )
