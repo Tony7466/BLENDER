@@ -27,6 +27,7 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
 #  include "BLI_math.h"
+#  include "DNA_material_types.h"
 #  include "ED_node.h"
 #  include "WM_api.h"
 
@@ -42,8 +43,16 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
   bNodeTreeInterfaceItem *item = static_cast<bNodeTreeInterfaceItem *>(ptr->data);
 
   switch (item->item_type) {
-    case NODE_INTERFACE_SOCKET:
-      return &RNA_NodeTreeInterfaceSocket;
+    case NODE_INTERFACE_SOCKET: {
+      bNodeTreeInterfaceSocket &socket = item->get_as<bNodeTreeInterfaceSocket>();
+      bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
+      if (socket_typeinfo) {
+        return socket_typeinfo->ext_interface_new.srna;
+      }
+      else {
+        return &RNA_NodeTreeInterfaceSocket;
+      }
+    }
     case NODE_INTERFACE_PANEL:
       return &RNA_NodeTreeInterfacePanel;
     default:
@@ -290,6 +299,75 @@ static void rna_NodeTreeInterfaceItems_move(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+/* ******** Node Socket Subtypes ******** */
+
+void rna_NodeTreeInterfaceSocketFloat_default_value_range(
+    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
+{
+  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  bNodeSocketValueFloat *dval = static_cast<bNodeSocketValueFloat *>(socket->socket_data);
+  bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket->socket_type);
+  int subtype = socket_typeinfo ? socket_typeinfo->subtype : PROP_NONE;
+
+  if (dval->max < dval->min) {
+    dval->max = dval->min;
+  }
+
+  *min = (subtype == PROP_UNSIGNED ? 0.0f : -FLT_MAX);
+  *max = FLT_MAX;
+  *softmin = dval->min;
+  *softmax = dval->max;
+}
+
+void rna_NodeTreeInterfaceSocketInt_default_value_range(
+    PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
+{
+  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  bNodeSocketValueInt *dval = static_cast<bNodeSocketValueInt *>(socket->socket_data);
+  bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket->socket_type);
+  int subtype = socket_typeinfo ? socket_typeinfo->subtype : PROP_NONE;
+
+  if (dval->max < dval->min) {
+    dval->max = dval->min;
+  }
+
+  *min = (subtype == PROP_UNSIGNED ? 0 : INT_MIN);
+  *max = INT_MAX;
+  *softmin = dval->min;
+  *softmax = dval->max;
+}
+
+void rna_NodeTreeInterfaceSocketVector_default_value_range(
+    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
+{
+  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  bNodeSocketValueVector *dval = static_cast<bNodeSocketValueVector *>(socket->socket_data);
+
+  if (dval->max < dval->min) {
+    dval->max = dval->min;
+  }
+
+  *min = -FLT_MAX;
+  *max = FLT_MAX;
+  *softmin = dval->min;
+  *softmax = dval->max;
+}
+
+/* using a context update function here, to avoid searching the node if possible */
+static void rna_NodeTreeInterfaceSocket_value_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  /* default update */
+  rna_NodeTreeInterfaceItem_update(bmain, scene, ptr);
+}
+
+static bool rna_NodeTreeInterfaceSocketMaterial_default_value_poll(PointerRNA * /*ptr*/,
+                                                                   PointerRNA value)
+{
+  /* Do not show grease pencil materials for now. */
+  Material *ma = static_cast<Material *>(value.data);
+  return ma->gp_style == nullptr;
+}
+
 #else
 
 static void rna_def_node_interface_item(BlenderRNA *brna)
@@ -519,7 +597,7 @@ void RNA_def_node_tree_interface(BlenderRNA *brna)
   rna_def_node_interface_panel(brna);
   rna_def_node_tree_interface(brna);
 
-  rna_def_node_socket_interface_subtypes(brna);
+  rna_def_node_socket_interface_subtypes_new(brna);
 }
 
 #endif

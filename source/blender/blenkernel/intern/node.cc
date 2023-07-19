@@ -2129,6 +2129,87 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
   return nullptr;
 }
 
+const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
+{
+  switch (eNodeSocketDatatype(type)) {
+    case SOCK_FLOAT:
+      switch (PropertySubType(subtype)) {
+        case PROP_UNSIGNED:
+          return "NodeTreeInterfaceSocketFloatUnsigned";
+        case PROP_PERCENTAGE:
+          return "NodeTreeInterfaceSocketFloatPercentage";
+        case PROP_FACTOR:
+          return "NodeTreeInterfaceSocketFloatFactor";
+        case PROP_ANGLE:
+          return "NodeTreeInterfaceSocketFloatAngle";
+        case PROP_TIME:
+          return "NodeTreeInterfaceSocketFloatTime";
+        case PROP_TIME_ABSOLUTE:
+          return "NodeTreeInterfaceSocketFloatTimeAbsolute";
+        case PROP_DISTANCE:
+          return "NodeTreeInterfaceSocketFloatDistance";
+        case PROP_NONE:
+        default:
+          return "NodeTreeInterfaceSocketFloat";
+      }
+    case SOCK_INT:
+      switch (PropertySubType(subtype)) {
+        case PROP_UNSIGNED:
+          return "NodeTreeInterfaceSocketIntUnsigned";
+        case PROP_PERCENTAGE:
+          return "NodeTreeInterfaceSocketIntPercentage";
+        case PROP_FACTOR:
+          return "NodeTreeInterfaceSocketIntFactor";
+        case PROP_NONE:
+        default:
+          return "NodeTreeInterfaceSocketInt";
+      }
+    case SOCK_BOOLEAN:
+      return "NodeTreeInterfaceSocketBool";
+    case SOCK_ROTATION:
+      return "NodeTreeInterfaceSocketRotation";
+    case SOCK_VECTOR:
+      switch (PropertySubType(subtype)) {
+        case PROP_TRANSLATION:
+          return "NodeTreeInterfaceSocketVectorTranslation";
+        case PROP_DIRECTION:
+          return "NodeTreeInterfaceSocketVectorDirection";
+        case PROP_VELOCITY:
+          return "NodeTreeInterfaceSocketVectorVelocity";
+        case PROP_ACCELERATION:
+          return "NodeTreeInterfaceSocketVectorAcceleration";
+        case PROP_EULER:
+          return "NodeTreeInterfaceSocketVectorEuler";
+        case PROP_XYZ:
+          return "NodeTreeInterfaceSocketVectorXYZ";
+        case PROP_NONE:
+        default:
+          return "NodeTreeInterfaceSocketVector";
+      }
+    case SOCK_RGBA:
+      return "NodeTreeInterfaceSocketColor";
+    case SOCK_STRING:
+      return "NodeTreeInterfaceSocketString";
+    case SOCK_SHADER:
+      return "NodeTreeInterfaceSocketShader";
+    case SOCK_OBJECT:
+      return "NodeTreeInterfaceSocketObject";
+    case SOCK_IMAGE:
+      return "NodeTreeInterfaceSocketImage";
+    case SOCK_GEOMETRY:
+      return "NodeTreeInterfaceSocketGeometry";
+    case SOCK_COLLECTION:
+      return "NodeTreeInterfaceSocketCollection";
+    case SOCK_TEXTURE:
+      return "NodeTreeInterfaceSocketTexture";
+    case SOCK_MATERIAL:
+      return "NodeTreeInterfaceSocketMaterial";
+    case SOCK_CUSTOM:
+      break;
+  }
+  return nullptr;
+}
+
 const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
 {
   switch (eNodeSocketDatatype(type)) {
@@ -4758,6 +4839,9 @@ void BKE_node_system_exit()
       }
       if (st->ext_interface.free) {
         st->ext_interface.free(st->ext_interface.data);
+      }
+      if (st->ext_interface_new.free) {
+        st->ext_interface_new.free(st->ext_interface_new.data);
       }
     }
     NODE_SOCKET_TYPES_END;

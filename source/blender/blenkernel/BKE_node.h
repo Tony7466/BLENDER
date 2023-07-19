@@ -154,6 +154,7 @@ typedef struct CPPTypeHandle CPPTypeHandle;
  *
  * Defines the appearance and behavior of a socket in the UI.
  */
+/* XXX replace interface parts when old tree interfaces are fully deprecated */
 typedef struct bNodeSocketType {
   /** Identifier name. */
   char idname[64];
@@ -187,6 +188,7 @@ typedef struct bNodeSocketType {
   /* RNA integration */
   ExtensionRNA ext_socket;
   ExtensionRNA ext_interface;
+  ExtensionRNA ext_interface_new;
 
   /* for standard socket types in C */
   int type, subtype;
@@ -642,6 +644,7 @@ const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 const char *nodeStaticSocketType(int type, int subtype);
 const char *nodeStaticSocketInterfaceType(int type, int subtype);
+const char *nodeStaticSocketInterfaceTypeNew(int type, int subtype);
 const char *nodeStaticSocketLabel(int type, int subtype);
 
 /* Helper macros for iterating over node types. */

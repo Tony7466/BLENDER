@@ -416,15 +416,7 @@ char *rna_Node_ImageUser_path(const struct PointerRNA *ptr);
 char *rna_CameraBackgroundImage_image_or_movieclip_user_path(const struct PointerRNA *ptr);
 
 /* Node socket subtypes for group interface. */
-void rna_def_node_socket_interface_subtypes(BlenderRNA *brna);
-/* Update functions that need to be public for cross-unit makesrna compilation. */
-void rna_NodeSocketStandard_float_range(
-    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax);
-void rna_NodeSocketStandard_int_range(
-    PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax);
-void rna_NodeSocketStandard_vector_range(
-    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax);
-bool rna_NodeSocketMaterial_default_value_poll(PointerRNA *ptr, PointerRNA value);
+void rna_def_node_socket_interface_subtypes_new(BlenderRNA *brna);
 
 /* Set U.is_dirty and redraw. */
 
