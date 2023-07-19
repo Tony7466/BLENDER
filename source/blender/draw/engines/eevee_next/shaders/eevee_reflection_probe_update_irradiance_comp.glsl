@@ -37,18 +37,23 @@ void main()
 
   barrier();
 
-  /* Perform multiple sample. */
+  /* Determine the LOD to sample. We locate mipmap level that contains the 64x64 subdivision what
+   * should be available for all probes. */
   ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
+  const int subdivision_64 = 5;
+  float layer_mipmap = clamp(
+      subdivision_64 - probe_data.layer_subdivision, 0, REFLECTION_PROBE_MIPMAP_LEVELS);
+
+  /* Perform multiple sample. */
   uint store_index = gl_LocalInvocationID.x;
   float total_samples = float(gl_WorkGroupSize.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
   float sample_weight = 4.0 * M_PI / total_samples;
   float sample_offset = float(gl_LocalInvocationID.x * REFLECTION_PROBE_SH_SAMPLES_PER_GROUP);
   for (int sample_index = 0; sample_index < REFLECTION_PROBE_SH_SAMPLES_PER_GROUP; sample_index++)
   {
-    vec2 rand = hammersley_2d(sample_index + sample_offset, total_samples);
+    vec2 rand = fract(hammersley_2d(sample_index + sample_offset, total_samples));
     vec3 direction = sample_sphere(rand);
-    vec4 light = reflection_probes_sample(direction, 0.0, probe_data);
-    light = reflection_probes_clamp_brightness(light);
+    vec4 light = reflection_probes_sample(direction, layer_mipmap, probe_data);
     spherical_harmonics_encode_signal_sample(
         direction, light * sample_weight, cooefs[store_index]);
   }
