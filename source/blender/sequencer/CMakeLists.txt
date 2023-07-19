@@ -47,7 +47,7 @@ set(SRC
 
   intern/animation.cc
   intern/channels.cc
-  intern/clipboard.c
+  intern/clipboard.cc
   intern/disk_cache.c
   intern/disk_cache.h
   intern/effects.c
