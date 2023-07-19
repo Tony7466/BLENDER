@@ -711,16 +711,9 @@ struct EraseOperationExecutor {
    * \param src: Source curves geometry.
    * \param src_remove_points: Boolean array in the source point domain, containing true if the
    * corresponding source point is to be removed.
-   * \param src_nb_new_points: For each segment in the source, number of points to insert in the
-   * destination. Note: this array lies in the source point domain to account for the closing
-   * segment of cyclic curves.
-   * \param new_points_factors: For each new point to insert in the curve, the (0,1) factor of its
-   * position in the source segment.
    */
   CurvesTopologyTransferData compute_topology_transfer(const blender::bke::CurvesGeometry &src,
-                                                       const Span<bool> src_remove_point,
-                                                       const Span<int> src_nb_new_points,
-                                                       const Span<float> new_points_factors) const
+                                                       const Span<bool> src_remove_point) const
   {
     using namespace blender::bke;
 
@@ -731,111 +724,111 @@ struct EraseOperationExecutor {
 
     IndexMaskMemory srp_mem{};
     const int total_points_removed = IndexMask::from_bools(src_remove_point, srp_mem).size();
-    const int total_points_added = new_points_factors.size();
-    const int dst_points_num = src_points_num + total_points_added - total_points_removed;
 
-    /* Set the intersection parameters in the destination domain : a pair
-     * of int and float numbers for which the integer is the index of the
-     * corresponding segment in the source curves, and the float part is
-     * the (0,1) factor representing its position in the segment.
+    /* Total number of points in the destination :
+     *   - points that are inside the erase are removed.
+     */
+    const int dst_points_num = src_points_num - total_points_removed;
+    if (dst_points_num == 0) {
+      /* Return early if no points left */
+      return CurvesTopologyTransferData(0, 0);
+    }
+
+    /* Set the intersection parameters in the destination domain : a pair of int and float numbers
+     * for which the integer is the index of the corresponding segment in the source curves, and
+     * the float part is the (0,1) factor representing its position in the segment.
      */
     Array<std::pair<int, float>> dst_points_parameters(dst_points_num);
-    Vector<int> dst_curves_offset;
-    Vector<int> dst_to_src_curve;
-    Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
+    Array<bool> dst_new_first_point(dst_points_num);
     Array<int> src_pivot_point(src_curves_num, -1);
+    Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
     Array<bool> src_now_cyclic(src_curves_num);
     int dst_point = -1;
-    int np_index = 0;
-
     for (const int src_curve : src.curves_range()) {
       const IndexRange src_points = src_points_by_curve[src_curve];
-
       bool curve_was_cut = false;
 
-      /* Keep track of if we are in a portion of the curve that will be kept in the destination
-       * or not. */
-      bool inside_curve = !src_remove_point[src_points.first()];
-
       for (const int src_point : src_points) {
-
-        /* Add a point from the source : the factor is only the index in the source. */
         if (!src_remove_point[src_point]) {
+          /* Add a point from the source : the factor is only the index in the source. */
           dst_points_parameters[++dst_point] = {src_point, 0.0};
 
-          /* If we were outside of the curve, this is the first point of a new curve. */
-          if (!inside_curve) {
-            dst_curves_offset.append(dst_point);
-            dst_to_src_curve.append(src_curve);
-            inside_curve = true;
+          const bool is_new_first_point = curve_was_cut && (src_remove_point[src_point - 1]);
+          dst_new_first_point[dst_point] = is_new_first_point;
 
-            /* If this is not the start of the curve in the source, it means the curve was cut at
-             * some point. */
-            curve_was_cut = curve_was_cut || (src_point != src_points.first());
+          /* For cyclic curves, mark the pivot point as the last first point of a subdivision of
+           * the segment in the destination.
+           */
+          if (src_cyclic[src_curve] && is_new_first_point) {
+            src_pivot_point[src_curve] = dst_point;
           }
         }
         else {
-          /* If the point is removed, we are now outside of the curve. */
-          inside_curve = false;
           curve_was_cut = true;
         }
-
-        /* Add new inner points. */
-        IndexRange src_segment_new_points(np_index, src_nb_new_points[src_point]);
-        for (const float src_point_factor : new_points_factors.slice(src_segment_new_points)) {
-          dst_points_parameters[++dst_point] = {src_point, src_point_factor};
-
-          /* If we were outside of the curve, this is the first point of a new curve. */
-          if (!inside_curve) {
-            dst_curves_offset.append(dst_point);
-            dst_to_src_curve.append(src_curve);
-            curve_was_cut = true;
-          }
-          inside_curve = !inside_curve;
-        }
-
-        /* For cyclic curves, mark the pivot point as the last point index that starts a new
-         * segment in the destination.
-         */
-        if (src_cyclic[src_curve] && curve_was_cut) {
-          src_pivot_point[src_curve] = dst_point;
-        }
-
-        np_index += src_nb_new_points[src_point];
       }
-
-      src_now_cyclic[src_curve] = src_cyclic[src_curve] && !curve_was_cut;
-
       /* We store intermediate curve offsets represent an intermediate state of the destination
        * curves before cutting the curves at eraser's intersection. Thus, it contains the same
        * number of curves than in the source, but the offsets are different, because points may
        * have been added or removed. */
       dst_interm_curves_offsets[src_curve + 1] = dst_point + 1;
+
+      /* If a cyclic curve was cut, it is not cyclic anymore
+       */
+      src_now_cyclic[src_curve] = src_cyclic[src_curve] && !curve_was_cut;
     }
-    dst_curves_offset.append(dst_points_num);
 
-    const int dst_curves_num = dst_curves_offset.size() - 1;
-
-    /* Cyclic curves. */
+    /* Shift indices in cyclic curves. */
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const int pivot_point = src_pivot_point[src_curve];
+
         if (pivot_point == -1) {
+          /* Either the curve was not cyclic or it wasn't cut : no need to change it. */
           continue;
         }
 
-        /* A cyclic curve was cut :
-         *  - this curve is not cyclic anymore,
-         *  - and we have to shift points to keep the closing segment.
+        /* A cyclic curve was cut, we have to shift points to keep the closing segment.
          */
-
         const int dst_interm_first = dst_interm_curves_offsets[src_curve];
         const int dst_interm_last = dst_interm_curves_offsets[src_curve + 1];
         std::rotate(dst_points_parameters.begin() + dst_interm_first,
                     dst_points_parameters.begin() + pivot_point,
                     dst_points_parameters.begin() + dst_interm_last);
+        std::rotate(dst_new_first_point.begin() + dst_interm_first,
+                    dst_new_first_point.begin() + pivot_point,
+                    dst_new_first_point.begin() + dst_interm_last);
       }
     });
+
+    /* Compute the destination curve offsets. */
+    Vector<int> dst_curves_offset;
+    Vector<int> dst_to_src_curve;
+    dst_curves_offset.append(0);
+    for (int src_curve : src.curves_range()) {
+      const IndexRange dst_points(dst_interm_curves_offsets[src_curve],
+                                  dst_interm_curves_offsets[src_curve + 1] -
+                                      dst_interm_curves_offsets[src_curve]);
+      int length_of_current = 0;
+
+      for (int dst_point : dst_points) {
+
+        if ((length_of_current > 0) && dst_new_first_point[dst_point]) {
+          /* This is the new first point of a curve. */
+          dst_curves_offset.append(dst_point);
+          dst_to_src_curve.append(src_curve);
+          length_of_current = 0;
+        }
+        ++length_of_current;
+      }
+
+      if (length_of_current != 0) {
+        /* End of a source curve. */
+        dst_curves_offset.append(dst_points.one_after_last());
+        dst_to_src_curve.append(src_curve);
+      }
+    }
+    const int dst_curves_num = dst_curves_offset.size() - 1;
 
     CurvesTopologyTransferData dst_transfer(dst_points_num, dst_curves_num);
 
@@ -850,14 +843,6 @@ struct EraseOperationExecutor {
                                    dst_transfer.curve_cyclic.as_mutable_span());
 
     return dst_transfer;
-  }
-
-  /* Overload function if no point is inserted. */
-  CurvesTopologyTransferData compute_topology_transfer(const blender::bke::CurvesGeometry &src,
-                                                       const Span<bool> src_remove_point) const
-  {
-    return compute_topology_transfer(
-        src, src_remove_point, Array<int>(src.points_num(), 0), Array<float>());
   }
 
   void soft_eraser(const blender::bke::CurvesGeometry &src,
@@ -949,6 +934,11 @@ struct EraseOperationExecutor {
 
     /* Build destination curves geometry. */
     dst.resize(dst_points_num, dst_curves_num);
+
+    if (dst_points_num == 0) {
+      return;
+    }
+
     array_utils::copy(dst_transfer.curve_offsets.as_span(), dst.offsets_for_write(), 256);
 
     bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
