@@ -17,7 +17,7 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/SIM_mass_spring.cpp
+  intern/SIM_mass_spring.cc
   intern/hair_volume.cc
   intern/implicit_blender.cc
   intern/implicit_eigen.cc
