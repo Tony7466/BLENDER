@@ -187,7 +187,7 @@ template<typename T> inline Vector<IndexRange> find_all_ranges(Span<T> span, con
     }
   }
   if (length > 0) {
-    ranges.append(IndexRange(span.index_range().size() - length, length));
+    ranges.append(IndexRange(span.size() - length, length));
   }
   return ranges;
 }
