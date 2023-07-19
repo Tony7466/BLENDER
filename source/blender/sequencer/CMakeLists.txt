@@ -55,7 +55,7 @@ set(SRC
   intern/image_cache.cc
   intern/image_cache.h
   intern/iterator.cc
-  intern/modifier.c
+  intern/modifier.cc
   intern/multiview.cc
   intern/multiview.h
   intern/prefetch.c
