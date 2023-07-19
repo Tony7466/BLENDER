@@ -511,15 +511,6 @@ typedef struct bNodeInstanceHashEntry {
 
 #
 #
-typedef struct NodePreviewImage {
-  unsigned char *rect;
-  short xsize, ysize;
-
-  short _pad[2];
-} NodePreviewImage;
-
-#
-#
 typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;

@@ -241,10 +241,6 @@ struct RenderStats *RE_GetStats(struct Render *re);
  * Caller is responsible for allocating `rect` in correct size!
  */
 void RE_ResultGet32(struct Render *re, unsigned int *rect);
-void RE_ResultPassGet32(struct Render *re,
-                        unsigned int *rect,
-                        const char *pass_name,
-                        const char *layer_name);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,
