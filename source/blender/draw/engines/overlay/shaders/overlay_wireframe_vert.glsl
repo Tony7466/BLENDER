@@ -6,67 +6,11 @@ bool is_edge_sharpness_visible(float wd)
   return wd <= wireStepParam;
 }
 
-void wire_color_get(out vec3 rim_col, out vec3 wire_col)
-{
-  int flag = int(abs(ObjectInfo.w));
-  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
-  bool is_from_set = (flag & DRW_BASE_FROM_SET) != 0;
-  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
-
-  if (is_from_set) {
-    rim_col = colorWire.rgb;
-    wire_col = colorWire.rgb;
-  }
-  else if (is_selected && useColoring) {
-    if (isTransform) {
-      rim_col = colorTransform.rgb;
-    }
-    else if (is_active) {
-      rim_col = colorActive.rgb;
-    }
-    else {
-      rim_col = colorSelect.rgb;
-    }
-    wire_col = colorWire.rgb;
-  }
-  else {
-    rim_col = colorWire.rgb;
-    wire_col = colorBackground.rgb;
-  }
-}
-
 vec3 hsv_to_rgb(vec3 hsv)
 {
   vec3 nrgb = abs(hsv.x * 6.0 - vec3(3.0, 2.0, 4.0)) * vec3(1, -1, -1) + vec3(-1, 2, 2);
   nrgb = clamp(nrgb, 0.0, 1.0);
   return ((nrgb - 1.0) * hsv.y + 1.0) * hsv.z;
-}
-
-void wire_object_color_get(out vec3 rim_col, out vec3 wire_col)
-{
-  int flag = int(abs(ObjectInfo.w));
-  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
-
-  if (isObjectColor) {
-    rim_col = wire_col = ObjectColor.rgb * 0.5;
-  }
-  else {
-    float hue = ObjectInfo.z;
-    vec3 hsv = vec3(hue, 0.75, 0.8);
-    rim_col = wire_col = hsv_to_rgb(hsv);
-  }
-
-  if (is_selected && useColoring) {
-    /* "Normalize" color. */
-    wire_col += 1e-4; /* Avoid division by 0. */
-    float brightness = max(wire_col.x, max(wire_col.y, wire_col.z));
-    wire_col *= 0.5 / brightness;
-    rim_col += 0.75;
-  }
-  else {
-    rim_col *= 0.5;
-    wire_col += 0.5;
-  }
 }
 
 void main()
@@ -118,25 +62,59 @@ void main()
     edgeStart = vec2(-1.0);
   }
 
-  vec3 rim_col, wire_col;
+  int flag = int(abs(ObjectInfo.w));
+  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
+  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
+  bool selected_coloring = is_selected && useColoring;
 
-  if (isObjectColor || isRandomColor) {
-    wire_object_color_get(rim_col, wire_col);
+  /* Base Color */
+  vec3 wire_col, rim_col, no_fresnel_col, fresnel_col;
+
+  if (isRandomColor) { /* Dim random color. */
+    float hue = ObjectInfo.z;
+    vec3 hsv = vec3(hue, 0.75, 0.8);
+    wire_col = hsv_to_rgb(hsv);  
   }
-  else {
-    wire_color_get(rim_col, wire_col);
+  else { /* Initialize variable. */
+    wire_col = ObjectColor.rgb;
   }
+  wire_col = (isSingleColor) ? colorWire.rgb : wire_col;
+
+  /* Fresnel */
+  no_fresnel_col = wire_col;
+  rim_col = wire_col;
+
+  /* "Normalize" color. */
+  wire_col += 1e-4; /* Avoid division by 0. */
+  float brightness = max(wire_col.x, max(wire_col.y, wire_col.z));
+  wire_col *= 0.5 / brightness;
+  rim_col += 0.75;
 
   facing = clamp(abs(facing), 0.0, 1.0);
 
   /* Do interpolation in a non-linear space to have a better visual result. */
   rim_col = pow(rim_col, vec3(1.0 / 2.2));
   wire_col = pow(wire_col, vec3(1.0 / 2.2));
-  vec3 final_front_col = mix(rim_col, wire_col, 0.35);
-  finalColor.rgb = mix(rim_col, final_front_col, facing);
-  finalColor.rgb = pow(finalColor.rgb, vec3(2.2));
+  fresnel_col = mix(rim_col, wire_col, 0.35);
+  fresnel_col = mix(rim_col, fresnel_col, facing);
+  fresnel_col = pow(fresnel_col, vec3(2.2));
 
-  finalColor.a = wireOpacity; //multiplicar com opacidade da cor do obj
-  finalColor.rgb *= wireOpacity; //should be finalColor.rgb = mix(backgroundcolor,finalColor.rgb, wireOpacity); pra arrumar a cor do wireframe mode com xray 
+  finalColor.rgb = mix(no_fresnel_col.rgb, fresnel_col, fresnelMix);
+
+  /* Selection Color */
+  if (selected_coloring) {
+    if (isTransform) {
+      finalColor.rgb = colorTransform.rgb;
+    }
+    else if (is_active) {
+      finalColor.rgb = colorActive.rgb;
+    }
+    else {
+      finalColor.rgb = colorSelect.rgb;
+    }
+  }
+
+  finalColor.a = wireOpacity;
+  finalColor.rgb *= wireOpacity;
   view_clipping_distances(wpos);
 }
