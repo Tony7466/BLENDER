@@ -74,7 +74,7 @@ set(SRC
   intern/strip_relations.cc
   intern/strip_retiming.cc
   intern/strip_select.cc
-  intern/strip_time.c
+  intern/strip_time.cc
   intern/strip_time.h
   intern/strip_transform.c
   intern/utils.c
