@@ -118,12 +118,8 @@ NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *C, SpaceN
   NestedNodePreviewMap *data = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
     data = sn->runtime->distinctNG_datas.lookup_or_add_cb(*hash, [&]() {
-      data = MEM_new<NestedNodePreviewMap>(__func__);
-      data->rendering = false;
-      data->restart_needed = false;
+      data = static_cast<NestedNodePreviewMap *>(MEM_callocN(sizeof(NestedNodePreviewMap), __func__));
       data->pr_size = U.node_preview_res;
-      data->preview_refresh_state = 0;
-      data->previews_render = nullptr;
       return data;
     });
     Material *ma = reinterpret_cast<Material *>(sn->id);
@@ -300,7 +296,7 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
 
 void ED_node_release_preview_ibuf(NestedNodePreviewMap *data)
 {
-  if (data->previews_render == nullptr) {
+  if (data == nullptr || data->previews_render == nullptr) {
     return;
   }
   RE_ReleaseResult(data->previews_render);
@@ -689,6 +685,7 @@ static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedNodePrevi
   WM_jobs_kill(wm, snode, shader_preview_startjob);
   if (data->previews_render) {
     RE_FreeRender(data->previews_render);
+    data->previews_render = nullptr;
   }
   MEM_freeN(data);
 }
