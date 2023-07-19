@@ -262,6 +262,8 @@ option(WITH_OPENVDB       "Enable features relying on OpenVDB" ON)
 option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" ON)
 option(WITH_OPENVDB_3_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 3 ABI compatibility" OFF)
 mark_as_advanced(WITH_OPENVDB_3_ABI_COMPATIBLE)
+option(WITH_OPENVDB_7_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 7 ABI compatibility" OFF)
+mark_as_advanced(WITH_OPENVDB_7_ABI_COMPATIBLE)
 option(WITH_NANOVDB       "Enable usage of NanoVDB data structure for rendering on the GPU" ON)
 option(WITH_HARU          "Enable features relying on Libharu (Grease pencil PDF export)" ON)
 

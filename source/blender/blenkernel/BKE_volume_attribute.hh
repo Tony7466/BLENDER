@@ -19,20 +19,15 @@
 
 namespace blender::bke {
 
-#ifdef WITH_OPENVDB
-
 /**
  * Result when looking up an attribute from some geometry with the intention of only reading from
  * it.
  */
 template<typename T> struct AttributeGridReader {
-  using GridType = volume::grid_types::GridCommon<T>;
-  using GridConstPtr = typename GridType::ConstPtr;
-
   /**
    * Virtual array that provides access to the attribute data. This may be empty.
    */
-  GridConstPtr grid;
+  volume::Grid<T> grid;
   /**
    * Domain where the attribute is stored. This also determines the size of the virtual array.
    */
@@ -44,13 +39,13 @@ template<typename T> struct AttributeGridReader {
    */
   const ImplicitSharingInfo *sharing_info;
 
-  const GridConstPtr &operator*() const
+  const volume::Grid<T> &operator*() const
   {
     return this->grid;
   }
-  GridConstPtr &operator*()
+  volume::Grid<T> &operator*()
   {
-    return this->varray;
+    return this->grid;
   }
 
   operator bool() const
@@ -65,17 +60,13 @@ template<typename T> struct AttributeGridReader {
  * on this attribute.
  */
 template<typename T> struct AttributeGridWriter {
-  using GridType = volume::grid_types::GridCommon<T>;
-  using GridPtr = typename GridType::Ptr;
-
   /**
    * Grid pointer giving read and write access to the attribute. This may be empty.
    */
-  GridPtr grid;
+  volume::Grid<T> grid;
   /**
    * Domain where the attribute is stored on the geometry. Also determines the size of the
-   virtual
-   * array.
+   * virtual array.
    */
   eAttrDomain domain;
   /**
@@ -99,37 +90,31 @@ template<typename T> struct AttributeGridWriter {
   }
 };
 
-#endif
-
 /**
  * A generic version of #AttributeReader.
  */
 struct GAttributeGridReader {
-  using GridPtr = openvdb::GridBase::Ptr;
-  using GridConstPtr = openvdb::GridBase::ConstPtr;
-
-  GridConstPtr grid;
+  volume::GGrid grid;
   eAttrDomain domain;
   const ImplicitSharingInfo *sharing_info;
 
   operator bool() const
   {
-    return this->grid != nullptr;
+    return this->grid;
   }
 
-  const GridConstPtr &operator*() const
+  const volume::GGrid &operator*() const
   {
     return this->grid;
   }
-  GridConstPtr &operator*()
+  volume::GGrid &operator*()
   {
     return this->grid;
   }
 
   template<typename T> AttributeGridReader<T> typed() const
   {
-    using GridType = typename AttributeGridReader<T>::GridType;
-    return {openvdb::GridBase::grid<GridType>(grid), domain, sharing_info};
+    return {grid.typed<T>(), domain, sharing_info};
   }
 };
 
@@ -137,13 +122,13 @@ struct GAttributeGridReader {
  * A generic version of #AttributeWriter.
  */
 struct GAttributeGridWriter {
-  VolumeGrid &volume_grid;
+  volume::GGrid &grid;
   eAttrDomain domain;
   std::function<void()> tag_modified_fn;
 
   operator bool() const
   {
-    return this->volume_grid.grid() != nullptr;
+    return this->grid;
   }
 
   void finish()
@@ -155,8 +140,7 @@ struct GAttributeGridWriter {
 
   template<typename T> AttributeGridWriter<T> typed() const
   {
-    using GridType = typename AttributeGridReader<T>::GridType;
-    return {openvdb::GridBase::grid<GridType>(grid), domain, sharing_info};
+    return {grid.typed<T>(), domain};
   }
 };
 

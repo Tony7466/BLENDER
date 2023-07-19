@@ -705,18 +705,8 @@ class MutableAttributeAccessor : public AttributeAccessor {
   template<typename T>
   AttributeGridWriter<T> lookup_grid_for_write(const AttributeIDRef &attribute_id)
   {
-    GAttributeGridWriter attribute = this->lookup_for_write(attribute_id);
+    GAttributeGridWriter attribute = this->lookup_grid_for_write(attribute_id);
     if (!attribute) {
-      return {};
-    }
-    bool type_match = false;
-    volume::grid_to_static_type(attribute.volume_grid.grid(), [&](auto type_tag) {
-      using GridType = typename std::decay<decltype(dst_grid)>::type;
-      if (std::is_same<typename GridType::ValueType, T>::value) {
-        type_match = true;
-      }
-    });
-    if (!match) {
       return {};
     }
     return attribute.typed<T>();

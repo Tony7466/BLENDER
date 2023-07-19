@@ -19,7 +19,7 @@
 
 namespace blender::fn {
 
-using Grid = volume::Grid;
+using GGrid = volume::GGrid;
 using GridMask = volume::GridMask;
 
 /* -------------------------------------------------------------------- */
@@ -108,19 +108,19 @@ static Vector<GVArray> get_field_context_inputs(
 /**
  * Retrieves the data from the context that is passed as input into the field.
  */
-static Vector<Grid> get_volume_field_context_inputs(
+static Vector<GGrid> get_volume_field_context_inputs(
     ResourceScope &scope,
     const GridMask &mask,
     const FieldContext &context,
     const Span<std::reference_wrapper<const FieldInput>> field_inputs)
 {
-  Vector<Grid> field_context_inputs;
+  Vector<GGrid> field_context_inputs;
   for (const FieldInput &field_input : field_inputs) {
-    Grid grid = context.get_volume_grid_for_input(field_input, mask, scope);
+    GGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
       const void *default_value = type.default_value();
-      grid = Grid::create(scope, type, default_value);
+      grid = GGrid::create(scope, type, default_value);
     }
     field_context_inputs.append(grid);
   }
@@ -171,7 +171,7 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
  * for different indices.
  */
 static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
-                                          Span<Grid> field_context_inputs)
+                                          Span<GGrid> field_context_inputs)
 {
   Set<GFieldRef> found_fields;
   Stack<GFieldRef> fields_to_check;
@@ -180,7 +180,7 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
    * start the tree search at the non-constant input fields and traverse through all fields that
    * depend on them. */
   for (const int i : field_context_inputs.index_range()) {
-    const Grid &grid = field_context_inputs[i];
+    const GGrid &grid = field_context_inputs[i];
     if (grid.is_empty()) {
       continue;
     }
@@ -560,29 +560,29 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
   return r_varrays;
 }
 
-Vector<Grid> evaluate_volume_fields(ResourceScope &scope,
-                                    Span<GFieldRef> fields_to_evaluate,
-                                    const GridMask &mask,
-                                    const FieldContext &context,
-                                    Span<Grid> dst_grids)
+Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
+                                     Span<GFieldRef> fields_to_evaluate,
+                                     const GridMask &mask,
+                                     const FieldContext &context,
+                                     Span<GGrid> dst_grids)
 {
-  Vector<Grid> r_grids(fields_to_evaluate.size());
+  Vector<GGrid> r_grids(fields_to_evaluate.size());
   Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
 
   if (mask.is_empty()) {
     for (const int i : fields_to_evaluate.index_range()) {
       const CPPType &type = fields_to_evaluate[i].cpp_type();
-      r_grids[i] = Grid::create(scope, type);
+      r_grids[i] = GGrid::create(scope, type);
     }
     return r_grids;
   }
 
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> Grid {
+  auto get_dst_grid = [&](int index) -> GGrid {
     if (dst_grids.is_empty()) {
       return {};
     }
-    const Grid &grid = dst_grids[index];
+    const GGrid &grid = dst_grids[index];
     if (!grid) {
       return {};
     }
@@ -594,7 +594,7 @@ Vector<Grid> evaluate_volume_fields(ResourceScope &scope,
   FieldTreeInfo field_tree_info = preprocess_field_tree(fields_to_evaluate);
 
   /* Get inputs that will be passed into the field when evaluated. */
-  Vector<Grid> field_context_inputs = get_volume_field_context_inputs(
+  Vector<GGrid> field_context_inputs = get_volume_field_context_inputs(
       scope, mask, context, field_tree_info.deduplicated_field_inputs);
 
   /* Finish fields that don't need any processing directly. */
@@ -606,13 +606,13 @@ Vector<Grid> evaluate_volume_fields(ResourceScope &scope,
         const FieldInput &field_input = static_cast<const FieldInput &>(field.node());
         const int field_input_index = field_tree_info.deduplicated_field_inputs.index_of(
             field_input);
-        const Grid &grid = field_context_inputs[field_input_index];
+        const GGrid &grid = field_context_inputs[field_input_index];
         r_grids[out_index] = grid;
         break;
       }
       case FieldNodeType::Constant: {
         const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
-        r_grids[out_index] = Grid::create(
+        r_grids[out_index] = GGrid::create(
             scope, field_constant.type(), field_constant.value().get());
         break;
       }
@@ -683,12 +683,12 @@ Vector<Grid> evaluate_volume_fields(ResourceScope &scope,
    * has written the computed data in the right place already. */
   if (!dst_grids.is_empty()) {
     for (const int out_index : fields_to_evaluate.index_range()) {
-      Grid dst_grid = get_dst_grid(out_index);
+      GGrid dst_grid = get_dst_grid(out_index);
       if (!dst_grid) {
         /* Caller did not provide a destination for this output. */
         continue;
       }
-      const Grid &computed_grid = r_grids[out_index];
+      const GGrid &computed_grid = r_grids[out_index];
       // BLI_assert(computed_varray.type() == dst_grid.type());
       if (is_output_written_to_dst[out_index]) {
         /* The result has been written into the destination provided by the caller already. */
@@ -752,9 +752,9 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   return field_input.get_varray_for_context(*this, mask, scope);
 }
 
-Grid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
-                                             const GridMask &mask,
-                                             ResourceScope &scope) const
+GGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
+                                              const GridMask &mask,
+                                              ResourceScope &scope) const
 {
   /* By default ask the field input to create the varray. Another field context might overwrite
    * the context here. */

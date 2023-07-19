@@ -38,45 +38,6 @@ template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
 
 namespace volume {
 
-/* Mask defined by active voxels of the grid. */
-class GridMask {
-#ifdef WITH_OPENVDB
-  const openvdb::MaskGrid &grid_;
-#endif
-
- public:
-  bool is_empty() const;
-  int64_t min_voxel_count() const;
-
-#ifdef WITH_OPENVDB
-  const openvdb::MaskGrid &grid() const
-  {
-    return grid_;
-  }
-#endif
-};
-
-struct Grid {
-#ifdef WITH_OPENVDB
-  openvdb::GridBase::Ptr grid_ = nullptr;
-#endif
-
-  /* Create an empty grid with a background value. */
-  static Grid create(ResourceScope &scope, const CPPType &type, const void *background_value);
-  /* Create an empty grid with the type default as background value. */
-  static Grid create(ResourceScope &scope, const CPPType &type);
-  /* Create a grid with the active volume mask voxels. */
-  static Grid create(ResourceScope &scope,
-                     const CPPType &type,
-                     const GridMask &mask,
-                     const void *inactive_value,
-                     const void *active_value);
-
-  int64_t voxel_count() const;
-  bool is_empty() const;
-  operator bool() const;
-};
-
 /* -------------------------------------------------------------------- */
 /** \name Tree and Grid types for Blender CPP types
  * \{ */
@@ -158,7 +119,139 @@ using SupportedGridTypes = openvdb::TypeList<BoolGrid,
 
 }  // namespace grid_types
 
+#endif
+
 /** \} */
+
+/* Mask defined by active voxels of the grid. */
+class GridMask {
+#ifdef WITH_OPENVDB
+  static const openvdb::MaskGrid::ConstPtr empty_grid_;
+  const openvdb::MaskGrid &grid_;
+#endif
+
+ public:
+  GridMask()
+#ifdef WITH_OPENVDB
+      : grid_(*empty_grid_)
+#endif
+  {
+  }
+
+#ifdef WITH_OPENVDB
+  GridMask(const openvdb::MaskGrid &grid) : grid_(grid) {}
+#endif
+
+  bool is_empty() const;
+  int64_t min_voxel_count() const;
+
+#ifdef WITH_OPENVDB
+  const openvdb::MaskGrid &grid() const
+  {
+    return grid_;
+  }
+#endif
+};
+
+/* -------------------------------------------------------------------- */
+/** \name Grid pointer wrappers
+ *  \note Using wrappers avoids checking for WITH_OPENVDB everywhere.
+ * \{ */
+
+template<typename T> struct Grid;
+
+/* Generic grid reference. */
+struct GGrid {
+#ifdef WITH_OPENVDB
+  openvdb::GridBase::Ptr grid_ = nullptr;
+#endif
+
+  /* Create an empty grid with a background value. */
+  static GGrid create(ResourceScope &scope, const CPPType &type, const void *background_value);
+  /* Create an empty grid with the type default as background value. */
+  static GGrid create(ResourceScope &scope, const CPPType &type);
+  /* Create a grid with the active volume mask voxels. */
+  static GGrid create(ResourceScope &scope,
+                      const CPPType &type,
+                      const GridMask &mask,
+                      const void *inactive_value,
+                      const void *active_value);
+
+  int64_t voxel_count() const;
+  bool is_empty() const;
+  operator bool() const;
+
+  template<typename T> Grid<T> typed();
+  template<typename T> const Grid<T> typed() const;
+};
+
+template<typename T> struct Grid {
+  using ValueType = T;
+#ifdef WITH_OPENVDB
+  using GridType = grid_types::GridCommon<T>;
+  using TreeType = typename GridType::TreeType;
+  using GridPtr = typename GridType::Ptr;
+  using GridConstPtr = typename GridType::ConstPtr;
+
+  GridPtr grid_ = nullptr;
+#endif
+
+  /* Create an empty grid with a background value. */
+  static Grid<T> create(ResourceScope &scope, const T &background_value);
+  /* Create an empty grid with the type default as background value. */
+  static Grid<T> create(ResourceScope &scope);
+  /* Create a grid with the active volume mask voxels. */
+  static Grid<T> create(ResourceScope &scope,
+                        const GridMask &mask,
+                        const T &inactive_value,
+                        const T &active_value);
+
+  operator GGrid()
+  {
+#ifdef WITH_OPENVDB
+    return {grid_};
+#else
+    return {};
+#endif
+  }
+  operator GGrid const() const
+  {
+#ifdef WITH_OPENVDB
+    return {grid_};
+#else
+    return {};
+#endif
+  }
+
+  int64_t voxel_count() const;
+  bool is_empty() const;
+  operator bool() const;
+};
+
+template<typename T> Grid<T> GGrid::typed()
+{
+#ifdef WITH_OPENVDB
+  using GridType = typename Grid<T>::GridType;
+  using GridPtr = typename Grid<T>::GridPtr;
+
+  if (!grid_) {
+    return {};
+  }
+  GridPtr typed_grid = grid_->grid<GridType>();
+  if (!typed_grid) {
+    return {};
+  }
+  return {typed_grid};
+#else
+  return {};
+#endif
+}
+
+template<typename T> const Grid<T> GGrid::typed() const {}
+
+/** \} */
+
+#ifdef WITH_OPENVDB
 
 namespace detail {
 
