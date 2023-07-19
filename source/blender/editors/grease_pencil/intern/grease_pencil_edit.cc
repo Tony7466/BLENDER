@@ -6,6 +6,7 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
@@ -407,12 +408,12 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
  * \returns A mask of the points in \a src that need to be kept when simplifying the \a src
  * span. The indices are offset by \a start_offset.
  */
-IndexMask ramer_douglas_peucker_mask(const Span<float3> src,
-                                     const int64_t start_offset,
-                                     const float epsilon,
-                                     IndexMaskMemory &memory)
+void ramer_douglas_peucker_simplify(const Span<float3> src,
+                                    const float epsilon,
+                                    MutableSpan<bool> points_to_delete)
 {
-  Array<bool> points_to_keep(src.size(), true);
+  /* Mark all points to not be deleted. */
+  points_to_delete.fill(false);
 
   Stack<IndexRange> stack;
   stack.push(src.index_range());
@@ -434,17 +435,15 @@ IndexMask ramer_douglas_peucker_mask(const Span<float3> src,
     }
 
     if (max_dist > epsilon) {
+      /* Found point outside the epsilon-sized tube. Repeat the search on the left & right side. */
       stack.push(IndexRange(range.first(), max_index + 1));
       stack.push(IndexRange(range.first() + max_index, range.size() - max_index));
     }
     else {
-      points_to_keep.as_mutable_span().slice(range.drop_front(1).drop_back(1)).fill(false);
+      /* Points in `range` are inside the epsilon-sized tube. Mark them to be deleted. */
+      points_to_delete.slice(range.drop_front(1).drop_back(1)).fill(true);
     }
   }
-
-  IndexMask indices = IndexMask::from_bools(points_to_keep, memory);
-  indices = indices.slice_and_offset(indices.index_range(), start_offset, memory);
-  return indices;
 }
 
 static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
@@ -470,37 +469,35 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         const Span<float3> positions = curves.positions();
         const OffsetIndices points_by_curve = curves.points_by_curve();
 
-        Array<bool> selection(curves.points_num());
-        curves.attributes()
-            .lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true)
-            .varray.materialize(selection);
+        VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+            ".selection", ATTR_DOMAIN_POINT, true);
+
+        Array<bool> points_to_delete(curves.points_num());
+        selection.materialize(points_to_delete);
+
+        threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+          for (const int curve_i : range) {
+            const IndexRange points = points_by_curve[curve_i];
+            std::cout << points << std::endl;
+            const Span<bool> curve_selection = points_to_delete.as_span().slice(points);
+            if (!curve_selection.contains(true)) {
+              continue;
+            }
+
+            Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection,
+                                                                               true);
+            for (const IndexRange range : selection_ranges) {
+              std::cout << range << std::endl;
+              ramer_douglas_peucker_simplify(
+                  positions.slice(range.shift(points.start())),
+                  epsilon,
+                  points_to_delete.as_mutable_span().slice(range.shift(points.start())));
+            }
+          }
+        });
 
         IndexMaskMemory memory;
-        IndexMask points_to_keep =
-            IndexMask::from_bools(selection, memory).complement(curves.points_range(), memory);
-        for (const int curve_i : curves.curves_range()) {
-          const IndexRange points = points_by_curve[curve_i];
-
-          IndexMaskMemory selection_memory;
-          IndexMask selection_mask = IndexMask::from_bools(selection.as_span().slice(points),
-                                                           selection_memory);
-
-          Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
-          for (const IndexRange range : selection_ranges) {
-
-            IndexMaskMemory range_memory;
-            points_to_keep = IndexMask::from_union(
-                points_to_keep,
-                ramer_douglas_peucker_mask(positions.slice(range.shift(points.start())),
-                                           points.start() + range.start(),
-                                           epsilon,
-                                           range_memory),
-                memory);
-          }
-        }
-
-        IndexMask points_to_delete = points_to_keep.complement(curves.points_range(), memory);
-        curves.remove_points(points_to_delete);
+        curves.remove_points(IndexMask::from_bools(points_to_delete, memory));
         drawing.tag_topology_changed();
       });
 

@@ -72,10 +72,7 @@ void gaussian_blur_1D(const GSpan src,
                       bool is_cyclic,
                       GMutableSpan dst);
 
-IndexMask ramer_douglas_peucker_mask(const Span<float3> src,
-                                     int64_t start_offset,
-                                     float epsilon,
-                                     IndexMaskMemory &memory);
+void ramer_douglas_peucker_simplify(const Span<float3> src, float epsilon, MutableSpan<bool> dst);
 
 }  // namespace blender::ed::greasepencil
 #endif
