@@ -803,6 +803,34 @@ GAttributeReader AttributeAccessor::lookup_or_default(const AttributeIDRef &attr
   return {GVArray::ForSingle(type, domain_size, default_value), domain, nullptr};
 }
 
+GAttributeGridReader AttributeAccessor::lookup_grid(
+    const AttributeIDRef &attribute_id,
+    const std::optional<eAttrDomain> domain,
+    const std::optional<eCustomDataType> data_type) const
+{
+  GAttributeGridReader attribute = this->lookup_grid(attribute_id);
+  if (!attribute) {
+    return {};
+  }
+  if (domain.has_value()) {
+    /* TODO only one domain for grids atm. */
+    if (attribute.domain != domain) {
+      return {};
+    }
+  }
+  if (data_type.has_value()) {
+    const CPPType &type = *custom_data_type_to_cpp_type(*data_type);
+    if (attribute.grid.type() != type) {
+      attribute.varray = try_adapt_data_type(std::move(attribute.varray), type);
+      attribute.sharing_info = nullptr;
+      if (!attribute.varray) {
+        return {};
+      }
+    }
+  }
+  return attribute;
+}
+
 Set<AttributeIDRef> AttributeAccessor::all_ids() const
 {
   Set<AttributeIDRef> ids;
@@ -874,6 +902,27 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_for_write_span(
     return GSpanAttributeWriter{std::move(attribute), true};
   }
   return {};
+}
+
+GAttributeGridWriter MutableAttributeAccessor::lookup_grid_for_write(
+    const AttributeIDRef &attribute_id)
+{
+  GAttributeGridWriter attribute = fn_->lookup_grid_for_write(owner_, attribute_id);
+  /* Check that the #finish method is called in debug builds. */
+#ifdef DEBUG
+  if (attribute) {
+    auto checker = std::make_shared<FinishCallChecker>();
+    checker->name = attribute_id.name();
+    checker->real_finish_fn = attribute.tag_modified_fn;
+    attribute.tag_modified_fn = [checker]() {
+      if (checker->real_finish_fn) {
+        checker->real_finish_fn();
+      }
+      checker->finish_called = true;
+    };
+  }
+#endif
+  return attribute;
 }
 
 GAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write(

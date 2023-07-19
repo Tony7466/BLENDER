@@ -13,9 +13,11 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
+#include "BLI_volume.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.h"
+#include "BKE_volume_attribute.hh"
 
 struct Mesh;
 struct PointCloud;
@@ -399,6 +401,7 @@ struct AttributeAccessorFunctions {
   int (*domain_size)(const void *owner, eAttrDomain domain);
   bool (*is_builtin)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeReader (*lookup)(const void *owner, const AttributeIDRef &attribute_id);
+  GAttributeGridReader (*lookup_grid)(const void *owner, const AttributeIDRef &attribute_id);
   GVArray (*adapt_domain)(const void *owner,
                           const GVArray &varray,
                           eAttrDomain from_domain,
@@ -407,6 +410,7 @@ struct AttributeAccessorFunctions {
                   FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn);
   AttributeValidator (*lookup_validator)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeWriter (*lookup_for_write)(void *owner, const AttributeIDRef &attribute_id);
+  GAttributeGridWriter (*lookup_grid_for_write)(void *owner, const AttributeIDRef &attribute_id);
   bool (*remove)(void *owner, const AttributeIDRef &attribute_id);
   bool (*add)(void *owner,
               const AttributeIDRef &attribute_id,
@@ -561,6 +565,36 @@ class AttributeAccessor {
   }
 
   /**
+   * Get read-only access to the attribute. If the attribute does not exist, the return value is
+   * empty.
+   */
+  GAttributeGridReader lookup_grid(const AttributeIDRef &attribute_id) const
+  {
+    return fn_->lookup_grid(owner_, attribute_id);
+  }
+
+  /**
+   * Get read-only access to the attribute. If necessary, the attribute is interpolated to the
+   * given domain, and converted to the given type, in that order.  The result may be empty.
+   */
+  GAttributeGridReader lookup_grid(const AttributeIDRef &attribute_id,
+                                   const std::optional<eAttrDomain> domain,
+                                   const std::optional<eCustomDataType> data_type) const;
+
+  /**
+   * Get read-only access to the attribute. If necessary, the attribute is interpolated to the
+   * given domain and then converted to the given type, in that order. The result may be empty.
+   */
+  template<typename T>
+  AttributeGridReader<T> lookup_grid(const AttributeIDRef &attribute_id,
+                                     const std::optional<eAttrDomain> domain = std::nullopt) const
+  {
+    const CPPType &cpp_type = CPPType::get<T>();
+    const eCustomDataType data_type = cpp_type_to_custom_data_type(cpp_type);
+    return this->lookup_grid(attribute_id, domain, data_type).typed<T>();
+  }
+
+  /**
    * Same as the generic version above, but should be used when the type is known at compile time.
    */
   AttributeValidator lookup_validator(const AttributeIDRef &attribute_id) const
@@ -656,6 +690,36 @@ class MutableAttributeAccessor : public AttributeAccessor {
       return SpanAttributeWriter<T>{std::move(attribute), true};
     }
     return {};
+  }
+
+  /**
+   * Get a writable attribute or none if it does not exist.
+   * Make sure to call #finish after changes are done.
+   */
+  GAttributeGridWriter lookup_grid_for_write(const AttributeIDRef &attribute_id);
+
+  /**
+   * Get a writable attribute or non if it does not exist.
+   * Make sure to call #finish after changes are done.
+   */
+  template<typename T>
+  AttributeGridWriter<T> lookup_grid_for_write(const AttributeIDRef &attribute_id)
+  {
+    GAttributeGridWriter attribute = this->lookup_for_write(attribute_id);
+    if (!attribute) {
+      return {};
+    }
+    bool type_match = false;
+    volume::grid_to_static_type(attribute.volume_grid.grid(), [&](auto type_tag) {
+      using GridType = typename std::decay<decltype(dst_grid)>::type;
+      if (std::is_same<typename GridType::ValueType, T>::value) {
+        type_match = true;
+      }
+    });
+    if (!match) {
+      return {};
+    }
+    return attribute.typed<T>();
   }
 
   /**

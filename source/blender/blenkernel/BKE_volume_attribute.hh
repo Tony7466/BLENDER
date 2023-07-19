@@ -7,8 +7,8 @@
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_volume.hh"
 
-#include "BKE_attribute.hh"
 #include "BKE_volume.h"
 
 #include "intern/volume_grids.hh"
@@ -21,74 +21,144 @@ namespace blender::bke {
 
 #ifdef WITH_OPENVDB
 
-///**
-// * Result when looking up an attribute from some geometry with read and write access. After
-// writing
-// * to the attribute, the #finish method has to be called. This may invalidate caches based on
-// this
-// * attribute.
-// */
-// template<typename T> struct AttributeGridWriter {
-//  // using GridType =
-//
-//  /**
-//   * Grid pointer giving read and write access to the attribute. This may be empty.
-//   */
-//  GridT::Ptr VMutableArray<T> varray;
-//  /**
-//   * Domain where the attribute is stored on the geometry. Also determines the size of the
-//   virtual
-//   * array.
-//   */
-//  eAttrDomain domain;
-//  /**
-//   * A function that has to be called after the attribute has been edited. This may be empty.
-//   */
-//  std::function<void()> tag_modified_fn;
-//
-//  operator bool() const
-//  {
-//    return this->varray;
-//  }
-//
-//  /**
-//   * Has to be called after the attribute has been modified.
-//   */
-//  void finish()
-//  {
-//    if (this->tag_modified_fn) {
-//      this->tag_modified_fn();
-//    }
-//  }
-//};
+/**
+ * Result when looking up an attribute from some geometry with the intention of only reading from
+ * it.
+ */
+template<typename T> struct AttributeGridReader {
+  using GridType = volume::grid_types::GridCommon<T>;
+  using GridConstPtr = typename GridType::ConstPtr;
+
+  /**
+   * Virtual array that provides access to the attribute data. This may be empty.
+   */
+  GridConstPtr grid;
+  /**
+   * Domain where the attribute is stored. This also determines the size of the virtual array.
+   */
+  eAttrDomain domain;
+
+  /**
+   * Information about shared ownership of the attribute array. This will only be provided
+   * if the virtual array directly references the contiguous original attribute array.
+   */
+  const ImplicitSharingInfo *sharing_info;
+
+  const GridConstPtr &operator*() const
+  {
+    return this->grid;
+  }
+  GridConstPtr &operator*()
+  {
+    return this->varray;
+  }
+
+  operator bool() const
+  {
+    return this->varray;
+  }
+};
+
+/**
+ * Result when looking up an attribute from some geometry with read and write access. After
+ * writing to the attribute, the #finish method has to be called. This may invalidate caches based
+ * on this attribute.
+ */
+template<typename T> struct AttributeGridWriter {
+  using GridType = volume::grid_types::GridCommon<T>;
+  using GridPtr = typename GridType::Ptr;
+
+  /**
+   * Grid pointer giving read and write access to the attribute. This may be empty.
+   */
+  GridPtr grid;
+  /**
+   * Domain where the attribute is stored on the geometry. Also determines the size of the
+   virtual
+   * array.
+   */
+  eAttrDomain domain;
+  /**
+   * A function that has to be called after the attribute has been edited. This may be empty.
+   */
+  std::function<void()> tag_modified_fn;
+
+  operator bool() const
+  {
+    return this->grid != nullptr;
+  }
+
+  /**
+   * Has to be called after the attribute has been modified.
+   */
+  void finish()
+  {
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
+};
 
 #endif
 
-///**
-// * A generic version of #AttributeWriter.
-// */
-// struct GAttributeGridWriter {
-//  Grid *grid;
-//  eAttrDomain domain;
-//  std::function<void()> tag_modified_fn;
-//
-//  operator bool() const
-//  {
-//    return this->grid;
-//  }
-//
-//  void finish()
-//  {
-//    if (this->tag_modified_fn) {
-//      this->tag_modified_fn();
-//    }
-//  }
-//
-//  template<typename T> AttributeWriter<T> typed() const
-//  {
-//    return {grid.typed<T>(), domain, tag_modified_fn};
-//  }
-//};
+/**
+ * A generic version of #AttributeReader.
+ */
+struct GAttributeGridReader {
+  using GridPtr = openvdb::GridBase::Ptr;
+  using GridConstPtr = openvdb::GridBase::ConstPtr;
+
+  GridConstPtr grid;
+  eAttrDomain domain;
+  const ImplicitSharingInfo *sharing_info;
+
+  operator bool() const
+  {
+    return this->grid != nullptr;
+  }
+
+  const GridConstPtr &operator*() const
+  {
+    return this->grid;
+  }
+  GridConstPtr &operator*()
+  {
+    return this->grid;
+  }
+
+  template<typename T> AttributeGridReader<T> typed() const
+  {
+    using GridType = typename AttributeGridReader<T>::GridType;
+    return {openvdb::GridBase::grid<GridType>(grid), domain, sharing_info};
+  }
+};
+
+/**
+ * A generic version of #AttributeWriter.
+ */
+struct GAttributeGridWriter {
+  VolumeGrid &volume_grid;
+  eAttrDomain domain;
+  std::function<void()> tag_modified_fn;
+
+  operator bool() const
+  {
+    return this->volume_grid.grid() != nullptr;
+  }
+
+  void finish()
+  {
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
+
+  template<typename T> AttributeGridWriter<T> typed() const
+  {
+    using GridType = typename AttributeGridReader<T>::GridType;
+    return {openvdb::GridBase::grid<GridType>(grid), domain, sharing_info};
+  }
+};
 
 /* OLD CODE
  * OLD CODE

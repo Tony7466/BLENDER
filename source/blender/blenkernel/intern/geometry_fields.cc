@@ -571,6 +571,8 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       dst_attribute.finish();
       return true;
     }
+    if (GridAttributeWriter dst_attribute = attributes.l) {
+    }
   }
 
   const bool selection_is_full = !selection.node().depends_on_input() &&
