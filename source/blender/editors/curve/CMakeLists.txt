@@ -20,7 +20,7 @@ set(INC_SYS
 
 set(SRC
   curve_ops.cc
-  editcurve.c
+  editcurve.cc
   editcurve_add.cc
   editcurve_paint.cc
   editcurve_pen.cc
