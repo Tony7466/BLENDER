@@ -13,7 +13,7 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/blt_lang.c
+  intern/blt_lang.cc
   intern/blt_translation.c
 
   BLT_lang.h
