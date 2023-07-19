@@ -34,7 +34,7 @@ if(WITH_IK_SOLVER)
     ../../../intern/iksolver/extern
   )
   list(APPEND SRC
-    intern/iksolver_plugin.c
+    intern/iksolver_plugin.cc
     intern/iksolver_plugin.h
   )
   add_definitions(-DWITH_IK_SOLVER)
