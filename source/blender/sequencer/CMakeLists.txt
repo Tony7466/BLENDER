@@ -52,7 +52,7 @@ set(SRC
   intern/disk_cache.h
   intern/effects.cc
   intern/effects.h
-  intern/image_cache.c
+  intern/image_cache.cc
   intern/image_cache.h
   intern/iterator.c
   intern/modifier.c
