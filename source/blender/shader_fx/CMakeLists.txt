@@ -33,7 +33,7 @@ set(SRC
   intern/FX_shader_pixel.cc
   intern/FX_shader_rim.cc
   intern/FX_shader_shadow.cc
-  intern/FX_shader_swirl.c
+  intern/FX_shader_swirl.cc
   intern/FX_shader_util.c
   intern/FX_shader_wave.c
 
