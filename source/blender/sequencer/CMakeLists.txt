@@ -46,7 +46,7 @@ set(SRC
   SEQ_utils.h
 
   intern/animation.cc
-  intern/channels.c
+  intern/channels.cc
   intern/clipboard.c
   intern/disk_cache.c
   intern/disk_cache.h
