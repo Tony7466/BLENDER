@@ -29,7 +29,7 @@ set(SRC
   geometry/geom_cube_gizmo.cc
   geometry/geom_dial_gizmo.cc
   gizmo_types/arrow3d_gizmo.cc
-  gizmo_types/blank3d_gizmo.c
+  gizmo_types/blank3d_gizmo.cc
   gizmo_types/button2d_gizmo.c
   gizmo_types/cage2d_gizmo.c
   gizmo_types/cage3d_gizmo.c
