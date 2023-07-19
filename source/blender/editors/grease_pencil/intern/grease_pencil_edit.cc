@@ -478,7 +478,6 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
           for (const int curve_i : range) {
             const IndexRange points = points_by_curve[curve_i];
-            std::cout << points << std::endl;
             const Span<bool> curve_selection = points_to_delete.as_span().slice(points);
             if (!curve_selection.contains(true)) {
               continue;
@@ -487,7 +486,6 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
             Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection,
                                                                                true);
             for (const IndexRange range : selection_ranges) {
-              std::cout << range << std::endl;
               ramer_douglas_peucker_simplify(
                   positions.slice(range.shift(points.start())),
                   epsilon,
