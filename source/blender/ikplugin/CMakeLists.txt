@@ -51,7 +51,7 @@ if(WITH_IK_ITASC)
     ${EIGEN3_INCLUDE_DIRS}
   )
   list(APPEND SRC
-    intern/itasc_plugin.cpp
+    intern/itasc_plugin.cc
     intern/itasc_plugin.h
   )
   add_definitions(-DWITH_IK_ITASC)
