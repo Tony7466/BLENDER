@@ -399,26 +399,30 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
 /** \name Simplify Stroke Operator.
  * \{ */
 
-static IndexMask ramer_douglas_peucker_decimate(const Span<float3> src,
-                                                const float epsilon,
-                                                IndexMaskMemory &memory)
+/**
+ * An implementation of the Ramer–Douglas–Peucker algorithm.
+ *
+ * \param epsilon: The threshold distance from the coord between two points for when a point
+ * in-between needs to be kept.
+ * \returns A mask of the points in \a src that need to be kept when simplifying the \a src
+ * span. The indices are offset by \a start_offset.
+ */
+IndexMask ramer_douglas_peucker_mask(const Span<float3> src,
+                                     const int64_t start_offset,
+                                     const float epsilon,
+                                     IndexMaskMemory &memory)
 {
-  /**
-   * An implementation of the Ramer–Douglas–Peucker algorithm.
-   */
   Array<bool> points_to_keep(src.size(), true);
 
   Stack<IndexRange> stack;
   stack.push(src.index_range());
-
   while (!stack.is_empty()) {
     IndexRange range = stack.pop();
-
     Span<float3> slice = src.slice(range);
 
     float max_dist = -1.0f;
     int max_index = -1;
-    for (const int index : range.drop_front(1).drop_back(1)) {
+    for (const int64_t index : slice.index_range().drop_front(1).drop_back(1)) {
       float3 point = slice[index];
       float3 point_on_line;
       closest_to_line_segment_v3(point_on_line, point, slice.first(), slice.last());
@@ -430,26 +434,18 @@ static IndexMask ramer_douglas_peucker_decimate(const Span<float3> src,
     }
 
     if (max_dist > epsilon) {
-      stack.push(IndexRange(max_index + 1));
-      stack.push(IndexRange(max_index, range.size() - max_index));
+      stack.push(IndexRange(range.first(), max_index + 1));
+      stack.push(IndexRange(range.first() + max_index, range.size() - max_index));
     }
     else {
-      points_to_keep.as_mutable_span().slice(range).fill(false);
+      points_to_keep.as_mutable_span().slice(range.drop_front(1).drop_back(1)).fill(false);
     }
   }
 
-  return IndexMask::from_bools(points_to_keep, memory);
+  IndexMask indices = IndexMask::from_bools(points_to_keep, memory);
+  indices = indices.slice_and_offset(indices.index_range(), start_offset, memory);
+  return indices;
 }
-
-// IndexMask ramer_douglas_peucker_decimate(const GSpan src,
-//                                          const float epsilon,
-//                                          IndexMaskMemory &memory)
-// {
-//   bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-//     using T = decltype(dummy);
-//     return ramer_douglas_peucker_decimate(src.typed<T>(), epsilon, memory);
-//   });
-// }
 
 static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 {
@@ -467,49 +463,45 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
           return;
         }
 
-        // const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-        //     ".selection", ATTR_DOMAIN_CURVE, true);
+        if (!ed::curves::has_anything_selected(curves)) {
+          return;
+        }
+
         const Span<float3> positions = curves.positions();
         const OffsetIndices points_by_curve = curves.points_by_curve();
 
+        Array<bool> selection(curves.points_num());
+        curves.attributes()
+            .lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true)
+            .varray.materialize(selection);
+
         IndexMaskMemory memory;
+        IndexMask points_to_keep =
+            IndexMask::from_bools(selection, memory).complement(curves.points_range(), memory);
         for (const int curve_i : curves.curves_range()) {
           const IndexRange points = points_by_curve[curve_i];
-          IndexMaskMemory curve_memory;
-          IndexMask points_to_keep = ramer_douglas_peucker_decimate(positions.slice(points), epsilon, curve_memory);
-          // const int64_t new_size = math::max(mask_a.min_array_size(), mask_b.min_array_size());
-          // Array<bool> tmp(new_size, false);
-          // mask_a.foreach_index_optimized<int64_t>(GrainSize(2048),
-          //                                         [&](const int64_t i) { tmp[i] = true; });
-          // mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
-          //                                         [&](const int64_t i) { tmp[i] = true; });
-          // return IndexMask::from_bools(tmp, memory);
+
+          IndexMaskMemory selection_memory;
+          IndexMask selection_mask = IndexMask::from_bools(selection.as_span().slice(points),
+                                                           selection_memory);
+
+          Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
+          for (const IndexRange range : selection_ranges) {
+
+            IndexMaskMemory range_memory;
+            points_to_keep = IndexMask::from_union(
+                points_to_keep,
+                ramer_douglas_peucker_mask(positions.slice(range.shift(points.start())),
+                                           points.start() + range.start(),
+                                           epsilon,
+                                           range_memory),
+                memory);
+          }
         }
-        // IndexMask points_to_keep = threading::parallel_reduce(
-        //     curves.curves_range(),
-        //     256,
-        //     IndexMask(),
-        //     [&](const IndexRange range) {
-        //       for (const int curve_i : range) {
-        //         const IndexRange points = points_by_curve[curve_i];
-        //         IndexMaskMemory curve_memory;
-        //         return ramer_douglas_peucker_decimate(
-        //             positions.slice(points), epsilon, curve_memory);
-        //       }
-        //     },
-        //     [&memory](const IndexMask &mask_a, const IndexMask &mask_b) {
-        //       /* Get the union of the masks. */
-        //       const int64_t new_size = math::max(mask_a.min_array_size(), mask_b.min_array_size());
-        //       Array<bool> tmp(new_size, false);
-        //       mask_a.foreach_index_optimized<int64_t>(GrainSize(2048),
-        //                                               [&](const int64_t i) { tmp[i] = true; });
-        //       mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
-        //                                               [&](const int64_t i) { tmp[i] = true; });
-        //       return IndexMask::from_bools(tmp, memory);
-        //     });
 
         IndexMask points_to_delete = points_to_keep.complement(curves.points_range(), memory);
         curves.remove_points(points_to_delete);
+        drawing.tag_topology_changed();
       });
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -528,12 +520,12 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 
   /* Callbacks. */
   ot->exec = grease_pencil_stroke_simplify_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = editable_grease_pencil_point_selection_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Simplify parameters. */
-  prop = RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 100.0f, "Factor", "", 0.0f, 100.0f);
+  prop = RNA_def_float(ot->srna, "factor", 0.001f, 0.0f, 100.0f, "Factor", "", 0.0f, 100.0f);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
