@@ -21,7 +21,7 @@ set(SRC
   intern/blf_font.cc
   intern/blf_font_default.cc
   intern/blf_glyph.cc
-  intern/blf_thumbs.c
+  intern/blf_thumbs.cc
   intern/blf_util.c
 
   BLF_api.h
