@@ -68,38 +68,15 @@ void main()
   bool selected_coloring = is_selected && useColoring;
 
   /* Base Color */
-  vec3 wire_col, rim_col, no_fresnel_col, fresnel_col;
-
   if (isRandomColor) { /* Dim random color. */
     float hue = ObjectInfo.z;
     vec3 hsv = vec3(hue, 0.75, 0.8);
-    wire_col = hsv_to_rgb(hsv);  
+    finalColor.rgb = hsv_to_rgb(hsv);  
   }
   else { /* Initialize variable. */
-    wire_col = ObjectColor.rgb;
+    finalColor.rgb = ObjectColor.rgb;
   }
-  wire_col = (isSingleColor) ? colorWire.rgb : wire_col;
-
-  /* Fresnel */
-  no_fresnel_col = wire_col;
-  rim_col = wire_col;
-
-  /* "Normalize" color. */
-  wire_col += 1e-4; /* Avoid division by 0. */
-  float brightness = max(wire_col.x, max(wire_col.y, wire_col.z));
-  wire_col *= 0.5 / brightness;
-  rim_col += 0.75;
-
-  facing = clamp(abs(facing), 0.0, 1.0);
-
-  /* Do interpolation in a non-linear space to have a better visual result. */
-  rim_col = pow(rim_col, vec3(1.0 / 2.2));
-  wire_col = pow(wire_col, vec3(1.0 / 2.2));
-  fresnel_col = mix(rim_col, wire_col, 0.35);
-  fresnel_col = mix(rim_col, fresnel_col, facing);
-  fresnel_col = pow(fresnel_col, vec3(2.2));
-
-  finalColor.rgb = mix(no_fresnel_col.rgb, fresnel_col, fresnelMix);
+  finalColor.rgb = (isSingleColor) ? colorWire.rgb : finalColor.rgb;
 
   /* Selection Color */
   if (selected_coloring) {
@@ -113,8 +90,15 @@ void main()
       finalColor.rgb = colorSelect.rgb;
     }
   }
+  /* Fresnel */
+  facing = clamp(abs(facing), 0.0, 1.0);
+  float fresnel_alpha;
 
-  finalColor.a = wireOpacity;
+  fresnel_alpha = mix(0.0, 0.8, facing);
+  fresnel_alpha *= fresnelMix;
+
+  finalColor.a = wireOpacity - fresnel_alpha;
   finalColor.rgb *= wireOpacity;
+
   view_clipping_distances(wpos);
 }
