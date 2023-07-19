@@ -202,7 +202,7 @@ static bool annotation_stroke_added_check(tGPsdata *p)
 static void annotation_stroke_added_enable(tGPsdata *p)
 {
   BLI_assert(p->gpf->strokes.last != nullptr);
-  eGPencil_PaintFlags(p->flags |= GP_PAINTFLAG_STROKEADDED);
+  p->flags |= GP_PAINTFLAG_STROKEADDED;
 }
 
 /* ------ */
@@ -1608,7 +1608,7 @@ static void annotation_paint_initstroke(tGPsdata *p,
     /* check if we should respect depth while erasing */
     if (p->area->spacetype == SPACE_VIEW3D) {
       if (p->gpl->flag & GP_LAYER_NO_XRAY) {
-        eGPencil_PaintFlags(p->flags |= GP_PAINTFLAG_V3D_ERASER_DEPTH);
+        p->flags |= GP_PAINTFLAG_V3D_ERASER_DEPTH;
       }
     }
   }
@@ -1618,13 +1618,13 @@ static void annotation_paint_initstroke(tGPsdata *p,
 
     if (p->area->spacetype == SPACE_VIEW3D) {
       if (p->gpl->flag & GP_LAYER_NO_XRAY) {
-        eGPencil_PaintFlags(p->flags &= ~GP_PAINTFLAG_V3D_ERASER_DEPTH);
+        p->flags &= ~GP_PAINTFLAG_V3D_ERASER_DEPTH;
       }
     }
   }
 
   /* set 'initial run' flag, which is only used to denote when a new stroke is starting */
-  eGPencil_PaintFlags(p->flags |= GP_PAINTFLAG_FIRSTRUN);
+  p->flags |= GP_PAINTFLAG_FIRSTRUN;
 
   /* when drawing in the camera view, in 2D space, set the subrect */
   p->subrect = nullptr;

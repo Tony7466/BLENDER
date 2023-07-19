@@ -321,12 +321,11 @@ static void cage2d_draw_box_interaction(const float color[4],
     }
     case ED_GIZMO_CAGE2D_PART_ROTATE: {
       const float rotate_pt[2] = {0.0f, size[1] + margin[1]};
-      const rctf r_rotate = {
-          .xmin = rotate_pt[0] - margin[0] / 2.0f,
-          .xmax = rotate_pt[0] + margin[0] / 2.0f,
-          .ymin = rotate_pt[1] - margin[1] / 2.0f,
-          .ymax = rotate_pt[1] + margin[1] / 2.0f,
-      };
+      rctf r_rotate{};
+      r_rotate.xmin = rotate_pt[0] - margin[0] / 2.0f;
+      r_rotate.xmax = rotate_pt[0] + margin[0] / 2.0f;
+      r_rotate.ymin = rotate_pt[1] - margin[1] / 2.0f;
+      r_rotate.ymax = rotate_pt[1] + margin[1] / 2.0f;
 
       ARRAY_SET_ITEMS(verts[0], r_rotate.xmin, r_rotate.ymin);
       ARRAY_SET_ITEMS(verts[1], r_rotate.xmin, r_rotate.ymax);
@@ -383,10 +382,9 @@ static void cage2d_draw_box_interaction(const float color[4],
   GPUVertFormat *format = immVertexFormat();
   struct {
     uint pos, col;
-  } attr_id = {
-      .pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT),
-      .col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 3, GPU_FETCH_FLOAT),
-  };
+  } attr_id{};
+  attr_id.pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  attr_id.col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(is_solid ? GPU_SHADER_3D_FLAT_COLOR : GPU_SHADER_3D_POLYLINE_FLAT_COLOR);
 
   {
