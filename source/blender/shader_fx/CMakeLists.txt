@@ -34,7 +34,7 @@ set(SRC
   intern/FX_shader_rim.cc
   intern/FX_shader_shadow.cc
   intern/FX_shader_swirl.cc
-  intern/FX_shader_util.c
+  intern/FX_shader_util.cc
   intern/FX_shader_wave.c
 
   intern/FX_ui_common.h
