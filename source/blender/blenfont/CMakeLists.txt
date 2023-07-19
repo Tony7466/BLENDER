@@ -18,7 +18,7 @@ set(SRC
   intern/blf.c
   intern/blf_default.cc
   intern/blf_dir.cc
-  intern/blf_font.c
+  intern/blf_font.cc
   intern/blf_font_default.cc
   intern/blf_glyph.c
   intern/blf_thumbs.c
