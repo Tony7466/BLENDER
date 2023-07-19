@@ -5,6 +5,7 @@
 #include "testing/testing.h"
 
 #include "BLI_array_utils.h"
+#include "BLI_array_utils.hh"
 #include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
 
@@ -241,3 +242,51 @@ TEST(array_utils, DeduplicateOrdered3)
 }
 
 #undef DEDUPLICATE_ORDERED_TEST
+
+TEST(array_utils, FindAllRanges1)
+{
+  using namespace blender;
+  bool data[1] = {false};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 1), true);
+  EXPECT_EQ(ranges.size(), 0);
+}
+
+TEST(array_utils, FindAllRanges2)
+{
+  using namespace blender;
+  bool data[3] = {true, true, true};
+  const IndexRange data_cmp[] = {IndexRange(0, 3)};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 3), true);
+  EXPECT_EQ(ranges.size(), 1);
+  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+}
+
+TEST(array_utils, FindAllRanges3)
+{
+  using namespace blender;
+  bool data[2] = {true, false};
+  const IndexRange data_cmp[] = {IndexRange(0, 1)};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 2), true);
+  EXPECT_EQ(ranges.size(), 1);
+  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+}
+
+TEST(array_utils, FindAllRanges4)
+{
+  using namespace blender;
+  bool data[2] = {false, true};
+  const IndexRange data_cmp[] = {IndexRange(1, 1)};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 2), true);
+  EXPECT_EQ(ranges.size(), 1);
+  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+}
+
+TEST(array_utils, FindAllRanges5)
+{
+  using namespace blender;
+  bool data[7] = {true, false, false, true, true, false, true};
+  const IndexRange data_cmp[] = {IndexRange(0, 1), IndexRange(3, 2), IndexRange(6, 1)};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 7), true);
+  EXPECT_EQ(ranges.size(), 3);
+  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 3);
+}
