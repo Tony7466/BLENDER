@@ -570,7 +570,7 @@ static const struct UnicodeBlock *blf_charcode_to_unicode_block(const uint charc
   /* Binary search for other blocks. */
 
   int min = 0;
-  int max = ARRAY_SIZE(unicode_blocks) - 1;
+  int max = int(ARRAY_SIZE(unicode_blocks)) - 1;
 
   if (charcode < unicode_blocks[0].first || charcode > unicode_blocks[max].last) {
     return nullptr;
