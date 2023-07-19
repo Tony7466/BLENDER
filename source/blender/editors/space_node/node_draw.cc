@@ -2245,7 +2245,7 @@ static void node_draw_basis(const bContext &C,
 
       NestedNodePreviewMap *previews_sha = tree_draw_ctx.nested_group_infos;
       if (previews_sha) {
-        preview = ED_node_get_preview_ibuf(&ntree, previews_sha, &node);
+        preview = ED_node_preview_acquire_ibuf(&ntree, previews_sha, &node);
       }
 
       if (preview && !(preview->x && preview->y)) {
@@ -2254,6 +2254,7 @@ static void node_draw_basis(const bContext &C,
     }
 
     node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
+    ED_node_release_preview_ibuf(tree_draw_ctx.nested_group_infos);
   }
 
   /* Header. */

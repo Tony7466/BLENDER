@@ -27,7 +27,10 @@ struct NestedNodePreviewMap {
 };
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode);
-ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, const bNode *node);
+ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
+                                    NestedNodePreviewMap *data,
+                                    const bNode *node);
+void ED_node_release_preview_ibuf(NestedNodePreviewMap *data);
 NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
 
 #ifdef __cplusplus

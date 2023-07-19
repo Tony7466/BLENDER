@@ -263,16 +263,16 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
   return ibuf;
 }
 
-ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, const bNode *node)
+/* `ED_node_release_preview_ibuf` should be called after this. */
+ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
+                                    NestedNodePreviewMap *data,
+                                    const bNode *node)
 {
-  Render *re = data->previews_render;
-  if (re == nullptr) {
+  if (data->previews_render == nullptr) {
     return nullptr;
   }
 
-  RenderResult *rr = RE_AcquireResultRead(re);
-  // TODO (Kdaf) really lock the buffer when reading from it (drawing).
-  RE_ReleaseResult(re);
+  RenderResult *rr = RE_AcquireResultRead(data->previews_render);
   if (rr == nullptr) {
     return nullptr;
   }
@@ -287,6 +287,14 @@ ImBuf *ED_node_get_preview_ibuf(bNodeTree *ntree, NestedNodePreviewMap *data, co
     ntree->preview_refresh_state++;
   }
   return image;
+}
+
+void ED_node_release_preview_ibuf(NestedNodePreviewMap *data)
+{
+  if (data->previews_render == nullptr) {
+    return;
+  }
+  RE_ReleaseResult(data->previews_render);
 }
 
 /* Get a link to the node outside the nested nodegroups by creating a new output socket for each
