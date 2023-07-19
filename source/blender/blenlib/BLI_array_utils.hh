@@ -172,9 +172,11 @@ inline BooleanMix booleans_mix_calc(const VArray<bool> &varray)
 /**
  * Finds all the index ranges for which consecutive values in \a span equal \a value.
  */
-template<typename T> inline Vector<IndexRange> find_all_ranges(Span<T> span, const T &value)
+template<typename T> inline Vector<IndexRange> find_all_ranges(const Span<T> span, const T &value)
 {
-  BLI_assert(span.size() > 0);
+  if (span.is_empty()) {
+    return Vector<IndexRange>();
+  }
   Vector<IndexRange> ranges;
   int64_t length = (span.first() == value) ? 1 : 0;
   for (const int64_t i : span.index_range().drop_front(1)) {
