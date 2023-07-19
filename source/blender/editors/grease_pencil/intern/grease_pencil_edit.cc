@@ -485,12 +485,16 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
             Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection,
                                                                                true);
-            for (const IndexRange range : selection_ranges) {
-              ramer_douglas_peucker_simplify(
-                  positions.slice(range.shift(points.start())),
-                  epsilon,
-                  points_to_delete.as_mutable_span().slice(range.shift(points.start())));
-            }
+            threading::parallel_for(
+                selection_ranges.index_range(), 16, [&](const IndexRange range_of_ranges) {
+                  for (const IndexRange range : selection_ranges.as_span().slice(range_of_ranges))
+                  {
+                    ramer_douglas_peucker_simplify(
+                        positions.slice(range.shift(points.start())),
+                        epsilon,
+                        points_to_delete.as_mutable_span().slice(range.shift(points.start())));
+                  }
+                });
           }
         });
 
