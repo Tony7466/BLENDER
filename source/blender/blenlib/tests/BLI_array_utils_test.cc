@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
+#include <array.h>
+
 #include "testing/testing.h"
 
 #include "BLI_array_utils.h"
@@ -243,50 +245,51 @@ TEST(array_utils, DeduplicateOrdered3)
 
 #undef DEDUPLICATE_ORDERED_TEST
 
+#define FIND_ALL_RANGES_TEST(data, data_cmp) \
+  { \
+    Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data.data(), data.size()), \
+                                                             true); \
+    EXPECT_EQ(ranges.size(), data_cmp.size()); \
+    EXPECT_EQ_ARRAY(data_cmp.data(), ranges.as_span().data(), data_cmp.size()); \
+  } \
+  ((void)0)
+
 TEST(array_utils, FindAllRanges1)
 {
   using namespace blender;
-  bool data[1] = {false};
-  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 1), true);
+  const std::array data = {false};
+  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data.data(), data.size()), true);
   EXPECT_EQ(ranges.size(), 0);
 }
 
 TEST(array_utils, FindAllRanges2)
 {
   using namespace blender;
-  bool data[3] = {true, true, true};
-  const IndexRange data_cmp[] = {IndexRange(0, 3)};
-  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 3), true);
-  EXPECT_EQ(ranges.size(), 1);
-  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+  const std::array data = {true, true, true};
+  const std::array data_cmp = {IndexRange(0, 3)};
+  FIND_ALL_RANGES_TEST(data, data_cmp);
 }
 
 TEST(array_utils, FindAllRanges3)
 {
   using namespace blender;
-  bool data[2] = {true, false};
-  const IndexRange data_cmp[] = {IndexRange(0, 1)};
-  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 2), true);
-  EXPECT_EQ(ranges.size(), 1);
-  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+  const std::array data = {true, false};
+  const std::array data_cmp = {IndexRange(0, 1)};
+  FIND_ALL_RANGES_TEST(data, data_cmp);
 }
 
 TEST(array_utils, FindAllRanges4)
 {
   using namespace blender;
-  bool data[2] = {false, true};
-  const IndexRange data_cmp[] = {IndexRange(1, 1)};
-  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 2), true);
-  EXPECT_EQ(ranges.size(), 1);
-  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 1);
+  const std::array data = {false, true};
+  const std::array data_cmp = {IndexRange(1, 1)};
+  FIND_ALL_RANGES_TEST(data, data_cmp);
 }
 
 TEST(array_utils, FindAllRanges5)
 {
   using namespace blender;
-  bool data[7] = {true, false, false, true, true, false, true};
-  const IndexRange data_cmp[] = {IndexRange(0, 1), IndexRange(3, 2), IndexRange(6, 1)};
-  Vector<IndexRange> ranges = array_utils::find_all_ranges(Span(data, 7), true);
-  EXPECT_EQ(ranges.size(), 3);
-  EXPECT_EQ_ARRAY(data_cmp, ranges.as_span().data(), 3);
+  const std::array data = {true, false, false, true, true, false, true};
+  const std::array data_cmp = {IndexRange(0, 1), IndexRange(3, 2), IndexRange(6, 1)};
+  FIND_ALL_RANGES_TEST(data, data_cmp);
 }
