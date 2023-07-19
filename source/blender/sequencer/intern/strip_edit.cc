@@ -68,7 +68,7 @@ bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, cons
     }
   }
 
-  SWAP(Sequence, *seq_a, *seq_b);
+  blender::dna::shallow_swap(*seq_a, *seq_b);
 
   /* swap back names so animation fcurves don't get swapped */
   STRNCPY(name, seq_a->name + 2);
@@ -434,7 +434,7 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   }
 
   /* Store `F-Curves`, so original ones aren't renamed. */
-  SeqAnimationBackup animation_backup = {0};
+  SeqAnimationBackup animation_backup{};
   SEQ_animation_backup_original(scene, &animation_backup);
 
   ListBase left_strips = {nullptr, nullptr};
