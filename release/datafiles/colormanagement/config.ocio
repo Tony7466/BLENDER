@@ -73,7 +73,7 @@ inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard
 
 looks:
   - !<Look>
-    name: Punchy
+    name: AgX - Punchy
     process_space: AgX Base BT.2020
     description: A post-formation punchy look
     transform: !<GroupTransform>
@@ -82,11 +82,12 @@ looks:
         - !<ColorSpaceTransform> {src: BT.2020, dst: Guard Rail BT.2020}
 
   - !<Look>
-    name: Green Ink
+    name: AgX - Green Ink
     process_space: AgX Base BT.2020
     description: A Post-Formation Look with Green Tint in Lower Range and Warm Tint in Higher Range
     transform: !<GroupTransform>
       children:
+        - !<ColorSpaceTransform> {src: BT.2020, dst: Guard Rail BT.2020}
         - !<CDLTransform> {slope: [1, 0.85, 0.9]}
         - !<GradingToneTransform>
          shadows: {rgb: [0.5, 0.8, 0.7], master: 1, start: 2, pivot: 0.001}
@@ -107,7 +108,7 @@ looks:
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
 
   - !<Look>
-    name: Very High Contrast
+    name: AgX - Very High Contrast
     process_space: AgX Log
     description: A Very High Contrast Look
     transform: !<GroupTransform>
@@ -119,7 +120,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: High Contrast
+    name: AgX - High Contrast
     process_space: AgX Log
     description: A High Contrast Look
     transform: !<GroupTransform>
@@ -131,7 +132,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: Medium High Contrast
+    name: AgX - Medium High Contrast
     process_space: AgX Log
     description: A Medium High Contrast Look
     transform: !<GroupTransform>
@@ -143,7 +144,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: Base Contrast
+    name: AgX - Base Contrast
     process_space: AgX Log
     description: A Base Contrast Look
     transform: !<GroupTransform>
@@ -154,7 +155,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: Medium Low Contrast
+    name: AgX - Medium Low Contrast
     process_space: AgX Log
     description: A Medium Low Contrast Look
     transform: !<GroupTransform>
@@ -166,7 +167,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: Low Contrast
+    name: AgX - Low Contrast
     process_space: AgX Log
     description: A Low Contrast Look
     transform: !<GroupTransform>
@@ -178,7 +179,7 @@ looks:
           pivot: {contrast: -0.2}
 
   - !<Look>
-    name: Very Low Contrast
+    name: AgX - Very Low Contrast
     process_space: AgX Log
     description: A Very Low Contrast Look
     transform: !<GroupTransform>
@@ -189,6 +190,59 @@ looks:
           saturation: 1.15
           pivot: {contrast: -0.2}
 
+  - !<Look>
+    name: Filmic - Very High Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_1.20_1-00.spi1d, interpolation: linear}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
+
+  - !<Look>
+    name: Filmic - High Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_0.99_1-0075.spi1d, interpolation: linear}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
+
+  - !<Look>
+    name: Filmic - Medium High Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_0-85_1-011.spi1d, interpolation: best}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
+
+  - !<Look>
+    name: Filmic - Medium Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+
+  - !<Look>
+    name: Filmic - Medium Low Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_0-60_1-04.spi1d, interpolation: linear}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
+
+  - !<Look>
+    name: Filmic - Low Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_0-48_1-09.spi1d, interpolation: linear}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
+
+  - !<Look>
+    name: Filmic - Very Low Contrast
+    process_space: Filmic Log
+    transform: !<GroupTransform>
+        children:
+            - !<FileTransform> {src: filmic_to_0-35_1-30.spi1d, interpolation: linear}
+            - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 colorspaces:
   - !<ColorSpace>
     name: Linear CIE-XYZ I-E
