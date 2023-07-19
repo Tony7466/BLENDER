@@ -34,7 +34,7 @@ set(SRC
   gizmo_types/cage2d_gizmo.cc
   gizmo_types/cage3d_gizmo.cc
   gizmo_types/dial3d_gizmo.cc
-  gizmo_types/move3d_gizmo.c
+  gizmo_types/move3d_gizmo.cc
   gizmo_types/primitive3d_gizmo.c
   gizmo_types/snap3d_gizmo.c
 )
