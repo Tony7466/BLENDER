@@ -750,6 +750,7 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         layout.separator()
         col = layout.column(heading="Fresnel")
         col.prop(view, "fresnel_effect")
+        col.prop(view, "fresnel_effect_ob")
 
 
 class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):

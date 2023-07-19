@@ -95,7 +95,7 @@ void main()
   float fresnel_alpha;
 
   fresnel_alpha = mix(0.0, 0.8, facing);
-  fresnel_alpha *= fresnelMix;
+  fresnel_alpha *= fresnelMixOb;
 
   finalColor.a = wireOpacity - fresnel_alpha;
   finalColor.rgb *= wireOpacity;
