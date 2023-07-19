@@ -251,13 +251,22 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
                                                 const char *layer_name,
                                                 const char *pass_name)
 {
-  RenderLayer *rl = static_cast<RenderLayer *>(rr->layers.first);
+  RenderLayer *rl;
   if (layer_name) {
     rl = RE_GetRenderLayer(rr, layer_name);
   }
-  RenderPass *rp = static_cast<RenderPass *>(rl->passes.first);
+  else {
+    rl = static_cast<RenderLayer *>(rr->layers.first);
+  }
+  if (rl == nullptr) {
+    return nullptr;
+  }
+  RenderPass *rp;
   if (pass_name) {
     rp = RE_pass_find_by_name(rl, pass_name, nullptr);
+  }
+  else {
+    rp = static_cast<RenderPass *>(rl->passes.first);
   }
   ImBuf *ibuf = rp ? rp->ibuf : nullptr;
   return ibuf;
