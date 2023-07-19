@@ -62,7 +62,7 @@ set(SRC
   intern/prefetch.h
   intern/proxy.c
   intern/proxy.h
-  intern/proxy_job.c
+  intern/proxy_job.cc
   intern/render.c
   intern/render.h
   intern/sequence_lookup.c
