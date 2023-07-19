@@ -62,11 +62,6 @@ void main()
     edgeStart = vec2(-1.0);
   }
 
-  int flag = int(abs(ObjectInfo.w));
-  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
-  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
-  bool selected_coloring = is_selected && useColoring;
-
   /* Base Color */
   if (isRandomColor) { /* Dim random color. */
     float hue = ObjectInfo.z;
@@ -79,7 +74,11 @@ void main()
   finalColor.rgb = (isSingleColor) ? colorWire.rgb : finalColor.rgb;
 
   /* Selection Color */
-  if (selected_coloring) {
+    int flag = int(abs(ObjectInfo.w));
+    bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
+    bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
+
+  if (is_selected && useColoring) {
     if (isTransform) {
       finalColor.rgb = colorTransform.rgb;
     }
@@ -90,14 +89,13 @@ void main()
       finalColor.rgb = colorSelect.rgb;
     }
   }
+
   /* Fresnel */
   facing = clamp(abs(facing), 0.0, 1.0);
-  float fresnel_alpha;
-
-  fresnel_alpha = mix(0.0, 0.8, facing);
-  fresnel_alpha *= fresnelMixOb;
+  float fresnel_alpha = mix(0.0, 0.8, facing)*fresnelMixOb;
 
   finalColor.a = wireOpacity - fresnel_alpha;
+  finalColor.rgb = mix(finalColor.rgb, finalColor.rgb*(1-fresnel_alpha), fresnelMixOb);
   finalColor.rgb *= wireOpacity;
 
   view_clipping_distances(wpos);
