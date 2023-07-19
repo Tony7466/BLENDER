@@ -686,7 +686,7 @@ static void gizmo_cage2d_draw_intern(wmGizmo *gz,
     GPU_blend(GPU_BLEND_ALPHA);
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformColor4fv((const float[4]){1, 1, 1, 0.5f});
+    immUniformColor4f(1, 1, 1, 0.5f);
     float s = 0.5f;
     immRectf(pos, -s, -s, s, s);
     immUnbindProgram();
