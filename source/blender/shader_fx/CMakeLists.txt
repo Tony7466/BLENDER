@@ -27,7 +27,7 @@ set(SRC
   intern/FX_ui_common.c
 
   intern/FX_shader_blur.cc
-  intern/FX_shader_colorize.c
+  intern/FX_shader_colorize.cc
   intern/FX_shader_flip.c
   intern/FX_shader_glow.c
   intern/FX_shader_pixel.c
