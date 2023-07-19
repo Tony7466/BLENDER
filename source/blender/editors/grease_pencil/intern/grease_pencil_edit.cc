@@ -405,14 +405,15 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
  *
  * \param epsilon: The threshold distance from the coord between two points for when a point
  * in-between needs to be kept.
- * \returns A mask of the points in \a src that need to be kept when simplifying the \a src
- * span. The indices are offset by \a start_offset.
+ * \param points_to_delete: Writes true to the indecies for which the points should be removed.
  */
 void ramer_douglas_peucker_simplify(const Span<float3> src,
                                     const float epsilon,
                                     MutableSpan<bool> points_to_delete)
 {
-  /* Mark all points to not be deleted. */
+  BLI_assert(src.size() == points_to_delete.size());
+
+  /* Mark all points to not be removed. */
   points_to_delete.fill(false);
 
   Stack<IndexRange> stack;
