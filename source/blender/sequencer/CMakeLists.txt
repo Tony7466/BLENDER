@@ -58,7 +58,7 @@ set(SRC
   intern/modifier.cc
   intern/multiview.cc
   intern/multiview.h
-  intern/prefetch.c
+  intern/prefetch.cc
   intern/prefetch.h
   intern/proxy.c
   intern/proxy.h
