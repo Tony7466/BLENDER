@@ -296,7 +296,7 @@ void PathTraceWorkGPU::init_execution()
       "integrator_state", &integrator_state_gpu_, sizeof(integrator_state_gpu_));
 }
 
-void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
+void PathTraceWorkGPU::render_samples(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
                                       int sample_offset)
@@ -312,9 +312,9 @@ void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
                              samples_num,
                              sample_offset,
                              device_scene_->data.integrator.scrambling_distance,
-			     effective_buffer_params_.slice_start_y,
-			     effective_buffer_params_.slice_height,
-			     effective_buffer_params_.slice_stride);
+                             effective_buffer_params_.full_y,
+                             effective_buffer_params_.slice_height,
+                             effective_buffer_params_.slice_stride);
 
   enqueue_reset();
 
@@ -363,7 +363,6 @@ void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
   }
 
   statistics.occupancy = static_cast<float>(num_busy_accum) / num_iterations / max_num_paths_;
-  //queue_->copy_from_device(buffers_->buffer);
 }
 
 DeviceKernel PathTraceWorkGPU::get_most_queued_kernel() const
@@ -918,7 +917,7 @@ bool PathTraceWorkGPU::should_use_graphics_interop()
   return interop_use_;
 }
 
-void PathTraceWorkGPU::copy_to_display_impl(PathTraceDisplay *display,
+void PathTraceWorkGPU::copy_to_display(PathTraceDisplay *display,
                                        PassMode pass_mode,
                                        int num_samples)
 {
@@ -983,8 +982,8 @@ void PathTraceWorkGPU::copy_to_display_naive(PathTraceDisplay *display,
 
   queue_->copy_from_device(display_rgba_half_);
   queue_->synchronize();
-    
-  display->copy_pixels_to_texture(display_rgba_half_.data(), texture_x, texture_y, width, height, effective_buffer_params_.slice_start_y, effective_buffer_params_.slice_height, effective_buffer_params_.slice_stride);
+
+  display->copy_pixels_to_texture(display_rgba_half_.data(), texture_x, texture_y, width, height, effective_buffer_params_.slice_height, effective_buffer_params_.slice_stride);
 }
 
 bool PathTraceWorkGPU::copy_to_display_interop(PathTraceDisplay *display,
@@ -1032,7 +1031,7 @@ void PathTraceWorkGPU::get_render_tile_film_pixels(const PassAccessor::Destinati
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
   const PassAccessorGPU pass_accessor(queue_.get(), pass_access_info, kfilm.exposure, num_samples);
 
-  pass_accessor.get_render_tile_pixels(buffers_, effective_buffer_params_, destination);
+  pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
 }
 
 int PathTraceWorkGPU::adaptive_sampling_converge_filter_count_active(float threshold, bool reset)
@@ -1055,17 +1054,17 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
 
   queue_->zero_to_device(num_active_pixels);
 
-  const int work_size = slices_buffer_params_.width * slices_buffer_params_.height;
+  const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
-  DeviceKernelArguments args(&master_buffers_->buffer.device_pointer,
-                             &slices_buffer_params_.full_x,
-                             &slices_buffer_params_.full_y,
-                             &slices_buffer_params_.width,
-                             &slices_buffer_params_.height,
+  DeviceKernelArguments args(&buffers_->buffer.device_pointer,
+                             &effective_buffer_params_.full_x,
+                             &effective_buffer_params_.full_y,
+                             &effective_buffer_params_.width,
+                             &effective_buffer_params_.height,
                              &threshold,
                              &reset,
-                             &slices_buffer_params_.offset,
-                             &slices_buffer_params_.stride,
+                             &effective_buffer_params_.offset,
+                             &effective_buffer_params_.stride,
                              &num_active_pixels.device_pointer);
 
   queue_->enqueue(DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, work_size, args);
@@ -1078,30 +1077,30 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
 
 void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_x()
 {
-  const int work_size = slices_buffer_params_.height;
+  const int work_size = effective_buffer_params_.height;
 
-  DeviceKernelArguments args(&master_buffers_->buffer.device_pointer,
-                             &slices_buffer_params_.full_x,
-                             &slices_buffer_params_.full_y,
-                             &slices_buffer_params_.width,
-                             &slices_buffer_params_.height,
-                             &slices_buffer_params_.offset,
-                             &slices_buffer_params_.stride);
+  DeviceKernelArguments args(&buffers_->buffer.device_pointer,
+                             &effective_buffer_params_.full_x,
+                             &effective_buffer_params_.full_y,
+                             &effective_buffer_params_.width,
+                             &effective_buffer_params_.height,
+                             &effective_buffer_params_.offset,
+                             &effective_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X, work_size, args);
 }
 
 void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_y()
 {
-  const int work_size = slices_buffer_params_.width;
+  const int work_size = effective_buffer_params_.width;
 
-  DeviceKernelArguments args(&master_buffers_->buffer.device_pointer,
-                             &slices_buffer_params_.full_x,
-                             &slices_buffer_params_.full_y,
-                             &slices_buffer_params_.width,
-                             &slices_buffer_params_.height,
-                             &slices_buffer_params_.offset,
-                             &slices_buffer_params_.stride);
+  DeviceKernelArguments args(&buffers_->buffer.device_pointer,
+                             &effective_buffer_params_.full_x,
+                             &effective_buffer_params_.full_y,
+                             &effective_buffer_params_.width,
+                             &effective_buffer_params_.height,
+                             &effective_buffer_params_.offset,
+                             &effective_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_Y, work_size, args);
 }
@@ -1109,17 +1108,17 @@ void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_y()
 void PathTraceWorkGPU::cryptomatte_postproces()
 {
   SCOPED_MARKER(device_, "cryptomatte_postproces");
-  const int work_size = slices_buffer_params_.width * slices_buffer_params_.height;
+  const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
-  DeviceKernelArguments args(&master_buffers_->buffer.device_pointer,
+  DeviceKernelArguments args(&buffers_->buffer.device_pointer,
                              &work_size,
-                             &slices_buffer_params_.offset,
-                             &slices_buffer_params_.stride);
+                             &effective_buffer_params_.offset,
+                             &effective_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS, work_size, args);
 }
 
-bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
+bool PathTraceWorkGPU::copy_render_buffers_from_device()
 {
   SCOPED_MARKER(device_, "copy_master_render_buffers_from_device_impl");
   queue_->copy_from_device(buffers_->buffer);
@@ -1128,24 +1127,7 @@ bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
   return queue_->synchronize();
 }
 
-bool PathTraceWorkGPU::copy_master_render_buffers_from_device_impl()
-{
-  SCOPED_MARKER(device_, "copy_master_render_buffers_from_device_impl");
-  queue_->copy_from_device(master_buffers_->buffer);
-
-  /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
-  return queue_->synchronize();
-}
-
-bool PathTraceWorkGPU::copy_master_render_buffers_to_device_impl()
-{
-  SCOPED_MARKER(device_, "copy_master_render_buffers_to_device_impl");
-  queue_->copy_to_device(master_buffers_->buffer);
-
-  return true;
-}
-
-bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
+bool PathTraceWorkGPU::copy_render_buffers_to_device()
 {
   SCOPED_MARKER(device_, "copy_render_buffers_from_device_impl");
   queue_->copy_to_device(buffers_->buffer);
@@ -1157,15 +1139,7 @@ bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
   return true;
 }
 
-bool PathTraceWorkGPU::zero_master_render_buffers_impl()
-{
-  SCOPED_MARKER(device_, "zero_master_render_buffers_impl");
-  queue_->zero_to_device(master_buffers_->buffer);
-
-  return true;
-}
-
-bool PathTraceWorkGPU::zero_render_buffers_impl()
+bool PathTraceWorkGPU::zero_render_buffers()
 {
   SCOPED_MARKER(device_, "zero_render_buffers_impl");
   queue_->zero_to_device(buffers_->buffer);

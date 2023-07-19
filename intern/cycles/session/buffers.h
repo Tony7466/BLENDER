@@ -96,7 +96,6 @@ class BufferParams : public Node {
   /* Slice details */
   int slice_stride;
   int slice_height;
-  int slice_start_y;
 
   /* Properties which are used for accessing buffer pixels outside of scene graph. */
   vector<BufferPass> passes;

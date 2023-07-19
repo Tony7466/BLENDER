@@ -39,9 +39,8 @@ PathTraceWork::PathTraceWork(Device *device,
     : device_(device),
       film_(film),
       device_scene_(device_scene),
-      buffers_(NULL),
-      master_buffers_(make_unique<RenderBuffers>(device)),
-      effective_buffer_params_(effective_full_params_),
+      buffers_(make_unique<RenderBuffers>(device)),
+      effective_buffer_params_(buffers_->params),
       cancel_requested_flag_(cancel_requested_flag),
       device_scale_factor_(-1)
 {
@@ -49,157 +48,28 @@ PathTraceWork::PathTraceWork(Device *device,
 
 PathTraceWork::~PathTraceWork() {}
 
-WorkSet::~WorkSet()
+RenderBuffers *PathTraceWork::get_render_buffers()
 {
-      for (int i = 0; i < size(); i++) {
-        if (render_buffers_set_[i])  {
-          delete render_buffers_set_[i];
-          render_buffers_set_[i] = NULL;
-        }
-      }
+  return buffers_.get();
 }
 
-void PathTraceWork::clear_or_create_work_set(int device_scale_factor)
-{
-  device_scale_factor_ = device_scale_factor;
-  if (work_set_.size() < device_scale_factor) {
-    if (work_set_.size() > 0) {
-      for (int i = 0; i < work_set_.size(); i++) {
-        if (work_set_.render_buffers_set_[i])  {
-          delete work_set_.render_buffers_set_[i];
-          work_set_.render_buffers_set_[i] = NULL;
-        }
-      }
-    }
-    work_set_.resize(device_scale_factor);
-    for (int i = 0; i < device_scale_factor; i++) {
-      work_set_.render_buffers_set_[i] = new RenderBuffers(device_);
-    }
-  }
-}
-
-void PathTraceWork::clear_work_set_buffers(const BufferParams& empty_params) 
-{
- for (int i = 0; i < work_set_.size(); i++) {
-   if (work_set_.render_buffers_set_[i])  {
-     work_set_.render_buffers_set_[i]->reset(empty_params); 
-   }
- }
-}
-
-void PathTraceWork::set_render_buffers_in_work_set(const BufferParams& p, int i, size_t offset) 
-{
-  work_set_.render_buffers_set_[i]->reset(p, offset, master_buffers_.get());
-}
-
-void PathTraceWork::set_effective_buffer_params_in_work_set(const BufferParams& p, int i, size_t offset) 
-{
-  work_set_.effective_buffer_params_set_[i] = p;
-}
-
-void PathTraceWork::set_effective_full_buffer_params(const BufferParams &effective_full_params,
-                                                const BufferParams &effective_big_tile_params)
+void PathTraceWork::set_effective_buffer_params(const BufferParams &effective_full_params,
+                                                const BufferParams &effective_big_tile_params,
+                                                const BufferParams &effective_buffer_params)
 {
   effective_full_params_ = effective_full_params;
   effective_big_tile_params_ = effective_big_tile_params;
+  effective_buffer_params_ = effective_buffer_params;
 }
 
-void PathTraceWork::    set_current_work_set(int i) 
+bool PathTraceWork::has_multiple_works() const
 {
-  
-  buffers_ = work_set_.render_buffers_set_[i];
-  effective_buffer_params_ = work_set_.effective_buffer_params_set_[i];
-  VLOG_INFO << "Effective buffer params y:" << (effective_buffer_params_.full_y + effective_buffer_params_.window_y) << " height:" << effective_buffer_params_.height << " slice height:" <<  effective_buffer_params_.slice_height << " slice stride:" << effective_buffer_params_.slice_stride;
-}
-
-/*
-   Deteremines a full buffer and parameters from the work_set_
- */
-void PathTraceWork::set_slices_effective_params() {
-  // int height = 0;
-  // slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
-  // for (int i = 0; i < work_set_.size(); i++) {
-  //   height += work_set_.effective_buffer_params_set_[i].height;
-  // }
-  // slices_buffer_params_.height = height;
-  // slices_buffer_params_.window_height = height;
-  // slices_buffer_params_.update_offset_stride();
-  // VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
-  // master_buffers_->params = slices_buffer_params_;
-  buffers_ = master_buffers_.get();
-  effective_buffer_params_ = slices_buffer_params_;
-}
-
-void PathTraceWork::update_slices_buffer_params() {
-  int height = 0;
-  slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
-  for (int i = 0; i < work_set_.size(); i++) {
-    height += work_set_.effective_buffer_params_set_[i].height;
-  }
-  slices_buffer_params_.height = height;
-  slices_buffer_params_.window_height = height;
-  slices_buffer_params_.update_offset_stride();
-  VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
-  //master_buffers_->params = slices_buffer_params_;
-  //buffers_ = master_buffers_.get();
-}
-
-void PathTraceWork::render_samples(RenderStatistics &statistics,
-                              int start_sample,
-                              int samples_num,
-                              int sample_offset)
-{
-  SCOPED_MARKER(device_, "render_samples");
-  set_slices_effective_params();
-  //for (int i = 0; i < work_set_.size(); i++) {
-  //   SCOPED_MARKER(device_, "render_samples_work_set");
-  // set_current_work_set(i);
-  if(effective_buffer_params_.height > 0) {
-  render_samples_impl(statistics, start_sample, samples_num, sample_offset);
-  }
-  //}
-}
-
-void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
-{
-  SCOPED_MARKER(device_, "copy_to_display");
-  set_slices_effective_params();
-  //for (int i = 0; i < work_set_.size(); i++) {
-  //  SCOPED_MARKER(device_, "copy_to_display_work_set");
-  //set_current_work_set(i);
-  if(effective_buffer_params_.height > 0)
-    copy_to_display_impl(display, pass_mode, num_samples);
-  //}
-}
-
-bool PathTraceWork::copy_render_buffers_from_device()
-{
-  // for (int i = 0; i < work_set_.size(); i++) {
-  // set_current_work_set(i);
-  // if (!copy_render_buffers_from_device_impl()) return false;
-  // }
-  // return true;
-
-  SCOPED_MARKER(device_, "copy_render_buffers_from_device");
-  return copy_master_render_buffers_from_device_impl();
-}
-
-bool PathTraceWork::copy_render_buffers_to_device()
-{
-  // for (int i = 0; i < work_set_.size(); i++) {
- //    set_current_work_set(i);
- //    if (!copy_render_buffers_to_device_impl()) return false;
- // }
- // return true;
-
-  SCOPED_MARKER(device_, "copy_render_buffers_to_device");
-  return copy_master_render_buffers_to_device_impl();
-}
-
-bool PathTraceWork::zero_render_buffers()
-{
-  SCOPED_MARKER(device_, "zerop_render_buffers");
-  return zero_master_render_buffers_impl();
+  /* Assume if there are multiple works working on the same big tile none of the works gets the
+   * entire big tile to work on. */
+  return !(effective_big_tile_params_.width == effective_buffer_params_.width &&
+           effective_big_tile_params_.height == effective_buffer_params_.height &&
+           effective_big_tile_params_.full_x == effective_buffer_params_.full_x &&
+           effective_big_tile_params_.full_y == effective_buffer_params_.full_y);
 }
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
@@ -207,22 +77,22 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
   VLOG_INFO << "Copy to render buffers";
   SCOPED_MARKER(device_, "copy_to_render_buffers");
   copy_render_buffers_from_device();
-  const int y_stride = slices_buffer_params_.slice_stride;
-  const int slice_height = slices_buffer_params_.slice_height;
-  const int total_height = slices_buffer_params_.height;
-  const int64_t width = slices_buffer_params_.width;
-  const int64_t pass_stride = slices_buffer_params_.pass_stride;
+  const int y_stride = effective_buffer_params_.slice_stride;
+  const int slice_height = effective_buffer_params_.slice_height;
+  const int total_height = effective_buffer_params_.height;
+  const int64_t width = effective_buffer_params_.width;
+  const int64_t pass_stride = effective_buffer_params_.pass_stride;
   const int64_t row_stride = width * pass_stride;
   const int64_t data_size = row_stride * sizeof(float);
 
   int y_slice = 0;
-  int y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
+  int y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   for (int i = 0; i < device_scale_factor_; i++) {
     SCOPED_MARKER(device_, "copy_to_render_buffers_work_set");
     int height = std::min(total_height - i*slice_height, slice_height);
     //VLOG_INFO << "\t(" << i << ") Buffer height " << height << " y slice:" << y_slice << " y render:" << y_render;
     if(height > 0) {
-      const float *src = master_buffers_->buffer.data() + y_slice*row_stride;
+      const float *src = buffers_->buffer.data() + y_slice*row_stride;
       float *dst = render_buffers->buffer.data() + y_render*row_stride;
       
       memcpy(dst, src, data_size*height);
@@ -235,22 +105,22 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers)
 {
   SCOPED_MARKER(device_, "copy_from_render_buffers");
-  const int y_stride = slices_buffer_params_.slice_stride;  
-  const int slice_height = slices_buffer_params_.slice_height;
-  const int total_height = slices_buffer_params_.height;
-  const int64_t width = slices_buffer_params_.width;
-  const int64_t pass_stride = slices_buffer_params_.pass_stride;
+  const int y_stride = effective_buffer_params_.slice_stride;  
+  const int slice_height = effective_buffer_params_.slice_height;
+  const int total_height = effective_buffer_params_.height;
+  const int64_t width = effective_buffer_params_.width;
+  const int64_t pass_stride = effective_buffer_params_.pass_stride;
   const int64_t row_stride = width * pass_stride;
   const int64_t data_size = row_stride * sizeof(float);
 
   int y_slice = 0;
-  int y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
+  int y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   for (int i = 0; i < device_scale_factor_; i++) {
     SCOPED_MARKER(device_, "copy_from_render_buffers_work_set");
     int height = std::min(total_height - i*slice_height, slice_height);
     if(height > 0) {      
       const float *src = render_buffers->buffer.data() + y_render*row_stride;
-      float *dst = master_buffers_->buffer.data() + y_slice*row_stride;
+      float *dst = buffers_->buffer.data() + y_slice*row_stride;
       
       memcpy(dst, src, data_size*height);
       y_slice += slice_height;
@@ -262,18 +132,18 @@ void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers
 
 void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *render_buffers)
 {
-  const int64_t width = slices_buffer_params_.width;
-  const int y_stride = slices_buffer_params_.slice_stride;  
-  const int slice_height = slices_buffer_params_.slice_height;
+  const int64_t width = effective_buffer_params_.width;
+  const int y_stride = effective_buffer_params_.slice_stride;  
+  const int slice_height = effective_buffer_params_.slice_height;
   
   int y_slice = 0;
-  int64_t y_render = slices_buffer_params_.full_y - effective_big_tile_params_.full_y;
+  int64_t y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   for (int i = 0; i < device_scale_factor_; i++) {
     const int64_t dst_offset = y_render * width;
     const int64_t src_offset = y_slice * width;
 
     render_buffers_host_copy_denoised(
-				      master_buffers_.get(), slices_buffer_params_, src_offset, slice_height, render_buffers, effective_buffer_params_, dst_offset);
+				      buffers_.get(), effective_buffer_params_, src_offset, slice_height, render_buffers, effective_buffer_params_, dst_offset);
 
     y_slice += slice_height;
     y_render += y_stride;
@@ -284,10 +154,6 @@ void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *rende
 bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
                                            const PassAccessor::Destination &destination)
 {
-  
-  //for (int i = 0; i < work_set_.size(); i++) {
-  //set_current_work_set(i);
-  set_slices_effective_params();
   if(effective_buffer_params_.height > 0) {
   const int offset_y = (effective_buffer_params_.full_y + effective_buffer_params_.window_y) -
                        (effective_big_tile_params_.full_y + effective_big_tile_params_.window_y);
@@ -296,18 +162,14 @@ bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
   PassAccessor::Destination slice_destination = destination;
   slice_destination.offset += offset_y * width;
 
-  if (!pass_accessor.get_render_tile_pixels(buffers_, slice_destination)) return false;
+  return pass_accessor.get_render_tile_pixels(buffers_.get(), slice_destination);
   }
-  //}
-  return true;
+  return false;
 }
 
 bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,
                                            const PassAccessor::Source &source)
 {
-  //for (int i = 0; i < work_set_.size(); i++) {
-  //set_current_work_set(i);
-  set_slices_effective_params();
   if(effective_buffer_params_.height > 0) {
   const int offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   const int width = effective_buffer_params_.width;
@@ -315,10 +177,9 @@ bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,
   PassAccessor::Source slice_source = source;
   slice_source.offset += offset_y * width;
 
-  if (!pass_accessor.set_render_tile_pixels(buffers_, slice_source)) return false;
+  return pass_accessor.set_render_tile_pixels(buffers_.get(), slice_source);
   }
-  //}
-  return true;
+  return false;
 }
 
 PassAccessor::PassAccessInfo PathTraceWork::get_display_pass_access_info(PassMode pass_mode) const
@@ -369,5 +230,95 @@ PassAccessor::Destination PathTraceWork::get_display_destination_template(
 
   return destination;
 }
+//===========================REMOVE BELOW THIS POINT===================
+// /*
+//    Deteremines a full buffer and parameters from the work_set_
+//  */
+// void PathTraceWork::set_slices_effective_params() {
+//   // int height = 0;
+//   // slices_buffer_params_ = work_set_.effective_buffer_params_set_[0];
+//   // for (int i = 0; i < work_set_.size(); i++) {
+//   //   height += work_set_.effective_buffer_params_set_[i].height;
+//   // }
+//   // slices_buffer_params_.height = height;
+//   // slices_buffer_params_.window_height = height;
+//   // slices_buffer_params_.update_offset_stride();
+//   // VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
+//   // master_buffers_->params = slices_buffer_params_;
+//   //buffers_ = master_buffers_.get();
+//   effective_buffer_params_ = slices_buffer_params_;
+// }
+
+// void PathTraceWork::update_slices_buffer_params() {
+//   int height = 0;
+//   slices_buffer_params_ = work_set_.effective_buffer_params_set_[0]
+//   for (int i = 0; i < work_set_.size(); i++) {
+//     height += work_set_.effective_buffer_params_set_[i].height;
+//   }
+//   slices_buffer_params_.height = height;
+//   slices_buffer_params_.window_height = height;
+//   slices_buffer_params_.update_offset_stride();
+//   VLOG_INFO << "Slices buffer params y:" << (slices_buffer_params_.full_y + slices_buffer_params_.window_y) << " height:" << slices_buffer_params_.height << " slice height:" <<  slices_buffer_params_.slice_height << " slice stride:" << slices_buffer_params_.slice_stride;
+//   //master_buffers_->params = slices_buffer_params_;
+//   //buffers_ = master_buffers_.get();
+// }
+
+// void PathTraceWork::render_samples(RenderStatistics &statistics,
+//                               int start_sample,
+//                               int samples_num,
+//                               int sample_offset)
+// {
+//   SCOPED_MARKER(device_, "render_samples");
+//   set_slices_effective_params();
+//   //for (int i = 0; i < work_set_.size(); i++) {
+//   //   SCOPED_MARKER(device_, "render_samples_work_set");
+//   // set_current_work_set(i);
+//   if(effective_buffer_params_.height > 0) {
+//   render_samples(statistics, start_sample, samples_num, sample_offset);
+//   }
+//   //}
+// }
+
+// void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
+// {
+//   SCOPED_MARKER(device_, "copy_to_display");
+//   set_slices_effective_params();
+//   //for (int i = 0; i < work_set_.size(); i++) {
+//   //  SCOPED_MARKER(device_, "copy_to_display_work_set");
+//   //set_current_work_set(i);
+//   if(effective_buffer_params_.height > 0)
+//     copy_to_display(display, pass_mode, num_samples);
+//   //}
+// }
+
+// bool PathTraceWork::copy_render_buffers_from_device()
+// {
+//   // for (int i = 0; i < work_set_.size(); i++) {
+//   // set_current_work_set(i);
+//   // if (!copy_render_buffers_from_device_impl()) return false;
+//   // }
+//   // return true;
+
+//   SCOPED_MARKER(device_, "copy_render_buffers_from_device");
+//   return copy_render_buffers_from_device();
+// }
+
+// bool PathTraceWork::copy_render_buffers_to_device()
+// {
+//   // for (int i = 0; i < work_set_.size(); i++) {
+//  //    set_current_work_set(i);
+//  //    if (!copy_render_buffers_to_device_impl()) return false;
+//  // }
+//  // return true;
+
+//   SCOPED_MARKER(device_, "copy_render_buffers_to_device");
+//   return copy_render_buffers_to_device();
+// }
+
+// bool PathTraceWork::zero_render_buffers()
+// {
+//   SCOPED_MARKER(device_, "zerop_render_buffers");
+//   return zero_render_buffers();
+// }
 
 CCL_NAMESPACE_END

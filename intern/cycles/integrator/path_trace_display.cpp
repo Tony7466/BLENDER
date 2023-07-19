@@ -92,7 +92,7 @@ int2 PathTraceDisplay::get_texture_size() const
  */
 
 void PathTraceDisplay::copy_pixels_to_texture(
-    const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height, int slice_start_y, int slice_height, int slice_stride)
+    const half4 *rgba_pixels, int texture_x, int texture_y, int pixels_width, int pixels_height, int slice_height, int slice_stride)
 {
   DCHECK(update_state_.is_active);
 
@@ -117,24 +117,38 @@ void PathTraceDisplay::copy_pixels_to_texture(
   const int texture_width = texture_state_.size.x;
   const int texture_height = texture_state_.size.y;
   //mapped_rgba_pixels += slice_start_y*texture_width;
-  if (texture_x == 0 && texture_y == 0 && pixels_width == texture_width &&
+  /*if (texture_x == 0 && texture_y == 0 && pixels_width == texture_width &&
       pixels_height == texture_height && pixels_height == slice_height)
   {
     const size_t size_in_bytes = sizeof(half4) * texture_width * texture_height;
     memcpy(mapped_rgba_pixels, rgba_pixels, size_in_bytes);
   }
-  else {
+  else {*/
     const half4 *rgba_row = rgba_pixels;
-    half4 *mapped_rgba_row = mapped_rgba_pixels + (texture_y + slice_start_y)* texture_width + texture_x;
+    half4 *mapped_rgba_row = mapped_rgba_pixels + texture_y * texture_width + texture_x;
     /* loop over each slice */
       for(int y = 0;y < pixels_height; y += slice_height) {
+          VLOG_INFO << "#### Copy Slice y:" << y << " texture_y:" << texture_y << " slice_height:" << slice_height << " slice_stride:" << slice_stride;
           int height = std::min(slice_height, pixels_height - y);
-          for (int rows = 0; rows < height;++rows,rgba_row += pixels_width, mapped_rgba_row += texture_width) {
-              memcpy(mapped_rgba_row, rgba_row, sizeof(half4) * pixels_width);
+          half4 *dest = mapped_rgba_row;
+          for (int rows = 0; rows < height;++rows,rgba_row += pixels_width, dest += texture_width) {
+              memcpy(dest, rgba_row, sizeof(half4) * pixels_width);
+              /*float4 v;
+              int slice = y/slice_height;
+              v.x = (((slice + 1) & 0b001 ) > 0 ? 0.25f : 0.0f) + 0.75f;
+              v.y = 0.0f;//(((slice + 1) & 0b010 ) > 0 ? 0.25f : 0.0f) + 0.0f;
+              v.z = 0.0f;//(((slice + 1) & 0b100 ) > 0 ? 0.25f : 0.0f) + 0.0f;
+              v.w = 0.75f;
+              half4 pv = float4_to_half4_display(v);
+              for(int x = 0;x < pixels_width;x++) {
+                  half4 p = rgba_row[x];
+                  pv.y = p.y;
+                  dest[x] = pv;// + rgba_row[x];
+              }*/
           }
-          mapped_rgba_row += texture_width*(slice_stride - slice_height);
+          mapped_rgba_row += texture_width*slice_stride;
       }
-  }
+  //}
 
   unmap_texture_buffer();
 }

@@ -58,13 +58,13 @@ void PathTraceWorkCPU::init_execution()
   device_->get_cpu_kernel_thread_globals(kernel_thread_globals_);
 }
 
-void PathTraceWorkCPU::render_samples_impl(RenderStatistics &statistics,
+void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
                                       int sample_offset)
 {
-  const int64_t image_width = slices_buffer_params_.width;
-  const int64_t image_height = slices_buffer_params_.height;
+  const int64_t image_width = effective_buffer_params_.width;
+  const int64_t image_height = effective_buffer_params_.height;
   const int64_t total_pixels_num = image_width * image_height;
 
   if (device_->profiler.active()) {
@@ -99,7 +99,7 @@ void PathTraceWorkCPU::render_samples_impl(RenderStatistics &statistics,
       work_tile.num_samples = 1;
       work_tile.offset = effective_buffer_params_.offset;
       work_tile.stride = effective_buffer_params_.stride;
-      work_tile.slice_start_y = effective_buffer_params_.slice_start_y;
+      work_tile.slice_start_y = effective_buffer_params_.full_y;
       work_tile.slice_height = effective_buffer_params_.slice_height;
       work_tile.slice_stride = effective_buffer_params_.slice_stride;
 
@@ -171,7 +171,7 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   }
 }
 
-void PathTraceWorkCPU::copy_to_display_impl(PathTraceDisplay *display,
+void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
                                        PassMode pass_mode,
                                        int num_samples)
 {
@@ -193,7 +193,7 @@ void PathTraceWorkCPU::copy_to_display_impl(PathTraceDisplay *display,
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
   local_arena.execute([&]() {
-    pass_accessor.get_render_tile_pixels(buffers_, effective_buffer_params_, destination);
+    pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
   });
 
   display->unmap_texture_buffer();
@@ -201,36 +201,18 @@ void PathTraceWorkCPU::copy_to_display_impl(PathTraceDisplay *display,
 
 void PathTraceWorkCPU::destroy_gpu_resources(PathTraceDisplay * /*display*/) {}
 
-bool PathTraceWorkCPU::copy_render_buffers_from_device_impl()
+bool PathTraceWorkCPU::copy_render_buffers_from_device()
 {
   return buffers_->copy_from_device();
 }
 
-bool PathTraceWorkCPU::copy_master_render_buffers_from_device_impl()
-{
-  master_buffers_->buffer.copy_from_device();
-  return true;
-}
-
-bool PathTraceWorkCPU::copy_render_buffers_to_device_impl()
+bool PathTraceWorkCPU::copy_render_buffers_to_device()
 {
   buffers_->buffer.copy_to_device();
   return true;
 }
 
-bool PathTraceWorkCPU::copy_master_render_buffers_to_device_impl()
-{
-  master_buffers_->buffer.copy_to_device();
-  return true;
-}
-
-bool PathTraceWorkCPU::zero_master_render_buffers_impl()
-{
-  master_buffers_->buffer.zero_to_device();
-  return true;
-}
-
-bool PathTraceWorkCPU::zero_render_buffers_impl()
+bool PathTraceWorkCPU::zero_render_buffers()
 {
   buffers_->zero();
   return true;
@@ -238,16 +220,16 @@ bool PathTraceWorkCPU::zero_render_buffers_impl()
 
 int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float threshold, bool reset)
 {
+  const int full_x = effective_buffer_params_.full_x;
+  const int full_y = effective_buffer_params_.full_y;
+  const int width = effective_buffer_params_.width;
+  const int height = effective_buffer_params_.height;
+  const int offset = effective_buffer_params_.offset;
+  const int stride = effective_buffer_params_.stride;
+
+  float *render_buffer = buffers_->buffer.data();
+
   uint num_active_pixels = 0;
-  const int full_x = slices_buffer_params_.full_x;
-  const int full_y = slices_buffer_params_.full_y;
-  const int width = slices_buffer_params_.width;
-  const int height = slices_buffer_params_.height;
-  const int offset = slices_buffer_params_.offset;
-  const int stride = slices_buffer_params_.stride;
-
-  float *render_buffer = master_buffers_->buffer.data();
-
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
 
@@ -291,10 +273,10 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
 
 void PathTraceWorkCPU::cryptomatte_postproces()
 {
-  const int width = slices_buffer_params_.width;
-  const int height = slices_buffer_params_.height;
+  const int width = effective_buffer_params_.width;
+  const int height = effective_buffer_params_.height;
 
-  float *render_buffer = master_buffers_->buffer.data();
+  float *render_buffer = buffers_->buffer.data();
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
 

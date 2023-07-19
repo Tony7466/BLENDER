@@ -97,7 +97,6 @@ NODE_DEFINE(BufferParams)
 
   SOCKET_INT(slice_stride, "Slice Stride", 0);
   SOCKET_INT(slice_height, "Slice height", 0);
-  SOCKET_INT(slice_start_y, "Slice start y", 0);
 
   SOCKET_STRING(layer, "Layer", ustring());
   SOCKET_STRING(view, "View", ustring());
