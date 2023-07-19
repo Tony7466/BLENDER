@@ -20,7 +20,7 @@ set(SRC
   intern/SIM_mass_spring.cpp
   intern/hair_volume.cc
   intern/implicit_blender.cc
-  intern/implicit_eigen.cpp
+  intern/implicit_eigen.cc
 
   intern/ConstrainedConjugateGradient.h
   intern/eigen_utils.h
