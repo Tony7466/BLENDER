@@ -276,7 +276,7 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
   const VArray<bool> cyclic = curves.cyclic();
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-  threading::parallel_for(points_by_curve.index_range(), 256, [&](const IndexRange range) {
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
