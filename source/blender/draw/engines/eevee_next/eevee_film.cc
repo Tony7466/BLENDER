@@ -357,9 +357,14 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.cryptomatte_material_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
   }
   {
-    /* TODO(@fclem): Over-scans. */
-
+    /* TODO(Miguel Pozo): Shouldn't this be appliead to data_.extent? */
     data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
+    if (!inst_.is_viewport() && inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) {
+      int2 overscan = int2((inst_.scene->eevee.overscan / 100.0f) *
+                           math::max(UNPACK2(data_.render_extent)));
+      data_.render_extent += overscan * 2;
+      data_.offset += overscan;
+    }
     int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;

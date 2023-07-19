@@ -110,9 +110,13 @@ void Camera::sync()
     data.uv_bias = float2(0.0f);
   }
   else if (inst_.render) {
-    /* TODO(@fclem): Over-scan. */
-    // RE_GetCameraWindowWithOverscan(inst_.render->re, g_data->overscan, data.winmat);
-    RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
+    if (inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) {
+      RE_GetCameraWindowWithOverscan(
+          inst_.render->re, inst_.scene->eevee.overscan / 100.0f, data.winmat.ptr());
+    }
+    else {
+      RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
+    }
     RE_GetCameraModelMatrix(inst_.render->re, camera_eval, data.viewinv.ptr());
     invert_m4_m4(data.viewmat.ptr(), data.viewinv.ptr());
     invert_m4_m4(data.wininv.ptr(), data.winmat.ptr());
