@@ -904,9 +904,13 @@ static void walkEvent(WalkInfo *walk, const wmEvent *event)
 
 #define JUMP_HEIGHT_FACTOR 1.5f
 #define JUMP_HEIGHT_MIN 0.1f
+#define JUMP_HEIGHT_MAX 10.0f
 
       case WALK_MODAL_INCREASE_JUMP:
         walk->jump_height *= JUMP_HEIGHT_FACTOR;
+        if (walk->jump_height > JUMP_HEIGHT_MAX) {
+          walk->jump_height = JUMP_HEIGHT_MAX;
+        }
         break;
       case WALK_MODAL_DECREASE_JUMP:
         walk->jump_height /= JUMP_HEIGHT_FACTOR;
@@ -917,6 +921,7 @@ static void walkEvent(WalkInfo *walk, const wmEvent *event)
 
 #undef JUMP_HEIGHT_FACTOR
 #undef JUMP_HEIGHT_MIN
+#undef JUMP_HEIGHT_MAX
     }
   }
 }
