@@ -268,6 +268,7 @@ void Instance::render_sync()
 
   begin_sync();
   DRW_render_object_iter(this, render, depsgraph, object_sync_render);
+  velocity.geometry_steps_fill();
   end_sync();
 
   manager->end_sync();

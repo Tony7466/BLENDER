@@ -71,6 +71,7 @@ void MotionBlurModule::init()
      * function is only called after rendering a sample. */
     inst_.velocity.step_sync(STEP_PREVIOUS, time_steps_[0]);
     inst_.velocity.step_sync(STEP_NEXT, time_steps_[2]);
+    /* Let the main sync loop handle the current step. */
   }
   inst_.set_time(time_steps_[1]);
 }
