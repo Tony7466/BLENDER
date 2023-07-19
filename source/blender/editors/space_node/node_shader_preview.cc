@@ -516,7 +516,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 
   if (job_data.ng_data->previews_render == nullptr) {
     char name[32];
-    SNPRINTF(name, "Preview %p", &job_data);
+    SNPRINTF(name, "Preview %p", &job_data.ng_data);
     job_data.ng_data->previews_render = RE_NewRender(name);
   }
   Render *re = job_data.ng_data->previews_render;
@@ -625,9 +625,10 @@ static void shader_preview_free(void *customdata)
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(customdata);
   BLI_freelistN(&job_data->treepath_copy);
   job_data->ng_data->rendering = false;
-  if (job_data->mat_copy) {
+  if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
+    job_data->mat_copy = nullptr;
   }
   MEM_delete(job_data);
 }
