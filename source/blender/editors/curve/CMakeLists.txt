@@ -25,7 +25,7 @@ set(SRC
   editcurve_paint.cc
   editcurve_pen.cc
   editcurve_query.cc
-  editcurve_select.c
+  editcurve_select.cc
   editcurve_undo.cc
   editfont.c
   editfont_undo.c
