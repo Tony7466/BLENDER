@@ -401,7 +401,7 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
  * \{ */
 
 /**
- * An implementation of the Ramer–Douglas–Peucker algorithm.
+ * An implementation of the Ramer-Douglas-Peucker algorithm.
  *
  * \param epsilon: The threshold distance from the coord between two points for when a point
  * in-between needs to be kept.
