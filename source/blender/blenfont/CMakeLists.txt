@@ -17,7 +17,7 @@ set(INC_SYS
 set(SRC
   intern/blf.c
   intern/blf_default.cc
-  intern/blf_dir.c
+  intern/blf_dir.cc
   intern/blf_font.c
   intern/blf_font_default.c
   intern/blf_glyph.c
