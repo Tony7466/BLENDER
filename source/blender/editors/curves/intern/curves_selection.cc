@@ -280,6 +280,10 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
       const int half_of_size = points.size() / 2;
       const bool end_should_be_selected = !bool(points.size() % 2);
       const IndexRange selected = points.shift(deselect_ends ? 1 : 0);
