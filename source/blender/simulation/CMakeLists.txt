@@ -19,7 +19,7 @@ set(INC_SYS
 set(SRC
   intern/SIM_mass_spring.cpp
   intern/hair_volume.cc
-  intern/implicit_blender.c
+  intern/implicit_blender.cc
   intern/implicit_eigen.cpp
 
   intern/ConstrainedConjugateGradient.h
