@@ -8,6 +8,7 @@
  * \ingroup bli
  */
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
@@ -163,11 +164,11 @@ namespace detail {
 
 template<typename Func> struct FilterVoidOp {
   Func func;
+  void operator()(TypeTag<void> /*type_tag*/) const {}
   template<typename T> void operator()(TypeTag<T> type_tag) const
   {
     func(type_tag);
   }
-  template<> void operator()<void>(TypeTag<void> /*type_tag*/) const {}
 };
 
 /* Helper function to turn a tuple into a parameter pack by means of the dummy argument. */
