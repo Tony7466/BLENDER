@@ -69,7 +69,7 @@ set(SRC
   intern/sequencer.cc
   intern/sequencer.h
   intern/sound.cc
-  intern/strip_add.c
+  intern/strip_add.cc
   intern/strip_edit.c
   intern/strip_relations.c
   intern/strip_retiming.cc
