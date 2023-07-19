@@ -10,6 +10,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "BLI_stack.hh"
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
@@ -103,7 +104,8 @@ static void gaussian_blur_1D(const Span<T> src,
                              const bool is_cyclic,
                              MutableSpan<T> dst)
 {
-  /* 1D Gaussian-like smoothing function.
+  /**
+   * 1D Gaussian-like smoothing function.
    *
    * NOTE: This is the algorithm used by #BKE_gpencil_stroke_smooth_point (legacy),
    *       but generalized and written in C++.
@@ -391,12 +393,159 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "smooth_opacity", false, "Opacity", "");
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simplify Stroke Operator.
+ * \{ */
+
+static IndexMask ramer_douglas_peucker_decimate(const Span<float3> src,
+                                                const float epsilon,
+                                                IndexMaskMemory &memory)
+{
+  /**
+   * An implementation of the Ramer–Douglas–Peucker algorithm.
+   */
+  Array<bool> points_to_keep(src.size(), true);
+
+  Stack<IndexRange> stack;
+  stack.push(src.index_range());
+
+  while (!stack.is_empty()) {
+    IndexRange range = stack.pop();
+
+    Span<float3> slice = src.slice(range);
+
+    float max_dist = -1.0f;
+    int max_index = -1;
+    for (const int index : range.drop_front(1).drop_back(1)) {
+      float3 point = slice[index];
+      float3 point_on_line;
+      closest_to_line_segment_v3(point_on_line, point, slice.first(), slice.last());
+      float dist = math::distance(point_on_line, point);
+      if (dist > max_dist) {
+        max_dist = dist;
+        max_index = index;
+      }
+    }
+
+    if (max_dist > epsilon) {
+      stack.push(IndexRange(max_index + 1));
+      stack.push(IndexRange(max_index, range.size() - max_index));
+    }
+    else {
+      points_to_keep.as_mutable_span().slice(range).fill(false);
+    }
+  }
+
+  return IndexMask::from_bools(points_to_keep, memory);
+}
+
+// IndexMask ramer_douglas_peucker_decimate(const GSpan src,
+//                                          const float epsilon,
+//                                          IndexMaskMemory &memory)
+// {
+//   bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+//     using T = decltype(dummy);
+//     return ramer_douglas_peucker_decimate(src.typed<T>(), epsilon, memory);
+//   });
+// }
+
+static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const float epsilon = RNA_float_get(op->ptr, "factor");
+
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+
+        // const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+        //     ".selection", ATTR_DOMAIN_CURVE, true);
+        const Span<float3> positions = curves.positions();
+        const OffsetIndices points_by_curve = curves.points_by_curve();
+
+        IndexMaskMemory memory;
+        for (const int curve_i : curves.curves_range()) {
+          const IndexRange points = points_by_curve[curve_i];
+          IndexMaskMemory curve_memory;
+          IndexMask points_to_keep = ramer_douglas_peucker_decimate(positions.slice(points), epsilon, curve_memory);
+          // const int64_t new_size = math::max(mask_a.min_array_size(), mask_b.min_array_size());
+          // Array<bool> tmp(new_size, false);
+          // mask_a.foreach_index_optimized<int64_t>(GrainSize(2048),
+          //                                         [&](const int64_t i) { tmp[i] = true; });
+          // mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
+          //                                         [&](const int64_t i) { tmp[i] = true; });
+          // return IndexMask::from_bools(tmp, memory);
+        }
+        // IndexMask points_to_keep = threading::parallel_reduce(
+        //     curves.curves_range(),
+        //     256,
+        //     IndexMask(),
+        //     [&](const IndexRange range) {
+        //       for (const int curve_i : range) {
+        //         const IndexRange points = points_by_curve[curve_i];
+        //         IndexMaskMemory curve_memory;
+        //         return ramer_douglas_peucker_decimate(
+        //             positions.slice(points), epsilon, curve_memory);
+        //       }
+        //     },
+        //     [&memory](const IndexMask &mask_a, const IndexMask &mask_b) {
+        //       /* Get the union of the masks. */
+        //       const int64_t new_size = math::max(mask_a.min_array_size(), mask_b.min_array_size());
+        //       Array<bool> tmp(new_size, false);
+        //       mask_a.foreach_index_optimized<int64_t>(GrainSize(2048),
+        //                                               [&](const int64_t i) { tmp[i] = true; });
+        //       mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
+        //                                               [&](const int64_t i) { tmp[i] = true; });
+        //       return IndexMask::from_bools(tmp, memory);
+        //     });
+
+        IndexMask points_to_delete = points_to_keep.complement(curves.points_range(), memory);
+        curves.remove_points(points_to_delete);
+      });
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Simplify Stroke";
+  ot->idname = "GREASE_PENCIL_OT_stroke_simplify";
+  ot->description = "Simplify selected strokes";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_stroke_simplify_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  prop = RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 100.0f, "Factor", "", 0.0f, 100.0f);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
