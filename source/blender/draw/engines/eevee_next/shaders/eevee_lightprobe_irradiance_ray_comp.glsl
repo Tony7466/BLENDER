@@ -43,7 +43,7 @@ void irradiance_capture(Surfel surfel, vec3 P, inout SphericalHarmonicL1 sh)
 
 vec3 irradiance_sky_sample(vec3 R)
 {
-  return light_world_sample(R, 0.0);
+  return reflection_probes_world_sample(R, 0.0).rgb;
 }
 
 void main()
@@ -94,7 +94,7 @@ void main()
     irradiance_capture(surfel, P, sh);
   }
   else {
-    vec3 world_radiance = irradiance_sky_sample(-sky_L);
+    vec3 world_radiance = irradiance_sky_sample(sky_L);
     irradiance_capture(sky_L, world_radiance, sh);
   }
 
@@ -103,7 +103,7 @@ void main()
     irradiance_capture(surfel, P, sh);
   }
   else {
-    vec3 world_radiance = irradiance_sky_sample(sky_L);
+    vec3 world_radiance = irradiance_sky_sample(-sky_L);
     irradiance_capture(-sky_L, world_radiance, sh);
   }
 
