@@ -88,7 +88,7 @@ void World::sync()
   }
 
   WorldHandle &wo_handle = inst_.sync.sync_world(bl_world);
-
+  inst_.reflection_probes.sync_world(bl_world, wo_handle);
   if (wo_handle.recalc != 0) {
     inst_.reflection_probes.do_world_update_set(true);
   }

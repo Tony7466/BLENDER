@@ -752,8 +752,18 @@ class VIEW3D_HT_header(Header):
             # Select mode for Editing
             if object_mode == 'EDIT':
                 row = layout.row(align=True)
-                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='POINT')
-                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
+                row.operator(
+                    "grease_pencil.set_selection_mode",
+                    text="",
+                    icon="GP_SELECT_POINTS",
+                    depress=(tool_settings.gpencil_selectmode_edit == 'POINT'),
+                ).mode = 'POINT'
+                row.operator(
+                    "grease_pencil.set_selection_mode",
+                    text="",
+                    icon="GP_SELECT_STROKES",
+                    depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
+                ).mode = 'STROKE'
 
         # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
@@ -1008,6 +1018,8 @@ class VIEW3D_MT_editor_menus(Menu):
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
+            elif mode_string == 'EDIT_GREASE_PENCIL':
+                layout.menu("VIEW3D_MT_edit_greasepencil_stroke")
 
         elif obj:
             if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES'}:
@@ -5509,6 +5521,15 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         pass
 
 
+class VIEW3D_MT_edit_greasepencil_stroke(Menu):
+    bl_label = "Stroke"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.operator("grease_pencil.stroke_smooth")
+        pass
+
+
 class VIEW3D_MT_edit_curves(Menu):
     bl_label = "Curves"
 
@@ -8379,6 +8400,7 @@ classes = (
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
     VIEW3D_MT_edit_greasepencil,
+    VIEW3D_MT_edit_greasepencil_stroke,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
     VIEW3D_MT_edit_curve_segments,
