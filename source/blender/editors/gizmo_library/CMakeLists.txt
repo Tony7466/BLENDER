@@ -20,7 +20,7 @@ set(INC_SYS
 )
 
 set(SRC
-  gizmo_draw_utils.c
+  gizmo_draw_utils.cc
   gizmo_geometry.h
   gizmo_library_intern.h
   gizmo_library_presets.c
