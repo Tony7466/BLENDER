@@ -24,7 +24,7 @@ set(SRC
   gizmo_geometry.h
   gizmo_library_intern.h
   gizmo_library_presets.cc
-  gizmo_library_utils.c
+  gizmo_library_utils.cc
   geometry/geom_arrow_gizmo.cc
   geometry/geom_cube_gizmo.cc
   geometry/geom_dial_gizmo.cc
