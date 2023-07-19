@@ -50,7 +50,7 @@ set(SRC
   intern/clipboard.cc
   intern/disk_cache.cc
   intern/disk_cache.h
-  intern/effects.c
+  intern/effects.cc
   intern/effects.h
   intern/image_cache.c
   intern/image_cache.h
