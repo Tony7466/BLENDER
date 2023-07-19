@@ -64,17 +64,6 @@ class HydraRenderEngine(bpy.types.RenderEngine):
 
         _bpy_hydra.engine_free(self.engine_ptr)
 
-    @classmethod
-    def register(cls):
-        root_folder = "blender.shared" if platform.system() == 'Windows' else "lib"
-        os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = os.pathsep.join([
-            str(Path(bpy.app.binary_path).parent / f"{root_folder}/materialx/libraries"),
-            os.environ.get('PXR_MTLX_STDLIB_SEARCH_PATHS', "")])
-
-    @classmethod
-    def unregister(cls):
-        pass
-
     def get_sync_settings(self, engine_type):
         """
         Provide settings for Blender scene delegate. Available settings:
