@@ -849,7 +849,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 #ifdef __APPLE__
     /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
     if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
-      userdef->gpu_backend == GPU_BACKEND_METAL;
+      userdef->gpu_backend = GPU_BACKEND_METAL;
     }
 #endif
   }
