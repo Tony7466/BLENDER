@@ -228,8 +228,8 @@ void CaptureView::render_world()
     inst_.reflection_probes.update_probes_texture_mipmaps();
   }
 
-  if (update_info->do_update_irradiance) {
-    inst_.reflection_probes.update_irradiance(update_info->object_key);
+  if (update_info->do_world_irradiance_update) {
+    inst_.reflection_probes.update_world_irradiance();
   }
 
   GPU_debug_group_end();

@@ -394,13 +394,13 @@ void ReflectionProbeModule::do_world_update_set(bool value)
 {
   ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
   world_probe.do_render = value;
-  world_probe.do_update_irradiance = value;
+  world_probe.do_world_irradiance_update = value;
 }
 
 void ReflectionProbeModule::do_world_update_irradiance_set(bool value)
 {
   ReflectionProbe &world_probe = probes_.lookup(world_object_key_);
-  world_probe.do_update_irradiance = value;
+  world_probe.do_world_irradiance_update = value;
 }
 
 bool ReflectionProbeModule::has_only_world_probe() const
@@ -470,7 +470,7 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
   const bool do_probe_sync = instance_.do_probe_sync();
   const int max_shift = int(log2(max_resolution_));
   for (const Map<uint64_t, ReflectionProbe>::Item &item : probes_.items()) {
-    if (!item.value.do_render && !item.value.do_update_irradiance) {
+    if (!item.value.do_render && !item.value.do_world_irradiance_update) {
       continue;
     }
     if (probe_type == ReflectionProbe::Type::World && item.value.type != probe_type) {
@@ -492,11 +492,11 @@ std::optional<ReflectionProbeUpdateInfo> ReflectionProbeModule::update_info_pop(
     info.clipping_distances = item.value.clipping_distances;
     info.probe_pos = float3(probe_data.pos);
     info.do_render = item.value.do_render;
-    info.do_update_irradiance = item.value.do_update_irradiance;
+    info.do_world_irradiance_update = item.value.do_world_irradiance_update;
 
     ReflectionProbe &probe = probes_.lookup(item.key);
     probe.do_render = false;
-    probe.do_update_irradiance = false;
+    probe.do_world_irradiance_update = false;
 
     if (cubemap_tx_.ensure_cube(GPU_RGBA16F,
                                 info.resolution,
@@ -532,9 +532,9 @@ void ReflectionProbeModule::remap_to_octahedral_projection(uint64_t object_key)
   instance_.manager->submit(remap_ps_);
 }
 
-void ReflectionProbeModule::update_irradiance(uint64_t object_key)
+void ReflectionProbeModule::update_world_irradiance()
 {
-  const ReflectionProbe &probe = probes_.lookup(object_key);
+  const ReflectionProbe &probe = probes_.lookup(world_object_key_);
 
   /* Update shader parameters that change per dispatch. */
   reflection_probe_index_ = probe.index;

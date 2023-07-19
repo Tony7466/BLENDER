@@ -38,7 +38,7 @@ struct ReflectionProbe {
   bool do_update_data = false;
   /* Should the area in the probes_tx_ be updated? */
   bool do_render = false;
-  bool do_update_irradiance = false;
+  bool do_world_irradiance_update = false;
 
   /**
    * Probes that aren't used during a draw can be cleared.
@@ -170,7 +170,7 @@ class ReflectionProbeModule {
   std::optional<ReflectionProbeUpdateInfo> update_info_pop(ReflectionProbe::Type probe_type);
   void remap_to_octahedral_projection(uint64_t object_key);
   void update_probes_texture_mipmaps();
-  void update_irradiance(uint64_t object_key);
+  void update_world_irradiance();
 
   bool has_only_world_probe() const;
 
@@ -202,7 +202,7 @@ struct ReflectionProbeUpdateInfo {
   uint64_t object_key;
 
   bool do_render;
-  bool do_update_irradiance;
+  bool do_world_irradiance_update;
 };
 
 /** \} */

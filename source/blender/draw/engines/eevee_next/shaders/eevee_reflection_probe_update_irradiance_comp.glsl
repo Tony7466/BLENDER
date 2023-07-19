@@ -1,6 +1,5 @@
 
 /* Shader to extract spherical harmonics cooefs from octahedral mapped reflection probe. */
-/* TODO(jbakker): Use larger dispatch size and atomic add. */
 
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
@@ -37,8 +36,6 @@ void main()
 
   barrier();
 
-  /* Determine the LOD to sample. We locate mipmap level that contains the 64x64 subdivision what
-   * should be available for all probes. */
   ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
   const int subdivision_64 = 5;
   float layer_mipmap = clamp(
@@ -59,26 +56,24 @@ void main()
   }
 
   barrier();
-  if (gl_LocalInvocationID.x != 0) {
-    return;
-  }
+  if (gl_LocalInvocationID.x == 0) {
+    /* Join results */
+    SphericalHarmonicL1 result;
+    result.L0.M0 = vec4(0.0);
+    result.L1.Mn1 = vec4(0.0);
+    result.L1.M0 = vec4(0.0);
+    result.L1.Mp1 = vec4(0.0);
+    for (int i = 0; i < gl_WorkGroupSize.x; i++) {
+      result.L0.M0 += cooefs[i].L0.M0;
+      result.L1.Mn1 += cooefs[i].L1.Mn1;
+      result.L1.M0 += cooefs[i].L1.M0;
+      result.L1.Mp1 += cooefs[i].L1.Mp1;
+    }
 
-  /* Join results */
-  SphericalHarmonicL1 result;
-  result.L0.M0 = vec4(0.0);
-  result.L1.Mn1 = vec4(0.0);
-  result.L1.M0 = vec4(0.0);
-  result.L1.Mp1 = vec4(0.0);
-  for (int i = 0; i < gl_WorkGroupSize.x; i++) {
-    result.L0.M0 += cooefs[i].L0.M0;
-    result.L1.Mn1 += cooefs[i].L1.Mn1;
-    result.L1.M0 += cooefs[i].L1.M0;
-    result.L1.Mp1 += cooefs[i].L1.Mp1;
+    ivec2 atlas_coord = ivec2(0, 0);
+    atlas_store(result.L0.M0, atlas_coord, 0);
+    atlas_store(result.L1.Mn1, atlas_coord, 1);
+    atlas_store(result.L1.M0, atlas_coord, 2);
+    atlas_store(result.L1.Mp1, atlas_coord, 3);
   }
-
-  ivec2 atlas_coord = ivec2(0, 0);
-  atlas_store(result.L0.M0, atlas_coord, 0);
-  atlas_store(result.L1.Mn1, atlas_coord, 1);
-  atlas_store(result.L1.M0, atlas_coord, 2);
-  atlas_store(result.L1.Mp1, atlas_coord, 3);
 }
