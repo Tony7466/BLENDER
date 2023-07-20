@@ -47,7 +47,8 @@ XrActionMapBinding *WM_xr_actionmap_binding_new(XrActionMapItem *ami,
     return amb_prev;
   }
 
-  XrActionMapBinding *amb = MEM_callocN(sizeof(XrActionMapBinding), __func__);
+  XrActionMapBinding *amb = static_cast<XrActionMapBinding *>(
+      MEM_callocN(sizeof(XrActionMapBinding), __func__));
   STRNCPY(amb->name, name);
   if (amb_prev) {
     WM_xr_actionmap_binding_ensure_unique(ami, amb);
@@ -70,7 +71,7 @@ static XrActionMapBinding *wm_xr_actionmap_binding_find_except(XrActionMapItem *
       return amb;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void WM_xr_actionmap_binding_ensure_unique(XrActionMapItem *ami, XrActionMapBinding *amb)
@@ -102,12 +103,12 @@ void WM_xr_actionmap_binding_ensure_unique(XrActionMapItem *ami, XrActionMapBind
 
 static XrActionMapBinding *wm_xr_actionmap_binding_copy(XrActionMapBinding *amb_src)
 {
-  XrActionMapBinding *amb_dst = MEM_dupallocN(amb_src);
-  amb_dst->prev = amb_dst->next = NULL;
+  XrActionMapBinding *amb_dst = static_cast<XrActionMapBinding *>(MEM_dupallocN(amb_src));
+  amb_dst->prev = amb_dst->next = nullptr;
 
   BLI_listbase_clear(&amb_dst->component_paths);
   LISTBASE_FOREACH (XrComponentPath *, path, &amb_src->component_paths) {
-    XrComponentPath *path_new = MEM_dupallocN(path);
+    XrComponentPath *path_new = static_cast<XrComponentPath *>(MEM_dupallocN(path));
     BLI_addtail(&amb_dst->component_paths, path_new);
   }
 
@@ -158,7 +159,7 @@ XrActionMapBinding *WM_xr_actionmap_binding_find(XrActionMapItem *ami, const cha
       return amb;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -180,11 +181,11 @@ static void wm_xr_actionmap_item_properties_free(XrActionMapItem *ami)
   if (ami->op_properties_ptr) {
     WM_operator_properties_free(ami->op_properties_ptr);
     MEM_freeN(ami->op_properties_ptr);
-    ami->op_properties_ptr = NULL;
-    ami->op_properties = NULL;
+    ami->op_properties_ptr = nullptr;
+    ami->op_properties = nullptr;
   }
   else {
-    BLI_assert(ami->op_properties == NULL);
+    BLI_assert(ami->op_properties == nullptr);
   }
 }
 
@@ -220,7 +221,7 @@ void WM_xr_actionmap_item_properties_update_ot(XrActionMapItem *ami)
     return;
   }
 
-  if (ami->op_properties_ptr == NULL) {
+  if (ami->op_properties_ptr == nullptr) {
     wm_xr_actionmap_item_properties_set(ami);
   }
   else {
@@ -251,7 +252,8 @@ XrActionMapItem *WM_xr_actionmap_item_new(XrActionMap *actionmap,
     return ami_prev;
   }
 
-  XrActionMapItem *ami = MEM_callocN(sizeof(XrActionMapItem), __func__);
+  XrActionMapItem *ami = static_cast<XrActionMapItem *>(
+      MEM_callocN(sizeof(XrActionMapItem), __func__));
   STRNCPY(ami->name, name);
   if (ami_prev) {
     WM_xr_actionmap_item_ensure_unique(actionmap, ami);
@@ -274,7 +276,7 @@ static XrActionMapItem *wm_xr_actionmap_item_find_except(XrActionMap *actionmap,
       return ami;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void WM_xr_actionmap_item_ensure_unique(XrActionMap *actionmap, XrActionMapItem *ami)
@@ -306,8 +308,8 @@ void WM_xr_actionmap_item_ensure_unique(XrActionMap *actionmap, XrActionMapItem 
 
 static XrActionMapItem *wm_xr_actionmap_item_copy(XrActionMapItem *ami_src)
 {
-  XrActionMapItem *ami_dst = MEM_dupallocN(ami_src);
-  ami_dst->prev = ami_dst->next = NULL;
+  XrActionMapItem *ami_dst = static_cast<XrActionMapItem *>(MEM_dupallocN(ami_src));
+  ami_dst->prev = ami_dst->next = nullptr;
 
   BLI_listbase_clear(&ami_dst->bindings);
   LISTBASE_FOREACH (XrActionMapBinding *, amb, &ami_src->bindings) {
@@ -316,19 +318,20 @@ static XrActionMapItem *wm_xr_actionmap_item_copy(XrActionMapItem *ami_src)
   }
 
   if (ami_dst->op_properties) {
-    ami_dst->op_properties_ptr = MEM_callocN(sizeof(PointerRNA), "wmOpItemPtr");
+    ami_dst->op_properties_ptr = static_cast<PointerRNA *>(
+        MEM_callocN(sizeof(PointerRNA), "wmOpItemPtr"));
     WM_operator_properties_create(ami_dst->op_properties_ptr, ami_dst->op);
     ami_dst->op_properties = IDP_CopyProperty(ami_src->op_properties);
     ami_dst->op_properties_ptr->data = ami_dst->op_properties;
   }
   else {
-    ami_dst->op_properties = NULL;
-    ami_dst->op_properties_ptr = NULL;
+    ami_dst->op_properties = nullptr;
+    ami_dst->op_properties_ptr = nullptr;
   }
 
   BLI_listbase_clear(&ami_dst->user_paths);
   LISTBASE_FOREACH (XrUserPath *, path, &ami_src->user_paths) {
-    XrUserPath *path_new = MEM_dupallocN(path);
+    XrUserPath *path_new = static_cast<XrUserPath *>(MEM_dupallocN(path));
     BLI_addtail(&ami_dst->user_paths, path_new);
   }
 
@@ -373,7 +376,7 @@ XrActionMapItem *WM_xr_actionmap_item_find(XrActionMap *actionmap, const char *n
       return ami;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -392,7 +395,7 @@ XrActionMap *WM_xr_actionmap_new(wmXrRuntimeData *runtime, const char *name, boo
     return am_prev;
   }
 
-  XrActionMap *am = MEM_callocN(sizeof(XrActionMap), __func__);
+  XrActionMap *am = static_cast<XrActionMap *>(MEM_callocN(sizeof(XrActionMap), __func__));
   STRNCPY(am->name, name);
   if (am_prev) {
     WM_xr_actionmap_ensure_unique(runtime, am);
@@ -413,7 +416,7 @@ static XrActionMap *wm_xr_actionmap_find_except(wmXrRuntimeData *runtime,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_xr_actionmap_ensure_unique(wmXrRuntimeData *runtime, XrActionMap *actionmap)
@@ -445,8 +448,8 @@ void WM_xr_actionmap_ensure_unique(wmXrRuntimeData *runtime, XrActionMap *action
 
 static XrActionMap *wm_xr_actionmap_copy(XrActionMap *am_src)
 {
-  XrActionMap *am_dst = MEM_dupallocN(am_src);
-  am_dst->prev = am_dst->next = NULL;
+  XrActionMap *am_dst = static_cast<XrActionMap *>(MEM_dupallocN(am_src));
+  am_dst->prev = am_dst->next = nullptr;
 
   BLI_listbase_clear(&am_dst->items);
   LISTBASE_FOREACH (XrActionMapItem *, ami, &am_src->items) {
@@ -500,7 +503,7 @@ XrActionMap *WM_xr_actionmap_find(wmXrRuntimeData *runtime, const char *name)
       return am;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void WM_xr_actionmap_clear(XrActionMap *actionmap)
