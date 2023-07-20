@@ -4691,6 +4691,10 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   }
   fprintf(f, "\n");
   fprintf(f, "#ifdef __cplusplus\n");
+  if (STREQ(filename, "rna_nodetree.cc")) {
+    fprintf(f,
+            "using NodeGeometryMeshToPoints = blender::nodes::NodeGeometryMeshToPoints::DNA;\n\n");
+  }
   fprintf(f, "#  define RNA_EXTERN_C extern \"C\"\n");
   fprintf(f, "#  define RNA_EXTERN_C_OR_EXTERN extern \"C\"\n");
   fprintf(f, "#else\n");

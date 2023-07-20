@@ -1644,11 +1644,6 @@ typedef struct NodeGeometryCurveFill {
   uint8_t mode;
 } NodeGeometryCurveFill;
 
-typedef struct NodeGeometryMeshToPoints {
-  /** #GeometryNodeMeshToPointsMode */
-  uint8_t mode;
-} NodeGeometryMeshToPoints;
-
 typedef struct NodeGeometryAttributeCapture {
   /** #eCustomDataType. */
   int8_t data_type;
@@ -2617,13 +2612,6 @@ typedef enum GeometryNodeCurveFillMode {
   GEO_NODE_CURVE_FILL_MODE_TRIANGULATED = 0,
   GEO_NODE_CURVE_FILL_MODE_NGONS = 1,
 } GeometryNodeCurveFillMode;
-
-typedef enum GeometryNodeMeshToPointsMode {
-  GEO_NODE_MESH_TO_POINTS_VERTICES = 0,
-  GEO_NODE_MESH_TO_POINTS_EDGES = 1,
-  GEO_NODE_MESH_TO_POINTS_FACES = 2,
-  GEO_NODE_MESH_TO_POINTS_CORNERS = 3,
-} GeometryNodeMeshToPointsMode;
 
 typedef enum GeometryNodeStringToCurvesOverflowMode {
   GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW = 0,

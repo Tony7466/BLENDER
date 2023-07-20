@@ -15,6 +15,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "node_geo_mesh_to_points.hh"
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_mesh_to_points_cc {
@@ -42,7 +43,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryMeshToPoints *data = MEM_cnew<NodeGeometryMeshToPoints>(__func__);
-  data->mode = GEO_NODE_MESH_TO_POINTS_VERTICES;
+  data->dna_.mode = GEO_NODE_MESH_TO_POINTS_VERTICES;
   node->storage = data;
 }
 
@@ -154,7 +155,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<float> positive_radius(FieldOperation::Create(max_zero_fn, {std::move(radius)}), 0);
 
   const NodeGeometryMeshToPoints &storage = node_storage(params.node());
-  const GeometryNodeMeshToPointsMode mode = (GeometryNodeMeshToPointsMode)storage.mode;
+  const GeometryNodeMeshToPointsMode mode = storage.mode();
 
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Points");

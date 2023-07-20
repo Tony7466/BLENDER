@@ -65,6 +65,8 @@
 
 #include "BLI_string_utils.h"
 
+#include "NOD_geo_mesh_to_points.hh"
+
 const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {{SOCK_IN, "IN", 0, "Input", ""},
                                                               {SOCK_OUT, "OUT", 0, "Output", ""},
                                                               {0, nullptr, 0, nullptr, nullptr}};
@@ -10631,23 +10633,25 @@ static void def_geo_mesh_to_points(StructRNA *srna)
 {
   PropertyRNA *prop;
 
+  using namespace blender::nodes;
+
   static EnumPropertyItem mode_items[] = {
-      {GEO_NODE_MESH_TO_POINTS_VERTICES,
+      {GeometryNodeMeshToPointsMode::Vertices,
        "VERTICES",
        0,
        "Vertices",
        "Create a point in the point cloud for each selected vertex"},
-      {GEO_NODE_MESH_TO_POINTS_EDGES,
+      {GeometryNodeMeshToPointsMode::Edges,
        "EDGES",
        0,
        "Edges",
        "Create a point in the point cloud for each selected edge"},
-      {GEO_NODE_MESH_TO_POINTS_FACES,
+      {GeometryNodeMeshToPointsMode::Faces,
        "FACES",
        0,
        "Faces",
        "Create a point in the point cloud for each selected face"},
-      {GEO_NODE_MESH_TO_POINTS_CORNERS,
+      {GeometryNodeMeshToPointsMode::Corners,
        "CORNERS",
        0,
        "Corners",

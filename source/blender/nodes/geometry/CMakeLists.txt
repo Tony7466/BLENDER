@@ -5,6 +5,7 @@
 set(INC
   .
   ..
+  ./include
   ../intern
   ../../editors/include
   ../../blentranslation

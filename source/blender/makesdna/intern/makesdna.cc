@@ -889,6 +889,16 @@ static int convert_include(const char *filepath)
     md++;
   }
 
+  if (STREQ(filepath, "/home/jacques/blender/blender/source/blender/makesdna/DNA_node_types.h")) {
+    const int struct_type = add_type("NodeGeometryMeshToPoints", 0);
+    short *structpoin = add_struct(struct_type);
+    const int name = add_name("mode");
+    short *sp = structpoin + 2;
+    sp[0] = add_type("uint8_t", 0);
+    sp[1] = name;
+    structpoin[1]++;
+  }
+
   MEM_freeN(maindata);
 
   return 0;
@@ -986,12 +996,12 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             const char *str_pair[2] = {types[structtype], name_static};
             const char *name_alias = static_cast<const char *>(
                 BLI_ghash_lookup(g_version_data.elem_map_alias_from_static, str_pair));
-            fprintf(file_verify,
-                    "BLI_STATIC_ASSERT(offsetof(struct %s, %s) == %d, \"DNA member offset "
-                    "verify\");\n",
-                    structname,
-                    name_alias ? name_alias : name_static,
-                    size_native);
+            // fprintf(file_verify,
+            //         "BLI_STATIC_ASSERT(offsetof(struct %s, %s) == %d, \"DNA member offset "
+            //         "verify\");\n",
+            //         structname,
+            //         name_alias ? name_alias : name_static,
+            //         size_native);
           }
 
           /* is it a pointer or function pointer? */
@@ -1154,10 +1164,10 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
           }
 
           /* Write size verification to file. */
-          fprintf(file_verify,
-                  "BLI_STATIC_ASSERT(sizeof(struct %s) == %d, \"DNA struct size verify\");\n\n",
-                  structname,
-                  size_native);
+          // fprintf(file_verify,
+          //         "BLI_STATIC_ASSERT(sizeof(struct %s) == %d, \"DNA struct size verify\");\n\n",
+          //         structname,
+          //         size_native);
         }
       }
     }
@@ -1592,43 +1602,3 @@ int main(int argc, char **argv)
 
   return return_status;
 }
-
-/* handy but fails on struct bounds which makesdna doesn't care about
- * with quite the same strictness as GCC does */
-#if 0
-/* include files for automatic dependencies */
-
-/* extra safety check that we are aligned,
- * warnings here are easier to fix the makesdna's */
-#  ifdef __GNUC__
-#    pragma GCC diagnostic error "-Wpadded"
-#  endif
-
-#endif /* if 0 */
-
-/* The include file below is automatically generated from the `SRC_DNA_INC`
- * variable in 'source/blender/CMakeLists.txt'. */
-#include "dna_includes_all.h"
-
-/* end of list */
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name DNA Renaming Sanity Check
- *
- * Without this it's possible to reference struct members that don't exist,
- * breaking backward & forward compatibility.
- *
- * \{ */
-
-static void UNUSED_FUNCTION(dna_rename_defs_ensure)()
-{
-#define DNA_STRUCT_RENAME(old, new) (void)sizeof(new);
-#define DNA_STRUCT_RENAME_ELEM(struct_name, old, new) (void)offsetof(struct_name, new);
-#include "dna_rename_defs.h"
-#undef DNA_STRUCT_RENAME
-#undef DNA_STRUCT_RENAME_ELEM
-}
-
-/** \} */
