@@ -41,7 +41,7 @@ short BPy_reports_to_error(ReportList *reports, PyObject *exception, const bool 
     MEM_freeN(report_str);
   }
 
-  return (report_str == NULL) ? 0 : -1;
+  return (report_str == nullptr) ? 0 : -1;
 }
 
 void BPy_reports_write_stdout(const ReportList *reports, const char *header)
@@ -66,7 +66,7 @@ bool BPy_errors_to_report_ex(ReportList *reports,
   }
 
   PyObject *err_str_py = use_full ? PyC_ExceptionBuffer() : PyC_ExceptionBuffer_Simple();
-  if (err_str_py == NULL) {
+  if (err_str_py == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unknown py-exception, could not convert");
     return 0;
   }
@@ -78,12 +78,12 @@ bool BPy_errors_to_report_ex(ReportList *reports,
     err_str_len -= 1;
   }
 
-  if (err_prefix == NULL) {
+  if (err_prefix == nullptr) {
     /* Not very helpful, better than nothing. */
     err_prefix = "Python";
   }
 
-  const char *location_filepath = NULL;
+  const char *location_filepath = nullptr;
   int location_line_number = -1;
 
   /* Give some additional context. */
@@ -114,5 +114,5 @@ bool BPy_errors_to_report_ex(ReportList *reports,
 
 bool BPy_errors_to_report(ReportList *reports)
 {
-  return BPy_errors_to_report_ex(reports, NULL, true, true);
+  return BPy_errors_to_report_ex(reports, nullptr, true, true);
 }
