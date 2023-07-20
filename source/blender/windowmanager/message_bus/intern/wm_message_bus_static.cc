@@ -24,7 +24,7 @@
 
 static uint wm_msg_static_gset_hash(const void *key_p)
 {
-  const wmMsgSubscribeKey_Static *key = key_p;
+  const wmMsgSubscribeKey_Static *key = static_cast<const wmMsgSubscribeKey_Static *>(key_p);
   const wmMsgParams_Static *params = &key->msg.params;
   uint k = params->event;
   return k;
@@ -37,9 +37,13 @@ static bool wm_msg_static_gset_cmp(const void *key_a_p, const void *key_b_p)
 }
 static void wm_msg_static_gset_key_free(void *key_p)
 {
-  wmMsgSubscribeKey *key = key_p;
+  wmMsgSubscribeKey *key = static_cast<wmMsgSubscribeKey *>(key_p);
   wmMsgSubscribeValueLink *msg_lnk_next;
-  for (wmMsgSubscribeValueLink *msg_lnk = key->values.first; msg_lnk; msg_lnk = msg_lnk_next) {
+  for (wmMsgSubscribeValueLink *msg_lnk =
+           static_cast<wmMsgSubscribeValueLink *>(key->values.first);
+       msg_lnk;
+       msg_lnk = msg_lnk_next)
+  {
     msg_lnk_next = msg_lnk->next;
     BLI_remlink(&key->values, msg_lnk);
     MEM_freeN(msg_lnk);
@@ -76,7 +80,8 @@ wmMsgSubscribeKey_Static *WM_msg_lookup_static(struct wmMsgBus *mbus,
 {
   wmMsgSubscribeKey_Static key_test;
   key_test.msg.params = *msg_key_params;
-  return BLI_gset_lookup(mbus->messages_gset[WM_MSG_TYPE_STATIC], &key_test);
+  return static_cast<wmMsgSubscribeKey_Static *>(
+      BLI_gset_lookup(mbus->messages_gset[WM_MSG_TYPE_STATIC], &key_test));
 }
 
 void WM_msg_publish_static_params(struct wmMsgBus *mbus, const wmMsgParams_Static *msg_key_params)
@@ -91,10 +96,9 @@ void WM_msg_publish_static_params(struct wmMsgBus *mbus, const wmMsgParams_Stati
 
 void WM_msg_publish_static(struct wmMsgBus *mbus, int event)
 {
-  WM_msg_publish_static_params(mbus,
-                               &(wmMsgParams_Static){
-                                   .event = event,
-                               });
+  wmMsgParams_Static params{};
+  params.event = event;
+  WM_msg_publish_static_params(mbus, &params);
 }
 
 void WM_msg_subscribe_static_params(struct wmMsgBus *mbus,
@@ -102,7 +106,7 @@ void WM_msg_subscribe_static_params(struct wmMsgBus *mbus,
                                     const wmMsgSubscribeValue *msg_val_params,
                                     const char *id_repr)
 {
-  wmMsgSubscribeKey_Static msg_key_test = {{NULL}};
+  wmMsgSubscribeKey_Static msg_key_test = {{nullptr}};
 
   /* use when added */
   msg_key_test.msg.head.id = id_repr;
@@ -118,10 +122,7 @@ void WM_msg_subscribe_static(struct wmMsgBus *mbus,
                              const wmMsgSubscribeValue *msg_val_params,
                              const char *id_repr)
 {
-  WM_msg_subscribe_static_params(mbus,
-                                 &(const wmMsgParams_Static){
-                                     .event = event,
-                                 },
-                                 msg_val_params,
-                                 id_repr);
+  wmMsgParams_Static params{};
+  params.event = event;
+  WM_msg_subscribe_static_params(mbus, &params, msg_val_params, id_repr);
 }
