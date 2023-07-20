@@ -18,7 +18,7 @@
 
 #include "BLT_translation.h"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
@@ -893,7 +893,8 @@ static int select_random_exec(bContext *C, wmOperator *op)
     const eAttrDomain selection_domain = eAttrDomain(curves_id->selection_domain);
 
     IndexMaskMemory memory;
-    const IndexMask random_elements = random_mask(curves, selection_domain, seed, probability, memory);
+    const IndexMask random_elements = random_mask(
+        curves, selection_domain, seed, probability, memory);
 
     const bool was_anything_selected = has_anything_selected(curves);
     bke::GSpanAttributeWriter selection = ensure_selection_attribute(

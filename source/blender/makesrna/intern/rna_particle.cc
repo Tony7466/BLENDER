@@ -451,7 +451,7 @@ static void rna_ParticleSystem_co_hair(
 
   if (particle_no < totpart && particlesystem->pathcache) {
     cache = particlesystem->pathcache[particle_no];
-    max_k = (int)cache->segments;
+    max_k = int(cache->segments);
   }
   else if (particle_no < totpart + totchild && particlesystem->childcache) {
     cache = particlesystem->childcache[particle_no - totpart];
@@ -460,7 +460,7 @@ static void rna_ParticleSystem_co_hair(
       max_k = 0;
     }
     else {
-      max_k = (int)cache->segments;
+      max_k = int(cache->segments);
     }
   }
   else {
@@ -707,9 +707,9 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
       MCol mcol;
 
       psys_interpolate_mcol(&mc[num * 4], mface->v4, *fuv, &mcol);
-      r_mcol[0] = (float)mcol.b / 255.0f;
-      r_mcol[1] = (float)mcol.g / 255.0f;
-      r_mcol[2] = (float)mcol.r / 255.0f;
+      r_mcol[0] = float(mcol.b) / 255.0f;
+      r_mcol[1] = float(mcol.g) / 255.0f;
+      r_mcol[2] = float(mcol.r) / 255.0f;
     }
   }
 }
@@ -1055,17 +1055,17 @@ static float rna_PartSetting_linelenhead_get(PointerRNA *ptr)
 static bool rna_PartSettings_is_fluid_get(PointerRNA *ptr)
 {
   ParticleSettings *part = static_cast<ParticleSettings *>(ptr->data);
-  return (ELEM(part->type,
-               PART_FLUID,
-               PART_FLUID_FLIP,
-               PART_FLUID_FOAM,
-               PART_FLUID_SPRAY,
-               PART_FLUID_BUBBLE,
-               PART_FLUID_TRACER,
-               PART_FLUID_SPRAYFOAM,
-               PART_FLUID_SPRAYBUBBLE,
-               PART_FLUID_FOAMBUBBLE,
-               PART_FLUID_SPRAYFOAMBUBBLE));
+  return ELEM(part->type,
+              PART_FLUID,
+              PART_FLUID_FLIP,
+              PART_FLUID_FOAM,
+              PART_FLUID_SPRAY,
+              PART_FLUID_BUBBLE,
+              PART_FLUID_TRACER,
+              PART_FLUID_SPRAYFOAM,
+              PART_FLUID_SPRAYBUBBLE,
+              PART_FLUID_FOAMBUBBLE,
+              PART_FLUID_SPRAYFOAMBUBBLE);
 }
 
 static void rna_ParticleSettings_use_clump_curve_update(Main *bmain, Scene *scene, PointerRNA *ptr)

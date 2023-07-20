@@ -798,7 +798,7 @@ static int convert_include(const char *filepath)
               }
 
               /* we've got a type! */
-              if (STREQ(md1, "long") || STREQ(md1, "ulong")) {
+              if (STR_ELEM(md1, "long", "ulong")) {
                 /* Forbid using long/ulong because those can be either 32 or 64 bit. */
                 fprintf(stderr,
                         "File '%s' contains use of \"%s\" in DNA struct which is not allowed\n",
@@ -827,7 +827,7 @@ static int convert_include(const char *filepath)
                   /* We've got a name. slen needs
                    * correction for function
                    * pointers! */
-                  int slen = (int)strlen(md1);
+                  int slen = int(strlen(md1));
                   if (md1[slen - 1] == ';') {
                     md1[slen - 1] = 0;
 
@@ -973,7 +973,7 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
         for (int b = 0; b < structpoin[1]; b++, sp += 2) {
           int type = sp[0];
           const char *cp = names[sp[1]];
-          int namelen = (int)strlen(cp);
+          int namelen = int(strlen(cp));
 
           /* Write size verification to file. */
           {
@@ -1219,7 +1219,7 @@ static void dna_write(FILE *file, const void *pntr, const int size)
   }
 }
 
-void print_struct_sizes(void)
+void print_struct_sizes()
 {
   int unknown = structs_len;
   printf("\n\n*** All detected structs:\n");
@@ -1425,7 +1425,7 @@ static int make_structDNA(const char *base_directory,
     /* calc datablock size */
     const short *sp = structs[structs_len - 1];
     sp += 2 + 2 * (sp[1]);
-    len = (intptr_t)((char *)sp - (char *)structs[0]);
+    len = intptr_t((char *)sp - (char *)structs[0]);
     len = (len + 3) & ~3;
 
     dna_write(file, structs[0], len);
@@ -1622,7 +1622,7 @@ int main(int argc, char **argv)
  *
  * \{ */
 
-static void UNUSED_FUNCTION(dna_rename_defs_ensure)(void)
+static void UNUSED_FUNCTION(dna_rename_defs_ensure)()
 {
 #define DNA_STRUCT_RENAME(old, new) (void)sizeof(new);
 #define DNA_STRUCT_RENAME_ELEM(struct_name, old, new) (void)offsetof(struct_name, new);

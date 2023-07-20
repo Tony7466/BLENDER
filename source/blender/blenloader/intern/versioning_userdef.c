@@ -116,6 +116,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -844,6 +845,13 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+#ifdef __APPLE__
+    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
+    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
+      userdef->gpu_backend = GPU_BACKEND_METAL;
+    }
+#endif
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

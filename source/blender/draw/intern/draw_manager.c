@@ -828,7 +828,7 @@ typedef struct IdDdtTemplate {
 static bool id_type_can_have_drawdata(const short id_type)
 {
   /* Only some ID-blocks have this info for now */
-  /* TODO: finish adding this for the other blocktypes */
+  /* TODO: finish adding this for the other block-types. */
   switch (id_type) {
     /* has DrawData */
     case ID_OB:
@@ -1273,8 +1273,8 @@ static void drw_engines_enable(ViewLayer *UNUSED(view_layer),
 
   drw_engines_enable_from_engine(engine_type, drawtype);
   if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(((U.experimental.use_grease_pencil_version3) ? &draw_engine_gpencil_next_type :
-                                                                  &draw_engine_gpencil_type));
+    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                               &draw_engine_gpencil_type);
   }
 
   if (is_compositor_enabled()) {
@@ -2150,7 +2150,7 @@ void DRW_custom_pipeline_end(void)
 }
 
 void DRW_custom_pipeline(DrawEngineType *draw_engine_type,
-                         struct Depsgraph *depsgraph,
+                         Depsgraph *depsgraph,
                          void (*callback)(void *vedata, void *user_data),
                          void *user_data)
 {
@@ -2481,9 +2481,8 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
   else if (!draw_surface) {
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(((U.experimental.use_grease_pencil_version3) ?
-                          &draw_engine_gpencil_next_type :
-                          &draw_engine_gpencil_type));
+      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                                 &draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2493,9 +2492,8 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
     drw_engines_enable_basic();
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(((U.experimental.use_grease_pencil_version3) ?
-                          &draw_engine_gpencil_next_type :
-                          &draw_engine_gpencil_type));
+      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                                 &draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2667,8 +2665,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_init(&DST, viewport, NULL);
 
   if (use_gpencil) {
-    use_drw_engine(((U.experimental.use_grease_pencil_version3) ? &draw_engine_gpencil_next_type :
-                                                                  &draw_engine_gpencil_type));
+    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                               &draw_engine_gpencil_type);
   }
   if (use_basic) {
     drw_engines_enable_basic();
