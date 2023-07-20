@@ -667,12 +667,6 @@ struct EraseOperationExecutor {
     return true;
   }
 
-  bool contains_point(const float2 &point) const
-  {
-    return (math::distance_squared(point, this->mouse_position) <=
-            this->eraser_radius * this->eraser_radius);
-  }
-
   void soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst)
