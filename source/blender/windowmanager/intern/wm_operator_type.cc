@@ -46,7 +46,7 @@ static void wm_operatortype_free_macro(wmOperatorType *ot);
 /** \name Operator Type Registry
  * \{ */
 
-static GHash *global_ops_hash = NULL;
+static GHash *global_ops_hash = nullptr;
 /** Counter for operator-properties that should not be tagged with #OP_PROP_TAG_ADVANCED. */
 static int ot_prop_basic_count = -1;
 
@@ -59,7 +59,7 @@ wmOperatorType *WM_operatortype_find(const char *idname, bool quiet)
     char idname_bl[OP_MAX_TYPENAME];
     WM_operator_bl_idname(idname_bl, idname);
 
-    ot = BLI_ghash_lookup(global_ops_hash, idname_bl);
+    ot = static_cast<wmOperatorType *>(BLI_ghash_lookup(global_ops_hash, idname_bl));
     if (ot) {
       return ot;
     }
@@ -75,7 +75,7 @@ wmOperatorType *WM_operatortype_find(const char *idname, bool quiet)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_operatortype_iter(GHashIterator *ghi)
@@ -89,7 +89,8 @@ void WM_operatortype_iter(GHashIterator *ghi)
 
 static wmOperatorType *wm_operatortype_append__begin(void)
 {
-  wmOperatorType *ot = MEM_callocN(sizeof(wmOperatorType), "operatortype");
+  wmOperatorType *ot = static_cast<wmOperatorType *>(
+      MEM_callocN(sizeof(wmOperatorType), "operatortype"));
 
   BLI_assert(ot_prop_basic_count == -1);
 
@@ -104,10 +105,10 @@ static wmOperatorType *wm_operatortype_append__begin(void)
 }
 static void wm_operatortype_append__end(wmOperatorType *ot)
 {
-  if (ot->name == NULL) {
+  if (ot->name == nullptr) {
     CLOG_ERROR(WM_LOG_OPERATORS, "Operator '%s' has no name property", ot->idname);
   }
-  BLI_assert((ot->description == NULL) || (ot->description[0]));
+  BLI_assert((ot->description == nullptr) || (ot->description[0]));
 
   /* Allow calling _begin without _end in operatortype creation. */
   WM_operatortype_props_advanced_end(ot);
@@ -152,7 +153,7 @@ void WM_operatortype_remove_ptr(wmOperatorType *ot)
     wm_operatortype_free_macro(ot);
   }
 
-  BLI_ghash_remove(global_ops_hash, ot->idname, NULL, NULL);
+  BLI_ghash_remove(global_ops_hash, ot->idname, nullptr, nullptr);
 
   WM_keyconfig_update_operatortype();
 
@@ -163,7 +164,7 @@ bool WM_operatortype_remove(const char *idname)
 {
   wmOperatorType *ot = WM_operatortype_find(idname, 0);
 
-  if (ot == NULL) {
+  if (ot == nullptr) {
     return false;
   }
 
@@ -198,8 +199,8 @@ static void operatortype_ghash_free_cb(wmOperatorType *ot)
 
 void wm_operatortype_free(void)
 {
-  BLI_ghash_free(global_ops_hash, NULL, (GHashValFreeFP)operatortype_ghash_free_cb);
-  global_ops_hash = NULL;
+  BLI_ghash_free(global_ops_hash, nullptr, (GHashValFreeFP)operatortype_ghash_free_cb);
+  global_ops_hash = nullptr;
 }
 
 void WM_operatortype_props_advanced_begin(wmOperatorType *ot)
@@ -239,30 +240,30 @@ void WM_operatortype_last_properties_clear_all(void)
 
   for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter))
   {
-    wmOperatorType *ot = BLI_ghashIterator_getValue(&iter);
+    wmOperatorType *ot = static_cast<wmOperatorType *>(BLI_ghashIterator_getValue(&iter));
 
     if (ot->last_properties) {
       IDP_FreeProperty(ot->last_properties);
-      ot->last_properties = NULL;
+      ot->last_properties = nullptr;
     }
   }
 }
 
-void WM_operatortype_idname_visit_for_search(const bContext *UNUSED(C),
-                                             PointerRNA *UNUSED(ptr),
-                                             PropertyRNA *UNUSED(prop),
-                                             const char *UNUSED(edit_text),
+void WM_operatortype_idname_visit_for_search(const bContext * /*C*/,
+                                             PointerRNA * /*ptr*/,
+                                             PropertyRNA * /*prop*/,
+                                             const char * /*edit_text*/,
                                              StringPropertySearchVisitFunc visit_fn,
                                              void *visit_user_data)
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, global_ops_hash) {
-    wmOperatorType *ot = BLI_ghashIterator_getValue(&gh_iter);
+    wmOperatorType *ot = static_cast<wmOperatorType *>(BLI_ghashIterator_getValue(&gh_iter));
 
     char idname_py[OP_MAX_TYPENAME];
     WM_operator_py_idname(idname_py, ot->idname);
 
-    StringPropertySearchVisitParams visit_params = {NULL};
+    StringPropertySearchVisitParams visit_params = {nullptr};
     visit_params.text = idname_py;
     visit_params.info = ot->name;
     visit_fn(visit_user_data, &visit_params);
@@ -275,13 +276,13 @@ void WM_operatortype_idname_visit_for_search(const bContext *UNUSED(C),
 /** \name Operator Macro Type
  * \{ */
 
-typedef struct {
+struct MacroData {
   int retval;
-} MacroData;
+};
 
 static void wm_macro_start(wmOperator *op)
 {
-  if (op->customdata == NULL) {
+  if (op->customdata == nullptr) {
     op->customdata = MEM_callocN(sizeof(MacroData), "MacroData");
   }
 }
@@ -289,7 +290,7 @@ static void wm_macro_start(wmOperator *op)
 static int wm_macro_end(wmOperator *op, int retval)
 {
   if (retval & OPERATOR_CANCELLED) {
-    MacroData *md = op->customdata;
+    MacroData *md = static_cast<MacroData *>(op->customdata);
 
     if (md->retval & OPERATOR_FINISHED) {
       retval |= OPERATOR_FINISHED;
@@ -301,7 +302,7 @@ static int wm_macro_end(wmOperator *op, int retval)
   if (retval & (OPERATOR_FINISHED | OPERATOR_CANCELLED)) {
     if (op->customdata) {
       MEM_freeN(op->customdata);
-      op->customdata = NULL;
+      op->customdata = nullptr;
     }
   }
 
@@ -326,7 +327,7 @@ static int wm_macro_exec(bContext *C, wmOperator *op)
       OPERATOR_RETVAL_CHECK(retval);
 
       if (retval & OPERATOR_FINISHED) {
-        MacroData *md = op->customdata;
+        MacroData *md = static_cast<MacroData *>(op->customdata);
         md->retval = OPERATOR_FINISHED; /* keep in mind that at least one operator finished */
       }
       else {
@@ -366,7 +367,7 @@ static int wm_macro_invoke_internal(bContext *C,
     BLI_movelisttolist(&op->reports->list, &opm->reports->list);
 
     if (retval & OPERATOR_FINISHED) {
-      MacroData *md = op->customdata;
+      MacroData *md = static_cast<MacroData *>(op->customdata);
       md->retval = OPERATOR_FINISHED; /* keep in mind that at least one operator finished */
     }
     else {
@@ -380,7 +381,7 @@ static int wm_macro_invoke_internal(bContext *C,
 static int wm_macro_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wm_macro_start(op);
-  return wm_macro_invoke_internal(C, op, event, op->macro.first);
+  return wm_macro_invoke_internal(C, op, event, static_cast<wmOperator *>(op->macro.first));
 }
 
 static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -388,8 +389,8 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
   wmOperator *opm = op->opm;
   int retval = OPERATOR_FINISHED;
 
-  if (opm == NULL) {
-    CLOG_ERROR(WM_LOG_OPERATORS, "macro error, calling NULL modal()");
+  if (opm == nullptr) {
+    CLOG_ERROR(WM_LOG_OPERATORS, "macro error, calling nullptr modal()");
   }
   else {
     retval = opm->type->modal(C, opm, event);
@@ -402,7 +403,7 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
     /* if this one is done but it's not the last operator in the macro */
     if ((retval & OPERATOR_FINISHED) && opm->next) {
-      MacroData *md = op->customdata;
+      MacroData *md = static_cast<MacroData *>(op->customdata);
 
       md->retval = OPERATOR_FINISHED; /* keep in mind that at least one operator finished */
 
@@ -413,7 +414,8 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
         wmWindow *win = CTX_wm_window(C);
         wmEventHandler_Op *handler;
 
-        handler = BLI_findptr(&win->modalhandlers, op, offsetof(wmEventHandler_Op, op));
+        handler = static_cast<wmEventHandler_Op *>(
+            BLI_findptr(&win->modalhandlers, op, offsetof(wmEventHandler_Op, op)));
         if (handler) {
           BLI_remlink(&win->modalhandlers, handler);
           wm_event_free_handler(&handler->head);
@@ -423,7 +425,7 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
          * This may end up grabbing twice, but we don't care. */
         if (op->opm->type->flag & OPTYPE_BLOCKING) {
           int wrap = WM_CURSOR_WRAP_NONE;
-          const rcti *wrap_region = NULL;
+          const rcti *wrap_region = nullptr;
 
           if ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
               (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY)) {
@@ -443,7 +445,7 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
             }
           }
 
-          WM_cursor_grab_enable(win, wrap, wrap_region, false);
+          WM_cursor_grab_enable(win, eWM_CursorWrapAxis(wrap), wrap_region, false);
         }
       }
     }
@@ -472,10 +474,10 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
 
   if (WM_operatortype_find(idname, true)) {
     CLOG_ERROR(WM_LOG_OPERATORS, "operator %s exists, cannot create macro", idname);
-    return NULL;
+    return nullptr;
   }
 
-  ot = MEM_callocN(sizeof(wmOperatorType), "operatortype");
+  ot = static_cast<wmOperatorType *>(MEM_callocN(sizeof(wmOperatorType), "operatortype"));
   ot->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_OperatorProperties);
 
   ot->idname = idname;
@@ -487,10 +489,10 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
   ot->invoke = wm_macro_invoke;
   ot->modal = wm_macro_modal;
   ot->cancel = wm_macro_cancel;
-  ot->poll = NULL;
+  ot->poll = nullptr;
 
   /* XXX All ops should have a description but for now allow them not to. */
-  BLI_assert((ot->description == NULL) || (ot->description[0]));
+  BLI_assert((ot->description == nullptr) || (ot->description[0]));
 
   RNA_def_struct_ui_text(
       ot->srna, ot->name, ot->description ? ot->description : UNDOCUMENTED_OPERATOR_TIP);
@@ -510,7 +512,7 @@ void WM_operatortype_append_macro_ptr(void (*opfunc)(wmOperatorType *, void *), 
 {
   wmOperatorType *ot;
 
-  ot = MEM_callocN(sizeof(wmOperatorType), "operatortype");
+  ot = static_cast<wmOperatorType *>(MEM_callocN(sizeof(wmOperatorType), "operatortype"));
   ot->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_OperatorProperties);
 
   ot->flag = OPTYPE_MACRO;
@@ -518,10 +520,10 @@ void WM_operatortype_append_macro_ptr(void (*opfunc)(wmOperatorType *, void *), 
   ot->invoke = wm_macro_invoke;
   ot->modal = wm_macro_modal;
   ot->cancel = wm_macro_cancel;
-  ot->poll = NULL;
+  ot->poll = nullptr;
 
   /* XXX All ops should have a description but for now allow them not to. */
-  BLI_assert((ot->description == NULL) || (ot->description[0]));
+  BLI_assert((ot->description == nullptr) || (ot->description[0]));
 
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
   RNA_def_struct_translation_context(ot->srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
@@ -537,7 +539,8 @@ void WM_operatortype_append_macro_ptr(void (*opfunc)(wmOperatorType *, void *), 
 
 wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char *idname)
 {
-  wmOperatorTypeMacro *otmacro = MEM_callocN(sizeof(wmOperatorTypeMacro), "wmOperatorTypeMacro");
+  wmOperatorTypeMacro *otmacro = static_cast<wmOperatorTypeMacro *>(
+      MEM_callocN(sizeof(wmOperatorTypeMacro), "wmOperatorTypeMacro"));
 
   STRNCPY(otmacro->idname, idname);
 
@@ -572,7 +575,7 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
 
 const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
-  const char *name = NULL;
+  const char *name = nullptr;
 
   if (ot->get_name && properties) {
     name = ot->get_name(ot, properties);
@@ -598,15 +601,15 @@ char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *p
   if (info && info[0]) {
     return BLI_strdup(info);
   }
-  return NULL;
+  return nullptr;
 }
 
 char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   char *text = WM_operatortype_description(C, ot, properties);
-  if (text == NULL) {
+  if (text == nullptr) {
     const char *text_orig = WM_operatortype_name(ot, properties);
-    if (text_orig != NULL) {
+    if (text_orig != nullptr) {
       text = BLI_strdup(text_orig);
     }
   }
