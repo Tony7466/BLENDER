@@ -179,7 +179,7 @@ static wmJob *wm_job_find(const wmWindowManager *wm, const void *owner, const eW
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /* ******************* public API ***************** */
@@ -193,8 +193,8 @@ wmJob *WM_jobs_get(wmWindowManager *wm,
 {
   wmJob *wm_job = wm_job_find(wm, owner, job_type);
 
-  if (wm_job == NULL) {
-    wm_job = MEM_callocN(sizeof(wmJob), "new job");
+  if (wm_job == nullptr) {
+    wm_job = static_cast<wmJob *>(MEM_callocN(sizeof(wmJob), "new job"));
 
     BLI_addtail(&wm->jobs, wm_job);
     wm_job->win = win;
@@ -294,18 +294,18 @@ const char *WM_jobs_name(const wmWindowManager *wm, const void *owner)
     return wm_job->name;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void *WM_jobs_customdata_from_type(wmWindowManager *wm, const void *owner, int job_type)
 {
-  wmJob *wm_job = wm_job_find(wm, owner, job_type);
+  wmJob *wm_job = wm_job_find(wm, owner, eWM_JobType(job_type));
 
   if (wm_job) {
     return WM_jobs_customdata_get(wm_job);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool WM_jobs_is_running(const wmJob *wm_job)
@@ -361,7 +361,7 @@ void WM_jobs_callbacks(wmJob *wm_job,
                        void (*update)(void *),
                        void (*endjob)(void *))
 {
-  WM_jobs_callbacks_ex(wm_job, startjob, initjob, update, endjob, NULL, NULL);
+  WM_jobs_callbacks_ex(wm_job, startjob, initjob, update, endjob, nullptr, nullptr);
 }
 
 void WM_jobs_callbacks_ex(wmJob *wm_job,
@@ -382,12 +382,12 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
 
 static void *do_job_thread(void *job_v)
 {
-  wmJob *wm_job = job_v;
+  wmJob *wm_job = static_cast<wmJob *>(job_v);
 
   wm_job->startjob(wm_job->run_customdata, &wm_job->stop, &wm_job->do_update, &wm_job->progress);
   wm_job->ready = true;
 
-  return NULL;
+  return nullptr;
 }
 
 /* don't allow same startjob to be executed twice */
@@ -460,8 +460,8 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
         /* copy to ensure proper free in end */
         wm_job->run_customdata = wm_job->customdata;
         wm_job->run_free = wm_job->free;
-        wm_job->free = NULL;
-        wm_job->customdata = NULL;
+        wm_job->free = nullptr;
+        wm_job->customdata = nullptr;
         wm_job->running = true;
 
         if (wm_job->initjob) {
@@ -483,7 +483,7 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
         WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
         wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
       }
-      if (wm_job->wt == NULL) {
+      if (wm_job->wt == nullptr) {
         wm_job->wt = WM_event_timer_add(wm, wm_job->win, TIMERJOBS, timestep);
       }
 
@@ -559,7 +559,7 @@ void WM_jobs_kill_all(wmWindowManager *wm)
 {
   wmJob *wm_job;
 
-  while ((wm_job = wm->jobs.first)) {
+  while ((wm_job = static_cast<wmJob *>(wm->jobs.first))) {
     wm_jobs_kill_job(wm, wm_job);
   }
 
@@ -639,11 +639,11 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
           wm_job->update(wm_job->run_customdata);
         }
         if (wm_job->note) {
-          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->note, NULL);
+          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->note, nullptr);
         }
 
         if (wm_job->flag & WM_JOB_PROGRESS) {
-          WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
+          WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, nullptr);
         }
         wm_job->do_update = false;
       }
@@ -653,16 +653,16 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
 
         /* free own data */
         wm_job->run_free(wm_job->run_customdata);
-        wm_job->run_customdata = NULL;
-        wm_job->run_free = NULL;
+        wm_job->run_customdata = nullptr;
+        wm_job->run_free = nullptr;
 
 #if 0
-          if (wm_job->stop) {
-            printf("job ready but stopped %s\n", wm_job->name);
-          }
-          else {
-            printf("job finished %s\n", wm_job->name);
-          }
+        if (wm_job->stop) {
+          printf("job ready but stopped %s\n", wm_job->name);
+        }
+        else {
+          printf("job finished %s\n", wm_job->name);
+        }
 #endif
 
         if (G.debug & G_DEBUG_JOBS) {
@@ -678,10 +678,10 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
         WM_job_main_thread_lock_acquire(wm_job);
 
         if (wm_job->endnote) {
-          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->endnote, NULL);
+          WM_event_add_notifier_ex(wm, wm_job->win, wm_job->endnote, nullptr);
         }
 
-        WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, NULL);
+        WM_event_add_notifier_ex(wm, wm_job->win, NC_WM | ND_JOB, nullptr);
 
         /* new job added for wm_job? */
         if (wm_job->customdata) {
@@ -690,7 +690,7 @@ void wm_jobs_timer(wmWindowManager *wm, wmTimer *wt)
         }
         else {
           WM_event_timer_remove(wm, wm_job->win, wm_job->wt);
-          wm_job->wt = NULL;
+          wm_job->wt = nullptr;
 
           /* remove wm_job */
           wm_job_free(wm, wm_job);
