@@ -61,8 +61,8 @@ struct EraseOperationExecutor {
    */
   int intersections_with_segment(const float2 &point,
                                  const float2 &point_after,
-                                 float &mu0,
-                                 float &mu1) const
+                                 float &r_mu0,
+                                 float &r_mu1) const
   {
     /* Compute the intersection points. */
     float2 inter0{};
@@ -77,16 +77,16 @@ struct EraseOperationExecutor {
           const float sign_mu = (math::dot(inter - p0, p1 - p0) < 0) ? -1.0 : 1.0;
           return sign_mu * mu;
         };
-    mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
-    mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
+    r_mu0 = (nb_inter > 0) ? compute_intersection_parameter(point, point_after, inter0) : -1.0;
+    r_mu1 = (nb_inter > 1) ? compute_intersection_parameter(point, point_after, inter1) : -1.0;
 
     /* Sort intersections by line factor. */
-    if ((nb_inter > 1) && (mu0 > mu1)) {
-      std::swap(mu0, mu1);
+    if ((nb_inter > 1) && (r_mu0 > r_mu1)) {
+      std::swap(r_mu0, r_mu1);
     }
 
     /* Return the number of intersections that actually lies within the segment. */
-    return int(IN_RANGE(mu0, 0, 1)) + int(IN_RANGE(mu1, 0, 1));
+    return int(IN_RANGE(r_mu0, 0, 1)) + int(IN_RANGE(r_mu1, 0, 1));
   }
 
   /**
@@ -95,9 +95,9 @@ struct EraseOperationExecutor {
    * \param screen_space_positions: input parameter containing the 2D positions of the geometry in
    * screen space.
    *
-   * \param nb_intersection: output parameter filled with the number of intersections
+   * \param r_nb_intersections: output parameter filled with the number of intersections
    * per-segment. Should be the size of the source point range.
-   * \param intersections_parameter: output parameter filled with the factors of the potential
+   * \param r_intersections_factors: output parameter filled with the factors of the potential
    * intersections with each segment. Should be the size of the source point range.
    * \returns total number of intersections found.
    *
@@ -106,8 +106,8 @@ struct EraseOperationExecutor {
    */
   int intersections_with_curves(const blender::bke::CurvesGeometry &src,
                                 const Array<float2> &screen_space_positions,
-                                Array<int> &nb_intersections,
-                                Array<float2> &intersections_parameters) const
+                                Array<int> &r_nb_intersections,
+                                Array<float2> &r_intersections_factors) const
   {
     using namespace blender::bke;
 
@@ -124,13 +124,13 @@ struct EraseOperationExecutor {
 
                 float mu0;
                 float mu1;
-                nb_intersections[src_point] = intersections_with_segment(
+                r_nb_intersections[src_point] = intersections_with_segment(
                     screen_space_positions[src_point],
                     screen_space_positions[src_point + 1],
                     mu0,
                     mu1);
 
-                intersections_parameters[src_point] = float2(mu0, mu1);
+                r_intersections_factors[src_point] = float2(mu0, mu1);
               }
             });
 
@@ -140,13 +140,13 @@ struct EraseOperationExecutor {
 
           float mu0;
           float mu1;
-          nb_intersections[src_last_point] = intersections_with_segment(
+          r_nb_intersections[src_last_point] = intersections_with_segment(
               screen_space_positions[src_last_point],
               screen_space_positions[src_curve_points.first()],
               mu0,
               mu1);
 
-          intersections_parameters[src_last_point] = float2(mu0, mu1);
+          r_intersections_factors[src_last_point] = float2(mu0, mu1);
         }
       }
     });
@@ -154,7 +154,7 @@ struct EraseOperationExecutor {
     /* Compute total number of intersections. */
     int total_intersections = 0;
     for (const int src_point : src.points_range()) {
-      total_intersections += nb_intersections[src_point];
+      total_intersections += r_nb_intersections[src_point];
     }
     return total_intersections;
   }
@@ -175,7 +175,7 @@ struct EraseOperationExecutor {
    * screen space.
    * \param points_range: ranges of points to check.
    *
-   * \param point_inside: output parameter filled with booleans : true if the point is inside the
+   * \param r_point_inside: output parameter filled with booleans : true if the point is inside the
    * eraser, false otherwise.
    * \returns total number of inside points.
    *
@@ -184,19 +184,19 @@ struct EraseOperationExecutor {
    */
   int compute_points_inside(const Array<float2> &screen_space_positions,
                             const IndexRange points_range,
-                            Array<bool> &point_inside) const
+                            Array<bool> &r_point_inside) const
   {
     /* Check if points are inside the eraser. */
     threading::parallel_for(points_range, 256, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         const float2 pos_view = screen_space_positions[src_point];
-        point_inside[src_point] = contains_point(pos_view);
+        r_point_inside[src_point] = contains_point(pos_view);
       }
     });
     /* Compute total number of points inside the eraser. */
     int total_points_inside = 0;
     for (const int src_point : points_range) {
-      total_points_inside += point_inside[src_point] ? 1 : 0;
+      total_points_inside += r_point_inside[src_point] ? 1 : 0;
     }
 
     return total_points_inside;
