@@ -246,7 +246,7 @@ void WM_event_start_drag(
 
 void wm_drags_exit(wmWindowManager *wm, wmWindow *win)
 {
-  /* End modal cursor usage on all windows. */
+  /* Turn off modal cursor for all windows. */
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     WM_cursor_modal_restore(win);
   }
@@ -255,7 +255,7 @@ void wm_drags_exit(wmWindowManager *wm, wmWindow *win)
   int r_mval[2];
   wmWindow *target_win = WM_window_find_under_cursor(win, win->eventstate->xy, &r_mval[0]);
   if (target_win) {
-    bScreen *screen = WM_window_get_active_screen(target_win);
+    const bScreen *screen = WM_window_get_active_screen(target_win);
     ED_region_tag_redraw_no_rebuild(screen->active_region);
 
     /* Ensure the correct area cursor is restored. */
@@ -429,11 +429,9 @@ static wmDropBox *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *ev
       drop = dropbox_active(C, &area->handlers, drag, event);
     }
   }
-
   if (!drop) {
     drop = dropbox_active(C, &win->handlers, drag, event);
   }
-
   return drop;
 }
 
