@@ -412,7 +412,7 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceNLA, area->spacedata.first, &ptr);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw;
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {};
   msg_sub_value_region_tag_redraw.owner = region;
   msg_sub_value_region_tag_redraw.user_data = region;
   msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
@@ -434,6 +434,12 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_region_tag_redraw, __func__);
     }
   }
+}
+
+static void nla_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
+{
+  View2D *v2d = &region->v2d;
+  UI_view2d_curRect_clamp_y(v2d);
 }
 
 static void nla_channel_region_listener(const wmRegionListenerParams *params)
@@ -488,7 +494,7 @@ static void nla_channel_region_message_subscribe(const wmRegionMessageSubscribeP
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceNLA, area->spacedata.first, &ptr);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw;
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {};
   msg_sub_value_region_tag_redraw.owner = region;
   msg_sub_value_region_tag_redraw.user_data = region;
   msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
@@ -591,7 +597,7 @@ static void nla_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   }
 }
 
-void ED_spacetype_nla(void)
+void ED_spacetype_nla()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype nla");
   ARegionType *art;
@@ -619,6 +625,7 @@ void ED_spacetype_nla(void)
   art->draw_overlay = nla_main_region_draw_overlay;
   art->listener = nla_main_region_listener;
   art->message_subscribe = nla_main_region_message_subscribe;
+  art->on_view2d_changed = nla_main_region_view2d_changed;
   art->keymapflag = ED_KEYMAP_VIEW2D | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
 
   BLI_addhead(&st->regiontypes, art);

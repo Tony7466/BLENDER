@@ -28,11 +28,11 @@
 
 #include "MEM_guardedalloc.h"
 
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component
  * \{ */
-
-namespace blender::bke {
 
 GeometryComponent::GeometryComponent(Type type) : type_(type) {}
 
@@ -196,24 +196,30 @@ Vector<const GeometryComponent *> GeometrySet::get_components_for_read() const
   return components;
 }
 
-bool GeometrySet::compute_boundbox_without_instances(float3 *r_min, float3 *r_max) const
+std::optional<Bounds<float3>> GeometrySet::compute_boundbox_without_instances() const
 {
-  using namespace blender;
-  bool have_minmax = false;
+  std::optional<Bounds<float3>> bounds;
   if (const PointCloud *pointcloud = this->get_pointcloud_for_read()) {
-    have_minmax |= pointcloud->bounds_min_max(*r_min, *r_max);
+    bounds = bounds::merge(bounds, pointcloud->bounds_min_max());
   }
   if (const Mesh *mesh = this->get_mesh_for_read()) {
-    have_minmax |= BKE_mesh_wrapper_minmax(mesh, *r_min, *r_max);
+    Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
+                               float3(std::numeric_limits<float>::lowest())};
+    if (BKE_mesh_wrapper_minmax(mesh, mesh_bounds.min, mesh_bounds.max)) {
+      bounds = bounds::merge(bounds, {mesh_bounds});
+    }
   }
   if (const Volume *volume = this->get_volume_for_read()) {
-    have_minmax |= BKE_volume_min_max(volume, *r_min, *r_max);
+    Bounds<float3> volume_bounds{float3(std::numeric_limits<float>::max()),
+                                 float3(std::numeric_limits<float>::lowest())};
+    if (BKE_volume_min_max(volume, volume_bounds.min, volume_bounds.max)) {
+      bounds = bounds::merge(bounds, {volume_bounds});
+    }
   }
   if (const Curves *curves_id = this->get_curves_for_read()) {
-    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-    have_minmax |= curves.bounds_min_max(*r_min, *r_max);
+    bounds = bounds::merge(bounds, curves_id->geometry.wrap().bounds_min_max());
   }
-  return have_minmax;
+  return bounds;
 }
 
 std::ostream &operator<<(std::ostream &stream, const GeometrySet &geometry_set)
@@ -384,20 +390,14 @@ bool GeometrySet::is_empty() const
 GeometrySet GeometrySet::create_with_mesh(Mesh *mesh, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (mesh != nullptr) {
-    MeshComponent &component = geometry_set.get_component_for_write<MeshComponent>();
-    component.replace(mesh, ownership);
-  }
+  geometry_set.replace_mesh(mesh, ownership);
   return geometry_set;
 }
 
 GeometrySet GeometrySet::create_with_volume(Volume *volume, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (volume != nullptr) {
-    VolumeComponent &component = geometry_set.get_component_for_write<VolumeComponent>();
-    component.replace(volume, ownership);
-  }
+  geometry_set.replace_volume(volume, ownership);
   return geometry_set;
 }
 
@@ -405,20 +405,14 @@ GeometrySet GeometrySet::create_with_pointcloud(PointCloud *pointcloud,
                                                 GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (pointcloud != nullptr) {
-    PointCloudComponent &component = geometry_set.get_component_for_write<PointCloudComponent>();
-    component.replace(pointcloud, ownership);
-  }
+  geometry_set.replace_pointcloud(pointcloud, ownership);
   return geometry_set;
 }
 
 GeometrySet GeometrySet::create_with_curves(Curves *curves, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (curves != nullptr) {
-    CurveComponent &component = geometry_set.get_component_for_write<CurveComponent>();
-    component.replace(curves, ownership);
-  }
+  geometry_set.replace_curves(curves, ownership);
   return geometry_set;
 }
 
@@ -723,6 +717,6 @@ bool object_has_geometry_set_instances(const Object &object)
   return false;
 }
 
-}  // namespace blender::bke
-
 /** \} */
+
+}  // namespace blender::bke

@@ -113,7 +113,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   BKE_object_eval_reset(ob_eval);
   if (ob->type == OB_MESH) {
-    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_DERIVEDMESH);
     BKE_mesh_eval_delete(me_eval);
   }
   else if (ob->type == OB_LATTICE) {
@@ -1066,9 +1066,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    bke::GeometrySet geometry_set;
-    geometry_set.get_component_for_write<bke::CurveComponent>().replace(
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
         &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1079,10 +1077,9 @@ static bool modifier_apply_obdata(
     }
     Curves &curves_eval = *geometry_set.get_curves_for_write();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     curves_eval.geometry.wrap().attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     curves.geometry.wrap() = std::move(curves_eval.geometry.wrap());
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &curves_eval.id);
@@ -1094,9 +1091,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    bke::GeometrySet geometry_set;
-    geometry_set.get_component_for_write<bke::PointCloudComponent>().replace(
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
         &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1109,10 +1104,9 @@ static bool modifier_apply_obdata(
     PointCloud *pointcloud_eval =
         geometry_set.get_component_for_write<bke::PointCloudComponent>().release();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     pointcloud_eval->attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &pointcloud_eval->id);
     BKE_pointcloud_nomain_to_pointcloud(pointcloud_eval, &points);
@@ -1517,7 +1511,7 @@ static int modifier_remove_exec(bContext *C, wmOperator *op)
 
   /* Store name temporarily for report. */
   char name[MAX_NAME];
-  strcpy(name, md->name);
+  STRNCPY(name, md->name);
 
   if (!ED_object_modifier_remove(op->reports, bmain, scene, ob, md)) {
     return OPERATOR_CANCELLED;
@@ -1769,7 +1763,7 @@ static int modifier_apply_exec_ex(bContext *C, wmOperator *op, int apply_as, boo
   char name[MAX_NAME];
   if (do_report) {
     reports_len = BLI_listbase_count(&op->reports->list);
-    strcpy(name, md->name); /* Store name temporarily since the modifier is removed. */
+    STRNCPY(name, md->name); /* Store name temporarily since the modifier is removed. */
   }
 
   if (!ED_object_modifier_apply(

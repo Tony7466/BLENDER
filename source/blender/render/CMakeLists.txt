@@ -6,8 +6,6 @@
 set(INC
   .
   intern
-  ../blenkernel
-  ../blenlib
   ../blentranslation
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/cached_resources
@@ -16,14 +14,11 @@ set(INC
   ../gpu
   ../gpu/intern
   ../imbuf
-  ../makesdna
   ../makesrna
   ../nodes
   ../sequencer
   ../simulation
   ../windowmanager
-  ../../../intern/atomic
-  ../../../intern/guardedalloc
   ../../../intern/mikktspace
   ../../../intern/mantaflow/extern
 )
@@ -39,6 +34,7 @@ set(SRC
   intern/multires_bake.cc
   intern/pipeline.cc
   intern/render_result.cc
+  intern/render_types.cc
   intern/texture_image.c
   intern/texture_margin.cc
   intern/texture_pointdensity.c
@@ -61,7 +57,12 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_PYTHON)

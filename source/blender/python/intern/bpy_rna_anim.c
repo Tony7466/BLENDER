@@ -47,6 +47,7 @@
 #include "../generic/py_capi_rna.h"
 #include "../generic/python_utildefines.h"
 
+#include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
 /* for keyframes and drivers */
@@ -342,7 +343,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
    * be executed from this function call, as this only happens when `options` has
    * `INSERTKEY_DRIVER`, which is not exposed to Python. */
   bContext *C = BPY_context_get();
-  struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
                                                                                     cfra);
 
@@ -588,6 +589,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
 
     bContext *context = BPY_context_get();
     WM_event_add_notifier(BPY_context_get(), NC_ANIMATION | ND_FCURVES_ORDER, NULL);
+    DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
     DEG_relations_tag_update(CTX_data_main(context));
   }
   else {

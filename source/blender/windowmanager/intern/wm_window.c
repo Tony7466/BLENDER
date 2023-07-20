@@ -164,7 +164,7 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timer(const bContext *C);
+static bool wm_window_timers_process(const bContext *C);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
 void wm_get_screensize(int *r_width, int *r_height)
@@ -258,10 +258,10 @@ void wm_window_free(bContext *C, wmWindowManager *wm, wmWindow *win)
       continue;
     }
     if (wt->win == win) {
-      WM_event_remove_timer(wm, win, wt);
+      WM_event_timer_remove(wm, win, wt);
     }
   }
-  wm_window_delete_removed_timers(wm);
+  wm_window_timers_delete_removed(wm);
 
   if (win->eventstate) {
     MEM_freeN(win->eventstate);
@@ -875,21 +875,24 @@ static bool wm_window_update_size_position(wmWindow *win)
 
 wmWindow *WM_window_open(bContext *C,
                          const char *title,
-                         int x,
-                         int y,
-                         int sizex,
-                         int sizey,
+                         const rcti *rect_unscaled,
                          int space_type,
                          bool toplevel,
                          bool dialog,
                          bool temp,
-                         eWindowAlignment alignment)
+                         eWindowAlignment alignment,
+                         void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
+                         void *area_setup_user_data)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win_prev = CTX_wm_window(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  int x = rect_unscaled->xmin;
+  int y = rect_unscaled->ymin;
+  int sizex = BLI_rcti_size_x(rect_unscaled);
+  int sizey = BLI_rcti_size_y(rect_unscaled);
   rcti rect;
 
   const float native_pixel_size = GHOST_GetNativePixelSize(win_prev->ghostwin);
@@ -983,8 +986,21 @@ wmWindow *WM_window_open(bContext *C,
    * to avoid having to take into account a partially-created window.
    */
 
-  /* ensure it shows the right spacetype editor */
-  if (space_type != SPACE_EMPTY) {
+  if (area_setup_fn) {
+    /* When the caller is setting up the area, it should always be empty
+     * because it's expected the callback sets the type. */
+    BLI_assert(space_type == SPACE_EMPTY);
+    /* NOTE(@ideasman42): passing in a callback to setup the `area` is admittedly awkward.
+     * This is done so #ED_screen_refresh has a valid area to initialize,
+     * otherwise it will attempt to make the empty area usable via #ED_area_init.
+     * While refreshing the window could be postponed this makes the state of the
+     * window less predictable to the caller. */
+    ScrArea *area = screen->areabase.first;
+    area_setup_fn(screen, area, area_setup_user_data);
+    CTX_wm_area_set(C, area);
+  }
+  else if (space_type != SPACE_EMPTY) {
+    /* Ensure it shows the right space-type editor. */
     ScrArea *area = screen->areabase.first;
     CTX_wm_area_set(C, area);
     ED_area_newspace(C, area, space_type, false);
@@ -1033,18 +1049,23 @@ int wm_window_new_exec(bContext *C, wmOperator *op)
 {
   wmWindow *win_src = CTX_wm_window(C);
   ScrArea *area = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TYPE_ANY, 0);
+  const rcti window_rect = {
+      /*xmin*/ 0,
+      /*xmax*/ win_src->sizex * 0.95f,
+      /*ymin*/ 0,
+      /*ymax*/ win_src->sizey * 0.9f,
+  };
 
   bool ok = (WM_window_open(C,
                             IFACE_("Blender"),
-                            0,
-                            0,
-                            win_src->sizex * 0.95f,
-                            win_src->sizey * 0.9f,
+                            &window_rect,
                             area->spacetype,
                             false,
                             false,
                             false,
-                            WIN_ALIGN_PARENT_CENTER) != NULL);
+                            WIN_ALIGN_PARENT_CENTER,
+                            NULL,
+                            NULL) != NULL);
 
   if (!ok) {
     BKE_report(op->reports, RPT_ERROR, "Failed to create window");
@@ -1267,24 +1288,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         break;
       }
       case GHOST_kEventWindowActivate: {
-
-#ifdef WIN32
-        /* NOTE(@ideasman42): Alt-Tab on Windows-10 (22H2) can deactivate the window,
-         * then (in rare cases - approx 1 in 20) immediately call `WM_ACTIVATE` on the window
-         * (which isn't active) and doesn't receive modifier release events.
-         * This looks like a bug in MS-Windows, searching online other apps
-         * have run into similar issues although it's not clear exactly which.
-         *
-         * - Therefor activation must always clear modifiers
-         *   or Alt-Tab can occasionally get stuck, see: #105381.
-         * - Unfortunately modifiers that are held before
-         *   the window is active are ignored, see: #40059.
-         */
-        wm_window_update_eventstate_modifiers_clear(wm, win);
-#else
         /* Ensure the event state matches modifiers (window was inactive). */
         wm_window_update_eventstate_modifiers(wm, win);
-#endif
 
         /* Entering window, update mouse position (without sending an event). */
         wm_window_update_eventstate(win);
@@ -1408,7 +1413,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
 
 #if defined(__APPLE__) || defined(WIN32)
             /* MACOS and WIN32 don't return to the main-loop while resize. */
-            wm_window_timer(C);
+            wm_window_timers_process(C);
             wm_event_do_handlers(C);
             wm_event_do_notifiers(C);
             wm_draw_update(C);
@@ -1572,7 +1577,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
  * Timer handlers should check for delta to decide if they just update, or follow real time.
  * Timer handlers can also set duration to match frames passed
  */
-static bool wm_window_timer(const bContext *C)
+static bool wm_window_timers_process(const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -1627,12 +1632,12 @@ static bool wm_window_timer(const bContext *C)
   }
 
   /* Effectively delete all timers marked for removal. */
-  wm_window_delete_removed_timers(wm);
+  wm_window_timers_delete_removed(wm);
 
   return has_event;
 }
 
-void wm_window_process_events(const bContext *C)
+void wm_window_events_process(const bContext *C)
 {
   BLI_assert(BLI_thread_is_main());
   GPU_render_begin();
@@ -1642,7 +1647,7 @@ void wm_window_process_events(const bContext *C)
   if (has_event) {
     GHOST_DispatchEvents(g_system);
   }
-  has_event |= wm_window_timer(C);
+  has_event |= wm_window_timers_process(C);
 #ifdef WITH_XR_OPENXR
   /* XR events don't use the regular window queues. So here we don't only trigger
    * processing/dispatching but also handling. */
@@ -1756,7 +1761,11 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
       return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_ANY:
     case GPU_BACKEND_OPENGL:
+#ifdef WITH_OPENGL_BACKEND
       return GHOST_kDrawingContextTypeOpenGL;
+#endif
+      BLI_assert_unreachable();
+      return GHOST_kDrawingContextTypeNone;
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
       return GHOST_kDrawingContextTypeVulkan;
@@ -1766,10 +1775,9 @@ GHOST_TDrawingContextType wm_ghost_drawing_context_type(const eGPUBackendType gp
     case GPU_BACKEND_METAL:
 #ifdef WITH_METAL_BACKEND
       return GHOST_kDrawingContextTypeMetal;
-#else
+#endif
       BLI_assert_unreachable();
       return GHOST_kDrawingContextTypeNone;
-#endif
   }
 
   /* Avoid control reaches end of non-void function compilation warning, which could be promoted
@@ -1895,7 +1903,7 @@ void WM_event_timer_sleep(wmWindowManager *wm,
   }
 }
 
-wmTimer *WM_event_add_timer(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
+wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
 {
   wmTimer *wt = MEM_callocN(sizeof(wmTimer), "window timer");
   BLI_assert(timestep >= 0.0f);
@@ -1912,7 +1920,7 @@ wmTimer *WM_event_add_timer(wmWindowManager *wm, wmWindow *win, int event_type, 
   return wt;
 }
 
-wmTimer *WM_event_add_timer_notifier(wmWindowManager *wm,
+wmTimer *WM_event_timer_add_notifier(wmWindowManager *wm,
                                      wmWindow *win,
                                      uint type,
                                      double timestep)
@@ -1934,7 +1942,7 @@ wmTimer *WM_event_add_timer_notifier(wmWindowManager *wm,
   return wt;
 }
 
-void wm_window_delete_removed_timers(wmWindowManager *wm)
+void wm_window_timers_delete_removed(wmWindowManager *wm)
 {
   LISTBASE_FOREACH_MUTABLE (wmTimer *, wt, &wm->timers) {
     if ((wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) == 0) {
@@ -1947,10 +1955,29 @@ void wm_window_delete_removed_timers(wmWindowManager *wm)
   }
 }
 
-void WM_event_remove_timer(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *timer)
+void WM_event_timer_free_data(wmTimer *timer)
+{
+  if (timer->customdata != NULL && (timer->flags & WM_TIMER_NO_FREE_CUSTOM_DATA) == 0) {
+    MEM_freeN(timer->customdata);
+    timer->customdata = NULL;
+  }
+}
+
+void WM_event_timers_free_all(wmWindowManager *wm)
+{
+  BLI_assert_msg(BLI_listbase_is_empty(&wm->windows),
+                 "This should only be called when freeing the window-manager");
+  wmTimer *timer;
+  while ((timer = BLI_pophead(&wm->timers))) {
+    WM_event_timer_free_data(timer);
+    MEM_freeN(timer);
+  }
+}
+
+void WM_event_timer_remove(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *timer)
 {
   /* Extra security check. */
-  if (BLI_findindex(&wm->timers, timer) < 0) {
+  if (BLI_findindex(&wm->timers, timer) == -1) {
     return;
   }
 
@@ -1970,18 +1997,15 @@ void WM_event_remove_timer(wmWindowManager *wm, wmWindow *UNUSED(win), wmTimer *
     }
   }
 
-  /* Immediately free customdata if requested, so that invalid usages of that data after
-   * calling `WM_event_remove_timer` can be easily spotted (through ASAN errors e.g.). */
-  if (timer->customdata != NULL && (timer->flags & WM_TIMER_NO_FREE_CUSTOM_DATA) == 0) {
-    MEM_freeN(timer->customdata);
-    timer->customdata = NULL;
-  }
+  /* Immediately free `customdata` if requested, so that invalid usages of that data after
+   * calling `WM_event_timer_remove` can be easily spotted (through ASAN errors e.g.). */
+  WM_event_timer_free_data(timer);
 }
 
-void WM_event_remove_timer_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer)
+void WM_event_timer_remove_notifier(wmWindowManager *wm, wmWindow *win, wmTimer *timer)
 {
   timer->customdata = NULL;
-  WM_event_remove_timer(wm, win, timer);
+  WM_event_timer_remove(wm, win, timer);
 }
 
 /** \} */
