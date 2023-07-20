@@ -38,7 +38,7 @@ set(SRC
   bpy_app_openvdb.cc
   bpy_app_sdl.cc
   bpy_app_timers.cc
-  bpy_app_translations.c
+  bpy_app_translations.cc
   bpy_app_usd.c
   bpy_capi_utils.c
   bpy_driver.c
