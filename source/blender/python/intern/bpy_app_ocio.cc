@@ -23,7 +23,7 @@ static PyStructSequence_Field app_ocio_info_fields[] = {
     {"supported", "Boolean, True when Blender is built with OpenColorIO support"},
     {"version", "The OpenColorIO version as a tuple of 3 numbers"},
     {"version_string", "The OpenColorIO version formatted as a string"},
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_ocio_info_desc = {
@@ -46,8 +46,8 @@ static PyObject *make_ocio_info(void)
 #endif
 
   ocio_info = PyStructSequence_New(&BlenderAppOCIOType);
-  if (ocio_info == NULL) {
-    return NULL;
+  if (ocio_info == nullptr) {
+    return nullptr;
   }
 
 #ifndef WITH_OCIO
@@ -60,7 +60,7 @@ static PyObject *make_ocio_info(void)
   curversion = OCIO_getVersionHex();
   SetObjItem(PyBool_FromLong(1));
   SetObjItem(
-      PyC_Tuple_Pack_I32(curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256));
+      PyC_Tuple_Pack_I32({curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256}));
   SetObjItem(PyUnicode_FromFormat(
       "%2d, %2d, %2d", curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256));
 #else
@@ -71,7 +71,7 @@ static PyObject *make_ocio_info(void)
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(ocio_info);
-    return NULL;
+    return nullptr;
   }
 
 #undef SetStrItem
@@ -89,8 +89,8 @@ PyObject *BPY_app_ocio_struct(void)
   ret = make_ocio_info();
 
   /* prevent user from creating new instances */
-  BlenderAppOCIOType.tp_init = NULL;
-  BlenderAppOCIOType.tp_new = NULL;
+  BlenderAppOCIOType.tp_init = nullptr;
+  BlenderAppOCIOType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppOCIOType.tp_hash = (hashfunc)_Py_HashPointer;
 

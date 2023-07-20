@@ -32,7 +32,7 @@ set(SRC
   bpy_app_ffmpeg.cc
   bpy_app_handlers.cc
   bpy_app_icons.cc
-  bpy_app_ocio.c
+  bpy_app_ocio.cc
   bpy_app_oiio.c
   bpy_app_opensubdiv.c
   bpy_app_openvdb.c
