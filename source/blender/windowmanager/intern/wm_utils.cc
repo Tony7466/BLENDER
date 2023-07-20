@@ -25,14 +25,14 @@ void WM_generic_callback_free(wmGenericCallback *callback)
   MEM_freeN(callback);
 }
 
-static void do_nothing(struct bContext *UNUSED(C), void *UNUSED(user_data)) {}
+static void do_nothing(struct bContext * /*C*/, void * /*user_data*/) {}
 
 wmGenericCallback *WM_generic_callback_steal(wmGenericCallback *callback)
 {
-  wmGenericCallback *new_callback = MEM_dupallocN(callback);
+  wmGenericCallback *new_callback = static_cast<wmGenericCallback *>(MEM_dupallocN(callback));
   callback->exec = do_nothing;
-  callback->free_user_data = NULL;
-  callback->user_data = NULL;
+  callback->free_user_data = nullptr;
+  callback->user_data = nullptr;
   return new_callback;
 }
 
