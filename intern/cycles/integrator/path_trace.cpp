@@ -245,7 +245,7 @@ template<typename Callback>
 static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>> &path_trace_works,
                                          const vector<WorkBalanceInfo> &work_balance_infos,
                                          const BufferParams &buffer_params,
-                                         const int overscan,
+                                         const int overscan, const bool bake,
                                          const Callback &callback)
 {
   const int num_works = path_trace_works.size();
@@ -268,15 +268,32 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   VLOG_INFO << "Initial Slice sizes";
   int slice_stride = 0;
   int slice_sizes[num_works];
-    int slice_size_set[] = { 6, 1 };
   for(int i = 0;i < num_works;i++) {
-    const double weight = work_balance_infos[i].weight;
-      int slice_size = /*slice_size_set[i % 2]; */ weight/work_balance_infos[smallest_weight].weight;
-    VLOG_INFO << "<" << i << "> size:" << slice_size << "  weight:" << work_balance_infos[i].weight << std::endl;
-    slice_sizes[i] = slice_size;
-    slice_stride += slice_size;
+        const double weight = work_balance_infos[i].weight;
+        int slice_size = weight/work_balance_infos[smallest_weight].weight;
+        VLOG_INFO << "<" << i << "> size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
+        slice_sizes[i] = slice_size;
+        slice_stride += slice_size;
   }
-
+  /* Bake roughness is current broken this */
+  if(bake) {
+    /* enlarge slices so that there are only 2 big slices */
+      int remaining_height = window_height - slice_stride;
+      for(int i = 0;i < num_works;i++) {
+          const double weight = work_balance_infos[i].weight;
+          int slice_size = remaining_height*weight;
+          slice_sizes[i] += slice_size;
+          slice_stride += slice_size;
+          VLOG_INFO << "<" << i << "> enlarge size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
+      }
+      /* if there are any remaining scanlines add them to the device with the highest weight */
+      int leftover_scanlines = window_height - slice_stride;
+      if(leftover_scanlines > 0) {
+          VLOG_INFO << "Left over scanlines:" << leftover_scanlines;
+          slice_sizes[largest_weight] += leftover_scanlines;
+      }
+  }
+    
   int slices = window_height/slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
@@ -396,7 +413,7 @@ void PathTrace::update_allocated_work_buffer_params()
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
-                               overscan,
+                               overscan, device_scene_->data.bake.use,
                                [](PathTraceWork *path_trace_work, const BufferParams &params) {
                                  RenderBuffers *buffers = path_trace_work->get_render_buffers();
                                  buffers->reset(params);
@@ -437,7 +454,7 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                scaled_big_tile_params,
-                               overscan,
+                               overscan, device_scene_->data.bake.use,
                                [&](PathTraceWork *path_trace_work, const BufferParams params) {
                                  path_trace_work->set_effective_buffer_params(
                                      scaled_full_params, scaled_big_tile_params, params);
