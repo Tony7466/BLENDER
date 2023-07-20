@@ -699,7 +699,7 @@ struct EraseOperationExecutor {
 
     /* Decrease the opacities. */
     bool opacity_changed = false;
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+    threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         if (contains_point(screen_space_positions[src_point])) {
           const float point_opacity = src_opacity[src_point];
@@ -720,7 +720,7 @@ struct EraseOperationExecutor {
     };
 
     Array<bool> src_remove_point(src_points_num);
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+    threading::parallel_for(src.points_range(), 2048, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         src_remove_point[src_point] = is_point_transparent(src_point);
       }
@@ -814,7 +814,7 @@ struct EraseOperationExecutor {
     }
 
     /* Shift indices in cyclic curves. */
-    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
+    threading::parallel_for(src.curves_range(), 4096, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const int pivot_point = src_pivot_point[src_curve];
 
@@ -868,7 +868,7 @@ struct EraseOperationExecutor {
     /* Build destination curves geometry. */
     dst.resize(dst_points_num, dst_curves_num);
 
-    array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write(), 256);
+    array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write());
 
     bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
     const AnonymousAttributePropagationInfo propagation_info{};
