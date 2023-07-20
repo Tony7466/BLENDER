@@ -514,7 +514,7 @@ bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
     /* Loop over op-code's, the op-code arguments are ignored. */
     for (Py_ssize_t i = 0; i < code_len; i++) {
       const int opcode = _Py_OPCODE(codestr[i]);
-      if (is_opcode_secure(opcode)) {
+      if (!is_opcode_secure(opcode)) {
         if (verbose) {
           fprintf(stderr,
                   "\t%s: restricted access disallows opcode '%d', "
