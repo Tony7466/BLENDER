@@ -559,6 +559,112 @@ static void write_node_socket_interface(BlendWriter *writer, bNodeSocket *sock)
   write_node_socket_default_value(writer, sock);
 }
 
+static void write_node_storage(BlendWriter *writer, bNodeTree *ntree, bNode *node)
+{
+  if (node->storage == nullptr) {
+    return;
+  }
+
+  if (node->typeinfo->blend_write) {
+    node->typeinfo->blend_write(writer, ntree, node);
+    return;
+  }
+
+  if (ELEM(ntree->type, NTREE_SHADER, NTREE_GEOMETRY) &&
+      ELEM(node->type, SH_NODE_CURVE_VEC, SH_NODE_CURVE_RGB, SH_NODE_CURVE_FLOAT))
+  {
+    BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
+  }
+  else if (ntree->type == NTREE_SHADER && (node->type == SH_NODE_SCRIPT)) {
+    NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+    if (nss->bytecode) {
+      BLO_write_string(writer, nss->bytecode);
+    }
+    BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
+  }
+  else if ((ntree->type == NTREE_COMPOSIT) && ELEM(node->type,
+                                                   CMP_NODE_TIME,
+                                                   CMP_NODE_CURVE_VEC,
+                                                   CMP_NODE_CURVE_RGB,
+                                                   CMP_NODE_HUECORRECT))
+  {
+    BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
+  }
+  else if ((ntree->type == NTREE_TEXTURE) &&
+           ELEM(node->type, TEX_NODE_CURVE_RGB, TEX_NODE_CURVE_TIME))
+  {
+    BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
+  }
+  else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_MOVIEDISTORTION)) {
+    /* pass */
+  }
+  else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_GLARE)) {
+    /* Simple forward compatibility for fix for #50736.
+     * Not ideal (there is no ideal solution here), but should do for now. */
+    NodeGlare *ndg = static_cast<NodeGlare *>(node->storage);
+    /* Not in undo case. */
+    if (!BLO_write_is_undo(writer)) {
+      switch (ndg->type) {
+        case 2: /* Grrrr! magic numbers :( */
+          ndg->angle = ndg->streaks;
+          break;
+        case 0:
+          ndg->angle = ndg->star_45;
+          break;
+        default:
+          break;
+      }
+    }
+    BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
+  }
+  else if ((ntree->type == NTREE_COMPOSIT) &&
+           ELEM(node->type, CMP_NODE_CRYPTOMATTE, CMP_NODE_CRYPTOMATTE_LEGACY))
+  {
+    NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+    BLO_write_string(writer, nc->matte_id);
+    LISTBASE_FOREACH (CryptomatteEntry *, entry, &nc->entries) {
+      BLO_write_struct(writer, CryptomatteEntry, entry);
+    }
+    BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
+  }
+  else if (node->type == FN_NODE_INPUT_STRING) {
+    NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
+    if (storage->string) {
+      BLO_write_string(writer, storage->string);
+    }
+    BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
+  }
+  else if (node->typeinfo != &blender::bke::NodeTypeUndefined) {
+    BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
+  }
+
+  if (node->type == CMP_NODE_OUTPUT_FILE) {
+    /* Inputs have their own storage data. */
+    NodeImageMultiFile *nimf = (NodeImageMultiFile *)node->storage;
+    BKE_image_format_blend_write(writer, &nimf->format);
+
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+      NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(sock->storage);
+      BLO_write_struct(writer, NodeImageMultiFileSocket, sockdata);
+      BKE_image_format_blend_write(writer, &sockdata->format);
+    }
+  }
+  if (ELEM(node->type, CMP_NODE_IMAGE, CMP_NODE_R_LAYERS)) {
+    /* Write extra socket info. */
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+      BLO_write_struct(writer, NodeImageLayer, sock->storage);
+    }
+  }
+  if (node->type == GEO_NODE_REPEAT_OUTPUT) {
+    const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
+        node->storage);
+    BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
+    for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+      BLO_write_string(writer, item.name);
+    }
+  }
+}
+
 void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
 {
   BKE_id_blend_write(writer, &ntree->id);
@@ -581,110 +687,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       write_node_socket(writer, sock);
     }
 
-    if (node->storage) {
-      if (ELEM(ntree->type, NTREE_SHADER, NTREE_GEOMETRY) &&
-          ELEM(node->type, SH_NODE_CURVE_VEC, SH_NODE_CURVE_RGB, SH_NODE_CURVE_FLOAT))
-      {
-        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
-      }
-      else if (ntree->type == NTREE_SHADER && (node->type == SH_NODE_SCRIPT)) {
-        NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-        if (nss->bytecode) {
-          BLO_write_string(writer, nss->bytecode);
-        }
-        BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
-      }
-      else if ((ntree->type == NTREE_COMPOSIT) && ELEM(node->type,
-                                                       CMP_NODE_TIME,
-                                                       CMP_NODE_CURVE_VEC,
-                                                       CMP_NODE_CURVE_RGB,
-                                                       CMP_NODE_HUECORRECT))
-      {
-        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
-      }
-      else if ((ntree->type == NTREE_TEXTURE) &&
-               ELEM(node->type, TEX_NODE_CURVE_RGB, TEX_NODE_CURVE_TIME))
-      {
-        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
-      }
-      else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_MOVIEDISTORTION)) {
-        /* pass */
-      }
-      else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_GLARE)) {
-        /* Simple forward compatibility for fix for #50736.
-         * Not ideal (there is no ideal solution here), but should do for now. */
-        NodeGlare *ndg = static_cast<NodeGlare *>(node->storage);
-        /* Not in undo case. */
-        if (!BLO_write_is_undo(writer)) {
-          switch (ndg->type) {
-            case 2: /* Grrrr! magic numbers :( */
-              ndg->angle = ndg->streaks;
-              break;
-            case 0:
-              ndg->angle = ndg->star_45;
-              break;
-            default:
-              break;
-          }
-        }
-        BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
-      }
-      else if ((ntree->type == NTREE_COMPOSIT) &&
-               ELEM(node->type, CMP_NODE_CRYPTOMATTE, CMP_NODE_CRYPTOMATTE_LEGACY))
-      {
-        NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-        BLO_write_string(writer, nc->matte_id);
-        LISTBASE_FOREACH (CryptomatteEntry *, entry, &nc->entries) {
-          BLO_write_struct(writer, CryptomatteEntry, entry);
-        }
-        BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
-      }
-      else if (node->type == FN_NODE_INPUT_STRING) {
-        NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
-        if (storage->string) {
-          BLO_write_string(writer, storage->string);
-        }
-        BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
-      }
-      else if (node->typeinfo != &blender::bke::NodeTypeUndefined) {
-        BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
-      }
-    }
-
-    if (node->type == CMP_NODE_OUTPUT_FILE) {
-      /* Inputs have their own storage data. */
-      NodeImageMultiFile *nimf = (NodeImageMultiFile *)node->storage;
-      BKE_image_format_blend_write(writer, &nimf->format);
-
-      LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
-            sock->storage);
-        BLO_write_struct(writer, NodeImageMultiFileSocket, sockdata);
-        BKE_image_format_blend_write(writer, &sockdata->format);
-      }
-    }
-    if (ELEM(node->type, CMP_NODE_IMAGE, CMP_NODE_R_LAYERS)) {
-      /* Write extra socket info. */
-      LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-        BLO_write_struct(writer, NodeImageLayer, sock->storage);
-      }
-    }
-    if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      const NodeGeometrySimulationOutput &storage =
-          *static_cast<const NodeGeometrySimulationOutput *>(node->storage);
-      BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
-      for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
-    }
-    if (node->type == GEO_NODE_REPEAT_OUTPUT) {
-      const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
-          node->storage);
-      BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
-      for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-        BLO_write_string(writer, item.name);
-      }
-    }
+    write_node_storage(writer, ntree, node);
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -737,6 +740,103 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->default_attribute_name);
   BLO_read_data_address(reader, &sock->panel);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+}
+
+static void read_node_storage(BlendDataReader *reader, bNodeTree *ntree, bNode *node)
+{
+  if (node->type == CMP_NODE_MOVIEDISTORTION) {
+    /* Do nothing, this is runtime cache and hence handled by generic code using
+     * `IDTypeInfo.foreach_cache` callback. */
+    return;
+  }
+
+  BLO_read_data_address(reader, &node->storage);
+
+  const bNodeType *node_type = nodeTypeFind(node->idname);
+  if (node_type && node_type->blend_data_read) {
+    node_type->blend_data_read(reader, ntree, node);
+    return;
+  }
+
+  if (node->storage) {
+    switch (node->type) {
+      case SH_NODE_CURVE_VEC:
+      case SH_NODE_CURVE_RGB:
+      case SH_NODE_CURVE_FLOAT:
+      case CMP_NODE_TIME:
+      case CMP_NODE_CURVE_VEC:
+      case CMP_NODE_CURVE_RGB:
+      case CMP_NODE_HUECORRECT:
+      case TEX_NODE_CURVE_RGB:
+      case TEX_NODE_CURVE_TIME: {
+        BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
+        break;
+      }
+      case SH_NODE_SCRIPT: {
+        NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+        BLO_read_data_address(reader, &nss->bytecode);
+        break;
+      }
+      case SH_NODE_TEX_POINTDENSITY: {
+        NodeShaderTexPointDensity *npd = static_cast<NodeShaderTexPointDensity *>(node->storage);
+        npd->pd = blender::dna::shallow_zero_initialize();
+        break;
+      }
+      case SH_NODE_TEX_IMAGE: {
+        NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
+        tex->iuser.scene = nullptr;
+        break;
+      }
+      case SH_NODE_TEX_ENVIRONMENT: {
+        NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
+        tex->iuser.scene = nullptr;
+        break;
+      }
+      case CMP_NODE_IMAGE:
+      case CMP_NODE_R_LAYERS:
+      case CMP_NODE_VIEWER:
+      case CMP_NODE_SPLITVIEWER: {
+        ImageUser *iuser = static_cast<ImageUser *>(node->storage);
+        iuser->scene = nullptr;
+        break;
+      }
+      case CMP_NODE_CRYPTOMATTE_LEGACY:
+      case CMP_NODE_CRYPTOMATTE: {
+        NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+        BLO_read_data_address(reader, &nc->matte_id);
+        BLO_read_list(reader, &nc->entries);
+        BLI_listbase_clear(&nc->runtime.layers);
+        break;
+      }
+      case TEX_NODE_IMAGE: {
+        ImageUser *iuser = static_cast<ImageUser *>(node->storage);
+        iuser->scene = nullptr;
+        break;
+      }
+      case CMP_NODE_OUTPUT_FILE: {
+        NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
+        BKE_image_format_blend_read_data(reader, &nimf->format);
+        break;
+      }
+      case FN_NODE_INPUT_STRING: {
+        NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
+        BLO_read_data_address(reader, &storage->string);
+        break;
+      }
+      case GEO_NODE_REPEAT_OUTPUT: {
+        NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
+            node->storage);
+        BLO_read_data_address(reader, &storage.items);
+        for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+          BLO_read_data_address(reader, &item.name);
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
 }
 
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
@@ -799,102 +899,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &node->prop);
     IDP_BlendDataRead(reader, &node->prop);
 
-    if (node->type == CMP_NODE_MOVIEDISTORTION) {
-      /* Do nothing, this is runtime cache and hence handled by generic code using
-       * `IDTypeInfo.foreach_cache` callback. */
-    }
-    else {
-      BLO_read_data_address(reader, &node->storage);
-    }
-
-    if (node->storage) {
-      switch (node->type) {
-        case SH_NODE_CURVE_VEC:
-        case SH_NODE_CURVE_RGB:
-        case SH_NODE_CURVE_FLOAT:
-        case CMP_NODE_TIME:
-        case CMP_NODE_CURVE_VEC:
-        case CMP_NODE_CURVE_RGB:
-        case CMP_NODE_HUECORRECT:
-        case TEX_NODE_CURVE_RGB:
-        case TEX_NODE_CURVE_TIME: {
-          BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
-          break;
-        }
-        case SH_NODE_SCRIPT: {
-          NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-          BLO_read_data_address(reader, &nss->bytecode);
-          break;
-        }
-        case SH_NODE_TEX_POINTDENSITY: {
-          NodeShaderTexPointDensity *npd = static_cast<NodeShaderTexPointDensity *>(node->storage);
-          npd->pd = blender::dna::shallow_zero_initialize();
-          break;
-        }
-        case SH_NODE_TEX_IMAGE: {
-          NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
-          tex->iuser.scene = nullptr;
-          break;
-        }
-        case SH_NODE_TEX_ENVIRONMENT: {
-          NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
-          tex->iuser.scene = nullptr;
-          break;
-        }
-        case CMP_NODE_IMAGE:
-        case CMP_NODE_R_LAYERS:
-        case CMP_NODE_VIEWER:
-        case CMP_NODE_SPLITVIEWER: {
-          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
-          iuser->scene = nullptr;
-          break;
-        }
-        case CMP_NODE_CRYPTOMATTE_LEGACY:
-        case CMP_NODE_CRYPTOMATTE: {
-          NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-          BLO_read_data_address(reader, &nc->matte_id);
-          BLO_read_list(reader, &nc->entries);
-          BLI_listbase_clear(&nc->runtime.layers);
-          break;
-        }
-        case TEX_NODE_IMAGE: {
-          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
-          iuser->scene = nullptr;
-          break;
-        }
-        case CMP_NODE_OUTPUT_FILE: {
-          NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
-          BKE_image_format_blend_read_data(reader, &nimf->format);
-          break;
-        }
-        case FN_NODE_INPUT_STRING: {
-          NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
-          BLO_read_data_address(reader, &storage->string);
-          break;
-        }
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
-          break;
-        }
-        case GEO_NODE_REPEAT_OUTPUT: {
-          NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
-          break;
-        }
-
-        default:
-          break;
-      }
-    }
+    read_node_storage(reader, ntree, node);
   }
   BLO_read_list(reader, &ntree->links);
   BLI_assert(ntree->all_nodes().size() == BLI_listbase_count(&ntree->nodes));

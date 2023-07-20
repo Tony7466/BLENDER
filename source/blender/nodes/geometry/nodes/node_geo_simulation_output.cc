@@ -27,6 +27,8 @@
 
 #include "NOD_add_node_search.hh"
 
+#include "BLO_read_write.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -1029,6 +1031,25 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
+static void node_blend_write(BlendWriter *writer, bNodeTree * /*ntree*/, bNode *node)
+{
+  const NodeGeometrySimulationOutput &storage = node_storage(*node);
+  BLO_write_struct(writer, NodeGeometrySimulationOutput, &storage);
+  BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
+  for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+static void node_blend_read_data(BlendDataReader *reader, bNodeTree * /*ntree*/, bNode *node)
+{
+  NodeGeometrySimulationOutput &storage = node_storage(*node);
+  BLO_read_data_address(reader, &storage.items);
+  for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+    BLO_read_data_address(reader, &item.name);
+  }
+}
+
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
   NodeGeometrySimulationOutput &storage = node_storage(*node);
@@ -1079,6 +1100,8 @@ void register_node_type_geo_simulation_output()
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = file_ns::node_insert_link;
+  ntype.blend_write = file_ns::node_blend_write;
+  ntype.blend_data_read = file_ns::node_blend_read_data;
   node_type_storage(&ntype,
                     "NodeGeometrySimulationOutput",
                     file_ns::node_free_storage,

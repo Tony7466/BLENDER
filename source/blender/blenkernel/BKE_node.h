@@ -248,6 +248,12 @@ typedef struct bNodeType {
 
   char storagename[64]; /* struct name for DNA */
 
+  /** Reads/writes `node->storage`. */
+  void (*blend_write)(struct BlendWriter *writer, struct bNodeTree *ntree, struct bNode *node);
+  void (*blend_data_read)(struct BlendDataReader *reader,
+                          struct bNodeTree *ntree,
+                          struct bNode *node);
+
   /* Draw the option buttons on the node */
   void (*draw_buttons)(struct uiLayout *, struct bContext *C, struct PointerRNA *ptr);
   /* Additional parameters in the side panel */

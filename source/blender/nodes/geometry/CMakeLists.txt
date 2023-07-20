@@ -7,6 +7,7 @@ set(INC
   ..
   ../intern
   ../../editors/include
+  ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
