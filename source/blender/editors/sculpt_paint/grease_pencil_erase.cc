@@ -174,7 +174,7 @@ struct EraseOperationExecutor {
   /**
    * Checks if a point is inside the eraser or not.
    */
-  bool contains_point(const float2 &point) const
+  inline bool contains_point(const float2 &point) const
   {
     return (math::distance_squared(point, this->mouse_position) <=
             this->eraser_radius * this->eraser_radius);
