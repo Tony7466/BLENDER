@@ -54,7 +54,7 @@ set(SRC
   intern/wm_playanim.cc
   intern/wm_splash_screen.cc
   intern/wm_stereo.cc
-  intern/wm_subwindow.c
+  intern/wm_subwindow.cc
   intern/wm_surface.c
   intern/wm_toolsystem.c
   intern/wm_tooltip.c
