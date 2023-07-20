@@ -425,10 +425,7 @@ void ramer_douglas_peucker_simplify(const Span<float3> src,
     float max_dist = -1.0f;
     int max_index = -1;
     for (const int64_t index : slice.index_range().drop_front(1).drop_back(1)) {
-      float3 point = slice[index];
-      float3 point_on_line;
-      closest_to_line_segment_v3(point_on_line, point, slice.first(), slice.last());
-      float dist = math::distance(point_on_line, point);
+      const float dist = dist_to_line_v3(slice[index], slice.first(), slice.last());
       if (dist > max_dist) {
         max_dist = dist;
         max_index = index;
