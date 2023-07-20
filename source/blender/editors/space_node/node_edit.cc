@@ -1124,6 +1124,15 @@ void node_set_hidden_sockets(bNode *node, int set)
   }
 }
 
+bool node_is_previewable(const bNode &node)
+{
+  if (node.owner_tree().type == NTREE_SHADER) {
+    return !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
+             node.type == SH_NODE_OUTPUT_MATERIAL);
+  }
+  return node.typeinfo->flag & NODE_PREVIEW;
+}
+
 static bool cursor_isect_multi_input_socket(const float2 &cursor, const bNodeSocket &socket)
 {
   const float node_socket_height = node_socket_calculate_height(socket);
@@ -1568,9 +1577,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0 &&
-          snode->nodetree->type != NTREE_SHADER)
-      {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1590,9 +1597,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0 &&
-          snode->nodetree->type != NTREE_SHADER)
-      {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1650,8 +1655,6 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
   if ((snode == nullptr) || (snode->edittree == nullptr)) {
     return OPERATOR_CANCELLED;
   }
-
-  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   node_flag_toggle_exec(snode, NODE_PREVIEW);
 

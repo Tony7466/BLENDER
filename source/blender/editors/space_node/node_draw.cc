@@ -355,8 +355,7 @@ static void node_update_basis(const bContext &C,
   RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
 
   const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
-  const bool inputs_first = node.inputs.first &&
-                            !(node.outputs.first || (node.flag & NODE_PREVIEW) || node_options);
+  const bool inputs_first = node.inputs.first && !(node.outputs.first || node_options);
 
   /* Get "global" coordinates. */
   float2 loc = node_to_view(node, float2(0));
@@ -533,7 +532,7 @@ static void node_update_basis(const bContext &C,
   }
 
   /* Little bit of space in end. */
-  if (node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) {
+  if (node.inputs.first || (node.flag & NODE_OPTIONS) == 0) {
     dy -= NODE_DYS / 2;
   }
 
@@ -2284,7 +2283,7 @@ static void node_draw_basis(const bContext &C,
   float iconofs = rct.xmax - 0.35f * U.widget_unit;
 
   /* Preview. */
-  if (node.typeinfo->flag & NODE_PREVIEW || ntree.type == NTREE_SHADER) {
+  if (node_is_previewable(node)) {
     iconofs -= iconbutw;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
     uiBut *but = uiDefIconBut(&block,

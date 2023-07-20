@@ -354,34 +354,23 @@ static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &tre
  * should be the path to the node's nodetree */
 static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepath, bNode *node)
 {
-  bNodeSocket *node_preview_socket = nullptr;
   bNode *output_node = nullptr;
   bNodeSocket *out_surface_socket = nullptr;
   bNodeTree *main_nt = treepath.first()->nodetree;
-  { /* Ensure node is previewable. */
-    if (BLI_listbase_is_empty(&node->outputs) && node->type != NODE_GROUP_OUTPUT) {
-      return;
-    }
-    else if (node->type == NODE_GROUP_OUTPUT) {
-      /* if the output node of a nodegroup is previewed then preview the group instance instead */
-      const bNodeTreePath *path = treepath.pop_last();
-      node = nodeFindNodebyName(path->prev->nodetree, path->node_name);
-    }
-    /* find the node previewable socket */
-    node_preview_socket = node_find_preview_socket(node);
-    if (node_preview_socket == nullptr) {
-      return;
-    }
+  bNodeSocket *node_preview_socket = node_find_preview_socket(node);
+  if (node_preview_socket == nullptr) {
+    return;
   }
   { /* Ensure output is usable. */
     for (bNode *node : main_nt->all_nodes()) {
-      if (node->type == SH_NODE_OUTPUT_MATERIAL) {
+      if (node->type == SH_NODE_OUTPUT_MATERIAL && node->flag & NODE_ACTIVE) {
         output_node = node;
         break;
       }
     }
     if (output_node == nullptr) {
       output_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_MATERIAL);
+      nodeSetActive(main_nt, output_node);
     }
 
     out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
@@ -398,7 +387,6 @@ static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepat
 
   connect_nested_node_to_node(
       treepath, node, node_preview_socket, output_node, out_surface_socket);
-  nodeSetActive(main_nt, output_node);
   BKE_ntree_update_main_tree(G.pr_main, main_nt, nullptr);
 }
 
@@ -412,27 +400,14 @@ static void connect_nodes_to_aovs(const Vector<const bNodeTreePath *> &treepath,
   }
   bNodeTree *main_nt = treepath.first()->nodetree;
   for (bNode *node : nodes) {
-    bNodeSocket *node_preview_socket = nullptr;
-    bNode *aov_node = nullptr;
-    bNodeSocket *aov_socket = nullptr;
-    { /* Ensure node is previewable. */
-      if (BLI_listbase_is_empty(&node->outputs) && node->type != NODE_GROUP_OUTPUT) {
-        continue;
-      }
-      /* find the node previewable socket */
-      node_preview_socket = node_find_preview_socket(node);
-      if (node_preview_socket == nullptr) {
-        /* This implementation of AOVs does not support output nodes for now
-         * those nodes should be redirected to individual rendering */
-        continue;
-      }
-    }
-    { /* Add AOV node. */
-      aov_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_AOV);
-      strcpy(reinterpret_cast<NodeShaderOutputAOV *>(aov_node->storage)->name, node->name);
+    bNodeSocket *node_preview_socket = node_find_preview_socket(node);
 
-      aov_socket = nodeFindSocket(aov_node, SOCK_IN, "Color");
+    bNode *aov_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_AOV);
+    strcpy(reinterpret_cast<NodeShaderOutputAOV *>(aov_node->storage)->name, node->name);
+    if (node_preview_socket == nullptr) {
+      continue;
     }
+    bNodeSocket *aov_socket = nodeFindSocket(aov_node, SOCK_IN, "Color");
 
     connect_nested_node_to_node(treepath, node, node_preview_socket, aov_node, aov_socket);
   }
@@ -485,7 +460,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   { /* Disconnect everything from the material output. */
     bNode *output_node = nullptr;
     for (bNode *node : treepath.first()->nodetree->all_nodes()) {
-      if (node->type == SH_NODE_OUTPUT_MATERIAL) {
+      if (node->type == SH_NODE_OUTPUT_MATERIAL && node->flag & NODE_ACTIVE) {
         output_node = node;
         break;
       }
