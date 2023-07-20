@@ -15,7 +15,9 @@
 
 #include "BKE_camera.h"
 #include "DEG_depsgraph_query.h"
+#include "ED_view3d.h"
 #include "RE_pipeline.h"
+#include "render_types.h"
 
 #include "eevee_camera.hh"
 #include "eevee_instance.hh"
@@ -110,13 +112,7 @@ void Camera::sync()
     data.uv_bias = float2(0.0f);
   }
   else if (inst_.render) {
-    if (inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) {
-      RE_GetCameraWindowWithOverscan(
-          inst_.render->re, inst_.scene->eevee.overscan / 100.0f, data.winmat.ptr());
-    }
-    else {
-      RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
-    }
+    RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
     RE_GetCameraModelMatrix(inst_.render->re, camera_eval, data.viewinv.ptr());
     invert_m4_m4(data.viewmat.ptr(), data.viewinv.ptr());
     invert_m4_m4(data.wininv.ptr(), data.winmat.ptr());
@@ -134,6 +130,42 @@ void Camera::sync()
     data.persinv = math::invert(data.persmat);
     data.uv_scale = float2(1.0f);
     data.uv_bias = float2(0.0f);
+  }
+
+  if ((inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) && (inst_.drw_view || inst_.render)) {
+    float overscan = inst_.scene->eevee.overscan / 100.0f;
+
+    /* Similar to RE_GetCameraWindowWithOverscan, but support Viewport too. */
+    CameraParams params;
+    if (inst_.render) {
+      params.is_ortho = inst_.render->re->winmat[3][3] != 0.0f;
+      params.clip_start = inst_.render->re->clip_start;
+      params.clip_end = inst_.render->re->clip_end;
+      params.viewplane = inst_.render->re->viewplane;
+    }
+    else {
+      params.is_ortho = ED_view3d_viewplane_get(inst_.depsgraph,
+                                                inst_.v3d,
+                                                inst_.rv3d,
+                                                UNPACK2(inst_.film.display_extent_get()),
+                                                &params.viewplane,
+                                                &params.clip_start,
+                                                &params.clip_end,
+                                                nullptr);
+    }
+
+    overscan *= math::max(BLI_rctf_size_x(&params.viewplane), BLI_rctf_size_y(&params.viewplane));
+
+    params.viewplane.xmin -= overscan;
+    params.viewplane.xmax += overscan;
+    params.viewplane.ymin -= overscan;
+    params.viewplane.ymax += overscan;
+    BKE_camera_params_compute_matrix(&params);
+
+    data.winmat = float4x4(params.winmat);
+    data.wininv = math::invert(data.winmat);
+    data.persmat = data.winmat * data.viewmat;
+    data.persinv = math::invert(data.persmat);
   }
 
   if (camera_eval && camera_eval->type == OB_CAMERA) {
