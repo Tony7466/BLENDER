@@ -134,9 +134,9 @@ void WM_event_print(const wmEvent *event)
 
 #ifdef WITH_INPUT_NDOF
     if (ISNDOF(event->type)) {
-      const wmNDOFMotionData *ndof = event->customdata;
+      const wmNDOFMotionData *ndof = static_cast<const wmNDOFMotionData *>(event->customdata);
       if (event->type == NDOF_MOTION) {
-        printf(", ndof: rot: (%.4f %.4f %.4f), tx: (%.4f %.4f %.4f), dt: %.4f, progress: %u",
+        printf(", ndof: rot: (%.4f %.4f %.4f), tx: (%.4f %.4f %.4f), dt: %.4f, progress: %d",
                UNPACK3(ndof->rvec),
                UNPACK3(ndof->tvec),
                ndof->dt,
@@ -159,7 +159,7 @@ void WM_event_print(const wmEvent *event)
     printf("\n");
   }
   else {
-    printf("wmEvent - NULL\n");
+    printf("wmEvent - nullptr\n");
   }
 }
 
