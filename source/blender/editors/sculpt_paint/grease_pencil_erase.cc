@@ -490,9 +490,8 @@ struct EraseOperationExecutor {
             }
           }
 
-          /* If there is no intersection with the stroke path, then the stroke should be erased if
-           * and only if all points of the stroke lie inside of the eraser. So checking if the
-           * first point is inside of the eraser should be enough.
+          /* If there is no intersection with the stroke path, then either all points lie inside
+           * the eraser, or none of them. Thus, checking for the first point should be enough.
            */
           return contains_point(screen_space_positions[src_curve_points.first()]);
         });
