@@ -49,7 +49,7 @@
 #  include "bpy_rna.h"
 #endif
 
-typedef struct {
+struct BPy_Library {
   PyObject_HEAD /* Required Python macro. */
   /* Collection iterator specific parts. */
   char relpath[FILE_MAX];
@@ -69,7 +69,7 @@ typedef struct {
    * Defaults to #G.main, Otherwise use a temporary #Main when `bmain_is_temp` is true. */
   Main *bmain;
   bool bmain_is_temp;
-} BPy_Library;
+};
 
 static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kwds);
 static PyObject *bpy_lib_enter(BPy_Library *self);
@@ -80,7 +80,7 @@ static PyMethodDef bpy_lib_methods[] = {
     {"__enter__", (PyCFunction)bpy_lib_enter, METH_NOARGS},
     {"__exit__", (PyCFunction)bpy_lib_exit, METH_VARARGS},
     {"__dir__", (PyCFunction)bpy_lib_dir, METH_NOARGS},
-    {NULL} /* sentinel */
+    {nullptr} /* sentinel */
 };
 
 static void bpy_lib_dealloc(BPy_Library *self)
@@ -90,55 +90,55 @@ static void bpy_lib_dealloc(BPy_Library *self)
 }
 
 static PyTypeObject bpy_lib_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "bpy_lib",
     /*tp_basicsize*/ sizeof(BPy_Library),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)bpy_lib_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
     /*tp_getattro*/ PyObject_GenericGetAttr,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ bpy_lib_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ offsetof(BPy_Library, dict),
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 PyDoc_STRVAR(
@@ -175,9 +175,9 @@ PyDoc_STRVAR(
 static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kw)
 {
   Main *bmain_base = CTX_data_main(BPY_context_get());
-  Main *bmain = self->ptr.data; /* Typically #G_MAIN */
+  Main *bmain = static_cast<Main *>(self->ptr.data); /* Typically #G_MAIN */
   BPy_Library *ret;
-  const char *filepath = NULL;
+  const char *filepath = nullptr;
   bool is_rel = false, is_link = false, use_assets_only = false;
   bool create_liboverrides = false, reuse_liboverrides = false,
        create_liboverrides_runtime = false;
@@ -190,7 +190,7 @@ static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *k
       "create_liboverrides",
       "reuse_liboverrides",
       "create_liboverrides_runtime",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "s" /* `filepath` */
@@ -223,22 +223,22 @@ static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *k
                                         PyC_ParseBool,
                                         &create_liboverrides_runtime))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!is_link && create_liboverrides) {
     PyErr_SetString(PyExc_ValueError, "`link` is False but `create_liboverrides` is True");
-    return NULL;
+    return nullptr;
   }
   if (!create_liboverrides && reuse_liboverrides) {
     PyErr_SetString(PyExc_ValueError,
                     "`create_liboverrides` is False but `reuse_liboverrides` is True");
-    return NULL;
+    return nullptr;
   }
   if (!create_liboverrides && create_liboverrides_runtime) {
     PyErr_SetString(PyExc_ValueError,
                     "`create_liboverrides` is False but `create_liboverrides_runtime` is True");
-    return NULL;
+    return nullptr;
   }
 
   ret = PyObject_New(BPy_Library, &bpy_lib_Type);
@@ -250,15 +250,15 @@ static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *k
   ret->bmain = bmain;
   ret->bmain_is_temp = (bmain != bmain_base);
 
-  ret->blo_handle = NULL;
+  ret->blo_handle = nullptr;
   ret->flag = ((is_link ? FILE_LINK : 0) | (is_rel ? FILE_RELPATH : 0) |
                (use_assets_only ? FILE_ASSETS_ONLY : 0));
   ret->create_liboverrides = create_liboverrides;
-  ret->liboverride_flags =
+  ret->liboverride_flags = eBKELibLinkOverride(
       create_liboverrides ?
           ((reuse_liboverrides ? BKE_LIBLINK_OVERRIDE_USE_EXISTING_LIBOVERRIDES : 0) |
            (create_liboverrides_runtime ? BKE_LIBLINK_OVERRIDE_CREATE_RUNTIME : 0)) :
-          0;
+          0);
 
   ret->dict = _PyDict_NewPresized(INDEX_ID_MAX);
 
@@ -301,11 +301,11 @@ static PyObject *bpy_lib_enter(BPy_Library *self)
 
   self->blo_handle = BLO_blendhandle_from_file(self->abspath, bf_reports);
 
-  if (self->blo_handle == NULL) {
+  if (self->blo_handle == nullptr) {
     if (BPy_reports_to_error(reports, PyExc_IOError, true) != -1) {
       PyErr_Format(PyExc_IOError, "load: %s failed to open blend file", self->abspath);
     }
-    return NULL;
+    return nullptr;
   }
 
   int i = 0, code;
@@ -329,7 +329,7 @@ static PyObject *bpy_lib_enter(BPy_Library *self)
   STRNCPY(self_from->relpath, self->relpath);
   STRNCPY(self_from->abspath, self->abspath);
 
-  self_from->blo_handle = NULL;
+  self_from->blo_handle = nullptr;
   self_from->flag = 0;
   self_from->create_liboverrides = false;
   self_from->liboverride_flags = BKE_LIBLINK_OVERRIDE_INIT;
@@ -395,7 +395,8 @@ static bool bpy_lib_exit_lapp_context_items_cb(BlendfileLinkAppendContext *lapp_
                                                BlendfileLinkAppendContextItem *item,
                                                void *userdata)
 {
-  struct LibExitLappContextItemsIterData *data = userdata;
+  struct LibExitLappContextItemsIterData *data = static_cast<LibExitLappContextItemsIterData *>(
+      userdata);
 
   /* Since `bpy_lib_exit` loops over all ID types, all items in `lapp_context` end up being looped
    * over for each ID type, so when it does not match the item can simply be skipped: it either has
@@ -410,7 +411,7 @@ static bool bpy_lib_exit_lapp_context_items_cb(BlendfileLinkAppendContext *lapp_
   ID *liboverride_id = data->py_library->create_liboverrides ?
                            BKE_blendfile_link_append_context_item_liboverrideid_get(lapp_context,
                                                                                     item) :
-                           NULL;
+                           nullptr;
 
   BLI_assert(py_list_index < data->py_list_size);
 
@@ -421,12 +422,12 @@ static bool bpy_lib_exit_lapp_context_items_cb(BlendfileLinkAppendContext *lapp_
   BLI_assert(item_src != Py_None);
 
   PyObject *py_item;
-  if (liboverride_id != NULL) {
+  if (liboverride_id != nullptr) {
     PointerRNA newid_ptr;
     RNA_id_pointer_create(liboverride_id, &newid_ptr);
     py_item = pyrna_struct_CreatePyObject(&newid_ptr);
   }
-  else if (new_id != NULL) {
+  else if (new_id != nullptr) {
     PointerRNA newid_ptr;
     RNA_id_pointer_create(new_id, &newid_ptr);
     py_item = pyrna_struct_CreatePyObject(&newid_ptr);
@@ -447,7 +448,7 @@ static bool bpy_lib_exit_lapp_context_items_cb(BlendfileLinkAppendContext *lapp_
   return true;
 }
 
-static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
+static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
 {
   Main *bmain = self->bmain;
   const bool do_append = ((self->flag & FILE_LINK) == 0);
@@ -477,7 +478,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
     const char *name_plural = BKE_idtype_idcode_to_name_plural(idcode);
     PyObject *ls = PyDict_GetItemString(self->dict, name_plural);
     // printf("lib: %s\n", name_plural);
-    if (ls == NULL || !PyList_Check(ls)) {
+    if (ls == nullptr || !PyList_Check(ls)) {
       continue;
     }
 
@@ -495,7 +496,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
 
       /* NOTE: index of item in py list is stored in userdata pointer, so that it can be found
        * later on to replace the ID name by the actual ID pointer. */
-      if (item_idname != NULL) {
+      if (item_idname != nullptr) {
         BlendfileLinkAppendContextItem *item = BKE_blendfile_link_append_context_item_add(
             lapp_context, item_idname, idcode, POINTER_FROM_INT(i));
         BKE_blendfile_link_append_context_item_library_index_enable(lapp_context, item, 0);
@@ -515,15 +516,15 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
     }
   }
 
-  BKE_blendfile_link(lapp_context, NULL);
+  BKE_blendfile_link(lapp_context, nullptr);
   if (do_append) {
-    BKE_blendfile_append(lapp_context, NULL);
+    BKE_blendfile_append(lapp_context, nullptr);
   }
   else if (create_liboverrides) {
-    BKE_blendfile_override(lapp_context, self->liboverride_flags, NULL);
+    BKE_blendfile_override(lapp_context, self->liboverride_flags, nullptr);
   }
 
-  /* If enabled, replace named items in given lists by the final matching new ID pointer. */
+/* If enabled, replace named items in given lists by the final matching new ID pointer. */
 #ifdef USE_RNA_DATABLOCKS
   idcode_step = 0;
   while ((idcode = BKE_idtype_idcode_iter_step(&idcode_step))) {
@@ -533,7 +534,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
     const char *name_plural = BKE_idtype_idcode_to_name_plural(idcode);
     PyObject *ls = PyDict_GetItemString(self->dict, name_plural);
     // printf("lib: %s\n", name_plural);
-    if (ls == NULL || !PyList_Check(ls)) {
+    if (ls == nullptr || !PyList_Check(ls)) {
       continue;
     }
 
@@ -544,8 +545,11 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
 
     /* Loop over linked items in `lapp_context` to find matching python one in the list, and
      * replace them with proper ID pointer. */
-    struct LibExitLappContextItemsIterData iter_data = {
-        .idcode = idcode, .py_library = self, .py_list = ls, .py_list_size = size};
+    LibExitLappContextItemsIterData iter_data{};
+    iter_data.idcode = idcode;
+    iter_data.py_library = self;
+    iter_data.py_list = ls;
+    iter_data.py_list_size = size;
     BKE_blendfile_link_append_context_item_foreach(
         lapp_context,
         bpy_lib_exit_lapp_context_items_cb,
@@ -555,7 +559,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *UNUSED(args))
 #endif  // USE_RNA_DATABLOCKS
 
   BLO_blendhandle_close(self->blo_handle);
-  self->blo_handle = NULL;
+  self->blo_handle = nullptr;
 
   BKE_blendfile_link_append_context_free(lapp_context);
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
