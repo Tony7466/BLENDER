@@ -627,7 +627,7 @@ static void recalcData_actedit(TransInfo *t)
   TransData2D *td2d;
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    if (t->tsnap.flag && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
+    if ((t->tsnap.flag & SCE_SNAP) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
       transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
     }
 

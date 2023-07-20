@@ -641,7 +641,7 @@ static void recalcData_nla(TransInfo *t)
    * NOTE: only do this when transform is still running, or we can't restore
    */
   if (t->state != TRANS_CANCEL) {
-    if (t->tsnap.flag) {
+    if (t->tsnap.flag & SCE_SNAP) {
       eSnapMode autosnap = t->tsnap.mode;
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
