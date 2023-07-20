@@ -452,7 +452,7 @@ struct EraseOperationExecutor {
   }
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
-    using namespace blender::bke;
+    using namespace blender::bke::greasepencil;
     Scene *scene = CTX_data_scene(&C);
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
     ARegion *region = CTX_wm_region(&C);
@@ -467,9 +467,8 @@ struct EraseOperationExecutor {
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
     bool changed = false;
-    const auto execute_eraser_on_drawing = [&](int drawing_index,
-                                               bke::greasepencil::Drawing &drawing) {
-      const CurvesGeometry &src = drawing.strokes();
+    const auto execute_eraser_on_drawing = [&](int drawing_index, Drawing &drawing) {
+      const bke::CurvesGeometry &src = drawing.strokes();
 
       /* Evaluated geometry. */
       bke::crazyspace::GeometryDeformation deformation =
@@ -488,7 +487,7 @@ struct EraseOperationExecutor {
       });
 
       /* Erasing operator. */
-      CurvesGeometry dst;
+      bke::CurvesGeometry dst;
       bool erased = false;
       switch (self.eraser_mode) {
         case GP_BRUSH_ERASER_STROKE:
@@ -512,15 +511,14 @@ struct EraseOperationExecutor {
 
     if (self.active_layer_only) {
       /* Erase only on the drawing at the current frame of the active layer. */
-      const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
-      if (drawing_index == -1) {
+      const Layer *active_layer = grease_pencil.get_active_layer();
+      Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene->r.cfra);
+
+      if (drawing == nullptr) {
         return;
       }
 
-      blender::bke::greasepencil::Drawing &drawing =
-          *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
-              grease_pencil.drawings_for_write()[drawing_index]);
-      execute_eraser_on_drawing(drawing_index, drawing);
+      execute_eraser_on_drawing(active_layer->drawing_index_at(scene->r.cfra), *drawing);
     }
     else {
       /* Erase on all editable drawings. */
