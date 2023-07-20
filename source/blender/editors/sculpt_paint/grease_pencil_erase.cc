@@ -214,7 +214,7 @@ struct EraseOperationExecutor {
     return total_points_inside;
   }
 
-  void hard_eraser(const blender::bke::CurvesGeometry &src,
+  bool hard_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
                    const bool keep_caps) const
@@ -242,9 +242,16 @@ struct EraseOperationExecutor {
      *   - points that are inside the erase are removed.
      */
     const int dst_points_num = src_points_num + total_intersections - total_points_inside;
+
+    if ((total_intersections == 0) && (total_points_inside == 0)) {
+      /* Return early if nothing to change. */
+      return false;
+    }
+
     if (dst_points_num == 0) {
-      /* Return early if no points left */
-      return;
+      /* Return early if no points left. */
+      dst.resize(0, 0);
+      return true;
     }
 
     /* Set the intersection parameters in the destination domain : a pair of int and float numbers
@@ -440,6 +447,8 @@ struct EraseOperationExecutor {
         attribute.dst.finish();
       });
     }
+
+    return true;
   }
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
@@ -457,6 +466,7 @@ struct EraseOperationExecutor {
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
+    bool changed = false;
     const auto execute_eraser_on_drawing = [&](int drawing_index,
                                                bke::greasepencil::Drawing &drawing) {
       const CurvesGeometry &src = drawing.strokes();
@@ -479,21 +489,25 @@ struct EraseOperationExecutor {
 
       /* Erasing operator. */
       CurvesGeometry dst;
+      bool erased = false;
       switch (self.eraser_mode) {
         case GP_BRUSH_ERASER_STROKE:
           // To be implemented
           return;
         case GP_BRUSH_ERASER_HARD:
-          hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+          erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
           break;
         case GP_BRUSH_ERASER_SOFT:
           // To be implemented
           return;
       }
 
-      /* Set the new geometry. */
-      drawing.geometry.wrap() = std::move(dst);
-      drawing.tag_topology_changed();
+      if (erased) {
+        /* Set the new geometry. */
+        drawing.geometry.wrap() = std::move(dst);
+        drawing.tag_topology_changed();
+        changed = true;
+      }
     };
 
     if (self.active_layer_only) {
@@ -513,8 +527,10 @@ struct EraseOperationExecutor {
       grease_pencil.foreach_editable_drawing(scene->r.cfra, execute_eraser_on_drawing);
     }
 
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+    if (changed) {
+      DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+    }
   }
 };
 
