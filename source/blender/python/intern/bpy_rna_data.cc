@@ -28,11 +28,11 @@
 #include "bpy_rna.h"
 #include "bpy_rna_data.h"
 
-typedef struct {
+struct BPy_DataContext {
   PyObject_HEAD /* Required Python macro. */
   BPy_StructRNA *data_rna;
   char filepath[1024];
-} BPy_DataContext;
+};
 
 static PyObject *bpy_rna_data_temp_data(PyObject *self, PyObject *args, PyObject *kwds);
 static PyObject *bpy_rna_data_context_enter(BPy_DataContext *self);
@@ -41,7 +41,7 @@ static PyObject *bpy_rna_data_context_exit(BPy_DataContext *self, PyObject *args
 static PyMethodDef bpy_rna_data_context_methods[] = {
     {"__enter__", (PyCFunction)bpy_rna_data_context_enter, METH_NOARGS},
     {"__exit__", (PyCFunction)bpy_rna_data_context_exit, METH_VARARGS},
-    {NULL} /* sentinel */
+    {nullptr} /* sentinel */
 };
 
 static int bpy_rna_data_context_traverse(BPy_DataContext *self, visitproc visit, void *arg)
@@ -63,55 +63,55 @@ static void bpy_rna_data_context_dealloc(BPy_DataContext *self)
   PyObject_GC_Del(self);
 }
 static PyTypeObject bpy_rna_data_context_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "bpy_rna_data_context",
     /*tp_basicsize*/ sizeof(BPy_DataContext),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)bpy_rna_data_context_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    /*tp_doc*/ NULL,
+    /*tp_doc*/ nullptr,
     /*tp_traverse*/ (traverseproc)bpy_rna_data_context_traverse,
     /*tp_clear*/ (inquiry)bpy_rna_data_context_clear,
-    /*tp_richcompare*/ NULL,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ bpy_rna_data_context_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 PyDoc_STRVAR(bpy_rna_data_context_load_doc,
@@ -126,11 +126,11 @@ PyDoc_STRVAR(bpy_rna_data_context_load_doc,
              "   :return: Blend file data which is freed once the context exists.\n"
              "   :rtype: :class:`bpy.types.BlendData`\n");
 
-static PyObject *bpy_rna_data_temp_data(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_rna_data_temp_data(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   BPy_DataContext *ret;
-  const char *filepath = NULL;
-  static const char *_keywords[] = {"filepath", NULL};
+  const char *filepath = nullptr;
+  static const char *_keywords[] = {"filepath", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "z"  /* `filepath` */
@@ -139,7 +139,7 @@ static PyObject *bpy_rna_data_temp_data(PyObject *UNUSED(self), PyObject *args, 
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &filepath)) {
-    return NULL;
+    return nullptr;
   }
 
   ret = PyObject_GC_New(BPy_DataContext, &bpy_rna_data_context_Type);
@@ -153,7 +153,7 @@ static PyObject *bpy_rna_data_context_enter(BPy_DataContext *self)
 {
   Main *bmain_temp = BKE_main_new();
   PointerRNA ptr;
-  RNA_pointer_create(NULL, &RNA_BlendData, bmain_temp, &ptr);
+  RNA_pointer_create(nullptr, &RNA_BlendData, bmain_temp, &ptr);
 
   self->data_rna = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ptr);
 
@@ -163,9 +163,9 @@ static PyObject *bpy_rna_data_context_enter(BPy_DataContext *self)
   return (PyObject *)self->data_rna;
 }
 
-static PyObject *bpy_rna_data_context_exit(BPy_DataContext *self, PyObject *UNUSED(args))
+static PyObject *bpy_rna_data_context_exit(BPy_DataContext *self, PyObject * /*args*/)
 {
-  BKE_main_free(self->data_rna->ptr.data);
+  BKE_main_free(static_cast<Main *>(self->data_rna->ptr.data));
   RNA_POINTER_INVALIDATE(&self->data_rna->ptr);
   Py_RETURN_NONE;
 }
