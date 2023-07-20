@@ -120,7 +120,7 @@ struct BPyPropStore {
 
   /**
    * Only store #PyObject types, so this member can be cast to an array and iterated over.
-   * NULL members are skipped.
+   * nullptr members are skipped.
    */
   struct {
     /** Wrap: `RNA_def_property_*_funcs` (depending on type). */
@@ -151,11 +151,11 @@ struct BPyPropStore {
 };
 
 #define BPY_PROP_STORE_PY_DATA_SIZE \
-  (sizeof(((struct BPyPropStore *)NULL)->py_data) / sizeof(PyObject *))
+  (sizeof(((struct BPyPropStore *)nullptr)->py_data) / sizeof(PyObject *))
 
 #define ASSIGN_PYOBJECT_INCREF(a, b) \
   { \
-    BLI_assert((a) == NULL); \
+    BLI_assert((a) == nullptr); \
     Py_INCREF(b); \
     a = b; \
   } \
@@ -165,13 +165,13 @@ struct BPyPropStore {
  * Maintain a list of Python defined properties, so the GC can visit them,
  * and so they can be cleared on exit.
  */
-static ListBase g_bpy_prop_store_list = {NULL, NULL};
+static ListBase g_bpy_prop_store_list = {nullptr, nullptr};
 
 static struct BPyPropStore *bpy_prop_py_data_ensure(PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
-  if (prop_store == NULL) {
-    prop_store = MEM_callocN(sizeof(*prop_store), __func__);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
+  if (prop_store == nullptr) {
+    prop_store = static_cast<BPyPropStore *>(MEM_callocN(sizeof(*prop_store), __func__));
     RNA_def_py_data(prop, prop_store);
     BLI_addtail(&g_bpy_prop_store_list, prop_store);
   }
@@ -183,8 +183,8 @@ static struct BPyPropStore *bpy_prop_py_data_ensure(PropertyRNA *prop)
  */
 static void bpy_prop_py_data_remove(PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
-  if (prop_store == NULL) {
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
+  if (prop_store == nullptr) {
     return;
   }
 
@@ -235,9 +235,9 @@ static PyObject *bpy_prop_deferred_repr(BPy_PropDeferred *self)
  *
  * When callable this object type passes the test for being an acceptable annotation.
  */
-static PyObject *bpy_prop_deferred_call(BPy_PropDeferred *UNUSED(self),
-                                        PyObject *UNUSED(args),
-                                        PyObject *UNUSED(kw))
+static PyObject *bpy_prop_deferred_call(BPy_PropDeferred * /*self*/,
+                                        PyObject * /*args*/,
+                                        PyObject * /*kw*/)
 {
   /* Dummy value. */
   Py_RETURN_NONE;
@@ -249,9 +249,9 @@ static PyObject *bpy_prop_deferred_call(BPy_PropDeferred *UNUSED(self),
  * Expose the function in case scripts need to introspect this information
  * (not currently used by Blender itself).
  */
-static PyObject *bpy_prop_deferred_function_get(BPy_PropDeferred *self, void *UNUSED(closure))
+static PyObject *bpy_prop_deferred_function_get(BPy_PropDeferred *self, void * /*closure*/)
 {
-  PyObject *ret = self->fn;
+  PyObject *ret = static_cast<PyObject *>(self->fn);
   Py_IncRef(ret);
   return ret;
 }
@@ -260,7 +260,7 @@ static PyObject *bpy_prop_deferred_function_get(BPy_PropDeferred *self, void *UN
  * Expose keywords in case scripts need to introspect this information
  * (not currently used by Blender itself).
  */
-static PyObject *bpy_prop_deferred_keywords_get(BPy_PropDeferred *self, void *UNUSED(closure))
+static PyObject *bpy_prop_deferred_keywords_get(BPy_PropDeferred *self, void * /*closure*/)
 {
   PyObject *ret = self->kw;
   Py_IncRef(ret);
@@ -268,9 +268,9 @@ static PyObject *bpy_prop_deferred_keywords_get(BPy_PropDeferred *self, void *UN
 }
 
 static PyGetSetDef bpy_prop_deferred_getset[] = {
-    {"function", (getter)bpy_prop_deferred_function_get, (setter)NULL, NULL, NULL},
-    {"keywords", (getter)bpy_prop_deferred_keywords_get, (setter)NULL, NULL, NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+    {"function", (getter)bpy_prop_deferred_function_get, (setter) nullptr, nullptr, nullptr},
+    {"keywords", (getter)bpy_prop_deferred_keywords_get, (setter) nullptr, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 PyDoc_STRVAR(bpy_prop_deferred_doc,
@@ -281,62 +281,62 @@ PyDoc_STRVAR(bpy_prop_deferred_doc,
              "   This is not part of the stable API and may change between releases.");
 
 PyTypeObject bpy_prop_deferred_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "_PropertyDeferred",
     /*tp_basicsize*/ sizeof(BPy_PropDeferred),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)bpy_prop_deferred_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
     /*tp_repr*/ (reprfunc)bpy_prop_deferred_repr,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
     /*tp_call*/ (ternaryfunc)bpy_prop_deferred_call,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     /*tp_doc*/ bpy_prop_deferred_doc,
     /*tp_traverse*/ (traverseproc)bpy_prop_deferred_traverse,
     /*tp_clear*/ (inquiry)bpy_prop_deferred_clear,
-    /*tp_richcompare*/ NULL,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
-    /*tp_methods*/ NULL,
-    /*tp_members*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ bpy_prop_deferred_getset,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 static PyObject *bpy_prop_deferred_data_CreatePyObject(PyObject *fn, PyObject *kw)
 {
   BPy_PropDeferred *self = PyObject_GC_New(BPy_PropDeferred, &bpy_prop_deferred_Type);
   self->fn = fn;
-  if (kw == NULL) {
+  if (kw == nullptr) {
     kw = PyDict_New();
   }
   else {
@@ -355,21 +355,21 @@ static PyObject *bpy_prop_deferred_data_CreatePyObject(PyObject *fn, PyObject *k
  * \{ */
 
 /* PyObject's */
-static PyObject *pymeth_BoolProperty = NULL;
-static PyObject *pymeth_BoolVectorProperty = NULL;
-static PyObject *pymeth_IntProperty = NULL;
-static PyObject *pymeth_IntVectorProperty = NULL;
-static PyObject *pymeth_FloatProperty = NULL;
-static PyObject *pymeth_FloatVectorProperty = NULL;
-static PyObject *pymeth_StringProperty = NULL;
-static PyObject *pymeth_EnumProperty = NULL;
-static PyObject *pymeth_PointerProperty = NULL;
-static PyObject *pymeth_CollectionProperty = NULL;
-static PyObject *pymeth_RemoveProperty = NULL;
+static PyObject *pymeth_BoolProperty = nullptr;
+static PyObject *pymeth_BoolVectorProperty = nullptr;
+static PyObject *pymeth_IntProperty = nullptr;
+static PyObject *pymeth_IntVectorProperty = nullptr;
+static PyObject *pymeth_FloatProperty = nullptr;
+static PyObject *pymeth_FloatVectorProperty = nullptr;
+static PyObject *pymeth_StringProperty = nullptr;
+static PyObject *pymeth_EnumProperty = nullptr;
+static PyObject *pymeth_PointerProperty = nullptr;
+static PyObject *pymeth_CollectionProperty = nullptr;
+static PyObject *pymeth_RemoveProperty = nullptr;
 
 static PyObject *pyrna_struct_as_instance(PointerRNA *ptr)
 {
-  PyObject *self = NULL;
+  PyObject *self = nullptr;
   /* first get self */
   /* operators can store their own instance for later use */
   if (ptr->data) {
@@ -377,14 +377,14 @@ static PyObject *pyrna_struct_as_instance(PointerRNA *ptr)
 
     if (instance) {
       if (*instance) {
-        self = *instance;
+        self = static_cast<PyObject *>(*instance);
         Py_INCREF(self);
       }
     }
   }
 
   /* in most cases this will run */
-  if (self == NULL) {
+  if (self == nullptr) {
     self = pyrna_struct_CreatePyObject(ptr);
   }
 
@@ -396,17 +396,17 @@ static void bpy_prop_assign_flag(PropertyRNA *prop, const int flag)
   const int flag_mask = ((PROP_ANIMATABLE) & ~flag);
 
   if (flag) {
-    RNA_def_property_flag(prop, flag);
+    RNA_def_property_flag(prop, PropertyFlag(flag));
   }
 
   if (flag_mask) {
-    RNA_def_property_clear_flag(prop, flag_mask);
+    RNA_def_property_clear_flag(prop, PropertyFlag(flag_mask));
   }
 }
 
 static void bpy_prop_assign_flag_override(PropertyRNA *prop, const int flag_override)
 {
-  RNA_def_property_override_flag(prop, flag_override);
+  RNA_def_property_override_flag(prop, PropertyOverrideFlag(flag_override));
 }
 
 /** \} */
@@ -427,7 +427,7 @@ struct BPyPropArrayLength {
  */
 static int bpy_prop_array_length_parse(PyObject *o, void *p)
 {
-  struct BPyPropArrayLength *array_len_info = p;
+  struct BPyPropArrayLength *array_len_info = static_cast<BPyPropArrayLength *>(p);
 
   if (PyLong_CheckExact(o)) {
     int size;
@@ -559,7 +559,7 @@ static void bpy_prop_array_matrix_swap_row_column_vn(
 /* callbacks */
 static void bpy_prop_update_fn(struct bContext *C, PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyGILState_STATE gilstate;
   PyObject *py_func;
   PyObject *args;
@@ -567,7 +567,7 @@ static void bpy_prop_update_fn(struct bContext *C, PointerRNA *ptr, PropertyRNA 
   PyObject *ret;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -588,7 +588,7 @@ static void bpy_prop_update_fn(struct bContext *C, PointerRNA *ptr, PropertyRNA 
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -615,7 +615,7 @@ static void bpy_prop_update_fn(struct bContext *C, PointerRNA *ptr, PropertyRNA 
 
 static bool bpy_prop_boolean_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -625,7 +625,7 @@ static bool bpy_prop_boolean_get_fn(PointerRNA *ptr, PropertyRNA *prop)
   const bool is_write_ok = pyrna_write_check();
   bool value;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -647,7 +647,7 @@ static bool bpy_prop_boolean_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     value = false;
   }
@@ -678,7 +678,7 @@ static bool bpy_prop_boolean_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
 static void bpy_prop_boolean_set_fn(PointerRNA *ptr, PropertyRNA *prop, bool value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -687,7 +687,7 @@ static void bpy_prop_boolean_set_fn(PointerRNA *ptr, PropertyRNA *prop, bool val
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -711,7 +711,7 @@ static void bpy_prop_boolean_set_fn(PointerRNA *ptr, PropertyRNA *prop, bool val
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -734,7 +734,7 @@ static void bpy_prop_boolean_set_fn(PointerRNA *ptr, PropertyRNA *prop, bool val
 
 static void bpy_prop_boolean_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, bool *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -744,10 +744,11 @@ static void bpy_prop_boolean_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, bo
   const bool is_write_ok = pyrna_write_check();
   bool is_values_set = false;
   int i, len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -769,7 +770,7 @@ static void bpy_prop_boolean_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, bo
 
   Py_DECREF(args);
 
-  if (ret != NULL) {
+  if (ret != nullptr) {
     if (bpy_prop_array_from_py_with_dims(values,
                                          sizeof(*values),
                                          ret,
@@ -803,7 +804,7 @@ static void bpy_prop_boolean_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, bo
 
 static void bpy_prop_boolean_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const bool *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -813,10 +814,11 @@ static void bpy_prop_boolean_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, co
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
   const int len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -847,7 +849,7 @@ static void bpy_prop_boolean_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, co
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -876,7 +878,7 @@ static void bpy_prop_boolean_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, co
 
 static int bpy_prop_int_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -886,7 +888,7 @@ static int bpy_prop_int_get_fn(PointerRNA *ptr, PropertyRNA *prop)
   const bool is_write_ok = pyrna_write_check();
   int value;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -908,7 +910,7 @@ static int bpy_prop_int_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     value = 0.0f;
   }
@@ -936,7 +938,7 @@ static int bpy_prop_int_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
 static void bpy_prop_int_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -945,7 +947,7 @@ static void bpy_prop_int_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -969,7 +971,7 @@ static void bpy_prop_int_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -992,7 +994,7 @@ static void bpy_prop_int_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
 
 static void bpy_prop_int_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, int *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1002,10 +1004,11 @@ static void bpy_prop_int_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, int *v
   const bool is_write_ok = pyrna_write_check();
   bool is_values_set = false;
   int i, len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1027,7 +1030,7 @@ static void bpy_prop_int_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, int *v
 
   Py_DECREF(args);
 
-  if (ret != NULL) {
+  if (ret != nullptr) {
     if (bpy_prop_array_from_py_with_dims(values,
                                          sizeof(*values),
                                          ret,
@@ -1061,7 +1064,7 @@ static void bpy_prop_int_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, int *v
 
 static void bpy_prop_int_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const int *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1071,10 +1074,11 @@ static void bpy_prop_int_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const 
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
   const int len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1106,7 +1110,7 @@ static void bpy_prop_int_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const 
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1135,7 +1139,7 @@ static void bpy_prop_int_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const 
 
 static float bpy_prop_float_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1145,7 +1149,7 @@ static float bpy_prop_float_get_fn(PointerRNA *ptr, PropertyRNA *prop)
   const bool is_write_ok = pyrna_write_check();
   float value;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1167,7 +1171,7 @@ static float bpy_prop_float_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     value = 0.0f;
   }
@@ -1195,7 +1199,7 @@ static float bpy_prop_float_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
 static void bpy_prop_float_set_fn(PointerRNA *ptr, PropertyRNA *prop, float value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1204,7 +1208,7 @@ static void bpy_prop_float_set_fn(PointerRNA *ptr, PropertyRNA *prop, float valu
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1228,7 +1232,7 @@ static void bpy_prop_float_set_fn(PointerRNA *ptr, PropertyRNA *prop, float valu
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1251,7 +1255,7 @@ static void bpy_prop_float_set_fn(PointerRNA *ptr, PropertyRNA *prop, float valu
 
 static void bpy_prop_float_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, float *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1261,10 +1265,11 @@ static void bpy_prop_float_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, floa
   const bool is_write_ok = pyrna_write_check();
   bool is_values_set = false;
   int i, len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1286,7 +1291,7 @@ static void bpy_prop_float_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, floa
 
   Py_DECREF(args);
 
-  if (ret != NULL) {
+  if (ret != nullptr) {
     if (bpy_prop_array_from_py_with_dims(values,
                                          sizeof(*values),
                                          ret,
@@ -1324,7 +1329,7 @@ static void bpy_prop_float_array_get_fn(PointerRNA *ptr, PropertyRNA *prop, floa
 
 static void bpy_prop_float_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, const float *values)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1334,10 +1339,11 @@ static void bpy_prop_float_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, cons
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
   const int len = RNA_property_array_length(ptr, prop);
-  struct BPyPropArrayLength array_len_info = {.len_total = len};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = len;
   array_len_info.dims_len = RNA_property_array_dimension(ptr, prop, array_len_info.dims);
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1369,7 +1375,7 @@ static void bpy_prop_float_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, cons
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1398,7 +1404,7 @@ static void bpy_prop_float_array_set_fn(PointerRNA *ptr, PropertyRNA *prop, cons
 
 static void bpy_prop_string_get_fn(PointerRNA *ptr, PropertyRNA *prop, char *value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1407,7 +1413,7 @@ static void bpy_prop_string_get_fn(PointerRNA *ptr, PropertyRNA *prop, char *val
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1429,7 +1435,7 @@ static void bpy_prop_string_get_fn(PointerRNA *ptr, PropertyRNA *prop, char *val
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     value[0] = '\0';
   }
@@ -1458,7 +1464,7 @@ static void bpy_prop_string_get_fn(PointerRNA *ptr, PropertyRNA *prop, char *val
 
 static int bpy_prop_string_length_fn(PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1468,7 +1474,7 @@ static int bpy_prop_string_length_fn(PointerRNA *ptr, PropertyRNA *prop)
   const bool is_write_ok = pyrna_write_check();
   int length;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1490,7 +1496,7 @@ static int bpy_prop_string_length_fn(PointerRNA *ptr, PropertyRNA *prop)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     length = 0;
   }
@@ -1521,7 +1527,7 @@ static int bpy_prop_string_length_fn(PointerRNA *ptr, PropertyRNA *prop)
 
 static void bpy_prop_string_set_fn(PointerRNA *ptr, PropertyRNA *prop, const char *value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1531,7 +1537,7 @@ static void bpy_prop_string_set_fn(PointerRNA *ptr, PropertyRNA *prop, const cha
   const bool is_write_ok = pyrna_write_check();
   PyObject *py_value;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1562,7 +1568,7 @@ static void bpy_prop_string_set_fn(PointerRNA *ptr, PropertyRNA *prop, const cha
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1589,14 +1595,14 @@ static bool bpy_prop_string_visit_fn_call(PyObject *py_func,
                                           void *visit_user_data)
 {
   const char *text;
-  const char *info = NULL;
+  const char *info = nullptr;
 
   if (PyTuple_CheckExact(item)) {
     /* Positional only. */
     static const char *_keywords[] = {
         "",
         "",
-        NULL,
+        nullptr,
     };
     static _PyArg_Parser _parser = {
         "s" /* `text` */
@@ -1605,14 +1611,14 @@ static bool bpy_prop_string_visit_fn_call(PyObject *py_func,
         _keywords,
         0,
     };
-    if (!_PyArg_ParseTupleAndKeywordsFast(item, NULL, &_parser, &text, &info)) {
+    if (!_PyArg_ParseTupleAndKeywordsFast(item, nullptr, &_parser, &text, &info)) {
       PyC_Err_PrintWithFunc(py_func);
       return false;
     }
   }
   else {
     text = PyUnicode_AsUTF8(item);
-    if (UNLIKELY(text == NULL)) {
+    if (UNLIKELY(text == nullptr)) {
       PyErr_Clear();
       PyErr_Format(PyExc_TypeError,
                    "expected sequence of strings or tuple pairs of strings, not %.200s",
@@ -1622,7 +1628,7 @@ static bool bpy_prop_string_visit_fn_call(PyObject *py_func,
     }
   }
 
-  StringPropertySearchVisitParams visit_params = {NULL};
+  StringPropertySearchVisitParams visit_params = {nullptr};
   visit_params.text = text;
   visit_params.info = info;
   visit_fn(visit_user_data, &visit_params);
@@ -1636,7 +1642,7 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
                                                 StringPropertySearchVisitFunc visit_fn,
                                                 void *visit_user_data)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1644,7 +1650,7 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
   PyGILState_STATE gilstate;
   PyObject *py_edit_text;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (C) {
     bpy_context_set((struct bContext *)C, &gilstate);
@@ -1669,7 +1675,7 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1678,14 +1684,14 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
       PyObject *it;
       PyObject *(*iternext)(PyObject *);
       it = PyObject_GetIter(ret);
-      if (it == NULL) {
+      if (it == nullptr) {
         PyC_Err_PrintWithFunc(py_func);
       }
       else {
         iternext = *Py_TYPE(it)->tp_iternext;
         for (;;) {
           PyObject *py_text = iternext(it);
-          if (py_text == NULL) {
+          if (py_text == nullptr) {
             break;
           }
           const bool ok = bpy_prop_string_visit_fn_call(
@@ -1712,7 +1718,7 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
           ret,
           "StringProperty(...): "
           "return value from search callback was not a sequence, iterator or generator");
-      if (ret_fast == NULL) {
+      if (ret_fast == nullptr) {
         PyC_Err_PrintWithFunc(py_func);
       }
       else {
@@ -1748,7 +1754,7 @@ static void bpy_prop_string_visit_for_search_fn(const struct bContext *C,
 
 static bool bpy_prop_pointer_poll_fn(PointerRNA *self, PointerRNA candidate, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_self;
   PyObject *py_candidate;
   PyObject *py_func;
@@ -1758,7 +1764,7 @@ static bool bpy_prop_pointer_poll_fn(PointerRNA *self, PointerRNA candidate, Pro
   const int is_write_ok = pyrna_write_check();
   const PyGILState_STATE gilstate = PyGILState_Ensure();
 
-  BLI_assert(self != NULL);
+  BLI_assert(self != nullptr);
 
   py_self = pyrna_struct_as_instance(self);
   py_candidate = pyrna_struct_as_instance(&candidate);
@@ -1776,7 +1782,7 @@ static bool bpy_prop_pointer_poll_fn(PointerRNA *self, PointerRNA candidate, Pro
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     result = false;
   }
@@ -1801,7 +1807,7 @@ static bool bpy_prop_pointer_poll_fn(PointerRNA *self, PointerRNA candidate, Pro
 
 static int bpy_prop_enum_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1811,7 +1817,7 @@ static int bpy_prop_enum_get_fn(PointerRNA *ptr, PropertyRNA *prop)
   const bool is_write_ok = pyrna_write_check();
   int value;
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1833,7 +1839,7 @@ static int bpy_prop_enum_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
     value = RNA_property_enum_get_default(ptr, prop);
   }
@@ -1861,7 +1867,7 @@ static int bpy_prop_enum_get_fn(PointerRNA *ptr, PropertyRNA *prop)
 
 static void bpy_prop_enum_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
 {
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func;
   PyObject *args;
   PyObject *self;
@@ -1870,7 +1876,7 @@ static void bpy_prop_enum_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
   bool use_gil;
   const bool is_write_ok = pyrna_write_check();
 
-  BLI_assert(prop_store != NULL);
+  BLI_assert(prop_store != nullptr);
 
   if (!is_write_ok) {
     pyrna_write_set(true);
@@ -1894,7 +1900,7 @@ static void bpy_prop_enum_set_fn(PointerRNA *ptr, PropertyRNA *prop, int value)
 
   Py_DECREF(args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(py_func);
   }
   else {
@@ -1973,7 +1979,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
   Py_ssize_t totbuf = 0;
 #endif
   short default_used = 0;
-  const char *default_str_cmp = NULL;
+  const char *default_str_cmp = nullptr;
   int default_int_cmp = 0;
 
   if (is_enum_flag) {
@@ -1981,26 +1987,26 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
       PyErr_SetString(PyExc_TypeError,
                       "EnumProperty(...): maximum " STRINGIFY(
                           RNA_ENUM_BITFLAG_SIZE) " members for a ENUM_FLAG type property");
-      return NULL;
+      return nullptr;
     }
     if (default_py && !PySet_Check(default_py)) {
       PyErr_Format(PyExc_TypeError,
                    "EnumProperty(...): default option must be a 'set' "
                    "type when ENUM_FLAG is enabled, not a '%.200s'",
                    Py_TYPE(default_py)->tp_name);
-      return NULL;
+      return nullptr;
     }
   }
   else {
     if (default_py) {
       if (!py_long_as_int(default_py, &default_int_cmp)) {
         default_str_cmp = PyUnicode_AsUTF8(default_py);
-        if (default_str_cmp == NULL) {
+        if (default_str_cmp == nullptr) {
           PyErr_Format(PyExc_TypeError,
                        "EnumProperty(...): default option must be a 'str' or 'int' "
                        "type when ENUM_FLAG is disabled, not a '%.200s'",
                        Py_TYPE(default_py)->tp_name);
-          return NULL;
+          return nullptr;
         }
       }
     }
@@ -2009,11 +2015,12 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
   /* blank value */
   *r_default_value = 0;
 
-  items = MEM_callocN(sizeof(EnumPropertyItem) * (seq_len + 1), "enum_items_from_py1");
+  items = static_cast<EnumPropertyItem *>(
+      MEM_callocN(sizeof(EnumPropertyItem) * (seq_len + 1), "enum_items_from_py1"));
 
   for (i = 0; i < seq_len; i++) {
     EnumPropertyItem tmp = {0, "", 0, "", ""};
-    const char *tmp_icon = NULL;
+    const char *tmp_icon = nullptr;
     Py_ssize_t item_size;
     Py_ssize_t id_str_len;
     Py_ssize_t name_str_len;
@@ -2048,8 +2055,8 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
         }
 
         if (default_py && default_used == 0) {
-          if ((default_str_cmp != NULL && STREQ(default_str_cmp, tmp.identifier)) ||
-              (default_str_cmp == NULL && default_int_cmp == tmp.value))
+          if ((default_str_cmp != nullptr && STREQ(default_str_cmp, tmp.identifier)) ||
+              (default_str_cmp == nullptr && default_int_cmp == tmp.value))
           {
             *r_default_value = tmp.value;
             default_used++; /* only ever 1 */
@@ -2078,7 +2085,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
                       "EnumProperty(...): expected a tuple containing "
                       "(identifier, name, description) and optionally an "
                       "icon name and unique number");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -2090,7 +2097,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
       PyErr_Format(PyExc_TypeError,
                    "EnumProperty(..., default={...}): set has %d unused member(s)",
                    PySet_GET_SIZE(default_py) - default_used);
-      return NULL;
+      return nullptr;
     }
   }
   else {
@@ -2107,7 +2114,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
                      "EnumProperty(..., default=%d): not found in enum members",
                      default_int_cmp);
       }
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -2129,7 +2136,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
     MEM_freeN(items);
     items = items_dup;
   }
-  /* end string duplication */
+/* end string duplication */
 #endif
 
   return items;
@@ -2141,13 +2148,13 @@ static const EnumPropertyItem *bpy_prop_enum_itemf_fn(struct bContext *C,
                                                       bool *r_free)
 {
   PyGILState_STATE gilstate;
-  struct BPyPropStore *prop_store = RNA_property_py_data_get(prop);
+  struct BPyPropStore *prop_store = static_cast<BPyPropStore *>(RNA_property_py_data_get(prop));
   PyObject *py_func = prop_store->py_data.enum_data.itemf_fn;
-  PyObject *self = NULL;
+  PyObject *self = nullptr;
   PyObject *args;
   PyObject *items; /* returned from the function call */
 
-  const EnumPropertyItem *eitems = NULL;
+  const EnumPropertyItem *eitems = nullptr;
   int err = 0;
 
   if (C) {
@@ -2175,7 +2182,7 @@ static const EnumPropertyItem *bpy_prop_enum_itemf_fn(struct bContext *C,
 
   Py_DECREF(args);
 
-  if (items == NULL) {
+  if (items == nullptr) {
     err = -1;
   }
   else {
@@ -2189,8 +2196,10 @@ static const EnumPropertyItem *bpy_prop_enum_itemf_fn(struct bContext *C,
       err = -1;
     }
     else {
-      eitems = enum_items_from_py(
-          items_fast, (RNA_property_flag(prop) & PROP_ENUM_FLAG) != 0, NULL, &default_value_dummy);
+      eitems = enum_items_from_py(items_fast,
+                                  (RNA_property_flag(prop) & PROP_ENUM_FLAG) != 0,
+                                  nullptr,
+                                  &default_value_dummy);
 
       Py_DECREF(items_fast);
 
@@ -2258,7 +2267,7 @@ static void bpy_prop_callback_assign_update(PropertyRNA *prop, PyObject *update_
   if (update_fn && update_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
 
-    RNA_def_property_update_runtime(prop, bpy_prop_update_fn);
+    RNA_def_property_update_runtime(prop, reinterpret_cast<const void *>(bpy_prop_update_fn));
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.update_fn, update_fn);
 
     RNA_def_property_flag(prop, PROP_CONTEXT_PROPERTY_UPDATE);
@@ -2270,15 +2279,15 @@ static void bpy_prop_callback_assign_pointer(PropertyRNA *prop, PyObject *poll_f
   if (poll_fn && poll_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
 
-    RNA_def_property_poll_runtime(prop, bpy_prop_pointer_poll_fn);
+    RNA_def_property_poll_runtime(prop, reinterpret_cast<const void *>(bpy_prop_pointer_poll_fn));
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.pointer_data.poll_fn, poll_fn);
   }
 }
 
 static void bpy_prop_callback_assign_boolean(PropertyRNA *prop, PyObject *get_fn, PyObject *set_fn)
 {
-  BooleanPropertyGetFunc rna_get_fn = NULL;
-  BooleanPropertySetFunc rna_set_fn = NULL;
+  BooleanPropertyGetFunc rna_get_fn = nullptr;
+  BooleanPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2301,8 +2310,8 @@ static void bpy_prop_callback_assign_boolean_array(PropertyRNA *prop,
                                                    PyObject *get_fn,
                                                    PyObject *set_fn)
 {
-  BooleanArrayPropertyGetFunc rna_get_fn = NULL;
-  BooleanArrayPropertySetFunc rna_set_fn = NULL;
+  BooleanArrayPropertyGetFunc rna_get_fn = nullptr;
+  BooleanArrayPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2323,8 +2332,8 @@ static void bpy_prop_callback_assign_boolean_array(PropertyRNA *prop,
 
 static void bpy_prop_callback_assign_int(PropertyRNA *prop, PyObject *get_fn, PyObject *set_fn)
 {
-  IntPropertyGetFunc rna_get_fn = NULL;
-  IntPropertySetFunc rna_set_fn = NULL;
+  IntPropertyGetFunc rna_get_fn = nullptr;
+  IntPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2340,15 +2349,15 @@ static void bpy_prop_callback_assign_int(PropertyRNA *prop, PyObject *get_fn, Py
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.set_fn, set_fn);
   }
 
-  RNA_def_property_int_funcs_runtime(prop, rna_get_fn, rna_set_fn, NULL);
+  RNA_def_property_int_funcs_runtime(prop, rna_get_fn, rna_set_fn, nullptr);
 }
 
 static void bpy_prop_callback_assign_int_array(PropertyRNA *prop,
                                                PyObject *get_fn,
                                                PyObject *set_fn)
 {
-  IntArrayPropertyGetFunc rna_get_fn = NULL;
-  IntArrayPropertySetFunc rna_set_fn = NULL;
+  IntArrayPropertyGetFunc rna_get_fn = nullptr;
+  IntArrayPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2364,13 +2373,13 @@ static void bpy_prop_callback_assign_int_array(PropertyRNA *prop,
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.set_fn, set_fn);
   }
 
-  RNA_def_property_int_array_funcs_runtime(prop, rna_get_fn, rna_set_fn, NULL);
+  RNA_def_property_int_array_funcs_runtime(prop, rna_get_fn, rna_set_fn, nullptr);
 }
 
 static void bpy_prop_callback_assign_float(PropertyRNA *prop, PyObject *get_fn, PyObject *set_fn)
 {
-  FloatPropertyGetFunc rna_get_fn = NULL;
-  FloatPropertySetFunc rna_set_fn = NULL;
+  FloatPropertyGetFunc rna_get_fn = nullptr;
+  FloatPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2386,15 +2395,15 @@ static void bpy_prop_callback_assign_float(PropertyRNA *prop, PyObject *get_fn, 
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.set_fn, set_fn);
   }
 
-  RNA_def_property_float_funcs_runtime(prop, rna_get_fn, rna_set_fn, NULL);
+  RNA_def_property_float_funcs_runtime(prop, rna_get_fn, rna_set_fn, nullptr);
 }
 
 static void bpy_prop_callback_assign_float_array(PropertyRNA *prop,
                                                  PyObject *get_fn,
                                                  PyObject *set_fn)
 {
-  FloatArrayPropertyGetFunc rna_get_fn = NULL;
-  FloatArrayPropertySetFunc rna_set_fn = NULL;
+  FloatArrayPropertyGetFunc rna_get_fn = nullptr;
+  FloatArrayPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2410,7 +2419,7 @@ static void bpy_prop_callback_assign_float_array(PropertyRNA *prop,
     ASSIGN_PYOBJECT_INCREF(prop_store->py_data.set_fn, set_fn);
   }
 
-  RNA_def_property_float_array_funcs_runtime(prop, rna_get_fn, rna_set_fn, NULL);
+  RNA_def_property_float_array_funcs_runtime(prop, rna_get_fn, rna_set_fn, nullptr);
 }
 
 static void bpy_prop_callback_assign_string(PropertyRNA *prop,
@@ -2419,10 +2428,10 @@ static void bpy_prop_callback_assign_string(PropertyRNA *prop,
                                             PyObject *search_fn,
                                             const eStringPropertySearchFlag search_flag)
 {
-  StringPropertyGetFunc rna_get_fn = NULL;
-  StringPropertyLengthFunc rna_length_fn = NULL;
-  StringPropertySetFunc rna_set_fn = NULL;
-  StringPropertySearchFunc rna_search_fn = NULL;
+  StringPropertyGetFunc rna_get_fn = nullptr;
+  StringPropertyLengthFunc rna_length_fn = nullptr;
+  StringPropertySetFunc rna_set_fn = nullptr;
+  StringPropertySearchFunc rna_search_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2456,9 +2465,9 @@ static void bpy_prop_callback_assign_enum(PropertyRNA *prop,
                                           PyObject *set_fn,
                                           PyObject *itemf_fn)
 {
-  EnumPropertyGetFunc rna_get_fn = NULL;
-  EnumPropertyItemFunc rna_itemf_fn = NULL;
-  EnumPropertySetFunc rna_set_fn = NULL;
+  EnumPropertyGetFunc rna_get_fn = nullptr;
+  EnumPropertyItemFunc rna_itemf_fn = nullptr;
+  EnumPropertySetFunc rna_set_fn = nullptr;
 
   if (get_fn && get_fn != Py_None) {
     struct BPyPropStore *prop_store = bpy_prop_py_data_ensure(prop);
@@ -2497,7 +2506,7 @@ static void bpy_prop_callback_assign_enum(PropertyRNA *prop,
  * \param args: The positional arguments of the caller.
  * \param kw: The keyword arguments of the caller.
  * \param method_object: The method of the caller (unfortunately this can't be deduced).
- * \param r_deferred_result: The deferred result (or NULL in the case of an error).
+ * \param r_deferred_result: The deferred result (or nullptr in the case of an error).
  * The caller must return this value unless a valid `srna` is returned.
  *
  * \returns When not null, the caller is expected to perform the registration.
@@ -2524,27 +2533,27 @@ static StructRNA *bpy_prop_deferred_data_or_srna(PyObject *self,
     *r_deferred_result = method_fn(self, args, kw);
     Py_DECREF(args);
     /* May be an error (depending on `r_deferred_result`). */
-    return NULL;
+    return nullptr;
   }
 
   const char *error_prefix = method_def->ml_name;
   if (args_len > 1) {
     PyErr_Format(PyExc_ValueError, "%s: all args must be keywords", error_prefix);
-    *r_deferred_result = NULL;
+    *r_deferred_result = nullptr;
     /* An error. */
-    return NULL;
+    return nullptr;
   }
 
   StructRNA *srna = srna_from_self(self, error_prefix);
-  if (srna == NULL) {
+  if (srna == nullptr) {
     *r_deferred_result = PyErr_Occurred() ?
-                             NULL :
+                             nullptr :
                              bpy_prop_deferred_data_CreatePyObject(method_object, kw);
     /* May be an error (depending on `r_deferred_result`). */
-    return NULL;
+    return nullptr;
   }
 
-  /* Crash if this is ever used by accident! */
+/* Crash if this is ever used by accident! */
 #ifndef NDEBUG
   *r_deferred_result = (PyObject *)(intptr_t)1;
 #endif
@@ -2570,7 +2579,7 @@ struct BPy_PropIDParse {
  */
 static int bpy_prop_arg_parse_id(PyObject *o, void *p)
 {
-  struct BPy_PropIDParse *parse_data = p;
+  struct BPy_PropIDParse *parse_data = static_cast<BPy_PropIDParse *>(p);
   StructRNA *srna = parse_data->srna;
 
   if (!PyUnicode_Check(o)) {
@@ -2587,7 +2596,7 @@ static int bpy_prop_arg_parse_id(PyObject *o, void *p)
     return 0;
   }
 
-  parse_data->prop_free_handle = NULL;
+  parse_data->prop_free_handle = nullptr;
   if (UNLIKELY(RNA_def_property_free_identifier_deferred_prepare(
                    srna, id, &parse_data->prop_free_handle) == -1))
   {
@@ -2615,9 +2624,10 @@ struct BPy_EnumProperty_Parse_WithSRNA {
  */
 static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
 {
-  struct BPy_EnumProperty_Parse_WithSRNA *parse_data = p;
+  struct BPy_EnumProperty_Parse_WithSRNA *parse_data =
+      static_cast<BPy_EnumProperty_Parse_WithSRNA *>(p);
   parse_data->base.items = RNA_struct_property_tag_defines(parse_data->srna);
-  if (parse_data->base.items == NULL) {
+  if (parse_data->base.items == nullptr) {
     PyErr_Format(PyExc_TypeError,
                  "property-tags not available for '%s'",
                  RNA_struct_identifier(parse_data->srna));
@@ -2740,9 +2750,9 @@ static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
 #if 0
 static int bpy_struct_id_used(StructRNA *srna, char *identifier)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(NULL, srna, NULL, &ptr);
-  return (RNA_struct_find_property(&ptr, identifier) != NULL);
+PointerRNA ptr;
+RNA_pointer_create(nullptr, srna, nullptr, &ptr);
+return (RNA_struct_find_property(&ptr, identifier) != nullptr);
 }
 #endif
 
@@ -2753,7 +2763,7 @@ static int bpy_struct_id_used(StructRNA *srna, char *identifier)
  *
  * Functions that register RNA.
  *
- * \note The `self` argument is NULL when called from Python,
+ * \note The `self` argument is nullptr when called from Python,
  * but being abused from C so we can pass the `srna` along.
  * This isn't incorrect since its a Python object - but be careful.
  *
@@ -2783,37 +2793,36 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
   { /* Keep this block first. */
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(self, args, kw, pymeth_BoolProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   bool default_value = false;
   PropertyRNA *prop;
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_items,
-      .value = PROP_NONE,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
 
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_items;
+  subtype_enum.value = PROP_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",
@@ -2828,7 +2837,7 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
       "update",
       "get",
       "set",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -2870,20 +2879,20 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_BOOLEAN, subtype_enum.value);
@@ -2938,38 +2947,40 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(
         self, args, kw, pymeth_BoolVectorProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   bool default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{false}};
-  struct BPyPropArrayLength array_len_info = {.len_total = 3};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = 3;
   PropertyRNA *prop;
-  PyObject *default_py = NULL;
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_array_items,
-      .value = PROP_NONE,
-  };
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  PyObject *default_py = nullptr;
+
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_array_items;
+  subtype_enum.value = PROP_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",
@@ -2985,7 +2996,7 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
       "update",
       "get",
       "set",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3029,10 +3040,10 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
-  if (default_py != NULL) {
+  if (default_py != nullptr) {
     if (bpy_prop_array_from_py_with_dims(default_value[0],
                                          sizeof(*default_value[0]),
                                          default_py,
@@ -3040,34 +3051,34 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
                                          &PyBool_Type,
                                          "BoolVectorProperty(default=sequence)") == -1)
     {
-      return NULL;
+      return nullptr;
     }
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_BOOLEAN, subtype_enum.value);
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_boolean_array_default(prop, default_value[0]);
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_boolean_array_default(prop, &default_value[0][0]);
     }
   }
@@ -3123,39 +3134,39 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
   { /* Keep this block first. */
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(self, args, kw, pymeth_IntProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value = 0;
   PropertyRNA *prop;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_items,
-      .value = PROP_NONE,
-  };
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_items;
+  subtype_enum.value = PROP_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",
@@ -3175,7 +3186,7 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
       "update",
       "get",
       "set",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3226,20 +3237,20 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_INT, subtype_enum.value);
@@ -3303,48 +3314,49 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(
         self, args, kw, pymeth_IntVectorProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {0};
-  struct BPyPropArrayLength array_len_info = {.len_total = 3};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = 3;
   PropertyRNA *prop;
-  PyObject *default_py = NULL;
+  PyObject *default_py = nullptr;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_array_items,
-      .value = PROP_NONE,
-  };
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_array_items;
+  subtype_enum.value = PROP_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",     "name",    "description", "translation_context",
       "default",  "min",     "max",         "soft_min",
       "soft_max", "step",    "options",     "override",
       "tags",     "subtype", "size",        "update",
-      "get",      "set",     NULL,
+      "get",      "set",     nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3398,10 +3410,10 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
-  if (default_py != NULL) {
+  if (default_py != nullptr) {
     if (bpy_prop_array_from_py_with_dims(default_value[0],
                                          sizeof(*default_value[0]),
                                          default_py,
@@ -3409,34 +3421,34 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
                                          &PyLong_Type,
                                          "IntVectorProperty(default=sequence)") == -1)
     {
-      return NULL;
+      return nullptr;
     }
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_INT, subtype_enum.value);
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_int_array_default(prop, default_value[0]);
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_int_array_default(prop, &default_value[0][0]);
     }
   }
@@ -3497,52 +3509,51 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
   { /* Keep this block first. */
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(self, args, kw, pymeth_FloatProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value = 0.0f;
   int precision = 2;
   PropertyRNA *prop;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_items,
-      .value = PROP_NONE,
-  };
-  struct BPy_EnumProperty_Parse unit_enum = {
-      .items = rna_enum_property_unit_items,
-      .value = PROP_UNIT_NONE,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
 
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_items;
+  subtype_enum.value = PROP_NONE;
+
+  BPy_EnumProperty_Parse unit_enum{};
+  unit_enum.items = rna_enum_property_unit_items;
+  unit_enum.value = PROP_UNIT_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",     "name", "description", "translation_context",
       "default",  "min",  "max",         "soft_min",
       "soft_max", "step", "precision",   "options",
       "override", "tags", "subtype",     "unit",
-      "update",   "get",  "set",         NULL,
+      "update",   "get",  "set",         nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3598,20 +3609,20 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_FLOAT, subtype_enum.value | unit_enum.value);
@@ -3678,47 +3689,47 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(
         self, args, kw, pymeth_FloatVectorProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{0.0f}};
   int precision = 2;
-  struct BPyPropArrayLength array_len_info = {.len_total = 3};
+  BPyPropArrayLength array_len_info{};
+  array_len_info.len_total = 3;
   PropertyRNA *prop;
-  PyObject *default_py = NULL;
+  PyObject *default_py = nullptr;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_number_array_items,
-      .value = PROP_NONE,
-  };
-  struct BPy_EnumProperty_Parse unit_enum = {
-      .items = rna_enum_property_unit_items,
-      .value = PROP_UNIT_NONE,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
 
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_number_array_items;
+  subtype_enum.value = PROP_NONE;
+
+  BPy_EnumProperty_Parse unit_enum{};
+  unit_enum.items = rna_enum_property_unit_items;
+  unit_enum.value = PROP_UNIT_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",     "name",   "description", "translation_context",
@@ -3726,7 +3737,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
       "soft_max", "step",   "precision",   "options",
       "override", "tags",   "subtype",     "unit",
       "size",     "update", "get",         "set",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3785,10 +3796,10 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
-  if (default_py != NULL) {
+  if (default_py != nullptr) {
     if (bpy_prop_array_from_py_with_dims(default_value[0],
                                          sizeof(*default_value[0]),
                                          default_py,
@@ -3796,7 +3807,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
                                          &PyFloat_Type,
                                          "FloatVectorProperty(default=sequence)") == -1)
     {
-      return NULL;
+      return nullptr;
     }
     if (bpy_prop_array_is_matrix_compatible_ex(subtype_enum.value, &array_len_info)) {
       bpy_prop_array_matrix_swap_row_column_vn(&default_value[0][0], &array_len_info);
@@ -3804,29 +3815,29 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_FLOAT, subtype_enum.value | unit_enum.value);
 
   if (array_len_info.dims_len == 0) {
     RNA_def_property_array(prop, array_len_info.len_total);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_float_array_default(prop, default_value[0]);
     }
   }
   else {
     RNA_def_property_multi_array(prop, array_len_info.dims_len, array_len_info.dims);
-    if (default_py != NULL) {
+    if (default_py != nullptr) {
       RNA_def_property_float_array_default(prop, &default_value[0][0]);
     }
   }
@@ -3884,42 +3895,41 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
   { /* Keep this block first. */
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(self, args, kw, pymeth_StringProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL, *default_value = "";
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr, *default_value = "";
   int maxlen = 0;
   PropertyRNA *prop;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  struct BPy_EnumProperty_Parse subtype_enum = {
-      .items = rna_enum_property_subtype_string_items,
-      .value = PROP_NONE,
-  };
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
-  PyObject *search_fn = NULL;
-  static struct BPy_EnumProperty_Parse search_options_enum = {
-      .items = rna_enum_property_string_search_flag_items,
-      .value = PROP_STRING_SEARCH_SUGGESTION,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  BPy_EnumProperty_Parse subtype_enum{};
+  subtype_enum.items = rna_enum_property_subtype_string_items;
+  subtype_enum.value = PROP_NONE;
+
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
+  PyObject *search_fn = nullptr;
+  BPy_EnumProperty_Parse search_options_enum{};
+  search_options_enum.items = rna_enum_property_string_search_flag_items;
+  search_options_enum.value = PROP_STRING_SEARCH_SUGGESTION;
 
   static const char *_keywords[] = {
       "attr",
@@ -3937,7 +3947,7 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
       "set",
       "search",
       "search_options",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -3985,23 +3995,23 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
                                         pyrna_enum_bitfield_parse_set,
                                         &search_options_enum))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(search_fn, "search", 3) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_property(srna, id_data.value, PROP_STRING, subtype_enum.value);
@@ -4028,7 +4038,8 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
     bpy_prop_assign_flag_override(prop, override_enum.value);
   }
   bpy_prop_callback_assign_update(prop, update_fn);
-  bpy_prop_callback_assign_string(prop, get_fn, set_fn, search_fn, search_options_enum.value);
+  bpy_prop_callback_assign_string(
+      prop, get_fn, set_fn, search_fn, eStringPropertySearchFlag(search_options_enum.value));
   RNA_def_property_duplicate_pointers(srna, prop);
 
   Py_RETURN_NONE;
@@ -4096,37 +4107,37 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
   { /* Keep this block first. */
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(self, args, kw, pymeth_EnumProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
-  PyObject *default_py = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
+  PyObject *default_py = nullptr;
   int default_value = 0;
   PyObject *items, *items_fast;
   const EnumPropertyItem *eitems;
   PropertyRNA *prop;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_enum_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_enum_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
   bool is_itemf = false;
-  PyObject *update_fn = NULL;
-  PyObject *get_fn = NULL;
-  PyObject *set_fn = NULL;
+  PyObject *update_fn = nullptr;
+  PyObject *get_fn = nullptr;
+  PyObject *set_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",
@@ -4141,7 +4152,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
       "update",
       "get",
       "set",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -4181,23 +4192,23 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         &get_fn,
                                         &set_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(get_fn, "get", 1) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(set_fn, "set", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (default_py == Py_None) {
     /* This allows to get same behavior when explicitly passing None as default value,
      * and not defining a default value at all! */
-    default_py = NULL;
+    default_py = nullptr;
   }
 
   /* Items can be a list or a callable.
@@ -4208,7 +4219,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
       PyErr_Format(PyExc_ValueError,
                    "EnumProperty(...): expected 'items' function to take 2 arguments, not %d",
                    f_code->co_argcount);
-      return NULL;
+      return nullptr;
     }
 
     if (default_py) {
@@ -4218,7 +4229,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
         PyErr_SetString(
             PyExc_TypeError,
             "EnumProperty(...): 'default' can only be an integer when 'items' is a function");
-        return NULL;
+        return nullptr;
       }
     }
 
@@ -4231,7 +4242,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
               "EnumProperty(...): "
               "expected a sequence of tuples for the enum items or a function")))
     {
-      return NULL;
+      return nullptr;
     }
 
     eitems = enum_items_from_py(
@@ -4239,11 +4250,11 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
 
     if (!eitems) {
       Py_DECREF(items_fast);
-      return NULL;
+      return nullptr;
     }
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   if (options_enum.value & PROP_ENUM_FLAG) {
@@ -4268,7 +4279,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
     bpy_prop_assign_flag_override(prop, override_enum.value);
   }
   bpy_prop_callback_assign_update(prop, update_fn);
-  bpy_prop_callback_assign_enum(prop, get_fn, set_fn, (is_itemf ? items : NULL));
+  bpy_prop_callback_assign_enum(prop, get_fn, set_fn, (is_itemf ? items : nullptr));
   RNA_def_property_duplicate_pointers(srna, prop);
 
   if (is_itemf == false) {
@@ -4303,7 +4314,7 @@ StructRNA *pointer_type_from_py(PyObject *value, const char *error_prefix)
                    error_prefix,
                    Py_TYPE(value)->tp_name);
     }
-    return NULL;
+    return nullptr;
   }
 
   return srna;
@@ -4331,32 +4342,32 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(
         self, args, kw, pymeth_PointerProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
-  PyObject *update_fn = NULL, *poll_fn = NULL;
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
+
+  PyObject *update_fn = nullptr, *poll_fn = nullptr;
 
   static const char *_keywords[] = {
       "attr",
@@ -4369,7 +4380,7 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
       "tags",
       "poll",
       "update",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -4405,28 +4416,28 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         &poll_fn,
                                         &update_fn))
   {
-    return NULL;
+    return nullptr;
   }
 
   ptype = pointer_type_from_py(type, "PointerProperty(...)");
   if (!ptype) {
-    return NULL;
+    return nullptr;
   }
   if (!RNA_struct_is_a(ptype, &RNA_PropertyGroup) && !RNA_struct_is_ID(ptype)) {
     PyErr_Format(PyExc_TypeError,
                  "PointerProperty(...) expected an RNA type derived from %.200s or %.200s",
                  RNA_struct_ui_name(&RNA_ID),
                  RNA_struct_ui_name(&RNA_PropertyGroup));
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(update_fn, "update", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
   if (bpy_prop_callback_check(poll_fn, "poll", 2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_pointer_runtime(
@@ -4477,31 +4488,30 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
     PyObject *deferred_result;
     srna = bpy_prop_deferred_data_or_srna(
         self, args, kw, pymeth_CollectionProperty, &deferred_result);
-    if (srna == NULL) {
+    if (srna == nullptr) {
       return deferred_result;
     }
   }
 
-  struct BPy_PropIDParse id_data = {
-      .srna = srna,
-  };
-  const char *name = NULL, *description = "";
-  const char *translation_context = NULL;
+  BPy_PropIDParse id_data{};
+  id_data.srna = srna;
+
+  const char *name = nullptr, *description = "";
+  const char *translation_context = nullptr;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
 
-  struct BPy_EnumProperty_Parse options_enum = {
-      .items = rna_enum_property_flag_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse override_enum = {
-      .items = rna_enum_property_override_flag_collection_items,
-      .value = 0,
-  };
-  struct BPy_EnumProperty_Parse_WithSRNA tags_enum = {
-      .srna = srna,
-  };
+  BPy_EnumProperty_Parse options_enum{};
+  options_enum.items = rna_enum_property_flag_items;
+  options_enum.value = 0;
+
+  BPy_EnumProperty_Parse override_enum{};
+  override_enum.items = rna_enum_property_override_flag_collection_items;
+  override_enum.value = 0;
+
+  BPy_EnumProperty_Parse_WithSRNA tags_enum{};
+  tags_enum.srna = srna;
 
   static const char *_keywords[] = {
       "attr",
@@ -4512,7 +4522,7 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
       "options",
       "override",
       "tags",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O&" /* `attr` */
@@ -4544,22 +4554,22 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
                                         bpy_prop_arg_parse_tag_defines,
                                         &tags_enum))
   {
-    return NULL;
+    return nullptr;
   }
 
   ptype = pointer_type_from_py(type, "CollectionProperty(...):");
   if (!ptype) {
-    return NULL;
+    return nullptr;
   }
 
   if (!RNA_struct_is_a(ptype, &RNA_PropertyGroup)) {
     PyErr_Format(PyExc_TypeError,
                  "CollectionProperty(...) expected an RNA type derived from %.200s",
                  RNA_struct_ui_name(&RNA_PropertyGroup));
-    return NULL;
+    return nullptr;
   }
 
-  if (id_data.prop_free_handle != NULL) {
+  if (id_data.prop_free_handle != nullptr) {
     RNA_def_property_free_identifier_deferred_finish(srna, id_data.prop_free_handle);
   }
   prop = RNA_def_collection_runtime(
@@ -4614,23 +4624,23 @@ static PyObject *BPy_RemoveProperty(PyObject *self, PyObject *args, PyObject *kw
   }
   if (PyTuple_GET_SIZE(args) > 1) {
     PyErr_SetString(PyExc_ValueError, "expected one positional arg, one keyword arg");
-    return NULL;
+    return nullptr;
   }
 
   srna = srna_from_self(self, "RemoveProperty(...):");
-  if (srna == NULL && PyErr_Occurred()) {
-    return NULL; /* self's type was compatible but error getting the srna */
+  if (srna == nullptr && PyErr_Occurred()) {
+    return nullptr; /* self's type was compatible but error getting the srna */
   }
-  if (srna == NULL) {
+  if (srna == nullptr) {
     PyErr_SetString(PyExc_TypeError, "RemoveProperty(): struct rna not available for this type");
-    return NULL;
+    return nullptr;
   }
 
-  const char *id = NULL;
+  const char *id = nullptr;
 
   static const char *_keywords[] = {
       "attr",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "s" /* `attr` */
@@ -4639,12 +4649,12 @@ static PyObject *BPy_RemoveProperty(PyObject *self, PyObject *args, PyObject *kw
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &id)) {
-    return NULL;
+    return nullptr;
   }
 
   if (RNA_def_property_free_identifier(srna, id) != 1) {
     PyErr_Format(PyExc_TypeError, "RemoveProperty(): '%s' not a defined dynamic property", id);
-    return NULL;
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -4702,10 +4712,10 @@ static PyMethodDef props_methods[] = {
      (PyCFunction)BPy_RemoveProperty,
      METH_VARARGS | METH_KEYWORDS,
      BPy_RemoveProperty_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
-static int props_visit(PyObject *UNUSED(self), visitproc visit, void *arg)
+static int props_visit(PyObject * /*self*/, visitproc visit, void *arg)
 {
   LISTBASE_FOREACH (struct BPyPropStore *, prop_store, &g_bpy_prop_store_list) {
     PyObject **py_data = (PyObject **)&prop_store->py_data;
@@ -4716,7 +4726,7 @@ static int props_visit(PyObject *UNUSED(self), visitproc visit, void *arg)
   return 0;
 }
 
-static int props_clear(PyObject *UNUSED(self))
+static int props_clear(PyObject * /*self*/)
 {
   LISTBASE_FOREACH (struct BPyPropStore *, prop_store, &g_bpy_prop_store_list) {
     PyObject **py_data = (PyObject **)&prop_store->py_data;
@@ -4742,10 +4752,10 @@ static PyModuleDef props_module = {
     /*m_doc*/ props_module_doc,
     /*m_size*/ -1, /* multiple "initialization" just copies the module dict. */
     /*m_methods*/ props_methods,
-    /*m_slots*/ NULL,
+    /*m_slots*/ nullptr,
     /*m_traverse*/ props_visit,
     /*m_clear*/ props_clear,
-    /*m_free*/ NULL,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPY_rna_props(void)
@@ -4774,7 +4784,7 @@ PyObject *BPY_rna_props(void)
   ASSIGN_STATIC(RemoveProperty);
 
   if (PyType_Ready(&bpy_prop_deferred_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   PyModule_AddType(submodule, &bpy_prop_deferred_Type);
 
@@ -4787,10 +4797,10 @@ PyObject *BPY_rna_props(void)
 void BPY_rna_props_clear_all(void)
 {
   /* Remove all user counts, so this isn't considered a leak from Python's perspective. */
-  props_clear(NULL);
+  props_clear(nullptr);
 
   /* Running is harmless, but redundant. */
-  RNA_def_property_free_pointers_set_py_data_callback(NULL);
+  RNA_def_property_free_pointers_set_py_data_callback(nullptr);
 
   /* Include as it's correct, in practice this should never be used again. */
   BLI_listbase_clear(&g_bpy_prop_store_list);
