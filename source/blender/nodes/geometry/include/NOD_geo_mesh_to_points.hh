@@ -14,7 +14,6 @@ enum GeometryNodeMeshToPointsMode {
 };
 
 struct NodeGeometryMeshToPoints {
-  // uint8_t mode;
   struct DNA {
     /** #GeometryNodeMeshToPointsMode */
     uint8_t mode;
