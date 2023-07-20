@@ -21,7 +21,7 @@ set(SRC
   mathutils_Quaternion.c
   mathutils_Vector.c
   mathutils_bvhtree.cc
-  mathutils_geometry.c
+  mathutils_geometry.cc
   mathutils_interpolate.c
   mathutils_kdtree.c
   mathutils_noise.c
