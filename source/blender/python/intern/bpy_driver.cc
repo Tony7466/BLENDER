@@ -44,10 +44,10 @@
 #  include <opcode.h>
 #endif
 
-PyObject *bpy_pydriver_Dict = NULL;
+PyObject *bpy_pydriver_Dict = nullptr;
 
 #ifdef USE_BYTECODE_WHITELIST
-static PyObject *bpy_pydriver_Dict__whitelist = NULL;
+static PyObject *bpy_pydriver_Dict__whitelist = nullptr;
 #endif
 
 int bpy_pydriver_create_dict(void)
@@ -60,7 +60,7 @@ int bpy_pydriver_create_dict(void)
   }
 
   d = PyDict_New();
-  if (d == NULL) {
+  if (d == nullptr) {
     return -1;
   }
 
@@ -79,14 +79,14 @@ int bpy_pydriver_create_dict(void)
 #endif
 
   /* Add `bpy` to global name-space. */
-  mod = PyImport_ImportModuleLevel("bpy", NULL, NULL, NULL, 0);
+  mod = PyImport_ImportModuleLevel("bpy", nullptr, nullptr, nullptr, 0);
   if (mod) {
     PyDict_SetItemString(bpy_pydriver_Dict, "bpy", mod);
     Py_DECREF(mod);
   }
 
   /* Add noise to global name-space. */
-  mod = PyImport_ImportModuleLevel("mathutils", NULL, NULL, NULL, 0);
+  mod = PyImport_ImportModuleLevel("mathutils", nullptr, nullptr, nullptr, 0);
   if (mod) {
     PyObject *modsub = PyDict_GetItemString(PyModule_GetDict(mod), "noise");
     PyDict_SetItemString(bpy_pydriver_Dict, "noise", modsub);
@@ -94,9 +94,9 @@ int bpy_pydriver_create_dict(void)
   }
 
   /* Add math utility functions. */
-  mod = PyImport_ImportModuleLevel("bl_math", NULL, NULL, NULL, 0);
+  mod = PyImport_ImportModuleLevel("bl_math", nullptr, nullptr, nullptr, 0);
   if (mod) {
-    static const char *names[] = {"clamp", "lerp", "smoothstep", NULL};
+    static const char *names[] = {"clamp", "lerp", "smoothstep", nullptr};
 
     for (const char **pname = names; *pname; ++pname) {
       PyObject *func = PyDict_GetItemString(PyModule_GetDict(mod), *pname);
@@ -130,7 +130,7 @@ int bpy_pydriver_create_dict(void)
         "lerp",
         "smoothstep",
 
-        NULL,
+        nullptr,
     };
 
     for (int i = 0; whitelist[i]; i++) {
@@ -138,7 +138,7 @@ int bpy_pydriver_create_dict(void)
     }
 
     /* Add all of `math` functions. */
-    if (mod_math != NULL) {
+    if (mod_math != nullptr) {
       PyObject *mod_math_dict = PyModule_GetDict(mod_math);
       PyObject *arg_key, *arg_value;
       Py_ssize_t arg_pos = 0;
@@ -160,17 +160,13 @@ int bpy_pydriver_create_dict(void)
  * Not thread safe but neither is Python.
  */
 static struct {
-  float evaltime;
+  float evaltime = FLT_MAX;
 
   /* Borrowed reference to the `self` in `bpy_pydriver_Dict`
    * keep for as long as the same self is used. */
-  PyObject *self;
-  BPy_StructRNA *depsgraph;
-} g_pydriver_state_prev = {
-    .evaltime = FLT_MAX,
-    .self = NULL,
-    .depsgraph = NULL,
-};
+  PyObject *self = nullptr;
+  BPy_StructRNA *depsgraph = nullptr;
+} g_pydriver_state_prev;
 
 static void bpy_pydriver_namespace_update_frame(const float evaltime)
 {
@@ -185,7 +181,7 @@ static void bpy_pydriver_namespace_update_frame(const float evaltime)
 
 static void bpy_pydriver_namespace_update_self(PathResolvedRNA *anim_rna)
 {
-  if ((g_pydriver_state_prev.self == NULL) ||
+  if ((g_pydriver_state_prev.self == nullptr) ||
       (pyrna_driver_is_equal_anim_rna(anim_rna, g_pydriver_state_prev.self) == false))
   {
     PyObject *item = pyrna_driver_self_from_anim_rna(anim_rna);
@@ -201,14 +197,14 @@ static void bpy_pydriver_namespace_clear_self(void)
   if (g_pydriver_state_prev.self) {
     PyDict_DelItem(bpy_pydriver_Dict, bpy_intern_str_self);
 
-    g_pydriver_state_prev.self = NULL;
+    g_pydriver_state_prev.self = nullptr;
   }
 }
 
 static PyObject *bpy_pydriver_depsgraph_as_pyobject(struct Depsgraph *depsgraph)
 {
   PointerRNA depsgraph_ptr;
-  RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
+  RNA_pointer_create(nullptr, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
   return pyrna_struct_CreatePyObject(&depsgraph_ptr);
 }
 
@@ -219,15 +215,15 @@ static PyObject *bpy_pydriver_depsgraph_as_pyobject(struct Depsgraph *depsgraph)
 static void bpy_pydriver_namespace_update_depsgraph(struct Depsgraph *depsgraph)
 {
   /* This should never happen, but it's probably better to have None in Python
-   * than a NULL-wrapping Depsgraph Python struct. */
-  BLI_assert(depsgraph != NULL);
-  if (UNLIKELY(depsgraph == NULL)) {
+   * than a nullptr-wrapping Depsgraph Python struct. */
+  BLI_assert(depsgraph != nullptr);
+  if (UNLIKELY(depsgraph == nullptr)) {
     PyDict_SetItem(bpy_pydriver_Dict, bpy_intern_str_depsgraph, Py_None);
-    g_pydriver_state_prev.depsgraph = NULL;
+    g_pydriver_state_prev.depsgraph = nullptr;
     return;
   }
 
-  if ((g_pydriver_state_prev.depsgraph == NULL) ||
+  if ((g_pydriver_state_prev.depsgraph == nullptr) ||
       (depsgraph != g_pydriver_state_prev.depsgraph->ptr.data))
   {
     PyObject *item = bpy_pydriver_depsgraph_as_pyobject(depsgraph);
@@ -243,22 +239,22 @@ void BPY_driver_exit(void)
   if (bpy_pydriver_Dict) { /* Free the global dict used by python-drivers. */
     PyDict_Clear(bpy_pydriver_Dict);
     Py_DECREF(bpy_pydriver_Dict);
-    bpy_pydriver_Dict = NULL;
+    bpy_pydriver_Dict = nullptr;
   }
 
 #ifdef USE_BYTECODE_WHITELIST
   if (bpy_pydriver_Dict__whitelist) {
     PyDict_Clear(bpy_pydriver_Dict__whitelist);
     Py_DECREF(bpy_pydriver_Dict__whitelist);
-    bpy_pydriver_Dict__whitelist = NULL;
+    bpy_pydriver_Dict__whitelist = nullptr;
   }
 #endif
 
   g_pydriver_state_prev.evaltime = FLT_MAX;
 
   /* Freed when clearing driver dictionary. */
-  g_pydriver_state_prev.self = NULL;
-  g_pydriver_state_prev.depsgraph = NULL;
+  g_pydriver_state_prev.self = nullptr;
+  g_pydriver_state_prev.depsgraph = nullptr;
 }
 
 void BPY_driver_reset(void)
@@ -300,158 +296,165 @@ static void pydriver_error(ChannelDriver *driver, const PathResolvedRNA *anim_rn
           anim_rna->prop ? RNA_property_identifier(anim_rna->prop) : null_str,
           anim_rna->prop_index);
 
-  // BPy_errors_to_report(NULL); /* TODO: reports. */
+  // BPy_errors_to_report(nullptr); /* TODO: reports. */
   PyErr_Print();
   PyErr_Clear();
 }
 
 #ifdef USE_BYTECODE_WHITELIST
 
-#  define OK_OP(op) [op] = true
+static bool is_opcode_secure(const int opcode)
+{
 
-static const bool secure_opcodes[255] = {
+#  define OK_OP(op) \
+    case op: \
+      return true;
+
+  switch (opcode) {
 #  if PY_VERSION_HEX >= 0x030b0000 /* Python 3.11 & newer. */
 
-    OK_OP(CACHE),
-    OK_OP(POP_TOP),
-    OK_OP(PUSH_NULL),
-    OK_OP(NOP),
-    OK_OP(UNARY_POSITIVE),
-    OK_OP(UNARY_NEGATIVE),
-    OK_OP(UNARY_NOT),
-    OK_OP(UNARY_INVERT),
-    OK_OP(BINARY_SUBSCR),
-    OK_OP(GET_LEN),
-    OK_OP(LIST_TO_TUPLE),
-    OK_OP(RETURN_VALUE),
-    OK_OP(SWAP),
-    OK_OP(BUILD_TUPLE),
-    OK_OP(BUILD_LIST),
-    OK_OP(BUILD_SET),
-    OK_OP(BUILD_MAP),
-    OK_OP(COMPARE_OP),
-    OK_OP(JUMP_FORWARD),
-    OK_OP(JUMP_IF_FALSE_OR_POP),
-    OK_OP(JUMP_IF_TRUE_OR_POP),
-    OK_OP(POP_JUMP_FORWARD_IF_FALSE),
-    OK_OP(POP_JUMP_FORWARD_IF_TRUE),
-    OK_OP(LOAD_GLOBAL),
-    OK_OP(IS_OP),
-    OK_OP(CONTAINS_OP),
-    OK_OP(BINARY_OP),
-    OK_OP(LOAD_FAST),
-    OK_OP(STORE_FAST),
-    OK_OP(DELETE_FAST),
-    OK_OP(POP_JUMP_FORWARD_IF_NOT_NONE),
-    OK_OP(POP_JUMP_FORWARD_IF_NONE),
-    OK_OP(BUILD_SLICE),
-    OK_OP(LOAD_DEREF),
-    OK_OP(STORE_DEREF),
-    OK_OP(RESUME),
-    OK_OP(LIST_EXTEND),
-    OK_OP(SET_UPDATE),
+    OK_OP(CACHE)
+    OK_OP(POP_TOP)
+    OK_OP(PUSH_NULL)
+    OK_OP(NOP)
+    OK_OP(UNARY_POSITIVE)
+    OK_OP(UNARY_NEGATIVE)
+    OK_OP(UNARY_NOT)
+    OK_OP(UNARY_INVERT)
+    OK_OP(BINARY_SUBSCR)
+    OK_OP(GET_LEN)
+    OK_OP(LIST_TO_TUPLE)
+    OK_OP(RETURN_VALUE)
+    OK_OP(SWAP)
+    OK_OP(BUILD_TUPLE)
+    OK_OP(BUILD_LIST)
+    OK_OP(BUILD_SET)
+    OK_OP(BUILD_MAP)
+    OK_OP(COMPARE_OP)
+    OK_OP(JUMP_FORWARD)
+    OK_OP(JUMP_IF_FALSE_OR_POP)
+    OK_OP(JUMP_IF_TRUE_OR_POP)
+    OK_OP(POP_JUMP_FORWARD_IF_FALSE)
+    OK_OP(POP_JUMP_FORWARD_IF_TRUE)
+    OK_OP(LOAD_GLOBAL)
+    OK_OP(IS_OP)
+    OK_OP(CONTAINS_OP)
+    OK_OP(BINARY_OP)
+    OK_OP(LOAD_FAST)
+    OK_OP(STORE_FAST)
+    OK_OP(DELETE_FAST)
+    OK_OP(POP_JUMP_FORWARD_IF_NOT_NONE)
+    OK_OP(POP_JUMP_FORWARD_IF_NONE)
+    OK_OP(BUILD_SLICE)
+    OK_OP(LOAD_DEREF)
+    OK_OP(STORE_DEREF)
+    OK_OP(RESUME)
+    OK_OP(LIST_EXTEND)
+    OK_OP(SET_UPDATE)
 /* NOTE(@ideasman42): Don't enable dict manipulation, unless we can prove there is not way it
  * can be used to manipulate the name-space (potentially allowing malicious code). */
 #    if 0
-    OK_OP(DICT_MERGE),
-    OK_OP(DICT_UPDATE),
+    OK_OP(DICT_MERGE)
+    OK_OP(DICT_UPDATE)
 #    endif
-    OK_OP(POP_JUMP_BACKWARD_IF_NOT_NONE),
-    OK_OP(POP_JUMP_BACKWARD_IF_NONE),
-    OK_OP(POP_JUMP_BACKWARD_IF_FALSE),
-    OK_OP(POP_JUMP_BACKWARD_IF_TRUE),
+    OK_OP(POP_JUMP_BACKWARD_IF_NOT_NONE)
+    OK_OP(POP_JUMP_BACKWARD_IF_NONE)
+    OK_OP(POP_JUMP_BACKWARD_IF_FALSE)
+    OK_OP(POP_JUMP_BACKWARD_IF_TRUE)
 
     /* Special cases. */
-    OK_OP(LOAD_CONST), /* Ok because constants are accepted. */
-    OK_OP(LOAD_NAME),  /* Ok, because `PyCodeObject.names` is checked. */
-    OK_OP(CALL),       /* Ok, because we check its "name" before calling. */
-    OK_OP(KW_NAMES),   /* Ok, because it's used for calling functions with keyword arguments. */
-    OK_OP(PRECALL),    /* Ok, because it's used for calling. */
+    OK_OP(LOAD_CONST) /* Ok because constants are accepted. */
+    OK_OP(LOAD_NAME)  /* Ok, because `PyCodeObject.names` is checked. */
+    OK_OP(CALL)       /* Ok, because we check its "name" before calling. */
+    OK_OP(KW_NAMES)   /* Ok, because it's used for calling functions with keyword arguments. */
+    OK_OP(PRECALL)    /* Ok, because it's used for calling. */
 
 #  else /* Python 3.10 and older. */
 
-    OK_OP(POP_TOP),
-    OK_OP(ROT_TWO),
-    OK_OP(ROT_THREE),
-    OK_OP(DUP_TOP),
-    OK_OP(DUP_TOP_TWO),
-    OK_OP(ROT_FOUR),
-    OK_OP(NOP),
-    OK_OP(UNARY_POSITIVE),
-    OK_OP(UNARY_NEGATIVE),
-    OK_OP(UNARY_NOT),
-    OK_OP(UNARY_INVERT),
-    OK_OP(BINARY_MATRIX_MULTIPLY),
-    OK_OP(INPLACE_MATRIX_MULTIPLY),
-    OK_OP(BINARY_POWER),
-    OK_OP(BINARY_MULTIPLY),
-    OK_OP(BINARY_MODULO),
-    OK_OP(BINARY_ADD),
-    OK_OP(BINARY_SUBTRACT),
-    OK_OP(BINARY_SUBSCR),
-    OK_OP(BINARY_FLOOR_DIVIDE),
-    OK_OP(BINARY_TRUE_DIVIDE),
-    OK_OP(INPLACE_FLOOR_DIVIDE),
-    OK_OP(INPLACE_TRUE_DIVIDE),
-    OK_OP(GET_LEN),
-    OK_OP(INPLACE_ADD),
-    OK_OP(INPLACE_SUBTRACT),
-    OK_OP(INPLACE_MULTIPLY),
-    OK_OP(INPLACE_MODULO),
-    OK_OP(BINARY_LSHIFT),
-    OK_OP(BINARY_RSHIFT),
-    OK_OP(BINARY_AND),
-    OK_OP(BINARY_XOR),
-    OK_OP(BINARY_OR),
-    OK_OP(INPLACE_POWER),
-    OK_OP(INPLACE_LSHIFT),
-    OK_OP(INPLACE_RSHIFT),
-    OK_OP(INPLACE_AND),
-    OK_OP(INPLACE_XOR),
-    OK_OP(INPLACE_OR),
-    OK_OP(LIST_TO_TUPLE),
-    OK_OP(RETURN_VALUE),
-    OK_OP(ROT_N),
-    OK_OP(BUILD_TUPLE),
-    OK_OP(BUILD_LIST),
-    OK_OP(BUILD_SET),
-    OK_OP(BUILD_MAP),
-    OK_OP(COMPARE_OP),
-    OK_OP(JUMP_FORWARD),
-    OK_OP(JUMP_IF_FALSE_OR_POP),
-    OK_OP(JUMP_IF_TRUE_OR_POP),
-    OK_OP(JUMP_ABSOLUTE),
-    OK_OP(POP_JUMP_IF_FALSE),
-    OK_OP(POP_JUMP_IF_TRUE),
-    OK_OP(LOAD_GLOBAL),
-    OK_OP(IS_OP),
-    OK_OP(CONTAINS_OP),
-    OK_OP(LOAD_FAST),
-    OK_OP(STORE_FAST),
-    OK_OP(DELETE_FAST),
-    OK_OP(BUILD_SLICE),
-    OK_OP(LOAD_DEREF),
-    OK_OP(STORE_DEREF),
-    OK_OP(LIST_EXTEND),
-    OK_OP(SET_UPDATE),
+    OK_OP(POP_TOP)
+    OK_OP(ROT_TWO)
+    OK_OP(ROT_THREE)
+    OK_OP(DUP_TOP)
+    OK_OP(DUP_TOP_TWO)
+    OK_OP(ROT_FOUR)
+    OK_OP(NOP)
+    OK_OP(UNARY_POSITIVE)
+    OK_OP(UNARY_NEGATIVE)
+    OK_OP(UNARY_NOT)
+    OK_OP(UNARY_INVERT)
+    OK_OP(BINARY_MATRIX_MULTIPLY)
+    OK_OP(INPLACE_MATRIX_MULTIPLY)
+    OK_OP(BINARY_POWER)
+    OK_OP(BINARY_MULTIPLY)
+    OK_OP(BINARY_MODULO)
+    OK_OP(BINARY_ADD)
+    OK_OP(BINARY_SUBTRACT)
+    OK_OP(BINARY_SUBSCR)
+    OK_OP(BINARY_FLOOR_DIVIDE)
+    OK_OP(BINARY_TRUE_DIVIDE)
+    OK_OP(INPLACE_FLOOR_DIVIDE)
+    OK_OP(INPLACE_TRUE_DIVIDE)
+    OK_OP(GET_LEN)
+    OK_OP(INPLACE_ADD)
+    OK_OP(INPLACE_SUBTRACT)
+    OK_OP(INPLACE_MULTIPLY)
+    OK_OP(INPLACE_MODULO)
+    OK_OP(BINARY_LSHIFT)
+    OK_OP(BINARY_RSHIFT)
+    OK_OP(BINARY_AND)
+    OK_OP(BINARY_XOR)
+    OK_OP(BINARY_OR)
+    OK_OP(INPLACE_POWER)
+    OK_OP(INPLACE_LSHIFT)
+    OK_OP(INPLACE_RSHIFT)
+    OK_OP(INPLACE_AND)
+    OK_OP(INPLACE_XOR)
+    OK_OP(INPLACE_OR)
+    OK_OP(LIST_TO_TUPLE)
+    OK_OP(RETURN_VALUE)
+    OK_OP(ROT_N)
+    OK_OP(BUILD_TUPLE)
+    OK_OP(BUILD_LIST)
+    OK_OP(BUILD_SET)
+    OK_OP(BUILD_MAP)
+    OK_OP(COMPARE_OP)
+    OK_OP(JUMP_FORWARD)
+    OK_OP(JUMP_IF_FALSE_OR_POP)
+    OK_OP(JUMP_IF_TRUE_OR_POP)
+    OK_OP(JUMP_ABSOLUTE)
+    OK_OP(POP_JUMP_IF_FALSE)
+    OK_OP(POP_JUMP_IF_TRUE)
+    OK_OP(LOAD_GLOBAL)
+    OK_OP(IS_OP)
+    OK_OP(CONTAINS_OP)
+    OK_OP(LOAD_FAST)
+    OK_OP(STORE_FAST)
+    OK_OP(DELETE_FAST)
+    OK_OP(BUILD_SLICE)
+    OK_OP(LOAD_DEREF)
+    OK_OP(STORE_DEREF)
+    OK_OP(LIST_EXTEND)
+    OK_OP(SET_UPDATE)
 /* NOTE(@ideasman42): Don't enable dict manipulation, unless we can prove there is not way it
  * can be used to manipulate the name-space (potentially allowing malicious code). */
 #    if 0
-    OK_OP(DICT_MERGE),
-    OK_OP(DICT_UPDATE),
+    OK_OP(DICT_MERGE)
+    OK_OP(DICT_UPDATE)
 #    endif
 
     /* Special cases. */
-    OK_OP(LOAD_CONST),    /* Ok because constants are accepted. */
-    OK_OP(LOAD_NAME),     /* Ok, because `PyCodeObject.names` is checked. */
-    OK_OP(CALL_FUNCTION), /* Ok, because we check its "name" before calling. */
-    OK_OP(CALL_FUNCTION_KW),
-    OK_OP(CALL_FUNCTION_EX),
+    OK_OP(LOAD_CONST)    /* Ok because constants are accepted. */
+    OK_OP(LOAD_NAME)     /* Ok, because `PyCodeObject.names` is checked. */
+    OK_OP(CALL_FUNCTION) /* Ok, because we check its "name" before calling. */
+    OK_OP(CALL_FUNCTION_KW)
+    OK_OP(CALL_FUNCTION_EX)
 
 #  endif /* Python 3.10 and older. */
-};
+  }
 
 #  undef OK_OP
+  return false;
+}
 
 bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
                                         PyObject *py_namespace_array[],
@@ -511,7 +514,7 @@ bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
     /* Loop over op-code's, the op-code arguments are ignored. */
     for (Py_ssize_t i = 0; i < code_len; i++) {
       const int opcode = _Py_OPCODE(codestr[i]);
-      if (secure_opcodes[opcode] == false) {
+      if (is_opcode_secure(opcode)) {
         if (verbose) {
           fprintf(stderr,
                   "\t%s: restricted access disallows opcode '%d', "
@@ -546,15 +549,9 @@ bool BPY_driver_secure_bytecode_test(PyObject *expr_code,
       return false;
     }
   }
-  return BPY_driver_secure_bytecode_test_ex(expr_code,
-                                            (PyObject *[]){
-                                                bpy_pydriver_Dict,
-                                                bpy_pydriver_Dict__whitelist,
-                                                py_namespace,
-                                                NULL,
-                                            },
-                                            verbose,
-                                            __func__);
+  PyObject *py_namespaces[] = {
+      bpy_pydriver_Dict, bpy_pydriver_Dict__whitelist, py_namespace, nullptr};
+  return BPY_driver_secure_bytecode_test_ex(expr_code, py_namespaces, verbose, __func__);
 }
 
 #endif /* USE_BYTECODE_WHITELIST */
@@ -576,8 +573,8 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
    * original driver, otherwise these would get freed while editing.
    * Due to the GIL this is thread-safe. */
 
-  PyObject *driver_vars = NULL;
-  PyObject *retval = NULL;
+  PyObject *driver_vars = nullptr;
+  PyObject *retval = nullptr;
 
   /* Speed up by pre-hashing string & avoids re-converting unicode strings for every execution. */
   PyObject *expr_vars;
@@ -644,7 +641,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
 
   bpy_pydriver_namespace_update_depsgraph(anim_eval_context->depsgraph);
 
-  if (driver_orig->expr_comp == NULL) {
+  if (driver_orig->expr_comp == nullptr) {
     driver_orig->flag |= DRIVER_FLAG_RECOMPILE;
   }
 
@@ -676,7 +673,8 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
     expr_vars = PyTuple_New(BLI_listbase_count(&driver_orig->variables));
     PyTuple_SET_ITEM(((PyObject *)driver_orig->expr_comp), 1, expr_vars);
 
-    for (dvar = driver_orig->variables.first, i = 0; dvar; dvar = dvar->next) {
+    for (dvar = static_cast<DriverVar *>(driver_orig->variables.first), i = 0; dvar;
+         dvar = dvar->next) {
       PyTuple_SET_ITEM(expr_vars, i++, PyUnicode_FromString(dvar->name));
     }
 
@@ -688,16 +686,16 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
 
   /* Add target values to a dict that will be used as `__locals__` dict. */
   driver_vars = _PyDict_NewPresized(PyTuple_GET_SIZE(expr_vars));
-  for (dvar = driver->variables.first, i = 0; dvar; dvar = dvar->next) {
-    PyObject *driver_arg = NULL;
+  for (dvar = static_cast<DriverVar *>(driver->variables.first), i = 0; dvar; dvar = dvar->next) {
+    PyObject *driver_arg = nullptr;
 
-    /* Support for any RNA data. */
+/* Support for any RNA data. */
 #ifdef USE_RNA_AS_PYOBJECT
     if (dvar->type == DVAR_TYPE_SINGLE_PROP) {
       driver_arg = pyrna_driver_get_variable_value(
           anim_eval_context, driver, dvar, &dvar->targets[0]);
 
-      if (driver_arg == NULL) {
+      if (driver_arg == nullptr) {
         driver_arg = PyFloat_FromDouble(0.0);
         dvar->curval = 0.0f;
       }
@@ -739,7 +737,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
       }
 
       fprintf(stderr, "\t%s: couldn't add variable '%s' to namespace\n", __func__, dvar->name);
-      // BPy_errors_to_report(NULL); /* TODO: reports. */
+      // BPy_errors_to_report(nullptr); /* TODO: reports. */
       PyErr_Print();
       PyErr_Clear();
     }
@@ -749,14 +747,11 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
 #ifdef USE_BYTECODE_WHITELIST
   if (is_recompile && expr_code) {
     if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
+      PyObject *py_namespaces[] = {
+          bpy_pydriver_Dict, bpy_pydriver_Dict__whitelist, driver_vars, nullptr};
       if (!BPY_driver_secure_bytecode_test_ex(
               expr_code,
-              (PyObject *[]){
-                  bpy_pydriver_Dict,
-                  bpy_pydriver_Dict__whitelist,
-                  driver_vars,
-                  NULL,
-              },
+              py_namespaces,
               /* Always be verbose since this can give hints to why evaluation fails. */
               true,
               __func__))
@@ -767,20 +762,21 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
         }
 
         Py_DECREF(expr_code);
-        expr_code = NULL;
-        PyTuple_SET_ITEM(((PyObject *)driver_orig->expr_comp), 0, NULL);
+        expr_code = nullptr;
+        PyTuple_SET_ITEM(((PyObject *)driver_orig->expr_comp), 0, nullptr);
       }
     }
   }
 #endif /* USE_BYTECODE_WHITELIST */
 
 #if 0 /* slow, with this can avoid all Py_CompileString above. */
-  /* execute expression to get a value */
-  retval = PyRun_String(expr, Py_eval_input, bpy_pydriver_Dict, driver_vars);
+/* execute expression to get a value */
+retval = PyRun_String(expr, Py_eval_input, bpy_pydriver_Dict, driver_vars);
 #else
   /* Evaluate the compiled expression. */
   if (expr_code) {
-    retval = PyEval_EvalCode((void *)expr_code, bpy_pydriver_Dict, driver_vars);
+    retval = PyEval_EvalCode(
+        static_cast<PyObject *>((void *)expr_code), bpy_pydriver_Dict, driver_vars);
   }
 #endif
 
@@ -788,7 +784,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
   Py_DECREF(driver_vars);
 
   /* Process the result. */
-  if (retval == NULL) {
+  if (retval == nullptr) {
     pydriver_error(driver, anim_rna);
   }
   else {

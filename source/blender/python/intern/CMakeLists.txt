@@ -41,7 +41,7 @@ set(SRC
   bpy_app_translations.cc
   bpy_app_usd.cc
   bpy_capi_utils.cc
-  bpy_driver.c
+  bpy_driver.cc
   bpy_gizmo_wrap.c
   bpy_interface.c
   bpy_interface_atexit.c
