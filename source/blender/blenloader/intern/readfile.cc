@@ -1119,6 +1119,7 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
         return false;
       }
       MEM_freeN(fg);
+      return true;
     }
   }
   return true;

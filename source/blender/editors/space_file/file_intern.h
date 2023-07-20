@@ -182,7 +182,11 @@ typedef struct SpaceFile_Runtime {
   onReloadFn on_reload;
   onReloadFnData on_reload_custom_data;
 
-  ReportList reports;
+  /* Indicates, if the current filepath is a blendfile library one, if its status has been checked,
+   * and if it is readable. */
+  bool is_blendfile_status_set;
+  bool is_blendfile_readable;
+  ReportList is_blendfile_readable_reports;
 } SpaceFile_Runtime;
 
 /**

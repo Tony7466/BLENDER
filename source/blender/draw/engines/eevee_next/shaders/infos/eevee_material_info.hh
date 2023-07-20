@@ -20,6 +20,7 @@ GPU_SHADER_CREATE_INFO(eevee_sampling_data)
     .storage_buf(SAMPLING_BUF_SLOT, Qualifier::READ, "SamplingData", "sampling_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_utility_texture)
+    .define("EEVEE_UTILITY_TX")
     .sampler(RBUFS_UTILITY_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "utility_tx");
 
 GPU_SHADER_CREATE_INFO(eevee_camera).uniform_buf(CAMERA_BUF_SLOT, "CameraData", "camera_buf");
@@ -67,10 +68,11 @@ GPU_SHADER_CREATE_INFO(eevee_geom_curves)
     .additional_info("eevee_shared")
     .define("MAT_GEOM_CURVES")
     .vertex_source("eevee_geom_curves_vert.glsl")
-    .additional_info("draw_hair",
-                     "draw_curves_infos",
+    .additional_info("draw_modelmat_new",
                      "draw_resource_id_varying",
-                     "draw_resource_id_new");
+                     "draw_view",
+                     "draw_hair_new",
+                     "draw_curves_infos");
 
 GPU_SHADER_CREATE_INFO(eevee_geom_world)
     .additional_info("eevee_shared")

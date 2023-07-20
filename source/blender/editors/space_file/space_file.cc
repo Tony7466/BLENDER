@@ -128,7 +128,7 @@ static void file_free(SpaceLink *sl)
   MEM_SAFE_FREE(sfile->params);
   MEM_SAFE_FREE(sfile->asset_params);
   if (sfile->runtime != nullptr) {
-    BKE_reports_clear(&sfile->runtime->reports);
+    BKE_reports_clear(&sfile->runtime->is_blendfile_readable_reports);
   }
   MEM_SAFE_FREE(sfile->runtime);
 
@@ -147,7 +147,7 @@ static void file_init(wmWindowManager * /*wm*/, ScrArea *area)
   if (sfile->runtime == nullptr) {
     sfile->runtime = static_cast<SpaceFile_Runtime *>(
         MEM_callocN(sizeof(*sfile->runtime), __func__));
-    BKE_reports_init(&sfile->runtime->reports, RPT_STORE);
+    BKE_reports_init(&sfile->runtime->is_blendfile_readable_reports, RPT_STORE);
   }
   /* Validate the params right after file read. */
   fileselect_refresh_params(sfile);
@@ -210,6 +210,10 @@ static void file_refresh(const bContext *C, ScrArea *area)
 
   fileselect_refresh_params(sfile);
   folder_history_list_ensure_for_active_browse_mode(sfile);
+
+  if (sfile->runtime != nullptr) {
+    sfile->runtime->is_blendfile_status_set = false;
+  }
 
   if (sfile->files && (sfile->tags & FILE_TAG_REBUILD_MAIN_FILES) &&
       filelist_needs_reset_on_main_changes(sfile->files))

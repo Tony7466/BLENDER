@@ -1322,9 +1322,15 @@ bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegio
       return false;
     }
 
-    BKE_reports_clear(&sfile->runtime->reports);
-    if (!BKE_blendfile_is_readable(blendfile_path, &sfile->runtime->reports)) {
-      file_draw_invalid_library_hint(C, sfile, region, blendfile_path, &sfile->runtime->reports);
+    if (!sfile->runtime->is_blendfile_status_set) {
+      BKE_reports_clear(&sfile->runtime->is_blendfile_readable_reports);
+      sfile->runtime->is_blendfile_readable = BKE_blendfile_is_readable(
+          blendfile_path, &sfile->runtime->is_blendfile_readable_reports);
+      sfile->runtime->is_blendfile_status_set = true;
+    }
+    if (!sfile->runtime->is_blendfile_readable) {
+      file_draw_invalid_library_hint(
+          C, sfile, region, blendfile_path, &sfile->runtime->is_blendfile_readable_reports);
       return true;
     }
   }

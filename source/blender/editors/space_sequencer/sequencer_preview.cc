@@ -117,7 +117,7 @@ static void push_preview_job_audio_task(struct TaskPool *__restrict task_pool,
 /* Only this runs inside thread. */
 static void preview_startjob(void *data, bool *stop, bool *do_update, float *progress)
 {
-  TaskPool *task_pool = BLI_task_pool_create(NULL, TASK_PRIORITY_LOW);
+  TaskPool *task_pool = BLI_task_pool_create(nullptr, TASK_PRIORITY_LOW);
   PreviewJob *pj = static_cast<PreviewJob *>(data);
 
   while (true) {
@@ -208,7 +208,7 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
       return;
     }
   }
-  else { /* There's no existig preview job. */
+  else { /* There's no existing preview job. */
     pj = MEM_cnew<PreviewJob>("preview rebuild job");
 
     pj->mutex = BLI_mutex_alloc();
