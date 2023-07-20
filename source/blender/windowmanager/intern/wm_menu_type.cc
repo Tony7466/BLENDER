@@ -27,12 +27,12 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-static GHash *menutypes_hash = NULL;
+static GHash *menutypes_hash = nullptr;
 
 MenuType *WM_menutype_find(const char *idname, bool quiet)
 {
   if (idname[0]) {
-    MenuType *mt = BLI_ghash_lookup(menutypes_hash, idname);
+    MenuType *mt = static_cast<MenuType *>(BLI_ghash_lookup(menutypes_hash, idname));
     if (mt) {
       return mt;
     }
@@ -42,7 +42,7 @@ MenuType *WM_menutype_find(const char *idname, bool quiet)
     printf("search for unknown menutype %s\n", idname);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_menutype_iter(GHashIterator *ghi)
@@ -52,14 +52,14 @@ void WM_menutype_iter(GHashIterator *ghi)
 
 bool WM_menutype_add(MenuType *mt)
 {
-  BLI_assert((mt->description == NULL) || (mt->description[0]));
+  BLI_assert((mt->description == nullptr) || (mt->description[0]));
   BLI_ghash_insert(menutypes_hash, mt->idname, mt);
   return true;
 }
 
 void WM_menutype_freelink(MenuType *mt)
 {
-  bool ok = BLI_ghash_remove(menutypes_hash, mt->idname, NULL, MEM_freeN);
+  bool ok = BLI_ghash_remove(menutypes_hash, mt->idname, nullptr, MEM_freeN);
 
   BLI_assert(ok);
   UNUSED_VARS_NDEBUG(ok);
@@ -76,14 +76,14 @@ void WM_menutype_free(void)
   GHashIterator gh_iter;
 
   GHASH_ITER (gh_iter, menutypes_hash) {
-    MenuType *mt = BLI_ghashIterator_getValue(&gh_iter);
+    MenuType *mt = static_cast<MenuType *>(BLI_ghashIterator_getValue(&gh_iter));
     if (mt->rna_ext.free) {
       mt->rna_ext.free(mt->rna_ext.data);
     }
   }
 
-  BLI_ghash_free(menutypes_hash, NULL, MEM_freeN);
-  menutypes_hash = NULL;
+  BLI_ghash_free(menutypes_hash, nullptr, MEM_freeN);
+  menutypes_hash = nullptr;
 }
 
 bool WM_menutype_poll(bContext *C, MenuType *mt)
@@ -96,24 +96,24 @@ bool WM_menutype_poll(bContext *C, MenuType *mt)
     }
   }
 
-  if (mt->poll != NULL) {
+  if (mt->poll != nullptr) {
     return mt->poll(C, mt);
   }
   return true;
 }
 
-void WM_menutype_idname_visit_for_search(const bContext *UNUSED(C),
-                                         PointerRNA *UNUSED(ptr),
-                                         PropertyRNA *UNUSED(prop),
-                                         const char *UNUSED(edit_text),
+void WM_menutype_idname_visit_for_search(const bContext * /*C*/,
+                                         PointerRNA * /*ptr*/,
+                                         PropertyRNA * /*prop*/,
+                                         const char * /*edit_text*/,
                                          StringPropertySearchVisitFunc visit_fn,
                                          void *visit_user_data)
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, menutypes_hash) {
-    MenuType *mt = BLI_ghashIterator_getValue(&gh_iter);
+    MenuType *mt = static_cast<MenuType *>(BLI_ghashIterator_getValue(&gh_iter));
 
-    StringPropertySearchVisitParams visit_params = {NULL};
+    StringPropertySearchVisitParams visit_params = {nullptr};
     visit_params.text = mt->idname;
     visit_params.info = mt->label;
     visit_fn(visit_user_data, &visit_params);

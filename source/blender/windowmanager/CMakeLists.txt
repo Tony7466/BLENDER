@@ -44,7 +44,7 @@ set(SRC
   intern/wm_jobs.cc
   intern/wm_keymap.cc
   intern/wm_keymap_utils.cc
-  intern/wm_menu_type.c
+  intern/wm_menu_type.cc
   intern/wm_operator_props.c
   intern/wm_operator_type.c
   intern/wm_operator_utils.c
