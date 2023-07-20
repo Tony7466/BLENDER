@@ -459,21 +459,22 @@ static bool node_update_basis_socket(const bContext &C,
 }
 
 struct FakeDeclaration {
-  int type;            /* 0: panel, 1: input socket, 2: output socket */
-  int panel_size = -1; /* number of subsequent items belonging in this panel */
-  bool panel_collapsed = false;
+  int type;                     /* 0: panel, 1: input socket, 2: output socket */
+  int panel_size = -1;          /* Panel: number of subsequent items belonging in this panel */
+  bool panel_collapsed = false; /* Panel: collapsed */
+  bool socket_align_opposite = false; /* Sockets: try to align with the opposite side */
 };
-const Array<FakeDeclaration> fake_decls = {{2},           /* O> */
-                                           {0, 3, false}, /* P[3] */
-                                           {1},           /*   <I */
-                                           {1},           /*   <I */
-                                           {2},           /*   O> */
-                                           {1},           /* <I */
-                                           {0, 2, true},  /* P[2] */
-                                           {1},           /*   <I */
-                                           {0, 2, false}, /*   P[2] */
-                                           {2},           /*     O> */
-                                           {2}};          /*     O> */
+const Array<FakeDeclaration> fake_decls = {{2},                  /* O> */
+                                           {0, 3, true},         /* P[3] */
+                                           {1},                  /*   <I */
+                                           {1},                  /*   <I */
+                                           {2, -1, false, true}, /*   <I O>, aligned with above */
+                                           {1},                  /* <I */
+                                           {0, 2, true},         /* P[2] */
+                                           {1},                  /*   <I */
+                                           {0, 2, false},        /*   P[2] */
+                                           {2},                  /*     O> */
+                                           {2}};                 /*     O> */
 
 /* Advanced drawing with panels and arbitrary input/output ordering. */
 static void node_update_basis_from_declaration(
@@ -507,11 +508,11 @@ static void node_update_basis_from_declaration(
 
     switch (decl.type) {
       case 0: /* Panel */ {
-        /* New top panel is collapsed if self or parent is collapsed. */
-        const bool is_collapsed = is_parent_collapsed || decl.panel_collapsed;
-        if (!is_collapsed) {
+        if (!is_parent_collapsed) {
           locy -= NODE_DY;
         }
+        /* New top panel is collapsed if self or parent is collapsed. */
+        const bool is_collapsed = is_parent_collapsed || decl.panel_collapsed;
         panel_states.push({decl.panel_size, is_collapsed});
         break;
       }
