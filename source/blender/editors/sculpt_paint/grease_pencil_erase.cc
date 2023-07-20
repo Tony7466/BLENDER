@@ -457,7 +457,8 @@ struct EraseOperationExecutor {
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
-    const auto execute_in_drawing = [&](int drawing_index, bke::greasepencil::Drawing &drawing) {
+    const auto execute_eraser_on_drawing = [&](int drawing_index,
+                                               bke::greasepencil::Drawing &drawing) {
       const CurvesGeometry &src = drawing.strokes();
 
       /* Evaluated geometry. */
@@ -501,11 +502,11 @@ struct EraseOperationExecutor {
       blender::bke::greasepencil::Drawing &drawing =
           *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
               grease_pencil.drawings_for_write()[drawing_index]);
-      execute_in_drawing(drawing_index, drawing);
+      execute_eraser_on_drawing(drawing_index, drawing);
     }
     else {
       /* Erase on all editable drawings. */
-      grease_pencil.foreach_editable_drawing(scene->r.cfra, execute_in_drawing);
+      grease_pencil.foreach_editable_drawing(scene->r.cfra, execute_eraser_on_drawing);
     }
 
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
