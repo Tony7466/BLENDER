@@ -33,21 +33,21 @@
 #include "wm_surface.h"
 #include "wm_xr_intern.h"
 
-typedef struct {
+struct wmXrErrorHandlerData {
   wmWindowManager *wm;
-} wmXrErrorHandlerData;
+};
 
 /* -------------------------------------------------------------------- */
 
 static void wm_xr_error_handler(const GHOST_XrError *error)
 {
-  wmXrErrorHandlerData *handler_data = error->customdata;
+  wmXrErrorHandlerData *handler_data = static_cast<wmXrErrorHandlerData *>(error->customdata);
   wmWindowManager *wm = handler_data->wm;
-  wmWindow *root_win = wm->xr.runtime ? wm->xr.runtime->session_root_win : NULL;
+  wmWindow *root_win = wm->xr.runtime ? wm->xr.runtime->session_root_win : nullptr;
 
   BKE_reports_clear(&wm->reports);
   WM_report(RPT_ERROR, error->user_message);
-  /* Rely on the fallback when `root_win` is NULL. */
+  /* Rely on the fallback when `root_win` is nullptr. */
   WM_report_banner_show(wm, root_win);
 
   if (wm->xr.runtime) {
@@ -74,9 +74,9 @@ bool wm_xr_init(wmWindowManager *wm)
         GHOST_kXrGraphicsD3D11,
 #endif
     };
-    GHOST_XrContextCreateInfo create_info = {
-        .gpu_binding_candidates = gpu_bindings_candidates,
-        .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates),
+    GHOST_XrContextCreateInfo create_info{
+        /*gpu_binding_candidates*/ gpu_bindings_candidates,
+        /*gpu_binding_candidates_count*/ ARRAY_SIZE(gpu_bindings_candidates),
     };
     GHOST_XrContextHandle context;
 
@@ -114,12 +114,12 @@ bool wm_xr_init(wmWindowManager *wm)
 
 void wm_xr_exit(wmWindowManager *wm)
 {
-  if (wm->xr.runtime != NULL) {
+  if (wm->xr.runtime != nullptr) {
     wm_xr_runtime_data_free(&wm->xr.runtime);
   }
   if (wm->xr.session_settings.shading.prop) {
     IDP_FreeProperty(wm->xr.session_settings.shading.prop);
-    wm->xr.session_settings.shading.prop = NULL;
+    wm->xr.session_settings.shading.prop = nullptr;
   }
 }
 
@@ -147,7 +147,8 @@ bool wm_xr_events_handle(wmWindowManager *wm)
 
 wmXrRuntimeData *wm_xr_runtime_data_create(void)
 {
-  wmXrRuntimeData *runtime = MEM_callocN(sizeof(*runtime), __func__);
+  wmXrRuntimeData *runtime = static_cast<wmXrRuntimeData *>(
+      MEM_callocN(sizeof(*runtime), __func__));
   return runtime;
 }
 
@@ -155,21 +156,21 @@ void wm_xr_runtime_data_free(wmXrRuntimeData **runtime)
 {
   /* Note that this function may be called twice, because of an indirect recursion: If a session is
    * running while WM-XR calls this function, calling GHOST_XrContextDestroy() will call this
-   * again, because it's also set as the session exit callback. So NULL-check and NULL everything
-   * that is freed here. */
+   * again, because it's also set as the session exit callback. So nullptr-check and nullptr
+   * everything that is freed here. */
 
   /* We free all runtime XR data here, so if the context is still alive, destroy it. */
-  if ((*runtime)->context != NULL) {
+  if ((*runtime)->context != nullptr) {
     GHOST_XrContextHandle context = (*runtime)->context;
-    /* Prevent recursive GHOST_XrContextDestroy() call by NULL'ing the context pointer before the
-     * first call, see comment above. */
-    (*runtime)->context = NULL;
+    /* Prevent recursive GHOST_XrContextDestroy() call by nullptr'ing the context pointer before
+     * the first call, see comment above. */
+    (*runtime)->context = nullptr;
 
     if ((*runtime)->area) {
-      wmWindowManager *wm = G_MAIN->wm.first;
+      wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
       wmWindow *win = wm_xr_session_root_window_or_fallback_get(wm, (*runtime));
       ED_area_offscreen_free(wm, win, (*runtime)->area);
-      (*runtime)->area = NULL;
+      (*runtime)->area = nullptr;
     }
     wm_xr_session_data_free(&(*runtime)->session_state);
     WM_xr_actionmaps_clear(*runtime);
