@@ -39,8 +39,8 @@
 
 struct UnicodeSample {
   char32_t sample[BLF_SAMPLE_LEN];
-  int field;     /* ‘OS/2’ table ulUnicodeRangeX field (1-4). */
-  FT_ULong mask; /* ‘OS/2’ table ulUnicodeRangeX bit mask. */
+  int field;     /* 'OS/2' table ulUnicodeRangeX field (1-4). */
+  FT_ULong mask; /* 'OS/2' table ulUnicodeRangeX bit mask. */
 };
 
 /* The seemingly arbitrary order that follows is to help quickly find the most-likely designed
