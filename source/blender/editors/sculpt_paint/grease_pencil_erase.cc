@@ -51,8 +51,8 @@ class EraseOperation : public GreasePencilStrokeOperation {
  */
 struct EraseOperationExecutor {
 
-  float2 mouse_position;
-  float eraser_radius;
+  float2 mouse_position{};
+  float eraser_radius{};
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
