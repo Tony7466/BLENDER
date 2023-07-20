@@ -31,12 +31,12 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-static GHash *uilisttypes_hash = NULL;
+static GHash *uilisttypes_hash = nullptr;
 
 uiListType *WM_uilisttype_find(const char *idname, bool quiet)
 {
   if (idname[0]) {
-    uiListType *ult = BLI_ghash_lookup(uilisttypes_hash, idname);
+    uiListType *ult = static_cast<uiListType *>(BLI_ghash_lookup(uilisttypes_hash, idname));
     if (ult) {
       return ult;
     }
@@ -46,7 +46,7 @@ uiListType *WM_uilisttype_find(const char *idname, bool quiet)
     printf("search for unknown uilisttype %s\n", idname);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool WM_uilisttype_add(uiListType *ult)
@@ -61,7 +61,7 @@ static void wm_uilisttype_unlink_from_region(const uiListType *ult, ARegion *reg
     if (list->type == ult) {
       /* Don't delete the list, it's not just runtime data but stored in files. Freeing would make
        * that data get lost. */
-      list->type = NULL;
+      list->type = nullptr;
     }
   }
 }
@@ -89,7 +89,9 @@ static void wm_uilisttype_unlink_from_area(const uiListType *ult, ScrArea *area)
  */
 static void wm_uilisttype_unlink(Main *bmain, const uiListType *ult)
 {
-  for (wmWindowManager *wm = bmain->wm.first; wm != NULL; wm = wm->id.next) {
+  for (wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first); wm != nullptr;
+       wm = static_cast<wmWindowManager *>(wm->id.next))
+  {
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       LISTBASE_FOREACH (ScrArea *, global_area, &win->global_areas.areabase) {
         wm_uilisttype_unlink_from_area(ult, global_area);
@@ -97,7 +99,9 @@ static void wm_uilisttype_unlink(Main *bmain, const uiListType *ult)
     }
   }
 
-  for (bScreen *screen = bmain->screens.first; screen != NULL; screen = screen->id.next) {
+  for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen != nullptr;
+       screen = static_cast<bScreen *>(screen->id.next))
+  {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       wm_uilisttype_unlink_from_area(ult, area);
     }
@@ -112,7 +116,7 @@ void WM_uilisttype_remove_ptr(Main *bmain, uiListType *ult)
 {
   wm_uilisttype_unlink(bmain, ult);
 
-  bool ok = BLI_ghash_remove(uilisttypes_hash, ult->idname, NULL, MEM_freeN);
+  bool ok = BLI_ghash_remove(uilisttypes_hash, ult->idname, nullptr, MEM_freeN);
 
   BLI_assert(ok);
   UNUSED_VARS_NDEBUG(ok);
@@ -127,14 +131,14 @@ void WM_uilisttype_free(void)
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, uilisttypes_hash) {
-    uiListType *ult = BLI_ghashIterator_getValue(&gh_iter);
+    uiListType *ult = static_cast<uiListType *>(BLI_ghashIterator_getValue(&gh_iter));
     if (ult->rna_ext.free) {
       ult->rna_ext.free(ult->rna_ext.data);
     }
   }
 
-  BLI_ghash_free(uilisttypes_hash, NULL, MEM_freeN);
-  uilisttypes_hash = NULL;
+  BLI_ghash_free(uilisttypes_hash, nullptr, MEM_freeN);
+  uilisttypes_hash = nullptr;
 }
 
 void WM_uilisttype_to_full_list_id(const uiListType *ult,

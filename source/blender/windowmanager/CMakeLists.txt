@@ -58,7 +58,7 @@ set(SRC
   intern/wm_surface.cc
   intern/wm_toolsystem.cc
   intern/wm_tooltip.cc
-  intern/wm_uilist_type.c
+  intern/wm_uilist_type.cc
   intern/wm_utils.c
   intern/wm_window.c
   gizmo/intern/wm_gizmo.cc
