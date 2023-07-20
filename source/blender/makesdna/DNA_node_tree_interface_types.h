@@ -12,6 +12,7 @@
 
 #ifdef __cplusplus
 #  include "BLI_color.hh"
+#  include "BLI_function_ref.hh"
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
 
@@ -125,26 +126,17 @@ typedef struct bNodeTreeInterfacePanel {
   bool move_item(bNodeTreeInterfaceItem &item, int new_index);
 
   /**
-   * Apply an operator to every item in the panel.
+   * Apply a function to every item in the panel, including child panels.
    * The items are visited in drawing order from top to bottom.
-   *
-   * Handle all items:
-   *   void MyOperator(bNodeTreeInterfaceItem &item);
-   * Stops if the operator return false:
-   *   bool MyOperator(bNodeTreeInterfaceItem &item);
+   * Iteration stops when the function returns false.
    */
-  template<typename Func> void foreach_item(Func op);
-
+  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn);
   /**
-   * Apply an operator to every item in the panel.
+   * Apply a function to every item in the panel, including child panels.
    * The items are visited in drawing order from top to bottom.
-   *
-   * Handle all items:
-   *   void MyOperator(bNodeTreeInterfaceItem &item);
-   * Stops if the operator return false:
-   *   bool MyOperator(bNodeTreeInterfaceItem &item);
+   * Iteration stops when the function returns false.
    */
-  template<typename Func> void foreach_item(Func op) const;
+  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const;
 #endif
 } bNodeTreeInterfacePanel;
 
@@ -255,31 +247,22 @@ typedef struct bNodeTreeInterface {
                            int new_index);
 
   /**
-   * Apply an operator to every item in the interface.
+   * Apply a function to every item in the interface.
    * The items are visited in drawing order from top to bottom.
-   *
-   * Handle all items:
-   *   void MyOperator(bNodeTreeInterfaceItem &item);
-   * Stops if the operator return false:
-   *   bool MyOperator(bNodeTreeInterfaceItem &item);
+   * Iteration stops when the function returns false.
    */
-  template<typename Func> void foreach_item(Func op)
+  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn)
   {
-    root_panel.foreach_item(op);
+    root_panel.foreach_item(fn);
   }
-
   /**
-   * Apply an operator to every item in the interface.
+   * Apply a function to every item in the interface.
    * The items are visited in drawing order from top to bottom.
-   *
-   * Handle all items:
-   *   void MyOperator(bNodeTreeInterfaceItem &item);
-   * Stops if the operator return false:
-   *   bool MyOperator(bNodeTreeInterfaceItem &item);
+   * Iteration stops when the function returns false.
    */
-  template<typename Func> void foreach_item(Func op) const
+  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const
   {
-    root_panel.foreach_item(op);
+    root_panel.foreach_item(fn);
   }
 
   void foreach_id(LibraryForeachIDData *cb);

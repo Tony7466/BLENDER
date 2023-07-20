@@ -7,12 +7,12 @@
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
 
-#include "BLI_parameter_pack_utils.hh"
-#include "BLI_vector.hh"
-
 #ifdef __cplusplus
 #  include <queue>
 #  include <type_traits>
+
+#  include "BLI_parameter_pack_utils.hh"
+#  include "BLI_vector.hh"
 #endif
 
 #ifdef __cplusplus
@@ -239,96 +239,6 @@ template<typename T> const T &bNodeTreeInterfaceSocket::get_data() const
 {
   BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
   return *static_cast<const T *>(socket_data);
-}
-
-namespace blender::bke::node_interface::detail {
-
-template<typename Func, typename ReturnT> struct PanelForeachExecutor {
-  void operator()(bNodeTreeInterfacePanel &panel, Func op)
-  {
-    std::queue<bNodeTreeInterfacePanel *> queue;
-
-    if (op(panel.item) == false) {
-      return;
-    }
-    queue.push(&panel);
-
-    while (!queue.empty()) {
-      bNodeTreeInterfacePanel *parent = queue.front();
-      queue.pop();
-
-      for (bNodeTreeInterfaceItem *item : parent->items()) {
-        if (op(*item) == false) {
-          return;
-        }
-
-        if (item->item_type == NODE_INTERFACE_PANEL) {
-          bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
-          queue.push(panel);
-        }
-      }
-    }
-  }
-};
-
-template<typename Func> struct PanelForeachExecutor<Func, void> {
-  void operator()(bNodeTreeInterfacePanel &panel, Func op)
-  {
-    std::queue<bNodeTreeInterfacePanel *> queue;
-
-    op(panel.item);
-    queue.push(&panel);
-
-    while (!queue.empty()) {
-      bNodeTreeInterfacePanel *parent = queue.front();
-      queue.pop();
-
-      for (bNodeTreeInterfaceItem *item : parent->items()) {
-        op(*item);
-
-        if (item->item_type == NODE_INTERFACE_PANEL) {
-          bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
-          queue.push(panel);
-        }
-      }
-    }
-  }
-};
-
-}  // namespace blender::bke::node_interface::detail
-
-template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op)
-{
-  using ResultT = std::result_of<Func(bNodeTreeInterfaceItem &)>;
-  blender::bke::node_interface::detail::PanelForeachExecutor<Func, ResultT> executor;
-  executor(*this, op);
-}
-
-template<typename Func> void bNodeTreeInterfacePanel::foreach_item(Func op) const
-{
-  std::queue<const bNodeTreeInterfacePanel *> queue;
-
-  if (op(this->item) == false) {
-    return;
-  }
-  queue.push(this);
-
-  while (!queue.empty()) {
-    const bNodeTreeInterfacePanel *parent = queue.front();
-    queue.pop();
-
-    for (const bNodeTreeInterfaceItem *item : parent->items()) {
-      if (op(*item) == false) {
-        return;
-      }
-
-      if (item->item_type == NODE_INTERFACE_PANEL) {
-        const bNodeTreeInterfacePanel *panel = reinterpret_cast<const bNodeTreeInterfacePanel *>(
-            item);
-        queue.push(panel);
-      }
-    }
-  }
 }
 
 #endif

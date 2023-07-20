@@ -751,6 +751,61 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int 
   return true;
 }
 
+void bNodeTreeInterfacePanel::foreach_item(
+    blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn)
+{
+  std::queue<bNodeTreeInterfacePanel *> queue;
+
+  if (fn(this->item) == false) {
+    return;
+  }
+  queue.push(this);
+
+  while (!queue.empty()) {
+    bNodeTreeInterfacePanel *parent = queue.front();
+    queue.pop();
+
+    for (bNodeTreeInterfaceItem *item : parent->items()) {
+      if (fn(*item) == false) {
+        return;
+      }
+
+      if (item->item_type == NODE_INTERFACE_PANEL) {
+        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+        queue.push(panel);
+      }
+    }
+  }
+}
+
+void bNodeTreeInterfacePanel::foreach_item(
+    blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const
+{
+  std::queue<const bNodeTreeInterfacePanel *> queue;
+
+  if (fn(this->item) == false) {
+    return;
+  }
+  queue.push(this);
+
+  while (!queue.empty()) {
+    const bNodeTreeInterfacePanel *parent = queue.front();
+    queue.pop();
+
+    for (const bNodeTreeInterfaceItem *item : parent->items()) {
+      if (fn(*item) == false) {
+        return;
+      }
+
+      if (item->item_type == NODE_INTERFACE_PANEL) {
+        const bNodeTreeInterfacePanel *panel = reinterpret_cast<const bNodeTreeInterfacePanel *>(
+            item);
+        queue.push(panel);
+      }
+    }
+  }
+}
+
 static bNodeTreeInterfaceSocket *make_socket(const int uid,
                                              blender::StringRef name,
                                              blender::StringRef description,
