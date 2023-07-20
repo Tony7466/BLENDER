@@ -17,8 +17,8 @@
 
 #include "CLG_log.h"
 
+#include "light_tasks_delegate.h"
 #include "render_task_delegate.h"
-#include "simple_light_task_delegate.h"
 
 #include "scene_delegate/blender_scene_delegate.h"
 #include "scene_delegate/usd_scene_delegate.hh"
@@ -57,7 +57,7 @@ class Engine {
 
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
-  std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate_;
+  std::unique_ptr<LightTasksDelegate> light_tasks_delegate_;
   std::unique_ptr<pxr::HdEngine> engine_;
 };
 

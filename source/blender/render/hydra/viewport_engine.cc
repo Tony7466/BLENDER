@@ -236,8 +236,13 @@ void ViewportEngine::render(Depsgraph * /* depsgraph */, bContext *context)
                                                               view_settings.border[1],
                                                               view_settings.border[2],
                                                               view_settings.border[3]));
-  if (simple_light_task_delegate_) {
-    simple_light_task_delegate_->set_camera_path(free_camera_delegate_->GetCameraId());
+
+  if (light_tasks_delegate_) {
+    light_tasks_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
+                                                   pxr::GfVec4d(view_settings.border[0],
+                                                                view_settings.border[1],
+                                                                view_settings.border[2],
+                                                                view_settings.border[3]));
   }
 
   if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
@@ -248,8 +253,8 @@ void ViewportEngine::render(Depsgraph * /* depsgraph */, bContext *context)
   GPU_shader_bind(shader);
 
   pxr::HdTaskSharedPtrVector tasks;
-  if (simple_light_task_delegate_) {
-    tasks.push_back(simple_light_task_delegate_->get_task());
+  if (light_tasks_delegate_) {
+    tasks = light_tasks_delegate_->get_tasks();
   }
   tasks.push_back(render_task_delegate_->get_task());
 

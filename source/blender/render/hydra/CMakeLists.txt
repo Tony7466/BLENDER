@@ -88,8 +88,8 @@ set(SRC
 
   render_task_delegate.cc
   render_task_delegate.h
-  simple_light_task_delegate.cc
-  simple_light_task_delegate.h
+  light_tasks_delegate.cc
+  light_tasks_delegate.h
 
   scene_delegate/blender_scene_delegate.cc
   scene_delegate/blender_scene_delegate.h

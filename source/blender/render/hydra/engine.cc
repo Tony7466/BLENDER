@@ -53,9 +53,8 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
   if (render_delegate_name == "HdStormRendererPlugin") {
-    simple_light_task_delegate_ = std::make_unique<SimpleLightTaskDelegate>(
-        render_index_.get(),
-        pxr::SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));
+    light_tasks_delegate_ = std::make_unique<LightTasksDelegate>(
+        render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("lightTasks"));
   }
 
   engine_ = std::make_unique<pxr::HdEngine>();
