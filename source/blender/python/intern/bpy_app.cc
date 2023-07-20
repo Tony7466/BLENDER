@@ -119,7 +119,7 @@ static PyStructSequence_Field app_info_fields[] = {
     /* Modules (not struct sequence). */
     {"icons", "Manage custom icons"},
     {"timers", "Manage timers"},
-    {NULL},
+    {nullptr},
 };
 
 PyDoc_STRVAR(bpy_app_doc,
@@ -138,8 +138,8 @@ static PyObject *make_app_info(void)
   int pos = 0;
 
   app_info = PyStructSequence_New(&BlenderAppType);
-  if (app_info == NULL) {
-    return NULL;
+  if (app_info == nullptr) {
+    return nullptr;
   }
 #define SetIntItem(flag) PyStructSequence_SET_ITEM(app_info, pos++, PyLong_FromLong(flag))
 #define SetStrItem(str) PyStructSequence_SET_ITEM(app_info, pos++, PyUnicode_FromString(str))
@@ -147,17 +147,17 @@ static PyObject *make_app_info(void)
 #define SetObjItem(obj) PyStructSequence_SET_ITEM(app_info, pos++, obj)
 
   SetObjItem(
-      PyC_Tuple_Pack_I32(BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_VERSION_PATCH));
+      PyC_Tuple_Pack_I32({BLENDER_VERSION / 100, BLENDER_VERSION % 100, BLENDER_VERSION_PATCH}));
   SetObjItem(PyC_Tuple_Pack_I32(
-      BLENDER_FILE_VERSION / 100, BLENDER_FILE_VERSION % 100, BLENDER_FILE_SUBVERSION));
+      {BLENDER_FILE_VERSION / 100, BLENDER_FILE_VERSION % 100, BLENDER_FILE_SUBVERSION}));
   SetStrItem(BKE_blender_version_string());
 
   SetStrItem(STRINGIFY(BLENDER_VERSION_CYCLE));
   SetObjItem(PyBool_FromLong(G.background));
   SetObjItem(PyBool_FromLong(G.factory_startup));
 
-  /* build info, use bytes since we can't assume _any_ encoding:
-   * see patch #30154 for issue */
+/* build info, use bytes since we can't assume _any_ encoding:
+ * see patch #30154 for issue */
 #ifdef BUILD_DATE
   SetBytesItem(build_date);
   SetBytesItem(build_time);
@@ -211,7 +211,7 @@ static PyObject *make_app_info(void)
 
   if (PyErr_Occurred()) {
     Py_DECREF(app_info);
-    return NULL;
+    return nullptr;
   }
   return app_info;
 }
@@ -222,13 +222,13 @@ static PyObject *make_app_info(void)
 PyDoc_STRVAR(
     bpy_app_debug_doc,
     "Boolean, for debug info (started with --debug / --debug_* matching this attribute name)");
-static PyObject *bpy_app_debug_get(PyObject *UNUSED(self), void *closure)
+static PyObject *bpy_app_debug_get(PyObject * /*self*/, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
   return PyBool_FromLong(G.debug & flag);
 }
 
-static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *closure)
+static int bpy_app_debug_set(PyObject * /*self*/, PyObject *value, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
   const int param = PyObject_IsTrue(value);
@@ -251,13 +251,13 @@ static int bpy_app_debug_set(PyObject *UNUSED(self), PyObject *value, void *clos
 PyDoc_STRVAR(
     bpy_app_global_flag_doc,
     "Boolean, for application behavior (started with --enable-* matching this attribute name)");
-static PyObject *bpy_app_global_flag_get(PyObject *UNUSED(self), void *closure)
+static PyObject *bpy_app_global_flag_get(PyObject * /*self*/, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
   return PyBool_FromLong(G.f & flag);
 }
 
-static int bpy_app_global_flag_set(PyObject *UNUSED(self), PyObject *value, void *closure)
+static int bpy_app_global_flag_set(PyObject * /*self*/, PyObject *value, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
   const int param = PyObject_IsTrue(value);
@@ -277,7 +277,7 @@ static int bpy_app_global_flag_set(PyObject *UNUSED(self), PyObject *value, void
   return 0;
 }
 
-static int bpy_app_global_flag_set__only_disable(PyObject *UNUSED(self),
+static int bpy_app_global_flag_set__only_disable(PyObject * /*self*/,
                                                  PyObject *value,
                                                  void *closure)
 {
@@ -286,17 +286,17 @@ static int bpy_app_global_flag_set__only_disable(PyObject *UNUSED(self),
     PyErr_SetString(PyExc_ValueError, "This bpy.app.use_* option can only be disabled");
     return -1;
   }
-  return bpy_app_global_flag_set(NULL, value, closure);
+  return bpy_app_global_flag_set(nullptr, value, closure);
 }
 
 PyDoc_STRVAR(bpy_app_debug_value_doc,
              "Short, number which can be set to non-zero values for testing purposes");
-static PyObject *bpy_app_debug_value_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_debug_value_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyLong_FromLong(G.debug_value);
 }
 
-static int bpy_app_debug_value_set(PyObject *UNUSED(self), PyObject *value, void *UNUSED(closure))
+static int bpy_app_debug_value_set(PyObject * /*self*/, PyObject *value, void * /*closure*/)
 {
   const short param = PyC_Long_AsI16(value);
 
@@ -308,13 +308,13 @@ static int bpy_app_debug_value_set(PyObject *UNUSED(self), PyObject *value, void
 
   G.debug_value = param;
 
-  WM_main_add_notifier(NC_WINDOW, NULL);
+  WM_main_add_notifier(NC_WINDOW, nullptr);
 
   return 0;
 }
 
 PyDoc_STRVAR(bpy_app_tempdir_doc, "String, the temp directory used by blender (read-only)");
-static PyObject *bpy_app_tempdir_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_tempdir_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(BKE_tempdir_session());
 }
@@ -322,12 +322,12 @@ static PyObject *bpy_app_tempdir_get(PyObject *UNUSED(self), void *UNUSED(closur
 PyDoc_STRVAR(
     bpy_app_driver_dict_doc,
     "Dictionary for drivers namespace, editable in-place, reset on file load (read-only)");
-static PyObject *bpy_app_driver_dict_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_driver_dict_get(PyObject * /*self*/, void * /*closure*/)
 {
-  if (bpy_pydriver_Dict == NULL) {
+  if (bpy_pydriver_Dict == nullptr) {
     if (bpy_pydriver_create_dict() != 0) {
       PyErr_SetString(PyExc_RuntimeError, "bpy.app.driver_namespace failed to create dictionary");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -336,12 +336,13 @@ static PyObject *bpy_app_driver_dict_get(PyObject *UNUSED(self), void *UNUSED(cl
 
 PyDoc_STRVAR(bpy_app_preview_render_size_doc,
              "Reference size for icon/preview renders (read-only)");
-static PyObject *bpy_app_preview_render_size_get(PyObject *UNUSED(self), void *closure)
+static PyObject *bpy_app_preview_render_size_get(PyObject * /*self*/, void *closure)
 {
-  return PyLong_FromLong((long)UI_icon_preview_to_render_size(POINTER_AS_INT(closure)));
+  return PyLong_FromLong(
+      (long)UI_icon_preview_to_render_size(eIconSizes(POINTER_AS_INT(closure))));
 }
 
-static PyObject *bpy_app_autoexec_fail_message_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_autoexec_fail_message_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(G.autoexec_fail);
 }
@@ -350,21 +351,21 @@ PyDoc_STRVAR(bpy_app_binary_path_doc,
              "The location of Blender's executable, useful for utilities that open new instances. "
              "Read-only unless Blender is built as a Python module - in this case the value is "
              "an empty string which script authors may point to a Blender binary.");
-static PyObject *bpy_app_binary_path_get(PyObject *UNUSED(self), void *UNUSED(closure))
+static PyObject *bpy_app_binary_path_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(BKE_appdir_program_path());
 }
 
-static int bpy_app_binary_path_set(PyObject *UNUSED(self), PyObject *value, void *UNUSED(closure))
+static int bpy_app_binary_path_set(PyObject * /*self*/, PyObject *value, void * /*closure*/)
 {
 #ifndef WITH_PYTHON_MODULE
   PyErr_SetString(PyExc_AttributeError,
                   "bpy.app.binary_path is only writable when built as a Python module");
   return -1;
 #endif
-  PyObject *value_coerce = NULL;
+  PyObject *value_coerce = nullptr;
   const char *filepath = PyC_UnicodeAsBytes(value, &value_coerce);
-  if (filepath == NULL) {
+  if (filepath == nullptr) {
     PyErr_Format(PyExc_ValueError, "expected a string or bytes, got %s", Py_TYPE(value)->tp_name);
     return -1;
   }
@@ -454,29 +455,33 @@ static PyGetSetDef bpy_app_getsets[] = {
      bpy_app_debug_value_get,
      bpy_app_debug_value_set,
      bpy_app_debug_value_doc,
-     NULL},
-    {"tempdir", bpy_app_tempdir_get, NULL, bpy_app_tempdir_doc, NULL},
-    {"driver_namespace", bpy_app_driver_dict_get, NULL, bpy_app_driver_dict_doc, NULL},
+     nullptr},
+    {"tempdir", bpy_app_tempdir_get, nullptr, bpy_app_tempdir_doc, nullptr},
+    {"driver_namespace", bpy_app_driver_dict_get, nullptr, bpy_app_driver_dict_doc, nullptr},
 
     {"render_icon_size",
      bpy_app_preview_render_size_get,
-     NULL,
+     nullptr,
      bpy_app_preview_render_size_doc,
      (void *)ICON_SIZE_ICON},
     {"render_preview_size",
      bpy_app_preview_render_size_get,
-     NULL,
+     nullptr,
      bpy_app_preview_render_size_doc,
      (void *)ICON_SIZE_PREVIEW},
 
     /* security */
-    {"autoexec_fail", bpy_app_global_flag_get, NULL, NULL, (void *)G_FLAG_SCRIPT_AUTOEXEC_FAIL},
+    {"autoexec_fail",
+     bpy_app_global_flag_get,
+     nullptr,
+     nullptr,
+     (void *)G_FLAG_SCRIPT_AUTOEXEC_FAIL},
     {"autoexec_fail_quiet",
      bpy_app_global_flag_get,
-     NULL,
-     NULL,
+     nullptr,
+     nullptr,
      (void *)G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET},
-    {"autoexec_fail_message", bpy_app_autoexec_fail_message_get, NULL, NULL, NULL},
+    {"autoexec_fail_message", bpy_app_autoexec_fail_message_get, nullptr, nullptr, nullptr},
 
     /* Support script authors setting the Blender binary path to use, otherwise this value
      * is not known when built as a Python module. */
@@ -484,9 +489,9 @@ static PyGetSetDef bpy_app_getsets[] = {
      bpy_app_binary_path_get,
      bpy_app_binary_path_set,
      bpy_app_binary_path_doc,
-     NULL},
+     nullptr},
 
-    {NULL, NULL, NULL, NULL, NULL},
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
 };
 
 PyDoc_STRVAR(bpy_app_is_job_running_doc,
@@ -498,13 +503,13 @@ PyDoc_STRVAR(bpy_app_is_job_running_doc,
              "   :type job_type: str\n"
              "   :return: Whether a job of the given type is currently running.\n"
              "   :rtype: bool.\n");
-static PyObject *bpy_app_is_job_running(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *bpy_app_is_job_running(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
-  struct BPy_EnumProperty_Parse job_type_enum = {
-      .items = rna_enum_wm_job_type_items,
-      .value = 0,
-  };
-  static const char *_keywords[] = {"job_type", NULL};
+  BPy_EnumProperty_Parse job_type_enum{};
+  job_type_enum.items = rna_enum_wm_job_type_items;
+  job_type_enum.value = 0;
+
+  static const char *_keywords[] = {"job_type", nullptr};
   static _PyArg_Parser _parser = {
       "O&" /* `job_type` */
       ":is_job_running",
@@ -514,13 +519,13 @@ static PyObject *bpy_app_is_job_running(PyObject *UNUSED(self), PyObject *args, 
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, pyrna_enum_value_parse_string, &job_type_enum))
   {
-    return NULL;
+    return nullptr;
   }
-  wmWindowManager *wm = G_MAIN->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   return PyBool_FromLong(WM_jobs_has_running_type(wm, job_type_enum.value));
 }
 
-char *(*BPY_python_app_help_text_fn)(bool all) = NULL;
+char *(*BPY_python_app_help_text_fn)(bool all) = nullptr;
 
 PyDoc_STRVAR(bpy_app_help_text_doc,
              ".. staticmethod:: help_text(all=False)\n"
@@ -530,10 +535,10 @@ PyDoc_STRVAR(bpy_app_help_text_doc,
              "   :arg all: Return all arguments, "
              "even those which aren't available for the current platform.\n"
              "   :type all: bool\n");
-static PyObject *bpy_app_help_text(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *bpy_app_help_text(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
   bool all = false;
-  static const char *_keywords[] = {"all", NULL};
+  static const char *_keywords[] = {"all", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O&" /* `all` */
@@ -542,7 +547,7 @@ static PyObject *bpy_app_help_text(PyObject *UNUSED(self), PyObject *args, PyObj
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, PyC_ParseBool, &all)) {
-    return NULL;
+    return nullptr;
   }
 
   char *buf = BPY_python_app_help_text_fn(all);
@@ -560,7 +565,7 @@ static PyMethodDef bpy_app_methods[] = {
      (PyCFunction)bpy_app_help_text,
      METH_VARARGS | METH_KEYWORDS | METH_STATIC,
      bpy_app_help_text_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static void py_struct_seq_getset_init(void)
@@ -577,7 +582,7 @@ static void py_struct_seq_method_init(void)
 {
   for (PyMethodDef *method = bpy_app_methods; method->ml_name; method++) {
     BLI_assert_msg(method->ml_flags & METH_STATIC, "Only static methods make sense for 'bpy.app'");
-    PyObject *item = PyCFunction_New(method, NULL);
+    PyObject *item = PyCFunction_New(method, nullptr);
     PyDict_SetItemString(BlenderAppType.tp_dict, method->ml_name, item);
     Py_DECREF(item);
   }
@@ -594,8 +599,8 @@ PyObject *BPY_app_struct(void)
   ret = make_app_info();
 
   /* prevent user from creating new instances */
-  BlenderAppType.tp_init = NULL;
-  BlenderAppType.tp_new = NULL;
+  BlenderAppType.tp_init = nullptr;
+  BlenderAppType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppType.tp_hash = (hashfunc)_Py_HashPointer;
 

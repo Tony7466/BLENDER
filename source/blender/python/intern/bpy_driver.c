@@ -454,7 +454,7 @@ static const bool secure_opcodes[255] = {
 #  undef OK_OP
 
 bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
-                                        PyObject *namespace_array[],
+                                        PyObject *py_namespace_array[],
                                         const bool verbose,
                                         const char *error_prefix)
 {
@@ -466,8 +466,8 @@ bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
       PyObject *name = PyTuple_GET_ITEM(py_code->co_names, i);
       const char *name_str = PyUnicode_AsUTF8(name);
       bool contains_name = false;
-      for (int j = 0; namespace_array[j]; j++) {
-        if (PyDict_Contains(namespace_array[j], name)) {
+      for (int j = 0; py_namespace_array[j]; j++) {
+        if (PyDict_Contains(py_namespace_array[j], name)) {
           contains_name = true;
           break;
         }
@@ -535,7 +535,9 @@ bool BPY_driver_secure_bytecode_test_ex(PyObject *expr_code,
   return true;
 }
 
-bool BPY_driver_secure_bytecode_test(PyObject *expr_code, PyObject *namespace, const bool verbose)
+bool BPY_driver_secure_bytecode_test(PyObject *expr_code,
+                                     PyObject *py_namespace,
+                                     const bool verbose)
 {
 
   if (!bpy_pydriver_Dict) {
@@ -548,7 +550,7 @@ bool BPY_driver_secure_bytecode_test(PyObject *expr_code, PyObject *namespace, c
                                             (PyObject *[]){
                                                 bpy_pydriver_Dict,
                                                 bpy_pydriver_Dict__whitelist,
-                                                namespace,
+                                                py_namespace,
                                                 NULL,
                                             },
                                             verbose,
