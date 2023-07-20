@@ -61,7 +61,7 @@ set(SRC
   intern/wm_uilist_type.c
   intern/wm_utils.c
   intern/wm_window.c
-  gizmo/intern/wm_gizmo.c
+  gizmo/intern/wm_gizmo.cc
   gizmo/intern/wm_gizmo_group.cc
   gizmo/intern/wm_gizmo_group_type.cc
   gizmo/intern/wm_gizmo_map.cc
