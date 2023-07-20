@@ -34,7 +34,7 @@ set(SRC
   intern/readfile.cc
   intern/readfile_tempload.cc
   intern/undofile.cc
-  intern/versioning_250.c
+  intern/versioning_250.cc
   intern/versioning_260.cc
   intern/versioning_270.cc
   intern/versioning_280.cc
