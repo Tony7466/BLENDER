@@ -16,7 +16,7 @@ set(INC_SYS
 set(SRC
   mathutils.c
   mathutils_Color.cc
-  mathutils_Euler.c
+  mathutils_Euler.cc
   mathutils_Matrix.c
   mathutils_Quaternion.c
   mathutils_Vector.c
