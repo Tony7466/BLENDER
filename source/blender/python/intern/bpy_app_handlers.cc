@@ -96,7 +96,7 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"persistent",
      "Function decorator for callback functions not to be removed when loading new files"},
 
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_cb_info_desc = {
@@ -118,27 +118,27 @@ static PyStructSequence_Desc app_cb_info_desc = {
 
 #define PERMINENT_CB_ID "_bpy_persistent"
 
-static PyObject *bpy_app_handlers_persistent_new(PyTypeObject *UNUSED(type),
+static PyObject *bpy_app_handlers_persistent_new(PyTypeObject * /*type*/,
                                                  PyObject *args,
-                                                 PyObject *UNUSED(kwds))
+                                                 PyObject * /*kwds*/)
 {
   PyObject *value;
 
   if (!PyArg_ParseTuple(args, "O:bpy.app.handlers.persistent", &value)) {
-    return NULL;
+    return nullptr;
   }
 
   if (PyFunction_Check(value)) {
     PyObject **dict_ptr = _PyObject_GetDictPtr(value);
-    if (dict_ptr == NULL) {
+    if (dict_ptr == nullptr) {
       PyErr_SetString(PyExc_ValueError,
                       "bpy.app.handlers.persistent wasn't able to "
                       "get the dictionary from the function passed");
-      return NULL;
+      return nullptr;
     }
 
     /* set id */
-    if (*dict_ptr == NULL) {
+    if (*dict_ptr == nullptr) {
       *dict_ptr = PyDict_New();
     }
 
@@ -149,69 +149,69 @@ static PyObject *bpy_app_handlers_persistent_new(PyTypeObject *UNUSED(type),
   }
 
   PyErr_SetString(PyExc_ValueError, "bpy.app.handlers.persistent expected a function");
-  return NULL;
+  return nullptr;
 }
 
 /** Dummy type because decorators can't be a #PyCFunction. */
 static PyTypeObject BPyPersistent_Type = {
 #if defined(_MSC_VER)
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
 #else
     /*ob_base*/ PyVarObject_HEAD_INIT(&PyType_Type, 0)
 #endif
     /*tp_name*/ "persistent",
     /*tp_basicsize*/ 0,
     /*tp_itemsize*/ 0,
-    /*tp_dealloc*/ NULL,
+    /*tp_dealloc*/ nullptr,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
-    /*tp_methods*/ NULL,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ bpy_app_handlers_persistent_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
 
-static PyObject *py_cb_array[BKE_CB_EVT_TOT] = {NULL};
+static PyObject *py_cb_array[BKE_CB_EVT_TOT] = {nullptr};
 
 static PyObject *make_app_cb_info(void)
 {
@@ -219,17 +219,17 @@ static PyObject *make_app_cb_info(void)
   int pos;
 
   app_cb_info = PyStructSequence_New(&BlenderAppCbType);
-  if (app_cb_info == NULL) {
-    return NULL;
+  if (app_cb_info == nullptr) {
+    return nullptr;
   }
 
   for (pos = 0; pos < BKE_CB_EVT_TOT; pos++) {
-    if (app_cb_info_fields[pos].name == NULL) {
+    if (app_cb_info_fields[pos].name == nullptr) {
       Py_FatalError("invalid callback slots 1");
     }
     PyStructSequence_SET_ITEM(app_cb_info, pos, (py_cb_array[pos] = PyList_New(0)));
   }
-  if (app_cb_info_fields[pos + APP_CB_OTHER_FIELDS].name != NULL) {
+  if (app_cb_info_fields[pos + APP_CB_OTHER_FIELDS].name != nullptr) {
     Py_FatalError("invalid callback slots 2");
   }
 
@@ -256,14 +256,14 @@ PyObject *BPY_app_handlers_struct(void)
   ret = make_app_cb_info();
 
   /* prevent user from creating new instances */
-  BlenderAppCbType.tp_init = NULL;
-  BlenderAppCbType.tp_new = NULL;
+  BlenderAppCbType.tp_init = nullptr;
+  BlenderAppCbType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppCbType.tp_hash = (hashfunc)_Py_HashPointer;
 
   /* assign the C callbacks */
   if (ret) {
-    static bCallbackFuncStore funcstore_array[BKE_CB_EVT_TOT] = {{NULL}};
+    static bCallbackFuncStore funcstore_array[BKE_CB_EVT_TOT] = {{nullptr}};
     bCallbackFuncStore *funcstore;
     int pos = 0;
 
@@ -272,7 +272,7 @@ PyObject *BPY_app_handlers_struct(void)
       funcstore->func = bpy_app_generic_callback;
       funcstore->alloc = 0;
       funcstore->arg = POINTER_FROM_INT(pos);
-      BKE_callback_add(funcstore, pos);
+      BKE_callback_add(funcstore, eCbEvent(pos));
     }
   }
 
@@ -289,7 +289,7 @@ void BPY_app_handlers_reset(const bool do_all)
   if (do_all) {
     for (pos = 0; pos < BKE_CB_EVT_TOT; pos++) {
       /* clear list */
-      PyList_SetSlice(py_cb_array[pos], 0, PY_SSIZE_T_MAX, NULL);
+      PyList_SetSlice(py_cb_array[pos], 0, PY_SSIZE_T_MAX, nullptr);
     }
   }
   else {
@@ -313,14 +313,14 @@ void BPY_app_handlers_reset(const bool do_all)
 
         PyObject **dict_ptr;
         if (PyFunction_Check(item) && (dict_ptr = _PyObject_GetDictPtr(item)) && (*dict_ptr) &&
-            (PyDict_GetItem(*dict_ptr, perm_id_str) != NULL))
+            (PyDict_GetItem(*dict_ptr, perm_id_str) != nullptr))
         {
           /* keep */
         }
         else {
           /* remove */
           // PySequence_DelItem(ls, i); /* more obvious but slower */
-          PyList_SetSlice(ls, i, i + 1, NULL);
+          PyList_SetSlice(ls, i, i + 1, nullptr);
         }
       }
     }
@@ -344,7 +344,7 @@ static PyObject *choose_arguments(PyObject *func, PyObject *args_all, PyObject *
 }
 
 /* the actual callback - not necessarily called from py */
-void bpy_app_generic_callback(struct Main *UNUSED(main),
+void bpy_app_generic_callback(struct Main * /*main*/,
                               PointerRNA **pointers,
                               const int pointers_num,
                               void *arg)
@@ -382,8 +382,8 @@ void bpy_app_generic_callback(struct Main *UNUSED(main),
     for (pos = 0; pos < PyList_GET_SIZE(cb_list); pos++) {
       func = PyList_GET_ITEM(cb_list, pos);
       PyObject *args = choose_arguments(func, args_all, args_single);
-      ret = PyObject_Call(func, args, NULL);
-      if (ret == NULL) {
+      ret = PyObject_Call(func, args, nullptr);
+      if (ret == nullptr) {
         /* Don't set last system variables because they might cause some
          * dangling pointers to external render engines (when exception
          * happens during rendering) which will break logic of render pipeline
