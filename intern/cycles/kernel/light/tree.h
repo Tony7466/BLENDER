@@ -175,7 +175,7 @@ ccl_device void light_tree_importance(const float3 N_or_D,
   }
 
   /* We add a small value to cos_theta to cover up floating point precision losses in the dot()
-   * function used to calculate cos_theta. */
+   * function used to calculate cos_theta when bcone.axis == -point_to_centroid. */
   const float cos_theta = min(dot(bcone.axis, -point_to_centroid) + 5e-4f, 1.0f);
   const float sin_theta = sin_from_cos(cos_theta);
   /* cos(theta - theta_u) */
