@@ -39,6 +39,7 @@ set(SRC
   intern/texture_margin.cc
   intern/texture_pointdensity.c
   intern/texture_procedural.c
+  intern/tile_highlight.cc
   intern/zbuf.c
 
   RE_bake.h
@@ -53,6 +54,7 @@ set(SRC
   intern/render_result.h
   intern/render_types.h
   intern/texture_common.h
+  intern/tile_highlight.h
   intern/zbuf.h
 )
 
