@@ -33,7 +33,7 @@ PyDoc_STRVAR(M_Interpolate_poly_3d_calc_doc,
              "   :arg veclist: list of vectors\n"
              "   :arg pt: point"
              "   :rtype: list of per-vector weights\n");
-static PyObject *M_Interpolate_poly_3d_calc(PyObject *UNUSED(self), PyObject *args)
+static PyObject *M_Interpolate_poly_3d_calc(PyObject * /*self*/, PyObject *args)
 {
   float fp[3];
   float(*vecs)[3];
@@ -43,22 +43,22 @@ static PyObject *M_Interpolate_poly_3d_calc(PyObject *UNUSED(self), PyObject *ar
   int i;
 
   if (!PyArg_ParseTuple(args, "OO:poly_3d_calc", &veclist, &point)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(
           fp, 2, 3 | MU_ARRAY_ZERO, point, "pt must be a 2-3 dimensional vector") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   len = mathutils_array_parse_alloc_v(((float **)&vecs), 3, veclist, __func__);
   if (len == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (len) {
-    float *weights = MEM_mallocN(sizeof(float) * len, __func__);
+    float *weights = static_cast<float *>(MEM_mallocN(sizeof(float) * len, __func__));
 
     interp_weights_poly_v3(weights, vecs, len, fp);
 
@@ -87,7 +87,7 @@ static PyMethodDef M_Interpolate_methods[] = {
      METH_VARARGS,
      M_Interpolate_poly_3d_calc_doc},
 #endif
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef M_Interpolate_module_def = {
@@ -96,10 +96,10 @@ static PyModuleDef M_Interpolate_module_def = {
     /*m_doc*/ M_Interpolate_doc,
     /*m_size*/ 0,
     /*m_methods*/ M_Interpolate_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 /*----------------------------MODULE INIT-------------------------*/

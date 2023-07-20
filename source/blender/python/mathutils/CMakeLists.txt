@@ -22,7 +22,7 @@ set(SRC
   mathutils_Vector.c
   mathutils_bvhtree.cc
   mathutils_geometry.cc
-  mathutils_interpolate.c
+  mathutils_interpolate.cc
   mathutils_kdtree.c
   mathutils_noise.c
 
