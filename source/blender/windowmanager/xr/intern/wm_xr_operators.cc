@@ -63,7 +63,7 @@ static bool wm_xr_operator_test_event(const wmOperator *op, const wmEvent *event
   BLI_assert(event->custom == EVT_DATA_XR);
   BLI_assert(event->customdata);
 
-  wmXrActionData *actiondata = event->customdata;
+  wmXrActionData *actiondata = static_cast<wmXrActionData *>(event->customdata);
   return (actiondata->ot == op->type &&
           IDP_EqualsProperties(actiondata->op_properties, op->properties));
 }
@@ -80,7 +80,9 @@ static void wm_xr_session_update_screen(Main *bmain, const wmXrData *xr_data)
 {
   const bool session_exists = WM_xr_session_exists(xr_data);
 
-  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+  for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen;
+       screen = static_cast<bScreen *>(screen->id.next))
+  {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       LISTBASE_FOREACH (SpaceLink *, slink, &area->spacedata) {
         if (slink->spacetype == SPACE_VIEW3D) {
@@ -91,7 +93,7 @@ static void wm_xr_session_update_screen(Main *bmain, const wmXrData *xr_data)
           }
 
           if (session_exists) {
-            wmWindowManager *wm = bmain->wm.first;
+            wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
             const Scene *scene = WM_windows_scene_get_from_screen(wm, screen);
 
             ED_view3d_xr_shading_update(wm, v3d, scene);
@@ -105,7 +107,7 @@ static void wm_xr_session_update_screen(Main *bmain, const wmXrData *xr_data)
     }
   }
 
-  WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
+  WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, nullptr);
 }
 
 static void wm_xr_session_update_screen_on_exit_cb(const wmXrData *xr_data)
@@ -114,7 +116,7 @@ static void wm_xr_session_update_screen_on_exit_cb(const wmXrData *xr_data)
   wm_xr_session_update_screen(G_MAIN, xr_data);
 }
 
-static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
+static int wm_xr_session_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -131,7 +133,7 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   wm_xr_session_toggle(wm, win, wm_xr_session_update_screen_on_exit_cb);
   wm_xr_session_update_screen(bmain, &wm->xr);
 
-  WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
+  WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -160,16 +162,16 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
 /** \name XR Grab Utilities
  * \{ */
 
-typedef struct XrGrabData {
+struct XrGrabData {
   float mat_prev[4][4];
   float mat_other_prev[4][4];
   bool bimanual_prev;
   bool loc_lock, locz_lock, rot_lock, rotz_lock, scale_lock;
-} XrGrabData;
+};
 
 static void wm_xr_grab_init(wmOperator *op)
 {
-  BLI_assert(op->customdata == NULL);
+  BLI_assert(op->customdata == nullptr);
 
   op->customdata = MEM_callocN(sizeof(XrGrabData), __func__);
 }
@@ -181,7 +183,7 @@ static void wm_xr_grab_uninit(wmOperator *op)
 
 static void wm_xr_grab_update(wmOperator *op, const wmXrActionData *actiondata)
 {
-  XrGrabData *data = op->customdata;
+  XrGrabData *data = static_cast<XrGrabData *>(op->customdata);
 
   quat_to_mat4(data->mat_prev, actiondata->controller_rot);
   copy_v3_v3(data->mat_prev[3], actiondata->controller_loc);
@@ -401,7 +403,7 @@ static int wm_xr_navigation_grab_invoke(bContext *C, wmOperator *op, const wmEve
     return OPERATOR_PASS_THROUGH;
   }
 
-  const wmXrActionData *actiondata = event->customdata;
+  const wmXrActionData *actiondata = static_cast<const wmXrActionData *>(event->customdata);
 
   wm_xr_grab_init(op);
   wm_xr_grab_update(op, actiondata);
@@ -411,7 +413,7 @@ static int wm_xr_navigation_grab_invoke(bContext *C, wmOperator *op, const wmEve
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int wm_xr_navigation_grab_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
+static int wm_xr_navigation_grab_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
   return OPERATOR_CANCELLED;
 }
@@ -463,12 +465,20 @@ static void wm_xr_navigation_grab_apply(wmXrData *xr,
   }
 
   if (bimanual) {
-    wm_xr_grab_compute_bimanual(
-        actiondata, data, need_navinv ? nav_mat : NULL, need_navinv ? nav_inv : NULL, true, delta);
+    wm_xr_grab_compute_bimanual(actiondata,
+                                data,
+                                need_navinv ? nav_mat : nullptr,
+                                need_navinv ? nav_inv : nullptr,
+                                true,
+                                delta);
   }
   else {
-    wm_xr_grab_compute(
-        actiondata, data, need_navinv ? nav_mat : NULL, need_navinv ? nav_inv : NULL, true, delta);
+    wm_xr_grab_compute(actiondata,
+                       data,
+                       need_navinv ? nav_mat : nullptr,
+                       need_navinv ? nav_inv : nullptr,
+                       true,
+                       delta);
   }
 
   mul_m4_m4m4(out, delta, nav_mat);
@@ -517,8 +527,8 @@ static int wm_xr_navigation_grab_modal(bContext *C, wmOperator *op, const wmEven
     return OPERATOR_PASS_THROUGH;
   }
 
-  const wmXrActionData *actiondata = event->customdata;
-  XrGrabData *data = op->customdata;
+  const wmXrActionData *actiondata = static_cast<const wmXrActionData *>(event->customdata);
+  XrGrabData *data = static_cast<XrGrabData *>(op->customdata);
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrData *xr = &wm->xr;
 
@@ -595,20 +605,18 @@ static void WM_OT_xr_navigation_grab(wmOperatorType *ot)
 static const float g_xr_default_raycast_axis[3] = {0.0f, 0.0f, -1.0f};
 static const float g_xr_default_raycast_color[4] = {0.35f, 0.35f, 1.0f, 1.0f};
 
-typedef struct XrRaycastData {
+struct XrRaycastData {
   bool from_viewer;
   float origin[3];
   float direction[3];
   float end[3];
   float color[4];
   void *draw_handle;
-} XrRaycastData;
+};
 
-static void wm_xr_raycast_draw(const bContext *UNUSED(C),
-                               ARegion *UNUSED(region),
-                               void *customdata)
+static void wm_xr_raycast_draw(const bContext * /*C*/, ARegion * /*region*/, void *customdata)
 {
-  const XrRaycastData *data = customdata;
+  const XrRaycastData *data = static_cast<const XrRaycastData *>(customdata);
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -649,7 +657,7 @@ static void wm_xr_raycast_draw(const bContext *UNUSED(C),
 
 static void wm_xr_raycast_init(wmOperator *op)
 {
-  BLI_assert(op->customdata == NULL);
+  BLI_assert(op->customdata == nullptr);
 
   op->customdata = MEM_callocN(sizeof(XrRaycastData), __func__);
 
@@ -663,7 +671,7 @@ static void wm_xr_raycast_init(wmOperator *op)
     return;
   }
 
-  XrRaycastData *data = op->customdata;
+  XrRaycastData *data = static_cast<XrRaycastData *>(op->customdata);
   data->draw_handle = ED_region_draw_cb_activate(
       art, wm_xr_raycast_draw, op->customdata, REGION_DRAW_POST_VIEW);
 }
@@ -678,7 +686,7 @@ static void wm_xr_raycast_uninit(wmOperator *op)
   if (st) {
     ARegionType *art = BKE_regiontype_from_id(st, RGN_TYPE_XR);
     if (art) {
-      XrRaycastData *data = op->customdata;
+      XrRaycastData *data = static_cast<XrRaycastData *>(op->customdata);
       ED_region_draw_cb_exit(art, data->draw_handle);
     }
   }
@@ -690,7 +698,7 @@ static void wm_xr_raycast_update(wmOperator *op,
                                  const wmXrData *xr,
                                  const wmXrActionData *actiondata)
 {
-  XrRaycastData *data = op->customdata;
+  XrRaycastData *data = static_cast<XrRaycastData *>(op->customdata);
   float ray_length, axis[3];
 
   data->from_viewer = RNA_boolean_get(op->ptr, "from_viewer");
@@ -729,21 +737,21 @@ static void wm_xr_raycast(Scene *scene,
   /* Uses same raycast method as Scene.ray_cast(). */
   SnapObjectContext *sctx = ED_transform_snap_object_context_create(scene, 0);
 
-  ED_transform_snap_object_project_ray_ex(
-      sctx,
-      depsgraph,
-      NULL,
-      &(const struct SnapObjectParams){.snap_target_select = (selectable_only ?
-                                                                  SCE_SNAP_TARGET_ONLY_SELECTABLE :
-                                                                  SCE_SNAP_TARGET_ALL)},
-      origin,
-      direction,
-      ray_dist,
-      r_location,
-      r_normal,
-      r_index,
-      r_ob,
-      r_obmat);
+  SnapObjectParams params{};
+  params.snap_target_select = (selectable_only ? SCE_SNAP_TARGET_ONLY_SELECTABLE :
+                                                 SCE_SNAP_TARGET_ALL);
+  ED_transform_snap_object_project_ray_ex(sctx,
+                                          depsgraph,
+                                          nullptr,
+                                          &params,
+                                          origin,
+                                          direction,
+                                          ray_dist,
+                                          r_location,
+                                          r_normal,
+                                          r_index,
+                                          r_ob,
+                                          r_obmat);
 
   ED_transform_snap_object_context_destroy(sctx);
 }
@@ -760,7 +768,7 @@ static void wm_xr_raycast(Scene *scene,
 #define XR_DEFAULT_FLY_SPEED_MOVE 0.054f
 #define XR_DEFAULT_FLY_SPEED_TURN 0.03f
 
-typedef enum eXrFlyMode {
+enum eXrFlyMode {
   XR_FLY_FORWARD = 0,
   XR_FLY_BACK = 1,
   XR_FLY_LEFT = 2,
@@ -774,18 +782,19 @@ typedef enum eXrFlyMode {
   XR_FLY_VIEWER_LEFT = 10,
   XR_FLY_VIEWER_RIGHT = 11,
   XR_FLY_CONTROLLER_FORWARD = 12,
-} eXrFlyMode;
+};
 
-typedef struct XrFlyData {
+struct XrFlyData {
   float viewer_rot[4];
   double time_prev;
-} XrFlyData;
+};
 
 static void wm_xr_fly_init(wmOperator *op, const wmXrData *xr)
 {
-  BLI_assert(op->customdata == NULL);
+  BLI_assert(op->customdata == nullptr);
 
-  XrFlyData *data = op->customdata = MEM_callocN(sizeof(XrFlyData), __func__);
+  XrFlyData *data = static_cast<XrFlyData *>(
+      op->customdata = MEM_callocN(sizeof(XrFlyData), __func__));
 
   WM_xr_session_state_viewer_pose_rotation_get(xr, data->viewer_rot);
   data->time_prev = PIL_check_seconds_timer();
@@ -915,7 +924,7 @@ static int wm_xr_navigation_fly_invoke(bContext *C, wmOperator *op, const wmEven
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int wm_xr_navigation_fly_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
+static int wm_xr_navigation_fly_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
   return OPERATOR_CANCELLED;
 }
@@ -931,8 +940,8 @@ static int wm_xr_navigation_fly_modal(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_FINISHED;
   }
 
-  const wmXrActionData *actiondata = event->customdata;
-  XrFlyData *data = op->customdata;
+  const wmXrActionData *actiondata = static_cast<const wmXrActionData *>(event->customdata);
+  XrFlyData *data = static_cast<XrFlyData *>(op->customdata);
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrData *xr = &wm->xr;
   eXrFlyMode mode;
@@ -1140,7 +1149,7 @@ static void WM_OT_xr_navigation_fly(wmOperatorType *ot)
        0,
        "Controller Forward",
        "Move along controller's forward axis"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const float default_speed_p0[2] = {0.0f, 0.0f};
@@ -1222,7 +1231,7 @@ static void wm_xr_navigation_teleport(bContext *C,
   float location[3];
   float normal[3];
   int index;
-  Object *ob = NULL;
+  Object *ob = nullptr;
   float obmat[4][4];
 
   wm_xr_raycast(scene,
@@ -1288,7 +1297,7 @@ static int wm_xr_navigation_teleport_invoke(bContext *C, wmOperator *op, const w
   return retval;
 }
 
-static int wm_xr_navigation_teleport_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
+static int wm_xr_navigation_teleport_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
   return OPERATOR_CANCELLED;
 }
@@ -1299,7 +1308,7 @@ static int wm_xr_navigation_teleport_modal(bContext *C, wmOperator *op, const wm
     return OPERATOR_PASS_THROUGH;
   }
 
-  const wmXrActionData *actiondata = event->customdata;
+  const wmXrActionData *actiondata = static_cast<const wmXrActionData *>(event->customdata);
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrData *xr = &wm->xr;
 
@@ -1309,7 +1318,7 @@ static int wm_xr_navigation_teleport_modal(bContext *C, wmOperator *op, const wm
     case KM_PRESS:
       return OPERATOR_RUNNING_MODAL;
     case KM_RELEASE: {
-      XrRaycastData *data = op->customdata;
+      XrRaycastData *data = static_cast<XrRaycastData *>(op->customdata);
       bool selectable_only, teleport_axes[3];
       float teleport_t, teleport_ofs, ray_dist;
 
