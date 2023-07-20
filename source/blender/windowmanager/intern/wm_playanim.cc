@@ -251,16 +251,16 @@ struct PlayState {
 #if 0
 static void print_ps(PlayState *ps)
 {
-printf("ps:\n");
-printf("    direction=%d,\n", (int)ps->direction);
-printf("    once=%d,\n", ps->once);
-printf("    pingpong=%d,\n", ps->pingpong);
-printf("    noskip=%d,\n", ps->noskip);
-printf("    sstep=%d,\n", ps->sstep);
-printf("    wait2=%d,\n", ps->wait2);
-printf("    stopped=%d,\n", ps->stopped);
-printf("    go=%d,\n\n", ps->go);
-fflush(stdout);
+  printf("ps:\n");
+  printf("    direction=%d,\n", (int)ps->direction);
+  printf("    once=%d,\n", ps->once);
+  printf("    pingpong=%d,\n", ps->pingpong);
+  printf("    noskip=%d,\n", ps->noskip);
+  printf("    sstep=%d,\n", ps->sstep);
+  printf("    wait2=%d,\n", ps->wait2);
+  printf("    stopped=%d,\n", ps->stopped);
+  printf("    go=%d,\n\n", ps->go);
+  fflush(stdout);
 }
 #endif
 
@@ -1975,8 +1975,8 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   if (totblock != 0) {
 /* prints many bAKey, bArgument's which are tricky to fix */
 #if 0
-printf("Error Totblock: %d\n", totblock);
-MEM_printmemlist();
+    printf("Error Totblock: %d\n", totblock);
+    MEM_printmemlist();
 #endif
   }
 
