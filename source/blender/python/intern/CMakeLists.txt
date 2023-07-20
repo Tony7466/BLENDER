@@ -44,7 +44,7 @@ set(SRC
   bpy_driver.cc
   bpy_gizmo_wrap.cc
   bpy_interface.c
-  bpy_interface_atexit.c
+  bpy_interface_atexit.cc
   bpy_interface_run.c
   bpy_intern_string.c
   bpy_library_load.c

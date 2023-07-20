@@ -19,7 +19,7 @@
 
 #include "WM_api.h"
 
-static PyObject *bpy_atexit(PyObject *UNUSED(self), PyObject *UNUSED(args), PyObject *UNUSED(kw))
+static PyObject *bpy_atexit(PyObject * /*self*/, PyObject * /*args*/, PyObject * /*kw*/)
 {
   /* close down enough of blender at least not to crash */
   struct bContext *C = BPY_context_get();
@@ -29,15 +29,15 @@ static PyObject *bpy_atexit(PyObject *UNUSED(self), PyObject *UNUSED(args), PyOb
   Py_RETURN_NONE;
 }
 
-static PyMethodDef meth_bpy_atexit = {"bpy_atexit", (PyCFunction)bpy_atexit, METH_NOARGS, NULL};
-static PyObject *func_bpy_atregister = NULL; /* borrowed reference, `atexit` holds. */
+static PyMethodDef meth_bpy_atexit = {"bpy_atexit", (PyCFunction)bpy_atexit, METH_NOARGS, nullptr};
+static PyObject *func_bpy_atregister = nullptr; /* borrowed reference, `atexit` holds. */
 
 static void atexit_func_call(const char *func_name, PyObject *atexit_func_arg)
 {
   /* NOTE(@ideasman42): no error checking, if any of these fail we'll get a crash
    * this is intended, but if its problematic it could be changed. */
 
-  PyObject *atexit_mod = PyImport_ImportModuleLevel("atexit", NULL, NULL, NULL, 0);
+  PyObject *atexit_mod = PyImport_ImportModuleLevel("atexit", nullptr, nullptr, nullptr, 0);
   PyObject *atexit_func = PyObject_GetAttrString(atexit_mod, func_name);
   PyObject *args = PyTuple_New(1);
   PyObject *ret;
@@ -62,16 +62,16 @@ static void atexit_func_call(const char *func_name, PyObject *atexit_func_arg)
 void BPY_atexit_register(void)
 {
   /* atexit module owns this new function reference */
-  BLI_assert(func_bpy_atregister == NULL);
+  BLI_assert(func_bpy_atregister == nullptr);
 
-  func_bpy_atregister = (PyObject *)PyCFunction_New(&meth_bpy_atexit, NULL);
+  func_bpy_atregister = (PyObject *)PyCFunction_New(&meth_bpy_atexit, nullptr);
   atexit_func_call("register", func_bpy_atregister);
 }
 
 void BPY_atexit_unregister(void)
 {
-  BLI_assert(func_bpy_atregister != NULL);
+  BLI_assert(func_bpy_atregister != nullptr);
 
   atexit_func_call("unregister", func_bpy_atregister);
-  func_bpy_atregister = NULL; /* don't really need to set but just in case */
+  func_bpy_atregister = nullptr; /* don't really need to set but just in case */
 }
