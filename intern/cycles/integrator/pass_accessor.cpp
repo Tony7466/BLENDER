@@ -298,7 +298,7 @@ bool PassAccessor::set_render_tile_pixels(RenderBuffers *render_buffers, const S
   const BufferParams &buffer_params = render_buffers->params;
 
   float *buffer_data = render_buffers->buffer.data();
-  const int size = buffer_params.width * buffer_params.height;
+  //const int size = buffer_params.width * buffer_params.height;
 
   const int out_stride = buffer_params.pass_stride;
   const int in_stride = source.num_components;
@@ -306,11 +306,18 @@ bool PassAccessor::set_render_tile_pixels(RenderBuffers *render_buffers, const S
 
   float *out = buffer_data + pass_access_info_.offset;
   const float *in = source.pixels + source.offset * in_stride;
-
-  for (int i = 0; i < size; i++, out += out_stride, in += in_stride) {
-    memcpy(out, in, sizeof(float) * num_components_to_copy);
+  const int slice_height = buffer_params.slice_height;
+  const int total_height = buffer_params.height;
+  const int slice_stride = buffer_params.slice_stride;
+  for(int y = 0;y < total_height;y += slice_height) {
+    const int height = std::min(slice_height, total_height - y);
+    const float *src = in;
+    const int size = height*buffer_params.width;
+    for (int i = 0; i < size; i++, out += out_stride, src += in_stride) {
+        memcpy(out, src, sizeof(float) * num_components_to_copy);
+    }
+    in += slice_stride*buffer_params.width*in_stride;
   }
-
   return true;
 }
 
