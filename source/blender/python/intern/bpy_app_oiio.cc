@@ -21,7 +21,7 @@ static PyStructSequence_Field app_oiio_info_fields[] = {
     {"supported", "Boolean, True when Blender is built with OpenImageIO support"},
     {"version", "The OpenImageIO version as a tuple of 3 numbers"},
     {"version_string", "The OpenImageIO version formatted as a string"},
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_oiio_info_desc = {
@@ -39,21 +39,21 @@ static PyObject *make_oiio_info(void)
   int curversion;
 
   oiio_info = PyStructSequence_New(&BlenderAppOIIOType);
-  if (oiio_info == NULL) {
-    return NULL;
+  if (oiio_info == nullptr) {
+    return nullptr;
   }
 
 #define SetObjItem(obj) PyStructSequence_SET_ITEM(oiio_info, pos++, obj)
 
   curversion = OIIO_getVersionHex();
   SetObjItem(PyBool_FromLong(1));
-  SetObjItem(PyC_Tuple_Pack_I32(curversion / 10000, (curversion / 100) % 100, curversion % 100));
+  SetObjItem(PyC_Tuple_Pack_I32({curversion / 10000, (curversion / 100) % 100, curversion % 100}));
   SetObjItem(PyUnicode_FromFormat(
       "%2d, %2d, %2d", curversion / 10000, (curversion / 100) % 100, curversion % 100));
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(oiio_info);
-    return NULL;
+    return nullptr;
   }
 
 #undef SetStrItem
@@ -71,8 +71,8 @@ PyObject *BPY_app_oiio_struct(void)
   ret = make_oiio_info();
 
   /* prevent user from creating new instances */
-  BlenderAppOIIOType.tp_init = NULL;
-  BlenderAppOIIOType.tp_new = NULL;
+  BlenderAppOIIOType.tp_init = nullptr;
+  BlenderAppOIIOType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppOIIOType.tp_hash = (hashfunc)_Py_HashPointer;
 
