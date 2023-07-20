@@ -27,9 +27,9 @@ PyObject *pyrna_driver_get_variable_value(const struct AnimationEvalContext *ani
                                           struct DriverVar *dvar,
                                           struct DriverTarget *dtar)
 {
-  PyObject *driver_arg = NULL;
+  PyObject *driver_arg = nullptr;
   PointerRNA ptr;
-  PropertyRNA *prop = NULL;
+  PropertyRNA *prop = nullptr;
   int index;
 
   if (driver_get_variable_property(anim_eval_context, driver, dvar, dtar, &ptr, &prop, &index)) {

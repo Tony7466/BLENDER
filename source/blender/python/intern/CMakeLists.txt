@@ -60,7 +60,7 @@ set(SRC
   bpy_rna_callback.cc
   bpy_rna_context.cc
   bpy_rna_data.cc
-  bpy_rna_driver.c
+  bpy_rna_driver.cc
   bpy_rna_gizmo.c
   bpy_rna_id_collection.c
   bpy_rna_operator.c
