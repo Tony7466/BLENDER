@@ -131,7 +131,7 @@ void bpy_context_set(bContext *C, PyGILState_STATE *gilstate)
   }
 }
 
-void bpy_context_clear(bContext *UNUSED(C), const PyGILState_STATE *gilstate)
+void bpy_context_clear(bContext * /*C*/, const PyGILState_STATE *gilstate)
 {
   py_call_level--;
 
@@ -143,10 +143,10 @@ void bpy_context_clear(bContext *UNUSED(C), const PyGILState_STATE *gilstate)
     fprintf(stderr, "ERROR: Python context internal state bug. this should not happen!\n");
   }
   else if (py_call_level == 0) {
-    /* XXX: Calling classes currently won't store the context :\,
-     * can't set NULL because of this. but this is very flaky still. */
+/* XXX: Calling classes currently won't store the context :\,
+ * can't set nullptr because of this. but this is very flaky still. */
 #if 0
-    BPY_context_set(NULL);
+    BPY_context_set(nullptr);
 #endif
 
 #ifdef TIME_PY_RUN
@@ -158,7 +158,7 @@ void bpy_context_clear(bContext *UNUSED(C), const PyGILState_STATE *gilstate)
 
 static void bpy_context_end(bContext *C)
 {
-  if (UNLIKELY(C == NULL)) {
+  if (UNLIKELY(C == nullptr)) {
     return;
   }
   CTX_wm_operator_poll_msg_clear(C);
@@ -178,10 +178,10 @@ void BPY_context_dict_clear_members_array(void **dict_p,
 
   /* Copy on write. */
   if (*dict_p == dict_orig) {
-    *dict_p = PyDict_Copy(dict_orig);
+    *dict_p = PyDict_Copy(static_cast<PyObject *>(dict_orig));
   }
 
-  PyObject *dict = *dict_p;
+  PyObject *dict = static_cast<PyObject *>(*dict_p);
   BLI_assert(PyDict_Check(dict));
 
   /* Use #PyDict_Pop instead of #PyDict_DelItemString to avoid setting the exception,
@@ -209,7 +209,7 @@ void BPY_text_free_code(Text *text)
     }
 
     Py_DECREF((PyObject *)text->compiled);
-    text->compiled = NULL;
+    text->compiled = nullptr;
 
     if (use_gil) {
       PyGILState_Release(gilstate);
@@ -220,7 +220,7 @@ void BPY_text_free_code(Text *text)
 void BPY_modules_update(void)
 {
 #if 0 /* slow, this runs all the time poll, draw etc 100's of time a sec. */
-  PyObject *mod = PyImport_ImportModuleLevel("bpy", NULL, NULL, NULL, 0);
+  PyObject *mod = PyImport_ImportModuleLevel("bpy", nullptr, nullptr, nullptr, 0);
   PyModule_AddObject(mod, "data", BPY_rna_module());
   PyModule_AddObject(mod, "types", BPY_rna_types()); /* This does not need updating. */
 #endif
@@ -231,7 +231,7 @@ void BPY_modules_update(void)
 
 bContext *BPY_context_get(void)
 {
-  return bpy_context_module->ptr.data;
+  return static_cast<bContext *>(bpy_context_module->ptr.data);
 }
 
 void BPY_context_set(bContext *C)
@@ -241,12 +241,12 @@ void BPY_context_set(bContext *C)
 
 #ifdef WITH_FLUID
 /* defined in manta module */
-extern PyObject *Manta_initPython(void);
+extern "C" PyObject *Manta_initPython(void);
 #endif
 
 #ifdef WITH_AUDASPACE_PY
 /* defined in AUD_C-API.cpp */
-extern PyObject *AUD_initPython(void);
+extern "C" PyObject *AUD_initPython(void);
 #endif
 
 #ifdef WITH_CYCLES
@@ -286,7 +286,7 @@ static struct _inittab bpy_internal_modules[] = {
 #endif
     {"gpu", BPyInit_gpu},
     {"idprop", BPyInit_idprop},
-    {NULL, NULL},
+    {nullptr, nullptr},
 };
 
 #ifndef WITH_PYTHON_MODULE
@@ -417,10 +417,10 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
       }
     }
 
-    /* Allow to use our own included Python. `py_path_bundle` may be NULL. */
+    /* Allow to use our own included Python. `py_path_bundle` may be nullptr. */
     {
-      const char *py_path_bundle = BKE_appdir_folder_id(BLENDER_SYSTEM_PYTHON, NULL);
-      if (py_path_bundle != NULL) {
+      const char *py_path_bundle = BKE_appdir_folder_id(BLENDER_SYSTEM_PYTHON, nullptr);
+      if (py_path_bundle != nullptr) {
 
 #  ifdef __APPLE__
         /* Mac-OS allows file/directory names to contain `:` character
@@ -437,7 +437,7 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
         pystatus_exit_on_error(status);
       }
       else {
-        /* Common enough to use the system Python on Linux/Unix, warn on other systems. */
+/* Common enough to use the system Python on Linux/Unix, warn on other systems. */
 #  if defined(__APPLE__) || defined(_WIN32)
         fprintf(stderr,
                 "Bundled Python not found and is expected on this platform "
@@ -515,9 +515,8 @@ void BPY_python_start(bContext *C, int argc, const char **argv)
 
 #ifdef WITH_PYTHON_MODULE
   /* Disable all add-ons at exit, not essential, it just avoids resource leaks, see #71362. */
-  BPY_run_string_eval(C,
-                      (const char *[]){"atexit", "addon_utils", NULL},
-                      "atexit.register(addon_utils.disable_all)");
+  const char *imports[] = {"atexit", "addon_utils", nullptr};
+  BPY_run_string_eval(C, imports, "atexit.register(addon_utils.disable_all)");
 #endif
 }
 
@@ -633,7 +632,7 @@ void BPY_DECREF_RNA_INVALIDATE(void *pyob_ptr)
   const bool do_invalidate = (Py_REFCNT((PyObject *)pyob_ptr) > 1);
   Py_DECREF((PyObject *)pyob_ptr);
   if (do_invalidate) {
-    pyrna_invalidate(pyob_ptr);
+    pyrna_invalidate(static_cast<BPy_DummyPointerRNA *>(pyob_ptr));
   }
   PyGILState_Release(gilstate);
 }
@@ -645,7 +644,7 @@ void BPY_modules_load_user(bContext *C)
   Text *text;
 
   /* can happen on file load */
-  if (bmain == NULL) {
+  if (bmain == nullptr) {
     return;
   }
 
@@ -657,7 +656,9 @@ void BPY_modules_load_user(bContext *C)
 
   bpy_context_set(C, &gilstate);
 
-  for (text = bmain->texts.first; text; text = text->id.next) {
+  for (text = static_cast<Text *>(bmain->texts.first); text;
+       text = static_cast<Text *>(text->id.next))
+  {
     if (text->flags & TXT_ISSCRIPT) {
       if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
         if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
@@ -670,7 +671,7 @@ void BPY_modules_load_user(bContext *C)
         }
       }
       else {
-        BPY_run_text(C, text, NULL, false);
+        BPY_run_text(C, text, nullptr, false);
 
         /* Check if the script loaded a new file. */
         if (bmain != CTX_data_main(C)) {
@@ -689,7 +690,7 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 
   PyObject *pyctx;
   PyObject *item;
-  PointerRNA *ptr = NULL;
+  PointerRNA *ptr = nullptr;
   bool done = false;
 
   if (use_gil) {
@@ -699,7 +700,7 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
   pyctx = (PyObject *)CTX_py_dict_get(C);
   item = PyDict_GetItemString(pyctx, member);
 
-  if (item == NULL) {
+  if (item == nullptr) {
     /* pass */
   }
   else if (item == Py_None) {
@@ -715,7 +716,7 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
   }
   else if (PySequence_Check(item)) {
     PyObject *seq_fast = PySequence_Fast(item, "bpy_context_get sequence conversion");
-    if (seq_fast == NULL) {
+    if (seq_fast == nullptr) {
       PyErr_Print();
       PyErr_Clear();
     }
@@ -782,20 +783,20 @@ extern void main_python_exit(void);
 static struct PyModuleDef bpy_proxy_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
     /*m_free*/ bpy_module_free,
 };
 
-typedef struct {
+struct dealloc_obj {
   PyObject_HEAD
   /* Type-specific fields go here. */
   PyObject *mod;
-} dealloc_obj;
+};
 
 /* call once __file__ is set */
 static void bpy_module_delay_init(PyObject *bpy_proxy)
@@ -814,7 +815,7 @@ static void bpy_module_delay_init(PyObject *bpy_proxy)
   Py_DECREF(filepath_obj);
 
   argv[0] = filepath_abs;
-  argv[1] = NULL;
+  argv[1] = nullptr;
 
   // printf("module found %s\n", argv[0]);
 
@@ -830,10 +831,10 @@ static void bpy_module_delay_init(PyObject *bpy_proxy)
  */
 static bool bpy_module_ensure_compatible_version(void)
 {
-  /* First check the Python version used matches the major version that Blender was built with.
-   * While this isn't essential, the error message in this case may be cryptic and misleading.
-   * NOTE: using `Py_LIMITED_API` would remove the need for this, in practice it's
-   * unlikely Blender will ever used the limited API though. */
+/* First check the Python version used matches the major version that Blender was built with.
+ * While this isn't essential, the error message in this case may be cryptic and misleading.
+ * NOTE: using `Py_LIMITED_API` would remove the need for this, in practice it's
+ * unlikely Blender will ever used the limited API though. */
 #  if PY_VERSION_HEX >= 0x030b0000 /* Python 3.11 & newer. */
   const uint version_runtime = Py_Version;
 #  else
@@ -887,7 +888,7 @@ PyMODINIT_FUNC PyInit_bpy(void);
 PyMODINIT_FUNC PyInit_bpy(void)
 {
   if (!bpy_module_ensure_compatible_version()) {
-    return NULL; /* The error has been set. */
+    return nullptr; /* The error has been set. */
   }
 
   PyObject *bpy_proxy = PyModule_Create(&bpy_proxy_def);
@@ -916,7 +917,7 @@ PyMODINIT_FUNC PyInit_bpy(void)
   dealloc_obj_Type.tp_flags = Py_TPFLAGS_DEFAULT;
 
   if (PyType_Ready(&dealloc_obj_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
 
   dob = (dealloc_obj *)dealloc_obj_Type.tp_alloc(&dealloc_obj_Type, 0);
@@ -926,7 +927,7 @@ PyMODINIT_FUNC PyInit_bpy(void)
   return bpy_proxy;
 }
 
-static void bpy_module_free(void *UNUSED(mod))
+static void bpy_module_free(void * /*mod*/)
 {
   main_python_exit();
 }
@@ -942,7 +943,7 @@ bool BPY_string_is_keyword(const char *str)
       "False", "None",     "True",  "and",    "as",   "assert", "async",  "await",    "break",
       "class", "continue", "def",   "del",    "elif", "else",   "except", "finally",  "for",
       "from",  "global",   "if",    "import", "in",   "is",     "lambda", "nonlocal", "not",
-      "or",    "pass",     "raise", "return", "try",  "while",  "with",   "yield",    NULL,
+      "or",    "pass",     "raise", "return", "try",  "while",  "with",   "yield",    nullptr,
   };
 
   for (int i = 0; kwlist[i]; i++) {

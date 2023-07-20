@@ -43,7 +43,7 @@ set(SRC
   bpy_capi_utils.cc
   bpy_driver.cc
   bpy_gizmo_wrap.cc
-  bpy_interface.c
+  bpy_interface.cc
   bpy_interface_atexit.cc
   bpy_interface_run.cc
   bpy_intern_string.c
