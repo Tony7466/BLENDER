@@ -15,7 +15,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "node_geo_mesh_to_points.hh"
+#include "NOD_geo_mesh_to_points.hh"
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_mesh_to_points_cc {
@@ -43,7 +43,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryMeshToPoints *data = MEM_cnew<NodeGeometryMeshToPoints>(__func__);
-  data->dna_.mode = GEO_NODE_MESH_TO_POINTS_VERTICES;
+  data->dna_.mode = GeometryNodeMeshToPointsMode::Vertices;
   node->storage = data;
 }
 
@@ -162,7 +162,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     switch (mode) {
-      case GEO_NODE_MESH_TO_POINTS_VERTICES:
+      case GeometryNodeMeshToPointsMode::Vertices:
         geometry_set_mesh_to_points(geometry_set,
                                     position,
                                     positive_radius,
@@ -170,7 +170,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                     ATTR_DOMAIN_POINT,
                                     propagation_info);
         break;
-      case GEO_NODE_MESH_TO_POINTS_EDGES:
+      case GeometryNodeMeshToPointsMode::Edges:
         geometry_set_mesh_to_points(geometry_set,
                                     position,
                                     positive_radius,
@@ -178,7 +178,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                     ATTR_DOMAIN_EDGE,
                                     propagation_info);
         break;
-      case GEO_NODE_MESH_TO_POINTS_FACES:
+      case GeometryNodeMeshToPointsMode::Faces:
         geometry_set_mesh_to_points(geometry_set,
                                     position,
                                     positive_radius,
@@ -186,7 +186,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                     ATTR_DOMAIN_FACE,
                                     propagation_info);
         break;
-      case GEO_NODE_MESH_TO_POINTS_CORNERS:
+      case GeometryNodeMeshToPointsMode::Corners:
         geometry_set_mesh_to_points(geometry_set,
                                     position,
                                     positive_radius,
