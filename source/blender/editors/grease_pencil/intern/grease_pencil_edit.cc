@@ -465,9 +465,9 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         }
 
         const Span<float3> positions = curves.positions();
+        const VArray<bool> cyclic = curves.cyclic();
         const OffsetIndices points_by_curve = curves.points_by_curve();
-
-        const VArray<bool> &selection = *curves.attributes().lookup_or_default<bool>(
+        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
         Array<bool> points_to_delete(curves.points_num());
@@ -481,6 +481,9 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
               continue;
             }
 
+            const bool is_last_segment_selected = (curve_selection.first() &&
+                                                   curve_selection.last());
+
             const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(
                 curve_selection, true);
             threading::parallel_for(
@@ -493,6 +496,15 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
                         points_to_delete.as_mutable_span().slice(range.shift(points.start())));
                   }
                 });
+
+            /* For cyclic curves, simplify the last segment. */
+            if (cyclic[curve_i] && curves.points_num() > 2 && is_last_segment_selected) {
+              const float dist = dist_to_line_v3(
+                  positions[points.last()], positions[points.last(1)], positions[points.first()]);
+              if (dist <= epsilon) {
+                points_to_delete[points.last()] = true;
+              }
+            }
           }
         });
 
