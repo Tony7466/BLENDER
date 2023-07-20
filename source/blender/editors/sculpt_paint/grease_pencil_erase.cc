@@ -489,14 +489,12 @@ struct EraseOperationExecutor {
             }
           }
 
-          /* If any point of the stroke lies inside the eraser, then remove it. */
-          for (const int src_point : src_curve_points) {
-            if (contains_point(screen_space_positions[src_point])) {
-              return true;
-            }
-          }
-
-          return false;
+          /* If there is no intersection with the stroke path, then the stroke should be erased if
+           * and only if all points of the stroke lie inside of the eraser. So checking if the
+           * first point is inside of the eraser should be enough.
+           */
+          BLI_assert(src_curve_points.size() > 0);
+          return contains_point(screen_space_positions[src_curve_points.first()]);
         });
 
     if (strokes_to_remove.size() == 0) {
