@@ -496,32 +496,34 @@ static void node_update_basis_from_declaration(
 
   Stack<PanelUpdateState> panel_states;
   for (const FakeDeclaration &decl : fake_decls) {
-    bool is_collapsed = false;
+    bool is_parent_collapsed = false;
     if (PanelUpdateState *parent_state = panel_states.is_empty() ? nullptr : &panel_states.peek())
     {
-      /* Adding an item to the parent panel, will be closed when reaching 0. */
+      /* Adding an item to the parent panel, will be popped when reaching 0. */
       BLI_assert(parent_state->remaining_items > 0);
       --parent_state->remaining_items;
-      is_collapsed = parent_state->is_collapsed;
+      is_parent_collapsed = parent_state->is_collapsed;
     }
 
     switch (decl.type) {
-      case 0: /* Panel */
+      case 0: /* Panel */ {
+        /* New top panel is collapsed if self or parent is collapsed. */
+        const bool is_collapsed = is_parent_collapsed || decl.panel_collapsed;
         if (!is_collapsed) {
           locy -= NODE_DY;
         }
-        /* New top panel is collapsed if self or parent is collapsed. */
-        panel_states.push({decl.panel_size, is_collapsed || decl.panel_collapsed});
+        panel_states.push({decl.panel_size, is_collapsed});
         break;
+      }
 
-      case 1: /* Input */
+      case 1: /* Input */ {
         if (!current_input) {
           /* XXX should match the declaration, assert? */
           break;
         }
 
-        SET_FLAG_FROM_TEST(current_input->flag, is_collapsed, SOCK_PANEL_COLLAPSED);
-        if (is_collapsed) {
+        SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+        if (is_parent_collapsed) {
           current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
         }
         else {
@@ -530,15 +532,16 @@ static void node_update_basis_from_declaration(
         }
         current_input = current_input->next;
         break;
+      }
 
-      case 2: /* Output */
+      case 2: /* Output */ {
         if (!current_output) {
           /* XXX should match the declaration, assert? */
           break;
         }
 
-        SET_FLAG_FROM_TEST(current_output->flag, is_collapsed, SOCK_PANEL_COLLAPSED);
-        if (is_collapsed) {
+        SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+        if (is_parent_collapsed) {
           current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                                      round(locy + NODE_DYS));
         }
@@ -548,6 +551,7 @@ static void node_update_basis_from_declaration(
         }
         current_output = current_output->next;
         break;
+      }
     }
 
     /* Close parent panels that have all items added. */
