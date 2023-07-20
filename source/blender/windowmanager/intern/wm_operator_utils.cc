@@ -58,7 +58,7 @@ int WM_operator_flag_only_pass_through_on_press(int retval, const wmEvent *event
  *
  * \{ */
 
-typedef struct ValueInteraction {
+struct ValueInteraction {
   struct {
     float mval[2];
     float prop_value;
@@ -74,7 +74,7 @@ typedef struct ValueInteraction {
     ScrArea *area;
     ARegion *region;
   } context_vars;
-} ValueInteraction;
+};
 
 static void interactive_value_init(bContext *C,
                                    ValueInteraction *inter,
@@ -106,7 +106,7 @@ static void interactive_value_init_from_property(
 
 static void interactive_value_exit(ValueInteraction *inter)
 {
-  ED_area_status_text(inter->context_vars.area, NULL);
+  ED_area_status_text(inter->context_vars.area, nullptr);
 }
 
 static bool interactive_value_update(ValueInteraction *inter,
@@ -173,13 +173,13 @@ struct ObCustomData_ForEditMode {
 /* Internal callback to free. */
 static void op_generic_value_exit(wmOperator *op)
 {
-  struct ObCustomData_ForEditMode *cd = op->customdata;
+  struct ObCustomData_ForEditMode *cd = static_cast<ObCustomData_ForEditMode *>(op->customdata);
   if (cd) {
     interactive_value_exit(&cd->inter);
 
     for (uint ob_index = 0; ob_index < cd->objects_len; ob_index++) {
       struct XFormObjectData *xod = cd->objects_xform[ob_index];
-      if (xod != NULL) {
+      if (xod != nullptr) {
         ED_object_data_xform_destroy(xod);
       }
     }
@@ -193,14 +193,14 @@ static void op_generic_value_exit(wmOperator *op)
 
 static void op_generic_value_restore(wmOperator *op)
 {
-  struct ObCustomData_ForEditMode *cd = op->customdata;
+  struct ObCustomData_ForEditMode *cd = static_cast<ObCustomData_ForEditMode *>(op->customdata);
   for (uint ob_index = 0; ob_index < cd->objects_len; ob_index++) {
     ED_object_data_xform_restore(cd->objects_xform[ob_index]);
     ED_object_data_xform_tag_update(cd->objects_xform[ob_index]);
   }
 }
 
-static void op_generic_value_cancel(bContext *UNUSED(C), wmOperator *op)
+static void op_generic_value_cancel(bContext * /*C*/, wmOperator *op)
 {
   op_generic_value_exit(op);
 }
@@ -221,7 +221,8 @@ static int op_generic_value_invoke(bContext *C, wmOperator *op, const wmEvent *e
     return OPERATOR_CANCELLED;
   }
 
-  struct ObCustomData_ForEditMode *cd = MEM_callocN(sizeof(*cd), __func__);
+  struct ObCustomData_ForEditMode *cd = static_cast<ObCustomData_ForEditMode *>(
+      MEM_callocN(sizeof(*cd), __func__));
   cd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
   cd->wait_for_input = RNA_boolean_get(op->ptr, "wait_for_input");
   cd->is_active = !cd->wait_for_input;
@@ -233,11 +234,13 @@ static int op_generic_value_invoke(bContext *C, wmOperator *op, const wmEvent *e
     interactive_value_init_from_property(C, &cd->inter, event, op->ptr, op->type->prop);
   }
 
-  cd->objects_xform = MEM_callocN(sizeof(*cd->objects_xform) * objects_len, __func__);
+  cd->objects_xform = static_cast<XFormObjectData **>(
+      MEM_callocN(sizeof(*cd->objects_xform) * objects_len, __func__));
 
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    cd->objects_xform[ob_index] = ED_object_data_xform_create_from_edit_mode(obedit->data);
+    cd->objects_xform[ob_index] = ED_object_data_xform_create_from_edit_mode(
+        static_cast<ID *>(obedit->data));
   }
 
   op->customdata = cd;
@@ -250,7 +253,7 @@ static int op_generic_value_invoke(bContext *C, wmOperator *op, const wmEvent *e
 
 static int op_generic_value_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  struct ObCustomData_ForEditMode *cd = op->customdata;
+  struct ObCustomData_ForEditMode *cd = static_cast<ObCustomData_ForEditMode *>(op->customdata);
 
   /* Special case, check if we release the event that activated this operator. */
   if ((event->type == cd->launch_event) && (event->val == KM_RELEASE)) {
@@ -333,10 +336,10 @@ void WM_operator_type_modal_from_exec_for_object_edit_coords(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  BLI_assert(ot->modal == NULL);
-  BLI_assert(ot->invoke == NULL);
-  BLI_assert(ot->cancel == NULL);
-  BLI_assert(ot->prop != NULL);
+  BLI_assert(ot->modal == nullptr);
+  BLI_assert(ot->invoke == nullptr);
+  BLI_assert(ot->cancel == nullptr);
+  BLI_assert(ot->prop != nullptr);
 
   ot->invoke = op_generic_value_invoke;
   ot->modal = op_generic_value_modal;
