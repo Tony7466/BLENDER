@@ -98,7 +98,7 @@ static PyObject *vec__apply_to_copy(PyObject *(*vec_func)(VectorObject *), Vecto
   }
   /* error */
   Py_DECREF(ret);
-  return NULL;
+  return nullptr;
 }
 
 /** \note #BaseMath_ReadCallback must be called beforehand. */
@@ -135,25 +135,25 @@ static PyObject *Vector_to_tuple_ex(VectorObject *self, int ndigits)
  */
 static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-  float *vec = NULL;
+  float *vec = nullptr;
   int vec_num = 3; /* default to a 3D vector */
 
   if (kwds && PyDict_Size(kwds)) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector(): "
                     "takes no keyword args");
-    return NULL;
+    return nullptr;
   }
 
   switch (PyTuple_GET_SIZE(args)) {
     case 0:
-      vec = PyMem_Malloc(vec_num * sizeof(float));
+      vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-      if (vec == NULL) {
+      if (vec == nullptr) {
         PyErr_SetString(PyExc_MemoryError,
                         "Vector(): "
                         "problem allocating pointer space");
-        return NULL;
+        return nullptr;
       }
 
       copy_vn_fl(vec, vec_num, 0.0f);
@@ -162,14 +162,14 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       if ((vec_num = mathutils_array_parse_alloc(
                &vec, 2, PyTuple_GET_ITEM(args, 0), "mathutils.Vector()")) == -1)
       {
-        return NULL;
+        return nullptr;
       }
       break;
     default:
       PyErr_SetString(PyExc_TypeError,
                       "mathutils.Vector(): "
                       "more than a single arg given");
-      return NULL;
+      return nullptr;
   }
   return Vector_CreatePyObject_alloc(vec, vec_num, type);
 }
@@ -196,21 +196,21 @@ static PyObject *C_Vector_Fill(PyObject *cls, PyObject *args)
   float fill = 0.0f;
 
   if (!PyArg_ParseTuple(args, "i|f:Vector.Fill", &vec_num, &fill)) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.Fill(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   copy_vn_fl(vec, vec_num, fill);
@@ -237,7 +237,7 @@ static PyObject *C_Vector_Range(PyObject *cls, PyObject *args)
   int step = 1;
 
   if (!PyArg_ParseTuple(args, "i|ii:Vector.Range", &start, &stop, &step)) {
-    return NULL;
+    return nullptr;
   }
 
   switch (PyTuple_GET_SIZE(args)) {
@@ -250,7 +250,7 @@ static PyObject *C_Vector_Range(PyObject *cls, PyObject *args)
         PyErr_SetString(PyExc_RuntimeError,
                         "Start value is larger "
                         "than the stop value");
-        return NULL;
+        return nullptr;
       }
 
       vec_num = stop - start;
@@ -260,7 +260,7 @@ static PyObject *C_Vector_Range(PyObject *cls, PyObject *args)
         PyErr_SetString(PyExc_RuntimeError,
                         "Start value is larger "
                         "than the stop value");
-        return NULL;
+        return nullptr;
       }
 
       vec_num = (stop - start);
@@ -276,16 +276,16 @@ static PyObject *C_Vector_Range(PyObject *cls, PyObject *args)
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.Range(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   range_vn_fl(vec, vec_num, (float)start, (float)step);
@@ -312,23 +312,23 @@ static PyObject *C_Vector_Linspace(PyObject *cls, PyObject *args)
   float start, end, step;
 
   if (!PyArg_ParseTuple(args, "ffi:Vector.Linspace", &start, &end, &vec_num)) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector.Linspace(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
   step = (end - start) / (float)(vec_num - 1);
 
-  vec = PyMem_Malloc(vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.Linspace(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   range_vn_fl(vec, vec_num, start, step);
@@ -349,40 +349,40 @@ PyDoc_STRVAR(
 static PyObject *C_Vector_Repeat(PyObject *cls, PyObject *args)
 {
   float *vec;
-  float *iter_vec = NULL;
+  float *iter_vec = nullptr;
   int i, vec_num, value_num;
   PyObject *value;
 
   if (!PyArg_ParseTuple(args, "Oi:Vector.Repeat", &value, &vec_num)) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector.Repeat(): invalid vec_num");
-    return NULL;
+    return nullptr;
   }
 
   if ((value_num = mathutils_array_parse_alloc(
            &iter_vec, 2, value, "Vector.Repeat(vector, vec_num), invalid 'vector' arg")) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
-  if (iter_vec == NULL) {
+  if (iter_vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.Repeat(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyMem_Free(iter_vec);
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.Repeat(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   i = 0;
@@ -409,13 +409,13 @@ PyDoc_STRVAR(Vector_zero_doc,
 static PyObject *Vector_zero(VectorObject *self)
 {
   if (BaseMath_Prepare_ForWrite(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   copy_vn_fl(self->vec, self->vec_num, 0.0f);
 
   if (BaseMath_WriteCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -440,7 +440,7 @@ static PyObject *Vector_normalize(VectorObject *self)
 {
   const int vec_num = (self->vec_num == 4 ? 3 : self->vec_num);
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   normalize_vn(self->vec, vec_num);
@@ -478,33 +478,33 @@ static PyObject *Vector_resize(VectorObject *self, PyObject *value)
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize(): "
                     "cannot resize wrapped data - only Python vectors");
-    return NULL;
+    return nullptr;
   }
   if (self->cb_user) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize(): "
                     "cannot resize a vector that has an owner");
-    return NULL;
+    return nullptr;
   }
 
   if ((vec_num = PyC_Long_AsI32(value)) == -1) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize(size): "
                     "expected size argument to be an integer");
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector.resize(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
-  self->vec = PyMem_Realloc(self->vec, (vec_num * sizeof(float)));
-  if (self->vec == NULL) {
+  self->vec = static_cast<float *>(PyMem_Realloc(self->vec, (vec_num * sizeof(float))));
+  if (self->vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.resize(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   /* If the vector has increased in length, set all new elements to 0.0f */
@@ -529,27 +529,27 @@ static PyObject *Vector_resized(VectorObject *self, PyObject *value)
   float *vec;
 
   if ((vec_num = PyLong_AsLong(value)) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector.resized(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.resized(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   copy_vn_fl(vec, vec_num, 0.0f);
   memcpy(vec, self->vec, self->vec_num * sizeof(float));
 
-  return Vector_CreatePyObject_alloc(vec, vec_num, NULL);
+  return Vector_CreatePyObject_alloc(vec, vec_num, nullptr);
 }
 
 PyDoc_STRVAR(Vector_resize_2d_doc,
@@ -562,21 +562,21 @@ static PyObject *Vector_resize_2d(VectorObject *self)
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_2d(): "
                     "cannot resize wrapped data - only Python vectors");
-    return NULL;
+    return nullptr;
   }
   if (self->cb_user) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_2d(): "
                     "cannot resize a vector that has an owner");
-    return NULL;
+    return nullptr;
   }
 
-  self->vec = PyMem_Realloc(self->vec, sizeof(float[2]));
-  if (self->vec == NULL) {
+  self->vec = static_cast<float *>(PyMem_Realloc(self->vec, sizeof(float[2])));
+  if (self->vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.resize_2d(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   self->vec_num = 2;
@@ -593,21 +593,21 @@ static PyObject *Vector_resize_3d(VectorObject *self)
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_3d(): "
                     "cannot resize wrapped data - only Python vectors");
-    return NULL;
+    return nullptr;
   }
   if (self->cb_user) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_3d(): "
                     "cannot resize a vector that has an owner");
-    return NULL;
+    return nullptr;
   }
 
-  self->vec = PyMem_Realloc(self->vec, sizeof(float[3]));
-  if (self->vec == NULL) {
+  self->vec = static_cast<float *>(PyMem_Realloc(self->vec, sizeof(float[3])));
+  if (self->vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.resize_3d(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num == 2) {
@@ -628,21 +628,21 @@ static PyObject *Vector_resize_4d(VectorObject *self)
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_4d(): "
                     "cannot resize wrapped data - only Python vectors");
-    return NULL;
+    return nullptr;
   }
   if (self->cb_user) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.resize_4d(): "
                     "cannot resize a vector that has an owner");
-    return NULL;
+    return nullptr;
   }
 
-  self->vec = PyMem_Realloc(self->vec, sizeof(float[4]));
-  if (self->vec == NULL) {
+  self->vec = static_cast<float *>(PyMem_Realloc(self->vec, sizeof(float[4])));
+  if (self->vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector.resize_4d(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num == 2) {
@@ -672,7 +672,7 @@ PyDoc_STRVAR(Vector_to_2d_doc,
 static PyObject *Vector_to_2d(VectorObject *self)
 {
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return Vector_CreatePyObject(self->vec, 2, Py_TYPE(self));
@@ -689,7 +689,7 @@ static PyObject *Vector_to_3d(VectorObject *self)
   float tvec[3] = {0.0f};
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 3));
@@ -707,7 +707,7 @@ static PyObject *Vector_to_4d(VectorObject *self)
   float tvec[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   memcpy(tvec, self->vec, sizeof(float) * MIN2(self->vec_num, 4));
@@ -734,14 +734,14 @@ static PyObject *Vector_to_tuple(VectorObject *self, PyObject *args)
   int ndigits = 0;
 
   if (!PyArg_ParseTuple(args, "|i:to_tuple", &ndigits)) {
-    return NULL;
+    return nullptr;
   }
 
   if (ndigits > 22 || ndigits < 0) {
     PyErr_SetString(PyExc_ValueError,
                     "Vector.to_tuple(ndigits): "
                     "ndigits must be between 0 and 21");
-    return NULL;
+    return nullptr;
   }
 
   if (PyTuple_GET_SIZE(args) == 0) {
@@ -749,7 +749,7 @@ static PyObject *Vector_to_tuple(VectorObject *self, PyObject *args)
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return Vector_to_tuple_ex(self, ndigits);
@@ -775,23 +775,23 @@ PyDoc_STRVAR(Vector_to_track_quat_doc,
 static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
 {
   float vec[3], quat[4];
-  const char *strack = NULL;
-  const char *sup = NULL;
+  const char *strack = nullptr;
+  const char *sup = nullptr;
   short track = 2, up = 1;
 
   if (!PyArg_ParseTuple(args, "|ss:to_track_quat", &strack, &sup)) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num != 3) {
     PyErr_SetString(PyExc_TypeError,
                     "Vector.to_track_quat(): "
                     "only for 3D vectors");
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (strack) {
@@ -811,12 +811,12 @@ static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
             break;
           default:
             PyErr_SetString(PyExc_ValueError, axis_err_msg);
-            return NULL;
+            return nullptr;
         }
       }
       else {
         PyErr_SetString(PyExc_ValueError, axis_err_msg);
-        return NULL;
+        return nullptr;
       }
     }
     else if (strlen(strack) == 1) {
@@ -833,12 +833,12 @@ static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
           break;
         default:
           PyErr_SetString(PyExc_ValueError, axis_err_msg);
-          return NULL;
+          return nullptr;
       }
     }
     else {
       PyErr_SetString(PyExc_ValueError, axis_err_msg);
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -857,18 +857,18 @@ static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
           break;
         default:
           PyErr_SetString(PyExc_ValueError, axis_err_msg);
-          return NULL;
+          return nullptr;
       }
     }
     else {
       PyErr_SetString(PyExc_ValueError, axis_err_msg);
-      return NULL;
+      return nullptr;
     }
   }
 
   if (track == up) {
     PyErr_SetString(PyExc_ValueError, "Can't have the same axis for track and up");
-    return NULL;
+    return nullptr;
   }
 
   /* Flip vector around, since #vec_to_quat expect a vector from target to tracking object
@@ -877,7 +877,7 @@ static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
 
   vec_to_quat(quat, vec, track, up);
 
-  return Quaternion_CreatePyObject(quat, NULL);
+  return Quaternion_CreatePyObject(quat, nullptr);
 }
 
 /** \} */
@@ -904,11 +904,11 @@ static PyObject *Vector_orthogonal(VectorObject *self)
     PyErr_SetString(PyExc_TypeError,
                     "Vector.orthogonal(): "
                     "Vector must be 3D or 2D");
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num == 3) {
@@ -947,18 +947,18 @@ static PyObject *Vector_reflect(VectorObject *self, PyObject *value)
   float tvec[MAX_DIMENSIONS];
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if ((value_num = mathutils_array_parse(
            tvec, 2, 4, value, "Vector.reflect(other), invalid 'other' arg")) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num < 2 || self->vec_num > 4) {
     PyErr_SetString(PyExc_ValueError, "Vector must be 2D, 3D or 4D");
-    return NULL;
+    return nullptr;
   }
 
   mirror[0] = tvec[0];
@@ -998,23 +998,23 @@ static PyObject *Vector_cross(VectorObject *self, PyObject *value)
   float tvec[3];
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num > 3) {
     PyErr_SetString(PyExc_ValueError, "Vector must be 2D or 3D");
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(
           tvec, self->vec_num, self->vec_num, value, "Vector.cross(other), invalid 'other' arg") ==
       -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num == 3) {
-    ret = Vector_CreatePyObject(NULL, 3, Py_TYPE(self));
+    ret = Vector_CreatePyObject(nullptr, 3, Py_TYPE(self));
     cross_v3_v3v3(((VectorObject *)ret)->vec, self->vec, tvec);
   }
   else {
@@ -1045,13 +1045,13 @@ static PyObject *Vector_dot(VectorObject *self, PyObject *value)
   PyObject *ret;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse_alloc(
           &tvec, self->vec_num, value, "Vector.dot(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   ret = PyFloat_FromDouble(dot_vn_vn(self->vec, tvec, self->vec_num));
@@ -1085,14 +1085,14 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
   PyObject *value;
   double dot = 0.0f, dot_self = 0.0f, dot_other = 0.0f;
   int x;
-  PyObject *fallback = NULL;
+  PyObject *fallback = nullptr;
 
   if (!PyArg_ParseTuple(args, "O|O:angle", &value, &fallback)) {
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   /* don't use clamped size, rule of thumb is vector sizes must match,
@@ -1101,12 +1101,12 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
           tvec, self->vec_num, self->vec_num, value, "Vector.angle(other), invalid 'other' arg") ==
       -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num > 4) {
     PyErr_SetString(PyExc_ValueError, "Vector must be 2D, 3D or 4D");
-    return NULL;
+    return nullptr;
   }
 
   for (x = 0; x < vec_num; x++) {
@@ -1125,7 +1125,7 @@ static PyObject *Vector_angle(VectorObject *self, PyObject *args)
     PyErr_SetString(PyExc_ValueError,
                     "Vector.angle(other): "
                     "zero length vectors have no valid angle");
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(saacos(dot / (sqrt(dot_self) * sqrt(dot_other))));
@@ -1155,25 +1155,25 @@ static PyObject *Vector_angle_signed(VectorObject *self, PyObject *args)
   float tvec[2];
 
   PyObject *value;
-  PyObject *fallback = NULL;
+  PyObject *fallback = nullptr;
 
   if (!PyArg_ParseTuple(args, "O|O:angle_signed", &value, &fallback)) {
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(
           tvec, 2, 2, value, "Vector.angle_signed(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num != 2) {
     PyErr_SetString(PyExc_ValueError, "Vector must be 2D");
-    return NULL;
+    return nullptr;
   }
 
   if (is_zero_v2(self->vec) || is_zero_v2(tvec)) {
@@ -1186,7 +1186,7 @@ static PyObject *Vector_angle_signed(VectorObject *self, PyObject *args)
     PyErr_SetString(PyExc_ValueError,
                     "Vector.angle_signed(other): "
                     "zero length vectors have no valid angle");
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(angle_signed_v2v2(self->vec, tvec));
@@ -1218,17 +1218,17 @@ static PyObject *Vector_rotation_difference(VectorObject *self, PyObject *value)
     PyErr_SetString(PyExc_ValueError,
                     "vec.difference(value): "
                     "expects both vectors to be size 3 or 4");
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(
           vec_b, 3, MAX_DIMENSIONS, value, "Vector.difference(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   normalize_v3_v3(vec_a, self->vec);
@@ -1236,7 +1236,7 @@ static PyObject *Vector_rotation_difference(VectorObject *self, PyObject *value)
 
   rotation_between_vecs_to_quat(quat, vec_a, vec_b);
 
-  return Quaternion_CreatePyObject(quat, NULL);
+  return Quaternion_CreatePyObject(quat, nullptr);
 }
 
 /** \} */
@@ -1262,13 +1262,13 @@ static PyObject *Vector_project(VectorObject *self, PyObject *value)
   int x;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse_alloc(
           &tvec, vec_num, value, "Vector.project(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   /* get dot products */
@@ -1304,22 +1304,22 @@ PyDoc_STRVAR(Vector_lerp_doc,
 static PyObject *Vector_lerp(VectorObject *self, PyObject *args)
 {
   const int vec_num = self->vec_num;
-  PyObject *value = NULL;
+  PyObject *value = nullptr;
   float fac;
   float *tvec;
 
   if (!PyArg_ParseTuple(args, "Of:lerp", &value, &fac)) {
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse_alloc(
           &tvec, vec_num, value, "Vector.lerp(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   interp_vn_vn(tvec, self->vec, 1.0f - fac, vec_num);
@@ -1351,30 +1351,30 @@ PyDoc_STRVAR(Vector_slerp_doc,
 static PyObject *Vector_slerp(VectorObject *self, PyObject *args)
 {
   const int vec_num = self->vec_num;
-  PyObject *value = NULL;
+  PyObject *value = nullptr;
   float fac, cosom, w[2];
   float self_vec[3], other_vec[3], ret_vec[3];
   float self_len_sq, other_len_sq;
   int x;
-  PyObject *fallback = NULL;
+  PyObject *fallback = nullptr;
 
   if (!PyArg_ParseTuple(args, "Of|O:slerp", &value, &fac, &fallback)) {
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num > 3) {
     PyErr_SetString(PyExc_ValueError, "Vector must be 2D or 3D");
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(
           other_vec, vec_num, vec_num, value, "Vector.slerp(other), invalid 'other' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   self_len_sq = normalize_vn_vn(self_vec, self->vec, vec_num);
@@ -1391,7 +1391,7 @@ static PyObject *Vector_slerp(VectorObject *self, PyObject *args)
     PyErr_SetString(PyExc_ValueError,
                     "Vector.slerp(): "
                     "zero length vectors unsupported");
-    return NULL;
+    return nullptr;
   }
 
   /* We have sane state, execute slerp */
@@ -1408,7 +1408,7 @@ static PyObject *Vector_slerp(VectorObject *self, PyObject *args)
     PyErr_SetString(PyExc_ValueError,
                     "Vector.slerp(): "
                     "opposite vectors unsupported");
-    return NULL;
+    return nullptr;
   }
 
   interp_dot_slerp(fac, cosom, w);
@@ -1439,7 +1439,7 @@ PyDoc_STRVAR(
 static PyObject *Vector_rotate(VectorObject *self, PyObject *value)
 {
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->vec_num == 2) {
@@ -1447,7 +1447,7 @@ static PyObject *Vector_rotate(VectorObject *self, PyObject *value)
     float other_rmat[2][2];
     MatrixObject *pymat;
     if (!Matrix_Parse2x2(value, &pymat)) {
-      return NULL;
+      return nullptr;
     }
     normalize_m2_m2(other_rmat, (const float(*)[2])pymat->matrix);
     /* Equivalent to a rotation along the Z axis. */
@@ -1457,7 +1457,7 @@ static PyObject *Vector_rotate(VectorObject *self, PyObject *value)
     float other_rmat[3][3];
 
     if (mathutils_any_to_rotmat(other_rmat, value, "Vector.rotate(value)") == -1) {
-      return NULL;
+      return nullptr;
     }
 
     mul_m3_v3(other_rmat, self->vec);
@@ -1480,7 +1480,7 @@ PyDoc_STRVAR(Vector_negate_doc,
 static PyObject *Vector_negate(VectorObject *self)
 {
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   negate_vn(self->vec, self->vec_num);
@@ -1508,7 +1508,7 @@ PyDoc_STRVAR(Vector_copy_doc,
 static PyObject *Vector_copy(VectorObject *self)
 {
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return Vector_CreatePyObject(self->vec, self->vec_num, Py_TYPE(self));
@@ -1516,7 +1516,7 @@ static PyObject *Vector_copy(VectorObject *self)
 static PyObject *Vector_deepcopy(VectorObject *self, PyObject *args)
 {
   if (!PyC_CheckArgs_DeepCopy(args)) {
-    return NULL;
+    return nullptr;
   }
   return Vector_copy(self);
 }
@@ -1532,7 +1532,7 @@ static PyObject *Vector_repr(VectorObject *self)
   PyObject *ret, *tuple;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   tuple = Vector_to_tuple_ex(self, -1);
@@ -1549,7 +1549,7 @@ static PyObject *Vector_str(VectorObject *self)
   DynStr *ds;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   ds = BLI_dynstr_new();
@@ -1574,7 +1574,7 @@ static PyObject *Vector_str(VectorObject *self)
 
 static PyObject *Vector_richcmpr(PyObject *objectA, PyObject *objectB, int comparison_type)
 {
-  VectorObject *vecA = NULL, *vecB = NULL;
+  VectorObject *vecA = nullptr, *vecB = nullptr;
   int result = 0;
   const double epsilon = 0.000001f;
   double lenA, lenB;
@@ -1590,7 +1590,7 @@ static PyObject *Vector_richcmpr(PyObject *objectA, PyObject *objectB, int compa
   vecB = (VectorObject *)objectB;
 
   if (BaseMath_ReadCallback(vecA) == -1 || BaseMath_ReadCallback(vecB) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (vecA->vec_num != vecB->vec_num) {
@@ -1700,11 +1700,11 @@ static PyObject *vector_item_internal(VectorObject *self, int i, const bool is_a
     else {
       PyErr_SetString(PyExc_IndexError, "vector[index]: out of range");
     }
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadIndexCallback(self, i) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(self->vec[i]);
@@ -1771,7 +1771,7 @@ static PyObject *Vector_slice(VectorObject *self, int begin, int end)
   int count;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   CLAMP(begin, 0, self->vec_num);
@@ -1793,7 +1793,7 @@ static PyObject *Vector_slice(VectorObject *self, int begin, int end)
 static int Vector_ass_slice(VectorObject *self, int begin, int end, PyObject *seq)
 {
   int vec_num = 0;
-  float *vec = NULL;
+  float *vec = nullptr;
 
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {
     return -1;
@@ -1808,7 +1808,7 @@ static int Vector_ass_slice(VectorObject *self, int begin, int end, PyObject *se
     return -1;
   }
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "vec[:] = seq: "
                     "problem allocating pointer space");
@@ -1834,7 +1834,7 @@ static PyObject *Vector_subscript(VectorObject *self, PyObject *item)
     Py_ssize_t i;
     i = PyNumber_AsSsize_t(item, PyExc_IndexError);
     if (i == -1 && PyErr_Occurred()) {
-      return NULL;
+      return nullptr;
     }
     if (i < 0) {
       i += self->vec_num;
@@ -1845,7 +1845,7 @@ static PyObject *Vector_subscript(VectorObject *self, PyObject *item)
     Py_ssize_t start, stop, step, slicelength;
 
     if (PySlice_GetIndicesEx(item, self->vec_num, &start, &stop, &step, &slicelength) < 0) {
-      return NULL;
+      return nullptr;
     }
 
     if (slicelength <= 0) {
@@ -1856,12 +1856,12 @@ static PyObject *Vector_subscript(VectorObject *self, PyObject *item)
     }
 
     PyErr_SetString(PyExc_IndexError, "slice steps not supported with vectors");
-    return NULL;
+    return nullptr;
   }
 
   PyErr_Format(
       PyExc_TypeError, "vector indices must be integers, not %.200s", Py_TYPE(item)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 /** Sequence generic subscript (set): `object[...] = x`. */
@@ -1906,8 +1906,8 @@ static int Vector_ass_subscript(VectorObject *self, PyObject *item, PyObject *va
 /** Addition: `object + object`. */
 static PyObject *Vector_add(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
-  float *vec = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
+  float *vec = nullptr;
 
   if (!VectorObject_Check(v1) || !VectorObject_Check(v2)) {
     PyErr_Format(PyExc_AttributeError,
@@ -1915,13 +1915,13 @@ static PyObject *Vector_add(PyObject *v1, PyObject *v2)
                  "invalid type for this operation",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
-    return NULL;
+    return nullptr;
   }
   vec1 = (VectorObject *)v1;
   vec2 = (VectorObject *)v2;
 
   if (BaseMath_ReadCallback(vec1) == -1 || BaseMath_ReadCallback(vec2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   /* VECTOR + VECTOR. */
@@ -1929,15 +1929,15 @@ static PyObject *Vector_add(PyObject *v1, PyObject *v2)
     PyErr_SetString(PyExc_AttributeError,
                     "Vector addition: "
                     "vectors must have the same dimensions for this operation");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec1->vec_num * sizeof(float));
-  if (vec == NULL) {
+  vec = static_cast<float *>(PyMem_Malloc(vec1->vec_num * sizeof(float)));
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   add_vn_vnvn(vec, vec1->vec, vec2->vec, vec1->vec_num);
@@ -1948,7 +1948,7 @@ static PyObject *Vector_add(PyObject *v1, PyObject *v2)
 /** Addition in-place: `object += object`. */
 static PyObject *Vector_iadd(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
 
   if (!VectorObject_Check(v1) || !VectorObject_Check(v2)) {
     PyErr_Format(PyExc_AttributeError,
@@ -1956,7 +1956,7 @@ static PyObject *Vector_iadd(PyObject *v1, PyObject *v2)
                  "invalid type for this operation",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
-    return NULL;
+    return nullptr;
   }
   vec1 = (VectorObject *)v1;
   vec2 = (VectorObject *)v2;
@@ -1965,11 +1965,11 @@ static PyObject *Vector_iadd(PyObject *v1, PyObject *v2)
     PyErr_SetString(PyExc_AttributeError,
                     "Vector addition: "
                     "vectors must have the same dimensions for this operation");
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback_ForWrite(vec1) == -1 || BaseMath_ReadCallback(vec2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   add_vn_vn(vec1->vec, vec2->vec, vec1->vec_num);
@@ -1982,7 +1982,7 @@ static PyObject *Vector_iadd(PyObject *v1, PyObject *v2)
 /** Subtraction: `object - object`. */
 static PyObject *Vector_sub(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
   float *vec;
 
   if (!VectorObject_Check(v1) || !VectorObject_Check(v2)) {
@@ -1991,28 +1991,28 @@ static PyObject *Vector_sub(PyObject *v1, PyObject *v2)
                  "invalid type for this operation",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
-    return NULL;
+    return nullptr;
   }
   vec1 = (VectorObject *)v1;
   vec2 = (VectorObject *)v2;
 
   if (BaseMath_ReadCallback(vec1) == -1 || BaseMath_ReadCallback(vec2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec1->vec_num != vec2->vec_num) {
     PyErr_SetString(PyExc_AttributeError,
                     "Vector subtraction: "
                     "vectors must have the same dimensions for this operation");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec1->vec_num * sizeof(float));
-  if (vec == NULL) {
+  vec = static_cast<float *>(PyMem_Malloc(vec1->vec_num * sizeof(float)));
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector(): "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   sub_vn_vnvn(vec, vec1->vec, vec2->vec, vec1->vec_num);
@@ -2023,7 +2023,7 @@ static PyObject *Vector_sub(PyObject *v1, PyObject *v2)
 /** Subtraction in-place: `object -= object`. */
 static PyObject *Vector_isub(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
 
   if (!VectorObject_Check(v1) || !VectorObject_Check(v2)) {
     PyErr_Format(PyExc_AttributeError,
@@ -2031,7 +2031,7 @@ static PyObject *Vector_isub(PyObject *v1, PyObject *v2)
                  "invalid type for this operation",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
-    return NULL;
+    return nullptr;
   }
   vec1 = (VectorObject *)v1;
   vec2 = (VectorObject *)v2;
@@ -2040,11 +2040,11 @@ static PyObject *Vector_isub(PyObject *v1, PyObject *v2)
     PyErr_SetString(PyExc_AttributeError,
                     "Vector subtraction: "
                     "vectors must have the same dimensions for this operation");
-    return NULL;
+    return nullptr;
   }
 
   if (BaseMath_ReadCallback_ForWrite(vec1) == -1 || BaseMath_ReadCallback(vec2) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   sub_vn_vn(vec1->vec, vec2->vec, vec1->vec_num);
@@ -2091,12 +2091,12 @@ int column_vector_multiplication(float r_vec[MAX_DIMENSIONS], VectorObject *vec,
 
 static PyObject *vector_mul_float(VectorObject *vec, const float scalar)
 {
-  float *tvec = PyMem_Malloc(vec->vec_num * sizeof(float));
-  if (tvec == NULL) {
+  float *tvec = static_cast<float *>(PyMem_Malloc(vec->vec_num * sizeof(float)));
+  if (tvec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "vec * float: "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   mul_vn_vn_fl(tvec, vec->vec, vec->vec_num, scalar);
@@ -2105,12 +2105,12 @@ static PyObject *vector_mul_float(VectorObject *vec, const float scalar)
 
 static PyObject *vector_mul_vec(VectorObject *vec1, VectorObject *vec2)
 {
-  float *tvec = PyMem_Malloc(vec1->vec_num * sizeof(float));
-  if (tvec == NULL) {
+  float *tvec = static_cast<float *>(PyMem_Malloc(vec1->vec_num * sizeof(float)));
+  if (tvec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "vec * vec: "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   mul_vn_vnvn(tvec, vec1->vec, vec2->vec, vec1->vec_num);
@@ -2120,19 +2120,19 @@ static PyObject *vector_mul_vec(VectorObject *vec1, VectorObject *vec2)
 /** Multiplication (element-wise or scalar): `object * object`. */
 static PyObject *Vector_mul(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
   float scalar;
 
   if (VectorObject_Check(v1)) {
     vec1 = (VectorObject *)v1;
     if (BaseMath_ReadCallback(vec1) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
   if (VectorObject_Check(v2)) {
     vec2 = (VectorObject *)v2;
     if (BaseMath_ReadCallback(vec2) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -2144,7 +2144,7 @@ static PyObject *Vector_mul(PyObject *v1, PyObject *v2)
       PyErr_SetString(PyExc_ValueError,
                       "Vector multiplication: "
                       "vectors must have the same dimensions for this operation");
-      return NULL;
+      return nullptr;
     }
 
     /* element-wise product */
@@ -2166,30 +2166,30 @@ static PyObject *Vector_mul(PyObject *v1, PyObject *v2)
                "not supported between '%.200s' and '%.200s' types",
                Py_TYPE(v1)->tp_name,
                Py_TYPE(v2)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 /** Multiplication in-place (element-wise or scalar): `object *= object`. */
 static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
   float scalar;
 
   if (VectorObject_Check(v1)) {
     vec1 = (VectorObject *)v1;
     if (BaseMath_ReadCallback(vec1) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
   if (VectorObject_Check(v2)) {
     vec2 = (VectorObject *)v2;
     if (BaseMath_ReadCallback(vec2) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
 
   if (BaseMath_ReadCallback_ForWrite(vec1) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   /* Intentionally don't support (Quaternion, Matrix) here, uses reverse order instead. */
@@ -2199,7 +2199,7 @@ static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
       PyErr_SetString(PyExc_ValueError,
                       "Vector multiplication: "
                       "vectors must have the same dimensions for this operation");
-      return NULL;
+      return nullptr;
     }
 
     /* Element-wise product in-place. */
@@ -2215,7 +2215,7 @@ static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
                  "not supported between '%.200s' and '%.200s' types",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   (void)BaseMath_WriteCallback(vec1);
@@ -2226,19 +2226,19 @@ static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
 /** Multiplication (matrix multiply): `object @ object`. */
 static PyObject *Vector_matmul(PyObject *v1, PyObject *v2)
 {
-  VectorObject *vec1 = NULL, *vec2 = NULL;
+  VectorObject *vec1 = nullptr, *vec2 = nullptr;
   int vec_num;
 
   if (VectorObject_Check(v1)) {
     vec1 = (VectorObject *)v1;
     if (BaseMath_ReadCallback(vec1) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
   if (VectorObject_Check(v2)) {
     vec2 = (VectorObject *)v2;
     if (BaseMath_ReadCallback(vec2) == -1) {
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -2250,7 +2250,7 @@ static PyObject *Vector_matmul(PyObject *v1, PyObject *v2)
       PyErr_SetString(PyExc_ValueError,
                       "Vector multiplication: "
                       "vectors must have the same dimensions for this operation");
-      return NULL;
+      return nullptr;
     }
 
     /* Dot product. */
@@ -2262,10 +2262,10 @@ static PyObject *Vector_matmul(PyObject *v1, PyObject *v2)
       float tvec[MAX_DIMENSIONS];
 
       if (BaseMath_ReadCallback((MatrixObject *)v2) == -1) {
-        return NULL;
+        return nullptr;
       }
       if (row_vector_multiplication(tvec, vec1, (MatrixObject *)v2) == -1) {
-        return NULL;
+        return nullptr;
       }
 
       if (((MatrixObject *)v2)->row_num == 4 && vec1->vec_num == 3) {
@@ -2284,7 +2284,7 @@ static PyObject *Vector_matmul(PyObject *v1, PyObject *v2)
                "not supported between '%.200s' and '%.200s' types",
                Py_TYPE(v1)->tp_name,
                Py_TYPE(v2)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 /** Multiplication in-place (matrix multiply): `object @= object`. */
@@ -2295,25 +2295,25 @@ static PyObject *Vector_imatmul(PyObject *v1, PyObject *v2)
                "not supported between '%.200s' and '%.200s' types",
                Py_TYPE(v1)->tp_name,
                Py_TYPE(v2)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 /** Division: `object / object`. */
 static PyObject *Vector_div(PyObject *v1, PyObject *v2)
 {
-  float *vec = NULL, scalar;
-  VectorObject *vec1 = NULL;
+  float *vec = nullptr, scalar;
+  VectorObject *vec1 = nullptr;
 
   if (!VectorObject_Check(v1)) { /* not a vector */
     PyErr_SetString(PyExc_TypeError,
                     "Vector division: "
                     "Vector must be divided by a float");
-    return NULL;
+    return nullptr;
   }
   vec1 = (VectorObject *)v1; /* vector */
 
   if (BaseMath_ReadCallback(vec1) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if ((scalar = PyFloat_AsDouble(v2)) == -1.0f && PyErr_Occurred()) {
@@ -2321,23 +2321,23 @@ static PyObject *Vector_div(PyObject *v1, PyObject *v2)
     PyErr_SetString(PyExc_TypeError,
                     "Vector division: "
                     "Vector must be divided by a float");
-    return NULL;
+    return nullptr;
   }
 
   if (scalar == 0.0f) {
     PyErr_SetString(PyExc_ZeroDivisionError,
                     "Vector division: "
                     "divide by zero error");
-    return NULL;
+    return nullptr;
   }
 
-  vec = PyMem_Malloc(vec1->vec_num * sizeof(float));
+  vec = static_cast<float *>(PyMem_Malloc(vec1->vec_num * sizeof(float)));
 
-  if (vec == NULL) {
+  if (vec == nullptr) {
     PyErr_SetString(PyExc_MemoryError,
                     "vec / value: "
                     "problem allocating pointer space");
-    return NULL;
+    return nullptr;
   }
 
   mul_vn_vn_fl(vec, vec1->vec, vec1->vec_num, 1.0f / scalar);
@@ -2352,7 +2352,7 @@ static PyObject *Vector_idiv(PyObject *v1, PyObject *v2)
   VectorObject *vec1 = (VectorObject *)v1;
 
   if (BaseMath_ReadCallback_ForWrite(vec1) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if ((scalar = PyFloat_AsDouble(v2)) == -1.0f && PyErr_Occurred()) {
@@ -2360,14 +2360,14 @@ static PyObject *Vector_idiv(PyObject *v1, PyObject *v2)
     PyErr_SetString(PyExc_TypeError,
                     "Vector division: "
                     "Vector must be divided by a float");
-    return NULL;
+    return nullptr;
   }
 
   if (scalar == 0.0f) {
     PyErr_SetString(PyExc_ZeroDivisionError,
                     "Vector division: "
                     "divide by zero error");
-    return NULL;
+    return nullptr;
   }
 
   mul_vn_fl(vec1->vec, vec1->vec_num, 1.0f / scalar);
@@ -2384,10 +2384,10 @@ static PyObject *Vector_neg(VectorObject *self)
   float *tvec;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
-  tvec = PyMem_Malloc(self->vec_num * sizeof(float));
+  tvec = static_cast<float *>(PyMem_Malloc(self->vec_num * sizeof(float)));
   negate_vn_vn(tvec, self->vec, self->vec_num);
   return Vector_CreatePyObject_alloc(tvec, self->vec_num, Py_TYPE(self));
 }
@@ -2400,15 +2400,15 @@ static PyObject *Vector_neg(VectorObject *self)
 
 static PySequenceMethods Vector_SeqMethods = {
     /*sq_length*/ (lenfunc)Vector_len,
-    /*sq_concat*/ NULL,
-    /*sq_repeat*/ NULL,
+    /*sq_concat*/ nullptr,
+    /*sq_repeat*/ nullptr,
     /*sq_item*/ (ssizeargfunc)Vector_item,
-    /*was_sq_slice*/ NULL, /* DEPRECATED. */
+    /*was_sq_slice*/ nullptr, /* DEPRECATED. */
     /*sq_ass_item*/ (ssizeobjargproc)Vector_ass_item,
-    /*was_sq_ass_slice*/ NULL, /* DEPRECATED. */
-    /*sq_contains*/ NULL,
-    /*sq_inplace_concat */ NULL,
-    /*sq_inplace_repeat */ NULL,
+    /*was_sq_ass_slice*/ nullptr, /* DEPRECATED. */
+    /*sq_contains*/ nullptr,
+    /*sq_inplace_concat */ nullptr,
+    /*sq_inplace_repeat */ nullptr,
 };
 
 static PyMappingMethods Vector_AsMapping = {
@@ -2421,37 +2421,37 @@ static PyNumberMethods Vector_NumMethods = {
     /*nb_add*/ (binaryfunc)Vector_add,
     /*nb_subtract*/ (binaryfunc)Vector_sub,
     /*nb_multiply*/ (binaryfunc)Vector_mul,
-    /*nb_remainder*/ NULL,
-    /*nb_divmod*/ NULL,
-    /*nb_power*/ NULL,
+    /*nb_remainder*/ nullptr,
+    /*nb_divmod*/ nullptr,
+    /*nb_power*/ nullptr,
     /*nb_negative*/ (unaryfunc)Vector_neg,
     /*tp_positive*/ (unaryfunc)Vector_copy,
-    /*tp_absolute*/ NULL,
-    /*tp_bool*/ NULL,
-    /*nb_invert*/ NULL,
-    /*nb_lshift*/ NULL,
-    /*nb_rshift*/ NULL,
-    /*nb_and*/ NULL,
-    /*nb_xor*/ NULL,
-    /*nb_or*/ NULL,
-    /*nb_int*/ NULL,
-    /*nb_reserved*/ NULL,
-    /*nb_float*/ NULL,
+    /*tp_absolute*/ nullptr,
+    /*tp_bool*/ nullptr,
+    /*nb_invert*/ nullptr,
+    /*nb_lshift*/ nullptr,
+    /*nb_rshift*/ nullptr,
+    /*nb_and*/ nullptr,
+    /*nb_xor*/ nullptr,
+    /*nb_or*/ nullptr,
+    /*nb_int*/ nullptr,
+    /*nb_reserved*/ nullptr,
+    /*nb_float*/ nullptr,
     /*nb_inplace_add*/ Vector_iadd,
     /*nb_inplace_subtract*/ Vector_isub,
     /*nb_inplace_multiply*/ Vector_imul,
-    /*nb_inplace_remainder*/ NULL,
-    /*nb_inplace_power*/ NULL,
-    /*nb_inplace_lshift*/ NULL,
-    /*nb_inplace_rshift*/ NULL,
-    /*nb_inplace_and*/ NULL,
-    /*nb_inplace_xor*/ NULL,
-    /*nb_inplace_or*/ NULL,
-    /*nb_floor_divide*/ NULL,
+    /*nb_inplace_remainder*/ nullptr,
+    /*nb_inplace_power*/ nullptr,
+    /*nb_inplace_lshift*/ nullptr,
+    /*nb_inplace_rshift*/ nullptr,
+    /*nb_inplace_and*/ nullptr,
+    /*nb_inplace_xor*/ nullptr,
+    /*nb_inplace_or*/ nullptr,
+    /*nb_floor_divide*/ nullptr,
     /*nb_true_divide*/ Vector_div,
-    /*nb_inplace_floor_divide*/ NULL,
+    /*nb_inplace_floor_divide*/ nullptr,
     /*nb_inplace_true_divide*/ Vector_idiv,
-    /*nb_index*/ NULL,
+    /*nb_index*/ nullptr,
     /*nb_matrix_multiply*/ (binaryfunc)Vector_matmul,
     /*nb_inplace_matrix_multiply*/ (binaryfunc)Vector_imatmul,
 };
@@ -2482,10 +2482,10 @@ static int Vector_axis_set(VectorObject *self, PyObject *value, void *type)
 /* `Vector.length`. */
 
 PyDoc_STRVAR(Vector_length_doc, "Vector Length.\n\n:type: float");
-static PyObject *Vector_length_get(VectorObject *self, void *UNUSED(closure))
+static PyObject *Vector_length_get(VectorObject *self, void * /*closure*/)
 {
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(sqrt(dot_vn_vn(self->vec, self->vec, self->vec_num)));
@@ -2537,10 +2537,10 @@ static int Vector_length_set(VectorObject *self, PyObject *value)
 
 /* `Vector.length_squared`. */
 PyDoc_STRVAR(Vector_length_squared_doc, "Vector length squared (v.dot(v)).\n\n:type: float");
-static PyObject *Vector_length_squared_get(VectorObject *self, void *UNUSED(closure))
+static PyObject *Vector_length_squared_get(VectorObject *self, void * /*closure*/)
 {
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(dot_vn_vn(self->vec, self->vec, self->vec_num));
@@ -2593,9 +2593,9 @@ static PyObject *Vector_length_squared_get(VectorObject *self, void *UNUSED(clos
  * unique = set()
  * for key, val in items:
  *     num = eval(val)
- *     set_str = 'Vector_swizzle_set' if (len(set(key)) == len(key)) else 'NULL'
+ *     set_str = 'Vector_swizzle_set' if (len(set(key)) == len(key)) else 'nullptr'
  *     key_args = ', '.join(["'%s'" % c for c in key.upper()])
- *     print('\t{"%s", %s(getter)Vector_swizzle_get, (setter)%s, NULL, SWIZZLE%d(%s)},' %
+ *     print('\t{"%s", %s(getter)Vector_swizzle_get, (setter)%s, nullptr, SWIZZLE%d(%s)},' %
  *           (key, (' ' * (4 - len(key))), set_str, len(key), key_args))
  *     unique.add(num)
  *
@@ -2615,7 +2615,7 @@ static PyObject *Vector_swizzle_get(VectorObject *self, void *closure)
   uint swizzleClosure;
 
   if (BaseMath_ReadCallback(self) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   /* Unpack the axes from the closure into an array. */
@@ -2627,7 +2627,7 @@ static PyObject *Vector_swizzle_get(VectorObject *self, void *closure)
       PyErr_SetString(PyExc_AttributeError,
                       "Vector swizzle: "
                       "specified axis not present");
-      return NULL;
+      return nullptr;
     }
 
     vec[axis_to] = self->vec[axis_from];
@@ -2754,367 +2754,471 @@ static PyGetSetDef Vector_getseters[] = {
     {"y", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_y_doc, (void *)1},
     {"z", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_z_doc, (void *)2},
     {"w", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_w_doc, (void *)3},
-    {"length", (getter)Vector_length_get, (setter)Vector_length_set, Vector_length_doc, NULL},
+    {"length", (getter)Vector_length_get, (setter)Vector_length_set, Vector_length_doc, nullptr},
     {"length_squared",
      (getter)Vector_length_squared_get,
-     (setter)NULL,
+     (setter) nullptr,
      Vector_length_squared_doc,
-     NULL},
-    {"magnitude", (getter)Vector_length_get, (setter)Vector_length_set, Vector_length_doc, NULL},
+     nullptr},
+    {"magnitude",
+     (getter)Vector_length_get,
+     (setter)Vector_length_set,
+     Vector_length_doc,
+     nullptr},
     {"is_wrapped",
      (getter)BaseMathObject_is_wrapped_get,
-     (setter)NULL,
+     (setter) nullptr,
      BaseMathObject_is_wrapped_doc,
-     NULL},
+     nullptr},
     {"is_frozen",
      (getter)BaseMathObject_is_frozen_get,
-     (setter)NULL,
+     (setter) nullptr,
      BaseMathObject_is_frozen_doc,
-     NULL},
+     nullptr},
     {"is_valid",
      (getter)BaseMathObject_is_valid_get,
-     (setter)NULL,
+     (setter) nullptr,
      BaseMathObject_is_valid_doc,
-     NULL},
-    {"owner", (getter)BaseMathObject_owner_get, (setter)NULL, BaseMathObject_owner_doc, NULL},
+     nullptr},
+    {"owner",
+     (getter)BaseMathObject_owner_get,
+     (setter) nullptr,
+     BaseMathObject_owner_doc,
+     nullptr},
 
     /* Auto-generated swizzle attributes, see Python script above. */
-    {"xx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE2(0, 0)},
-    {"xxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 0, 0)},
-    {"xxxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 0, 0)},
-    {"xxxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 0, 1)},
-    {"xxxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 0, 2)},
-    {"xxxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 0, 3)},
-    {"xxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 0, 1)},
-    {"xxyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 1, 0)},
-    {"xxyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 1, 1)},
-    {"xxyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 1, 2)},
-    {"xxyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 1, 3)},
-    {"xxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 0, 2)},
-    {"xxzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 2, 0)},
-    {"xxzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 2, 1)},
-    {"xxzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 2, 2)},
-    {"xxzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 2, 3)},
-    {"xxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 0, 3)},
-    {"xxwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 3, 0)},
-    {"xxwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 3, 1)},
-    {"xxwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 3, 2)},
-    {"xxww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 0, 3, 3)},
-    {"xy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(0, 1)},
-    {"xyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 1, 0)},
-    {"xyxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 0, 0)},
-    {"xyxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 0, 1)},
-    {"xyxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 0, 2)},
-    {"xyxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 0, 3)},
-    {"xyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 1, 1)},
-    {"xyyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 1, 0)},
-    {"xyyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 1, 1)},
-    {"xyyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 1, 2)},
-    {"xyyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 1, 3)},
-    {"xyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 1, 2)},
-    {"xyzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 2, 0)},
-    {"xyzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 2, 1)},
-    {"xyzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 2, 2)},
-    {"xyzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 1, 2, 3)},
-    {"xyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 1, 3)},
-    {"xywx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 3, 0)},
-    {"xywy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 3, 1)},
-    {"xywz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 1, 3, 2)},
-    {"xyww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 1, 3, 3)},
-    {"xz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(0, 2)},
-    {"xzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 2, 0)},
-    {"xzxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 0, 0)},
-    {"xzxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 0, 1)},
-    {"xzxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 0, 2)},
-    {"xzxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 0, 3)},
-    {"xzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 2, 1)},
-    {"xzyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 1, 0)},
-    {"xzyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 1, 1)},
-    {"xzyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 1, 2)},
-    {"xzyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 2, 1, 3)},
-    {"xzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 2, 2)},
-    {"xzzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 2, 0)},
-    {"xzzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 2, 1)},
-    {"xzzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 2, 2)},
-    {"xzzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 2, 3)},
-    {"xzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 2, 3)},
-    {"xzwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 3, 0)},
-    {"xzwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 2, 3, 1)},
-    {"xzwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 3, 2)},
-    {"xzww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 2, 3, 3)},
-    {"xw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(0, 3)},
-    {"xwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 3, 0)},
-    {"xwxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 0, 0)},
-    {"xwxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 0, 1)},
-    {"xwxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 0, 2)},
-    {"xwxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 0, 3)},
-    {"xwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 3, 1)},
-    {"xwyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 1, 0)},
-    {"xwyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 1, 1)},
-    {"xwyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 3, 1, 2)},
-    {"xwyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 1, 3)},
-    {"xwz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(0, 3, 2)},
-    {"xwzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 2, 0)},
-    {"xwzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(0, 3, 2, 1)},
-    {"xwzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 2, 2)},
-    {"xwzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 2, 3)},
-    {"xww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(0, 3, 3)},
-    {"xwwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 3, 0)},
-    {"xwwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 3, 1)},
-    {"xwwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 3, 2)},
-    {"xwww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(0, 3, 3, 3)},
-    {"yx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(1, 0)},
-    {"yxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 0, 0)},
-    {"yxxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 0, 0)},
-    {"yxxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 0, 1)},
-    {"yxxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 0, 2)},
-    {"yxxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 0, 3)},
-    {"yxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 0, 1)},
-    {"yxyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 1, 0)},
-    {"yxyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 1, 1)},
-    {"yxyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 1, 2)},
-    {"yxyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 1, 3)},
-    {"yxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 0, 2)},
-    {"yxzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 2, 0)},
-    {"yxzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 2, 1)},
-    {"yxzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 2, 2)},
-    {"yxzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 0, 2, 3)},
-    {"yxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 0, 3)},
-    {"yxwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 3, 0)},
-    {"yxwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 3, 1)},
-    {"yxwz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 0, 3, 2)},
-    {"yxww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 0, 3, 3)},
-    {"yy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE2(1, 1)},
-    {"yyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 1, 0)},
-    {"yyxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 0, 0)},
-    {"yyxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 0, 1)},
-    {"yyxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 0, 2)},
-    {"yyxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 0, 3)},
-    {"yyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 1, 1)},
-    {"yyyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 1, 0)},
-    {"yyyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 1, 1)},
-    {"yyyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 1, 2)},
-    {"yyyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 1, 3)},
-    {"yyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 1, 2)},
-    {"yyzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 2, 0)},
-    {"yyzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 2, 1)},
-    {"yyzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 2, 2)},
-    {"yyzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 2, 3)},
-    {"yyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 1, 3)},
-    {"yywx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 3, 0)},
-    {"yywy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 3, 1)},
-    {"yywz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 3, 2)},
-    {"yyww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 1, 3, 3)},
-    {"yz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(1, 2)},
-    {"yzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 2, 0)},
-    {"yzxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 0, 0)},
-    {"yzxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 0, 1)},
-    {"yzxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 0, 2)},
-    {"yzxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 2, 0, 3)},
-    {"yzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 2, 1)},
-    {"yzyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 1, 0)},
-    {"yzyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 1, 1)},
-    {"yzyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 1, 2)},
-    {"yzyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 1, 3)},
-    {"yzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 2, 2)},
-    {"yzzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 2, 0)},
-    {"yzzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 2, 1)},
-    {"yzzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 2, 2)},
-    {"yzzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 2, 3)},
-    {"yzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 2, 3)},
-    {"yzwx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 2, 3, 0)},
-    {"yzwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 3, 1)},
-    {"yzwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 3, 2)},
-    {"yzww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 2, 3, 3)},
-    {"yw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(1, 3)},
-    {"ywx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 3, 0)},
-    {"ywxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 0, 0)},
-    {"ywxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 0, 1)},
-    {"ywxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 3, 0, 2)},
-    {"ywxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 0, 3)},
-    {"ywy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 3, 1)},
-    {"ywyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 1, 0)},
-    {"ywyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 1, 1)},
-    {"ywyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 1, 2)},
-    {"ywyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 1, 3)},
-    {"ywz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(1, 3, 2)},
-    {"ywzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(1, 3, 2, 0)},
-    {"ywzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 2, 1)},
-    {"ywzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 2, 2)},
-    {"ywzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 2, 3)},
-    {"yww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(1, 3, 3)},
-    {"ywwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 3, 0)},
-    {"ywwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 3, 1)},
-    {"ywwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 3, 2)},
-    {"ywww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(1, 3, 3, 3)},
-    {"zx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(2, 0)},
-    {"zxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 0, 0)},
-    {"zxxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 0, 0)},
-    {"zxxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 0, 1)},
-    {"zxxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 0, 2)},
-    {"zxxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 0, 3)},
-    {"zxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 0, 1)},
-    {"zxyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 1, 0)},
-    {"zxyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 1, 1)},
-    {"zxyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 1, 2)},
-    {"zxyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 0, 1, 3)},
-    {"zxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 0, 2)},
-    {"zxzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 2, 0)},
-    {"zxzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 2, 1)},
-    {"zxzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 2, 2)},
-    {"zxzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 2, 3)},
-    {"zxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 0, 3)},
-    {"zxwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 3, 0)},
-    {"zxwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 0, 3, 1)},
-    {"zxwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 3, 2)},
-    {"zxww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 0, 3, 3)},
-    {"zy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(2, 1)},
-    {"zyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 1, 0)},
-    {"zyxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 0, 0)},
-    {"zyxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 0, 1)},
-    {"zyxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 0, 2)},
-    {"zyxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 1, 0, 3)},
-    {"zyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 1, 1)},
-    {"zyyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 1, 0)},
-    {"zyyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 1, 1)},
-    {"zyyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 1, 2)},
-    {"zyyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 1, 3)},
-    {"zyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 1, 2)},
-    {"zyzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 2, 0)},
-    {"zyzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 2, 1)},
-    {"zyzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 2, 2)},
-    {"zyzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 2, 3)},
-    {"zyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 1, 3)},
-    {"zywx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 1, 3, 0)},
-    {"zywy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 3, 1)},
-    {"zywz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 3, 2)},
-    {"zyww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 1, 3, 3)},
-    {"zz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE2(2, 2)},
-    {"zzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 2, 0)},
-    {"zzxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 0, 0)},
-    {"zzxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 0, 1)},
-    {"zzxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 0, 2)},
-    {"zzxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 0, 3)},
-    {"zzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 2, 1)},
-    {"zzyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 1, 0)},
-    {"zzyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 1, 1)},
-    {"zzyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 1, 2)},
-    {"zzyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 1, 3)},
-    {"zzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 2, 2)},
-    {"zzzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 2, 0)},
-    {"zzzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 2, 1)},
-    {"zzzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 2, 2)},
-    {"zzzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 2, 3)},
-    {"zzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 2, 3)},
-    {"zzwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 3, 0)},
-    {"zzwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 3, 1)},
-    {"zzwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 3, 2)},
-    {"zzww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 2, 3, 3)},
-    {"zw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(2, 3)},
-    {"zwx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 3, 0)},
-    {"zwxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 0, 0)},
-    {"zwxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 3, 0, 1)},
-    {"zwxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 0, 2)},
-    {"zwxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 0, 3)},
-    {"zwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(2, 3, 1)},
-    {"zwyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(2, 3, 1, 0)},
-    {"zwyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 1, 1)},
-    {"zwyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 1, 2)},
-    {"zwyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 1, 3)},
-    {"zwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 3, 2)},
-    {"zwzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 2, 0)},
-    {"zwzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 2, 1)},
-    {"zwzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 2, 2)},
-    {"zwzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 2, 3)},
-    {"zww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(2, 3, 3)},
-    {"zwwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 3, 0)},
-    {"zwwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 3, 1)},
-    {"zwwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 3, 2)},
-    {"zwww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(2, 3, 3, 3)},
-    {"wx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(3, 0)},
-    {"wxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 0, 0)},
-    {"wxxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 0, 0)},
-    {"wxxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 0, 1)},
-    {"wxxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 0, 2)},
-    {"wxxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 0, 3)},
-    {"wxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 0, 1)},
-    {"wxyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 1, 0)},
-    {"wxyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 1, 1)},
-    {"wxyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 0, 1, 2)},
-    {"wxyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 1, 3)},
-    {"wxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 0, 2)},
-    {"wxzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 2, 0)},
-    {"wxzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 0, 2, 1)},
-    {"wxzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 2, 2)},
-    {"wxzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 2, 3)},
-    {"wxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 0, 3)},
-    {"wxwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 3, 0)},
-    {"wxwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 3, 1)},
-    {"wxwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 3, 2)},
-    {"wxww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 0, 3, 3)},
-    {"wy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(3, 1)},
-    {"wyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 1, 0)},
-    {"wyxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 0, 0)},
-    {"wyxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 0, 1)},
-    {"wyxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 1, 0, 2)},
-    {"wyxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 0, 3)},
-    {"wyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 1, 1)},
-    {"wyyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 1, 0)},
-    {"wyyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 1, 1)},
-    {"wyyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 1, 2)},
-    {"wyyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 1, 3)},
-    {"wyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 1, 2)},
-    {"wyzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 1, 2, 0)},
-    {"wyzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 2, 1)},
-    {"wyzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 2, 2)},
-    {"wyzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 2, 3)},
-    {"wyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 1, 3)},
-    {"wywx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 3, 0)},
-    {"wywy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 3, 1)},
-    {"wywz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 3, 2)},
-    {"wyww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 1, 3, 3)},
-    {"wz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE2(3, 2)},
-    {"wzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 2, 0)},
-    {"wzxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 0, 0)},
-    {"wzxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 2, 0, 1)},
-    {"wzxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 0, 2)},
-    {"wzxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 0, 3)},
-    {"wzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE3(3, 2, 1)},
-    {"wzyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, NULL, SWIZZLE4(3, 2, 1, 0)},
-    {"wzyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 1, 1)},
-    {"wzyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 1, 2)},
-    {"wzyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 1, 3)},
-    {"wzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 2, 2)},
-    {"wzzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 2, 0)},
-    {"wzzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 2, 1)},
-    {"wzzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 2, 2)},
-    {"wzzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 2, 3)},
-    {"wzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 2, 3)},
-    {"wzwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 3, 0)},
-    {"wzwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 3, 1)},
-    {"wzwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 3, 2)},
-    {"wzww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 2, 3, 3)},
-    {"ww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE2(3, 3)},
-    {"wwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 3, 0)},
-    {"wwxx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 0, 0)},
-    {"wwxy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 0, 1)},
-    {"wwxz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 0, 2)},
-    {"wwxw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 0, 3)},
-    {"wwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 3, 1)},
-    {"wwyx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 1, 0)},
-    {"wwyy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 1, 1)},
-    {"wwyz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 1, 2)},
-    {"wwyw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 1, 3)},
-    {"wwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 3, 2)},
-    {"wwzx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 2, 0)},
-    {"wwzy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 2, 1)},
-    {"wwzz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 2, 2)},
-    {"wwzw", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 2, 3)},
-    {"www", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE3(3, 3, 3)},
-    {"wwwx", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 3, 0)},
-    {"wwwy", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 3, 1)},
-    {"wwwz", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 3, 2)},
-    {"wwww", (getter)Vector_swizzle_get, (setter)NULL, NULL, SWIZZLE4(3, 3, 3, 3)},
+    {"xx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE2(0, 0)},
+    {"xxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 0, 0)},
+    {"xxxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 0, 0)},
+    {"xxxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 0, 1)},
+    {"xxxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 0, 2)},
+    {"xxxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 0, 3)},
+    {"xxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 0, 1)},
+    {"xxyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 1, 0)},
+    {"xxyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 1, 1)},
+    {"xxyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 1, 2)},
+    {"xxyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 1, 3)},
+    {"xxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 0, 2)},
+    {"xxzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 2, 0)},
+    {"xxzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 2, 1)},
+    {"xxzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 2, 2)},
+    {"xxzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 2, 3)},
+    {"xxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 0, 3)},
+    {"xxwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 3, 0)},
+    {"xxwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 3, 1)},
+    {"xxwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 3, 2)},
+    {"xxww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 0, 3, 3)},
+    {"xy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(0, 1)},
+    {"xyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 1, 0)},
+    {"xyxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 0, 0)},
+    {"xyxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 0, 1)},
+    {"xyxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 0, 2)},
+    {"xyxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 0, 3)},
+    {"xyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 1, 1)},
+    {"xyyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 1, 0)},
+    {"xyyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 1, 1)},
+    {"xyyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 1, 2)},
+    {"xyyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 1, 3)},
+    {"xyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 1, 2)},
+    {"xyzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 2, 0)},
+    {"xyzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 2, 1)},
+    {"xyzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 2, 2)},
+    {"xyzw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 1, 2, 3)},
+    {"xyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 1, 3)},
+    {"xywx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 3, 0)},
+    {"xywy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 3, 1)},
+    {"xywz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 1, 3, 2)},
+    {"xyww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 1, 3, 3)},
+    {"xz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(0, 2)},
+    {"xzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 2, 0)},
+    {"xzxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 0, 0)},
+    {"xzxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 0, 1)},
+    {"xzxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 0, 2)},
+    {"xzxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 0, 3)},
+    {"xzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 2, 1)},
+    {"xzyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 1, 0)},
+    {"xzyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 1, 1)},
+    {"xzyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 1, 2)},
+    {"xzyw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 2, 1, 3)},
+    {"xzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 2, 2)},
+    {"xzzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 2, 0)},
+    {"xzzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 2, 1)},
+    {"xzzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 2, 2)},
+    {"xzzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 2, 3)},
+    {"xzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 2, 3)},
+    {"xzwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 3, 0)},
+    {"xzwy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 2, 3, 1)},
+    {"xzwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 3, 2)},
+    {"xzww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 2, 3, 3)},
+    {"xw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(0, 3)},
+    {"xwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 3, 0)},
+    {"xwxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 0, 0)},
+    {"xwxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 0, 1)},
+    {"xwxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 0, 2)},
+    {"xwxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 0, 3)},
+    {"xwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 3, 1)},
+    {"xwyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 1, 0)},
+    {"xwyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 1, 1)},
+    {"xwyz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 3, 1, 2)},
+    {"xwyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 1, 3)},
+    {"xwz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(0, 3, 2)},
+    {"xwzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 2, 0)},
+    {"xwzy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(0, 3, 2, 1)},
+    {"xwzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 2, 2)},
+    {"xwzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 2, 3)},
+    {"xww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(0, 3, 3)},
+    {"xwwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 3, 0)},
+    {"xwwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 3, 1)},
+    {"xwwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 3, 2)},
+    {"xwww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(0, 3, 3, 3)},
+    {"yx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(1, 0)},
+    {"yxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 0, 0)},
+    {"yxxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 0, 0)},
+    {"yxxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 0, 1)},
+    {"yxxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 0, 2)},
+    {"yxxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 0, 3)},
+    {"yxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 0, 1)},
+    {"yxyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 1, 0)},
+    {"yxyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 1, 1)},
+    {"yxyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 1, 2)},
+    {"yxyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 1, 3)},
+    {"yxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 0, 2)},
+    {"yxzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 2, 0)},
+    {"yxzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 2, 1)},
+    {"yxzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 2, 2)},
+    {"yxzw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 0, 2, 3)},
+    {"yxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 0, 3)},
+    {"yxwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 3, 0)},
+    {"yxwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 3, 1)},
+    {"yxwz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 0, 3, 2)},
+    {"yxww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 0, 3, 3)},
+    {"yy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE2(1, 1)},
+    {"yyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 1, 0)},
+    {"yyxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 0, 0)},
+    {"yyxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 0, 1)},
+    {"yyxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 0, 2)},
+    {"yyxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 0, 3)},
+    {"yyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 1, 1)},
+    {"yyyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 1, 0)},
+    {"yyyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 1, 1)},
+    {"yyyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 1, 2)},
+    {"yyyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 1, 3)},
+    {"yyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 1, 2)},
+    {"yyzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 2, 0)},
+    {"yyzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 2, 1)},
+    {"yyzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 2, 2)},
+    {"yyzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 2, 3)},
+    {"yyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 1, 3)},
+    {"yywx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 3, 0)},
+    {"yywy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 3, 1)},
+    {"yywz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 3, 2)},
+    {"yyww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 1, 3, 3)},
+    {"yz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(1, 2)},
+    {"yzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 2, 0)},
+    {"yzxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 0, 0)},
+    {"yzxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 0, 1)},
+    {"yzxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 0, 2)},
+    {"yzxw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 2, 0, 3)},
+    {"yzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 2, 1)},
+    {"yzyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 1, 0)},
+    {"yzyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 1, 1)},
+    {"yzyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 1, 2)},
+    {"yzyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 1, 3)},
+    {"yzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 2, 2)},
+    {"yzzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 2, 0)},
+    {"yzzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 2, 1)},
+    {"yzzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 2, 2)},
+    {"yzzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 2, 3)},
+    {"yzw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 2, 3)},
+    {"yzwx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 2, 3, 0)},
+    {"yzwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 3, 1)},
+    {"yzwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 3, 2)},
+    {"yzww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 2, 3, 3)},
+    {"yw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(1, 3)},
+    {"ywx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 3, 0)},
+    {"ywxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 0, 0)},
+    {"ywxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 0, 1)},
+    {"ywxz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 3, 0, 2)},
+    {"ywxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 0, 3)},
+    {"ywy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 3, 1)},
+    {"ywyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 1, 0)},
+    {"ywyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 1, 1)},
+    {"ywyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 1, 2)},
+    {"ywyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 1, 3)},
+    {"ywz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(1, 3, 2)},
+    {"ywzx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(1, 3, 2, 0)},
+    {"ywzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 2, 1)},
+    {"ywzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 2, 2)},
+    {"ywzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 2, 3)},
+    {"yww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(1, 3, 3)},
+    {"ywwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 3, 0)},
+    {"ywwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 3, 1)},
+    {"ywwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 3, 2)},
+    {"ywww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(1, 3, 3, 3)},
+    {"zx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(2, 0)},
+    {"zxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 0, 0)},
+    {"zxxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 0, 0)},
+    {"zxxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 0, 1)},
+    {"zxxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 0, 2)},
+    {"zxxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 0, 3)},
+    {"zxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 0, 1)},
+    {"zxyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 1, 0)},
+    {"zxyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 1, 1)},
+    {"zxyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 1, 2)},
+    {"zxyw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 0, 1, 3)},
+    {"zxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 0, 2)},
+    {"zxzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 2, 0)},
+    {"zxzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 2, 1)},
+    {"zxzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 2, 2)},
+    {"zxzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 2, 3)},
+    {"zxw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 0, 3)},
+    {"zxwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 3, 0)},
+    {"zxwy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 0, 3, 1)},
+    {"zxwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 3, 2)},
+    {"zxww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 0, 3, 3)},
+    {"zy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(2, 1)},
+    {"zyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 1, 0)},
+    {"zyxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 0, 0)},
+    {"zyxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 0, 1)},
+    {"zyxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 0, 2)},
+    {"zyxw",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 1, 0, 3)},
+    {"zyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 1, 1)},
+    {"zyyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 1, 0)},
+    {"zyyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 1, 1)},
+    {"zyyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 1, 2)},
+    {"zyyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 1, 3)},
+    {"zyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 1, 2)},
+    {"zyzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 2, 0)},
+    {"zyzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 2, 1)},
+    {"zyzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 2, 2)},
+    {"zyzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 2, 3)},
+    {"zyw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 1, 3)},
+    {"zywx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 1, 3, 0)},
+    {"zywy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 3, 1)},
+    {"zywz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 3, 2)},
+    {"zyww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 1, 3, 3)},
+    {"zz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE2(2, 2)},
+    {"zzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 2, 0)},
+    {"zzxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 0, 0)},
+    {"zzxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 0, 1)},
+    {"zzxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 0, 2)},
+    {"zzxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 0, 3)},
+    {"zzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 2, 1)},
+    {"zzyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 1, 0)},
+    {"zzyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 1, 1)},
+    {"zzyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 1, 2)},
+    {"zzyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 1, 3)},
+    {"zzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 2, 2)},
+    {"zzzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 2, 0)},
+    {"zzzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 2, 1)},
+    {"zzzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 2, 2)},
+    {"zzzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 2, 3)},
+    {"zzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 2, 3)},
+    {"zzwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 3, 0)},
+    {"zzwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 3, 1)},
+    {"zzwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 3, 2)},
+    {"zzww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 2, 3, 3)},
+    {"zw", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(2, 3)},
+    {"zwx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 3, 0)},
+    {"zwxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 0, 0)},
+    {"zwxy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 3, 0, 1)},
+    {"zwxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 0, 2)},
+    {"zwxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 0, 3)},
+    {"zwy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(2, 3, 1)},
+    {"zwyx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(2, 3, 1, 0)},
+    {"zwyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 1, 1)},
+    {"zwyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 1, 2)},
+    {"zwyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 1, 3)},
+    {"zwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 3, 2)},
+    {"zwzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 2, 0)},
+    {"zwzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 2, 1)},
+    {"zwzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 2, 2)},
+    {"zwzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 2, 3)},
+    {"zww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(2, 3, 3)},
+    {"zwwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 3, 0)},
+    {"zwwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 3, 1)},
+    {"zwwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 3, 2)},
+    {"zwww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(2, 3, 3, 3)},
+    {"wx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(3, 0)},
+    {"wxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 0, 0)},
+    {"wxxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 0, 0)},
+    {"wxxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 0, 1)},
+    {"wxxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 0, 2)},
+    {"wxxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 0, 3)},
+    {"wxy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 0, 1)},
+    {"wxyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 1, 0)},
+    {"wxyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 1, 1)},
+    {"wxyz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 0, 1, 2)},
+    {"wxyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 1, 3)},
+    {"wxz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 0, 2)},
+    {"wxzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 2, 0)},
+    {"wxzy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 0, 2, 1)},
+    {"wxzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 2, 2)},
+    {"wxzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 2, 3)},
+    {"wxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 0, 3)},
+    {"wxwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 3, 0)},
+    {"wxwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 3, 1)},
+    {"wxwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 3, 2)},
+    {"wxww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 0, 3, 3)},
+    {"wy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(3, 1)},
+    {"wyx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 1, 0)},
+    {"wyxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 0, 0)},
+    {"wyxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 0, 1)},
+    {"wyxz",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 1, 0, 2)},
+    {"wyxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 0, 3)},
+    {"wyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 1, 1)},
+    {"wyyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 1, 0)},
+    {"wyyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 1, 1)},
+    {"wyyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 1, 2)},
+    {"wyyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 1, 3)},
+    {"wyz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 1, 2)},
+    {"wyzx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 1, 2, 0)},
+    {"wyzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 2, 1)},
+    {"wyzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 2, 2)},
+    {"wyzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 2, 3)},
+    {"wyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 1, 3)},
+    {"wywx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 3, 0)},
+    {"wywy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 3, 1)},
+    {"wywz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 3, 2)},
+    {"wyww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 1, 3, 3)},
+    {"wz", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE2(3, 2)},
+    {"wzx", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 2, 0)},
+    {"wzxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 0, 0)},
+    {"wzxy",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 2, 0, 1)},
+    {"wzxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 0, 2)},
+    {"wzxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 0, 3)},
+    {"wzy", (getter)Vector_swizzle_get, (setter)Vector_swizzle_set, nullptr, SWIZZLE3(3, 2, 1)},
+    {"wzyx",
+     (getter)Vector_swizzle_get,
+     (setter)Vector_swizzle_set,
+     nullptr,
+     SWIZZLE4(3, 2, 1, 0)},
+    {"wzyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 1, 1)},
+    {"wzyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 1, 2)},
+    {"wzyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 1, 3)},
+    {"wzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 2, 2)},
+    {"wzzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 2, 0)},
+    {"wzzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 2, 1)},
+    {"wzzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 2, 2)},
+    {"wzzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 2, 3)},
+    {"wzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 2, 3)},
+    {"wzwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 3, 0)},
+    {"wzwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 3, 1)},
+    {"wzwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 3, 2)},
+    {"wzww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 2, 3, 3)},
+    {"ww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE2(3, 3)},
+    {"wwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 3, 0)},
+    {"wwxx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 0, 0)},
+    {"wwxy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 0, 1)},
+    {"wwxz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 0, 2)},
+    {"wwxw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 0, 3)},
+    {"wwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 3, 1)},
+    {"wwyx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 1, 0)},
+    {"wwyy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 1, 1)},
+    {"wwyz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 1, 2)},
+    {"wwyw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 1, 3)},
+    {"wwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 3, 2)},
+    {"wwzx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 2, 0)},
+    {"wwzy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 2, 1)},
+    {"wwzz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 2, 2)},
+    {"wwzw", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 2, 3)},
+    {"www", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE3(3, 3, 3)},
+    {"wwwx", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 3, 0)},
+    {"wwwy", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 3, 1)},
+    {"wwwz", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 3, 2)},
+    {"wwww", (getter)Vector_swizzle_get, (setter) nullptr, nullptr, SWIZZLE4(3, 3, 3, 3)},
 
 #undef AXIS_FROM_CHAR
 #undef SWIZZLE1
@@ -3126,7 +3230,7 @@ static PyGetSetDef Vector_getseters[] = {
 #undef _SWIZZLE3
 #undef _SWIZZLE4
 
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 /** \} */
@@ -3181,9 +3285,9 @@ static PyMethodDef Vector_methods[] = {
     {"freeze", (PyCFunction)BaseMathObject_freeze, METH_NOARGS, BaseMathObject_freeze_doc},
 
     {"copy", (PyCFunction)Vector_copy, METH_NOARGS, Vector_copy_doc},
-    {"__copy__", (PyCFunction)Vector_copy, METH_NOARGS, NULL},
-    {"__deepcopy__", (PyCFunction)Vector_deepcopy, METH_VARARGS, NULL},
-    {NULL, NULL, 0, NULL},
+    {"__copy__", (PyCFunction)Vector_copy, METH_NOARGS, nullptr},
+    {"__deepcopy__", (PyCFunction)Vector_deepcopy, METH_VARARGS, nullptr},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -3197,7 +3301,7 @@ static PyMethodDef Vector_methods[] = {
  * \{ */
 
 #ifdef MATH_STANDALONE
-#  define Vector_str NULL
+#  define Vector_str nullptr
 #endif
 
 PyDoc_STRVAR(vector_doc,
@@ -3208,59 +3312,59 @@ PyDoc_STRVAR(vector_doc,
              "   :arg seq: Components of the vector, must be a sequence of at least two\n"
              "   :type seq: sequence of numbers\n");
 PyTypeObject vector_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "Vector",
     /*tp_basicsize*/ sizeof(VectorObject),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)BaseMathObject_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
     /*tp_repr*/ (reprfunc)Vector_repr,
     /*tp_as_number*/ &Vector_NumMethods,
     /*tp_as_sequence*/ &Vector_SeqMethods,
     /*tp_as_mapping*/ &Vector_AsMapping,
     /*tp_hash*/ (hashfunc)Vector_hash,
-    /*tp_call*/ NULL,
+    /*tp_call*/ nullptr,
     /*tp_str*/ (reprfunc)Vector_str,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
     /*tp_doc*/ vector_doc,
     /*tp_traverse*/ (traverseproc)BaseMathObject_traverse,
     /*tp_clear*/ (inquiry)BaseMathObject_clear,
     /*tp_richcompare*/ (richcmpfunc)Vector_richcmpr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ Vector_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ Vector_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ Vector_new,
-    /*tp_free*/ NULL,
+    /*tp_free*/ nullptr,
     /*tp_is_gc*/ (inquiry)BaseMathObject_is_gc,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 #ifdef MATH_STANDALONE
-#  undef Vector_str NULL
+#  undef Vector_str nullptr
 #endif
 
 /** \} */
@@ -3276,15 +3380,15 @@ PyObject *Vector_CreatePyObject(const float *vec, const int vec_num, PyTypeObjec
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
-  vec_alloc = PyMem_Malloc(vec_num * sizeof(float));
-  if (UNLIKELY(vec_alloc == NULL)) {
+  vec_alloc = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
+  if (UNLIKELY(vec_alloc == nullptr)) {
     PyErr_SetString(PyExc_MemoryError,
                     "Vector(): "
                     "problem allocating data");
-    return NULL;
+    return nullptr;
   }
 
   self = BASE_MATH_NEW(VectorObject, vector_Type, base_type);
@@ -3292,8 +3396,8 @@ PyObject *Vector_CreatePyObject(const float *vec, const int vec_num, PyTypeObjec
     self->vec = vec_alloc;
     self->vec_num = vec_num;
 
-    /* Initialize callbacks as NULL. */
-    self->cb_user = NULL;
+    /* Initialize callbacks as nullptr. */
+    self->cb_user = nullptr;
     self->cb_type = self->cb_subtype = 0;
 
     if (vec) {
@@ -3320,15 +3424,15 @@ PyObject *Vector_CreatePyObject_wrap(float *vec, const int vec_num, PyTypeObject
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_RuntimeError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
   self = BASE_MATH_NEW(VectorObject, vector_Type, base_type);
   if (self) {
     self->vec_num = vec_num;
 
-    /* Initialize callbacks as NULL. */
-    self->cb_user = NULL;
+    /* Initialize callbacks as nullptr. */
+    self->cb_user = nullptr;
     self->cb_type = self->cb_subtype = 0;
 
     self->vec = vec;
@@ -3339,7 +3443,7 @@ PyObject *Vector_CreatePyObject_wrap(float *vec, const int vec_num, PyTypeObject
 
 PyObject *Vector_CreatePyObject_cb(PyObject *cb_user, int vec_num, uchar cb_type, uchar cb_subtype)
 {
-  VectorObject *self = (VectorObject *)Vector_CreatePyObject(NULL, vec_num, NULL);
+  VectorObject *self = (VectorObject *)Vector_CreatePyObject(nullptr, vec_num, nullptr);
   if (self) {
     Py_INCREF(cb_user);
     self->cb_user = cb_user;

@@ -19,7 +19,7 @@ set(SRC
   mathutils_Euler.cc
   mathutils_Matrix.cc
   mathutils_Quaternion.cc
-  mathutils_Vector.c
+  mathutils_Vector.cc
   mathutils_bvhtree.cc
   mathutils_geometry.cc
   mathutils_interpolate.cc
