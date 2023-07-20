@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -109,7 +108,9 @@ class VelocityModule {
   bool step_object_sync(Object *ob,
                         ObjectKey &object_key,
                         ResourceHandle resource_handle,
-                        int recalc = 0);
+                        int recalc = 0,
+                        ModifierData *modifier_data = nullptr,
+                        ParticleSystem *particle_sys = nullptr);
 
   /* Moves next frame data to previous frame data. Nullify next frame data. */
   void step_swap();

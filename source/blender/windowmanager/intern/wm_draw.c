@@ -406,7 +406,7 @@ static bool wm_draw_region_stereo_set(Main *bmain,
         View3D *v3d = area->spacedata.first;
         if (v3d->camera && v3d->camera->type == OB_CAMERA) {
           RegionView3D *rv3d = region->regiondata;
-          RenderEngine *engine = rv3d->render_engine;
+          RenderEngine *engine = rv3d->view_render ? RE_view_engine_get(rv3d->view_render) : NULL;
           if (engine && !(engine->type->flag & RE_USE_STEREO_VIEWPORT)) {
             return false;
           }
@@ -495,7 +495,7 @@ static void wm_region_test_render_do_draw(const Scene *scene,
   /* tag region for redraw from render engine preview running inside of it */
   if (area->spacetype == SPACE_VIEW3D && region->regiontype == RGN_TYPE_WINDOW) {
     RegionView3D *rv3d = region->regiondata;
-    RenderEngine *engine = rv3d->render_engine;
+    RenderEngine *engine = rv3d->view_render ? RE_view_engine_get(rv3d->view_render) : NULL;
     GPUViewport *viewport = WM_draw_region_get_viewport(region);
 
     if (engine && (engine->flag & RE_ENGINE_DO_DRAW)) {
@@ -1297,7 +1297,7 @@ uint8_t *WM_window_pixels_read_from_offscreen(bContext *C, wmWindow *win, int r_
    *
    * So provide an alternative to #WM_window_pixels_read that avoids using the front-buffer. */
 
-  /* Draw into an off-screen buffer and read it's contents. */
+  /* Draw into an off-screen buffer and read its contents. */
   r_size[0] = WM_window_pixels_x(win);
   r_size[1] = WM_window_pixels_y(win);
 

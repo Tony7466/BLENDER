@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ikplugin
@@ -862,7 +863,7 @@ static bool joint_callback(const iTaSC::Timestamp &timestamp,
       axis_angle_to_mat3(rmat, &chan->quat[1], chan->quat[0]);
     }
     else {
-      /* quats are normalized before use to eliminate scaling issues */
+      /* Quaternions are normalized before use to eliminate scaling issues. */
       normalize_qt(chan->quat);
       quat_to_mat3(rmat, chan->quat);
     }

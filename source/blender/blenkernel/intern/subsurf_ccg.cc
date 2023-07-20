@@ -40,7 +40,6 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
 #include "BKE_scene.h"
 #include "BKE_subsurf.h"
 
@@ -566,7 +565,8 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
   }
 
   index = (int *)dm->getEdgeDataArray(dm, CD_ORIGINDEX);
-  const float *creases = (const float *)dm->getEdgeDataArray(dm, CD_CREASE);
+  const float *creases = (const float *)CustomData_get_layer_named(
+      &dm->edgeData, CD_PROP_FLOAT, "crease_edge");
   for (i = 0; i < totedge; i++) {
     CCGEdge *e;
     float crease;
@@ -1023,7 +1023,7 @@ static void ccgDM_release(DerivedMesh *dm)
   if (ccgdm->multires.modified_flags) {
     /* Check that mmd still exists */
     if (!ccgdm->multires.local_mmd &&
-        BLI_findindex(&ccgdm->multires.ob->modifiers, ccgdm->multires.mmd) < 0)
+        BLI_findindex(&ccgdm->multires.ob->modifiers, ccgdm->multires.mmd) == -1)
     {
       ccgdm->multires.mmd = nullptr;
     }
@@ -1699,6 +1699,8 @@ static CCGDerivedMesh *getCCGDerivedMesh(CCGSubSurf *ss,
                    0,
                    ccgSubSurf_getNumFinalFaces(ss) * 4,
                    ccgSubSurf_getNumFinalFaces(ss));
+  CustomData_free_layer_named(&ccgdm->dm.vertData, "position", ccgSubSurf_getNumFinalVerts(ss));
+  CustomData_free_layer_named(&ccgdm->dm.edgeData, ".edge_verts", ccgSubSurf_getNumFinalEdges(ss));
   CustomData_free_layer_named(
       &ccgdm->dm.loopData, ".corner_vert", ccgSubSurf_getNumFinalFaces(ss) * 4);
   CustomData_free_layer_named(

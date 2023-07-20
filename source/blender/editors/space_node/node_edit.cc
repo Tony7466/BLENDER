@@ -66,9 +66,9 @@
 #include "IMB_imbuf_types.h"
 
 #include "NOD_composite.h"
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -97,10 +97,11 @@ struct CompoJob {
   bNodeTree *localtree;
   /* Render instance. */
   Render *re;
-  /* Jon system integration. */
+  /* Job system integration. */
   const bool *stop;
   bool *do_update;
   float *progress;
+  bool cancelled;
 };
 
 float node_socket_calculate_height(const bNodeSocket &socket)
@@ -209,7 +210,13 @@ static void compo_freejob(void *cjv)
   CompoJob *cj = (CompoJob *)cjv;
 
   if (cj->localtree) {
-    bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    /* Merge back node previews, only for completed jobs. */
+    if (!cj->cancelled) {
+      bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    }
+
+    bke::ntreeFreeTree(cj->localtree);
+    MEM_freeN(cj->localtree);
   }
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);
@@ -243,7 +250,7 @@ static void compo_initjob(void *cjv)
   }
 
   cj->re = RE_NewSceneRender(scene);
-  RE_system_gpu_context_create(cj->re);
+  RE_system_gpu_context_ensure(cj->re);
 }
 
 /* Called before redraw notifiers, it moves finished previews over. */
@@ -302,8 +309,6 @@ static void compo_startjob(void *cjv,
     }
   }
 
-  RE_system_gpu_context_destroy(cj->re);
-
   ntree->runtime->test_break = nullptr;
   ntree->runtime->stats_draw = nullptr;
   ntree->runtime->progress = nullptr;
@@ -315,6 +320,7 @@ static void compo_canceljob(void *cjv)
   Main *bmain = cj->bmain;
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
+  cj->cancelled = true;
 }
 
 static void compo_completejob(void *cjv)
@@ -495,6 +501,11 @@ bool ED_node_is_texture(SpaceNode *snode)
 bool ED_node_is_geometry(SpaceNode *snode)
 {
   return STREQ(snode->tree_idname, ntreeType_Geometry->idname);
+}
+
+bool ED_node_supports_preview(SpaceNode *snode)
+{
+  return ED_node_is_compositor(snode);
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -1261,28 +1272,43 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
   }
 }
 
-static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node_map)
+void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &node_map)
 {
   /* We don't have the old tree for looking up output nodes by ID,
    * so we have to build a map first to find copied output nodes in the new tree. */
-  Map<uint32_t, bNode *> dst_output_node_map;
+  Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
-    if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
+    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
     }
   }
 
   for (bNode *dst_node : node_map.values()) {
-    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
-      if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                        nullptr)) {
-        data->output_node_id = output_node->identifier;
+    switch (dst_node->type) {
+      case GEO_NODE_SIMULATION_INPUT: {
+        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+            dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
-      else {
-        data->output_node_id = 0;
-        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      case GEO_NODE_REPEAT_INPUT: {
+        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
     }
   }
@@ -1376,7 +1402,14 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
     }
   }
 
-  remap_pairing(*ntree, node_map);
+  {
+    /* Use temporary map that has const key, because that's what the function below expects. */
+    Map<const bNode *, bNode *> const_node_map;
+    for (const auto item : node_map.items()) {
+      const_node_map.add(item.key, item.value);
+    }
+    remap_node_pairing(*ntree, const_node_map);
+  }
 
   /* Deselect old nodes, select the copies instead. */
   for (const auto item : node_map.items()) {
@@ -2198,6 +2231,8 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
+    /* Inherit socket panel from the active socket interface. */
+    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2342,6 +2377,10 @@ static bool socket_change_poll_type(void *userdata, bNodeSocketType *socket_type
 
   /* Only use basic socket types for this enum. */
   if (socket_type->subtype != PROP_NONE) {
+    return false;
+  }
+
+  if (!U.experimental.use_rotation_socket && socket_type->type == SOCK_ROTATION) {
     return false;
   }
 
@@ -2588,6 +2627,8 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
       break;
     }
   }
+
+  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

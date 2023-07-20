@@ -2200,8 +2200,8 @@ void BKE_keyblock_update_from_mesh(const Mesh *me, KeyBlock *kb)
     return;
   }
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  memcpy(kb->data, positions, sizeof(float[3]) * tot);
+  const blender::Span<blender::float3> positions = me->vert_positions();
+  memcpy(kb->data, positions.data(), sizeof(float[3]) * tot);
 }
 
 void BKE_keyblock_convert_from_mesh(const Mesh *me, const Key *key, KeyBlock *kb)
@@ -2238,8 +2238,8 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
     return;
   }
 
-  float(*positions)[3] = static_cast<float(*)[3]>(MEM_dupallocN(BKE_mesh_vert_positions(mesh)));
-  BKE_keyblock_convert_to_mesh(kb, positions, mesh->totvert);
+  blender::Array<blender::float3> positions(mesh->vert_positions());
+  BKE_keyblock_convert_to_mesh(kb, reinterpret_cast<float(*)[3]>(positions.data()), mesh->totvert);
   const blender::Span<blender::int2> edges = mesh->edges();
   const blender::OffsetIndices polys = mesh->polys();
   const blender::Span<int> corner_verts = mesh->corner_verts();
@@ -2267,14 +2267,14 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
 
   if (poly_normals_needed) {
     blender::bke::mesh::normals_calc_polys(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         polys,
         corner_verts,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()});
   }
   if (vert_normals_needed) {
     blender::bke::mesh::normals_calc_poly_vert(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         polys,
         corner_verts,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
@@ -2288,7 +2288,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
     const bool *sharp_faces = static_cast<const bool *>(
         CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(
-        {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
+        positions,
         edges,
         polys,
         corner_verts,
@@ -2311,7 +2311,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   if (free_poly_normals) {
     MEM_freeN(poly_normals);
   }
-  MEM_freeN(positions);
 }
 
 /************************* raw coords ************************/
@@ -2598,4 +2597,47 @@ bool BKE_keyblock_is_basis(const Key *key, const int index)
   }
 
   return false;
+}
+
+bool *BKE_keyblock_get_dependent_keys(const Key *key, const int index)
+{
+  if (key->type != KEY_RELATIVE) {
+    return nullptr;
+  }
+
+  const int count = BLI_listbase_count(&key->block);
+
+  if (index < 0 || index >= count) {
+    return nullptr;
+  }
+
+  /* Seed the table with the specified key. */
+  bool *marked = static_cast<bool *>(MEM_callocN(sizeof(bool) * count, __func__));
+
+  marked[index] = true;
+
+  /* Iterative breadth-first search through the key list. This method minimizes
+   * the number of scans through the list and is fail-safe vs reference cycles. */
+  bool updated, found = false;
+  int i;
+
+  do {
+    updated = false;
+
+    LISTBASE_FOREACH_INDEX (const KeyBlock *, kb, &key->block, i) {
+      if (!marked[i] && kb->relative >= 0 && kb->relative < count && marked[kb->relative]) {
+        marked[i] = true;
+        updated = found = true;
+      }
+    }
+  } while (updated);
+
+  if (!found) {
+    MEM_freeN(marked);
+    return nullptr;
+  }
+
+  /* After the search is complete, exclude the original key. */
+  marked[index] = false;
+  return marked;
 }

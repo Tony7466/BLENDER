@@ -5,13 +5,10 @@
 set(INC
   ../include
   ../io
-  ../../blenkernel
-  ../../blenlib
+  ../../asset_system
   ../../gpu
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -19,10 +16,13 @@ set(INC_SYS
 )
 
 set(SRC
-  spacetypes.c
+  spacetypes.cc
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_editor_geometry
   bf_editor_space_action
   bf_editor_space_buttons
@@ -43,6 +43,7 @@ set(LIB
   bf_editor_space_topbar
   bf_editor_space_userpref
   bf_editor_space_view3d
+  PRIVATE bf::intern::guardedalloc
 )
 
 blender_add_lib(bf_editor_space_api "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -102,7 +103,6 @@ Shader::Shader() : Node(get_node_type())
   has_surface_spatial_varying = false;
   has_volume_spatial_varying = false;
   has_volume_attribute_dependency = false;
-  has_integrator_dependency = false;
   has_volume_connected = false;
   prev_volume_step_rate = 0.0f;
 

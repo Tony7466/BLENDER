@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
@@ -109,9 +112,6 @@ class MESH_UL_vgroups(UIList):
             layout.label(text="", icon_value=icon)
 
 
-
-
-
 class MESH_UL_shape_keys(UIList):
     def draw_item(self, _context, layout, _data, item, icon, active_data, _active_propname, index):
         # assert(isinstance(item, bpy.types.ShapeKey))
@@ -124,7 +124,7 @@ class MESH_UL_shape_keys(UIList):
             row = split.row(align=True)
             row.emboss = 'NONE_OR_STATUS'
             if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
-                row.active = False
+                split.active = False
             if not item.id_data.use_relative:
                 row.prop(key_block, "frame", text="")
             elif index > 0:
@@ -443,16 +443,6 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
             col.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
         else:
             col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
-
-        if me.has_crease_edge:
-            col.operator("mesh.customdata_crease_edge_clear", icon='X')
-        else:
-            col.operator("mesh.customdata_crease_edge_add", icon='ADD')
-
-        if me.has_crease_vertex:
-            col.operator("mesh.customdata_crease_vertex_clear", icon='X')
-        else:
-            col.operator("mesh.customdata_crease_vertex_add", icon='ADD')
 
 
 class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):

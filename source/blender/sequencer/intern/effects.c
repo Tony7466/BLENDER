@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation.
+ * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -2570,7 +2570,7 @@ void seq_effect_speed_rebuild_map(Scene *scene, Sequence *seq)
                                   SEQ_time_left_handle_frame_get(scene, seq);
 
   if ((seq->seq1 == NULL) || (effect_strip_length < 1)) {
-    return; /* Make coverity happy and check for (CID 598) input strip... */
+    return; /* Make COVERITY happy and check for (CID 598) input strip. */
   }
 
   FCurve *fcu = seq_effect_speed_speed_factor_curve_get(scene, seq);

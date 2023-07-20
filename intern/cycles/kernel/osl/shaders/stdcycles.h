@@ -1,15 +1,17 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Adapted from Open Shading Language
- * Copyright (c) 2009-2010 Sony Pictures Imageworks Inc., et al.
- * All Rights Reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * Adapted code from Open Shading Language. */
 
 #ifndef CCL_STDCYCLESOSL_H
 #define CCL_STDCYCLESOSL_H
 
 #include "stdosl.h"
+
+// Constants
+#define FLT_MAX 3.402823466e+38  // max value
 
 // Declaration of built-in functions and closures, stdosl.h does not make
 // these available so we have to redefine them.
