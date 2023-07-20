@@ -43,7 +43,7 @@
 
 #include "bpy_rna.h"
 
-typedef struct IDUserMapData {
+struct IDUserMapData {
   /** We loop over data-blocks that this ID points to (do build a reverse lookup table) */
   PyObject *py_id_curr;
   ID *id_curr;
@@ -55,7 +55,7 @@ typedef struct IDUserMapData {
   PyObject *user_map;
   /** true when we're only mapping a subset of all the ID's (subset arg is passed). */
   bool is_subset;
-} IDUserMapData;
+};
 
 static int id_code_as_index(const short idcode)
 {
@@ -72,7 +72,7 @@ static int foreach_libblock_id_user_map_callback(LibraryIDLinkCallbackData *cb_d
   ID **id_p = cb_data->id_pointer;
 
   if (*id_p) {
-    IDUserMapData *data = cb_data->user_data;
+    IDUserMapData *data = static_cast<IDUserMapData *>(cb_data->user_data);
     const int cb_flag = cb_data->cb_flag;
 
     if (data->types_bitmap) {
@@ -96,19 +96,19 @@ static int foreach_libblock_id_user_map_callback(LibraryIDLinkCallbackData *cb_d
     PyObject *key = pyrna_id_CreatePyObject(*id_p);
 
     PyObject *set;
-    if ((set = PyDict_GetItem(data->user_map, key)) == NULL) {
+    if ((set = PyDict_GetItem(data->user_map, key)) == nullptr) {
       /* limit to key's added already */
       if (data->is_subset) {
         return IDWALK_RET_NOP;
       }
 
-      set = PySet_New(NULL);
+      set = PySet_New(nullptr);
       PyDict_SetItem(data->user_map, key, set);
       Py_DECREF(set);
     }
     Py_DECREF(key);
 
-    if (data->py_id_curr == NULL) {
+    if (data->py_id_curr == nullptr) {
       data->py_id_curr = pyrna_id_CreatePyObject(data->id_curr);
     }
 
@@ -137,7 +137,7 @@ PyDoc_STRVAR(bpy_user_map_doc,
              "   :return: dictionary of :class:`bpy.types.ID` instances, with sets of ID's as "
              "their values.\n"
              "   :rtype: dict\n");
-static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *bpy_user_map(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
 #if 0 /* If someone knows how to get a proper 'self' in that case... */
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
@@ -148,18 +148,18 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
   ListBase *lb;
   ID *id;
 
-  PyObject *subset = NULL;
+  PyObject *subset = nullptr;
 
-  PyObject *key_types = NULL;
-  PyObject *val_types = NULL;
-  BLI_bitmap *key_types_bitmap = NULL;
-  BLI_bitmap *val_types_bitmap = NULL;
+  PyObject *key_types = nullptr;
+  PyObject *val_types = nullptr;
+  BLI_bitmap *key_types_bitmap = nullptr;
+  BLI_bitmap *val_types_bitmap = nullptr;
 
-  PyObject *ret = NULL;
+  PyObject *ret = nullptr;
 
-  IDUserMapData data_cb = {NULL};
+  IDUserMapData data_cb = {nullptr};
 
-  static const char *_keywords[] = {"subset", "key_types", "value_types", NULL};
+  static const char *_keywords[] = {"subset", "key_types", "value_types", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O"  /* `subset` */
@@ -172,13 +172,13 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &subset, &PySet_Type, &key_types, &PySet_Type, &val_types))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (key_types) {
     key_types_bitmap = pyrna_enum_bitmap_from_set(
         rna_enum_id_type_items, key_types, sizeof(short), true, USHRT_MAX, "key types");
-    if (key_types_bitmap == NULL) {
+    if (key_types_bitmap == nullptr) {
       goto error;
     }
   }
@@ -186,14 +186,14 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
   if (val_types) {
     val_types_bitmap = pyrna_enum_bitmap_from_set(
         rna_enum_id_type_items, val_types, sizeof(short), true, USHRT_MAX, "value types");
-    if (val_types_bitmap == NULL) {
+    if (val_types_bitmap == nullptr) {
       goto error;
     }
   }
 
   if (subset) {
     PyObject *subset_fast = PySequence_Fast(subset, "user_map");
-    if (subset_fast == NULL) {
+    if (subset_fast == nullptr) {
       goto error;
     }
 
@@ -203,7 +203,7 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
     data_cb.user_map = _PyDict_NewPresized(subset_len);
     data_cb.is_subset = true;
     for (; subset_len; subset_array++, subset_len--) {
-      PyObject *set = PySet_New(NULL);
+      PyObject *set = PySet_New(nullptr);
       PyDict_SetItem(data_cb.user_map, *subset_array, set);
       Py_DECREF(set);
     }
@@ -218,7 +218,7 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
   FOREACH_MAIN_LISTBASE_BEGIN (bmain, lb) {
     FOREACH_MAIN_LISTBASE_ID_BEGIN (lb, id) {
       /* We cannot skip here in case we have some filter on key types... */
-      if (key_types_bitmap == NULL && val_types_bitmap != NULL) {
+      if (key_types_bitmap == nullptr && val_types_bitmap != nullptr) {
         if (!id_check_type(id, val_types_bitmap)) {
           break;
         }
@@ -226,35 +226,35 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
 
       if (!data_cb.is_subset &&
           /* We do not want to pre-add keys of filtered out types. */
-          (key_types_bitmap == NULL || id_check_type(id, key_types_bitmap)) &&
+          (key_types_bitmap == nullptr || id_check_type(id, key_types_bitmap)) &&
           /* We do not want to pre-add keys when we have filter on value types,
            * but not on key types. */
-          (val_types_bitmap == NULL || key_types_bitmap != NULL))
+          (val_types_bitmap == nullptr || key_types_bitmap != nullptr))
       {
         PyObject *key = pyrna_id_CreatePyObject(id);
         PyObject *set;
 
         /* We have to insert the key now,
          * otherwise ID unused would be missing from final dict... */
-        if ((set = PyDict_GetItem(data_cb.user_map, key)) == NULL) {
-          set = PySet_New(NULL);
+        if ((set = PyDict_GetItem(data_cb.user_map, key)) == nullptr) {
+          set = PySet_New(nullptr);
           PyDict_SetItem(data_cb.user_map, key, set);
           Py_DECREF(set);
         }
         Py_DECREF(key);
       }
 
-      if (val_types_bitmap != NULL && !id_check_type(id, val_types_bitmap)) {
+      if (val_types_bitmap != nullptr && !id_check_type(id, val_types_bitmap)) {
         continue;
       }
 
       data_cb.id_curr = id;
       BKE_library_foreach_ID_link(
-          NULL, id, foreach_libblock_id_user_map_callback, &data_cb, IDWALK_CB_NOP);
+          nullptr, id, foreach_libblock_id_user_map_callback, &data_cb, IDWALK_CB_NOP);
 
       if (data_cb.py_id_curr) {
         Py_DECREF(data_cb.py_id_curr);
-        data_cb.py_id_curr = NULL;
+        data_cb.py_id_curr = nullptr;
       }
     }
     FOREACH_MAIN_LISTBASE_ID_END;
@@ -264,11 +264,11 @@ static PyObject *bpy_user_map(PyObject *UNUSED(self), PyObject *args, PyObject *
   ret = data_cb.user_map;
 
 error:
-  if (key_types_bitmap != NULL) {
+  if (key_types_bitmap != nullptr) {
     MEM_freeN(key_types_bitmap);
   }
 
-  if (val_types_bitmap != NULL) {
+  if (val_types_bitmap != nullptr) {
     MEM_freeN(val_types_bitmap);
   }
 
@@ -289,7 +289,7 @@ PyDoc_STRVAR(bpy_batch_remove_doc,
              "\n"
              "   :arg ids: Iterables of IDs (types can be mixed).\n"
              "   :type subset: sequence\n");
-static PyObject *bpy_batch_remove(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *bpy_batch_remove(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
 #if 0 /* If someone knows how to get a proper 'self' in that case... */
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
@@ -298,11 +298,11 @@ static PyObject *bpy_batch_remove(PyObject *UNUSED(self), PyObject *args, PyObje
   Main *bmain = G_MAIN; /* XXX Ugly, but should work! */
 #endif
 
-  PyObject *ids = NULL;
+  PyObject *ids = nullptr;
 
-  PyObject *ret = NULL;
+  PyObject *ret = nullptr;
 
-  static const char *_keywords[] = {"ids", NULL};
+  static const char *_keywords[] = {"ids", nullptr};
   static _PyArg_Parser _parser = {
       "O" /* `ids` */
       ":batch_remove",
@@ -317,7 +317,7 @@ static PyObject *bpy_batch_remove(PyObject *UNUSED(self), PyObject *args, PyObje
     BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
 
     PyObject *ids_fast = PySequence_Fast(ids, "batch_remove");
-    if (ids_fast == NULL) {
+    if (ids_fast == nullptr) {
       goto error;
     }
 
@@ -339,7 +339,7 @@ static PyObject *bpy_batch_remove(PyObject *UNUSED(self), PyObject *args, PyObje
 
     BKE_id_multi_tagged_delete(bmain);
     /* Force full redraw, mandatory to avoid crashes when running this from UI... */
-    WM_main_add_notifier(NC_WINDOW, NULL);
+    WM_main_add_notifier(NC_WINDOW, nullptr);
   }
   else {
     goto error;
@@ -365,7 +365,7 @@ PyDoc_STRVAR(bpy_orphans_purge_doc,
              "remain after a single run of that function, defaults to False\n"
              "   :type do_recursive: bool, optional\n"
              "   :return: The number of deleted IDs.\n");
-static PyObject *bpy_orphans_purge(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *bpy_orphans_purge(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
 #if 0 /* If someone knows how to get a proper 'self' in that case... */
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
@@ -380,7 +380,7 @@ static PyObject *bpy_orphans_purge(PyObject *UNUSED(self), PyObject *args, PyObj
   bool do_linked_ids = true;
   bool do_recursive_cleanup = false;
 
-  static const char *_keywords[] = {"do_local_ids", "do_linked_ids", "do_recursive", NULL};
+  static const char *_keywords[] = {"do_local_ids", "do_linked_ids", "do_recursive", nullptr};
   static _PyArg_Parser _parser = {
       "|"  /* Optional arguments. */
       "O&" /* `do_local_ids` */
@@ -400,7 +400,7 @@ static PyObject *bpy_orphans_purge(PyObject *UNUSED(self), PyObject *args, PyObj
                                         PyC_ParseBool,
                                         &do_recursive_cleanup))
   {
-    return NULL;
+    return nullptr;
   }
 
   /* Tag all IDs to delete. */
@@ -413,7 +413,7 @@ static PyObject *bpy_orphans_purge(PyObject *UNUSED(self), PyObject *args, PyObj
 
   const size_t num_datablocks_deleted = BKE_id_multi_tagged_delete(bmain);
   /* Force full redraw, mandatory to avoid crashes when running this from UI... */
-  WM_main_add_notifier(NC_WINDOW, NULL);
+  WM_main_add_notifier(NC_WINDOW, nullptr);
 
   return PyLong_FromSize_t(num_datablocks_deleted);
 }

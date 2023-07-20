@@ -62,7 +62,7 @@ set(SRC
   bpy_rna_data.cc
   bpy_rna_driver.cc
   bpy_rna_gizmo.cc
-  bpy_rna_id_collection.c
+  bpy_rna_id_collection.cc
   bpy_rna_operator.c
   bpy_rna_text.c
   bpy_rna_types_capi.c
