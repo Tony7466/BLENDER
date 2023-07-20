@@ -16,6 +16,8 @@
 
 #include "BLI_string_utils.h"
 
+#include "BLO_read_write.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -193,6 +195,25 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
+static void node_blend_write(BlendWriter *writer, bNodeTree * /*ntree*/, bNode *node)
+{
+  const NodeGeometryRepeatOutput &storage = node_storage(*node);
+  BLO_write_struct(writer, NodeGeometryRepeatOutput, &storage);
+  BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
+  for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+static void node_blend_read_data(BlendDataReader *reader, bNodeTree * /*ntree*/, bNode *node)
+{
+  NodeGeometryRepeatOutput &storage = node_storage(*node);
+  BLO_read_data_address(reader, &storage.items);
+  for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+    BLO_read_data_address(reader, &item.name);
+  }
+}
+
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
   NodeGeometryRepeatOutput &storage = node_storage(*node);
@@ -329,6 +350,8 @@ void register_node_type_geo_repeat_output()
   ntype.declare_dynamic = file_ns::node_declare_dynamic;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.insert_link = file_ns::node_insert_link;
+  ntype.blend_write = file_ns::node_blend_write;
+  ntype.blend_data_read = file_ns::node_blend_read_data;
   node_type_storage(
       &ntype, "NodeGeometryRepeatOutput", file_ns::node_free_storage, file_ns::node_copy_storage);
   nodeRegisterType(&ntype);

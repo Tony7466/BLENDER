@@ -655,14 +655,6 @@ static void write_node_storage(BlendWriter *writer, bNodeTree *ntree, bNode *nod
       BLO_write_struct(writer, NodeImageLayer, sock->storage);
     }
   }
-  if (node->type == GEO_NODE_REPEAT_OUTPUT) {
-    const NodeGeometryRepeatOutput &storage = *static_cast<const NodeGeometryRepeatOutput *>(
-        node->storage);
-    BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
-    for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-      BLO_write_string(writer, item.name);
-    }
-  }
 }
 
 void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
@@ -821,15 +813,6 @@ static void read_node_storage(BlendDataReader *reader, bNodeTree *ntree, bNode *
       case FN_NODE_INPUT_STRING: {
         NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
         BLO_read_data_address(reader, &storage->string);
-        break;
-      }
-      case GEO_NODE_REPEAT_OUTPUT: {
-        NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(
-            node->storage);
-        BLO_read_data_address(reader, &storage.items);
-        for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
-          BLO_read_data_address(reader, &item.name);
-        }
         break;
       }
 
