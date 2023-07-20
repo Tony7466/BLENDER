@@ -93,10 +93,10 @@ static GHOST_SystemHandle g_system = nullptr;
 static const char *g_system_backend_id = nullptr;
 #endif
 
-typedef enum eWinOverrideFlag {
+enum eWinOverrideFlag {
   WIN_OVERRIDE_GEOM = (1 << 0),
   WIN_OVERRIDE_WINSTATE = (1 << 1),
-} eWinOverrideFlag;
+};
 ENUM_OPERATORS(eWinOverrideFlag, WIN_OVERRIDE_WINSTATE)
 
 #define GHOST_WINDOW_STATE_DEFAULT GHOST_kWindowStateMaximized
@@ -1242,8 +1242,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
   wmWindowManager *wm = CTX_wm_manager(C);
   GHOST_TEventType type = GHOST_GetEventType(evt);
 #if 0
-/* We may want to use time from ghost, currently `PIL_check_seconds_timer` is used instead. */
-uint64_t time = GHOST_GetEventTime(evt);
+  /* We may want to use time from ghost, currently `PIL_check_seconds_timer` is used instead. */
+  uint64_t time = GHOST_GetEventTime(evt);
 #endif
 
   if (type == GHOST_kEventQuitRequest) {
