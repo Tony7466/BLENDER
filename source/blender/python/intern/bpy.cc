@@ -60,7 +60,7 @@
 #  include "BPy_Freestyle.h"
 #endif
 
-PyObject *bpy_package_py = NULL;
+PyObject *bpy_package_py = nullptr;
 
 PyDoc_STRVAR(bpy_script_paths_doc,
              ".. function:: script_paths()\n"
@@ -69,30 +69,30 @@ PyDoc_STRVAR(bpy_script_paths_doc,
              "\n"
              "   :return: (system, user) strings will be empty when not found.\n"
              "   :rtype: tuple of strings\n");
-static PyObject *bpy_script_paths(PyObject *UNUSED(self))
+static PyObject *bpy_script_paths(PyObject * /*self*/)
 {
   PyObject *ret = PyTuple_New(2);
   PyObject *item;
   const char *path;
 
-  path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, NULL);
+  path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
   item = PyC_UnicodeFromBytes(path ? path : "");
-  BLI_assert(item != NULL);
+  BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 0, item);
-  path = BKE_appdir_folder_id(BLENDER_USER_SCRIPTS, NULL);
+  path = BKE_appdir_folder_id(BLENDER_USER_SCRIPTS, nullptr);
   item = PyC_UnicodeFromBytes(path ? path : "");
-  BLI_assert(item != NULL);
+  BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 1, item);
 
   return ret;
 }
 
 static bool bpy_blend_foreach_path_cb(BPathForeachPathData *bpath_data,
-                                      char *UNUSED(path_dst),
-                                      size_t UNUSED(path_dst_maxncpy),
+                                      char * /*path_dst*/,
+                                      size_t /*path_dst_maxncpy*/,
                                       const char *path_src)
 {
-  PyObject *py_list = bpath_data->user_data;
+  PyObject *py_list = static_cast<PyObject *>(bpath_data->user_data);
   PyList_APPEND(py_list, PyC_UnicodeFromBytes(path_src));
   return false; /* Never edits the path. */
 }
@@ -110,16 +110,16 @@ PyDoc_STRVAR(bpy_blend_paths_doc,
              "   :type local: boolean\n"
              "   :return: path list.\n"
              "   :rtype: list of strings\n");
-static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  eBPathForeachFlag flag = 0;
+  eBPathForeachFlag flag = eBPathForeachFlag(0);
   PyObject *list;
 
   bool absolute = false;
   bool packed = false;
   bool local = false;
 
-  static const char *_keywords[] = {"absolute", "packed", "local", NULL};
+  static const char *_keywords[] = {"absolute", "packed", "local", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O&" /* `absolute` */
@@ -139,7 +139,7 @@ static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObjec
                                         PyC_ParseBool,
                                         &local))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (absolute) {
@@ -154,12 +154,12 @@ static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObjec
 
   list = PyList_New(0);
 
-  BKE_bpath_foreach_path_main(&(BPathForeachPathData){
-      .bmain = G_MAIN,
-      .callback_function = bpy_blend_foreach_path_cb,
-      .flag = flag,
-      .user_data = list,
-  });
+  BPathForeachPathData path_data{};
+  path_data.bmain = G_MAIN;
+  path_data.callback_function = bpy_blend_foreach_path_cb;
+  path_data.flag = flag;
+  path_data.user_data = list;
+  BKE_bpath_foreach_path_main(&path_data);
 
   return list;
 }
@@ -176,13 +176,13 @@ PyDoc_STRVAR(bpy_flip_name_doc,
              "   :type strip_digits: bool\n"
              "   :return: The flipped name.\n"
              "   :rtype: string\n");
-static PyObject *bpy_flip_name(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  const char *name_src = NULL;
+  const char *name_src = nullptr;
   Py_ssize_t name_src_len;
   bool strip_digits = false;
 
-  static const char *_keywords[] = {"", "strip_digits", NULL};
+  static const char *_keywords[] = {"", "strip_digits", nullptr};
   static _PyArg_Parser _parser = {
       "s#" /* `name` */
       "|$" /* Optional, keyword only arguments. */
@@ -194,13 +194,13 @@ static PyObject *bpy_flip_name(PyObject *UNUSED(self), PyObject *args, PyObject 
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &name_src, &name_src_len, PyC_ParseBool, &strip_digits))
   {
-    return NULL;
+    return nullptr;
   }
 
   /* Worst case we gain one extra byte (besides null-terminator) by changing
    * "Left" to "Right", because only the first appearance of "Left" gets replaced. */
   const size_t size = name_src_len + 2;
-  char *name_dst = PyMem_MALLOC(size);
+  char *name_dst = static_cast<char *>(PyMem_MALLOC(size));
   const size_t name_dst_len = BLI_string_flip_side_name(name_dst, name_src, strip_digits, size);
 
   PyObject *result = PyUnicode_FromStringAndSize(name_dst, name_dst_len);
@@ -211,22 +211,22 @@ static PyObject *bpy_flip_name(PyObject *UNUSED(self), PyObject *args, PyObject 
 }
 
 // PyDoc_STRVAR(bpy_user_resource_doc[] = /* now in bpy/utils.py */
-static PyObject *bpy_user_resource(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const struct PyC_StringEnumItems type_items[] = {
       {BLENDER_USER_DATAFILES, "DATAFILES"},
       {BLENDER_USER_CONFIG, "CONFIG"},
       {BLENDER_USER_SCRIPTS, "SCRIPTS"},
       {BLENDER_USER_AUTOSAVE, "AUTOSAVE"},
-      {0, NULL},
+      {0, nullptr},
   };
   struct PyC_StringEnum type = {type_items};
 
-  const char *subdir = NULL;
+  const char *subdir = nullptr;
 
   const char *path;
 
-  static const char *_keywords[] = {"type", "path", NULL};
+  static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
@@ -236,7 +236,7 @@ static PyObject *bpy_user_resource(PyObject *UNUSED(self), PyObject *args, PyObj
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
-    return NULL;
+    return nullptr;
   }
 
   /* same logic as BKE_appdir_folder_id_create(),
@@ -255,21 +255,21 @@ PyDoc_STRVAR(bpy_system_resource_doc,
              "   :type type: string\n"
              "   :arg path: Optional subdirectory.\n"
              "   :type path: string\n");
-static PyObject *bpy_system_resource(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const struct PyC_StringEnumItems type_items[] = {
       {BLENDER_SYSTEM_DATAFILES, "DATAFILES"},
       {BLENDER_SYSTEM_SCRIPTS, "SCRIPTS"},
       {BLENDER_SYSTEM_PYTHON, "PYTHON"},
-      {0, NULL},
+      {0, nullptr},
   };
   struct PyC_StringEnum type = {type_items};
 
-  const char *subdir = NULL;
+  const char *subdir = nullptr;
 
   const char *path;
 
-  static const char *_keywords[] = {"type", "path", NULL};
+  static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
@@ -279,7 +279,7 @@ static PyObject *bpy_system_resource(PyObject *UNUSED(self), PyObject *args, PyO
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
-    return NULL;
+    return nullptr;
   }
 
   path = BKE_appdir_folder_id(type.value_found, subdir);
@@ -301,20 +301,20 @@ PyDoc_STRVAR(
     "   :type minor: string\n"
     "   :return: the resource path (not necessarily existing).\n"
     "   :rtype: string\n");
-static PyObject *bpy_resource_path(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const struct PyC_StringEnumItems type_items[] = {
       {BLENDER_RESOURCE_PATH_USER, "USER"},
       {BLENDER_RESOURCE_PATH_LOCAL, "LOCAL"},
       {BLENDER_RESOURCE_PATH_SYSTEM, "SYSTEM"},
-      {0, NULL},
+      {0, nullptr},
   };
   struct PyC_StringEnum type = {type_items};
 
   int major = BLENDER_VERSION / 100, minor = BLENDER_VERSION % 100;
   const char *path;
 
-  static const char *_keywords[] = {"type", "major", "minor", NULL};
+  static const char *_keywords[] = {"type", "major", "minor", nullptr};
   static _PyArg_Parser _parser = {
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
@@ -327,7 +327,7 @@ static PyObject *bpy_resource_path(PyObject *UNUSED(self), PyObject *args, PyObj
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, PyC_ParseStringEnum, &type, &major, &minor))
   {
-    return NULL;
+    return nullptr;
   }
 
   path = BKE_appdir_resource_path_id_with_version(type.value_found, false, (major * 100) + minor);
@@ -349,12 +349,12 @@ PyDoc_STRVAR(bpy_driver_secure_code_test_doc,
              "   :type verbose: bool\n"
              "   :return: True when the script is considered trusted.\n"
              "   :rtype: bool\n");
-static PyObject *bpy_driver_secure_code_test(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   PyObject *py_code;
-  PyObject *py_namespace = NULL;
+  PyObject *py_namespace = nullptr;
   const bool verbose = false;
-  static const char *_keywords[] = {"code", "namespace", "verbose", NULL};
+  static const char *_keywords[] = {"code", "namespace", "verbose", nullptr};
   static _PyArg_Parser _parser = {
       "O!" /* `expression` */
       "|$" /* Optional keyword only arguments. */
@@ -374,7 +374,7 @@ static PyObject *bpy_driver_secure_code_test(PyObject *UNUSED(self), PyObject *a
                                         PyC_ParseBool,
                                         &verbose))
   {
-    return NULL;
+    return nullptr;
   }
   return PyBool_FromLong(BPY_driver_secure_bytecode_test(py_code, py_namespace, verbose));
 }
@@ -388,18 +388,18 @@ PyDoc_STRVAR(bpy_escape_identifier_doc,
              "   :type string: string\n"
              "   :return: The escaped string.\n"
              "   :rtype: string\n");
-static PyObject *bpy_escape_identifier(PyObject *UNUSED(self), PyObject *value)
+static PyObject *bpy_escape_identifier(PyObject * /*self*/, PyObject *value)
 {
   Py_ssize_t value_str_len;
   const char *value_str = PyUnicode_AsUTF8AndSize(value, &value_str_len);
 
-  if (value_str == NULL) {
+  if (value_str == nullptr) {
     PyErr_SetString(PyExc_TypeError, "expected a string");
-    return NULL;
+    return nullptr;
   }
 
   const size_t size = (value_str_len * 2) + 1;
-  char *value_escape_str = PyMem_MALLOC(size);
+  char *value_escape_str = static_cast<char *>(PyMem_MALLOC(size));
   const Py_ssize_t value_escape_str_len = BLI_str_escape(value_escape_str, value_str, size);
 
   PyObject *value_escape;
@@ -426,18 +426,18 @@ PyDoc_STRVAR(bpy_unescape_identifier_doc,
              "   :type string: string\n"
              "   :return: The un-escaped string.\n"
              "   :rtype: string\n");
-static PyObject *bpy_unescape_identifier(PyObject *UNUSED(self), PyObject *value)
+static PyObject *bpy_unescape_identifier(PyObject * /*self*/, PyObject *value)
 {
   Py_ssize_t value_str_len;
   const char *value_str = PyUnicode_AsUTF8AndSize(value, &value_str_len);
 
-  if (value_str == NULL) {
+  if (value_str == nullptr) {
     PyErr_SetString(PyExc_TypeError, "expected a string");
-    return NULL;
+    return nullptr;
   }
 
   const size_t size = value_str_len + 1;
-  char *value_unescape_str = PyMem_MALLOC(size);
+  char *value_unescape_str = static_cast<char *>(PyMem_MALLOC(size));
   const Py_ssize_t value_unescape_str_len = BLI_str_unescape(value_unescape_str, value_str, size);
 
   PyObject *value_unescape;
@@ -463,7 +463,7 @@ PyDoc_STRVAR(
     "\n"
     "   :return: A dict where the key is the context and the value is a tuple of it's members.\n"
     "   :rtype: dict\n");
-static PyObject *bpy_context_members(PyObject *UNUSED(self))
+static PyObject *bpy_context_members(PyObject * /*self*/)
 {
   extern const char *buttons_context_dir[];
   extern const char *clip_context_dir[];
@@ -519,7 +519,7 @@ PyDoc_STRVAR(bpy_rna_enum_items_static_doc,
              "   :return: A dict where the key the name of the enum, the value is a tuple of "
              ":class:`bpy.types.EnumPropertyItem`.\n"
              "   :rtype: dict of \n");
-static PyObject *bpy_rna_enum_items_static(PyObject *UNUSED(self))
+static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
 {
 #define DEF_ENUM(id) {STRINGIFY(id), id},
   struct {
@@ -536,7 +536,7 @@ static PyObject *bpy_rna_enum_items_static(PyObject *UNUSED(self))
     PyObject *value = PyTuple_New(items_count);
     for (int item_index = 0; item_index < items_count; item_index++) {
       PointerRNA ptr;
-      RNA_pointer_create(NULL, &RNA_EnumPropertyItem, (void *)&items[item_index], &ptr);
+      RNA_pointer_create(nullptr, &RNA_EnumPropertyItem, (void *)&items[item_index], &ptr);
       PyTuple_SET_ITEM(value, item_index, pyrna_struct_CreatePyObject(&ptr));
     }
     PyDict_SetItemString(result, enum_info[i].id, value);
@@ -551,7 +551,7 @@ PyDoc_STRVAR(bpy_ghost_backend_doc,
              "\n"
              "   :return: An identifier for the GHOST back-end.\n"
              "   :rtype: string\n");
-static PyObject *bpy_ghost_backend(PyObject *UNUSED(self))
+static PyObject *bpy_ghost_backend(PyObject * /*self*/)
 {
   return PyUnicode_FromString(WM_ghost_backend());
 }
@@ -563,7 +563,7 @@ static PyMethodDef bpy_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      bpy_blend_paths_doc},
     {"flip_name", (PyCFunction)bpy_flip_name, METH_VARARGS | METH_KEYWORDS, bpy_flip_name_doc},
-    {"user_resource", (PyCFunction)bpy_user_resource, METH_VARARGS | METH_KEYWORDS, NULL},
+    {"user_resource", (PyCFunction)bpy_user_resource, METH_VARARGS | METH_KEYWORDS, nullptr},
     {"system_resource",
      (PyCFunction)bpy_system_resource,
      METH_VARARGS | METH_KEYWORDS,
@@ -590,12 +590,12 @@ static PyMethodDef bpy_methods[] = {
      bpy_driver_secure_code_test_doc},
     {"_ghost_backend", (PyCFunction)bpy_ghost_backend, METH_NOARGS, bpy_ghost_backend_doc},
 
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyObject *bpy_import_test(const char *modname)
 {
-  PyObject *mod = PyImport_ImportModuleLevel(modname, NULL, NULL, NULL, 0);
+  PyObject *mod = PyImport_ImportModuleLevel(modname, nullptr, nullptr, nullptr, 0);
 
   GPU_bgl_end();
 
@@ -661,7 +661,7 @@ void BPy_init_modules(struct bContext *C)
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
 
-  RNA_pointer_create(NULL, &RNA_Context, C, &ctx_ptr);
+  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
   bpy_context_module = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ctx_ptr);
   /* odd that this is needed, 1 ref on creation and another for the module
    * but without we get a crash on exit */
@@ -676,23 +676,23 @@ void BPy_init_modules(struct bContext *C)
     PyMethodDef *m = &bpy_methods[i];
     /* Currently there is no need to support these. */
     BLI_assert((m->ml_flags & (METH_CLASS | METH_STATIC)) == 0);
-    PyModule_AddObject(mod, m->ml_name, (PyObject *)PyCFunction_New(m, NULL));
+    PyModule_AddObject(mod, m->ml_name, (PyObject *)PyCFunction_New(m, nullptr));
   }
 
   /* Register functions (`bpy_rna.c`). */
   PyModule_AddObject(mod,
                      meth_bpy_register_class.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_register_class, NULL));
+                     (PyObject *)PyCFunction_New(&meth_bpy_register_class, nullptr));
   PyModule_AddObject(mod,
                      meth_bpy_unregister_class.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_unregister_class, NULL));
+                     (PyObject *)PyCFunction_New(&meth_bpy_unregister_class, nullptr));
 
   PyModule_AddObject(mod,
                      meth_bpy_owner_id_get.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_get, NULL));
+                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_get, nullptr));
   PyModule_AddObject(mod,
                      meth_bpy_owner_id_set.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_set, NULL));
+                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_set, nullptr));
 
   /* add our own modules dir, this is a python package */
   bpy_package_py = bpy_import_test("bpy");

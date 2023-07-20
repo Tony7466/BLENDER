@@ -25,7 +25,7 @@ set(INC_SYS
 )
 
 set(SRC
-  bpy.c
+  bpy.cc
   bpy_app.cc
   bpy_app_alembic.cc
   bpy_app_build_options.cc
