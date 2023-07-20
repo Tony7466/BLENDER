@@ -26,7 +26,7 @@
 /** \name Public API
  * \{ */
 
-static wmMsgTypeInfo wm_msg_types[WM_MSG_TYPE_NUM] = {{{NULL}}};
+static wmMsgTypeInfo wm_msg_types[WM_MSG_TYPE_NUM] = {{{nullptr}}};
 
 typedef void (*wmMsgTypeInitFn)(wmMsgTypeInfo *);
 
@@ -44,7 +44,7 @@ void WM_msgbus_types_init(void)
 
 struct wmMsgBus *WM_msgbus_create(void)
 {
-  struct wmMsgBus *mbus = MEM_callocN(sizeof(*mbus), __func__);
+  struct wmMsgBus *mbus = static_cast<wmMsgBus *>(MEM_callocN(sizeof(*mbus), __func__));
   const uint gset_reserve = 512;
   for (uint i = 0; i < WM_MSG_TYPE_NUM; i++) {
     wmMsgTypeInfo *info = &wm_msg_types[i];
@@ -66,11 +66,16 @@ void WM_msgbus_destroy(struct wmMsgBus *mbus)
 void WM_msgbus_clear_by_owner(struct wmMsgBus *mbus, void *owner)
 {
   wmMsgSubscribeKey *msg_key, *msg_key_next;
-  for (msg_key = mbus->messages.first; msg_key; msg_key = msg_key_next) {
+  for (msg_key = static_cast<wmMsgSubscribeKey *>(mbus->messages.first); msg_key;
+       msg_key = msg_key_next)
+  {
     msg_key_next = msg_key->next;
 
     wmMsgSubscribeValueLink *msg_lnk_next;
-    for (wmMsgSubscribeValueLink *msg_lnk = msg_key->values.first; msg_lnk; msg_lnk = msg_lnk_next)
+    for (wmMsgSubscribeValueLink *msg_lnk =
+             static_cast<wmMsgSubscribeValueLink *>(msg_key->values.first);
+         msg_lnk;
+         msg_lnk = msg_lnk_next)
     {
       msg_lnk_next = msg_lnk->next;
       if (msg_lnk->params.owner == owner) {
@@ -143,16 +148,16 @@ wmMsgSubscribeKey *WM_msg_subscribe_with_key(struct wmMsgBus *mbus,
   const wmMsgTypeInfo *info = &wm_msg_types[type];
   wmMsgSubscribeKey *key;
 
-  BLI_assert(wm_msg_subscribe_value_msg_cast(msg_key_test)->id != NULL);
+  BLI_assert(wm_msg_subscribe_value_msg_cast(msg_key_test)->id != nullptr);
 
   void **r_key;
   if (!BLI_gset_ensure_p_ex(mbus->messages_gset[type], msg_key_test, &r_key)) {
-    key = *r_key = MEM_mallocN(info->msg_key_size, __func__);
+    key = static_cast<wmMsgSubscribeKey *>(*r_key = MEM_mallocN(info->msg_key_size, __func__));
     memcpy(key, msg_key_test, info->msg_key_size);
     BLI_addtail(&mbus->messages, key);
   }
   else {
-    key = *r_key;
+    key = static_cast<wmMsgSubscribeKey *>(*r_key);
     LISTBASE_FOREACH (wmMsgSubscribeValueLink *, msg_lnk, &key->values) {
       if ((msg_lnk->params.notify == msg_val_params->notify) &&
           (msg_lnk->params.owner == msg_val_params->owner) &&
@@ -163,7 +168,8 @@ wmMsgSubscribeKey *WM_msg_subscribe_with_key(struct wmMsgBus *mbus,
     }
   }
 
-  wmMsgSubscribeValueLink *msg_lnk = MEM_mallocN(sizeof(wmMsgSubscribeValueLink), __func__);
+  wmMsgSubscribeValueLink *msg_lnk = static_cast<wmMsgSubscribeValueLink *>(
+      MEM_mallocN(sizeof(wmMsgSubscribeValueLink), __func__));
   msg_lnk->params = *msg_val_params;
   BLI_addtail(&key->values, msg_lnk);
   return key;
@@ -179,7 +185,7 @@ void WM_msg_publish_with_key(struct wmMsgBus *mbus, wmMsgSubscribeKey *msg_key)
 
   LISTBASE_FOREACH (wmMsgSubscribeValueLink *, msg_lnk, &msg_key->values) {
     if (false) { /* make an option? */
-      msg_lnk->params.notify(NULL, msg_key, &msg_lnk->params);
+      msg_lnk->params.notify(nullptr, msg_key, &msg_lnk->params);
     }
     else {
       if (msg_lnk->params.tag == false) {
@@ -194,7 +200,7 @@ void WM_msg_id_update(struct wmMsgBus *mbus, ID *id_src, ID *id_dst)
 {
   for (uint i = 0; i < WM_MSG_TYPE_NUM; i++) {
     wmMsgTypeInfo *info = &wm_msg_types[i];
-    if (info->update_by_id != NULL) {
+    if (info->update_by_id != nullptr) {
       info->update_by_id(mbus, id_src, id_dst);
     }
   }
@@ -204,7 +210,7 @@ void WM_msg_id_remove(struct wmMsgBus *mbus, const ID *id)
 {
   for (uint i = 0; i < WM_MSG_TYPE_NUM; i++) {
     wmMsgTypeInfo *info = &wm_msg_types[i];
-    if (info->remove_by_id != NULL) {
+    if (info->remove_by_id != nullptr) {
       info->remove_by_id(mbus, id);
     }
   }
