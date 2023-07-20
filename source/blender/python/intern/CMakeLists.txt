@@ -70,7 +70,7 @@ set(SRC
   bpy_traceback.cc
   bpy_utils_previews.cc
   bpy_utils_units.cc
-  stubs.c
+  stubs.cc
 
   bpy.h
   bpy_app.h
