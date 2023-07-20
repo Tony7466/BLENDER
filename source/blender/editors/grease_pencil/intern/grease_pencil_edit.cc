@@ -419,8 +419,8 @@ void ramer_douglas_peucker_simplify(const Span<float3> src,
   Stack<IndexRange> stack;
   stack.push(src.index_range());
   while (!stack.is_empty()) {
-    IndexRange range = stack.pop();
-    Span<float3> slice = src.slice(range);
+    const IndexRange range = stack.pop();
+    const Span<float3> slice = src.slice(range);
 
     float max_dist = -1.0f;
     int max_index = -1;
@@ -470,7 +470,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         const Span<float3> positions = curves.positions();
         const OffsetIndices points_by_curve = curves.points_by_curve();
 
-        VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+        const VArray<bool> &selection = *curves.attributes().lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
         Array<bool> points_to_delete(curves.points_num());
@@ -484,8 +484,8 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
               continue;
             }
 
-            Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection,
-                                                                               true);
+            const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(
+                curve_selection, true);
             threading::parallel_for(
                 selection_ranges.index_range(), 16, [&](const IndexRange range_of_ranges) {
                   for (const IndexRange range : selection_ranges.as_span().slice(range_of_ranges))
