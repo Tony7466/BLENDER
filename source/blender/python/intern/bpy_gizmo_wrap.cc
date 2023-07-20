@@ -44,15 +44,15 @@ static bool bpy_gizmotype_target_property_def(wmGizmoType *gzt, PyObject *item)
 
   struct {
     char *id;
-    struct BPy_EnumProperty_Parse type_enum;
+    BPy_EnumProperty_Parse type_enum;
     int array_length;
-  } params = {
-      .id = NULL, /* not optional */
-      .type_enum = {.items = rna_enum_property_type_items, .value = PROP_FLOAT},
-      .array_length = 1,
-  };
+  } params{};
+  params.id = nullptr; /* not optional */
+  params.type_enum.items = rna_enum_property_type_items;
+  params.type_enum.value = PROP_FLOAT;
+  params.array_length = 1;
 
-  static const char *const _keywords[] = {"id", "type", "array_length", NULL};
+  static const char *const _keywords[] = {"id", "type", "array_length", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "s"  /* `id` */
@@ -73,7 +73,7 @@ static bool bpy_gizmotype_target_property_def(wmGizmoType *gzt, PyObject *item)
     goto fail;
   }
 
-  if (params.id == NULL) {
+  if (params.id == nullptr) {
     PyErr_SetString(PyExc_ValueError, "'id' argument not given");
     goto fail;
   }
@@ -94,7 +94,7 @@ fail:
 
 static void gizmo_properties_init(wmGizmoType *gzt)
 {
-  PyTypeObject *py_class = gzt->rna_ext.data;
+  PyTypeObject *py_class = static_cast<PyTypeObject *>(gzt->rna_ext.data);
   RNA_struct_blender_type_set(gzt->rna_ext.srna, gzt);
 
   /* only call this so pyrna_deferred_register_class gives a useful error
@@ -117,7 +117,7 @@ static void gizmo_properties_init(wmGizmoType *gzt)
                                                     bpy_intern_str_bl_target_properties);
 
     /* Some widgets may only exist to activate operators. */
-    if (bl_target_properties != NULL) {
+    if (bl_target_properties != nullptr) {
       PyObject *bl_target_properties_fast;
       if (!(bl_target_properties_fast = PySequence_Fast(bl_target_properties,
                                                         "bl_target_properties sequence")))
@@ -152,7 +152,7 @@ void BPY_RNA_gizmo_wrapper(wmGizmoType *gzt, void *userdata)
   *gzt = *((wmGizmoType *)userdata);
   gzt->srna = srna; /* restore */
 
-  /* don't do translations here yet */
+/* don't do translations here yet */
 #if 0
   /* Use i18n context from rna_ext.srna if possible (py gizmo-groups). */
   if (gt->rna_ext.srna) {
@@ -173,7 +173,7 @@ void BPY_RNA_gizmo_wrapper(wmGizmoType *gzt, void *userdata)
 
 static void gizmogroup_properties_init(wmGizmoGroupType *gzgt)
 {
-  PyTypeObject *py_class = gzgt->rna_ext.data;
+  PyTypeObject *py_class = static_cast<PyTypeObject *>(gzgt->rna_ext.data);
   RNA_struct_blender_type_set(gzgt->rna_ext.srna, gzgt);
 
   /* only call this so pyrna_deferred_register_class gives a useful error
@@ -195,11 +195,12 @@ void BPY_RNA_gizmogroup_wrapper(wmGizmoGroupType *gzgt, void *userdata)
   *gzgt = *((wmGizmoGroupType *)userdata);
   gzgt->srna = srna; /* restore */
 
-  /* don't do translations here yet */
+/* don't do translations here yet */
 #if 0
   /* Use i18n context from rna_ext.srna if possible (py gizmo-groups). */
   if (gzgt->rna_ext.srna) {
-    RNA_def_struct_translation_context(gzgt->srna, RNA_struct_translation_context(gzgt->rna_ext.srna));
+    RNA_def_struct_translation_context(gzgt->srna,
+                                       RNA_struct_translation_context(gzgt->rna_ext.srna));
   }
 #endif
 
