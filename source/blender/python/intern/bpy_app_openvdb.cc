@@ -23,7 +23,7 @@ static PyStructSequence_Field app_openvdb_info_fields[] = {
     {"supported", "Boolean, True when Blender is built with OpenVDB support"},
     {"version", "The OpenVDB version as a tuple of 3 numbers"},
     {"version_string", "The OpenVDB version formatted as a string"},
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_openvdb_info_desc = {
@@ -43,8 +43,8 @@ static PyObject *make_openvdb_info(void)
 #endif
 
   openvdb_info = PyStructSequence_New(&BlenderAppOVDBType);
-  if (openvdb_info == NULL) {
-    return NULL;
+  if (openvdb_info == nullptr) {
+    return nullptr;
   }
 
 #ifndef WITH_OPENVDB
@@ -57,7 +57,7 @@ static PyObject *make_openvdb_info(void)
   curversion = OpenVDB_getVersionHex();
   SetObjItem(PyBool_FromLong(1));
   SetObjItem(
-      PyC_Tuple_Pack_I32(curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256));
+      PyC_Tuple_Pack_I32({curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256}));
   SetObjItem(PyUnicode_FromFormat(
       "%2d, %2d, %2d", curversion >> 24, (curversion >> 16) % 256, (curversion >> 8) % 256));
 #else
@@ -68,7 +68,7 @@ static PyObject *make_openvdb_info(void)
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(openvdb_info);
-    return NULL;
+    return nullptr;
   }
 
 #undef SetStrItem
@@ -86,8 +86,8 @@ PyObject *BPY_app_openvdb_struct(void)
   ret = make_openvdb_info();
 
   /* prevent user from creating new instances */
-  BlenderAppOVDBType.tp_init = NULL;
-  BlenderAppOVDBType.tp_new = NULL;
+  BlenderAppOVDBType.tp_init = nullptr;
+  BlenderAppOVDBType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppOVDBType.tp_hash = (hashfunc)_Py_HashPointer;
 
