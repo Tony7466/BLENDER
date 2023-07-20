@@ -351,7 +351,7 @@ void register_node_type_geo_repeat_output()
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
   ntype.insert_link = file_ns::node_insert_link;
   ntype.blend_write = file_ns::node_blend_write;
-  ntype.blend_data_read = file_ns::node_blend_read_data;
+  ntype.blend_read_data = file_ns::node_blend_read_data;
   node_type_storage(
       &ntype, "NodeGeometryRepeatOutput", file_ns::node_free_storage, file_ns::node_copy_storage);
   nodeRegisterType(&ntype);

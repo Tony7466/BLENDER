@@ -627,13 +627,6 @@ static void write_node_storage(BlendWriter *writer, bNodeTree *ntree, bNode *nod
     }
     BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
   }
-  else if (node->type == FN_NODE_INPUT_STRING) {
-    NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
-    if (storage->string) {
-      BLO_write_string(writer, storage->string);
-    }
-    BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
-  }
   else if (node->typeinfo != &blender::bke::NodeTypeUndefined) {
     BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
   }
@@ -745,8 +738,8 @@ static void read_node_storage(BlendDataReader *reader, bNodeTree *ntree, bNode *
   BLO_read_data_address(reader, &node->storage);
 
   const bNodeType *node_type = nodeTypeFind(node->idname);
-  if (node_type && node_type->blend_data_read) {
-    node_type->blend_data_read(reader, ntree, node);
+  if (node_type && node_type->blend_read_data) {
+    node_type->blend_read_data(reader, ntree, node);
     return;
   }
 
@@ -808,11 +801,6 @@ static void read_node_storage(BlendDataReader *reader, bNodeTree *ntree, bNode *
       case CMP_NODE_OUTPUT_FILE: {
         NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
         BKE_image_format_blend_read_data(reader, &nimf->format);
-        break;
-      }
-      case FN_NODE_INPUT_STRING: {
-        NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
-        BLO_read_data_address(reader, &storage->string);
         break;
       }
 

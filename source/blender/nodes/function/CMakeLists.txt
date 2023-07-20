@@ -6,6 +6,7 @@ set(INC
   .
   ..
   ../intern
+  ../../blenloader
   ../../blentranslation
   ../../editors/include
   ../../functions

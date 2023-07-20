@@ -7,7 +7,11 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BLO_read_write.h"
+
 namespace blender::nodes::node_fn_input_string_cc {
+
+NODE_STORAGE_FUNCS(NodeInputString)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -57,6 +61,19 @@ static void node_storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const
   dest_node->storage = destination_storage;
 }
 
+static void node_blend_write(BlendWriter *writer, bNodeTree * /*ntree*/, bNode *node)
+{
+  const NodeInputString &storage = node_storage(*node);
+  BLO_write_struct(writer, NodeInputString, &storage);
+  BLO_write_string(writer, storage.string);
+}
+
+static void node_blend_read_data(BlendDataReader *reader, bNodeTree * /*ntree*/, bNode *node)
+{
+  NodeInputString &storage = node_storage(*node);
+  BLO_read_data_address(reader, &storage.string);
+}
+
 }  // namespace blender::nodes::node_fn_input_string_cc
 
 void register_node_type_fn_input_string()
@@ -72,5 +89,7 @@ void register_node_type_fn_input_string()
       &ntype, "NodeInputString", file_ns::node_storage_free, file_ns::node_storage_copy);
   ntype.build_multi_function = file_ns::node_build_multi_function;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.blend_write = file_ns::node_blend_write;
+  ntype.blend_read_data = file_ns::node_blend_read_data;
   nodeRegisterType(&ntype);
 }

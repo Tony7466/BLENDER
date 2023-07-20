@@ -1101,7 +1101,7 @@ void register_node_type_geo_simulation_output()
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = file_ns::node_insert_link;
   ntype.blend_write = file_ns::node_blend_write;
-  ntype.blend_data_read = file_ns::node_blend_read_data;
+  ntype.blend_read_data = file_ns::node_blend_read_data;
   node_type_storage(&ntype,
                     "NodeGeometrySimulationOutput",
                     file_ns::node_free_storage,

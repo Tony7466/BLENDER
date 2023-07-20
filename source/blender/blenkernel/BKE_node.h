@@ -250,7 +250,7 @@ typedef struct bNodeType {
 
   /** Reads/writes `node->storage`. */
   void (*blend_write)(struct BlendWriter *writer, struct bNodeTree *ntree, struct bNode *node);
-  void (*blend_data_read)(struct BlendDataReader *reader,
+  void (*blend_read_data)(struct BlendDataReader *reader,
                           struct bNodeTree *ntree,
                           struct bNode *node);
 
