@@ -330,99 +330,57 @@ bool WM_operator_pystring_abbreviate(char *str, int str_len_max)
 #if 0
 static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr, bool *r_is_id)
 {
-/* loop over all context items and do 2 checks
-*
-* - see if the pointer is in the context.
-* - see if the pointers ID is in the context.
-*/
+  /* loop over all context items and do 2 checks
+   *
+   * - see if the pointer is in the context.
+   * - see if the pointers ID is in the context.
+   */
 
+  /* Don't get from the context store since this is normally
+   * set only for the UI and not usable elsewhere. */
+  ListBase lb = CTX_data_dir_get_ex(C, false, true, true);
+  LinkData *link;
 
+  const char *member_found = nullptr;
+  const char *member_id = nullptr;
+  bool member_found_is_id = false;
 
+  for (link = lb.first; link; link = link->next) {
+    const char *identifier = link->data;
+    PointerRNA ctx_item_ptr = {{0}};
+        /* CTX_data_pointer_get(C, identifier); */ /* XXX, this isn't working. */
 
+    if (ctx_item_ptr.type == nullptr) {
+      continue;
+    }
 
+    if (ptr->owner_id == ctx_item_ptr.owner_id) {
+      const bool is_id = RNA_struct_is_ID(ctx_item_ptr.type);
+      if ((ptr->data == ctx_item_ptr.data) && (ptr->type == ctx_item_ptr.type)) {
+        /* found! */
+        member_found = identifier;
+        member_found_is_id = is_id;
+        break;
+      }
+      if (is_id) {
+        /* Found a reference to this ID, so fallback to it if there is no direct reference. */
+        member_id = identifier;
+      }
+    }
+  }
+  BLI_freelistN(&lb);
 
-
-
-/* Don't get from the context store since this is normally
-* set only for the UI and not usable elsewhere. */
-ListBase lb = CTX_data_dir_get_ex(C, false, true, true);
-LinkData *link;
-
-
-
-
-
-
-
-
-const char *member_found = nullptr;
-const char *member_id = nullptr;
-bool member_found_is_id = false;
-
-
-
-
-
-
-
-
-for (link = lb.first; link; link = link->next) {
-const char *identifier = link->data;
-PointerRNA ctx_item_ptr = {
-{0}};  /* CTX_data_pointer_get(C, identifier); */ /* XXX, this isn't working. */
-
-
-
-
-
-
-
-
-if (ctx_item_ptr.type == nullptr) {
-continue;
-}
-
-
-
-
-
-
-
-
-if (ptr->owner_id == ctx_item_ptr.owner_id) {
-const bool is_id = RNA_struct_is_ID(ctx_item_ptr.type);
-if ((ptr->data == ctx_item_ptr.data) && (ptr->type == ctx_item_ptr.type)) {
-/* found! */
-member_found = identifier;
-member_found_is_id = is_id;
-break;
-}
-if (is_id) {
-/* Found a reference to this ID, so fallback to it if there is no direct reference. */
-member_id = identifier;
-}
-}
-}
-BLI_freelistN(&lb);
-
-
-
-
-
-
-
-
-if (member_found) {
-*r_is_id = member_found_is_id;
-return member_found;
-}
-else if (member_id) {
-*r_is_id = true;
-return member_id;
-}
-else {
-return nullptr;
-}
+  if (member_found) {
+    *r_is_id = member_found_is_id;
+    return member_found;
+  }
+  else if (member_id) {
+    *r_is_id = true;
+    return member_id;
+  }
+  else {
+    return nullptr;
+  }
 }
 
 #else
@@ -1141,7 +1099,20 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *region, void *arg)
   BLI_assert(search_menu->use_previews ||
              (search_menu->prv_cols == 0 && search_menu->prv_rows == 0));
 #if 0 /* ok, this isn't so easy... */
-uiDefBut(block, UI_BTYPE_LABEL, 0, WM_operatortype_name(op->type, op->ptr), 10, 10, UI_searchbox_size_x(), UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+  uiDefBut(block,
+           UI_BTYPE_LABEL,
+           0,
+           WM_operatortype_name(op->type, op->ptr),
+           10,
+           10,
+           UI_searchbox_size_x(),
+           UI_UNIT_Y,
+           nullptr,
+           0.0,
+           0.0,
+           0,
+           0,
+           "");
 #endif
   uiBut *but = uiDefSearchButO_ptr(block,
                                    op->type,
@@ -3625,7 +3596,7 @@ static const EnumPropertyItem preview_id_type_items[] = {
     {PREVIEW_FILTER_TEXTURE, "TEXTURE", 0, "Textures", ""},
     {PREVIEW_FILTER_IMAGE, "IMAGE", 0, "Images", ""},
 #if 0 /* XXX TODO */
-{PREVIEW_FILTER_BRUSH, "BRUSH", 0, "Brushes", ""},
+    {PREVIEW_FILTER_BRUSH, "BRUSH", 0, "Brushes", ""},
 #endif
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -3685,7 +3656,12 @@ static int previews_clear_exec(bContext *C, wmOperator *op)
     }
 
 #if 0
-printf("%s: %d, %d, %d -> %d\n", id->name, GS(id->name), BKE_idtype_idcode_to_idfilter(GS(id->name)), id_filters, BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters);
+    printf("%s: %d, %d, %d -> %d\n",
+           id->name,
+           GS(id->name),
+           BKE_idtype_idcode_to_idfilter(GS(id->name)),
+           id_filters,
+           BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters);
 #endif
 
     if (!(BKE_idtype_idcode_to_idfilter(GS(id->name)) & id_filters)) {
@@ -3980,7 +3956,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "PAINT_OT_hide_show");
   WM_modalkeymap_assign(keymap, "OUTLINER_OT_select_box");
 #if 0 /* Template. */
-WM_modalkeymap_assign(keymap, "SCREEN_OT_box_select");
+  WM_modalkeymap_assign(keymap, "SCREEN_OT_box_select");
 #endif
   WM_modalkeymap_assign(keymap, "SEQUENCER_OT_select_box");
   WM_modalkeymap_assign(keymap, "SEQUENCER_OT_view_ghost_border");
@@ -4139,9 +4115,12 @@ const EnumPropertyItem *RNA_action_itemf(bContext *C,
       r_free, C ? (ID *)CTX_data_main(C)->actions.first : nullptr, false, nullptr, nullptr);
 }
 #if 0 /* UNUSED */
-const EnumPropertyItem *RNA_action_local_itemf(bContext *C, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+const EnumPropertyItem *RNA_action_local_itemf(bContext *C,
+                                               PointerRNA * /*ptr*/,
+                                               PropertyRNA * /*prop*/,
+                                               bool *r_free)
 {
-return rna_id_itemf(r_free, C ? (ID *)CTX_data_main(C)->action.first : nullptr, true);
+  return rna_id_itemf(r_free, C ? (ID *)CTX_data_main(C)->action.first : nullptr, true);
 }
 #endif
 
