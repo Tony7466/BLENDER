@@ -57,7 +57,7 @@ set(SRC
   intern/wm_subwindow.cc
   intern/wm_surface.cc
   intern/wm_toolsystem.cc
-  intern/wm_tooltip.c
+  intern/wm_tooltip.cc
   intern/wm_uilist_type.c
   intern/wm_utils.c
   intern/wm_window.c
