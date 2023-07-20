@@ -41,7 +41,7 @@ static PyStructSequence_Field app_sdl_info_fields[] = {
      ("Boolean, True when SDL is available. This is False when "
       "either *supported* is False, or *dynload* is True and "
       "Blender cannot find the correct library.")},
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_sdl_info_desc = {
@@ -61,8 +61,8 @@ static PyObject *make_sdl_info(void)
 #endif
 
   sdl_info = PyStructSequence_New(&BlenderAppSDLType);
-  if (sdl_info == NULL) {
-    return NULL;
+  if (sdl_info == nullptr) {
+    return nullptr;
   }
 
 #define SetStrItem(str) PyStructSequence_SET_ITEM(sdl_info, pos++, PyUnicode_FromString(str))
@@ -86,7 +86,7 @@ static PyObject *make_sdl_info(void)
 #    endif
 #  endif
 
-  SetObjItem(PyC_Tuple_Pack_I32(version.major, version.minor, version.patch));
+  SetObjItem(PyC_Tuple_Pack_I32({version.major, version.minor, version.patch}));
   if (sdl_available) {
     SetObjItem(PyUnicode_FromFormat("%d.%d.%d", version.major, version.minor, version.patch));
   }
@@ -104,7 +104,7 @@ static PyObject *make_sdl_info(void)
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(sdl_info);
-    return NULL;
+    return nullptr;
   }
 
 #undef SetStrItem
@@ -122,8 +122,8 @@ PyObject *BPY_app_sdl_struct(void)
   ret = make_sdl_info();
 
   /* prevent user from creating new instances */
-  BlenderAppSDLType.tp_init = NULL;
-  BlenderAppSDLType.tp_new = NULL;
+  BlenderAppSDLType.tp_init = nullptr;
+  BlenderAppSDLType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppSDLType.tp_hash = (hashfunc)_Py_HashPointer;
 
