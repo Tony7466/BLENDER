@@ -40,6 +40,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
+#include "ED_datafiles.h"
 #include "ED_screen.h"
 
 #include "UI_interface.h"
@@ -134,9 +135,6 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   ImBuf *ibuf = nullptr;
   int height = 0;
 #ifndef WITH_HEADLESS
-  extern char datatoc_splash_png[];
-  extern int datatoc_splash_png_size;
-
   if (U.app_template[0] != '\0') {
     char splash_filepath[FILE_MAX];
     char template_directory[FILE_MAX];
@@ -278,8 +276,6 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg
 
 /* Blender logo. */
 #ifndef WITH_HEADLESS
-  extern char datatoc_blender_logo_png[];
-  extern int datatoc_blender_logo_png_size;
 
   const uchar *blender_logo_data = (const uchar *)datatoc_blender_logo_png;
   size_t blender_logo_data_size = datatoc_blender_logo_png_size;
