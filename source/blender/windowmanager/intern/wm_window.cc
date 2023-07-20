@@ -2108,7 +2108,7 @@ void WM_clipboard_text_set(const char *buf, bool selection)
       }
     }
 
-    newbuf = MEM_callocN(newlen + 1, "WM_clipboard_text_set");
+    newbuf = static_cast<char *>(MEM_callocN(newlen + 1, "WM_clipboard_text_set"));
 
     for (p = buf, p2 = newbuf; *p; p++, p2++) {
       if (*p == '\n') {
@@ -2650,17 +2650,18 @@ void wm_window_IME_begin(wmWindow *win, int x, int y, int w, int h, bool complet
   BLI_assert(win);
 
   /* Convert to native OS window coordinates. */
-  float fac = GHOST_GetNativePixelSize(win->ghostwin);
+  float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
   x /= fac;
   y /= fac;
-  GHOST_BeginIME(win->ghostwin, x, win->sizey - y, w, h, complete);
+  GHOST_BeginIME(
+      static_cast<GHOST_WindowHandle>(win->ghostwin), x, win->sizey - y, w, h, complete);
 }
 
 void wm_window_IME_end(wmWindow *win)
 {
   BLI_assert(win && win->ime_data);
 
-  GHOST_EndIME(win->ghostwin);
+  GHOST_EndIME(static_cast<GHOST_WindowHandle>(win->ghostwin));
   win->ime_data = nullptr;
 }
 #endif /* WITH_INPUT_IME */
