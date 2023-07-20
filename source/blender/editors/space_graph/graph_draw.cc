@@ -6,6 +6,7 @@
  * \ingroup spgraph
  */
 
+#include <chrono>
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -15,7 +16,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_screen_types.h"
@@ -873,17 +876,19 @@ static int calculate_bezt_draw_resolution(BezTriple *bezt,
  * Draw a segment from `prevbezt` to `bezt` at the given `resolution`.
  * #immBeginAtMost is expected to be called with enough space for this function to run.
  */
-static void draw_bezt(BezTriple *bezt, BezTriple *prevbezt, int resolution, uint pos)
+static void add_bezt_vertices(BezTriple *bezt,
+                              BezTriple *prevbezt,
+                              int resolution,
+                              blender::Vector<blender::float2> &curve_vertices)
 {
-  float prev_key[2], prev_handle[2], bez_handle[2], bez_key[2];
-  float *data = static_cast<float *>(MEM_mallocN(sizeof(float) * (resolution * 3), "Draw bezt data"));
-
   if (resolution < 2) {
-    prev_key[0] = prevbezt->vec[1][0];
-    prev_key[1] = prevbezt->vec[1][1];
-    immVertex2fv(pos, prev_key);
+    curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
     return;
   }
+
+  float prev_key[2], prev_handle[2], bez_handle[2], bez_key[2];
+  float *data = static_cast<float *>(
+      MEM_mallocN(sizeof(float) * (resolution * 3), "Draw bezt data"));
 
   prev_key[0] = prevbezt->vec[1][0];
   prev_key[1] = prevbezt->vec[1][1];
@@ -908,7 +913,7 @@ static void draw_bezt(BezTriple *bezt, BezTriple *prevbezt, int resolution, uint
                                 sizeof(float[3]));
 
   for (float *fp = data; resolution; resolution--, fp += 3) {
-    immVertex2fv(pos, fp);
+    curve_vertices.append({*fp, *(fp + 1)});
   }
   MEM_freeN(data);
 }
@@ -926,7 +931,9 @@ static void get_bounding_bezt_indices(
   *r_last = clamp_i(*r_last, 0, fcu->totvert - 1);
 }
 
-static void draw_extrapolation_left(FCurve *fcu, const float v2d_xmin, uint pos)
+static void get_extrapolation_point_left(FCurve *fcu,
+                                         const float v2d_xmin,
+                                         blender::Vector<blender::float2> &curve_vertices)
 {
   /* left-side of view comes before first keyframe, so need to extend as not cyclic */
   float vertex_position[2];
@@ -958,10 +965,12 @@ static void draw_extrapolation_left(FCurve *fcu, const float v2d_xmin, uint pos)
     vertex_position[1] = bezt->vec[1][1] - fac * (bezt->vec[0][1] - bezt->vec[1][1]);
   }
 
-  immVertex2fv(pos, vertex_position);
+  curve_vertices.append(vertex_position);
 }
 
-static void draw_extrapolation_right(FCurve *fcu, const float v2d_xmax, uint pos)
+static void get_extrapolation_point_right(FCurve *fcu,
+                                          const float v2d_xmax,
+                                          blender::Vector<blender::float2> &curve_vertices)
 {
   float vertex_position[2];
   vertex_position[0] = v2d_xmax;
@@ -992,13 +1001,14 @@ static void draw_extrapolation_right(FCurve *fcu, const float v2d_xmax, uint pos
     vertex_position[1] = bezt->vec[1][1] - fac * (bezt->vec[2][1] - bezt->vec[1][1]);
   }
 
-  immVertex2fv(pos, vertex_position);
+  curve_vertices.append(vertex_position);
 }
 
 /* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
 static void draw_fcurve_curve_bezts(
     bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d, uint pos, const bool draw_extrapolation)
 {
+  using namespace blender;
   if (!draw_extrapolation && fcu->totvert == 1) {
     return;
   }
@@ -1018,23 +1028,16 @@ static void draw_fcurve_curve_bezts(
   const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
   const float points_per_frame = max_points / v2d_frame_range;
 
-  immBeginAtMost(GPU_PRIM_LINE_STRIP, max_points + 3);
-
-  float vertex_position[2];
+  Vector<float2> curve_vertices;
 
   /* Extrapolate to the left? */
   if (draw_extrapolation && fcu->bezt[0].vec[1][0] > v2d->cur.xmin) {
-    draw_extrapolation_left(fcu, v2d->cur.xmin, pos);
+    get_extrapolation_point_left(fcu, v2d->cur.xmin, curve_vertices);
   }
-
-  int added_points = 0;
 
   /* If only one keyframe, add it now. */
   if (fcu->totvert == 1) {
-    vertex_position[0] = fcu->bezt[0].vec[1][0];
-    vertex_position[1] = fcu->bezt[0].vec[1][1];
-    immVertex2fv(pos, vertex_position);
-    added_points++;
+    curve_vertices.append({fcu->bezt[0].vec[1][0], fcu->bezt[0].vec[1][1]});
   }
 
   int first_bezt_index, last_bezt_index;
@@ -1042,10 +1045,8 @@ static void draw_fcurve_curve_bezts(
       fcu, v2d->cur.xmin, v2d->cur.xmax, &first_bezt_index, &last_bezt_index);
 
   if (first_bezt_index == last_bezt_index) {
-    vertex_position[0] = fcu->bezt[first_bezt_index].vec[1][0];
-    vertex_position[1] = fcu->bezt[first_bezt_index].vec[1][1];
-    immVertex2fv(pos, vertex_position);
-    added_points++;
+    curve_vertices.append(
+        {fcu->bezt[first_bezt_index].vec[1][0], fcu->bezt[first_bezt_index].vec[1][0]});
   }
   /* Draw curve between first and last keyframe (if there are enough to do so). */
   for (int i = first_bezt_index + 1; i <= last_bezt_index; i++) {
@@ -1055,45 +1056,33 @@ static void draw_fcurve_curve_bezts(
     if (prevbezt->ipo == BEZT_IPO_CONST) {
       /* Constant-Interpolation: draw segment between previous keyframe and next,
        * but holding same value */
-      vertex_position[0] = prevbezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
-
-      vertex_position[0] = bezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
-      added_points += 2;
+      curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
+      curve_vertices.append({bezt->vec[1][0], prevbezt->vec[1][1]});
     }
     else if (prevbezt->ipo == BEZT_IPO_LIN) {
       /* Linear interpolation: just add one point (which should add a new line segment) */
-      vertex_position[0] = prevbezt->vec[1][0];
-      vertex_position[1] = prevbezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
-      added_points++;
+      curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
       const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, points_per_frame);
-      if (added_points + resolution >= max_points) {
-        break;
-      }
-      draw_bezt(bezt, prevbezt, resolution, pos);
-      added_points += resolution;
+      add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
     }
 
     /* Last point? */
     if (i == last_bezt_index) {
-      vertex_position[0] = bezt->vec[1][0];
-      vertex_position[1] = bezt->vec[1][1];
-      immVertex2fv(pos, vertex_position);
-      added_points++;
+      curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
     }
   }
 
   /* Extrapolate to the right? (see code for left-extrapolation above too) */
   if (draw_extrapolation && fcu->bezt[fcu->totvert - 1].vec[1][0] < v2d->cur.xmax) {
-    draw_extrapolation_right(fcu, v2d->cur.xmax, pos);
+    get_extrapolation_point_right(fcu, v2d->cur.xmax, curve_vertices);
   }
 
+  immBegin(GPU_PRIM_LINE_STRIP, curve_vertices.size());
+  for (const float2 vertex : curve_vertices) {
+    immVertex2fv(pos, vertex);
+  }
   immEnd();
 
   GPU_matrix_pop();
@@ -1451,6 +1440,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
   ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
+  using namespace std;
 
   /* build list of curves to draw */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY);
