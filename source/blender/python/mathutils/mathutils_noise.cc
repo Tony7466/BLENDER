@@ -115,7 +115,7 @@ static void next_state(void)
 static void setRndSeed(int seed)
 {
   if (seed == 0) {
-    init_genrand(time(NULL));
+    init_genrand(time(nullptr));
   }
   else {
     init_genrand(seed);
@@ -172,7 +172,7 @@ static PyC_FlagSet bpy_noise_types[] = {
     {TEX_VORONOI_F2F1, "VORONOI_F2F1"},
     {TEX_VORONOI_CRACKLE, "VORONOI_CRACKLE"},
     {TEX_CELLNOISE, "CELLNOISE"},
-    {0, NULL},
+    {0, nullptr},
 };
 
 /* Metric basis enum */
@@ -186,7 +186,7 @@ static PyC_FlagSet bpy_noise_metrics[] = {
     {TEX_MINKOVSKY, "MINKOVSKY"},
     {TEX_MINKOVSKY_HALF, "MINKOVSKY_HALF"},
     {TEX_MINKOVSKY_FOUR, "MINKOVSKY_FOUR"},
-    {0, NULL},
+    {0, nullptr},
 };
 
 /* Fills an array of length size with random numbers in the range (-1, 1). */
@@ -288,7 +288,7 @@ PyDoc_STRVAR(M_Noise_random_doc,
              "\n"
              "   :return: The random number.\n"
              "   :rtype: float\n");
-static PyObject *M_Noise_random(PyObject *UNUSED(self))
+static PyObject *M_Noise_random(PyObject * /*self*/)
 {
   return PyFloat_FromDouble(frand());
 }
@@ -302,21 +302,21 @@ PyDoc_STRVAR(M_Noise_random_unit_vector_doc,
              "   :type size: int\n"
              "   :return: The random unit vector.\n"
              "   :rtype: :class:`mathutils.Vector`\n");
-static PyObject *M_Noise_random_unit_vector(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_random_unit_vector(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"size", NULL};
+  static const char *kwlist[] = {"size", nullptr};
   float vec[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   float norm = 2.0f;
   int vec_num = 3;
 
   if (!PyArg_ParseTupleAndKeywords(args, kw, "|$i:random_unit_vector", (char **)kwlist, &vec_num))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num > 4 || vec_num < 2) {
     PyErr_SetString(PyExc_ValueError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
   while (norm == 0.0f || norm > 1.0f) {
@@ -324,7 +324,7 @@ static PyObject *M_Noise_random_unit_vector(PyObject *UNUSED(self), PyObject *ar
     norm = normalize_vn(vec, vec_num);
   }
 
-  return Vector_CreatePyObject(vec, vec_num, NULL);
+  return Vector_CreatePyObject(vec, vec_num, nullptr);
 }
 
 PyDoc_STRVAR(M_Noise_random_vector_doc,
@@ -336,26 +336,26 @@ PyDoc_STRVAR(M_Noise_random_vector_doc,
              "   :type size: int\n"
              "   :return: The random vector.\n"
              "   :rtype: :class:`mathutils.Vector`\n");
-static PyObject *M_Noise_random_vector(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_random_vector(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"size", NULL};
-  float *vec = NULL;
+  static const char *kwlist[] = {"size", nullptr};
+  float *vec = nullptr;
   int vec_num = 3;
 
   if (!PyArg_ParseTupleAndKeywords(args, kw, "|$i:random_vector", (char **)kwlist, &vec_num)) {
-    return NULL;
+    return nullptr;
   }
 
   if (vec_num < 2) {
     PyErr_SetString(PyExc_ValueError, "Vector(): invalid size");
-    return NULL;
+    return nullptr;
   }
 
   vec = PyMem_New(float, vec_num);
 
   rand_vn(vec, vec_num);
 
-  return Vector_CreatePyObject_alloc(vec, vec_num, NULL);
+  return Vector_CreatePyObject_alloc(vec, vec_num, nullptr);
 }
 
 PyDoc_STRVAR(M_Noise_seed_set_doc,
@@ -366,11 +366,11 @@ PyDoc_STRVAR(M_Noise_seed_set_doc,
              "   :arg seed: Seed used for the random generator.\n"
              "      When seed is zero, the current time will be used instead.\n"
              "   :type seed: int\n");
-static PyObject *M_Noise_seed_set(PyObject *UNUSED(self), PyObject *args)
+static PyObject *M_Noise_seed_set(PyObject * /*self*/, PyObject *args)
 {
   int s;
   if (!PyArg_ParseTuple(args, "i:seed_set", &s)) {
-    return NULL;
+    return nullptr;
   }
   setRndSeed(s);
   Py_RETURN_NONE;
@@ -385,18 +385,18 @@ PyDoc_STRVAR(M_Noise_noise_doc,
              "   :type position: :class:`mathutils.Vector`\n" BPY_NOISE_BASIS_ENUM_DOC
              "   :return: The noise value.\n"
              "   :rtype: float\n");
-static PyObject *M_Noise_noise(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_noise(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kw, "O|$s:noise", (char **)kwlist, &value, &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -405,11 +405,11 @@ static PyObject *M_Noise_noise(PyObject *UNUSED(self), PyObject *args, PyObject 
   else if (PyC_FlagSet_ValueFromID(bpy_noise_types, noise_basis_str, &noise_basis_enum, "noise") ==
            -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "noise: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(
@@ -426,18 +426,18 @@ PyDoc_STRVAR(M_Noise_noise_vector_doc,
              "   :type position: :class:`mathutils.Vector`\n" BPY_NOISE_BASIS_ENUM_DOC
              "   :return: The noise vector.\n"
              "   :rtype: :class:`mathutils.Vector`\n");
-static PyObject *M_Noise_noise_vector(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_noise_vector(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "noise_basis", nullptr};
   PyObject *value;
   float vec[3], r_vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kw, "O|$s:noise_vector", (char **)kwlist, &value, &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -446,16 +446,16 @@ static PyObject *M_Noise_noise_vector(PyObject *UNUSED(self), PyObject *args, Py
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "noise_vector") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "noise_vector: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   noise_vector(vec[0], vec[1], vec[2], noise_basis_enum, r_vec);
 
-  return Vector_CreatePyObject(r_vec, 3, NULL);
+  return Vector_CreatePyObject(r_vec, 3, nullptr);
 }
 
 PyDoc_STRVAR(M_Noise_turbulence_doc,
@@ -477,13 +477,13 @@ PyDoc_STRVAR(M_Noise_turbulence_doc,
              "   :type frequency_scale: float\n"
              "   :return: The turbulence value.\n"
              "   :rtype: float\n");
-static PyObject *M_Noise_turbulence(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_turbulence(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   static const char *kwlist[] = {
-      "", "", "", "noise_basis", "amplitude_scale", "frequency_scale", NULL};
+      "", "", "", "noise_basis", "amplitude_scale", "frequency_scale", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   int oct, hd, noise_basis_enum = DEFAULT_NOISE_TYPE;
   float as = 0.5f, fs = 2.0f;
 
@@ -498,7 +498,7 @@ static PyObject *M_Noise_turbulence(PyObject *UNUSED(self), PyObject *args, PyOb
                                    &as,
                                    &fs))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -507,11 +507,11 @@ static PyObject *M_Noise_turbulence(PyObject *UNUSED(self), PyObject *args, PyOb
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "turbulence") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "turbulence: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(turb(vec[0], vec[1], vec[2], oct, hd, noise_basis_enum, as, fs));
@@ -536,13 +536,13 @@ PyDoc_STRVAR(M_Noise_turbulence_vector_doc,
              "   :type frequency_scale: float\n"
              "   :return: The turbulence vector.\n"
              "   :rtype: :class:`mathutils.Vector`\n");
-static PyObject *M_Noise_turbulence_vector(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_turbulence_vector(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   static const char *kwlist[] = {
-      "", "", "", "noise_basis", "amplitude_scale", "frequency_scale", NULL};
+      "", "", "", "noise_basis", "amplitude_scale", "frequency_scale", nullptr};
   PyObject *value;
   float vec[3], r_vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   int oct, hd, noise_basis_enum = DEFAULT_NOISE_TYPE;
   float as = 0.5f, fs = 2.0f;
 
@@ -557,7 +557,7 @@ static PyObject *M_Noise_turbulence_vector(PyObject *UNUSED(self), PyObject *arg
                                    &as,
                                    &fs))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -566,16 +566,16 @@ static PyObject *M_Noise_turbulence_vector(PyObject *UNUSED(self), PyObject *arg
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "turbulence_vector") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "turbulence_vector: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   vTurb(vec[0], vec[1], vec[2], oct, hd, noise_basis_enum, as, fs, r_vec);
 
-  return Vector_CreatePyObject(r_vec, 3, NULL);
+  return Vector_CreatePyObject(r_vec, 3, nullptr);
 }
 
 /* F. Kenton Musgrave's fractal functions */
@@ -596,19 +596,19 @@ PyDoc_STRVAR(
     "   :type octaves: int\n" BPY_NOISE_BASIS_ENUM_DOC
     "   :return: The fractal Brownian motion noise value.\n"
     "   :rtype: float\n");
-static PyObject *M_Noise_fractal(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_fractal(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "", "", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "", "", "", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   float H, lac, oct;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kw, "Offf|$s:fractal", (char **)kwlist, &value, &H, &lac, &oct, &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -617,11 +617,11 @@ static PyObject *M_Noise_fractal(PyObject *UNUSED(self), PyObject *args, PyObjec
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "fractal") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "fractal: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(
@@ -645,12 +645,12 @@ PyDoc_STRVAR(
     "   :type octaves: int\n" BPY_NOISE_BASIS_ENUM_DOC
     "   :return: The multifractal noise value.\n"
     "   :rtype: float\n");
-static PyObject *M_Noise_multi_fractal(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_multi_fractal(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "", "", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "", "", "", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   float H, lac, oct;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
@@ -664,7 +664,7 @@ static PyObject *M_Noise_multi_fractal(PyObject *UNUSED(self), PyObject *args, P
                                    &oct,
                                    &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -673,11 +673,11 @@ static PyObject *M_Noise_multi_fractal(PyObject *UNUSED(self), PyObject *args, P
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "multi_fractal") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "multi_fractal: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(
@@ -707,12 +707,12 @@ PyDoc_STRVAR(M_Noise_variable_lacunarity_doc,
              "   :type noise_type2: string\n"
              "   :return: The variable lacunarity noise value.\n"
              "   :rtype: float\n");
-static PyObject *M_Noise_variable_lacunarity(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_variable_lacunarity(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "noise_type1", "noise_type2", NULL};
+  static const char *kwlist[] = {"", "", "noise_type1", "noise_type2", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_type1_str = NULL, *noise_type2_str = NULL;
+  const char *noise_type1_str = nullptr, *noise_type2_str = nullptr;
   float d;
   int noise_type1_enum = DEFAULT_NOISE_TYPE, noise_type2_enum = DEFAULT_NOISE_TYPE;
 
@@ -725,7 +725,7 @@ static PyObject *M_Noise_variable_lacunarity(PyObject *UNUSED(self), PyObject *a
                                    &noise_type1_str,
                                    &noise_type2_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_type1_str) {
@@ -734,7 +734,7 @@ static PyObject *M_Noise_variable_lacunarity(PyObject *UNUSED(self), PyObject *a
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_type1_str, &noise_type1_enum, "variable_lacunarity") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_type2_str) {
@@ -743,12 +743,12 @@ static PyObject *M_Noise_variable_lacunarity(PyObject *UNUSED(self), PyObject *a
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_type2_str, &noise_type2_enum, "variable_lacunarity") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "variable_lacunarity: invalid 'position' arg") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(BLI_noise_mg_variable_lacunarity(
@@ -774,12 +774,12 @@ PyDoc_STRVAR(
     "   :type offset: float\n" BPY_NOISE_BASIS_ENUM_DOC
     "   :return: The heterogeneous terrain value.\n"
     "   :rtype: float\n");
-static PyObject *M_Noise_hetero_terrain(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_hetero_terrain(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "", "", "", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "", "", "", "", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   float H, lac, oct, ofs;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
@@ -794,7 +794,7 @@ static PyObject *M_Noise_hetero_terrain(PyObject *UNUSED(self), PyObject *args, 
                                    &ofs,
                                    &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -803,11 +803,11 @@ static PyObject *M_Noise_hetero_terrain(PyObject *UNUSED(self), PyObject *args, 
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "hetero_terrain") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "hetero_terrain: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(
@@ -835,12 +835,12 @@ PyDoc_STRVAR(
     "   :type gain: float\n" BPY_NOISE_BASIS_ENUM_DOC
     "   :return: The hybrid multifractal value.\n"
     "   :rtype: float\n");
-static PyObject *M_Noise_hybrid_multi_fractal(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_hybrid_multi_fractal(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "", "", "", "", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "", "", "", "", "", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   float H, lac, oct, ofs, gn;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
@@ -856,7 +856,7 @@ static PyObject *M_Noise_hybrid_multi_fractal(PyObject *UNUSED(self), PyObject *
                                    &gn,
                                    &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -865,12 +865,12 @@ static PyObject *M_Noise_hybrid_multi_fractal(PyObject *UNUSED(self), PyObject *
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "hybrid_multi_fractal") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "hybrid_multi_fractal: invalid 'position' arg") ==
       -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(BLI_noise_mg_hybrid_multi_fractal(
@@ -898,12 +898,12 @@ PyDoc_STRVAR(
     "   :type gain: float\n" BPY_NOISE_BASIS_ENUM_DOC
     "   :return: The ridged multifractal value.\n"
     "   :rtype: float\n");
-static PyObject *M_Noise_ridged_multi_fractal(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_ridged_multi_fractal(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "", "", "", "", "", "noise_basis", NULL};
+  static const char *kwlist[] = {"", "", "", "", "", "", "noise_basis", nullptr};
   PyObject *value;
   float vec[3];
-  const char *noise_basis_str = NULL;
+  const char *noise_basis_str = nullptr;
   float H, lac, oct, ofs, gn;
   int noise_basis_enum = DEFAULT_NOISE_TYPE;
 
@@ -919,7 +919,7 @@ static PyObject *M_Noise_ridged_multi_fractal(PyObject *UNUSED(self), PyObject *
                                    &gn,
                                    &noise_basis_str))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!noise_basis_str) {
@@ -928,12 +928,12 @@ static PyObject *M_Noise_ridged_multi_fractal(PyObject *UNUSED(self), PyObject *
   else if (PyC_FlagSet_ValueFromID(
                bpy_noise_types, noise_basis_str, &noise_basis_enum, "ridged_multi_fractal") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "ridged_multi_fractal: invalid 'position' arg") ==
       -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(BLI_noise_mg_ridged_multi_fractal(
@@ -951,14 +951,14 @@ PyDoc_STRVAR(M_Noise_voronoi_doc,
              "   :type exponent: float\n"
              "   :return: A list of distances to the four closest features and their locations.\n"
              "   :rtype: list of four floats, list of four :class:`mathutils.Vector` types\n");
-static PyObject *M_Noise_voronoi(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_Noise_voronoi(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  static const char *kwlist[] = {"", "distance_metric", "exponent", NULL};
+  static const char *kwlist[] = {"", "distance_metric", "exponent", nullptr};
   PyObject *value;
   PyObject *list;
   PyObject *ret;
   float vec[3];
-  const char *metric_str = NULL;
+  const char *metric_str = nullptr;
   float da[4], pa[12];
   int metric_enum = DEFAULT_METRIC_TYPE;
   float me = 2.5f; /* default minkowski exponent */
@@ -968,18 +968,18 @@ static PyObject *M_Noise_voronoi(PyObject *UNUSED(self), PyObject *args, PyObjec
   if (!PyArg_ParseTupleAndKeywords(
           args, kw, "O|$sf:voronoi", (char **)kwlist, &value, &metric_str, &me))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!metric_str) {
     /* pass through */
   }
   else if (PyC_FlagSet_ValueFromID(bpy_noise_metrics, metric_str, &metric_enum, "voronoi") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "voronoi: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   list = PyList_New(4);
@@ -987,7 +987,7 @@ static PyObject *M_Noise_voronoi(PyObject *UNUSED(self), PyObject *args, PyObjec
   BLI_noise_voronoi(vec[0], vec[1], vec[2], da, pa, me, metric_enum);
 
   for (i = 0; i < 4; i++) {
-    PyObject *v = Vector_CreatePyObject(pa + 3 * i, 3, NULL);
+    PyObject *v = Vector_CreatePyObject(pa + 3 * i, 3, nullptr);
     PyList_SET_ITEM(list, i, v);
   }
 
@@ -1005,17 +1005,17 @@ PyDoc_STRVAR(M_Noise_cell_doc,
              "   :type position: :class:`mathutils.Vector`\n"
              "   :return: The cell noise value.\n"
              "   :rtype: float\n");
-static PyObject *M_Noise_cell(PyObject *UNUSED(self), PyObject *args)
+static PyObject *M_Noise_cell(PyObject * /*self*/, PyObject *args)
 {
   PyObject *value;
   float vec[3];
 
   if (!PyArg_ParseTuple(args, "O:cell", &value)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "cell: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(BLI_noise_cell(vec[0], vec[1], vec[2]));
@@ -1030,21 +1030,21 @@ PyDoc_STRVAR(M_Noise_cell_vector_doc,
              "   :type position: :class:`mathutils.Vector`\n"
              "   :return: The cell noise vector.\n"
              "   :rtype: :class:`mathutils.Vector`\n");
-static PyObject *M_Noise_cell_vector(PyObject *UNUSED(self), PyObject *args)
+static PyObject *M_Noise_cell_vector(PyObject * /*self*/, PyObject *args)
 {
   PyObject *value;
   float vec[3], r_vec[3];
 
   if (!PyArg_ParseTuple(args, "O:cell_vector", &value)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(vec, 3, 3, value, "cell_vector: invalid 'position' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   BLI_noise_cell_v3(vec[0], vec[1], vec[2], r_vec);
-  return Vector_CreatePyObject(r_vec, 3, NULL);
+  return Vector_CreatePyObject(r_vec, 3, nullptr);
 }
 
 static PyMethodDef M_Noise_methods[] = {
@@ -1095,7 +1095,7 @@ static PyMethodDef M_Noise_methods[] = {
     {"voronoi", (PyCFunction)M_Noise_voronoi, METH_VARARGS | METH_KEYWORDS, M_Noise_voronoi_doc},
     {"cell", (PyCFunction)M_Noise_cell, METH_VARARGS, M_Noise_cell_doc},
     {"cell_vector", (PyCFunction)M_Noise_cell_vector, METH_VARARGS, M_Noise_cell_vector_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef M_Noise_module_def = {
@@ -1104,10 +1104,10 @@ static PyModuleDef M_Noise_module_def = {
     /*m_doc*/ M_Noise_doc,
     /*m_size*/ 0,
     /*m_methods*/ M_Noise_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 /*----------------------------MODULE INIT-------------------------*/

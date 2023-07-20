@@ -24,7 +24,7 @@ set(SRC
   mathutils_geometry.cc
   mathutils_interpolate.cc
   mathutils_kdtree.cc
-  mathutils_noise.c
+  mathutils_noise.cc
 
   mathutils.h
   mathutils_Color.h
