@@ -588,6 +588,18 @@ static void flushTransIntFrameActionData(TransInfo *t)
   }
 }
 
+static void invert_snap(eSnapMode &snap_mode)
+{
+  if (snap_mode & SCE_SNAP_TO_FRAME) {
+    snap_mode &= ~SCE_SNAP_TO_FRAME;
+    snap_mode |= SCE_SNAP_TO_SECOND;
+  }
+  else if (snap_mode & SCE_SNAP_TO_SECOND) {
+    snap_mode &= ~SCE_SNAP_TO_SECOND;
+    snap_mode |= SCE_SNAP_TO_FRAME;
+  }
+}
+
 static void recalcData_actedit(TransInfo *t)
 {
   ViewLayer *view_layer = t->view_layer;
@@ -623,6 +635,10 @@ static void recalcData_actedit(TransInfo *t)
   /* Flush 2d vector. */
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   eSnapMode snap_mode = t->tsnap.mode;
+  if (t->modifiers & MOD_SNAP_INVERT) {
+    invert_snap(snap_mode);
+  }
+
   TransData *td;
   TransData2D *td2d;
   int i = 0;

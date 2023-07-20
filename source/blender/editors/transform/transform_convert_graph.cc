@@ -644,6 +644,18 @@ static bool fcu_test_selected(FCurve *fcu)
   return 0;
 }
 
+static void invert_snap(eSnapMode &snap_mode)
+{
+  if (snap_mode & SCE_SNAP_TO_FRAME) {
+    snap_mode &= ~SCE_SNAP_TO_FRAME;
+    snap_mode |= SCE_SNAP_TO_SECOND;
+  }
+  else if (snap_mode & SCE_SNAP_TO_SECOND) {
+    snap_mode &= ~SCE_SNAP_TO_SECOND;
+    snap_mode |= SCE_SNAP_TO_FRAME;
+  }
+}
+
 /* This function is called on recalcData to apply the transforms applied
  * to the transdata on to the actual keyframe data
  */
@@ -655,6 +667,11 @@ static void flushTransGraphData(TransInfo *t)
   int a;
 
   eSnapMode snap_mode = t->tsnap.mode;
+
+  if (t->modifiers & MOD_SNAP_INVERT) {
+    invert_snap(snap_mode);
+  }
+
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   /* flush to 2d vector from internally used 3d vector */
   for (a = 0,

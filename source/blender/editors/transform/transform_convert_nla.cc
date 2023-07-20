@@ -631,6 +631,18 @@ static void createTransNlaData(bContext *C, TransInfo *t)
   ANIM_animdata_freelist(&anim_data);
 }
 
+static void invert_snap(eSnapMode &snap_mode)
+{
+  if (snap_mode & SCE_SNAP_TO_FRAME) {
+    snap_mode &= ~SCE_SNAP_TO_FRAME;
+    snap_mode |= SCE_SNAP_TO_SECOND;
+  }
+  else if (snap_mode & SCE_SNAP_TO_SECOND) {
+    snap_mode &= ~SCE_SNAP_TO_SECOND;
+    snap_mode |= SCE_SNAP_TO_FRAME;
+  }
+}
+
 static void recalcData_nla(TransInfo *t)
 {
   SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
@@ -642,10 +654,13 @@ static void recalcData_nla(TransInfo *t)
    */
   if (t->state != TRANS_CANCEL) {
     if (t->tsnap.flag & SCE_SNAP) {
-      eSnapMode autosnap = t->tsnap.mode;
+      eSnapMode snap_mode = t->tsnap.mode;
+      if (t->modifiers & MOD_SNAP_INVERT) {
+        invert_snap(snap_mode);
+      }
       TransData *td = tc->data;
       for (int i = 0; i < tc->data_len; i++, td++) {
-        transform_snap_anim_flush_data(t, td, autosnap, td->loc);
+        transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
       }
     }
   }
