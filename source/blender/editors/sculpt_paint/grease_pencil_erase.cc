@@ -974,16 +974,16 @@ struct EraseOperationExecutor {
     /* Get the tool's data. */
     this->mouse_position = extension_sample.mouse_position;
     this->eraser_radius = self.radius;
-    this->eraser_strength = extension_sample.pressure * self.strength;
+    this->eraser_strength = self.strength;
 
     if (BKE_brush_use_size_pressure(brush)) {
       this->eraser_radius *= BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
     }
-    // if (BKE_brush_use_alpha_pressure(brush)) {
-    //   this->eraser_strength *= BKE_curvemapping_evaluateF(
-    //       brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
-    // }
+    if (BKE_brush_use_alpha_pressure(brush)) {
+      this->eraser_strength *= BKE_curvemapping_evaluateF(
+          brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
+    }
 
     this->mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
                                        round_fl_to_int(mouse_position[1]));
