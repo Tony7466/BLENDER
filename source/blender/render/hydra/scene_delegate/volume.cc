@@ -27,13 +27,15 @@ VolumeData::VolumeData(BlenderSceneDelegate *scene_delegate,
 
 void VolumeData::init()
 {
-  ID_LOGN(1, "");
+  field_descriptors_.clear();
+
   Volume *volume = (Volume *)((Object *)this->id)->data;
   Main *main = CTX_data_main(scene_delegate_->context);
   if (!BKE_volume_load(volume, main)) {
     return;
   }
   filepath_ = BKE_volume_grids_frame_filepath(volume);
+  ID_LOGN(1, "%s", filepath_.c_str());
 
   if (volume->runtime.grids) {
     const int num_grids = BKE_volume_num_grids(volume);
@@ -64,14 +66,14 @@ void VolumeData::insert()
   for (auto &desc : field_descriptors_) {
     scene_delegate_->GetRenderIndex().InsertBprim(
         desc.fieldPrimType, scene_delegate_, desc.fieldId);
-    ID_LOGN(1, "Volume field %s", desc.fieldId.GetText());
+    ID_LOGN(2, "Volume field %s", desc.fieldId.GetText());
   }
 }
 
 void VolumeData::remove()
 {
   for (auto &desc : field_descriptors_) {
-    ID_LOG(1, "%s", desc.fieldId.GetText());
+    ID_LOG(2, "%s", desc.fieldId.GetText());
     scene_delegate_->GetRenderIndex().RemoveBprim(desc.fieldPrimType, desc.fieldId);
   }
   ID_LOG(1, "");

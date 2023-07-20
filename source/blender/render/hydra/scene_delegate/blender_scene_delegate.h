@@ -19,6 +19,7 @@
 #include "object.h"
 #include "settings.h"
 #include "volume.h"
+#include "volume_modifier.h"
 #include "world.h"
 
 namespace blender::render::hydra {

@@ -29,7 +29,6 @@ class VolumeData : public ObjectData {
  protected:
   void write_materials() override;
 
- private:
   std::string filepath_;
   pxr::HdVolumeFieldDescriptorVector field_descriptors_;
   MaterialData *mat_data_ = nullptr;

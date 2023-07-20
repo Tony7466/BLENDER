@@ -13,7 +13,7 @@
 #include "mesh.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
-TF_DEFINE_PRIVATE_TOKENS(_tokens, (st));
+TF_DEFINE_PRIVATE_TOKENS(tokens_, (st));
 PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace blender::render::hydra {
@@ -95,7 +95,7 @@ pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key)
   if (key == pxr::HdTokens->normals) {
     return pxr::VtValue(submesh(id).normals);
   }
-  else if (key == pxr::_tokens->st) {
+  else if (key == pxr::tokens_->st) {
     return pxr::VtValue(submesh(id).uvs);
   }
   return get_data(key);
@@ -144,7 +144,7 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
     }
     if (!submeshes_[0].uvs.empty()) {
       primvars.emplace_back(
-          pxr::_tokens->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
+          pxr::tokens_->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
     }
   }
   return primvars;

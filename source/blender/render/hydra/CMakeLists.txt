@@ -75,6 +75,8 @@ endif()
 set(SRC
   python.cc
 
+  camera.h
+  camera.cc
   engine.h
   engine.cc
   final_engine.h
@@ -83,8 +85,6 @@ set(SRC
   preview_engine.cc
   viewport_engine.h
   viewport_engine.cc
-  camera.h
-  camera.cc
 
   render_task_delegate.cc
   render_task_delegate.h
@@ -116,6 +116,8 @@ set(SRC
   scene_delegate/usd_scene_delegate.hh
   scene_delegate/volume.cc
   scene_delegate/volume.h
+  scene_delegate/volume_modifier.cc
+  scene_delegate/volume_modifier.h
   scene_delegate/world.cc
   scene_delegate/world.h
 )
