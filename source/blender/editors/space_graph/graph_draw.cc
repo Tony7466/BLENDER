@@ -6,7 +6,6 @@
  * \ingroup spgraph
  */
 
-#include <chrono>
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -1440,7 +1439,6 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
   ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   int filter;
-  using namespace std;
 
   /* build list of curves to draw */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY);
