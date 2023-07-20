@@ -160,6 +160,15 @@ struct EraseOperationExecutor {
   }
 
   /**
+   * Checks if a point is inside the eraser or not.
+   */
+  bool contains_point(const float2 &point) const
+  {
+    return (math::distance_squared(point, this->mouse_position) <=
+            this->eraser_radius * this->eraser_radius);
+  }
+
+  /**
    * Checks if each point is inside the eraser or not.
    *
    * \param screen_space_positions: input parameter containing the 2D positions of the geometry in
@@ -181,8 +190,7 @@ struct EraseOperationExecutor {
     threading::parallel_for(points_range, 256, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         const float2 pos_view = screen_space_positions[src_point];
-        point_inside[src_point] = (math::distance_squared(pos_view, mouse_position) <=
-                                   eraser_radius * eraser_radius);
+        point_inside[src_point] = contains_point(pos_view);
       }
     });
     /* Compute total number of points inside the eraser. */
