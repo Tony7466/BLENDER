@@ -1500,7 +1500,8 @@ void wm_draw_update(bContext *C)
 
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
 #ifdef WIN32
-    GHOST_TWindowState state = GHOST_GetWindowState(win->ghostwin);
+    GHOST_TWindowState state = GHOST_GetWindowState(
+        static_cast<GHOST_WindowHandle>(win->ghostwin));
 
     if (state == GHOST_kWindowStateMinimized) {
       /* do not update minimized windows, gives issues on Intel (see #33223)
