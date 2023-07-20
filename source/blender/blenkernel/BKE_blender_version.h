@@ -47,7 +47,7 @@ bool BKE_blender_version_is_alpha(void);
  * provided).
  *
  * \param str_buff a char buffer where the formated string is written, minimal recommended size is
- * 8, or 12 if subversion is provided.
+ * 8, or 16 if subversion is provided.
  *
  * \param file_subversion the file subversion, if given value < 0, it is ignored, and only the
  * `file_version` is used. */

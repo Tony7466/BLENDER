@@ -3748,8 +3748,8 @@ static void file_forwardcompat_detailed_info_show(uiLayout *parent_layout, Main 
    * block. */
   uiLayoutSetScaleY(layout, 0.70f);
 
-  char writer_ver_str[12];
-  char current_ver_str[12];
+  char writer_ver_str[16];
+  char current_ver_str[16];
   if (bmain->versionfile == BLENDER_VERSION) {
     BKE_blender_version_blendfile_string_from_values(
         writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, bmain->subversionfile);

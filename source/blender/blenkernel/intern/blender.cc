@@ -135,7 +135,7 @@ void BKE_blender_version_blendfile_string_from_values(char *str_buff,
   if (file_subversion >= 0) {
     BLI_snprintf(str_buff,
                  str_buff_len,
-                 "%d.%d-%d",
+                 "%d.%d (sub %d)",
                  file_version_major,
                  file_version_minor,
                  file_subversion);

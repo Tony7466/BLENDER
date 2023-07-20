@@ -1093,8 +1093,8 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
       if ((fg->minversion > BLENDER_FILE_VERSION) ||
           (fg->minversion == BLENDER_FILE_VERSION && fg->minsubversion > BLENDER_FILE_SUBVERSION))
       {
-        char writer_ver_str[12];
-        char min_reader_ver_str[12];
+        char writer_ver_str[16];
+        char min_reader_ver_str[16];
         if (fd->fileversion == fg->minversion) {
           BKE_blender_version_blendfile_string_from_values(writer_ver_str,
                                                            sizeof(writer_ver_str),
