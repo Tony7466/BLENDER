@@ -3815,6 +3815,7 @@ static void save_file_forwardcompat_overwrite_button(uiBlock *block,
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Overwrite"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
   UI_but_func_set(but, save_file_forwardcompat_overwrite, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(but, UI_BUT_REDALERT);
 }
 
 static void save_file_forwardcompat_saveas(bContext *C, void *arg_block, void * /*arg_data*/)
