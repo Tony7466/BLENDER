@@ -37,7 +37,7 @@
 
 wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent *event, int type)
 {
-  wmGesture *gesture = MEM_callocN(sizeof(wmGesture), "new gesture");
+  wmGesture *gesture = static_cast<wmGesture *>(MEM_callocN(sizeof(wmGesture), "new gesture"));
 
   BLI_addtail(&window->gesture, gesture);
 
@@ -58,7 +58,7 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
            WM_GESTURE_CROSS_RECT,
            WM_GESTURE_CIRCLE,
            WM_GESTURE_STRAIGHTLINE)) {
-    rcti *rect = MEM_callocN(sizeof(rcti), "gesture rect new");
+    rcti *rect = static_cast<rcti *>(MEM_callocN(sizeof(rcti), "gesture rect new"));
 
     gesture->customdata = rect;
     rect->xmin = xy[0] - gesture->winrct.xmin;
@@ -74,8 +74,8 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
   else if (ELEM(type, WM_GESTURE_LINES, WM_GESTURE_LASSO)) {
     short *lasso;
     gesture->points_alloc = 1024;
-    gesture->customdata = lasso = MEM_mallocN(sizeof(short[2]) * gesture->points_alloc,
-                                              "lasso points");
+    gesture->customdata = lasso = static_cast<short int *>(
+        MEM_mallocN(sizeof(short[2]) * gesture->points_alloc, "lasso points"));
     lasso[0] = xy[0] - gesture->winrct.xmin;
     lasso[1] = xy[1] - gesture->winrct.ymin;
     gesture->points = 1;
@@ -95,20 +95,20 @@ void WM_gesture_end(wmWindow *win, wmGesture *gesture)
 void WM_gestures_free_all(wmWindow *win)
 {
   while (win->gesture.first) {
-    WM_gesture_end(win, win->gesture.first);
+    WM_gesture_end(win, static_cast<wmGesture *>(win->gesture.first));
   }
 }
 
 void WM_gestures_remove(wmWindow *win)
 {
   while (win->gesture.first) {
-    WM_gesture_end(win, win->gesture.first);
+    WM_gesture_end(win, static_cast<wmGesture *>(win->gesture.first));
   }
 }
 
 bool WM_gesture_is_modal_first(const wmGesture *gesture)
 {
-  if (gesture == NULL) {
+  if (gesture == nullptr) {
     return true;
   }
   return (gesture->is_active_prev == false);
@@ -130,8 +130,8 @@ static void wm_gesture_draw_line_active_side(rcti *rect, const bool flip)
   float gradient_dir[2];
   float gradient_point[2][2];
 
-  const float line_start[2] = {rect->xmin, rect->ymin};
-  const float line_end[2] = {rect->xmax, rect->ymax};
+  const float line_start[2] = {float(rect->xmin), float(rect->ymin)};
+  const float line_end[2] = {float(rect->xmax), float(rect->ymax)};
   const float color_line_gradient_start[4] = {0.2f, 0.2f, 0.2f, 0.4f};
   const float color_line_gradient_end[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -282,7 +282,7 @@ struct LassoFillData {
 
 static void draw_filled_lasso_px_cb(int x, int x_end, int y, void *user_data)
 {
-  struct LassoFillData *data = user_data;
+  struct LassoFillData *data = static_cast<LassoFillData *>(user_data);
   uchar *col = &(data->px[(y * data->width) + x]);
   memset(col, 0x10, x_end - x);
 }
@@ -291,7 +291,8 @@ static void draw_filled_lasso(wmGesture *gt)
 {
   const short *lasso = (short *)gt->customdata;
   const int mcoords_len = gt->points;
-  int(*mcoords)[2] = MEM_mallocN(sizeof(*mcoords) * (mcoords_len + 1), __func__);
+  int(*mcoords)[2] = static_cast<int(*)[2]>(
+      MEM_mallocN(sizeof(*mcoords) * (mcoords_len + 1), __func__));
   int i;
   rcti rect;
   const float red[4] = {1.0f, 0.0f, 0.0f, 0.0f};
@@ -311,7 +312,7 @@ static void draw_filled_lasso(wmGesture *gt)
   if (BLI_rcti_is_empty(&rect) == false) {
     const int w = BLI_rcti_size_x(&rect);
     const int h = BLI_rcti_size_y(&rect);
-    uchar *pixel_buf = MEM_callocN(sizeof(*pixel_buf) * w * h, __func__);
+    uchar *pixel_buf = static_cast<uchar *>(MEM_callocN(sizeof(*pixel_buf) * w * h, __func__));
     struct LassoFillData lasso_fill_data = {pixel_buf, w};
 
     BLI_bitmap_draw_2d_poly_v2i_n(rect.xmin,
@@ -331,7 +332,7 @@ static void draw_filled_lasso(wmGesture *gt)
         state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
 
     immDrawPixelsTexTiled(
-        &state, rect.xmin, rect.ymin, w, h, GPU_R8, false, pixel_buf, 1.0f, 1.0f, NULL);
+        &state, rect.xmin, rect.ymin, w, h, GPU_R8, false, pixel_buf, 1.0f, 1.0f, nullptr);
 
     GPU_shader_unbind();
 
