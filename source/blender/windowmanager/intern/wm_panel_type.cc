@@ -25,12 +25,12 @@
 
 #include "WM_api.h"
 
-static GHash *g_paneltypes_hash = NULL;
+static GHash *g_paneltypes_hash = nullptr;
 
 PanelType *WM_paneltype_find(const char *idname, bool quiet)
 {
   if (idname[0]) {
-    PanelType *pt = BLI_ghash_lookup(g_paneltypes_hash, idname);
+    PanelType *pt = static_cast<PanelType *>(BLI_ghash_lookup(g_paneltypes_hash, idname));
     if (pt) {
       return pt;
     }
@@ -40,7 +40,7 @@ PanelType *WM_paneltype_find(const char *idname, bool quiet)
     printf("search for unknown paneltype %s\n", idname);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool WM_paneltype_add(PanelType *pt)
@@ -51,7 +51,7 @@ bool WM_paneltype_add(PanelType *pt)
 
 void WM_paneltype_remove(PanelType *pt)
 {
-  const bool ok = BLI_ghash_remove(g_paneltypes_hash, pt->idname, NULL, NULL);
+  const bool ok = BLI_ghash_remove(g_paneltypes_hash, pt->idname, nullptr, nullptr);
 
   BLI_assert(ok);
   UNUSED_VARS_NDEBUG(ok);
@@ -65,21 +65,21 @@ void WM_paneltype_init(void)
 
 void WM_paneltype_clear(void)
 {
-  BLI_ghash_free(g_paneltypes_hash, NULL, NULL);
+  BLI_ghash_free(g_paneltypes_hash, nullptr, nullptr);
 }
 
-void WM_paneltype_idname_visit_for_search(const bContext *UNUSED(C),
-                                          PointerRNA *UNUSED(ptr),
-                                          PropertyRNA *UNUSED(prop),
-                                          const char *UNUSED(edit_text),
+void WM_paneltype_idname_visit_for_search(const bContext * /*C*/,
+                                          PointerRNA * /*ptr*/,
+                                          PropertyRNA * /*prop*/,
+                                          const char * /*edit_text*/,
                                           StringPropertySearchVisitFunc visit_fn,
                                           void *visit_user_data)
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, g_paneltypes_hash) {
-    PanelType *pt = BLI_ghashIterator_getValue(&gh_iter);
+    PanelType *pt = static_cast<PanelType *>(BLI_ghashIterator_getValue(&gh_iter));
 
-    StringPropertySearchVisitParams visit_params = {NULL};
+    StringPropertySearchVisitParams visit_params = {nullptr};
     visit_params.text = pt->idname;
     visit_params.info = pt->label;
     visit_fn(visit_user_data, &visit_params);
