@@ -42,7 +42,7 @@ void WM_operator_properties_confirm_or_exec(wmOperatorType *ot)
  * Extends rna_enum_fileselect_params_sort_items with a default item for operators to use.
  */
 static const EnumPropertyItem *wm_operator_properties_filesel_sort_items_itemf(
-    struct bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
+    struct bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
 {
   EnumPropertyItem *items;
   const EnumPropertyItem default_item = {
@@ -89,21 +89,21 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
        "Long List",
        "Display files as a detailed list"},
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   if (flag & WM_FILESEL_FILEPATH) {
-    RNA_def_string_file_path(ot->srna, "filepath", NULL, FILE_MAX, "File Path", "Path to file");
+    RNA_def_string_file_path(ot->srna, "filepath", nullptr, FILE_MAX, "File Path", "Path to file");
   }
 
   if (flag & WM_FILESEL_DIRECTORY) {
     RNA_def_string_dir_path(
-        ot->srna, "directory", NULL, FILE_MAX, "Directory", "Directory of the file");
+        ot->srna, "directory", nullptr, FILE_MAX, "Directory", "Directory of the file");
   }
 
   if (flag & WM_FILESEL_FILENAME) {
     RNA_def_string_file_name(
-        ot->srna, "filename", NULL, FILE_MAX, "File Name", "Name of the file");
+        ot->srna, "filename", nullptr, FILE_MAX, "File Name", "Name of the file");
   }
 
   if (flag & WM_FILESEL_FILES) {
@@ -258,7 +258,7 @@ ID *WM_operator_properties_id_lookup_from_name_or_session_uuid(Main *bmain,
     return BKE_libblock_find_name(bmain, type, name);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool WM_operator_properties_id_lookup_is_set(PointerRNA *ptr)
@@ -274,7 +274,7 @@ void WM_operator_properties_id_lookup(wmOperatorType *ot, const bool add_name_pr
   if (add_name_prop) {
     prop = RNA_def_string(ot->srna,
                           "name",
-                          NULL,
+                          nullptr,
                           MAX_ID_NAME - 2,
                           "Name",
                           "Name of the data-block to use by the operator");
@@ -314,7 +314,7 @@ void WM_operator_properties_select_action(wmOperatorType *ot, int default_action
       {SEL_SELECT, "SELECT", 0, "Select", "Select all elements"},
       {SEL_DESELECT, "DESELECT", 0, "Deselect", "Deselect all elements"},
       {SEL_INVERT, "INVERT", 0, "Invert", "Invert selection of all elements"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   wm_operator_properties_select_action_ex(ot, default_action, select_actions, hide_gui);
@@ -327,7 +327,7 @@ void WM_operator_properties_select_action_simple(wmOperatorType *ot,
   static const EnumPropertyItem select_actions[] = {
       {SEL_SELECT, "SELECT", 0, "Select", "Select all elements"},
       {SEL_DESELECT, "DESELECT", 0, "Deselect", "Deselect all elements"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   wm_operator_properties_select_action_ex(ot, default_action, select_actions, hide_gui);
@@ -456,7 +456,7 @@ void WM_operator_properties_select_operation(wmOperatorType *ot)
       {SEL_OP_SUB, "SUB", ICON_SELECT_SUBTRACT, "Subtract", "Subtract existing selection"},
       {SEL_OP_XOR, "XOR", ICON_SELECT_DIFFERENCE, "Difference", "Invert existing selection"},
       {SEL_OP_AND, "AND", ICON_SELECT_INTERSECT, "Intersect", "Intersect existing selection"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   PropertyRNA *prop = RNA_def_enum(ot->srna, "mode", select_mode_items, SEL_OP_SET, "Mode", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -468,7 +468,7 @@ void WM_operator_properties_select_operation_simple(wmOperatorType *ot)
       {SEL_OP_SET, "SET", ICON_SELECT_SET, "Set", "Set a new selection"},
       {SEL_OP_ADD, "ADD", ICON_SELECT_EXTEND, "Extend", "Extend existing selection"},
       {SEL_OP_SUB, "SUB", ICON_SELECT_SUBTRACT, "Subtract", "Subtract existing selection"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   PropertyRNA *prop = RNA_def_enum(ot->srna, "mode", select_mode_items, SEL_OP_SET, "Mode", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -481,7 +481,7 @@ void WM_operator_properties_select_walk_direction(wmOperatorType *ot)
       {UI_SELECT_WALK_DOWN, "DOWN", 0, "Next", ""},
       {UI_SELECT_WALK_LEFT, "LEFT", 0, "Left", ""},
       {UI_SELECT_WALK_RIGHT, "RIGHT", 0, "Right", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   PropertyRNA *prop;
   prop = RNA_def_enum(ot->srna,
