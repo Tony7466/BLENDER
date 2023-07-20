@@ -161,6 +161,7 @@ typedef enum eWM_GizmoFlagGroupInitFlag {
   WM_GIZMOGROUP_INIT_SETUP = (1 << 0),
   WM_GIZMOGROUP_INIT_REFRESH = (1 << 1),
 } eWM_GizmoFlagGroupInitFlag;
+ENUM_OPERATORS(eWM_GizmoFlagGroupInitFlag, WM_GIZMOGROUP_INIT_REFRESH)
 
 /**
  * #wmGizmoMapType.type_update_flag
