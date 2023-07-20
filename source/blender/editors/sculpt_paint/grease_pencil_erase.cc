@@ -667,7 +667,7 @@ struct EraseOperationExecutor {
     return true;
   }
 
-  void soft_eraser(const blender::bke::CurvesGeometry &src,
+  bool soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst)
   {
@@ -698,14 +698,21 @@ struct EraseOperationExecutor {
     }
 
     /* Decrease the opacities. */
+    bool opacity_changed = false;
     threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         if (contains_point(screen_space_positions[src_point])) {
           const float point_opacity = src_opacity[src_point];
           src_new_opacity[src_point] = std::max(0.0f, point_opacity - opacity_decrease_step);
+          opacity_changed = true;
         }
       }
     });
+
+    /* Return early if nothing changed. */
+    if (!opacity_changed) {
+      return false;
+    }
 
     /* Compute destination points */
     const auto is_point_transparent = [&](const int src_point) {
@@ -744,7 +751,8 @@ struct EraseOperationExecutor {
       });
       dst_opacity.finish();
 
-      return;
+      /* Note : the opacities were changed, so we still need to tag for changes. */
+      return true;
     }
 
     /* Topology change. */
@@ -763,7 +771,7 @@ struct EraseOperationExecutor {
     /* Return early if no points left */
     if (dst_points_num == 0) {
       dst.resize(0, 0);
-      return;
+      return true;
     }
 
     /* Set the intersection parameters in the destination domain : a pair of int and float numbers
@@ -899,6 +907,8 @@ struct EraseOperationExecutor {
         opacity_attr, ATTR_DOMAIN_POINT);
     array_utils::gather(src_new_opacity.as_span(), dst_to_src_point.as_span(), dst_opacity.span);
     dst_opacity.finish();
+
+    return true;
   }
 
   bool stroke_eraser(const bke::CurvesGeometry &src,
@@ -1012,7 +1022,7 @@ struct EraseOperationExecutor {
           erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
           break;
         case GP_BRUSH_ERASER_SOFT:
-          soft_eraser(src, screen_space_positions, dst);
+          erased = soft_eraser(src, screen_space_positions, dst);
           break;
       }
 
