@@ -156,9 +156,9 @@ void ED_operatormacros_nla()
 
   ot = WM_operatortype_append_macro("NLA_OT_duplicate_linked_move",
                                     "Duplicate Linked",
-                                    "Duplicate selected strips and move them",
+                                    "Duplicate Linked selected NLA-Strips, adding the new strips to new track(s)",
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
-                                    ot->description = "Tesing this....";
+                                    
   otmacro = WM_operatortype_macro_define(ot, "NLA_OT_duplicate");
   RNA_boolean_set(otmacro->ptr, "linked", true);
   WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
