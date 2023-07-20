@@ -54,7 +54,7 @@ set(SRC
   bpy_operator_wrap.cc
   bpy_path.cc
   bpy_props.cc
-  bpy_rna.c
+  bpy_rna.cc
   bpy_rna_anim.cc
   bpy_rna_array.cc
   bpy_rna_callback.cc
