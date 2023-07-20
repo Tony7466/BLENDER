@@ -39,7 +39,7 @@ set(SRC
   intern/wm_files.cc
   intern/wm_files_link.cc
   intern/wm_gesture.c
-  intern/wm_gesture_ops.c
+  intern/wm_gesture_ops.cc
   intern/wm_init_exit.cc
   intern/wm_jobs.c
   intern/wm_keymap.c

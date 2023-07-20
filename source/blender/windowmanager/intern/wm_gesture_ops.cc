@@ -50,10 +50,10 @@
 static void gesture_modal_end(bContext *C, wmOperator *op)
 {
   wmWindow *win = CTX_wm_window(C);
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
 
   WM_gesture_end(win, gesture); /* frees gesture itself, and unregisters from window */
-  op->customdata = NULL;
+  op->customdata = nullptr;
 
   ED_area_tag_redraw(CTX_wm_area(C));
 
@@ -125,8 +125,8 @@ static int UNUSED_FUNCTION(gesture_modal_state_from_operator)(wmOperator *op)
 
 static bool gesture_box_apply_rect(wmOperator *op)
 {
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (rect->xmin == rect->xmax || rect->ymin == rect->ymax) {
     return 0;
@@ -143,7 +143,7 @@ static bool gesture_box_apply_rect(wmOperator *op)
 
 static bool gesture_box_apply(bContext *C, wmOperator *op)
 {
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
 
   int retval;
 
@@ -176,7 +176,7 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   {
-    wmGesture *gesture = op->customdata;
+    wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
     gesture->wait_for_input = wait_for_input;
   }
 
@@ -191,8 +191,8 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 int WM_gesture_box_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -291,8 +291,8 @@ int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
                               RNA_boolean_get(op->ptr, "wait_for_input");
 
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_CIRCLE);
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   /* Default or previously stored value. */
   rect->xmax = RNA_int_get(op->ptr, "radius");
@@ -317,8 +317,8 @@ int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static void gesture_circle_apply(bContext *C, wmOperator *op)
 {
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (gesture->wait_for_input && (gesture->modal_state == GESTURE_MODAL_NOP)) {
     return;
@@ -346,8 +346,8 @@ static void gesture_circle_apply(bContext *C, wmOperator *op)
 int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (event->type == MOUSEMOVE) {
 
@@ -516,11 +516,11 @@ int WM_gesture_lines_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 static int gesture_lasso_apply(bContext *C, wmOperator *op)
 {
   int retval = OPERATOR_FINISHED;
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   PointerRNA itemptr;
   float loc[2];
   int i;
-  const short *lasso = gesture->customdata;
+  const short *lasso = static_cast<const short int *>(gesture->customdata);
 
   /* operator storage as path. */
 
@@ -544,7 +544,7 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
 
 int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -567,7 +567,7 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
         }
 
         {
-          short(*lasso)[2] = gesture->customdata;
+          short(*lasso)[2] = static_cast<short int(*)[2]>(gesture->customdata);
 
           const int x = ((event->xy[0] - gesture->winrct.xmin) - lasso[gesture->points - 1][0]);
           const int y = ((event->xy[1] - gesture->winrct.ymin) - lasso[gesture->points - 1][1]);
@@ -623,20 +623,20 @@ void WM_gesture_lines_cancel(bContext *C, wmOperator *op)
   gesture_modal_end(C, op);
 }
 
-const int (*WM_gesture_lasso_path_to_array(bContext *UNUSED(C),
+const int (*WM_gesture_lasso_path_to_array(bContext * /*C*/,
                                            wmOperator *op,
                                            int *r_mcoords_len))[2]
 {
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "path");
-  int(*mcoords)[2] = NULL;
-  BLI_assert(prop != NULL);
+  int(*mcoords)[2] = nullptr;
+  BLI_assert(prop != nullptr);
 
   if (prop) {
     const int len = RNA_property_collection_length(op->ptr, prop);
 
     if (len) {
       int i = 0;
-      mcoords = MEM_mallocN(sizeof(int[2]) * len, __func__);
+      mcoords = static_cast<int(*)[2]>(MEM_mallocN(sizeof(int[2]) * len, __func__));
 
       RNA_PROP_BEGIN (op->ptr, itemptr, prop) {
         float loc[2];
@@ -712,8 +712,8 @@ void WM_OT_lasso_gesture(wmOperatorType *ot)
 
 static bool gesture_straightline_apply(bContext *C, wmOperator *op)
 {
-  wmGesture *gesture = op->customdata;
-  rcti *rect = gesture->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (rect->xmin == rect->xmax && rect->ymin == rect->ymax) {
     return 0;
@@ -742,7 +742,7 @@ int WM_gesture_straightline_invoke(bContext *C, wmOperator *op, const wmEvent *e
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_STRAIGHTLINE);
 
   if (WM_event_is_mouse_drag_or_press(event)) {
-    wmGesture *gesture = op->customdata;
+    wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
     gesture->is_active = true;
   }
 
@@ -760,7 +760,7 @@ int WM_gesture_straightline_invoke(bContext *C, wmOperator *op, const wmEvent *e
 int WM_gesture_straightline_active_side_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   WM_gesture_straightline_invoke(C, op, event);
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   gesture->draw_active_side = true;
   gesture->use_flip = false;
   return OPERATOR_RUNNING_MODAL;
@@ -769,8 +769,8 @@ int WM_gesture_straightline_active_side_invoke(bContext *C, wmOperator *op, cons
 #define STRAIGHTLINE_SNAP_DEG 15.0f
 static void wm_gesture_straightline_do_angle_snap(rcti *rect)
 {
-  const float line_start[2] = {rect->xmin, rect->ymin};
-  const float line_end[2] = {rect->xmax, rect->ymax};
+  const float line_start[2] = {float(rect->xmin), float(rect->ymin)};
+  const float line_end[2] = {float(rect->xmax), float(rect->ymax)};
   const float x_axis[2] = {1.0f, 0.0f};
 
   float line_direction[2];
@@ -794,9 +794,9 @@ static void wm_gesture_straightline_do_angle_snap(rcti *rect)
 
 int WM_gesture_straightline_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   wmWindow *win = CTX_wm_window(C);
-  rcti *rect = gesture->customdata;
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -874,9 +874,9 @@ int WM_gesture_straightline_modal(bContext *C, wmOperator *op, const wmEvent *ev
 
 int WM_gesture_straightline_oneshot_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  wmGesture *gesture = op->customdata;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   wmWindow *win = CTX_wm_window(C);
-  rcti *rect = gesture->customdata;
+  rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
