@@ -28,10 +28,10 @@ PyDoc_STRVAR(bpy_rna_uilayout_introspect_doc,
 static PyObject *bpy_rna_uilayout_introspect(PyObject *self)
 {
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
-  uiLayout *layout = pyrna->ptr.data;
+  uiLayout *layout = static_cast<uiLayout *>(pyrna->ptr.data);
 
   const char *expr = UI_layout_introspect(layout);
-  PyObject *main_mod = NULL;
+  PyObject *main_mod = nullptr;
   PyC_MainModule_Backup(&main_mod);
   PyObject *py_dict = PyC_DefaultNameSpace("<introspect>");
   PyObject *result = PyRun_String(expr, Py_eval_input, py_dict, py_dict);

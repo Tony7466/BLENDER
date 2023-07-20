@@ -66,7 +66,7 @@ set(SRC
   bpy_rna_operator.cc
   bpy_rna_text.cc
   bpy_rna_types_capi.cc
-  bpy_rna_ui.c
+  bpy_rna_ui.cc
   bpy_traceback.c
   bpy_utils_previews.c
   bpy_utils_units.c
