@@ -31,7 +31,7 @@ set(SRC
   bpy_app_build_options.cc
   bpy_app_ffmpeg.cc
   bpy_app_handlers.cc
-  bpy_app_icons.c
+  bpy_app_icons.cc
   bpy_app_ocio.c
   bpy_app_oiio.c
   bpy_app_opensubdiv.c
