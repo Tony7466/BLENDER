@@ -108,13 +108,19 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
 static void window_set_custom_cursor(
     wmWindow *win, const uchar mask[16][2], const uchar bitmap[16][2], int hotx, int hoty)
 {
-  GHOST_SetCustomCursorShape(
-      win->ghostwin, (uint8_t *)bitmap, (uint8_t *)mask, 16, 16, hotx, hoty, true);
+  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                             (uint8_t *)bitmap,
+                             (uint8_t *)mask,
+                             16,
+                             16,
+                             hotx,
+                             hoty,
+                             true);
 }
 
 static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
 {
-  GHOST_SetCustomCursorShape(win->ghostwin,
+  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
                              (uint8_t *)cursor->bitmap,
                              (uint8_t *)cursor->mask,
                              16,
@@ -126,7 +132,7 @@ static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
 
 void WM_cursor_set(wmWindow *win, int curs)
 {
-  if (win == NULL || G.background) {
+  if (win == nullptr || G.background) {
     return; /* Can't set custom cursor before Window init */
   }
 
@@ -135,11 +141,11 @@ void WM_cursor_set(wmWindow *win, int curs)
   }
 
   if (curs == WM_CURSOR_NONE) {
-    GHOST_SetCursorVisibility(win->ghostwin, 0);
+    GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), 0);
     return;
   }
 
-  GHOST_SetCursorVisibility(win->ghostwin, 1);
+  GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), 1);
 
   if (win->cursor == curs) {
     return; /* Cursor is already set */
@@ -152,13 +158,13 @@ void WM_cursor_set(wmWindow *win, int curs)
     return;
   }
 
-  GHOST_TStandardCursor ghost_cursor = convert_to_ghost_standard_cursor(curs);
+  GHOST_TStandardCursor ghost_cursor = convert_to_ghost_standard_cursor(WMCursorType(curs));
 
   if (ghost_cursor != GHOST_kStandardCursorCustom &&
-      GHOST_HasCursorShape(win->ghostwin, ghost_cursor))
+      GHOST_HasCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin), ghost_cursor))
   {
     /* Use native GHOST cursor when available. */
-    GHOST_SetCursorShape(win->ghostwin, ghost_cursor);
+    GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin), ghost_cursor);
   }
   else {
     BCursor *bcursor = BlenderCursor[curs];
@@ -168,7 +174,8 @@ void WM_cursor_set(wmWindow *win, int curs)
     }
     else {
       /* Fallback to default cursor if no bitmap found. */
-      GHOST_SetCursorShape(win->ghostwin, GHOST_kStandardCursorDefault);
+      GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                           GHOST_kStandardCursorDefault);
     }
   }
 }
@@ -179,7 +186,7 @@ bool WM_cursor_set_from_tool(wmWindow *win, const ScrArea *area, const ARegion *
     return false;
   }
 
-  bToolRef_Runtime *tref_rt = (area && area->runtime.tool) ? area->runtime.tool->runtime : NULL;
+  bToolRef_Runtime *tref_rt = (area && area->runtime.tool) ? area->runtime.tool->runtime : nullptr;
   if (tref_rt && tref_rt->cursor != WM_CURSOR_DEFAULT) {
     if (win->modalcursor == 0) {
       WM_cursor_set(win, tref_rt->cursor);
@@ -211,8 +218,8 @@ void WM_cursor_modal_restore(wmWindow *win)
 void WM_cursor_wait(bool val)
 {
   if (!G.background) {
-    wmWindowManager *wm = G_MAIN->wm.first;
-    wmWindow *win = wm ? wm->windows.first : NULL;
+    wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+    wmWindow *win = static_cast<wmWindow *>(wm ? wm->windows.first : nullptr);
 
     for (; win; win = win->next) {
       if (val) {
@@ -231,12 +238,12 @@ void WM_cursor_grab_enable(wmWindow *win,
                            const bool hide)
 {
   int _wrap_region_buf[4];
-  int *wrap_region_screen = NULL;
+  int *wrap_region_screen = nullptr;
 
   /* Only grab cursor when not running debug.
    * It helps not to get a stuck WM when hitting a break-point. */
   GHOST_TGrabCursorMode mode = GHOST_kGrabNormal;
-  GHOST_TAxisFlag mode_axis = GHOST_kAxisX | GHOST_kAxisY;
+  GHOST_TAxisFlag mode_axis = GHOST_TAxisFlag(GHOST_kAxisX | GHOST_kAxisY);
 
   if (wrap_region) {
     wrap_region_screen = _wrap_region_buf;
@@ -265,7 +272,11 @@ void WM_cursor_grab_enable(wmWindow *win,
   if ((G.debug & G_DEBUG) == 0) {
     if (win->ghostwin) {
       if (win->eventstate->tablet.is_motion_absolute == false) {
-        GHOST_SetCursorGrab(win->ghostwin, mode, mode_axis, wrap_region_screen, NULL);
+        GHOST_SetCursorGrab(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                            mode,
+                            mode_axis,
+                            wrap_region_screen,
+                            nullptr);
       }
 
       win->grabcursor = mode;
@@ -280,10 +291,18 @@ void WM_cursor_grab_disable(wmWindow *win, const int mouse_ungrab_xy[2])
       if (mouse_ungrab_xy) {
         int mouse_xy[2] = {mouse_ungrab_xy[0], mouse_ungrab_xy[1]};
         wm_cursor_position_to_ghost_screen_coords(win, &mouse_xy[0], &mouse_xy[1]);
-        GHOST_SetCursorGrab(win->ghostwin, GHOST_kGrabDisable, GHOST_kAxisNone, NULL, mouse_xy);
+        GHOST_SetCursorGrab(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                            GHOST_kGrabDisable,
+                            GHOST_kAxisNone,
+                            nullptr,
+                            mouse_xy);
       }
       else {
-        GHOST_SetCursorGrab(win->ghostwin, GHOST_kGrabDisable, GHOST_kAxisNone, NULL, NULL);
+        GHOST_SetCursorGrab(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                            GHOST_kGrabDisable,
+                            GHOST_kAxisNone,
+                            nullptr,
+                            nullptr);
       }
 
       win->grabcursor = GHOST_kGrabDisable;
@@ -305,7 +324,7 @@ bool wm_cursor_arrow_move(wmWindow *win, const wmEvent *event)
 
   if (win && event->val == KM_PRESS) {
     /* Must move at least this much to avoid rounding in WM_cursor_warp. */
-    float fac = GHOST_GetNativePixelSize(win->ghostwin);
+    float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
     if (event->type == EVT_UPARROWKEY) {
       wm_cursor_warp_relative(win, 0, fac);
