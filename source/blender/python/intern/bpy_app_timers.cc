@@ -19,7 +19,7 @@
 
 static double handle_returned_value(PyObject *function, PyObject *ret)
 {
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyErr_PrintEx(0);
     PyErr_Clear();
     return -1;
@@ -45,14 +45,14 @@ static double handle_returned_value(PyObject *function, PyObject *ret)
   return value;
 }
 
-static double py_timer_execute(uintptr_t UNUSED(uuid), void *user_data)
+static double py_timer_execute(uintptr_t /*uuid*/, void *user_data)
 {
-  PyObject *function = user_data;
+  PyObject *function = static_cast<PyObject *>(user_data);
 
   PyGILState_STATE gilstate;
   gilstate = PyGILState_Ensure();
 
-  PyObject *py_ret = PyObject_CallObject(function, NULL);
+  PyObject *py_ret = PyObject_CallObject(function, nullptr);
   const double ret = handle_returned_value(function, py_ret);
 
   PyGILState_Release(gilstate);
@@ -60,9 +60,9 @@ static double py_timer_execute(uintptr_t UNUSED(uuid), void *user_data)
   return ret;
 }
 
-static void py_timer_free(uintptr_t UNUSED(uuid), void *user_data)
+static void py_timer_free(uintptr_t /*uuid*/, void *user_data)
 {
-  PyObject *function = user_data;
+  PyObject *function = static_cast<PyObject *>(user_data);
 
   PyGILState_STATE gilstate;
   gilstate = PyGILState_Ensure();
@@ -88,13 +88,13 @@ PyDoc_STRVAR(
     "   :type first_interval: float\n"
     "   :arg persistent: Don't remove timer when a new file is loaded.\n"
     "   :type persistent: bool\n");
-static PyObject *bpy_app_timers_register(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_app_timers_register(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   PyObject *function;
   double first_interval = 0;
   int persistent = false;
 
-  static const char *_keywords[] = {"function", "first_interval", "persistent", NULL};
+  static const char *_keywords[] = {"function", "first_interval", "persistent", nullptr};
   static _PyArg_Parser _parser = {
       "O"  /* `function` */
       "|$" /* Optional keyword only arguments. */
@@ -106,12 +106,12 @@ static PyObject *bpy_app_timers_register(PyObject *UNUSED(self), PyObject *args,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &function, &first_interval, &persistent)) {
-    return NULL;
+    return nullptr;
   }
 
   if (!PyCallable_Check(function)) {
     PyErr_SetString(PyExc_TypeError, "function is not callable");
-    return NULL;
+    return nullptr;
   }
 
   Py_INCREF(function);
@@ -127,11 +127,11 @@ PyDoc_STRVAR(bpy_app_timers_unregister_doc,
              "\n"
              "   :arg function: Function to unregister.\n"
              "   :type function: function\n");
-static PyObject *bpy_app_timers_unregister(PyObject *UNUSED(self), PyObject *function)
+static PyObject *bpy_app_timers_unregister(PyObject * /*self*/, PyObject *function)
 {
   if (!BLI_timer_unregister((intptr_t)function)) {
     PyErr_SetString(PyExc_ValueError, "Error: function is not registered");
-    return NULL;
+    return nullptr;
   }
   Py_RETURN_NONE;
 }
@@ -145,7 +145,7 @@ PyDoc_STRVAR(bpy_app_timers_is_registered_doc,
              "   :type function: int\n"
              "   :return: True when this function is registered, otherwise False.\n"
              "   :rtype: bool\n");
-static PyObject *bpy_app_timers_is_registered(PyObject *UNUSED(self), PyObject *function)
+static PyObject *bpy_app_timers_is_registered(PyObject * /*self*/, PyObject *function)
 {
   const bool ret = BLI_timer_is_registered((intptr_t)function);
   return PyBool_FromLong(ret);
@@ -161,19 +161,19 @@ static PyMethodDef M_AppTimers_methods[] = {
      (PyCFunction)bpy_app_timers_is_registered,
      METH_O,
      bpy_app_timers_is_registered_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef M_AppTimers_module_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "bpy.app.timers",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
     /*m_methods*/ M_AppTimers_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPY_app_timers_module(void)
