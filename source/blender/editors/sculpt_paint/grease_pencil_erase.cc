@@ -451,7 +451,7 @@ struct EraseOperationExecutor {
     return true;
   }
 
-  void stroke_eraser(const blender::bke::CurvesGeometry &src,
+  bool stroke_eraser(const blender::bke::CurvesGeometry &src,
                      const Array<float2> &screen_space_positions,
                      blender::bke::CurvesGeometry &dst) const
   {
@@ -503,8 +503,14 @@ struct EraseOperationExecutor {
           return false;
         });
 
+    if (strokes_to_remove.size() == 0) {
+      return false;
+    }
+
     dst = std::move(src);
     dst.remove_curves(strokes_to_remove);
+
+    return true;
   }
 
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -548,7 +554,7 @@ struct EraseOperationExecutor {
       bool erased = false;
       switch (self.eraser_mode) {
         case GP_BRUSH_ERASER_STROKE:
-          stroke_eraser(src, screen_space_positions, dst);
+          erased = stroke_eraser(src, screen_space_positions, dst);
           break;
         case GP_BRUSH_ERASER_HARD:
           erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
