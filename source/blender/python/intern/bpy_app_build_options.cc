@@ -16,51 +16,51 @@ static PyTypeObject BlenderAppBuildOptionsType;
 
 static PyStructSequence_Field app_builtopts_info_fields[] = {
     /* names mostly follow CMake options, lowercase, after `WITH_` */
-    {"bullet", NULL},
-    {"codec_avi", NULL},
-    {"codec_ffmpeg", NULL},
-    {"codec_sndfile", NULL},
-    {"compositor_cpu", NULL},
-    {"cycles", NULL},
-    {"cycles_osl", NULL},
-    {"freestyle", NULL},
-    {"image_cineon", NULL},
-    {"image_dds", NULL},
-    {"image_hdr", NULL},
-    {"image_openexr", NULL},
-    {"image_openjpeg", NULL},
-    {"image_tiff", NULL},
-    {"input_ndof", NULL},
-    {"audaspace", NULL},
-    {"international", NULL},
-    {"openal", NULL},
-    {"opensubdiv", NULL},
-    {"sdl", NULL},
-    {"sdl_dynload", NULL},
-    {"coreaudio", NULL},
-    {"jack", NULL},
-    {"pulseaudio", NULL},
-    {"wasapi", NULL},
-    {"libmv", NULL},
-    {"mod_oceansim", NULL},
-    {"mod_remesh", NULL},
-    {"collada", NULL},
-    {"io_wavefront_obj", NULL},
-    {"io_ply", NULL},
-    {"io_stl", NULL},
-    {"io_gpencil", NULL},
-    {"opencolorio", NULL},
-    {"openmp", NULL},
-    {"openvdb", NULL},
-    {"alembic", NULL},
-    {"usd", NULL},
-    {"fluid", NULL},
-    {"xr_openxr", NULL},
-    {"potrace", NULL},
-    {"pugixml", NULL},
-    {"haru", NULL},
+    {"bullet", nullptr},
+    {"codec_avi", nullptr},
+    {"codec_ffmpeg", nullptr},
+    {"codec_sndfile", nullptr},
+    {"compositor_cpu", nullptr},
+    {"cycles", nullptr},
+    {"cycles_osl", nullptr},
+    {"freestyle", nullptr},
+    {"image_cineon", nullptr},
+    {"image_dds", nullptr},
+    {"image_hdr", nullptr},
+    {"image_openexr", nullptr},
+    {"image_openjpeg", nullptr},
+    {"image_tiff", nullptr},
+    {"input_ndof", nullptr},
+    {"audaspace", nullptr},
+    {"international", nullptr},
+    {"openal", nullptr},
+    {"opensubdiv", nullptr},
+    {"sdl", nullptr},
+    {"sdl_dynload", nullptr},
+    {"coreaudio", nullptr},
+    {"jack", nullptr},
+    {"pulseaudio", nullptr},
+    {"wasapi", nullptr},
+    {"libmv", nullptr},
+    {"mod_oceansim", nullptr},
+    {"mod_remesh", nullptr},
+    {"collada", nullptr},
+    {"io_wavefront_obj", nullptr},
+    {"io_ply", nullptr},
+    {"io_stl", nullptr},
+    {"io_gpencil", nullptr},
+    {"opencolorio", nullptr},
+    {"openmp", nullptr},
+    {"openvdb", nullptr},
+    {"alembic", nullptr},
+    {"usd", nullptr},
+    {"fluid", nullptr},
+    {"xr_openxr", nullptr},
+    {"potrace", nullptr},
+    {"pugixml", nullptr},
+    {"haru", nullptr},
     /* Sentinel (this line prevents `clang-format` wrapping into columns). */
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_builtopts_info_desc = {
@@ -76,8 +76,8 @@ static PyObject *make_builtopts_info(void)
   int pos = 0;
 
   builtopts_info = PyStructSequence_New(&BlenderAppBuildOptionsType);
-  if (builtopts_info == NULL) {
-    return NULL;
+  if (builtopts_info == nullptr) {
+    return nullptr;
   }
 
 #define SetObjIncref(item) \
@@ -346,8 +346,8 @@ PyObject *BPY_app_build_options_struct(void)
   ret = make_builtopts_info();
 
   /* prevent user from creating new instances */
-  BlenderAppBuildOptionsType.tp_init = NULL;
-  BlenderAppBuildOptionsType.tp_new = NULL;
+  BlenderAppBuildOptionsType.tp_init = nullptr;
+  BlenderAppBuildOptionsType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppBuildOptionsType.tp_hash = (hashfunc)_Py_HashPointer;
 

@@ -28,7 +28,7 @@ set(SRC
   bpy.c
   bpy_app.c
   bpy_app_alembic.cc
-  bpy_app_build_options.c
+  bpy_app_build_options.cc
   bpy_app_ffmpeg.c
   bpy_app_handlers.c
   bpy_app_icons.c
