@@ -24,13 +24,13 @@
 
 #include "BLI_strict_flags.h"
 
-typedef struct {
+struct PyKDTree {
   PyObject_HEAD
   KDTree_3d *obj;
   uint maxsize;
   uint count;
   uint count_balance; /* size when we last balanced */
-} PyKDTree;
+};
 
 /* -------------------------------------------------------------------- */
 /* Utility helper functions */
@@ -41,7 +41,7 @@ static void kdtree_nearest_to_py_tuple(const KDTreeNearest_3d *nearest, PyObject
   BLI_assert(PyTuple_GET_SIZE(py_retval) == 3);
 
   PyTuple_SET_ITEMS(py_retval,
-                    Vector_CreatePyObject(nearest->co, 3, NULL),
+                    Vector_CreatePyObject(nearest->co, 3, nullptr),
                     PyLong_FromLong(nearest->index),
                     PyFloat_FromDouble(nearest->dist));
 }
@@ -82,7 +82,7 @@ static PyObject *kdtree_nearest_to_py_and_check(const KDTreeNearest_3d *nearest)
 static int PyKDTree__tp_init(PyKDTree *self, PyObject *args, PyObject *kwargs)
 {
   uint maxsize;
-  const char *keywords[] = {"size", NULL};
+  const char *keywords[] = {"size", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I:KDTree", (char **)keywords, &maxsize)) {
     return -1;
@@ -121,24 +121,24 @@ static PyObject *py_kdtree_insert(PyKDTree *self, PyObject *args, PyObject *kwar
   PyObject *py_co;
   float co[3];
   int index;
-  const char *keywords[] = {"co", "index", NULL};
+  const char *keywords[] = {"co", "index", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "Oi:insert", (char **)keywords, &py_co, &index)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(co, 3, 3, py_co, "insert: invalid 'co' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (index < 0) {
     PyErr_SetString(PyExc_ValueError, "negative index given");
-    return NULL;
+    return nullptr;
   }
 
   if (self->count >= self->maxsize) {
     PyErr_SetString(PyExc_RuntimeError, "Trying to insert more items than KDTree has room for");
-    return NULL;
+    return nullptr;
   }
 
   BLI_kdtree_3d_insert(self->obj, index, co);
@@ -171,7 +171,7 @@ static int py_find_nearest_cb(void *user_data, int index, const float co[3], flo
 {
   UNUSED_VARS(co, dist_sq);
 
-  struct PyKDTree_NearestData *data = user_data;
+  struct PyKDTree_NearestData *data = static_cast<PyKDTree_NearestData *>(user_data);
 
   PyObject *py_args = PyTuple_New(1);
   PyTuple_SET_ITEM(py_args, 0, PyLong_FromLong(index));
@@ -205,28 +205,28 @@ PyDoc_STRVAR(py_kdtree_find_doc,
              "   :rtype: :class:`tuple`\n");
 static PyObject *py_kdtree_find(PyKDTree *self, PyObject *args, PyObject *kwargs)
 {
-  PyObject *py_co, *py_filter = NULL;
+  PyObject *py_co, *py_filter = nullptr;
   float co[3];
   KDTreeNearest_3d nearest;
-  const char *keywords[] = {"co", "filter", NULL};
+  const char *keywords[] = {"co", "filter", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, "O|$O:find", (char **)keywords, &py_co, &py_filter)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(co, 3, 3, py_co, "find: invalid 'co' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (self->count != self->count_balance) {
     PyErr_SetString(PyExc_RuntimeError, "KDTree must be balanced before calling find()");
-    return NULL;
+    return nullptr;
   }
 
   nearest.index = -1;
 
-  if (py_filter == NULL) {
+  if (py_filter == nullptr) {
     BLI_kdtree_3d_find_nearest(self->obj, co, &nearest);
   }
   else {
@@ -238,7 +238,7 @@ static PyObject *py_kdtree_find(PyKDTree *self, PyObject *args, PyObject *kwargs
     BLI_kdtree_3d_find_nearest_cb(self->obj, co, py_find_nearest_cb, &data, &nearest);
 
     if (data.is_error) {
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -264,27 +264,27 @@ static PyObject *py_kdtree_find_n(PyKDTree *self, PyObject *args, PyObject *kwar
   KDTreeNearest_3d *nearest;
   uint n;
   int i, found;
-  const char *keywords[] = {"co", "n", NULL};
+  const char *keywords[] = {"co", "n", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OI:find_n", (char **)keywords, &py_co, &n)) {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(co, 3, 3, py_co, "find_n: invalid 'co' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (UINT_IS_NEG(n)) {
     PyErr_SetString(PyExc_RuntimeError, "negative 'n' given");
-    return NULL;
+    return nullptr;
   }
 
   if (self->count != self->count_balance) {
     PyErr_SetString(PyExc_RuntimeError, "KDTree must be balanced before calling find_n()");
-    return NULL;
+    return nullptr;
   }
 
-  nearest = MEM_mallocN(sizeof(KDTreeNearest_3d) * n, __func__);
+  nearest = static_cast<KDTreeNearest_3d *>(MEM_mallocN(sizeof(KDTreeNearest_3d) * n, __func__));
 
   found = BLI_kdtree_3d_find_nearest_n(self->obj, co, nearest, n);
 
@@ -315,30 +315,30 @@ static PyObject *py_kdtree_find_range(PyKDTree *self, PyObject *args, PyObject *
   PyObject *py_list;
   PyObject *py_co;
   float co[3];
-  KDTreeNearest_3d *nearest = NULL;
+  KDTreeNearest_3d *nearest = nullptr;
   float radius;
   int i, found;
 
-  const char *keywords[] = {"co", "radius", NULL};
+  const char *keywords[] = {"co", "radius", nullptr};
 
   if (!PyArg_ParseTupleAndKeywords(
           args, kwargs, "Of:find_range", (char **)keywords, &py_co, &radius))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (mathutils_array_parse(co, 3, 3, py_co, "find_range: invalid 'co' arg") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (radius < 0.0f) {
     PyErr_SetString(PyExc_RuntimeError, "negative radius given");
-    return NULL;
+    return nullptr;
   }
 
   if (self->count != self->count_balance) {
     PyErr_SetString(PyExc_RuntimeError, "KDTree must be balanced before calling find_range()");
-    return NULL;
+    return nullptr;
   }
 
   found = BLI_kdtree_3d_range_search(self->obj, co, &nearest, radius);
@@ -365,7 +365,7 @@ static PyMethodDef PyKDTree_methods[] = {
      (PyCFunction)py_kdtree_find_range,
      METH_VARARGS | METH_KEYWORDS,
      py_kdtree_find_range_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(py_KDtree_doc,
@@ -377,55 +377,55 @@ PyDoc_STRVAR(py_KDtree_doc,
              "methods.\n");
 
 PyTypeObject PyKDTree_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "KDTree",
     /*tp_basicsize*/ sizeof(PyKDTree),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)PyKDTree__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ py_KDtree_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ (PyMethodDef *)PyKDTree_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
     /*tp_init*/ (initproc)PyKDTree__tp_init,
     /*tp_alloc*/ (allocfunc)PyType_GenericAlloc,
     /*tp_new*/ (newfunc)PyType_GenericNew,
     /*tp_free*/ (freefunc)0,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ (destructor)NULL,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ (destructor) nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 PyDoc_STRVAR(py_kdtree_doc, "Generic 3-dimensional kd-tree to perform spatial searches.");
@@ -434,24 +434,24 @@ static PyModuleDef kdtree_moduledef = {
     /*m_name*/ "mathutils.kdtree",
     /*m_doc*/ py_kdtree_doc,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyMODINIT_FUNC PyInit_mathutils_kdtree(void)
 {
   PyObject *m = PyModule_Create(&kdtree_moduledef);
 
-  if (m == NULL) {
-    return NULL;
+  if (m == nullptr) {
+    return nullptr;
   }
 
   /* Register the 'KDTree' class */
   if (PyType_Ready(&PyKDTree_Type)) {
-    return NULL;
+    return nullptr;
   }
   PyModule_AddType(m, &PyKDTree_Type);
 
