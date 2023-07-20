@@ -52,6 +52,9 @@
 #include "DNA_scene_types.h"
 #include "MEM_guardedalloc.h"
 
+#include "RE_pipeline.h"
+#include "render_types.h"
+
 #include "lineart_intern.h"
 
 struct LineartIsecSingle {
@@ -4991,7 +4994,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartData *ld;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   int intersections_only = 0; /* Not used right now, but preserve for future. */
-  Object *use_camera;
+  Object *use_camera = nullptr;
 
   double t_start;
   if (G.debug_value == 4000) {
@@ -5007,12 +5010,17 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   }
   else {
 
-    BKE_scene_camera_switch_update(scene);
-
-    if (!scene->camera) {
-      return false;
+    Render *re = RE_GetSceneRender(scene);
+    if (re && re->camera_override) {
+      use_camera = DEG_get_evaluated_object(depsgraph, re->camera_override);
     }
-    use_camera = scene->camera;
+    if (!use_camera) {
+      BKE_scene_camera_switch_update(scene);
+      if (!scene->camera) {
+        return false;
+      }
+      use_camera = scene->camera;
+    }
   }
 
   LineartCache *lc = lineart_init_cache();
