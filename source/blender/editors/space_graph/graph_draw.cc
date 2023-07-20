@@ -1073,11 +1073,11 @@ static void draw_fcurve_curve_bezts(
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
       const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, points_per_frame);
-      added_points += resolution;
-      if (added_points >= max_points) {
+      if (added_points + resolution >= max_points) {
         break;
       }
       draw_bezt(bezt, prevbezt, resolution, pos);
+      added_points += resolution;
     }
 
     /* Last point? */
