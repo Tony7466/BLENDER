@@ -1334,7 +1334,7 @@ void GreasePencil::remove_drawing(const int index_to_remove)
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
     const blender::bke::greasepencil::Layer *layer, const int frame_number) const
 {
-  if (layer == nullptr || layer->is_locked() || !layer->is_visible()) {
+  if (layer == nullptr || !layer->is_editable()) {
     return nullptr;
   }
 
