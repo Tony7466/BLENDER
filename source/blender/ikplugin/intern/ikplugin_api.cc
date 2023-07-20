@@ -30,9 +30,9 @@ static IKPlugin ikplugin_tab[] = {
         iksolver_execute_tree,
         iksolver_release_tree,
         iksolver_clear_data,
-        NULL,
-        NULL,
-        NULL,
+        nullptr,
+        nullptr,
+        nullptr,
     },
 #endif
 
@@ -49,12 +49,12 @@ static IKPlugin ikplugin_tab[] = {
     },
 #endif
 
-    {NULL}};
+    {nullptr}};
 
 static IKPlugin *get_plugin(bPose *pose)
 {
   if (!pose || pose->iksolver < 0 || pose->iksolver >= (ARRAY_SIZE(ikplugin_tab) - 1)) {
-    return NULL;
+    return nullptr;
   }
 
   return &ikplugin_tab[pose->iksolver];
@@ -63,7 +63,7 @@ static IKPlugin *get_plugin(bPose *pose)
 /*----------------------------------------*/
 /* Plugin API                             */
 
-void BIK_init_tree(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float ctime)
+void BIK_init_tree(Depsgraph *depsgraph, Scene *scene, Object *ob, float ctime)
 {
   IKPlugin *plugin = get_plugin(ob->pose);
 
@@ -73,7 +73,7 @@ void BIK_init_tree(struct Depsgraph *depsgraph, Scene *scene, Object *ob, float 
 }
 
 void BIK_execute_tree(
-    struct Depsgraph *depsgraph, Scene *scene, Object *ob, bPoseChannel *pchan, float ctime)
+    Depsgraph *depsgraph, Scene *scene, Object *ob, bPoseChannel *pchan, float ctime)
 {
   IKPlugin *plugin = get_plugin(ob->pose);
 
@@ -118,7 +118,7 @@ void BIK_update_param(bPose *pose)
   }
 }
 
-void BIK_test_constraint(Object *ob, struct bConstraint *cons)
+void BIK_test_constraint(Object *ob, bConstraint *cons)
 {
   IKPlugin *plugin = get_plugin(ob->pose);
 
