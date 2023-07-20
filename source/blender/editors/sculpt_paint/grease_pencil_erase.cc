@@ -43,6 +43,7 @@ class EraseOperation : public GreasePencilStrokeOperation {
 
   bool keep_caps = false;
   float radius = 50.0f;
+  float strength = 0.1f;
   eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
   bool active_layer_only = false;
 };
@@ -55,6 +56,7 @@ struct EraseOperationExecutor {
 
   float2 mouse_position{};
   float eraser_radius{};
+  float eraser_strength{};
 
   int2 mouse_position_pixels{};
   int64_t eraser_squared_radius_pixels{};
@@ -667,6 +669,19 @@ struct EraseOperationExecutor {
     return true;
   }
 
+  float compute_soft_eraser_influence(const float2 point) const
+  {
+    const float dist_squared = math::distance_squared(point, this->mouse_position);
+    const float eraser_radius_2 = this->eraser_radius * this->eraser_radius;
+    /* If the point lies outside the eraser, then it has no influence on it. */
+    if (dist_squared >= eraser_radius_2) {
+      return 0.0f;
+    }
+
+    /* Compute the linear falloff. */
+    return this->eraser_strength * (1.0f - math::sqrt(dist_squared / eraser_radius_2));
+  }
+
   bool soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst)
@@ -674,8 +689,6 @@ struct EraseOperationExecutor {
     using namespace blender::bke;
 
     const float opacity_threshold = 0.01f;
-    // TODO : this should be driven by the brush strength.
-    const float opacity_decrease_step = 0.1f;
     const std::string opacity_attr = "opacity";
 
     const int src_points_num = src.points_num();
@@ -697,11 +710,14 @@ struct EraseOperationExecutor {
     bool opacity_changed = false;
     threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
-        if (contains_point(screen_space_positions[src_point])) {
-          const float point_opacity = src_opacity[src_point];
-          src_new_opacity[src_point] = std::max(0.0f, point_opacity - opacity_decrease_step);
-          opacity_changed = true;
+        const float2 pos = screen_space_positions[src_point];
+        if (math::distance_squared(pos, this->mouse_position) > this->eraser_squared_radius_pixels)
+        {
+          continue;
         }
+        src_new_opacity[src_point] = std::min(src_opacity[src_point],
+                                              1.0f - compute_soft_eraser_influence(pos));
+        opacity_changed = true;
       }
     });
 
@@ -770,9 +786,9 @@ struct EraseOperationExecutor {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_to_src_point[++dst_point] = src_point;
 
-          /* Compute if the current point may become the first point of a curve in the destination,
-           * while not being the first point of the curve in the source.
-           * This happens when the previous point in the curve was removed.
+          /* Compute if the current point may become the first point of a curve in the
+           * destination, while not being the first point of the curve in the source. This
+           * happens when the previous point in the curve was removed.
            */
           const bool is_new_first_point = curve_was_cut && (src_remove_point[src_point - 1]);
           dst_new_first_point[dst_point] = is_new_first_point;
@@ -958,10 +974,16 @@ struct EraseOperationExecutor {
     /* Get the tool's data. */
     this->mouse_position = extension_sample.mouse_position;
     this->eraser_radius = self.radius;
+    this->eraser_strength = extension_sample.pressure * self.strength;
+
     if (BKE_brush_use_size_pressure(brush)) {
       this->eraser_radius *= BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
     }
+    // if (BKE_brush_use_alpha_pressure(brush)) {
+    //   this->eraser_strength *= BKE_curvemapping_evaluateF(
+    //       brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
+    // }
 
     this->mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
                                        round_fl_to_int(mouse_position[1]));
@@ -1051,6 +1073,7 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
   this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
   this->active_layer_only = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
+  this->strength = BKE_brush_alpha_get(scene, brush);
 }
 
 void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
