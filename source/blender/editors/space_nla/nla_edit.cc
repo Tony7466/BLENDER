@@ -1215,14 +1215,12 @@ static int nlaedit_duplicate_invoke(bContext *C, wmOperator *op, const wmEvent *
   return OPERATOR_FINISHED;
 }
 
-// NATE HERE
 void NLA_OT_duplicate(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Duplicate Strips";
   ot->idname = "NLA_OT_duplicate";
-  ot->description =
-      "Duplicate selected NLA-Strips, adding the new strips to new track(s)";
+  ot->description = "Duplicate selected NLA-Strips, adding the new strips to new track(s)";
 
   /* api callbacks */
   ot->invoke = nlaedit_duplicate_invoke;
