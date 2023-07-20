@@ -65,7 +65,7 @@ set(SRC
   gizmo/intern/wm_gizmo_group.cc
   gizmo/intern/wm_gizmo_group_type.cc
   gizmo/intern/wm_gizmo_map.cc
-  gizmo/intern/wm_gizmo_target_props.c
+  gizmo/intern/wm_gizmo_target_props.cc
   gizmo/intern/wm_gizmo_type.c
   message_bus/intern/wm_message_bus.c
   message_bus/intern/wm_message_bus_rna.c
