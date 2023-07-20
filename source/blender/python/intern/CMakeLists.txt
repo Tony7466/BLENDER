@@ -34,7 +34,7 @@ set(SRC
   bpy_app_icons.cc
   bpy_app_ocio.cc
   bpy_app_oiio.cc
-  bpy_app_opensubdiv.c
+  bpy_app_opensubdiv.cc
   bpy_app_openvdb.c
   bpy_app_sdl.c
   bpy_app_timers.c
