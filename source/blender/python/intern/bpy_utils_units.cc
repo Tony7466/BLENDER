@@ -34,7 +34,7 @@ static const char *bpyunits_usystem_items[] = {
     "NONE",
     "METRIC",
     "IMPERIAL",
-    NULL,
+    nullptr,
 };
 
 static const char *bpyunits_ucategories_items[] = {
@@ -51,7 +51,7 @@ static const char *bpyunits_ucategories_items[] = {
     "CAMERA",
     "POWER",
     "TEMPERATURE",
-    NULL,
+    nullptr,
 };
 
 BLI_STATIC_ASSERT(
@@ -96,16 +96,16 @@ static PyObject *py_structseq_from_strings(PyTypeObject *py_type,
   /* We really populate the contexts' fields here! */
   for (str_iter = str_items, desc = py_sseq_desc->fields; *str_iter; str_iter++, desc++) {
     desc->name = (char *)*str_iter;
-    desc->doc = NULL;
+    desc->doc = nullptr;
   }
   /* end sentinel */
-  desc->name = desc->doc = NULL;
+  desc->name = desc->doc = nullptr;
 
   PyStructSequence_InitType(py_type, py_sseq_desc);
 
   /* Initialize the Python type. */
   py_struct_seq = PyStructSequence_New(py_type);
-  BLI_assert(py_struct_seq != NULL);
+  BLI_assert(py_struct_seq != nullptr);
 
   for (str_iter = str_items; *str_iter; str_iter++) {
     PyStructSequence_SET_ITEM(py_struct_seq, pos++, PyUnicode_FromString(*str_iter));
@@ -159,9 +159,9 @@ PyDoc_STRVAR(
     "   :return: The converted/interpreted value.\n"
     "   :rtype: float\n"
     "   :raises ValueError: if conversion fails to generate a valid Python float value.\n");
-static PyObject *bpyunits_to_value(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpyunits_to_value(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  char *usys_str = NULL, *ucat_str = NULL, *inpt = NULL, *uref = NULL;
+  char *usys_str = nullptr, *ucat_str = nullptr, *inpt = nullptr, *uref = nullptr;
   const float scale = 1.0f;
 
   char *str;
@@ -175,7 +175,7 @@ static PyObject *bpyunits_to_value(PyObject *UNUSED(self), PyObject *args, PyObj
       "unit_category",
       "str_input",
       "str_ref_unit",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "s"  /* `unit_system` */
@@ -190,20 +190,20 @@ static PyObject *bpyunits_to_value(PyObject *UNUSED(self), PyObject *args, PyObj
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &usys_str, &ucat_str, &inpt, &str_len, &uref))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!bpyunits_validate(usys_str, ucat_str, &usys, &ucat)) {
-    return NULL;
+    return nullptr;
   }
 
   str_len = str_len * 2 + 64;
-  str = PyMem_MALLOC(sizeof(*str) * (size_t)str_len);
+  str = static_cast<char *>(PyMem_MALLOC(sizeof(*str) * (size_t)str_len));
   BLI_strncpy(str, inpt, (size_t)str_len);
 
   BKE_unit_replace_string(str, (int)str_len, uref, scale, usys, ucat);
 
-  if (!PyC_RunString_AsNumber(NULL, str, "<bpy_units_api>", &result)) {
+  if (!PyC_RunString_AsNumber(nullptr, str, "<bpy_units_api>", &result)) {
     if (PyErr_Occurred()) {
       PyErr_Print();
       PyErr_Clear();
@@ -211,7 +211,7 @@ static PyObject *bpyunits_to_value(PyObject *UNUSED(self), PyObject *args, PyObj
 
     PyErr_Format(
         PyExc_ValueError, "'%.200s' (converted as '%s') could not be evaluated.", inpt, str);
-    ret = NULL;
+    ret = nullptr;
   }
   else {
     ret = PyFloat_FromDouble(result);
@@ -246,9 +246,9 @@ PyDoc_STRVAR(bpyunits_to_string_doc,
              "   :return: The converted string.\n"
              "   :rtype: str\n"
              "   :raises ValueError: if conversion fails to generate a valid Python string.\n");
-static PyObject *bpyunits_to_string(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpyunits_to_string(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
-  char *usys_str = NULL, *ucat_str = NULL;
+  char *usys_str = nullptr, *ucat_str = nullptr;
   double value = 0.0;
   int precision = 3;
   bool split_unit = false, compatible_unit = false;
@@ -262,7 +262,7 @@ static PyObject *bpyunits_to_string(PyObject *UNUSED(self), PyObject *args, PyOb
       "precision",
       "split_unit",
       "compatible_unit",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "s"  /* `unit_system` */
@@ -288,11 +288,11 @@ static PyObject *bpyunits_to_string(PyObject *UNUSED(self), PyObject *args, PyOb
                                         PyC_ParseBool,
                                         &compatible_unit))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!bpyunits_validate(usys_str, ucat_str, &usys, &ucat)) {
-    return NULL;
+    return nullptr;
   }
 
   {
@@ -333,7 +333,7 @@ static PyMethodDef bpyunits_methods[] = {
      (PyCFunction)bpyunits_to_string,
      METH_VARARGS | METH_KEYWORDS,
      bpyunits_to_string_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(bpyunits_doc, "This module contains some data/methods regarding units handling.");
@@ -344,10 +344,10 @@ static PyModuleDef bpyunits_module = {
     /*m_doc*/ bpyunits_doc,
     /*m_size*/ -1, /* multiple "initialization" just copies the module dict. */
     /*m_methods*/ bpyunits_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPY_utils_units(void)

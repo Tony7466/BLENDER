@@ -69,7 +69,7 @@ set(SRC
   bpy_rna_ui.cc
   bpy_traceback.cc
   bpy_utils_previews.cc
-  bpy_utils_units.c
+  bpy_utils_units.cc
   stubs.c
 
   bpy.h
