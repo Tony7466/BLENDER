@@ -42,6 +42,7 @@ typedef enum eWM_GizmoFlagState {
   WM_GIZMO_STATE_MODAL = (1 << 1),
   WM_GIZMO_STATE_SELECT = (1 << 2),
 } eWM_GizmoFlagState;
+ENUM_OPERATORS(eWM_GizmoFlagState, WM_GIZMO_STATE_SELECT)
 
 /**
  * #wmGizmo.flag
