@@ -63,7 +63,7 @@ set(SRC
   intern/wm_window.c
   gizmo/intern/wm_gizmo.c
   gizmo/intern/wm_gizmo_group.c
-  gizmo/intern/wm_gizmo_group_type.c
+  gizmo/intern/wm_gizmo_group_type.cc
   gizmo/intern/wm_gizmo_map.c
   gizmo/intern/wm_gizmo_target_props.c
   gizmo/intern/wm_gizmo_type.c

@@ -175,6 +175,7 @@ typedef enum eWM_GizmoFlagMapTypeUpdateFlag {
    * So we need to keep track of keymap initialization separately. */
   WM_GIZMOMAPTYPE_KEYMAP_INIT = (1 << 2),
 } eWM_GizmoFlagMapTypeUpdateFlag;
+ENUM_OPERATORS(eWM_GizmoFlagMapTypeUpdateFlag, WM_GIZMOMAPTYPE_KEYMAP_INIT)
 
 /* -------------------------------------------------------------------- */
 /* wmGizmo */

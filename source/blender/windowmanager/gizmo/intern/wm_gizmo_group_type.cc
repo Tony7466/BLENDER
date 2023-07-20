@@ -35,14 +35,14 @@
  * \note This follows conventions from #WM_operatortype_find #WM_operatortype_append & friends.
  * \{ */
 
-static GHash *global_gizmogrouptype_hash = NULL;
+static GHash *global_gizmogrouptype_hash = nullptr;
 
 wmGizmoGroupType *WM_gizmogrouptype_find(const char *idname, bool quiet)
 {
   if (idname[0]) {
     wmGizmoGroupType *gzgt;
 
-    gzgt = BLI_ghash_lookup(global_gizmogrouptype_hash, idname);
+    gzgt = static_cast<wmGizmoGroupType *>(BLI_ghash_lookup(global_gizmogrouptype_hash, idname));
     if (gzgt) {
       return gzgt;
     }
@@ -57,7 +57,7 @@ wmGizmoGroupType *WM_gizmogrouptype_find(const char *idname, bool quiet)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_gizmogrouptype_iter(GHashIterator *ghi)
@@ -67,7 +67,8 @@ void WM_gizmogrouptype_iter(GHashIterator *ghi)
 
 static wmGizmoGroupType *wm_gizmogrouptype_append__begin(void)
 {
-  wmGizmoGroupType *gzgt = MEM_callocN(sizeof(wmGizmoGroupType), "gizmogrouptype");
+  wmGizmoGroupType *gzgt = static_cast<wmGizmoGroupType *>(
+      MEM_callocN(sizeof(wmGizmoGroupType), "gizmogrouptype"));
   gzgt->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_GizmoGroupProperties);
 #if 0
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
@@ -78,15 +79,15 @@ static wmGizmoGroupType *wm_gizmogrouptype_append__begin(void)
 }
 static void wm_gizmogrouptype_append__end(wmGizmoGroupType *gzgt)
 {
-  BLI_assert(gzgt->name != NULL);
-  BLI_assert(gzgt->idname != NULL);
+  BLI_assert(gzgt->name != nullptr);
+  BLI_assert(gzgt->idname != nullptr);
 
   RNA_def_struct_identifier(&BLENDER_RNA, gzgt->srna, gzgt->idname);
 
   gzgt->type_update_flag |= WM_GIZMOMAPTYPE_KEYMAP_INIT;
 
   /* if not set, use default */
-  if (gzgt->setup_keymap == NULL) {
+  if (gzgt->setup_keymap == nullptr) {
     if (gzgt->flag & WM_GIZMOGROUPTYPE_SELECT) {
       gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_select;
     }
@@ -143,7 +144,7 @@ void WM_gizmo_group_type_free_ptr(wmGizmoGroupType *gzgt)
 {
   BLI_assert(gzgt == WM_gizmogrouptype_find(gzgt->idname, false));
 
-  BLI_ghash_remove(global_gizmogrouptype_hash, gzgt->idname, NULL, NULL);
+  BLI_ghash_remove(global_gizmogrouptype_hash, gzgt->idname, nullptr, nullptr);
 
   gizmogrouptype_free(gzgt);
 
@@ -152,9 +153,10 @@ void WM_gizmo_group_type_free_ptr(wmGizmoGroupType *gzgt)
 
 bool WM_gizmo_group_type_free(const char *idname)
 {
-  wmGizmoGroupType *gzgt = BLI_ghash_lookup(global_gizmogrouptype_hash, idname);
+  wmGizmoGroupType *gzgt = static_cast<wmGizmoGroupType *>(
+      BLI_ghash_lookup(global_gizmogrouptype_hash, idname));
 
-  if (gzgt == NULL) {
+  if (gzgt == nullptr) {
     return false;
   }
 
@@ -171,8 +173,8 @@ static void wm_gizmogrouptype_ghash_free_cb(wmGizmoGroupType *gzgt)
 void wm_gizmogrouptype_free(void)
 {
   BLI_ghash_free(
-      global_gizmogrouptype_hash, NULL, (GHashValFreeFP)wm_gizmogrouptype_ghash_free_cb);
-  global_gizmogrouptype_hash = NULL;
+      global_gizmogrouptype_hash, nullptr, (GHashValFreeFP)wm_gizmogrouptype_ghash_free_cb);
+  global_gizmogrouptype_hash = nullptr;
 }
 
 void wm_gizmogrouptype_init(void)
