@@ -43,6 +43,7 @@ class EraseOperation : public GreasePencilStrokeOperation {
   bool keep_caps = false;
   float radius = 50.0f;
   eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
+  bool active_drawing_only = true;
 };
 
 /**
@@ -445,7 +446,6 @@ struct EraseOperationExecutor {
       });
     }
   }
-
   void execute(EraseOperation &self, const bContext &C, const InputSample &extension_sample)
   {
     using namespace blender::bke;
@@ -461,46 +461,57 @@ struct EraseOperationExecutor {
 
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
-    const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
-    blender::bke::greasepencil::Drawing &drawing =
-        *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
-            grease_pencil.drawings_for_write()[drawing_index]);
 
-    const CurvesGeometry &src = drawing.strokes();
+    const auto execute_in_drawing = [&](int drawing_index, bke::greasepencil::Drawing &drawing) {
+      const CurvesGeometry &src = drawing.strokes();
 
-    /* Evaluated geometry. */
-    bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            ob_eval, *obact, drawing_index);
+      /* Evaluated geometry. */
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *obact, drawing_index);
 
-    /* Compute screen space positions. */
-    Array<float2> screen_space_positions(src.points_num());
-    threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
-      for (const int src_point : src_points) {
-        ED_view3d_project_float_global(region,
-                                       deformation.positions[src_point],
-                                       screen_space_positions[src_point],
-                                       V3D_PROJ_TEST_NOP);
+      /* Compute screen space positions. */
+      Array<float2> screen_space_positions(src.points_num());
+      threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+        for (const int src_point : src_points) {
+          ED_view3d_project_float_global(region,
+                                         deformation.positions[src_point],
+                                         screen_space_positions[src_point],
+                                         V3D_PROJ_TEST_NOP);
+        }
+      });
+
+      /* Erasing operator. */
+      CurvesGeometry dst;
+      switch (self.eraser_mode) {
+        case GP_BRUSH_ERASER_STROKE:
+          // To be implemented
+          return;
+        case GP_BRUSH_ERASER_HARD:
+          hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+          break;
+        case GP_BRUSH_ERASER_SOFT:
+          // To be implemented
+          return;
       }
-    });
 
-    /* Erasing operator. */
-    CurvesGeometry dst;
-    switch (self.eraser_mode) {
-      case GP_BRUSH_ERASER_STROKE:
-        // To be implemented
-        return;
-      case GP_BRUSH_ERASER_HARD:
-        hard_eraser(src, screen_space_positions, dst, self.keep_caps);
-        break;
-      case GP_BRUSH_ERASER_SOFT:
-        // To be implemented
-        return;
+      /* Set the new geometry. */
+      drawing.geometry.wrap() = std::move(dst);
+      drawing.tag_topology_changed();
+    };
+
+    if (self.active_drawing_only) {
+      /* Erase only on the drawing at the current frame of the active layer. */
+      const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
+      blender::bke::greasepencil::Drawing &drawing =
+          *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
+              grease_pencil.drawings_for_write()[drawing_index]);
+      execute_in_drawing(drawing_index, drawing);
     }
-
-    /* Set the new geometry. */
-    drawing.geometry.wrap() = std::move(dst);
-    drawing.tag_topology_changed();
+    else {
+      /* Erase on all editable drawings. */
+      grease_pencil.foreach_editable_drawing(scene->r.cfra, execute_in_drawing);
+    }
 
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
