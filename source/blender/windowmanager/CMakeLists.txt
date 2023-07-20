@@ -60,7 +60,7 @@ set(SRC
   intern/wm_tooltip.cc
   intern/wm_uilist_type.cc
   intern/wm_utils.cc
-  intern/wm_window.c
+  intern/wm_window.cc
   gizmo/intern/wm_gizmo.cc
   gizmo/intern/wm_gizmo_group.cc
   gizmo/intern/wm_gizmo_group_type.cc
