@@ -36,7 +36,7 @@ BLI_INLINE uint void_hash_uint(const void *key)
 
 static uint wm_msg_rna_gset_hash(const void *key_p)
 {
-  const wmMsgSubscribeKey_RNA *key = key_p;
+  const wmMsgSubscribeKey_RNA *key = static_cast<const wmMsgSubscribeKey_RNA *>(key_p);
   const wmMsgParams_RNA *params = &key->msg.params;
   //  printf("%s\n", RNA_struct_identifier(params->ptr.type));
   uint k = void_hash_uint(params->ptr.type);
@@ -55,14 +55,17 @@ static bool wm_msg_rna_gset_cmp(const void *key_a_p, const void *key_b_p)
 }
 static void wm_msg_rna_gset_key_free(void *key_p)
 {
-  wmMsgSubscribeKey_RNA *key = key_p;
+  wmMsgSubscribeKey_RNA *key = static_cast<wmMsgSubscribeKey_RNA *>(key_p);
   wmMsgSubscribeValueLink *msg_lnk_next;
-  for (wmMsgSubscribeValueLink *msg_lnk = key->head.values.first; msg_lnk; msg_lnk = msg_lnk_next)
+  for (wmMsgSubscribeValueLink *msg_lnk =
+           static_cast<wmMsgSubscribeValueLink *>(key->head.values.first);
+       msg_lnk;
+       msg_lnk = msg_lnk_next)
   {
     msg_lnk_next = msg_lnk->next;
     wm_msg_subscribe_value_free(&key->head, msg_lnk);
   }
-  if (key->msg.params.data_path != NULL) {
+  if (key->msg.params.data_path != nullptr) {
     MEM_freeN(key->msg.params.data_path);
   }
   MEM_freeN(key);
@@ -89,16 +92,20 @@ static void wm_msg_rna_update_by_id(struct wmMsgBus *mbus, ID *id_src, ID *id_ds
   GSetIterator gs_iter;
   BLI_gsetIterator_init(&gs_iter, gs);
   while (BLI_gsetIterator_done(&gs_iter) == false) {
-    wmMsgSubscribeKey_RNA *key = BLI_gsetIterator_getKey(&gs_iter);
+    wmMsgSubscribeKey_RNA *key = static_cast<wmMsgSubscribeKey_RNA *>(
+        BLI_gsetIterator_getKey(&gs_iter));
     BLI_gsetIterator_step(&gs_iter);
     if (key->msg.params.ptr.owner_id == id_src) {
 
       /* GSet always needs updating since the key changes. */
-      BLI_gset_remove(gs, key, NULL);
+      BLI_gset_remove(gs, key, nullptr);
 
       /* Remove any non-persistent values, so a single persistent
        * value doesn't modify behavior for the rest. */
-      for (wmMsgSubscribeValueLink *msg_lnk = key->head.values.first, *msg_lnk_next; msg_lnk;
+      for (wmMsgSubscribeValueLink *
+               msg_lnk = static_cast<wmMsgSubscribeValueLink *>(key->head.values.first),
+              *msg_lnk_next;
+           msg_lnk;
            msg_lnk = msg_lnk_next)
       {
         msg_lnk_next = msg_lnk->next;
@@ -126,9 +133,9 @@ static void wm_msg_rna_update_by_id(struct wmMsgBus *mbus, ID *id_src, ID *id_ds
         PointerRNA idptr;
         RNA_id_pointer_create(id_dst, &idptr);
         PointerRNA ptr;
-        PropertyRNA *prop = NULL;
+        PropertyRNA *prop = nullptr;
         if (RNA_path_resolve(&idptr, key->msg.params.data_path, &ptr, &prop) &&
-            (prop == NULL) == (key->msg.params.prop == NULL))
+            (prop == nullptr) == (key->msg.params.prop == nullptr))
         {
           key->msg.params.ptr = ptr;
           key->msg.params.prop = prop;
@@ -137,7 +144,10 @@ static void wm_msg_rna_update_by_id(struct wmMsgBus *mbus, ID *id_src, ID *id_ds
       }
 
       if (remove) {
-        for (wmMsgSubscribeValueLink *msg_lnk = key->head.values.first, *msg_lnk_next; msg_lnk;
+        for (wmMsgSubscribeValueLink *
+                 msg_lnk = static_cast<wmMsgSubscribeValueLink *>(key->head.values.first),
+                *msg_lnk_next;
+             msg_lnk;
              msg_lnk = msg_lnk_next)
         {
           msg_lnk_next = msg_lnk->next;
@@ -169,11 +179,15 @@ static void wm_msg_rna_remove_by_id(struct wmMsgBus *mbus, const ID *id)
   GSetIterator gs_iter;
   BLI_gsetIterator_init(&gs_iter, gs);
   while (BLI_gsetIterator_done(&gs_iter) == false) {
-    wmMsgSubscribeKey_RNA *key = BLI_gsetIterator_getKey(&gs_iter);
+    wmMsgSubscribeKey_RNA *key = static_cast<wmMsgSubscribeKey_RNA *>(
+        BLI_gsetIterator_getKey(&gs_iter));
     BLI_gsetIterator_step(&gs_iter);
     if (key->msg.params.ptr.owner_id == id) {
       /* Clear here so we can decrement 'messages_tag_count'. */
-      for (wmMsgSubscribeValueLink *msg_lnk = key->head.values.first, *msg_lnk_next; msg_lnk;
+      for (wmMsgSubscribeValueLink *
+               msg_lnk = static_cast<wmMsgSubscribeValueLink *>(key->head.values.first),
+              *msg_lnk_next;
+           msg_lnk;
            msg_lnk = msg_lnk_next)
       {
         msg_lnk_next = msg_lnk->next;
@@ -184,7 +198,7 @@ static void wm_msg_rna_remove_by_id(struct wmMsgBus *mbus, const ID *id)
       }
 
       BLI_remlink(&mbus->messages, key);
-      BLI_gset_remove(gs, key, NULL);
+      BLI_gset_remove(gs, key, nullptr);
       wm_msg_rna_gset_key_free(key);
     }
   }
@@ -214,7 +228,8 @@ wmMsgSubscribeKey_RNA *WM_msg_lookup_rna(struct wmMsgBus *mbus,
 {
   wmMsgSubscribeKey_RNA key_test;
   key_test.msg.params = *msg_key_params;
-  return BLI_gset_lookup(mbus->messages_gset[WM_MSG_TYPE_RNA], &key_test);
+  return static_cast<wmMsgSubscribeKey_RNA *>(
+      BLI_gset_lookup(mbus->messages_gset[WM_MSG_TYPE_RNA], &key_test));
 }
 
 void WM_msg_publish_rna_params(struct wmMsgBus *mbus, const wmMsgParams_RNA *msg_key_params)
@@ -240,24 +255,24 @@ void WM_msg_publish_rna_params(struct wmMsgBus *mbus, const wmMsgParams_RNA *msg
     wmMsgParams_RNA msg_key_params_anon = *msg_key_params;
 
     /* We might want to enable this later? */
-    if (msg_key_params_anon.prop != NULL) {
+    if (msg_key_params_anon.prop != nullptr) {
       /* All properties for this type. */
-      msg_key_params_anon.prop = NULL;
+      msg_key_params_anon.prop = nullptr;
       if ((key = WM_msg_lookup_rna(mbus, &msg_key_params_anon))) {
         WM_msg_publish_with_key(mbus, &key->head);
       }
       msg_key_params_anon.prop = msg_key_params->prop;
     }
 
-    msg_key_params_anon.ptr.owner_id = NULL;
-    msg_key_params_anon.ptr.data = NULL;
+    msg_key_params_anon.ptr.owner_id = nullptr;
+    msg_key_params_anon.ptr.data = nullptr;
     if ((key = WM_msg_lookup_rna(mbus, &msg_key_params_anon))) {
       WM_msg_publish_with_key(mbus, &key->head);
     }
 
     /* Support subscribers to a type. */
     if (msg_key_params->prop) {
-      msg_key_params_anon.prop = NULL;
+      msg_key_params_anon.prop = nullptr;
       if ((key = WM_msg_lookup_rna(mbus, &msg_key_params_anon))) {
         WM_msg_publish_with_key(mbus, &key->head);
       }
@@ -267,11 +282,10 @@ void WM_msg_publish_rna_params(struct wmMsgBus *mbus, const wmMsgParams_RNA *msg
 
 void WM_msg_publish_rna(struct wmMsgBus *mbus, PointerRNA *ptr, PropertyRNA *prop)
 {
-  WM_msg_publish_rna_params(mbus,
-                            &(wmMsgParams_RNA){
-                                .ptr = *ptr,
-                                .prop = prop,
-                            });
+  wmMsgParams_RNA params{};
+  params.ptr = *ptr;
+  params.prop = prop;
+  WM_msg_publish_rna_params(mbus, &params);
 }
 
 void WM_msg_subscribe_rna_params(struct wmMsgBus *mbus,
@@ -279,7 +293,7 @@ void WM_msg_subscribe_rna_params(struct wmMsgBus *mbus,
                                  const wmMsgSubscribeValue *msg_val_params,
                                  const char *id_repr)
 {
-  wmMsgSubscribeKey_RNA msg_key_test = {{NULL}};
+  wmMsgSubscribeKey_RNA msg_key_test = {{nullptr}};
 
   /* use when added */
   msg_key_test.msg.head.id = id_repr;
@@ -301,7 +315,7 @@ void WM_msg_subscribe_rna_params(struct wmMsgBus *mbus,
       mbus, &msg_key_test.head, msg_val_params);
 
   if (msg_val_params->is_persistent) {
-    if (msg_key->msg.params.data_path == NULL) {
+    if (msg_key->msg.params.data_path == nullptr) {
       if (msg_key->msg.params.ptr.data != msg_key->msg.params.ptr.owner_id) {
         /* We assume prop type can't change. */
         msg_key->msg.params.data_path = RNA_path_from_ID_to_struct(&msg_key->msg.params.ptr);
@@ -316,13 +330,10 @@ void WM_msg_subscribe_rna(struct wmMsgBus *mbus,
                           const wmMsgSubscribeValue *msg_val_params,
                           const char *id_repr)
 {
-  WM_msg_subscribe_rna_params(mbus,
-                              &(const wmMsgParams_RNA){
-                                  .ptr = *ptr,
-                                  .prop = prop,
-                              },
-                              msg_val_params,
-                              id_repr);
+  wmMsgParams_RNA params{};
+  params.ptr = *ptr;
+  params.prop = prop;
+  WM_msg_subscribe_rna_params(mbus, &params, msg_val_params, id_repr);
 }
 
 /** \} */
@@ -338,14 +349,14 @@ void WM_msg_subscribe_ID(struct wmMsgBus *mbus,
                          const wmMsgSubscribeValue *msg_val_params,
                          const char *id_repr)
 {
-  wmMsgParams_RNA msg_key_params = {{NULL}};
+  wmMsgParams_RNA msg_key_params = {{nullptr}};
   RNA_id_pointer_create(id, &msg_key_params.ptr);
   WM_msg_subscribe_rna_params(mbus, &msg_key_params, msg_val_params, id_repr);
 }
 
 void WM_msg_publish_ID(struct wmMsgBus *mbus, ID *id)
 {
-  wmMsgParams_RNA msg_key_params = {{NULL}};
+  wmMsgParams_RNA msg_key_params = {{nullptr}};
   RNA_id_pointer_create(id, &msg_key_params.ptr);
   WM_msg_publish_rna_params(mbus, &msg_key_params);
 }
