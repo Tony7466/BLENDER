@@ -14,28 +14,19 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "id.h"
+#include "light.h"
 
 namespace blender::render::hydra {
 
-class WorldData : public IdData {
+class WorldData : public LightData {
  public:
   WorldData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;
-  void insert() override;
-  void remove() override;
   void update() override;
-  void update(World *world);
 
-  pxr::VtValue get_data(pxr::TfToken const &key) const override;
-
-  pxr::GfMatrix4d transform;
-
- private:
-  void write_transform();
-
-  std::map<pxr::TfToken, pxr::VtValue> data_;
+ protected:
+  void write_transform() override;
 };
 
 }  // namespace blender::render::hydra

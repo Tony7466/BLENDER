@@ -28,10 +28,7 @@ extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE;
 class Engine;
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
-  friend ObjectData;   /* has access to instances */
-  friend CurvesData;   /* has access to materials */
-  friend VolumeData;   /* has access to materials */
-  friend MeshData;     /* has access to materials */
+  friend ObjectData;   /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
 
  public:

@@ -10,11 +10,9 @@ namespace blender::render::hydra {
 void PreviewEngine::render(Depsgraph *depsgraph)
 {
   prepare_for_render(depsgraph);
+  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
 
-  {
-    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    engine_->Execute(render_index_.get(), &tasks_);
-  }
+  engine_->Execute(render_index_.get(), &tasks_);
 
   std::vector<float> &pixels = render_images_["Combined"];
   while (true) {

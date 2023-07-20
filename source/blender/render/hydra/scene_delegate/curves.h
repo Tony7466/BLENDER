@@ -24,18 +24,19 @@ class CurvesData : public ObjectData {
   void remove() override;
   void update() override;
 
-  pxr::VtValue get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const;
-  bool update_visibility() override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  pxr::SdfPath material_id() const override;
+  void available_materials(Set<pxr::SdfPath> &paths) const override;
 
-  pxr::HdBasisCurvesTopology curves_topology(pxr::SdfPath const &id) const;
+  pxr::HdBasisCurvesTopology topology() const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
-  pxr::SdfPath material_id() const;
-  void available_materials(Set<pxr::SdfPath> &paths) const;
+
+ protected:
+  void write_materials() override;
 
  private:
   void write_curves(Curves *curves);
   void write_uv_maps(Curves *curves);
-  void write_materials();
 
   pxr::VtIntArray curve_vertex_counts_;
   pxr::VtVec3fArray vertices_;

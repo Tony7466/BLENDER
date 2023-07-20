@@ -27,9 +27,8 @@ class LightData : public ObjectData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  bool update_visibility() override;
 
- private:
+ protected:
   pxr::TfToken prim_type(Light *light);
 
   std::map<pxr::TfToken, pxr::VtValue> data_;

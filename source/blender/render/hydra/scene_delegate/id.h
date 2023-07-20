@@ -13,14 +13,14 @@
 template<> struct blender::DefaultHash<pxr::SdfPath> {
   uint64_t operator()(const pxr::SdfPath &value) const
   {
-    return pxr::SdfPath::Hash()(value);
+    return (uint64_t)value.GetHash();
   }
 };
 
 template<> struct blender::DefaultHash<pxr::TfToken> {
   uint64_t operator()(const pxr::TfToken &value) const
   {
-    return pxr::TfHash()(value);
+    return (uint64_t)value.Hash();
   }
 };
 
@@ -38,8 +38,7 @@ class IdData {
   virtual void remove() = 0;
   virtual void update() = 0;
 
-  virtual pxr::VtValue get_data(pxr::TfToken const &key) const;
-  template<class T> const T get_data(pxr::TfToken const &key) const;
+  virtual pxr::VtValue get_data(pxr::TfToken const &key) const = 0;
 
   ID *id;
   pxr::SdfPath prim_id;
@@ -48,12 +47,10 @@ class IdData {
   BlenderSceneDelegate *scene_delegate_;
 };
 
-template<class T> const T IdData::get_data(pxr::TfToken const &key) const
-{
-  return get_data(key).Get<T>();
-}
-
 #define ID_LOG(level, msg, ...) \
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, level, "%s: " msg, prim_id.GetText(), ##__VA_ARGS__);
+
+#define ID_LOGN(level, msg, ...) \
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, \
             level, \
             "%s (%s): " msg, \

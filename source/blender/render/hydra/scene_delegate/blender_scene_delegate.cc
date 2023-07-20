@@ -45,7 +45,7 @@ pxr::HdBasisCurvesTopology BlenderSceneDelegate::GetBasisCurvesTopology(pxr::Sdf
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   CurvesData *c_data = curves_data(id);
-  return c_data->curves_topology(id);
+  return c_data->topology();
 };
 
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
@@ -68,21 +68,9 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
-  MeshData *m_data = mesh_data(id);
-  if (m_data) {
-    return m_data->get_data(id, key);
-  }
-  CurvesData *c_data = curves_data(id);
-  if (c_data) {
-    return c_data->get_data(id, key);
-  }
-  VolumeData *v_data = volume_data(id);
-  if (v_data) {
-    return v_data->get_data(id, key);
-  }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
-    return obj_data->get_data(key);
+    return obj_data->get_data(id, key);
   }
   MaterialData *mat_data = material_data(id);
   if (mat_data) {
@@ -102,9 +90,6 @@ pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
   LightData *l_data = light_data(id);
   if (l_data) {
     return l_data->get_data(key);
-  }
-  if (id == world_prim_id()) {
-    return world_data_->get_data(key);
   }
   return pxr::VtValue();
 }
@@ -131,17 +116,9 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
 pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
-  MeshData *m_data = mesh_data(rprim_id);
-  if (m_data) {
-    return m_data->material_id(rprim_id);
-  }
-  CurvesData *c_data = curves_data(rprim_id);
-  if (c_data) {
-    return c_data->material_id();
-  }
-  VolumeData *v_data = volume_data(rprim_id);
-  if (v_data) {
-    return v_data->material_id();
+  ObjectData *obj_data = object_data(rprim_id);
+  if (obj_data) {
+    return obj_data->material_id(rprim_id);
   }
   return pxr::SdfPath();
 }
@@ -289,6 +266,10 @@ pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
 
 ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
+  if (id == world_prim_id()) {
+    return world_data_.get();
+  }
+
   pxr::SdfPath p_id = (id.GetName().find("SM_") == 0 || id.GetName().find("VF_") == 0) ?
                           id.GetParentPath() :
                           id;
@@ -296,6 +277,7 @@ ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
   if (obj_data) {
     return obj_data->get();
   }
+
   InstancerData *i_data = instancer_data(p_id, true);
   if (i_data) {
     return i_data->object_data(id);
@@ -490,7 +472,6 @@ void BlenderSceneDelegate::update_collection()
     }
     else {
       obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
-      obj_data->init();
       obj_data->insert();
     }
   }

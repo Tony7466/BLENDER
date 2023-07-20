@@ -19,16 +19,17 @@ class VolumeData : public ObjectData {
   void remove() override;
   void update() override;
 
-  pxr::VtValue get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const;
-  bool update_visibility() override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  pxr::VtValue get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const override;
+  pxr::SdfPath material_id() const override;
+  void available_materials(Set<pxr::SdfPath> &paths) const override;
 
   pxr::HdVolumeFieldDescriptorVector field_descriptors() const;
-  pxr::SdfPath material_id() const;
-  void available_materials(Set<pxr::SdfPath> &paths) const;
+
+ protected:
+  void write_materials() override;
 
  private:
-  void write_materials();
-
   std::string filepath_;
   pxr::HdVolumeFieldDescriptorVector field_descriptors_;
   MaterialData *mat_data_ = nullptr;

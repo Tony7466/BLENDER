@@ -9,6 +9,7 @@
 #include "BKE_layer.h"
 #include "BKE_object.h"
 #include "BLI_map.hh"
+#include "BLI_set.hh"
 #include "DNA_object_types.h"
 
 #include "id.h"
@@ -28,13 +29,19 @@ class ObjectData : public IdData {
                          Object *object,
                          int mode = OB_VISIBLE_SELF);
 
-  virtual bool update_visibility();
+  using IdData::get_data;
+  virtual pxr::VtValue get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const;
+  virtual pxr::SdfPath material_id() const;
+  virtual pxr::SdfPath material_id(pxr::SdfPath const &id) const;
+  virtual void available_materials(Set<pxr::SdfPath> &paths) const;
 
   pxr::GfMatrix4d transform;
   bool visible = true;
 
  protected:
-  void write_transform();
+  virtual void write_transform();
+  virtual void write_materials();
+  MaterialData *get_or_create_material(Material *mat);
 };
 
 using ObjectDataMap = Map<pxr::SdfPath, std::unique_ptr<ObjectData>>;

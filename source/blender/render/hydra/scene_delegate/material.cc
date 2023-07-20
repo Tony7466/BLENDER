@@ -31,7 +31,7 @@ MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate,
 
 void MaterialData::init()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   double_sided = (((Material *)id)->blend_flag & MA_BL_CULL_BACKFACE) == 0;
 
   export_mtlx();
@@ -42,20 +42,20 @@ void MaterialData::init()
 
 void MaterialData::insert()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   scene_delegate_->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->material, scene_delegate_, prim_id);
 }
 
 void MaterialData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, prim_id);
 }
 
 void MaterialData::update()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   bool prev_double_sided = double_sided;
   init();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
@@ -74,7 +74,7 @@ void MaterialData::update()
 pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
 {
   if (key == scene_delegate_->settings.mx_filename_key) {
-    ID_LOG(3, "%s", key.GetText());
+    ID_LOGN(3, "%s", key.GetText());
     if (!mtlx_path_.GetResolvedPath().empty()) {
       return pxr::VtValue(mtlx_path_);
     }
@@ -149,12 +149,12 @@ void MaterialData::export_mtlx()
   PyGILState_Release(gstate);
 
   mtlx_path_ = pxr::SdfAssetPath(path, path);
-  ID_LOG(1, "mtlx=%s", mtlx_path_.GetResolvedPath().c_str());
+  ID_LOGN(1, "mtlx=%s", mtlx_path_.GetResolvedPath().c_str());
 }
 
 void MaterialData::write_material_network_map()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   if (mtlx_path_.GetResolvedPath().empty()) {
     material_network_map_ = pxr::VtValue();
     return;

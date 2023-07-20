@@ -33,14 +33,13 @@
 namespace blender::render::hydra {
 
 WorldData::WorldData(BlenderSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id)
-    : IdData(scene_delegate, nullptr, prim_id)
+    : LightData(scene_delegate, nullptr, prim_id)
 {
+  prim_type_ = pxr::HdPrimTypeTokens->domeLight;
 }
 
 void WorldData::init()
 {
-  write_transform();
-
   data_.clear();
   data_[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
 
@@ -51,7 +50,7 @@ void WorldData::init()
 
   if (scene_delegate_->shading_settings.use_scene_world) {
     World *world = scene_delegate_->scene->world;
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s: %s", prim_id.GetText(), world->id.name);
+    ID_LOG(1, "%s", world->id.name);
 
     exposure = world->exposure;
     if (world->use_nodes) {
@@ -115,21 +114,13 @@ void WorldData::init()
     }
   }
   else {
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
-              1,
-              "%s: studiolight: %s",
-              prim_id.GetText(),
-              scene_delegate_->shading_settings.studiolight_name.c_str());
+    ID_LOG(1, "studiolight: %s", scene_delegate_->shading_settings.studiolight_name.c_str());
 
     StudioLight *sl = BKE_studiolight_find(
         scene_delegate_->shading_settings.studiolight_name.c_str(),
         STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE);
     if (sl != NULL && sl->flag & STUDIOLIGHT_TYPE_WORLD) {
       texture_file = pxr::SdfAssetPath(sl->filepath, sl->filepath);
-      transform *= pxr::GfMatrix4d(
-          pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, -1.0),
-                          RAD2DEGF(scene_delegate_->shading_settings.studiolight_rotation)),
-          pxr::GfVec3d());
       /* coefficient to follow Cycles result */
       intensity = scene_delegate_->shading_settings.studiolight_intensity / 2;
     }
@@ -139,45 +130,27 @@ void WorldData::init()
   data_[pxr::HdLightTokens->exposure] = exposure;
   data_[pxr::HdLightTokens->color] = color;
   data_[pxr::HdLightTokens->textureFile] = texture_file;
-}
 
-void WorldData::insert()
-{
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
-  scene_delegate_->GetRenderIndex().InsertSprim(
-      pxr::HdPrimTypeTokens->domeLight, scene_delegate_, prim_id);
-}
-
-void WorldData::remove()
-{
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
-  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, prim_id);
+  write_transform();
 }
 
 void WorldData::update()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  ID_LOG(1, "");
   init();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdLight::AllDirty);
 }
 
-pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
-{
-  auto it = data_.find(key);
-  if (it != data_.end()) {
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s: %s", prim_id.GetText(), key.GetText());
-    return pxr::VtValue(it->second);
-  }
-  return pxr::VtValue();
-}
-
 void WorldData::write_transform()
 {
-  transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90), pxr::GfVec3d());
-
-  transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180), pxr::GfVec3d());
-  transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0), pxr::GfVec3d());
+  transform = pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), 90.0)) *
+              pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0));
+  if (!scene_delegate_->shading_settings.use_scene_world) {
+    transform *= pxr::GfMatrix4d().SetRotate(
+        pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, -1.0),
+                        RAD2DEGF(scene_delegate_->shading_settings.studiolight_rotation)));
+  }
 }
 
 }  // namespace blender::render::hydra

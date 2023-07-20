@@ -20,7 +20,7 @@ CurvesData::CurvesData(BlenderSceneDelegate *scene_delegate,
 
 void CurvesData::init()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
 
   Object *object = (Object *)id;
   write_curves((Curves *)object->data);
@@ -30,14 +30,14 @@ void CurvesData::init()
 
 void CurvesData::insert()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   scene_delegate_->GetRenderIndex().InsertRprim(
       pxr::HdPrimTypeTokens->basisCurves, scene_delegate_, prim_id);
 }
 
 void CurvesData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
@@ -63,10 +63,10 @@ void CurvesData::update()
   }
 
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
 }
 
-pxr::VtValue CurvesData::get_data(pxr::SdfPath const & /* id */, pxr::TfToken const &key) const
+pxr::VtValue CurvesData::get_data(pxr::TfToken const &key) const
 {
   if (key == pxr::HdTokens->points) {
     return pxr::VtValue(vertices_);
@@ -80,18 +80,22 @@ pxr::VtValue CurvesData::get_data(pxr::SdfPath const & /* id */, pxr::TfToken co
   return pxr::VtValue();
 }
 
-bool CurvesData::update_visibility()
+pxr::SdfPath CurvesData::material_id() const
 {
-  bool ret = ObjectData::update_visibility();
-  if (ret) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        prim_id, pxr::HdChangeTracker::DirtyVisibility);
-    ID_LOG(1, "");
+  if (!mat_data_) {
+    return pxr::SdfPath();
   }
-  return ret;
+  return mat_data_->prim_id;
 }
 
-pxr::HdBasisCurvesTopology CurvesData::curves_topology(pxr::SdfPath const & /* id */) const
+void CurvesData::available_materials(Set<pxr::SdfPath> &paths) const
+{
+  if (mat_data_ && !mat_data_->prim_id.IsEmpty()) {
+    paths.add(mat_data_->prim_id);
+  }
+}
+
+pxr::HdBasisCurvesTopology CurvesData::topology() const
 {
   return pxr::HdBasisCurvesTopology(pxr::HdTokens->linear,
                                     pxr::TfToken(),
@@ -122,19 +126,15 @@ pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
   return primvars;
 }
 
-pxr::SdfPath CurvesData::material_id() const
+void CurvesData::write_materials()
 {
-  if (!mat_data_) {
-    return pxr::SdfPath();
+  Object *object = (Object *)id;
+  Material *mat = nullptr;
+  /* TODO: Using only first material. Add support for multimaterial. */
+  if (BKE_object_material_count_eval(object) > 0) {
+    mat = BKE_object_material_get_eval(object, 0);
   }
-  return mat_data_->prim_id;
-}
-
-void CurvesData::available_materials(Set<pxr::SdfPath> &paths) const
-{
-  if (mat_data_ && !mat_data_->prim_id.IsEmpty()) {
-    paths.add(mat_data_->prim_id);
-  }
+  mat_data_ = get_or_create_material(mat);
 }
 
 void CurvesData::write_curves(Curves *curves)
@@ -175,30 +175,6 @@ void CurvesData::write_uv_maps(Curves *curves)
     for (int i = 0; i < curves->geometry.curve_num; i++) {
       uvs_.push_back(pxr::GfVec2f(uvs[i][0], uvs[i][1]));
     }
-  }
-}
-
-void CurvesData::write_materials()
-{
-  Object *object = (Object *)id;
-  Material *mat = nullptr;
-  /* TODO: Using only first material. Add support for multimaterial. */
-  if (BKE_object_material_count_eval(object) > 0) {
-    mat = BKE_object_material_get_eval(object, 0);
-  }
-
-  if (!mat) {
-    mat_data_ = nullptr;
-    return;
-  }
-  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
-  mat_data_ = scene_delegate_->material_data(p_id);
-  if (!mat_data_) {
-    scene_delegate_->materials_.add_new(
-        p_id, std::make_unique<MaterialData>(scene_delegate_, mat, p_id));
-    mat_data_ = scene_delegate_->material_data(p_id);
-    mat_data_->init();
-    mat_data_->insert();
   }
 }
 

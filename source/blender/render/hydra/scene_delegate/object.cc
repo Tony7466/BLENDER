@@ -23,7 +23,7 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
                                                Object *object,
                                                pxr::SdfPath const &prim_id)
 {
-  std::unique_ptr<ObjectData> data;
+  std::unique_ptr<ObjectData> obj_data;
 
   switch (object->type) {
     case OB_MESH:
@@ -31,21 +31,23 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
     case OB_FONT:
     case OB_CURVES_LEGACY:
     case OB_MBALL:
-      data = std::make_unique<MeshData>(scene_delegate, object, prim_id);
+      obj_data = std::make_unique<MeshData>(scene_delegate, object, prim_id);
       break;
     case OB_CURVES:
-      data = std::make_unique<CurvesData>(scene_delegate, object, prim_id);
+      obj_data = std::make_unique<CurvesData>(scene_delegate, object, prim_id);
       break;
     case OB_LAMP:
-      data = std::make_unique<LightData>(scene_delegate, object, prim_id);
+      obj_data = std::make_unique<LightData>(scene_delegate, object, prim_id);
       break;
     case OB_VOLUME:
-      data = std::make_unique<VolumeData>(scene_delegate, object, prim_id);
+      obj_data = std::make_unique<VolumeData>(scene_delegate, object, prim_id);
       break;
     default:
+      BLI_assert_unreachable();
       break;
   }
-  return data;
+  obj_data->init();
+  return obj_data;
 }
 
 bool ObjectData::is_supported(Object *object)
@@ -78,16 +80,46 @@ bool ObjectData::is_visible(BlenderSceneDelegate *scene_delegate, Object *object
   return ret;
 }
 
-bool ObjectData::update_visibility()
+pxr::VtValue ObjectData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
 {
-  bool prev_visible = visible;
-  visible = is_visible(scene_delegate_, (Object *)id);
-  return visible != prev_visible;
+  return get_data(key);
 }
+
+pxr::SdfPath ObjectData::material_id() const
+{
+  return pxr::SdfPath();
+}
+
+pxr::SdfPath ObjectData::material_id(pxr::SdfPath const &id) const
+{
+  return material_id();
+}
+
+void ObjectData::available_materials(Set<pxr::SdfPath> &paths) const {}
 
 void ObjectData::write_transform()
 {
   transform = gf_matrix_from_transform(((Object *)id)->object_to_world);
+}
+
+void ObjectData::write_materials() {}
+
+MaterialData *ObjectData::get_or_create_material(Material *mat)
+{
+  if (!mat) {
+    return nullptr;
+  }
+
+  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
+  MaterialData *mat_data = scene_delegate_->material_data(p_id);
+  if (!mat_data) {
+    scene_delegate_->materials_.add_new(
+        p_id, std::make_unique<MaterialData>(scene_delegate_, mat, p_id));
+    mat_data = scene_delegate_->material_data(p_id);
+    mat_data->init();
+    mat_data->insert();
+  }
+  return mat_data;
 }
 
 pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4])

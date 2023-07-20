@@ -24,7 +24,7 @@ LightData::LightData(BlenderSceneDelegate *scene_delegate,
 
 void LightData::init()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
 
   Light *light = (Light *)((Object *)id)->data;
   data_.clear();
@@ -97,13 +97,13 @@ void LightData::init()
 
 void LightData::insert()
 {
-  ID_LOG(1, "");
+  ID_LOGN(1, "");
   scene_delegate_->GetRenderIndex().InsertSprim(prim_type_, scene_delegate_, prim_id);
 }
 
 void LightData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  ID_LOG(1, "");
   scene_delegate_->GetRenderIndex().RemoveSprim(prim_type_, prim_id);
 }
 
@@ -128,13 +128,13 @@ void LightData::update()
   }
   if (bits != pxr::HdChangeTracker::Clean) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);
-    ID_LOG(1, "");
+    ID_LOGN(1, "");
   }
 }
 
 pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
 {
-  ID_LOG(3, "%s", key.GetText());
+  ID_LOGN(3, "%s", key.GetText());
   auto it = data_.find(key);
   if (it != data_.end()) {
     return pxr::VtValue(it->second);
@@ -146,17 +146,6 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
   }
 
   return pxr::VtValue();
-}
-
-bool LightData::update_visibility()
-{
-  bool ret = ObjectData::update_visibility();
-  if (ret) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
-                                                                        pxr::HdLight::DirtyParams);
-    ID_LOG(1, "");
-  }
-  return ret;
 }
 
 pxr::TfToken LightData::prim_type(Light *light)
