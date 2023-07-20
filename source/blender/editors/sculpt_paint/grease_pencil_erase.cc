@@ -369,13 +369,8 @@ struct EraseOperationExecutor {
       bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
       attribute.dst.finish();
     }
-
-    /* Update the cyclic attribute : cyclic curves that have been cut are not cyclic anymore. */
-    MutableSpan<bool> dst_cyclic = dst.cyclic_for_write();
-    for (const int dst_curve : dst.curves_range()) {
-      const int src_curve = dst_to_src_curve[dst_curve];
-      dst_cyclic[dst_curve] = src_now_cyclic[src_curve];
-    }
+    array_utils::gather(
+        src_now_cyclic.as_span(), dst_to_src_curve.as_span(), dst.cyclic_for_write());
 
     /* Display intersections with flat caps. */
     const OffsetIndices<int> dst_points_by_curve = dst.points_by_curve();
