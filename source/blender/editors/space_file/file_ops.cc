@@ -80,10 +80,10 @@ static FileSelection find_file_mouse_rect(SpaceFile *sfile,
   v2d->cur.ymax += sfile->layout->offset_top;
 
   BLI_rcti_init(&rect_view,
-                (int)(v2d->tot.xmin + rect_view_fl.xmin),
-                (int)(v2d->tot.xmin + rect_view_fl.xmax),
-                (int)(v2d->tot.ymax - rect_view_fl.ymin),
-                (int)(v2d->tot.ymax - rect_view_fl.ymax));
+                int(v2d->tot.xmin + rect_view_fl.xmin),
+                int(v2d->tot.xmin + rect_view_fl.xmax),
+                int(v2d->tot.ymax - rect_view_fl.ymin),
+                int(v2d->tot.ymax - rect_view_fl.ymax));
 
   sel = ED_fileselect_layout_offset_rect(sfile->layout, &rect_view);
 
@@ -224,7 +224,7 @@ static FileSelect file_select_do(bContext *C, int selected_idx, bool do_diropen)
 /**
  * \warning Loops over all files so better use cautiously.
  */
-static bool file_is_any_selected(struct FileList *files)
+static bool file_is_any_selected(FileList *files)
 {
   const int numfiles = filelist_files_ensure(files);
   int i;
@@ -239,7 +239,7 @@ static bool file_is_any_selected(struct FileList *files)
   return false;
 }
 
-static FileSelection file_current_selection_range_get(struct FileList *files)
+static FileSelection file_current_selection_range_get(FileList *files)
 {
   const int numfiles = filelist_files_ensure(files);
   FileSelection selection = {-1, -1};
@@ -377,7 +377,7 @@ static FileSelect file_select(
 /**
  * Local utility to write #BLENDER_BOOKMARK_FILE, reporting an error on failure.
  */
-static bool fsmenu_write_file_and_refresh_or_report_error(struct FSMenu *fsmenu,
+static bool fsmenu_write_file_and_refresh_or_report_error(FSMenu *fsmenu,
                                                           ScrArea *area,
                                                           ReportList *reports)
 {
@@ -427,13 +427,13 @@ static int file_box_select_find_last_selected(SpaceFile *sfile,
       (layout->flag & FILE_LAYOUT_VER && bounds_first.ymin != bounds_last.ymin))
   {
     /* use vertical distance */
-    const int my_loc = (int)mouseco_view[1];
+    const int my_loc = int(mouseco_view[1]);
     dist_first = BLI_rcti_length_y(&bounds_first, my_loc);
     dist_last = BLI_rcti_length_y(&bounds_last, my_loc);
   }
   else {
     /* use horizontal distance */
-    const int mx_loc = (int)mouseco_view[0];
+    const int mx_loc = int(mouseco_view[0]);
     dist_first = BLI_rcti_length_x(&bounds_first, mx_loc);
     dist_last = BLI_rcti_length_x(&bounds_last, mx_loc);
   }
@@ -721,7 +721,7 @@ static bool file_walk_select_selection_set(bContext *C,
                                            const bool fill)
 {
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
   const int last_sel = params->active_file; /* store old value */
   int active = active_old; /* could use active_old instead, just for readability */
   bool deselect = false;
@@ -836,7 +836,7 @@ static bool file_walk_select_do(bContext *C,
 {
   wmWindow *win = CTX_wm_window(C);
   ARegion *region = CTX_wm_region(C);
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
   const int numfiles = filelist_files_ensure(files);
   const bool has_selection = file_is_any_selected(files);
   const int active_old = params->active_file;
@@ -1143,7 +1143,7 @@ static int bookmark_add_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   if (params->dir[0] != '\0') {
@@ -1178,7 +1178,7 @@ static int bookmark_delete_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   int nentries = ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_BOOKMARKS);
 
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "index");
@@ -1220,7 +1220,7 @@ void FILE_OT_bookmark_delete(wmOperatorType *ot)
 static int bookmark_cleanup_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FSMenuEntry *fsme_next, *fsme = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
   int index;
   bool changed = false;
@@ -1277,7 +1277,7 @@ static int bookmark_move_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
   const FSMenuEntry *fsmentry_org = fsmentry;
 
@@ -1371,7 +1371,7 @@ void FILE_OT_bookmark_move(wmOperatorType *ot)
 static int reset_recent_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   while (ED_fsmenu_get_entry(fsmenu, FS_CATEGORY_RECENT, 0) != nullptr) {
     fsmenu_remove_entry(fsmenu, FS_CATEGORY_RECENT, 0);
@@ -1433,7 +1433,7 @@ int file_highlight_set(SpaceFile *sfile, ARegion *region, int mx, int my)
     UI_view2d_region_to_view(v2d, mx, my, &fx, &fy);
 
     highlight_file = ED_fileselect_layout_offset(
-        sfile->layout, (int)(v2d->tot.xmin + fx), (int)(v2d->tot.ymax - fy));
+        sfile->layout, int(v2d->tot.xmin + fx), int(v2d->tot.ymax - fy));
 
     if ((highlight_file >= 0) && (highlight_file < numfiles)) {
       params->highlight_file = highlight_file;
@@ -2019,7 +2019,7 @@ static bool file_os_operations_menu_poll(const bContext *C_const, MenuType * /*m
   return false;
 }
 
-void file_external_operations_menu_register(void)
+void file_external_operations_menu_register()
 {
   MenuType *mt;
 
@@ -2081,7 +2081,7 @@ static bool file_execute(bContext *C, SpaceFile *sfile)
   /* Opening file, sends events now, so things get handled on window-queue level. */
   else if (sfile->op) {
     ScrArea *area = CTX_wm_area(C);
-    struct FSMenu *fsmenu = ED_fsmenu_get();
+    FSMenu *fsmenu = ED_fsmenu_get();
     wmOperator *op = sfile->op;
     char filepath[FILE_MAX];
 
@@ -2197,7 +2197,7 @@ static int file_refresh_exec(bContext *C, wmOperator * /*unused*/)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   ED_fileselect_clear(wm, sfile);
 
@@ -2387,7 +2387,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   /* if we are not editing, we are done */
   if (edit_idx == -1) {
-    /* Do not invalidate timer if filerename is still pending,
+    /* Do not invalidate timer if file-rename is still pending,
      * we might still be building the filelist and yet have to find edited entry. */
     if (params->rename_flag == 0) {
       file_params_smoothscroll_timer_clear(wm, win, sfile);
@@ -2414,7 +2414,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   const int numfiles_layout = ED_fileselect_layout_numfiles(sfile->layout, region);
   const int first_visible_item = ED_fileselect_layout_offset(
-      sfile->layout, (int)region->v2d.cur.xmin, (int)-region->v2d.cur.ymax);
+      sfile->layout, int(region->v2d.cur.xmin), int(-region->v2d.cur.ymax));
   const int last_visible_item = first_visible_item + numfiles_layout + 1;
 
   /* NOTE: the special case for vertical layout is because filename is at the bottom of items then,
@@ -2437,7 +2437,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
   const float max_curr_scroll = is_horizontal ? region->v2d.cur.xmax : -region->v2d.cur.ymin;
 
   /* Check if we have reached our final scroll position. */
-  /* Filelist has to be ready, otherwise it makes no sense to stop scrolling yet. */
+  /* File-list has to be ready, otherwise it makes no sense to stop scrolling yet. */
   const bool is_ready = filelist_is_ready(sfile->files);
   /* Edited item must be in the 'middle' of shown area (kind of approximated).
    * Note that we have to do the check in 'block space', not in 'item space' here. */
@@ -3138,7 +3138,7 @@ static bool file_delete_poll(bContext *C)
   return false;
 }
 
-static bool file_delete_single(const struct FileList *files,
+static bool file_delete_single(const FileList *files,
                                FileDirEntry *file,
                                const char **r_error_message)
 {
@@ -3277,7 +3277,7 @@ void FILE_OT_edit_directory_path(wmOperatorType *ot)
 /** \name Macro Operators
  * \{ */
 
-void ED_operatormacros_file(void)
+void ED_operatormacros_file()
 {
   //  wmOperatorType *ot;
   //  wmOperatorTypeMacro *otmacro;

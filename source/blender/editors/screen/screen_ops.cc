@@ -687,8 +687,7 @@ bool ED_operator_editmball(bContext *C)
 
 bool ED_operator_camera_poll(bContext *C)
 {
-  struct Camera *cam = static_cast<Camera *>(
-      CTX_data_pointer_get_type(C, "camera", &RNA_Camera).data);
+  Camera *cam = static_cast<Camera *>(CTX_data_pointer_get_type(C, "camera", &RNA_Camera).data);
   return (cam != nullptr && !ID_IS_LINKED(cam));
 }
 
@@ -883,7 +882,7 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
               az->alpha = 1.0f;
             }
             else if (mouse_sq < fadeout_sq) {
-              az->alpha = 1.0f - (float)(mouse_sq - fadein_sq) / (float)(fadeout_sq - fadein_sq);
+              az->alpha = 1.0f - float(mouse_sq - fadein_sq) / float(fadeout_sq - fadein_sq);
             }
             else {
               az->alpha = 0.0f;
@@ -1429,6 +1428,13 @@ static void SCREEN_OT_area_swap(wmOperatorType *ot)
  * Create new window from area.
  * \{ */
 
+/** Callback for #WM_window_open to setup the area's data. */
+static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
+{
+  ScrArea *area_src = static_cast<ScrArea *>(user_data);
+  ED_area_data_copy(area, area_src, true);
+};
+
 /* operator callback */
 static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1442,25 +1448,27 @@ static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     area = sad->sa1;
   }
 
+  const rcti window_rect = {
+      /*xmin*/ area->totrct.xmin,
+      /*xmax*/ area->totrct.xmin + area->winx,
+      /*ymin*/ area->totrct.ymin,
+      /*ymax*/ area->totrct.ymin + area->winy,
+  };
+
   /* Create new window. No need to set space_type since it will be copied over. */
   wmWindow *newwin = WM_window_open(C,
                                     "Blender",
-                                    area->totrct.xmin,
-                                    area->totrct.ymin,
-                                    area->winx,
-                                    area->winy,
+                                    &window_rect,
                                     SPACE_EMPTY,
                                     false,
                                     false,
                                     false,
-                                    WIN_ALIGN_ABSOLUTE);
+                                    WIN_ALIGN_ABSOLUTE,
+                                    /* Initialize area from callback. */
+                                    area_dupli_fn,
+                                    (void *)area);
 
   if (newwin) {
-    /* copy area to new screen */
-    bScreen *newsc = WM_window_get_active_screen(newwin);
-    ED_area_data_copy((ScrArea *)newsc->areabase.first, area, true);
-    ED_area_tag_redraw((ScrArea *)newsc->areabase.first);
-
     /* screen, areas init */
     WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
   }
@@ -1767,7 +1775,7 @@ static int area_snap_calc_location(const bScreen *screen,
   BLI_assert(snap_type != SNAP_NONE);
   int m_cursor_final = -1;
   const int m_cursor = origval + delta;
-  const int m_span = (float)(bigger + smaller);
+  const int m_span = float(bigger + smaller);
   const int m_min = origval - smaller;
   // const int axis_max = axis_min + m_span;
 
@@ -2328,8 +2336,8 @@ static int area_split_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
 
     /* The factor will be close to 1.0f when near the top-left and the bottom-right corners. */
-    const float factor_v = (float)(event->xy[1] - sad->sa1->v1->vec.y) / (float)sad->sa1->winy;
-    const float factor_h = (float)(event->xy[0] - sad->sa1->v1->vec.x) / (float)sad->sa1->winx;
+    const float factor_v = float(event->xy[1] - sad->sa1->v1->vec.y) / float(sad->sa1->winy);
+    const float factor_h = float(event->xy[0] - sad->sa1->v1->vec.x) / float(sad->sa1->winx);
     const bool is_left = factor_v < 0.5f;
     const bool is_bottom = factor_h < 0.5f;
     const bool is_right = !is_left;
@@ -2367,11 +2375,11 @@ static int area_split_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     dir_axis = eScreenAxis(RNA_property_enum_get(op->ptr, prop_dir));
     if (dir_axis == SCREEN_AXIS_H) {
       RNA_property_float_set(
-          op->ptr, prop_factor, (float)(event->xy[0] - area->v1->vec.x) / (float)area->winx);
+          op->ptr, prop_factor, float(event->xy[0] - area->v1->vec.x) / float(area->winx));
     }
     else {
       RNA_property_float_set(
-          op->ptr, prop_factor, (float)(event->xy[1] - area->v1->vec.y) / (float)area->winy);
+          op->ptr, prop_factor, float(event->xy[1] - area->v1->vec.y) / float(area->winy));
     }
 
     if (!area_split_init(C, op)) {
@@ -2585,7 +2593,7 @@ static int area_split_modal(bContext *C, wmOperator *op, const wmEvent *event)
       CTX_wm_screen(C)->do_draw = true;
     }
 
-    float fac = (float)(sd->delta + sd->origval - sd->origmin) / sd->origsize;
+    float fac = float(sd->delta + sd->origval - sd->origmin) / sd->origsize;
     RNA_float_set(op->ptr, "factor", fac);
   }
 
@@ -3137,7 +3145,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   const float cfra = BKE_scene_frame_get(scene);
 
   /* Initialize binary-tree-list for getting keyframes. */
-  struct AnimKeylist *keylist = ED_keylist_create();
+  AnimKeylist *keylist = ED_keylist_create();
 
   /* Speed up dummy dope-sheet context with flags to perform necessary filtering. */
   if ((scene->flag & SCE_KEYS_NO_SELONLY) == 0) {
@@ -4531,7 +4539,7 @@ static bool match_region_with_redraws(const ScrArea *area,
         }
         break;
       case SPACE_SPREADSHEET:
-        if ((redraws & TIME_SPREADSHEETS)) {
+        if (redraws & TIME_SPREADSHEETS) {
           return true;
         }
         break;
@@ -4729,7 +4737,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
       }
       else {
         /* Extract the delta frame fractions that will be skipped when converting to int. */
-        sad->lagging_frame_count = delta_frames - (int)delta_frames;
+        sad->lagging_frame_count = delta_frames - int(delta_frames);
       }
 
       const int step = delta_frames;
@@ -4913,6 +4921,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     /* Triggers redraw of sequencer preview so that it does not show to fps anymore after stopping
      * playback. */
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SPREADSHEET, scene);
   }
   else {
     BKE_callback_exec_id_depsgraph(
@@ -5148,18 +5157,24 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
     RNA_property_update(C, &pref_ptr, active_section_prop);
   }
 
+  const rcti window_rect = {
+      /*xmin*/ event->xy[0],
+      /*xmax*/ event->xy[0] + sizex,
+      /*ymin*/ event->xy[1],
+      /*ymax*/ event->xy[1] + sizey,
+  };
+
   /* changes context! */
   if (WM_window_open(C,
                      IFACE_("Blender Preferences"),
-                     event->xy[0],
-                     event->xy[1],
-                     sizex,
-                     sizey,
+                     &window_rect,
                      SPACE_USERPREF,
                      false,
                      false,
                      true,
-                     WIN_ALIGN_LOCATION_CENTER) != nullptr)
+                     WIN_ALIGN_LOCATION_CENTER,
+                     nullptr,
+                     nullptr) != nullptr)
   {
     /* The header only contains the editor switcher and looks empty.
      * So hiding in the temp window makes sense. */
@@ -5221,18 +5236,24 @@ static int drivers_editor_show_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop;
   uiBut *but = UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
+  const rcti window_rect = {
+      /*xmin*/ event->xy[0],
+      /*xmax*/ event->xy[0] + sizex,
+      /*ymin*/ event->xy[1],
+      /*ymax*/ event->xy[1] + sizey,
+  };
+
   /* changes context! */
   if (WM_window_open(C,
                      IFACE_("Blender Drivers Editor"),
-                     event->xy[0],
-                     event->xy[1],
-                     sizex,
-                     sizey,
+                     &window_rect,
                      SPACE_GRAPH,
                      false,
                      false,
                      true,
-                     WIN_ALIGN_LOCATION_CENTER) != nullptr)
+                     WIN_ALIGN_LOCATION_CENTER,
+                     nullptr,
+                     nullptr) != nullptr)
   {
     ED_drivers_editor_init(C, CTX_wm_area(C));
 
@@ -5292,22 +5313,30 @@ static int info_log_show_exec(bContext *C, wmOperator *op)
   wmWindow *win_cur = CTX_wm_window(C);
   /* Use eventstate, not event from _invoke, so this can be called through exec(). */
   const wmEvent *event = win_cur->eventstate;
+  const int shift_y = 480;
+  const int mx = event->xy[0];
+  const int my = event->xy[1] + shift_y;
   int sizex = 900 * UI_SCALE_FAC;
   int sizey = 580 * UI_SCALE_FAC;
-  int shift_y = 480;
+
+  const rcti window_rect = {
+      /*xmin*/ mx,
+      /*xmax*/ mx + sizex,
+      /*ymin*/ my,
+      /*ymax*/ my + sizey,
+  };
 
   /* changes context! */
   if (WM_window_open(C,
                      IFACE_("Blender Info Log"),
-                     event->xy[0],
-                     event->xy[1] + shift_y,
-                     sizex,
-                     sizey,
+                     &window_rect,
                      SPACE_INFO,
                      false,
                      false,
                      true,
-                     WIN_ALIGN_LOCATION_CENTER) != nullptr)
+                     WIN_ALIGN_LOCATION_CENTER,
+                     nullptr,
+                     nullptr) != nullptr)
   {
     return OPERATOR_FINISHED;
   }
@@ -5418,7 +5447,7 @@ float ED_region_blend_alpha(ARegion *region)
     RegionAlphaInfo *rgi = static_cast<RegionAlphaInfo *>(region->regiontimer->customdata);
     float alpha;
 
-    alpha = (float)region->regiontimer->duration / TIMEOUT;
+    alpha = float(region->regiontimer->duration) / TIMEOUT;
     /* makes sure the blend out works 100% - without area redraws */
     if (rgi->hidden) {
       alpha = 0.9f - TIMESTEP - alpha;
@@ -5514,7 +5543,7 @@ static int region_blend_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
   }
 
   /* end timer? */
-  if (rgi->region->regiontimer->duration > (double)TIMEOUT) {
+  if (rgi->region->regiontimer->duration > double(TIMEOUT)) {
     region_blend_end(C, rgi->region, false);
     return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
   }
@@ -5767,7 +5796,7 @@ static void SCREEN_OT_workspace_cycle(wmOperatorType *ot)
 /** \name Assigning Operator Types
  * \{ */
 
-void ED_operatortypes_screen(void)
+void ED_operatortypes_screen()
 {
   /* Generic UI stuff. */
   WM_operatortype_append(SCREEN_OT_actionzone);

@@ -994,7 +994,7 @@ static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
 
 /* Island definition - just a listbase container */
 struct tReorderChannelIsland {
-  struct tReorderChannelIsland *next, *prev;
+  tReorderChannelIsland *next, *prev;
 
   ListBase channels; /* channels within this region with the same state */
   int flag;          /* eReorderIslandFlag */
@@ -2639,7 +2639,7 @@ static int animchannels_clean_empty_exec(bContext *C, wmOperator * /*op*/)
       action_empty = true;
     }
     else {
-      /* TODO: check for keyframe + fmodifier data on these too */
+      /* TODO: check for keyframe + F-modifier data on these too. */
     }
 
     /* 2) No NLA Tracks and/or NLA Strips */

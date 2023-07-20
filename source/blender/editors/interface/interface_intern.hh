@@ -260,7 +260,7 @@ struct uiBut {
   eWM_DragDataType dragtype = WM_DRAG_ID;
   short dragflag = 0;
   void *dragpoin = nullptr;
-  ImBuf *imb = nullptr;
+  const ImBuf *imb = nullptr;
   float imb_scale = 0;
 
   /** Active button data (set when the user is hovering or interacting with a button). */
@@ -1127,6 +1127,7 @@ enum {
   ROUNDBOX_TRIA_MENU,
   ROUNDBOX_TRIA_CHECK,
   ROUNDBOX_TRIA_HOLD_ACTION_ARROW,
+  ROUNDBOX_TRIA_DASH,
 
   ROUNDBOX_TRIA_MAX, /* don't use */
 };

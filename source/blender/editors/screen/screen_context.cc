@@ -990,7 +990,7 @@ static eContextResult screen_ctx_editable_gpencil_strokes(const bContext *C,
   Object *obact = BKE_view_layer_active_object_get(view_layer);
 
   bGPdata *gpd = ED_gpencil_data_get_active_direct(area, obact);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
 
   if (gpd == nullptr) {
     return CTX_RESULT_NO_DATA;
@@ -1311,7 +1311,7 @@ static inline void register_context_function(const char *member, context_callbac
       ed_screen_context_functions, (void *)member, reinterpret_cast<void *>(function));
 }
 
-static void ensure_ed_screen_context_functions(void)
+static void ensure_ed_screen_context_functions()
 {
   if (ed_screen_context_functions != nullptr) {
     return;

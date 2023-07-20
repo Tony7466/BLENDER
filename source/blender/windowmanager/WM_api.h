@@ -330,24 +330,30 @@ typedef enum eWindowAlignment {
 } eWindowAlignment;
 
 /**
- * \param space_type: SPACE_VIEW3D, SPACE_INFO, ... (eSpace_Type)
+ * \param rect: Position & size of the window.
+ * \param space_type: #SPACE_VIEW3D, #SPACE_INFO, ... (#eSpace_Type).
  * \param toplevel: Not a child owned by other windows. A peer of main window.
  * \param dialog: whether this should be made as a dialog-style window
  * \param temp: whether this is considered a short-lived window
  * \param alignment: how this window is positioned relative to its parent
+ * \param area_setup_fn: An optional callback which can be used to initialize the area
+ * before it's initialized. When set, `space_type` should be #SPACE_EMTPY,
+ * so the setup function can take a blank area and initialize it.
+ * \param area_setup_user_data: User data argument passed to `area_setup_fn`.
  * \return the window or NULL in case of failure.
  */
 struct wmWindow *WM_window_open(struct bContext *C,
                                 const char *title,
-                                int x,
-                                int y,
-                                int sizex,
-                                int sizey,
+                                const struct rcti *rect_unscaled,
                                 int space_type,
                                 bool toplevel,
                                 bool dialog,
                                 bool temp,
-                                eWindowAlignment alignment);
+                                eWindowAlignment alignment,
+                                void (*area_setup_fn)(bScreen *screen,
+                                                      ScrArea *area,
+                                                      void *user_data),
+                                void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
 
@@ -1417,7 +1423,7 @@ wmDrag *WM_drag_data_create(struct bContext *C,
  * Invoke dragging using the given \a drag data.
  */
 void WM_event_start_prepared_drag(struct bContext *C, wmDrag *drag);
-void WM_event_drag_image(struct wmDrag *, struct ImBuf *, float scale);
+void WM_event_drag_image(struct wmDrag *, const struct ImBuf *, float scale);
 void WM_drag_free(struct wmDrag *drag);
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(struct ListBase *lb);
