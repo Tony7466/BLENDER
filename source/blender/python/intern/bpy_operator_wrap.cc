@@ -28,7 +28,7 @@
 
 static void operator_properties_init(wmOperatorType *ot)
 {
-  PyTypeObject *py_class = ot->rna_ext.data;
+  PyTypeObject *py_class = static_cast<PyTypeObject *>(ot->rna_ext.data);
   RNA_struct_blender_type_set(ot->rna_ext.srna, ot);
 
   /* Only call this so pyrna_deferred_register_class gives a useful error
@@ -53,11 +53,11 @@ static void operator_properties_init(wmOperatorType *ot)
     PyObject *bl_property = PyDict_GetItem(py_class_dict, bpy_intern_str_bl_property);
     if (bl_property) {
       const char *prop_id = PyUnicode_AsUTF8(bl_property);
-      if (prop_id != NULL) {
+      if (prop_id != nullptr) {
         PointerRNA ptr;
         PropertyRNA *prop;
 
-        RNA_pointer_create(NULL, ot->srna, NULL, &ptr);
+        RNA_pointer_create(nullptr, ot->srna, nullptr, &ptr);
         prop = RNA_struct_find_property(&ptr, prop_id);
         if (prop) {
           ot->prop = prop;
@@ -123,7 +123,7 @@ void BPY_RNA_operator_macro_wrapper(wmOperatorType *ot, void *userdata)
   operator_properties_init(ot);
 }
 
-PyObject *PYOP_wrap_macro_define(PyObject *UNUSED(self), PyObject *args)
+PyObject *PYOP_wrap_macro_define(PyObject * /*self*/, PyObject *args)
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -135,18 +135,18 @@ PyObject *PYOP_wrap_macro_define(PyObject *UNUSED(self), PyObject *args)
   const char *macroname;
 
   if (!PyArg_ParseTuple(args, "Os:_bpy.ops.macro_define", &macro, &opname)) {
-    return NULL;
+    return nullptr;
   }
 
-  if (WM_operatortype_find(opname, true) == NULL) {
+  if (WM_operatortype_find(opname, true) == nullptr) {
     PyErr_Format(PyExc_ValueError, "Macro Define: '%s' is not a valid operator id", opname);
-    return NULL;
+    return nullptr;
   }
 
   /* identifiers */
   srna = pyrna_struct_as_srna((PyObject *)macro, false, "Macro Define:");
-  if (srna == NULL) {
-    return NULL;
+  if (srna == nullptr) {
+    return nullptr;
   }
 
   macroname = RNA_struct_identifier(srna);
@@ -154,12 +154,12 @@ PyObject *PYOP_wrap_macro_define(PyObject *UNUSED(self), PyObject *args)
 
   if (!ot) {
     PyErr_Format(PyExc_ValueError, "Macro Define: '%s' is not a valid macro", macroname);
-    return NULL;
+    return nullptr;
   }
 
   otmacro = WM_operatortype_macro_define(ot, opname);
 
-  RNA_pointer_create(NULL, &RNA_OperatorMacro, otmacro, &ptr_otmacro);
+  RNA_pointer_create(nullptr, &RNA_OperatorMacro, otmacro, &ptr_otmacro);
 
   return pyrna_struct_CreatePyObject(&ptr_otmacro);
 }
