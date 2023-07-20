@@ -34,6 +34,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -73,10 +74,10 @@
 #  include <AUD_Sound.h>
 #  include <AUD_Special.h>
 
-static AUD_Sound *source = NULL;
-static AUD_Handle *playback_handle = NULL;
-static AUD_Handle *scrub_handle = NULL;
-static AUD_Device *audio_device = NULL;
+static AUD_Sound *source = nullptr;
+static AUD_Handle *playback_handle = nullptr;
+static AUD_Handle *scrub_handle = nullptr;
+static AUD_Device *audio_device = nullptr;
 #endif
 
 /* simple limiter to avoid flooding memory */
@@ -97,7 +98,7 @@ static bool playanim_window_font_scale_from_dpi(struct PlayState *ps);
 
 /**
  * \param filepath: The file path to read into memory.
- * \param r_mem: Optional, when NULL, don't allocate memory (just set the size).
+ * \param r_mem: Optional, when nullptr, don't allocate memory (just set the size).
  * \param r_size: The file-size of `filepath`.
  */
 static bool buffer_from_filepath(const char *filepath, void **r_mem, size_t *r_size)
@@ -110,12 +111,12 @@ static bool buffer_from_filepath(const char *filepath, void **r_mem, size_t *r_s
   }
 
   bool success = false;
-  uchar *mem = NULL;
+  uchar *mem = nullptr;
   const size_t size = BLI_file_descriptor_size(file);
   if (UNLIKELY(size == (size_t)-1)) {
     CLOG_WARN(&LOG, "failure '%s' to access size '%s'", strerror(errno), filepath);
   }
-  else if (r_mem && UNLIKELY(!(mem = MEM_mallocN(size, __func__)))) {
+  else if (r_mem && UNLIKELY(!(mem = static_cast<uchar *>(MEM_mallocN(size, __func__))))) {
     CLOG_WARN(&LOG, "error allocating buffer for '%s'", filepath);
   }
   else if (r_mem && UNLIKELY(read(file, mem, size) != size)) {
@@ -126,7 +127,7 @@ static bool buffer_from_filepath(const char *filepath, void **r_mem, size_t *r_s
     *r_size = size;
     if (r_mem) {
       *r_mem = mem;
-      mem = NULL; /* `r_mem` owns, don't free on exit. */
+      mem = nullptr; /* `r_mem` owns, don't free on exit. */
     }
     success = true;
   }
@@ -139,7 +140,7 @@ static bool buffer_from_filepath(const char *filepath, void **r_mem, size_t *r_s
 /** \} */
 
 /** Use a flag to store held modifiers & mouse buttons. */
-typedef enum eWS_Qual {
+enum eWS_Qual {
   WS_QUAL_LSHIFT = (1 << 0),
   WS_QUAL_RSHIFT = (1 << 1),
   WS_QUAL_SHIFT = (WS_QUAL_LSHIFT | WS_QUAL_RSHIFT),
@@ -153,9 +154,10 @@ typedef enum eWS_Qual {
   WS_QUAL_MMOUSE = (1 << 17),
   WS_QUAL_RMOUSE = (1 << 18),
   WS_QUAL_MOUSE = (WS_QUAL_LMOUSE | WS_QUAL_MMOUSE | WS_QUAL_RMOUSE),
-} eWS_Qual;
+};
+ENUM_OPERATORS(eWS_Qual, WS_QUAL_MOUSE)
 
-typedef struct GhostData {
+struct GhostData {
   GHOST_SystemHandle system;
   GHOST_WindowHandle window;
 
@@ -164,18 +166,18 @@ typedef struct GhostData {
 
   /** Held keys. */
   eWS_Qual qual;
-} GhostData;
+};
 
 /**
  * The minimal context necessary for displaying an image.
  * Used while displaying images both on load and while playing.
  */
-typedef struct PlayDisplayContext {
+struct PlayDisplayContext {
   ColorManagedViewSettings view_settings;
   ColorManagedDisplaySettings display_settings;
   /** Window & viewport size in pixels. */
   int size[2];
-} PlayDisplayContext;
+};
 
 /**
  * The current state of the player.
@@ -184,7 +186,7 @@ typedef struct PlayDisplayContext {
  * in this struct if they need to persist across playing back different
  * files as these will be cleared when playing other files (drag & drop).
  */
-typedef struct PlayState {
+struct PlayState {
   /** Context for displaying images (color spaces & display-size). */
   PlayDisplayContext display_ctx;
 
@@ -243,22 +245,22 @@ typedef struct PlayState {
   int frame_cursor_x;
 
   GhostData ghost_data;
-} PlayState;
+};
 
 /* for debugging */
 #if 0
 static void print_ps(PlayState *ps)
 {
-  printf("ps:\n");
-  printf("    direction=%d,\n", (int)ps->direction);
-  printf("    once=%d,\n", ps->once);
-  printf("    pingpong=%d,\n", ps->pingpong);
-  printf("    noskip=%d,\n", ps->noskip);
-  printf("    sstep=%d,\n", ps->sstep);
-  printf("    wait2=%d,\n", ps->wait2);
-  printf("    stopped=%d,\n", ps->stopped);
-  printf("    go=%d,\n\n", ps->go);
-  fflush(stdout);
+printf("ps:\n");
+printf("    direction=%d,\n", (int)ps->direction);
+printf("    once=%d,\n", ps->once);
+printf("    pingpong=%d,\n", ps->pingpong);
+printf("    noskip=%d,\n", ps->noskip);
+printf("    sstep=%d,\n", ps->sstep);
+printf("    wait2=%d,\n", ps->wait2);
+printf("    stopped=%d,\n", ps->stopped);
+printf("    go=%d,\n\n", ps->go);
+fflush(stdout);
 }
 #endif
 
@@ -304,7 +306,7 @@ static void playanim_event_qual_update(GhostData *ghost_data)
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_RALT);
 }
 
-typedef struct PlayAnimPict {
+struct PlayAnimPict {
   struct PlayAnimPict *next, *prev;
   uchar *mem;
   int size;
@@ -320,9 +322,9 @@ typedef struct PlayAnimPict {
   LinkData *frame_cache_node;
   size_t size_in_memory;
 #endif
-} PlayAnimPict;
+};
 
-static ListBase picsbase = {NULL, NULL};
+static ListBase picsbase = {nullptr, nullptr};
 /* frames in memory - store them here to for easy deallocation later */
 static bool fromdisk = false;
 static double ptottime = 0.0, swaptime = 0.04;
@@ -341,10 +343,10 @@ static struct {
   /** Optionally limit the amount of memory used for cache (in bytes), ignored when zero. */
   size_t memory_limit;
 } g_frame_cache = {
-    .pics = {NULL, NULL},
-    .pics_len = 0,
-    .pics_size_in_memory = 0,
-    .memory_limit = 0,
+    /*pics*/ {nullptr, nullptr},
+    /*pics_len*/ 0,
+    /*pics_size_in_memory*/ 0,
+    /*memory_limit*/ 0,
 };
 
 static void frame_cache_add(PlayAnimPict *pic)
@@ -369,8 +371,8 @@ static void frame_cache_remove(PlayAnimPict *pic)
     g_frame_cache.pics_size_in_memory -= pic->size_in_memory;
     pic->size_in_memory = 0;
   }
-  pic->ibuf = NULL;
-  pic->frame_cache_node = NULL;
+  pic->ibuf = nullptr;
+  pic->frame_cache_node = nullptr;
   BLI_freelinkN(&g_frame_cache.pics, node);
   g_frame_cache.pics_len--;
 }
@@ -393,9 +395,9 @@ static bool frame_cache_limit_exceeded(void)
 static void frame_cache_limit_apply(ImBuf *ibuf_keep)
 {
   /* Really basic memory conservation scheme. Keep frames in a FIFO queue. */
-  LinkData *node = g_frame_cache.pics.last;
+  LinkData *node = static_cast<LinkData *>(g_frame_cache.pics.last);
   while (node && frame_cache_limit_exceeded()) {
-    PlayAnimPict *pic = node->data;
+    PlayAnimPict *pic = static_cast<PlayAnimPict *>(node->data);
     BLI_assert(pic->frame_cache_node == node);
 
     node = node->prev;
@@ -409,7 +411,7 @@ static void frame_cache_limit_apply(ImBuf *ibuf_keep)
 
 static ImBuf *ibuf_from_picture(PlayAnimPict *pic)
 {
-  ImBuf *ibuf = NULL;
+  ImBuf *ibuf = nullptr;
 
   if (pic->ibuf) {
     ibuf = pic->ibuf;
@@ -419,11 +421,11 @@ static ImBuf *ibuf_from_picture(PlayAnimPict *pic)
   }
   else if (pic->mem) {
     /* use correct colorspace here */
-    ibuf = IMB_ibImageFromMemory(pic->mem, pic->size, pic->IB_flags, NULL, pic->filepath);
+    ibuf = IMB_ibImageFromMemory(pic->mem, pic->size, pic->IB_flags, nullptr, pic->filepath);
   }
   else {
     /* use correct colorspace here */
-    ibuf = IMB_loadiffname(pic->filepath, pic->IB_flags, NULL);
+    ibuf = IMB_loadiffname(pic->filepath, pic->IB_flags, nullptr);
   }
 
   return ibuf;
@@ -475,7 +477,7 @@ static void *ocio_transform_ibuf(const PlayDisplayContext *display_ctx,
   /* Fallback to CPU based color space conversion. */
   if (force_fallback) {
     *r_glsl_used = false;
-    display_buffer = NULL;
+    display_buffer = nullptr;
   }
   else if (ibuf->float_buffer.data) {
     display_buffer = ibuf->float_buffer.data;
@@ -512,7 +514,7 @@ static void *ocio_transform_ibuf(const PlayDisplayContext *display_ctx,
                                                                   false);
   }
   else {
-    display_buffer = NULL;
+    display_buffer = nullptr;
   }
 
   /* There is data to be displayed, but GLSL is not initialized
@@ -544,12 +546,12 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
   uint texCoord = GPU_vertformat_attr_add(
       imm_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  void *buffer_cache_handle = NULL;
+  void *buffer_cache_handle = nullptr;
   display_buffer = ocio_transform_ibuf(
       display_ctx, ibuf, &glsl_used, &format, &data, &buffer_cache_handle);
 
   GPUTexture *texture = GPU_texture_create_2d(
-      "display_buf", ibuf->x, ibuf->y, 1, format, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
+      "display_buf", ibuf->x, ibuf->y, 1, format, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
   GPU_texture_update(texture, data, display_buffer);
   GPU_texture_filter_mode(texture, false);
 
@@ -646,8 +648,8 @@ static void playanim_toscreen_ex(GHOST_WindowHandle ghost_window,
                                  offs_y,
                                  offs_x + span_x,
                                  offs_y + span_y,
-                                 (const float[4]){0.15, 0.15, 0.15, 1.0},
-                                 (const float[4]){0.20, 0.20, 0.20, 1.0},
+                                 blender::float4{0.15, 0.15, 0.15, 1.0},
+                                 blender::float4{0.20, 0.20, 0.20, 1.0},
                                  8);
     }
     rctf canvas;
@@ -718,7 +720,7 @@ static void playanim_toscreen_on_load(GHOST_WindowHandle ghost_window,
   const int fstep = -1;
   const float zoom = 1.0f;
   const float indicator_factor = -1.0f;
-  const bool *draw_flip = NULL;
+  const bool *draw_flip = nullptr;
 
   playanim_toscreen_ex(
       ghost_window, display_ctx, picture, ibuf, fstep, font_id, zoom, draw_flip, indicator_factor);
@@ -735,7 +737,7 @@ static void playanim_toscreen(PlayState *ps, const PlayAnimPict *picture, ImBuf 
   int fontid = -1;
   if ((ps->ghost_data.qual & (WS_QUAL_SHIFT | WS_QUAL_LMOUSE)) ||
       /* Always inform the user of an error, this should be an exceptional case. */
-      (ibuf == NULL))
+      (ibuf == nullptr))
   {
     fontid = ps->fontid;
   }
@@ -757,15 +759,15 @@ static void build_pict_list_from_anim(GhostData *ghost_data,
                                       const char *filepath_first)
 {
   /* OCIO_TODO: support different input color space */
-  struct anim *anim = IMB_open_anim(filepath_first, IB_rect, 0, NULL);
-  if (anim == NULL) {
+  struct anim *anim = IMB_open_anim(filepath_first, IB_rect, 0, nullptr);
+  if (anim == nullptr) {
     CLOG_WARN(&LOG, "couldn't open anim '%s'", filepath_first);
     return;
   }
 
   ImBuf *ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf) {
-    playanim_toscreen_on_load(ghost_data->window, display_ctx, NULL, ibuf);
+    playanim_toscreen_on_load(ghost_data->window, display_ctx, nullptr, ibuf);
     IMB_freeImBuf(ibuf);
   }
 
@@ -786,8 +788,8 @@ static void build_pict_list_from_image_sequence(GhostData *ghost_data,
                                                 const int fstep,
                                                 const bool *loading_p)
 {
-  /* Load images into cache until the cache is full,
-   * this resolves choppiness for images that are slow to load, see: #81751. */
+/* Load images into cache until the cache is full,
+ * this resolves choppiness for images that are slow to load, see: #81751. */
 #ifdef USE_FRAME_CACHE_LIMIT
   bool fill_cache = true;
 #else
@@ -817,9 +819,9 @@ static void build_pict_list_from_image_sequence(GhostData *ghost_data,
       break;
     }
 
-    void *mem = NULL;
+    void *mem = nullptr;
     size_t size = -1;
-    if (!buffer_from_filepath(filepath, fromdisk ? NULL : &mem, &size)) {
+    if (!buffer_from_filepath(filepath, fromdisk ? nullptr : &mem, &size)) {
       /* A warning will have been logged. */
       break;
     }
@@ -827,7 +829,7 @@ static void build_pict_list_from_image_sequence(GhostData *ghost_data,
     PlayAnimPict *picture = (PlayAnimPict *)MEM_callocN(sizeof(PlayAnimPict), "picture");
     picture->size = size;
     picture->IB_flags = IB_rect;
-    picture->mem = mem;
+    picture->mem = static_cast<uchar *>(mem);
     picture->filepath = BLI_strdup(filepath);
     picture->frame = pic;
     BLI_addtail(&picsbase, picture);
@@ -938,7 +940,7 @@ static void change_frame(PlayState *ps)
 #ifdef WITH_AUDASPACE
   if (scrub_handle) {
     AUD_Handle_stop(scrub_handle);
-    scrub_handle = NULL;
+    scrub_handle = nullptr;
   }
 
   if (playback_handle) {
@@ -967,8 +969,8 @@ static void change_frame(PlayState *ps)
   }
 #endif
 
-  ps->picture = BLI_findlink(&picsbase, i);
-  BLI_assert(ps->picture != NULL);
+  ps->picture = static_cast<PlayAnimPict *>(BLI_findlink(&picsbase, i));
+  BLI_assert(ps->picture != nullptr);
 
   ps->sstep = true;
   ps->wait2 = false;
@@ -1123,7 +1125,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             ps->sstep = true;
             ps->wait2 = false;
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
-              ps->picture = picsbase.first;
+              ps->picture = static_cast<PlayAnimPict *>(picsbase.first);
               ps->next_frame = 0;
             }
             else {
@@ -1148,7 +1150,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             ps->sstep = true;
             ps->wait2 = false;
             if (ps->ghost_data.qual & WS_QUAL_SHIFT) {
-              ps->picture = picsbase.last;
+              ps->picture = static_cast<PlayAnimPict *>(picsbase.last);
               ps->next_frame = 0;
             }
             else {
@@ -1192,7 +1194,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
               ps->once = ps->wait2 = false;
             }
             else {
-              ps->picture = NULL;
+              ps->picture = nullptr;
               ps->once = true;
               ps->wait2 = false;
             }
@@ -1205,7 +1207,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
               ps->wait2 = ps->sstep = false;
 #ifdef WITH_AUDASPACE
               {
-                PlayAnimPict *picture = picsbase.first;
+                PlayAnimPict *picture = static_cast<PlayAnimPict *>(picsbase.first);
                 /* TODO: store in ps direct? */
                 int i = 0;
 
@@ -1230,7 +1232,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 #ifdef WITH_AUDASPACE
               if (playback_handle) {
                 AUD_Handle_stop(playback_handle);
-                playback_handle = NULL;
+                playback_handle = nullptr;
               }
 #endif
             }
@@ -1242,7 +1244,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
             ps->wait2 = ps->sstep = false;
 #ifdef WITH_AUDASPACE
             {
-              PlayAnimPict *picture = picsbase.first;
+              PlayAnimPict *picture = static_cast<PlayAnimPict *>(picsbase.first);
               /* TODO: store in ps direct? */
               int i = 0;
               while (picture && picture != ps->picture) {
@@ -1273,7 +1275,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 #ifdef WITH_AUDASPACE
               if (playback_handle) {
                 AUD_Handle_stop(playback_handle);
-                playback_handle = NULL;
+                playback_handle = nullptr;
               }
 #endif
             }
@@ -1322,7 +1324,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
     }
     case GHOST_kEventButtonDown:
     case GHOST_kEventButtonUp: {
-      GHOST_TEventButtonData *bd = GHOST_GetEventData(evt);
+      GHOST_TEventButtonData *bd = reinterpret_cast<GHOST_TEventButtonData *>(evt);
       int cx, cy, sizex, sizey, inside_window;
 
       GHOST_GetCursorPosition(ghost_system, ghost_window, &cx, &cy);
@@ -1365,7 +1367,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
     }
     case GHOST_kEventCursorMove: {
       if (ps->ghost_data.qual & WS_QUAL_LMOUSE) {
-        GHOST_TEventCursorData *cd = GHOST_GetEventData(evt);
+        GHOST_TEventCursorData *cd = reinterpret_cast<GHOST_TEventCursorData *>(evt);
         int cx, cy;
 
         /* Ignore 'in-between' events, since they can make scrubbing lag.
@@ -1412,7 +1414,7 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
 
       ptottime = 0.0;
 
-      playanim_toscreen(ps, ps->picture, ps->picture ? ps->picture->ibuf : NULL);
+      playanim_toscreen(ps, ps->picture, ps->picture ? ps->picture->ibuf : nullptr);
 
       break;
     }
@@ -1427,10 +1429,10 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
       break;
     }
     case GHOST_kEventDraggingDropDone: {
-      GHOST_TEventDragnDropData *ddd = GHOST_GetEventData(evt);
+      GHOST_TEventDragnDropData *ddd = reinterpret_cast<GHOST_TEventDragnDropData *>(evt);
 
       if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
-        GHOST_TStringArray *stra = ddd->data;
+        GHOST_TStringArray *stra = reinterpret_cast<GHOST_TStringArray *>(ddd->data);
         int a;
 
         for (a = 0; a < stra->count; a++) {
@@ -1463,7 +1465,7 @@ static GHOST_WindowHandle playanim_window_open(
   posy = (scr_h - posy - sizey);
 
   return GHOST_CreateWindow(ghost_system,
-                            NULL,
+                            nullptr,
                             title,
                             posx,
                             posy,
@@ -1510,11 +1512,11 @@ static bool playanim_window_font_scale_from_dpi(PlayState *ps)
 }
 
 /**
- * \return The a path used to restart the animation player or NULL to exit.
+ * \return The a path used to restart the animation player or nullptr to exit.
  */
 static char *wm_main_playanim_intern(int argc, const char **argv)
 {
-  ImBuf *ibuf = NULL;
+  ImBuf *ibuf = nullptr;
   static char filepath[FILE_MAX]; /* abused to return dropped file path */
   uint32_t maxwinx, maxwiny;
   int i;
@@ -1536,7 +1538,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   ps.wait2 = false;
   ps.stopped = false;
   ps.loading = false;
-  ps.picture = NULL;
+  ps.picture = nullptr;
   ps.indicator = false;
   ps.dropped_file[0] = 0;
   ps.zoom = 1.0f;
@@ -1639,11 +1641,11 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   if (IMB_isanim(filepath)) {
     /* OCIO_TODO: support different input color spaces */
     struct anim *anim;
-    anim = IMB_open_anim(filepath, IB_rect, 0, NULL);
+    anim = IMB_open_anim(filepath, IB_rect, 0, nullptr);
     if (anim) {
       ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
       IMB_close_anim(anim);
-      anim = NULL;
+      anim = nullptr;
     }
   }
   else if (!IMB_ispic(filepath)) {
@@ -1651,12 +1653,12 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     exit(EXIT_FAILURE);
   }
 
-  if (ibuf == NULL) {
+  if (ibuf == nullptr) {
     /* OCIO_TODO: support different input color space */
-    ibuf = IMB_loadiffname(filepath, IB_rect, NULL);
+    ibuf = IMB_loadiffname(filepath, IB_rect, nullptr);
   }
 
-  if (ibuf == NULL) {
+  if (ibuf == nullptr) {
     printf("%s: '%s' couldn't open\n", __func__, filepath);
     exit(EXIT_FAILURE);
   }
@@ -1668,7 +1670,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
     ps.ghost_data.system = GHOST_CreateSystem();
 
-    if (UNLIKELY(ps.ghost_data.system == NULL)) {
+    if (UNLIKELY(ps.ghost_data.system == nullptr)) {
       /* GHOST will have reported the back-ends that failed to load. */
       CLOG_WARN(&LOG, "GHOST: unable to initialize, exiting!");
       /* This will leak memory, it's preferable to crashing. */
@@ -1686,7 +1688,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   // GHOST_ActivateWindowDrawingContext(ps.ghost_data.window);
 
   /* Initialize OpenGL immediate mode. */
-  ps.ghost_data.gpu_context = GPU_context_create(ps.ghost_data.window, NULL);
+  ps.ghost_data.gpu_context = GPU_context_create(ps.ghost_data.window, nullptr);
   GPU_init();
 
   /* initialize the font */
@@ -1754,12 +1756,12 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   }
 
   IMB_freeImBuf(ibuf);
-  ibuf = NULL;
+  ibuf = nullptr;
 
   pupdate_time();
   ptottime = 0;
 
-  /* newly added in 2.6x, without this images never get freed */
+/* newly added in 2.6x, without this images never get freed */
 #define USE_IMB_CACHE
 
   while (ps.go) {
@@ -1768,13 +1770,13 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     }
 
     if (ps.direction == 1) {
-      ps.picture = picsbase.first;
+      ps.picture = static_cast<PlayAnimPict *>(picsbase.first);
     }
     else {
-      ps.picture = picsbase.last;
+      ps.picture = static_cast<PlayAnimPict *>(picsbase.last);
     }
 
-    if (ps.picture == NULL) {
+    if (ps.picture == nullptr) {
       printf("couldn't find pictures\n");
       ps.go = false;
     }
@@ -1801,7 +1803,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     while (ps.picture) {
       bool has_event;
 #ifndef USE_IMB_CACHE
-      if (ibuf != NULL && ibuf->ftype == IMB_FTYPE_NONE) {
+      if (ibuf != nullptr && ibuf->ftype == IMB_FTYPE_NONE) {
         IMB_freeImBuf(ibuf);
       }
 #endif
@@ -1814,7 +1816,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 #endif
         if (ibuf) {
 #ifdef USE_FRAME_CACHE_LIMIT
-          if (ps.picture->frame_cache_node == NULL) {
+          if (ps.picture->frame_cache_node == nullptr) {
             frame_cache_add(ps.picture);
           }
           else {
@@ -1826,7 +1828,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           STRNCPY(ibuf->filepath, ps.picture->filepath);
         }
 
-        /* why only windows? (from 2.4x) - campbell */
+/* why only windows? (from 2.4x) - campbell */
 #ifdef _WIN32
         GHOST_SetTitle(ps.ghost_data.window, ps.picture->filepath);
 #endif
@@ -1839,10 +1841,10 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
       }
 
       if (ps.once) {
-        if (ps.picture->next == NULL) {
+        if (ps.picture->next == nullptr) {
           ps.wait2 = true;
         }
-        else if (ps.picture->prev == NULL) {
+        else if (ps.picture->prev == nullptr) {
           ps.wait2 = true;
         }
       }
@@ -1877,11 +1879,11 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
         while (ps.picture) {
           ps.picture = playanim_step(ps.picture, ps.next_frame);
 
-          if (ps.once && ps.picture != NULL) {
-            if (ps.picture->next == NULL) {
+          if (ps.once && ps.picture != nullptr) {
+            if (ps.picture->next == nullptr) {
               ps.wait2 = true;
             }
-            else if (ps.picture->prev == NULL) {
+            else if (ps.picture->prev == nullptr) {
               ps.wait2 = true;
             }
           }
@@ -1891,7 +1893,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
           }
           ptottime -= swaptime;
         }
-        if (ps.picture == NULL && ps.sstep) {
+        if (ps.picture == nullptr && ps.sstep) {
           ps.picture = playanim_step(ps.picture, ps.next_frame);
         }
       }
@@ -1900,9 +1902,9 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
       }
     }
   }
-  while ((ps.picture = BLI_pophead(&picsbase))) {
+  while ((ps.picture = static_cast<PlayAnimPict *>(BLI_pophead(&picsbase)))) {
     if (ps.picture->anim) {
-      if ((ps.picture->next == NULL) || (ps.picture->next->anim != ps.picture->anim)) {
+      if ((ps.picture->next == nullptr) || (ps.picture->next->anim != ps.picture->anim)) {
         IMB_close_anim(ps.picture->anim);
       }
     }
@@ -1918,7 +1920,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     MEM_freeN(ps.picture);
   }
 
-  /* cleanup */
+/* cleanup */
 #ifndef USE_IMB_CACHE
   if (ibuf) {
     IMB_freeImBuf(ibuf);
@@ -1936,14 +1938,14 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 #ifdef WITH_AUDASPACE
   if (playback_handle) {
     AUD_Handle_stop(playback_handle);
-    playback_handle = NULL;
+    playback_handle = nullptr;
   }
   if (scrub_handle) {
     AUD_Handle_stop(scrub_handle);
-    scrub_handle = NULL;
+    scrub_handle = nullptr;
   }
   AUD_Sound_free(source);
-  source = NULL;
+  source = nullptr;
 #endif
 
   /* we still miss freeing a lot!,
@@ -1958,7 +1960,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
     GPU_context_active_set(ps.ghost_data.gpu_context);
     GPU_exit();
     GPU_context_discard(ps.ghost_data.gpu_context);
-    ps.ghost_data.gpu_context = NULL;
+    ps.ghost_data.gpu_context = nullptr;
   }
 
   GHOST_DisposeWindow(ps.ghost_data.system, ps.ghost_data.window);
@@ -1971,14 +1973,14 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
 
   totblock = MEM_get_memory_blocks_in_use();
   if (totblock != 0) {
-    /* prints many bAKey, bArgument's which are tricky to fix */
+/* prints many bAKey, bArgument's which are tricky to fix */
 #if 0
-    printf("Error Totblock: %d\n", totblock);
-    MEM_printmemlist();
+printf("Error Totblock: %d\n", totblock);
+MEM_printmemlist();
 #endif
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_main_playanim(int argc, const char **argv)
@@ -1996,7 +1998,7 @@ void WM_main_playanim(int argc, const char **argv)
 
     AUD_initOnce();
 
-    if (!(audio_device = AUD_init(NULL, specs, 1024, "Blender"))) {
+    if (!(audio_device = AUD_init(nullptr, specs, 1024, "Blender"))) {
       audio_device = AUD_init("None", specs, 0, "Blender");
     }
   }
