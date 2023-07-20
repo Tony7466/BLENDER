@@ -131,7 +131,7 @@ struct EraseOperationExecutor {
         const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
         threading::parallel_for(
-            src_curve_points.drop_back(1), 256, [&](const IndexRange src_points) {
+            src_curve_points.drop_back(1), 512, [&](const IndexRange src_points) {
               for (int src_point : src_points) {
 
                 float mu0;
@@ -199,7 +199,7 @@ struct EraseOperationExecutor {
                             Array<bool> &r_point_inside) const
   {
     /* Check if points are inside the eraser. */
-    threading::parallel_for(points_range, 256, [&](const IndexRange src_points) {
+    threading::parallel_for(points_range, 1024, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
         const float2 pos_view = screen_space_positions[src_point];
         r_point_inside[src_point] = contains_point(pos_view);
@@ -297,7 +297,7 @@ struct EraseOperationExecutor {
 
     /* Cyclic curves. */
     Array<bool> src_now_cyclic(src_curves_num);
-    threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
+    threading::parallel_for(src.curves_range(), 4096, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const int pivot_point = src_pivot_point[src_curve];
 
@@ -355,7 +355,7 @@ struct EraseOperationExecutor {
 
     /* Create the new curves geometry. */
     dst.resize(dst_points_num, dst_curves_num);
-    array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write(), 256);
+    array_utils::copy(dst_curves_offset.as_span(), dst.offsets_for_write());
 
     /* Attributes. */
     const bke::AttributeAccessor src_attributes = src.attributes();
@@ -380,7 +380,7 @@ struct EraseOperationExecutor {
       SpanAttributeWriter<int8_t> dst_end_caps =
           dst_attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
 
-      threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+      threading::parallel_for(dst.curves_range(), 4096, [&](const IndexRange dst_curves) {
         for (const int dst_curve : dst_curves) {
           const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
           if (is_cut[dst_curve_points.first()]) {
@@ -405,14 +405,14 @@ struct EraseOperationExecutor {
         auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
-        threading::parallel_for(dst.curves_range(), 256, [&](const IndexRange dst_curves) {
+        threading::parallel_for(dst.curves_range(), 512, [&](const IndexRange dst_curves) {
           for (const int dst_curve : dst_curves) {
             const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
 
             const int src_curve = dst_to_src_curve[dst_curve];
             const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
-            threading::parallel_for(dst_curve_points, 256, [&](const IndexRange dst_points) {
+            threading::parallel_for(dst_curve_points, 4096, [&](const IndexRange dst_points) {
               for (const int dst_point : dst_points) {
                 const int src_point = dst_points_parameters[dst_point].first;
 
@@ -467,7 +467,7 @@ struct EraseOperationExecutor {
 
       /* Compute screen space positions. */
       Array<float2> screen_space_positions(src.points_num());
-      threading::parallel_for(src.points_range(), 256, [&](const IndexRange src_points) {
+      threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
         for (const int src_point : src_points) {
           ED_view3d_project_float_global(region,
                                          deformation.positions[src_point],
