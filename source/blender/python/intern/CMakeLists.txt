@@ -58,7 +58,7 @@ set(SRC
   bpy_rna_anim.cc
   bpy_rna_array.cc
   bpy_rna_callback.cc
-  bpy_rna_context.c
+  bpy_rna_context.cc
   bpy_rna_data.c
   bpy_rna_driver.c
   bpy_rna_gizmo.c

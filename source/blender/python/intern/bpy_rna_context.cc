@@ -29,16 +29,16 @@
 /** \name Temporary Context Override (Python Context Manager)
  * \{ */
 
-typedef struct ContextStore {
+struct ContextStore {
   wmWindow *win;
   bool win_is_set;
   ScrArea *area;
   bool area_is_set;
   ARegion *region;
   bool region_is_set;
-} ContextStore;
+};
 
-typedef struct BPyContextTempOverride {
+struct BPyContextTempOverride {
   PyObject_HEAD /* Required Python macro. */
   bContext *context;
 
@@ -55,7 +55,7 @@ typedef struct BPyContextTempOverride {
    * will overlay the new members on the old members (instead of ignoring them).
    */
   PyObject *py_state_context_dict;
-} BPyContextTempOverride;
+};
 
 static void bpy_rna_context_temp_override__tp_dealloc(BPyContextTempOverride *self)
 {
@@ -76,32 +76,32 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   self->ctx_init.region_is_set = (self->ctx_init.region != self->ctx_temp.region);
 
   wmWindow *win = self->ctx_temp.win_is_set ? self->ctx_temp.win : self->ctx_init.win;
-  bScreen *screen = win ? WM_window_get_active_screen(win) : NULL;
+  bScreen *screen = win ? WM_window_get_active_screen(win) : nullptr;
   ScrArea *area = self->ctx_temp.area_is_set ? self->ctx_temp.area : self->ctx_init.area;
   ARegion *region = self->ctx_temp.region_is_set ? self->ctx_temp.region : self->ctx_init.region;
 
   /* Sanity check, the region is in the screen/area. */
-  if (self->ctx_temp.region_is_set && (region != NULL)) {
-    if (area == NULL) {
-      PyErr_SetString(PyExc_TypeError, "Region set with NULL area");
-      return NULL;
+  if (self->ctx_temp.region_is_set && (region != nullptr)) {
+    if (area == nullptr) {
+      PyErr_SetString(PyExc_TypeError, "Region set with nullptr area");
+      return nullptr;
     }
     if ((screen && BLI_findindex(&screen->regionbase, region) == -1) &&
         (BLI_findindex(&area->regionbase, region) == -1))
     {
       PyErr_SetString(PyExc_TypeError, "Region not found in area");
-      return NULL;
+      return nullptr;
     }
   }
 
-  if (self->ctx_temp.area_is_set && (area != NULL)) {
-    if (screen == NULL) {
-      PyErr_SetString(PyExc_TypeError, "Area set with NULL screen");
-      return NULL;
+  if (self->ctx_temp.area_is_set && (area != nullptr)) {
+    if (screen == nullptr) {
+      PyErr_SetString(PyExc_TypeError, "Area set with nullptr screen");
+      return nullptr;
     }
     if (BLI_findindex(&screen->areabase, area) == -1) {
       PyErr_SetString(PyExc_TypeError, "Area not found in screen");
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -119,7 +119,7 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
 }
 
 static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self,
-                                                    PyObject *UNUSED(args))
+                                                    PyObject * /*args*/)
 {
   bContext *C = self->context;
 
@@ -129,7 +129,7 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
   if (self->ctx_init.win) {
     wmWindowManager *wm = CTX_wm_manager(C);
     if (BLI_findindex(&wm->windows, self->ctx_init.win) == -1) {
-      CTX_wm_window_set(C, NULL);
+      CTX_wm_window_set(C, nullptr);
       do_restore = false;
     }
   }
@@ -147,7 +147,7 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
   }
 
   /* A copy may have been made when writing context members, see #BPY_context_dict_clear_members */
-  PyObject *context_dict_test = CTX_py_dict_get(C);
+  PyObject *context_dict_test = static_cast<PyObject *>(CTX_py_dict_get(C));
   if (context_dict_test && (context_dict_test != self->py_state_context_dict)) {
     Py_DECREF(context_dict_test);
   }
@@ -160,59 +160,59 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
 static PyMethodDef bpy_rna_context_temp_override__tp_methods[] = {
     {"__enter__", (PyCFunction)bpy_rna_context_temp_override_enter, METH_NOARGS},
     {"__exit__", (PyCFunction)bpy_rna_context_temp_override_exit, METH_VARARGS},
-    {NULL},
+    {nullptr},
 };
 
 static PyTypeObject BPyContextTempOverride_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "ContextTempOverride",
     /*tp_basicsize*/ sizeof(BPyContextTempOverride),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)bpy_rna_context_temp_override__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ bpy_rna_context_temp_override__tp_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
@@ -257,11 +257,11 @@ PyDoc_STRVAR(bpy_context_temp_override_doc,
 static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObject *kwds)
 {
   const PointerRNA *context_ptr = pyrna_struct_as_ptr(self, &RNA_Context);
-  if (context_ptr == NULL) {
-    return NULL;
+  if (context_ptr == nullptr) {
+    return nullptr;
   }
 
-  if (kwds == NULL) {
+  if (kwds == nullptr) {
     /* While this is effectively NOP, support having no keywords as it's more involved
      * to return an alternative (dummy) context manager. */
   }
@@ -269,21 +269,20 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
     /* Needed because the keywords copied into `kwds_parse` could contain anything.
      * As the types of keys aren't checked. */
     if (!PyArg_ValidateKeywordArguments(kwds)) {
-      return NULL;
+      return nullptr;
     }
   }
 
   struct {
-    struct BPy_StructRNA_Parse window;
-    struct BPy_StructRNA_Parse area;
-    struct BPy_StructRNA_Parse region;
-  } params = {
-      .window = {.type = &RNA_Window},
-      .area = {.type = &RNA_Area},
-      .region = {.type = &RNA_Region},
-  };
+    BPy_StructRNA_Parse window;
+    BPy_StructRNA_Parse area;
+    BPy_StructRNA_Parse region;
+  } params{};
+  params.window.type = &RNA_Window;
+  params.area.type = &RNA_Area;
+  params.region.type = &RNA_Region;
 
-  static const char *const _keywords[] = {"window", "area", "region", NULL};
+  static const char *const _keywords[] = {"window", "area", "region", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional, keyword only arguments. */
       "O&" /* `window` */
@@ -309,32 +308,32 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
     Py_DECREF(kwds_parse);
     if (parse_result == -1) {
       Py_DECREF(kwds);
-      return NULL;
+      return nullptr;
     }
   }
 
-  bContext *C = context_ptr->data;
+  bContext *C = static_cast<bContext *>(context_ptr->data);
   {
     /* Merge existing keys that don't exist in the keywords passed in.
      * This makes it possible to nest context overrides. */
-    PyObject *context_dict_current = CTX_py_dict_get(C);
-    if (context_dict_current != NULL) {
+    PyObject *context_dict_current = static_cast<PyObject *>(CTX_py_dict_get(C));
+    if (context_dict_current != nullptr) {
       PyDict_Merge(kwds, context_dict_current, 0);
     }
   }
 
-  ContextStore ctx_temp = {NULL};
-  if (params.window.ptr != NULL) {
-    ctx_temp.win = params.window.ptr->data;
+  ContextStore ctx_temp = {nullptr};
+  if (params.window.ptr != nullptr) {
+    ctx_temp.win = static_cast<wmWindow *>(params.window.ptr->data);
     ctx_temp.win_is_set = true;
   }
-  if (params.area.ptr != NULL) {
-    ctx_temp.area = params.area.ptr->data;
+  if (params.area.ptr != nullptr) {
+    ctx_temp.area = static_cast<ScrArea *>(params.area.ptr->data);
     ctx_temp.area_is_set = true;
   }
 
-  if (params.region.ptr != NULL) {
-    ctx_temp.region = params.region.ptr->data;
+  if (params.region.ptr != nullptr) {
+    ctx_temp.region = static_cast<ARegion *>(params.region.ptr->data);
     ctx_temp.region_is_set = true;
   }
 
