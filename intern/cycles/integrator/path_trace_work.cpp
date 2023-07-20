@@ -41,8 +41,7 @@ PathTraceWork::PathTraceWork(Device *device,
       device_scene_(device_scene),
       buffers_(make_unique<RenderBuffers>(device)),
       effective_buffer_params_(buffers_->params),
-      cancel_requested_flag_(cancel_requested_flag),
-      device_scale_factor_(-1)
+      cancel_requested_flag_(cancel_requested_flag)
 {
 }
 
@@ -85,18 +84,16 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
   const int64_t row_stride = width * pass_stride;
   const int64_t data_size = row_stride * sizeof(float);
 
-  int y_slice = 0;
   int y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  for (int i = 0; i < device_scale_factor_; i++) {
+  for (int y_slice = 0; y_slice < total_height; y_slice += slice_height) {
     SCOPED_MARKER(device_, "copy_to_render_buffers_work_set");
-    int height = std::min(total_height - i*slice_height, slice_height);
+    int height = std::min(total_height - y_slice, slice_height);
     //VLOG_INFO << "\t(" << i << ") Buffer height " << height << " y slice:" << y_slice << " y render:" << y_render;
     if(height > 0) {
       const float *src = buffers_->buffer.data() + y_slice*row_stride;
       float *dst = render_buffers->buffer.data() + y_render*row_stride;
       
       memcpy(dst, src, data_size*height);
-      y_slice += slice_height;
       y_render += y_stride;
     }
   }
@@ -113,17 +110,15 @@ void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers
   const int64_t row_stride = width * pass_stride;
   const int64_t data_size = row_stride * sizeof(float);
 
-  int y_slice = 0;
   int y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  for (int i = 0; i < device_scale_factor_; i++) {
+  for (int y_slice = 0; y_slice < total_height; y_slice += slice_height) {
     SCOPED_MARKER(device_, "copy_from_render_buffers_work_set");
-    int height = std::min(total_height - i*slice_height, slice_height);
+    int height = std::min(total_height - y_slice, slice_height);
     if(height > 0) {      
       const float *src = render_buffers->buffer.data() + y_render*row_stride;
       float *dst = buffers_->buffer.data() + y_slice*row_stride;
       
       memcpy(dst, src, data_size*height);
-      y_slice += slice_height;
       y_render += y_stride;
     }
   }
@@ -135,17 +130,18 @@ void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *rende
   const int64_t width = effective_buffer_params_.width;
   const int y_stride = effective_buffer_params_.slice_stride;  
   const int slice_height = effective_buffer_params_.slice_height;
-  
-  int y_slice = 0;
+  const int total_height = effective_buffer_params_.height;
+    
   int64_t y_render = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
-  for (int i = 0; i < device_scale_factor_; i++) {
+  for (int y_slice = 0; y_slice < total_height; y_slice += slice_height) {
     const int64_t dst_offset = y_render * width;
     const int64_t src_offset = y_slice * width;
 
-    render_buffers_host_copy_denoised(
-				      buffers_.get(), effective_buffer_params_, src_offset, slice_height, render_buffers, effective_buffer_params_, dst_offset);
-
-    y_slice += slice_height;
+    int height = std::min(total_height - y_slice, slice_height);
+    if(height > 0) {
+      render_buffers_host_copy_denoised(
+                                        buffers_.get(), effective_buffer_params_, src_offset, height, render_buffers, effective_buffer_params_, dst_offset);
+    }
     y_render += y_stride;
   }
   copy_render_buffers_to_device();

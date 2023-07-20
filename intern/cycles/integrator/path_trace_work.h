@@ -187,8 +187,6 @@ class PathTraceWork {
   BufferParams effective_buffer_params_;
 
   bool *cancel_requested_flag_ = nullptr;
-
-  int device_scale_factor_;
 };
 
 CCL_NAMESPACE_END
