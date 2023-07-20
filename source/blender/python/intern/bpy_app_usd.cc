@@ -23,7 +23,7 @@ static PyStructSequence_Field app_usd_info_fields[] = {
     {"supported", "Boolean, True when Blender is built with USD support"},
     {"version", "The USD version as a tuple of 3 numbers"},
     {"version_string", "The USD version formatted as a string"},
-    {NULL},
+    {nullptr},
 };
 
 static PyStructSequence_Desc app_usd_info_desc = {
@@ -38,8 +38,8 @@ static PyObject *make_usd_info(void)
 {
   PyObject *usd_info = PyStructSequence_New(&BlenderAppUSDType);
 
-  if (usd_info == NULL) {
-    return NULL;
+  if (usd_info == nullptr) {
+    return nullptr;
   }
 
   int pos = 0;
@@ -57,7 +57,7 @@ static PyObject *make_usd_info(void)
   const int patch = curversion % 100;
 
   SetObjItem(PyBool_FromLong(1));
-  SetObjItem(PyC_Tuple_Pack_I32(major, minor, patch));
+  SetObjItem(PyC_Tuple_Pack_I32({major, minor, patch}));
   SetObjItem(PyUnicode_FromFormat("%2d, %2d, %2d", major, minor, patch));
 #else
   SetObjItem(PyBool_FromLong(0));
@@ -67,7 +67,7 @@ static PyObject *make_usd_info(void)
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(usd_info);
-    return NULL;
+    return nullptr;
   }
 
 #undef SetStrItem
@@ -83,8 +83,8 @@ PyObject *BPY_app_usd_struct(void)
   PyObject *ret = make_usd_info();
 
   /* prevent user from creating new instances */
-  BlenderAppUSDType.tp_init = NULL;
-  BlenderAppUSDType.tp_new = NULL;
+  BlenderAppUSDType.tp_init = nullptr;
+  BlenderAppUSDType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppUSDType.tp_hash = (hashfunc)_Py_HashPointer;
 
