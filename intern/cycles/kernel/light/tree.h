@@ -174,19 +174,20 @@ ccl_device void light_tree_importance(const float3 N_or_D,
     cos_max_incidence_angle = fmaxf(cos_theta_i * cos_theta_u - sin_theta_i * sin_theta_u, 0.0f);
   }
 
-  /* cos(theta - theta_u) */
-  const float cos_theta = dot(bcone.axis, -point_to_centroid);
+  /* We add a small value to cos_theta to cover up floating point precision losses in the dot()
+   * function used to calculate cos_theta. */
+  const float cos_theta = min(dot(bcone.axis, -point_to_centroid) + 5e-4f, 1.0f);
   const float sin_theta = sin_from_cos(cos_theta);
+  /* cos(theta - theta_u) */
   const float cos_theta_minus_theta_u = cos_theta * cos_theta_u + sin_theta * sin_theta_u;
 
   float cos_theta_o, sin_theta_o;
   fast_sincosf(bcone.theta_o, &sin_theta_o, &cos_theta_o);
 
   /* Minimum angle an emitter’s axis would form with the direction to the shading point,
-   * cos(theta') in the paper. We add a small value to cos_theta to cover up floating point
-   * precision losses in the dot() function used to calculate cos_theta. */
+   * cos(theta') in the paper. */
   float cos_min_outgoing_angle;
-  if ((cos_theta + 5e-4f >= cos_theta_u) || (cos_theta_minus_theta_u >= cos_theta_o)) {
+  if ((cos_theta >= cos_theta_u) || (cos_theta_minus_theta_u >= cos_theta_o)) {
     cos_min_outgoing_angle = 1.0f;
   }
   else if ((bcone.theta_o + bcone.theta_e > M_PI_F) ||
