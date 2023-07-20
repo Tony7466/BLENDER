@@ -28,8 +28,8 @@
 
 #include "wm_surface.h"
 
-static ListBase global_surface_list = {NULL, NULL};
-static wmSurface *g_drawable = NULL;
+static ListBase global_surface_list = {nullptr, nullptr};
+static wmSurface *g_drawable = nullptr;
 
 void wm_surfaces_iter(bContext *C, void (*cb)(bContext *C, wmSurface *))
 {
@@ -55,19 +55,19 @@ void wm_surface_clear_drawable(void)
 {
   if (g_drawable) {
     WM_system_gpu_context_release(g_drawable->system_gpu_context);
-    GPU_context_active_set(NULL);
+    GPU_context_active_set(nullptr);
 
     if (g_drawable->deactivate) {
       g_drawable->deactivate();
     }
 
-    g_drawable = NULL;
+    g_drawable = nullptr;
   }
 }
 
 void wm_surface_set_drawable(wmSurface *surface, bool activate)
 {
-  BLI_assert(ELEM(g_drawable, NULL, surface));
+  BLI_assert(ELEM(g_drawable, nullptr, surface));
 
   g_drawable = surface;
   if (activate) {
