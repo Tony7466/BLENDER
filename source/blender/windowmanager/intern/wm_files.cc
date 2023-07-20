@@ -3766,10 +3766,10 @@ static void file_forwardcompat_detailed_info_show(uiLayout *parent_layout, Main 
   char message_line1[256];
   char message_line2[256];
   SNPRINTF(message_line1,
-           TIP_("This file was saved by a newer version of Blender (v%s)"),
+           TIP_("This file was saved by a newer version of Blender (%s)"),
            writer_ver_str);
   SNPRINTF(message_line2,
-           TIP_("Saving it with this Blender (v%s) may cause loss of data"),
+           TIP_("Saving it with this Blender (%s) may cause loss of data"),
            current_ver_str);
   uiItemL(layout, message_line1, ICON_NONE);
   uiItemL(layout, message_line2, ICON_NONE);
@@ -3866,8 +3866,6 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
   uiItemL_ex(
       layout, TIP_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
 
-  uiItemS(layout);
-
   /* Filename. */
   const char *blendfile_path = BKE_main_blendfile_path(CTX_data_main(C));
   char filename[FILE_MAX];
@@ -3881,8 +3879,6 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
     BLI_assert_unreachable();
   }
   uiItemL(layout, filename, ICON_NONE);
-
-  uiItemS(layout);
 
   /* Detailed message info. */
   file_forwardcompat_detailed_info_show(layout, bmain);

@@ -5360,65 +5360,6 @@ static void SCREEN_OT_info_log_show(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Show Forward Compatibility info operator.
- * \{ */
-
-static const char *info_status_popup_name = "info_status_popup";
-
-static uiBlock *block_create__info_status_panel(bContext *C, ARegion *region, void * /*arg1*/)
-{
-  Main *bmain = CTX_data_main(C);
-
-  uiBlock *block = UI_block_begin(C, region, info_status_popup_name, UI_EMBOSS);
-  UI_block_flag_enable(
-      block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
-
-  uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_WARNING);
-
-  char writer_ver_str[12];
-  BKE_blender_version_blendfile_string_from_values(
-      writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
-
-  char message[256];
-  SNPRINTF(
-      message, TIP_("Current file was saved by a newer version of Blender (v%s)"), writer_ver_str);
-  uiItemL_ex(layout, message, ICON_NONE, true, false);
-  uiItemL_ex(layout, TIP_("Loss of data and features is expected"), ICON_NONE, true, false);
-
-  UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
-  return block;
-}
-
-static int info_status_show_exec(bContext *C, wmOperator * /*op*/)
-{
-  Main *bmain = CTX_data_main(C);
-  if (!bmain->has_forward_compatibility_issues) {
-    return OPERATOR_CANCELLED;
-  }
-
-  if (!UI_popup_block_name_exists(CTX_wm_screen(C), info_status_popup_name)) {
-    UI_popup_block_invoke(C, block_create__info_status_panel, nullptr, nullptr);
-  }
-
-  return OPERATOR_FINISHED;
-}
-
-static void SCREEN_OT_info_status_show(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Show Status Info";
-  ot->description = "Show additional status info";
-  ot->idname = "SCREEN_OT_info_status_show";
-
-  /* api callbacks */
-  ot->exec = info_status_show_exec;
-  ot->poll = ED_operator_screenactive_nobackground;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name New Screen Operator
  * \{ */
 
@@ -5887,7 +5828,6 @@ void ED_operatortypes_screen()
   WM_operatortype_append(SCREEN_OT_userpref_show);
   WM_operatortype_append(SCREEN_OT_drivers_editor_show);
   WM_operatortype_append(SCREEN_OT_info_log_show);
-  WM_operatortype_append(SCREEN_OT_info_status_show);
   WM_operatortype_append(SCREEN_OT_region_blend);
   WM_operatortype_append(SCREEN_OT_space_type_set_or_cycle);
   WM_operatortype_append(SCREEN_OT_space_context_cycle);

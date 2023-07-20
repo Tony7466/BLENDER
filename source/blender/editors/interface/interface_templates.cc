@@ -42,6 +42,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
+#include "BKE_blender_version.h"
 #include "BKE_blendfile.h"
 #include "BKE_cachefile.h"
 #include "BKE_colorband.h"
@@ -6585,30 +6586,45 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
   /* The report icon itself. */
-  but = uiDefIconButO(block,
-                      UI_BTYPE_BUT,
-                      "SCREEN_OT_info_status_show",
-                      WM_OP_INVOKE_REGION_WIN,
-                      ICON_ERROR,
-                      static_cast<int>(3 * UI_SCALE_FAC),
-                      0,
-                      UI_UNIT_X,
-                      UI_UNIT_Y,
-                      TIP_("Show detailed comatibility info"));
+  static char compat_error_msg[256];
+  char writer_ver_str[12];
+  BKE_blender_version_blendfile_string_from_values(
+      writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
+  SNPRINTF(compat_error_msg,
+           TIP_("File saved by newer Blender\n(%s), expect loss of data!"),
+           writer_ver_str);
+  but = uiDefIconBut(block,
+                     UI_BTYPE_BUT,
+                     0,
+                     ICON_ERROR,
+                     static_cast<int>(3 * UI_SCALE_FAC),
+                     0,
+                     UI_UNIT_X,
+                     UI_UNIT_Y,
+                     nullptr,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     0.0f,
+                     compat_error_msg);
   UI_GetThemeColorType4ubv(TH_INFO_WARNING_TEXT, SPACE_INFO, but->col);
   but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
 
   /* The report message. */
-  but = uiDefButO(block,
-                  UI_BTYPE_BUT,
-                  "SCREEN_OT_info_status_show",
-                  WM_OP_INVOKE_REGION_WIN,
-                  status_info_txt,
-                  UI_UNIT_X,
-                  0,
-                  static_cast<short>(width + UI_UNIT_X),
-                  UI_UNIT_Y,
-                  TIP_("Show detailed comatibility info"));
+  but = uiDefBut(block,
+                 UI_BTYPE_BUT,
+                 0,
+                 status_info_txt,
+                 UI_UNIT_X,
+                 0,
+                 static_cast<short>(width + UI_UNIT_X),
+                 UI_UNIT_Y,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 compat_error_msg);
 
   UI_block_emboss_set(block, previous_emboss);
 }

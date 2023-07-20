@@ -1109,12 +1109,17 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
           BKE_blender_version_blendfile_string_from_values(
               min_reader_ver_str, sizeof(min_reader_ver_str), fg->minversion, -1);
         }
-        BKE_reportf(reports,
-                    RPT_ERROR,
-                    TIP_("The file has been saved by a newer version of Blender (v%s), "
-                         "Blender v%s or later is needed to open it"),
-                    writer_ver_str,
-                    min_reader_ver_str);
+        BKE_reportf(
+            reports,
+            RPT_ERROR,
+            TIP_("The file was saved by a newer version, open it with Blender %s or later"),
+            min_reader_ver_str);
+        CLOG_WARN(&LOG,
+                  "%s: File saved by a newer version of Blender (%s), Blender %s or later is "
+                  "needed to open it.",
+                  fd->relabase,
+                  writer_ver_str,
+                  min_reader_ver_str);
         MEM_freeN(fg);
         return true;
       }
