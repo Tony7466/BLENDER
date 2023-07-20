@@ -725,17 +725,17 @@ struct EraseOperationExecutor {
         src_remove_point[src_point] = is_point_transparent(src_point);
       }
     });
-    bool any_transparent_point = false;
-    for (const bool is_transparent : src_remove_point) {
-      if (is_transparent) {
-        any_transparent_point = true;
+    bool any_point_to_remove = false;
+    for (const bool point_to_remove : src_remove_point) {
+      if (point_to_remove) {
+        any_point_to_remove = true;
         break;
       }
     }
 
     /* If no points needs to be removed, then we can leave the topology as is.
      */
-    if (!any_transparent_point) {
+    if (!any_point_to_remove) {
       dst = std::move(src);
 
       bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
