@@ -27,8 +27,17 @@ static const char *traceback_filepath(PyTracebackObject *tb, PyObject **coerce)
   return PyBytes_AS_STRING(*coerce);
 }
 
-/* Copied from `pythonrun.c`, 3.10.0 */
-_Py_static_string(PyId_string, "<string>");
+#define MAKE_PY_IDENTIFIER_EX(varname, value) static _Py_Identifier varname{value, -1};
+#define MAKE_PY_IDENTIFIER(varname) MAKE_PY_IDENTIFIER_EX(PyId_##varname, #varname)
+
+MAKE_PY_IDENTIFIER_EX(PyId_string, "<string>")
+MAKE_PY_IDENTIFIER(msg);
+MAKE_PY_IDENTIFIER(filename);
+MAKE_PY_IDENTIFIER(lineno);
+MAKE_PY_IDENTIFIER(offset);
+MAKE_PY_IDENTIFIER(end_lineno);
+MAKE_PY_IDENTIFIER(end_offset);
+MAKE_PY_IDENTIFIER(text);
 
 static int parse_syntax_error(PyObject *err,
                               PyObject **message,
@@ -41,13 +50,6 @@ static int parse_syntax_error(PyObject *err,
 {
   Py_ssize_t hold;
   PyObject *v;
-  _Py_IDENTIFIER(msg);
-  _Py_IDENTIFIER(filename);
-  _Py_IDENTIFIER(lineno);
-  _Py_IDENTIFIER(offset);
-  _Py_IDENTIFIER(end_lineno);
-  _Py_IDENTIFIER(end_offset);
-  _Py_IDENTIFIER(text);
 
   *message = nullptr;
   *filename = nullptr;
