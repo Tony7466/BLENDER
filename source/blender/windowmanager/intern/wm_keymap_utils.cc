@@ -78,7 +78,7 @@ wmKeyMapItem *WM_keymap_add_tool(wmKeyMap *keymap,
 wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
-  const char *km_id = NULL;
+  const char *km_id = nullptr;
   if (sl->spacetype == SPACE_VIEW3D) {
     const enum eContextObjectMode mode = CTX_data_mode_enum(C);
     switch (mode) {
@@ -158,7 +158,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
   }
   else if (sl->spacetype == SPACE_IMAGE) {
     const SpaceImage *sima = (SpaceImage *)sl;
-    const eSpaceImage_Mode mode = sima->mode;
+    const eSpaceImage_Mode mode = eSpaceImage_Mode(sima->mode);
     switch (mode) {
       case SI_MODE_VIEW:
         km_id = "Image";
@@ -175,7 +175,7 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
     }
   }
   else {
-    return NULL;
+    return nullptr;
   }
 
   wmKeyMap *km = WM_keymap_find_all(CTX_wm_manager(C), km_id, 0, 0);
@@ -197,7 +197,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
    *     WORLD_OT
    */
 
-  wmKeyMap *km = NULL;
+  wmKeyMap *km = nullptr;
   wmWindowManager *wm = CTX_wm_manager(C);
   SpaceLink *sl = CTX_wm_space_data(C);
 
@@ -207,7 +207,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
       km = WM_keymap_guess_from_context(C);
     }
 
-    if (km == NULL) {
+    if (km == nullptr) {
       km = WM_keymap_find_all(wm, "Window", 0, 0);
     }
   }
@@ -353,7 +353,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
     if (sl->spacetype == SPACE_VIEW3D) {
       km = WM_keymap_find_all(wm, "Mesh", 0, 0);
       if (km && !WM_keymap_poll((bContext *)C, km)) {
-        km = NULL;
+        km = nullptr;
       }
     }
     if (!km) {
@@ -382,7 +382,7 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
           break;
       }
       if (km && !WM_keymap_poll((bContext *)C, km)) {
-        km = NULL;
+        km = nullptr;
       }
     }
 
