@@ -112,11 +112,16 @@ static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
     const wmXrSurfaceData *surface_data,
     const GHOST_XrDrawViewInfo *draw_view)
 {
-  const wmXrViewportPair *vp = BLI_findlink(&surface_data->viewports, draw_view->view_idx);
+  const wmXrViewportPair *vp = static_cast<const wmXrViewportPair *>(
+      BLI_findlink(&surface_data->viewports, draw_view->view_idx));
   BLI_assert(vp && vp->viewport);
 
   const bool is_upside_down = GHOST_XrSessionNeedsUpsideDownDrawing(runtime_data->context);
-  rcti rect = {.xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
+  rcti rect{};
+  rect.xmin = 0;
+  rect.ymin = 0;
+  rect.xmax = draw_view->width - 1;
+  rect.ymax = draw_view->height - 1;
 
   wmViewport(&rect);
 
@@ -129,7 +134,7 @@ static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
 
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
-  wmXrDrawData *draw_data = customdata;
+  wmXrDrawData *draw_data = static_cast<wmXrDrawData *>(customdata);
   wmXrData *xr_data = draw_data->xr_data;
   wmXrSurfaceData *surface_data = draw_data->surface_data;
   wmXrSessionState *session_state = &xr_data->runtime->session_state;
@@ -149,7 +154,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
     return;
   }
 
-  const wmXrViewportPair *vp = BLI_findlink(&surface_data->viewports, draw_view->view_idx);
+  const wmXrViewportPair *vp = static_cast<const wmXrViewportPair *>(
+      BLI_findlink(&surface_data->viewports, draw_view->view_idx));
   BLI_assert(vp && vp->offscreen && vp->viewport);
 
   /* In case a framebuffer is still bound from drawing the last eye. */
@@ -174,7 +180,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   true,
                                   false,
                                   true,
-                                  NULL,
+                                  nullptr,
                                   false,
                                   vp->offscreen,
                                   vp->viewport);
@@ -200,7 +206,7 @@ static GPUBatch *wm_xr_controller_model_batch_create(GHOST_XrContextHandle xr_co
   if (!GHOST_XrGetControllerModelData(xr_context, subaction_path, &model_data) ||
       model_data.count_vertices < 1)
   {
-    return NULL;
+    return nullptr;
   }
 
   GPUVertFormat format = {0};
@@ -213,7 +219,7 @@ static GPUBatch *wm_xr_controller_model_batch_create(GHOST_XrContextHandle xr_co
   memcpy(
       vbo_data, model_data.vertices, model_data.count_vertices * sizeof(model_data.vertices[0]));
 
-  GPUIndexBuf *ibo = NULL;
+  GPUIndexBuf *ibo = nullptr;
   if (model_data.count_indices > 0 && ((model_data.count_indices % 3) == 0)) {
     GPUIndexBufBuilder ibo_builder;
     const uint prim_len = model_data.count_indices / 3;
@@ -383,9 +389,9 @@ static void wm_xr_controller_aim_draw(const XrSessionSettings *settings, wmXrSes
   immUnbindProgram();
 }
 
-void wm_xr_draw_controllers(const bContext *UNUSED(C), ARegion *UNUSED(region), void *customdata)
+void wm_xr_draw_controllers(const bContext * /*C*/, ARegion * /*region*/, void *customdata)
 {
-  wmXrData *xr = customdata;
+  wmXrData *xr = static_cast<wmXrData *>(customdata);
   const XrSessionSettings *settings = &xr->session_settings;
   GHOST_XrContextHandle xr_context = xr->runtime->context;
   wmXrSessionState *state = &xr->runtime->session_state;
