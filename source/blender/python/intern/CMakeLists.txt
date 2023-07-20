@@ -52,7 +52,7 @@ set(SRC
   bpy_msgbus.cc
   bpy_operator.cc
   bpy_operator_wrap.cc
-  bpy_path.c
+  bpy_path.cc
   bpy_props.c
   bpy_rna.c
   bpy_rna_anim.c

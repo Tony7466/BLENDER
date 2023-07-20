@@ -25,13 +25,13 @@ extern const char *imb_ext_audio[];
 static PyModuleDef _bpy_path_module_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "_bpy_path",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPyInit__bpy_path(void)
