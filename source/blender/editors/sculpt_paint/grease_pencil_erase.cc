@@ -57,7 +57,18 @@ struct EraseOperationExecutor {
   EraseOperationExecutor(const bContext & /*C*/) {}
 
   /**
-   * Computes the intersection between the eraser tool and a segment
+   * Computes the intersection between the eraser tool and a 2D segment.
+   *
+   * \param point: coordinates of the first point in the segment.
+   * \param point_after: coordinates of the second point in the segment.
+   *
+   * \param r_mu0: output factor of the first intersection if it exists, otherwise (-1).
+   * \param r_mu1: output factor of the second intersection if it exists, otherwise (-1).
+   *
+   * \returns total number of intersections lying inside the segment (ie whose factor is in [0,1]).
+   *
+   * Note that the eraser is represented as a circle, and thus there can be only 0, 1 or 2
+   * intersections with a segment.
    */
   int intersections_with_segment(const float2 &point,
                                  const float2 &point_after,
