@@ -411,7 +411,7 @@ void blo_split_main(ListBase *mainlist, Main *main)
     libmain->curlib = lib;
     libmain->versionfile = lib->versionfile;
     libmain->subversionfile = lib->subversionfile;
-    libmain->has_forward_compatibility_issues = !MAIN_VERSION_OLDER_OR_EQUAL(
+    libmain->has_forward_compatibility_issues = !MAIN_VERSION_FILE_OLDER_OR_EQUAL(
         libmain, BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
     BLI_addtail(mainlist, libmain);
     lib->temp_index = i;
@@ -1116,13 +1116,13 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
                     writer_ver_str,
                     min_reader_ver_str);
         MEM_freeN(fg);
-        return false;
+        return true;
       }
       MEM_freeN(fg);
-      return true;
+      return false;
     }
   }
-  return true;
+  return false;
 }
 
 static FileData *blo_decode_and_check(FileData *fd, ReportList *reports)
@@ -1137,7 +1137,7 @@ static FileData *blo_decode_and_check(FileData *fd, ReportList *reports)
       blo_filedata_free(fd);
       fd = nullptr;
     }
-    if (!is_minversion_older_than_blender(fd, reports)) {
+    if (is_minversion_older_than_blender(fd, reports)) {
       blo_filedata_free(fd);
       fd = nullptr;
     }
@@ -3064,7 +3064,7 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
   /* NOTE: `bfd->main->versionfile` is supposed to have already been set from `fd->fileversion`
    * beforehand by calling code. */
   bfd->main->subversionfile = fg->subversion;
-  bfd->main->has_forward_compatibility_issues = !MAIN_VERSION_OLDER_OR_EQUAL(
+  bfd->main->has_forward_compatibility_issues = !MAIN_VERSION_FILE_OLDER_OR_EQUAL(
       bfd->main, BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
 
   bfd->main->minversionfile = fg->minversion;

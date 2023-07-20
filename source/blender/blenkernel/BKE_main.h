@@ -465,7 +465,7 @@ int set_listbasepointers(struct Main *main, struct ListBase *lb[]);
   ((main)->versionfile < (ver) || \
    ((main)->versionfile == (ver) && (main)->subversionfile < (subver)))
 
-#define MAIN_VERSION_OLDER_OR_EQUAL(main, ver, subver) \
+#define MAIN_VERSION_FILE_OLDER_OR_EQUAL(main, ver, subver) \
   ((main)->versionfile < (ver) || \
    ((main)->versionfile == (ver) && (main)->subversionfile <= (subver)))
 

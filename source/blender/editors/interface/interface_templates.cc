@@ -6511,12 +6511,11 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 {
   Main *bmain = CTX_data_main(C);
-  wmWindow *win = CTX_wm_window(C);
-  WorkSpace *workspace = CTX_wm_workspace(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
 
   if (!bmain->has_forward_compatibility_issues) {
-    const char *status_info_txt = ED_info_statusbar_string(
-        bmain, CTX_data_scene(C), CTX_data_view_layer(C));
+    const char *status_info_txt = ED_info_statusbar_string(bmain, scene, view_layer);
     uiItemL(layout, status_info_txt, ICON_NONE);
     return;
   }
@@ -6525,14 +6524,10 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
    * currently loaded .blend file. */
 
   const char *status_info_txt = ED_info_statusbar_string_ex(
-      bmain,
-      CTX_data_scene(C),
-      CTX_data_view_layer(C),
-      (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
+      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
   uiItemL(layout, status_info_txt, ICON_NONE);
 
-  status_info_txt = ED_info_statusbar_string_ex(
-      bmain, CTX_data_scene(C), CTX_data_view_layer(C), STATUSBAR_SHOW_VERSION);
+  status_info_txt = ED_info_statusbar_string_ex(bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
 
   uiBut *but;
 
