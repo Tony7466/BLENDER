@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -115,7 +117,7 @@ static PyObject *pygpu_platform_backend_type_get(PyObject *UNUSED(self))
 /** \name Module
  * \{ */
 
-static struct PyMethodDef pygpu_platform__tp_methods[] = {
+static PyMethodDef pygpu_platform__tp_methods[] = {
     {"vendor_get",
      (PyCFunction)pygpu_platform_vendor_get,
      METH_NOARGS,
@@ -141,7 +143,7 @@ static struct PyMethodDef pygpu_platform__tp_methods[] = {
 
 PyDoc_STRVAR(pygpu_platform__tp_doc, "This module provides access to GPU Platform definitions.");
 static PyModuleDef pygpu_platform_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.platform",
     /*m_doc*/ pygpu_platform__tp_doc,
     /*m_size*/ 0,

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -42,7 +43,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
 #include "RNA_access.h"
@@ -61,7 +62,8 @@ static void shapekey_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, c
   for (kb_src = static_cast<KeyBlock *>(key_src->block.first),
       kb_dst = static_cast<KeyBlock *>(key_dst->block.first);
        kb_dst;
-       kb_src = kb_src->next, kb_dst = kb_dst->next) {
+       kb_src = kb_src->next, kb_dst = kb_dst->next)
+  {
     if (kb_dst->data) {
       kb_dst->data = MEM_dupallocN(kb_dst->data);
     }
@@ -184,8 +186,8 @@ static void shapekey_blend_read_lib(BlendLibReader *reader, ID *id)
   Key *key = (Key *)id;
   BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
 
-  BLO_read_id_address(reader, key->id.lib, &key->ipo); /* XXX deprecated - old animation system */
-  BLO_read_id_address(reader, key->id.lib, &key->from);
+  BLO_read_id_address(reader, id, &key->ipo); /* XXX deprecated - old animation system */
+  BLO_read_id_address(reader, id, &key->from);
 }
 
 static void shapekey_blend_read_expand(BlendExpander *expander, ID *id)
@@ -901,7 +903,8 @@ static void key_evaluate_relative(const int start,
   /* step 2: do it */
 
   for (kb = static_cast<KeyBlock *>(key->block.first), keyblock_index = 0; kb;
-       kb = kb->next, keyblock_index++) {
+       kb = kb->next, keyblock_index++)
+  {
     if (kb != key->refkey) {
       float icuval = kb->curval;
 
@@ -1348,7 +1351,8 @@ static float **keyblock_get_per_block_weights(Object *ob, Key *key, WeightsArray
       MEM_mallocN(sizeof(*per_keyblock_weights) * key->totkey, "per keyblock weights"));
 
   for (keyblock = static_cast<KeyBlock *>(key->block.first), keyblock_index = 0; keyblock;
-       keyblock = keyblock->next, keyblock_index++) {
+       keyblock = keyblock->next, keyblock_index++)
+  {
     per_keyblock_weights[keyblock_index] = get_weights_array(ob, keyblock->vgroup, cache);
   }
 
@@ -1645,7 +1649,8 @@ int BKE_keyblock_element_count_from_shape(const Key *key, const int shape_index)
   int result = 0;
   int index = 0;
   for (const KeyBlock *kb = static_cast<const KeyBlock *>(key->block.first); kb;
-       kb = kb->next, index++) {
+       kb = kb->next, index++)
+  {
     if (ELEM(shape_index, -1, index)) {
       result += kb->totelem;
     }
@@ -1680,7 +1685,8 @@ void BKE_keyblock_data_get_from_shape(const Key *key, float (*arr)[3], const int
   uint8_t *elements = (uint8_t *)arr;
   int index = 0;
   for (const KeyBlock *kb = static_cast<const KeyBlock *>(key->block.first); kb;
-       kb = kb->next, index++) {
+       kb = kb->next, index++)
+  {
     if (ELEM(shape_index, -1, index)) {
       const int block_elem_len = kb->totelem * key->elemsize;
       memcpy(elements, kb->data, block_elem_len);
@@ -1836,14 +1842,14 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
 
   tot = BLI_listbase_count(&key->block);
   if (name) {
-    BLI_strncpy(kb->name, name, sizeof(kb->name));
+    STRNCPY(kb->name, name);
   }
   else {
     if (tot == 1) {
-      BLI_strncpy(kb->name, DATA_("Basis"), sizeof(kb->name));
+      STRNCPY_UTF8(kb->name, DATA_("Basis"));
     }
     else {
-      BLI_snprintf(kb->name, sizeof(kb->name), DATA_("Key %d"), tot - 1);
+      SNPRINTF(kb->name, DATA_("Key %d"), tot - 1);
     }
   }
 
@@ -1859,9 +1865,8 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
   kb->slidermin = 0.0f;
   kb->slidermax = 1.0f;
 
-  /**
-   * \note caller may want to set this to current time, but don't do it here since we need to sort
-   * which could cause problems in some cases, see #BKE_keyblock_add_ctime */
+  /* \note caller may want to set this to current time, but don't do it here since we need to sort
+   * which could cause problems in some cases, see #BKE_keyblock_add_ctime. */
   kb->pos = curpos + 0.1f; /* only used for absolute shape keys */
 
   return kb;
@@ -1956,7 +1961,7 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
   kb_dst->curval = kb_src->curval;
   kb_dst->type = kb_src->type;
   kb_dst->relative = kb_src->relative;
-  BLI_strncpy(kb_dst->vgroup, kb_src->vgroup, sizeof(kb_dst->vgroup));
+  STRNCPY(kb_dst->vgroup, kb_src->vgroup);
   kb_dst->slidermin = kb_src->slidermin;
   kb_dst->slidermax = kb_src->slidermax;
 }
@@ -2154,7 +2159,8 @@ static void keyblock_data_convert_to_curve(const float *fp, ListBase *nurb, int 
     if (nu->bezt != nullptr) {
       BezTriple *bezt = nu->bezt;
       for (int i = nu->pntsu; i && (totpoint -= KEYELEM_ELEM_LEN_BEZTRIPLE) >= 0;
-           i--, bezt++, fp += KEYELEM_FLOAT_LEN_BEZTRIPLE) {
+           i--, bezt++, fp += KEYELEM_FLOAT_LEN_BEZTRIPLE)
+      {
         for (int j = 0; j < 3; j++) {
           copy_v3_v3(bezt->vec[j], &fp[j * 3]);
         }
@@ -2165,7 +2171,8 @@ static void keyblock_data_convert_to_curve(const float *fp, ListBase *nurb, int 
     else {
       BPoint *bp = nu->bp;
       for (int i = nu->pntsu * nu->pntsv; i && (totpoint -= KEYELEM_ELEM_LEN_BPOINT) >= 0;
-           i--, bp++, fp += KEYELEM_FLOAT_LEN_BPOINT) {
+           i--, bp++, fp += KEYELEM_FLOAT_LEN_BPOINT)
+      {
         copy_v3_v3(bp->vec, fp);
         bp->tilt = fp[3];
         bp->radius = fp[4];
@@ -2193,8 +2200,8 @@ void BKE_keyblock_update_from_mesh(const Mesh *me, KeyBlock *kb)
     return;
   }
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  memcpy(kb->data, positions, sizeof(float[3]) * tot);
+  const blender::Span<blender::float3> positions = me->vert_positions();
+  memcpy(kb->data, positions.data(), sizeof(float[3]) * tot);
 }
 
 void BKE_keyblock_convert_from_mesh(const Mesh *me, const Key *key, KeyBlock *kb)
@@ -2231,11 +2238,12 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
     return;
   }
 
-  float(*positions)[3] = static_cast<float(*)[3]>(MEM_dupallocN(BKE_mesh_vert_positions(mesh)));
-  BKE_keyblock_convert_to_mesh(kb, positions, mesh->totvert);
-  const blender::Span<MEdge> edges = mesh->edges();
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  blender::Array<blender::float3> positions(mesh->vert_positions());
+  BKE_keyblock_convert_to_mesh(kb, reinterpret_cast<float(*)[3]>(positions.data()), mesh->totvert);
+  const blender::Span<blender::int2> edges = mesh->edges();
+  const blender::OffsetIndices polys = mesh->polys();
+  const blender::Span<int> corner_verts = mesh->corner_verts();
+  const blender::Span<int> corner_edges = mesh->corner_edges();
 
   const bool loop_normals_needed = r_loop_normals != nullptr;
   const bool vert_normals_needed = r_vert_normals != nullptr || loop_normals_needed;
@@ -2258,49 +2266,43 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   }
 
   if (poly_normals_needed) {
-    BKE_mesh_calc_normals_poly(positions,
-                               mesh->totvert,
-                               loops.data(),
-                               loops.size(),
-                               polys.data(),
-                               polys.size(),
-                               poly_normals);
+    blender::bke::mesh::normals_calc_polys(
+        positions,
+        polys,
+        corner_verts,
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()});
   }
   if (vert_normals_needed) {
-    BKE_mesh_calc_normals_poly_and_vertex(positions,
-                                          mesh->totvert,
-                                          loops.data(),
-                                          loops.size(),
-                                          polys.data(),
-                                          polys.size(),
-                                          poly_normals,
-                                          vert_normals);
+    blender::bke::mesh::normals_calc_poly_vert(
+        positions,
+        polys,
+        corner_verts,
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
+        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
-    short(*clnors)[2] = static_cast<short(*)[2]>(CustomData_get_layer_for_write(
-        &mesh->ldata, CD_CUSTOMLOOPNORMAL, loops.size())); /* May be nullptr. */
+    blender::short2 *clnors = static_cast<blender::short2 *>(
+        CustomData_get_layer_for_write(&mesh->ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
     const bool *sharp_edges = static_cast<const bool *>(
         CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"));
     const bool *sharp_faces = static_cast<const bool *>(
         CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
-    BKE_mesh_normals_loop_split(positions,
-                                vert_normals,
-                                mesh->totvert,
-                                edges.data(),
-                                mesh->totedge,
-                                loops.data(),
-                                r_loop_normals,
-                                loops.size(),
-                                polys.data(),
-                                poly_normals,
-                                polys.size(),
-                                (mesh->flag & ME_AUTOSMOOTH) != 0,
-                                mesh->smoothresh,
-                                sharp_edges,
-                                sharp_faces,
-                                nullptr,
-                                nullptr,
-                                clnors);
+    blender::bke::mesh::normals_calc_loop(
+        positions,
+        edges,
+        polys,
+        corner_verts,
+        corner_edges,
+        {},
+        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
+        sharp_edges,
+        sharp_faces,
+        (mesh->flag & ME_AUTOSMOOTH) != 0,
+        mesh->smoothresh,
+        clnors,
+        nullptr,
+        {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }
 
   if (free_vert_normals) {
@@ -2309,7 +2311,6 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   if (free_poly_normals) {
     MEM_freeN(poly_normals);
   }
-  MEM_freeN(positions);
 }
 
 /************************* raw coords ************************/
@@ -2529,7 +2530,8 @@ bool BKE_keyblock_move(Object *ob, int org_index, int new_index)
   for (kb = static_cast<KeyBlock *>(rev ? key->block.last : key->block.first),
       i = (rev ? totkey - 1 : 0);
        kb;
-       kb = (rev ? kb->prev : kb->next), rev ? i-- : i++) {
+       kb = (rev ? kb->prev : kb->next), rev ? i-- : i++)
+  {
     if (i == org_index) {
       in_range = true; /* Start list items swapping... */
     }
@@ -2595,4 +2597,47 @@ bool BKE_keyblock_is_basis(const Key *key, const int index)
   }
 
   return false;
+}
+
+bool *BKE_keyblock_get_dependent_keys(const Key *key, const int index)
+{
+  if (key->type != KEY_RELATIVE) {
+    return nullptr;
+  }
+
+  const int count = BLI_listbase_count(&key->block);
+
+  if (index < 0 || index >= count) {
+    return nullptr;
+  }
+
+  /* Seed the table with the specified key. */
+  bool *marked = static_cast<bool *>(MEM_callocN(sizeof(bool) * count, __func__));
+
+  marked[index] = true;
+
+  /* Iterative breadth-first search through the key list. This method minimizes
+   * the number of scans through the list and is fail-safe vs reference cycles. */
+  bool updated, found = false;
+  int i;
+
+  do {
+    updated = false;
+
+    LISTBASE_FOREACH_INDEX (const KeyBlock *, kb, &key->block, i) {
+      if (!marked[i] && kb->relative >= 0 && kb->relative < count && marked[kb->relative]) {
+        marked[i] = true;
+        updated = found = true;
+      }
+    }
+  } while (updated);
+
+  if (!found) {
+    MEM_freeN(marked);
+    return nullptr;
+  }
+
+  /* After the search is complete, exclude the original key. */
+  marked[index] = false;
+  return marked;
 }

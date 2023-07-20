@@ -1,22 +1,17 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 set(INC
   ..
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../editors/include
   ../../gpu
   ../../imbuf
   ../../imbuf/intern/oiio
-  ../../makesdna
   ../../makesrna
-  ../../windowmanager
   ../../../../intern/clog
-  ../../../../intern/guardedalloc
   ../../../../intern/mantaflow/extern
   ../../../../intern/opencolorio
   # RNA_prototypes.h
@@ -122,13 +117,19 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
   bf_editor_animation
   bf_editor_interface
   bf_editor_space_api
+  PRIVATE bf::intern::guardedalloc
   bf_python_gpu
 
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf::windowmanager
 )
 
 # only to check if buildinfo is available
@@ -208,24 +209,12 @@ if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
-endif()
-
 if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
-endif()
-
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
 endif()
 
 if(WITH_WEBP)

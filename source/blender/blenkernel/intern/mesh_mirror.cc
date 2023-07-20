@@ -1,10 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
 
+#include "BLI_array.hh"
 #include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
@@ -14,7 +16,7 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mirror.h"
 #include "BKE_modifier.h"
 
@@ -23,7 +25,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 
 Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mmd,
                                                           const Mesh *mesh,
@@ -83,7 +85,7 @@ Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mm
   return result;
 }
 
-void BKE_mesh_mirror_apply_mirror_on_axis(struct Main *bmain,
+void BKE_mesh_mirror_apply_mirror_on_axis(Main *bmain,
                                           Mesh *mesh,
                                           const int axis,
                                           const float dist)
@@ -186,11 +188,11 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
   const int src_verts_num = mesh->totvert;
   const int src_edges_num = mesh->totedge;
-  const blender::Span<MPoly> src_polys = mesh->polys();
+  const blender::OffsetIndices src_polys = mesh->polys();
   const int src_loops_num = mesh->totloop;
 
   Mesh *result = BKE_mesh_new_nomain_from_template(
-      mesh, src_verts_num * 2, src_edges_num * 2, src_loops_num * 2, src_polys.size() * 2);
+      mesh, src_verts_num * 2, src_edges_num * 2, src_polys.size() * 2, src_loops_num * 2);
 
   /* Copy custom-data to original geometry. */
   CustomData_copy_data(&mesh->vdata, &result->vdata, 0, 0, src_verts_num);
@@ -215,7 +217,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   }
 
   /* mirror vertex coordinates */
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<blender::float3> positions = result->vert_positions_for_write();
   for (int i = 0; i < src_verts_num; i++) {
     const int vert_index_prev = i;
     const int vert_index = src_verts_num + i;
@@ -285,26 +287,27 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     }
   }
 
-  blender::MutableSpan<MEdge> result_edges = result->edges_for_write();
-  blender::MutableSpan<MPoly> result_polys = result->polys_for_write();
-  blender::MutableSpan<MLoop> result_loops = result->loops_for_write();
+  blender::MutableSpan<blender::int2> result_edges = result->edges_for_write();
+  blender::MutableSpan<int> result_poly_offsets = result->poly_offsets_for_write();
+  blender::MutableSpan<int> result_corner_verts = result->corner_verts_for_write();
+  blender::MutableSpan<int> result_corner_edges = result->corner_edges_for_write();
 
   /* adjust mirrored edge vertex indices */
   for (const int i : result_edges.index_range().drop_front(src_edges_num)) {
-    result_edges[i].v1 += src_verts_num;
-    result_edges[i].v2 += src_verts_num;
+    result_edges[i] += src_verts_num;
   }
 
-  for (const int i : result_polys.index_range().drop_front(src_polys.size())) {
-    result_polys[i].loopstart += src_loops_num;
+  result_poly_offsets.take_front(src_polys.size()).copy_from(mesh->poly_offsets().drop_back(1));
+  for (const int i : src_polys.index_range()) {
+    result_poly_offsets[src_polys.size() + i] = src_polys[i].start() + src_loops_num;
   }
+  const blender::OffsetIndices result_polys = result->polys();
 
   /* reverse loop order (normals) */
   for (const int i : src_polys.index_range()) {
-    const blender::IndexRange src_poly(src_polys[i].loopstart, src_polys[i].totloop);
+    const blender::IndexRange src_poly = src_polys[i];
     const int mirror_i = src_polys.size() + i;
-    const blender::IndexRange mirror_poly(result_polys[mirror_i].loopstart,
-                                          result_polys[mirror_i].totloop);
+    const blender::IndexRange mirror_poly = result_polys[mirror_i];
 
     /* reverse the loop, but we keep the first vertex in the face the same,
      * to ensure that quads are split the same way as on the other side */
@@ -314,24 +317,35 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
       CustomData_copy_data(&mesh->ldata, &result->ldata, src_poly[j], mirror_poly.last(j - 1), 1);
     }
 
-    blender::MutableSpan<MLoop> mirror_loops = result_loops.slice(mirror_poly);
-    const int e = mirror_loops.first().e;
+    blender::MutableSpan<int> mirror_poly_edges = result_corner_edges.slice(mirror_poly);
+    const int e = mirror_poly_edges.first();
     for (int j = 0; j < mirror_poly.size() - 1; j++) {
-      mirror_loops[j].e = mirror_loops[j + 1].e;
+      mirror_poly_edges[j] = mirror_poly_edges[j + 1];
     }
-    mirror_loops.last().e = e;
+    mirror_poly_edges.last() = e;
   }
 
   /* adjust mirrored loop vertex and edge indices */
-  for (const int i : result_loops.index_range().drop_front(src_loops_num)) {
-    result_loops[i].v += src_verts_num;
-    result_loops[i].e += src_edges_num;
+  for (const int i : result_corner_verts.index_range().drop_front(src_loops_num)) {
+    result_corner_verts[i] += src_verts_num;
+  }
+  for (const int i : result_corner_edges.index_range().drop_front(src_loops_num)) {
+    result_corner_edges[i] += src_edges_num;
+  }
+
+  if (!mesh->runtime->subsurf_optimal_display_edges.is_empty()) {
+    const blender::BoundedBitSpan src = mesh->runtime->subsurf_optimal_display_edges;
+    result->runtime->subsurf_optimal_display_edges.resize(result->totedge);
+    blender::MutableBoundedBitSpan dst = result->runtime->subsurf_optimal_display_edges;
+    dst.take_front(src.size()).copy_from(src);
+    dst.take_back(src.size()).copy_from(src);
   }
 
   /* handle uvs,
    * let tessface recalc handle updating the MTFace data */
   if (mmd->flag & (MOD_MIR_MIRROR_U | MOD_MIR_MIRROR_V) ||
-      (is_zero_v2(mmd->uv_offset_copy) == false)) {
+      (is_zero_v2(mmd->uv_offset_copy) == false))
+  {
     const bool do_mirr_u = (mmd->flag & MOD_MIR_MIRROR_U) != 0;
     const bool do_mirr_v = (mmd->flag & MOD_MIR_MIRROR_V) != 0;
     /* If set, flip around center of each tile. */
@@ -371,13 +385,13 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
   /* handle custom split normals */
   if (ob->type == OB_MESH && (((Mesh *)ob->data)->flag & ME_AUTOSMOOTH) &&
-      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0) {
-    float(*loop_normals)[3] = static_cast<float(*)[3]>(
-        MEM_calloc_arrayN(size_t(result->totloop), sizeof(*loop_normals), __func__));
+      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0)
+  {
+    blender::Array<blender::float3> loop_normals(result_corner_verts.size());
     CustomData *ldata = &result->ldata;
-    short(*clnors)[2] = static_cast<short(*)[2]>(
+    blender::short2 *clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, result->totloop));
-    MLoopNorSpaceArray lnors_spacearr = {nullptr};
+    blender::bke::mesh::CornerNormalSpaceArray lnors_spacearr;
 
     /* The transform matrix of a normal must be
      * the transpose of inverse of transform matrix of the geometry... */
@@ -391,44 +405,41 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
         CustomData_get_layer_named(&result->edata, CD_PROP_BOOL, "sharp_edge"));
     const bool *sharp_faces = static_cast<const bool *>(
         CustomData_get_layer_named(&result->pdata, CD_PROP_BOOL, "sharp_face"));
-    BKE_mesh_normals_loop_split(BKE_mesh_vert_positions(result),
-                                BKE_mesh_vert_normals_ensure(result),
-                                result->totvert,
-                                result_edges.data(),
-                                result_edges.size(),
-                                result_loops.data(),
-                                loop_normals,
-                                result_loops.size(),
-                                result_polys.data(),
-                                BKE_mesh_poly_normals_ensure(result),
-                                result_polys.size(),
-                                true,
-                                result->smoothresh,
-                                sharp_edges,
-                                sharp_faces,
-                                nullptr,
-                                &lnors_spacearr,
-                                clnors);
+    blender::bke::mesh::normals_calc_loop(result->vert_positions(),
+                                          result_edges,
+                                          result_polys,
+                                          result_corner_verts,
+                                          result_corner_edges,
+                                          {},
+                                          result->vert_normals(),
+                                          result->poly_normals(),
+                                          sharp_edges,
+                                          sharp_faces,
+                                          true,
+                                          result->smoothresh,
+                                          clnors,
+                                          &lnors_spacearr,
+                                          loop_normals);
 
     /* mirroring has to account for loops being reversed in polys in second half */
     for (const int i : src_polys.index_range()) {
-      const blender::IndexRange src_poly(src_polys[i].loopstart, src_polys[i].totloop);
+      const blender::IndexRange src_poly = src_polys[i];
       const int mirror_i = src_polys.size() + i;
 
       for (const int j : src_poly) {
-        int mirrorj = result_polys[mirror_i].loopstart;
+        int mirrorj = result_polys[mirror_i].start();
         if (j > src_poly.start()) {
-          mirrorj += result_polys[mirror_i].totloop - (j - src_poly.start());
+          mirrorj += result_polys[mirror_i].size() - (j - src_poly.start());
         }
+
         copy_v3_v3(loop_normals[mirrorj], loop_normals[j]);
         mul_m4_v3(mtx_nor, loop_normals[mirrorj]);
-        BKE_lnor_space_custom_normal_to_data(
-            lnors_spacearr.lspacearr[mirrorj], loop_normals[mirrorj], clnors[mirrorj]);
+
+        const int space_index = lnors_spacearr.corner_space_indices[mirrorj];
+        clnors[mirrorj] = blender::bke::mesh::lnor_space_custom_normal_to_data(
+            lnors_spacearr.spaces[space_index], loop_normals[mirrorj]);
       }
     }
-
-    MEM_freeN(loop_normals);
-    BKE_lnor_spacearr_free(&lnors_spacearr);
   }
 
   /* handle vgroup stuff */
@@ -444,8 +455,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
               ((*r_vert_merge_map)[i + src_verts_num] != -1)) {
             BKE_defvert_flip_merged(dvert - src_verts_num, flip_map, flip_map_len);
           }
-          else if (!use_correct_order_on_merge && do_vtargetmap &&
-                   ((*r_vert_merge_map)[i] != -1)) {
+          else if (!use_correct_order_on_merge && do_vtargetmap && ((*r_vert_merge_map)[i] != -1))
+          {
             BKE_defvert_flip_merged(dvert, flip_map, flip_map_len);
           }
           else {
@@ -461,6 +472,5 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   if (mesh_bisect != nullptr) {
     BKE_id_free(nullptr, mesh_bisect);
   }
-
   return result;
 }

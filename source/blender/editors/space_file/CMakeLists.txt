@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -5,21 +7,14 @@ set(INC
   ../include
   ../../asset_system
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../render
-  ../../windowmanager
-  ../../../../intern/atomic
-  ../../../../intern/guardedalloc
+  ../../../../extern/fmtlib/include
 
-  # dna_type_offsets.h
-  ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -29,16 +24,16 @@ set(INC_SYS
 
 set(SRC
   asset_catalog_tree_view.cc
-  file_draw.c
+  file_draw.cc
   file_indexer.cc
-  file_ops.c
-  file_panels.c
-  file_utils.c
+  file_ops.cc
+  file_panels.cc
+  file_utils.cc
   filelist.cc
   filesel.cc
   folder_history.cc
   fsmenu.c
-  space_file.c
+  space_file.cc
 
   file_indexer.h
   file_intern.h
@@ -47,7 +42,13 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
+  extern_fmtlib
+  PRIVATE bf::intern::atomic
 )
 
 if(WIN32)
@@ -66,24 +67,12 @@ if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()
 
-if(WITH_IMAGE_TIFF)
-  add_definitions(-DWITH_TIFF)
-endif()
-
 if(WITH_IMAGE_OPENJPEG)
   add_definitions(-DWITH_OPENJPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)

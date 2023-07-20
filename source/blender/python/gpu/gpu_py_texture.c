@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -140,7 +142,8 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
                                         PyC_ParseStringEnum,
                                         &pygpu_textureformat,
                                         &BPyGPU_BufferType,
-                                        &pybuffer_obj)) {
+                                        &pybuffer_obj))
+  {
     return NULL;
   }
 
@@ -301,7 +304,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values)) {
+          args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values))
+  {
     return NULL;
   }
 
@@ -315,8 +319,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
     return NULL;
   }
 
-  if (shape != 1 &&
-      ELEM(pygpu_dataformat.value_found, GPU_DATA_UINT_24_8, GPU_DATA_10_11_11_REV)) {
+  if (shape != 1 && ELEM(pygpu_dataformat.value_found, GPU_DATA_UINT_24_8, GPU_DATA_10_11_11_REV))
+  {
     PyErr_SetString(PyExc_AttributeError,
                     "`UINT_24_8` and `10_11_11_REV` only support single values");
     return NULL;
@@ -329,7 +333,8 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
                   py_values,
                   shape,
                   (pygpu_dataformat.value_found == GPU_DATA_FLOAT) ? &PyFloat_Type : &PyLong_Type,
-                  "clear") == -1) {
+                  "clear") == -1)
+  {
     return NULL;
   }
 
@@ -436,7 +441,7 @@ static PyGetSetDef pygpu_texture__tp_getseters[] = {
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
-static struct PyMethodDef pygpu_texture__tp_methods[] = {
+static PyMethodDef pygpu_texture__tp_methods[] = {
     {"clear",
      (PyCFunction)pygpu_texture_clear,
      METH_VARARGS | METH_KEYWORDS,
@@ -509,14 +514,55 @@ PyDoc_STRVAR(
     "   :arg data: Buffer object to fill the texture.\n"
     "   :type data: :class:`gpu.types.Buffer`\n");
 PyTypeObject BPyGPUTexture_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUTexture",
-    .tp_basicsize = sizeof(BPyGPUTexture),
-    .tp_dealloc = (destructor)BPyGPUTexture__tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = pygpu_texture__tp_doc,
-    .tp_methods = pygpu_texture__tp_methods,
-    .tp_getset = pygpu_texture__tp_getseters,
-    .tp_new = pygpu_texture__tp_new,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUTexture",
+    /*tp_basicsize*/ sizeof(BPyGPUTexture),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)BPyGPUTexture__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ pygpu_texture__tp_doc,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_texture__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ pygpu_texture__tp_getseters,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ pygpu_texture__tp_new,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 /** \} */
@@ -551,14 +597,14 @@ static PyObject *pygpu_texture_from_image(PyObject *UNUSED(self), PyObject *arg)
   return BPyGPUTexture_CreatePyObject(tex, true);
 }
 
-static struct PyMethodDef pygpu_texture__m_methods[] = {
+static PyMethodDef pygpu_texture__m_methods[] = {
     {"from_image", (PyCFunction)pygpu_texture_from_image, METH_O, pygpu_texture_from_image_doc},
     {NULL, NULL, 0, NULL},
 };
 
 PyDoc_STRVAR(pygpu_texture__m_doc, "This module provides utils for textures.");
 static PyModuleDef pygpu_texture_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.texture",
     /*m_doc*/ pygpu_texture__m_doc,
     /*m_size*/ 0,

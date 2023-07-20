@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -5,23 +7,18 @@ set(INC
   ../include
   ../../asset_system
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../python
   ../../render
-  ../../windowmanager
   ../../../../intern/ghost
-  ../../../../intern/guardedalloc
+  ../../../../extern/fmtlib/include
   ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -46,6 +43,7 @@ set(SRC
   interface_context_path.cc
   interface_drag.cc
   interface_draw.cc
+  interface_drop.cc
   interface_dropboxes.cc
   interface_handlers.cc
   interface_icons.cc
@@ -66,6 +64,8 @@ set(SRC
   interface_style.cc
   interface_template_asset_view.cc
   interface_template_attribute_search.cc
+  interface_template_grease_pencil_layer_tree.cc
+  interface_template_light_linking.cc
   interface_template_list.cc
   interface_template_search_menu.cc
   interface_template_search_operator.cc
@@ -88,12 +88,17 @@ set(SRC
   eyedroppers/eyedropper_intern.hh
   interface_intern.hh
   interface_regions_intern.hh
+  view2d_intern.hh
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
   bf_editor_datafiles
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_INTERNATIONAL)

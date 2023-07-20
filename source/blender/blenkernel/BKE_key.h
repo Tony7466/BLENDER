@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -180,6 +181,12 @@ bool BKE_keyblock_move(struct Object *ob, int org_index, int new_index);
  * Check if given key-block (as index) is used as basis by others in given key.
  */
 bool BKE_keyblock_is_basis(const struct Key *key, int index);
+
+/**
+ * Returns a newly allocated array containing true for every key that has this one as basis.
+ * If none are found, returns null.
+ */
+bool *BKE_keyblock_get_dependent_keys(const struct Key *key, int index);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Block Data Access

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -259,6 +260,7 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
 void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                                        struct GPUVertBuf *pos_nor,
                                        struct GPUVertBuf *edge_draw_flag,
+                                       struct GPUVertBuf *poly_other_map,
                                        struct GPUVertBuf *edge_fac);
 
 void draw_subdiv_build_tris_buffer(const DRWSubdivCache *cache,
@@ -292,8 +294,7 @@ void draw_subdiv_build_edituv_stretch_angle_buffer(const DRWSubdivCache *cache,
                                                    int uvs_offset,
                                                    struct GPUVertBuf *stretch_angles);
 
-/** Return the format used for the positions and normals VBO.
- */
+/** Return the format used for the positions and normals VBO. */
 struct GPUVertFormat *draw_subdiv_get_pos_nor_format(void);
 
 #ifdef __cplusplus

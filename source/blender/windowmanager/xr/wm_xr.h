@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct wmWindowManager;
 struct wmXrData;
@@ -21,3 +27,7 @@ bool wm_xr_events_handle(wmWindowManager *wm);
 /* wm_xr_operators.c */
 
 void wm_xr_operatortypes_register(void);
+
+#ifdef __cplusplus
+}
+#endif

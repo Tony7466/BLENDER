@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -60,7 +62,7 @@ enum {
   /* More mouse buttons - can't use 9 and 10 here (wheel) */
   BUTTON6MOUSE = 0x0012,
   BUTTON7MOUSE = 0x0013,
-  /* Extra track-pad gestures. */
+  /* Extra track-pad gestures (check #WM_EVENT_IS_CONSECUTIVE to detect motion events). */
   MOUSEPAN = 0x000e,
   MOUSEZOOM = 0x000f,
   MOUSEROTATE = 0x0010,
@@ -244,9 +246,13 @@ enum {
   /* *** End of keyboard codes. *** */
 
   /* NDOF (from "Space Navigator" & friends)
-   * These must be kept in sync with `GHOST_NDOFManager.h`.
+   * These must be kept in sync with `GHOST_NDOFManager.hh`.
    * Ordering matters, exact values do not. */
 
+  /**
+   * Motion from 3D input (translation & rotation).
+   * Check #WM_EVENT_IS_CONSECUTIVE to detect motion events.
+   */
   NDOF_MOTION = 0x0190, /* 400 */
 
 #define _NDOF_MIN NDOF_MOTION
@@ -334,7 +340,8 @@ enum {
   TIMERREPORT = 0x0116,   /* Timer event, reports (278). */
   TIMERREGION = 0x0117,   /* Timer event, region slide in/out (279). */
   TIMERNOTIFIER = 0x0118, /* Timer event, notifier sender (280). */
-  TIMERF = 0x011F,        /* Last timer (287). */
+/* Timer max (287). */
+#define _TIMER_MAX 0x011F
 
   /* Actionzones, tweak, gestures: 0x500x, 0x501x */
   /* Keep in sync with IS_EVENT_ACTIONZONE(...). */
@@ -367,7 +374,7 @@ enum {
  * \{ */
 
 /** Test whether the event is timer event. */
-#define ISTIMER(event_type) ((event_type) >= TIMER && (event_type) <= TIMERF)
+#define ISTIMER(event_type) ((event_type) >= TIMER && (event_type) <= _TIMER_MAX)
 
 /** Test whether the event is a key on the keyboard (including modifier keys). */
 #define ISKEYBOARD(event_type) \

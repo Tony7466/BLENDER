@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -33,8 +34,8 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include "GEO_mesh_merge_by_distance.hh"
 
@@ -86,7 +87,7 @@ static Mesh *mirror_apply_on_axis(MirrorModifierData *mmd,
     if (vert_merge_map_len) {
       Mesh *tmp = result;
       result = geometry::mesh_merge_verts(
-          *tmp, MutableSpan<int>{vert_merge_map, result->totvert}, vert_merge_map_len);
+          *tmp, MutableSpan<int>{vert_merge_map, result->totvert}, vert_merge_map_len, false);
       BKE_id_free(nullptr, tmp);
     }
     MEM_freeN(vert_merge_map);
@@ -143,6 +144,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   PropertyRNA *prop;
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
+  MirrorModifierData *mmd = (MirrorModifierData *)ptr->data;
+  bool has_bisect = (mmd->flag &
+                     (MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_X));
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
@@ -161,6 +165,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   prop = RNA_struct_find_property(ptr, "use_bisect_flip_axis");
   row = uiLayoutRowWithHeading(col, true, IFACE_("Flip"));
+  uiLayoutSetActive(row, has_bisect);
   uiItemFullR(row, ptr, prop, 0, 0, toggles_flag, IFACE_("X"), ICON_NONE);
   uiItemFullR(row, ptr, prop, 1, 0, toggles_flag, IFACE_("Y"), ICON_NONE);
   uiItemFullR(row, ptr, prop, 2, 0, toggles_flag, IFACE_("Z"), ICON_NONE);
@@ -169,7 +174,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiItemR(col, ptr, "mirror_object", 0, nullptr, ICON_NONE);
 
-  uiItemR(col, ptr, "use_clip", 0, IFACE_("Clipping"), ICON_NONE);
+  uiItemR(col, ptr, "use_clip", 0, CTX_IFACE_(BLT_I18NCONTEXT_ID_MESH, "Clipping"), ICON_NONE);
 
   row = uiLayoutRowWithHeading(col, true, IFACE_("Merge"));
   uiItemR(row, ptr, "use_mirror_merge", 0, "", ICON_NONE);
@@ -177,11 +182,8 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_mirror_merge"));
   uiItemR(sub, ptr, "merge_threshold", 0, "", ICON_NONE);
 
-  bool is_bisect_set[3];
-  RNA_boolean_get_array(ptr, "use_bisect_axis", is_bisect_set);
-
   sub = uiLayoutRow(col, true);
-  uiLayoutSetActive(sub, is_bisect_set[0] || is_bisect_set[1] || is_bisect_set[2]);
+  uiLayoutSetActive(sub, has_bisect);
   uiItemR(sub, ptr, "bisect_threshold", 0, IFACE_("Bisect Distance"), ICON_NONE);
 
   modifier_panel_end(layout, ptr);

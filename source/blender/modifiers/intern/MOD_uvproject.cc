@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -21,11 +22,12 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_camera.h"
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
@@ -34,8 +36,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -94,6 +96,7 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
                                   Object *ob,
                                   Mesh *mesh)
 {
+  using namespace blender;
   float(*coords)[3], (*co)[3];
   int i, verts_num;
   Projector projectors[MOD_UVPROJECT_MAXPROJECTORS];
@@ -117,10 +120,8 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
 
   /* Create a new layer if no UV Maps are available
    * (e.g. if a preceding modifier could not preserve it). */
-  if (!CustomData_has_layer(&mesh->ldata, CD_PROP_FLOAT2)) {
-    CustomData_add_layer_named(
-        &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, nullptr, mesh->totloop, umd->uvlayer_name);
-  }
+  mesh->attributes_for_write().add<float2>(
+      umd->uvlayer_name, ATTR_DOMAIN_CORNER, bke::AttributeInitDefaultValue());
 
   /* make sure we're using an existing layer */
   CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, umd->uvlayer_name, uvname);
@@ -180,11 +181,12 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
     mul_mat3_m4_v3(projectors[i].ob->object_to_world, projectors[i].normal);
   }
 
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::Span<blender::float3> positions = mesh->vert_positions();
+  const blender::OffsetIndices polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
 
-  float(*mloop_uv)[2] = static_cast<float(*)[2]>(
-      CustomData_get_layer_named_for_write(&mesh->ldata, CD_PROP_FLOAT2, uvname, loops.size()));
+  float(*mloop_uv)[2] = static_cast<float(*)[2]>(CustomData_get_layer_named_for_write(
+      &mesh->ldata, CD_PROP_FLOAT2, uvname, corner_verts.size()));
 
   coords = BKE_mesh_vert_coords_alloc(mesh, &verts_num);
 
@@ -202,36 +204,36 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
 
   /* apply coords as UVs */
   for (const int i : polys.index_range()) {
-    const MPoly &poly = polys[i];
+    const blender::IndexRange poly = polys[i];
     if (projectors_num == 1) {
       if (projectors[0].uci) {
-        uint fidx = poly.totloop - 1;
+        uint fidx = poly.size() - 1;
         do {
-          uint lidx = poly.loopstart + fidx;
-          uint vidx = loops[lidx].v;
+          uint lidx = poly.start() + fidx;
+          const int vidx = corner_verts[lidx];
           BLI_uvproject_from_camera(
               mloop_uv[lidx], coords[vidx], static_cast<ProjCameraInfo *>(projectors[0].uci));
         } while (fidx--);
       }
       else {
         /* apply transformed coords as UVs */
-        uint fidx = poly.totloop - 1;
+        uint fidx = poly.size() - 1;
         do {
-          uint lidx = poly.loopstart + fidx;
-          uint vidx = loops[lidx].v;
+          uint lidx = poly.start() + fidx;
+          const int vidx = corner_verts[lidx];
           copy_v2_v2(mloop_uv[lidx], coords[vidx]);
         } while (fidx--);
       }
     }
     else {
       /* multiple projectors, select the closest to face normal direction */
-      float face_no[3];
       int j;
       Projector *best_projector;
       float best_dot;
 
       /* get the untransformed face normal */
-      BKE_mesh_calc_poly_normal(&poly, &loops[poly.loopstart], (const float(*)[3])coords, face_no);
+      const blender::float3 face_no = blender::bke::mesh::poly_normal_calc(
+          positions, corner_verts.slice(poly));
 
       /* find the projector which the face points at most directly
        * (projector normal with largest dot product is best)
@@ -248,19 +250,19 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
       }
 
       if (best_projector->uci) {
-        uint fidx = poly.totloop - 1;
+        uint fidx = poly.size() - 1;
         do {
-          uint lidx = poly.loopstart + fidx;
-          uint vidx = loops[lidx].v;
+          uint lidx = poly.start() + fidx;
+          const int vidx = corner_verts[lidx];
           BLI_uvproject_from_camera(
               mloop_uv[lidx], coords[vidx], static_cast<ProjCameraInfo *>(best_projector->uci));
         } while (fidx--);
       }
       else {
-        uint fidx = poly.totloop - 1;
+        uint fidx = poly.size() - 1;
         do {
-          uint lidx = poly.loopstart + fidx;
-          uint vidx = loops[lidx].v;
+          uint lidx = poly.start() + fidx;
+          const int vidx = corner_verts[lidx];
           mul_v2_project_m4_v3(mloop_uv[lidx], best_projector->projmat, coords[vidx]);
         } while (fidx--);
       }

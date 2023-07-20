@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -85,7 +87,8 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
       return NULL;
     }
     if ((screen && BLI_findindex(&screen->regionbase, region) == -1) &&
-        (BLI_findindex(&area->regionbase, region) == -1)) {
+        (BLI_findindex(&area->regionbase, region) == -1))
+    {
       PyErr_SetString(PyExc_TypeError, "Region not found in area");
       return NULL;
     }
@@ -161,11 +164,55 @@ static PyMethodDef bpy_rna_context_temp_override__tp_methods[] = {
 };
 
 static PyTypeObject BPyContextTempOverride_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "ContextTempOverride",
-    .tp_basicsize = sizeof(BPyContextTempOverride),
-    .tp_dealloc = (destructor)bpy_rna_context_temp_override__tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_methods = bpy_rna_context_temp_override__tp_methods,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "ContextTempOverride",
+    /*tp_basicsize*/ sizeof(BPyContextTempOverride),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)bpy_rna_context_temp_override__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ NULL,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ bpy_rna_context_temp_override__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ NULL,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ NULL,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 /** \} */

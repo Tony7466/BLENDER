@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -11,6 +13,8 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -31,7 +35,11 @@
 
 #include "BLO_readfile.h"
 
+#include "BLT_translation.h"
+
 #include "GPU_platform.h"
+
+#include "MEM_guardedalloc.h"
 
 #include "readfile.h" /* Own include. */
 
@@ -54,7 +62,7 @@
 static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 {
 
-#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(userdef, ver, subver)
+#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_FILE_ATLEAST(userdef, ver, subver)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
   if (!USER_VERSION_ATLEAST(300, 41)) {
@@ -89,6 +97,14 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
   }
 
+  if (!USER_VERSION_ATLEAST(306, 3)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 8)) {
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_simulation);
+    FROM_DEFAULT_V4_UCHAR(space_action.simulated_frames);
+  }
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -100,6 +116,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -190,7 +207,7 @@ static bool keymap_item_update_tweak_event(wmKeyMapItem *kmi, void *UNUSED(user_
 void blo_do_versions_userdef(UserDef *userdef)
 {
   /* #UserDef & #Main happen to have the same struct member. */
-#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(userdef, ver, subver)
+#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_FILE_ATLEAST(userdef, ver, subver)
 
   /* the UserDef struct is not corrected with do_versions() .... ugh! */
   if (userdef->menuthreshold1 == 0) {
@@ -222,7 +239,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(192, 0)) {
-    strcpy(userdef->sounddir, "/");
+    STRNCPY(userdef->sounddir, "/");
   }
 
   /* patch to set Dupli Armature */
@@ -296,52 +313,52 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     for (km = userdef->user_keymaps.first; km; km = km->next) {
       if (STREQ(km->idname, "Armature_Sketch")) {
-        strcpy(km->idname, "Armature Sketch");
+        STRNCPY(km->idname, "Armature Sketch");
       }
       else if (STREQ(km->idname, "View3D")) {
-        strcpy(km->idname, "3D View");
+        STRNCPY(km->idname, "3D View");
       }
       else if (STREQ(km->idname, "View3D Generic")) {
-        strcpy(km->idname, "3D View Generic");
+        STRNCPY(km->idname, "3D View Generic");
       }
       else if (STREQ(km->idname, "EditMesh")) {
-        strcpy(km->idname, "Mesh");
+        STRNCPY(km->idname, "Mesh");
       }
       else if (STREQ(km->idname, "UVEdit")) {
-        strcpy(km->idname, "UV Editor");
+        STRNCPY(km->idname, "UV Editor");
       }
       else if (STREQ(km->idname, "Animation_Channels")) {
-        strcpy(km->idname, "Animation Channels");
+        STRNCPY(km->idname, "Animation Channels");
       }
       else if (STREQ(km->idname, "GraphEdit Keys")) {
-        strcpy(km->idname, "Graph Editor");
+        STRNCPY(km->idname, "Graph Editor");
       }
       else if (STREQ(km->idname, "GraphEdit Generic")) {
-        strcpy(km->idname, "Graph Editor Generic");
+        STRNCPY(km->idname, "Graph Editor Generic");
       }
       else if (STREQ(km->idname, "Action_Keys")) {
-        strcpy(km->idname, "Dopesheet");
+        STRNCPY(km->idname, "Dopesheet");
       }
       else if (STREQ(km->idname, "NLA Data")) {
-        strcpy(km->idname, "NLA Editor");
+        STRNCPY(km->idname, "NLA Editor");
       }
       else if (STREQ(km->idname, "Node Generic")) {
-        strcpy(km->idname, "Node Editor");
+        STRNCPY(km->idname, "Node Editor");
       }
       else if (STREQ(km->idname, "Logic Generic")) {
-        strcpy(km->idname, "Logic Editor");
+        STRNCPY(km->idname, "Logic Editor");
       }
       else if (STREQ(km->idname, "File")) {
-        strcpy(km->idname, "File Browser");
+        STRNCPY(km->idname, "File Browser");
       }
       else if (STREQ(km->idname, "FileMain")) {
-        strcpy(km->idname, "File Browser Main");
+        STRNCPY(km->idname, "File Browser Main");
       }
       else if (STREQ(km->idname, "FileButtons")) {
-        strcpy(km->idname, "File Browser Buttons");
+        STRNCPY(km->idname, "File Browser Buttons");
       }
       else if (STREQ(km->idname, "Buttons Generic")) {
-        strcpy(km->idname, "Property Editor");
+        STRNCPY(km->idname, "Property Editor");
       }
     }
   }
@@ -527,7 +544,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_UIFLAG_UNUSED_22);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -693,10 +710,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     };
     const int replace_table_len = ARRAY_SIZE(replace_table);
 
-    BLI_str_replace_table_exact(
+    BLI_string_replace_table_exact(
         userdef->keyconfigstr, sizeof(userdef->keyconfigstr), replace_table, replace_table_len);
     LISTBASE_FOREACH (wmKeyConfigPref *, kpt, &userdef->user_keyconfig_prefs) {
-      BLI_str_replace_table_exact(
+      BLI_string_replace_table_exact(
           kpt->idname, sizeof(kpt->idname), replace_table, replace_table_len);
     }
   }
@@ -787,6 +804,36 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->animation_flag |= USER_ANIM_HIGH_QUALITY_DRAWING;
   }
 
+  if (!USER_VERSION_ATLEAST(306, 4)) {
+    /* Increase the number of recently-used files if using the old default value. */
+    if (userdef->recent_files == 10) {
+      userdef->recent_files = 20;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 5)) {
+    if (userdef->pythondir_legacy[0]) {
+      bUserScriptDirectory *script_dir = MEM_callocN(sizeof(*script_dir),
+                                                     "Versioning user script path");
+
+      STRNCPY(script_dir->dir_path, userdef->pythondir_legacy);
+      STRNCPY_UTF8(script_dir->name, DATA_("Untitled"));
+      BLI_addhead(&userdef->script_directories, script_dir);
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 6)) {
+    LISTBASE_FOREACH (bUserAssetLibrary *, asset_library, &userdef->asset_libraries) {
+      asset_library->flag |= ASSET_LIBRARY_RELATIVE_PATH;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 4)) {
+    /* obj and ply python addons were removed. */
+    BKE_addon_remove_safe(&userdef->addons, "io_mesh_ply");
+    BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -798,6 +845,13 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+#ifdef __APPLE__
+    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
+    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
+      userdef->gpu_backend = GPU_BACKEND_METAL;
+    }
+#endif
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

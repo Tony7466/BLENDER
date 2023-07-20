@@ -1,15 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2017 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
  */
 #include "DNA_camera_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_shader_fx_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 
 #include "BLI_link_utils.h"
 #include "BLI_memblock.h"
@@ -37,7 +38,8 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_viewport)
   }
 
   if (((fx->mode & eShaderFxMode_Realtime) && (is_viewport == true)) ||
-      ((fx->mode & eShaderFxMode_Render) && (is_viewport == false))) {
+      ((fx->mode & eShaderFxMode_Render) && (is_viewport == false)))
+  {
     return true;
   }
 
@@ -351,7 +353,7 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
     }
     /* This is applied after rotation. Counter the rotation to keep aligned with global axis. */
     rotate_v2_v2fl(wave_dir, dir, fx->rotation);
-    /* Rotate 90°. */
+    /* Rotate 90 degrees. */
     copy_v2_v2(wave_ofs, wave_dir);
     SWAP(float, wave_ofs[0], wave_ofs[1]);
     wave_ofs[1] *= -1.0f;
@@ -507,7 +509,7 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
     /* Vertical */
     copy_v2_fl2(wave_dir, 0.0f, 1.0f);
   }
-  /* Rotate 90°. */
+  /* Rotate 90 degrees. */
   copy_v2_v2(wave_ofs, wave_dir);
   SWAP(float, wave_ofs[0], wave_ofs[1]);
   wave_ofs[1] *= -1.0f;

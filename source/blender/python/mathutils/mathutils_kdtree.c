@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup mathutils
@@ -320,7 +322,8 @@ static PyObject *py_kdtree_find_range(PyKDTree *self, PyObject *args, PyObject *
   const char *keywords[] = {"co", "radius", NULL};
 
   if (!PyArg_ParseTupleAndKeywords(
-          args, kwargs, "Of:find_range", (char **)keywords, &py_co, &radius)) {
+          args, kwargs, "Of:find_range", (char **)keywords, &py_co, &radius))
+  {
     return NULL;
   }
 
@@ -374,7 +377,7 @@ PyDoc_STRVAR(py_KDtree_doc,
              "methods.\n");
 
 PyTypeObject PyKDTree_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "KDTree",
     /*tp_basicsize*/ sizeof(PyKDTree),
     /*tp_itemsize*/ 0,
@@ -401,7 +404,7 @@ PyTypeObject PyKDTree_Type = {
     /*tp_weaklistoffset*/ 0,
     /*tp_iter*/ NULL,
     /*tp_iternext*/ NULL,
-    /*tp_methods*/ (struct PyMethodDef *)PyKDTree_methods,
+    /*tp_methods*/ (PyMethodDef *)PyKDTree_methods,
     /*tp_members*/ NULL,
     /*tp_getset*/ NULL,
     /*tp_base*/ NULL,
@@ -426,8 +429,8 @@ PyTypeObject PyKDTree_Type = {
 };
 
 PyDoc_STRVAR(py_kdtree_doc, "Generic 3-dimensional kd-tree to perform spatial searches.");
-static struct PyModuleDef kdtree_moduledef = {
-    PyModuleDef_HEAD_INIT,
+static PyModuleDef kdtree_moduledef = {
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "mathutils.kdtree",
     /*m_doc*/ py_kdtree_doc,
     /*m_size*/ 0,

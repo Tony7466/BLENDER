@@ -1,20 +1,15 @@
+# SPDX-FileCopyrightText: 2014 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2014 Blender Foundation. All rights reserved.
 
 set(INC
-  .
-  ../blenkernel
-  ../blenlib
+  PUBLIC .
   ../bmesh
   ../draw
   ../functions
-  ../makesdna
   ../makesrna
   ../modifiers
   ../sequencer
-  ../windowmanager
-  ../../../intern/atomic
-  ../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -80,6 +75,8 @@ set(SRC
   intern/depsgraph_build.cc
   intern/depsgraph_debug.cc
   intern/depsgraph_eval.cc
+  intern/depsgraph_light_linking.cc
+  intern/depsgraph_light_linking.h
   intern/depsgraph_physics.cc
   intern/depsgraph_query.cc
   intern/depsgraph_query_foreach.cc
@@ -93,6 +90,8 @@ set(SRC
   DEG_depsgraph.h
   DEG_depsgraph_build.h
   DEG_depsgraph_debug.h
+  DEG_depsgraph_light_linking.h
+  DEG_depsgraph_light_linking.hh
   DEG_depsgraph_physics.h
   DEG_depsgraph_query.h
 
@@ -150,7 +149,12 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_PYTHON)
@@ -161,6 +165,7 @@ if(WITH_PYTHON)
 endif()
 
 blender_add_lib(bf_depsgraph "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::depsgraph ALIAS bf_depsgraph)
 
 # RNA_prototypes.h
 add_dependencies(bf_depsgraph bf_rna)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -71,7 +72,8 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args,
                                         &BPyGPUVertBuf_Type,
                                         &py_vertbuf,
                                         &BPyGPUIndexBuf_Type,
-                                        &py_indexbuf)) {
+                                        &py_indexbuf))
+  {
     return NULL;
   }
 
@@ -136,8 +138,8 @@ static PyObject *pygpu_batch_vertbuf_add(BPyGPUBatch *self, BPyGPUVertBuf *py_bu
     return NULL;
   }
 
-  if (GPU_vertbuf_get_vertex_len(self->batch->verts[0]) !=
-      GPU_vertbuf_get_vertex_len(py_buf->buf)) {
+  if (GPU_vertbuf_get_vertex_len(self->batch->verts[0]) != GPU_vertbuf_get_vertex_len(py_buf->buf))
+  {
     PyErr_Format(PyExc_TypeError,
                  "Expected %d length, got %d",
                  GPU_vertbuf_get_vertex_len(self->batch->verts[0]),
@@ -264,7 +266,8 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_start, &instance_count)) {
+          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_start, &instance_count))
+  {
     return NULL;
   }
 
@@ -305,7 +308,8 @@ static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObj
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &elem_start, &elem_count)) {
+          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &elem_start, &elem_count))
+  {
     return NULL;
   }
 
@@ -332,7 +336,7 @@ static PyObject *pygpu_batch_program_use_end(BPyGPUBatch *self)
   Py_RETURN_NONE;
 }
 
-static struct PyMethodDef pygpu_batch__tp_methods[] = {
+static PyMethodDef pygpu_batch__tp_methods[] = {
     {"vertbuf_add", (PyCFunction)pygpu_batch_vertbuf_add, METH_O, pygpu_batch_vertbuf_add_doc},
     {"program_set", (PyCFunction)pygpu_batch_program_set, METH_O, pygpu_batch_program_set_doc},
     {"draw", (PyCFunction)pygpu_batch_draw, METH_VARARGS, pygpu_batch_draw_doc},
@@ -400,20 +404,71 @@ PyDoc_STRVAR(
     "   :arg elem: An optional index buffer.\n"
     "   :type elem: :class:`gpu.types.GPUIndexBuf`\n");
 PyTypeObject BPyGPUBatch_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUBatch",
-    .tp_basicsize = sizeof(BPyGPUBatch),
-    .tp_dealloc = (destructor)pygpu_batch__tp_dealloc,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUBatch",
+    /*tp_basicsize*/ sizeof(BPyGPUBatch),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)pygpu_batch__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
 #ifdef USE_GPU_PY_REFERENCES
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_doc = pygpu_batch__tp_doc,
-    .tp_traverse = (traverseproc)pygpu_batch__tp_traverse,
-    .tp_clear = (inquiry)pygpu_batch__tp_clear,
-    .tp_is_gc = (inquiry)pygpu_batch__tp_is_gc,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
 #else
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
 #endif
-    .tp_methods = pygpu_batch__tp_methods,
-    .tp_new = pygpu_batch__tp_new,
+    /*tp_doc*/ pygpu_batch__tp_doc,
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_traverse*/ (traverseproc)pygpu_batch__tp_traverse,
+#else
+    /*tp_traverse*/ NULL,
+#endif
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_clear*/ (inquiry)pygpu_batch__tp_clear,
+#else
+    /*tp_clear*/ NULL,
+#endif
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_batch__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ NULL,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ pygpu_batch__tp_new,
+    /*tp_free*/ NULL,
+#ifdef USE_GPU_PY_REFERENCES
+    /*tp_is_gc*/ (inquiry)pygpu_batch__tp_is_gc,
+#else
+    /*tp_is_gc*/ NULL,
+#endif
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 /** \} */

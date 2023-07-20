@@ -1,15 +1,13 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../io
-  ../../blenkernel
-  ../../blenlib
+  ../../asset_system
   ../../gpu
-  ../../makesdna
   ../../makesrna
-  ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -17,10 +15,13 @@ set(INC_SYS
 )
 
 set(SRC
-  spacetypes.c
+  spacetypes.cc
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_editor_geometry
   bf_editor_space_action
   bf_editor_space_buttons
@@ -41,6 +42,8 @@ set(LIB
   bf_editor_space_topbar
   bf_editor_space_userpref
   bf_editor_space_view3d
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 blender_add_lib(bf_editor_space_api "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

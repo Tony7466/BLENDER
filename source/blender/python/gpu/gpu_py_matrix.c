@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -159,10 +161,55 @@ static PyMethodDef pygpu_matrix_stack_context__tp_methods[] = {
 };
 
 static PyTypeObject PyGPUMatrixStackContext_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUMatrixStackContext",
-    .tp_basicsize = sizeof(BPyGPU_MatrixStackContext),
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_methods = pygpu_matrix_stack_context__tp_methods,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUMatrixStackContext",
+    /*tp_basicsize*/ sizeof(BPyGPU_MatrixStackContext),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ NULL,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ NULL,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_matrix_stack_context__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ NULL,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ NULL,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 static PyObject *pygpu_matrix_stack_context_enter(BPyGPU_MatrixStackContext *self)
@@ -291,7 +338,8 @@ static PyObject *pygpu_matrix_scale(PyObject *UNUSED(self), PyObject *value)
   float scale[3];
   int len;
   if ((len = mathutils_array_parse(
-           scale, 2, 3, value, "gpu.matrix.scale(): invalid vector arg")) == -1) {
+           scale, 2, 3, value, "gpu.matrix.scale(): invalid vector arg")) == -1)
+  {
     return NULL;
   }
   if (len == 2) {
@@ -331,7 +379,8 @@ static PyObject *pygpu_matrix_translate(PyObject *UNUSED(self), PyObject *value)
   float offset[3];
   int len;
   if ((len = mathutils_array_parse(
-           offset, 2, 3, value, "gpu.matrix.translate(): invalid vector arg")) == -1) {
+           offset, 2, 3, value, "gpu.matrix.translate(): invalid vector arg")) == -1)
+  {
     return NULL;
   }
   if (len == 2) {
@@ -457,7 +506,7 @@ static PyObject *pygpu_matrix_get_normal_matrix(PyObject *UNUSED(self))
 /** \name Module
  * \{ */
 
-static struct PyMethodDef pygpu_matrix__tp_methods[] = {
+static PyMethodDef pygpu_matrix__tp_methods[] = {
     /* Manage Stack */
     {"push", (PyCFunction)pygpu_matrix_push, METH_NOARGS, pygpu_matrix_push_doc},
     {"pop", (PyCFunction)pygpu_matrix_pop, METH_NOARGS, pygpu_matrix_pop_doc},
@@ -528,7 +577,7 @@ static struct PyMethodDef pygpu_matrix__tp_methods[] = {
 
 PyDoc_STRVAR(pygpu_matrix__tp_doc, "This module provides access to the matrix stack.");
 static PyModuleDef pygpu_matrix_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.matrix",
     /*m_doc*/ pygpu_matrix__tp_doc,
     /*m_size*/ 0,

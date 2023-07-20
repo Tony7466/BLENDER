@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -46,7 +48,8 @@ static bool pygpu_buffer_dimensions_tot_len_compare(const Py_ssize_t *shape_a,
                                                     const Py_ssize_t shape_b_len)
 {
   if (pygpu_buffer_dimensions_tot_elem(shape_a, shape_a_len) !=
-      pygpu_buffer_dimensions_tot_elem(shape_b, shape_b_len)) {
+      pygpu_buffer_dimensions_tot_elem(shape_b, shape_b_len))
+  {
     PyErr_Format(PyExc_BufferError, "array size does not match");
     return false;
   }
@@ -382,7 +385,8 @@ static PyObject *pygpu_buffer__tp_new(PyTypeObject *UNUSED(type), PyObject *args
 
   const struct PyC_StringEnum pygpu_dataformat = {bpygpu_dataformat_items, GPU_DATA_FLOAT};
   if (!PyArg_ParseTuple(
-          args, "O&O|O: Buffer", PyC_ParseStringEnum, &pygpu_dataformat, &length_ob, &init)) {
+          args, "O&O|O: Buffer", PyC_ParseStringEnum, &pygpu_dataformat, &length_ob, &init))
+  {
     return NULL;
   }
 
@@ -592,7 +596,7 @@ static PySequenceMethods pygpu_buffer__tp_as_sequence = {
 };
 
 static PyMappingMethods pygpu_buffer__tp_as_mapping = {
-    /*mp_len*/ (lenfunc)pygpu_buffer__sq_length,
+    /*mp_length*/ (lenfunc)pygpu_buffer__sq_length,
     /*mp_subscript*/ (binaryfunc)pygpu_buffer__mp_subscript,
     /*mp_ass_subscript*/ (objobjargproc)pygpu_buffer__mp_ass_subscript,
 };
@@ -667,23 +671,59 @@ PyDoc_STRVAR(
     "   :arg data: Optional data array.\n"
     "   :type data: sequence\n");
 PyTypeObject BPyGPU_BufferType = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "Buffer",
-    .tp_basicsize = sizeof(BPyGPUBuffer),
-    .tp_dealloc = (destructor)pygpu_buffer__tp_dealloc,
-    .tp_repr = (reprfunc)pygpu_buffer__tp_repr,
-    .tp_as_sequence = &pygpu_buffer__tp_as_sequence,
-    .tp_as_mapping = &pygpu_buffer__tp_as_mapping,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "Buffer",
+    /*tp_basicsize*/ sizeof(BPyGPUBuffer),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)pygpu_buffer__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_compare*/ NULL,
+    /*tp_repr*/ (reprfunc)pygpu_buffer__tp_repr,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ &pygpu_buffer__tp_as_sequence,
+    /*tp_as_mapping*/ &pygpu_buffer__tp_as_mapping,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
 #ifdef PYGPU_BUFFER_PROTOCOL
-    .tp_as_buffer = &pygpu_buffer__tp_as_buffer,
+    /*tp_as_buffer*/ &pygpu_buffer__tp_as_buffer,
+#else
+    /*tp_as_buffer*/ NULL,
 #endif
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_doc = pygpu_buffer__tp_doc,
-    .tp_traverse = (traverseproc)pygpu_buffer__tp_traverse,
-    .tp_clear = (inquiry)pygpu_buffer__tp_clear,
-    .tp_methods = pygpu_buffer__tp_methods,
-    .tp_getset = pygpu_buffer_getseters,
-    .tp_new = pygpu_buffer__tp_new,
-    .tp_is_gc = (inquiry)pygpu_buffer__tp_is_gc,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    /*tp_doc*/ pygpu_buffer__tp_doc,
+    /*tp_traverse*/ (traverseproc)pygpu_buffer__tp_traverse,
+    /*tp_clear*/ (inquiry)pygpu_buffer__tp_clear,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_buffer__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ pygpu_buffer_getseters,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ pygpu_buffer__tp_new,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ (inquiry)pygpu_buffer__tp_is_gc,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 static size_t pygpu_buffer_calc_size(const int format,

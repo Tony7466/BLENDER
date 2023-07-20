@@ -1,11 +1,10 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 set(INC
   .
-  ../../blenlib
   ../../imbuf
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -31,6 +30,9 @@ set(SRC
 
 set(LIB
   ${JPEG_LIBRARIES}
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 blender_add_lib(bf_avi "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -33,7 +34,6 @@ struct ViewLayer;
 struct XFormObjectData;
 struct bConstraint;
 struct bContext;
-struct bFaceMap;
 struct bPoseChannel;
 struct uiLayout;
 struct wmKeyConfig;
@@ -164,7 +164,9 @@ typedef enum eObClearParentTypes {
 } eObClearParentTypes;
 
 #ifdef __RNA_TYPES_H__
+/** Operator Property: `OBJECT_OT_parent_clear`. */
 extern struct EnumPropertyItem prop_clear_parent_types[];
+/** Operator Property: `OBJECT_OT_parent_set`. */
 extern struct EnumPropertyItem prop_make_parent_types[];
 #endif
 
@@ -725,17 +727,6 @@ bool ED_object_jump_to_bone(struct bContext *C,
                             struct Object *ob,
                             const char *bone_name,
                             bool reveal_hidden);
-
-/* object_facemap_ops.c */
-
-/**
- * Called while not in edit-mode.
- */
-void ED_object_facemap_face_add(struct Object *ob, struct bFaceMap *fmap, int facenum);
-/**
- * Called while not in edit-mode.
- */
-void ED_object_facemap_face_remove(struct Object *ob, struct bFaceMap *fmap, int facenum);
 
 /* object_data_transform.cc */
 

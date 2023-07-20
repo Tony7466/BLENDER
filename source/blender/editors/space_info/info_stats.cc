@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spinfo
@@ -12,7 +14,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
@@ -25,6 +27,8 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
+#include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -36,15 +40,15 @@
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_modifier.h"
@@ -184,7 +188,8 @@ static void stats_object(Object *ob,
     }
     case OB_CURVES:
     case OB_POINTCLOUD:
-    case OB_VOLUME: {
+    case OB_VOLUME:
+    case OB_GREASE_PENCIL: {
       break;
     }
   }
@@ -230,7 +235,8 @@ static void stats_object_edit(Object *obedit, SceneStats *stats)
 
       /* if this is a connected child and its parent is being moved, remove our root */
       if ((ebo->flag & BONE_CONNECTED) && (ebo->flag & BONE_ROOTSEL) && ebo->parent &&
-          (ebo->parent->flag & BONE_TIPSEL)) {
+          (ebo->parent->flag & BONE_TIPSEL))
+      {
         stats->totvertsel--;
       }
 
@@ -616,6 +622,24 @@ static const char *info_statusbar_string(Main *bmain,
     }
   }
 
+  /* Scene Duration. */
+  if (statusbar_flag & STATUSBAR_SHOW_SCENE_DURATION) {
+    if (info[0]) {
+      ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
+    }
+    const int relative_current_frame = (scene->r.cfra - scene->r.sfra) + 1;
+    const int frame_count = (scene->r.efra - scene->r.sfra) + 1;
+    char timecode[32];
+    BLI_timecode_string_from_time(
+        timecode, sizeof(timecode), -2, FRA2TIME(frame_count), FPS, U.timecode_style);
+    ofs += BLI_snprintf_rlen(info + ofs,
+                             len - ofs,
+                             TIP_("Duration: %s (Frame %i/%i)"),
+                             timecode,
+                             relative_current_frame,
+                             frame_count);
+  }
+
   /* Memory status. */
   if (statusbar_flag & STATUSBAR_SHOW_MEMORY) {
     if (info[0]) {
@@ -668,7 +692,8 @@ const char *ED_info_statistics_string(Main *bmain, Scene *scene, ViewLayer *view
 {
   const eUserpref_StatusBar_Flag statistics_status_bar_flag = STATUSBAR_SHOW_STATS |
                                                               STATUSBAR_SHOW_MEMORY |
-                                                              STATUSBAR_SHOW_VERSION;
+                                                              STATUSBAR_SHOW_VERSION |
+                                                              STATUSBAR_SHOW_SCENE_DURATION;
 
   return info_statusbar_string(bmain, scene, view_layer, statistics_status_bar_flag);
 }
@@ -684,7 +709,7 @@ static void stats_row(int col1,
   *y -= height;
   BLF_draw_default(col1, *y, 0.0f, key, 128);
   char values[128];
-  BLI_snprintf(values, sizeof(values), (value2) ? "%s / %s" : "%s", value1, value2);
+  SNPRINTF(values, (value2) ? "%s / %s" : "%s", value1, value2);
   BLF_draw_default(col2, *y, 0.0f, values, sizeof(values));
 }
 
@@ -727,18 +752,18 @@ void ED_info_draw_stats(
   };
   char labels[MAX_LABELS_COUNT][64];
 
-  STRNCPY(labels[OBJ], IFACE_("Objects"));
-  STRNCPY(labels[VERTS], IFACE_("Vertices"));
-  STRNCPY(labels[EDGES], IFACE_("Edges"));
-  STRNCPY(labels[FACES], IFACE_("Faces"));
-  STRNCPY(labels[TRIS], IFACE_("Triangles"));
-  STRNCPY(labels[JOINTS], IFACE_("Joints"));
-  STRNCPY(labels[BONES], IFACE_("Bones"));
-  STRNCPY(labels[LAYERS], IFACE_("Layers"));
-  STRNCPY(labels[FRAMES], IFACE_("Frames"));
-  STRNCPY(labels[STROKES], IFACE_("Strokes"));
-  STRNCPY(labels[POINTS], IFACE_("Points"));
-  STRNCPY(labels[LIGHTS], IFACE_("Lights"));
+  STRNCPY_UTF8(labels[OBJ], IFACE_("Objects"));
+  STRNCPY_UTF8(labels[VERTS], IFACE_("Vertices"));
+  STRNCPY_UTF8(labels[EDGES], IFACE_("Edges"));
+  STRNCPY_UTF8(labels[FACES], IFACE_("Faces"));
+  STRNCPY_UTF8(labels[TRIS], IFACE_("Triangles"));
+  STRNCPY_UTF8(labels[JOINTS], IFACE_("Joints"));
+  STRNCPY_UTF8(labels[BONES], IFACE_("Bones"));
+  STRNCPY_UTF8(labels[LAYERS], IFACE_("Layers"));
+  STRNCPY_UTF8(labels[FRAMES], IFACE_("Frames"));
+  STRNCPY_UTF8(labels[STROKES], IFACE_("Strokes"));
+  STRNCPY_UTF8(labels[POINTS], IFACE_("Points"));
+  STRNCPY_UTF8(labels[LIGHTS], IFACE_("Lights"));
 
   int longest_label = 0;
   int i;

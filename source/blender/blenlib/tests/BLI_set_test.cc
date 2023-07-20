@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <set>
 #include <unordered_set>
@@ -582,8 +584,8 @@ TEST(set, RemoveIf)
   for (const int64_t i : IndexRange(100)) {
     set.add(i * i);
   }
-  set.remove_if([](const int64_t key) { return key > 100; });
-  EXPECT_EQ(set.size(), 11);
+  const int64_t removed = set.remove_if([](const int64_t key) { return key > 100; });
+  EXPECT_EQ(set.size() + removed, 100);
   for (const int64_t i : IndexRange(100)) {
     EXPECT_EQ(set.contains(i * i), i <= 10);
   }
@@ -598,6 +600,28 @@ TEST(set, RemoveUniquePtrWithRaw)
   EXPECT_EQ(set.size(), 1);
   set.remove_as(a_ptr);
   EXPECT_TRUE(set.is_empty());
+}
+
+TEST(set, Equality)
+{
+  const Set<int> a = {1, 2, 3, 4, 5};
+  const Set<int> b = {5, 2, 3, 1, 4};
+  const Set<int> c = {1, 2, 3};
+  const Set<int> d = {1, 2, 3, 4, 5, 6};
+  const Set<int> e = {};
+  const Set<int> f = {10, 11, 12, 13, 14};
+
+  EXPECT_EQ(a, a);
+  EXPECT_EQ(a, b);
+  EXPECT_EQ(b, a);
+  EXPECT_NE(a, c);
+  EXPECT_NE(a, d);
+  EXPECT_NE(a, e);
+  EXPECT_NE(a, f);
+  EXPECT_NE(c, a);
+  EXPECT_NE(d, a);
+  EXPECT_NE(e, a);
+  EXPECT_NE(f, a);
 }
 
 /**
@@ -639,6 +663,87 @@ BLI_NOINLINE void benchmark_random_ints(StringRef name, int amount, int factor)
   std::cout << "Count: " << count << "\n";
 }
 
+/**
+ * A wrapper for std::unordered_set with the API of blender::Set. This can be used for
+ * benchmarking.
+ */
+template<typename Key> class StdUnorderedSetWrapper {
+ private:
+  using SetType = std::unordered_set<Key, blender::DefaultHash<Key>>;
+  SetType set_;
+
+ public:
+  int64_t size() const
+  {
+    return int64_t(set_.size());
+  }
+
+  bool is_empty() const
+  {
+    return set_.empty();
+  }
+
+  void reserve(int64_t n)
+  {
+    set_.reserve(n);
+  }
+
+  void add_new(const Key &key)
+  {
+    set_.insert(key);
+  }
+  void add_new(Key &&key)
+  {
+    set_.insert(std::move(key));
+  }
+
+  bool add(const Key &key)
+  {
+    return set_.insert(key).second;
+  }
+  bool add(Key &&key)
+  {
+    return set_.insert(std::move(key)).second;
+  }
+
+  void add_multiple(Span<Key> keys)
+  {
+    for (const Key &key : keys) {
+      set_.insert(key);
+    }
+  }
+
+  bool contains(const Key &key) const
+  {
+    return set_.find(key) != set_.end();
+  }
+
+  bool remove(const Key &key)
+  {
+    return bool(set_.erase(key));
+  }
+
+  void remove_contained(const Key &key)
+  {
+    return set_.erase(key);
+  }
+
+  void clear()
+  {
+    set_.clear();
+  }
+
+  typename SetType::iterator begin() const
+  {
+    return set_.begin();
+  }
+
+  typename SetType::iterator end() const
+  {
+    return set_.end();
+  }
+};
+
 TEST(set, Benchmark)
 {
   for (int i = 0; i < 3; i++) {
@@ -649,7 +754,8 @@ TEST(set, Benchmark)
   for (int i = 0; i < 3; i++) {
     uint32_t factor = (3 << 10);
     benchmark_random_ints<blender::Set<int>>("blender::Set      ", 100000, factor);
-    benchmark_random_ints<blender::StdUnorderedSetWrapper<int>>("std::unordered_set", 100000, factor);
+    benchmark_random_ints<blender::StdUnorderedSetWrapper<int>>(
+        "std::unordered_set", 100000, factor);
   }
 }
 

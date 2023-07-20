@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -50,7 +52,7 @@ static PyObject *pygpu_select_load_id(PyObject *UNUSED(self), PyObject *value)
 /** \name Module
  * \{ */
 
-static struct PyMethodDef pygpu_select__tp_methods[] = {
+static PyMethodDef pygpu_select__tp_methods[] = {
     /* Manage Stack */
     {"load_id", (PyCFunction)pygpu_select_load_id, METH_O, pygpu_select_load_id_doc},
     {NULL, NULL, 0, NULL},
@@ -58,7 +60,7 @@ static struct PyMethodDef pygpu_select__tp_methods[] = {
 
 PyDoc_STRVAR(pygpu_select__tp_doc, "This module provides access to selection.");
 static PyModuleDef pygpu_select_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.select",
     /*m_doc*/ pygpu_select__tp_doc,
     /*m_size*/ 0,

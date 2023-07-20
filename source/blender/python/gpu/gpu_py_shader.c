@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -126,7 +128,8 @@ static PyObject *pygpu_shader__tp_new(PyTypeObject *UNUSED(type), PyObject *args
                                         &params.geocode,
                                         &params.libcode,
                                         &params.defines,
-                                        &params.name)) {
+                                        &params.name))
+  {
     return NULL;
   }
 
@@ -219,7 +222,8 @@ static bool pygpu_shader_uniform_vector_impl(PyObject *args,
 
   *r_count = 1;
   if (!PyArg_ParseTuple(
-          args, "iOi|i:GPUShader.uniform_vector_*", r_location, &buffer, r_length, r_count)) {
+          args, "iOi|i:GPUShader.uniform_vector_*", r_location, &buffer, r_length, r_count))
+  {
     return false;
   }
 
@@ -286,8 +290,8 @@ static PyObject *pygpu_shader_uniform_vector_int(BPyGPUShader *self, PyObject *a
 
   Py_buffer pybuffer;
 
-  if (!pygpu_shader_uniform_vector_impl(
-          args, sizeof(int), &location, &length, &count, &pybuffer)) {
+  if (!pygpu_shader_uniform_vector_impl(args, sizeof(int), &location, &length, &count, &pybuffer))
+  {
     return NULL;
   }
 
@@ -528,7 +532,8 @@ static PyObject *pygpu_shader_uniform_sampler(BPyGPUShader *self, PyObject *args
   const char *name;
   BPyGPUTexture *py_texture;
   if (!PyArg_ParseTuple(
-          args, "sO!:GPUShader.uniform_sampler", &name, &BPyGPUTexture_Type, &py_texture)) {
+          args, "sO!:GPUShader.uniform_sampler", &name, &BPyGPUTexture_Type, &py_texture))
+  {
     return NULL;
   }
 
@@ -651,7 +656,7 @@ static PyObject *pygpu_shader_attrs_info_get(BPyGPUShader *self, PyObject *UNUSE
   return ret;
 }
 
-static struct PyMethodDef pygpu_shader__tp_methods[] = {
+static PyMethodDef pygpu_shader__tp_methods[] = {
     {"bind", (PyCFunction)pygpu_shader_bind, METH_NOARGS, pygpu_shader_bind_doc},
     {"uniform_from_name",
      (PyCFunction)pygpu_shader_uniform_from_name,
@@ -766,14 +771,55 @@ PyDoc_STRVAR(
     "   :arg name: Name of shader code, for debugging purposes.\n"
     "   :type value: str\n");
 PyTypeObject BPyGPUShader_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUShader",
-    .tp_basicsize = sizeof(BPyGPUShader),
-    .tp_dealloc = (destructor)pygpu_shader__tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = pygpu_shader__tp_doc,
-    .tp_methods = pygpu_shader__tp_methods,
-    .tp_getset = pygpu_shader__tp_getseters,
-    .tp_new = pygpu_shader__tp_new,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUShader",
+    /*tp_basicsize*/ sizeof(BPyGPUShader),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)pygpu_shader__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ pygpu_shader__tp_doc,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_shader__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ pygpu_shader__tp_getseters,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ pygpu_shader__tp_new,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 /** \} */
@@ -781,24 +827,6 @@ PyTypeObject BPyGPUShader_Type = {
 /* -------------------------------------------------------------------- */
 /** \name gpu.shader Module API
  * \{ */
-
-static int pyc_parse_buitinshader_w_backward_compatibility(PyObject *o, void *p)
-{
-  struct PyC_StringEnum *e = p;
-  const char *value = PyUnicode_AsUTF8(o);
-  if (value && ELEM(value[0], u'2', u'3')) {
-    /* Deprecated enums that start with "3D_" or "2D_". */
-    value += 3;
-    for (int i = 0; e->items[i].id; i++) {
-      if (STREQ(e->items[i].id, value)) {
-        e->value_found = e->items[i].value;
-        return 1;
-      }
-    }
-  }
-
-  return PyC_ParseStringEnum(o, p);
-}
 
 PyDoc_STRVAR(pygpu_shader_unbind_doc,
              ".. function:: unbind()\n"
@@ -848,10 +876,11 @@ static PyObject *pygpu_shader_from_builtin(PyObject *UNUSED(self), PyObject *arg
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
                                         &_parser,
-                                        pyc_parse_buitinshader_w_backward_compatibility,
+                                        PyC_ParseStringEnum,
                                         &pygpu_bultinshader,
                                         PyC_ParseStringEnum,
-                                        &pygpu_config)) {
+                                        &pygpu_config))
+  {
     return NULL;
   }
 
@@ -893,7 +922,7 @@ static PyObject *pygpu_shader_create_from_info(BPyGPUShader *UNUSED(self),
   return BPyGPUShader_CreatePyObject(shader, false);
 }
 
-static struct PyMethodDef pygpu_shader_module__tp_methods[] = {
+static PyMethodDef pygpu_shader_module__tp_methods[] = {
     {"unbind", (PyCFunction)pygpu_shader_unbind, METH_NOARGS, pygpu_shader_unbind_doc},
     {"from_builtin",
      (PyCFunction)pygpu_shader_from_builtin,
@@ -918,7 +947,7 @@ PyDoc_STRVAR(pygpu_shader_module__tp_doc,
              "Its value must be modified using the :class:`gpu.matrix` module.\n"
              "\n" PYDOC_BUILTIN_SHADER_DESCRIPTION);
 static PyModuleDef pygpu_shader_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.shader",
     /*m_doc*/ pygpu_shader_module__tp_doc,
     /*m_size*/ 0,

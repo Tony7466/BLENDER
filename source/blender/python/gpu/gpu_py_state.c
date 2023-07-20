@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -428,7 +430,7 @@ static PyObject *pygpu_state_framebuffer_active_get(PyObject *UNUSED(self))
 /** \name Module
  * \{ */
 
-static struct PyMethodDef pygpu_state__tp_methods[] = {
+static PyMethodDef pygpu_state__tp_methods[] = {
     /* Manage Stack */
     {"blend_set", (PyCFunction)pygpu_state_blend_set, METH_O, pygpu_state_blend_set_doc},
     {"blend_get", (PyCFunction)pygpu_state_blend_get, METH_NOARGS, pygpu_state_blend_get_doc},
@@ -470,7 +472,7 @@ static struct PyMethodDef pygpu_state__tp_methods[] = {
      pygpu_state_scissor_get_doc},
     {"scissor_test_set",
      (PyCFunction)pygpu_state_scissor_test_set,
-     METH_VARARGS,
+     METH_O,
      pygpu_state_scissor_test_set_doc},
     {"line_width_set",
      (PyCFunction)pygpu_state_line_width_set,
@@ -509,7 +511,7 @@ static struct PyMethodDef pygpu_state__tp_methods[] = {
 
 PyDoc_STRVAR(pygpu_state__tp_doc, "This module provides access to the gpu state.");
 static PyModuleDef pygpu_state_module_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.state",
     /*m_doc*/ pygpu_state__tp_doc,
     /*m_size*/ 0,

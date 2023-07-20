@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -30,8 +32,6 @@ from typing import (
 
 # List of (source_file, all_arguments)
 ProcessedCommands = List[Tuple[str, str]]
-
-USE_MULTIPROCESS = True
 
 VERBOSE = False
 
@@ -91,7 +91,7 @@ IDENTIFIER_CHARS = set(string.ascii_letters + "_" + string.digits)
 # -----------------------------------------------------------------------------
 # General Utilities
 
-# Note that we could use a hash, however there is no advantage, compare it's contents.
+# Note that we could use a hash, however there is no advantage, compare its contents.
 def file_as_bytes(filename: str) -> bytes:
     with open(filename, 'rb') as fh:
         return fh.read()
@@ -567,6 +567,32 @@ class edit_generators:
 
             return edits
 
+    class use_empty_void_arg(EditGenerator):
+        """
+        Use ``()`` instead of ``(void)`` for C++ code.
+
+        Replace:
+          function(void) {}
+        With:
+          function() {}
+        """
+        @staticmethod
+        def edit_list_from_file(source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits: List[Edit] = []
+
+            # The user might include C & C++, if they forget, it is better not to operate on C.
+            if source.lower().endswith((".h", ".c")):
+                return edits
+
+            # `(void)` -> `()`.
+            for match in re.finditer(r"(\(void\))(\s*{)", data, flags=re.MULTILINE):
+                edits.append(Edit(
+                    span=match.span(),
+                    content="()" + match.group(2),
+                    content_fail="(__ALWAYS_FAIL__) {",
+                ))
+            return edits
+
     class unused_arg_as_comment(EditGenerator):
         """
         Replace `UNUSED(argument)` in C++ code.
@@ -790,6 +816,28 @@ class edit_generators:
 
             return edits
 
+    class remove_struct_qualifier(EditGenerator):
+        """
+        Remove redundant struct qualifiers:
+
+        Replace:
+          struct Foo
+        With:
+          Foo
+        """
+        @staticmethod
+        def edit_list_from_file(_source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits = []
+
+            # Remove `struct`
+            for match in re.finditer(r"\bstruct\b", data):
+                edits.append(Edit(
+                    span=match.span(),
+                    content=' ',
+                    content_fail=' __ALWAYS_FAIL__ ',
+                ))
+            return edits
+
     class remove_return_parens(EditGenerator):
         """
         Remove redundant parenthesis around return arguments:
@@ -857,6 +905,69 @@ class edit_generators:
                     content='!STREQ(%s)' % (match.group(1)),
                     content_fail='__ALWAYS_FAIL__',
                 ))
+
+            return edits
+
+    class use_str_sizeof_macros(EditGenerator):
+        """
+        Use `STRNCPY` & `SNPRINTF` macros:
+
+        Replace:
+          BLI_strncpy(a, b, sizeof(a))
+        With:
+          STRNCPY(a, b)
+
+        Replace:
+          BLI_snprintf(a, sizeof(a), "format %s", b)
+        With:
+          SNPRINTF(a, "format %s", b)
+        """
+        @staticmethod
+        def edit_list_from_file(_source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits = []
+
+            # `BLI_strncpy(a, b, sizeof(a))` -> `STRNCPY(a, b)`
+            # `BLI_strncpy(a, b, SOME_ID)` -> `STRNCPY(a, b)`
+            for src, dst in (
+                    ("BLI_strncpy", "STRNCPY"),
+                    ("BLI_strncpy_rlen", "STRNCPY_RLEN"),
+                    ("BLI_strncpy_utf8", "STRNCPY_UTF8"),
+                    ("BLI_strncpy_utf8_rlen", "STRNCPY_UTF8_RLEN"),
+            ):
+                for match in re.finditer(
+                        (r"\b" + src + (
+                            r"\(([^,]+,\s+[^,]+),\s+" r"("
+                            r"sizeof\([^\(\)]+\)"  # Trailing `sizeof(..)`.
+                            r"|"
+                            r"[a-zA-Z0-9_]+"  # Trailing identifier (typically a define).
+                            r")" r"\)"
+                        )),
+                        data,
+                        flags=re.MULTILINE,
+                ):
+                    edits.append(Edit(
+                        span=match.span(),
+                        content='%s(%s)' % (dst, match.group(1)),
+                        content_fail='__ALWAYS_FAIL__',
+                    ))
+
+            # `BLI_snprintf(a, SOME_SIZE, ...` -> `SNPRINTF(a, ...`
+            for src, dst in (
+                    ("BLI_snprintf", "SNPRINTF"),
+                    ("BLI_snprintf_rlen", "SNPRINTF_RLEN"),
+                    ("BLI_vsnprintf", "VSNPRINTF"),
+                    ("BLI_vsnprintf_rlen", "VSNPRINTF_RLEN"),
+            ):
+                for match in re.finditer(
+                        r"\b" + src + r"\(([^,]+),\s+([^,]+),",
+                        data,
+                        flags=re.MULTILINE,
+                ):
+                    edits.append(Edit(
+                        span=match.span(),
+                        content='%s(%s,' % (dst, match.group(1)),
+                        content_fail='__ALWAYS_FAIL__',
+                    ))
 
             return edits
 
@@ -1081,11 +1192,15 @@ class edit_generators:
           float(foo(a + b))
         """
         @staticmethod
-        def edit_list_from_file(_source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+        def edit_list_from_file(source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+
+            edits: List[Edit] = []
+
+            # The user might include C & C++, if they forget, it is better not to operate on C.
+            if source.lower().endswith((".h", ".c")):
+                return edits
 
             any_number_re = "(" + "|".join(BUILT_IN_NUMERIC_TYPES) + ")"
-
-            edits = []
 
             # Handle both:
             # - Simple case:  `(float)(a + b)` -> `float(a + b)`.
@@ -1216,6 +1331,33 @@ def edit_class_from_id(name: str) -> Type[EditGenerator]:
     return result  # type: ignore
 
 
+def edit_docstring_from_id(name: str) -> str:
+    from textwrap import dedent
+    result = getattr(edit_generators, name).__doc__
+    return dedent(result or '').strip('\n') + '\n'
+
+
+def edit_group_compatible(edits: Sequence[str]) -> Sequence[Sequence[str]]:
+    """
+    Group compatible edits, so it's possible for a single process to iterate on many edits for a single file.
+    """
+    edits_grouped = []
+
+    edit_generator_class_prev = None
+    for edit in edits:
+        edit_generator_class = edit_class_from_id(edit)
+        if edit_generator_class_prev is None or (
+                edit_generator_class.setup != edit_generator_class_prev.setup and
+                edit_generator_class.teardown != edit_generator_class_prev.teardown
+        ):
+            # Create a new group.
+            edits_grouped.append([edit])
+        else:
+            edits_grouped[-1].append(edit)
+        edit_generator_class_prev = edit_generator_class
+    return edits_grouped
+
+
 # -----------------------------------------------------------------------------
 # Accept / Reject Edits
 
@@ -1237,14 +1379,14 @@ def apply_edit(data: str, text_to_replace: str, start: int, end: int, *, verbose
     return data
 
 
-def wash_source_with_edits(
+def wash_source_with_edit(
         source: str,
         output: str,
         build_args: Sequence[str],
         build_cwd: Optional[str],
-        edit_to_apply: str,
         skip_test: bool,
         shared_edit_data: Any,
+        edit_to_apply: str,
 ) -> None:
     # build_args = build_args + " -Werror=duplicate-decl-specifier"
     with open(source, 'r', encoding='utf-8') as fh:
@@ -1342,6 +1484,19 @@ def wash_source_with_edits(
                 pass
 
 
+def wash_source_with_edit_list(
+        source: str,
+        output: str,
+        build_args: Sequence[str],
+        build_cwd: Optional[str],
+        skip_test: bool,
+        shared_edit_data: Any,
+        edit_list: Sequence[str],
+) -> None:
+    for edit_to_apply in edit_list:
+        wash_source_with_edit(source, output, build_args, build_cwd, skip_test, shared_edit_data, edit_to_apply)
+
+
 # -----------------------------------------------------------------------------
 # Edit Source Code From Args
 
@@ -1349,8 +1504,11 @@ def run_edits_on_directory(
         build_dir: str,
         regex_list: List[re.Pattern[str]],
         edits_to_apply: Sequence[str],
-        skip_test: bool = False,
+        skip_test: bool,
+        jobs: int,
 ) -> int:
+    import multiprocessing
+
     # currently only supports ninja or makefiles
     build_file_ninja = os.path.join(build_dir, "build.ninja")
     build_file_make = os.path.join(build_dir, "Makefile")
@@ -1366,6 +1524,9 @@ def run_edits_on_directory(
             (build_file_ninja, build_file_make)
         )
         return 1
+
+    if jobs <= 0:
+        jobs = multiprocessing.cpu_count() * 2
 
     if args is None:
         # Error will have been reported.
@@ -1436,39 +1597,45 @@ def run_edits_on_directory(
         print(" ", c)
     del args_orig_len
 
-    for i, edit_to_apply in enumerate(edits_to_apply):
-        print("Applying edit:", edit_to_apply, "({:d} of {:d})".format(i + 1, len(edits_to_apply)))
-        edit_generator_class = edit_class_from_id(edit_to_apply)
+    if jobs > 1:
+        # Group edits to avoid one file holding up the queue before other edits can be worked on.
+        # Custom setup/tear-down functions still block though.
+        edits_to_apply_grouped = edit_group_compatible(edits_to_apply)
+    else:
+        # No significant advantage in grouping, split each into a group of one for simpler debugging/execution.
+        edits_to_apply_grouped = [[edit] for edit in edits_to_apply]
+
+    for i, edits_group in enumerate(edits_to_apply_grouped):
+        print("Applying edit:", edits_group, "({:d} of {:d})".format(i + 1, len(edits_to_apply_grouped)))
+        edit_generator_class = edit_class_from_id(edits_group[0])
 
         shared_edit_data = edit_generator_class.setup()
 
         try:
-            if USE_MULTIPROCESS:
+            if jobs > 1:
                 args_expanded = [(
                     c,
                     output_from_build_args(build_args, build_cwd),
                     build_args,
                     build_cwd,
-                    edit_to_apply,
                     skip_test,
                     shared_edit_data,
+                    edits_group,
                 ) for (c, build_args, build_cwd) in args_with_cwd]
-                import multiprocessing
-                job_total = multiprocessing.cpu_count()
-                pool = multiprocessing.Pool(processes=job_total * 2)
-                pool.starmap(wash_source_with_edits, args_expanded)
+                pool = multiprocessing.Pool(processes=jobs)
+                pool.starmap(wash_source_with_edit_list, args_expanded)
                 del args_expanded
             else:
                 # now we have commands
                 for c, build_args, build_cwd in args_with_cwd:
-                    wash_source_with_edits(
+                    wash_source_with_edit_list(
                         c,
                         output_from_build_args(build_args, build_cwd),
                         build_args,
                         build_cwd,
-                        edit_to_apply,
                         skip_test,
                         shared_edit_data,
+                        edits_group,
                     )
         except Exception as ex:
             raise ex
@@ -1480,15 +1647,16 @@ def run_edits_on_directory(
 
 
 def create_parser(edits_all: Sequence[str]) -> argparse.ArgumentParser:
-    from textwrap import indent, dedent
+    from textwrap import indent
 
     # Create docstring for edits.
     edits_all_docs = []
     for edit in edits_all:
+        # `%` -> `%%` is needed for `--help` not to interpret these as formatting arguments.
         edits_all_docs.append(
             "  %s\n%s" % (
                 edit,
-                indent(dedent(getattr(edit_generators, edit).__doc__ or '').strip('\n') + '\n', '    '),
+                indent(edit_docstring_from_id(edit).replace("%", "%%"), '    '),
             )
         )
 
@@ -1527,6 +1695,17 @@ def create_parser(edits_all: Sequence[str]) -> argparse.ArgumentParser:
         ),
         required=False,
     )
+    parser.add_argument(
+        "--jobs",
+        dest="jobs",
+        type=int,
+        default=0,
+        help=(
+            "The number of processes to use. "
+            "Defaults to zero which detects the available cores, 1 is single threaded (useful for debugging)."
+        ),
+        required=False,
+    )
 
     return parser
 
@@ -1559,7 +1738,13 @@ def main() -> int:
             ))
             return 1
 
-    return run_edits_on_directory(build_dir, regex_list, edits_all_from_args, args.skip_test)
+    return run_edits_on_directory(
+        build_dir,
+        regex_list,
+        edits_all_from_args,
+        args.skip_test,
+        args.jobs,
+    )
 
 
 if __name__ == "__main__":

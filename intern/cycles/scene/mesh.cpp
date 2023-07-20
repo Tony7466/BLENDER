@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "bvh/build.h"
 #include "bvh/bvh.h"
@@ -192,9 +193,7 @@ Mesh::Mesh(const NodeType *node_type, Type geom_type_)
   patch_table = NULL;
 }
 
-Mesh::Mesh() : Mesh(get_node_type(), Geometry::MESH)
-{
-}
+Mesh::Mesh() : Mesh(get_node_type(), Geometry::MESH) {}
 
 Mesh::~Mesh()
 {

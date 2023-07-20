@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -15,6 +16,10 @@ enum FSMenuInsert;
 
 struct FSMenu;
 struct FSMenuEntry;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Inserts a new fsmenu entry with the given \a path.
@@ -62,3 +67,7 @@ void fsmenu_refresh_bookmarks_status(struct wmWindowManager *wm, struct FSMenu *
 int fsmenu_get_active_indices(struct FSMenu *fsmenu,
                               enum FSMenuCategory category,
                               const char *dir);
+
+#ifdef __cplusplus
+}
+#endif

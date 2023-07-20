@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -14,7 +15,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
 
 #include "BLI_alloca.h"
 
@@ -36,9 +36,9 @@ typedef struct BASIC_StorageList {
 } BASIC_StorageList;
 
 typedef struct BASIC_PassList {
-  struct DRWPass *depth_pass[2];
-  struct DRWPass *depth_pass_pointcloud[2];
-  struct DRWPass *depth_pass_cull[2];
+  DRWPass *depth_pass[2];
+  DRWPass *depth_pass_pointcloud[2];
+  DRWPass *depth_pass_cull[2];
 } BASIC_PassList;
 
 typedef struct BASIC_Data {
@@ -119,7 +119,7 @@ static void basic_cache_init(void *vedata)
 static struct GPUBatch **basic_object_surface_material_get(Object *ob)
 {
   const int materials_len = DRW_cache_object_material_count_get(ob);
-  struct GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
+  GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
   memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
 
   return DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
@@ -173,7 +173,8 @@ static void basic_cache_populate(void *vedata, Object *ob)
 
   /* Make flat object selectable in ortho view if wireframe is enabled. */
   if ((draw_ctx->v3d->overlay.flag & V3D_OVERLAY_WIREFRAMES) ||
-      (draw_ctx->v3d->shading.type == OB_WIRE) || (ob->dtx & OB_DRAWWIRE) || (ob->dt == OB_WIRE)) {
+      (draw_ctx->v3d->shading.type == OB_WIRE) || (ob->dtx & OB_DRAWWIRE) || (ob->dt == OB_WIRE))
+  {
     int flat_axis = 0;
     bool is_flat_object_viewed_from_side = ((draw_ctx->rv3d->persp == RV3D_ORTHO) &&
                                             DRW_object_is_flat(ob, &flat_axis) &&
@@ -222,10 +223,10 @@ static void basic_cache_populate(void *vedata, Object *ob)
       }
     }
 
-    if (G.debug_value == 889 && ob->sculpt && ob->sculpt->pbvh) {
+    if (G.debug_value == 889 && ob->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
       int debug_node_nr = 0;
       DRW_debug_modelmat(ob->object_to_world);
-      BKE_pbvh_draw_debug_cb(ob->sculpt->pbvh, DRW_sculpt_debug_cb, &debug_node_nr);
+      BKE_pbvh_draw_debug_cb(BKE_object_sculpt_pbvh_get(ob), DRW_sculpt_debug_cb, &debug_node_nr);
     }
   }
 }
@@ -257,21 +258,21 @@ static void basic_engine_free(void)
 static const DrawEngineDataSize basic_data_size = DRW_VIEWPORT_DATA_SIZE(BASIC_Data);
 
 DrawEngineType draw_engine_basic_type = {
-    NULL,
-    NULL,
-    N_("Basic"),
-    &basic_data_size,
-    NULL,
-    &basic_engine_free,
-    /*instance_free*/ NULL,
-    &basic_cache_init,
-    &basic_cache_populate,
-    &basic_cache_finish,
-    &basic_draw_scene,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    /*next*/ NULL,
+    /*prev*/ NULL,
+    /*idname*/ N_("Basic"),
+    /*vedata_size*/ &basic_data_size,
+    /*engine_init*/ NULL,
+    /*engine_free*/ &basic_engine_free,
+    /*instance_free*/ /*instance_free*/ NULL,
+    /*cache_init*/ &basic_cache_init,
+    /*cache_populate*/ &basic_cache_populate,
+    /*cache_finish*/ &basic_cache_finish,
+    /*draw_scene*/ &basic_draw_scene,
+    /*view_update*/ NULL,
+    /*id_update*/ NULL,
+    /*render_to_image*/ NULL,
+    /*store_metadata*/ NULL,
 };
 
 #undef BASIC_ENGINE

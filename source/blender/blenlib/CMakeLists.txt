@@ -1,23 +1,20 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 if(HAVE_EXECINFO_H)
   add_definitions(-DHAVE_EXECINFO_H)
 endif()
 
 set(INC
-  .
-  ..
-  # ../blenkernel  # don't add this back!
-  ../makesdna
-  ../../../intern/atomic
+  PUBLIC .
   ../../../intern/eigen
-  ../../../intern/guardedalloc
-  ../../../extern/wcwidth
-  ../../../extern/json/include
 )
 
 set(INC_SYS
+  ../../../extern/wcwidth
+  ../../../extern/json/include
+
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
   ${ZSTD_INCLUDE_DIRS}
@@ -82,6 +79,7 @@ set(SRC
   intern/hash_md5.c
   intern/hash_mm2a.c
   intern/hash_mm3.c
+  intern/implicit_sharing.cc
   intern/index_mask.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
@@ -130,6 +128,7 @@ set(SRC
   intern/scanfill_utils.c
   intern/serialize.cc
   intern/session_uuid.c
+  intern/smaa_textures.c
   intern/smallhash.c
   intern/sort.c
   intern/sort_utils.c
@@ -146,6 +145,7 @@ set(SRC
   intern/task_pool.cc
   intern/task_range.cc
   intern/task_scheduler.cc
+  intern/tempfile.c
   intern/threads.cc
   intern/time.c
   intern/timecode.c
@@ -178,8 +178,11 @@ set(SRC
   BLI_assert.h
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
+  BLI_binary_search.hh
+  BLI_bit_group_vector.hh
   BLI_bit_ref.hh
   BLI_bit_span.hh
+  BLI_bit_span_ops.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -240,8 +243,10 @@ set(SRC
   BLI_hash_tables.hh
   BLI_heap.h
   BLI_heap_simple.h
+  BLI_implicit_sharing.h
+  BLI_implicit_sharing.hh
+  BLI_implicit_sharing_ptr.hh
   BLI_index_mask.hh
-  BLI_index_mask_ops.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
@@ -309,6 +314,8 @@ set(SRC
   BLI_noise.h
   BLI_noise.hh
   BLI_offset_indices.hh
+  BLI_offset_span.hh
+  BLI_ordered_edge.hh
   BLI_parameter_pack_utils.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
@@ -328,6 +335,7 @@ set(SRC
   BLI_set_slots.hh
   BLI_shared_cache.hh
   BLI_simd.h
+  BLI_smaa_textures.h
   BLI_smallhash.h
   BLI_sort.h
   BLI_sort.hh
@@ -341,16 +349,19 @@ set(SRC
   BLI_string_ref.hh
   BLI_string_search.h
   BLI_string_utf8.h
+  BLI_string_utf8_symbols.h
   BLI_string_utils.h
+  BLI_sub_frame.hh
   BLI_sys_types.h
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_tempfile.h
   BLI_threads.h
   BLI_timecode.h
   BLI_timeit.hh
   BLI_timer.h
-  BLI_user_counter.hh
+  BLI_unique_sorted_indices.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
@@ -375,10 +386,11 @@ set(SRC
 )
 
 set(LIB
+  PUBLIC bf::dna
   bf_intern_eigen
-  bf_intern_guardedalloc
+  PRIVATE bf::intern::guardedalloc
   extern_wcwidth
-
+  PRIVATE bf::intern::atomic
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -461,6 +473,7 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::blenlib ALIAS bf_blenlib)
 
 if(WITH_GTESTS)
   set(TEST_SRC
@@ -468,6 +481,8 @@ if(WITH_GTESTS)
     tests/BLI_array_store_test.cc
     tests/BLI_array_test.cc
     tests/BLI_array_utils_test.cc
+    tests/BLI_binary_search_test.cc
+    tests/BLI_bit_group_vector_test.cc
     tests/BLI_bit_ref_test.cc
     tests/BLI_bit_span_test.cc
     tests/BLI_bit_vector_test.cc
@@ -488,6 +503,7 @@ if(WITH_GTESTS)
     tests/BLI_hash_mm2a_test.cc
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
+    tests/BLI_implicit_sharing_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
@@ -532,6 +548,9 @@ if(WITH_GTESTS)
     tests/BLI_string_utf8_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
+    tests/BLI_tempfile_test.cc
+    tests/BLI_unique_sorted_indices_test.cc
+    tests/BLI_utildefines_test.cc
     tests/BLI_uuid_test.cc
     tests/BLI_vector_set_test.cc
     tests/BLI_vector_test.cc

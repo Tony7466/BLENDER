@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -73,7 +74,8 @@ static void clip_draw_dopesheet_background(ARegion *region, MovieClip *clip, uin
   MovieTrackingDopesheet *dopesheet = &tracking->dopesheet;
 
   LISTBASE_FOREACH (
-      MovieTrackingDopesheetCoverageSegment *, coverage_segment, &dopesheet->coverage_segments) {
+      MovieTrackingDopesheetCoverageSegment *, coverage_segment, &dopesheet->coverage_segments)
+  {
     if (coverage_segment->coverage < TRACKING_COVERAGE_OK) {
       int start_frame = BKE_movieclip_remap_clip_to_scene_frame(clip,
                                                                 coverage_segment->start_frame);
@@ -340,7 +342,7 @@ void clip_draw_dopesheet_channels(const bContext *C, ARegion *region)
   /* second pass: text */
   y = float(CHANNEL_FIRST);
 
-  BLF_size(fontid, 11.0f * U.dpi_fac);
+  BLF_size(fontid, 11.0f * UI_SCALE_FAC);
 
   LISTBASE_FOREACH (MovieTrackingDopesheetChannel *, channel, &dopesheet->channels) {
     float yminc = float(y - CHANNEL_HEIGHT_HALF);

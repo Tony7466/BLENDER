@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -262,8 +263,7 @@ std::string ResourceBind::serialize() const
   switch (type) {
     case Type::Sampler:
       return std::string(".bind_texture") + (is_reference ? "_ref" : "") + "(" +
-             std::to_string(slot) +
-             (sampler != GPU_SAMPLER_MAX ? ", sampler=" + std::to_string(sampler) : "") + ")";
+             std::to_string(slot) + ", sampler=" + sampler.to_string() + ")";
     case Type::BufferSampler:
       return std::string(".bind_vertbuf_as_texture") + (is_reference ? "_ref" : "") + "(" +
              std::to_string(slot) + ")";

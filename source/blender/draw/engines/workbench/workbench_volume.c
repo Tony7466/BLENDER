@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -75,7 +76,8 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   }
 
   if ((!fds->use_coba && (fds->tex_density == NULL && fds->tex_color == NULL)) ||
-      (fds->use_coba && fds->tex_field == NULL)) {
+      (fds->use_coba && fds->tex_field == NULL))
+  {
     return;
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pybmesh
@@ -50,7 +51,7 @@ static PyObject *bpy_bm_geometry_intersect_face_point(BPy_BMFace *UNUSED(self), 
   return PyBool_FromLong(ret);
 }
 
-static struct PyMethodDef BPy_BM_geometry_methods[] = {
+static PyMethodDef BPy_BM_geometry_methods[] = {
     {"intersect_face_point",
      (PyCFunction)bpy_bm_geometry_intersect_face_point,
      METH_VARARGS,
@@ -60,8 +61,8 @@ static struct PyMethodDef BPy_BM_geometry_methods[] = {
 
 PyDoc_STRVAR(BPy_BM_utils_doc,
              "This module provides access to bmesh geometry evaluation functions.");
-static struct PyModuleDef BPy_BM_geometry_module_def = {
-    PyModuleDef_HEAD_INIT,
+static PyModuleDef BPy_BM_geometry_module_def = {
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "bmesh.geometry",
     /*m_doc*/ BPy_BM_utils_doc,
     /*m_size*/ 0,

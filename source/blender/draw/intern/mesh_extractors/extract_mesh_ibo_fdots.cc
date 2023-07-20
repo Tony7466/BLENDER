@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -38,7 +39,6 @@ static void extract_fdots_iter_poly_bm(const MeshRenderData * /*mr*/,
 }
 
 static void extract_fdots_iter_poly_mesh(const MeshRenderData *mr,
-                                         const MPoly *poly,
                                          const int poly_index,
                                          void *_userdata)
 {
@@ -48,10 +48,9 @@ static void extract_fdots_iter_poly_mesh(const MeshRenderData *mr,
   if (mr->use_subsurf_fdots) {
     const BitSpan facedot_tags = mr->me->runtime->subsurf_face_dot_tags;
 
-    const int ml_index_end = poly->loopstart + poly->totloop;
-    for (int ml_index = poly->loopstart; ml_index < ml_index_end; ml_index += 1) {
-      const MLoop *ml = &mr->loops[ml_index];
-      if (facedot_tags[ml->v] && !hidden) {
+    for (const int ml_index : mr->polys[poly_index]) {
+      const int vert = mr->corner_verts[ml_index];
+      if (facedot_tags[vert] && !hidden) {
         GPU_indexbuf_set_point_vert(elb, poly_index, poly_index);
         return;
       }

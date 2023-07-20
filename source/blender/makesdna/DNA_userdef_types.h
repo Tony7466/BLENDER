@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -14,6 +15,20 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * Scaling factor for all UI elements, based on the "Resolution Scale" user preference and the
+ * DPI/OS Scale of each monitor. This is a read-only, run-time value calculated by
+ * `WM_window_set_dpi` at various times, including between the drawing of each window and so can
+ * vary between monitors.
+ */
+#define UI_SCALE_FAC ((void)0, U.scale_factor)
+
+/* Inverse of UI_SCALE_FAC ( 1 / UI_SCALE_FAC). */
+#define UI_INV_SCALE_FAC ((void)0, U.inv_scale_factor)
+
+/* 16 to copy ICON_DEFAULT_HEIGHT */
+#define UI_ICON_SIZE ((float)16 * U.scale_factor)
 
 /* Themes; defines in `BIF_resource.h`. */
 
@@ -239,7 +254,7 @@ typedef struct ThemeSpace {
   unsigned char button_text[4];
   unsigned char button_text_hi[4];
 
-  /* listview regions */
+  /* List-view regions. */
   /** Region background. */
   unsigned char list[4];
   /** Panel title. */
@@ -329,6 +344,11 @@ typedef struct ThemeSpace {
   unsigned char nodeclass_shader[4], nodeclass_script[4];
   unsigned char nodeclass_pattern[4], nodeclass_layout[4];
   unsigned char nodeclass_geometry[4], nodeclass_attribute[4];
+
+  unsigned char node_zone_simulation[4];
+  unsigned char node_zone_repeat[4];
+  unsigned char _pad9[4];
+  unsigned char simulated_frames[4];
 
   /** For sequence editor. */
   unsigned char movie[4], movieclip[4], mask[4], image[4], scene[4], audio[4];
@@ -472,7 +492,7 @@ typedef struct bTheme {
   ThemeUI tui;
 
   /**
-   * Individual Spacetypes:
+   * Individual Space-types:
    * \note Ensure #UI_THEMESPACE_END is updated when adding.
    */
   ThemeSpace space_properties;
@@ -548,6 +568,7 @@ typedef struct bUserMenuItem_Op {
   bUserMenuItem item;
   char op_idname[64];
   struct IDProperty *prop;
+  char op_prop_enum[64];
   char opcontext; /* #wmOperatorCallContext */
   char _pad0[7];
 } bUserMenuItem_Op;
@@ -575,11 +596,12 @@ enum {
 typedef struct bUserAssetLibrary {
   struct bUserAssetLibrary *next, *prev;
 
-  char name[64];   /* MAX_NAME */
-  char path[1024]; /* FILE_MAX */
+  char name[64];      /* MAX_NAME */
+  char dirpath[1024]; /* FILE_MAX */
 
   short import_method; /* eAssetImportMethod */
-  char _pad0[6];
+  short flag;          /* eAssetLibrary_Flag */
+  char _pad0[4];
 } bUserAssetLibrary;
 
 typedef struct SolidLight {
@@ -656,14 +678,30 @@ typedef struct UserDef_Experimental {
   char use_override_templates;
   char enable_eevee_next;
   char use_sculpt_texture_paint;
+  char use_grease_pencil_version3;
+  char enable_overlay_next;
   char enable_workbench_next;
   char use_new_volume_nodes;
-  char _pad[6];
+  char use_node_panels;
+  char use_rotation_socket;
+  char use_node_group_operators;
+  char _pad[1];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
 #define USER_EXPERIMENTAL_TEST(userdef, member) \
   (((userdef)->flag & USER_DEVELOPER_UI) && ((userdef)->experimental).member)
+
+/**
+ * Container to store multiple directory paths and a name for each as a #ListBase.
+ */
+typedef struct bUserScriptDirectory {
+  struct bUserScriptDirectory *next, *prev;
+
+  /** Name must be unique. */
+  char name[64];      /* MAX_NAME */
+  char dir_path[768]; /* FILE_MAXDIR */
+} bUserScriptDirectory;
 
 typedef struct UserDef {
   DNA_DEFINE_CXX_METHODS(UserDef)
@@ -689,26 +727,15 @@ typedef struct UserDef {
   /** 768 = FILE_MAXDIR. */
   char render_cachedir[768];
   char textudir[768];
-  /**
-   * Optional user location for scripts.
-   *
-   * This supports the same layout as Blender's scripts directory `scripts`.
-   *
-   * \note Unlike most paths, changing this is not fully supported at run-time,
-   * requiring a restart to properly take effect. Supporting this would cause complications as
-   * the script path can contain `startup`, `addons` & `modules` etc. properly unwinding the
-   * Python environment to the state it _would_ have been in gets complicated.
-   *
-   * Although this is partially supported as the `sys.path` is refreshed when loading preferences.
-   * This is done to support #PREFERENCES_OT_copy_prev which is available to the user when they
-   * launch with a new version of Blender. In this case setting the script path on top of
-   * factory settings will work without problems.
-   */
-  char pythondir[768];
+  /* Deprecated, use #UserDef.script_directories instead. */
+  char pythondir_legacy[768] DNA_DEPRECATED;
   char sounddir[768];
   char i18ndir[768];
   /** 1024 = FILE_MAX. */
   char image_editor[1024];
+  /** 1024 = FILE_MAX. */
+  char text_editor[1024];
+  char text_editor_args[256];
   /** 1024 = FILE_MAX. */
   char anim_player[1024];
   int anim_player_preset;
@@ -747,10 +774,10 @@ typedef struct UserDef {
   int ui_line_width;
   /** Runtime, full DPI divided by `pixelsize`. */
   int dpi;
-  /** Runtime, multiplier to scale UI elements based on DPI (fractional). */
-  float dpi_fac;
-  /** Runtime, `1.0 / dpi_fac` */
-  float inv_dpi_fac;
+  /** Runtime multiplier to scale UI elements. Use macro UI_SCALE_FAC instead of this. */
+  float scale_factor;
+  /** Runtime, `1.0 / scale_factor` */
+  float inv_scale_factor;
   /** Runtime, calculated from line-width and point-size based on DPI (rounded to int). */
   float pixelsize;
   /** Deprecated, for forward compatibility. */
@@ -776,6 +803,22 @@ typedef struct UserDef {
   struct ListBase user_keyconfig_prefs;
   struct ListBase addons;
   struct ListBase autoexec_paths;
+  /**
+   * Optional user locations for Python scripts.
+   *
+   * This supports the same layout as Blender's scripts directory `scripts`.
+   *
+   * \note Unlike most paths, changing this is not fully supported at run-time,
+   * requiring a restart to properly take effect. Supporting this would cause complications as
+   * the script path can contain `startup`, `addons` & `modules` etc. properly unwinding the
+   * Python environment to the state it _would_ have been in gets complicated.
+   *
+   * Although this is partially supported as the `sys.path` is refreshed when loading preferences.
+   * This is done to support #PREFERENCES_OT_copy_prev which is available to the user when they
+   * launch with a new version of Blender. In this case setting the script path on top of
+   * factory settings will work without problems.
+   */
+  ListBase script_directories; /* #bUserScriptDirectory */
   /** #bUserMenu. */
   struct ListBase user_menus;
   /** #bUserAssetLibrary */
@@ -1110,7 +1153,7 @@ typedef enum eUserpref_UI_Flag {
   USER_UIFLAG_UNUSED_3 = (1 << 19), /* Cleared. */
   USER_ZOOM_TO_MOUSEPOS = (1 << 20),
   USER_SHOW_FPS = (1 << 21),
-  USER_UIFLAG_UNUSED_22 = (1 << 22), /* cleared */
+  USER_REGISTER_ALL_USERS = (1 << 22),
   USER_MENUFIXEDORDER = (1 << 23),
   USER_CONTINUOUS_MOUSE = (1 << 24),
   USER_ZOOM_INVERT = (1 << 25),
@@ -1166,6 +1209,7 @@ typedef enum eUserpref_StatusBar_Flag {
   STATUSBAR_SHOW_VRAM = (1 << 1),
   STATUSBAR_SHOW_STATS = (1 << 2),
   STATUSBAR_SHOW_VERSION = (1 << 3),
+  STATUSBAR_SHOW_SCENE_DURATION = (1 << 4),
 } eUserpref_StatusBar_Flag;
 
 /**

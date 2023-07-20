@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bpygpu
@@ -172,11 +174,55 @@ static PyMethodDef pygpu_framebuffer_stack_context__tp_methods[] = {
 };
 
 static PyTypeObject FramebufferStackContext_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUFrameBufferStackContext",
-    .tp_basicsize = sizeof(PyFrameBufferStackContext),
-    .tp_dealloc = (destructor)pygpu_framebuffer_stack_context__tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_methods = pygpu_framebuffer_stack_context__tp_methods,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUFrameBufferStackContext",
+    /*tp_basicsize*/ sizeof(PyFrameBufferStackContext),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)pygpu_framebuffer_stack_context__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ NULL,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_framebuffer_stack_context__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ NULL,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ NULL,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 PyDoc_STRVAR(pygpu_framebuffer_bind_doc,
@@ -284,7 +330,8 @@ static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, &depth_attachment, &color_attachements)) {
+          args, kwds, &_parser, &depth_attachment, &color_attachements))
+  {
     return NULL;
   }
 
@@ -514,7 +561,8 @@ static PyObject *pygpu_framebuffer_read_color(BPyGPUFrameBuffer *self,
                                         PyC_ParseStringEnum,
                                         &pygpu_dataformat,
                                         &BPyGPU_BufferType,
-                                        &py_buffer)) {
+                                        &py_buffer))
+  {
     return NULL;
   }
 
@@ -598,7 +646,8 @@ static PyObject *pygpu_framebuffer_read_depth(BPyGPUFrameBuffer *self,
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kwds, &_parser, &x, &y, &w, &h, &BPyGPU_BufferType, &py_buffer)) {
+          args, kwds, &_parser, &x, &y, &w, &h, &BPyGPU_BufferType, &py_buffer))
+  {
     return NULL;
   }
 
@@ -656,7 +705,7 @@ static PyGetSetDef pygpu_framebuffer__tp_getseters[] = {
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
 };
 
-static struct PyMethodDef pygpu_framebuffer__tp_methods[] = {
+static PyMethodDef pygpu_framebuffer__tp_methods[] = {
     {"bind", (PyCFunction)pygpu_framebuffer_bind, METH_NOARGS, pygpu_framebuffer_bind_doc},
     {"clear",
      (PyCFunction)pygpu_framebuffer_clear,
@@ -699,14 +748,55 @@ PyDoc_STRVAR(pygpu_framebuffer__tp_doc,
              "containing keywords: 'texture', 'layer' and 'mip'.\n"
              "   :type color_slots: tuple or Nonetype\n");
 PyTypeObject BPyGPUFrameBuffer_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "GPUFrameBuffer",
-    .tp_basicsize = sizeof(BPyGPUFrameBuffer),
-    .tp_dealloc = (destructor)BPyGPUFrameBuffer__tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = pygpu_framebuffer__tp_doc,
-    .tp_methods = pygpu_framebuffer__tp_methods,
-    .tp_getset = pygpu_framebuffer__tp_getseters,
-    .tp_new = pygpu_framebuffer__tp_new,
+    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*tp_name*/ "GPUFrameBuffer",
+    /*tp_basicsize*/ sizeof(BPyGPUFrameBuffer),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)BPyGPUFrameBuffer__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ NULL,
+    /*tp_setattr*/ NULL,
+    /*tp_as_async*/ NULL,
+    /*tp_repr*/ NULL,
+    /*tp_as_number*/ NULL,
+    /*tp_as_sequence*/ NULL,
+    /*tp_as_mapping*/ NULL,
+    /*tp_hash*/ NULL,
+    /*tp_call*/ NULL,
+    /*tp_str*/ NULL,
+    /*tp_getattro*/ NULL,
+    /*tp_setattro*/ NULL,
+    /*tp_as_buffer*/ NULL,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ pygpu_framebuffer__tp_doc,
+    /*tp_traverse*/ NULL,
+    /*tp_clear*/ NULL,
+    /*tp_richcompare*/ NULL,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ NULL,
+    /*tp_iternext*/ NULL,
+    /*tp_methods*/ pygpu_framebuffer__tp_methods,
+    /*tp_members*/ NULL,
+    /*tp_getset*/ pygpu_framebuffer__tp_getseters,
+    /*tp_base*/ NULL,
+    /*tp_dict*/ NULL,
+    /*tp_descr_get*/ NULL,
+    /*tp_descr_set*/ NULL,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ NULL,
+    /*tp_alloc*/ NULL,
+    /*tp_new*/ pygpu_framebuffer__tp_new,
+    /*tp_free*/ NULL,
+    /*tp_is_gc*/ NULL,
+    /*tp_bases*/ NULL,
+    /*tp_mro*/ NULL,
+    /*tp_cache*/ NULL,
+    /*tp_subclasses*/ NULL,
+    /*tp_weaklist*/ NULL,
+    /*tp_del*/ NULL,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ NULL,
+    /*tp_vectorcall*/ NULL,
 };
 
 /** \} */
