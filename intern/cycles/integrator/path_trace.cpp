@@ -268,9 +268,10 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   VLOG_INFO << "Initial Slice sizes";
   int slice_stride = 0;
   int slice_sizes[num_works];
+    int slice_size_set[] = { 6, 1 };
   for(int i = 0;i < num_works;i++) {
     const double weight = work_balance_infos[i].weight;
-    int slice_size = weight/work_balance_infos[smallest_weight].weight;
+      int slice_size = /*slice_size_set[i % 2]; */ weight/work_balance_infos[smallest_weight].weight;
     VLOG_INFO << "<" << i << "> size:" << slice_size << "  weight:" << work_balance_infos[i].weight << std::endl;
     slice_sizes[i] = slice_size;
     slice_stride += slice_size;
@@ -281,11 +282,12 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   for (int i = 0; i < num_works; ++i) {
     //const double weight = work_balance_infos[i].weight;
     const int slice_window_full_y = buffer_params.full_y + buffer_params.window_y + current_y;
-    const int slice_window_height = slices*slice_sizes[i] + std::min(slice_sizes[i], window_height - slices*slice_stride);  //max(lround(window_height * weight), 1);
+    const int slice_left_at_end = std::max(0, window_height - slices*slice_stride - current_y);
+    const int slice_window_height = slices*slice_sizes[i] + std::min(slice_sizes[i], slice_left_at_end);  //max(lround(window_height * weight), 1);
 
     /* Disallow negative values to deal with situations when there are more compute devices than
      * scan-lines. */
-    const int remaining_window_height = max(0, window_height - current_y);
+    //const int remaining_window_height = max(0, window_height - current_y);
 
     BufferParams slice_params = buffer_params;
 
@@ -309,23 +311,22 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
       
     slice_params.update_offset_stride();
 
+    VLOG_INFO << "(" << i << ") "
+              << "Slice Params full_y:" << slice_params.full_y
+              << " window_y:" << slice_params.window_y
+              << " height:" << slice_params.height
+              << " window_height:" << slice_params.window_height
+              << " slice_height:" << slice_params.slice_height
+              << " slice_stride:" << slice_params.slice_stride
+              << " slices:" << slices << " slices*slice_stride:" << slices*slice_stride << " diff:" << slice_left_at_end
+              << " slices size:" << window_height - slices*slice_stride;
+      
     callback(path_trace_works[i].get(), slice_params);
 
     current_y += slice_sizes[i];//slice_params.window_height;
   }
-
-
-
-
-
-
-
-
-
-
-
-
-    /////=============================================
+  
+  //=============================================
   //   const double weight = work_balance_infos[i].weight * device_scale;
   //   const int slice_window_full_y = buffer_params.full_y + buffer_params.window_y + current_y;
   //   const int slice_window_height = sizes[i]; //max(lround(window_height * weight), 1);
