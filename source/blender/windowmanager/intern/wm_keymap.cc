@@ -59,24 +59,24 @@ struct wmKeyMapItemFind_Params {
 
 static wmKeyMapItem *wm_keymap_item_copy(wmKeyMapItem *kmi)
 {
-  wmKeyMapItem *kmin = MEM_dupallocN(kmi);
+  wmKeyMapItem *kmin = static_cast<wmKeyMapItem *>(MEM_dupallocN(kmi));
 
-  kmin->prev = kmin->next = NULL;
+  kmin->prev = kmin->next = nullptr;
   kmin->flag &= ~KMI_UPDATE;
 
   if (kmin->properties) {
-    kmin->ptr = MEM_callocN(sizeof(PointerRNA), "UserKeyMapItemPtr");
+    kmin->ptr = static_cast<PointerRNA *>(MEM_callocN(sizeof(PointerRNA), "UserKeyMapItemPtr"));
     WM_operator_properties_create(kmin->ptr, kmin->idname);
 
     /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-    kmin->ptr->owner_id = NULL;
+    kmin->ptr->owner_id = nullptr;
 
     kmin->properties = IDP_CopyProperty(kmin->properties);
     kmin->ptr->data = kmin->properties;
   }
   else {
-    kmin->properties = NULL;
-    kmin->ptr = NULL;
+    kmin->properties = nullptr;
+    kmin->ptr = nullptr;
   }
 
   return kmin;
@@ -88,8 +88,8 @@ static void wm_keymap_item_free(wmKeyMapItem *kmi)
   if (kmi->ptr) {
     WM_operator_properties_free(kmi->ptr);
     MEM_freeN(kmi->ptr);
-    kmi->ptr = NULL;
-    kmi->properties = NULL;
+    kmi->ptr = nullptr;
+    kmi->properties = nullptr;
   }
 }
 
@@ -99,7 +99,7 @@ static void wm_keymap_item_properties_set(wmKeyMapItem *kmi)
   WM_operator_properties_sanitize(kmi->ptr, 1);
 
   /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-  kmi->ptr->owner_id = NULL;
+  kmi->ptr->owner_id = nullptr;
 }
 
 /**
@@ -109,11 +109,11 @@ static void wm_keymap_item_properties_set(wmKeyMapItem *kmi)
 static void wm_keymap_item_properties_update_ot(wmKeyMapItem *kmi)
 {
   if (kmi->idname[0] == 0) {
-    BLI_assert(kmi->ptr == NULL);
+    BLI_assert(kmi->ptr == nullptr);
     return;
   }
 
-  if (kmi->ptr == NULL) {
+  if (kmi->ptr == nullptr) {
     wm_keymap_item_properties_set(kmi);
   }
   else {
@@ -122,7 +122,7 @@ static void wm_keymap_item_properties_update_ot(wmKeyMapItem *kmi)
       if (ot->srna != kmi->ptr->type) {
         /* matches wm_keymap_item_properties_set but doesn't alloc new ptr */
         WM_operator_properties_create_ptr(kmi->ptr, ot);
-        /* 'kmi->ptr->data' NULL'd above, keep using existing properties.
+        /* 'kmi->ptr->data' nullptr'd above, keep using existing properties.
          * NOTE: the operators property types may have changed,
          * we will need a more comprehensive sanitize function to support this properly.
          */
@@ -132,7 +132,7 @@ static void wm_keymap_item_properties_update_ot(wmKeyMapItem *kmi)
         WM_operator_properties_sanitize(kmi->ptr, 1);
 
         /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-        kmi->ptr->owner_id = NULL;
+        kmi->ptr->owner_id = nullptr;
       }
     }
     else {
@@ -184,7 +184,7 @@ void WM_keymap_item_properties_reset(wmKeyMapItem *kmi, IDProperty *properties)
     WM_operator_properties_free(kmi->ptr);
     MEM_freeN(kmi->ptr);
 
-    kmi->ptr = NULL;
+    kmi->ptr = nullptr;
   }
 
   kmi->properties = properties;
@@ -225,9 +225,9 @@ int WM_keymap_item_map_type_get(const wmKeyMapItem *kmi)
 
 static wmKeyMapDiffItem *wm_keymap_diff_item_copy(wmKeyMapDiffItem *kmdi)
 {
-  wmKeyMapDiffItem *kmdin = MEM_dupallocN(kmdi);
+  wmKeyMapDiffItem *kmdin = static_cast<wmKeyMapDiffItem *>(MEM_dupallocN(kmdi));
 
-  kmdin->next = kmdin->prev = NULL;
+  kmdin->next = kmdin->prev = nullptr;
   if (kmdi->add_item) {
     kmdin->add_item = wm_keymap_item_copy(kmdi->add_item);
   }
@@ -262,7 +262,8 @@ static void wm_keymap_diff_item_free(wmKeyMapDiffItem *kmdi)
 
 wmKeyConfig *WM_keyconfig_new(wmWindowManager *wm, const char *idname, bool user_defined)
 {
-  wmKeyConfig *keyconf = BLI_findstring(&wm->keyconfigs, idname, offsetof(wmKeyConfig, idname));
+  wmKeyConfig *keyconf = static_cast<wmKeyConfig *>(
+      BLI_findstring(&wm->keyconfigs, idname, offsetof(wmKeyConfig, idname)));
   if (keyconf) {
     if (keyconf == wm->defaultconf) {
       /* For default configuration, we need to keep keymap
@@ -280,7 +281,7 @@ wmKeyConfig *WM_keyconfig_new(wmWindowManager *wm, const char *idname, bool user
   }
 
   /* Create new configuration. */
-  keyconf = MEM_callocN(sizeof(wmKeyConfig), "wmKeyConfig");
+  keyconf = static_cast<wmKeyConfig *>(MEM_callocN(sizeof(wmKeyConfig), "wmKeyConfig"));
   STRNCPY(keyconf->idname, idname);
   BLI_addtail(&wm->keyconfigs, keyconf);
 
@@ -302,7 +303,7 @@ bool WM_keyconfig_remove(wmWindowManager *wm, wmKeyConfig *keyconf)
     if (STREQLEN(U.keyconfigstr, keyconf->idname, sizeof(U.keyconfigstr))) {
       STRNCPY(U.keyconfigstr, wm->defaultconf->idname);
       U.runtime.is_dirty = true;
-      WM_keyconfig_update_tag(NULL, NULL);
+      WM_keyconfig_update_tag(nullptr, nullptr);
     }
 
     BLI_remlink(&wm->keyconfigs, keyconf);
@@ -333,7 +334,8 @@ static wmKeyConfig *WM_keyconfig_active(wmWindowManager *wm)
   wmKeyConfig *keyconf;
 
   /* first try from preset */
-  keyconf = BLI_findstring(&wm->keyconfigs, U.keyconfigstr, offsetof(wmKeyConfig, idname));
+  keyconf = static_cast<wmKeyConfig *>(
+      BLI_findstring(&wm->keyconfigs, U.keyconfigstr, offsetof(wmKeyConfig, idname)));
   if (keyconf) {
     return keyconf;
   }
@@ -354,7 +356,7 @@ void WM_keyconfig_set_active(wmWindowManager *wm, const char *idname)
     U.runtime.is_dirty = true;
   }
 
-  WM_keyconfig_update_tag(NULL, NULL);
+  WM_keyconfig_update_tag(nullptr, nullptr);
   WM_keyconfig_update(wm);
 }
 
@@ -368,7 +370,7 @@ void WM_keyconfig_set_active(wmWindowManager *wm, const char *idname)
 
 static wmKeyMap *wm_keymap_new(const char *idname, int spaceid, int regionid)
 {
-  wmKeyMap *km = MEM_callocN(sizeof(wmKeyMap), "keymap list");
+  wmKeyMap *km = static_cast<wmKeyMap *>(MEM_callocN(sizeof(wmKeyMap), "keymap list"));
 
   STRNCPY(km->idname, idname);
   km->spaceid = spaceid;
@@ -385,7 +387,7 @@ static wmKeyMap *wm_keymap_new(const char *idname, int spaceid, int regionid)
 
 static wmKeyMap *wm_keymap_copy(wmKeyMap *keymap)
 {
-  wmKeyMap *keymapn = MEM_dupallocN(keymap);
+  wmKeyMap *keymapn = static_cast<wmKeyMap *>(MEM_dupallocN(keymap));
 
   keymapn->modal_items = keymap->modal_items;
   keymapn->poll = keymap->poll;
@@ -458,7 +460,7 @@ bool WM_keymap_poll(bContext *C, wmKeyMap *keymap)
     }
   }
 
-  if (keymap->poll != NULL) {
+  if (keymap->poll != nullptr) {
     return keymap->poll(C);
   }
   return true;
@@ -511,7 +513,8 @@ wmKeyMapItem *WM_keymap_add_item(wmKeyMap *keymap,
                                  const char *idname,
                                  const KeyMapItem_Params *params)
 {
-  wmKeyMapItem *kmi = MEM_callocN(sizeof(wmKeyMapItem), "keymap entry");
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(
+      MEM_callocN(sizeof(wmKeyMapItem), "keymap entry"));
 
   BLI_addtail(&keymap->items, kmi);
   STRNCPY(kmi->idname, idname);
@@ -548,7 +551,7 @@ bool WM_keymap_remove_item(wmKeyMap *keymap, wmKeyMapItem *kmi)
     }
     BLI_freelinkN(&keymap->items, kmi);
 
-    WM_keyconfig_update_tag(keymap, NULL);
+    WM_keyconfig_update_tag(keymap, nullptr);
     return true;
   }
   return false;
@@ -582,7 +585,7 @@ static wmKeyMapItem *wm_keymap_find_item_equals(wmKeyMap *km, wmKeyMapItem *need
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static wmKeyMapItem *wm_keymap_find_item_equals_result(wmKeyMap *km, wmKeyMapItem *needle)
@@ -593,7 +596,7 @@ static wmKeyMapItem *wm_keymap_find_item_equals_result(wmKeyMap *km, wmKeyMapIte
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static void wm_keymap_diff(
@@ -604,13 +607,15 @@ static void wm_keymap_diff(
 
     if (!to_kmi) {
       /* remove item */
-      wmKeyMapDiffItem *kmdi = MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem");
+      wmKeyMapDiffItem *kmdi = static_cast<wmKeyMapDiffItem *>(
+          MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem"));
       kmdi->remove_item = wm_keymap_item_copy(kmi);
       BLI_addtail(&diff_km->diff_items, kmdi);
     }
     else if (to_kmi && !wm_keymap_item_equals(kmi, to_kmi)) {
       /* replace item */
-      wmKeyMapDiffItem *kmdi = MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem");
+      wmKeyMapDiffItem *kmdi = static_cast<wmKeyMapDiffItem *>(
+          MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem"));
       kmdi->remove_item = wm_keymap_item_copy(kmi);
       kmdi->add_item = wm_keymap_item_copy(to_kmi);
       BLI_addtail(&diff_km->diff_items, kmdi);
@@ -634,7 +639,8 @@ static void wm_keymap_diff(
   LISTBASE_FOREACH (wmKeyMapItem *, kmi, &to_km->items) {
     if (kmi->id < 0) {
       /* add item */
-      wmKeyMapDiffItem *kmdi = MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem");
+      wmKeyMapDiffItem *kmdi = static_cast<wmKeyMapDiffItem *>(
+          MEM_callocN(sizeof(wmKeyMapDiffItem), "wmKeyMapDiffItem"));
       kmdi->add_item = wm_keymap_item_copy(kmi);
       BLI_addtail(&diff_km->diff_items, kmdi);
     }
@@ -645,7 +651,7 @@ static void wm_keymap_patch(wmKeyMap *km, wmKeyMap *diff_km)
 {
   LISTBASE_FOREACH (wmKeyMapDiffItem *, kmdi, &diff_km->diff_items) {
     /* find item to remove */
-    wmKeyMapItem *kmi_remove = NULL;
+    wmKeyMapItem *kmi_remove = nullptr;
     if (kmdi->remove_item) {
       kmi_remove = wm_keymap_find_item_equals(km, kmdi->remove_item);
       if (!kmi_remove) {
@@ -675,8 +681,8 @@ static void wm_keymap_patch(wmKeyMap *km, wmKeyMap *diff_km)
        *   since base keymap was exported with that user-defined shortcut already!
        *
        *       Maybe we should rather keep user-defined keymaps specific to a given base one? */
-      if (kmi_add != NULL && kmi_add == kmi_remove) {
-        kmi_remove = NULL;
+      if (kmi_add != nullptr && kmi_add == kmi_remove) {
+        kmi_remove = nullptr;
       }
       /* only if nothing to remove or item to remove found */
       else if (!kmi_add && (!kmdi->remove_item || kmi_remove)) {
@@ -835,7 +841,7 @@ wmKeyMap *WM_keymap_list_find(ListBase *lb, const char *idname, int spaceid, int
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 wmKeyMap *WM_keymap_list_find_spaceid_or_empty(ListBase *lb,
@@ -851,18 +857,18 @@ wmKeyMap *WM_keymap_list_find_spaceid_or_empty(ListBase *lb,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 wmKeyMap *WM_keymap_ensure(wmKeyConfig *keyconf, const char *idname, int spaceid, int regionid)
 {
   wmKeyMap *km = WM_keymap_list_find(&keyconf->keymaps, idname, spaceid, regionid);
 
-  if (km == NULL) {
+  if (km == nullptr) {
     km = wm_keymap_new(idname, spaceid, regionid);
     BLI_addtail(&keyconf->keymaps, km);
 
-    WM_keyconfig_update_tag(km, NULL);
+    WM_keyconfig_update_tag(km, nullptr);
   }
 
   return km;
@@ -898,7 +904,7 @@ wmKeyMap *WM_modalkeymap_ensure(wmKeyConfig *keyconf,
   km->flag |= KEYMAP_MODAL;
 
   /* init modal items from default config */
-  wmWindowManager *wm = G_MAIN->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   if (wm->defaultconf && wm->defaultconf != keyconf) {
     wmKeyMap *defaultkm = WM_keymap_list_find(&wm->defaultconf->keymaps, km->idname, 0, 0);
 
@@ -926,12 +932,13 @@ wmKeyMap *WM_modalkeymap_find(wmKeyConfig *keyconf, const char *idname)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 wmKeyMapItem *WM_modalkeymap_add_item(wmKeyMap *km, const KeyMapItem_Params *params, int value)
 {
-  wmKeyMapItem *kmi = MEM_callocN(sizeof(wmKeyMapItem), "keymap entry");
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(
+      MEM_callocN(sizeof(wmKeyMapItem), "keymap entry"));
 
   BLI_addtail(&km->items, kmi);
   kmi->propvalue = value;
@@ -949,7 +956,8 @@ wmKeyMapItem *WM_modalkeymap_add_item_str(wmKeyMap *km,
                                           const KeyMapItem_Params *params,
                                           const char *value)
 {
-  wmKeyMapItem *kmi = MEM_callocN(sizeof(wmKeyMapItem), "keymap entry");
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(
+      MEM_callocN(sizeof(wmKeyMapItem), "keymap entry"));
 
   BLI_addtail(&km->items, kmi);
   STRNCPY(kmi->propvalue_str, value);
@@ -968,7 +976,7 @@ static const wmKeyMapItem *wm_modalkeymap_find_propvalue_iter(const wmKeyMap *km
                                                               const int propvalue)
 {
   if (km->flag & KEYMAP_MODAL) {
-    kmi = kmi ? kmi->next : km->items.first;
+    kmi = static_cast<const wmKeyMapItem *>(kmi ? kmi->next : km->items.first);
     for (; kmi; kmi = kmi->next) {
       if (kmi->propvalue == propvalue) {
         return kmi;
@@ -979,12 +987,12 @@ static const wmKeyMapItem *wm_modalkeymap_find_propvalue_iter(const wmKeyMap *km
     BLI_assert_msg(0, "called with non modal keymap");
   }
 
-  return NULL;
+  return nullptr;
 }
 
 const wmKeyMapItem *WM_modalkeymap_find_propvalue(const wmKeyMap *km, const int propvalue)
 {
-  return wm_modalkeymap_find_propvalue_iter(km, NULL, propvalue);
+  return wm_modalkeymap_find_propvalue_iter(km, nullptr, propvalue);
 }
 
 void WM_modalkeymap_assign(wmKeyMap *km, const char *opname)
@@ -1005,7 +1013,7 @@ static void wm_user_modal_keymap_set_items(wmWindowManager *wm, wmKeyMap *km)
    * being created before the actual modal keymaps, so no modal_items */
 
   if (km && (km->flag & KEYMAP_MODAL) && !km->modal_items) {
-    if (wm->defaultconf == NULL) {
+    if (wm->defaultconf == nullptr) {
       return;
     }
 
@@ -1022,7 +1030,10 @@ static void wm_user_modal_keymap_set_items(wmWindowManager *wm, wmKeyMap *km)
       LISTBASE_FOREACH (wmKeyMapItem *, kmi, &km->items) {
         if (kmi->propvalue_str[0]) {
           int propvalue;
-          if (RNA_enum_value_from_id(km->modal_items, kmi->propvalue_str, &propvalue)) {
+          if (RNA_enum_value_from_id(static_cast<const EnumPropertyItem *>(km->modal_items),
+                                     kmi->propvalue_str,
+                                     &propvalue))
+          {
             kmi->propvalue = propvalue;
           }
           kmi->propvalue_str[0] = '\0';
@@ -1042,7 +1053,7 @@ static const char *key_event_glyph_or_text(const int font_id,
                                            const char *text,
                                            const char *single_glyph)
 {
-  BLI_assert(single_glyph == NULL || (BLI_strlen_utf8(single_glyph) == 1));
+  BLI_assert(single_glyph == nullptr || (BLI_strlen_utf8(single_glyph) == 1));
   return (single_glyph && BLF_has_glyph(font_id, BLI_str_utf8_as_unicode(single_glyph))) ?
              single_glyph :
              text;
@@ -1051,8 +1062,8 @@ static const char *key_event_glyph_or_text(const int font_id,
 const char *WM_key_event_string(const short type, const bool compact)
 {
   if (compact) {
-    /* String storing a single unicode character or NULL. */
-    const char *single_glyph = NULL;
+    /* String storing a single unicode character or nullptr. */
+    const char *single_glyph = nullptr;
     int font_id = BLF_default();
     const enum {
       UNIX,
@@ -1238,7 +1249,7 @@ int WM_modalkeymap_items_to_string(const wmKeyMap *km,
   BLI_assert(result_maxncpy > 0);
 
   const wmKeyMapItem *kmi;
-  if (km == NULL || (kmi = WM_modalkeymap_find_propvalue(km, propvalue)) == NULL) {
+  if (km == nullptr || (kmi = WM_modalkeymap_find_propvalue(km, propvalue)) == nullptr) {
     *result = '\0';
     return 0;
   }
@@ -1247,7 +1258,7 @@ int WM_modalkeymap_items_to_string(const wmKeyMap *km,
   do {
     totlen += WM_keymap_item_to_string(kmi, compact, &result[totlen], result_maxncpy - totlen);
 
-    if ((kmi = wm_modalkeymap_find_propvalue_iter(km, kmi, propvalue)) == NULL ||
+    if ((kmi = wm_modalkeymap_find_propvalue_iter(km, kmi, propvalue)) == nullptr ||
         totlen >= (result_maxncpy - 2))
     {
       break;
@@ -1267,7 +1278,7 @@ int WM_modalkeymap_operator_items_to_string(wmOperatorType *ot,
                                             const int result_maxncpy)
 {
   BLI_string_debug_size_after_nil(result, result_maxncpy);
-  wmWindowManager *wm = G_MAIN->wm.first;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
   wmKeyMap *keymap = WM_keymap_active(wm, ot->modalkeymap);
   return WM_modalkeymap_items_to_string(keymap, propvalue, compact, result, result_maxncpy);
 }
@@ -1323,19 +1334,21 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
 
     bool kmi_match = false;
     if (properties) {
-      /* example of debugging keymaps */
+/* example of debugging keymaps */
 #if 0
-        if (kmi->ptr) {
-          if (STREQ("MESH_OT_rip_move", opname)) {
-            printf("OPERATOR\n");
-            IDP_print(properties);
-            printf("KEYMAP\n");
-            IDP_print(kmi->ptr->data);
-          }
+      if (kmi->ptr) {
+        if (STREQ("MESH_OT_rip_move", opname)) {
+          printf("OPERATOR\n");
+          IDP_print(properties);
+          printf("KEYMAP\n");
+          IDP_print(kmi->ptr->data);
         }
+      }
 #endif
 
-      if (kmi->ptr && IDP_EqualsProperties_ex(properties, kmi->ptr->data, is_strict)) {
+      if (kmi->ptr && IDP_EqualsProperties_ex(
+                          properties, static_cast<const IDProperty *>(kmi->ptr->data), is_strict))
+      {
         kmi_match = true;
       }
       /* Debug only, helps spotting mismatches between menu entries and shortcuts! */
@@ -1345,9 +1358,10 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
           if (ot) {
             /* make a copy of the properties and set unset ones to their default values. */
             PointerRNA opptr;
-            IDProperty *properties_default = IDP_CopyProperty(kmi->ptr->data);
+            IDProperty *properties_default = IDP_CopyProperty(
+                static_cast<const IDProperty *>(kmi->ptr->data));
 
-            RNA_pointer_create(NULL, ot->srna, properties_default, &opptr);
+            RNA_pointer_create(nullptr, ot->srna, properties_default, &opptr);
             WM_operator_properties_default(&opptr, true);
 
             if (IDP_EqualsProperties_ex(properties, properties_default, is_strict)) {
@@ -1380,12 +1394,12 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
     }
 
     if (kmi_match) {
-      if ((params == NULL) || params->filter_fn(keymap, kmi, params->user_data)) {
+      if ((params == nullptr) || params->filter_fn(keymap, kmi, params->user_data)) {
         return kmi;
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static wmKeyMapItem *wm_keymap_item_find_handlers(const bContext *C,
@@ -1393,7 +1407,7 @@ static wmKeyMapItem *wm_keymap_item_find_handlers(const bContext *C,
                                                   wmWindow *win,
                                                   ListBase *handlers,
                                                   const char *opname,
-                                                  wmOperatorCallContext UNUSED(opcontext),
+                                                  wmOperatorCallContext /*opcontext*/,
                                                   IDProperty *properties,
                                                   const bool is_strict,
                                                   const struct wmKeyMapItemFind_Params *params,
@@ -1410,7 +1424,7 @@ static wmKeyMapItem *wm_keymap_item_find_handlers(const bContext *C,
         if (WM_keymap_poll((bContext *)C, keymap)) {
           wmKeyMapItem *kmi = wm_keymap_item_find_in_keymap(
               keymap, opname, properties, is_strict, params);
-          if (kmi != NULL) {
+          if (kmi != nullptr) {
             if (r_keymap) {
               *r_keymap = keymap;
             }
@@ -1422,9 +1436,9 @@ static wmKeyMapItem *wm_keymap_item_find_handlers(const bContext *C,
   }
   /* ensure un-initialized keymap is never used */
   if (r_keymap) {
-    *r_keymap = NULL;
+    *r_keymap = nullptr;
   }
-  return NULL;
+  return nullptr;
 }
 
 static wmKeyMapItem *wm_keymap_item_find_props(const bContext *C,
@@ -1439,7 +1453,7 @@ static wmKeyMapItem *wm_keymap_item_find_props(const bContext *C,
   wmWindow *win = CTX_wm_window(C);
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  wmKeyMapItem *found = NULL;
+  wmKeyMapItem *found = nullptr;
 
   /* look into multiple handler lists to find the item */
   if (win) {
@@ -1453,18 +1467,18 @@ static wmKeyMapItem *wm_keymap_item_find_props(const bContext *C,
                                          is_strict,
                                          params,
                                          r_keymap);
-    if (found == NULL) {
+    if (found == nullptr) {
       found = wm_keymap_item_find_handlers(
           C, wm, win, &win->handlers, opname, opcontext, properties, is_strict, params, r_keymap);
     }
   }
 
-  if (area && found == NULL) {
+  if (area && found == nullptr) {
     found = wm_keymap_item_find_handlers(
         C, wm, win, &area->handlers, opname, opcontext, properties, is_strict, params, r_keymap);
   }
 
-  if (found == NULL) {
+  if (found == nullptr) {
     if (ELEM(opcontext, WM_OP_EXEC_REGION_WIN, WM_OP_INVOKE_REGION_WIN)) {
       if (area) {
         if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
@@ -1575,7 +1589,7 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
       PointerRNA opptr;
       IDProperty *properties_temp = IDP_CopyProperty(properties);
 
-      RNA_pointer_create(NULL, ot->srna, properties_temp, &opptr);
+      RNA_pointer_create(nullptr, ot->srna, properties_temp, &opptr);
 
       if (RNA_property_is_set(&opptr, ot->prop)) {
         /* For operator that has enum menu,
@@ -1598,7 +1612,7 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
         PointerRNA opptr;
         IDProperty *properties_default = IDP_CopyProperty(properties);
 
-        RNA_pointer_create(NULL, ot->srna, properties_default, &opptr);
+        RNA_pointer_create(nullptr, ot->srna, properties_default, &opptr);
         WM_operator_properties_default(&opptr, true);
 
         wmKeyMap *km;
@@ -1631,9 +1645,9 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
   return found;
 }
 
-static bool kmi_filter_is_visible(const wmKeyMap *UNUSED(km),
+static bool kmi_filter_is_visible(const wmKeyMap * /*km*/,
                                   const wmKeyMapItem *kmi,
-                                  void *UNUSED(user_data))
+                                  void * /*user_data*/)
 {
   return ((WM_key_event_string(kmi->type, false)[0] != '\0') &&
           (IS_EVENT_ACTIONZONE(kmi->type) == false));
@@ -1647,16 +1661,11 @@ char *WM_key_event_operator_string(const bContext *C,
                                    char *result,
                                    const int result_maxncpy)
 {
-  wmKeyMapItem *kmi = wm_keymap_item_find(C,
-                                          opname,
-                                          opcontext,
-                                          properties,
-                                          is_strict,
-                                          &(struct wmKeyMapItemFind_Params){
-                                              .filter_fn = kmi_filter_is_visible,
-                                              .user_data = NULL,
-                                          },
-                                          NULL);
+  wmKeyMapItemFind_Params params{};
+  params.filter_fn = kmi_filter_is_visible;
+  params.user_data = nullptr;
+  wmKeyMapItem *kmi = wm_keymap_item_find(
+      C, opname, opcontext, properties, is_strict, &params, nullptr);
   if (kmi) {
     WM_keymap_item_to_string(kmi, false, result, result_maxncpy);
     return result;
@@ -1667,16 +1676,16 @@ char *WM_key_event_operator_string(const bContext *C,
     return result;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static bool kmi_filter_is_visible_type_mask(const wmKeyMap *km,
                                             const wmKeyMapItem *kmi,
                                             void *user_data)
 {
-  short *mask_pair = user_data;
-  return ((WM_event_type_mask_test(kmi->type, mask_pair[0]) == true) &&
-          (WM_event_type_mask_test(kmi->type, mask_pair[1]) == false) &&
+  short *mask_pair = static_cast<short int *>(user_data);
+  return ((WM_event_type_mask_test(kmi->type, eEventType_Mask(mask_pair[0])) == true) &&
+          (WM_event_type_mask_test(kmi->type, eEventType_Mask(mask_pair[1])) == false) &&
           kmi_filter_is_visible(km, kmi, user_data));
 }
 
@@ -1690,17 +1699,10 @@ wmKeyMapItem *WM_key_event_operator(const bContext *C,
 {
   short user_data_mask[2] = {include_mask, exclude_mask};
   bool use_mask = (include_mask != EVT_TYPE_MASK_ALL) || (exclude_mask != 0);
-  return wm_keymap_item_find(
-      C,
-      opname,
-      opcontext,
-      properties,
-      true,
-      &(struct wmKeyMapItemFind_Params){
-          .filter_fn = use_mask ? kmi_filter_is_visible_type_mask : kmi_filter_is_visible,
-          .user_data = use_mask ? user_data_mask : NULL,
-      },
-      r_keymap);
+  wmKeyMapItemFind_Params params{};
+  params.filter_fn = use_mask ? kmi_filter_is_visible_type_mask : kmi_filter_is_visible;
+  params.user_data = use_mask ? user_data_mask : nullptr;
+  return wm_keymap_item_find(C, opname, opcontext, properties, true, &params, r_keymap);
 }
 
 wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
@@ -1711,15 +1713,11 @@ wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
 {
   short user_data_mask[2] = {include_mask, exclude_mask};
   bool use_mask = (include_mask != EVT_TYPE_MASK_ALL) || (exclude_mask != 0);
-  return wm_keymap_item_find_in_keymap(
-      keymap,
-      opname,
-      properties,
-      true,
-      &(struct wmKeyMapItemFind_Params){
-          .filter_fn = use_mask ? kmi_filter_is_visible_type_mask : kmi_filter_is_visible,
-          .user_data = use_mask ? user_data_mask : NULL,
-      });
+  wmKeyMapItemFind_Params params{};
+  params.filter_fn = use_mask ? kmi_filter_is_visible_type_mask : kmi_filter_is_visible;
+  params.user_data = use_mask ? user_data_mask : nullptr;
+
+  return wm_keymap_item_find_in_keymap(keymap, opname, properties, true, &params);
 }
 
 bool WM_keymap_item_compare(const wmKeyMapItem *k1, const wmKeyMapItem *k2)
@@ -1853,7 +1851,7 @@ void WM_keyconfig_update(wmWindowManager *wm)
         &wm->userconf->keymaps,
         &wm->defaultconf->keymaps,
         &wm->addonconf->keymaps,
-        NULL,
+        nullptr,
     };
 
     int i;
@@ -1937,7 +1935,7 @@ void WM_keyconfig_update(wmWindowManager *wm)
   BLI_assert(wm_keymap_update_flag == 0);
 
   if (compat_update) {
-    WM_keyconfig_update_tag(NULL, NULL);
+    WM_keyconfig_update_tag(nullptr, nullptr);
     WM_keyconfig_update(wm);
   }
 }
@@ -1954,7 +1952,7 @@ void WM_keyconfig_update(wmWindowManager *wm)
 wmKeyMap *WM_keymap_active(const wmWindowManager *wm, wmKeyMap *keymap)
 {
   if (!keymap) {
-    return NULL;
+    return nullptr;
   }
 
   /* first user defined keymaps */
@@ -1999,13 +1997,13 @@ void WM_keymap_item_restore_to_default(wmWindowManager *wm, wmKeyMap *keymap, wm
     /* restore to original */
     if (!STREQ(orig->idname, kmi->idname)) {
       STRNCPY(kmi->idname, orig->idname);
-      WM_keymap_item_properties_reset(kmi, NULL);
+      WM_keymap_item_properties_reset(kmi, nullptr);
     }
 
     if (orig->properties) {
       if (kmi->properties) {
         IDP_FreeProperty(kmi->properties);
-        kmi->properties = NULL;
+        kmi->properties = nullptr;
       }
 
       kmi->properties = IDP_CopyProperty(orig->properties);
@@ -2044,7 +2042,7 @@ void WM_keymap_restore_to_default(wmKeyMap *keymap, wmWindowManager *wm)
     WM_keymap_clear(usermap);
     BLI_freelinkN(&U.user_keymaps, usermap);
 
-    WM_keyconfig_update_tag(NULL, NULL);
+    WM_keyconfig_update_tag(nullptr, nullptr);
     WM_keyconfig_update(wm);
   }
 }
@@ -2057,7 +2055,7 @@ wmKeyMapItem *WM_keymap_item_find_id(wmKeyMap *keymap, int id)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 const char *WM_bool_as_string(bool test)

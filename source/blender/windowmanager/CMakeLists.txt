@@ -42,7 +42,7 @@ set(SRC
   intern/wm_gesture_ops.cc
   intern/wm_init_exit.cc
   intern/wm_jobs.cc
-  intern/wm_keymap.c
+  intern/wm_keymap.cc
   intern/wm_keymap_utils.cc
   intern/wm_menu_type.c
   intern/wm_operator_props.c
