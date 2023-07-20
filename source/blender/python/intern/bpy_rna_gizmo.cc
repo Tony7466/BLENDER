@@ -481,7 +481,7 @@ static PyObject *bpy_gizmo_target_get_value(PyObject * /*self*/, PyObject *args,
   switch (gz_prop->type->data_type) {
     case PROP_FLOAT: {
       if (array_len != 0) {
-        float *value = BLI_array_alloca(value, array_len);
+        float *value = static_cast<float *>(BLI_array_alloca(value, array_len));
         WM_gizmo_target_property_float_get_array(gz, gz_prop, value);
         return PyC_Tuple_PackArray_F32(value, array_len);
       }
@@ -554,7 +554,7 @@ static PyObject *bpy_gizmo_target_set_value(PyObject * /*self*/, PyObject *args,
   switch (gz_prop->type->data_type) {
     case PROP_FLOAT: {
       if (array_len != 0) {
-        float *value = BLI_array_alloca(value, array_len);
+        float *value = static_cast<float *>(BLI_array_alloca(value, array_len));
         if (PyC_AsArray(value,
                         sizeof(*value),
                         params.value,
