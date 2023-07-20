@@ -1,3 +1,4 @@
 Referenced by commit 0239eee1c6231e193bf587353f3eb8d3e1c83d37, Fix build error on Windows introduced in 46be42f6b1
 Referenced by issue #107759, Regression: Crash when running modal operator in load_post handler
 Referenced by commit 95a114f3cae4c4b3875c26e244761bc88f51131b, Fix #107759: Crash when running modal operator in load_post handler
+Referenced by issue #109720, bpy.app.driver_namespace: no way to properly initialize for driver in material
