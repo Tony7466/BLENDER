@@ -42,14 +42,14 @@
  * \note This follows conventions from #WM_operatortype_find #WM_operatortype_append & friends.
  * \{ */
 
-static GHash *global_gizmotype_hash = NULL;
+static GHash *global_gizmotype_hash = nullptr;
 
 const wmGizmoType *WM_gizmotype_find(const char *idname, bool quiet)
 {
   if (idname[0]) {
     wmGizmoType *gzt;
 
-    gzt = BLI_ghash_lookup(global_gizmotype_hash, idname);
+    gzt = static_cast<wmGizmoType *>(BLI_ghash_lookup(global_gizmotype_hash, idname));
     if (gzt) {
       return gzt;
     }
@@ -64,7 +64,7 @@ const wmGizmoType *WM_gizmotype_find(const char *idname, bool quiet)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void WM_gizmotype_iter(GHashIterator *ghi)
@@ -74,7 +74,7 @@ void WM_gizmotype_iter(GHashIterator *ghi)
 
 static wmGizmoType *wm_gizmotype_append__begin(void)
 {
-  wmGizmoType *gzt = MEM_callocN(sizeof(wmGizmoType), "gizmotype");
+  wmGizmoType *gzt = static_cast<wmGizmoType *>(MEM_callocN(sizeof(wmGizmoType), "gizmotype"));
   gzt->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_GizmoProperties);
 #if 0
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
@@ -118,12 +118,14 @@ void WM_gizmotype_free_ptr(wmGizmoType *gzt)
 }
 
 /**
- * \param C: May be NULL.
+ * \param C: May be nullptr.
  */
 static void gizmotype_unlink(bContext *C, Main *bmain, wmGizmoType *gzt)
 {
   /* Free instances. */
-  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+  for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen;
+       screen = static_cast<bScreen *>(screen->id.next))
+  {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
         ListBase *lb = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
@@ -131,8 +133,10 @@ static void gizmotype_unlink(bContext *C, Main *bmain, wmGizmoType *gzt)
           wmGizmoMap *gzmap = region->gizmo_map;
           if (gzmap) {
             wmGizmoGroup *gzgroup;
-            for (gzgroup = gzmap->groups.first; gzgroup; gzgroup = gzgroup->next) {
-              for (wmGizmo *gz = gzgroup->gizmos.first, *gz_next; gz; gz = gz_next) {
+            for (gzgroup = static_cast<wmGizmoGroup *>(gzmap->groups.first); gzgroup;
+                 gzgroup = gzgroup->next) {
+              for (wmGizmo *gz = static_cast<wmGizmo *>(gzgroup->gizmos.first), *gz_next; gz;
+                   gz = gz_next) {
                 gz_next = gz->next;
                 BLI_assert(gzgroup->parent_gzmap == gzmap);
                 if (gz->type == gzt) {
@@ -152,16 +156,16 @@ void WM_gizmotype_remove_ptr(bContext *C, Main *bmain, wmGizmoType *gzt)
 {
   BLI_assert(gzt == WM_gizmotype_find(gzt->idname, false));
 
-  BLI_ghash_remove(global_gizmotype_hash, gzt->idname, NULL, NULL);
+  BLI_ghash_remove(global_gizmotype_hash, gzt->idname, nullptr, nullptr);
 
   gizmotype_unlink(C, bmain, gzt);
 }
 
 bool WM_gizmotype_remove(bContext *C, Main *bmain, const char *idname)
 {
-  wmGizmoType *gzt = BLI_ghash_lookup(global_gizmotype_hash, idname);
+  wmGizmoType *gzt = static_cast<wmGizmoType *>(BLI_ghash_lookup(global_gizmotype_hash, idname));
 
-  if (gzt == NULL) {
+  if (gzt == nullptr) {
     return false;
   }
 
@@ -177,8 +181,8 @@ static void wm_gizmotype_ghash_free_cb(wmGizmoType *gzt)
 
 void wm_gizmotype_free(void)
 {
-  BLI_ghash_free(global_gizmotype_hash, NULL, (GHashValFreeFP)wm_gizmotype_ghash_free_cb);
-  global_gizmotype_hash = NULL;
+  BLI_ghash_free(global_gizmotype_hash, nullptr, (GHashValFreeFP)wm_gizmotype_ghash_free_cb);
+  global_gizmotype_hash = nullptr;
 }
 
 void wm_gizmotype_init(void)
