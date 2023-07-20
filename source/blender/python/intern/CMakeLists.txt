@@ -48,7 +48,7 @@ set(SRC
   bpy_interface_run.cc
   bpy_intern_string.cc
   bpy_library_load.cc
-  bpy_library_write.c
+  bpy_library_write.cc
   bpy_msgbus.c
   bpy_operator.c
   bpy_operator_wrap.c

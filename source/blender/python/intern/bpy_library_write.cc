@@ -64,14 +64,14 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
   /* args */
   const char *filepath;
   char filepath_abs[FILE_MAX];
-  PyObject *datablocks = NULL;
+  PyObject *datablocks = nullptr;
 
   const struct PyC_StringEnumItems path_remap_items[] = {
       {BLO_WRITE_PATH_REMAP_NONE, "NONE"},
       {BLO_WRITE_PATH_REMAP_RELATIVE, "RELATIVE"},
       {BLO_WRITE_PATH_REMAP_RELATIVE_ALL, "RELATIVE_ALL"},
       {BLO_WRITE_PATH_REMAP_ABSOLUTE, "ABSOLUTE"},
-      {0, NULL},
+      {0, nullptr},
   };
   struct PyC_StringEnum path_remap = {path_remap_items, BLO_WRITE_PATH_REMAP_NONE};
 
@@ -83,7 +83,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
       "path_remap",
       "fake_user",
       "compress",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "s"  /* `filepath` */
@@ -109,10 +109,10 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
                                         PyC_ParseBool,
                                         &use_compress))
   {
-    return NULL;
+    return nullptr;
   }
 
-  Main *bmain_src = self->ptr.data; /* Typically #G_MAIN */
+  Main *bmain_src = static_cast<Main *>(self->ptr.data); /* Typically #G_MAIN */
   int write_flags = 0;
 
   if (use_compress) {
@@ -125,7 +125,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
   BKE_blendfile_write_partial_begin(bmain_src);
 
   /* array of ID's and backup any data we modify */
-  struct {
+  struct IDStore {
     ID *id;
     /* original values */
     short id_flag;
@@ -134,13 +134,15 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
   int id_store_len = 0;
 
   PyObject *ret;
+  int retval = 0;
 
   /* collect all id data from the set and store in 'id_store_array' */
   {
     Py_ssize_t pos, hash;
     PyObject *key;
 
-    id_store_array = MEM_mallocN(sizeof(*id_store_array) * PySet_Size(datablocks), __func__);
+    id_store_array = static_cast<IDStore *>(
+        MEM_mallocN(sizeof(*id_store_array) * PySet_Size(datablocks), __func__));
     id_store = id_store_array;
 
     pos = hash = 0;
@@ -148,7 +150,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
 
       if (!pyrna_id_FromPyObject(key, &id_store->id)) {
         PyErr_Format(PyExc_TypeError, "Expected an ID type, not %.200s", Py_TYPE(key)->tp_name);
-        ret = NULL;
+        ret = nullptr;
         goto finally;
       }
       else {
@@ -169,7 +171,6 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
   }
 
   /* write blend */
-  int retval = 0;
   ReportList reports;
 
   BKE_reports_init(&reports, RPT_STORE);
@@ -189,7 +190,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
     if (BPy_reports_to_error(&reports, PyExc_IOError, true) == 0) {
       PyErr_SetString(PyExc_IOError, "Unknown error writing library data");
     }
-    ret = NULL;
+    ret = nullptr;
   }
 
 finally:
