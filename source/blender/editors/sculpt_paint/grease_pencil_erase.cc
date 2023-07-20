@@ -43,7 +43,7 @@ class EraseOperation : public GreasePencilStrokeOperation {
   bool keep_caps = false;
   float radius = 50.0f;
   eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
-  bool active_drawing_only = true;
+  bool active_layer_only = false;
 };
 
 /**
@@ -500,7 +500,7 @@ struct EraseOperationExecutor {
       drawing.tag_topology_changed();
     };
 
-    if (self.active_drawing_only) {
+    if (self.active_layer_only) {
       /* Erase only on the drawing at the current frame of the active layer. */
       const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
       blender::bke::greasepencil::Drawing &drawing =
@@ -528,6 +528,7 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   if (brush->gpencil_settings) {
     this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
     this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
+    this->active_layer_only = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
   }
 }
 
