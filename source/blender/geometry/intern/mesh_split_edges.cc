@@ -334,7 +334,8 @@ void split_edges(Mesh &mesh,
   const OffsetIndices polys = mesh.polys();
   const Array<int> orig_corner_edges = mesh.corner_edges();
   IndexMaskMemory memory;
-  const IndexMask loose_edges = IndexMask::from_bits(mesh.loose_edges().is_loose_bits, memory);
+  const bke::LooseEdgeCache &loose_edges_cache = mesh.loose_edges();
+  const IndexMask loose_edges = IndexMask::from_bits(loose_edges_cache.is_loose_bits, memory);
 
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
 
@@ -345,21 +346,14 @@ void split_edges(Mesh &mesh,
     }
   });
 
-  /* Step 1: Split the edges. */
-  threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
-    for (const int mask_i : range) {
-      const int edge_i = mask[mask_i];
-      split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
-    }
-  });
-
-  /* Step 1: Split the edges. */
-
+  /* Split corner edge indices and update the edge to corner map. This step does not take into
+   * account future deduplication of the new edges, but is necessary in order to calculate the
+   * new fans around each vertex. */
   mask.foreach_index([&](const int edge_i) {
     split_edge_per_poly(edge_i, edge_offsets[edge_i], edge_to_loop_map, corner_edges);
   });
 
-  /* Step 1.5: Update topology information (can't parallelize). */
+  /* Update vertex to edge map with new vertices from duplicated edges. */
   mask.foreach_index([&](const int edge_i) {
     const int2 &edge = edges[edge_i];
     for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
@@ -370,7 +364,8 @@ void split_edges(Mesh &mesh,
 
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
 
-  /* Step 2: Calculate vertex fans. */
+  /* Calculate vertex fans by reordering the vertex to edge maps. Fans are the the ordered
+   * groups of consecutive edges between consecutive faces looping around a vertex. */
   Array<Vector<int>> vertex_fan_sizes(mesh.totvert);
   threading::parallel_for(IndexRange(mesh.totvert), 512, [&](IndexRange range) {
     for (const int vert : range) {
@@ -433,13 +428,7 @@ void split_edges(Mesh &mesh,
   loose_edges.foreach_index([&](const int64_t i) { new_edges.add(OrderedEdge(edges[i])); });
 
   Array<int> new_to_old_edges_map(new_edges.size());
-  auto index_mask_to_indices = [&](const IndexMask &mask, MutableSpan<int> indices) {
-    for (const int i : mask.index_range()) {
-      indices[i] = mask[i];
-    }
-  };
-  index_mask_to_indices(loose_edges,
-                        new_to_old_edges_map.as_mutable_span().take_back(loose_edges.size()));
+  loose_edges.to_indices(new_to_old_edges_map.as_mutable_span().take_back(loose_edges.size()));
   for (const int i : polys.index_range()) {
     const IndexRange poly = polys[i];
     for (const int corner : poly) {

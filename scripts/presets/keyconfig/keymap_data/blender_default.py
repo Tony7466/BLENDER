@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 __all__ = (
@@ -5182,6 +5184,26 @@ def km_weight_paint(params):
     return keymap
 
 
+def km_grease_pencil_paint(params):
+    items = []
+    keymap = (
+        "Grease Pencil Paint Mode",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("mode", 'NORMAL')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'SMOOTH')]}),
+    ])
+
+    return keymap
+
+
 def km_sculpt(params):
     items = []
     keymap = (
@@ -8282,6 +8304,7 @@ def generate_keymaps(params=None):
         km_image_paint(params),
         km_vertex_paint(params),
         km_weight_paint(params),
+        km_grease_pencil_paint(params),
         km_sculpt(params),
         km_mesh(params),
         km_armature(params),

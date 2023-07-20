@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
 #include "BLI_utildefines.h"
 #include "UI_interface_icons.h"
@@ -85,9 +86,14 @@ typedef struct uiViewItemHandle uiViewItemHandle;
 #define UI_SEP_CHAR '|'
 #define UI_SEP_CHAR_S "|"
 
+/**
+ * Character used when value is indeterminate (multiple, unknown, unset).
+ */
+#define UI_VALUE_INDETERMINATE_CHAR BLI_STR_UTF8_EM_DASH
+
 /* Separator for text in search menus (right pointing arrow).
  * keep in sync with `string_search.cc`. */
-#define UI_MENU_ARROW_SEP "\xe2\x96\xb8"
+#define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
 
 /* names */
 #define UI_MAX_DRAW_STR 400
@@ -325,6 +331,9 @@ enum {
 
   /* Draw the checkbox buttons inverted. */
   UI_BUT_CHECKBOX_INVERT = 1 << 25,
+
+  /* Drawn in a way that indicates that the state/value is unknown. */
+  UI_BUT_INDETERMINATE = 1 << 26,
 };
 
 /**
@@ -403,7 +412,7 @@ typedef enum {
   UI_BTYPE_HISTOGRAM = 48 << 9,
   UI_BTYPE_WAVEFORM = 49 << 9,
   UI_BTYPE_VECTORSCOPE = 50 << 9,
-  UI_BTYPE_PROGRESS_BAR = 51 << 9,
+  UI_BTYPE_PROGRESS = 51 << 9,
   UI_BTYPE_NODE_SOCKET = 53 << 9,
   UI_BTYPE_SEPR = 54 << 9,
   UI_BTYPE_SEPR_LINE = 55 << 9,
@@ -1449,6 +1458,11 @@ enum {
   UI_TEMPLATE_ID_FILTER_AVAILABLE = 1,
 };
 
+enum eButProgressType {
+  UI_BUT_PROGRESS_TYPE_BAR = 0,
+  UI_BUT_PROGRESS_TYPE_RING = 1,
+};
+
 /***************************** ID Utilities *******************************/
 
 int UI_icon_from_id(const struct ID *id);
@@ -1807,17 +1821,21 @@ void UI_but_drag_set_id(uiBut *but, struct ID *id);
  *
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  */
-void UI_but_drag_attach_image(uiBut *but, struct ImBuf *imb, float scale);
+void UI_but_drag_attach_image(uiBut *but, const struct ImBuf *imb, float scale);
+
+#ifdef __cplusplus
 /**
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  * \param asset: May be passed from a temporary variable, drag data only stores a copy of this.
  */
 void UI_but_drag_set_asset(uiBut *but,
-                           const struct AssetRepresentation *asset,
+                           const blender::asset_system::AssetRepresentation *asset,
                            int import_type, /* eAssetImportType */
                            int icon,
-                           struct ImBuf *imb,
+                           const struct ImBuf *imb,
                            float scale);
+#endif
+
 void UI_but_drag_set_rna(uiBut *but, struct PointerRNA *ptr);
 /**
  * Enable dragging a path from this button.
@@ -1834,7 +1852,8 @@ void UI_but_drag_set_value(uiBut *but);
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  * \param path: The path to drag. The passed string may be destructed, button keeps a copy.
  */
-void UI_but_drag_set_image(uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale);
+void UI_but_drag_set_image(
+    uiBut *but, const char *path, int icon, const struct ImBuf *imb, float scale);
 
 /* Panels
  *
@@ -1937,7 +1956,7 @@ struct Panel *UI_panel_add_instanced(const struct bContext *C,
  */
 void UI_panels_free_instanced(const struct bContext *C, struct ARegion *region);
 
-#define INSTANCED_PANEL_UNIQUE_STR_LEN 16
+#define INSTANCED_PANEL_UNIQUE_STR_SIZE 16
 /**
  * Find a unique key to append to the #PanelType.idname for the lookup to the panel's #uiBlock.
  * Needed for instanced panels, where there can be multiple with the same type and identifier.
@@ -2175,7 +2194,7 @@ void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
 
-int uiLayoutGetOperatorContext(uiLayout *layout);
+wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
 bool uiLayoutGetActiveDefault(uiLayout *layout);
 bool uiLayoutGetActivateInit(uiLayout *layout);
@@ -2414,10 +2433,7 @@ void uiTemplateImage(uiLayout *layout,
                      struct PointerRNA *userptr,
                      bool compact,
                      bool multiview);
-void uiTemplateImageSettings(uiLayout *layout,
-                             struct PointerRNA *imfptr,
-                             bool color_management,
-                             bool show_z_buffer);
+void uiTemplateImageSettings(uiLayout *layout, struct PointerRNA *imfptr, bool color_management);
 void uiTemplateImageStereo3d(uiLayout *layout, struct PointerRNA *stereo3d_format_ptr);
 void uiTemplateImageViews(uiLayout *layout, struct PointerRNA *imaptr);
 void uiTemplateImageFormatViews(uiLayout *layout,
@@ -2523,7 +2539,7 @@ enum uiTemplateListFlags {
 
   UI_TEMPLATE_LIST_FLAGS_LAST
 };
-ENUM_OPERATORS(enum uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
+ENUM_OPERATORS(uiTemplateListFlags, UI_TEMPLATE_LIST_FLAGS_LAST);
 
 void uiTemplateList(uiLayout *layout,
                     const struct bContext *C,
@@ -2629,6 +2645,8 @@ void uiTemplateAssetView(struct uiLayout *layout,
 void uiTemplateLightLinkingCollection(struct uiLayout *layout,
                                       struct PointerRNA *ptr,
                                       const char *propname);
+
+void uiTemplateGreasePencilLayerTree(uiLayout *layout, struct bContext *C);
 
 /**
  * \return: A RNA pointer for the operator properties.
@@ -2877,6 +2895,11 @@ void uiItemS(uiLayout *layout);
 void uiItemS_ex(uiLayout *layout, float factor);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
+
+void uiItemProgressIndicator(uiLayout *layout,
+                             const char *text,
+                             float factor,
+                             enum eButProgressType progress_type);
 
 /* popover */
 void uiItemPopoverPanel_ptr(

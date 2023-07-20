@@ -85,11 +85,6 @@ CCL_NAMESPACE_BEGIN
 #define __VISIBILITY_FLAG__
 #define __VOLUME__
 
-/* TODO: solve internal compiler perf issue and enable light tree on Metal/AMD. */
-#if defined(__KERNEL_METAL_AMD__)
-#  undef __LIGHT_TREE__
-#endif
-
 /* Device specific features */
 #ifdef WITH_OSL
 #  define __OSL__
@@ -109,6 +104,13 @@ CCL_NAMESPACE_BEGIN
  * in spill buffer allocation sizing. */
 #if !defined(__KERNEL_METAL__) || (__KERNEL_METAL_MACOS__ >= 13)
 #  define __MNEE__
+#endif
+
+#if defined(__KERNEL_METAL_AMD__)
+/* Disabled due to internal compiler perf issue and enable light tree on Metal/AMD. */
+#  undef __LIGHT_TREE__
+/* Disabled due to compiler crash on Metal/AMD. */
+#  undef __MNEE__
 #endif
 
 /* Scene-based selective features compilation. */
@@ -1348,14 +1350,16 @@ typedef struct KernelCurveSegment {
 static_assert_align(KernelCurveSegment, 8);
 
 typedef struct KernelSpotLight {
-  packed_float3 axis_u;
+  packed_float3 scaled_axis_u;
   float radius;
-  packed_float3 axis_v;
-  float invarea;
+  packed_float3 scaled_axis_v;
+  float eval_fac;
   packed_float3 dir;
   float cos_half_spot_angle;
-  packed_float3 len;
+  float half_cot_half_spot_angle;
+  float inv_len_z;
   float spot_smooth;
+  float pad;
 } KernelSpotLight;
 
 /* PointLight is SpotLight with only radius and invarea being used. */
@@ -1373,10 +1377,12 @@ typedef struct KernelAreaLight {
 } KernelAreaLight;
 
 typedef struct KernelDistantLight {
-  float radius;
-  float cosangle;
-  float invarea;
-  float pad;
+  float angle;
+  float one_minus_cosangle;
+  float half_inv_sin_half_angle;
+  float pdf;
+  float eval_fac;
+  float pad[3];
 } KernelDistantLight;
 
 typedef struct KernelLight {
@@ -1700,7 +1706,7 @@ enum KernelFeatureFlag : uint32_t {
   KERNEL_FEATURE_TRANSPARENT = (1U << 19U),
 
   /* Use shadow catcher. */
-  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 29U),
+  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 20U),
 
   /* Light render passes. */
   KERNEL_FEATURE_LIGHT_PASSES = (1U << 21U),
@@ -1732,9 +1738,9 @@ enum KernelFeatureFlag : uint32_t {
 #define KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND \
   (KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT | KERNEL_FEATURE_NODE_AOV)
 #define KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW \
-  (KERNEL_FEATURE_NODE_BSDF | KERNEL_FEATURE_NODE_EMISSION | KERNEL_FEATURE_NODE_VOLUME | \
-   KERNEL_FEATURE_NODE_BUMP | KERNEL_FEATURE_NODE_BUMP_STATE | \
-   KERNEL_FEATURE_NODE_VORONOI_EXTRA | KERNEL_FEATURE_NODE_LIGHT_PATH)
+  (KERNEL_FEATURE_NODE_BSDF | KERNEL_FEATURE_NODE_EMISSION | KERNEL_FEATURE_NODE_BUMP | \
+   KERNEL_FEATURE_NODE_BUMP_STATE | KERNEL_FEATURE_NODE_VORONOI_EXTRA | \
+   KERNEL_FEATURE_NODE_LIGHT_PATH)
 #define KERNEL_FEATURE_NODE_MASK_SURFACE \
   (KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW | KERNEL_FEATURE_NODE_RAYTRACE | \
    KERNEL_FEATURE_NODE_AOV | KERNEL_FEATURE_NODE_LIGHT_PATH)

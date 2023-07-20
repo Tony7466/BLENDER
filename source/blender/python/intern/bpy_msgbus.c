@@ -224,7 +224,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
     IS_PERSISTENT = (1 << 0),
   };
   PyObject *py_options = NULL;
-  EnumPropertyItem py_options_enum[] = {
+  const EnumPropertyItem py_options_enum[] = {
       {IS_PERSISTENT, "PERSISTENT", 0, ""},
       {0, NULL, 0, NULL, NULL},
   };
@@ -396,7 +396,7 @@ static PyMethodDef BPy_msgbus_methods[] = {
 };
 
 static PyModuleDef _bpy_msgbus_def = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "msgbus",
     /*m_doc*/ NULL,
     /*m_size*/ 0,
