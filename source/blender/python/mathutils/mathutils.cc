@@ -77,7 +77,7 @@ Py_hash_t mathutils_array_hash(const float *array, size_t array_len)
   x = 0x345678UL;
   i = 0;
   while (--len >= 0) {
-    y = _Py_HashDouble(NULL, (double)(array[i++]));
+    y = _Py_HashDouble(nullptr, (double)(array[i++]));
     if (y == -1) {
       return -1;
     }
@@ -138,7 +138,7 @@ int mathutils_array_parse(
   else
 #endif
   {
-    PyObject *value_fast = NULL;
+    PyObject *value_fast = nullptr;
 
     /* non list/tuple cases */
     if (!(value_fast = PySequence_Fast(value, error_prefix))) {
@@ -214,15 +214,15 @@ int mathutils_array_parse_alloc(float **array,
       return -1;
     }
 
-    *array = PyMem_Malloc(num * sizeof(float));
+    *array = static_cast<float *>(PyMem_Malloc(num * sizeof(float)));
     memcpy(*array, ((const BaseMathObject *)value)->data, num * sizeof(float));
     return num;
   }
 
 #endif
 
-  PyObject *value_fast = NULL;
-  // *array = NULL;
+  PyObject *value_fast = nullptr;
+  // *array = nullptr;
   int ret;
 
   /* non list/tuple cases */
@@ -243,7 +243,7 @@ int mathutils_array_parse_alloc(float **array,
     return -1;
   }
 
-  *array = PyMem_Malloc(num * sizeof(float));
+  *array = static_cast<float *>(PyMem_Malloc(num * sizeof(float)));
 
   ret = mathutils_array_parse_fast(*array, num, value_fast, error_prefix);
   Py_DECREF(value_fast);
@@ -278,14 +278,14 @@ int mathutils_array_parse_alloc_v(float **array,
 
     array_dim &= ~MU_ARRAY_FLAGS;
 
-    fp = *array = PyMem_Malloc(num * array_dim * sizeof(float));
+    fp = *array = static_cast<float *>(PyMem_Malloc(num * array_dim * sizeof(float)));
 
     for (i = 0; i < num; i++, fp += array_dim) {
       PyObject *item = value_fast_items[i];
 
       if (mathutils_array_parse(fp, array_dim, array_dim_flag, item, error_prefix) == -1) {
         PyMem_Free(*array);
-        *array = NULL;
+        *array = nullptr;
         num = -1;
         break;
       }
@@ -350,14 +350,14 @@ int mathutils_array_parse_alloc_vi(int **array,
     PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
     int *ip;
 
-    ip = *array = PyMem_Malloc(size * array_dim * sizeof(int));
+    ip = *array = static_cast<int *>(PyMem_Malloc(size * array_dim * sizeof(int)));
 
     for (i = 0; i < size; i++, ip += array_dim) {
       PyObject *item = value_fast_items[i];
 
       if (mathutils_int_array_parse(ip, array_dim, item, error_prefix) == -1) {
         PyMem_Free(*array);
-        *array = NULL;
+        *array = nullptr;
         size = -1;
         break;
       }
@@ -375,9 +375,9 @@ int mathutils_array_parse_alloc_viseq(
   int i, size, start, subseq_len;
   int *ip;
 
-  *array = NULL;
-  *start_table = NULL;
-  *len_table = NULL;
+  *array = nullptr;
+  *start_table = nullptr;
+  *len_table = nullptr;
   if (!(value_fast = PySequence_Fast(value, error_prefix))) {
     /* PySequence_Fast sets the error */
     return -1;
@@ -388,8 +388,8 @@ int mathutils_array_parse_alloc_viseq(
   if (size != 0) {
     PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
 
-    *start_table = PyMem_Malloc(size * sizeof(int));
-    *len_table = PyMem_Malloc(size * sizeof(int));
+    *start_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
+    *len_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
 
     /* First pass to set starts and len, and calculate size of array needed */
     start = 0;
@@ -401,8 +401,8 @@ int mathutils_array_parse_alloc_viseq(
         PyMem_Free(*start_table);
         PyMem_Free(*len_table);
         Py_DECREF(value_fast);
-        *start_table = NULL;
-        *len_table = NULL;
+        *start_table = nullptr;
+        *len_table = nullptr;
         return -1;
       }
       (*start_table)[i] = start;
@@ -410,7 +410,7 @@ int mathutils_array_parse_alloc_viseq(
       start += subseq_len;
     }
 
-    ip = *array = PyMem_Malloc(start * sizeof(int));
+    ip = *array = static_cast<int *>(PyMem_Malloc(start * sizeof(int)));
 
     /* Second pass to parse the subsequences into array */
     for (i = 0; i < size; i++) {
@@ -421,9 +421,9 @@ int mathutils_array_parse_alloc_viseq(
         PyMem_Free(*array);
         PyMem_Free(*start_table);
         PyMem_Free(*len_table);
-        *array = NULL;
-        *len_table = NULL;
-        *start_table = NULL;
+        *array = nullptr;
+        *len_table = nullptr;
+        *start_table = nullptr;
         size = -1;
         break;
       }
@@ -531,7 +531,7 @@ int EXPP_VectorsAreEqual(const float *vecA, const float *vecB, int size, int flo
 PyObject *mathutils_dynstr_to_py(DynStr *ds)
 {
   const int ds_len = BLI_dynstr_get_len(ds); /* space for \0 */
-  char *ds_buf = PyMem_Malloc(ds_len + 1);
+  char *ds_buf = static_cast<char *>(PyMem_Malloc(ds_len + 1));
   PyObject *ret;
   BLI_dynstr_get_cstring_ex(ds, ds_buf);
   BLI_dynstr_free(ds);
@@ -546,7 +546,7 @@ PyObject *mathutils_dynstr_to_py(DynStr *ds)
 /* For mathutils internal use only,
  * eventually should re-alloc but to start with we only have a few users. */
 #define MATHUTILS_TOT_CB 17
-static Mathutils_Callback *mathutils_callbacks[MATHUTILS_TOT_CB] = {NULL};
+static Mathutils_Callback *mathutils_callbacks[MATHUTILS_TOT_CB] = {nullptr};
 
 uchar Mathutils_RegisterCallback(Mathutils_Callback *cb)
 {
@@ -577,7 +577,7 @@ int _BaseMathObject_CheckCallback(BaseMathObject *self)
 
 int _BaseMathObject_ReadCallback(BaseMathObject *self)
 {
-  /* NOTE: use macros to check for NULL. */
+  /* NOTE: use macros to check for nullptr. */
 
   Mathutils_Callback *cb = mathutils_callbacks[self->cb_type];
   if (LIKELY(cb->get(self, self->cb_subtype) != -1)) {
@@ -645,7 +645,7 @@ void _BaseMathObject_RaiseNotFrozenExc(const BaseMathObject *self)
 /* #BaseMathObject generic functions for all mathutils types. */
 
 char BaseMathObject_owner_doc[] = "The item this is wrapping or None  (read-only).";
-PyObject *BaseMathObject_owner_get(BaseMathObject *self, void *UNUSED(closure))
+PyObject *BaseMathObject_owner_get(BaseMathObject *self, void * /*closure*/)
 {
   PyObject *ret = self->cb_user ? self->cb_user : Py_None;
   return Py_INCREF_RET(ret);
@@ -653,21 +653,21 @@ PyObject *BaseMathObject_owner_get(BaseMathObject *self, void *UNUSED(closure))
 
 char BaseMathObject_is_wrapped_doc[] =
     "True when this object wraps external data (read-only).\n\n:type: boolean";
-PyObject *BaseMathObject_is_wrapped_get(BaseMathObject *self, void *UNUSED(closure))
+PyObject *BaseMathObject_is_wrapped_get(BaseMathObject *self, void * /*closure*/)
 {
   return PyBool_FromLong((self->flag & BASE_MATH_FLAG_IS_WRAP) != 0);
 }
 
 char BaseMathObject_is_frozen_doc[] =
     "True when this object has been frozen (read-only).\n\n:type: boolean";
-PyObject *BaseMathObject_is_frozen_get(BaseMathObject *self, void *UNUSED(closure))
+PyObject *BaseMathObject_is_frozen_get(BaseMathObject *self, void * /*closure*/)
 {
   return PyBool_FromLong((self->flag & BASE_MATH_FLAG_IS_FROZEN) != 0);
 }
 
 char BaseMathObject_is_valid_doc[] =
     "True when the owner of this data is valid.\n\n:type: boolean";
-PyObject *BaseMathObject_is_valid_get(BaseMathObject *self, void *UNUSED(closure))
+PyObject *BaseMathObject_is_valid_get(BaseMathObject *self, void * /*closure*/)
 {
   return PyBool_FromLong(BaseMath_CheckCallback(self) == 0);
 }
@@ -682,9 +682,9 @@ char BaseMathObject_freeze_doc[] =
     "   :return: An instance of this object.\n";
 PyObject *BaseMathObject_freeze(BaseMathObject *self)
 {
-  if ((self->flag & BASE_MATH_FLAG_IS_WRAP) || (self->cb_user != NULL)) {
+  if ((self->flag & BASE_MATH_FLAG_IS_WRAP) || (self->cb_user != nullptr)) {
     PyErr_SetString(PyExc_TypeError, "Cannot freeze wrapped/owned data");
-    return NULL;
+    return nullptr;
   }
 
   self->flag |= BASE_MATH_FLAG_IS_FROZEN;
@@ -740,13 +740,13 @@ void BaseMathObject_dealloc(BaseMathObject *self)
 
 int BaseMathObject_is_gc(BaseMathObject *self)
 {
-  return self->cb_user != NULL;
+  return self->cb_user != nullptr;
 }
 
 PyObject *_BaseMathObject_new_impl(PyTypeObject *root_type, PyTypeObject *base_type)
 {
   PyObject *obj;
-  if (ELEM(base_type, NULL, root_type)) {
+  if (ELEM(base_type, nullptr, root_type)) {
     obj = _PyObject_GC_New(root_type);
     if (obj) {
       BLI_assert(BaseMathObject_is_tracked((BaseMathObject *)obj) == false);
@@ -768,7 +768,7 @@ PyObject *_BaseMathObject_new_impl(PyTypeObject *root_type, PyTypeObject *base_t
 
 /*----------------------------MODULE INIT-------------------------*/
 static PyMethodDef M_Mathutils_methods[] = {
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef M_Mathutils_module_def = {
@@ -777,10 +777,10 @@ static PyModuleDef M_Mathutils_module_def = {
     /*m_doc*/ M_Mathutils_doc,
     /*m_size*/ 0,
     /*m_methods*/ M_Mathutils_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 /* submodules only */
@@ -799,22 +799,22 @@ PyMODINIT_FUNC PyInit_mathutils(void)
   PyObject *sys_modules = PyImport_GetModuleDict();
 
   if (PyType_Ready(&vector_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (PyType_Ready(&matrix_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (PyType_Ready(&matrix_access_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (PyType_Ready(&euler_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (PyType_Ready(&quaternion_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (PyType_Ready(&color_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
 
   mod = PyModule_Create(&M_Mathutils_module_def);
