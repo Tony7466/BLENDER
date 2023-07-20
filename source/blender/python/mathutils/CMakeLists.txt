@@ -18,7 +18,7 @@ set(SRC
   mathutils_Color.cc
   mathutils_Euler.cc
   mathutils_Matrix.cc
-  mathutils_Quaternion.c
+  mathutils_Quaternion.cc
   mathutils_Vector.c
   mathutils_bvhtree.cc
   mathutils_geometry.cc
