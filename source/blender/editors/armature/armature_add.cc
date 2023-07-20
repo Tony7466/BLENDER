@@ -1412,7 +1412,7 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
 
-    enum ExtrudePoint {
+  enum ExtrudePoint {
     SKIP_EXTRUDE,
     TIP_EXTRUDE,
     ROOT_EXTRUDE,
