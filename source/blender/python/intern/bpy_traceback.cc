@@ -49,8 +49,8 @@ static int parse_syntax_error(PyObject *err,
   _Py_IDENTIFIER(end_offset);
   _Py_IDENTIFIER(text);
 
-  *message = NULL;
-  *filename = NULL;
+  *message = nullptr;
+  *filename = nullptr;
 
   /* new style errors.  `err' is an instance */
   *message = _PyObject_GetAttrId(err, &PyId_msg);
@@ -65,7 +65,7 @@ static int parse_syntax_error(PyObject *err,
   if (v == Py_None) {
     Py_DECREF(v);
     *filename = _PyUnicode_FromId(&PyId_string);
-    if (*filename == NULL) {
+    if (*filename == nullptr) {
       goto finally;
     }
     Py_INCREF(*filename);
@@ -151,7 +151,7 @@ static int parse_syntax_error(PyObject *err,
   }
   if (v == Py_None) {
     Py_DECREF(v);
-    *text = NULL;
+    *text = nullptr;
   }
   else {
     *text = v;
@@ -183,7 +183,7 @@ bool python_script_error_jump(
   *r_offset_end = 0;
 
   PyErr_Fetch(&exception, &value, (PyObject **)&tb);
-  if (exception == NULL) {
+  if (exception == nullptr) {
     return false;
   }
 
