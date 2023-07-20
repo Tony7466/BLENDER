@@ -31,12 +31,12 @@
 /**
  * Struct representing a selection which is extracted from Python arguments.
  */
-typedef struct TextRegion {
+struct TextRegion {
   int curl;
   int curc;
   int sell;
   int selc;
-} TextRegion;
+};
 
 /** \} */
 
@@ -60,11 +60,11 @@ PyDoc_STRVAR(bpy_rna_region_as_string_doc,
 static PyObject *bpy_rna_region_as_string(PyObject *self, PyObject *args, PyObject *kwds)
 {
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
-  Text *text = pyrna->ptr.data;
+  Text *text = static_cast<Text *>(pyrna->ptr.data);
   /* Parse the region range. */
   TextRegion region;
 
-  static const char *_keywords[] = {"range", NULL};
+  static const char *_keywords[] = {"range", nullptr};
   static _PyArg_Parser _parser = {
       "|$"         /* Optional keyword only arguments. */
       "((ii)(ii))" /* `range` */
@@ -75,7 +75,7 @@ static PyObject *bpy_rna_region_as_string(PyObject *self, PyObject *args, PyObje
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &region.curl, &region.curc, &region.sell, &region.selc))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (kwds && PyDict_GET_SIZE(kwds) > 0) {
@@ -86,7 +86,7 @@ static PyObject *bpy_rna_region_as_string(PyObject *self, PyObject *args, PyObje
   if (!txt_has_sel(text)) {
     return PyUnicode_FromString("");
   }
-  char *buf = txt_sel_to_buf(text, NULL);
+  char *buf = txt_sel_to_buf(text, nullptr);
   PyObject *sel_text = PyUnicode_FromString(buf);
   MEM_freeN(buf);
   /* Return the selected text. */
@@ -115,14 +115,14 @@ PyDoc_STRVAR(bpy_rna_region_from_string_doc,
 static PyObject *bpy_rna_region_from_string(PyObject *self, PyObject *args, PyObject *kwds)
 {
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
-  Text *text = pyrna->ptr.data;
+  Text *text = static_cast<Text *>(pyrna->ptr.data);
 
   /* Parse the region range. */
   const char *buf;
   Py_ssize_t buf_len;
   TextRegion region;
 
-  static const char *_keywords[] = {"", "range", NULL};
+  static const char *_keywords[] = {"", "range", nullptr};
   static _PyArg_Parser _parser = {
       "s#"         /* `buf` (positional). */
       "|$"         /* Optional keyword only arguments. */
@@ -141,7 +141,7 @@ static PyObject *bpy_rna_region_from_string(PyObject *self, PyObject *args, PyOb
                                         &region.sell,
                                         &region.selc))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (kwds && PyDict_GET_SIZE(kwds) > 0) {
