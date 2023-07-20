@@ -36,7 +36,7 @@ static bool wm_platform_support_check_approval(const char *platform_support_key,
   if (G.factory_startup) {
     return false;
   }
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, NULL);
+  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
   if (!cfgdir) {
     return false;
   }
@@ -46,7 +46,7 @@ static bool wm_platform_support_check_approval(const char *platform_support_key,
   BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_PLATFORM_SUPPORT_FILE);
   LinkNode *lines = BLI_file_read_as_lines(filepath);
   for (LinkNode *line_node = lines; line_node; line_node = line_node->next) {
-    char *line = line_node->link;
+    char *line = static_cast<char *>(line_node->link);
     if (STREQ(line, platform_support_key)) {
       result = true;
       break;
@@ -117,7 +117,7 @@ bool WM_platform_support_perform_checks(void)
   }
 
   /* update the message and link based on the found support level */
-  GHOST_DialogOptions dialog_options = 0;
+  GHOST_DialogOptions dialog_options = GHOST_DialogOptions(0);
 
   switch (support_level) {
     default:

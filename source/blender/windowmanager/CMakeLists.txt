@@ -50,7 +50,7 @@ set(SRC
   intern/wm_operator_utils.cc
   intern/wm_operators.cc
   intern/wm_panel_type.cc
-  intern/wm_platform_support.c
+  intern/wm_platform_support.cc
   intern/wm_playanim.c
   intern/wm_splash_screen.c
   intern/wm_stereo.c
