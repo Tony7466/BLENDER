@@ -1526,7 +1526,7 @@ static char *wm_main_playanim_intern(int argc, const char **argv)
   int efra = -1;
   int totblock;
 
-  PlayState ps = {0};
+  PlayState ps{};
 
   ps.go = true;
   ps.direction = true;

@@ -1378,7 +1378,7 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
               printf("OPERATOR\n");
               IDP_print(properties);
               printf("KEYMAP\n");
-              IDP_print(kmi->ptr->data);
+              IDP_print(static_cast<IDProperty *>(kmi->ptr->data));
 #  endif
 #endif
               printf("\n");
@@ -1631,7 +1631,7 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
           printf("OPERATOR\n");
           IDP_print(properties);
           printf("KEYMAP\n");
-          IDP_print(kmi->ptr->data);
+          IDP_print(static_cast<IDProperty *>(kmi->ptr->data));
 #  endif
 #endif
           printf("\n");
