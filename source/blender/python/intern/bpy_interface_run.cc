@@ -72,17 +72,17 @@ static void bpy_text_filepath_get(char *filepath,
 #ifdef PYMODULE_CLEAR_WORKAROUND
 /* bad!, we should never do this, but currently only safe way I could find to keep namespace.
  * from being cleared. - campbell */
-typedef struct {
+struct PyModuleObject {
   PyObject_HEAD
   PyObject *md_dict;
   /* omit other values, we only want the dict. */
-} PyModuleObject;
+};
 #endif
 
 /**
  * Execute a file-path or text-block.
  *
- * \param reports: Report exceptions as errors (may be NULL).
+ * \param reports: Report exceptions as errors (may be nullptr).
  * \param do_jump: See #BPY_run_text.
  *
  * \note Share a function for this since setup/cleanup logic is the same.
@@ -91,17 +91,17 @@ static bool python_script_exec(
     bContext *C, const char *filepath, Text *text, ReportList *reports, const bool do_jump)
 {
   Main *bmain_old = CTX_data_main(C);
-  PyObject *main_mod = NULL;
-  PyObject *py_dict = NULL, *py_result = NULL;
+  PyObject *main_mod = nullptr;
+  PyObject *py_dict = nullptr, *py_result = nullptr;
   PyGILState_STATE gilstate;
 
   char filepath_dummy[FILE_MAX];
   /** The `__file__` added into the name-space. */
-  const char *filepath_namespace = NULL;
+  const char *filepath_namespace = nullptr;
 
   BLI_assert(filepath || text);
 
-  if (filepath == NULL && text == NULL) {
+  if (filepath == nullptr && text == nullptr) {
     return 0;
   }
 
@@ -113,7 +113,7 @@ static bool python_script_exec(
     bpy_text_filepath_get(filepath_dummy, sizeof(filepath_dummy), bmain_old, text);
     filepath_namespace = filepath_dummy;
 
-    if (text->compiled == NULL) { /* if it wasn't already compiled, do it now */
+    if (text->compiled == nullptr) { /* if it wasn't already compiled, do it now */
       char *buf;
       PyObject *filepath_dummy_py;
 
@@ -121,7 +121,7 @@ static bool python_script_exec(
 
       size_t buf_len_dummy;
       buf = txt_to_buf(text, &buf_len_dummy);
-      text->compiled = Py_CompileStringObject(buf, filepath_dummy_py, Py_file_input, NULL, -1);
+      text->compiled = Py_CompileStringObject(buf, filepath_dummy_py, Py_file_input, nullptr, -1);
       MEM_freeN(buf);
 
       Py_DECREF(filepath_dummy_py);
@@ -133,7 +133,7 @@ static bool python_script_exec(
 
     if (text->compiled) {
       py_dict = PyC_DefaultNameSpace(filepath_dummy);
-      py_result = PyEval_EvalCode(text->compiled, py_dict, py_dict);
+      py_result = PyEval_EvalCode(static_cast<PyObject *>(text->compiled), py_dict, py_dict);
     }
   }
   else {
@@ -175,7 +175,7 @@ static bool python_script_exec(
     else {
       PyErr_Format(
           PyExc_IOError, "Python file \"%s\" could not be opened: %s", filepath, strerror(errno));
-      py_result = NULL;
+      py_result = nullptr;
     }
   }
 
@@ -203,7 +203,7 @@ static bool python_script_exec(
     PyObject *dict_back = mmod->md_dict;
     /* freeing the module will clear the namespace,
      * gives problems running classes defined in this namespace being used later. */
-    mmod->md_dict = NULL;
+    mmod->md_dict = nullptr;
     Py_DECREF(dict_back);
 #endif
 
@@ -214,7 +214,7 @@ static bool python_script_exec(
 
   bpy_context_clear(C, &gilstate);
 
-  return (py_result != NULL);
+  return (py_result != nullptr);
 }
 
 /** \} */
@@ -225,12 +225,12 @@ static bool python_script_exec(
 
 bool BPY_run_filepath(bContext *C, const char *filepath, ReportList *reports)
 {
-  return python_script_exec(C, filepath, NULL, reports, false);
+  return python_script_exec(C, filepath, nullptr, reports, false);
 }
 
 bool BPY_run_text(bContext *C, Text *text, ReportList *reports, const bool do_jump)
 {
-  return python_script_exec(C, NULL, text, reports, do_jump);
+  return python_script_exec(C, nullptr, text, reports, do_jump);
 }
 
 /**
@@ -244,7 +244,7 @@ static bool bpy_run_string_impl(bContext *C,
 {
   BLI_assert(expr);
   PyGILState_STATE gilstate;
-  PyObject *main_mod = NULL;
+  PyObject *main_mod = nullptr;
   PyObject *py_dict, *retval;
   bool ok = true;
 
@@ -260,13 +260,13 @@ static bool bpy_run_string_impl(bContext *C,
 
   if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
     Py_DECREF(py_dict);
-    retval = NULL;
+    retval = nullptr;
   }
   else {
     retval = PyRun_String(expr, mode, py_dict, py_dict);
   }
 
-  if (retval == NULL) {
+  if (retval == nullptr) {
     ok = false;
 
     ReportList reports;
@@ -319,7 +319,7 @@ bool BPY_run_string_exec(bContext *C, const char *imports[], const char *expr)
 
 static void run_string_handle_error(struct BPy_RunErrInfo *err_info)
 {
-  if (err_info == NULL) {
+  if (err_info == nullptr) {
     PyErr_Print();
     PyErr_Clear();
     return;
@@ -336,7 +336,7 @@ static void run_string_handle_error(struct BPy_RunErrInfo *err_info)
   const char *err_str = py_err_str ? PyUnicode_AsUTF8(py_err_str) : "Unable to extract exception";
   PyErr_Clear();
 
-  if (err_info->reports != NULL) {
+  if (err_info->reports != nullptr) {
     if (err_info->report_prefix) {
       BKE_reportf(err_info->reports, RPT_ERROR, "%s: %s", err_info->report_prefix, err_str);
     }
@@ -346,14 +346,14 @@ static void run_string_handle_error(struct BPy_RunErrInfo *err_info)
   }
 
   /* Print the reports if they were not printed already. */
-  if ((err_info->reports == NULL) || !BKE_reports_print_test(err_info->reports, RPT_ERROR)) {
+  if ((err_info->reports == nullptr) || !BKE_reports_print_test(err_info->reports, RPT_ERROR)) {
     if (err_info->report_prefix) {
       fprintf(stderr, "%s: ", err_info->report_prefix);
     }
     fprintf(stderr, "%s\n", err_str);
   }
 
-  if (err_info->r_string != NULL) {
+  if (err_info->r_string != nullptr) {
     *err_info->r_string = BLI_strdup(err_str);
   }
 
@@ -398,7 +398,7 @@ bool BPY_run_string_as_string_and_len(bContext *C,
   bool ok = true;
 
   if (expr[0] == '\0') {
-    *r_value = NULL;
+    *r_value = nullptr;
     return ok;
   }
 
