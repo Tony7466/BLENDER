@@ -104,9 +104,9 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
         PyErr_Format(PyExc_TypeError, "%s: expected property to be a string", error_prefix);
         return -1;
       }
-      PointerRNA data_type_ptr = {
-          .type = data_type,
-      };
+      PointerRNA data_type_ptr{};
+      data_type_ptr.type = data_type;
+
       const char *data_prop_str = PyUnicode_AsUTF8(data_prop_py);
       PropertyRNA *data_prop = RNA_struct_find_property(&data_type_ptr, data_prop_str);
 

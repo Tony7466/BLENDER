@@ -1104,7 +1104,7 @@ int pyrna_array_contains_py(PointerRNA *ptr, PropertyRNA *prop, PyObject *value)
       RNA_property_boolean_get_array(ptr, prop, tmp_arr);
 
       for (i = 0; i < len; i++) {
-        if (tmp_arr[i] == value_i) {
+        if (tmp_arr[i] == bool(value_i)) {
           break;
         }
       }
