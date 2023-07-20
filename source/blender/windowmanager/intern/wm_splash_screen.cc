@@ -51,10 +51,10 @@
 
 #include "wm.h"
 
-static void wm_block_close(bContext *C, void *arg_block, void *UNUSED(arg))
+static void wm_block_close(bContext *C, void *arg_block, void * /*arg*/)
 {
   wmWindow *win = CTX_wm_window(C);
-  UI_popup_block_close(C, win, arg_block);
+  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
 }
 
 static void wm_block_splash_add_label(uiBlock *block, const char *label, int x, int y)
@@ -66,7 +66,7 @@ static void wm_block_splash_add_label(uiBlock *block, const char *label, int x, 
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
   uiBut *but = uiDefBut(
-      block, UI_BTYPE_LABEL, 0, label, 0, y, x, UI_UNIT_Y, NULL, 0, 0, 0, 0, NULL);
+      block, UI_BTYPE_LABEL, 0, label, 0, y, x, UI_UNIT_Y, nullptr, 0, 0, 0, 0, nullptr);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
 
@@ -131,7 +131,7 @@ static void wm_block_splash_image_roundcorners_add(ImBuf *ibuf)
 
 static ImBuf *wm_block_splash_image(int width, int *r_height)
 {
-  ImBuf *ibuf = NULL;
+  ImBuf *ibuf = nullptr;
   int height = 0;
 #ifndef WITH_HEADLESS
   extern char datatoc_splash_png[];
@@ -144,14 +144,15 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
             U.app_template, template_directory, sizeof(template_directory)))
     {
       BLI_path_join(splash_filepath, sizeof(splash_filepath), template_directory, "splash.png");
-      ibuf = IMB_loadiffname(splash_filepath, IB_rect, NULL);
+      ibuf = IMB_loadiffname(splash_filepath, IB_rect, nullptr);
     }
   }
 
-  if (ibuf == NULL) {
+  if (ibuf == nullptr) {
     const uchar *splash_data = (const uchar *)datatoc_splash_png;
     size_t splash_data_size = datatoc_splash_png_size;
-    ibuf = IMB_ibImageFromMemory(splash_data, splash_data_size, IB_rect, NULL, "<splash screen>");
+    ibuf = IMB_ibImageFromMemory(
+        splash_data, splash_data_size, IB_rect, nullptr, "<splash screen>");
   }
 
   if (ibuf) {
@@ -171,7 +172,7 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   return ibuf;
 }
 
-static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void *UNUSED(arg))
+static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
 
@@ -194,9 +195,9 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void *UNUSE
   /* This should never happen, if it does - don't crash. */
   if (LIKELY(ibuf)) {
     uiBut *but = uiDefButImage(
-        block, ibuf, 0, 0.5f * U.widget_unit, splash_width, splash_height, NULL);
+        block, ibuf, 0, 0.5f * U.widget_unit, splash_width, splash_height, nullptr);
 
-    UI_but_func_set(but, wm_block_close, block, NULL);
+    UI_but_func_set(but, wm_block_close, block, nullptr);
 
     wm_block_splash_add_label(block,
                               BKE_blender_version_string(),
@@ -217,7 +218,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void *UNUSE
 
   MenuType *mt;
   char userpref[FILE_MAX];
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, NULL);
+  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
 
   if (cfgdir) {
     BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
@@ -244,9 +245,9 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void *UNUSE
   return block;
 }
 
-static int wm_splash_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+static int wm_splash_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
-  UI_popup_block_invoke(C, wm_block_create_splash, NULL, NULL);
+  UI_popup_block_invoke(C, wm_block_create_splash, nullptr, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -261,7 +262,7 @@ void WM_OT_splash(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
 }
 
-static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void *UNUSED(arg))
+static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
   const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
@@ -275,7 +276,7 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void *UNUSED
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
 
-  /* Blender logo. */
+/* Blender logo. */
 #ifndef WITH_HEADLESS
   extern char datatoc_blender_logo_png[];
   extern int datatoc_blender_logo_png_size;
@@ -283,7 +284,7 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void *UNUSED
   const uchar *blender_logo_data = (const uchar *)datatoc_blender_logo_png;
   size_t blender_logo_data_size = datatoc_blender_logo_png_size;
   ImBuf *ibuf = IMB_ibImageFromMemory(
-      blender_logo_data, blender_logo_data_size, IB_rect, NULL, "blender_logo");
+      blender_logo_data, blender_logo_data_size, IB_rect, nullptr, "blender_logo");
 
   if (ibuf) {
     int width = 0.5 * dialog_width;
@@ -324,9 +325,9 @@ static uiBlock *wm_block_create_about(bContext *C, ARegion *region, void *UNUSED
   return block;
 }
 
-static int wm_about_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+static int wm_about_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
 {
-  UI_popup_block_invoke(C, wm_block_create_about, NULL, NULL);
+  UI_popup_block_invoke(C, wm_block_create_about, nullptr, nullptr);
 
   return OPERATOR_FINISHED;
 }
