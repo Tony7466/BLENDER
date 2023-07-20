@@ -453,6 +453,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
   const float epsilon = RNA_float_get(op->ptr, "factor");
 
+  bool changed = false;
   grease_pencil.foreach_editable_drawing(
       scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
         bke::CurvesGeometry &curves = drawing.strokes_for_write();
@@ -508,13 +509,18 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
           }
         });
 
-        IndexMaskMemory memory;
-        curves.remove_points(IndexMask::from_bools(points_to_delete, memory));
-        drawing.tag_topology_changed();
+        if (points_to_delete.as_span().contains(true)) {
+          IndexMaskMemory memory;
+          curves.remove_points(IndexMask::from_bools(points_to_delete, memory));
+          drawing.tag_topology_changed();
+          changed = true;
+        }
       });
 
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
   return OPERATOR_FINISHED;
 }
 
