@@ -47,11 +47,11 @@
  * \{ */
 
 static PyMethodDef pyrna_blenddata_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_user_map_method_def */
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_batch_remove_method_def */
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_orphans_purge_method_def */
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_data_context_method_def */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_id_collection_user_map_method_def */
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_id_collection_batch_remove_method_def */
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_id_collection_orphans_purge_method_def */
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_data_context_method_def */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -61,9 +61,9 @@ static PyMethodDef pyrna_blenddata_methods[] = {
  * \{ */
 
 static PyMethodDef pyrna_blenddatalibraries_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_library_load_method_def */
-    {NULL, NULL, 0, NULL}, /* #BPY_library_write_method_def */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_library_load_method_def */
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_library_write_method_def */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -73,8 +73,8 @@ static PyMethodDef pyrna_blenddatalibraries_methods[] = {
  * \{ */
 
 static PyMethodDef pyrna_uilayout_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_uilayout_introspect_method_def */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_uilayout_introspect_method_def */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -84,8 +84,8 @@ static PyMethodDef pyrna_uilayout_methods[] = {
  * \{ */
 
 static PyMethodDef pyrna_operator_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_operator_poll_message_set */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_operator_poll_message_set */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -95,9 +95,9 @@ static PyMethodDef pyrna_operator_methods[] = {
  * \{ */
 
 static PyMethodDef pyrna_text_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_region_as_string_method_def */
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_region_from_string_method_def */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_region_as_string_method_def */
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_region_from_string_method_def */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -110,25 +110,23 @@ static PyMethodDef pyrna_text_methods[] = {
  * \{ */
 
 PyDoc_STRVAR(pyrna_WindowManager_clipboard_doc, "Clipboard text storage.\n\n:type: string");
-static PyObject *pyrna_WindowManager_clipboard_get(PyObject *UNUSED(self), void *UNUSED(flag))
+static PyObject *pyrna_WindowManager_clipboard_get(PyObject * /*self*/, void * /*flag*/)
 {
   int text_len = 0;
   /* No need for UTF8 validation as #PyC_UnicodeFromBytesAndSize handles invalid byte sequences. */
   char *text = WM_clipboard_text_get(false, false, &text_len);
   PyObject *result = PyC_UnicodeFromBytesAndSize(text ? text : "", text_len);
-  if (text != NULL) {
+  if (text != nullptr) {
     MEM_freeN(text);
   }
   return result;
 }
 
-static int pyrna_WindowManager_clipboard_set(PyObject *UNUSED(self),
-                                             PyObject *value,
-                                             void *UNUSED(flag))
+static int pyrna_WindowManager_clipboard_set(PyObject * /*self*/, PyObject *value, void * /*flag*/)
 {
-  PyObject *value_coerce = NULL;
+  PyObject *value_coerce = nullptr;
   const char *text = PyC_UnicodeAsBytes(value, &value_coerce);
-  if (text == NULL) {
+  if (text == nullptr) {
     return -1;
   }
   WM_clipboard_text_set(text, false);
@@ -184,7 +182,7 @@ static PyMethodDef pyrna_windowmanager_methods[] = {
      (PyCFunction)pyrna_callback_classmethod_remove,
      METH_VARARGS | METH_CLASS,
      pyrna_draw_cursor_remove_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyGetSetDef pyrna_windowmanager_getset[] = {
@@ -192,8 +190,8 @@ static PyGetSetDef pyrna_windowmanager_getset[] = {
      pyrna_WindowManager_clipboard_get,
      pyrna_WindowManager_clipboard_set,
      pyrna_WindowManager_clipboard_doc,
-     NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+     nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 /** \} */
@@ -203,8 +201,8 @@ static PyGetSetDef pyrna_windowmanager_getset[] = {
  * \{ */
 
 static PyMethodDef pyrna_context_methods[] = {
-    {NULL, NULL, 0, NULL}, /* #BPY_rna_context_temp_override_method_def */
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr}, /* #BPY_rna_context_temp_override_method_def */
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -256,7 +254,7 @@ static PyMethodDef pyrna_space_methods[] = {
      (PyCFunction)pyrna_callback_classmethod_remove,
      METH_VARARGS | METH_CLASS,
      pyrna_draw_handler_remove_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -274,33 +272,34 @@ void BPY_rna_types_extend_capi(void)
                   BPY_rna_id_collection_orphans_purge_method_def,
                   BPY_rna_data_context_method_def);
   BLI_assert(ARRAY_SIZE(pyrna_blenddata_methods) == 5);
-  pyrna_struct_type_extend_capi(&RNA_BlendData, pyrna_blenddata_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_BlendData, pyrna_blenddata_methods, nullptr);
 
   /* BlendDataLibraries */
   ARRAY_SET_ITEMS(
       pyrna_blenddatalibraries_methods, BPY_library_load_method_def, BPY_library_write_method_def);
   BLI_assert(ARRAY_SIZE(pyrna_blenddatalibraries_methods) == 3);
-  pyrna_struct_type_extend_capi(&RNA_BlendDataLibraries, pyrna_blenddatalibraries_methods, NULL);
+  pyrna_struct_type_extend_capi(
+      &RNA_BlendDataLibraries, pyrna_blenddatalibraries_methods, nullptr);
 
   /* uiLayout */
   ARRAY_SET_ITEMS(pyrna_uilayout_methods, BPY_rna_uilayout_introspect_method_def);
   BLI_assert(ARRAY_SIZE(pyrna_uilayout_methods) == 2);
-  pyrna_struct_type_extend_capi(&RNA_UILayout, pyrna_uilayout_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_UILayout, pyrna_uilayout_methods, nullptr);
 
   /* Space */
-  pyrna_struct_type_extend_capi(&RNA_Space, pyrna_space_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_Space, pyrna_space_methods, nullptr);
 
   /* Text Editor */
   ARRAY_SET_ITEMS(pyrna_text_methods,
                   BPY_rna_region_as_string_method_def,
                   BPY_rna_region_from_string_method_def);
   BLI_assert(ARRAY_SIZE(pyrna_text_methods) == 3);
-  pyrna_struct_type_extend_capi(&RNA_Text, pyrna_text_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_Text, pyrna_text_methods, nullptr);
 
   /* wmOperator */
   ARRAY_SET_ITEMS(pyrna_operator_methods, BPY_rna_operator_poll_message_set_method_def);
   BLI_assert(ARRAY_SIZE(pyrna_operator_methods) == 2);
-  pyrna_struct_type_extend_capi(&RNA_Operator, pyrna_operator_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_Operator, pyrna_operator_methods, nullptr);
 
   /* WindowManager */
   pyrna_struct_type_extend_capi(
@@ -310,7 +309,7 @@ void BPY_rna_types_extend_capi(void)
   bpy_rna_context_types_init();
 
   ARRAY_SET_ITEMS(pyrna_context_methods, BPY_rna_context_temp_override_method_def);
-  pyrna_struct_type_extend_capi(&RNA_Context, pyrna_context_methods, NULL);
+  pyrna_struct_type_extend_capi(&RNA_Context, pyrna_context_methods, nullptr);
 }
 
 /** \} */

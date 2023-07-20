@@ -65,7 +65,7 @@ set(SRC
   bpy_rna_id_collection.cc
   bpy_rna_operator.cc
   bpy_rna_text.cc
-  bpy_rna_types_capi.c
+  bpy_rna_types_capi.cc
   bpy_rna_ui.c
   bpy_traceback.c
   bpy_utils_previews.c
