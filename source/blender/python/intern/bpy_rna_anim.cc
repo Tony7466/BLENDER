@@ -62,7 +62,7 @@ static int pyrna_struct_anim_args_parse_ex(PointerRNA *ptr,
   PropertyRNA *prop;
   PointerRNA r_ptr;
 
-  if (ptr->data == NULL) {
+  if (ptr->data == nullptr) {
     PyErr_Format(
         PyExc_TypeError, "%.200s this struct has no data, can't be animated", error_prefix);
     return -1;
@@ -72,7 +72,7 @@ static int pyrna_struct_anim_args_parse_ex(PointerRNA *ptr,
   if (is_idbase) {
     int path_index = -1;
     if (RNA_path_resolve_property_full(ptr, path, &r_ptr, &prop, &path_index) == false) {
-      prop = NULL;
+      prop = nullptr;
     }
     else if (path_index != -1) {
       PyErr_Format(PyExc_ValueError,
@@ -91,7 +91,7 @@ static int pyrna_struct_anim_args_parse_ex(PointerRNA *ptr,
     r_ptr = *ptr;
   }
 
-  if (prop == NULL) {
+  if (prop == nullptr) {
     if (r_path_no_validate) {
       *r_path_no_validate = true;
       return -1;
@@ -142,7 +142,7 @@ static int pyrna_struct_anim_args_parse_ex(PointerRNA *ptr,
   else {
     *r_path_full = RNA_path_from_ID_to_property(&r_ptr, prop);
 
-    if (*r_path_full == NULL) {
+    if (*r_path_full == nullptr) {
       PyErr_Format(PyExc_TypeError, "%.200s could not make path to \"%s\"", error_prefix, path);
       return -1;
     }
@@ -157,7 +157,7 @@ static int pyrna_struct_anim_args_parse(PointerRNA *ptr,
                                         const char **r_path_full,
                                         int *r_index)
 {
-  return pyrna_struct_anim_args_parse_ex(ptr, error_prefix, path, r_path_full, r_index, NULL);
+  return pyrna_struct_anim_args_parse_ex(ptr, error_prefix, path, r_path_full, r_index, nullptr);
 }
 
 /**
@@ -175,7 +175,7 @@ static int pyrna_struct_anim_args_parse_no_resolve(PointerRNA *ptr,
   }
 
   char *path_prefix = RNA_path_from_ID_to_struct(ptr);
-  if (path_prefix == NULL) {
+  if (path_prefix == nullptr) {
     PyErr_Format(PyExc_TypeError,
                  "%.200s could not make path for type %s",
                  error_prefix,
@@ -229,8 +229,8 @@ static int pyrna_struct_keyframe_parse(PointerRNA *ptr,
                                        const char **r_group_name,
                                        int *r_options)
 {
-  static const char *kwlist[] = {"data_path", "index", "frame", "group", "options", NULL};
-  PyObject *pyoptions = NULL;
+  static const char *kwlist[] = {"data_path", "index", "frame", "group", "options", nullptr};
+  PyObject *pyoptions = nullptr;
   const char *path;
 
   /* NOTE: `parse_str` MUST start with `s|ifsO!`. */
@@ -307,10 +307,10 @@ char pyrna_struct_keyframe_insert_doc[] =
 PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyObject *kw)
 {
   /* args, pyrna_struct_keyframe_parse handles these */
-  const char *path_full = NULL;
+  const char *path_full = nullptr;
   int index = -1;
   float cfra = FLT_MAX;
-  const char *group_name = NULL;
+  const char *group_name = nullptr;
   const char keytype = BEZT_KEYTYPE_KEYFRAME; /* XXX: Expose this as a one-off option... */
   int options = 0;
 
@@ -327,7 +327,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
                                   &group_name,
                                   &options) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   ReportList reports;
@@ -354,7 +354,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
      */
 
     PointerRNA ptr = self->ptr;
-    PropertyRNA *prop = NULL;
+    PropertyRNA *prop = nullptr;
     const char *prop_name;
 
     /* Retrieve the property identifier from the full path, since we can't get it any other way */
@@ -364,10 +364,16 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     }
 
     if (prop) {
-      NlaStrip *strip = ptr.data;
+      NlaStrip *strip = static_cast<NlaStrip *>(ptr.data);
       FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), index);
-      result = insert_keyframe_direct(
-          &reports, ptr, prop, fcu, &anim_eval_context, keytype, NULL, options);
+      result = insert_keyframe_direct(&reports,
+                                      ptr,
+                                      prop,
+                                      fcu,
+                                      &anim_eval_context,
+                                      eBezTriple_KeyframeType(keytype),
+                                      nullptr,
+                                      eInsertKeyFlags(options));
     }
     else {
       BKE_reportf(&reports, RPT_ERROR, "Could not resolve path (%s)", path_full);
@@ -380,24 +386,24 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     result = (insert_keyframe(G_MAIN,
                               &reports,
                               id,
-                              NULL,
+                              nullptr,
                               group_name,
                               path_full,
                               index,
                               &anim_eval_context,
-                              keytype,
-                              NULL,
-                              options) != 0);
+                              eBezTriple_KeyframeType(keytype),
+                              nullptr,
+                              eInsertKeyFlags(options)) != 0);
   }
 
   MEM_freeN((void *)path_full);
 
   if (BPy_reports_to_error(&reports, PyExc_RuntimeError, true) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (result) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
   }
 
   return PyBool_FromLong(result);
@@ -425,10 +431,10 @@ char pyrna_struct_keyframe_delete_doc[] =
 PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyObject *kw)
 {
   /* args, pyrna_struct_keyframe_parse handles these */
-  const char *path_full = NULL;
+  const char *path_full = nullptr;
   int index = -1;
   float cfra = FLT_MAX;
-  const char *group_name = NULL;
+  const char *group_name = nullptr;
 
   PYRNA_STRUCT_CHECK_OBJ(self);
 
@@ -441,9 +447,9 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
                                   &index,
                                   &cfra,
                                   &group_name,
-                                  NULL) == -1)
+                                  nullptr) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   ReportList reports;
@@ -458,7 +464,7 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
      */
 
     PointerRNA ptr = self->ptr;
-    PropertyRNA *prop = NULL;
+    PropertyRNA *prop = nullptr;
     const char *prop_name;
 
     /* Retrieve the property identifier from the full path, since we can't get it any other way */
@@ -469,11 +475,11 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
 
     if (prop) {
       ID *id = ptr.owner_id;
-      NlaStrip *strip = ptr.data;
+      NlaStrip *strip = static_cast<NlaStrip *>(ptr.data);
       FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), index);
 
       /* NOTE: This should be true, or else we wouldn't be able to get here. */
-      BLI_assert(fcu != NULL);
+      BLI_assert(fcu != nullptr);
 
       if (BKE_fcurve_is_protected(fcu)) {
         BKE_reportf(
@@ -508,13 +514,13 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
   }
   else {
     result = (delete_keyframe(
-                  G.main, &reports, self->ptr.owner_id, NULL, path_full, index, cfra) != 0);
+                  G.main, &reports, self->ptr.owner_id, nullptr, path_full, index, cfra) != 0);
   }
 
   MEM_freeN((void *)path_full);
 
   if (BPy_reports_to_error(&reports, PyExc_RuntimeError, true) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return PyBool_FromLong(result);
@@ -540,16 +546,16 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
   PYRNA_STRUCT_CHECK_OBJ(self);
 
   if (!PyArg_ParseTuple(args, "s|i:driver_add", &path, &index)) {
-    return NULL;
+    return nullptr;
   }
 
   if (pyrna_struct_anim_args_parse(
           &self->ptr, "bpy_struct.driver_add():", path, &path_full, &index) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
-  PyObject *ret = NULL;
+  PyObject *ret = nullptr;
   ReportList reports;
   int result;
 
@@ -563,7 +569,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
                            DRIVER_TYPE_PYTHON);
 
   if (BPy_reports_to_error(&reports, PyExc_RuntimeError, true) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (result) {
@@ -588,7 +594,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
     }
 
     bContext *context = BPY_context_get();
-    WM_event_add_notifier(BPY_context_get(), NC_ANIMATION | ND_FCURVES_ORDER, NULL);
+    WM_event_add_notifier(BPY_context_get(), NC_ANIMATION | ND_FCURVES_ORDER, nullptr);
     DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
     DEG_relations_tag_update(CTX_data_main(context));
   }
@@ -596,7 +602,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
     /* XXX: should be handled by reports. */
     PyErr_SetString(PyExc_TypeError,
                     "bpy_struct.driver_add(): failed because of an internal error");
-    return NULL;
+    return nullptr;
   }
 
   MEM_freeN((void *)path_full);
@@ -624,13 +630,13 @@ PyObject *pyrna_struct_driver_remove(BPy_StructRNA *self, PyObject *args)
   PYRNA_STRUCT_CHECK_OBJ(self);
 
   if (!PyArg_ParseTuple(args, "s|i:driver_remove", &path, &index)) {
-    return NULL;
+    return nullptr;
   }
 
   if (pyrna_struct_anim_args_parse_no_resolve_fallback(
           &self->ptr, "bpy_struct.driver_remove():", path, &path_full, &index) == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   short result;
@@ -645,11 +651,11 @@ PyObject *pyrna_struct_driver_remove(BPy_StructRNA *self, PyObject *args)
   }
 
   if (BPy_reports_to_error(&reports, PyExc_RuntimeError, true) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   bContext *context = BPY_context_get();
-  WM_event_add_notifier(context, NC_ANIMATION | ND_FCURVES_ORDER, NULL);
+  WM_event_add_notifier(context, NC_ANIMATION | ND_FCURVES_ORDER, nullptr);
   DEG_relations_tag_update(CTX_data_main(context));
 
   return PyBool_FromLong(result);

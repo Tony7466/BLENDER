@@ -2750,9 +2750,9 @@ static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
 #if 0
 static int bpy_struct_id_used(StructRNA *srna, char *identifier)
 {
-PointerRNA ptr;
-RNA_pointer_create(nullptr, srna, nullptr, &ptr);
-return (RNA_struct_find_property(&ptr, identifier) != nullptr);
+  PointerRNA ptr;
+  RNA_pointer_create(nullptr, srna, nullptr, &ptr);
+  return (RNA_struct_find_property(&ptr, identifier) != nullptr);
 }
 #endif
 
