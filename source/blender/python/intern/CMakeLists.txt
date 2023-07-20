@@ -68,7 +68,7 @@ set(SRC
   bpy_rna_types_capi.cc
   bpy_rna_ui.cc
   bpy_traceback.cc
-  bpy_utils_previews.c
+  bpy_utils_previews.cc
   bpy_utils_units.c
   stubs.c
 

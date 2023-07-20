@@ -51,18 +51,18 @@ PyDoc_STRVAR(
     /* This is only true when accessed via 'bpy.utils.previews.ImagePreviewCollection.load',
      * however this is the public API, allow this minor difference to the internal version here. */
     "   :raises KeyError: if ``name`` already exists.");
-static PyObject *bpy_utils_previews_new(PyObject *UNUSED(self), PyObject *args)
+static PyObject *bpy_utils_previews_new(PyObject * /*self*/, PyObject *args)
 {
   char *name;
   PreviewImage *prv;
   PointerRNA ptr;
 
   if (!PyArg_ParseTuple(args, "s:new", &name)) {
-    return NULL;
+    return nullptr;
   }
 
   prv = BKE_previewimg_cached_ensure(name);
-  RNA_pointer_create(NULL, &RNA_ImagePreview, prv, &ptr);
+  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
 
   return pyrna_struct_CreatePyObject(&ptr);
 }
@@ -88,7 +88,7 @@ PyDoc_STRVAR(
     /* This is only true when accessed via 'bpy.utils.previews.ImagePreviewCollection.load',
      * however this is the public API, allow this minor difference to the internal version here. */
     "   :raises KeyError: if ``name`` already exists.");
-static PyObject *bpy_utils_previews_load(PyObject *UNUSED(self), PyObject *args)
+static PyObject *bpy_utils_previews_load(PyObject * /*self*/, PyObject *args)
 {
   char *name, *path, *path_type_s;
   int path_type, force_reload = false;
@@ -97,7 +97,7 @@ static PyObject *bpy_utils_previews_load(PyObject *UNUSED(self), PyObject *args)
   PointerRNA ptr;
 
   if (!PyArg_ParseTuple(args, "sss|p:load", &name, &path, &path_type_s, &force_reload)) {
-    return NULL;
+    return nullptr;
   }
 
   if (STREQ(path_type_s, "IMAGE")) {
@@ -121,11 +121,11 @@ static PyObject *bpy_utils_previews_load(PyObject *UNUSED(self), PyObject *args)
                  "] "
                  "are supported",
                  path_type_s);
-    return NULL;
+    return nullptr;
   }
 
   prv = BKE_previewimg_cached_thumbnail_read(name, path, path_type, force_reload);
-  RNA_pointer_create(NULL, &RNA_ImagePreview, prv, &ptr);
+  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
 
   return pyrna_struct_CreatePyObject(&ptr);
 }
@@ -138,12 +138,12 @@ PyDoc_STRVAR(bpy_utils_previews_release_doc,
              "\n"
              "   :arg name: The name (unique id) identifying the preview.\n"
              "   :type name: string\n");
-static PyObject *bpy_utils_previews_release(PyObject *UNUSED(self), PyObject *args)
+static PyObject *bpy_utils_previews_release(PyObject * /*self*/, PyObject *args)
 {
   char *name;
 
   if (!PyArg_ParseTuple(args, "s:release", &name)) {
-    return NULL;
+    return nullptr;
   }
 
   BKE_previewimg_cached_release(name);
@@ -159,7 +159,7 @@ static PyMethodDef bpy_utils_previews_methods[] = {
      (PyCFunction)bpy_utils_previews_release,
      METH_VARARGS,
      bpy_utils_previews_release_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(
@@ -172,10 +172,10 @@ static PyModuleDef bpy_utils_previews_module = {
     /*m_doc*/ bpy_utils_previews_doc,
     /*m_size*/ 0,
     /*m_methods*/ bpy_utils_previews_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPY_utils_previews_module(void)
