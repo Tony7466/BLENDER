@@ -59,19 +59,19 @@
 #include "../generic/python_utildefines.h"
 
 #ifdef BUILD_DATE
-extern char build_date[];
-extern char build_time[];
-extern ulong build_commit_timestamp;
-extern char build_commit_date[];
-extern char build_commit_time[];
-extern char build_hash[];
-extern char build_branch[];
-extern char build_platform[];
-extern char build_type[];
-extern char build_cflags[];
-extern char build_cxxflags[];
-extern char build_linkflags[];
-extern char build_system[];
+extern "C" char build_date[];
+extern "C" char build_time[];
+extern "C" ulong build_commit_timestamp;
+extern "C" char build_commit_date[];
+extern "C" char build_commit_time[];
+extern "C" char build_hash[];
+extern "C" char build_branch[];
+extern "C" char build_platform[];
+extern "C" char build_type[];
+extern "C" char build_cflags[];
+extern "C" char build_cxxflags[];
+extern "C" char build_linkflags[];
+extern "C" char build_system[];
 #endif
 
 static PyTypeObject BlenderAppType;

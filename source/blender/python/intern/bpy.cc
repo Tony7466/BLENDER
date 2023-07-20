@@ -454,6 +454,16 @@ static PyObject *bpy_unescape_identifier(PyObject * /*self*/, PyObject *value)
   return value_unescape;
 }
 
+extern "C" const char *buttons_context_dir[];
+extern "C" const char *clip_context_dir[];
+extern "C" const char *file_context_dir[];
+extern "C" const char *image_context_dir[];
+extern "C" const char *node_context_dir[];
+extern "C" const char *screen_context_dir[];
+extern "C" const char *sequencer_context_dir[];
+extern "C" const char *text_context_dir[];
+extern "C" const char *view3d_context_dir[];
+
 /**
  * \note only exposed for generating documentation, see: `doc/python_api/sphinx_doc_gen.py`.
  */
@@ -465,15 +475,6 @@ PyDoc_STRVAR(
     "   :rtype: dict\n");
 static PyObject *bpy_context_members(PyObject * /*self*/)
 {
-  extern const char *buttons_context_dir[];
-  extern const char *clip_context_dir[];
-  extern const char *file_context_dir[];
-  extern const char *image_context_dir[];
-  extern const char *node_context_dir[];
-  extern const char *screen_context_dir[];
-  extern const char *sequencer_context_dir[];
-  extern const char *text_context_dir[];
-  extern const char *view3d_context_dir[];
 
   struct {
     const char *name;
