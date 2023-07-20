@@ -64,7 +64,7 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
   /* Allow common case, object rotation, location - etc. */
   if (BaseMathObject_CheckExact(py_sub)) {
     BaseMathObject *py_sub_math = (BaseMathObject *)py_sub;
-    if (py_sub_math->cb_user == NULL) {
+    if (py_sub_math->cb_user == nullptr) {
       PyErr_Format(PyExc_TypeError, "%s: math argument has no owner", error_prefix);
       return -1;
     }
@@ -87,7 +87,7 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
   /* TODO: property / type, not instance. */
   else if (PyType_Check(py_sub)) {
     StructRNA *data_type = pyrna_struct_as_srna(py_sub, false, error_prefix);
-    if (data_type == NULL) {
+    if (data_type == nullptr) {
       return -1;
     }
     msg_key_params->ptr.type = data_type;
@@ -97,7 +97,7 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
       PyObject *data_type_py = PyTuple_GET_ITEM(py_sub, 0);
       PyObject *data_prop_py = PyTuple_GET_ITEM(py_sub, 1);
       StructRNA *data_type = pyrna_struct_as_srna(data_type_py, false, error_prefix);
-      if (data_type == NULL) {
+      if (data_type == nullptr) {
         return -1;
       }
       if (!PyUnicode_CheckExact(data_prop_py)) {
@@ -110,7 +110,7 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
       const char *data_prop_str = PyUnicode_AsUTF8(data_prop_py);
       PropertyRNA *data_prop = RNA_struct_find_property(&data_type_ptr, data_prop_str);
 
-      if (data_prop == NULL) {
+      if (data_prop == nullptr) {
         PyErr_Format(PyExc_TypeError,
                      "%s: struct %.200s does not contain property %.200s",
                      error_prefix,
@@ -140,13 +140,13 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
 
 /* Follow wmMsgNotifyFn spec */
 static void bpy_msgbus_notify(bContext *C,
-                              wmMsgSubscribeKey *UNUSED(msg_key),
+                              wmMsgSubscribeKey * /*msg_key*/,
                               wmMsgSubscribeValue *msg_val)
 {
   PyGILState_STATE gilstate;
   bpy_context_set(C, &gilstate);
 
-  PyObject *user_data = msg_val->user_data;
+  PyObject *user_data = static_cast<PyObject *>(msg_val->user_data);
   BLI_assert(PyTuple_GET_SIZE(user_data) == BPY_MSGBUS_USER_DATA_LEN);
 
   PyObject *callback_args = PyTuple_GET_ITEM(user_data, 0);
@@ -159,7 +159,7 @@ static void bpy_msgbus_notify(bContext *C,
 
   PyObject *ret = PyObject_CallObject(callback_notify, callback_args);
 
-  if (ret == NULL) {
+  if (ret == nullptr) {
     PyC_Err_PrintWithFunc(callback_notify);
   }
   else {
@@ -178,7 +178,7 @@ static void bpy_msgbus_notify(bContext *C,
 }
 
 /* Follow wmMsgSubscribeValueFreeDataFn spec */
-static void bpy_msgbus_subscribe_value_free_data(wmMsgSubscribeKey *UNUSED(msg_key),
+static void bpy_msgbus_subscribe_value_free_data(wmMsgSubscribeKey * /*msg_key*/,
                                                  wmMsgSubscribeValue *msg_val)
 {
   const PyGILState_STATE gilstate = PyGILState_Ensure();
@@ -212,27 +212,27 @@ PyDoc_STRVAR(
     "\n"
     "   All subscribers will be cleared on file-load. Subscribers can be re-registered on load,\n"
     "   see :mod:`bpy.app.handlers.load_post`.\n");
-static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const char *error_prefix = "subscribe_rna";
-  PyObject *py_sub = NULL;
-  PyObject *py_owner = NULL;
-  PyObject *callback_args = NULL;
-  PyObject *callback_notify = NULL;
+  PyObject *py_sub = nullptr;
+  PyObject *py_owner = nullptr;
+  PyObject *callback_args = nullptr;
+  PyObject *callback_notify = nullptr;
 
   enum {
     IS_PERSISTENT = (1 << 0),
   };
-  PyObject *py_options = NULL;
+  PyObject *py_options = nullptr;
   const EnumPropertyItem py_options_enum[] = {
       {IS_PERSISTENT, "PERSISTENT", 0, ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
   int options = 0;
 
   if (PyTuple_GET_SIZE(args) != 0) {
     PyErr_Format(PyExc_TypeError, "%s: only keyword arguments are supported", error_prefix);
-    return NULL;
+    return nullptr;
   }
   static const char *_keywords[] = {
       "key",
@@ -240,7 +240,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
       "args",
       "notify",
       "options",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O"  /* `key` */
@@ -264,13 +264,13 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
                                         &PySet_Type,
                                         &py_options))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (py_options &&
       (pyrna_enum_bitfield_from_set(py_options_enum, py_options, &options, error_prefix) == -1))
   {
-    return NULL;
+    return nullptr;
   }
 
   /* NOTE: we may want to have a way to pass this in. */
@@ -281,14 +281,14 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject *UNUSED(self), PyObject *args
   wmMsgSubscribeValue msg_val_params = {0};
 
   if (py_msgbus_rna_key_from_py(py_sub, &msg_key_params, error_prefix) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (!PyFunction_Check(callback_notify)) {
     PyErr_Format(PyExc_TypeError,
                  "notify expects a function, found %.200s",
                  Py_TYPE(callback_notify)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   if (options != 0) {
@@ -330,18 +330,18 @@ PyDoc_STRVAR(
     "   (this typically doesn't need to be called explicitly since changes will automatically "
     "publish updates).\n"
     "   In some cases it may be useful to publish changes explicitly using more general keys.\n");
-static PyObject *bpy_msgbus_publish_rna(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *bpy_msgbus_publish_rna(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const char *error_prefix = "publish_rna";
-  PyObject *py_sub = NULL;
+  PyObject *py_sub = nullptr;
 
   if (PyTuple_GET_SIZE(args) != 0) {
     PyErr_Format(PyExc_TypeError, "%s: only keyword arguments are supported", error_prefix);
-    return NULL;
+    return nullptr;
   }
   static const char *_keywords[] = {
       "key",
-      NULL,
+      nullptr,
   };
   static _PyArg_Parser _parser = {
       "O" /* `key` */
@@ -350,7 +350,7 @@ static PyObject *bpy_msgbus_publish_rna(PyObject *UNUSED(self), PyObject *args, 
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &py_sub)) {
-    return NULL;
+    return nullptr;
   }
 
   /* NOTE: we may want to have a way to pass this in. */
@@ -359,7 +359,7 @@ static PyObject *bpy_msgbus_publish_rna(PyObject *UNUSED(self), PyObject *args, 
   wmMsgParams_RNA msg_key_params = {{0}};
 
   if (py_msgbus_rna_key_from_py(py_sub, &msg_key_params, error_prefix) == -1) {
-    return NULL;
+    return nullptr;
   }
 
   WM_msg_publish_rna_params(mbus, &msg_key_params);
@@ -371,7 +371,7 @@ PyDoc_STRVAR(bpy_msgbus_clear_by_owner_doc,
              ".. function:: clear_by_owner(owner)\n"
              "\n"
              "   Clear all subscribers using this owner.\n");
-static PyObject *bpy_msgbus_clear_by_owner(PyObject *UNUSED(self), PyObject *py_owner)
+static PyObject *bpy_msgbus_clear_by_owner(PyObject * /*self*/, PyObject *py_owner)
 {
   bContext *C = BPY_context_get();
   struct wmMsgBus *mbus = CTX_wm_message_bus(C);
@@ -392,19 +392,19 @@ static PyMethodDef BPy_msgbus_methods[] = {
      (PyCFunction)bpy_msgbus_clear_by_owner,
      METH_O,
      bpy_msgbus_clear_by_owner_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef _bpy_msgbus_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "msgbus",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
     /*m_methods*/ BPy_msgbus_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPY_msgbus_module(void)
