@@ -429,7 +429,7 @@ struct EraseOperationExecutor {
 
                 /* Compute the endpoint of the segment in the source domain.
                  * Note that if this is the closing segment of a cyclic curve, then the
-                 * endpoint of the segment in the first point of the curve */
+                 * endpoint of the segment in the first point of the curve. */
                 const int src_next_point = (src_point == src_curve_points.last()) ?
                                                src_curve_points.first() :
                                                (src_point + 1);
