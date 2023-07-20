@@ -743,7 +743,7 @@ struct EraseOperationExecutor {
       /* Write the opacity attribute*/
       SpanAttributeWriter<float> dst_opacity = dst_attributes.lookup_or_add_for_write_span<float>(
           opacity_attr, ATTR_DOMAIN_POINT);
-      array_utils::gather(src_new_opacity.as_span(), dst_to_src_point.as_span(), dst_opacity.span);
+      array_utils::copy(src_new_opacity.as_span(), dst_opacity.span);
       dst_opacity.finish();
 
       /* Note : the opacities were changed, so we still need to tag for changes. */
