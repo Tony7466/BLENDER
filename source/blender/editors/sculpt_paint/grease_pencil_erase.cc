@@ -499,6 +499,10 @@ struct EraseOperationExecutor {
     if (self.active_layer_only) {
       /* Erase only on the drawing at the current frame of the active layer. */
       const int drawing_index = grease_pencil.get_active_layer()->drawing_index_at(scene->r.cfra);
+      if (drawing_index == -1) {
+        return;
+      }
+
       blender::bke::greasepencil::Drawing &drawing =
           *reinterpret_cast<blender::bke::greasepencil::Drawing *>(
               grease_pencil.drawings_for_write()[drawing_index]);
