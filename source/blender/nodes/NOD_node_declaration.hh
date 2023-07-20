@@ -469,6 +469,41 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
 
 using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 
+/**
+ * Describes a panel containing sockets or other panels.
+ */
+class PanelDeclaration {
+ public:
+  std::string name;
+  std::string description;
+  std::string translation_context;
+  bool default_closed = false;
+
+ private:
+  friend NodeDeclarationBuilder;
+  friend class PanelDeclarationBuilder;
+
+ public:
+  virtual ~PanelDeclaration() = default;
+};
+
+class PanelDeclarationBuilder {
+ protected:
+  NodeDeclarationBuilder *node_decl_builder_ = nullptr;
+  PanelDeclaration *decl_;
+
+  friend class NodeDeclarationBuilder;
+
+ public:
+  PanelDeclarationBuilder &default_closed(bool closed)
+  {
+    decl_->default_closed = closed;
+    return *this;
+  }
+};
+
+using PanelDeclarationPtr = std::unique_ptr<PanelDeclaration>;
+
 class NodeDeclaration {
  public:
   Vector<SocketDeclarationPtr> inputs;
@@ -518,6 +553,14 @@ class NodeDeclarationBuilder {
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
   template<typename DeclType>
   typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
+
+  //  /* Opens a new panel. Subsequent sockets and panels are placed inside, until close_panel() is
+  //   * called. Can be called multiple times to generate sub-panels. */
+  //  PanelDeclarationBuilder &add_panel(StringRef name);
+  //  /* Close the top panel, parent panels remain open. */
+  //  void close_panel();
+  //  /* Close all currently open panels. */
+  //  void close_all_panels();
 
   aal::RelationsInNode &get_anonymous_attribute_relations()
   {
@@ -738,6 +781,12 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
       .append(std::move(socket_decl_builder));
   return socket_decl_builder_ref;
 }
+
+// PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name) {}
+
+// void NodeDeclarationBuilder::close_panel() {}
+
+// void NodeDeclarationBuilder::close_all_panels() {}
 
 /** \} */
 

@@ -761,6 +761,11 @@ inline bool bNodeSocket::is_available() const
   return (this->flag & SOCK_UNAVAIL) == 0;
 }
 
+inline bool bNodeSocket::is_panel_collapsed() const
+{
+  return (this->flag & SOCK_PANEL_COLLAPSED) != 0;
+}
+
 inline bool bNodeSocket::is_visible() const
 {
   return !this->is_hidden() && this->is_available();

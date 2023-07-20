@@ -189,6 +189,7 @@ typedef struct bNodeSocket {
 #ifdef __cplusplus
   bool is_hidden() const;
   bool is_available() const;
+  bool is_panel_collapsed() const;
   bool is_visible() const;
   bool is_multi_input() const;
   bool is_input() const;
@@ -306,6 +307,8 @@ typedef enum eNodeSocketFlag {
    * Only used for geometry nodes. Don't show the socket value in the modifier interface.
    */
   SOCK_HIDE_IN_MODIFIER = (1 << 13),
+  /** The panel containing the socket is collapsed. */
+  SOCK_PANEL_COLLAPSED = (1 << 14),
 } eNodeSocketFlag;
 
 typedef struct bNode {

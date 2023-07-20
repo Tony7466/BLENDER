@@ -339,6 +339,289 @@ float2 node_from_view(const bNode &node, const float2 &co)
   ;
 }
 
+/* Draw UI for options, buttons, and previews. */
+static bool node_update_basis_buttons(
+    const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, int &dy)
+{
+  /* Buttons rect? */
+  const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
+  if (!node_options) {
+    return false;
+  }
+
+  PointerRNA nodeptr;
+  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+
+  /* Get "global" coordinates. */
+  float2 loc = node_to_view(node, float2(0));
+  /* Round the node origin because text contents are always pixel-aligned. */
+  loc.x = round(loc.x);
+  loc.y = round(loc.y);
+
+  dy -= NODE_DYS / 2;
+
+  uiLayout *layout = UI_block_layout(&block,
+                                     UI_LAYOUT_VERTICAL,
+                                     UI_LAYOUT_PANEL,
+                                     loc.x + NODE_DYS,
+                                     dy,
+                                     NODE_WIDTH(node) - NODE_DY,
+                                     0,
+                                     0,
+                                     UI_style_get_dpi());
+
+  if (node.flag & NODE_MUTED) {
+    uiLayoutSetActive(layout, false);
+  }
+
+  uiLayoutSetContextPointer(layout, "node", &nodeptr);
+
+  node.typeinfo->draw_buttons(layout, (bContext *)&C, &nodeptr);
+
+  UI_block_align_end(&block);
+  int buty;
+  UI_block_layout_resolve(&block, nullptr, &buty);
+
+  dy = buty - NODE_DYS / 2;
+  return true;
+}
+
+static bool node_update_basis_socket(const bContext &C,
+                                     bNodeTree &ntree,
+                                     bNode &node,
+                                     bNodeSocket &socket,
+                                     uiBlock &block,
+                                     const int &locx,
+                                     int &locy)
+{
+  if (!socket.is_visible()) {
+    return false;
+  }
+
+  PointerRNA nodeptr, sockptr;
+  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+  RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &socket, &sockptr);
+
+  const eNodeSocketInOut in_out = eNodeSocketInOut(socket.in_out);
+
+  /* Add the half the height of a multi-input socket to cursor Y
+   * to account for the increased height of the taller sockets. */
+  const bool is_multi_input = (in_out == SOCK_IN && socket.flag & SOCK_MULTI_INPUT);
+  const float multi_input_socket_offset = is_multi_input ?
+                                              std::max(socket.runtime->total_inputs - 2, 0) *
+                                                  NODE_MULTI_INPUT_LINK_GAP :
+                                              0.0f;
+  locy -= multi_input_socket_offset * 0.5f;
+
+  uiLayout *layout = UI_block_layout(&block,
+                                     UI_LAYOUT_VERTICAL,
+                                     UI_LAYOUT_PANEL,
+                                     locx + NODE_DYS,
+                                     locy,
+                                     NODE_WIDTH(node) - NODE_DY,
+                                     NODE_DY,
+                                     0,
+                                     UI_style_get_dpi());
+
+  if (node.flag & NODE_MUTED) {
+    uiLayoutSetActive(layout, false);
+  }
+
+  /* Context pointers for current node and socket. */
+  uiLayoutSetContextPointer(layout, "node", &nodeptr);
+  uiLayoutSetContextPointer(layout, "socket", &sockptr);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  /* Alignment based on input/output. */
+  uiLayoutSetAlignment(row, in_out == SOCK_IN ? UI_LAYOUT_ALIGN_LEFT : UI_LAYOUT_ALIGN_RIGHT);
+
+  const char *socket_label = bke::nodeSocketLabel(&socket);
+  const char *socket_translation_context = node_socket_get_translation_context(socket);
+  socket.typeinfo->draw((bContext *)&C,
+                        row,
+                        &sockptr,
+                        &nodeptr,
+                        CTX_IFACE_(socket_translation_context, socket_label));
+
+  node_socket_add_tooltip_in_node_editor(ntree, socket, *row);
+
+  UI_block_align_end(&block);
+  int buty;
+  UI_block_layout_resolve(&block, nullptr, &buty);
+
+  /* Horizontal position for input/output. */
+  const float offsetx = (in_out == SOCK_IN ? 0.0f : NODE_WIDTH(node));
+  /* Round the socket location to stop it from jiggling. */
+  socket.runtime->location = float2(round(locx + offsetx), round(locy - NODE_DYS));
+
+  locy = buty - multi_input_socket_offset * 0.5;
+  return true;
+}
+
+struct FakeDeclaration {
+  int type;            /* 0: panel, 1: input socket, 2: output socket */
+  int panel_size = -1; /* number of subsequent items belonging in this panel */
+  bool panel_collapsed = false;
+};
+const Array<FakeDeclaration> fake_decls = {{2},           /* O> */
+                                           {0, 3, false}, /* P[3] */
+                                           {1},           /*   <I */
+                                           {1},           /*   <I */
+                                           {2},           /*   O> */
+                                           {1},           /* <I */
+                                           {0, 2, true},  /* P[2] */
+                                           {1},           /*   <I */
+                                           {0, 2, false}, /*   P[2] */
+                                           {2},           /*     O> */
+                                           {2}};          /*     O> */
+
+/* Advanced drawing with panels and arbitrary input/output ordering. */
+static void node_update_basis_from_declaration(
+    const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, const int locx, int &locy)
+{
+  BLI_assert(node.declaration() != nullptr);
+  /* TODO use actual declarations once panels and arbitrary socket order are supported */
+  const blender::nodes::NodeDeclaration &decl = *node.declaration();
+
+  const bool has_buttons = node_update_basis_buttons(C, ntree, node, block, locy);
+
+  bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
+  bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
+  bool has_sockets = false;
+  /* Parent panel stack with count of items still to be added. */
+  struct PanelUpdateState {
+    int remaining_items;
+    bool is_collapsed;
+  };
+
+  Stack<PanelUpdateState> panel_states;
+  for (const FakeDeclaration &decl : fake_decls) {
+    bool is_collapsed = false;
+    if (PanelUpdateState *parent_state = panel_states.is_empty() ? nullptr : &panel_states.peek())
+    {
+      /* Adding an item to the parent panel, will be closed when reaching 0. */
+      BLI_assert(parent_state->remaining_items > 0);
+      --parent_state->remaining_items;
+      is_collapsed = parent_state->is_collapsed;
+    }
+
+    switch (decl.type) {
+      case 0: /* Panel */
+        if (!is_collapsed) {
+          locy -= NODE_DY;
+        }
+        /* New top panel is collapsed if self or parent is collapsed. */
+        panel_states.push({decl.panel_size, is_collapsed || decl.panel_collapsed});
+        break;
+
+      case 1: /* Input */
+        if (!current_input) {
+          /* XXX should match the declaration, assert? */
+          break;
+        }
+
+        SET_FLAG_FROM_TEST(current_input->flag, is_collapsed, SOCK_PANEL_COLLAPSED);
+        if (is_collapsed) {
+          current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
+        }
+        else {
+          has_sockets |= node_update_basis_socket(
+              C, ntree, node, *current_input, block, locx, locy);
+        }
+        current_input = current_input->next;
+        break;
+
+      case 2: /* Output */
+        if (!current_output) {
+          /* XXX should match the declaration, assert? */
+          break;
+        }
+
+        SET_FLAG_FROM_TEST(current_output->flag, is_collapsed, SOCK_PANEL_COLLAPSED);
+        if (is_collapsed) {
+          current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
+                                                     round(locy + NODE_DYS));
+        }
+        else {
+          has_sockets |= node_update_basis_socket(
+              C, ntree, node, *current_output, block, locx, locy);
+        }
+        current_output = current_output->next;
+        break;
+    }
+
+    /* Close parent panels that have all items added. */
+    while (!panel_states.is_empty()) {
+      if (panel_states.peek().remaining_items > 0) {
+        /* Incomplete panel, continue adding items. */
+        break;
+      }
+      /* Close panel and continue checking parent. */
+      panel_states.pop();
+    }
+  }
+  if (!panel_states.is_empty()) {
+    /* TODO warning, more panel items declared than added. */
+  }
+
+  /* Little bit of space in end. */
+  if (has_sockets || !has_buttons) {
+    locy -= NODE_DYS / 2;
+  }
+}
+
+/* Conventional drawing in outputs/buttons/inputs order. */
+static void node_update_basis_from_socket_lists(
+    const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, const int locx, int &locy)
+{
+  const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
+  const bool inputs_first = node.inputs.first &&
+                            !(node.outputs.first || (node.flag & NODE_PREVIEW) || node_options);
+
+  /* Add a little bit of padding above the top socket. */
+  if (node.outputs.first || inputs_first) {
+    locy -= NODE_DYS / 2;
+  }
+
+  /* Output sockets. */
+  bool add_output_space = false;
+
+  for (bNodeSocket *socket : node.output_sockets()) {
+    /* Clear flag, conventional drawing does not support panels. */
+    socket->flag &= ~SOCK_PANEL_COLLAPSED;
+
+    if (node_update_basis_socket(C, ntree, node, *socket, block, locx, locy)) {
+      if (socket->next) {
+        locy -= NODE_SOCKDY;
+      }
+      add_output_space = true;
+    }
+  }
+
+  if (add_output_space) {
+    locy -= NODE_DY / 4;
+  }
+
+  node_update_basis_buttons(C, ntree, node, block, locy);
+
+  /* Input sockets. */
+  for (bNodeSocket *socket : node.input_sockets()) {
+    /* Clear flag, conventional drawing does not support panels. */
+    socket->flag &= ~SOCK_PANEL_COLLAPSED;
+
+    if (node_update_basis_socket(C, ntree, node, *socket, block, locx, locy)) {
+      if (socket->next) {
+        locy -= NODE_SOCKDY;
+      }
+    }
+  }
+
+  /* Little bit of space in end. */
+  if (node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) {
+    locy -= NODE_DYS / 2;
+  }
+}
+
 /**
  * Based on settings and sockets in node, set drawing rect info.
  */
@@ -351,10 +634,6 @@ static void node_update_basis(const bContext &C,
   PointerRNA nodeptr;
   RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
 
-  const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
-  const bool inputs_first = node.inputs.first &&
-                            !(node.outputs.first || (node.flag & NODE_PREVIEW) || node_options);
-
   /* Get "global" coordinates. */
   float2 loc = node_to_view(node, float2(0));
   /* Round the node origin because text contents are always pixel-aligned. */
@@ -366,172 +645,11 @@ static void node_update_basis(const bContext &C,
   /* Header. */
   dy -= NODE_DY;
 
-  /* Add a little bit of padding above the top socket. */
-  if (node.outputs.first || inputs_first) {
-    dy -= NODE_DYS / 2;
+  if (node.declaration()) {
+    node_update_basis_from_declaration(C, ntree, node, block, loc.x, dy);
   }
-
-  /* Output sockets. */
-  bool add_output_space = false;
-
-  int buty;
-  for (bNodeSocket *socket : node.output_sockets()) {
-    if (!socket->is_visible()) {
-      continue;
-    }
-
-    PointerRNA sockptr;
-    RNA_pointer_create(&ntree.id, &RNA_NodeSocket, socket, &sockptr);
-
-    uiLayout *layout = UI_block_layout(&block,
-                                       UI_LAYOUT_VERTICAL,
-                                       UI_LAYOUT_PANEL,
-                                       loc.x + NODE_DYS,
-                                       dy,
-                                       NODE_WIDTH(node) - NODE_DY,
-                                       NODE_DY,
-                                       0,
-                                       UI_style_get_dpi());
-
-    if (node.flag & NODE_MUTED) {
-      uiLayoutSetActive(layout, false);
-    }
-
-    /* Context pointers for current node and socket. */
-    uiLayoutSetContextPointer(layout, "node", &nodeptr);
-    uiLayoutSetContextPointer(layout, "socket", &sockptr);
-
-    /* Align output buttons to the right. */
-    uiLayout *row = uiLayoutRow(layout, true);
-    uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-
-    const char *socket_label = bke::nodeSocketLabel(socket);
-    const char *socket_translation_context = node_socket_get_translation_context(*socket);
-    socket->typeinfo->draw((bContext *)&C,
-                           row,
-                           &sockptr,
-                           &nodeptr,
-                           CTX_IFACE_(socket_translation_context, socket_label));
-
-    node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
-
-    UI_block_align_end(&block);
-    UI_block_layout_resolve(&block, nullptr, &buty);
-
-    /* Ensure minimum socket height in case layout is empty. */
-    buty = min_ii(buty, dy - NODE_DY);
-
-    /* Round the socket location to stop it from jiggling. */
-    socket->runtime->location = float2(round(loc.x + NODE_WIDTH(node)), round(dy - NODE_DYS));
-
-    dy = buty;
-    if (socket->next) {
-      dy -= NODE_SOCKDY;
-    }
-
-    add_output_space = true;
-  }
-
-  if (add_output_space) {
-    dy -= NODE_DY / 4;
-  }
-
-  /* Buttons rect? */
-  if (node_options) {
-    dy -= NODE_DYS / 2;
-
-    uiLayout *layout = UI_block_layout(&block,
-                                       UI_LAYOUT_VERTICAL,
-                                       UI_LAYOUT_PANEL,
-                                       loc.x + NODE_DYS,
-                                       dy,
-                                       NODE_WIDTH(node) - NODE_DY,
-                                       0,
-                                       0,
-                                       UI_style_get_dpi());
-
-    if (node.flag & NODE_MUTED) {
-      uiLayoutSetActive(layout, false);
-    }
-
-    uiLayoutSetContextPointer(layout, "node", &nodeptr);
-
-    node.typeinfo->draw_buttons(layout, (bContext *)&C, &nodeptr);
-
-    UI_block_align_end(&block);
-    UI_block_layout_resolve(&block, nullptr, &buty);
-
-    dy = buty - NODE_DYS / 2;
-  }
-
-  /* Input sockets. */
-  for (bNodeSocket *socket : node.input_sockets()) {
-    if (!socket->is_visible()) {
-      continue;
-    }
-
-    PointerRNA sockptr;
-    RNA_pointer_create(&ntree.id, &RNA_NodeSocket, socket, &sockptr);
-
-    /* Add the half the height of a multi-input socket to cursor Y
-     * to account for the increased height of the taller sockets. */
-    float multi_input_socket_offset = 0.0f;
-    if (socket->flag & SOCK_MULTI_INPUT) {
-      if (socket->runtime->total_inputs > 2) {
-        multi_input_socket_offset = (socket->runtime->total_inputs - 2) *
-                                    NODE_MULTI_INPUT_LINK_GAP;
-      }
-    }
-    dy -= multi_input_socket_offset * 0.5f;
-
-    uiLayout *layout = UI_block_layout(&block,
-                                       UI_LAYOUT_VERTICAL,
-                                       UI_LAYOUT_PANEL,
-                                       loc.x + NODE_DYS,
-                                       dy,
-                                       NODE_WIDTH(node) - NODE_DY,
-                                       NODE_DY,
-                                       0,
-                                       UI_style_get_dpi());
-
-    if (node.flag & NODE_MUTED) {
-      uiLayoutSetActive(layout, false);
-    }
-
-    /* Context pointers for current node and socket. */
-    uiLayoutSetContextPointer(layout, "node", &nodeptr);
-    uiLayoutSetContextPointer(layout, "socket", &sockptr);
-
-    uiLayout *row = uiLayoutRow(layout, true);
-
-    const char *socket_label = bke::nodeSocketLabel(socket);
-    const char *socket_translation_context = node_socket_get_translation_context(*socket);
-    socket->typeinfo->draw((bContext *)&C,
-                           row,
-                           &sockptr,
-                           &nodeptr,
-                           CTX_IFACE_(socket_translation_context, socket_label));
-
-    node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
-
-    UI_block_align_end(&block);
-    UI_block_layout_resolve(&block, nullptr, &buty);
-
-    /* Ensure minimum socket height in case layout is empty. */
-    buty = min_ii(buty, dy - NODE_DY);
-
-    /* Round the socket vertical position to stop it from jiggling. */
-    socket->runtime->location = float2(loc.x, round(dy - NODE_DYS));
-
-    dy = buty - multi_input_socket_offset * 0.5;
-    if (socket->next) {
-      dy -= NODE_SOCKDY;
-    }
-  }
-
-  /* Little bit of space in end. */
-  if (node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) {
-    dy -= NODE_DYS / 2;
+  else {
+    node_update_basis_from_socket_lists(C, ntree, node, block, loc.x, dy);
   }
 
   node.runtime->totr.xmin = loc.x;
@@ -736,13 +854,14 @@ static void node_socket_draw_multi_input(const float color[4],
                                          const float height,
                                          const float2 location)
 {
-  /* The other sockets are drawn with the keyframe shader. There, the outline has a base thickness
-   * that can be varied but always scales with the size the socket is drawn at. Using
+  /* The other sockets are drawn with the keyframe shader. There, the outline has a base
+   * thickness that can be varied but always scales with the size the socket is drawn at. Using
    * `UI_SCALE_FAC` has the same effect here. It scales the outline correctly across different
    * screen DPI's and UI scales without being affected by the 'line-width'. */
   const float outline_width = NODE_SOCK_OUTLINE_SCALE * UI_SCALE_FAC;
 
-  /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width. */
+  /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width.
+   */
   const rctf rect = {
       location.x - width + outline_width * 0.5f,
       location.x + width - outline_width * 0.5f,
@@ -1459,7 +1578,7 @@ static void node_draw_sockets(const View2D &v2d,
   /* Socket inputs. */
   int selected_input_len = 0;
   for (const bNodeSocket *sock : node.input_sockets()) {
-    if (!sock->is_visible()) {
+    if (!sock->is_visible() || sock->is_panel_collapsed()) {
       continue;
     }
     if (select_all || (sock->flag & SELECT)) {
@@ -1492,7 +1611,7 @@ static void node_draw_sockets(const View2D &v2d,
   int selected_output_len = 0;
   if (draw_outputs) {
     for (const bNodeSocket *sock : node.output_sockets()) {
-      if (!sock->is_visible()) {
+      if (!sock->is_visible() || sock->is_panel_collapsed()) {
         continue;
       }
       if (select_all || (sock->flag & SELECT)) {
@@ -2001,7 +2120,8 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
     row.text = node_get_execution_time_label(tree_draw_ctx, snode, node);
     if (!row.text.empty()) {
       row.tooltip = TIP_(
-          "The execution time from the node tree's latest evaluation. For frame and group nodes, "
+          "The execution time from the node tree's latest evaluation. For frame and group "
+          "nodes, "
           "the time for all sub-nodes");
       row.icon = ICON_PREVIEW_RANGE;
       rows.append(std::move(row));
@@ -3263,7 +3383,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
   });
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones.
+   */
   for (const int zone_i : zone_draw_order) {
     float zone_color[4];
     UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
