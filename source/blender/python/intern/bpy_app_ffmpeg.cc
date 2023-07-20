@@ -14,11 +14,13 @@
 #include "../generic/py_capi_utils.h"
 
 #ifdef WITH_FFMPEG
+extern "C" {
 #  include <libavcodec/avcodec.h>
 #  include <libavdevice/avdevice.h>
 #  include <libavformat/avformat.h>
 #  include <libavutil/avutil.h>
 #  include <libswscale/swscale.h>
+}
 #endif
 
 static PyTypeObject BlenderAppFFmpegType;
@@ -37,7 +39,7 @@ static PyStructSequence_Field app_ffmpeg_info_fields[] = {
     DEF_FFMPEG_LIB_VERSION(avformat),
     DEF_FFMPEG_LIB_VERSION(avutil),
     DEF_FFMPEG_LIB_VERSION(swscale),
-    {NULL},
+    {nullptr},
 };
 
 #undef DEF_FFMPEG_LIB_VERSION
@@ -59,8 +61,8 @@ static PyObject *make_ffmpeg_info(void)
 #endif
 
   ffmpeg_info = PyStructSequence_New(&BlenderAppFFmpegType);
-  if (ffmpeg_info == NULL) {
-    return NULL;
+  if (ffmpeg_info == nullptr) {
+    return nullptr;
   }
 
 #if 0 /* UNUSED */
@@ -76,7 +78,7 @@ static PyObject *make_ffmpeg_info(void)
     { \
       curversion = lib##_version(); \
       SetObjItem( \
-          PyC_Tuple_Pack_I32(curversion >> 16, (curversion >> 8) % 256, curversion % 256)); \
+          PyC_Tuple_Pack_I32({curversion >> 16, (curversion >> 8) % 256, curversion % 256})); \
       SetObjItem(PyUnicode_FromFormat( \
           "%2d, %2d, %2d", curversion >> 16, (curversion >> 8) % 256, curversion % 256)); \
     } \
@@ -106,7 +108,7 @@ static PyObject *make_ffmpeg_info(void)
 
   if (UNLIKELY(PyErr_Occurred())) {
     Py_DECREF(ffmpeg_info);
-    return NULL;
+    return nullptr;
   }
 
 // #undef SetIntItem
@@ -125,8 +127,8 @@ PyObject *BPY_app_ffmpeg_struct(void)
   ret = make_ffmpeg_info();
 
   /* prevent user from creating new instances */
-  BlenderAppFFmpegType.tp_init = NULL;
-  BlenderAppFFmpegType.tp_new = NULL;
+  BlenderAppFFmpegType.tp_init = nullptr;
+  BlenderAppFFmpegType.tp_new = nullptr;
   /* Without this we can't do `set(sys.modules)` #29635. */
   BlenderAppFFmpegType.tp_hash = (hashfunc)_Py_HashPointer;
 
