@@ -114,7 +114,7 @@ struct KnifeVert {
 };
 
 struct Ref {
-  struct Ref *next, *prev;
+  Ref *next, *prev;
   void *ref;
 };
 
@@ -640,7 +640,7 @@ static void knifetool_draw_angle(const KnifeTool_OpData *kcd,
 
   UnitSettings *unit = &kcd->scene->unit;
   if (unit->system == USER_UNIT_NONE) {
-    SNPRINTF(numstr, "%.*f°", angle_precision, RAD2DEGF(angle));
+    SNPRINTF(numstr, "%.*f" BLI_STR_UTF8_DEGREE_SIGN, angle_precision, RAD2DEGF(angle));
   }
   else {
     BKE_unit_value_as_string(
@@ -3063,8 +3063,8 @@ static void knife_find_line_hits(KnifeTool_OpData *kcd)
   {
 
     /* If we intersect any of the vertices, don't attempt to intersect the edge. */
-    if (BLI_smallhash_lookup(&kfvs, (intptr_t)kfe->v1) ||
-        BLI_smallhash_lookup(&kfvs, (intptr_t)kfe->v2))
+    if (BLI_smallhash_lookup(&kfvs, intptr_t(kfe->v1)) ||
+        BLI_smallhash_lookup(&kfvs, intptr_t(kfe->v2)))
     {
       continue;
     }

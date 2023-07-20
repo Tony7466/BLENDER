@@ -491,8 +491,8 @@ static float butterworth_calculate_blend_value(float *samples,
 }
 
 /**
- * \param samples are expected to start at the first frame of the segment with a buffer of size
- * segment->filter_order at the left.
+ * \param samples: Are expected to start at the first frame of the segment with a buffer of size
+ * `segment->filter_order` at the left.
  */
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
@@ -1049,7 +1049,7 @@ static float animcopy_cfra = 0.0;
 
 /* datatype for use in copy/paste buffer */
 struct tAnimCopybufItem {
-  struct tAnimCopybufItem *next, *prev;
+  tAnimCopybufItem *next, *prev;
 
   ID *id;            /* ID which owns the curve */
   bActionGroup *grp; /* Action Group */

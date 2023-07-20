@@ -32,7 +32,7 @@
 #include "DEG_depsgraph.h"
 
 #include "ED_armature.h"
-#include "ED_curves.h"
+#include "ED_curves.hh"
 
 #include "ED_transverts.h" /* own include */
 
@@ -185,14 +185,14 @@ static void set_mapped_co(void *vuserdata, int index, const float co[3], const f
 
 bool ED_transverts_check_obedit(const Object *obedit)
 {
-  return (ELEM(obedit->type,
-               OB_ARMATURE,
-               OB_LATTICE,
-               OB_MESH,
-               OB_SURF,
-               OB_CURVES_LEGACY,
-               OB_MBALL,
-               OB_CURVES));
+  return ELEM(obedit->type,
+              OB_ARMATURE,
+              OB_LATTICE,
+              OB_MESH,
+              OB_SURF,
+              OB_CURVES_LEGACY,
+              OB_MBALL,
+              OB_CURVES);
 }
 
 void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit, const int mode)
@@ -309,7 +309,7 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
     }
 
     if (mode & TM_CALC_MAPLOC) {
-      struct Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(obedit);
+      Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(obedit);
       if (tvs->transverts && editmesh_eval_cage) {
         BM_mesh_elem_table_ensure(bm, BM_VERT);
         BKE_mesh_foreach_mapped_vert(
@@ -497,7 +497,7 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
   }
   else if (obedit->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(obedit->data);
-    ED_curves_transverts_create(curves_id, tvs);
+    blender::ed::curves::transverts_from_curves_positions_create(curves_id->geometry.wrap(), tvs);
   }
 
   if (!tvs->transverts_tot && tvs->transverts) {
