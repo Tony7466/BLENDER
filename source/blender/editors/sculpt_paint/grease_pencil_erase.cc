@@ -462,6 +462,7 @@ struct EraseOperationExecutor {
     IndexMask strokes_to_remove = IndexMask::from_predicate(
         src.curves_range(), GrainSize(256), memory, [&](const int64_t src_curve) {
           const IndexRange src_curve_points = src_points_by_curve[src_curve];
+          BLI_assert(src_curve_points.size() > 0);
 
           /* If any segment of the stroke intersects the eraser, then remove it. */
           for (const int src_point : src_curve_points.drop_back(1)) {
@@ -493,7 +494,6 @@ struct EraseOperationExecutor {
            * and only if all points of the stroke lie inside of the eraser. So checking if the
            * first point is inside of the eraser should be enough.
            */
-          BLI_assert(src_curve_points.size() > 0);
           return contains_point(screen_space_positions[src_curve_points.first()]);
         });
 
