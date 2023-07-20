@@ -684,17 +684,13 @@ struct EraseOperationExecutor {
     VArray<float> src_opacity = *(
         src_attributes.lookup_or_default<float>(opacity_attr, ATTR_DOMAIN_POINT, 1.0f));
 
-    /* Get opacity of the source points.
-     * Note : we need to store the opacities in a array even if it's a single value because we may
-     * change some of the values.
-     */
+    /* Get opacity of the source points. */
     Array<float> src_new_opacity(src_points_num);
     if (src_opacity.is_single()) {
       src_new_opacity.fill(src_opacity.get_internal_single());
     }
     else {
-      Span<float> src_opacity_span = src_opacity.get_internal_span();
-      array_utils::copy<float>(src_opacity_span, src_new_opacity.as_mutable_span());
+      array_utils::copy<float>(src_opacity.get_internal_span(), src_new_opacity.as_mutable_span());
     }
 
     /* Decrease the opacities. */
@@ -714,33 +710,29 @@ struct EraseOperationExecutor {
       return false;
     }
 
-    /* Compute destination points */
-    const auto is_point_transparent = [&](const int src_point) {
-      return (src_new_opacity[src_point] < opacity_threshold);
-    };
-
+    /* Remove all points that have opacity besides the threshold. */
     Array<bool> src_remove_point(src_points_num);
     threading::parallel_for(src.points_range(), 2048, [&](const IndexRange src_points) {
       for (const int src_point : src_points) {
-        src_remove_point[src_point] = is_point_transparent(src_point);
+        src_remove_point[src_point] = (src_new_opacity[src_point] < opacity_threshold);
       }
     });
-    bool any_point_to_remove = false;
-    for (const bool point_to_remove : src_remove_point) {
-      if (point_to_remove) {
-        any_point_to_remove = true;
-        break;
+    IndexMaskMemory srp_mem{};
+    int total_points_to_remove = 0;
+    for (const bool is_point_to_remove : src_remove_point) {
+      if (is_point_to_remove) {
+        ++total_points_to_remove;
       }
     }
 
     /* If no points needs to be removed, then we can leave the topology as is.
      */
-    if (!any_point_to_remove) {
+    if (total_points_to_remove == 0) {
       dst = std::move(src);
 
       bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
 
-      /* Write the opacity attribute*/
+      /* Write the opacity attribute. */
       SpanAttributeWriter<float> dst_opacity = dst_attributes.lookup_or_add_for_write_span<float>(
           opacity_attr, ATTR_DOMAIN_POINT);
       array_utils::copy(src_new_opacity.as_span(), dst_opacity.span);
@@ -750,18 +742,11 @@ struct EraseOperationExecutor {
       return true;
     }
 
-    /* Topology change. */
+    /* Split the curves where points were removed. */
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
     const int src_curves_num = src.curves_num();
-
-    IndexMaskMemory srp_mem{};
-    const int total_points_removed = IndexMask::from_bools(src_remove_point, srp_mem).size();
-
-    /* Total number of points in the destination :
-     *   - points that are inside the erase are removed.
-     */
-    const int dst_points_num = src_points_num - total_points_removed;
+    const int dst_points_num = src_points_num - total_points_to_remove;
 
     /* Return early if no points left */
     if (dst_points_num == 0) {
@@ -769,10 +754,7 @@ struct EraseOperationExecutor {
       return true;
     }
 
-    /* Set the intersection parameters in the destination domain : a pair of int and float numbers
-     * for which the integer is the index of the corresponding segment in the source curves, and
-     * the float part is the (0,1) factor representing its position in the segment.
-     */
+    /* Compute the changes of point topology in the destination. */
     Array<int> dst_to_src_point(dst_points_num);
     Array<bool> dst_new_first_point(dst_points_num);
     Array<int> src_pivot_point(src_curves_num, -1);
@@ -788,6 +770,10 @@ struct EraseOperationExecutor {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_to_src_point[++dst_point] = src_point;
 
+          /* Compute if the current point may become the first point of a curve in the destination,
+           * while not being the first point of the curve in the source.
+           * This happens when the previous point in the curve was removed.
+           */
           const bool is_new_first_point = curve_was_cut && (src_remove_point[src_point - 1]);
           dst_new_first_point[dst_point] = is_new_first_point;
 
@@ -808,8 +794,7 @@ struct EraseOperationExecutor {
        * have been added or removed. */
       dst_interm_curves_offsets[src_curve + 1] = dst_point + 1;
 
-      /* If a cyclic curve was cut, it is not cyclic anymore
-       */
+      /* If a cyclic curve was cut, it is not cyclic anymore. */
       src_now_cyclic[src_curve] = src_cyclic[src_curve] && !curve_was_cut;
     }
 
@@ -823,10 +808,11 @@ struct EraseOperationExecutor {
           continue;
         }
 
-        /* A cyclic curve was cut, we have to shift points to keep the closing segment.
-         */
+        /* A cyclic curve was cut, we have to shift points to keep the closing segment. */
         const int dst_interm_first = dst_interm_curves_offsets[src_curve];
         const int dst_interm_last = dst_interm_curves_offsets[src_curve + 1];
+
+        /* Shift every array that lies in the destination points domain. */
         std::rotate(dst_to_src_point.begin() + dst_interm_first,
                     dst_to_src_point.begin() + pivot_point,
                     dst_to_src_point.begin() + dst_interm_last);
@@ -836,7 +822,7 @@ struct EraseOperationExecutor {
       }
     });
 
-    /* Compute the destination curve offsets. */
+    /* Compute the changes of curves topology in the destination. */
     Vector<int> dst_curves_offset;
     Vector<int> dst_to_src_curve;
     dst_curves_offset.append(0);
@@ -847,7 +833,6 @@ struct EraseOperationExecutor {
       int length_of_current = 0;
 
       for (int dst_point : dst_points) {
-
         if ((length_of_current > 0) && dst_new_first_point[dst_point]) {
           /* This is the new first point of a curve. */
           dst_curves_offset.append(dst_point);
