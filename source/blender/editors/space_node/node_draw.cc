@@ -1804,8 +1804,6 @@ static void node_draw_panels(const View2D & /*v2d*/,
         runtime.location.y - NODE_DYS,
         runtime.location.y + NODE_DYS,
     };
-    /* Show/hide icons. */
-    const float iconofs = rct.xmax - 0.35f * U.widget_unit;
 
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
 
@@ -1844,7 +1842,7 @@ static void node_draw_panels(const View2D & /*v2d*/,
                           decl.panel_name.c_str(),
                           int(rct.xmin + NODE_MARGIN_X + 0.4f),
                           int(runtime.location.y - NODE_DYS),
-                          iconofs,
+                          short(rct.xmax - rct.xmin - 0.35f * U.widget_unit),
                           short(NODE_DY),
                           nullptr,
                           0,

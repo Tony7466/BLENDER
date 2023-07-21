@@ -111,6 +111,15 @@ typedef struct bNodeTreeInterfacePanel {
    */
   bool find_item(const bNodeTreeInterfaceItem &item) const;
   /**
+   * Get the index of the item in the interface draw list.
+   * \return Index if the item was found or -1 otherwise.
+   */
+  int find_item_index(const bNodeTreeInterfaceItem &item) const;
+  /**
+   * Get the item at the given index of the interface draw list.
+   */
+  const bNodeTreeInterfaceItem *get_item_at_index(int index) const;
+  /**
    * Search for an item and its parent in the interface.
    * \param r_parent: Parent containing the item.
    * \return True if the item was found in any panel.
@@ -155,12 +164,27 @@ typedef struct bNodeTreeInterface {
   void active_item_set(bNodeTreeInterfaceItem *item);
 
   /**
+   * Get the index of the item in the interface draw list.
+   * \return Index if the item was found or -1 otherwise.
+   */
+  int find_item_index(const bNodeTreeInterfaceItem &item) const
+  {
+    return root_panel.find_item_index(item);
+  }
+  /**
    * Search for an item in the interface.
    * \return True if the item was found.
    */
   bool find_item(const bNodeTreeInterfaceItem &item) const
   {
     return root_panel.find_item(item);
+  }
+  /**
+   * Get the item at the given index of the interface draw list.
+   */
+  const bNodeTreeInterfaceItem *get_item_at_index(int index) const
+  {
+    return root_panel.get_item_at_index(index);
   }
   /**
    * Search for an item and its parent in the interface.

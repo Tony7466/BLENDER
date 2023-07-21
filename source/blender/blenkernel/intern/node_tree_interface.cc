@@ -626,6 +626,38 @@ bool bNodeTreeInterfacePanel::find_item(const bNodeTreeInterfaceItem &item) cons
   return is_child;
 }
 
+int bNodeTreeInterfacePanel::find_item_index(const bNodeTreeInterfaceItem &item) const
+{
+  int index = 0;
+  bool found = false;
+  /* Have to capture item address here instead of just a reference,
+   * otherwise pointer comparison will not work. */
+  foreach_item([&item, &index, &found](const bNodeTreeInterfaceItem &titem) {
+    if (&titem == &item) {
+      found = true;
+      return false;
+    }
+    ++index;
+    return true;
+  });
+  return found ? index : -1;
+}
+
+const bNodeTreeInterfaceItem *bNodeTreeInterfacePanel::get_item_at_index(int index) const
+{
+  int i = 0;
+  const bNodeTreeInterfaceItem *result = nullptr;
+  foreach_item([&i, index, &result](const bNodeTreeInterfaceItem &item) {
+    if (i == index) {
+      result = &item;
+      return false;
+    }
+    ++i;
+    return true;
+  });
+  return result;
+}
+
 bool bNodeTreeInterfacePanel::find_item_parent(const bNodeTreeInterfaceItem &item,
                                                bNodeTreeInterfacePanel *&r_parent)
 {
