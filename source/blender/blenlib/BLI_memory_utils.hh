@@ -47,6 +47,11 @@ template<typename T> void default_construct_n(T *ptr, int64_t n)
   std::uninitialized_default_construct_n(ptr, n);
 }
 
+template<typename T> void default_initialized_n(T *ptr, int64_t n)
+{
+  std::uninitialized_value_construct_n(ptr, n);
+}
+
 template<typename T> void initialized_copy_n(const T *src, int64_t n, T *dst)
 {
   std::copy_n(src, n, dst);

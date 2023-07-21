@@ -9,9 +9,12 @@
  */
 
 #include "BLI_cpp_type.hh"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
 namespace blender::cpp_type_util {
+
+constexpr bool simd_try = !true;
 
 template<typename T> void default_construct_cb(void *ptr)
 {
@@ -22,7 +25,29 @@ template<typename T> void default_construct_indices_cb(void *ptr, const IndexMas
   if constexpr (std::is_trivially_constructible_v<T>) {
     return;
   }
-  mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
+
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::default_initialized_n(static_cast<T *>(ptr) + base_indices.first(),
+                                       base_indices.size());
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          new (static_cast<T *>(ptr) + indices[i]) T;
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
+  }
 }
 
 template<typename T> void value_initialize_cb(void *ptr)
@@ -32,7 +57,28 @@ template<typename T> void value_initialize_cb(void *ptr)
 
 template<typename T> void value_initialize_indices_cb(void *ptr, const IndexMask &mask)
 {
-  mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T(); });
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::default_construct_n(static_cast<T *>(ptr) + base_indices.first(),
+                                     base_indices.size());
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          new (static_cast<T *>(ptr) + indices[i]) T();
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T(); });
+  }
 }
 
 template<typename T> void destruct_cb(void *ptr)
@@ -45,7 +91,28 @@ template<typename T> void destruct_indices_cb(void *ptr, const IndexMask &mask)
     return;
   }
   T *ptr_ = static_cast<T *>(ptr);
-  mask.foreach_index_optimized<int64_t>([&](int64_t i) { ptr_[i].~T(); });
+
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::destruct_n(ptr_ + base_indices.first(), base_indices.size());
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          ptr_[indices[i]].~T();
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { ptr_[i].~T(); });
+  }
 }
 
 template<typename T> void copy_assign_cb(const void *src, void *dst)
@@ -57,7 +124,28 @@ template<typename T> void copy_assign_indices_cb(const void *src, void *dst, con
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index_optimized<int64_t>([&](int64_t i) { dst_[i] = src_[i]; });
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::initialized_copy_n(
+            src_ + base_indices.first(), base_indices.size(), dst_ + base_indices.first());
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          dst_[indices[i]] = src_[indices[i]];
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { dst_[i] = src_[i]; });
+  }
 }
 template<typename T>
 void copy_assign_compressed_cb(const void *src, void *dst, const IndexMask &mask)
@@ -65,8 +153,29 @@ void copy_assign_compressed_cb(const void *src, void *dst, const IndexMask &mask
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index_optimized<int64_t>(
-      [&](const int64_t i, const int64_t pos) { dst_[pos] = src_[i]; });
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices, const int64_t start_segment_pos) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::initialized_copy_n(
+            src_ + base_indices.first(), base_indices.size(), dst_ + start_segment_pos);
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          dst_[start_segment_pos + i] = src_[indices[i]];
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst_[pos] = src_[i]; });
+  }
 }
 
 template<typename T> void copy_construct_cb(const void *src, void *dst)
@@ -79,7 +188,28 @@ void copy_construct_indices_cb(const void *src, void *dst, const IndexMask &mask
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (dst_ + i) T(src_[i]); });
+  std::stringstream name;
+  if constexpr (simd_try) {
+    name << __func__ << " simd;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_segment([&](const IndexMaskSegment indices) {
+      const Span<int16_t> base_indices = indices.base_span();
+      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
+        blender::uninitialized_copy_n(
+            src_ + base_indices.first(), base_indices.size(), dst_ + base_indices.first());
+      }
+      else {
+        for (const int64_t i : indices.index_range()) {
+          new (dst_ + indices[i]) T(src_[indices[i]]);
+        }
+      }
+    });
+  }
+  else {
+    name << __func__ << " default;";
+    SCOPED_TIMER_AVERAGED(name.str());
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (dst_ + i) T(src_[i]); });
+  }
 }
 template<typename T>
 void copy_construct_compressed_cb(const void *src, void *dst, const IndexMask &mask)
