@@ -1750,8 +1750,23 @@ class _defs_paint_grease_pencil:
             if not brush:
                 return
             layout.prop(brush.gpencil_settings, "eraser_mode", expand=True)
+
             if brush.gpencil_settings.eraser_mode == "HARD":
                 layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
+            
+            if brush.gpencil_settings.eraser_mode == "SOFT":
+                from bl_ui.properties_paint_common import UnifiedPaintPanel
+                UnifiedPaintPanel.prop_unified(
+                    layout,
+                    context,
+                    brush,
+                    "strength",
+                    pressure_name="use_pressure_strength",
+                    unified_name="use_unified_strength",
+                    slider=True,
+                    header=True,
+                )
+            
             layout.prop(brush.gpencil_settings, "use_active_layer_only")
         return dict(
             idname="builtin_brush.Erase",
