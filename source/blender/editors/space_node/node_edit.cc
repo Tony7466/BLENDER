@@ -1124,9 +1124,9 @@ void node_set_hidden_sockets(bNode *node, int set)
   }
 }
 
-bool node_is_previewable(const bNode &node)
+bool node_is_previewable(const bNodeTree &ntree, const bNode &node)
 {
-  if (node.owner_tree().type == NTREE_SHADER) {
+  if (ntree.type == NTREE_SHADER) {
     return !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
              node.type == SH_NODE_OUTPUT_MATERIAL);
   }
@@ -1577,7 +1577,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*node)) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1597,7 +1597,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*node)) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
