@@ -12,7 +12,7 @@ set(INC_SYS
 )
 
 set(SRC
-  bmesh_py_api.c
+  bmesh_py_api.cc
   bmesh_py_geometry.c
   bmesh_py_ops.c
   bmesh_py_ops_call.c
