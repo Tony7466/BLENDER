@@ -19,7 +19,8 @@ class CustomHydraRenderEngine(HydraRenderEngine):
     def register(cls):
         super().register()
 
-        bpy_hydra.register_plugins(["/path/to/plugin")])
+        import pxr
+        pxr.Plug.Registry().RegisterPlugins(["/path/to/plugin")])
 
     def get_sync_settings(self, engine_type):
         return {
@@ -37,7 +38,6 @@ class CustomHydraRenderEngine(HydraRenderEngine):
 __all__ = (
     "HydraRenderEngine",
     "export_mtlx",
-    "register_plugins",
 )
 
 import os
@@ -46,8 +46,6 @@ from pathlib import Path
 
 import bpy
 import _bpy_hydra
-
-from _bpy_hydra import register_plugins
 
 
 class HydraRenderEngine(bpy.types.RenderEngine):

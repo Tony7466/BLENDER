@@ -25,40 +25,6 @@
 
 namespace blender::render::hydra {
 
-static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
-{
-  PyObject *pyplugin_dirs;
-  if (!PyArg_ParseTuple(args, "O", &pyplugin_dirs)) {
-    Py_RETURN_NONE;
-  }
-
-  std::vector<std::string> plugin_dirs;
-  PyObject *pyiter, *pyitem;
-
-  pyiter = PyObject_GetIter(pyplugin_dirs);
-  if (pyiter) {
-    while ((pyitem = PyIter_Next(pyiter))) {
-      plugin_dirs.push_back(PyUnicode_AsUTF8(pyitem));
-      Py_DECREF(pyitem);
-    }
-    Py_DECREF(pyiter);
-  }
-
-  pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
-  registry.RegisterPlugins(plugin_dirs);
-
-  /* logging */
-  std::stringstream ss;
-  ss << "plugins=[";
-  for (auto &s : plugin_dirs) {
-    ss << s << ", ";
-  }
-  ss << "]";
-  CLOG_INFO(LOG_RENDER_HYDRA, 0, "Register %s", ss.str().c_str());
-
-  Py_RETURN_NONE;
-}
-
 static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyengine;
@@ -230,8 +196,6 @@ static PyObject *cache_or_get_image_file_func(PyObject * /*self*/, PyObject *arg
 }
 
 static PyMethodDef methods[] = {
-    {"register_plugins", register_plugins_func, METH_VARARGS, ""},
-
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},
     {"engine_update", engine_update_func, METH_VARARGS, ""},
