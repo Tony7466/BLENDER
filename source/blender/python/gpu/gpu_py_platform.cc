@@ -30,7 +30,7 @@ PyDoc_STRVAR(pygpu_platform_vendor_get_doc,
              "\n"
              "   :return: Vendor name.\n"
              "   :rtype: str\n");
-static PyObject *pygpu_platform_vendor_get(PyObject *UNUSED(self))
+static PyObject *pygpu_platform_vendor_get(PyObject * /*self*/)
 {
   return PyUnicode_FromString(GPU_platform_vendor());
 }
@@ -42,7 +42,7 @@ PyDoc_STRVAR(pygpu_platform_renderer_get_doc,
              "\n"
              "   :return: GPU name.\n"
              "   :rtype: str\n");
-static PyObject *pygpu_platform_renderer_get(PyObject *UNUSED(self))
+static PyObject *pygpu_platform_renderer_get(PyObject * /*self*/)
 {
   return PyUnicode_FromString(GPU_platform_renderer());
 }
@@ -54,7 +54,7 @@ PyDoc_STRVAR(pygpu_platform_version_get_doc,
              "\n"
              "   :return: Driver version.\n"
              "   :rtype: str\n");
-static PyObject *pygpu_platform_version_get(PyObject *UNUSED(self))
+static PyObject *pygpu_platform_version_get(PyObject * /*self*/)
 {
   return PyUnicode_FromString(GPU_platform_version());
 }
@@ -67,7 +67,7 @@ PyDoc_STRVAR(
     "\n"
     "   :return: Device type ('APPLE', 'NVIDIA', 'AMD', 'INTEL', 'SOFTWARE', 'UNKNOWN').\n"
     "   :rtype: str\n");
-static PyObject *pygpu_platform_device_type_get(PyObject *UNUSED(self))
+static PyObject *pygpu_platform_device_type_get(PyObject * /*self*/)
 {
   if (GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_ANY, GPU_DRIVER_ANY)) {
     return PyUnicode_FromString("APPLE");
@@ -94,7 +94,7 @@ PyDoc_STRVAR(pygpu_platform_backend_type_get_doc,
              "\n"
              "   :return: Backend type ('OPENGL', 'VULKAN', 'METAL', 'NONE', 'UNKNOWN').\n"
              "   :rtype: str\n");
-static PyObject *pygpu_platform_backend_type_get(PyObject *UNUSED(self))
+static PyObject *pygpu_platform_backend_type_get(PyObject * /*self*/)
 {
   switch (GPU_backend_get_type()) {
     case GPU_BACKEND_VULKAN:
@@ -138,7 +138,7 @@ static PyMethodDef pygpu_platform__tp_methods[] = {
      (PyCFunction)pygpu_platform_backend_type_get,
      METH_NOARGS,
      pygpu_platform_backend_type_get_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(pygpu_platform__tp_doc, "This module provides access to GPU Platform definitions.");
@@ -148,10 +148,10 @@ static PyModuleDef pygpu_platform_module_def = {
     /*m_doc*/ pygpu_platform__tp_doc,
     /*m_size*/ 0,
     /*m_methods*/ pygpu_platform__tp_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *bpygpu_platform_init(void)
