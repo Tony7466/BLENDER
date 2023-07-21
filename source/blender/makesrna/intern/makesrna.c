@@ -4567,7 +4567,7 @@ typedef struct RNAProcessItem {
 
 static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_rna.c", NULL, RNA_def_rna},
-    {"rna_ID.c", NULL, RNA_def_ID},
+    {"rna_ID.cc", NULL, RNA_def_ID},
     {"rna_texture.cc", "rna_texture_api.cc", RNA_def_texture},
     {"rna_action.cc", "rna_action_api.cc", RNA_def_action},
     {"rna_animation.cc", "rna_animation_api.cc", RNA_def_animation},
@@ -4748,10 +4748,10 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
     }
   }
 
-  if (filename && STREQ(filename, "rna_ID.c")) {
+  if (filename && STREQ(filename, "rna_ID.cc")) {
     /* this is ugly, but we cannot have c files compiled for both
      * makesrna and blender with some build systems at the moment */
-    fprintf(f, "#include \"rna_define.c\"\n\n");
+    fprintf(f, "#include \"rna_define.cc\"\n\n");
 
     rna_generate_blender(brna, f);
   }
