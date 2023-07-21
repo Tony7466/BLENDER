@@ -1438,7 +1438,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   if (data.success == MOD_SDEF_BIND_RESULT_MEM_ERR) {
 
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n Out of memory",
+                "Layer: %s Frame: %u Stroke: %u \n Out of memory",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -1446,7 +1446,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_NONMANY_ERR) {
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n Target has edges with more than two polygons",
+                "Layer: %s Frame: %u Stroke: %u \n Target has edges with more than two polygons",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -1454,7 +1454,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_CONCAVE_ERR) {
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n Target contains concave polygons",
+                "Layer: %s Frame: %u Stroke: %u \n Target contains concave polygons",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -1462,7 +1462,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   }
   else if (data.success == MOD_SDEF_BIND_RESULT_OVERLAP_ERR) {
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n Target contains overlapping vertices",
+                "Layer: %s Frame: %u Stroke: %u \n Target contains overlapping vertices",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -1473,7 +1473,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
      * Though it shouldn't really matter all that much,
      * because this is very unlikely to occur */
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n Target contains invalid polygons",
+                "Layer: %s Frame: %u Stroke: %u \n Target contains invalid polygons",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -1481,7 +1481,7 @@ static bool surfacedeformBind_stroke(uint stroke_idx,
   else if (current_stroke->stroke_verts_num == 0 || !current_stroke->verts) {
     data.success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
     BLI_sprintf(error_label,
-                "Layer:%s Frame:%u Stroke:&u \n No vertices were bound",
+                "Layer: %s Frame: %u Stroke: %u \n No vertices were bound",
                 smd_orig->layers->layer_info,
                 framenum,
                 stroke_idx);
@@ -2038,7 +2038,7 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
   }
 
   if (md_eval->error) {
-    BKE_report(op->reports, RPT_ERROR, &md_eval->error);  // report the error
+    BKE_report(op->reports, RPT_ERROR, md_eval->error);  // report the error
   }
   
   smd_orig->flags &= ~GP_MOD_SDEF_DO_BIND;
