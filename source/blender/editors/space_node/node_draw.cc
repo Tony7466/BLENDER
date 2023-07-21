@@ -458,54 +458,33 @@ static bool node_update_basis_socket(const bContext &C,
   return true;
 }
 
-struct FakeDeclaration {
-  int type;            /* 0: panel, 1: input socket, 2: output socket */
-  int panel_size = -1; /* Panel: number of subsequent items belonging in this panel */
-  std::string panel_name = "";
-  bool socket_align_opposite = false; /* Sockets: try to align with the opposite side */
-};
-const Array<FakeDeclaration> fake_decls = {{2},               /* O> */
-                                           {0, 3, "Panel 1"}, /* P[3] */
-                                           {1},               /*   <I */
-                                           {1},               /*   <I */
-                                           {2, -1, "", true}, /*   <I O>, aligned with above */
-                                           {1},               /* <I */
-                                           {0, 2, "Panel 2"}, /* P[2] */
-                                           {1},               /*   <I */
-                                           {0, 2, "Panel 3"}, /*   P[2] */
-                                           {2},               /*     O> */
-                                           {2}};              /*     O> */
-
-Array<bNodePanelState> fake_state = {{0, 0}, {1, 0}, {2, 0}};
-Array<bke::bNodePanelRuntime> fake_runtime(3);
-
 /* Advanced drawing with panels and arbitrary input/output ordering. */
 static void node_update_basis_from_declaration(
     const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, const int locx, int &locy)
 {
-  BLI_assert(node.declaration() != nullptr);
-  /* TODO use actual declarations once panels and arbitrary socket order are supported */
-  const blender::nodes::NodeDeclaration &decl = *node.declaration();
+  namespace nodes = blender::nodes;
 
+  BLI_assert(node.declaration() != nullptr);
+  //  BLI_assert(node.num_panel_states == node.declaration().num_panels);
+  BLI_assert(node.runtime->panels.size() == node.num_panel_states);
+
+  const nodes::NodeDeclaration &decl = *node.declaration();
   const bool has_buttons = node_update_basis_buttons(C, ntree, node, block, locy);
 
   bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
-  bNodePanelState *current_panel_state = fake_state.begin();
-  bke::bNodePanelRuntime *current_panel_runtime = fake_runtime.begin();
+  bNodePanelState *current_panel_state = node.panel_states_array;
+  bke::bNodePanelRuntime *current_panel_runtime = node.runtime->panels.begin();
   bool has_sockets = false;
+
   /* Parent panel stack with count of items still to be added. */
   struct PanelUpdate {
     int remaining_items;
     bool is_collapsed;
   };
 
-  /* XXX enable assert when using actual declarations. */
-  //  BLI_assert(fake_decls.size()== node.num_panel_states);
-  //  BLI_assert(node.num_panel_states == node.runtime->panels.size());
-
   Stack<PanelUpdate> panel_updates;
-  for (const FakeDeclaration &decl : fake_decls) {
+  for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
     bool is_parent_collapsed = false;
     if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
       /* Adding an item to the parent panel, will be popped when reaching 0. */
@@ -514,63 +493,63 @@ static void node_update_basis_from_declaration(
       is_parent_collapsed = parent_update->is_collapsed;
     }
 
-    switch (decl.type) {
-      case 0: /* Panel */ {
-        BLI_assert(fake_state.as_span().contains_ptr(current_panel_state));
-        BLI_assert(fake_runtime.as_span().contains_ptr(current_panel_runtime));
+    if (nodes::PanelDeclaration *panel_decl = dynamic_cast<nodes::PanelDeclaration *>(
+            item_decl.get())) {
+      BLI_assert(node.panel_states().contains_ptr(current_panel_state));
+      BLI_assert(node.runtime->panels.as_span().contains_ptr(current_panel_runtime));
 
-        if (!is_parent_collapsed) {
-          locy -= NODE_DY;
-        }
-
-        SET_FLAG_FROM_TEST(
-            current_panel_state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
-        /* New top panel is collapsed if self or parent is collapsed. */
-        const bool is_collapsed = is_parent_collapsed || current_panel_state->is_collapsed();
-        panel_updates.push({decl.panel_size, is_collapsed});
-
-        /* Round the socket location to stop it from jiggling. */
-        current_panel_runtime->location = float2(locx, round(locy + NODE_DYS));
-        ++current_panel_state;
-        ++current_panel_runtime;
-        break;
+      if (!is_parent_collapsed) {
+        locy -= NODE_DY;
       }
 
-      case 1: /* Input */ {
-        if (!current_input) {
-          /* XXX should match the declaration, assert? */
+      SET_FLAG_FROM_TEST(
+          current_panel_state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
+      /* New top panel is collapsed if self or parent is collapsed. */
+      const bool is_collapsed = is_parent_collapsed || current_panel_state->is_collapsed();
+      panel_updates.push({panel_decl->num_items, is_collapsed});
+
+      /* Round the socket location to stop it from jiggling. */
+      current_panel_runtime->location = float2(locx, round(locy + NODE_DYS));
+      ++current_panel_state;
+      ++current_panel_runtime;
+    }
+    else if (nodes::SocketDeclaration *socket_decl = dynamic_cast<nodes::SocketDeclaration *>(
+                 item_decl.get()))
+    {
+      switch (socket_decl->in_out) {
+        case SOCK_IN:
+          if (!current_input) {
+            /* XXX should match the declaration, assert? */
+            break;
+          }
+
+          SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+          if (is_parent_collapsed) {
+            current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
+          }
+          else {
+            has_sockets |= node_update_basis_socket(
+                C, ntree, node, *current_input, block, locx, locy);
+          }
+          current_input = current_input->next;
           break;
-        }
+        case SOCK_OUT:
+          if (!current_output) {
+            /* XXX should match the declaration, assert? */
+            break;
+          }
 
-        SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-        if (is_parent_collapsed) {
-          current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
-        }
-        else {
-          has_sockets |= node_update_basis_socket(
-              C, ntree, node, *current_input, block, locx, locy);
-        }
-        current_input = current_input->next;
-        break;
-      }
-
-      case 2: /* Output */ {
-        if (!current_output) {
-          /* XXX should match the declaration, assert? */
+          SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+          if (is_parent_collapsed) {
+            current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
+                                                       round(locy + NODE_DYS));
+          }
+          else {
+            has_sockets |= node_update_basis_socket(
+                C, ntree, node, *current_output, block, locx, locy);
+          }
+          current_output = current_output->next;
           break;
-        }
-
-        SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-        if (is_parent_collapsed) {
-          current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
-                                                     round(locy + NODE_DYS));
-        }
-        else {
-          has_sockets |= node_update_basis_socket(
-              C, ntree, node, *current_output, block, locx, locy);
-        }
-        current_output = current_output->next;
-        break;
       }
     }
 
@@ -1778,25 +1757,31 @@ static void node_draw_panels(const View2D & /*v2d*/,
                              const bNode &node,
                              uiBlock &block)
 {
+  namespace nodes = blender::nodes;
+
   BLI_assert(node.declaration() != nullptr);
   //  BLI_assert(node.panel_states().size() == node.declaration().num_panels);
   BLI_assert(node.runtime->panels.size() == node.panel_states().size());
 
+  const nodes::NodeDeclaration &decl = *node.declaration();
   const rctf &rct = node.runtime->totr;
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
   int panel_i = 0;
-  for (const FakeDeclaration &decl : fake_decls) {
-    if (decl.type != 0) {
+  for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
+    const nodes::PanelDeclaration *panel_decl = dynamic_cast<nodes::PanelDeclaration *>(
+        item_decl.get());
+    if (panel_decl == nullptr) {
       /* Not a panel. */
       continue;
     }
-    bNodePanelState &state = fake_state[panel_i];
+
+    const bNodePanelState &state = node.panel_states()[panel_i];
     /* Don't draw hidden panels. */
     if (state.is_parent_collapsed()) {
       continue;
     }
-    const bke::bNodePanelRuntime &runtime = fake_runtime[panel_i];
+    const bke::bNodePanelRuntime &runtime = node.runtime->panels[panel_i];
 
     const rctf rect = {
         rct.xmin,
@@ -1839,7 +1824,7 @@ static void node_draw_panels(const View2D & /*v2d*/,
     uiBut *but = uiDefBut(&block,
                           UI_BTYPE_LABEL,
                           0,
-                          decl.panel_name.c_str(),
+                          panel_decl->name.c_str(),
                           int(rct.xmin + NODE_MARGIN_X + 0.4f),
                           int(runtime.location.y - NODE_DYS),
                           short(rct.xmax - rct.xmin - 0.35f * U.widget_unit),
@@ -1869,7 +1854,8 @@ static void node_draw_panels(const View2D & /*v2d*/,
                        0.0f,
                        0.0f,
                        "");
-    UI_but_func_set(but, node_panel_toggle_button_cb, &state, &ntree);
+    UI_but_func_set(
+        but, node_panel_toggle_button_cb, const_cast<bNodePanelState *>(&state), &ntree);
 
     UI_block_emboss_set(&block, UI_EMBOSS);
 

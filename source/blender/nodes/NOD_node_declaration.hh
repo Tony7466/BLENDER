@@ -487,6 +487,7 @@ class PanelDeclaration : public ItemDeclaration {
   std::string description;
   std::string translation_context;
   bool default_collapsed = false;
+  int num_items = 0;
 
  private:
   friend NodeDeclarationBuilder;
