@@ -894,7 +894,7 @@ struct EraseOperationExecutor {
     for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
     {
-      bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
+      bke::attribute_math::gather(attribute.src, dst_to_src_point.as_span(), attribute.dst.span);
       attribute.dst.finish();
     }
 
