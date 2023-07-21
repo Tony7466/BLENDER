@@ -72,6 +72,7 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
+  intern/bake_geometry_nodes.cc
   intern/blender.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc

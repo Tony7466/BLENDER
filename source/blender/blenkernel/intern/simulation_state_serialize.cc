@@ -815,15 +815,15 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
     io_zone->append_int("state_id", zone_id.nested_node_id);
 
     auto io_state_items = io_zone->append_array("state_items");
-    for (const MapItem<int, std::unique_ptr<SimulationStateItem>> &state_item_with_id :
+    for (const MapItem<int, std::unique_ptr<BakeItem>> &state_item_with_id :
          zone_state.item_by_identifier.items())
     {
       auto io_state_item = io_state_items->append_dict();
 
       io_state_item->append_int("id", state_item_with_id.key);
 
-      if (const GeometrySimulationStateItem *geometry_state_item =
-              dynamic_cast<const GeometrySimulationStateItem *>(state_item_with_id.value.get()))
+      if (const GeometryBakeItem *geometry_state_item = dynamic_cast<const GeometryBakeItem *>(
+              state_item_with_id.value.get()))
       {
         io_state_item->append_str("type", "GEOMETRY");
 
@@ -831,15 +831,14 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
         auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing);
         io_state_item->append("data", io_geometry);
       }
-      else if (const AttributeSimulationStateItem *attribute_state_item =
-                   dynamic_cast<const AttributeSimulationStateItem *>(
-                       state_item_with_id.value.get()))
+      else if (const AttributeBakeItem *attribute_state_item =
+                   dynamic_cast<const AttributeBakeItem *>(state_item_with_id.value.get()))
       {
         io_state_item->append_str("type", "ATTRIBUTE");
         io_state_item->append_str("name", attribute_state_item->name());
       }
-      else if (const StringSimulationStateItem *string_state_item =
-                   dynamic_cast<const StringSimulationStateItem *>(state_item_with_id.value.get()))
+      else if (const StringBakeItem *string_state_item = dynamic_cast<const StringBakeItem *>(
+                   state_item_with_id.value.get()))
       {
         io_state_item->append_str("type", "STRING");
         const StringRefNull str = string_state_item->value();
@@ -853,9 +852,8 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                 write_bdata_raw_bytes(bdata_writer, str.data(), str.size()));
         }
       }
-      else if (const PrimitiveSimulationStateItem *primitive_state_item =
-                   dynamic_cast<const PrimitiveSimulationStateItem *>(
-                       state_item_with_id.value.get()))
+      else if (const PrimitiveBakeItem *primitive_state_item =
+                   dynamic_cast<const PrimitiveBakeItem *>(state_item_with_id.value.get()))
       {
         const eCustomDataType data_type = cpp_type_to_custom_data_type(
             primitive_state_item->type());
@@ -1050,15 +1048,14 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
       if (!state_item_type) {
         continue;
       }
-      std::unique_ptr<SimulationStateItem> new_state_item;
+      std::unique_ptr<BakeItem> new_state_item;
       if (*state_item_type == StringRef("GEOMETRY")) {
         const DictionaryValue *io_geometry = io_state_item->lookup_dict("data");
         if (!io_geometry) {
           continue;
         }
         GeometrySet geometry = load_geometry(*io_geometry, bdata_reader, bdata_sharing);
-        new_state_item = std::make_unique<bke::sim::GeometrySimulationStateItem>(
-            std::move(geometry));
+        new_state_item = std::make_unique<GeometryBakeItem>(std::move(geometry));
       }
       else if (*state_item_type == StringRef("ATTRIBUTE")) {
         const DictionaryValue *io_attribute = io_state_item;
@@ -1069,7 +1066,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
         if (!name) {
           continue;
         }
-        new_state_item = std::make_unique<AttributeSimulationStateItem>(std::move(*name));
+        new_state_item = std::make_unique<AttributeBakeItem>(std::move(*name));
       }
       else if (*state_item_type == StringRef("STRING")) {
         const std::shared_ptr<io::serialize::Value> *io_data = io_state_item->lookup("data");
@@ -1078,8 +1075,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
         }
         if (io_data->get()->type() == io::serialize::eValueType::String) {
           const io::serialize::StringValue &io_string = *io_data->get()->as_string_value();
-          new_state_item = std::make_unique<bke::sim::StringSimulationStateItem>(
-              io_string.value());
+          new_state_item = std::make_unique<StringBakeItem>(io_string.value());
         }
         else if (const io::serialize::DictionaryValue *io_string =
                      io_data->get()->as_dictionary_value()) {
@@ -1092,7 +1088,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
           if (!read_bdata_raw_bytes(bdata_reader, *io_string, *size, str.data())) {
             continue;
           }
-          new_state_item = std::make_unique<bke::sim::StringSimulationStateItem>(std::move(str));
+          new_state_item = std::make_unique<StringBakeItem>(std::move(str));
         }
       }
       else {
@@ -1109,7 +1105,7 @@ void deserialize_modifier_simulation_state(const bNodeTree &ntree,
             continue;
           }
           BLI_SCOPED_DEFER([&]() { cpp_type.destruct(buffer); });
-          new_state_item = std::make_unique<PrimitiveSimulationStateItem>(cpp_type, buffer);
+          new_state_item = std::make_unique<PrimitiveBakeItem>(cpp_type, buffer);
         }
       }
       BLI_assert(new_state_item);

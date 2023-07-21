@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BKE_bake_geometry_nodes.hh"
 #include "BKE_geometry_set.hh"
 
 #include "BLI_map.hh"
@@ -16,69 +17,6 @@ namespace blender::bke::sim {
 class BDataSharing;
 class ModifierSimulationCache;
 
-class SimulationStateItem {
- public:
-  virtual ~SimulationStateItem() = default;
-};
-
-class GeometrySimulationStateItem : public SimulationStateItem {
- public:
-  GeometrySimulationStateItem(GeometrySet geometry);
-  GeometrySet geometry;
-};
-
-/**
- * References a field input/output that becomes an attribute as part of the simulation state.
- * The attribute is actually stored in a #GeometrySimulationStateItem, so this just references
- * the attribute's name.
- */
-class AttributeSimulationStateItem : public SimulationStateItem {
- private:
-  std::string name_;
-
- public:
-  AttributeSimulationStateItem(std::string name) : name_(std::move(name)) {}
-
-  StringRefNull name() const
-  {
-    return name_;
-  }
-};
-
-/** Storage for a single value of a trivial type like `float`, `int`, etc. */
-class PrimitiveSimulationStateItem : public SimulationStateItem {
- private:
-  const CPPType &type_;
-  void *value_;
-
- public:
-  PrimitiveSimulationStateItem(const CPPType &type, const void *value);
-  ~PrimitiveSimulationStateItem();
-
-  const void *value() const
-  {
-    return value_;
-  }
-
-  const CPPType &type() const
-  {
-    return type_;
-  }
-};
-
-class StringSimulationStateItem : public SimulationStateItem {
- private:
-  std::string value_;
-
- public:
-  StringSimulationStateItem(std::string value);
-
-  StringRefNull value() const
-  {
-    return value_;
-  }
-};
-
 /**
  * Storage of values for a single simulation input and output node pair.
  * Used as a cache to allow random access in time, and as an intermediate form before data is
@@ -86,7 +24,7 @@ class StringSimulationStateItem : public SimulationStateItem {
  */
 class SimulationZoneState {
  public:
-  Map<int, std::unique_ptr<SimulationStateItem>> item_by_identifier;
+  Map<int, std::unique_ptr<BakeItem>> item_by_identifier;
 };
 
 /** Identifies a simulation zone (input and output node pair) used by a modifier. */
