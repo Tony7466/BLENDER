@@ -1,9 +1,18 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
+# This suppresses the warning "This file includes at least one deprecated or antiquated
+# header which may be removed without further notice at a future date", which is caused
+# by the USD library including <ext/hash_set> on Linux. This has been reported at:
+# https://github.com/PixarAnimationStudios/USD/issues/1057.
+if(UNIX AND NOT APPLE)
+  add_definitions(-D_GLIBCXX_PERMIT_BACKWARD_HASH)
+endif()
 if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()
+add_definitions(-DBOOST_ALL_NO_LIB)
 
 # Precompiled Linux libs are made with GCC, and USD uses some extensions
 # which lead to an incompatible ABI for Clang. Using those extensions with
@@ -12,7 +21,6 @@ if(UNIX AND NOT APPLE)
   if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     if(EXISTS ${LIBDIR})
       add_definitions(-DARCH_HAS_GNU_STL_EXTENSIONS)
-      add_cxx_flag("-Wno-deprecated")
     endif()
   endif()
 endif()
@@ -20,15 +28,11 @@ endif()
 # USD headers use deprecated TBB headers, silence warning.
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 
-add_definitions(${GFLAGS_DEFINES})
-add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
-
-add_definitions(-DBOOST_ALL_NO_LIB)
-
 if(WIN32)
-  # Some USD library headers trigger the "unreferenced formal parameter" warning alert.
+  # Some USD library headers trigger the "unreferenced formal parameter"
+  # warning alert.
   # Silence them by restore warn C4100 back to w4
-  remove_cc_flag(/w34100)
+  remove_cc_flag("/w34100")
 endif()
 
 set(INC
