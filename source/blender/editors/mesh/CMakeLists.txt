@@ -8,7 +8,6 @@ set(INC
   ../../blenfont
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -16,7 +15,6 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../render
-  ../../windowmanager
   ../../../../intern/clog
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -62,9 +60,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  bf_windowmanager
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_FREESTYLE)

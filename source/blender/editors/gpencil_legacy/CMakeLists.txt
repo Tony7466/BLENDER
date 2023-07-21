@@ -6,11 +6,9 @@ set(INC
   ../include
   ../../blenfont
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../imbuf
   ../../makesrna
-  ../../windowmanager
   ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -20,8 +18,8 @@ set(INC_SYS
 )
 
 set(SRC
-  annotate_draw.c
-  annotate_paint.c
+  annotate_draw.cc
+  annotate_paint.cc
   drawgpencil.c
   editaction_gpencil.c
   gpencil_add_blank.c
@@ -58,8 +56,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_POTRACE)

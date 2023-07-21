@@ -6,10 +6,8 @@ set(INC
   ../include
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../makesrna
-  ../../windowmanager
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -35,8 +33,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_AUDASPACE)
