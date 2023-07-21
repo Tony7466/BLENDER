@@ -44,18 +44,18 @@ PyDoc_STRVAR(py_bl_math_clamp_doc,
              "   :type max: float\n"
              "   :return: The clamped value.\n"
              "   :rtype: float\n");
-static PyObject *py_bl_math_clamp(PyObject *UNUSED(self), PyObject *args)
+static PyObject *py_bl_math_clamp(PyObject * /*self*/, PyObject *args)
 {
   double x, minv = 0.0, maxv = 1.0;
 
   if (PyTuple_Size(args) <= 1) {
     if (!PyArg_ParseTuple(args, "d:clamp", &x)) {
-      return NULL;
+      return nullptr;
     }
   }
   else {
     if (!PyArg_ParseTuple(args, "ddd:clamp", &x, &minv, &maxv)) {
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -77,11 +77,11 @@ PyDoc_STRVAR(py_bl_math_lerp_doc,
              "   :type factor: float\n"
              "   :return: The interpolated value.\n"
              "   :rtype: float\n");
-static PyObject *py_bl_math_lerp(PyObject *UNUSED(self), PyObject *args)
+static PyObject *py_bl_math_lerp(PyObject * /*self*/, PyObject *args)
 {
   double a, b, x;
   if (!PyArg_ParseTuple(args, "ddd:lerp", &a, &b, &x)) {
-    return NULL;
+    return nullptr;
   }
 
   return PyFloat_FromDouble(a * (1.0 - x) + b * x);
@@ -102,11 +102,11 @@ PyDoc_STRVAR(py_bl_math_smoothstep_doc,
              "   :type factor: float\n"
              "   :return: The interpolated value in [0.0, 1.0].\n"
              "   :rtype: float\n");
-static PyObject *py_bl_math_smoothstep(PyObject *UNUSED(self), PyObject *args)
+static PyObject *py_bl_math_smoothstep(PyObject * /*self*/, PyObject *args)
 {
   double a, b, x;
   if (!PyArg_ParseTuple(args, "ddd:smoothstep", &a, &b, &x)) {
-    return NULL;
+    return nullptr;
   }
 
   double t = (x - a) / (b - a);
@@ -126,7 +126,7 @@ static PyMethodDef M_bl_math_methods[] = {
     {"clamp", (PyCFunction)py_bl_math_clamp, METH_VARARGS, py_bl_math_clamp_doc},
     {"lerp", (PyCFunction)py_bl_math_lerp, METH_VARARGS, py_bl_math_lerp_doc},
     {"smoothstep", (PyCFunction)py_bl_math_smoothstep, METH_VARARGS, py_bl_math_smoothstep_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyModuleDef M_bl_math_module_def = {
@@ -135,10 +135,10 @@ static PyModuleDef M_bl_math_module_def = {
     /*m_doc*/ M_bl_math_doc,
     /*m_size*/ 0,
     /*m_methods*/ M_bl_math_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyMODINIT_FUNC BPyInit_bl_math(void)

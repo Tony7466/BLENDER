@@ -16,7 +16,7 @@ set(INC_SYS
 
 set(SRC
   bgl.cc
-  bl_math_py_api.c
+  bl_math_py_api.cc
   blf_py_api.c
   bpy_threads.c
   idprop_py_api.c
