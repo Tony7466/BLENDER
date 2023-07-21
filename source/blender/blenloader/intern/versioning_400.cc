@@ -363,7 +363,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 11)) {
     version_vertex_weight_edit_preserve_threshold_exclusivity(bmain);
+  }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 12)) {
     LISTBASE_FOREACH (Curve *, curve, &bmain->curves) {
       const int curvetype = BKE_curve_type_get(curve);
       if (curvetype == OB_FONT) {
