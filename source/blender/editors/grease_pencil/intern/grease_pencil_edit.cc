@@ -411,11 +411,10 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
  * \param points_to_delete: Writes true to the indecies for which the points should be removed.
  * \returns the total number of points to remove.
  */
-int64_t ramer_douglas_peucker_simplify(
-    const IndexRange range,
-    const float epsilon,
-    const blender::FunctionRef<float(IndexRange, int64_t)> dist_function,
-    MutableSpan<bool> points_to_delete)
+int64_t ramer_douglas_peucker_simplify(const IndexRange range,
+                                       const float epsilon,
+                                       const FunctionRef<float(IndexRange, int64_t)> dist_function,
+                                       MutableSpan<bool> points_to_delete)
 {
   /* Mark all points to not be removed. */
   points_to_delete.slice(range).fill(false);
