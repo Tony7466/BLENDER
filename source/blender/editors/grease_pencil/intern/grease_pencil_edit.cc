@@ -437,12 +437,12 @@ int64_t ramer_douglas_peucker_simplify(const IndexRange range,
     }
 
     if (max_dist > epsilon) {
-      /* Found point outside the epsilon-sized . Repeat the search on the left & right side. */
+      /* Found point outside the epsilon-sized strip. Repeat the search on the left & right side. */
       stack.push(sub_range.slice(IndexRange(max_index + 1)));
       stack.push(sub_range.slice(IndexRange(max_index, sub_range.size() - max_index)));
     }
     else {
-      /* Points in `sub_range` are inside the epsilon-sized tube. Mark them to be deleted. */
+      /* Points in `sub_range` are inside the epsilon-sized strip. Mark them to be deleted. */
       const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
       total_points_to_remove += inside_range.size();
       points_to_delete.slice(inside_range).fill(true);
