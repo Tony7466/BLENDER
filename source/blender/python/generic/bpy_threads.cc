@@ -7,7 +7,7 @@
  *
  * This file contains wrapper functions related to global interpreter lock.
  * these functions are slightly different from the original Python API,
- * don't throw SIGABRT even if the thread state is NULL. */
+ * don't throw SIGABRT even if the thread state is nullptr. */
 
 #include <Python.h>
 
@@ -17,14 +17,14 @@
 BPy_ThreadStatePtr BPY_thread_save(void)
 {
   /* Use `_PyThreadState_UncheckedGet()` instead of `PyThreadState_Get()`, to avoid a fatal error
-   * issued when a thread state is NULL (the thread state can be NULL when quitting Blender).
+   * issued when a thread state is nullptr (the thread state can be nullptr when quitting Blender).
    *
    * `PyEval_SaveThread()` will release the GIL, so this thread has to have the GIL to begin with
    * or badness will ensue. */
   if (_PyThreadState_UncheckedGet() && PyGILState_Check()) {
     return (BPy_ThreadStatePtr)PyEval_SaveThread();
   }
-  return NULL;
+  return nullptr;
 }
 
 void BPY_thread_restore(BPy_ThreadStatePtr tstate)

@@ -18,7 +18,7 @@ set(SRC
   bgl.cc
   bl_math_py_api.cc
   blf_py_api.cc
-  bpy_threads.c
+  bpy_threads.cc
   idprop_py_api.c
   idprop_py_ui_api.c
   imbuf_py_api.c
