@@ -136,7 +136,12 @@ class DiskBDataWriter : public BDataWriter {
   BDataSlice write(const void *data, int64_t size) override;
 };
 
-std::shared_ptr<io::serialize::Value> serialize_bake_item(const BakeItem &item);
-std::unique_ptr<BakeItem> deserialize_bake_item(const io::serialize::Value &io_value);
+void serialize_bake_item(const BakeItem &item,
+                         BDataWriter &bdata_writer,
+                         BDataSharing &bdata_sharing,
+                         io::serialize::DictionaryValue &r_io_item);
+std::unique_ptr<BakeItem> deserialize_bake_item(const io::serialize::DictionaryValue &io_item,
+                                                const BDataReader &bdata_reader,
+                                                const BDataSharing &bdata_sharing);
 
 }  // namespace blender::bke
