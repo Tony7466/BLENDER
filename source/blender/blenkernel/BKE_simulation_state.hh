@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "BKE_bake_items.hh"
+#include "BKE_bake_items_serialize.hh"
 #include "BKE_geometry_set.hh"
 
 #include "BLI_map.hh"
@@ -14,7 +14,6 @@ struct bNodeTree;
 
 namespace blender::bke::sim {
 
-class BDataSharing;
 class ModifierSimulationCache;
 
 /**
