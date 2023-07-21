@@ -71,7 +71,12 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
       engine = new ViewportEngine(bl_engine, render_delegate_id);
     }
     else if (STREQ(engine_type, "PREVIEW")) {
-      engine = new PreviewEngine(bl_engine, render_delegate_id);
+      if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
+        engine = new PreviewEngineGPU(bl_engine, render_delegate_id);
+      }
+      else {
+        engine = new PreviewEngine(bl_engine, render_delegate_id);
+      }
     }
     else {
       if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {

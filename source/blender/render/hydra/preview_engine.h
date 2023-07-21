@@ -17,4 +17,11 @@ class PreviewEngine : public FinalEngine {
   void update_render_result(std::vector<float> &pixels);
 };
 
+class PreviewEngineGPU : public FinalEngineGPU {
+ public:
+  using FinalEngineGPU::FinalEngineGPU;
+
+  void render(Depsgraph *depsgraph) override;
+};
+
 }  // namespace blender::render::hydra
