@@ -5,9 +5,7 @@
 set(INC
   ../include
   ../uvedit
-  ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -16,8 +14,6 @@ set(INC
   ../../makesrna
   ../../nodes
   ../../render
-  ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/eigen
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -39,6 +35,7 @@ set(SRC
   curves_sculpt_smooth.cc
   curves_sculpt_snake_hook.cc
   grease_pencil_draw_ops.cc
+  grease_pencil_erase.cc
   grease_pencil_paint.cc
   paint_canvas.cc
   paint_cursor.cc
@@ -94,9 +91,13 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_TBB)
