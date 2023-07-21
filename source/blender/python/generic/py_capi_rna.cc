@@ -85,7 +85,7 @@ BLI_bitmap *pyrna_enum_bitmap_from_set(const EnumPropertyItem *items,
 
   while (_PySet_NextEntry(value, &pos, &key, &hash)) {
     const char *param = PyUnicode_AsUTF8(key);
-    if (param == NULL) {
+    if (param == nullptr) {
       PyErr_Format(PyExc_TypeError,
                    "%.200s expected a string, not %.200s",
                    error_prefix,
@@ -129,7 +129,7 @@ BLI_bitmap *pyrna_enum_bitmap_from_set(const EnumPropertyItem *items,
 
 error:
   MEM_freeN(bitmap);
-  return NULL;
+  return nullptr;
 }
 
 int pyrna_enum_bitfield_from_set(const EnumPropertyItem *items,
@@ -150,7 +150,7 @@ int pyrna_enum_bitfield_from_set(const EnumPropertyItem *items,
   while (_PySet_NextEntry(value, &pos, &key, &hash)) {
     const char *param = PyUnicode_AsUTF8(key);
 
-    if (param == NULL) {
+    if (param == nullptr) {
       PyErr_Format(PyExc_TypeError,
                    "%.200s expected a string, not %.200s",
                    error_prefix,
@@ -171,7 +171,7 @@ int pyrna_enum_bitfield_from_set(const EnumPropertyItem *items,
 
 PyObject *pyrna_enum_bitfield_as_set(const EnumPropertyItem *items, int value)
 {
-  PyObject *ret = PySet_New(NULL);
+  PyObject *ret = PySet_New(nullptr);
   const char *identifier[RNA_ENUM_BITFLAG_SIZE + 1];
 
   if (RNA_enum_bitflag_identifiers(items, value, identifier)) {
@@ -196,11 +196,11 @@ PyObject *pyrna_enum_bitfield_as_set(const EnumPropertyItem *items, int value)
 int pyrna_enum_value_parse_string(PyObject *o, void *p)
 {
   const char *identifier = PyUnicode_AsUTF8(o);
-  if (identifier == NULL) {
+  if (identifier == nullptr) {
     PyErr_Format(PyExc_TypeError, "expected a string enum, not %.200s", Py_TYPE(o)->tp_name);
     return 0;
   }
-  struct BPy_EnumProperty_Parse *parse_data = p;
+  struct BPy_EnumProperty_Parse *parse_data = static_cast<BPy_EnumProperty_Parse *>(p);
   if (pyrna_enum_value_from_id(
           parse_data->items, identifier, &parse_data->value, "enum identifier") == -1)
   {
@@ -219,7 +219,7 @@ int pyrna_enum_bitfield_parse_set(PyObject *o, void *p)
     return 0;
   }
 
-  struct BPy_EnumProperty_Parse *parse_data = p;
+  struct BPy_EnumProperty_Parse *parse_data = static_cast<BPy_EnumProperty_Parse *>(p);
   if (pyrna_enum_bitfield_from_set(
           parse_data->items, o, &parse_data->value, "enum identifier set") == -1)
   {
