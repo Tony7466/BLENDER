@@ -15,7 +15,7 @@ set(INC_SYS
 )
 
 set(SRC
-  gpu_py.c
+  gpu_py.cc
   gpu_py_api.cc
   gpu_py_batch.cc
   gpu_py_buffer.cc

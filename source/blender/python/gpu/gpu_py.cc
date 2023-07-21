@@ -34,7 +34,7 @@ struct PyC_StringEnumItems bpygpu_primtype_items[] = {
     {GPU_PRIM_LINES_ADJ, "LINES_ADJ"},
     {GPU_PRIM_TRIS_ADJ, "TRIS_ADJ"},
     {GPU_PRIM_LINE_STRIP_ADJ, "LINE_STRIP_ADJ"},
-    {0, NULL},
+    {0, nullptr},
 };
 
 struct PyC_StringEnumItems bpygpu_dataformat_items[] = {
@@ -44,7 +44,7 @@ struct PyC_StringEnumItems bpygpu_dataformat_items[] = {
     {GPU_DATA_UBYTE, "UBYTE"},
     {GPU_DATA_UINT_24_8, "UINT_24_8"},
     {GPU_DATA_10_11_11_REV, "10_11_11_REV"},
-    {0, NULL},
+    {0, nullptr},
 };
 
 /** \} */
@@ -55,30 +55,30 @@ struct PyC_StringEnumItems bpygpu_dataformat_items[] = {
 
 static const char g_error[] = "GPU API is not available in background mode";
 
-static PyObject *py_error__ml_meth(PyObject *UNUSED(self), PyObject *UNUSED(args))
+static PyObject *py_error__ml_meth(PyObject * /*self*/, PyObject * /*args*/)
 {
   PyErr_SetString(PyExc_SystemError, g_error);
-  return NULL;
+  return nullptr;
 }
 
-static PyObject *py_error__getter(PyObject *UNUSED(self), void *UNUSED(type))
+static PyObject *py_error__getter(PyObject * /*self*/, void * /*type*/)
 {
   PyErr_SetString(PyExc_SystemError, g_error);
-  return NULL;
+  return nullptr;
 }
 
-static int py_error__setter(PyObject *UNUSED(self), PyObject *UNUSED(value), void *UNUSED(type))
+static int py_error__setter(PyObject * /*self*/, PyObject * /*value*/, void * /*type*/)
 {
   PyErr_SetString(PyExc_SystemError, g_error);
   return -1;
 }
 
-static PyObject *py_error__tp_new(PyTypeObject *UNUSED(type),
-                                  PyObject *UNUSED(args),
-                                  PyObject *UNUSED(kwds))
+static PyObject *py_error__tp_new(PyTypeObject * /*type*/,
+                                  PyObject * /*args*/,
+                                  PyObject * /*kwds*/)
 {
   PyErr_SetString(PyExc_SystemError, g_error);
-  return NULL;
+  return nullptr;
 }
 
 PyObject *bpygpu_create_module(PyModuleDef *module_type)
