@@ -2926,13 +2926,13 @@ void RNA_def_property_update(PropertyRNA *prop, int noteflag, const char *func)
 
 void RNA_def_property_update_runtime(PropertyRNA *prop, const void *func)
 {
-  prop->update = reinterpret_cast<UpdateFunc>(func);
+  prop->update = (UpdateFunc)func;
 }
 
 void RNA_def_property_poll_runtime(PropertyRNA *prop, const void *func)
 {
   if (prop->type == PROP_POINTER) {
-    ((PointerPropertyRNA *)prop)->poll = reinterpret_cast<PropPointerPollFunc>(func);
+    ((PointerPropertyRNA *)prop)->poll = (PropPointerPollFunc)func;
   }
   else {
     CLOG_ERROR(&LOG, "%s is not a Pointer Property.", prop->identifier);
