@@ -1755,7 +1755,7 @@ class _defs_paint_grease_pencil:
                 layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
             
             if brush.gpencil_settings.eraser_mode == "SOFT":
-                from bl_ui.properties_paint_common import UnifiedPaintPanel
+                from bl_ui.properties_paint_common import UnifiedPaintPanel, FalloffPanel
                 UnifiedPaintPanel.prop_unified(
                     layout,
                     context,
@@ -1766,7 +1766,9 @@ class _defs_paint_grease_pencil:
                     slider=True,
                     header=True,
                 )
-            
+
+                layout.popover("VIEW3D_PT_tools_brush_falloff")
+
             layout.prop(brush.gpencil_settings, "use_active_layer_only")
         return dict(
             idname="builtin_brush.Erase",
