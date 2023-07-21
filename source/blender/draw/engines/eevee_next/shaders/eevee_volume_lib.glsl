@@ -169,15 +169,14 @@ vec3 volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
 #endif /* VOLUME_SHADOW */
 }
 
-vec3 volume_irradiance(vec3 wpos)
+vec3 volume_irradiance(vec3 P)
 {
-#ifdef IRRADIANCE_HL2
-  IrradianceData ir_data = load_irradiance_cell(0, vec3(1.0));
-  vec3 irradiance = ir_data.cubesides[0] + ir_data.cubesides[1] + ir_data.cubesides[2];
-  ir_data = load_irradiance_cell(0, vec3(-1.0));
-  irradiance += ir_data.cubesides[0] + ir_data.cubesides[1] + ir_data.cubesides[2];
-  irradiance *= 0.16666666; /* 1/6 */
-  return irradiance;
+#ifdef VOLUME_IRRADIANCE
+  /* Skip normal and view bias. */
+  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
+      irradiance_atlas_tx, P, vec3(0.0), vec3(0.0));
+
+  return irradiance.L0.M0.rgb * M_PI;
 #else
   return vec3(0.0);
 #endif
