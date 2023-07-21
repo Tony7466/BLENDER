@@ -65,7 +65,7 @@ set(DEFSRC
   rna_pose.cc
   rna_render.cc
   rna_rigidbody.cc
-  rna_rna.c
+  rna_rna.cc
   rna_scene.cc
   rna_screen.cc
   rna_sculpt_paint.cc

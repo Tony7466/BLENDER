@@ -4603,7 +4603,7 @@ struct RNAProcessItem {
 };
 
 static RNAProcessItem PROCESS_ITEMS[] = {
-    {"rna_rna.c", nullptr, RNA_def_rna},
+    {"rna_rna.cc", nullptr, RNA_def_rna},
     {"rna_ID.cc", nullptr, RNA_def_ID},
     {"rna_texture.cc", "rna_texture_api.cc", RNA_def_texture},
     {"rna_action.cc", "rna_action_api.cc", RNA_def_action},
