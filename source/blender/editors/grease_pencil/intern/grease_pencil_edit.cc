@@ -443,7 +443,7 @@ int64_t ramer_douglas_peucker_simplify(const IndexRange range,
     }
     else {
       /* Points in `sub_range` are inside the epsilon-sized tube. Mark them to be deleted. */
-      IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
+      const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
       total_points_to_remove += inside_range.size();
       points_to_delete.slice(inside_range).fill(true);
     }
@@ -473,11 +473,10 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
         }
 
         const Span<float3> positions = curves.positions();
-        const VArray<float> radii = drawing.radii();
 
+        /* Distance function for `ramer_douglas_peucker_simplify`. */
         auto dist_func = [&](IndexRange range, int64_t index_in_range) {
           const Span<float3> position_slice = positions.slice(range);
-
           const float dist_position = dist_to_line_v3(
               position_slice[index_in_range], position_slice.first(), position_slice.last());
           return dist_position;
