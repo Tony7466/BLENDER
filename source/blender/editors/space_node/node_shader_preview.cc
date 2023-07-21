@@ -3,6 +3,22 @@
 
 /** \file
  * \ingroup edrend
+ *
+ * This file implements shader node previews which rely on a structure owned by each SpaceNode.
+ * We take advantage of the RenderResult available as ImBuf images to store a Render for every
+ * viewed nested node tree present in a SpaceNode. The computation is initiated at the moment of
+ * drawing nodes overlays. One render is started for the current nodetree, having a ViewLayer
+ * associated with each previewed node.
+ *
+ * We separate the previewed nodes in two categories: the shader ones and the non-shader ones.
+ * - for non-shader nodes, we use AOVs(Arbitrary Output Variable) which highly speed up the
+ * rendering process by rendering every non-shader nodes at the same time. They are rendered in the
+ * first ViewLayer.
+ * - for shader nodes, we render them each in a different ViewLayer, by routing the node to the
+ * output of the material in the preview scene.
+ *
+ * At the moment of drawing, we take the Render of the viewed node tree and extract the ImBuf of
+ * the wanted viewlayer/pass for each previewed node.
  */
 
 #include "BLO_readfile.h"
@@ -82,7 +98,7 @@ struct ShaderNodesPreviewJob {
 
 using namespace blender;
 static void ensure_nodetree_previews(const bContext *C,
-                                     NestedTreePreviews *ng_data,
+                                     NestedTreePreviews *tree_previews,
                                      Material *material,
                                      ListBase *treepath);
 
@@ -113,6 +129,10 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
   return compute_context_builder.hash();
 }
 
+/*
+ * This function returns the `NestedTreePreviews *` for the nodetree shown in the SpaceNode.
+ * This is the first function in charge of the previews by calling `ensure_nodetree_previews`.
+ */
 NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNode *sn)
 {
   if (GS(sn->id->name) != ID_MA) {
@@ -243,7 +263,6 @@ static bNodeSocket *node_find_preview_socket(const bNode *node)
 static bool node_use_aov(const bNode *node)
 {
   bNodeSocket *socket = node_find_preview_socket(node);
-  /* It could be better to render output nodes with AOVs if possible. */
   return socket != nullptr && socket->type != SOCK_SHADER;
 }
 
@@ -455,11 +474,15 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   }
   Vector<const bNodeTreePath *> treepath = job_data.treepath_copy;
 
-  /* Disconnect shader and displacement from the material output. */
+  /* Disconnect shader, volume and displacement from the material output. */
   bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
+  bNodeSocket *volume_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Volume");
   bNodeSocket *disp_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Displacement");
   if (surface_socket->link != nullptr) {
     nodeRemLink(treepath.first()->nodetree, surface_socket->link);
+  }
+  if (volume_socket->link != nullptr) {
+    nodeRemLink(treepath.first()->nodetree, volume_socket->link);
   }
   if (disp_socket->link != nullptr) {
     job_data.mat_displacement_copy = std::make_pair(disp_socket->link->fromnode,
@@ -467,6 +490,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
     nodeRemLink(treepath.first()->nodetree, disp_socket->link);
   }
 
+  /* AOV nodes are rendered in the first RenderLayer so we route them now. */
   connect_nodes_to_aovs(treepath, job_data.AOV_nodes);
 
   /* Create the AOV passes for the viewlayer. */
