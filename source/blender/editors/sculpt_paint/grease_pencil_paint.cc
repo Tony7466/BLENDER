@@ -8,6 +8,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 #include "BKE_scene.h"
 
 #include "BLI_math_base.hh"
@@ -179,6 +180,10 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
+
+  Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
+      CTX_data_main(&C), object, brush);
+  stroke_cache_->mat = BKE_grease_pencil_object_material_index_get(object, material);
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -295,7 +300,7 @@ void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing 
   vertex_colors.span.slice(new_points_range).copy_from(stroke_cache_->vertex_colors);
 
   /* TODO: Set material index attribute. */
-  int material_index = 0;
+  int material_index = stroke_cache_->mat;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
 

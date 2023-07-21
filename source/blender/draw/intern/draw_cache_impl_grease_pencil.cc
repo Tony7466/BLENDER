@@ -445,7 +445,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
       s_vert.opacity = stroke_cache.opacities[i];
       s_vert.point_id = verts_range[idx];
       s_vert.stroke_id = verts_range.first();
-      s_vert.mat = material_nr;
+      s_vert.mat = material_nr % GPENCIL_MATERIAL_BUFFER_LEN;
 
       /* TODO */
       s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
