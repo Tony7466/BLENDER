@@ -23,16 +23,6 @@
 
 /* bmesh operator 'bmesh.ops.*' callable types
  * ******************************************* */
-static PyTypeObject bmesh_op_Type;
-
-static PyObject *bpy_bmesh_op_CreatePyObject(const char *opname)
-{
-  BPy_BMeshOpFunc *self = PyObject_New(BPy_BMeshOpFunc, &bmesh_op_Type);
-
-  self->opname = opname;
-
-  return (PyObject *)self;
-}
 
 static PyObject *bpy_bmesh_op_repr(BPy_BMeshOpFunc *self)
 {
@@ -114,7 +104,7 @@ static char *bmp_slots_as_args(const BMOSlotType slot_types[BMO_OP_MAX_SLOTS], c
   return ret;
 }
 
-static PyObject *bpy_bmesh_op_doc_get(BPy_BMeshOpFunc *self, void *UNUSED(closure))
+static PyObject *bpy_bmesh_op_doc_get(BPy_BMeshOpFunc *self, void * /*closure*/)
 {
   PyObject *ret;
   char *slot_in;
@@ -139,69 +129,78 @@ static PyObject *bpy_bmesh_op_doc_get(BPy_BMeshOpFunc *self, void *UNUSED(closur
 }
 
 static PyGetSetDef bpy_bmesh_op_getseters[] = {
-    {"__doc__", (getter)bpy_bmesh_op_doc_get, (setter)NULL, NULL, NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+    {"__doc__", (getter)bpy_bmesh_op_doc_get, (setter) nullptr, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 /* Types
  * ===== */
 
 static PyTypeObject bmesh_op_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "BMeshOpFunc",
     /*tp_basicsize*/ sizeof(BPy_BMeshOpFunc),
     /*tp_itemsize*/ 0,
-    /*tp_dealloc*/ NULL,
+    /*tp_dealloc*/ nullptr,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
     /*tp_repr*/ (reprfunc)bpy_bmesh_op_repr,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
     /*tp_call*/ (ternaryfunc)BPy_BMO_call,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
-    /*tp_methods*/ NULL,
-    /*tp_members*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ bpy_bmesh_op_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /* bmesh module 'bmesh.ops'
  * ************************ */
 
-static PyObject *bpy_bmesh_ops_module_getattro(PyObject *UNUSED(self), PyObject *pyname)
+static PyObject *bpy_bmesh_op_CreatePyObject(const char *opname)
+{
+  BPy_BMeshOpFunc *self = PyObject_New(BPy_BMeshOpFunc, &bmesh_op_Type);
+
+  self->opname = opname;
+
+  return (PyObject *)self;
+}
+
+static PyObject *bpy_bmesh_ops_module_getattro(PyObject * /*self*/, PyObject *pyname)
 {
   const char *opname = PyUnicode_AsUTF8(pyname);
 
@@ -210,10 +209,10 @@ static PyObject *bpy_bmesh_ops_module_getattro(PyObject *UNUSED(self), PyObject 
   }
 
   PyErr_Format(PyExc_AttributeError, "BMeshOpsModule: operator \"%.200s\" doesn't exist", opname);
-  return NULL;
+  return nullptr;
 }
 
-static PyObject *bpy_bmesh_ops_module_dir(PyObject *UNUSED(self))
+static PyObject *bpy_bmesh_ops_module_dir(PyObject * /*self*/)
 {
   const uint tot = bmo_opdefines_total;
   uint i;
@@ -229,9 +228,9 @@ static PyObject *bpy_bmesh_ops_module_dir(PyObject *UNUSED(self))
 }
 
 static PyMethodDef BPy_BM_ops_methods[] = {
-    {"__getattr__", (PyCFunction)bpy_bmesh_ops_module_getattro, METH_O, NULL},
-    {"__dir__", (PyCFunction)bpy_bmesh_ops_module_dir, METH_NOARGS, NULL},
-    {NULL, NULL, 0, NULL},
+    {"__getattr__", (PyCFunction)bpy_bmesh_ops_module_getattro, METH_O, nullptr},
+    {"__dir__", (PyCFunction)bpy_bmesh_ops_module_dir, METH_NOARGS, nullptr},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(BPy_BM_ops_doc, "Access to BMesh operators");
@@ -241,10 +240,10 @@ static PyModuleDef BPy_BM_ops_module_def = {
     /*m_doc*/ BPy_BM_ops_doc,
     /*m_size*/ 0,
     /*m_methods*/ BPy_BM_ops_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPyInit_bmesh_ops(void)
@@ -252,7 +251,7 @@ PyObject *BPyInit_bmesh_ops(void)
   PyObject *submodule = PyModule_Create(&BPy_BM_ops_module_def);
 
   if (PyType_Ready(&bmesh_op_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
 
   return submodule;
