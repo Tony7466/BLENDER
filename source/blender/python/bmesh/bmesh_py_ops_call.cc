@@ -32,7 +32,7 @@ static int bpy_bm_op_as_py_error(BMesh *bm)
   if (BMO_error_occurred_at_level(bm, BMO_ERROR_FATAL)) {
     /* NOTE: we could have multiple errors. */
     const char *errmsg;
-    if (BMO_error_get(bm, &errmsg, NULL, NULL)) {
+    if (BMO_error_get(bm, &errmsg, nullptr, nullptr)) {
       PyErr_Format(PyExc_RuntimeError, "bmesh operator: %.200s", errmsg);
       BMO_error_clear(bm);
       return -1;
@@ -67,7 +67,7 @@ static int bpy_slot_from_py_elem_check(BPy_BMElem *value,
                  Py_TYPE(value)->tp_name);
     return -1;
   }
-  if (value->bm == NULL) {
+  if (value->bm == nullptr) {
     PyErr_Format(PyExc_TypeError,
                  "%.200s: keyword \"%.200s\" %.200s invalidated element",
                  opname,
@@ -75,7 +75,7 @@ static int bpy_slot_from_py_elem_check(BPy_BMElem *value,
                  descr);
     return -1;
   }
-  if (value->bm != bm) { /* we may want to make this check optional by setting 'bm' to NULL */
+  if (value->bm != bm) { /* we may want to make this check optional by setting 'bm' to nullptr */
     PyErr_Format(PyExc_TypeError,
                  "%.200s: keyword \"%.200s\" %.200s invalidated element",
                  opname,
@@ -104,7 +104,7 @@ static int bpy_slot_from_py_elemseq_check(BPy_BMGeneric *value,
                                           const char *slot_name,
                                           const char *descr)
 {
-  if (value->bm == NULL) {
+  if (value->bm == nullptr) {
     PyErr_Format(PyExc_TypeError,
                  "%.200s: keyword \"%.200s\" %.200s, invalidated sequence",
                  opname,
@@ -112,7 +112,7 @@ static int bpy_slot_from_py_elemseq_check(BPy_BMGeneric *value,
                  descr);
     return -1;
   }
-  if (value->bm != bm) { /* we may want to make this check optional by setting 'bm' to NULL */
+  if (value->bm != bm) { /* we may want to make this check optional by setting 'bm' to nullptr */
     PyErr_Format(PyExc_TypeError,
                  "%.200s: keyword \"%.200s\" %.200s, invalidated sequence",
                  opname,
@@ -171,7 +171,7 @@ static int bpy_slot_from_py(BMesh *bm,
         PyC_FlagSet *items = (PyC_FlagSet *)slot->data.enum_data.flags;
         const char *enum_str = PyUnicode_AsUTF8(value);
 
-        if (enum_str == NULL) {
+        if (enum_str == nullptr) {
           PyErr_Format(PyExc_TypeError,
                        "%.200s: keyword \"%.200s\" expected a string, not %.200s",
                        opname,
@@ -353,21 +353,22 @@ static int bpy_slot_from_py(BMesh *bm,
         }
         /* keep this last */
         else if (PySequence_Check(value)) {
-          BMElem **elem_array = NULL;
+          BMElem **elem_array = nullptr;
           Py_ssize_t elem_array_len;
 
-          elem_array = BPy_BMElem_PySeq_As_Array(&bm,
-                                                 value,
-                                                 0,
-                                                 PY_SSIZE_T_MAX,
-                                                 &elem_array_len,
-                                                 (slot->slot_subtype.elem & BM_ALL_NOLOOP),
-                                                 true,
-                                                 true,
-                                                 slot_name);
+          elem_array = static_cast<BMElem **>(
+              BPy_BMElem_PySeq_As_Array(&bm,
+                                        value,
+                                        0,
+                                        PY_SSIZE_T_MAX,
+                                        &elem_array_len,
+                                        (slot->slot_subtype.elem & BM_ALL_NOLOOP),
+                                        true,
+                                        true,
+                                        slot_name));
 
           /* error is set above */
-          if (elem_array == NULL) {
+          if (elem_array == nullptr) {
             return -1;
           }
 
@@ -599,7 +600,7 @@ static int bpy_slot_from_py(BMesh *bm,
  */
 static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
 {
-  PyObject *item = NULL;
+  PyObject *item = nullptr;
 
   /* keep switch in same order as above */
   switch (slot->slot_type) {
@@ -613,10 +614,10 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
       item = PyFloat_FromDouble((double)BMO_SLOT_AS_FLOAT(slot));
       break;
     case BMO_OP_SLOT_MAT:
-      item = Matrix_CreatePyObject((float *)BMO_SLOT_AS_MATRIX(slot), 4, 4, NULL);
+      item = Matrix_CreatePyObject((float *)BMO_SLOT_AS_MATRIX(slot), 4, 4, nullptr);
       break;
     case BMO_OP_SLOT_VEC:
-      item = Vector_CreatePyObject(BMO_SLOT_AS_VECTOR(slot), slot->len, NULL);
+      item = Vector_CreatePyObject(BMO_SLOT_AS_VECTOR(slot), slot->len, nullptr);
       break;
     case BMO_OP_SLOT_PTR:
       BLI_assert(0); /* currently we don't have any pointer return values in use */
@@ -624,7 +625,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
       break;
     case BMO_OP_SLOT_ELEMENT_BUF: {
       if (slot->slot_subtype.elem & BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE) {
-        BMHeader *ele = BMO_slot_buffer_get_single(slot);
+        BMHeader *ele = static_cast<BMHeader *>(BMO_slot_buffer_get_single(slot));
         item = ele ? BPy_BMElem_CreatePyObject(bm, ele) : Py_INCREF_RET(Py_None);
       }
       else {
@@ -634,7 +635,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
 
         item = PyList_New(size);
         for (j = 0; j < size; j++) {
-          BMHeader *ele = buffer[j];
+          BMHeader *ele = static_cast<BMHeader *>(buffer[j]);
           PyList_SET_ITEM(item, j, BPy_BMElem_CreatePyObject(bm, ele));
         }
       }
@@ -649,11 +650,11 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
           item = _PyDict_NewPresized(slot_hash ? BLI_ghash_len(slot_hash) : 0);
           if (slot_hash) {
             GHASH_ITER (hash_iter, slot_hash) {
-              BMHeader *ele_key = BLI_ghashIterator_getKey(&hash_iter);
+              BMHeader *ele_key = static_cast<BMHeader *>(BLI_ghashIterator_getKey(&hash_iter));
               void *ele_val = BLI_ghashIterator_getValue(&hash_iter);
 
               PyObject *py_key = BPy_BMElem_CreatePyObject(bm, ele_key);
-              PyObject *py_val = BPy_BMElem_CreatePyObject(bm, ele_val);
+              PyObject *py_val = BPy_BMElem_CreatePyObject(bm, static_cast<BMHeader *>(ele_val));
 
               PyDict_SetItem(item, py_key, py_val);
               Py_DECREF(py_key);
@@ -666,7 +667,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
           item = _PyDict_NewPresized(slot_hash ? BLI_ghash_len(slot_hash) : 0);
           if (slot_hash) {
             GHASH_ITER (hash_iter, slot_hash) {
-              BMHeader *ele_key = BLI_ghashIterator_getKey(&hash_iter);
+              BMHeader *ele_key = static_cast<BMHeader *>(BLI_ghashIterator_getKey(&hash_iter));
               void *ele_val = BLI_ghashIterator_getValue(&hash_iter);
 
               PyObject *py_key = BPy_BMElem_CreatePyObject(bm, ele_key);
@@ -683,7 +684,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
           item = _PyDict_NewPresized(slot_hash ? BLI_ghash_len(slot_hash) : 0);
           if (slot_hash) {
             GHASH_ITER (hash_iter, slot_hash) {
-              BMHeader *ele_key = BLI_ghashIterator_getKey(&hash_iter);
+              BMHeader *ele_key = static_cast<BMHeader *>(BLI_ghashIterator_getKey(&hash_iter));
               void *ele_val = BLI_ghashIterator_getValue(&hash_iter);
 
               PyObject *py_key = BPy_BMElem_CreatePyObject(bm, ele_key);
@@ -700,7 +701,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
           item = _PyDict_NewPresized(slot_hash ? BLI_ghash_len(slot_hash) : 0);
           if (slot_hash) {
             GHASH_ITER (hash_iter, slot_hash) {
-              BMHeader *ele_key = BLI_ghashIterator_getKey(&hash_iter);
+              BMHeader *ele_key = static_cast<BMHeader *>(BLI_ghashIterator_getKey(&hash_iter));
               void *ele_val = BLI_ghashIterator_getValue(&hash_iter);
 
               PyObject *py_key = BPy_BMElem_CreatePyObject(bm, ele_key);
@@ -714,10 +715,10 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
           break;
         }
         case BMO_OP_SLOT_SUBTYPE_MAP_EMPTY: {
-          item = PySet_New(NULL);
+          item = PySet_New(nullptr);
           if (slot_hash) {
             GHASH_ITER (hash_iter, slot_hash) {
-              BMHeader *ele_key = BLI_ghashIterator_getKey(&hash_iter);
+              BMHeader *ele_key = static_cast<BMHeader *>(BLI_ghashIterator_getKey(&hash_iter));
 
               PyObject *py_key = BPy_BMElem_CreatePyObject(bm, ele_key);
 
@@ -736,7 +737,7 @@ static PyObject *bpy_slot_to_py(BMesh *bm, BMOpSlot *slot)
       break;
     }
   }
-  BLI_assert(item != NULL);
+  BLI_assert(item != nullptr);
 
   return item;
 }
@@ -757,7 +758,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
 
     if (bm->use_toolflags == false) {
       PyErr_SetString(PyExc_ValueError, "bmesh created with 'use_operators=False'");
-      return NULL;
+      return nullptr;
     }
 
     /* could complain about entering with exceptions... */
@@ -767,7 +768,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
     PyErr_SetString(PyExc_TypeError,
                     "bmesh operators expect a single BMesh positional argument, all other args "
                     "must be keywords");
-    return NULL;
+    return nullptr;
   }
 
   /* TODO: error check this!, though we do the error check on attribute access. */
@@ -790,7 +791,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
                      self->opname,
                      slot_name);
         BMO_op_finish(bm, &bmop);
-        return NULL;
+        return nullptr;
       }
 
       slot = BMO_slot_get(bmop.slots_in, slot_name);
@@ -798,7 +799,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
       /* now assign the value */
       if (bpy_slot_from_py(bm, &bmop, slot, value, self->opname, slot_name) == -1) {
         BMO_op_finish(bm, &bmop);
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -807,9 +808,9 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
 
   /* from here until the end of the function, no returns, just set 'ret' */
   if (UNLIKELY(bpy_bm_op_as_py_error(bm) == -1)) {
-    ret = NULL; /* exception raised above */
+    ret = nullptr; /* exception raised above */
   }
-  else if (bmop.slots_out[0].slot_name == NULL) {
+  else if (bmop.slots_out[0].slot_name == nullptr) {
     ret = Py_INCREF_RET(Py_None);
   }
   else {
@@ -825,7 +826,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
 
       /* this function doesn't throw exceptions */
       item = bpy_slot_to_py(bm, slot);
-      if (item == NULL) {
+      if (item == nullptr) {
         item = Py_INCREF_RET(Py_None);
       }
 
@@ -835,7 +836,7 @@ PyObject *BPy_BMO_call(BPy_BMeshOpFunc *self, PyObject *args, PyObject *kw)
         char slot_name_strip[MAX_SLOTNAME];
         const char *ch = strchr(slot->slot_name, '.'); /* can't fail! */
         const int tot = ch - slot->slot_name;
-        BLI_assert(ch != NULL);
+        BLI_assert(ch != nullptr);
         memcpy(slot_name_strip, slot->slot_name, tot);
         slot_name_strip[tot] = '\0';
         PyDict_SetItemString(ret, slot_name_strip, item);
