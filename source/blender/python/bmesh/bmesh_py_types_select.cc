@@ -28,12 +28,12 @@
 PyDoc_STRVAR(bpy_bmeditselseq_active_doc,
              "The last selected element or None (read-only).\n\n:type: :class:`BMVert`, "
              ":class:`BMEdge` or :class:`BMFace`");
-static PyObject *bpy_bmeditselseq_active_get(BPy_BMEditSelSeq *self, void *UNUSED(closure))
+static PyObject *bpy_bmeditselseq_active_get(BPy_BMEditSelSeq *self, void * /*closure*/)
 {
   BMEditSelection *ese;
   BPY_BM_CHECK_OBJ(self);
 
-  if ((ese = self->bm->selected.last)) {
+  if ((ese = static_cast<BMEditSelection *>(self->bm->selected.last))) {
     return BPy_BMElem_CreatePyObject(self->bm, &ese->ele->head);
   }
 
@@ -43,10 +43,10 @@ static PyObject *bpy_bmeditselseq_active_get(BPy_BMEditSelSeq *self, void *UNUSE
 static PyGetSetDef bpy_bmeditselseq_getseters[] = {
     {"active",
      (getter)bpy_bmeditselseq_active_get,
-     (setter)NULL,
+     (setter) nullptr,
      bpy_bmeditselseq_active_doc,
-     NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+     nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 PyDoc_STRVAR(bpy_bmeditselseq_validate_doc,
@@ -83,7 +83,7 @@ static PyObject *bpy_bmeditselseq_add(BPy_BMEditSelSeq *self, BPy_BMElem *value)
   if ((BPy_BMVert_Check(value) || BPy_BMEdge_Check(value) || BPy_BMFace_Check(value)) == false) {
     PyErr_Format(
         PyExc_TypeError, "Expected a BMVert/BMedge/BMFace not a %.200s", Py_TYPE(value)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   BPY_BM_CHECK_SOURCE_OBJ(self->bm, "select_history.add()", value);
@@ -104,14 +104,14 @@ static PyObject *bpy_bmeditselseq_remove(BPy_BMEditSelSeq *self, BPy_BMElem *val
   if ((BPy_BMVert_Check(value) || BPy_BMEdge_Check(value) || BPy_BMFace_Check(value)) == false) {
     PyErr_Format(
         PyExc_TypeError, "Expected a BMVert/BMedge/BMFace not a %.200s", Py_TYPE(value)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   BPY_BM_CHECK_SOURCE_OBJ(self->bm, "select_history.remove()", value);
 
   if (BM_select_history_remove(self->bm, value->ele) == false) {
     PyErr_SetString(PyExc_ValueError, "Element not found in selection history");
-    return NULL;
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -131,7 +131,7 @@ static PyObject *bpy_bmeditselseq_discard(BPy_BMEditSelSeq *self, BPy_BMElem *va
   if ((BPy_BMVert_Check(value) || BPy_BMEdge_Check(value) || BPy_BMFace_Check(value)) == false) {
     PyErr_Format(
         PyExc_TypeError, "Expected a BMVert/BMedge/BMFace not a %.200s", Py_TYPE(value)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   BPY_BM_CHECK_SOURCE_OBJ(self->bm, "select_history.discard()", value);
@@ -151,7 +151,7 @@ static PyMethodDef bpy_bmeditselseq_methods[] = {
     {"add", (PyCFunction)bpy_bmeditselseq_add, METH_O, bpy_bmeditselseq_add_doc},
     {"remove", (PyCFunction)bpy_bmeditselseq_remove, METH_O, bpy_bmeditselseq_remove_doc},
     {"discard", (PyCFunction)bpy_bmeditselseq_discard, METH_O, bpy_bmeditselseq_discard_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /* Sequences
@@ -171,10 +171,10 @@ static PyObject *bpy_bmeditselseq_subscript_int(BPy_BMEditSelSeq *self, Py_ssize
   BPY_BM_CHECK_OBJ(self);
 
   if (keynum < 0) {
-    ese = BLI_rfindlink(&self->bm->selected, -1 - keynum);
+    ese = static_cast<BMEditSelection *>(BLI_rfindlink(&self->bm->selected, -1 - keynum));
   }
   else {
-    ese = BLI_findlink(&self->bm->selected, keynum);
+    ese = static_cast<BMEditSelection *>(BLI_findlink(&self->bm->selected, keynum));
   }
 
   if (ese) {
@@ -182,7 +182,7 @@ static PyObject *bpy_bmeditselseq_subscript_int(BPy_BMEditSelSeq *self, Py_ssize
   }
 
   PyErr_Format(PyExc_IndexError, "BMElemSeq[index]: index %d out of range", keynum);
-  return NULL;
+  return nullptr;
 }
 
 static PyObject *bpy_bmeditselseq_subscript_slice(BPy_BMEditSelSeq *self,
@@ -199,7 +199,7 @@ static PyObject *bpy_bmeditselseq_subscript_slice(BPy_BMEditSelSeq *self,
   list = PyList_New(0);
 
   /* First loop up-until the start. */
-  for (ese = self->bm->selected.first; ese; ese = ese->next) {
+  for (ese = static_cast<BMEditSelection *>(self->bm->selected.first); ese; ese = ese->next) {
     if (count == start) {
       break;
     }
@@ -224,7 +224,7 @@ static PyObject *bpy_bmeditselseq_subscript(BPy_BMEditSelSeq *self, PyObject *ke
   if (PyIndex_Check(key)) {
     const Py_ssize_t i = PyNumber_AsSsize_t(key, PyExc_IndexError);
     if (i == -1 && PyErr_Occurred()) {
-      return NULL;
+      return nullptr;
     }
     return bpy_bmeditselseq_subscript_int(self, i);
   }
@@ -233,11 +233,11 @@ static PyObject *bpy_bmeditselseq_subscript(BPy_BMEditSelSeq *self, PyObject *ke
     Py_ssize_t step = 1;
 
     if (key_slice->step != Py_None && !_PyEval_SliceIndex(key, &step)) {
-      return NULL;
+      return nullptr;
     }
     if (step != 1) {
       PyErr_SetString(PyExc_TypeError, "BMElemSeq[slice]: slice steps not supported");
-      return NULL;
+      return nullptr;
     }
     if (key_slice->start == Py_None && key_slice->stop == Py_None) {
       return bpy_bmeditselseq_subscript_slice(self, 0, PY_SSIZE_T_MAX);
@@ -247,10 +247,10 @@ static PyObject *bpy_bmeditselseq_subscript(BPy_BMEditSelSeq *self, PyObject *ke
 
     /* avoid PySlice_GetIndicesEx because it needs to know the length ahead of time. */
     if (key_slice->start != Py_None && !_PyEval_SliceIndex(key_slice->start, &start)) {
-      return NULL;
+      return nullptr;
     }
     if (key_slice->stop != Py_None && !_PyEval_SliceIndex(key_slice->stop, &stop)) {
-      return NULL;
+      return nullptr;
     }
 
     if (start < 0 || stop < 0) {
@@ -274,7 +274,7 @@ static PyObject *bpy_bmeditselseq_subscript(BPy_BMEditSelSeq *self, PyObject *ke
   }
 
   PyErr_SetString(PyExc_AttributeError, "BMElemSeq[key]: invalid key, key must be an int");
-  return NULL;
+  return nullptr;
 }
 
 static int bpy_bmeditselseq_contains(BPy_BMEditSelSeq *self, PyObject *value)
@@ -293,22 +293,22 @@ static int bpy_bmeditselseq_contains(BPy_BMEditSelSeq *self, PyObject *value)
 
 static PySequenceMethods bpy_bmeditselseq_as_sequence = {
     /*sq_length*/ (lenfunc)bpy_bmeditselseq_length,
-    /*sq_concat*/ NULL,
-    /*sq_repeat*/ NULL,
+    /*sq_concat*/ nullptr,
+    /*sq_repeat*/ nullptr,
     /* Only set this so `PySequence_Check()` returns True. */
     /*sq_item*/ (ssizeargfunc)bpy_bmeditselseq_subscript_int,
-    /*sq_slice */ NULL,
-    /*sq_ass_item */ NULL,
-    /*was_sq_ass_slice*/ NULL,
+    /*sq_slice */ nullptr,
+    /*sq_ass_item */ nullptr,
+    /*was_sq_ass_slice*/ nullptr,
     /*sq_contains*/ (objobjproc)bpy_bmeditselseq_contains,
-    /*sq_inplace_concat*/ NULL,
-    /*sq_inplace_repeat*/ NULL,
+    /*sq_inplace_concat*/ nullptr,
+    /*sq_inplace_repeat*/ nullptr,
 };
 
 static PyMappingMethods bpy_bmeditselseq_as_mapping = {
     /*mp_length*/ (lenfunc)bpy_bmeditselseq_length,
     /*mp_subscript*/ (binaryfunc)bpy_bmeditselseq_subscript,
-    /*mp_ass_subscript*/ (objobjargproc)NULL,
+    /*mp_ass_subscript*/ (objobjargproc) nullptr,
 };
 
 /* Iterator
@@ -320,16 +320,16 @@ static PyObject *bpy_bmeditselseq_iter(BPy_BMEditSelSeq *self)
 
   BPY_BM_CHECK_OBJ(self);
   py_iter = (BPy_BMEditSelIter *)BPy_BMEditSelIter_CreatePyObject(self->bm);
-  py_iter->ese = self->bm->selected.first;
+  py_iter->ese = static_cast<BMEditSelection *>(self->bm->selected.first);
   return (PyObject *)py_iter;
 }
 
 static PyObject *bpy_bmeditseliter_next(BPy_BMEditSelIter *self)
 {
   BMEditSelection *ese = self->ese;
-  if (ese == NULL) {
+  if (ese == nullptr) {
     PyErr_SetNone(PyExc_StopIteration);
-    return NULL;
+    return nullptr;
   }
 
   self->ese = ese->next;
@@ -363,17 +363,17 @@ void BPy_BM_init_types_select(void)
   BPy_BMEditSelSeq_Type.tp_name = "BMEditSelSeq";
   BPy_BMEditSelIter_Type.tp_name = "BMEditSelIter";
 
-  BPy_BMEditSelSeq_Type.tp_doc = NULL; /* todo */
-  BPy_BMEditSelIter_Type.tp_doc = NULL;
+  BPy_BMEditSelSeq_Type.tp_doc = nullptr; /* todo */
+  BPy_BMEditSelIter_Type.tp_doc = nullptr;
 
-  BPy_BMEditSelSeq_Type.tp_repr = (reprfunc)NULL;
-  BPy_BMEditSelIter_Type.tp_repr = (reprfunc)NULL;
+  BPy_BMEditSelSeq_Type.tp_repr = (reprfunc) nullptr;
+  BPy_BMEditSelIter_Type.tp_repr = (reprfunc) nullptr;
 
   BPy_BMEditSelSeq_Type.tp_getset = bpy_bmeditselseq_getseters;
-  BPy_BMEditSelIter_Type.tp_getset = NULL;
+  BPy_BMEditSelIter_Type.tp_getset = nullptr;
 
   BPy_BMEditSelSeq_Type.tp_methods = bpy_bmeditselseq_methods;
-  BPy_BMEditSelIter_Type.tp_methods = NULL;
+  BPy_BMEditSelIter_Type.tp_methods = nullptr;
 
   BPy_BMEditSelSeq_Type.tp_as_sequence = &bpy_bmeditselseq_as_sequence;
 
@@ -384,8 +384,8 @@ void BPy_BM_init_types_select(void)
   /* Only 1 iterator so far. */
   BPy_BMEditSelIter_Type.tp_iternext = (iternextfunc)bpy_bmeditseliter_next;
 
-  BPy_BMEditSelSeq_Type.tp_dealloc = NULL;   //(destructor)bpy_bmeditselseq_dealloc;
-  BPy_BMEditSelIter_Type.tp_dealloc = NULL;  //(destructor)bpy_bmvert_dealloc;
+  BPy_BMEditSelSeq_Type.tp_dealloc = nullptr;   //(destructor)bpy_bmeditselseq_dealloc;
+  BPy_BMEditSelIter_Type.tp_dealloc = nullptr;  //(destructor)bpy_bmvert_dealloc;
 
   BPy_BMEditSelSeq_Type.tp_flags = Py_TPFLAGS_DEFAULT;
   BPy_BMEditSelIter_Type.tp_flags = Py_TPFLAGS_DEFAULT;
@@ -401,23 +401,23 @@ int BPy_BMEditSel_Assign(BPy_BMesh *self, PyObject *value)
   BMesh *bm;
   Py_ssize_t value_len;
   Py_ssize_t i;
-  BMElem **value_array = NULL;
+  BMElem **value_array = nullptr;
 
   BPY_BM_CHECK_INT(self);
 
   bm = self->bm;
 
-  value_array = BPy_BMElem_PySeq_As_Array(&bm,
-                                          value,
-                                          0,
-                                          PY_SSIZE_T_MAX,
-                                          &value_len,
-                                          BM_VERT | BM_EDGE | BM_FACE,
-                                          true,
-                                          true,
-                                          "BMesh.select_history = value");
+  value_array = static_cast<BMElem **>(BPy_BMElem_PySeq_As_Array(&bm,
+                                                                 value,
+                                                                 0,
+                                                                 PY_SSIZE_T_MAX,
+                                                                 &value_len,
+                                                                 BM_VERT | BM_EDGE | BM_FACE,
+                                                                 true,
+                                                                 true,
+                                                                 "BMesh.select_history = value"));
 
-  if (value_array == NULL) {
+  if (value_array == nullptr) {
     return -1;
   }
 

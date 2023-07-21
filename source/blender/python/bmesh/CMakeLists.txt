@@ -19,7 +19,7 @@ set(SRC
   bmesh_py_types.c
   bmesh_py_types_customdata.cc
   bmesh_py_types_meshdata.cc
-  bmesh_py_types_select.c
+  bmesh_py_types_select.cc
   bmesh_py_utils.c
 
   bmesh_py_api.h
