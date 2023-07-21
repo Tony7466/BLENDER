@@ -27,6 +27,38 @@ using DictionaryValuePtr = std::shared_ptr<DictionaryValue>;
 
 GeometryBakeItem::GeometryBakeItem(GeometrySet geometry) : geometry(std::move(geometry)) {}
 
+static void remove_materials(Material ***materials, short *materials_num)
+{
+  MEM_SAFE_FREE(*materials);
+  *materials_num = 0;
+}
+
+void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
+{
+  main_geometry.ensure_owns_all_data();
+  main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+    if (Mesh *mesh = geometry.get_mesh_for_write()) {
+      mesh->attributes_for_write().remove_anonymous();
+      remove_materials(&mesh->mat, &mesh->totcol);
+    }
+    if (Curves *curves = geometry.get_curves_for_write()) {
+      curves->geometry.wrap().attributes_for_write().remove_anonymous();
+      remove_materials(&curves->mat, &curves->totcol);
+    }
+    if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
+      pointcloud->attributes_for_write().remove_anonymous();
+      remove_materials(&pointcloud->mat, &pointcloud->totcol);
+    }
+    if (bke::Instances *instances = geometry.get_instances_for_write()) {
+      instances->attributes_for_write().remove_anonymous();
+    }
+    geometry.keep_only_during_modify({GeometryComponent::Type::Mesh,
+                                      GeometryComponent::Type::Curve,
+                                      GeometryComponent::Type::PointCloud,
+                                      GeometryComponent::Type::Instance});
+  });
+}
+
 PrimitiveBakeItem::PrimitiveBakeItem(const CPPType &type, const void *value) : type_(type)
 {
   value_ = MEM_mallocN_aligned(type.size(), type.alignment(), __func__);

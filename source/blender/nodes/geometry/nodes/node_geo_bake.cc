@@ -477,7 +477,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
         /* Wait until value is available. */
         return;
       }
-      clean_geometry_for_cache(*geometry);
+      bke::GeometryBakeItem::cleanup_geometry(*geometry);
       bake_storage->current_bake_state->geometry.emplace(*geometry);
       params.set_output(0, std::move(*geometry));
     }
@@ -513,7 +513,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
       /* Wait until value is available. */
       return;
     }
-    clean_geometry_for_cache(*geometry);
+    bke::GeometryBakeItem::cleanup_geometry(*geometry);
     params.set_output(0, std::move(*geometry));
   }
 };

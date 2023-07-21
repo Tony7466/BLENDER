@@ -142,7 +142,6 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
 void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
                                      const Span<void *> input_values,
                                      bke::sim::SimulationZoneState &r_zone_state);
-void clean_geometry_for_cache(GeometrySet &geometry);
 void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
                                      bke::sim::SimulationZoneState &zone_state,
                                      const Object &self_object,
