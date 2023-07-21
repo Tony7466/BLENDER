@@ -3523,7 +3523,7 @@ static void rna_generate_blender(BlenderRNA *brna, FILE *f)
 
   fprintf(f,
           "BlenderRNA BLENDER_RNA = {\n"
-          "\t.structs = {");
+          "\t/*structs*/ {");
   srna = static_cast<StructRNA *>(brna->structs.first);
   if (srna) {
     fprintf(f, "&RNA_%s, ", srna->identifier);
@@ -3541,8 +3541,8 @@ static void rna_generate_blender(BlenderRNA *brna, FILE *f)
   }
 
   fprintf(f,
-          "\t.structs_map = NULL,\n"
-          "\t.structs_len = 0,\n"
+          "\t/*structs_map*/ NULL,\n"
+          "\t/*structs_len*/ 0,\n"
           "};\n\n");
 }
 
