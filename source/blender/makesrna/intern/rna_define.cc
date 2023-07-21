@@ -1485,9 +1485,9 @@ PropertyRNA *RNA_def_property(StructOrFunctionRNA *cont_,
 
   /* Override handling. */
   if (DefRNA.preprocess) {
-    prop->override_diff = (RNAPropOverrideDiff) "rna_property_override_diff_default";
-    prop->override_store = (RNAPropOverrideStore) "rna_property_override_store_default";
-    prop->override_apply = (RNAPropOverrideApply) "rna_property_override_apply_default";
+    prop->override_diff = (RNAPropOverrideDiff)(void *)"rna_property_override_diff_default";
+    prop->override_store = (RNAPropOverrideStore)(void *)"rna_property_override_store_default";
+    prop->override_apply = (RNAPropOverrideApply)(void *)"rna_property_override_apply_default";
   }
   /* TODO: do we want that for runtime-defined stuff too? I’d say no, but... maybe yes :/ */
 
@@ -2813,9 +2813,9 @@ void RNA_def_property_collection_sdna(PropertyRNA *prop,
     }
 
     if (dp->dnatype && STREQ(dp->dnatype, "ListBase")) {
-      cprop->next = (PropCollectionNextFunc) "rna_iterator_listbase_next";
-      cprop->get = (PropCollectionGetFunc) "rna_iterator_listbase_get";
-      cprop->end = (PropCollectionEndFunc) "rna_iterator_listbase_end";
+      cprop->next = (PropCollectionNextFunc)(void *)"rna_iterator_listbase_next";
+      cprop->get = (PropCollectionGetFunc)(void *)"rna_iterator_listbase_get";
+      cprop->end = (PropCollectionEndFunc)(void *)"rna_iterator_listbase_end";
     }
   }
 
@@ -2842,14 +2842,14 @@ void RNA_def_property_collection_sdna(PropertyRNA *prop,
         prop->totarraylength = 0;
       }
 
-      cprop->next = (PropCollectionNextFunc) "rna_iterator_array_next";
-      cprop->end = (PropCollectionEndFunc) "rna_iterator_array_end";
+      cprop->next = (PropCollectionNextFunc)(void *)"rna_iterator_array_next";
+      cprop->end = (PropCollectionEndFunc)(void *)"rna_iterator_array_end";
 
       if (dp->dnapointerlevel >= 2) {
-        cprop->get = (PropCollectionGetFunc) "rna_iterator_array_dereference_get";
+        cprop->get = (PropCollectionGetFunc)(void *)"rna_iterator_array_dereference_get";
       }
       else {
-        cprop->get = (PropCollectionGetFunc) "rna_iterator_array_get";
+        cprop->get = (PropCollectionGetFunc)(void *)"rna_iterator_array_get";
       }
     }
     else {
