@@ -28,6 +28,9 @@ class PaintOperation : public GreasePencilStrokeOperation {
  private:
   Vector<float3> sampled_positions_;
   Vector<float> sampled_radii_;
+
+  Vector<float3> smoothed_positions_;
+  Vector<float> smoothed_radii_;
   bke::greasepencil::StrokeCache *stroke_cache_;
 
   friend struct PaintOperationExecutor;
@@ -94,27 +97,45 @@ struct PaintOperationExecutor {
                                      brush->rgb[2],
                                      brush->gpencil_settings->vertex_factor) :
                               float4(0.0f);
+    const float active_smooth_factor = brush->gpencil_settings->active_smooth;
 
     self.stroke_cache_->append(proj_pos, radius, opacity, ColorGeometry4f(vertex_color));
 
     self.sampled_positions_.append(proj_pos);
     self.sampled_radii_.append(radius);
 
-    const int64_t active_window_size = 64;
-    const int64_t inverted_active_window_size = math::max(
-        self.stroke_cache_->size - active_window_size, int64_t(0));
+    self.smoothed_positions_.append(proj_pos);
+    self.smoothed_radii_.append(radius);
+
+    const int64_t smooth_window_size = 16;
+    const int64_t inverted_copy_window_size = math::max(
+        self.stroke_cache_->size - smooth_window_size, int64_t(0));
+
+    const int64_t smooth_radius = 16;
+
+    const int64_t inverted_smooth_window_size = math::max(
+        self.stroke_cache_->size - smooth_window_size - smooth_radius, int64_t(0));
 
     Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
-        inverted_active_window_size);
-    MutableSpan<float3> dst_positions = self.stroke_cache_->positions.as_mutable_span().drop_front(
-        inverted_active_window_size);
+        inverted_smooth_window_size);
+    MutableSpan<float3> dst_positions = self.smoothed_positions_.as_mutable_span().drop_front(
+        inverted_smooth_window_size);
 
-    Span<float> src_radii = self.sampled_radii_.as_span().drop_front(inverted_active_window_size);
-    MutableSpan<float> dst_radii = self.stroke_cache_->radii.as_mutable_span().drop_front(
-        inverted_active_window_size);
+    Span<float> src_radii = self.sampled_radii_.as_span().drop_front(inverted_smooth_window_size);
+    MutableSpan<float> dst_radii = self.smoothed_radii_.as_mutable_span().drop_front(
+        inverted_smooth_window_size);
 
-    ed::greasepencil::gaussian_blur_1D(src_positions, 8, 0.75f, false, true, false, dst_positions);
-    ed::greasepencil::gaussian_blur_1D(src_radii, 10, 1.0f, false, false, false, dst_radii);
+    ed::greasepencil::gaussian_blur_1D(
+        src_positions, smooth_radius, active_smooth_factor, false, true, false, dst_positions);
+    ed::greasepencil::gaussian_blur_1D(
+        src_radii, smooth_radius, active_smooth_factor, false, false, false, dst_radii);
+
+    self.stroke_cache_->positions.as_mutable_span()
+        .drop_front(inverted_copy_window_size)
+        .copy_from(self.smoothed_positions_.as_span().drop_front(inverted_copy_window_size));
+    self.stroke_cache_->radii.as_mutable_span()
+        .drop_front(inverted_copy_window_size)
+        .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
 
 #ifdef DEBUG
     /* Visualize active window. */
