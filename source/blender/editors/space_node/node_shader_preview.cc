@@ -21,24 +21,16 @@
  * the wanted viewlayer/pass for each previewed node.
  */
 
-#include "BLO_readfile.h"
-
 #include "DNA_camera_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_world_types.h"
 
 #include "BKE_colortools.h"
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_icons.h"
-#include "BKE_idprop.h"
-#include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_light.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -46,25 +38,13 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
 
-#include "BIF_glutil.h"
-#include "IMB_imbuf_types.h"
-
-#include "RE_engine.h"
-#include "RE_pipeline.h"
-
 #include "WM_api.h"
-#include "WM_types.h"
 
 #include "ED_datafiles.h"
 #include "ED_node_preview.hh"
 #include "ED_render.h"
 #include "ED_screen.h"
 #include "node_intern.hh"
-
-#ifndef NDEBUG
-/* Used for database init assert(). */
-#  include "BLI_threads.h"
-#endif
 
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
