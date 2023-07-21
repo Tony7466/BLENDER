@@ -128,9 +128,9 @@ class ArmatureBoneDrawStrategy {
                          const int select_id) const = 0;
 
   /** Should the relationship line between this bone and its parent be drawn? */
-  virtual bool use_bone_relation_to_parent(const EditBone *ebone,
-                                           const bPoseChannel *pchan,
-                                           const int boneflag) const
+  virtual bool should_draw_relation_to_parent(const EditBone *ebone,
+                                              const bPoseChannel *pchan,
+                                              const int boneflag) const
   {
     if (ebone && ebone->parent) {
       /* Always draw for unconnected bones, regardless of selection,
@@ -1822,12 +1822,14 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
                                 const short constflag)
 {
   if (ebone && ebone->parent) {
-    if (ctx->do_relations && draw_strategy.use_bone_relation_to_parent(ebone, pchan, boneflag)) {
+    if (ctx->do_relations && draw_strategy.should_draw_relation_to_parent(ebone, pchan, boneflag))
+    {
       draw_bone_bone_relationship_line(ctx, ebone->head, ebone->parent->head, ebone->parent->tail);
     }
   }
   else if (pchan && pchan->parent) {
-    if (ctx->do_relations && draw_strategy.use_bone_relation_to_parent(ebone, pchan, boneflag)) {
+    if (ctx->do_relations && draw_strategy.should_draw_relation_to_parent(ebone, pchan, boneflag))
+    {
       draw_bone_bone_relationship_line(
           ctx, pchan->pose_head, pchan->parent->pose_head, pchan->parent->pose_tail);
     }
