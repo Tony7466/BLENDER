@@ -407,7 +407,7 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
  * \param epsilon: The threshold distance from the coord between two points for when a point
  * in-between needs to be kept.
  * \param dist_function: A function that computes the distance to a point at an index in the range.
- * The IndexRange is a subrange of \a range and the index in an index into the subrange.
+ * The IndexRange is a subrange of \a range and the index in an index relative to the subrange.
  * \param points_to_delete: Writes true to the indecies for which the points should be removed.
  * \returns the total number of points to remove.
  */
