@@ -18,7 +18,7 @@ set(SRC
   gpu_py.c
   gpu_py_api.cc
   gpu_py_batch.cc
-  gpu_py_buffer.c
+  gpu_py_buffer.cc
   gpu_py_capabilities.c
   gpu_py_element.c
   gpu_py_framebuffer.c
