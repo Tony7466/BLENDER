@@ -46,15 +46,15 @@ static bool pygpu_batch_is_program_or_error(BPyGPUBatch *self)
 /** \name GPUBatch Type
  * \{ */
 
-static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
+static PyObject *pygpu_batch__tp_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
   const char *exc_str_missing_arg = "GPUBatch.__new__() missing required argument '%s' (pos %d)";
 
   struct PyC_StringEnum prim_type = {bpygpu_primtype_items, GPU_PRIM_NONE};
-  BPyGPUVertBuf *py_vertbuf = NULL;
-  BPyGPUIndexBuf *py_indexbuf = NULL;
+  BPyGPUVertBuf *py_vertbuf = nullptr;
+  BPyGPUIndexBuf *py_indexbuf = nullptr;
 
-  static const char *_keywords[] = {"type", "buf", "elem", NULL};
+  static const char *_keywords[] = {"type", "buf", "elem", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O&" /* `type` */
@@ -74,7 +74,7 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args,
                                         &BPyGPUIndexBuf_Type,
                                         &py_indexbuf))
   {
-    return NULL;
+    return nullptr;
   }
 
   BLI_assert(prim_type.value_found != GPU_PRIM_NONE);
@@ -91,13 +91,14 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args,
         1);
   }
 
-  if (py_vertbuf == NULL) {
+  if (py_vertbuf == nullptr) {
     PyErr_Format(PyExc_TypeError, exc_str_missing_arg, _keywords[1], 2);
-    return NULL;
+    return nullptr;
   }
 
-  GPUBatch *batch = GPU_batch_create(
-      prim_type.value_found, py_vertbuf->buf, py_indexbuf ? py_indexbuf->elem : NULL);
+  GPUBatch *batch = GPU_batch_create(GPUPrimType(prim_type.value_found),
+                                     py_vertbuf->buf,
+                                     py_indexbuf ? py_indexbuf->elem : nullptr);
 
   BPyGPUBatch *ret = (BPyGPUBatch *)BPyGPUBatch_CreatePyObject(batch);
 
@@ -106,7 +107,7 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args,
   PyList_SET_ITEM(ret->references, 0, (PyObject *)py_vertbuf);
   Py_INCREF(py_vertbuf);
 
-  if (py_indexbuf != NULL) {
+  if (py_indexbuf != nullptr) {
     PyList_SET_ITEM(ret->references, 1, (PyObject *)py_indexbuf);
     Py_INCREF(py_indexbuf);
   }
@@ -118,8 +119,7 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject *UNUSED(type), PyObject *args,
   return (PyObject *)ret;
 }
 
-PyDoc_STRVAR(pygpu_batch_vertbuf_add_doc,
-".. method:: vertbuf_add(buf)\n"
+PyDoc_STRVAR(pygpu_batch_vertbuf_add_doc, ".. method:: vertbuf_add(buf)\n"
 "\n"
 "   Add another vertex buffer to the Batch.\n"
 "   It is not possible to add more vertices to the batch using this method.\n"
@@ -135,7 +135,7 @@ static PyObject *pygpu_batch_vertbuf_add(BPyGPUBatch *self, BPyGPUVertBuf *py_bu
 {
   if (!BPyGPUVertBuf_Check(py_buf)) {
     PyErr_Format(PyExc_TypeError, "Expected a GPUVertBuf, got %s", Py_TYPE(py_buf)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   if (GPU_vertbuf_get_vertex_len(self->batch->verts[0]) != GPU_vertbuf_get_vertex_len(py_buf->buf))
@@ -144,14 +144,14 @@ static PyObject *pygpu_batch_vertbuf_add(BPyGPUBatch *self, BPyGPUVertBuf *py_bu
                  "Expected %d length, got %d",
                  GPU_vertbuf_get_vertex_len(self->batch->verts[0]),
                  GPU_vertbuf_get_vertex_len(py_buf->buf));
-    return NULL;
+    return nullptr;
   }
 
-  if (self->batch->verts[GPU_BATCH_VBO_MAX_LEN - 1] != NULL) {
+  if (self->batch->verts[GPU_BATCH_VBO_MAX_LEN - 1] != nullptr) {
     PyErr_SetString(
         PyExc_RuntimeError,
         "Maximum number of vertex buffers exceeded: " STRINGIFY(GPU_BATCH_VBO_MAX_LEN));
-    return NULL;
+    return nullptr;
   }
 
 #ifdef USE_GPU_PY_REFERENCES
@@ -178,7 +178,7 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
 {
   if (!BPyGPUShader_Check(py_shader)) {
     PyErr_Format(PyExc_TypeError, "Expected a GPUShader, got %s", Py_TYPE(py_shader)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   GPUShader *shader = py_shader->shader;
@@ -215,14 +215,14 @@ PyDoc_STRVAR(pygpu_batch_draw_doc,
              "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
 {
-  BPyGPUShader *py_program = NULL;
+  BPyGPUShader *py_program = nullptr;
 
   if (!PyArg_ParseTuple(args, "|O!:GPUBatch.draw", &BPyGPUShader_Type, &py_program)) {
-    return NULL;
+    return nullptr;
   }
-  if (py_program == NULL) {
+  if (py_program == nullptr) {
     if (!pygpu_batch_is_program_or_error(self)) {
-      return NULL;
+      return nullptr;
     }
   }
   else if (self->batch->shader != py_program->shader) {
@@ -251,11 +251,11 @@ PyDoc_STRVAR(
     "   :type instance_count: int\n");
 static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, PyObject *kw)
 {
-  BPyGPUShader *py_program = NULL;
+  BPyGPUShader *py_program = nullptr;
   int instance_start = 0;
   int instance_count = 0;
 
-  static const char *_keywords[] = {"program", "instance_start", "instance_count", NULL};
+  static const char *_keywords[] = {"program", "instance_start", "instance_count", nullptr};
   static _PyArg_Parser _parser = {
       "O!" /* `program` */
       "|$" /* Optional keyword only arguments. */
@@ -268,7 +268,7 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_start, &instance_count))
   {
-    return NULL;
+    return nullptr;
   }
 
   GPU_batch_set_shader(self->batch, py_program->shader);
@@ -293,11 +293,11 @@ PyDoc_STRVAR(pygpu_batch_draw_range_doc,
              "   :type elem_count: int\n");
 static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObject *kw)
 {
-  BPyGPUShader *py_program = NULL;
+  BPyGPUShader *py_program = nullptr;
   int elem_start = 0;
   int elem_count = 0;
 
-  static const char *_keywords[] = {"program", "elem_start", "elem_count", NULL};
+  static const char *_keywords[] = {"program", "elem_start", "elem_count", nullptr};
   static _PyArg_Parser _parser = {
       "O!" /* `program` */
       "|$" /* Optional keyword only arguments. */
@@ -310,7 +310,7 @@ static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObj
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &BPyGPUShader_Type, &py_program, &elem_start, &elem_count))
   {
-    return NULL;
+    return nullptr;
   }
 
   GPU_batch_set_shader(self->batch, py_program->shader);
@@ -321,7 +321,7 @@ static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObj
 static PyObject *pygpu_batch_program_use_begin(BPyGPUBatch *self)
 {
   if (!pygpu_batch_is_program_or_error(self)) {
-    return NULL;
+    return nullptr;
   }
   GPU_shader_bind(self->batch->shader);
   Py_RETURN_NONE;
@@ -330,7 +330,7 @@ static PyObject *pygpu_batch_program_use_begin(BPyGPUBatch *self)
 static PyObject *pygpu_batch_program_use_end(BPyGPUBatch *self)
 {
   if (!pygpu_batch_is_program_or_error(self)) {
-    return NULL;
+    return nullptr;
   }
   GPU_shader_unbind();
   Py_RETURN_NONE;
@@ -350,7 +350,7 @@ static PyMethodDef pygpu_batch__tp_methods[] = {
      pygpu_batch_draw_range_doc},
     {"_program_use_begin", (PyCFunction)pygpu_batch_program_use_begin, METH_NOARGS, ""},
     {"_program_use_end", (PyCFunction)pygpu_batch_program_use_end, METH_NOARGS, ""},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 #ifdef USE_GPU_PY_REFERENCES
@@ -369,7 +369,7 @@ static int pygpu_batch__tp_clear(BPyGPUBatch *self)
 
 static int pygpu_batch__tp_is_gc(BPyGPUBatch *self)
 {
-  return self->references != NULL;
+  return self->references != nullptr;
 }
 
 #endif
@@ -404,25 +404,25 @@ PyDoc_STRVAR(
     "   :arg elem: An optional index buffer.\n"
     "   :type elem: :class:`gpu.types.GPUIndexBuf`\n");
 PyTypeObject BPyGPUBatch_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUBatch",
     /*tp_basicsize*/ sizeof(BPyGPUBatch),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)pygpu_batch__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
 #ifdef USE_GPU_PY_REFERENCES
     /*tp_flags*/ Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
 #else
@@ -432,43 +432,43 @@ PyTypeObject BPyGPUBatch_Type = {
 #ifdef USE_GPU_PY_REFERENCES
     /*tp_traverse*/ (traverseproc)pygpu_batch__tp_traverse,
 #else
-    /*tp_traverse*/ NULL,
+    /*tp_traverse*/ nullptr,
 #endif
 #ifdef USE_GPU_PY_REFERENCES
     /*tp_clear*/ (inquiry)pygpu_batch__tp_clear,
 #else
-    /*tp_clear*/ NULL,
+    /*tp_clear*/ nullptr,
 #endif
-    /*tp_richcompare*/ NULL,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_batch__tp_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_batch__tp_new,
-    /*tp_free*/ NULL,
+    /*tp_free*/ nullptr,
 #ifdef USE_GPU_PY_REFERENCES
     /*tp_is_gc*/ (inquiry)pygpu_batch__tp_is_gc,
 #else
-    /*tp_is_gc*/ NULL,
+    /*tp_is_gc*/ nullptr,
 #endif
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
@@ -483,7 +483,7 @@ PyObject *BPyGPUBatch_CreatePyObject(GPUBatch *batch)
 
 #ifdef USE_GPU_PY_REFERENCES
   self = (BPyGPUBatch *)_PyObject_GC_New(&BPyGPUBatch_Type);
-  self->references = NULL;
+  self->references = nullptr;
 #else
   self = PyObject_New(BPyGPUBatch, &BPyGPUBatch_Type);
 #endif
