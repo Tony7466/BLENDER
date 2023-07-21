@@ -23,7 +23,7 @@ set(SRC
   idprop_py_ui_api.cc
   imbuf_py_api.cc
   py_capi_rna.cc
-  py_capi_utils.c
+  py_capi_utils.cc
 
   bgl.h
   bl_math_py_api.h

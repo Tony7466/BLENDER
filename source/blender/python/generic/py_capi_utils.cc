@@ -70,14 +70,14 @@ int PyC_AsArray_FAST(void *array,
   if (type == &PyFloat_Type) {
     switch (array_item_size) {
       case sizeof(double): {
-        double *array_double = array;
+        double *array_double = static_cast<double *>(array);
         for (i = 0; i < length; i++) {
           array_double[i] = PyFloat_AsDouble(value_fast_items[i]);
         }
         break;
       }
       case sizeof(float): {
-        float *array_float = array;
+        float *array_float = static_cast<float *>(array);
         for (i = 0; i < length; i++) {
           array_float[i] = PyFloat_AsDouble(value_fast_items[i]);
         }
@@ -92,28 +92,28 @@ int PyC_AsArray_FAST(void *array,
   else if (type == &PyLong_Type) {
     switch (array_item_size) {
       case sizeof(int64_t): {
-        int64_t *array_int = array;
+        int64_t *array_int = static_cast<int64_t *>(array);
         for (i = 0; i < length; i++) {
           array_int[i] = PyC_Long_AsI64(value_fast_items[i]);
         }
         break;
       }
       case sizeof(int32_t): {
-        int32_t *array_int = array;
+        int32_t *array_int = static_cast<int32_t *>(array);
         for (i = 0; i < length; i++) {
           array_int[i] = PyC_Long_AsI32(value_fast_items[i]);
         }
         break;
       }
       case sizeof(int16_t): {
-        int16_t *array_int = array;
+        int16_t *array_int = static_cast<int16_t *>(array);
         for (i = 0; i < length; i++) {
           array_int[i] = PyC_Long_AsI16(value_fast_items[i]);
         }
         break;
       }
       case sizeof(int8_t): {
-        int8_t *array_int = array;
+        int8_t *array_int = static_cast<int8_t *>(array);
         for (i = 0; i < length; i++) {
           array_int[i] = PyC_Long_AsI8(value_fast_items[i]);
         }
@@ -128,28 +128,28 @@ int PyC_AsArray_FAST(void *array,
   else if (type == &PyBool_Type) {
     switch (array_item_size) {
       case sizeof(int64_t): {
-        int64_t *array_bool = array;
+        int64_t *array_bool = static_cast<int64_t *>(array);
         for (i = 0; i < length; i++) {
           array_bool[i] = (PyLong_AsLong(value_fast_items[i]) != 0);
         }
         break;
       }
       case sizeof(int32_t): {
-        int32_t *array_bool = array;
+        int32_t *array_bool = static_cast<int32_t *>(array);
         for (i = 0; i < length; i++) {
           array_bool[i] = (PyLong_AsLong(value_fast_items[i]) != 0);
         }
         break;
       }
       case sizeof(int16_t): {
-        int16_t *array_bool = array;
+        int16_t *array_bool = static_cast<int16_t *>(array);
         for (i = 0; i < length; i++) {
           array_bool[i] = (PyLong_AsLong(value_fast_items[i]) != 0);
         }
         break;
       }
       case sizeof(int8_t): {
-        int8_t *array_bool = array;
+        int8_t *array_bool = static_cast<int8_t *>(array);
         for (i = 0; i < length; i++) {
           array_bool[i] = (PyLong_AsLong(value_fast_items[i]) != 0);
         }
@@ -489,7 +489,7 @@ void PyC_List_Fill(PyObject *list, PyObject *value)
 
 int PyC_ParseBool(PyObject *o, void *p)
 {
-  bool *bool_p = p;
+  bool *bool_p = static_cast<bool *>(p);
   long value;
   if (((value = PyLong_AsLong(o)) == -1) || !ELEM(value, 0, 1)) {
     PyErr_Format(PyExc_ValueError, "expected a bool or int (0/1), got %s", Py_TYPE(o)->tp_name);
@@ -502,9 +502,9 @@ int PyC_ParseBool(PyObject *o, void *p)
 
 int PyC_ParseStringEnum(PyObject *o, void *p)
 {
-  struct PyC_StringEnum *e = p;
+  struct PyC_StringEnum *e = static_cast<PyC_StringEnum *>(p);
   const char *value = PyUnicode_AsUTF8(o);
-  if (value == NULL) {
+  if (value == nullptr) {
     PyErr_Format(PyExc_ValueError, "expected a string, got %s", Py_TYPE(o)->tp_name);
     return 0;
   }
@@ -536,7 +536,7 @@ const char *PyC_StringEnum_FindIDFromValue(const struct PyC_StringEnumItems *ite
       return items[i].id;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 int PyC_CheckArgs_DeepCopy(PyObject *args)
@@ -559,7 +559,7 @@ void PyC_ObSpit(const char *name, PyObject *var)
 {
   const char *null_str = "<null>";
   fprintf(stderr, "<%s> : ", name);
-  if (var == NULL) {
+  if (var == nullptr) {
     fprintf(stderr, "%s\n", null_str);
   }
   else {
@@ -577,13 +577,13 @@ void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var)
 {
   /* No name, creator of string can manage that. */
   const char *null_str = "<null>";
-  if (var == NULL) {
+  if (var == nullptr) {
     BLI_snprintf(result, result_maxncpy, "%s", null_str);
   }
   else {
     const PyTypeObject *type = Py_TYPE(var);
     PyObject *var_str = PyObject_Repr(var);
-    if (var_str == NULL) {
+    if (var_str == nullptr) {
       /* We could print error here,
        * but this may be used for generating errors - so don't for now. */
       PyErr_Clear();
@@ -595,7 +595,7 @@ void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var)
                  (void *)var,
                  type ? type->tp_name : null_str,
                  var_str ? PyUnicode_AsUTF8(var_str) : "<error>");
-    if (var_str != NULL) {
+    if (var_str != nullptr) {
       Py_DECREF(var_str);
     }
   }
@@ -645,7 +645,7 @@ void PyC_FileAndNum(const char **r_filename, int *r_lineno)
   PyCodeObject *code;
 
   if (r_filename) {
-    *r_filename = NULL;
+    *r_filename = nullptr;
   }
   if (r_lineno) {
     *r_lineno = -1;
@@ -664,7 +664,7 @@ void PyC_FileAndNum(const char **r_filename, int *r_lineno)
   }
 
   /* when executing a module */
-  if (r_filename && *r_filename == NULL) {
+  if (r_filename && *r_filename == nullptr) {
     /* try an alternative method to get the r_filename - module based
      * references below are all borrowed (double checked) */
     PyObject *mod_name = PyDict_GetItemString(PyEval_GetGlobals(), "__name__");
@@ -682,7 +682,7 @@ void PyC_FileAndNum(const char **r_filename, int *r_lineno)
       }
 
       /* unlikely, fallback */
-      if (*r_filename == NULL) {
+      if (*r_filename == nullptr) {
         *r_filename = PyUnicode_AsUTF8(mod_name);
       }
     }
@@ -748,7 +748,7 @@ PyObject *PyC_FrozenSetFromStrings(const char **strings)
   const char **str;
   PyObject *ret;
 
-  ret = PyFrozenSet_New(NULL);
+  ret = PyFrozenSet_New(nullptr);
 
   for (str = strings; *str; str++) {
     PyObject *py_str = PyUnicode_FromString(*str);
@@ -771,7 +771,7 @@ PyObject *PyC_Err_Format_Prefix(PyObject *exception_type_prefix, const char *for
   va_list args;
 
   va_start(args, format);
-  error_value_prefix = PyUnicode_FromFormatV(format, args); /* can fail and be NULL */
+  error_value_prefix = PyUnicode_FromFormatV(format, args); /* can fail and be nullptr */
   va_end(args);
 
   if (PyErr_Occurred()) {
@@ -795,8 +795,8 @@ PyObject *PyC_Err_Format_Prefix(PyObject *exception_type_prefix, const char *for
 
   Py_XDECREF(error_value_prefix);
 
-  /* dumb to always return NULL but matches PyErr_Format */
-  return NULL;
+  /* dumb to always return nullptr but matches PyErr_Format */
+  return nullptr;
 }
 
 PyObject *PyC_Err_SetString_Prefix(PyObject *exception_type_prefix, const char *str)
@@ -858,49 +858,56 @@ static void pyc_exception_buffer_handle_system_exit(PyObject *error_type,
 /* returns the exception string as a new PyUnicode object, depends on external traceback module */
 #  if 0
 
+
 /* this version uses traceback module but somehow fails on UI errors */
+
 
 PyObject *PyC_ExceptionBuffer(void)
 {
-  PyObject *traceback_mod = NULL;
-  PyObject *format_tb_func = NULL;
-  PyObject *ret = NULL;
+PyObject *traceback_mod = nullptr;
+PyObject *format_tb_func = nullptr;
+PyObject *ret = nullptr;
 
-  if (!(traceback_mod = PyImport_ImportModule("traceback"))) {
-    goto error_cleanup;
-  }
-  else if (!(format_tb_func = PyObject_GetAttrString(traceback_mod, "format_exc"))) {
-    goto error_cleanup;
-  }
 
-  ret = PyObject_CallObject(format_tb_func, NULL);
+if (!(traceback_mod = PyImport_ImportModule("traceback"))) {
+goto error_cleanup;
+}
+else if (!(format_tb_func = PyObject_GetAttrString(traceback_mod, "format_exc"))) {
+goto error_cleanup;
+}
 
-  if (ret == Py_None) {
-    Py_DECREF(ret);
-    ret = NULL;
-  }
+
+ret = PyObject_CallObject(format_tb_func, nullptr);
+
+
+if (ret == Py_None) {
+Py_DECREF(ret);
+ret = nullptr;
+}
+
 
 error_cleanup:
-  /* could not import the module so print the error and close */
-  Py_XDECREF(traceback_mod);
-  Py_XDECREF(format_tb_func);
+/* could not import the module so print the error and close */
+Py_XDECREF(traceback_mod);
+Py_XDECREF(format_tb_func);
 
-  return ret;
+
+return ret;
 }
 #  else /* verbose, non-threadsafe version */
 PyObject *PyC_ExceptionBuffer(void)
 {
   PyObject *stdout_backup = PySys_GetObject("stdout"); /* borrowed */
   PyObject *stderr_backup = PySys_GetObject("stderr"); /* borrowed */
-  PyObject *string_io = NULL;
-  PyObject *string_io_buf = NULL;
-  PyObject *string_io_mod = NULL;
-  PyObject *string_io_getvalue = NULL;
+  PyObject *string_io = nullptr;
+  PyObject *string_io_buf = nullptr;
+  PyObject *string_io_mod = nullptr;
+  PyObject *string_io_getvalue = nullptr;
 
   PyObject *error_type, *error_value, *error_traceback;
 
   if (!PyErr_Occurred()) {
-    return NULL;
+    return nullptr;
   }
 
   PyErr_Fetch(&error_type, &error_value, &error_traceback);
@@ -914,7 +921,7 @@ PyObject *PyC_ExceptionBuffer(void)
   if (!(string_io_mod = PyImport_ImportModule("io"))) {
     goto error_cleanup;
   }
-  else if (!(string_io = PyObject_CallMethod(string_io_mod, "StringIO", NULL))) {
+  else if (!(string_io = PyObject_CallMethod(string_io_mod, "StringIO", nullptr))) {
     goto error_cleanup;
   }
   else if (!(string_io_getvalue = PyObject_GetAttrString(string_io, "getvalue"))) {
@@ -937,7 +944,7 @@ PyObject *PyC_ExceptionBuffer(void)
   PyErr_Print(); /* print the error */
   PyErr_Clear();
 
-  string_io_buf = PyObject_CallObject(string_io_getvalue, NULL);
+  string_io_buf = PyObject_CallObject(string_io_getvalue, nullptr);
 
   PySys_SetObject("stdout", stdout_backup);
   PySys_SetObject("stderr", stderr_backup);
@@ -962,17 +969,17 @@ error_cleanup:
   PyErr_Print(); /* print the error */
   PyErr_Restore(error_type, error_value, error_traceback);
 
-  return NULL;
+  return nullptr;
 }
 #  endif
 
 PyObject *PyC_ExceptionBuffer_Simple(void)
 {
   if (!PyErr_Occurred()) {
-    return NULL;
+    return nullptr;
   }
 
-  PyObject *string_io_buf = NULL;
+  PyObject *string_io_buf = nullptr;
 
   PyObject *error_type, *error_value, *error_traceback;
 
@@ -992,12 +999,12 @@ PyObject *PyC_ExceptionBuffer_Simple(void)
     }
   }
 
-  if (string_io_buf == NULL) {
+  if (string_io_buf == nullptr) {
     string_io_buf = PyObject_Str(error_value);
   }
 
   /* Python does this too */
-  if (UNLIKELY(string_io_buf == NULL)) {
+  if (UNLIKELY(string_io_buf == nullptr)) {
     string_io_buf = PyUnicode_FromFormat("<unprintable %s object>", Py_TYPE(error_value)->tp_name);
   }
 
@@ -1038,7 +1045,7 @@ const char *PyC_UnicodeAsBytesAndSize(PyObject *py_str, Py_ssize_t *r_size, PyOb
   }
 
   /* leave error raised from EncodeFS */
-  return NULL;
+  return nullptr;
 }
 
 const char *PyC_UnicodeAsBytes(PyObject *py_str, PyObject **r_coerce)
@@ -1063,7 +1070,7 @@ const char *PyC_UnicodeAsBytes(PyObject *py_str, PyObject **r_coerce)
   }
 
   /* leave error raised from EncodeFS */
-  return NULL;
+  return nullptr;
 }
 
 PyObject *PyC_UnicodeFromBytesAndSize(const char *str, Py_ssize_t size)
@@ -1114,7 +1121,7 @@ bool PyC_NameSpace_ImportArray(PyObject *py_dict, const char *imports[])
 {
   for (int i = 0; imports[i]; i++) {
     PyObject *name = PyUnicode_FromString(imports[i]);
-    PyObject *mod = PyImport_ImportModuleLevelObject(name, NULL, NULL, 0, 0);
+    PyObject *mod = PyImport_ImportModuleLevelObject(name, nullptr, nullptr, 0, 0);
     bool ok = false;
     if (mod) {
       PyDict_SetItem(py_dict, name, mod);
@@ -1147,7 +1154,7 @@ void PyC_MainModule_Restore(PyObject *main_mod)
 bool PyC_IsInterpreterActive(void)
 {
   /* instead of PyThreadState_Get, which calls Py_FatalError */
-  return (PyThreadState_GetDict() != NULL);
+  return (PyThreadState_GetDict() != nullptr);
 }
 
 /** \} */
@@ -1168,7 +1175,7 @@ void PyC_RunQuicky(const char *filepath, int n, ...)
 
     va_list vargs;
 
-    Py_ssize_t *sizes = PyMem_MALLOC(sizeof(*sizes) * (n / 2));
+    Py_ssize_t *sizes = static_cast<Py_ssize_t *>(PyMem_MALLOC(sizeof(*sizes) * (n / 2)));
     int i;
 
     PyObject *py_dict = PyC_DefaultNameSpace(filepath);
@@ -1196,7 +1203,7 @@ void PyC_RunQuicky(const char *filepath, int n, ...)
         ret = PyObject_CallFunction(unpack, "sy#", format, (char *)ptr, sizes[i]);
       }
 
-      if (ret == NULL) {
+      if (ret == nullptr) {
         printf("%s error, line:%d\n", __func__, __LINE__);
         PyErr_Print();
         PyErr_Clear();
@@ -1237,7 +1244,7 @@ void PyC_RunQuicky(const char *filepath, int n, ...)
 
         /* don't use the result */
         Py_DECREF(py_result);
-        py_result = NULL;
+        py_result = nullptr;
 
         /* now get the values back */
         va_start(vargs, n);
@@ -1264,7 +1271,7 @@ void PyC_RunQuicky(const char *filepath, int n, ...)
             item_new = Py_BuildValue("sO", format, item);
           }
 
-          ret = PyObject_Call(pack, item_new, NULL);
+          ret = PyObject_Call(pack, item_new, nullptr);
 
           if (ret) {
             /* copy the bytes back into memory */
@@ -1311,18 +1318,18 @@ void *PyC_RNA_AsPointer(PyObject *value, const char *type_name)
   PyObject *pointer;
 
   if (STREQ(Py_TYPE(value)->tp_name, type_name) &&
-      (as_pointer = PyObject_GetAttrString(value, "as_pointer")) != NULL &&
+      (as_pointer = PyObject_GetAttrString(value, "as_pointer")) != nullptr &&
       PyCallable_Check(as_pointer))
   {
-    void *result = NULL;
+    void *result = nullptr;
 
     /* must be a 'type_name' object */
-    pointer = PyObject_CallObject(as_pointer, NULL);
+    pointer = PyObject_CallObject(as_pointer, nullptr);
     Py_DECREF(as_pointer);
 
     if (!pointer) {
       PyErr_SetString(PyExc_SystemError, "value.as_pointer() failed");
-      return NULL;
+      return nullptr;
     }
     result = PyLong_AsVoidPtr(pointer);
     Py_DECREF(pointer);
@@ -1337,7 +1344,7 @@ void *PyC_RNA_AsPointer(PyObject *value, const char *type_name)
                "expected '%.200s' type found '%.200s' instead",
                type_name,
                Py_TYPE(value)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
@@ -1413,7 +1420,7 @@ int PyC_FlagSet_ToBitfield(const PyC_FlagSet *items,
   while (_PySet_NextEntry(value, &pos, &key, &hash)) {
     const char *param = PyUnicode_AsUTF8(key);
 
-    if (param == NULL) {
+    if (param == nullptr) {
       PyErr_Format(PyExc_TypeError,
                    "%.200s set must contain strings, not %.200s",
                    error_prefix,
@@ -1434,7 +1441,7 @@ int PyC_FlagSet_ToBitfield(const PyC_FlagSet *items,
 
 PyObject *PyC_FlagSet_FromBitfield(PyC_FlagSet *items, int flag)
 {
-  PyObject *ret = PySet_New(NULL);
+  PyObject *ret = PySet_New(nullptr);
   PyObject *pystr;
 
   for (; items->identifier; items++) {
@@ -1461,7 +1468,7 @@ bool PyC_RunString_AsNumber(const char *imports[],
 {
   PyObject *py_dict, *mod, *retval;
   bool ok = true;
-  PyObject *main_mod = NULL;
+  PyObject *main_mod = nullptr;
 
   PyC_MainModule_Backup(&main_mod);
 
@@ -1480,7 +1487,7 @@ bool PyC_RunString_AsNumber(const char *imports[],
   if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
     ok = false;
   }
-  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == NULL) {
+  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == nullptr) {
     ok = false;
   }
   else {
@@ -1529,7 +1536,7 @@ bool PyC_RunString_AsIntPtr(const char *imports[],
 {
   PyObject *py_dict, *retval;
   bool ok = true;
-  PyObject *main_mod = NULL;
+  PyObject *main_mod = nullptr;
 
   PyC_MainModule_Backup(&main_mod);
 
@@ -1538,7 +1545,7 @@ bool PyC_RunString_AsIntPtr(const char *imports[],
   if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
     ok = false;
   }
-  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == NULL) {
+  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == nullptr) {
     ok = false;
   }
   else {
@@ -1568,7 +1575,7 @@ bool PyC_RunString_AsStringAndSize(const char *imports[],
 {
   PyObject *py_dict, *retval;
   bool ok = true;
-  PyObject *main_mod = NULL;
+  PyObject *main_mod = nullptr;
 
   PyC_MainModule_Backup(&main_mod);
 
@@ -1577,7 +1584,7 @@ bool PyC_RunString_AsStringAndSize(const char *imports[],
   if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
     ok = false;
   }
-  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == NULL) {
+  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == nullptr) {
     ok = false;
   }
   else {
@@ -1585,11 +1592,11 @@ bool PyC_RunString_AsStringAndSize(const char *imports[],
     Py_ssize_t val_len;
 
     val = PyUnicode_AsUTF8AndSize(retval, &val_len);
-    if (val == NULL && PyErr_Occurred()) {
+    if (val == nullptr && PyErr_Occurred()) {
       ok = false;
     }
     else {
-      char *val_alloc = MEM_mallocN(val_len + 1, __func__);
+      char *val_alloc = static_cast<char *>(MEM_mallocN(val_len + 1, __func__));
       memcpy(val_alloc, val, val_len + 1);
       *r_value = val_alloc;
       *r_value_size = val_len;
