@@ -22,6 +22,7 @@ void build_node_declaration_dynamic(const bNodeTree &node_tree,
                                     const bNode &node,
                                     NodeDeclaration &r_declaration)
 {
+  r_declaration.items.clear();
   r_declaration.inputs.clear();
   r_declaration.outputs.clear();
   node.typeinfo->declare_dynamic(node_tree, node, r_declaration);
@@ -45,13 +46,13 @@ void NodeDeclarationBuilder::finalize()
 
   Vector<int> geometry_inputs;
   for (const int i : declaration_.inputs.index_range()) {
-    if (dynamic_cast<decl::Geometry *>(declaration_.inputs[i].get())) {
+    if (dynamic_cast<decl::Geometry *>(declaration_.inputs[i])) {
       geometry_inputs.append(i);
     }
   }
   Vector<int> geometry_outputs;
   for (const int i : declaration_.outputs.index_range()) {
-    if (dynamic_cast<decl::Geometry *>(declaration_.outputs[i].get())) {
+    if (dynamic_cast<decl::Geometry *>(declaration_.outputs[i])) {
       geometry_outputs.append(i);
     }
   }
@@ -139,26 +140,38 @@ std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations)
 
 bool NodeDeclaration::matches(const bNode &node) const
 {
-  auto check_sockets = [&](ListBase sockets, Span<SocketDeclarationPtr> socket_decls) {
-    const int tot_sockets = BLI_listbase_count(&sockets);
-    if (tot_sockets != socket_decls.size()) {
-      return false;
+  const bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
+  const bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
+  const bNodePanelState *current_panel = node.panel_states_array;
+  for (const ItemDeclarationPtr &item_decl : items) {
+    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
+            item_decl.get()))
+    {
+      switch (socket_decl->in_out) {
+        case SOCK_IN:
+          if (current_input == nullptr || !socket_decl->matches(*current_input)) {
+            return false;
+          }
+          break;
+        case SOCK_OUT:
+          if (current_output == nullptr || !socket_decl->matches(*current_output)) {
+            return false;
+          }
+          break;
+      }
     }
-    int i;
-    LISTBASE_FOREACH_INDEX (const bNodeSocket *, socket, &sockets, i) {
-      const SocketDeclaration &socket_decl = *socket_decls[i];
-      if (!socket_decl.matches(*socket)) {
+    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
+                 item_decl.get()))
+    {
+      if (!node.panel_states().contains_ptr(current_panel) || !panel_decl->matches(*current_panel))
+      {
         return false;
       }
     }
-    return true;
-  };
-
-  if (!check_sockets(node.inputs, inputs)) {
-    return false;
-  }
-  if (!check_sockets(node.outputs, outputs)) {
-    return false;
+    else {
+      /* Unknown item type. */
+      BLI_assert_unreachable();
+    }
   }
   return true;
 }
@@ -210,6 +223,35 @@ bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
     return false;
   }
   return true;
+}
+
+bNodePanelState &PanelDeclaration::build(bNodeTree & /*ntree*/, bNode &node) const
+{
+  bNodePanelState *new_panel_states_array = MEM_cnew_array<bNodePanelState>(
+      node.num_panel_states + 1, __func__);
+  bNodePanelState *panel = &new_panel_states_array[node.num_panel_states];
+
+  panel->uid = this->uid;
+  SET_FLAG_FROM_TEST(panel->flag, this->default_collapsed, NODE_PANEL_COLLAPSED);
+
+  MEM_SAFE_FREE(node.panel_states_array);
+  node.panel_states_array = new_panel_states_array;
+  ++node.num_panel_states;
+
+  return *panel;
+}
+
+bool PanelDeclaration::matches(const bNodePanelState &panel) const
+{
+  return panel.uid == this->uid;
+}
+
+bNodePanelState &PanelDeclaration::update_or_build(bNodeTree &ntree,
+                                                   bNode &node,
+                                                   bNodePanelState & /*panel*/) const
+{
+  /* By default just rebuild. */
+  return this->build(ntree, node);
 }
 
 namespace implicit_field_inputs {

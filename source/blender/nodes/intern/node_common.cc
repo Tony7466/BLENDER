@@ -295,10 +295,14 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   r_declaration.skip_updating_sockets = false;
 
   LISTBASE_FOREACH (const bNodeSocket *, input, &group->inputs) {
-    r_declaration.inputs.append(declaration_for_interface_socket(*group, *input));
+    SocketDeclarationPtr socket_decl = declaration_for_interface_socket(*group, *input);
+    r_declaration.inputs.append(socket_decl.get());
+    r_declaration.items.append(std::move(socket_decl));
   }
   LISTBASE_FOREACH (const bNodeSocket *, output, &group->outputs) {
-    r_declaration.outputs.append(declaration_for_interface_socket(*group, *output));
+    SocketDeclarationPtr socket_decl = declaration_for_interface_socket(*group, *output);
+    r_declaration.outputs.append(socket_decl.get());
+    r_declaration.items.append(std::move(socket_decl));
   }
 }
 
@@ -504,21 +508,29 @@ static void group_input_declare_dynamic(const bNodeTree &node_tree,
                                         NodeDeclaration &r_declaration)
 {
   LISTBASE_FOREACH (const bNodeSocket *, input, &node_tree.inputs) {
-    r_declaration.outputs.append(declaration_for_interface_socket(node_tree, *input));
+    SocketDeclarationPtr socket_decl = declaration_for_interface_socket(node_tree, *input);
+    r_declaration.outputs.append(socket_decl.get());
     r_declaration.outputs.last()->in_out = SOCK_OUT;
+    r_declaration.items.append(std::move(socket_decl));
   }
-  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+  SocketDeclarationPtr extend_decl = decl::create_extend_declaration(SOCK_OUT);
+  r_declaration.outputs.append(extend_decl.get());
+  r_declaration.items.append(std::move(extend_decl));
 }
 
 static void group_output_declare_dynamic(const bNodeTree &node_tree,
                                          const bNode & /*node*/,
                                          NodeDeclaration &r_declaration)
 {
-  LISTBASE_FOREACH (const bNodeSocket *, input, &node_tree.outputs) {
-    r_declaration.inputs.append(declaration_for_interface_socket(node_tree, *input));
+  LISTBASE_FOREACH (const bNodeSocket *, output, &node_tree.outputs) {
+    SocketDeclarationPtr socket_decl = declaration_for_interface_socket(node_tree, *output);
+    r_declaration.inputs.append(socket_decl.get());
     r_declaration.inputs.last()->in_out = SOCK_IN;
+    r_declaration.items.append(std::move(socket_decl));
   }
-  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
+  SocketDeclarationPtr extend_decl = decl::create_extend_declaration(SOCK_IN);
+  r_declaration.inputs.append(extend_decl.get());
+  r_declaration.items.append(std::move(extend_decl));
 }
 
 static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)

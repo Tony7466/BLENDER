@@ -181,12 +181,12 @@ namespace blender::nodes {
 static void refresh_socket_list(bNodeTree &ntree,
                                 bNode &node,
                                 ListBase &sockets,
-                                Span<SocketDeclarationPtr> socket_decls,
+                                Span<SocketDeclaration *> socket_decls,
                                 const bool do_id_user)
 {
   Vector<bNodeSocket *> old_sockets = sockets;
   VectorSet<bNodeSocket *> new_sockets;
-  for (const SocketDeclarationPtr &socket_decl : socket_decls) {
+  for (const SocketDeclaration *socket_decl : socket_decls) {
     /* Try to find a socket that corresponds to the declaration. */
     bNodeSocket *old_socket_with_same_identifier = nullptr;
     for (const int i : old_sockets.index_range()) {

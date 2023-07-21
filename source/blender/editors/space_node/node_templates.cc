@@ -369,10 +369,10 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
 
     r_node_decl.emplace(NodeDeclaration());
     blender::nodes::build_node_declaration(*arg->node_type, *r_node_decl);
-    Span<SocketDeclarationPtr> socket_decls = (in_out == SOCK_IN) ? r_node_decl->inputs :
-                                                                    r_node_decl->outputs;
+    Span<SocketDeclaration *> socket_decls = (in_out == SOCK_IN) ? r_node_decl->inputs :
+                                                                   r_node_decl->outputs;
     int index = 0;
-    for (const SocketDeclarationPtr &socket_decl_ptr : socket_decls) {
+    for (const SocketDeclaration *socket_decl_ptr : socket_decls) {
       const SocketDeclaration &socket_decl = *socket_decl_ptr;
       NodeLinkItem item;
       item.socket_index = index++;

@@ -141,10 +141,18 @@ namespace aal = anonymous_attribute_lifetime;
 
 using ImplicitInputValueFn = std::function<void(const bNode &node, void *r_value)>;
 
+/* Socket or panel declaration. */
+class ItemDeclaration {
+ public:
+  virtual ~ItemDeclaration() = default;
+};
+
+using ItemDeclarationPtr = std::unique_ptr<ItemDeclaration>;
+
 /**
  * Describes a single input or output socket. This is subclassed for different socket types.
  */
-class SocketDeclaration {
+class SocketDeclaration : public ItemDeclaration {
  public:
   std::string name;
   std::string identifier;
@@ -472,12 +480,13 @@ using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 /**
  * Describes a panel containing sockets or other panels.
  */
-class PanelDeclaration {
+class PanelDeclaration : public ItemDeclaration {
  public:
+  int uid;
   std::string name;
   std::string description;
   std::string translation_context;
-  bool default_closed = false;
+  bool default_collapsed = false;
 
  private:
   friend NodeDeclarationBuilder;
@@ -485,6 +494,10 @@ class PanelDeclaration {
 
  public:
   virtual ~PanelDeclaration() = default;
+
+  bNodePanelState &build(bNodeTree &ntree, bNode &node) const;
+  bool matches(const bNodePanelState &panel) const;
+  bNodePanelState &update_or_build(bNodeTree &ntree, bNode &node, bNodePanelState &panel) const;
 };
 
 class PanelDeclarationBuilder {
@@ -495,9 +508,9 @@ class PanelDeclarationBuilder {
   friend class NodeDeclarationBuilder;
 
  public:
-  PanelDeclarationBuilder &default_closed(bool closed)
+  PanelDeclarationBuilder &default_closed(bool collapsed)
   {
-    decl_->default_closed = closed;
+    decl_->default_collapsed = collapsed;
     return *this;
   }
 };
@@ -506,8 +519,12 @@ using PanelDeclarationPtr = std::unique_ptr<PanelDeclaration>;
 
 class NodeDeclaration {
  public:
-  Vector<SocketDeclarationPtr> inputs;
-  Vector<SocketDeclarationPtr> outputs;
+  /* Combined list of socket and panel declarations.
+   * This determines order of sockets in the UI and panel content. */
+  Vector<ItemDeclarationPtr> items;
+  /* Note: inputs and outputs pointers are owned by the items list. */
+  Vector<SocketDeclaration *> inputs;
+  Vector<SocketDeclaration *> outputs;
   std::unique_ptr<aal::RelationsInNode> anonymous_attribute_relations_;
 
   /** Leave the sockets in place, even if they don't match the declaration. Used for dynamic
@@ -518,7 +535,7 @@ class NodeDeclaration {
   friend NodeDeclarationBuilder;
 
   bool matches(const bNode &node) const;
-  Span<SocketDeclarationPtr> sockets(eNodeSocketInOut in_out) const;
+  Span<SocketDeclaration *> sockets(eNodeSocketInOut in_out) const;
 
   const aal::RelationsInNode *anonymous_attribute_relations() const
   {
@@ -764,8 +781,8 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   static_assert(std::is_base_of_v<SocketDeclaration, DeclType>);
   using Builder = typename DeclType::Builder;
 
-  Vector<SocketDeclarationPtr> &declarations = in_out == SOCK_IN ? declaration_.inputs :
-                                                                   declaration_.outputs;
+  Vector<SocketDeclaration *> &declarations = in_out == SOCK_IN ? declaration_.inputs :
+                                                                  declaration_.outputs;
 
   std::unique_ptr<DeclType> socket_decl = std::make_unique<DeclType>();
   std::unique_ptr<Builder> socket_decl_builder = std::make_unique<Builder>();
@@ -775,7 +792,8 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   socket_decl->name = name;
   socket_decl->identifier = identifier.is_empty() ? name : identifier;
   socket_decl->in_out = in_out;
-  socket_decl_builder->index_ = declarations.append_and_get_index(std::move(socket_decl));
+  socket_decl_builder->index_ = declarations.append_and_get_index(socket_decl.get());
+  declaration_.items.append(std::move(socket_decl));
   Builder &socket_decl_builder_ref = *socket_decl_builder;
   ((in_out == SOCK_IN) ? input_builders_ : output_builders_)
       .append(std::move(socket_decl_builder));
@@ -794,7 +812,7 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
 /** \name #NodeDeclaration Inline Methods
  * \{ */
 
-inline Span<SocketDeclarationPtr> NodeDeclaration::sockets(eNodeSocketInOut in_out) const
+inline Span<SocketDeclaration *> NodeDeclaration::sockets(eNodeSocketInOut in_out) const
 {
   if (in_out == SOCK_IN) {
     return inputs;

@@ -4308,7 +4308,7 @@ int nodeSocketLinkLimit(const bNodeSocket *sock)
 namespace blender::bke {
 
 static void update_socket_declarations(ListBase *sockets,
-                                       Span<blender::nodes::SocketDeclarationPtr> declarations)
+                                       Span<blender::nodes::SocketDeclaration *> declarations)
 {
   int index;
   LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, sockets, index) {
