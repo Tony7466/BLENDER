@@ -868,7 +868,7 @@ def brush_shared_settings(layout, context, brush, popover=False):
         strength = True
         direction = brush.curves_sculpt_tool in {'GROW_SHRINK', 'SELECTION_PAINT'}
 
-    # Sculpt Curves #
+    # Grease Pencil #
     if mode == 'PAINT_GREASE_PENCIL':
         size = True
         strength = True
