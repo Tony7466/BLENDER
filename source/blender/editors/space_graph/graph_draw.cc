@@ -926,16 +926,17 @@ static void add_bezt_vertices(BezTriple *bezt,
 }
 
 /** Get the first and last index to the bezt array that are just outside min and max. */
-static void get_bounding_bezt_indices(
-    FCurve *fcu, const float min, const float max, int *r_first, int *r_last)
+static blender::int2 get_bounding_bezt_indices(FCurve *fcu, const float min, const float max)
 {
   bool replace;
-  *r_first = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, min, fcu->totvert, &replace);
-  *r_first = clamp_i(*r_first - 1, 0, fcu->totvert - 1);
+  int first, last;
+  first = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, min, fcu->totvert, &replace);
+  first = clamp_i(first - 1, 0, fcu->totvert - 1);
 
-  *r_last = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, max, fcu->totvert, &replace);
-  *r_last = replace ? *r_last + 1 : *r_last;
-  *r_last = clamp_i(*r_last, 0, fcu->totvert - 1);
+  last = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, max, fcu->totvert, &replace);
+  last = replace ? last + 1 : last;
+  last = clamp_i(last, 0, fcu->totvert - 1);
+  return {first, last};
 }
 
 static void get_extrapolation_point_left(FCurve *fcu,
@@ -1055,18 +1056,16 @@ static void draw_fcurve_curve_bezts(
     curve_vertices.append({fcu->bezt[0].vec[1][0], fcu->bezt[0].vec[1][1]});
   }
 
-  int first_bezt_index, last_bezt_index;
-  get_bounding_bezt_indices(
-      fcu, v2d->cur.xmin, v2d->cur.xmax, &first_bezt_index, &last_bezt_index);
+  const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
 
-  if (first_bezt_index == last_bezt_index) {
-    curve_vertices.append(
-        {fcu->bezt[first_bezt_index].vec[1][0], fcu->bezt[first_bezt_index].vec[1][0]});
+  if (bounding_indices[0] == bounding_indices[1]) {
+    BezTriple *bezt = &fcu->bezt[bounding_indices[0]];
+    curve_vertices.append({bezt->vec[1][0], bezt->vec[1][0]});
   }
 
   const blender::float2 resolution_scale = calculate_resolution_scale(v2d);
   /* Draw curve between first and last keyframe (if there are enough to do so). */
-  for (int i = first_bezt_index + 1; i <= last_bezt_index; i++) {
+  for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
     BezTriple *prevbezt = &fcu->bezt[i - 1];
     BezTriple *bezt = &fcu->bezt[i];
 
@@ -1086,7 +1085,7 @@ static void draw_fcurve_curve_bezts(
     }
 
     /* Last point? */
-    if (i == last_bezt_index) {
+    if (i == bounding_indices[1]) {
       curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
     }
   }
