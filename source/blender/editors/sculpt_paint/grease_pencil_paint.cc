@@ -39,6 +39,10 @@ class PaintOperation : public GreasePencilStrokeOperation {
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
+
+ private:
+  void simplify_stroke_cache(const float epsilon);
+  void create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig);
 };
 
 /**
@@ -183,31 +187,83 @@ void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &ex
   executor.execute(*this, C, extension_sample);
 }
 
-void PaintOperation::on_stroke_done(const bContext &C)
+static float dist_to_interpolated(
+    float3 pos, float3 posA, float3 posB, float val, float valA, float valB)
 {
-  using namespace blender::bke;
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-  Scene *scene = CTX_data_scene(&C);
-  Object *object = CTX_data_active_object(&C);
-  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+  float dist1 = math::distance_squared(posA, pos);
+  float dist2 = math::distance_squared(posB, pos);
 
-  GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
-  GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
+  if (dist1 + dist2 > 0) {
+    float interpolated_val = interpf(valB, valA, dist1 / (dist1 + dist2));
+    return math::distance(interpolated_val, val);
+  }
+  return 0.0f;
+}
 
-  /* No stroke to create, return. */
-  if (stroke_cache_->size == 0) {
-    return;
+void PaintOperation::simplify_stroke_cache(const float epsilon)
+{
+  const Span<float3> positions = stroke_cache_->positions.as_span();
+  const Span<float> radii = stroke_cache_->radii.as_span();
+  const Span<float> opacities = stroke_cache_->opacities.as_span();
+  const Span<ColorGeometry4f> vertex_colors = stroke_cache_->vertex_colors.as_span();
+
+  /* Distance function for `ramer_douglas_peucker_simplify`. */
+  const auto dist_function = [positions,
+                              radii](int64_t first_index, int64_t last_index, int64_t index) {
+    const float dist_position = dist_to_line_v3(
+        positions[index], positions[first_index], positions[last_index]);
+    /* We devide the distance by 2000.0f to convert from "pixels" to an actual distance.
+     * For some reason, grease pencil storkes the thickness of strokes in pixels rather
+     * than object space distance. */
+    const float dist_radii = dist_to_interpolated(positions[index],
+                                                  positions[first_index],
+                                                  positions[last_index],
+                                                  radii[index],
+                                                  radii[first_index],
+                                                  radii[last_index]) /
+                             2000.0f;
+    return math::max(dist_position, dist_radii);
+  };
+
+  Array<bool> points_to_delete(stroke_cache_->size, false);
+  int64_t total_points_to_remove = ed::greasepencil::ramer_douglas_peucker_simplify(
+      IndexRange(stroke_cache_->size), epsilon, dist_function, points_to_delete.as_mutable_span());
+
+  int64_t new_size = stroke_cache_->size - total_points_to_remove;
+
+  Array<int64_t> old_indices(new_size);
+  int64_t i = 0;
+  for (const int64_t old_index : points_to_delete.index_range()) {
+    if (points_to_delete[old_index] == false) {
+      old_indices[i] = old_index;
+      i++;
+    }
   }
 
-  /* The object should have an active layer. */
-  BLI_assert(grease_pencil_orig.has_active_layer());
+  Vector<float3> new_positions(new_size);
+  Vector<float> new_radii(new_size);
+  Vector<float> new_opcaities(new_size);
+  Vector<ColorGeometry4f> new_vertex_colors(new_size);
+  for (const int64_t index : IndexRange(new_size)) {
+    new_positions[index] = positions[old_indices[index]];
+    new_radii[index] = radii[old_indices[index]];
+    new_opcaities[index] = opacities[old_indices[index]];
+    new_vertex_colors[index] = vertex_colors[old_indices[index]];
+  }
 
-  /* Create the new stroke from the stroke buffer. */
-  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
-  const int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
+  stroke_cache_->positions = new_positions;
+  stroke_cache_->radii = new_radii;
+  stroke_cache_->opacities = new_opcaities;
+  stroke_cache_->vertex_colors = new_vertex_colors;
+  stroke_cache_->size = new_size;
 
-  bke::greasepencil::Drawing &drawing_orig =
-      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings()[index_orig])->wrap();
+  stroke_cache_->triangles.clear_and_shrink();
+}
+
+void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig)
+{
+  using namespace blender::bke;
+  /* Create a new stroke from the stroke buffer. */
   CurvesGeometry &curves = drawing_orig.strokes_for_write();
 
   const int num_old_curves = curves.curves_num();
@@ -265,11 +321,39 @@ void PaintOperation::on_stroke_done(const bContext &C)
         return true;
       });
 
-  grease_pencil_eval.runtime->stroke_cache.clear();
-  drawing_orig.tag_positions_changed();
-
   vertex_colors.finish();
   materials.finish();
+
+  drawing_orig.tag_positions_changed();
+  stroke_cache_->clear();
+}
+
+void PaintOperation::on_stroke_done(const bContext &C)
+{
+  using namespace blender::bke;
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+  Scene *scene = CTX_data_scene(&C);
+  Object *object = CTX_data_active_object(&C);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+
+  GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
+  GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
+
+  /* No stroke to create, return. */
+  if (stroke_cache_->size == 0) {
+    return;
+  }
+
+  this->simplify_stroke_cache(0.0005f);
+
+  /* The object should have an active layer. */
+  BLI_assert(grease_pencil_orig.has_active_layer());
+  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
+  const int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
+
+  bke::greasepencil::Drawing &drawing_orig =
+      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings()[index_orig])->wrap();
+  this->create_stroke_from_stroke_cache(drawing_orig);
 
   DEG_id_tag_update(&grease_pencil_orig.id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil_orig.id);
