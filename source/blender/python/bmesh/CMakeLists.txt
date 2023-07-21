@@ -16,7 +16,7 @@ set(SRC
   bmesh_py_geometry.cc
   bmesh_py_ops.cc
   bmesh_py_ops_call.cc
-  bmesh_py_types.c
+  bmesh_py_types.cc
   bmesh_py_types_customdata.cc
   bmesh_py_types_meshdata.cc
   bmesh_py_types_select.cc
