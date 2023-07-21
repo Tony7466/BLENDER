@@ -245,7 +245,8 @@ template<typename Callback>
 static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>> &path_trace_works,
                                          const vector<WorkBalanceInfo> &work_balance_infos,
                                          const BufferParams &buffer_params,
-                                         const int overscan, const bool interleaved_slices,
+                                         const int overscan,
+                                         const bool interleaved_slices,
                                          const Callback &callback)
 {
   const int num_works = path_trace_works.size();
@@ -254,54 +255,52 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   /* Find the largest and smallest weights */
   int largest_weight = 0;
   int smallest_weight = 0;
-  for(int i = 0;i < num_works;i++) {
+  for (int i = 0; i < num_works; i++) {
     double weight = work_balance_infos[i].weight;
-    if(weight > work_balance_infos[largest_weight].weight) {
+    if (weight > work_balance_infos[largest_weight].weight) {
       largest_weight = i;
     }
-    if(weight < work_balance_infos[smallest_weight].weight) {
+    if (weight < work_balance_infos[smallest_weight].weight) {
       smallest_weight = i;
     }
   }
-  
+
   /* Assign a size to each slice based on its weight */
   VLOG_INFO << "Initial Slice sizes";
   int slice_stride = 0;
   int slice_sizes[num_works];
-    //int sizes[num_works] = { 10, 1 };
-  for(int i = 0;i < num_works;i++) {
-        const double weight = work_balance_infos[i].weight;
-        int slice_size = weight/work_balance_infos[smallest_weight].weight;
-        VLOG_INFO << "<" << i << "> Slice size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
-        slice_sizes[i] = slice_size;
-        slice_stride += slice_size;
+  for (int i = 0; i < num_works; i++) {
+    const double weight = work_balance_infos[i].weight;
+    int slice_size = weight / work_balance_infos[smallest_weight].weight;
+    slice_sizes[i] = slice_size;
+    slice_stride += slice_size;
   }
   /* Instead of using interleaved slices create n bigger consecuitive slices */
-  if(!interleaved_slices) {
-      /* enlarge slices so that there are only 2 big slices */
-      int remaining_height = window_height - slice_stride;
-      for(int i = 0;i < num_works;i++) {
-          const double weight = work_balance_infos[i].weight;
-          int slice_size = remaining_height*weight;
-          slice_sizes[i] += slice_size;
-          slice_stride += slice_size;
-          VLOG_INFO << "<" << i << "> Enlarged slice size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
-      }
-      /* if there are any remaining scanlines due to truncation add them to the device with the highest weight */
-      int leftover_scanlines = window_height - slice_stride;
-      if(leftover_scanlines > 0) {
-          VLOG_INFO << "Left over scanlines:" << leftover_scanlines;
-          slice_sizes[largest_weight] += leftover_scanlines;
-      }
+  if (!interleaved_slices) {
+    /* enlarge slices so that there are only 2 big slices */
+    int remaining_height = window_height - slice_stride;
+    for (int i = 0; i < num_works; i++) {
+      const double weight = work_balance_infos[i].weight;
+      int slice_size = remaining_height * weight;
+      slice_sizes[i] += slice_size;
+      slice_stride += slice_size;
+    }
+    /* if there are any remaining scanlines due to truncation add them to the device with the
+     * highest weight */
+    int leftover_scanlines = window_height - slice_stride;
+    if (leftover_scanlines > 0) {
+      slice_sizes[largest_weight] += leftover_scanlines;
+    }
   }
 
-  int slices = window_height/slice_stride;
+  int slices = window_height / slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
-    //const double weight = work_balance_infos[i].weight;
     const int slice_window_full_y = buffer_params.full_y + buffer_params.window_y + current_y;
-    const int slice_left_at_end = std::max(0, window_height - slices*slice_stride - current_y);
-    const int slice_window_height = slices*slice_sizes[i] + std::min(slice_sizes[i], slice_left_at_end);  //max(lround(window_height * weight), 1);
+    const int slice_left_at_end = std::max(0, window_height - slices * slice_stride - current_y);
+    const int slice_window_height =
+        slices * slice_sizes[i] +
+        std::min(slice_sizes[i], slice_left_at_end);
 
     BufferParams slice_params = buffer_params;
 
@@ -309,26 +308,16 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     slice_params.window_y = slice_window_full_y - slice_params.full_y;
 
     slice_params.window_height = slice_window_height;
-      
+
     slice_params.height = slice_params.window_y + slice_params.window_height + overscan;
     slice_params.height = min(slice_params.height,
                               buffer_params.height + buffer_params.full_y - slice_params.full_y);
 
     slice_params.slice_height = slice_sizes[i];
     slice_params.slice_stride = slice_stride;
-      
+
     slice_params.update_offset_stride();
 
-    VLOG_INFO << "(" << i << ") "
-              << "Slice Params full_y:" << slice_params.full_y
-              << " window_y:" << slice_params.window_y
-              << " height:" << slice_params.height
-              << " window_height:" << slice_params.window_height
-              << " slice_height:" << slice_params.slice_height
-              << " slice_stride:" << slice_params.slice_stride
-              << " slices:" << slices << " slices*slice_stride:" << slices*slice_stride << " diff:" << slice_left_at_end
-              << " slices size:" << window_height - slices*slice_stride;
-      
     callback(path_trace_works[i].get(), slice_params);
 
     current_y += slice_sizes[i];
@@ -338,12 +327,13 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 void PathTrace::update_allocated_work_buffer_params()
 {
   const int overscan = tile_manager_.get_tile_overscan();
-  
+
   /* Assign each slice */
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
-                               overscan, interleaved_slices,
+                               overscan,
+                               interleaved_slices,
                                [](PathTraceWork *path_trace_work, const BufferParams &params) {
                                  RenderBuffers *buffers = path_trace_work->get_render_buffers();
                                  buffers->reset(params);
@@ -384,7 +374,8 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                scaled_big_tile_params,
-                               overscan, interleaved_slices,
+                               overscan,
+                               interleaved_slices,
                                [&](PathTraceWork *path_trace_work, const BufferParams params) {
                                  path_trace_work->set_effective_buffer_params(
                                      scaled_full_params, scaled_big_tile_params, params);
@@ -469,7 +460,8 @@ void PathTrace::path_trace(RenderWork &render_work)
   });
 
   const double work_time = time_dt() - start_time;
-  VLOG(3) << "render time total for frame: " << " " << work_time;
+  VLOG(3) << "render time total for frame: "
+          << " " << work_time;
 
   float occupancy_accum = 0.0f;
   for (const WorkBalanceInfo &balance_info : work_balance_infos_) {
@@ -478,8 +470,7 @@ void PathTrace::path_trace(RenderWork &render_work)
   const float occupancy = occupancy_accum / num_works;
   render_scheduler_.report_path_trace_occupancy(render_work, occupancy);
 
-  render_scheduler_.report_path_trace_time(
-      render_work, work_time, is_cancel_requested());
+  render_scheduler_.report_path_trace_time(render_work, work_time, is_cancel_requested());
 }
 
 void PathTrace::adaptive_sample(RenderWork &render_work)
@@ -830,7 +821,7 @@ void PathTrace::write_tile_buffer(const RenderWork &render_work)
 
 void PathTrace::finalize_full_buffer_on_disk(const RenderWork &render_work)
 {
-    SCOPED_MARKER(path_trace_works_[0]->get_device(), "finalize_full_buffer_on_disk");
+  SCOPED_MARKER(path_trace_works_[0]->get_device(), "finalize_full_buffer_on_disk");
   if (!render_work.full.write) {
     return;
   }

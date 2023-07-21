@@ -88,7 +88,6 @@ static void pad_pixels(const BufferParams &buffer_params,
     return;
   }
 
-  //const size_t size = static_cast<size_t>(buffer_params.width) * buffer_params.height;
   const int width = buffer_params.width;
   const int slice_stride = buffer_params.slice_stride;
   const int slice_height = buffer_params.slice_height;
@@ -99,20 +98,20 @@ static void pad_pixels(const BufferParams &buffer_params,
 
     float *pixel = destination.pixels + pixel_stride * destination.offset;
 
-    for(int slice_y = 0; slice_y < total_height;slice_y += slice_height) {
+    for (int slice_y = 0; slice_y < total_height; slice_y += slice_height) {
       float *dst = pixel;
       const int height = std::min(slice_height, total_height - slice_y);
-      const int size = width*height;
+      const int size = width * height;
       for (size_t i = 0; i < size; i++, dst += dest_num_components) {
-          if (dest_num_components >= 3 && src_num_components == 1) {
-              dst[1] = dst[0];
-              dst[2] = dst[0];
-          }
-          if (dest_num_components >= 4) {
-              dst[3] = 1.0f;
-          }
+        if (dest_num_components >= 3 && src_num_components == 1) {
+          dst[1] = dst[0];
+          dst[2] = dst[0];
+        }
+        if (dest_num_components >= 4) {
+          dst[3] = 1.0f;
+        }
       }
-      pixel += slice_stride*width*dest_num_components;
+      pixel += slice_stride * width * dest_num_components;
     }
   }
 
@@ -120,20 +119,20 @@ static void pad_pixels(const BufferParams &buffer_params,
     const half one = float_to_half_display(1.0f);
     half4 *pixel = destination.pixels_half_rgba + destination.offset;
 
-    for(int slice_y = 0; slice_y < total_height;slice_y += slice_height) {
+    for (int slice_y = 0; slice_y < total_height; slice_y += slice_height) {
       half4 *dst = pixel;
       const int height = std::min(slice_height, total_height - slice_y);
-      const int size = width*height;
+      const int size = width * height;
       for (size_t i = 0; i < size; i++, dst++) {
-          if (dest_num_components >= 3 && src_num_components == 1) {
-              dst[0].y = dst[0].x;
-              dst[0].z = dst[0].x;
-          }
-          if (dest_num_components >= 4) {
-              dst[0].w = one;
-          }
+        if (dest_num_components >= 3 && src_num_components == 1) {
+          dst[0].y = dst[0].x;
+          dst[0].z = dst[0].x;
+        }
+        if (dest_num_components >= 4) {
+          dst[0].w = one;
+        }
       }
-      pixel += slice_stride*width;
+      pixel += slice_stride * width;
     }
   }
 }
@@ -314,7 +313,6 @@ bool PassAccessor::set_render_tile_pixels(RenderBuffers *render_buffers, const S
   const BufferParams &buffer_params = render_buffers->params;
 
   float *buffer_data = render_buffers->buffer.data();
-  //const int size = buffer_params.width * buffer_params.height;
 
   const int out_stride = buffer_params.pass_stride;
   const int in_stride = source.num_components;
@@ -325,14 +323,14 @@ bool PassAccessor::set_render_tile_pixels(RenderBuffers *render_buffers, const S
   const int slice_height = buffer_params.slice_height;
   const int total_height = buffer_params.height;
   const int slice_stride = buffer_params.slice_stride;
-  for(int y = 0;y < total_height;y += slice_height) {
+  for (int y = 0; y < total_height; y += slice_height) {
     const int height = std::min(slice_height, total_height - y);
     const float *src = in;
-    const int size = height*buffer_params.width;
+    const int size = height * buffer_params.width;
     for (int i = 0; i < size; i++, out += out_stride, src += in_stride) {
-        memcpy(out, src, sizeof(float) * num_components_to_copy);
+      memcpy(out, src, sizeof(float) * num_components_to_copy);
     }
-    in += slice_stride*buffer_params.width*in_stride;
+    in += slice_stride * buffer_params.width * in_stride;
   }
   return true;
 }

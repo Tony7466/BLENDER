@@ -488,14 +488,15 @@ bool HIPDevice::alloc_host(void *&shared_pointer, size_t size, bool pinned)
   HIPContextScope scope(this);
 
   hipError_t mem_alloc_result;
-  if(!pinned) {
+  if (!pinned) {
     mem_alloc_result = hipHostMalloc(
-      &shared_pointer, size, hipHostMallocMapped | hipHostMallocWriteCombined);
-  } else {
-    mem_alloc_result = hipHostMalloc(
-      &shared_pointer, size, hipHostMallocMapped | hipHostMallocPortable);
+        &shared_pointer, size, hipHostMallocMapped | hipHostMallocWriteCombined);
   }
-  
+  else {
+    mem_alloc_result = hipHostMalloc(
+        &shared_pointer, size, hipHostMallocMapped | hipHostMallocPortable);
+  }
+
   return mem_alloc_result == hipSuccess;
 }
 

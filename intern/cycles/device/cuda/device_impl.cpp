@@ -529,14 +529,15 @@ bool CUDADevice::alloc_host(void *&shared_pointer, size_t size, bool pinned)
   CUDAContextScope scope(this);
 
   CUresult mem_alloc_result;
-  if(!pinned) {
+  if (!pinned) {
     mem_alloc_result = cuMemHostAlloc(
-				      &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_WRITECOMBINED);
-  } else {
-    mem_alloc_result = cuMemHostAlloc(
-				      &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_PORTABLE);
+        &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_WRITECOMBINED);
   }
-  
+  else {
+    mem_alloc_result = cuMemHostAlloc(
+        &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_PORTABLE);
+  }
+
   return mem_alloc_result == CUDA_SUCCESS;
 }
 
@@ -999,14 +1000,15 @@ int CUDADevice::get_device_default_attribute(CUdevice_attribute attribute, int d
   return value;
 }
 
-void CUDADevice::push_marker(const string name) {
+void CUDADevice::push_marker(const string name)
+{
   nvtxRangePushA(name.c_str());
 }
- 
-void CUDADevice::pop_marker() {
+
+void CUDADevice::pop_marker()
+{
   nvtxRangePop();
 }
-
 
 CCL_NAMESPACE_END
 

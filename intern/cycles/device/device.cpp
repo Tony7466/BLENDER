@@ -450,14 +450,16 @@ void Device::free_memory()
   metal_devices.free_memory();
 }
 
-bool Device::alloc_host(void *&shared_pointer, size_t size, bool /* pinned */) {
-  
+bool Device::alloc_host(void *&shared_pointer, size_t size, bool /* pinned */)
+{
+
   shared_pointer = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
 
   return (shared_pointer != NULL);
 }
 
-void Device::free_host(void *shared_pointer) {
+void Device::free_host(void *shared_pointer)
+{
   util_aligned_free((void *)shared_pointer);
 }
 

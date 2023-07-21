@@ -424,22 +424,6 @@ template<typename T> class device_vector : public device_memory {
     return data();
   }
 
-  void slice(device_vector<T> *mem, size_t offset, size_t width, size_t height) {
-    data_size = size(width, height, 0);
-    device_size = memory_elements_size(width*height);
-    data_width = width;
-    data_height = height;
-    data_depth = 0;
-    data_type = mem->data_type;
-    type = mem->type;
-    name = mem->name;
-    host_pointer = static_cast<void *>(reinterpret_cast<char *>(mem->host_pointer) + memory_elements_size(offset*width));
-    device_pointer = mem->device_pointer + memory_elements_size(offset*width);
-    shared_pointer = NULL;
-    shared_counter = 0;
-    mem_slice = true;
-  }
-
   /* Take over data from an existing array. */
   void steal_data(array<T> &from)
   {

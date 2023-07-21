@@ -57,8 +57,6 @@ ccl_device bool integrator_init_from_camera(KernelGlobals kg,
                                             ccl_global float *render_buffer,
                                             const int x,
                                             const int y,
-					    /*const int ix,
-					      const int iy,*/
                                             const int scheduled_sample)
 {
   PROFILING_INIT(kg, PROFILING_RAY_SETUP);
@@ -81,10 +79,10 @@ ccl_device bool integrator_init_from_camera(KernelGlobals kg,
 
   /* Map the buffer coordinates to the image coordinates */
   int tile_y = y - tile->slice_start_y;
-  int slice_count = tile_y/tile->slice_height;
-  tile_y = tile_y - slice_count*tile->slice_height;
-  tile_y = tile->slice_stride*slice_count + tile_y + tile->slice_start_y;
-  //printf("##y:%d tile_y:%d slice_count:%d slice_height:%u\n",y, tile_y, slice_count, tile->slice_height);
+  int slice_count = tile_y / tile->slice_height;
+  tile_y = tile_y - slice_count * tile->slice_height;
+  tile_y = tile->slice_stride * slice_count + tile_y + tile->slice_start_y;
+
   /* Initialize random number seed for path. */
   const uint rng_hash = path_rng_hash_init(kg, sample, x, tile_y);
 

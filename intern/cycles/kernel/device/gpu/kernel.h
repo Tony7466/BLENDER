@@ -94,11 +94,11 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
 
   const int state = tile->path_index_offset + tile_work_index;
 
-  uint x, y, /*ix, iy,*/ sample;
-  ccl_gpu_kernel_call(get_work_pixel(tile, tile_work_index, &x, &y, /* &ix, &iy,*/ &sample));
+  uint x, y, sample;
+  ccl_gpu_kernel_call(get_work_pixel(tile, tile_work_index, &x, &y, &sample));
 
   ccl_gpu_kernel_call(
-		      integrator_init_from_camera(nullptr, state, tile, render_buffer, x, y, /*ix, iy,*/ sample));
+      integrator_init_from_camera(nullptr, state, tile, render_buffer, x, y, sample));
 }
 ccl_gpu_kernel_postfix
 
@@ -126,11 +126,11 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
 
   const int state = tile->path_index_offset + tile_work_index;
 
-  uint x, y, /*ix, iy,*/ sample;
-  ccl_gpu_kernel_call(get_work_pixel(tile, tile_work_index, &x, &y, /*&ix, &iy,*/ &sample));
+  uint x, y, sample;
+  ccl_gpu_kernel_call(get_work_pixel(tile, tile_work_index, &x, &y, &sample));
 
   ccl_gpu_kernel_call(
-		      integrator_init_from_bake(nullptr, state, tile, render_buffer, x, y, sample));
+      integrator_init_from_bake(nullptr, state, tile, render_buffer, x, y, sample));
 }
 ccl_gpu_kernel_postfix
 

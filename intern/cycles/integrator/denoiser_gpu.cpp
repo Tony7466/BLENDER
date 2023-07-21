@@ -81,8 +81,12 @@ bool DenoiserGPU::denoise_buffer(const BufferParams &buffer_params,
   if (local_buffer_used) {
     local_render_buffers.copy_from_device();
 
-    render_buffers_host_copy_denoised(
-        render_buffers, buffer_params, 0, buffer_params.height, &local_render_buffers, local_render_buffers.params);
+    render_buffers_host_copy_denoised(render_buffers,
+                                      buffer_params,
+                                      0,
+                                      buffer_params.height,
+                                      &local_render_buffers,
+                                      local_render_buffers.params);
 
     render_buffers->copy_to_device();
   }

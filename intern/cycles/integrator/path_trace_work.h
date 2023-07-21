@@ -78,11 +78,6 @@ class PathTraceWork {
 
   virtual void destroy_gpu_resources(PathTraceDisplay *display) = 0;
 
-  void reset_master_buffer(BufferParams &params) /*size_t width, size_t height)*/ {
-      buffers_->reset(params, -1, NULL);//width, height);
-      buffers_->zero();
-  };
-
   /* Copy data from/to given render buffers.
    * Will copy pixels from a corresponding place (from multi-device point of view) of the render
    * buffers, and copy work's render buffers to the corresponding place of the destination. */

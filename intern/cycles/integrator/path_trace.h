@@ -182,7 +182,8 @@ class PathTrace {
    * that the buffer is "uniformly" sampled at the moment of this callback). */
   function<void(void)> progress_update_cb;
 
-  void set_interleaved_slices(bool setting) {
+  void set_interleaved_slices(bool setting)
+  {
     interleaved_slices = setting;
     VLOG_INFO << "Use interleaved slices:" << interleaved_slices;
   }

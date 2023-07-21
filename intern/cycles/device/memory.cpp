@@ -46,10 +46,11 @@ void *device_memory::host_alloc(size_t size, bool pinned_mem)
   }
 
   void *ptr = NULL;
-  if(!pinned_mem) {
-     ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
-     pinned = false;
-  } else {
+  if (!pinned_mem) {
+    ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
+    pinned = false;
+  }
+  else {
     device->alloc_host(ptr, size, pinned);
     pinned = true;
   }
@@ -90,9 +91,10 @@ void device_memory::device_alloc()
 void device_memory::device_free()
 {
   if (device_pointer) {
-    if(!mem_slice) {
+    if (!mem_slice) {
       device->mem_free(*this);
-    } else {
+    }
+    else {
       device_pointer = 0;
     }
   }

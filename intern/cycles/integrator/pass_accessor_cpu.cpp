@@ -45,30 +45,24 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_float(
   const int pixel_stride = destination.pixel_stride ? destination.pixel_stride :
                                                       destination.num_components;
 
-  //parallel_for(0, buffer_params.window_height, [&](int64_t y) {
+  // parallel_for(0, buffer_params.window_height, [&](int64_t y) {
 
-  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height : buffer_params.window_height;
-    int tileOffset = destination.offset/buffer_params.width;
-      for(int y = 0;y < buffer_params.window_height;y += slice_height) {
-          const float *buffer = window_data + y * buffer_row_stride;
-          int slice = y/slice_height;
-          int height = std::min(slice_height, buffer_params.window_height - y);
-          VLOG_INFO << "#### CPU Copy float row y:" << y << " full_y:" << buffer_params.full_y << " slice_height:" << buffer_params.slice_height << " slice_stride:" << buffer_params.slice_stride << " window height:" << buffer_params.window_height;
-          int pixel_y = /*buffer_params.full_y +*/ slice*buffer_params.slice_stride;
-          float *pixels = destination.pixels + (pixel_y * buffer_params.width + destination.offset) * pixel_stride;
-          for(int row = 0;row < height;row++,buffer += buffer_row_stride, pixels += buffer_params.width * pixel_stride) {
-              func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride, pixel_stride);
-              /*for(int x = 0;x < buffer_params.window_width;x++) {
-                  pixels[4*x + 0] = 0.0f;//(((slice + 1) & 0b001 ) > 0 ? 1.0f : 0.0f) + 0.0f;
-                  pixels[4*x + 1] = 0.0f;//(((slice + 1) & 0b010 ) > 0 ? 1.0f : 0.0f) + 0.0f;
-                  pixels[4*x + 2] = (((slice + 1) & 0b001 ) > 0 ? 1.0f : 0.0f) + 0.75f;
-                  pixels[4*x + 3] = 0.5f;
-              }*/
-              //pixels += buffer_params.width*pixel_stride;
-              //mapped_rgba_row += texture_width*slice_stride;
-          }
-      //VLOG_INFO << "CPU Convert y:" << y << " slice:" << slice << " slice_y:" << slice_y << " pixel_y:" << pixel_y;
-  }//);
+  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height :
+                                                        buffer_params.window_height;
+  int tileOffset = destination.offset / buffer_params.width;
+  for (int y = 0; y < buffer_params.window_height; y += slice_height) {
+    const float *buffer = window_data + y * buffer_row_stride;
+    int slice = y / slice_height;
+    int height = std::min(slice_height, buffer_params.window_height - y);
+    int pixel_y = /*buffer_params.full_y +*/ slice * buffer_params.slice_stride;
+    float *pixels = destination.pixels +
+                    (pixel_y * buffer_params.width + destination.offset) * pixel_stride;
+    for (int row = 0; row < height;
+         row++, buffer += buffer_row_stride, pixels += buffer_params.width * pixel_stride)
+    {
+      func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride, pixel_stride);
+    }
+  }  //);
 }
 
 inline void PassAccessorCPU::run_get_pass_kernel_processor_half_rgba(
@@ -88,29 +82,21 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_half_rgba(
   const int destination_stride = destination.stride != 0 ? destination.stride :
                                                            buffer_params.width;
 
-  //parallel_for(0, buffer_params.window_height, [&](int64_t y) {
-    //VLOG_INFO << "#### CPU Copy half row slice_start_y:" << buffer_params.slice_start_y << " slice_height:" << buffer_params.slice_height << " slice_stride:" << buffer_params.slice_stride << " window height:" << buffer_params.window_height;
-  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height : buffer_params.window_height;
-    for(int y = 0;y < buffer_params.window_height;y += slice_height) {
-      const float *buffer = window_data + y*buffer_row_stride;
-        int slice = y/slice_height;
-        int height = std::min(slice_height, buffer_params.window_height - y);
-        VLOG_INFO << "#### CPU Copy half float row y:" << y << " slice_height:" << buffer_params.slice_height << " slice_stride:" << buffer_params.slice_stride << " window height:" << buffer_params.window_height;
-        int pixel_y = /*buffer_params.full_y +*/ slice*buffer_params.slice_stride;
-        half4 *pixels = dst_start + pixel_y * destination_stride;
-        for(int row = 0;row < height;row++,buffer += buffer_row_stride, pixels += destination_stride) {
-            /*for(int x = 0;x < buffer_params.window_width;x++) {
-                float4 v;
-                v.x = 0.0f;//(((slice + 1) & 0b001 ) > 0 ? 0.25f : 0.0f) + 0.0f;
-                v.y = buffer[x*pass_stride + 2];//(((slice + 1) & 0b010 ) > 0 ? 0.25f : 0.0f) + 0.0f;
-                v.z = (((slice + 1) & 0b001 ) > 0 ? 0.25f : 0.0f);// + 0.75f;
-                v.w = 0.75f;
-                pixels[x] = float4_to_half4_display(v);
-            }*/
-            func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride);
-        }
+  // parallel_for(0, buffer_params.window_height, [&](int64_t y) {
+  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height :
+                                                        buffer_params.window_height;
+  for (int y = 0; y < buffer_params.window_height; y += slice_height) {
+    const float *buffer = window_data + y * buffer_row_stride;
+    int slice = y / slice_height;
+    int height = std::min(slice_height, buffer_params.window_height - y);
+    int pixel_y = /*buffer_params.full_y +*/ slice * buffer_params.slice_stride;
+    half4 *pixels = dst_start + pixel_y * destination_stride;
+    for (int row = 0; row < height;
+         row++, buffer += buffer_row_stride, pixels += destination_stride) {
+      func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride);
+    }
   }
-    //);
+  //);
 }
 
 /* --------------------------------------------------------------------

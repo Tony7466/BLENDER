@@ -179,7 +179,7 @@ void PathTraceWorkGPU::alloc_integrator_soa()
 void PathTraceWorkGPU::alloc_integrator_queue()
 {
   if (integrator_queue_counter_.size() == 0) {
-    integrator_queue_counter_.alloc(1,0,0,true /*true*/);
+    integrator_queue_counter_.alloc(1, 0, 0, true);
     integrator_queue_counter_.zero_to_device();
     integrator_queue_counter_.copy_from_device();
     integrator_state_gpu_.queue_counter = (IntegratorQueueCounter *)
@@ -188,7 +188,7 @@ void PathTraceWorkGPU::alloc_integrator_queue()
 
   /* Allocate data for active path index arrays. */
   if (num_queued_paths_.size() == 0) {
-    num_queued_paths_.alloc(1,0,0,true /*true*/);
+    num_queued_paths_.alloc(1, 0, 0, true);
     num_queued_paths_.zero_to_device();
   }
 
@@ -262,7 +262,7 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
 void PathTraceWorkGPU::alloc_integrator_path_split()
 {
   if (integrator_next_shadow_path_index_.size() == 0) {
-    integrator_next_shadow_path_index_.alloc(1,0,0,true /*true*/);
+    integrator_next_shadow_path_index_.alloc(1, 0, 0, true /*true*/);
     integrator_next_shadow_path_index_.zero_to_device();
 
     integrator_state_gpu_.next_shadow_path_index =
@@ -270,7 +270,7 @@ void PathTraceWorkGPU::alloc_integrator_path_split()
   }
 
   if (integrator_next_main_path_index_.size() == 0) {
-    integrator_next_main_path_index_.alloc(1,0,0,true /*true*/);
+    integrator_next_main_path_index_.alloc(1, 0, 0, true /*true*/);
     integrator_next_shadow_path_index_.data()[0] = 0;
     integrator_next_main_path_index_.zero_to_device();
 
@@ -306,7 +306,8 @@ void PathTraceWorkGPU::render_samples(RenderStatistics &statistics,
    * become busy after adding new tiles). This is especially important for the shadow catcher which
    * schedules work in halves of available number of paths. */
   work_tile_scheduler_.set_max_num_path_states(max_num_paths_ / 8);
-  work_tile_scheduler_.set_accelerated_rt((device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) != 0);
+  work_tile_scheduler_.set_accelerated_rt(
+      (device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) != 0);
   work_tile_scheduler_.reset(effective_buffer_params_,
                              start_sample,
                              samples_num,
@@ -790,7 +791,6 @@ bool PathTraceWorkGPU::enqueue_work_tiles(bool &finished)
       KernelWorkTile work_tile;
       if (work_tile_scheduler_.get_work(&work_tile, max_num_camera_paths - num_paths)) {
         work_tiles.push_back(work_tile);
-	//VLOG_INFO << "{ [" << work_tile.x << " " << work_tile.y << "] <" << work_tile.w << " " << work_tile.h << "> }";
         num_paths += work_tile.w * work_tile.h * work_tile.num_samples;
       }
       else {
@@ -927,12 +927,12 @@ void PathTraceWorkGPU::copy_to_display(PathTraceDisplay *display,
     return;
   }
 
-/*
-  if (!buffers_->buffer.device_pointer) {
-    LOG(WARNING) << "Request for GPU display update without allocated render buffers.";
-    return;
-  }
-*/
+  /*
+    if (!buffers_->buffer.device_pointer) {
+      LOG(WARNING) << "Request for GPU display update without allocated render buffers.";
+      return;
+    }
+  */
   if (should_use_graphics_interop()) {
     if (copy_to_display_interop(display, pass_mode, num_samples)) {
       return;
@@ -983,7 +983,13 @@ void PathTraceWorkGPU::copy_to_display_naive(PathTraceDisplay *display,
   queue_->copy_from_device(display_rgba_half_);
   queue_->synchronize();
 
-  display->copy_pixels_to_texture(display_rgba_half_.data(), texture_x, texture_y, width, height, effective_buffer_params_.slice_height, effective_buffer_params_.slice_stride);
+  display->copy_pixels_to_texture(display_rgba_half_.data(),
+                                  texture_x,
+                                  texture_y,
+                                  width,
+                                  height,
+                                  effective_buffer_params_.slice_height,
+                                  effective_buffer_params_.slice_stride);
 }
 
 bool PathTraceWorkGPU::copy_to_display_interop(PathTraceDisplay *display,

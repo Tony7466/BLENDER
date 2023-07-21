@@ -1561,7 +1561,7 @@ typedef struct KernelWorkTile {
   uint slice_start_y;
   uint slice_height;
   uint slice_stride;
-  
+
 } KernelWorkTile;
 
 /* Shader Evaluation.

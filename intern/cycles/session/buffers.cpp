@@ -274,29 +274,9 @@ RenderBuffers::~RenderBuffers()
   buffer.free();
 }
 
-void RenderBuffers::reset(size_t width, size_t height) {
-  buffer.alloc(width, height);//, 0, true);
-}
-
-void RenderBuffers::reset(const BufferParams &params_, size_t offset, RenderBuffers *buffers)
+void RenderBuffers::reset(size_t width, size_t height)
 {
-  DCHECK(params_.pass_stride != -1);
-
-  params = params_;
-
-  if (offset == -1) {
-    /* Allocate the buffer */
-    // size_t new_size = buffer.memory_elements_size(params.width * params.pass_stride *
-    //                                               params.height);
-    // if (buffer.size() == new_size) {
-      /* re-allocate buffer */
-    buffer.alloc(params.width * params.pass_stride, params.height);//, 0, true);
-    // }
-  }
-  else {
-    /* Use a slice of the master buffer */
-    buffer.slice(&(buffers->buffer), offset, params.width * params.pass_stride, params.height);
-  }
+  buffer.alloc(width, height);
 }
 
 void RenderBuffers::reset(const BufferParams &params_)
@@ -306,9 +286,7 @@ void RenderBuffers::reset(const BufferParams &params_)
   params = params_;
 
   /* re-allocate buffer */
-  //if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
-  buffer.alloc(params.width * params.pass_stride, params.height);//, 0, true);
-    //}
+  buffer.alloc(params.width * params.pass_stride, params.height);
 }
 
 void RenderBuffers::zero()
@@ -335,8 +313,8 @@ void RenderBuffers::copy_to_device()
 
 void render_buffers_host_copy_denoised(RenderBuffers *dst,
                                        const BufferParams &dst_params,
-				       const size_t dst_offset,
-				       const size_t dst_height,
+                                       const size_t dst_offset,
+                                       const size_t dst_height,
                                        const RenderBuffers *src,
                                        const BufferParams &src_params,
                                        const size_t src_offset)

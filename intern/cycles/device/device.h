@@ -219,11 +219,9 @@ class Device {
     return 0;
   }
 
-  virtual void push_marker(const string) {    
-  }
+  virtual void push_marker(const string) {}
 
-  virtual void pop_marker() {    
-  }
+  virtual void pop_marker() {}
 
   /* Called after kernel texture setup, and prior to integrator state setup. */
   virtual void optimize_for_scene(Scene * /*scene*/) {}
@@ -304,7 +302,7 @@ class Device {
 
   virtual bool alloc_host(void *&shared_pointer, size_t size, bool pinned = false);
   virtual void free_host(void *shared_pointer);
-  
+
  private:
   /* Indicted whether device types and devices lists were initialized. */
   static bool need_types_update, need_devices_update;
@@ -319,28 +317,30 @@ class Device {
 };
 
 class ScopedMarker {
-private:
+ private:
   Device *_device;
-public:
-  ScopedMarker(Device *p_device, const string name) {
+
+ public:
+  ScopedMarker(Device *p_device, const string name)
+  {
     _device = p_device;
     _device->push_marker(name.c_str() + std::to_string(p_device->info.num));
   }
-  
-  ~ScopedMarker() {
+
+  ~ScopedMarker()
+  {
     _device->pop_marker();
   }
 };
 
 // #define USE_SCOPED_MARKER
 #ifndef SCOPED_MARKER
-#   ifdef USE_SCOPED_MARKER
-#      define SCOPED_MARKER(device, msg) ScopedMarker scoped_marker(device, msg)
-#   else
-#      define SCOPED_MARKER(device, msg)
-#   endif
+#  ifdef USE_SCOPED_MARKER
+#    define SCOPED_MARKER(device, msg) ScopedMarker scoped_marker(device, msg)
+#  else
+#    define SCOPED_MARKER(device, msg)
+#  endif
 #endif
-
 
 /* Device, which is GPU, with some common functionality for GPU back-ends. */
 class GPUDevice : public Device {

@@ -865,6 +865,7 @@ class CYCLES_RENDER_PT_performance_viewport(CyclesButtonsPanel, Panel):
         col = layout.column()
         col.prop(rd, "preview_pixel_size", text="Pixel Size")
 
+
 class CYCLES_RENDER_PT_performance_multiple_device(CyclesButtonsPanel, Panel):
     bl_label = "Multiple Device"
     bl_parent_id = "CYCLES_RENDER_PT_performance"
@@ -879,6 +880,7 @@ class CYCLES_RENDER_PT_performance_multiple_device(CyclesButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(cscene, "interleaved_slices")
+
 
 class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
     bl_label = "Filter"
