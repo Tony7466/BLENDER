@@ -682,6 +682,12 @@ struct EraseOperationExecutor {
     return this->eraser_strength * (1.0f - math::sqrt(dist_squared / eraser_radius_2));
   }
 
+  /**
+   * The soft eraser decreases the opacity of the points it hits.
+   * The new opacity is computed as a minimum between the current opacity and
+   * a linear falloff function of the distance of the point to the center of the eraser.
+   * If the opacity of a point falls below a threshold, then the point is removed from the curves.
+   */
   bool soft_eraser(const blender::bke::CurvesGeometry &src,
                    const Array<float2> &screen_space_positions,
                    blender::bke::CurvesGeometry &dst)
