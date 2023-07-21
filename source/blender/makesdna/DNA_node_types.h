@@ -312,7 +312,10 @@ typedef enum eNodeSocketFlag {
 } eNodeSocketFlag;
 
 typedef enum eNodePanelFlag {
-  NODE_PANEL_CLOSED = (1 << 0),
+  /* Panel is collapsed (user setting). */
+  NODE_PANEL_COLLAPSED = (1 << 0),
+  /* The parent panel is collapsed. */
+  NODE_PANEL_PARENT_COLLAPSED = (1 << 1),
 } eNodePanelFlag;
 
 typedef struct bNodePanelState {
@@ -321,6 +324,11 @@ typedef struct bNodePanelState {
   /* eNodePanelFlag */
   char flag;
   char _pad;
+
+#ifdef __cplusplus
+  bool is_collapsed() const;
+  bool is_parent_collapsed() const;
+#endif
 } bNodePanelState;
 
 typedef struct bNode {

@@ -459,24 +459,22 @@ static bool node_update_basis_socket(const bContext &C,
 }
 
 struct FakeDeclaration {
-  int type;                     /* 0: panel, 1: input socket, 2: output socket */
-  int panel_size = -1;          /* Panel: number of subsequent items belonging in this panel */
-  bool panel_collapsed = false; /* Panel: collapsed */
+  int type;            /* 0: panel, 1: input socket, 2: output socket */
+  int panel_size = -1; /* Panel: number of subsequent items belonging in this panel */
   std::string panel_name = "";
   bool socket_align_opposite = false; /* Sockets: try to align with the opposite side */
 };
-const Array<FakeDeclaration> fake_decls = {
-    {2},                      /* O> */
-    {0, 3, false, "Panel 1"}, /* P[3] */
-    {1},                      /*   <I */
-    {1},                      /*   <I */
-    {2, -1, false, "", true}, /*   <I O>, aligned with above */
-    {1},                      /* <I */
-    {0, 2, false, "Panel 2"}, /* P[2] */
-    {1},                      /*   <I */
-    {0, 2, false, "Panel 3"}, /*   P[2] */
-    {2},                      /*     O> */
-    {2}};                     /*     O> */
+const Array<FakeDeclaration> fake_decls = {{2},               /* O> */
+                                           {0, 3, "Panel 1"}, /* P[3] */
+                                           {1},               /*   <I */
+                                           {1},               /*   <I */
+                                           {2, -1, "", true}, /*   <I O>, aligned with above */
+                                           {1},               /* <I */
+                                           {0, 2, "Panel 2"}, /* P[2] */
+                                           {1},               /*   <I */
+                                           {0, 2, "Panel 3"}, /*   P[2] */
+                                           {2},               /*     O> */
+                                           {2}};              /*     O> */
 
 Array<bNodePanelState> fake_state = {{0, 0}, {1, 0}, {2, 0}};
 Array<bke::bNodePanelRuntime> fake_runtime(3);
@@ -493,6 +491,8 @@ static void node_update_basis_from_declaration(
 
   bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
+  bNodePanelState *current_panel_state = fake_state.begin();
+  bke::bNodePanelRuntime *current_panel_runtime = fake_runtime.begin();
   bool has_sockets = false;
   /* Parent panel stack with count of items still to be added. */
   struct PanelUpdate {
@@ -505,7 +505,6 @@ static void node_update_basis_from_declaration(
   //  BLI_assert(node.num_panel_states == node.runtime->panels.size());
 
   Stack<PanelUpdate> panel_updates;
-  bke::bNodePanelRuntime *panel_runtime = fake_runtime.begin();
   for (const FakeDeclaration &decl : fake_decls) {
     bool is_parent_collapsed = false;
     if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
@@ -517,18 +516,23 @@ static void node_update_basis_from_declaration(
 
     switch (decl.type) {
       case 0: /* Panel */ {
-        BLI_assert(fake_runtime.as_span().contains_ptr(panel_runtime));
+        BLI_assert(fake_state.as_span().contains_ptr(current_panel_state));
+        BLI_assert(fake_runtime.as_span().contains_ptr(current_panel_runtime));
 
         if (!is_parent_collapsed) {
           locy -= NODE_DY;
         }
+
+        SET_FLAG_FROM_TEST(
+            current_panel_state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
         /* New top panel is collapsed if self or parent is collapsed. */
-        const bool is_collapsed = is_parent_collapsed || decl.panel_collapsed;
+        const bool is_collapsed = is_parent_collapsed || current_panel_state->is_collapsed();
         panel_updates.push({decl.panel_size, is_collapsed});
 
         /* Round the socket location to stop it from jiggling. */
-        panel_runtime->location = float2(locx, round(locy + NODE_DYS));
-        ++panel_runtime;
+        current_panel_runtime->location = float2(locx, round(locy + NODE_DYS));
+        ++current_panel_state;
+        ++current_panel_runtime;
         break;
       }
 
@@ -1762,7 +1766,7 @@ static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, voi
   bNodePanelState *panel_state = (bNodePanelState *)panel_state_argv;
   bNodeTree *ntree = (bNodeTree *)ntree_argv;
 
-  panel_state->flag ^= NODE_PANEL_CLOSED;
+  panel_state->flag ^= NODE_PANEL_COLLAPSED;
 
   ED_node_tree_propagate_change(C, bmain, ntree);
 }
@@ -1788,6 +1792,10 @@ static void node_draw_panels(const View2D & /*v2d*/,
       continue;
     }
     bNodePanelState &state = fake_state[panel_i];
+    /* Don't draw hidden panels. */
+    if (state.is_parent_collapsed()) {
+      continue;
+    }
     const bke::bNodePanelRuntime &runtime = fake_runtime[panel_i];
 
     const rctf rect = {
@@ -1814,11 +1822,10 @@ static void node_draw_panels(const View2D & /*v2d*/,
 
     /* Collapse/expand icon. */
     const int but_size = U.widget_unit * 0.8f;
-    const bool hidden = (state.flag & NODE_PANEL_CLOSED);
     uiDefIconBut(&block,
                  UI_BTYPE_BUT_TOGGLE,
                  0,
-                 hidden ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
+                 state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
                  rct.xmin + (NODE_MARGIN_X / 3),
                  runtime.location.y - but_size / 2,
                  but_size,

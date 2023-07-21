@@ -885,3 +885,19 @@ inline const bNode &bNodeSocket::owner_node() const
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #bNode Inline Methods
+ * \{ */
+
+inline bool bNodePanelState::is_collapsed() const
+{
+  return flag & NODE_PANEL_COLLAPSED;
+}
+
+inline bool bNodePanelState::is_parent_collapsed() const
+{
+  return flag & NODE_PANEL_PARENT_COLLAPSED;
+}
+
+/** \} */
