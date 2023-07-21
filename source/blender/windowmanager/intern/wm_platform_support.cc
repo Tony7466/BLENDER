@@ -8,7 +8,7 @@
 #include "wm_platform_support.h"
 #include "wm_window_private.h"
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_dynstr.h"
 #include "BLI_fileops.h"
@@ -96,7 +96,7 @@ static void wm_platform_support_create_link(char *link)
   BLI_dynstr_free(ds);
 }
 
-bool WM_platform_support_perform_checks(void)
+bool WM_platform_support_perform_checks()
 {
   char title[WM_PLATFORM_SUPPORT_TEXT_SIZE];
   char message[WM_PLATFORM_SUPPORT_TEXT_SIZE];

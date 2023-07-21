@@ -8,8 +8,8 @@
  * Cursor pixmap and cursor utility functions to change the cursor.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "GHOST_C-api.h"
 
@@ -425,7 +425,7 @@ void WM_cursor_time(wmWindow *win, int nr)
   } \
   ((void)0)
 
-void wm_init_cursor_data(void)
+void wm_init_cursor_data()
 {
   /********************** NW_ARROW Cursor **************************/
   BEGIN_CURSOR_BLOCK;
