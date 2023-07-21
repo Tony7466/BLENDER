@@ -935,10 +935,6 @@ class PropertyGroup(StructRNA, metaclass=RNAMetaPropGroup):
     __slots__ = ()
 
 
-class RenderEngine(StructRNA, metaclass=RNAMeta):
-    __slots__ = ()
-
-
 class KeyingSetInfo(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
@@ -1249,3 +1245,85 @@ class GeometryNode(NodeInternal):
     @classmethod
     def poll(cls, ntree):
         return ntree.bl_idname == 'GeometryNodeTree'
+
+
+class RenderEngine(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
+class HydraRenderEngine(RenderEngine):
+    __slots__ = ()
+
+    bl_use_shading_nodes_custom = False
+    bl_delegate_id = 'HdStormRendererPlugin'
+
+    def __init__(self):
+        self.engine_ptr = None
+
+    def __del__(self):
+        if hasattr(self, 'engine_ptr'):
+            if self.engine_ptr:
+                import _bpy_hydra
+                _bpy_hydra.engine_free(self.engine_ptr)
+
+    def get_sync_settings(self, engine_type: str):
+        """
+        Provide settings for Blender scene export. Available settings:
+            `MaterialXFilenameKey` - if provided then MaterialX file will be provided directly to render delegate
+                                     without converting to HdMaterialNetwork
+        """
+        return {}
+
+    def get_render_settings(self, engine_type: str):
+        """
+        Provide render settings for `HdRenderDelegate`.
+        """
+        return {}
+
+    # Final render.
+    def update(self, data, depsgraph):
+        import _bpy_hydra
+
+        engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
+        if not self.engine_ptr:
+            self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.bl_delegate_id)
+        if not self.engine_ptr:
+            return
+
+        for key, val in self.get_sync_settings(engine_type).items():
+            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
+
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), 0)
+
+        for key, val in self.get_render_settings('PREVIEW' if self.is_preview else 'FINAL').items():
+            _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
+
+    def render(self, depsgraph):
+        if not self.engine_ptr:
+            return
+
+        import _bpy_hydra
+        _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
+
+    # Viewport render.
+    def view_update(self, context, depsgraph):
+        import _bpy_hydra
+        if not self.engine_ptr:
+            self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), 'VIEWPORT', self.bl_delegate_id)
+        if not self.engine_ptr:
+            return
+
+        for key, val in self.get_sync_settings('VIEWPORT').items():
+            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
+
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
+
+        for key, val in self.get_render_settings('VIEWPORT').items():
+            _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
+
+    def view_draw(self, context, depsgraph):
+        if not self.engine_ptr:
+            return
+
+        import _bpy_hydra
+        _bpy_hydra.engine_view_draw(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
