@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "BKE_bake_geometry_nodes.hh"
+#include "BKE_bake_items.hh"
 #include "BKE_geometry_set.hh"
 
 #include "BLI_map.hh"

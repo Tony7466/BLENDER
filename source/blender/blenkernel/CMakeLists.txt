@@ -328,6 +328,7 @@ set(SRC
   BKE_attribute_math.hh
   BKE_autoexec.h
   BKE_bake_geometry_nodes.hh
+  BKE_bake_items.hh
   BKE_blender.h
   BKE_blender_copybuffer.h
   BKE_blender_undo.h

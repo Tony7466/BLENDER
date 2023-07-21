@@ -8,72 +8,9 @@
 #include "BLI_map.hh"
 #include "BLI_sub_frame.hh"
 
-#include "BKE_geometry_set.hh"
+#include "BKE_bake_items.hh"
 
 namespace blender::bke {
-
-class BakeItem {
- public:
-  virtual ~BakeItem() = default;
-};
-
-class GeometryBakeItem : public BakeItem {
- public:
-  GeometryBakeItem(GeometrySet geometry);
-  GeometrySet geometry;
-};
-
-/**
- * References a field input/output that becomes an attribute as part of the simulation state.
- * The attribute is actually stored in a #GeometryBakeItem, so this just references
- * the attribute's name.
- */
-class AttributeBakeItem : public BakeItem {
- private:
-  std::string name_;
-
- public:
-  AttributeBakeItem(std::string name) : name_(std::move(name)) {}
-
-  StringRefNull name() const
-  {
-    return name_;
-  }
-};
-
-/** Storage for a single value of a trivial type like `float`, `int`, etc. */
-class PrimitiveBakeItem : public BakeItem {
- private:
-  const CPPType &type_;
-  void *value_;
-
- public:
-  PrimitiveBakeItem(const CPPType &type, const void *value);
-  ~PrimitiveBakeItem();
-
-  const void *value() const
-  {
-    return value_;
-  }
-
-  const CPPType &type() const
-  {
-    return type_;
-  }
-};
-
-class StringBakeItem : public BakeItem {
- private:
-  std::string value_;
-
- public:
-  StringBakeItem(std::string value);
-
-  StringRefNull value() const
-  {
-    return value_;
-  }
-};
 
 class BakeNodeState {
  public:
