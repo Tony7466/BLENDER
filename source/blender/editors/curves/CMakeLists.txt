@@ -5,12 +5,10 @@
 set(INC
   ../include
   ../../blentranslation
-  ../../depsgraph
   ../../functions
   ../../geometry
   ../../gpu
   ../../makesrna
-  ../../windowmanager
   ../../../../intern/clog
   ../../bmesh
 
@@ -31,8 +29,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_TBB)
