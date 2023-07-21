@@ -28,7 +28,7 @@ set(SRC
   gpu_py_select.cc
   gpu_py_shader.cc
   gpu_py_shader_create_info.cc
-  gpu_py_state.c
+  gpu_py_state.cc
   gpu_py_texture.c
   gpu_py_types.c
   gpu_py_uniformbuffer.c
