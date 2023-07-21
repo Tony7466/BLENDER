@@ -88,21 +88,31 @@ static void pad_pixels(const BufferParams &buffer_params,
     return;
   }
 
-  const size_t size = static_cast<size_t>(buffer_params.width) * buffer_params.height;
+  //const size_t size = static_cast<size_t>(buffer_params.width) * buffer_params.height;
+  const int width = buffer_params.width;
+  const int slice_stride = buffer_params.slice_stride;
+  const int slice_height = buffer_params.slice_height;
+  const int total_height = buffer_params.window_height;
   if (destination.pixels) {
     const size_t pixel_stride = destination.pixel_stride ? destination.pixel_stride :
                                                            destination.num_components;
 
     float *pixel = destination.pixels + pixel_stride * destination.offset;
 
-    for (size_t i = 0; i < size; i++, pixel += dest_num_components) {
-      if (dest_num_components >= 3 && src_num_components == 1) {
-        pixel[1] = pixel[0];
-        pixel[2] = pixel[0];
+    for(int slice_y = 0; slice_y < total_height;slice_y += slice_height) {
+      float *dst = pixel;
+      const int height = std::min(slice_height, total_height - slice_y);
+      const int size = width*height;
+      for (size_t i = 0; i < size; i++, dst += dest_num_components) {
+          if (dest_num_components >= 3 && src_num_components == 1) {
+              dst[1] = dst[0];
+              dst[2] = dst[0];
+          }
+          if (dest_num_components >= 4) {
+              dst[3] = 1.0f;
+          }
       }
-      if (dest_num_components >= 4) {
-        pixel[3] = 1.0f;
-      }
+      pixel += slice_stride*width*dest_num_components;
     }
   }
 
@@ -110,14 +120,20 @@ static void pad_pixels(const BufferParams &buffer_params,
     const half one = float_to_half_display(1.0f);
     half4 *pixel = destination.pixels_half_rgba + destination.offset;
 
-    for (size_t i = 0; i < size; i++, pixel++) {
-      if (dest_num_components >= 3 && src_num_components == 1) {
-        pixel[0].y = pixel[0].x;
-        pixel[0].z = pixel[0].x;
+    for(int slice_y = 0; slice_y < total_height;slice_y += slice_height) {
+      half4 *dst = pixel;
+      const int height = std::min(slice_height, total_height - slice_y);
+      const int size = width*height;
+      for (size_t i = 0; i < size; i++, dst++) {
+          if (dest_num_components >= 3 && src_num_components == 1) {
+              dst[0].y = dst[0].x;
+              dst[0].z = dst[0].x;
+          }
+          if (dest_num_components >= 4) {
+              dst[0].w = one;
+          }
       }
-      if (dest_num_components >= 4) {
-        pixel[0].w = one;
-      }
+      pixel += slice_stride*width;
     }
   }
 }
