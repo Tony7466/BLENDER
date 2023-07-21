@@ -245,7 +245,7 @@ template<typename Callback>
 static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>> &path_trace_works,
                                          const vector<WorkBalanceInfo> &work_balance_infos,
                                          const BufferParams &buffer_params,
-                                         const int overscan, const bool bake,
+                                         const int overscan, const bool interleaved_slices,
                                          const Callback &callback)
 {
   const int num_works = path_trace_works.size();
@@ -268,32 +268,33 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   VLOG_INFO << "Initial Slice sizes";
   int slice_stride = 0;
   int slice_sizes[num_works];
+    //int sizes[num_works] = { 10, 1 };
   for(int i = 0;i < num_works;i++) {
         const double weight = work_balance_infos[i].weight;
         int slice_size = weight/work_balance_infos[smallest_weight].weight;
-        VLOG_INFO << "<" << i << "> size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
+        VLOG_INFO << "<" << i << "> Slice size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
         slice_sizes[i] = slice_size;
         slice_stride += slice_size;
   }
-  /* Bake roughness is currently broken this with interleaved scanlines this create 2 big slices without being interleaved
-  if(bake) {
-      // enlarge slices so that there are only 2 big slices
+  /* Instead of using interleaved slices create n bigger consecuitive slices */
+  if(!interleaved_slices) {
+      /* enlarge slices so that there are only 2 big slices */
       int remaining_height = window_height - slice_stride;
       for(int i = 0;i < num_works;i++) {
           const double weight = work_balance_infos[i].weight;
           int slice_size = remaining_height*weight;
           slice_sizes[i] += slice_size;
           slice_stride += slice_size;
-          VLOG_INFO << "<" << i << "> enlarge size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
+          VLOG_INFO << "<" << i << "> Enlarged slice size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
       }
-      // if there are any remaining scanlines add them to the device with the highest weight
+      /* if there are any remaining scanlines due to truncation add them to the device with the highest weight */
       int leftover_scanlines = window_height - slice_stride;
       if(leftover_scanlines > 0) {
           VLOG_INFO << "Left over scanlines:" << leftover_scanlines;
           slice_sizes[largest_weight] += leftover_scanlines;
       }
   }
-  */
+
   int slices = window_height/slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
@@ -302,21 +303,11 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     const int slice_left_at_end = std::max(0, window_height - slices*slice_stride - current_y);
     const int slice_window_height = slices*slice_sizes[i] + std::min(slice_sizes[i], slice_left_at_end);  //max(lround(window_height * weight), 1);
 
-    /* Disallow negative values to deal with situations when there are more compute devices than
-     * scan-lines. */
-    //const int remaining_window_height = max(0, window_height - current_y);
-
     BufferParams slice_params = buffer_params;
 
     slice_params.full_y = max(slice_window_full_y - overscan, buffer_params.full_y);
     slice_params.window_y = slice_window_full_y - slice_params.full_y;
 
-    // if (i < num_works - 1) {
-    //   slice_params.window_height = min(slice_window_height, remaining_window_height);
-    // }
-    // else {
-    //   slice_params.window_height = remaining_window_height;
-    // }
     slice_params.window_height = slice_window_height;
       
     slice_params.height = slice_params.window_y + slice_params.window_height + overscan;
@@ -340,69 +331,8 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
       
     callback(path_trace_works[i].get(), slice_params);
 
-    current_y += slice_sizes[i];//slice_params.window_height;
+    current_y += slice_sizes[i];
   }
-  
-  //=============================================
-  //   const double weight = work_balance_infos[i].weight * device_scale;
-  //   const int slice_window_full_y = buffer_params.full_y + buffer_params.window_y + current_y;
-  //   const int slice_window_height = sizes[i]; //max(lround(window_height * weight), 1);
-
-  //   /* Disallow negative values to deal with situations when there are more compute devices than
-  //    * scan-lines. */
-  //   const int remaining_window_height = max(0, window_height - total_height);
-  //   BufferParams slice_params = buffer_params;
-
-  //   /* Fill in the slice details */
-  //   slice_params.slice_stride = slice_height;
-  //   slice_params.slice_height = sizes[i];
-  //   slice_params.slice_start_y = slice_window_full_y;//current_y;
-  //   VLOG_INFO << "slice start_y:" << slice_params.slice_start_y
-  // 	      << " height:" << slice_params.slice_height
-  //     	      << " stride:" << slice_params.slice_stride;
-    
-  //   slice_params.full_y = max(slice_window_full_y - overscan, buffer_params.full_y);
-  //   slice_params.window_y = slice_window_full_y - slice_params.full_y;
-
-  //   /* If this is the last work item then all the remaing scanlines
-  //      should be added */
-  //   if (work_item < num_works * device_scale_factor - 1) {
-  //     slice_params.window_height = min(slice_window_height, remaining_window_height);
-  //     total_height += slice_params.window_height;
-  //     VLOG_INFO << "(" << work_item << "/" << num_works * device_scale_factor << ") " << slice_params.window_height << " total:" << total_height << "/" << window_height << " remain:" << remaining_window_height;
-  //   }
-  //   else {
-  //     slice_params.window_height = remaining_window_height;
-  //     total_height += slice_params.window_height;
-  //     VLOG_INFO << "(" << work_item << "/" << num_works * device_scale_factor << ") final " << slice_params.window_height << " total:" << total_height << "/" << window_height << " reamin:" << remaining_window_height;
-  //   }
-
-  //   slice_params.height = slice_params.window_y + slice_params.window_height + overscan;
-  //   slice_params.height = min(slice_params.height,
-  //   buffer_params.height + buffer_params.full_y - slice_params.full_y);
-
-  //   slice_params.update_offset_stride();
-
-  //   callback(path_trace_works[i].get(), slice_params, i, j, offsets[i]);
-  //   offsets[i] += slice_params.height;
-
-  //   current_y += slice_params.window_height;
-  //   work_item++;
-
-  //   VLOG_INFO << "####Slice tile: "
-  // 	      << " x:" <<  slice_params.full_x
-  //     	      << " y:" <<  slice_params.full_y
-  //     	      << " w:" <<  slice_params.full_width
-  // 	      << " h:" <<  slice_params.full_height
-  // 	      << " wx:" <<  slice_params.window_x
-  //     	      << " wy:" <<  slice_params.window_y
-  //     	      << " ww:" <<  slice_params.window_width
-  // 	      << " wh:" <<  slice_params.window_height
-  // 	      << " sy:" <<  slice_params.slice_start_y
-  // 	      << " st:" <<  slice_params.slice_stride
-  //     	      << " sh:" <<  slice_params.slice_height;
-  // }
-  // }
 }
 
 void PathTrace::update_allocated_work_buffer_params()
@@ -413,7 +343,7 @@ void PathTrace::update_allocated_work_buffer_params()
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
-                               overscan, device_scene_->data.bake.use,
+                               overscan, interleaved_slices,
                                [](PathTraceWork *path_trace_work, const BufferParams &params) {
                                  RenderBuffers *buffers = path_trace_work->get_render_buffers();
                                  buffers->reset(params);
@@ -454,7 +384,7 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                scaled_big_tile_params,
-                               overscan, device_scene_->data.bake.use,
+                               overscan, interleaved_slices,
                                [&](PathTraceWork *path_trace_work, const BufferParams params) {
                                  path_trace_work->set_effective_buffer_params(
                                      scaled_full_params, scaled_big_tile_params, params);

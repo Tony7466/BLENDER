@@ -182,9 +182,9 @@ class PathTrace {
    * that the buffer is "uniformly" sampled at the moment of this callback). */
   function<void(void)> progress_update_cb;
 
-  void set_device_scale_factor(int f) {
-    device_scale_factor = f;
-    VLOG_INFO << "Scale factor:" << f;
+  void set_interleaved_slices(bool setting) {
+    interleaved_slices = setting;
+    VLOG_INFO << "Use interleaved slices:" << interleaved_slices;
   }
 
  protected:
@@ -356,7 +356,7 @@ class PathTrace {
     RenderBuffers *render_buffers = nullptr;
   } full_frame_state_;
 
-  int device_scale_factor = 1;
+  bool interleaved_slices = true;
 };
 
 CCL_NAMESPACE_END

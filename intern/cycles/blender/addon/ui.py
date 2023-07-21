@@ -878,7 +878,7 @@ class CYCLES_RENDER_PT_performance_multiple_device(CyclesButtonsPanel, Panel):
         cscene = scene.cycles
 
         col = layout.column()
-        col.prop(cscene, "device_scale_factor")
+        col.prop(cscene, "interleaved_slices")
 
 class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
     bl_label = "Filter"

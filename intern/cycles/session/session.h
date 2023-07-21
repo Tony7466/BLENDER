@@ -58,7 +58,7 @@ class SessionParams {
   bool use_resolution_divider;
 
   ShadingSystem shadingsystem;
-  int device_scale_factor = 1;
+  int interleaved_slices = true;
 
   /* Session-specific temporary directory to store in-progress EXR files in. */
   string temp_dir;
@@ -83,7 +83,7 @@ class SessionParams {
     use_resolution_divider = true;
 
     shadingsystem = SHADINGSYSTEM_SVM;
-    device_scale_factor = 1;
+    interleaved_slices = false;
   }
 
   bool modified(const SessionParams &params) const

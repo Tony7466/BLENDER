@@ -55,7 +55,7 @@ Session::Session(const SessionParams &params_, const SceneParams &scene_params)
       device, scene->film, &scene->dscene, render_scheduler_, tile_manager_);
   path_trace_->set_progress(&progress);
   path_trace_->progress_update_cb = [&]() { update_status_time(); };
-  path_trace_->set_device_scale_factor(params.device_scale_factor);
+  path_trace_->set_interleaved_slices(params.interleaved_slices);
 
   tile_manager_.full_buffer_written_cb = [&](string_view filename) {
     if (!full_buffer_written_cb) {

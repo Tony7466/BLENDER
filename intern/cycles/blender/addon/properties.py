@@ -978,11 +978,10 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         min=8, max=8192,
     )
 
-    device_scale_factor: IntProperty(
-        name="Device Scale Factor",
-        default=1,
-        description="Higher device scale factor can improve load distribution between multiple GPUs but comes with some overhead",
-        min=1, max=10,
+    interleaved_slices: BoolProperty(
+        name="Interleaved Slices",
+        default=True,
+        description="If true work is distribuited as many small interleaved work slices so as to distribute the work more evenly otherwise a single big slice per device is used"
     )
 
     # Various fine-tuning debug flags
