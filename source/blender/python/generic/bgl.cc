@@ -167,10 +167,10 @@ static void report_deprecated_call_to_user(void)
 #  define GLclampfP_def(number) Buffer *bgl_buffer##number
 #endif
 
-typedef struct BufferOrOffset {
+struct BufferOrOffset {
   Buffer *buffer;
   void *offset;
-} BufferOrOffset;
+};
 
 #define GLvoidP_str "O&"
 #define GLvoidP_var(number) \
@@ -462,7 +462,7 @@ typedef struct BufferOrOffset {
   } \
 \
   PyErr_SetString(PyExc_AttributeError, "could not get opengl string"); \
-  return NULL;
+  return nullptr;
 
 /** \} */
 
@@ -549,15 +549,15 @@ static bool compare_dimensions(int ndim, const int *dim1, const Py_ssize_t *dim2
 
 static PySequenceMethods Buffer_SeqMethods = {
     /*sq_length*/ (lenfunc)Buffer_len,
-    /*sq_concat*/ NULL,
-    /*sq_repeat*/ NULL,
+    /*sq_concat*/ nullptr,
+    /*sq_repeat*/ nullptr,
     /*sq_item*/ (ssizeargfunc)Buffer_item,
-    /*was_sq_slice*/ NULL, /* DEPRECATED. Handled by #Buffer_item. */
+    /*was_sq_slice*/ nullptr, /* DEPRECATED. Handled by #Buffer_item. */
     /*sq_ass_item*/ (ssizeobjargproc)Buffer_ass_item,
-    /*was_sq_ass_slice*/ NULL, /* DEPRECATED. Handled by #Buffer_ass_item. */
-    /*sq_contains*/ NULL,
-    /*sq_inplace_concat*/ NULL,
-    /*sq_inplace_repeat*/ NULL,
+    /*was_sq_ass_slice*/ nullptr, /* DEPRECATED. Handled by #Buffer_ass_item. */
+    /*sq_contains*/ nullptr,
+    /*sq_inplace_concat*/ nullptr,
+    /*sq_inplace_repeat*/ nullptr,
 };
 
 static PyMappingMethods Buffer_AsMapping = {
@@ -602,7 +602,7 @@ static PyObject *Buffer_to_list_recursive(Buffer *self)
   return list;
 }
 
-static PyObject *Buffer_dimensions(Buffer *self, void *UNUSED(arg))
+static PyObject *Buffer_dimensions(Buffer *self, void * /*arg*/)
 {
   PyObject *list = PyList_New(self->ndimensions);
   int i;
@@ -616,64 +616,64 @@ static PyObject *Buffer_dimensions(Buffer *self, void *UNUSED(arg))
 
 static PyMethodDef Buffer_methods[] = {
     {"to_list", (PyCFunction)Buffer_to_list_recursive, METH_NOARGS, "return the buffer as a list"},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static PyGetSetDef Buffer_getseters[] = {
-    {"dimensions", (getter)Buffer_dimensions, NULL, NULL, NULL},
-    {NULL, NULL, NULL, NULL, NULL},
+    {"dimensions", (getter)Buffer_dimensions, nullptr, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
 };
 
 PyTypeObject BGL_bufferType = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "bgl.Buffer",
     /*tp_basicsize*/ sizeof(Buffer),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)Buffer_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
     /*tp_repr*/ (reprfunc)Buffer_repr,
-    /*tp_as_number*/ NULL,
+    /*tp_as_number*/ nullptr,
     /*tp_as_sequence*/ &Buffer_SeqMethods,
     /*tp_as_mapping*/ &Buffer_AsMapping,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ Buffer_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ Buffer_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ Buffer_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 static Buffer *BGL_MakeBuffer_FromData(
@@ -684,7 +684,8 @@ static Buffer *BGL_MakeBuffer_FromData(
   Py_XINCREF(parent);
   buffer->parent = parent;
   buffer->ndimensions = ndimensions;
-  buffer->dimensions = MEM_mallocN(ndimensions * sizeof(int), "Buffer dimensions");
+  buffer->dimensions = static_cast<int *>(
+      MEM_mallocN(ndimensions * sizeof(int), "Buffer dimensions"));
   memcpy(buffer->dimensions, dimensions, ndimensions * sizeof(int));
   buffer->type = type;
   buffer->buf.asvoid = buf;
@@ -695,7 +696,7 @@ static Buffer *BGL_MakeBuffer_FromData(
 Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuffer)
 {
   Buffer *buffer;
-  void *buf = NULL;
+  void *buf = nullptr;
   int i, size = BGL_typeSize(type);
 
   for (i = 0; i < ndimensions; i++) {
@@ -704,7 +705,7 @@ Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuf
 
   buf = MEM_mallocN(size, __func__);
 
-  buffer = BGL_MakeBuffer_FromData(NULL, type, ndimensions, dimensions, buf);
+  buffer = BGL_MakeBuffer_FromData(nullptr, type, ndimensions, dimensions, buf);
 
   if (initbuffer) {
     memcpy(buffer->buf.asvoid, initbuffer, size);
@@ -716,14 +717,14 @@ Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuf
 }
 
 #ifdef WITH_OPENGL_BACKEND
-/* Custom converter function so we can support a buffer, an integer or NULL.
+/* Custom converter function so we can support a buffer, an integer or nullptr.
  * Many OpenGL API functions can accept both an actual pointer or an offset
  * into a buffer that is already bound. */
 static int BGL_BufferOrOffsetConverter(PyObject *object, BufferOrOffset *buffer)
 {
   if (object == Py_None) {
-    buffer->buffer = NULL;
-    buffer->offset = NULL;
+    buffer->buffer = nullptr;
+    buffer->offset = nullptr;
     return 1;
   }
   if (PyNumber_Check(object)) {
@@ -732,13 +733,13 @@ static int BGL_BufferOrOffsetConverter(PyObject *object, BufferOrOffset *buffer)
       return 0;
     }
 
-    buffer->buffer = NULL;
+    buffer->buffer = nullptr;
     buffer->offset = (void *)offset;
     return 1;
   }
   if (PyObject_TypeCheck(object, &BGL_bufferType)) {
     buffer->buffer = (Buffer *)object;
-    buffer->offset = NULL;
+    buffer->offset = nullptr;
     return 1;
   }
 
@@ -748,10 +749,10 @@ static int BGL_BufferOrOffsetConverter(PyObject *object, BufferOrOffset *buffer)
 #endif
 
 #define MAX_DIMENSIONS 256
-static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
+static PyObject *Buffer_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
-  PyObject *length_ob = NULL, *init = NULL;
-  Buffer *buffer = NULL;
+  PyObject *length_ob = nullptr, *init = nullptr;
+  Buffer *buffer = nullptr;
   int dimensions[MAX_DIMENSIONS];
 
   int type;
@@ -759,17 +760,17 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
 
   if (kwds && PyDict_Size(kwds)) {
     PyErr_SetString(PyExc_TypeError, "bgl.Buffer(): takes no keyword args");
-    return NULL;
+    return nullptr;
   }
 
   if (!PyArg_ParseTuple(args, "iO|O: bgl.Buffer", &type, &length_ob, &init)) {
-    return NULL;
+    return nullptr;
   }
   if (!ELEM(type, GL_BYTE, GL_SHORT, GL_INT, GL_FLOAT, GL_DOUBLE)) {
     PyErr_SetString(PyExc_AttributeError,
                     "invalid first argument type, should be one of "
                     "GL_BYTE, GL_SHORT, GL_INT, GL_FLOAT or GL_DOUBLE");
-    return NULL;
+    return nullptr;
   }
 
   if (PyLong_Check(length_ob)) {
@@ -777,7 +778,7 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
     if ((dimensions[0] = PyLong_AsLong(length_ob)) < 1) {
       PyErr_SetString(PyExc_AttributeError,
                       "dimensions must be between 1 and " STRINGIFY(MAX_DIMENSIONS));
-      return NULL;
+      return nullptr;
     }
   }
   else if (PySequence_Check(length_ob)) {
@@ -785,11 +786,11 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
     if (ndimensions > MAX_DIMENSIONS) {
       PyErr_SetString(PyExc_AttributeError,
                       "too many dimensions, max is " STRINGIFY(MAX_DIMENSIONS));
-      return NULL;
+      return nullptr;
     }
     if (ndimensions < 1) {
       PyErr_SetString(PyExc_AttributeError, "sequence must have at least one dimension");
-      return NULL;
+      return nullptr;
     }
     for (i = 0; i < ndimensions; i++) {
       PyObject *ob = PySequence_GetItem(length_ob, i);
@@ -805,7 +806,7 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
       if (dimensions[i] < 1) {
         PyErr_SetString(PyExc_AttributeError,
                         "dimensions must be between 1 and " STRINGIFY(MAX_DIMENSIONS));
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -814,7 +815,7 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
                  "invalid second argument expected a sequence "
                  "or an int, not a %.200s",
                  Py_TYPE(length_ob)->tp_name);
-    return NULL;
+    return nullptr;
   }
 
   if (init && PyObject_CheckBuffer(init)) {
@@ -822,7 +823,7 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
 
     if (PyObject_GetBuffer(init, &pybuffer, PyBUF_ND | PyBUF_FORMAT) == -1) {
       /* PyObject_GetBuffer raise a PyExc_BufferError */
-      return NULL;
+      return nullptr;
     }
 
     if (type != gl_buffer_type_from_py_buffer(&pybuffer)) {
@@ -842,10 +843,10 @@ static PyObject *Buffer_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject
     PyBuffer_Release(&pybuffer);
   }
   else {
-    buffer = BGL_MakeBuffer(type, ndimensions, dimensions, NULL);
+    buffer = BGL_MakeBuffer(type, ndimensions, dimensions, nullptr);
     if (init && Buffer_ass_slice(buffer, 0, dimensions[0], init)) {
       Py_DECREF(buffer);
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -863,7 +864,7 @@ static PyObject *Buffer_item(Buffer *self, Py_ssize_t i)
 {
   if (i >= self->dimensions[0] || i < 0) {
     PyErr_SetString(PyExc_IndexError, "array index out of range");
-    return NULL;
+    return nullptr;
   }
 
   if (self->ndimensions == 1) {
@@ -894,7 +895,7 @@ static PyObject *Buffer_item(Buffer *self, Py_ssize_t i)
                                                self->buf.asbyte + offset);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static PyObject *Buffer_slice(Buffer *self, Py_ssize_t begin, Py_ssize_t end)
@@ -1010,7 +1011,7 @@ static PyObject *Buffer_subscript(Buffer *self, PyObject *item)
     Py_ssize_t i;
     i = PyNumber_AsSsize_t(item, PyExc_IndexError);
     if (i == -1 && PyErr_Occurred()) {
-      return NULL;
+      return nullptr;
     }
     if (i < 0) {
       i += self->dimensions[0];
@@ -1021,7 +1022,7 @@ static PyObject *Buffer_subscript(Buffer *self, PyObject *item)
     Py_ssize_t start, stop, step, slicelength;
 
     if (PySlice_GetIndicesEx(item, self->dimensions[0], &start, &stop, &step, &slicelength) < 0) {
-      return NULL;
+      return nullptr;
     }
 
     if (slicelength <= 0) {
@@ -1032,12 +1033,12 @@ static PyObject *Buffer_subscript(Buffer *self, PyObject *item)
     }
 
     PyErr_SetString(PyExc_IndexError, "slice steps not supported with vectors");
-    return NULL;
+    return nullptr;
   }
 
   PyErr_Format(
       PyExc_TypeError, "buffer indices must be integers, not %.200s", Py_TYPE(item)->tp_name);
-  return NULL;
+  return nullptr;
 }
 
 static int Buffer_ass_subscript(Buffer *self, PyObject *item, PyObject *value)
@@ -1127,13 +1128,13 @@ static PyObject *Buffer_repr(Buffer *self)
 
 #ifdef WITH_OPENGL_BACKEND
 #  define BGL_Wrap(funcname, ret, arg_list) \
-    static PyObject *Method_##funcname(PyObject *UNUSED(self), PyObject *args) \
+    static PyObject *Method_##funcname(PyObject * /*self*/, PyObject *args) \
     { \
       arg_def arg_list; \
       ret_def_##ret; \
       report_deprecated_call(#funcname); \
       if (!PyArg_ParseTuple(args, arg_str arg_list, arg_ref arg_list)) { \
-        return NULL; \
+        return nullptr; \
       } \
       const bool has_opengl_backend = GPU_backend_get_type() == GPU_BACKEND_OPENGL; \
       if (has_opengl_backend) { \
@@ -1154,11 +1155,11 @@ static void bgl_no_opengl_error(void)
 }
 
 #  define BGL_Wrap(funcname, ret, arg_list) \
-    static PyObject *Method_##funcname(PyObject *UNUSED(self), PyObject *args) \
+    static PyObject *Method_##funcname(PyObject * /*self*/, PyObject *args) \
     { \
       (void)args; \
       bgl_no_opengl_error(); \
-      return NULL; \
+      return nullptr; \
     }
 #endif
 
@@ -1445,13 +1446,13 @@ BGL_Wrap(TexImage3DMultisample,
 static PyModuleDef BGL_module_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "bgl",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 static void py_module_dict_add_int(PyObject *dict, const char *name, int value)
@@ -1475,7 +1476,7 @@ static void py_module_dict_add_method(PyObject *submodule,
 {
   if (is_valid) {
     PyObject *m;
-    m = PyCFunction_NewEx(method_def, NULL, submodule);
+    m = PyCFunction_NewEx(method_def, nullptr, submodule);
     PyDict_SetItemString(dict, method_def->ml_name, m);
     Py_DECREF(m);
   }
@@ -1484,7 +1485,7 @@ static void py_module_dict_add_method(PyObject *submodule,
   }
 }
 
-/* needed since some function pointers won't be NULL */
+/* needed since some function pointers won't be nullptr */
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Waddress"
 #endif
@@ -1493,7 +1494,7 @@ static void py_module_dict_add_method(PyObject *submodule,
 #  define PY_MOD_ADD_METHOD(func) \
     { \
       static PyMethodDef method_def = {"gl" #func, Method_##func, METH_VARARGS}; \
-      py_module_dict_add_method(submodule, dict, &method_def, (gl##func != NULL)); \
+      py_module_dict_add_method(submodule, dict, &method_def, (gl##func != nullptr)); \
     } \
     ((void)0)
 #else
@@ -1776,7 +1777,7 @@ static void init_bgl_version_3_2_methods(PyObject *submodule, PyObject *dict)
   PY_MOD_ADD_METHOD(TexImage2DMultisample);
   PY_MOD_ADD_METHOD(TexImage3DMultisample);
 }
-static void init_bgl_version_3_3_methods(PyObject *UNUSED(submodule), PyObject *UNUSED(dict))
+static void init_bgl_version_3_3_methods(PyObject * /*submodule*/, PyObject * /*dict*/)
 {
   /* GL_VERSION_3_3 */
 }
@@ -2270,8 +2271,8 @@ static void init_bgl_version_3_0_constants(PyObject *dict)
   PY_DICT_ADD_INT(GL_CLIP_DISTANCE4);
   PY_DICT_ADD_INT(GL_CLIP_DISTANCE5);
 #if 0
-    PY_DICT_ADD_INT(GL_CLIP_DISTANCE6);
-    PY_DICT_ADD_INT(GL_CLIP_DISTANCE7);
+PY_DICT_ADD_INT(GL_CLIP_DISTANCE6);
+PY_DICT_ADD_INT(GL_CLIP_DISTANCE7);
 #endif
   PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT0);
   PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT1);
@@ -2290,22 +2291,22 @@ static void init_bgl_version_3_0_constants(PyObject *dict)
   PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT14);
   PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT15);
 #if 0
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT16);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT17);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT18);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT19);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT20);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT21);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT22);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT23);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT24);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT25);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT26);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT27);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT28);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT29);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT30);
-    PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT31);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT16);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT17);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT18);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT19);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT20);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT21);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT22);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT23);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT24);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT25);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT26);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT27);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT28);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT29);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT30);
+PY_DICT_ADD_INT(GL_COLOR_ATTACHMENT31);
 #endif
   PY_DICT_ADD_INT(GL_COMPARE_REF_TO_TEXTURE);
   PY_DICT_ADD_INT(GL_COMPRESSED_RED);
@@ -2654,13 +2655,13 @@ PyObject *BPyInit_bgl(void)
   dict = PyModule_GetDict(submodule);
 
   if (PyType_Ready(&BGL_bufferType) < 0) {
-    return NULL; /* should never happen */
+    return nullptr; /* should never happen */
   }
 
-  /* Building as a Python module loads all modules
-   * (see code comment around #PyImport_ExtendInittab usage).
-   * The result of this is the `bgl` warning would always show when importing `bpy`.
-   * In the case of Blender as a Python module, suppress the warning. */
+/* Building as a Python module loads all modules
+ * (see code comment around #PyImport_ExtendInittab usage).
+ * The result of this is the `bgl` warning would always show when importing `bpy`.
+ * In the case of Blender as a Python module, suppress the warning. */
 #ifndef WITH_PYTHON_MODULE
   if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     CLOG_WARN(&LOG,
@@ -2700,21 +2701,21 @@ PyObject *BPyInit_bgl(void)
   return submodule;
 }
 
-static PyObject *Method_ShaderSource(PyObject *UNUSED(self), PyObject *args)
+static PyObject *Method_ShaderSource(PyObject * /*self*/, PyObject *args)
 {
   uint shader;
   const char *source;
 
   if (!PyArg_ParseTuple(args, "Is", &shader, &source)) {
-    return NULL;
+    return nullptr;
   }
 
 #ifdef WITH_OPENGL
-  glShaderSource(shader, 1, (const char **)&source, NULL);
+  glShaderSource(shader, 1, (const char **)&source, nullptr);
   Py_RETURN_NONE;
 #else
   bgl_no_opengl_error();
-  return NULL;
+  return nullptr;
 #endif
 }
 
