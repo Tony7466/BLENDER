@@ -21,7 +21,7 @@ set(SRC
   gpu_py_buffer.cc
   gpu_py_capabilities.cc
   gpu_py_element.cc
-  gpu_py_framebuffer.c
+  gpu_py_framebuffer.cc
   gpu_py_matrix.c
   gpu_py_offscreen.c
   gpu_py_platform.c

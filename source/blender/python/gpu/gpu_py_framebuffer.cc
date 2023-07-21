@@ -33,7 +33,7 @@
 
 static int pygpu_framebuffer_valid_check(BPyGPUFrameBuffer *bpygpu_fb)
 {
-  if (UNLIKELY(bpygpu_fb->fb == NULL)) {
+  if (UNLIKELY(bpygpu_fb->fb == nullptr)) {
     PyErr_SetString(PyExc_ReferenceError, "GPU framebuffer was freed, no further access is valid");
     return -1;
   }
@@ -43,7 +43,7 @@ static int pygpu_framebuffer_valid_check(BPyGPUFrameBuffer *bpygpu_fb)
 #define PYGPU_FRAMEBUFFER_CHECK_OBJ(bpygpu) \
   { \
     if (UNLIKELY(pygpu_framebuffer_valid_check(bpygpu) == -1)) { \
-      return NULL; \
+      return nullptr; \
     } \
   } \
   ((void)0)
@@ -62,14 +62,14 @@ static void pygpu_framebuffer_free_safe(BPyGPUFrameBuffer *self)
 {
   if (self->fb) {
 #ifndef GPU_NO_USE_PY_REFERENCES
-    GPU_framebuffer_py_reference_set(self->fb, NULL);
+    GPU_framebuffer_py_reference_set(self->fb, nullptr);
     if (!self->shared_reference)
 #endif
     {
       pygpu_framebuffer_free_if_possible(self->fb);
     }
 
-    self->fb = NULL;
+    self->fb = nullptr;
   }
 }
 
@@ -115,11 +115,11 @@ static bool pygpu_framebuffer_stack_pop_and_restore_or_error(GPUFrameBuffer *fb)
  *
  * \{ */
 
-typedef struct {
+struct PyFrameBufferStackContext {
   PyObject_HEAD /* Required Python macro. */
   BPyGPUFrameBuffer *py_fb;
   int level;
-} PyFrameBufferStackContext;
+};
 
 static void pygpu_framebuffer_stack_context__tp_dealloc(PyFrameBufferStackContext *self)
 {
@@ -134,11 +134,11 @@ static PyObject *pygpu_framebuffer_stack_context_enter(PyFrameBufferStackContext
   /* sanity - should never happen */
   if (self->level != -1) {
     PyErr_SetString(PyExc_RuntimeError, "Already in use");
-    return NULL;
+    return nullptr;
   }
 
   if (!pygpu_framebuffer_stack_push_and_bind_or_error(self->py_fb->fb)) {
-    return NULL;
+    return nullptr;
   }
 
   self->level = GPU_framebuffer_stack_level_get();
@@ -146,14 +146,14 @@ static PyObject *pygpu_framebuffer_stack_context_enter(PyFrameBufferStackContext
 }
 
 static PyObject *pygpu_framebuffer_stack_context_exit(PyFrameBufferStackContext *self,
-                                                      PyObject *UNUSED(args))
+                                                      PyObject * /*args*/)
 {
   PYGPU_FRAMEBUFFER_CHECK_OBJ(self->py_fb);
 
   /* sanity - should never happen */
   if (self->level == -1) {
     fprintf(stderr, "Not yet in use\n");
-    return NULL;
+    return nullptr;
   }
 
   const int level = GPU_framebuffer_stack_level_get();
@@ -162,7 +162,7 @@ static PyObject *pygpu_framebuffer_stack_context_exit(PyFrameBufferStackContext 
   }
 
   if (!pygpu_framebuffer_stack_pop_and_restore_or_error(self->py_fb->fb)) {
-    return NULL;
+    return nullptr;
   }
   Py_RETURN_NONE;
 }
@@ -170,59 +170,59 @@ static PyObject *pygpu_framebuffer_stack_context_exit(PyFrameBufferStackContext 
 static PyMethodDef pygpu_framebuffer_stack_context__tp_methods[] = {
     {"__enter__", (PyCFunction)pygpu_framebuffer_stack_context_enter, METH_NOARGS},
     {"__exit__", (PyCFunction)pygpu_framebuffer_stack_context_exit, METH_VARARGS},
-    {NULL},
+    {nullptr},
 };
 
 static PyTypeObject FramebufferStackContext_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUFrameBufferStackContext",
     /*tp_basicsize*/ sizeof(PyFrameBufferStackContext),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)pygpu_framebuffer_stack_context__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_framebuffer_stack_context__tp_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 PyDoc_STRVAR(pygpu_framebuffer_bind_doc,
@@ -246,10 +246,9 @@ static PyObject *pygpu_framebuffer_bind(BPyGPUFrameBuffer *self)
  * \{ */
 
 /* Fill in the GPUAttachment according to the PyObject parameter.
- * PyObject *o can be NULL, Py_None, BPyGPUTexture or a dictionary containing the keyword "texture"
- * and the optional keywords "layer" and "mip".
- * Returns false on error. In this case, a python message will be raised and GPUAttachment will not
- * be touched. */
+ * PyObject *o can be nullptr, Py_None, BPyGPUTexture or a dictionary containing the keyword
+ * "texture" and the optional keywords "layer" and "mip". Returns false on error. In this case, a
+ * python message will be raised and GPUAttachment will not be touched. */
 static bool pygpu_framebuffer_new_parse_arg(PyObject *o, GPUAttachment *r_attach)
 {
   GPUAttachment tmp_attach = GPU_ATTACHMENT_NONE;
@@ -276,14 +275,14 @@ static bool pygpu_framebuffer_new_parse_arg(PyObject *o, GPUAttachment *r_attach
 
       if (c_texture && _PyUnicode_EqualToASCIIString(key, c_texture)) {
         /* Compare only once. */
-        c_texture = NULL;
+        c_texture = nullptr;
         if (!bpygpu_ParseTexture(value, &tmp_attach.tex)) {
           return false;
         }
       }
       else if (c_layer && _PyUnicode_EqualToASCIIString(key, c_layer)) {
         /* Compare only once. */
-        c_layer = NULL;
+        c_layer = nullptr;
         tmp_attach.layer = PyLong_AsLong(value);
         if (tmp_attach.layer == -1 && PyErr_Occurred()) {
           return false;
@@ -291,7 +290,7 @@ static bool pygpu_framebuffer_new_parse_arg(PyObject *o, GPUAttachment *r_attach
       }
       else if (c_mip && _PyUnicode_EqualToASCIIString(key, c_mip)) {
         /* Compare only once. */
-        c_mip = NULL;
+        c_mip = nullptr;
         tmp_attach.mip = PyLong_AsLong(value);
         if (tmp_attach.mip == -1 && PyErr_Occurred()) {
           return false;
@@ -309,18 +308,16 @@ static bool pygpu_framebuffer_new_parse_arg(PyObject *o, GPUAttachment *r_attach
   return true;
 }
 
-static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
-                                           PyObject *args,
-                                           PyObject *kwds)
+static PyObject *pygpu_framebuffer__tp_new(PyTypeObject * /*self*/, PyObject *args, PyObject *kwds)
 {
   if (!GPU_context_active_get()) {
     PyErr_SetString(PyExc_RuntimeError, "No active GPU context found");
-    return NULL;
+    return nullptr;
   }
 
-  PyObject *depth_attachment = NULL;
-  PyObject *color_attachements = NULL;
-  static const char *_keywords[] = {"depth_slot", "color_slots", NULL};
+  PyObject *depth_attachment = nullptr;
+  PyObject *color_attachements = nullptr;
+  static const char *_keywords[] = {"depth_slot", "color_slots", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O"  /* `depth_slot` */
@@ -332,21 +329,21 @@ static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &depth_attachment, &color_attachements))
   {
-    return NULL;
+    return nullptr;
   }
 
-  /* Keep in sync with #GPU_FB_MAX_COLOR_ATTACHMENT.
-   * TODO: share the define. */
+/* Keep in sync with #GPU_FB_MAX_COLOR_ATTACHMENT.
+ * TODO: share the define. */
 #define BPYGPU_FB_MAX_COLOR_ATTACHMENT 6
 
   GPUAttachment config[BPYGPU_FB_MAX_COLOR_ATTACHMENT + 1];
 
   if (!pygpu_framebuffer_new_parse_arg(depth_attachment, &config[0])) {
-    return NULL;
+    return nullptr;
   }
   if (config[0].tex && !GPU_texture_has_depth_format(config[0].tex)) {
     PyErr_SetString(PyExc_ValueError, "Depth texture with incompatible format");
-    return NULL;
+    return nullptr;
   }
 
   int color_attachements_len = 0;
@@ -357,7 +354,7 @@ static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
         PyErr_SetString(
             PyExc_AttributeError,
             "too many attachements, max is " STRINGIFY(BPYGPU_FB_MAX_COLOR_ATTACHMENT));
-        return NULL;
+        return nullptr;
       }
 
       for (int i = 0; i < color_attachements_len; i++) {
@@ -365,13 +362,13 @@ static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
         bool ok = pygpu_framebuffer_new_parse_arg(o, &config[i + 1]);
         Py_DECREF(o);
         if (!ok) {
-          return NULL;
+          return nullptr;
         }
       }
     }
     else {
       if (!pygpu_framebuffer_new_parse_arg(color_attachements, &config[1])) {
-        return NULL;
+        return nullptr;
       }
       color_attachements_len = 1;
     }
@@ -385,7 +382,7 @@ static PyObject *pygpu_framebuffer__tp_new(PyTypeObject *UNUSED(self),
 
 PyDoc_STRVAR(pygpu_framebuffer_is_bound_doc,
              "Checks if this is the active framebuffer in the context.");
-static PyObject *pygpu_framebuffer_is_bound(BPyGPUFrameBuffer *self, void *UNUSED(type))
+static PyObject *pygpu_framebuffer_is_bound(BPyGPUFrameBuffer *self, void * /*type*/)
 {
   PYGPU_FRAMEBUFFER_CHECK_OBJ(self);
   return PyBool_FromLong(GPU_framebuffer_bound(self->fb));
@@ -408,14 +405,14 @@ static PyObject *pygpu_framebuffer_clear(BPyGPUFrameBuffer *self, PyObject *args
   PYGPU_FRAMEBUFFER_CHECK_OBJ(self);
 
   if (!GPU_framebuffer_bound(self->fb)) {
-    return NULL;
+    return nullptr;
   }
 
-  PyObject *py_col = NULL;
-  PyObject *py_depth = NULL;
-  PyObject *py_stencil = NULL;
+  PyObject *py_col = nullptr;
+  PyObject *py_depth = nullptr;
+  PyObject *py_stencil = nullptr;
 
-  static const char *_keywords[] = {"color", "depth", "stencil", NULL};
+  static const char *_keywords[] = {"color", "depth", "stencil", nullptr};
   static _PyArg_Parser _parser = {
       "|$" /* Optional keyword only arguments. */
       "O"  /* `color` */
@@ -426,10 +423,10 @@ static PyObject *pygpu_framebuffer_clear(BPyGPUFrameBuffer *self, PyObject *args
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &py_col, &py_depth, &py_stencil)) {
-    return NULL;
+    return nullptr;
   }
 
-  eGPUFrameBufferBits buffers = 0;
+  eGPUFrameBufferBits buffers = eGPUFrameBufferBits(0);
   float col[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   float depth = 1.0f;
   uint stencil = 0;
@@ -437,7 +434,7 @@ static PyObject *pygpu_framebuffer_clear(BPyGPUFrameBuffer *self, PyObject *args
   if (py_col && py_col != Py_None) {
     if (mathutils_array_parse(col, 3, 4, py_col, "GPUFrameBuffer.clear(), invalid 'color' arg") ==
         -1) {
-      return NULL;
+      return nullptr;
     }
     buffers |= GPU_COLOR_BIT;
   }
@@ -445,14 +442,14 @@ static PyObject *pygpu_framebuffer_clear(BPyGPUFrameBuffer *self, PyObject *args
   if (py_depth && py_depth != Py_None) {
     depth = PyFloat_AsDouble(py_depth);
     if (PyErr_Occurred()) {
-      return NULL;
+      return nullptr;
     }
     buffers |= GPU_DEPTH_BIT;
   }
 
   if (py_stencil && py_stencil != Py_None) {
     if ((stencil = PyC_Long_AsU32(py_stencil)) == (uint)-1) {
-      return NULL;
+      return nullptr;
     }
     buffers |= GPU_STENCIL_BIT;
   }
@@ -473,11 +470,11 @@ PyDoc_STRVAR(pygpu_framebuffer_viewport_set_doc,
              "   :type xsize, ysize: int\n");
 static PyObject *pygpu_framebuffer_viewport_set(BPyGPUFrameBuffer *self,
                                                 PyObject *args,
-                                                void *UNUSED(type))
+                                                void * /*type*/)
 {
   int x, y, xsize, ysize;
   if (!PyArg_ParseTuple(args, "iiii:viewport_set", &x, &y, &xsize, &ysize)) {
-    return NULL;
+    return nullptr;
   }
 
   GPU_framebuffer_viewport_set(self->fb, x, y, xsize, ysize);
@@ -488,7 +485,7 @@ PyDoc_STRVAR(pygpu_framebuffer_viewport_get_doc,
              ".. function:: viewport_get()\n"
              "\n"
              "   Returns position and dimension to current viewport.\n");
-static PyObject *pygpu_framebuffer_viewport_get(BPyGPUFrameBuffer *self, void *UNUSED(type))
+static PyObject *pygpu_framebuffer_viewport_get(BPyGPUFrameBuffer *self, void * /*type*/)
 {
   PYGPU_FRAMEBUFFER_CHECK_OBJ(self);
   int viewport[4];
@@ -531,10 +528,10 @@ static PyObject *pygpu_framebuffer_read_color(BPyGPUFrameBuffer *self,
   int x, y, w, h, channels;
   uint slot;
   struct PyC_StringEnum pygpu_dataformat = {bpygpu_dataformat_items, GPU_RGBA8};
-  BPyGPUBuffer *py_buffer = NULL;
+  BPyGPUBuffer *py_buffer = nullptr;
 
   static const char *_keywords[] = {
-      "x", "y", "xsize", "ysize", "channels", "slot", "format", "data", NULL};
+      "x", "y", "xsize", "ysize", "channels", "slot", "format", "data", nullptr};
   static _PyArg_Parser _parser = {
       "i"  /* `x` */
       "i"  /* `y` */
@@ -563,38 +560,39 @@ static PyObject *pygpu_framebuffer_read_color(BPyGPUFrameBuffer *self,
                                         &BPyGPU_BufferType,
                                         &py_buffer))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (!IN_RANGE_INCL(channels, 1, 4)) {
     PyErr_SetString(PyExc_AttributeError, "Color channels must be 1, 2, 3 or 4");
-    return NULL;
+    return nullptr;
   }
 
   if (slot >= BPYGPU_FB_MAX_COLOR_ATTACHMENT) {
     PyErr_SetString(PyExc_ValueError, "slot overflow");
-    return NULL;
+    return nullptr;
   }
 
   if (py_buffer) {
     if (pygpu_dataformat.value_found != py_buffer->format) {
       PyErr_SetString(PyExc_AttributeError,
                       "the format of the buffer is different from that specified");
-      return NULL;
+      return nullptr;
     }
 
     size_t size_curr = bpygpu_Buffer_size(py_buffer);
     size_t size_expected = w * h * channels *
-                           GPU_texture_dataformat_size(pygpu_dataformat.value_found);
+                           GPU_texture_dataformat_size(
+                               eGPUDataFormat(pygpu_dataformat.value_found));
     if (size_curr < size_expected) {
       PyErr_SetString(PyExc_BufferError, "the buffer size is smaller than expected");
-      return NULL;
+      return nullptr;
     }
     Py_INCREF(py_buffer);
   }
   else {
-    py_buffer = BPyGPU_Buffer_CreatePyObject(
-        pygpu_dataformat.value_found, (Py_ssize_t[3]){h, w, channels}, 3, NULL);
+    const Py_ssize_t shape[3] = {h, w, channels};
+    py_buffer = BPyGPU_Buffer_CreatePyObject(pygpu_dataformat.value_found, shape, 3, nullptr);
     BLI_assert(bpygpu_Buffer_size(py_buffer) ==
                w * h * channels * GPU_texture_dataformat_size(pygpu_dataformat.value_found));
   }
@@ -606,7 +604,7 @@ static PyObject *pygpu_framebuffer_read_color(BPyGPUFrameBuffer *self,
                              h,
                              channels,
                              (int)slot,
-                             pygpu_dataformat.value_found,
+                             eGPUDataFormat(pygpu_dataformat.value_found),
                              py_buffer->buf.as_void);
 
   return (PyObject *)py_buffer;
@@ -631,9 +629,9 @@ static PyObject *pygpu_framebuffer_read_depth(BPyGPUFrameBuffer *self,
 {
   PYGPU_FRAMEBUFFER_CHECK_OBJ(self);
   int x, y, w, h;
-  BPyGPUBuffer *py_buffer = NULL;
+  BPyGPUBuffer *py_buffer = nullptr;
 
-  static const char *_keywords[] = {"x", "y", "xsize", "ysize", "data", NULL};
+  static const char *_keywords[] = {"x", "y", "xsize", "ysize", "data", nullptr};
   static _PyArg_Parser _parser = {
       "i"  /* `x` */
       "i"  /* `y` */
@@ -648,25 +646,26 @@ static PyObject *pygpu_framebuffer_read_depth(BPyGPUFrameBuffer *self,
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &x, &y, &w, &h, &BPyGPU_BufferType, &py_buffer))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (py_buffer) {
     if (py_buffer->format != GPU_DATA_FLOAT) {
       PyErr_SetString(PyExc_AttributeError, "the format of the buffer must be 'GPU_DATA_FLOAT'");
-      return NULL;
+      return nullptr;
     }
 
     size_t size_curr = bpygpu_Buffer_size(py_buffer);
     size_t size_expected = w * h * GPU_texture_dataformat_size(GPU_DATA_FLOAT);
     if (size_curr < size_expected) {
       PyErr_SetString(PyExc_BufferError, "the buffer size is smaller than expected");
-      return NULL;
+      return nullptr;
     }
     Py_INCREF(py_buffer);
   }
   else {
-    py_buffer = BPyGPU_Buffer_CreatePyObject(GPU_DATA_FLOAT, (Py_ssize_t[]){h, w}, 2, NULL);
+    const Py_ssize_t shape[2] = {h, w};
+    py_buffer = BPyGPU_Buffer_CreatePyObject(GPU_DATA_FLOAT, shape, 2, nullptr);
     BLI_assert(bpygpu_Buffer_size(py_buffer) ==
                w * h * GPU_texture_dataformat_size(GPU_DATA_FLOAT));
   }
@@ -699,10 +698,10 @@ static void BPyGPUFrameBuffer__tp_dealloc(BPyGPUFrameBuffer *self)
 static PyGetSetDef pygpu_framebuffer__tp_getseters[] = {
     {"is_bound",
      (getter)pygpu_framebuffer_is_bound,
-     (setter)NULL,
+     (setter) nullptr,
      pygpu_framebuffer_is_bound_doc,
-     NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+     nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 static PyMethodDef pygpu_framebuffer__tp_methods[] = {
@@ -730,7 +729,7 @@ static PyMethodDef pygpu_framebuffer__tp_methods[] = {
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
     {"free", (PyCFunction)pygpu_framebuffer_free, METH_NOARGS, pygpu_framebuffer_free_doc},
 #endif
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(pygpu_framebuffer__tp_doc,
@@ -748,55 +747,55 @@ PyDoc_STRVAR(pygpu_framebuffer__tp_doc,
              "containing keywords: 'texture', 'layer' and 'mip'.\n"
              "   :type color_slots: tuple or Nonetype\n");
 PyTypeObject BPyGPUFrameBuffer_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUFrameBuffer",
     /*tp_basicsize*/ sizeof(BPyGPUFrameBuffer),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)BPyGPUFrameBuffer__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ pygpu_framebuffer__tp_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_framebuffer__tp_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ pygpu_framebuffer__tp_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_framebuffer__tp_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
@@ -830,7 +829,7 @@ PyObject *BPyGPUFrameBuffer_CreatePyObject(GPUFrameBuffer *fb, bool shared_refer
 #ifndef GPU_NO_USE_PY_REFERENCES
   self->shared_reference = shared_reference;
 
-  BLI_assert(GPU_framebuffer_py_reference_get(fb) == NULL);
+  BLI_assert(GPU_framebuffer_py_reference_get(fb) == nullptr);
   GPU_framebuffer_py_reference_set(fb, (void **)&self->fb);
 #endif
 
