@@ -156,8 +156,12 @@ static std::function<ID *(const bNode &node)> get_default_id_getter(
   };
 }
 
+/* in_out overrides the socket declaration in/out type (bNodeTreeInterfaceSocket::flag)
+ * because a node group input is turned into an output socket for group input nodes. */
 static SocketDeclarationPtr declaration_for_interface_socket(
-    const bNodeTree &ntree, const bNodeTreeInterfaceSocket &io_socket)
+    const bNodeTree &ntree,
+    const bNodeTreeInterfaceSocket &io_socket,
+    const eNodeSocketInOut in_out)
 {
   SocketDeclarationPtr dst;
 
@@ -274,9 +278,8 @@ static SocketDeclarationPtr declaration_for_interface_socket(
   }
   dst->name = io_socket.name;
   dst->identifier = io_socket.socket_identifier();
-  dst->in_out = eNodeSocketInOut(io_socket.flag & NODE_INTERFACE_SOCKET_INPUT ? SOCK_IN :
-                                                                                SOCK_OUT);
-  dst->description = io_socket.description;
+  dst->in_out = in_out;
+  dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & SOCK_HIDE_VALUE;
   dst->compact = io_socket.flag & SOCK_COMPACT;
   return dst;
@@ -315,14 +318,18 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = item.get_as<bNodeTreeInterfaceSocket>();
-        SocketDeclarationPtr socket_decl = declaration_for_interface_socket(*group, socket);
         if (socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
+          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+              *group, socket, SOCK_IN);
           r_declaration.inputs.append(socket_decl.get());
+          r_declaration.items.append(std::move(socket_decl));
         }
         if (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
+          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+              *group, socket, SOCK_OUT);
           r_declaration.outputs.append(socket_decl.get());
+          r_declaration.items.append(std::move(socket_decl));
         }
-        r_declaration.items.append(std::move(socket_decl));
         break;
       }
       case NODE_INTERFACE_PANEL: {
@@ -546,7 +553,8 @@ static void group_input_declare_dynamic(const bNodeTree &node_tree,
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = item.get_as<bNodeTreeInterfaceSocket>();
         if (socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
-          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(node_tree, socket);
+          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+              node_tree, socket, SOCK_OUT);
           r_declaration.outputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
@@ -579,7 +587,8 @@ static void group_output_declare_dynamic(const bNodeTree &node_tree,
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = item.get_as<bNodeTreeInterfaceSocket>();
         if (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(node_tree, socket);
+          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+              node_tree, socket, SOCK_IN);
           r_declaration.inputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
