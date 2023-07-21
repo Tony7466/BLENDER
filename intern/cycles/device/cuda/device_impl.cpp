@@ -207,8 +207,6 @@ string CUDADevice::compile_kernel_get_common_cflags(const uint kernel_features)
   const string include_path = source_path;
   string cflags = string_printf(
       "-m%d "
-      //      "-g "
-      //      "-G "
       "--ptxas-options=\"-v\" "
       "--use_fast_math "
       "-DNVCC "

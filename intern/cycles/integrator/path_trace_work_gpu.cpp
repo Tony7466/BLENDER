@@ -262,7 +262,7 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
 void PathTraceWorkGPU::alloc_integrator_path_split()
 {
   if (integrator_next_shadow_path_index_.size() == 0) {
-    integrator_next_shadow_path_index_.alloc(1, 0, 0, true /*true*/);
+    integrator_next_shadow_path_index_.alloc(1, 0, 0, true);
     integrator_next_shadow_path_index_.zero_to_device();
 
     integrator_state_gpu_.next_shadow_path_index =
@@ -270,7 +270,7 @@ void PathTraceWorkGPU::alloc_integrator_path_split()
   }
 
   if (integrator_next_main_path_index_.size() == 0) {
-    integrator_next_main_path_index_.alloc(1, 0, 0, true /*true*/);
+    integrator_next_main_path_index_.alloc(1, 0, 0, true);
     integrator_next_shadow_path_index_.data()[0] = 0;
     integrator_next_main_path_index_.zero_to_device();
 
@@ -896,9 +896,9 @@ bool PathTraceWorkGPU::should_use_graphics_interop()
    *   CUDA will return `CUDA_ERROR_NOT_SUPPORTED` from `cuGraphicsGLRegisterBuffer()` when
    *   attempting to register OpenGL PBO which has been mapped. Which makes sense, because
    *   otherwise one would run into a conflict of where the source of truth is. */
-  // if (has_multiple_works()) {
-  //   return false;
-  // }
+  if (has_multiple_works()) {
+     return false;
+  }
 
   if (!interop_use_checked_) {
     Device *device = queue_->device;

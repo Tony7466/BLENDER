@@ -147,17 +147,14 @@ void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *rende
 bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
                                            const PassAccessor::Destination &destination)
 {
-  if (effective_buffer_params_.height > 0) {
-    const int offset_y = (effective_buffer_params_.full_y + effective_buffer_params_.window_y) -
+ const int offset_y = (effective_buffer_params_.full_y + effective_buffer_params_.window_y) -
                          (effective_big_tile_params_.full_y + effective_big_tile_params_.window_y);
-    const int width = effective_buffer_params_.width;
+ const int width = effective_buffer_params_.width;
 
-    PassAccessor::Destination slice_destination = destination;
-    slice_destination.offset += offset_y * width;
+ PassAccessor::Destination slice_destination = destination;
+ slice_destination.offset += offset_y * width;
 
-    return pass_accessor.get_render_tile_pixels(buffers_.get(), slice_destination);
-  }
-  return false;
+ return pass_accessor.get_render_tile_pixels(buffers_.get(), slice_destination);
 }
 
 bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,

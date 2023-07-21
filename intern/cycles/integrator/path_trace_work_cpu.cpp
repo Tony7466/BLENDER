@@ -73,12 +73,6 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
     }
   }
 
-  // VLOG_INFO << "####Render Tile"
-  // 	    << " x:" << effective_buffer_params_.full_x
-  // 	    << " y:" << effective_buffer_params_.full_y
-  // 	    << " w:" << effective_buffer_params_.width
-  // 	    << " h:" << effective_buffer_params_.height
-  // 	    << " samples:" << start_sample;
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
   local_arena.execute([&]() {
     parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
