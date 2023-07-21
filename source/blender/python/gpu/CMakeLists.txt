@@ -32,7 +32,7 @@ set(SRC
   gpu_py_texture.cc
   gpu_py_types.cc
   gpu_py_uniformbuffer.cc
-  gpu_py_vertex_buffer.c
+  gpu_py_vertex_buffer.cc
   gpu_py_vertex_format.c
 
   gpu_py.h

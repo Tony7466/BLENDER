@@ -68,7 +68,7 @@ static void pygpu_fill_format_elem(void *data_dst_void, PyObject *py_src, const 
 {
 #define PY_AS_NATIVE(ty_dst, py_as_native) \
   { \
-    ty_dst *data_dst = data_dst_void; \
+    ty_dst *data_dst = static_cast<ty_dst *>(data_dst_void); \
     *data_dst = py_as_native(py_src); \
   } \
   ((void)0)
@@ -90,7 +90,7 @@ static void pygpu_fill_format_sequence(void *data_dst_void,
  * Args are constants, so range checks will be optimized out if they're no-op's.
  */
 #define PY_AS_NATIVE(ty_dst, py_as_native) \
-  ty_dst *data_dst = data_dst_void; \
+  ty_dst *data_dst = static_cast<ty_dst *>(data_dst_void); \
   for (uint i = 0; i < len; i++) { \
     data_dst[i] = py_as_native(value_fast_items[i]); \
   } \
@@ -146,7 +146,7 @@ static bool pygpu_vertbuf_fill_impl(GPUVertBuf *vbo,
     GPU_vertbuf_attr_get_raw_data(vbo, data_id, &data_step);
 
     PyObject *seq_fast = PySequence_Fast(seq, "Vertex buffer fill");
-    if (seq_fast == NULL) {
+    if (seq_fast == nullptr) {
       return false;
     }
 
@@ -170,7 +170,7 @@ static bool pygpu_vertbuf_fill_impl(GPUVertBuf *vbo,
         uchar *data = (uchar *)GPU_vertbuf_raw_step(&data_step);
         PyObject *seq_fast_item = PySequence_Fast(seq_items[i], error_prefix);
 
-        if (seq_fast_item == NULL) {
+        if (seq_fast_item == nullptr) {
           ok = false;
           goto finally;
         }
@@ -212,7 +212,7 @@ static int pygpu_vertbuf_fill(GPUVertBuf *buf,
     return 0;
   }
 
-  if (GPU_vertbuf_get_data(buf) == NULL) {
+  if (GPU_vertbuf_get_data(buf) == nullptr) {
     PyErr_SetString(PyExc_ValueError, "Can't fill, static buffer already in use");
     return 0;
   }
@@ -230,14 +230,14 @@ static int pygpu_vertbuf_fill(GPUVertBuf *buf,
 /** \name VertBuf Type
  * \{ */
 
-static PyObject *pygpu_vertbuf__tp_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
+static PyObject *pygpu_vertbuf__tp_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
   struct {
     PyObject *py_fmt;
     uint len;
   } params;
 
-  static const char *_keywords[] = {"format", "len", NULL};
+  static const char *_keywords[] = {"format", "len", nullptr};
   static _PyArg_Parser _parser = {
       "O!" /* `format` */
       "I"  /* `len` */
@@ -248,7 +248,7 @@ static PyObject *pygpu_vertbuf__tp_new(PyTypeObject *UNUSED(type), PyObject *arg
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, &BPyGPUVertFormat_Type, &params.py_fmt, &params.len))
   {
-    return NULL;
+    return nullptr;
   }
 
   const GPUVertFormat *fmt = &((BPyGPUVertFormat *)params.py_fmt)->fmt;
@@ -273,7 +273,7 @@ static PyObject *pygpu_vertbuf_attr_fill(BPyGPUVertBuf *self, PyObject *args, Py
   PyObject *data;
   PyObject *identifier;
 
-  static const char *_keywords[] = {"id", "data", NULL};
+  static const char *_keywords[] = {"id", "data", nullptr};
   static _PyArg_Parser _parser = {
       "O" /* `id` */
       "O" /* `data` */
@@ -282,7 +282,7 @@ static PyObject *pygpu_vertbuf_attr_fill(BPyGPUVertBuf *self, PyObject *args, Py
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &identifier, &data)) {
-    return NULL;
+    return nullptr;
   }
 
   int id;
@@ -296,16 +296,16 @@ static PyObject *pygpu_vertbuf_attr_fill(BPyGPUVertBuf *self, PyObject *args, Py
     id = GPU_vertformat_attr_id_get(format, name);
     if (id == -1) {
       PyErr_Format(PyExc_ValueError, "Unknown attribute '%s'", name);
-      return NULL;
+      return nullptr;
     }
   }
   else {
     PyErr_SetString(PyExc_TypeError, "expected int or str type as identifier");
-    return NULL;
+    return nullptr;
   }
 
   if (!pygpu_vertbuf_fill(self->buf, id, data, "GPUVertBuf.attr_fill")) {
-    return NULL;
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -316,7 +316,7 @@ static PyMethodDef pygpu_vertbuf__tp_methods[] = {
      (PyCFunction)pygpu_vertbuf_attr_fill,
      METH_VARARGS | METH_KEYWORDS,
      pygpu_vertbuf_attr_fill_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 static void pygpu_vertbuf__tp_dealloc(BPyGPUVertBuf *self)
@@ -335,55 +335,55 @@ PyDoc_STRVAR(pygpu_vertbuf__tp_doc,
              "   :arg len: Amount of vertices that will fit into this buffer.\n"
              "   :type len: int\n");
 PyTypeObject BPyGPUVertBuf_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUVertBuf",
     /*tp_basicsize*/ sizeof(BPyGPUVertBuf),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)pygpu_vertbuf__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ pygpu_vertbuf__tp_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_vertbuf__tp_methods,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_vertbuf__tp_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
