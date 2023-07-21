@@ -30,7 +30,7 @@
 
 static int pygpu_uniformbuffer_valid_check(BPyGPUUniformBuf *bpygpu_ub)
 {
-  if (UNLIKELY(bpygpu_ub->ubo == NULL)) {
+  if (UNLIKELY(bpygpu_ub->ubo == nullptr)) {
     PyErr_SetString(PyExc_ReferenceError,
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
                     "GPU uniform buffer was freed, no further access is valid");
@@ -46,7 +46,7 @@ static int pygpu_uniformbuffer_valid_check(BPyGPUUniformBuf *bpygpu_ub)
 #define BPYGPU_UNIFORMBUF_CHECK_OBJ(bpygpu) \
   { \
     if (UNLIKELY(pygpu_uniformbuffer_valid_check(bpygpu) == -1)) { \
-      return NULL; \
+      return nullptr; \
     } \
   } \
   ((void)0)
@@ -57,15 +57,15 @@ static int pygpu_uniformbuffer_valid_check(BPyGPUUniformBuf *bpygpu_ub)
 /** \name GPUUniformBuf Type
  * \{ */
 
-static PyObject *pygpu_uniformbuffer__tp_new(PyTypeObject *UNUSED(self),
+static PyObject *pygpu_uniformbuffer__tp_new(PyTypeObject * /*self*/,
                                              PyObject *args,
                                              PyObject *kwds)
 {
-  GPUUniformBuf *ubo = NULL;
+  GPUUniformBuf *ubo = nullptr;
   PyObject *pybuffer_obj;
   char err_out[256] = "unknown error. See console";
 
-  static const char *_keywords[] = {"data", NULL};
+  static const char *_keywords[] = {"data", nullptr};
   static _PyArg_Parser _parser = {
       "O" /* `data` */
       ":GPUUniformBuf.__new__",
@@ -73,7 +73,7 @@ static PyObject *pygpu_uniformbuffer__tp_new(PyTypeObject *UNUSED(self),
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &pybuffer_obj)) {
-    return NULL;
+    return nullptr;
   }
 
   if (!GPU_context_active_get()) {
@@ -83,7 +83,7 @@ static PyObject *pygpu_uniformbuffer__tp_new(PyTypeObject *UNUSED(self),
     Py_buffer pybuffer;
     if (PyObject_GetBuffer(pybuffer_obj, &pybuffer, PyBUF_SIMPLE) == -1) {
       /* PyObject_GetBuffer raise a PyExc_BufferError */
-      return NULL;
+      return nullptr;
     }
 
     if ((pybuffer.len % 16) != 0) {
@@ -95,9 +95,9 @@ static PyObject *pygpu_uniformbuffer__tp_new(PyTypeObject *UNUSED(self),
     PyBuffer_Release(&pybuffer);
   }
 
-  if (ubo == NULL) {
+  if (ubo == nullptr) {
     PyErr_Format(PyExc_RuntimeError, "GPUUniformBuf.__new__(...) failed with '%s'", err_out);
-    return NULL;
+    return nullptr;
   }
 
   return BPyGPUUniformBuf_CreatePyObject(ubo);
@@ -114,7 +114,7 @@ static PyObject *pygpu_uniformbuffer_update(BPyGPUUniformBuf *self, PyObject *ob
   Py_buffer pybuffer;
   if (PyObject_GetBuffer(obj, &pybuffer, PyBUF_SIMPLE) == -1) {
     /* PyObject_GetBuffer raise a PyExc_BufferError */
-    return NULL;
+    return nullptr;
   }
 
   GPU_uniformbuf_update(self->ubo, pybuffer.buf);
@@ -133,7 +133,7 @@ static PyObject *pygpu_uniformbuffer_free(BPyGPUUniformBuf *self)
   BPYGPU_UNIFORMBUF_CHECK_OBJ(self);
 
   GPU_uniformbuf_free(self->ubo);
-  self->ubo = NULL;
+  self->ubo = nullptr;
   Py_RETURN_NONE;
 }
 #endif
@@ -147,7 +147,7 @@ static void BPyGPUUniformBuf__tp_dealloc(BPyGPUUniformBuf *self)
 }
 
 static PyGetSetDef pygpu_uniformbuffer__tp_getseters[] = {
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 static PyMethodDef pygpu_uniformbuffer__tp_methods[] = {
@@ -155,7 +155,7 @@ static PyMethodDef pygpu_uniformbuffer__tp_methods[] = {
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
     {"free", (PyCFunction)pygpu_uniformbuffer_free, METH_NOARGS, pygpu_uniformbuffer_free_doc},
 #endif
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(pygpu_uniformbuffer__tp_doc,
@@ -166,55 +166,55 @@ PyDoc_STRVAR(pygpu_uniformbuffer__tp_doc,
              "   :arg data: Data to fill the buffer.\n"
              "   :type data: object exposing buffer interface\n");
 PyTypeObject BPyGPUUniformBuf_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUUniformBuf",
     /*tp_basicsize*/ sizeof(BPyGPUUniformBuf),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)BPyGPUUniformBuf__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ pygpu_uniformbuffer__tp_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_uniformbuffer__tp_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ pygpu_uniformbuffer__tp_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_uniformbuffer__tp_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
