@@ -592,10 +592,13 @@ class _draw_tool_settings_context_mode:
         row = layout.row(align=True)
         row.template_ID_preview(paint, "brush", rows=3, cols=8, hide_buttons=True)
 
-        from bl_ui.properties_paint_common import (
-            brush_basic__draw_color_selector,
-        )
-        brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings, None)
+        grease_pencil_tool = brush.gpencil_tool
+
+        if grease_pencil_tool == 'DRAW':
+            from bl_ui.properties_paint_common import (
+                brush_basic__draw_color_selector,
+            )
+            brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings, None)
         
         UnifiedPaintPanel.prop_unified(
             layout,
@@ -619,6 +622,14 @@ class _draw_tool_settings_context_mode:
             slider=True,
             header=True,
         )
+
+        if grease_pencil_tool == 'DRAW':
+            layout.prop(brush.gpencil_settings, "active_smooth_factor")
+        elif grease_pencil_tool == 'ERASE':
+            layout.prop(brush.gpencil_settings, "eraser_mode", expand=True)
+            if brush.gpencil_settings.eraser_mode == "HARD":
+                layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
+            layout.prop(brush.gpencil_settings, "use_active_layer_only")
 
         return True
 
