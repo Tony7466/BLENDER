@@ -30,7 +30,7 @@ PyDoc_STRVAR(bpy_bm_geometry_intersect_face_point_doc,
              "   :type point: float triplet\n"
              "   :return: True when the projection of the point is in the face.\n"
              "   :rtype: bool\n");
-static PyObject *bpy_bm_geometry_intersect_face_point(BPy_BMFace *UNUSED(self), PyObject *args)
+static PyObject *bpy_bm_geometry_intersect_face_point(BPy_BMFace * /*self*/, PyObject *args)
 {
   BPy_BMFace *py_face;
   PyObject *py_point;
@@ -38,12 +38,12 @@ static PyObject *bpy_bm_geometry_intersect_face_point(BPy_BMFace *UNUSED(self), 
   bool ret;
 
   if (!PyArg_ParseTuple(args, "O!O:intersect_face_point", &BPy_BMFace_Type, &py_face, &py_point)) {
-    return NULL;
+    return nullptr;
   }
 
   BPY_BM_CHECK_OBJ(py_face);
   if (mathutils_array_parse(point, 3, 3, py_point, "intersect_face_point") == -1) {
-    return NULL;
+    return nullptr;
   }
 
   ret = BM_face_point_inside_test(py_face->f, point);
@@ -56,7 +56,7 @@ static PyMethodDef BPy_BM_geometry_methods[] = {
      (PyCFunction)bpy_bm_geometry_intersect_face_point,
      METH_VARARGS,
      bpy_bm_geometry_intersect_face_point_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(BPy_BM_utils_doc,
@@ -67,10 +67,10 @@ static PyModuleDef BPy_BM_geometry_module_def = {
     /*m_doc*/ BPy_BM_utils_doc,
     /*m_size*/ 0,
     /*m_methods*/ BPy_BM_geometry_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPyInit_bmesh_geometry(void)
