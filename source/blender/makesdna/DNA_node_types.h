@@ -311,6 +311,18 @@ typedef enum eNodeSocketFlag {
   SOCK_PANEL_COLLAPSED = (1 << 14),
 } eNodeSocketFlag;
 
+typedef enum eNodePanelFlag {
+  NODE_PANEL_CLOSED = (1 << 0),
+} eNodePanelFlag;
+
+typedef struct bNodePanelState {
+  /* Unique identifier for validating state against panels in node declaration. */
+  short uid;
+  /* eNodePanelFlag */
+  char flag;
+  char _pad;
+} bNodePanelState;
+
 typedef struct bNode {
   struct bNode *next, *prev;
 
@@ -388,7 +400,9 @@ typedef struct bNode {
   /** Custom user-defined color. */
   float color[3];
 
-  char _pad2[4];
+  /** Panel states for this node instance. */
+  int num_panel_states;
+  bNodePanelState *panel_states_array;
 
   bNodeRuntimeHandle *runtime;
 
@@ -428,6 +442,8 @@ typedef struct bNode {
   bNodeSocket &output_by_identifier(blender::StringRef identifier);
   /** If node is frame, will return all children nodes. */
   blender::Span<bNode *> direct_children_in_frame() const;
+  blender::Span<bNodePanelState> panel_states() const;
+  blender::MutableSpan<bNodePanelState> panel_states();
   /** Node tree this node belongs to. */
   const bNodeTree &owner_tree() const;
 #endif

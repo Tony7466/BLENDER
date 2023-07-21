@@ -2677,6 +2677,9 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
     node_dst->prop = IDP_CopyProperty_ex(node_src.prop, flag);
   }
 
+  node_dst->panel_states_array = static_cast<bNodePanelState *>(
+      MEM_dupallocN(node_src.panel_states_array));
+
   node_dst->runtime->internal_links = node_src.runtime->internal_links;
   for (bNodeLink &dst_link : node_dst->runtime->internal_links) {
     dst_link.fromnode = node_dst;
@@ -3438,6 +3441,8 @@ void node_free_node(bNodeTree *ntree, bNode *node)
     node_socket_free(sock, false);
     MEM_freeN(sock);
   }
+
+  MEM_SAFE_FREE(node->panel_states_array);
 
   if (node->prop) {
     /* Remember, no ID user refcount management here! */

@@ -212,6 +212,16 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
   int index_in_inout_sockets = -1;
 };
 
+class bNodePanelRuntime : NonCopyable, NonMovable {
+ public:
+  /**
+   * The location of the panel in the tree, calculated while drawing the nodes and invalid if the
+   * node tree hasn't been drawn yet. In the node tree's "world space" (the same as
+   * #bNode::runtime::totr).
+   */
+  float2 location;
+};
+
 /**
  * Run-time data for every node. This should only contain data that is somewhat persistent (i.e.
  * data that lives longer than a single depsgraph evaluation + redraw). Data that's only used in
@@ -294,6 +304,9 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** Can be used to toposort a subset of nodes. */
   int toposort_left_to_right_index = -1;
   int toposort_right_to_left_index = -1;
+
+  /* Panel runtime state */
+  Array<bNodePanelRuntime> panels;
 };
 
 namespace node_tree_runtime {
@@ -696,6 +709,16 @@ inline blender::Span<bNode *> bNode::direct_children_in_frame() const
 inline const blender::nodes::NodeDeclaration *bNode::declaration() const
 {
   return this->runtime->declaration;
+}
+
+inline blender::Span<bNodePanelState> bNode::panel_states() const
+{
+  return {panel_states_array, num_panel_states};
+}
+
+inline blender::MutableSpan<bNodePanelState> bNode::panel_states()
+{
+  return {panel_states_array, num_panel_states};
 }
 
 /** \} */

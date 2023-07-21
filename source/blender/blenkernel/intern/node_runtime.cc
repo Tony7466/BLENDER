@@ -95,6 +95,15 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
   }
 }
 
+static void update_panels(const bNodeTree &ntree)
+{
+  bNodeTreeRuntime &tree_runtime = *ntree.runtime;
+  for (bNode *node : tree_runtime.nodes_by_id) {
+    bNodeRuntime &node_runtime = *node->runtime;
+    node_runtime.panels.reinitialize(node->num_panel_states);
+  }
+}
+
 static void update_internal_link_inputs(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
@@ -535,6 +544,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_node_vector(ntree);
     update_link_vector(ntree);
     update_socket_vectors_and_owner_node(ntree);
+    update_panels(ntree);
     update_internal_link_inputs(ntree);
     update_directly_linked_links_and_sockets(ntree);
     update_nodes_by_type(ntree);

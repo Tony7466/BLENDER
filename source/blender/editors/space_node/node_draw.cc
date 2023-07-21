@@ -462,19 +462,24 @@ struct FakeDeclaration {
   int type;                     /* 0: panel, 1: input socket, 2: output socket */
   int panel_size = -1;          /* Panel: number of subsequent items belonging in this panel */
   bool panel_collapsed = false; /* Panel: collapsed */
+  std::string panel_name = "";
   bool socket_align_opposite = false; /* Sockets: try to align with the opposite side */
 };
-const Array<FakeDeclaration> fake_decls = {{2},                  /* O> */
-                                           {0, 3, true},         /* P[3] */
-                                           {1},                  /*   <I */
-                                           {1},                  /*   <I */
-                                           {2, -1, false, true}, /*   <I O>, aligned with above */
-                                           {1},                  /* <I */
-                                           {0, 2, true},         /* P[2] */
-                                           {1},                  /*   <I */
-                                           {0, 2, false},        /*   P[2] */
-                                           {2},                  /*     O> */
-                                           {2}};                 /*     O> */
+const Array<FakeDeclaration> fake_decls = {
+    {2},                      /* O> */
+    {0, 3, false, "Panel 1"}, /* P[3] */
+    {1},                      /*   <I */
+    {1},                      /*   <I */
+    {2, -1, false, "", true}, /*   <I O>, aligned with above */
+    {1},                      /* <I */
+    {0, 2, false, "Panel 2"}, /* P[2] */
+    {1},                      /*   <I */
+    {0, 2, false, "Panel 3"}, /*   P[2] */
+    {2},                      /*     O> */
+    {2}};                     /*     O> */
+
+Array<bNodePanelState> fake_state = {{0, 0}, {1, 0}, {2, 0}};
+Array<bke::bNodePanelRuntime> fake_runtime(3);
 
 /* Advanced drawing with panels and arbitrary input/output ordering. */
 static void node_update_basis_from_declaration(
@@ -490,30 +495,40 @@ static void node_update_basis_from_declaration(
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
   bool has_sockets = false;
   /* Parent panel stack with count of items still to be added. */
-  struct PanelUpdateState {
+  struct PanelUpdate {
     int remaining_items;
     bool is_collapsed;
   };
 
-  Stack<PanelUpdateState> panel_states;
+  /* XXX enable assert when using actual declarations. */
+  //  BLI_assert(fake_decls.size()== node.num_panel_states);
+  //  BLI_assert(node.num_panel_states == node.runtime->panels.size());
+
+  Stack<PanelUpdate> panel_updates;
+  bke::bNodePanelRuntime *panel_runtime = fake_runtime.begin();
   for (const FakeDeclaration &decl : fake_decls) {
     bool is_parent_collapsed = false;
-    if (PanelUpdateState *parent_state = panel_states.is_empty() ? nullptr : &panel_states.peek())
-    {
+    if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
       /* Adding an item to the parent panel, will be popped when reaching 0. */
-      BLI_assert(parent_state->remaining_items > 0);
-      --parent_state->remaining_items;
-      is_parent_collapsed = parent_state->is_collapsed;
+      BLI_assert(parent_update->remaining_items > 0);
+      --parent_update->remaining_items;
+      is_parent_collapsed = parent_update->is_collapsed;
     }
 
     switch (decl.type) {
       case 0: /* Panel */ {
+        BLI_assert(fake_runtime.as_span().contains_ptr(panel_runtime));
+
         if (!is_parent_collapsed) {
           locy -= NODE_DY;
         }
         /* New top panel is collapsed if self or parent is collapsed. */
         const bool is_collapsed = is_parent_collapsed || decl.panel_collapsed;
-        panel_states.push({decl.panel_size, is_collapsed});
+        panel_updates.push({decl.panel_size, is_collapsed});
+
+        /* Round the socket location to stop it from jiggling. */
+        panel_runtime->location = float2(locx, round(locy + NODE_DYS));
+        ++panel_runtime;
         break;
       }
 
@@ -556,16 +571,16 @@ static void node_update_basis_from_declaration(
     }
 
     /* Close parent panels that have all items added. */
-    while (!panel_states.is_empty()) {
-      if (panel_states.peek().remaining_items > 0) {
+    while (!panel_updates.is_empty()) {
+      if (panel_updates.peek().remaining_items > 0) {
         /* Incomplete panel, continue adding items. */
         break;
       }
       /* Close panel and continue checking parent. */
-      panel_states.pop();
+      panel_updates.pop();
     }
   }
-  if (!panel_states.is_empty()) {
+  if (!panel_updates.is_empty()) {
     /* TODO warning, more panel items declared than added. */
   }
 
@@ -1741,6 +1756,122 @@ static void node_draw_sockets(const View2D &v2d,
   }
 }
 
+static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, void *ntree_argv)
+{
+  Main *bmain = CTX_data_main(C);
+  bNodePanelState *panel_state = (bNodePanelState *)panel_state_argv;
+  bNodeTree *ntree = (bNodeTree *)ntree_argv;
+
+  panel_state->flag ^= NODE_PANEL_CLOSED;
+
+  ED_node_tree_propagate_change(C, bmain, ntree);
+}
+
+static void node_draw_panels(const View2D & /*v2d*/,
+                             const bContext & /*C*/,
+                             TreeDrawContext &tree_draw_ctx,
+                             bNodeTree &ntree,
+                             const bNode &node,
+                             uiBlock &block)
+{
+  BLI_assert(node.declaration() != nullptr);
+  //  BLI_assert(node.panel_states().size() == node.declaration().num_panels);
+  BLI_assert(node.runtime->panels.size() == node.panel_states().size());
+
+  const rctf &rct = node.runtime->totr;
+  const int color_id = node_get_colorid(tree_draw_ctx, node);
+
+  int panel_i = 0;
+  for (const FakeDeclaration &decl : fake_decls) {
+    if (decl.type != 0) {
+      /* Not a panel. */
+      continue;
+    }
+    bNodePanelState &state = fake_state[panel_i];
+    const bke::bNodePanelRuntime &runtime = fake_runtime[panel_i];
+
+    const rctf rect = {
+        rct.xmin,
+        rct.xmax,
+        runtime.location.y - NODE_DYS,
+        runtime.location.y + NODE_DYS,
+    };
+    /* Show/hide icons. */
+    const float iconofs = rct.xmax - 0.35f * U.widget_unit;
+
+    UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+
+    /* Panel background. */
+    float color_panel[4];
+    if (node.flag & NODE_MUTED) {
+      UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.1f, color_panel);
+    }
+    else {
+      UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.2f, color_panel);
+    }
+    UI_draw_roundbox_corner_set(UI_CNR_NONE);
+    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color_panel);
+
+    /* Collapse/expand icon. */
+    const int but_size = U.widget_unit * 0.8f;
+    const bool hidden = (state.flag & NODE_PANEL_CLOSED);
+    uiDefIconBut(&block,
+                 UI_BTYPE_BUT_TOGGLE,
+                 0,
+                 hidden ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
+                 rct.xmin + (NODE_MARGIN_X / 3),
+                 runtime.location.y - but_size / 2,
+                 but_size,
+                 but_size,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 0.0f,
+                 "");
+
+    /* Panel label. */
+    uiBut *but = uiDefBut(&block,
+                          UI_BTYPE_LABEL,
+                          0,
+                          decl.panel_name.c_str(),
+                          int(rct.xmin + NODE_MARGIN_X + 0.4f),
+                          int(runtime.location.y - NODE_DYS),
+                          iconofs,
+                          short(NODE_DY),
+                          nullptr,
+                          0,
+                          0,
+                          0,
+                          0,
+                          "");
+    if (node.flag & NODE_MUTED) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
+
+    /* Invisible button covering the entire header for collapsing/expanding. */
+    but = uiDefIconBut(&block,
+                       UI_BTYPE_BUT_TOGGLE,
+                       0,
+                       ICON_NONE,
+                       rect.xmin,
+                       rect.ymin,
+                       rect.xmax - rect.xmin,
+                       rect.ymax - rect.ymin,
+                       nullptr,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       0.0f,
+                       "");
+    UI_but_func_set(but, node_panel_toggle_button_cb, &state, &ntree);
+
+    UI_block_emboss_set(&block, UI_EMBOSS);
+
+    ++panel_i;
+  }
+}
+
 static int node_error_type_to_icon(const geo_log::NodeWarningType type)
 {
   switch (type) {
@@ -2652,6 +2783,10 @@ static void node_draw_basis(const bContext &C,
   /* Skip slow socket drawing if zoom is small. */
   if (scale > 0.2f) {
     node_draw_sockets(v2d, C, ntree, node, block, true, false);
+  }
+
+  if (node.declaration() != nullptr) {
+    node_draw_panels(v2d, C, tree_draw_ctx, ntree, node, block);
   }
 
   UI_block_end(&C, &block);

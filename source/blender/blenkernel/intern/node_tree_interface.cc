@@ -831,13 +831,14 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   return new_socket;
 }
 
-static bNodeTreeInterfacePanel *make_panel(blender::StringRef name)
+static bNodeTreeInterfacePanel *make_panel(const int uid, blender::StringRef name)
 {
   BLI_assert(name.data() != nullptr);
 
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
   new_panel->item.item_type = NODE_INTERFACE_PANEL;
   new_panel->name = BLI_strdup(name.data());
+  new_panel->uid = uid;
   return new_panel;
 }
 
@@ -878,7 +879,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name
   BLI_assert(find_item(parent->item));
 
   bNodeTreeInterfaceSocket *new_socket = make_socket(
-      next_socket_uid++, name, description, socket_type, flag);
+      next_uid++, name, description, socket_type, flag);
   parent->add_item(new_socket->item);
   return new_socket;
 }
@@ -897,7 +898,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   BLI_assert(find_item(parent->item));
 
   bNodeTreeInterfaceSocket *new_socket = make_socket(
-      next_socket_uid++, name, description, socket_type, flag);
+      next_uid++, name, description, socket_type, flag);
   parent->insert_item(new_socket->item, index);
   return new_socket;
 }
@@ -910,7 +911,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name,
   }
   BLI_assert(find_item(parent->item));
 
-  bNodeTreeInterfacePanel *new_panel = make_panel(name);
+  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
   parent->add_item(new_panel->item);
   return new_panel;
 }
@@ -924,7 +925,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef nam
   }
   BLI_assert(find_item(parent->item));
 
-  bNodeTreeInterfacePanel *new_panel = make_panel(name);
+  bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
   parent->insert_item(new_panel->item, index);
   return new_panel;
 }

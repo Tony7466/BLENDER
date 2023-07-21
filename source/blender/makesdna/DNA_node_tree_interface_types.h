@@ -93,11 +93,11 @@ typedef struct bNodeTreeInterfacePanel {
 
   bNodeTreeInterfaceItem **items_array;
   int items_num;
-  char _pad[4];
+
+  /* Internal unique identifier for validating panel states. */
+  int uid;
 
 #ifdef __cplusplus
-  static bNodeTreeInterfaceSocket *create(blender::StringRef name);
-
   blender::IndexRange items_range() const;
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
@@ -144,7 +144,7 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfacePanel root_panel;
 
   int active_index;
-  int next_socket_uid;
+  int next_uid;
 
 #ifdef __cplusplus
   void copy_data(const bNodeTreeInterface &src);
