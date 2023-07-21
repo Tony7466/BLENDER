@@ -321,6 +321,9 @@ class IndexMask : private IndexMaskData {
   template<typename Fn> void foreach_segment_optimized(Fn &&fn) const;
   template<typename Fn> void foreach_segment_optimized(GrainSize grain_size, Fn &&fn) const;
 
+  template<typename FnSegment, typename FnRange>
+  void foreach_segment_or_range(FnSegment &&fn_segment, FnRange &&fn_range) const;
+
   /**
    * Calls the function once for every range. Note that this might call the function for each index
    * separately in the worst case if there are no consecutive indices.
@@ -769,6 +772,23 @@ inline void IndexMask::foreach_segment_optimized(const GrainSize grain_size, Fn 
             fn(segment);
           }
         });
+  });
+}
+
+template<typename FnSegment, typename FnRange>
+inline void IndexMask::foreach_segment_or_range(FnSegment &&fn_segment, FnRange &&fn_range) const
+{
+  this->foreach_segment([&](const IndexMaskSegment indices, const int64_t start_segment_pos) {
+    if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
+            indices.base_span()))
+    {
+      const IndexRange real_range = range->shift(indices.offset());
+      fn_range(real_range, start_segment_pos);
+      return;
+    }
+    for (const int64_t i : indices.index_range()) {
+      fn_segment(indices[i], start_segment_pos + i);
+    }
   });
 }
 

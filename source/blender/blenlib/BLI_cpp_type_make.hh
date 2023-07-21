@@ -26,27 +26,23 @@ template<typename T> void default_construct_indices_cb(void *ptr, const IndexMas
     return;
   }
 
+  T *ptr_ = static_cast<T *>(ptr);
+
   std::stringstream name;
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::default_initialized_n(static_cast<T *>(ptr) + base_indices.first(),
-                                       base_indices.size());
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          new (static_cast<T *>(ptr) + indices[i]) T;
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t /*pos*/) { new (ptr_ + index) T; },
+        [&](const IndexRange range, const int64_t /*start_segment_pos*/) {
+          blender::default_initialized_n(ptr_ + range.start(), range.size());
+        });
   }
   else {
     name << __func__ << " default;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (ptr_ + i) T; });
   }
 }
 
@@ -57,27 +53,23 @@ template<typename T> void value_initialize_cb(void *ptr)
 
 template<typename T> void value_initialize_indices_cb(void *ptr, const IndexMask &mask)
 {
+  T *ptr_ = static_cast<T *>(ptr);
+
   std::stringstream name;
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::default_construct_n(static_cast<T *>(ptr) + base_indices.first(),
-                                     base_indices.size());
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          new (static_cast<T *>(ptr) + indices[i]) T();
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t /*pos*/) { new (ptr_ + index) T(); },
+        [&](const IndexRange range, const int64_t /*start_segment_pos*/) {
+          blender::default_construct_n(ptr_ + range.start(), range.size());
+        });
   }
   else {
     name << __func__ << " default;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (static_cast<T *>(ptr) + i) T(); });
+    mask.foreach_index_optimized<int64_t>([&](int64_t i) { new (ptr_ + i) T(); });
   }
 }
 
@@ -96,17 +88,12 @@ template<typename T> void destruct_indices_cb(void *ptr, const IndexMask &mask)
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::destruct_n(ptr_ + base_indices.first(), base_indices.size());
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          ptr_[indices[i]].~T();
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t /*pos*/) { ptr_[index].~T(); },
+        [&](const IndexRange range, const int64_t /*start_segment_pos*/) {
+          blender::destruct_n(ptr_ + range.start(), range.size());
+        });
   }
   else {
     name << __func__ << " default;";
@@ -128,18 +115,12 @@ template<typename T> void copy_assign_indices_cb(const void *src, void *dst, con
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::initialized_copy_n(
-            src_ + base_indices.first(), base_indices.size(), dst_ + base_indices.first());
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          dst_[indices[i]] = src_[indices[i]];
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t /*pos*/) { dst_[index] = src_[index]; },
+        [&](const IndexRange range, const int64_t /*start_segment_pos*/) {
+          blender::initialized_copy_n(src_ + range.start(), range.size(), dst_ + range.start());
+        });
   }
   else {
     name << __func__ << " default;";
@@ -157,18 +138,13 @@ void copy_assign_compressed_cb(const void *src, void *dst, const IndexMask &mask
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices, const int64_t start_segment_pos) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::initialized_copy_n(
-            src_ + base_indices.first(), base_indices.size(), dst_ + start_segment_pos);
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          dst_[start_segment_pos + i] = src_[indices[i]];
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t pos) { dst_[pos] = src_[index]; },
+        [&](const IndexRange range, const int64_t start_segment_pos) {
+          blender::initialized_copy_n(
+              src_ + range.start(), range.size(), dst_ + start_segment_pos);
+        });
   }
   else {
     name << __func__ << " default;";
@@ -192,18 +168,12 @@ void copy_construct_indices_cb(const void *src, void *dst, const IndexMask &mask
   if constexpr (simd_try) {
     name << __func__ << " simd;";
     SCOPED_TIMER_AVERAGED(name.str());
-    mask.foreach_segment([&](const IndexMaskSegment indices) {
-      const Span<int16_t> base_indices = indices.base_span();
-      if (unique_sorted_indices::non_empty_is_range(base_indices)) {
-        blender::uninitialized_copy_n(
-            src_ + base_indices.first(), base_indices.size(), dst_ + base_indices.first());
-      }
-      else {
-        for (const int64_t i : indices.index_range()) {
-          new (dst_ + indices[i]) T(src_[indices[i]]);
-        }
-      }
-    });
+
+    mask.foreach_segment_or_range(
+        [&](const int64_t index, const int64_t /*pos*/) { new (dst_ + index) T(src_[index]); },
+        [&](const IndexRange range, const int64_t /*start_segment_pos*/) {
+          blender::uninitialized_copy_n(src_ + range.start(), range.size(), dst_ + range.start());
+        });
   }
   else {
     name << __func__ << " default;";
