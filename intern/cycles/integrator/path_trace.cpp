@@ -275,9 +275,9 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
         slice_sizes[i] = slice_size;
         slice_stride += slice_size;
   }
-  /* Bake roughness is current broken this */
+  /* Bake roughness is currently broken this with interleaved scanlines this create 2 big slices without being interleaved
   if(bake) {
-    /* enlarge slices so that there are only 2 big slices */
+      // enlarge slices so that there are only 2 big slices
       int remaining_height = window_height - slice_stride;
       for(int i = 0;i < num_works;i++) {
           const double weight = work_balance_infos[i].weight;
@@ -286,14 +286,14 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
           slice_stride += slice_size;
           VLOG_INFO << "<" << i << "> enlarge size:" << slice_size << "  weight:" << work_balance_infos[i].weight;
       }
-      /* if there are any remaining scanlines add them to the device with the highest weight */
+      // if there are any remaining scanlines add them to the device with the highest weight
       int leftover_scanlines = window_height - slice_stride;
       if(leftover_scanlines > 0) {
           VLOG_INFO << "Left over scanlines:" << leftover_scanlines;
           slice_sizes[largest_weight] += leftover_scanlines;
       }
   }
-    
+  */
   int slices = window_height/slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
