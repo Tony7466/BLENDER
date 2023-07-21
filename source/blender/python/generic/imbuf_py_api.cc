@@ -36,11 +36,11 @@ static PyObject *Py_ImBuf_CreatePyObject(ImBuf *ibuf);
 /** \name Type & Utilities
  * \{ */
 
-typedef struct Py_ImBuf {
+struct Py_ImBuf {
   PyObject_VAR_HEAD
-  /* can be NULL */
+  /* can be nullptr */
   ImBuf *ibuf;
-} Py_ImBuf;
+};
 
 static int py_imbuf_valid_check(Py_ImBuf *self)
 {
@@ -55,7 +55,7 @@ static int py_imbuf_valid_check(Py_ImBuf *self)
 
 #define PY_IMBUF_CHECK_OBJ(obj) \
   if (UNLIKELY(py_imbuf_valid_check(obj) == -1)) { \
-    return NULL; \
+    return nullptr; \
   } \
   ((void)0)
 #define PY_IMBUF_CHECK_INT(obj) \
@@ -89,11 +89,11 @@ static PyObject *py_imbuf_resize(Py_ImBuf *self, PyObject *args, PyObject *kw)
   const struct PyC_StringEnumItems method_items[] = {
       {FAST, "FAST"},
       {BILINEAR, "BILINEAR"},
-      {0, NULL},
+      {0, nullptr},
   };
   struct PyC_StringEnum method = {method_items, FAST};
 
-  static const char *_keywords[] = {"size", "method", NULL};
+  static const char *_keywords[] = {"size", "method", nullptr};
   static _PyArg_Parser _parser = {
       "(ii)" /* `size` */
       "|$"   /* Optional keyword only arguments. */
@@ -105,11 +105,11 @@ static PyObject *py_imbuf_resize(Py_ImBuf *self, PyObject *args, PyObject *kw)
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &size[0], &size[1], PyC_ParseStringEnum, &method))
   {
-    return NULL;
+    return nullptr;
   }
   if (size[0] <= 0 || size[1] <= 0) {
     PyErr_Format(PyExc_ValueError, "resize: Image size cannot be below 1 (%d, %d)", UNPACK2(size));
-    return NULL;
+    return nullptr;
   }
 
   if (method.value_found == FAST) {
@@ -139,7 +139,7 @@ static PyObject *py_imbuf_crop(Py_ImBuf *self, PyObject *args, PyObject *kw)
 
   rcti crop;
 
-  static const char *_keywords[] = {"min", "max", NULL};
+  static const char *_keywords[] = {"min", "max", nullptr};
   static _PyArg_Parser _parser = {
       "(II)" /* `min` */
       "(II)" /* `max` */
@@ -150,7 +150,7 @@ static PyObject *py_imbuf_crop(Py_ImBuf *self, PyObject *args, PyObject *kw)
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &crop.xmin, &crop.ymin, &crop.xmax, &crop.ymax))
   {
-    return NULL;
+    return nullptr;
   }
 
   if (/* X range. */
@@ -163,7 +163,7 @@ static PyObject *py_imbuf_crop(Py_ImBuf *self, PyObject *args, PyObject *kw)
       !(crop.ymin <= crop.ymax))
   {
     PyErr_SetString(PyExc_ValueError, "ImBuf crop min/max not in range");
-    return NULL;
+    return nullptr;
   }
   IMB_rect_crop(self->ibuf, &crop);
   Py_RETURN_NONE;
@@ -179,11 +179,11 @@ static PyObject *py_imbuf_copy(Py_ImBuf *self)
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *ibuf_copy = IMB_dupImBuf(self->ibuf);
 
-  if (UNLIKELY(ibuf_copy == NULL)) {
+  if (UNLIKELY(ibuf_copy == nullptr)) {
     PyErr_SetString(PyExc_MemoryError,
                     "ImBuf.copy(): "
                     "failed to allocate memory");
-    return NULL;
+    return nullptr;
   }
   return Py_ImBuf_CreatePyObject(ibuf_copy);
 }
@@ -191,7 +191,7 @@ static PyObject *py_imbuf_copy(Py_ImBuf *self)
 static PyObject *py_imbuf_deepcopy(Py_ImBuf *self, PyObject *args)
 {
   if (!PyC_CheckArgs_DeepCopy(args)) {
-    return NULL;
+    return nullptr;
   }
   return py_imbuf_copy(self);
 }
@@ -204,7 +204,7 @@ static PyObject *py_imbuf_free(Py_ImBuf *self)
 {
   if (self->ibuf) {
     IMB_freeImBuf(self->ibuf);
-    self->ibuf = NULL;
+    self->ibuf = nullptr;
   }
   Py_RETURN_NONE;
 }
@@ -216,7 +216,7 @@ static PyMethodDef Py_ImBuf_methods[] = {
     {"copy", (PyCFunction)py_imbuf_copy, METH_NOARGS, py_imbuf_copy_doc},
     {"__copy__", (PyCFunction)py_imbuf_copy, METH_NOARGS, py_imbuf_copy_doc},
     {"__deepcopy__", (PyCFunction)py_imbuf_deepcopy, METH_VARARGS, py_imbuf_copy_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 /** \} */
@@ -226,22 +226,22 @@ static PyMethodDef Py_ImBuf_methods[] = {
  * \{ */
 
 PyDoc_STRVAR(py_imbuf_size_doc, "size of the image in pixels.\n\n:type: pair of ints");
-static PyObject *py_imbuf_size_get(Py_ImBuf *self, void *UNUSED(closure))
+static PyObject *py_imbuf_size_get(Py_ImBuf *self, void * /*closure*/)
 {
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *ibuf = self->ibuf;
-  return PyC_Tuple_Pack_I32(ibuf->x, ibuf->y);
+  return PyC_Tuple_Pack_I32({ibuf->x, ibuf->y});
 }
 
 PyDoc_STRVAR(py_imbuf_ppm_doc, "pixels per meter.\n\n:type: pair of floats");
-static PyObject *py_imbuf_ppm_get(Py_ImBuf *self, void *UNUSED(closure))
+static PyObject *py_imbuf_ppm_get(Py_ImBuf *self, void * /*closure*/)
 {
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *ibuf = self->ibuf;
-  return PyC_Tuple_Pack_F64(ibuf->ppm[0], ibuf->ppm[1]);
+  return PyC_Tuple_Pack_F64({ibuf->ppm[0], ibuf->ppm[1]});
 }
 
-static int py_imbuf_ppm_set(Py_ImBuf *self, PyObject *value, void *UNUSED(closure))
+static int py_imbuf_ppm_set(Py_ImBuf *self, PyObject *value, void * /*closure*/)
 {
   PY_IMBUF_CHECK_INT(self);
   double ppm[2];
@@ -262,14 +262,14 @@ static int py_imbuf_ppm_set(Py_ImBuf *self, PyObject *value, void *UNUSED(closur
 }
 
 PyDoc_STRVAR(py_imbuf_filepath_doc, "filepath associated with this image.\n\n:type: string");
-static PyObject *py_imbuf_filepath_get(Py_ImBuf *self, void *UNUSED(closure))
+static PyObject *py_imbuf_filepath_get(Py_ImBuf *self, void * /*closure*/)
 {
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *ibuf = self->ibuf;
   return PyC_UnicodeFromBytes(ibuf->filepath);
 }
 
-static int py_imbuf_filepath_set(Py_ImBuf *self, PyObject *value, void *UNUSED(closure))
+static int py_imbuf_filepath_set(Py_ImBuf *self, PyObject *value, void * /*closure*/)
 {
   PY_IMBUF_CHECK_INT(self);
 
@@ -291,7 +291,7 @@ static int py_imbuf_filepath_set(Py_ImBuf *self, PyObject *value, void *UNUSED(c
 }
 
 PyDoc_STRVAR(py_imbuf_planes_doc, "Number of bits associated with this image.\n\n:type: int");
-static PyObject *py_imbuf_planes_get(Py_ImBuf *self, void *UNUSED(closure))
+static PyObject *py_imbuf_planes_get(Py_ImBuf *self, void * /*closure*/)
 {
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *imbuf = self->ibuf;
@@ -299,7 +299,7 @@ static PyObject *py_imbuf_planes_get(Py_ImBuf *self, void *UNUSED(closure))
 }
 
 PyDoc_STRVAR(py_imbuf_channels_doc, "Number of bit-planes.\n\n:type: int");
-static PyObject *py_imbuf_channels_get(Py_ImBuf *self, void *UNUSED(closure))
+static PyObject *py_imbuf_channels_get(Py_ImBuf *self, void * /*closure*/)
 {
   PY_IMBUF_CHECK_OBJ(self);
   ImBuf *imbuf = self->ibuf;
@@ -307,16 +307,16 @@ static PyObject *py_imbuf_channels_get(Py_ImBuf *self, void *UNUSED(closure))
 }
 
 static PyGetSetDef Py_ImBuf_getseters[] = {
-    {"size", (getter)py_imbuf_size_get, (setter)NULL, py_imbuf_size_doc, NULL},
-    {"ppm", (getter)py_imbuf_ppm_get, (setter)py_imbuf_ppm_set, py_imbuf_ppm_doc, NULL},
+    {"size", (getter)py_imbuf_size_get, (setter) nullptr, py_imbuf_size_doc, nullptr},
+    {"ppm", (getter)py_imbuf_ppm_get, (setter)py_imbuf_ppm_set, py_imbuf_ppm_doc, nullptr},
     {"filepath",
      (getter)py_imbuf_filepath_get,
      (setter)py_imbuf_filepath_set,
      py_imbuf_filepath_doc,
-     NULL},
-    {"planes", (getter)py_imbuf_planes_get, NULL, py_imbuf_planes_doc, NULL},
-    {"channels", (getter)py_imbuf_channels_get, NULL, py_imbuf_channels_doc, NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+     nullptr},
+    {"planes", (getter)py_imbuf_planes_get, nullptr, py_imbuf_planes_doc, nullptr},
+    {"channels", (getter)py_imbuf_channels_get, nullptr, py_imbuf_channels_doc, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 /** \} */
@@ -328,9 +328,9 @@ static PyGetSetDef Py_ImBuf_getseters[] = {
 static void py_imbuf_dealloc(Py_ImBuf *self)
 {
   ImBuf *ibuf = self->ibuf;
-  if (ibuf != NULL) {
+  if (ibuf != nullptr) {
     IMB_freeImBuf(self->ibuf);
-    self->ibuf = NULL;
+    self->ibuf = nullptr;
   }
   PyObject_DEL(self);
 }
@@ -338,7 +338,7 @@ static void py_imbuf_dealloc(Py_ImBuf *self)
 static PyObject *py_imbuf_repr(Py_ImBuf *self)
 {
   const ImBuf *ibuf = self->ibuf;
-  if (ibuf != NULL) {
+  if (ibuf != nullptr) {
     return PyUnicode_FromFormat("<imbuf: address=%p, filepath='%s', size=(%d, %d)>",
                                 ibuf,
                                 ibuf->filepath,
@@ -355,55 +355,55 @@ static Py_hash_t py_imbuf_hash(Py_ImBuf *self)
 }
 
 PyTypeObject Py_ImBuf_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "ImBuf",
     /*tp_basicsize*/ sizeof(Py_ImBuf),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)py_imbuf_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
     /*tp_repr*/ (reprfunc)py_imbuf_repr,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
     /*tp_hash*/ (hashfunc)py_imbuf_hash,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
-    /*tp_doc*/ NULL,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ Py_ImBuf_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ Py_ImBuf_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
-    /*tp_new*/ NULL,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 static PyObject *Py_ImBuf_CreatePyObject(ImBuf *ibuf)
@@ -428,10 +428,10 @@ PyDoc_STRVAR(M_imbuf_new_doc,
              "   :type size: pair of ints\n"
              "   :return: the newly loaded image.\n"
              "   :rtype: :class:`ImBuf`\n");
-static PyObject *M_imbuf_new(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_imbuf_new(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   int size[2];
-  static const char *_keywords[] = {"size", NULL};
+  static const char *_keywords[] = {"size", nullptr};
   static _PyArg_Parser _parser = {
       "(ii)" /* `size` */
       ":new",
@@ -439,11 +439,11 @@ static PyObject *M_imbuf_new(PyObject *UNUSED(self), PyObject *args, PyObject *k
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &size[0], &size[1])) {
-    return NULL;
+    return nullptr;
   }
   if (size[0] <= 0 || size[1] <= 0) {
     PyErr_Format(PyExc_ValueError, "new: Image size cannot be below 1 (%d, %d)", UNPACK2(size));
-    return NULL;
+    return nullptr;
   }
 
   /* TODO: make options. */
@@ -451,9 +451,9 @@ static PyObject *M_imbuf_new(PyObject *UNUSED(self), PyObject *args, PyObject *k
   const uint flags = IB_rect;
 
   ImBuf *ibuf = IMB_allocImBuf(UNPACK2(size), planes, flags);
-  if (ibuf == NULL) {
+  if (ibuf == nullptr) {
     PyErr_Format(PyExc_ValueError, "new: Unable to create image (%d, %d)", UNPACK2(size));
-    return NULL;
+    return nullptr;
   }
   return Py_ImBuf_CreatePyObject(ibuf);
 }
@@ -467,11 +467,11 @@ PyDoc_STRVAR(M_imbuf_load_doc,
              "   :type filepath: string\n"
              "   :return: the newly loaded image.\n"
              "   :rtype: :class:`ImBuf`\n");
-static PyObject *M_imbuf_load(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_imbuf_load(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const char *filepath;
 
-  static const char *_keywords[] = {"filepath", NULL};
+  static const char *_keywords[] = {"filepath", nullptr};
   static _PyArg_Parser _parser = {
       "s" /* `filepath` */
       ":load",
@@ -479,23 +479,23 @@ static PyObject *M_imbuf_load(PyObject *UNUSED(self), PyObject *args, PyObject *
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &filepath)) {
-    return NULL;
+    return nullptr;
   }
 
   const int file = BLI_open(filepath, O_BINARY | O_RDONLY, 0);
   if (file == -1) {
     PyErr_Format(PyExc_IOError, "load: %s, failed to open file '%s'", strerror(errno), filepath);
-    return NULL;
+    return nullptr;
   }
 
-  ImBuf *ibuf = IMB_loadifffile(file, IB_rect, NULL, filepath);
+  ImBuf *ibuf = IMB_loadifffile(file, IB_rect, nullptr, filepath);
 
   close(file);
 
-  if (ibuf == NULL) {
+  if (ibuf == nullptr) {
     PyErr_Format(
         PyExc_ValueError, "load: Unable to recognize image format for file '%s'", filepath);
-    return NULL;
+    return nullptr;
   }
 
   STRNCPY(ibuf->filepath, filepath);
@@ -513,12 +513,12 @@ PyDoc_STRVAR(
     "   :type image: :class:`ImBuf`\n"
     "   :arg filepath: Optional filepath of the image (fallback to the images file path).\n"
     "   :type filepath: string\n");
-static PyObject *M_imbuf_write(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+static PyObject *M_imbuf_write(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   Py_ImBuf *py_imb;
-  const char *filepath = NULL;
+  const char *filepath = nullptr;
 
-  static const char *_keywords[] = {"image", "filepath", NULL};
+  static const char *_keywords[] = {"image", "filepath", nullptr};
   static _PyArg_Parser _parser = {
       "O!" /* `image` */
       "|$" /* Optional keyword only arguments. */
@@ -528,10 +528,10 @@ static PyObject *M_imbuf_write(PyObject *UNUSED(self), PyObject *args, PyObject 
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &Py_ImBuf_Type, &py_imb, &filepath)) {
-    return NULL;
+    return nullptr;
   }
 
-  if (filepath == NULL) {
+  if (filepath == nullptr) {
     filepath = py_imb->ibuf->filepath;
   }
 
@@ -539,7 +539,7 @@ static PyObject *M_imbuf_write(PyObject *UNUSED(self), PyObject *args, PyObject 
   if (ok == false) {
     PyErr_Format(
         PyExc_IOError, "write: Unable to write image file (%s) '%s'", strerror(errno), filepath);
-    return NULL;
+    return nullptr;
   }
 
   Py_RETURN_NONE;
@@ -555,7 +555,7 @@ static PyMethodDef IMB_methods[] = {
     {"new", (PyCFunction)M_imbuf_new, METH_VARARGS | METH_KEYWORDS, M_imbuf_new_doc},
     {"load", (PyCFunction)M_imbuf_load, METH_VARARGS | METH_KEYWORDS, M_imbuf_load_doc},
     {"write", (PyCFunction)M_imbuf_write, METH_VARARGS | METH_KEYWORDS, M_imbuf_write_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(IMB_doc,
@@ -569,10 +569,10 @@ static PyModuleDef IMB_module_def = {
     /*m_doc*/ IMB_doc,
     /*m_size*/ 0,
     /*m_methods*/ IMB_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPyInit_imbuf(void)
@@ -612,11 +612,11 @@ static PyModuleDef IMB_types_module_def = {
     /*m_name*/ "imbuf.types",
     /*m_doc*/ IMB_types_doc,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *BPyInit_imbuf_types(void)
@@ -624,7 +624,7 @@ PyObject *BPyInit_imbuf_types(void)
   PyObject *submodule = PyModule_Create(&IMB_types_module_def);
 
   if (PyType_Ready(&Py_ImBuf_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
 
   PyModule_AddType(submodule, &Py_ImBuf_Type);
