@@ -22,11 +22,9 @@ unset(OPENCOLLADA_ANIMATION_CLIP CACHE)
 set(INC
   .
   ../../blentranslation
-  ../../depsgraph
   ../../editors/include
   ../../imbuf
   ../../makesrna
-  ../../windowmanager
   ../../ikplugin
   ../../../../intern/iksolver/extern
   ../../bmesh
@@ -115,8 +113,10 @@ set(LIB
   ${XML2_LIBRARIES}
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_BUILDINFO)
