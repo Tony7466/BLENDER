@@ -672,7 +672,7 @@ colorspaces:
         
   - !<ColorSpace>
     name: Display P3 I-E
-    aliases: [Display 2.2 P3 I-E]
+    aliases: [Display P3 2.2 I-E]
     family: Displays/SDR
     equalitygroup: ""
     bitdepth: unknown
