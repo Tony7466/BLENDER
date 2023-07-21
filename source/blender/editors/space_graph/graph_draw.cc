@@ -865,10 +865,12 @@ static bool fcurve_can_use_simple_bezt_drawing(FCurve *fcu)
 
 static int calculate_bezt_draw_resolution(BezTriple *bezt,
                                           BezTriple *prevbezt,
-                                          const int points_per_frame)
+                                          const blender::float2 resolution_scale)
 {
-  const int resolution = (int)((bezt->vec[1][0] - prevbezt->vec[1][0]) * points_per_frame);
-  return resolution;
+  const int resolution_x = (int)((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
+  const int resolution_y = (int)(fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) *
+                                 resolution_scale[1]);
+  return resolution_x + resolution_y;
 }
 
 /**
@@ -1003,9 +1005,29 @@ static void get_extrapolation_point_right(FCurve *fcu,
   curve_vertices.append(vertex_position);
 }
 
+static blender::float2 calculate_resolution_scale(View2D *v2d)
+{
+  /* The resolution for bezier forward diff in frame/value space. This ensures a constant
+   * resolution in screenspace. */
+  const int window_width = BLI_rcti_size_x(&v2d->mask);
+  const int window_height = BLI_rcti_size_y(&v2d->mask);
+  const float points_per_pixel = 0.25f;
+
+  const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
+  const float v2d_value_range = BLI_rctf_size_y(&v2d->cur);
+  const blender::float2 resolution_scale = {(window_width * points_per_pixel) / v2d_frame_range,
+                                            (window_height * points_per_pixel) / v2d_value_range};
+  return resolution_scale;
+}
+
 /* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
-static void draw_fcurve_curve_bezts(
-    bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d, uint pos, const bool draw_extrapolation)
+static void draw_fcurve_curve_bezts(bAnimContext *ac,
+                                    ID *id,
+                                    FCurve *fcu,
+                                    View2D *v2d,
+                                    uint pos,
+                                    const blender::float2 resolution_scale,
+                                    const bool draw_extrapolation)
 {
   using namespace blender;
   if (!draw_extrapolation && fcu->totvert == 1) {
@@ -1019,13 +1041,6 @@ static void draw_fcurve_curve_bezts(
   const float unit_scale = ANIM_unit_mapping_get_factor(ac->scene, id, fcu, mapping_flag, &offset);
   GPU_matrix_scale_2f(1.0f, unit_scale);
   GPU_matrix_translate_2f(0.0f, offset);
-
-  const int window_width = BLI_rcti_size_x(&v2d->mask);
-  const int points_per_pixel = 1;
-  const int max_points = window_width * points_per_pixel;
-
-  const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
-  const float points_per_frame = max_points / v2d_frame_range;
 
   Vector<float2> curve_vertices;
 
@@ -1047,6 +1062,7 @@ static void draw_fcurve_curve_bezts(
     curve_vertices.append(
         {fcu->bezt[first_bezt_index].vec[1][0], fcu->bezt[first_bezt_index].vec[1][0]});
   }
+
   /* Draw curve between first and last keyframe (if there are enough to do so). */
   for (int i = first_bezt_index + 1; i <= last_bezt_index; i++) {
     BezTriple *prevbezt = &fcu->bezt[i - 1];
@@ -1063,7 +1079,7 @@ static void draw_fcurve_curve_bezts(
       curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
-      const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, points_per_frame);
+      const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, resolution_scale);
       add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
     }
 
@@ -1109,6 +1125,8 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
   if (((fcu->modifiers.first) || (fcu->flag & FCURVE_INT_VALUES)) ||
       (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)))
   {
+    const blender::float2 resolution_scale = calculate_resolution_scale(&region->v2d);
+    std::cout << "ppf: " << resolution_scale << std::endl;
     /* set color/drawing style for curve itself */
     /* draw active F-Curve thicker than the rest to make it stand out */
     if (fcu->flag & FCURVE_ACTIVE && !BKE_fcurve_is_protected(fcu)) {
@@ -1182,7 +1200,8 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
       /* just draw curve based on defined data (i.e. no modifiers) */
       if (fcu->bezt) {
         if (fcurve_can_use_simple_bezt_drawing(fcu)) {
-          draw_fcurve_curve_bezts(ac, ale->id, fcu, &region->v2d, shdr_pos, draw_extrapolation);
+          draw_fcurve_curve_bezts(
+              ac, ale->id, fcu, &region->v2d, shdr_pos, resolution_scale, draw_extrapolation);
         }
         else {
           draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos, false, draw_extrapolation);
