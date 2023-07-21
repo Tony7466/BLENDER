@@ -4,11 +4,8 @@
 
 set(INC
   ../include
-  ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../io/alembic
   ../../io/collada
   ../../io/common
@@ -17,10 +14,7 @@ set(INC
   ../../io/stl
   ../../io/usd
   ../../io/wavefront_obj
-  ../../makesdna
   ../../makesrna
-  ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -52,8 +46,12 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_OPENCOLLADA)

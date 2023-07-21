@@ -515,7 +515,7 @@ static PyMethodDef module_functions[] = {
 /*-----------------------Freestyle module definition---------------------------*/
 
 static PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "_freestyle",
     /*m_doc*/ module_docstring,
     /*m_size*/ -1,
@@ -527,7 +527,7 @@ static PyModuleDef module_definition = {
 };
 
 //-------------------MODULE INITIALIZATION--------------------------------
-PyObject *Freestyle_Init(void)
+PyObject *Freestyle_Init()
 {
   PyObject *module;
 

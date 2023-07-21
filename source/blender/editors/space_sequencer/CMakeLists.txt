@@ -5,22 +5,14 @@
 set(INC
   ../include
   ../../blenfont
-  ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../draw
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../sequencer
-  ../../windowmanager
-  ../../../../intern/guardedalloc
 
-  # dna_type_offsets.h
-  ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -53,9 +45,15 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
   bf_editor_interface
   bf_editor_util
-  PRIVATE bf_intern_atomic
+  PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_AUDASPACE)

@@ -7,19 +7,15 @@ set(INC
   intern
 
   ../blenfont
-  ../blenkernel
-  ../blenlib
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../editors/space_view3d
   ../functions
   ../gpu
   ../gpu/intern
   ../imbuf
-  ../makesdna
   ../makesrna
   ../nodes
   ../render
@@ -27,14 +23,10 @@ set(INC
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/algorithms
   ../compositor/realtime_compositor/cached_resources
-  ../windowmanager
 
   ../../../intern/clog
-  ../../../intern/guardedalloc
   ../../../intern/opensubdiv
 
-  # dna_type_offsets.h
-  ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
 )
 
 set(SRC
@@ -140,6 +132,7 @@ set(SRC
   engines/eevee/eevee_subsurface.c
   engines/eevee/eevee_temporal_sampling.c
   engines/eevee/eevee_volumes.c
+  engines/eevee_next/eevee_ambient_occlusion.cc
   engines/eevee_next/eevee_camera.cc
   engines/eevee_next/eevee_cryptomatte.cc
   engines/eevee_next/eevee_depth_of_field.cc
@@ -151,9 +144,11 @@ set(SRC
   engines/eevee_next/eevee_light.cc
   engines/eevee_next/eevee_lightcache.cc
   engines/eevee_next/eevee_lightprobe.cc
+  engines/eevee_next/eevee_lookdev.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
+  engines/eevee_next/eevee_reflection_probes.cc
   engines/eevee_next/eevee_renderbuffers.cc
   engines/eevee_next/eevee_sampling.cc
   engines/eevee_next/eevee_shader.cc
@@ -188,7 +183,7 @@ set(SRC
   engines/workbench/workbench_transparent.c
   engines/workbench/workbench_volume.c
   engines/workbench/workbench_volume_next.cc
-  engines/external/external_engine.c
+  engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.c
   engines/gpencil/gpencil_cache_utils.c
   engines/gpencil/gpencil_draw_data.c
@@ -248,6 +243,7 @@ set(SRC
   intern/draw_color_management.h
   intern/draw_command.hh
   intern/draw_common.h
+  intern/draw_common.hh
   intern/draw_common_shader_shared.h
   intern/draw_curves_private.hh
   intern/draw_debug.h
@@ -281,6 +277,7 @@ set(SRC
   engines/eevee/eevee_lut.h
   engines/eevee/eevee_private.h
   engines/eevee/engine_eevee_shared_defines.h
+  engines/eevee_next/eevee_ambient_occlusion.hh
   engines/eevee_next/eevee_camera.hh
   engines/eevee_next/eevee_cryptomatte.hh
   engines/eevee_next/eevee_depth_of_field.hh
@@ -293,9 +290,11 @@ set(SRC
   engines/eevee_next/eevee_light.hh
   engines/eevee_next/eevee_lightcache.hh
   engines/eevee_next/eevee_lightprobe.hh
+  engines/eevee_next/eevee_lookdev.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
+  engines/eevee_next/eevee_reflection_probes.hh
   engines/eevee_next/eevee_renderbuffers.hh
   engines/eevee_next/eevee_sampling.hh
   engines/eevee_next/eevee_shader.hh
@@ -350,11 +349,14 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
-  bf_windowmanager
-  PRIVATE bf_intern_atomic
+  PRIVATE bf::windowmanager
+  PRIVATE bf::intern::atomic
 )
 
 set(GLSL_SRC
@@ -457,10 +459,13 @@ set(GLSL_SRC
   engines/eevee/shaders/infos/engine_eevee_legacy_shared.h
   engines/eevee/engine_eevee_shared_defines.h
 
+  engines/eevee_next/shaders/eevee_ambient_occlusion_lib.glsl
+  engines/eevee_next/shaders/eevee_ambient_occlusion_pass_comp.glsl
   engines/eevee_next/shaders/eevee_attributes_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl
   engines/eevee_next/shaders/eevee_cryptomatte_lib.glsl
+  engines/eevee_next/shaders/eevee_cubemap_lib.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_vert.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
@@ -489,6 +494,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_geom_curves_vert.glsl
   engines/eevee_next/shaders/eevee_geom_gpencil_vert.glsl
   engines/eevee_next/shaders/eevee_geom_mesh_vert.glsl
+  engines/eevee_next/shaders/eevee_geom_point_cloud_vert.glsl
   engines/eevee_next/shaders/eevee_geom_world_vert.glsl
   engines/eevee_next/shaders/eevee_hiz_debug_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_update_comp.glsl
@@ -511,6 +517,12 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_lib.glsl
   engines/eevee_next/shaders/eevee_nodetree_lib.glsl
+  engines/eevee_next/shaders/eevee_octahedron_lib.glsl
+  engines/eevee_next/shaders/eevee_ray_types_lib.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_lib.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_remap_comp.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_update_irradiance_comp.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
@@ -568,6 +580,7 @@ set(GLSL_SRC
   engines/workbench/shaders/workbench_material_lib.glsl
   engines/workbench/shaders/workbench_merge_infront_frag.glsl
   engines/workbench/shaders/workbench_next_merge_depth_frag.glsl
+  engines/workbench/shaders/workbench_overlay_depth_frag.glsl
   engines/workbench/shaders/workbench_prepass_frag.glsl
   engines/workbench/shaders/workbench_prepass_hair_vert.glsl
   engines/workbench/shaders/workbench_prepass_pointcloud_vert.glsl
@@ -874,8 +887,6 @@ endif()
 
 blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# Needed so we can use dna_type_offsets.h for defaults initialization.
-add_dependencies(bf_draw bf_dna)
 
 if(WITH_GTESTS)
   if(WITH_OPENGL_DRAW_TESTS)
