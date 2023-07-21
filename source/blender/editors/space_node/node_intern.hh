@@ -30,7 +30,7 @@ struct bNodeSocket;
 struct wmGizmoGroupType;
 struct wmKeyConfig;
 struct wmWindow;
-struct NestedNodePreviewMap;
+struct NestedTreePreviews;
 
 /* Outside of blender namespace to avoid Python documentation build error with `ctypes`. */
 extern "C" {
@@ -111,7 +111,7 @@ struct SpaceNode_Runtime {
 
   /** Use this to store data for the displayed node tree. It has an entry for every distinct
    * nested nodegroup. */
-  Map<ComputeContextHash, NestedNodePreviewMap *> distinctNG_datas;
+  Map<ComputeContextHash, NestedTreePreviews *> tree_previews_per_context;
 
   /**
    * Temporary data for node add menu in order to provide longer-term storage for context pointers.

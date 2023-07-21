@@ -119,7 +119,7 @@ struct TreeDrawContext {
    */
   blender::Map<const bNodeTreeZone *, geo_log::GeoTreeLog *> geo_log_by_zone;
 
-  NestedNodePreviewMap *nested_group_infos = nullptr;
+  NestedTreePreviews *nested_group_infos = nullptr;
   /**
    * True if there is an active realtime compositor using the node tree, false otherwise.
    */
@@ -2242,9 +2242,9 @@ static void node_draw_basis(const bContext &C,
         }
       }
 
-      NestedNodePreviewMap *previews_sha = tree_draw_ctx.nested_group_infos;
-      if (previews_sha) {
-        preview = ED_node_preview_acquire_ibuf(&ntree, previews_sha, &node);
+      NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
+      if (previews_shader) {
+        preview = ED_node_preview_acquire_ibuf(&ntree, previews_shader, &node);
       }
 
       if (preview && !(preview->x && preview->y)) {

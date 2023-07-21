@@ -18,20 +18,20 @@ struct bNodeTree;
 struct ImBuf;
 struct Render;
 
-struct NestedNodePreviewMap {
+struct NestedTreePreviews {
   Render *previews_render;
   int pr_size;
   bool rendering;
   bool restart_needed;
-  uint16_t preview_refresh_state;
+  uint16_t previews_refresh_state;
 };
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode);
 ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
-                                    NestedNodePreviewMap *data,
+                                    NestedTreePreviews *tree_previews,
                                     const bNode *node);
-void ED_node_release_preview_ibuf(NestedNodePreviewMap *data);
-NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
+void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews);
+NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
 
 #ifdef __cplusplus
 }

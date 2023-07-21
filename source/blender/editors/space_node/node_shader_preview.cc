@@ -56,7 +56,7 @@
 using NodeSocketPair = std::pair<bNode *, bNodeSocket *>;
 
 struct ShaderNodesPreviewJob {
-  NestedNodePreviewMap *ng_data;
+  NestedTreePreviews *tree_previews;
   Material *mat_orig;
   /* Listbase containing bNodeTreePath * guiding to the viewed nodetree of mat_orig. */
   ListBase *treepath;
@@ -82,7 +82,7 @@ struct ShaderNodesPreviewJob {
 
 using namespace blender;
 static void ensure_nodetree_previews(const bContext *C,
-                                     NestedNodePreviewMap *ng_data,
+                                     NestedTreePreviews *ng_data,
                                      Material *material,
                                      ListBase *treepath);
 
@@ -113,24 +113,24 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
   return compute_context_builder.hash();
 }
 
-NestedNodePreviewMap *ED_spacenode_get_nested_previews(const bContext *C, SpaceNode *sn)
+NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNode *sn)
 {
   if (GS(sn->id->name) != ID_MA) {
     return nullptr;
   }
-  NestedNodePreviewMap *data = nullptr;
+  NestedTreePreviews *tree_previews = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
-    data = sn->runtime->distinctNG_datas.lookup_or_add_cb(*hash, [&]() {
-      data = static_cast<NestedNodePreviewMap *>(
-          MEM_callocN(sizeof(NestedNodePreviewMap), __func__));
-      data->pr_size = U.node_preview_res;
-      return data;
+    tree_previews = sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
+      tree_previews = static_cast<NestedTreePreviews *>(
+          MEM_callocN(sizeof(NestedTreePreviews), __func__));
+      tree_previews->pr_size = U.node_preview_res;
+      return tree_previews;
     });
     Material *ma = reinterpret_cast<Material *>(sn->id);
 
-    ensure_nodetree_previews(C, data, ma, &sn->treepath);
+    ensure_nodetree_previews(C, tree_previews, ma, &sn->treepath);
   }
-  return data;
+  return tree_previews;
 }
 
 /** \} */
@@ -274,14 +274,14 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
 
 /* `ED_node_release_preview_ibuf` should be called after this. */
 ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
-                                    NestedNodePreviewMap *data,
+                                    NestedTreePreviews *tree_previews,
                                     const bNode *node)
 {
-  if (data->previews_render == nullptr) {
+  if (tree_previews->previews_render == nullptr) {
     return nullptr;
   }
 
-  RenderResult *rr = RE_AcquireResultRead(data->previews_render);
+  RenderResult *rr = RE_AcquireResultRead(tree_previews->previews_render);
   if (rr == nullptr) {
     return nullptr;
   }
@@ -298,12 +298,12 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
   return image;
 }
 
-void ED_node_release_preview_ibuf(NestedNodePreviewMap *data)
+void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
 {
-  if (data == nullptr || data->previews_render == nullptr) {
+  if (tree_previews == nullptr || tree_previews->previews_render == nullptr) {
     return;
   }
-  RE_ReleaseResult(data->previews_render);
+  RE_ReleaseResult(tree_previews->previews_render);
 }
 
 /* Get a link to the node outside the nested nodegroups by creating a new output socket for each
@@ -479,16 +479,16 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
     ViewLayerAOV *aov = BKE_view_layer_add_aov(AOV_layer);
     strcpy(aov->name, node->name);
   }
-  sce->r.xsch = job_data.ng_data->pr_size;
-  sce->r.ysch = job_data.ng_data->pr_size;
+  sce->r.xsch = job_data.tree_previews->pr_size;
+  sce->r.ysch = job_data.tree_previews->pr_size;
   sce->r.size = 100;
 
-  if (job_data.ng_data->previews_render == nullptr) {
+  if (job_data.tree_previews->previews_render == nullptr) {
     char name[32];
-    SNPRINTF(name, "Preview %p", &job_data.ng_data);
-    job_data.ng_data->previews_render = RE_NewRender(name);
+    SNPRINTF(name, "Preview %p", &job_data.tree_previews);
+    job_data.tree_previews->previews_render = RE_NewRender(name);
   }
-  Render *re = job_data.ng_data->previews_render;
+  Render *re = job_data.tree_previews->previews_render;
 
   /* `sce->r` gets copied in RE_InitState. */
   sce->r.scemode &= ~(R_MATNODE_PREVIEW | R_TEXNODE_PREVIEW);
@@ -525,12 +525,12 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 /** \name Preview job management
  * \{ */
 
-static void update_needed_flag(const bNodeTree *nt, NestedNodePreviewMap *ng_data)
+static void update_needed_flag(const bNodeTree *nt, NestedTreePreviews *tree_previews)
 {
-  if (nt->preview_refresh_state != ng_data->preview_refresh_state ||
-      ng_data->pr_size != U.node_preview_res)
+  if (nt->preview_refresh_state != tree_previews->previews_refresh_state ||
+      tree_previews->pr_size != U.node_preview_res)
   {
-    ng_data->restart_needed = true;
+    tree_previews->restart_needed = true;
   }
 }
 
@@ -544,9 +544,9 @@ static void shader_preview_startjob(void *customdata,
   job_data->stop = stop;
   job_data->do_update = do_update;
   *do_update = true;
-  bool size_changed = job_data->ng_data->pr_size != U.node_preview_res;
+  bool size_changed = job_data->tree_previews->pr_size != U.node_preview_res;
   if (size_changed) {
-    job_data->ng_data->pr_size = U.node_preview_res;
+    job_data->tree_previews->pr_size = U.node_preview_res;
   }
 
   /* Duplicate material for each preview and update things related to it: treepath and previewed
@@ -605,7 +605,7 @@ static void shader_preview_free(void *customdata)
 {
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(customdata);
   BLI_freelistN(&job_data->treepath_copy);
-  job_data->ng_data->rendering = false;
+  job_data->tree_previews->rendering = false;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
@@ -615,7 +615,7 @@ static void shader_preview_free(void *customdata)
 }
 
 static void ensure_nodetree_previews(const bContext *C,
-                                     NestedNodePreviewMap *ng_data,
+                                     NestedTreePreviews *tree_previews,
                                      Material *material,
                                      ListBase *treepath)
 {
@@ -625,32 +625,32 @@ static void ensure_nodetree_previews(const bContext *C,
   }
 
   bNodeTree *displayed_nt = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
-  update_needed_flag(displayed_nt, ng_data);
-  if (!(ng_data->restart_needed)) {
+  update_needed_flag(displayed_nt, tree_previews);
+  if (!(tree_previews->restart_needed)) {
     return;
   }
-  if (ng_data->rendering) {
+  if (tree_previews->rendering) {
     WM_jobs_stop(CTX_wm_manager(C),
                  CTX_wm_space_node(C),
                  reinterpret_cast<void *>(shader_preview_startjob));
     return;
   }
-  ng_data->rendering = true;
-  ng_data->restart_needed = false;
-  ng_data->preview_refresh_state = displayed_nt->preview_refresh_state;
+  tree_previews->rendering = true;
+  tree_previews->restart_needed = false;
+  tree_previews->previews_refresh_state = displayed_nt->preview_refresh_state;
 
   ED_preview_ensure_dbase(false);
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),
                               CTX_wm_space_node(C),
-                              "Shader Preview",
+                              "Shader Previews",
                               WM_JOB_EXCL_RENDER,
                               WM_JOB_TYPE_RENDER_PREVIEW);
-  ShaderNodesPreviewJob *nt_previews = MEM_new<ShaderNodesPreviewJob>("shader preview");
+  ShaderNodesPreviewJob *nt_previews = MEM_new<ShaderNodesPreviewJob>("shader previews");
 
   nt_previews->scene = scene;
-  nt_previews->ng_data = ng_data;
+  nt_previews->tree_previews = tree_previews;
   nt_previews->mat_orig = material;
   nt_previews->bmain = CTX_data_main(C);
   nt_previews->treepath = treepath;
@@ -662,25 +662,25 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_start(CTX_wm_manager(C), wm_job);
 }
 
-static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedNodePreviewMap *data)
+static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedTreePreviews *tree_previews)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
   WM_jobs_kill(wm, snode, shader_preview_startjob);
-  if (data->previews_render) {
-    RE_FreeRender(data->previews_render);
-    data->previews_render = nullptr;
+  if (tree_previews->previews_render) {
+    RE_FreeRender(tree_previews->previews_render);
+    tree_previews->previews_render = nullptr;
   }
-  MEM_freeN(data);
+  MEM_freeN(tree_previews);
 }
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
 {
-  snode->runtime->distinctNG_datas.foreach_item(
-      [&](ComputeContextHash /*hash*/, NestedNodePreviewMap *data) {
-        free_previews(wm, snode, data);
-        data = nullptr;
+  snode->runtime->tree_previews_per_context.foreach_item(
+      [&](ComputeContextHash /*hash*/, NestedTreePreviews *tree_previews) {
+        free_previews(wm, snode, tree_previews);
+        tree_previews = nullptr;
       });
-  snode->runtime->distinctNG_datas.clear();
+  snode->runtime->tree_previews_per_context.clear();
 }
 
 /** \} */
