@@ -78,12 +78,12 @@ static const struct PyC_StringEnumItems pygpu_textureformat_items[] = {
     {GPU_DEPTH_COMPONENT32F, "DEPTH_COMPONENT32F"},
     {GPU_DEPTH_COMPONENT24, "DEPTH_COMPONENT24"},
     {GPU_DEPTH_COMPONENT16, "DEPTH_COMPONENT16"},
-    {0, NULL},
+    {0, nullptr},
 };
 
 static int pygpu_texture_valid_check(BPyGPUTexture *bpygpu_tex)
 {
-  if (UNLIKELY(bpygpu_tex->tex == NULL)) {
+  if (UNLIKELY(bpygpu_tex->tex == nullptr)) {
     PyErr_SetString(PyExc_ReferenceError,
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
                     "GPU texture was freed, no further access is valid"
@@ -100,7 +100,7 @@ static int pygpu_texture_valid_check(BPyGPUTexture *bpygpu_tex)
 #define BPYGPU_TEXTURE_CHECK_OBJ(bpygpu) \
   { \
     if (UNLIKELY(pygpu_texture_valid_check(bpygpu) == -1)) { \
-      return NULL; \
+      return nullptr; \
     } \
   } \
   ((void)0)
@@ -111,17 +111,17 @@ static int pygpu_texture_valid_check(BPyGPUTexture *bpygpu_tex)
 /** \name GPUTexture Type
  * \{ */
 
-static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *args, PyObject *kwds)
+static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, PyObject *kwds)
 {
   PyObject *py_size;
   int size[3] = {1, 1, 1};
   int layers = 0;
   int is_cubemap = false;
   struct PyC_StringEnum pygpu_textureformat = {pygpu_textureformat_items, GPU_RGBA8};
-  BPyGPUBuffer *pybuffer_obj = NULL;
+  BPyGPUBuffer *pybuffer_obj = nullptr;
   char err_out[256] = "unknown error. See console";
 
-  static const char *_keywords[] = {"size", "layers", "is_cubemap", "format", "data", NULL};
+  static const char *_keywords[] = {"size", "layers", "is_cubemap", "format", "data", nullptr};
   static _PyArg_Parser _parser = {
       "O"  /* `size` */
       "|$" /* Optional keyword only arguments. */
@@ -144,7 +144,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
                                         &BPyGPU_BufferType,
                                         &pybuffer_obj))
   {
-    return NULL;
+    return nullptr;
   }
 
   int len = 1;
@@ -154,10 +154,10 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
       PyErr_Format(PyExc_ValueError,
                    "GPUTexture.__new__: \"size\" must be between 1 and 3 in length (got %d)",
                    len);
-      return NULL;
+      return nullptr;
     }
     if (PyC_AsArray(size, sizeof(*size), py_size, len, &PyLong_Type, "GPUTexture.__new__") == -1) {
-      return NULL;
+      return nullptr;
     }
   }
   else if (PyLong_Check(py_size)) {
@@ -165,18 +165,19 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
   }
   else {
     PyErr_SetString(PyExc_ValueError, "GPUTexture.__new__: Expected an int or tuple as first arg");
-    return NULL;
+    return nullptr;
   }
 
-  void *data = NULL;
+  void *data = nullptr;
   if (pybuffer_obj) {
     if (pybuffer_obj->format != GPU_DATA_FLOAT) {
       PyErr_SetString(PyExc_ValueError,
                       "GPUTexture.__new__: Only Buffer of format `FLOAT` is currently supported");
-      return NULL;
+      return nullptr;
     }
 
-    int component_len = GPU_texture_component_len(pygpu_textureformat.value_found);
+    int component_len = GPU_texture_component_len(
+        eGPUTextureFormat(pygpu_textureformat.value_found));
     int component_size_expected = sizeof(float);
     size_t data_space_expected = (size_t)size[0] * size[1] * size[2] * max_ii(1, layers) *
                                  component_len * component_size_expected;
@@ -186,12 +187,12 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
 
     if (bpygpu_Buffer_size(pybuffer_obj) < data_space_expected) {
       PyErr_SetString(PyExc_ValueError, "GPUTexture.__new__: Buffer size smaller than requested");
-      return NULL;
+      return nullptr;
     }
     data = pybuffer_obj->buf.as_void;
   }
 
-  GPUTexture *tex = NULL;
+  GPUTexture *tex = nullptr;
   if (is_cubemap && len != 1) {
     STRNCPY(err_out,
             "In cubemaps the same dimension represents height, width and depth. No tuple needed");
@@ -210,61 +211,97 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject *UNUSED(self), PyObject *arg
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_GENERAL;
     if (is_cubemap) {
       if (layers) {
-        tex = GPU_texture_create_cube_array(
-            name, size[0], layers, 1, pygpu_textureformat.value_found, usage, data);
+        tex = GPU_texture_create_cube_array(name,
+                                            size[0],
+                                            layers,
+                                            1,
+                                            eGPUTextureFormat(pygpu_textureformat.value_found),
+                                            usage,
+                                            static_cast<const float *>(data));
       }
       else {
-        tex = GPU_texture_create_cube(
-            name, size[0], 1, pygpu_textureformat.value_found, usage, data);
+        tex = GPU_texture_create_cube(name,
+                                      size[0],
+                                      1,
+                                      eGPUTextureFormat(pygpu_textureformat.value_found),
+                                      usage,
+                                      static_cast<const float *>(data));
       }
     }
     else if (layers) {
       if (len == 2) {
-        tex = GPU_texture_create_2d_array(
-            name, size[0], size[1], layers, 1, pygpu_textureformat.value_found, usage, data);
+        tex = GPU_texture_create_2d_array(name,
+                                          size[0],
+                                          size[1],
+                                          layers,
+                                          1,
+                                          eGPUTextureFormat(pygpu_textureformat.value_found),
+                                          usage,
+                                          static_cast<const float *>(data));
       }
       else {
-        tex = GPU_texture_create_1d_array(
-            name, size[0], layers, 1, pygpu_textureformat.value_found, usage, data);
+        tex = GPU_texture_create_1d_array(name,
+                                          size[0],
+                                          layers,
+                                          1,
+                                          eGPUTextureFormat(pygpu_textureformat.value_found),
+                                          usage,
+                                          static_cast<const float *>(data));
       }
     }
     else if (len == 3) {
-      tex = GPU_texture_create_3d(
-          name, size[0], size[1], size[2], 1, pygpu_textureformat.value_found, usage, data);
+      tex = GPU_texture_create_3d(name,
+                                  size[0],
+                                  size[1],
+                                  size[2],
+                                  1,
+                                  eGPUTextureFormat(pygpu_textureformat.value_found),
+                                  usage,
+                                  data);
     }
     else if (len == 2) {
-      tex = GPU_texture_create_2d(
-          name, size[0], size[1], 1, pygpu_textureformat.value_found, usage, data);
+      tex = GPU_texture_create_2d(name,
+                                  size[0],
+                                  size[1],
+                                  1,
+                                  eGPUTextureFormat(pygpu_textureformat.value_found),
+                                  usage,
+                                  static_cast<const float *>(data));
     }
     else {
-      tex = GPU_texture_create_1d(name, size[0], 1, pygpu_textureformat.value_found, usage, data);
+      tex = GPU_texture_create_1d(name,
+                                  size[0],
+                                  1,
+                                  eGPUTextureFormat(pygpu_textureformat.value_found),
+                                  usage,
+                                  static_cast<const float *>(data));
     }
   }
 
-  if (tex == NULL) {
+  if (tex == nullptr) {
     PyErr_Format(PyExc_RuntimeError, "gpu.texture.new(...) failed with '%s'", err_out);
-    return NULL;
+    return nullptr;
   }
 
   return BPyGPUTexture_CreatePyObject(tex, false);
 }
 
 PyDoc_STRVAR(pygpu_texture_width_doc, "Width of the texture.\n\n:type: `int`");
-static PyObject *pygpu_texture_width_get(BPyGPUTexture *self, void *UNUSED(type))
+static PyObject *pygpu_texture_width_get(BPyGPUTexture *self, void * /*type*/)
 {
   BPYGPU_TEXTURE_CHECK_OBJ(self);
   return PyLong_FromLong(GPU_texture_width(self->tex));
 }
 
 PyDoc_STRVAR(pygpu_texture_height_doc, "Height of the texture.\n\n:type: `int`");
-static PyObject *pygpu_texture_height_get(BPyGPUTexture *self, void *UNUSED(type))
+static PyObject *pygpu_texture_height_get(BPyGPUTexture *self, void * /*type*/)
 {
   BPYGPU_TEXTURE_CHECK_OBJ(self);
   return PyLong_FromLong(GPU_texture_height(self->tex));
 }
 
 PyDoc_STRVAR(pygpu_texture_format_doc, "Format of the texture.\n\n:type: `str`");
-static PyObject *pygpu_texture_format_get(BPyGPUTexture *self, void *UNUSED(type))
+static PyObject *pygpu_texture_format_get(BPyGPUTexture *self, void * /*type*/)
 {
   BPYGPU_TEXTURE_CHECK_OBJ(self);
   eGPUTextureFormat format = GPU_texture_format(self->tex);
@@ -294,7 +331,7 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
 
   PyObject *py_values;
 
-  static const char *_keywords[] = {"format", "value", NULL};
+  static const char *_keywords[] = {"format", "value", nullptr};
   static _PyArg_Parser _parser = {
       "$"  /* Keyword only arguments. */
       "O&" /* `format` */
@@ -306,24 +343,24 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, PyC_ParseStringEnum, &pygpu_dataformat, &py_values))
   {
-    return NULL;
+    return nullptr;
   }
 
   int shape = PySequence_Size(py_values);
   if (shape == -1) {
-    return NULL;
+    return nullptr;
   }
 
   if (shape > 4) {
     PyErr_SetString(PyExc_AttributeError, "too many dimensions, max is 4");
-    return NULL;
+    return nullptr;
   }
 
   if (shape != 1 && ELEM(pygpu_dataformat.value_found, GPU_DATA_UINT_24_8, GPU_DATA_10_11_11_REV))
   {
     PyErr_SetString(PyExc_AttributeError,
                     "`UINT_24_8` and `10_11_11_REV` only support single values");
-    return NULL;
+    return nullptr;
   }
 
   memset(&values, 0, sizeof(values));
@@ -335,7 +372,7 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
                   (pygpu_dataformat.value_found == GPU_DATA_FLOAT) ? &PyFloat_Type : &PyLong_Type,
                   "clear") == -1)
   {
-    return NULL;
+    return nullptr;
   }
 
   if (pygpu_dataformat.value_found == GPU_DATA_UBYTE) {
@@ -346,7 +383,7 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
     values.c[3] = values.i[3];
   }
 
-  GPU_texture_clear(self->tex, pygpu_dataformat.value_found, &values);
+  GPU_texture_clear(self->tex, eGPUDataFormat(pygpu_dataformat.value_found), &values);
   Py_RETURN_NONE;
 }
 
@@ -401,7 +438,7 @@ static PyObject *pygpu_texture_read(BPyGPUTexture *self)
   void *buf = GPU_texture_read(self->tex, best_data_format, 0);
   const Py_ssize_t shape[3] = {GPU_texture_height(self->tex),
                                GPU_texture_width(self->tex),
-                               GPU_texture_component_len(tex_format)};
+                               Py_ssize_t(GPU_texture_component_len(tex_format))};
 
   int shape_len = (shape[2] == 1) ? 2 : 3;
   return (PyObject *)BPyGPU_Buffer_CreatePyObject(best_data_format, shape, shape_len, buf);
@@ -418,7 +455,7 @@ static PyObject *pygpu_texture_free(BPyGPUTexture *self)
   BPYGPU_TEXTURE_CHECK_OBJ(self);
 
   GPU_texture_free(self->tex);
-  self->tex = NULL;
+  self->tex = nullptr;
   Py_RETURN_NONE;
 }
 #endif
@@ -427,7 +464,7 @@ static void BPyGPUTexture__tp_dealloc(BPyGPUTexture *self)
 {
   if (self->tex) {
 #ifndef GPU_NO_USE_PY_REFERENCES
-    GPU_texture_py_reference_set(self->tex, NULL);
+    GPU_texture_py_reference_set(self->tex, nullptr);
 #endif
     GPU_texture_free(self->tex);
   }
@@ -435,10 +472,18 @@ static void BPyGPUTexture__tp_dealloc(BPyGPUTexture *self)
 }
 
 static PyGetSetDef pygpu_texture__tp_getseters[] = {
-    {"width", (getter)pygpu_texture_width_get, (setter)NULL, pygpu_texture_width_doc, NULL},
-    {"height", (getter)pygpu_texture_height_get, (setter)NULL, pygpu_texture_height_doc, NULL},
-    {"format", (getter)pygpu_texture_format_get, (setter)NULL, pygpu_texture_format_doc, NULL},
-    {NULL, NULL, NULL, NULL, NULL} /* Sentinel */
+    {"width", (getter)pygpu_texture_width_get, (setter) nullptr, pygpu_texture_width_doc, nullptr},
+    {"height",
+     (getter)pygpu_texture_height_get,
+     (setter) nullptr,
+     pygpu_texture_height_doc,
+     nullptr},
+    {"format",
+     (getter)pygpu_texture_format_get,
+     (setter) nullptr,
+     pygpu_texture_format_doc,
+     nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
 static PyMethodDef pygpu_texture__tp_methods[] = {
@@ -450,7 +495,7 @@ static PyMethodDef pygpu_texture__tp_methods[] = {
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
     {"free", (PyCFunction)pygpu_texture_free, METH_NOARGS, pygpu_texture_free_doc},
 #endif
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(
@@ -514,55 +559,55 @@ PyDoc_STRVAR(
     "   :arg data: Buffer object to fill the texture.\n"
     "   :type data: :class:`gpu.types.Buffer`\n");
 PyTypeObject BPyGPUTexture_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUTexture",
     /*tp_basicsize*/ sizeof(BPyGPUTexture),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)BPyGPUTexture__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ pygpu_texture__tp_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
     /*tp_methods*/ pygpu_texture__tp_methods,
-    /*tp_members*/ NULL,
+    /*tp_members*/ nullptr,
     /*tp_getset*/ pygpu_texture__tp_getseters,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_texture__tp_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
@@ -583,23 +628,23 @@ PyDoc_STRVAR(pygpu_texture_from_image_doc,
              "   :type image: :class:`bpy.types.Image`\n"
              "   :return: The GPUTexture used by the image.\n"
              "   :rtype: :class:`gpu.types.GPUTexture`\n");
-static PyObject *pygpu_texture_from_image(PyObject *UNUSED(self), PyObject *arg)
+static PyObject *pygpu_texture_from_image(PyObject * /*self*/, PyObject *arg)
 {
-  Image *ima = PyC_RNA_AsPointer(arg, "Image");
-  if (ima == NULL) {
-    return NULL;
+  Image *ima = static_cast<Image *>(PyC_RNA_AsPointer(arg, "Image"));
+  if (ima == nullptr) {
+    return nullptr;
   }
 
   ImageUser iuser;
   BKE_imageuser_default(&iuser);
-  GPUTexture *tex = BKE_image_get_gpu_texture(ima, &iuser, NULL);
+  GPUTexture *tex = BKE_image_get_gpu_texture(ima, &iuser, nullptr);
 
   return BPyGPUTexture_CreatePyObject(tex, true);
 }
 
 static PyMethodDef pygpu_texture__m_methods[] = {
     {"from_image", (PyCFunction)pygpu_texture_from_image, METH_O, pygpu_texture_from_image_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(pygpu_texture__m_doc, "This module provides utils for textures.");
@@ -609,10 +654,10 @@ static PyModuleDef pygpu_texture_module_def = {
     /*m_doc*/ pygpu_texture__m_doc,
     /*m_size*/ 0,
     /*m_methods*/ pygpu_texture__m_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 /** \} */
@@ -624,7 +669,7 @@ static PyModuleDef pygpu_texture_module_def = {
 int bpygpu_ParseTexture(PyObject *o, void *p)
 {
   if (o == Py_None) {
-    *(GPUTexture **)p = NULL;
+    *(GPUTexture **)p = nullptr;
     return 1;
   }
 
@@ -679,7 +724,7 @@ PyObject *BPyGPUTexture_CreatePyObject(GPUTexture *tex, bool shared_reference)
   self->tex = tex;
 
 #ifndef GPU_NO_USE_PY_REFERENCES
-  BLI_assert(GPU_texture_py_reference_get(tex) == NULL);
+  BLI_assert(GPU_texture_py_reference_get(tex) == nullptr);
   GPU_texture_py_reference_set(tex, (void **)&self->tex);
 #endif
 
