@@ -481,9 +481,11 @@ enum {
   WALK_CONFIRM = 2,
 };
 
-/* Keep the previous speed until user changes preferences. */
+/* Keep the previous speed and jump height until user changes preferences. */
 static float base_speed = -1.0f;
 static float userdef_speed = -1.0f;
+static float jump_height = -1.0f;
+static float userdef_jump_height = -1.0f;
 
 static bool initWalkInfo(bContext *C, WalkInfo *walk, wmOperator *op, const int mval[2])
 {
@@ -531,6 +533,13 @@ static bool initWalkInfo(bContext *C, WalkInfo *walk, wmOperator *op, const int 
     userdef_speed = U.walk_navigation.walk_speed;
   }
 
+  if (fabsf(U.walk_navigation.jump_height - userdef_jump_height) > 0.1f) {
+    jump_height = U.walk_navigation.jump_height;
+    userdef_jump_height = U.walk_navigation.jump_height;
+  }
+
+  walk->jump_height = 0.0f;
+  
   walk->speed = 0.0f;
   walk->is_fast = false;
   walk->is_slow = false;
@@ -907,16 +916,10 @@ static void walkEvent(WalkInfo *walk, const wmEvent *event)
 #define JUMP_HEIGHT_MAX 10.0f
 
       case WALK_MODAL_INCREASE_JUMP:
-        walk->jump_height *= JUMP_HEIGHT_FACTOR;
-        if (walk->jump_height > JUMP_HEIGHT_MAX) {
-          walk->jump_height = JUMP_HEIGHT_MAX;
-        }
+        jump_height = min_ff(jump_height * JUMP_HEIGHT_FACTOR, JUMP_HEIGHT_MAX);
         break;
       case WALK_MODAL_DECREASE_JUMP:
-        walk->jump_height /= JUMP_HEIGHT_FACTOR;
-        if (walk->jump_height < JUMP_HEIGHT_MIN) {
-          walk->jump_height = JUMP_HEIGHT_MIN;
-        }
+        jump_height = max_ff(jump_height / JUMP_HEIGHT_FACTOR, JUMP_HEIGHT_MIN);
         break;
 
 #undef JUMP_HEIGHT_FACTOR
@@ -960,6 +963,7 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
 #define WALK_TOP_LIMIT DEG2RADF(85.0f)
 #define WALK_BOTTOM_LIMIT DEG2RADF(-80.0f)
 #define WALK_MOVE_SPEED base_speed
+#define WALK_JUMP_HEIGHT jump_height
 #define WALK_BOOST_FACTOR ((void)0, walk->speed_factor)
 #define WALK_ZUP_CORRECT_FAC 0.1f    /* Amount to correct per step. */
 #define WALK_ZUP_CORRECT_ACCEL 0.05f /* Increase upright momentum each step. */
@@ -993,6 +997,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
     /* revert mouse */
     if (walk->is_reversed) {
       moffset[1] = -moffset[1];
+    }
+
+    /* update jump height */
+    if(walk->gravity_state != WALK_GRAVITY_STATE_JUMP) {
+        walk->jump_height = WALK_JUMP_HEIGHT;
     }
 
     /* Should we redraw? */
@@ -1346,6 +1355,7 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
 #undef WALK_TOP_LIMIT
 #undef WALK_BOTTOM_LIMIT
 #undef WALK_MOVE_SPEED
+#undef WALK_JUMP_HEIGHT
 #undef WALK_BOOST_FACTOR
 }
 
