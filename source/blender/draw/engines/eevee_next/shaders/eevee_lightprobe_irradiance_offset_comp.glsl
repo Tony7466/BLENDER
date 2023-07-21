@@ -104,7 +104,7 @@ float compute_offset_length(ivec3 grid_coord, vec3 P, vec3 offset_direction)
   if (has_neighbor_pos && has_neighbor_neg) {
     /* If both sides have neighbors. */
     bool is_front_facing_pos = dot(offset_direction, surfel_buf[surfel_pos].normal) < 0.0;
-    bool is_front_facing_neg = dot(offset_direction, surfel_buf[surfel_neg].normal) < 0.0;
+    bool is_front_facing_neg = dot(-offset_direction, surfel_buf[surfel_neg].normal) < 0.0;
     if (is_front_facing_pos && is_front_facing_neg) {
       /* If both sides have same facing. */
       if (is_front_facing_pos) {
@@ -142,7 +142,8 @@ float compute_offset_length(ivec3 grid_coord, vec3 P, vec3 offset_direction)
     /* Only one side have neighbor. */
     int nearest_surfel_id = has_neighbor_pos ? surfel_pos : surfel_neg;
     float surfel_distance = has_neighbor_pos ? surfel_distance_pos : surfel_distance_neg;
-    bool is_front_facing = dot(offset_direction, surfel_buf[nearest_surfel_id].normal) < 0.0;
+    bool is_front_facing = dot(has_neighbor_pos ? offset_direction : -offset_direction,
+                               surfel_buf[nearest_surfel_id].normal) < 0.0;
     if (is_front_facing) {
       return front_facing_offset(surfel_distance);
     }
@@ -176,10 +177,10 @@ void main()
   /* Offset direction towards the sampling point. */
   // vec3 offset_direction = safe_normalize(surfel_buf[closest_surfel_id].position - P);
   /* NOTE: Use normal direction of the surfel instead for stability reasons. */
-  vec3 offset_direction = -surfel_buf[closest_surfel_id].normal;
+  vec3 offset_direction = surfel_buf[closest_surfel_id].normal;
   bool is_front_facing = dot(surfel_buf[closest_surfel_id].position - P,
                              surfel_buf[closest_surfel_id].normal) < 0.0;
-  if (!is_front_facing) {
+  if (is_front_facing) {
     offset_direction = -offset_direction;
   }
 
