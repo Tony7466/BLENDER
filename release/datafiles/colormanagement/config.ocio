@@ -43,33 +43,33 @@ displays:
     - !<View> {name: AgX, colorspace: AgX Base sRGB}
     - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: AgX Log,colorspace: AgX Log}
-    - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: AgX False Color, colorspace: AgX False Color BT.709}
     - !<View> {name: Standard, colorspace: sRGB}
     - !<View> {name: None, colorspace: Non-Color}
   Display P3:
     - !<View> {name: Guard Rail, colorspace: Guard Rail P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
     - !<View> {name: AgX Log,colorspace: AgX Log}
-    - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: AgX False Color, colorspace: AgX False Color P3}
     - !<View> {name: Standard, colorspace: Display P3}
     - !<View> {name: None, colorspace: Non-Color}
   BT.1886:
     - !<View> {name: Guard Rail, colorspace: Guard Rail BT.1886}
     - !<View> {name: AgX, colorspace: AgX Base BT.1886}
     - !<View> {name: AgX Log,colorspace: AgX Log}
-    - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: AgX False Color, colorspace: AgX False Color BT.709}
     - !<View> {name: Standard, colorspace: BT.1886}
     - !<View> {name: None, colorspace: Non-Color}
   BT.2020:
     - !<View> {name: Guard Rail, colorspace: Guard Rail BT.2020}
     - !<View> {name: AgX, colorspace: AgX Base BT.2020}
     - !<View> {name: AgX Log,colorspace: AgX Log}
-    - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: AgX False Color, colorspace: AgX False Color BT.2020}
     - !<View> {name: Standard, colorspace: BT.2020}
     - !<View> {name: None, colorspace: Non-Color}
 active_displays: []
 active_views: []
-inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard Rail BT.2020, Luminance Compensation BT.2020, Luminance Compensation P3, Luminance Compensation sRGB, Display P3 I-E, sRGB I-E, BT.2020 I-E, AgX False Color]
+inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard Rail BT.2020, Luminance Compensation BT.2020, Luminance Compensation P3, Luminance Compensation sRGB, Display P3 I-E, sRGB I-E, BT.2020 I-E, AgX False Color BT.709, AgX False Color P3, AgX False Color BT.2020]
 
 looks:
   - !<Look>
@@ -598,7 +598,7 @@ colorspaces:
         - !<ColorSpaceTransform> {src: AgX Base BT.2020, dst: Linear CIE-XYZ I-E}
 
   - !<ColorSpace>
-    name: AgX False Color
+    name: AgX False Color BT.709
     aliases: [False Colour]
     family: Imagery
     equalitygroup:
@@ -613,6 +613,34 @@ colorspaces:
         - !<MatrixTransform> {matrix: [0.2658180370250449, 0.59846986045365, 0.1357121025213052, 0, 0.2658180370250449, 0.59846986045365, 0.1357121025213052, 0, 0.2658180370250449, 0.59846986045365, 0.1357121025213052, 0, 0, 0, 0, 1]}
         - !<ExponentTransform> {value: 2.5, direction: inverse}
         - !<FileTransform> {src: AgX_False_Color.spi1d, interpolation: best}
+
+  - !<ColorSpace>
+    name: AgX False Color P3
+    aliases: []
+    family: Imagery
+    equalitygroup:
+    bitdepth: unknown
+    description: |
+      AgX false color heat map for P3 display
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: AgX False Color BT.709}
+        - !<ColorSpaceTransform> {src: sRGB, dst: Display P3}
+
+  - !<ColorSpace>
+    name: AgX False Color BT.2020
+    aliases: []
+    family: Imagery
+    equalitygroup:
+    bitdepth: unknown
+    description: |
+      AgX false color heat map for BT.2020 display
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: AgX False Color BT.709}
+        - !<ColorSpaceTransform> {src: BT.1886, dst: BT.2020}
 
   - !<ColorSpace>
     name: sRGB
