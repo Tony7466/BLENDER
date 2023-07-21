@@ -462,38 +462,20 @@ struct EraseOperationExecutor {
     IndexMask strokes_to_remove = IndexMask::from_predicate(
         src.curves_range(), GrainSize(256), memory, [&](const int64_t src_curve) {
           const IndexRange src_curve_points = src_points_by_curve[src_curve];
-          BLI_assert(src_curve_points.size() > 0);
 
-          /* If any segment of the stroke intersects the eraser, then remove it. */
+          /* If any segment of the stroke is closer to the eraser than its radius, then remove the
+           * stroke. */
           for (const int src_point : src_curve_points.drop_back(1)) {
-            float mu0;
-            float mu1;
-            if (intersections_with_segment(screen_space_positions[src_point],
-                                           screen_space_positions[src_point + 1],
-                                           mu0,
-                                           mu1) > 0)
-            {
+            const float dist_to_eraser = dist_to_line_segment_v2(
+                this->mouse_position,
+                screen_space_positions[src_point],
+                screen_space_positions[src_point + 1]);
+            if (dist_to_eraser < this->eraser_radius) {
               return true;
             }
           }
 
-          /* For cyclic curves, check for intersections with the closing segment. */
-          if (src_cyclic[src_curve]) {
-            float mu0;
-            float mu1;
-            if (intersections_with_segment(screen_space_positions[src_curve_points.last()],
-                                           screen_space_positions[src_curve_points.first()],
-                                           mu0,
-                                           mu1) > 0)
-            {
-              return true;
-            }
-          }
-
-          /* If there is no intersection with the stroke path, then either all points lie inside
-           * the eraser, or none of them. Thus, checking for the first point should be enough.
-           */
-          return contains_point(screen_space_positions[src_curve_points.first()]);
+          return false;
         });
 
     if (strokes_to_remove.size() == 0) {
