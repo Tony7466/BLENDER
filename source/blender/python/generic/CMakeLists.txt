@@ -20,7 +20,7 @@ set(SRC
   blf_py_api.cc
   bpy_threads.cc
   idprop_py_api.cc
-  idprop_py_ui_api.c
+  idprop_py_ui_api.cc
   imbuf_py_api.c
   py_capi_rna.c
   py_capi_utils.c
