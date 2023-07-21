@@ -12,7 +12,7 @@ if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
 endif()
 
-# files rna_access.cc rna_define.cc makesrna.c intentionally excluded.
+# files rna_access.cc rna_define.cc makesrna.cc intentionally excluded.
 set(DEFSRC
   rna_ID.cc
   rna_action.cc
@@ -198,7 +198,7 @@ set(SRC_RNA_INC
 )
 
 set(SRC
-  makesrna.c
+  makesrna.cc
   rna_define.cc
   ${DEFSRC}
   ${APISRC}
