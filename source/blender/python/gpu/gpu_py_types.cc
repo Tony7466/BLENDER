@@ -23,13 +23,13 @@
 static PyModuleDef pygpu_types_module_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu.types",
-    /*m_doc*/ NULL,
+    /*m_doc*/ nullptr,
     /*m_size*/ 0,
-    /*m_methods*/ NULL,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_methods*/ nullptr,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *bpygpu_types_init(void)
@@ -39,40 +39,40 @@ PyObject *bpygpu_types_init(void)
   submodule = bpygpu_create_module(&pygpu_types_module_def);
 
   if (bpygpu_finalize_type(&BPyGPU_BufferType) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUVertFormat_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUVertBuf_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUIndexBuf_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUBatch_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUOffScreen_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUShader_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUTexture_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUFrameBuffer_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUUniformBuf_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUShaderCreateInfo_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
   if (bpygpu_finalize_type(&BPyGPUStageInterfaceInfo_Type) < 0) {
-    return NULL;
+    return nullptr;
   }
 
   PyModule_AddType(submodule, &BPyGPU_BufferType);
