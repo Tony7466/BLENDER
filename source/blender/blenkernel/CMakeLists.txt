@@ -73,6 +73,8 @@ set(SRC
   intern/attribute_math.cc
   intern/autoexec.cc
   intern/bake_items.cc
+  intern/bake_items_serialize.cc
+  intern/bake_items_socket.cc
   intern/blender.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc
@@ -330,6 +332,7 @@ set(SRC
   BKE_bake_geometry_nodes.hh
   BKE_bake_items.hh
   BKE_bake_items_serialize.hh
+  BKE_bake_items_socket.hh
   BKE_blender.h
   BKE_blender_copybuffer.h
   BKE_blender_undo.h
