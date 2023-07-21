@@ -21,8 +21,8 @@
     .grid_resolution_y = 4, \
     .grid_resolution_z = 4, \
     .grid_bake_samples = 2048, \
-    .grid_min_distance_to_surface = 0.05, \
-    .grid_max_capture_offset = 0.1, \
+    .grid_surface_bias = 0.05, \
+    .grid_escape_bias = 0.1, \
     .grid_normal_bias = 0.3f, \
     .grid_view_bias = 0.0f, \
     .grid_facing_bias = 0.5f, \

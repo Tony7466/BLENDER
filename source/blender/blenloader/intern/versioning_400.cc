@@ -401,11 +401,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_min_distance_to_surface"))
-    {
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_surface_bias")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
-        lightprobe->grid_min_distance_to_surface = 0.05f;
-        lightprobe->grid_max_capture_offset = 0.1f;
+        lightprobe->grid_surface_bias = 0.05f;
+        lightprobe->grid_escape_bias = 0.1f;
       }
     }
 

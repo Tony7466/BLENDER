@@ -58,8 +58,8 @@ typedef struct LightProbe {
   /** Irradiance grid: number of directions to evaluate light transfer in. */
   int grid_bake_samples;
   /** Irradiance grid: Virtual offset parameters. */
-  float grid_min_distance_to_surface;
-  float grid_max_capture_offset;
+  float grid_surface_bias;
+  float grid_escape_bias;
   /** Irradiance grid: Sampling biases. */
   float grid_normal_bias;
   float grid_view_bias;

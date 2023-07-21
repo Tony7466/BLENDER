@@ -454,8 +454,8 @@ void IrradianceBake::init(const Object &probe_object)
 {
   const ::LightProbe *lightprobe = static_cast<::LightProbe *>(probe_object.data);
   surfel_density_ = lightprobe->surfel_density;
-  min_distance_to_surface_ = lightprobe->grid_min_distance_to_surface;
-  max_virtual_offset_ = lightprobe->grid_max_capture_offset;
+  min_distance_to_surface_ = lightprobe->grid_surface_bias;
+  max_virtual_offset_ = lightprobe->grid_escape_bias;
 }
 
 void IrradianceBake::sync()
