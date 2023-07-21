@@ -26,7 +26,7 @@
 /** \name IndexBuf Type
  * \{ */
 
-static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *args, PyObject *kwds)
+static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
   const char *error_prefix = "IndexBuf.__new__";
   bool ok = true;
@@ -38,7 +38,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
   uint index_len;
   GPUIndexBufBuilder builder;
 
-  static const char *_keywords[] = {"type", "seq", NULL};
+  static const char *_keywords[] = {"type", "seq", nullptr};
   static _PyArg_Parser _parser = {
       "$O" /* `type` */
       "&O" /* `seq` */
@@ -48,15 +48,15 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kwds, &_parser, PyC_ParseStringEnum, &prim_type, &seq)) {
-    return NULL;
+    return nullptr;
   }
 
-  verts_per_prim = GPU_indexbuf_primitive_len(prim_type.value_found);
+  verts_per_prim = GPU_indexbuf_primitive_len(GPUPrimType(prim_type.value_found));
   if (verts_per_prim == -1) {
     PyErr_Format(PyExc_ValueError,
                  "The argument 'type' must be "
                  "'POINTS', 'LINES', 'TRIS' or 'LINES_ADJ'");
-    return NULL;
+    return nullptr;
   }
 
   if (PyObject_CheckBuffer(seq)) {
@@ -64,13 +64,13 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
 
     if (PyObject_GetBuffer(seq, &pybuffer, PyBUF_FORMAT | PyBUF_ND) == -1) {
       /* PyObject_GetBuffer already handles error messages. */
-      return NULL;
+      return nullptr;
     }
 
     if (pybuffer.ndim != 1 && pybuffer.shape[1] != verts_per_prim) {
       PyErr_Format(PyExc_ValueError, "Each primitive must exactly %d indices", verts_per_prim);
       PyBuffer_Release(&pybuffer);
-      return NULL;
+      return nullptr;
     }
 
     if (pybuffer.itemsize != 4 ||
@@ -78,7 +78,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
     {
       PyErr_Format(PyExc_ValueError, "Each index must be an 4-bytes integer value");
       PyBuffer_Release(&pybuffer);
-      return NULL;
+      return nullptr;
     }
 
     index_len = pybuffer.shape[0];
@@ -89,9 +89,9 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
     /* The `vertex_len` parameter is only used for asserts in the Debug build. */
     /* Not very useful in python since scripts are often tested in Release build. */
     /* Use `INT_MAX` instead of the actual number of vertices. */
-    GPU_indexbuf_init(&builder, prim_type.value_found, index_len, INT_MAX);
+    GPU_indexbuf_init(&builder, GPUPrimType(prim_type.value_found), index_len, INT_MAX);
 
-    uint *buf = pybuffer.buf;
+    uint *buf = static_cast<uint *>(pybuffer.buf);
     for (uint i = index_len; i--; buf++) {
       GPU_indexbuf_add_generic_vert(&builder, *buf);
     }
@@ -101,8 +101,8 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
   else {
     PyObject *seq_fast = PySequence_Fast(seq, error_prefix);
 
-    if (seq_fast == NULL) {
-      return false;
+    if (seq_fast == nullptr) {
+      return nullptr;
     }
 
     const uint seq_len = PySequence_Fast_GET_SIZE(seq_fast);
@@ -114,7 +114,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
     /* The `vertex_len` parameter is only used for asserts in the Debug build. */
     /* Not very useful in python since scripts are often tested in Release build. */
     /* Use `INT_MAX` instead of the actual number of vertices. */
-    GPU_indexbuf_init(&builder, prim_type.value_found, index_len, INT_MAX);
+    GPU_indexbuf_init(&builder, GPUPrimType(prim_type.value_found), index_len, INT_MAX);
 
     if (verts_per_prim == 1) {
       for (uint i = 0; i < seq_len; i++) {
@@ -125,7 +125,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
       int values[4];
       for (uint i = 0; i < seq_len; i++) {
         PyObject *seq_fast_item = PySequence_Fast(seq_items[i], error_prefix);
-        if (seq_fast_item == NULL) {
+        if (seq_fast_item == nullptr) {
           PyErr_Format(PyExc_TypeError,
                        "%s: expected a sequence, got %s",
                        error_prefix,
@@ -161,7 +161,7 @@ static PyObject *pygpu_IndexBuf__tp_new(PyTypeObject *UNUSED(type), PyObject *ar
 
   if (ok == false) {
     MEM_freeN(builder.data);
-    return NULL;
+    return nullptr;
   }
 
   return BPyGPUIndexBuf_CreatePyObject(GPU_indexbuf_build(&builder));
@@ -186,55 +186,55 @@ PyDoc_STRVAR(pygpu_IndexBuf__tp_doc,
              "      Optionally the sequence can support the buffer protocol.\n"
              "   :type seq: 1D or 2D sequence\n");
 PyTypeObject BPyGPUIndexBuf_Type = {
-    /*ob_base*/ PyVarObject_HEAD_INIT(NULL, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUIndexBuf",
     /*tp_basicsize*/ sizeof(BPyGPUIndexBuf),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)pygpu_IndexBuf__tp_dealloc,
     /*tp_vectorcall_offset*/ 0,
-    /*tp_getattr*/ NULL,
-    /*tp_setattr*/ NULL,
-    /*tp_as_async*/ NULL,
-    /*tp_repr*/ NULL,
-    /*tp_as_number*/ NULL,
-    /*tp_as_sequence*/ NULL,
-    /*tp_as_mapping*/ NULL,
-    /*tp_hash*/ NULL,
-    /*tp_call*/ NULL,
-    /*tp_str*/ NULL,
-    /*tp_getattro*/ NULL,
-    /*tp_setattro*/ NULL,
-    /*tp_as_buffer*/ NULL,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
     /*tp_flags*/ Py_TPFLAGS_DEFAULT,
     /*tp_doc*/ pygpu_IndexBuf__tp_doc,
-    /*tp_traverse*/ NULL,
-    /*tp_clear*/ NULL,
-    /*tp_richcompare*/ NULL,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
     /*tp_weaklistoffset*/ 0,
-    /*tp_iter*/ NULL,
-    /*tp_iternext*/ NULL,
-    /*tp_methods*/ NULL,
-    /*tp_members*/ NULL,
-    /*tp_getset*/ NULL,
-    /*tp_base*/ NULL,
-    /*tp_dict*/ NULL,
-    /*tp_descr_get*/ NULL,
-    /*tp_descr_set*/ NULL,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ nullptr,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
     /*tp_dictoffset*/ 0,
-    /*tp_init*/ NULL,
-    /*tp_alloc*/ NULL,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
     /*tp_new*/ pygpu_IndexBuf__tp_new,
-    /*tp_free*/ NULL,
-    /*tp_is_gc*/ NULL,
-    /*tp_bases*/ NULL,
-    /*tp_mro*/ NULL,
-    /*tp_cache*/ NULL,
-    /*tp_subclasses*/ NULL,
-    /*tp_weaklist*/ NULL,
-    /*tp_del*/ NULL,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
     /*tp_version_tag*/ 0,
-    /*tp_finalize*/ NULL,
-    /*tp_vectorcall*/ NULL,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
 };
 
 /** \} */
