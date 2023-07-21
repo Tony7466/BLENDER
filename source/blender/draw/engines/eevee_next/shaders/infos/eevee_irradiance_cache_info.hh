@@ -143,10 +143,7 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_offset)
     .local_group_size(IRRADIANCE_GRID_GROUP_SIZE,
                       IRRADIANCE_GRID_GROUP_SIZE,
                       IRRADIANCE_GRID_GROUP_SIZE)
-    .additional_info("eevee_shared",
-                     "eevee_surfel_common",
-                     "eevee_reflection_probe_data",
-                     "draw_view")
+    .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
     .storage_buf(0, Qualifier::READ, "int", "list_start_buf[]")
     .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
     .image(0, GPU_R32I, Qualifier::READ, ImageType::INT_3D, "cluster_list_img")

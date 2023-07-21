@@ -911,7 +911,8 @@ struct CaptureInfoData {
   float min_distance_to_surface;
   /** Maximum world scale offset an irradiance grid sample can be baked with. */
   float max_virtual_offset;
-  int _pad2;
+  /** Radius of surfels. */
+  float surfel_radius;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 

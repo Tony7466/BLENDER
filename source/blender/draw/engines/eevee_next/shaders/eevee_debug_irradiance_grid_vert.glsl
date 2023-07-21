@@ -6,9 +6,10 @@ void main()
 {
   ivec3 grid_resolution = textureSize(debug_data_tx, 0);
   ivec3 grid_sample;
-  grid_sample.x = (gl_VertexID % grid_resolution.x);
-  grid_sample.y = (gl_VertexID / grid_resolution.x) % grid_resolution.y;
-  grid_sample.z = (gl_VertexID / (grid_resolution.x * grid_resolution.y));
+  int sample_id = gl_VertexID / 2;
+  grid_sample.x = (sample_id % grid_resolution.x);
+  grid_sample.y = (sample_id / grid_resolution.x) % grid_resolution.y;
+  grid_sample.z = (sample_id / (grid_resolution.x * grid_resolution.y));
 
   vec3 P = lightprobe_irradiance_grid_sample_position(grid_mat, grid_resolution, grid_sample);
 
@@ -20,7 +21,10 @@ void main()
       gl_PointSize = 0.0;
       return;
     }
-    P += debug_data.xyz;
+
+    if ((gl_VertexID & 1) == 1) {
+      P += debug_data.xyz;
+    }
   }
 
   gl_Position = point_world_to_ndc(P);

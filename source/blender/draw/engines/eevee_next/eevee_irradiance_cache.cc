@@ -357,14 +357,12 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 
         float4 *data = (float4 *)cache->baking.virtual_offset;
 
-        std::cout << *data << std::endl;
-
         Texture debug_data_tx = {"debug_data_tx"};
         debug_data_tx.ensure_3d(
             GPU_RGBA16F, grid_size, GPU_TEXTURE_USAGE_SHADER_READ, (float *)data);
 
         debug_ps_.bind_texture("debug_data_tx", debug_data_tx);
-        debug_ps_.draw_procedural(GPU_PRIM_POINTS, 1, grid_size.x * grid_size.y * grid_size.z);
+        debug_ps_.draw_procedural(GPU_PRIM_LINES, 1, grid_size.x * grid_size.y * grid_size.z * 2);
 
         inst_.manager->submit(debug_ps_, view);
         break;
@@ -608,15 +606,12 @@ void IrradianceBake::surfels_create(const Object &probe_object)
 
   capture_info_buf_.min_distance_to_surface = min_distance_to_surface_;
   capture_info_buf_.max_virtual_offset = max_virtual_offset_;
+  capture_info_buf_.surfel_radius = 0.5f / lightprobe->surfel_density;
   /* Make virtual offset distances scale relative. */
-  float3 scale = math::to_scale(grid_local_to_world);
+  float3 scale = math::to_scale(grid_local_to_world) / float3(grid_resolution);
   float min_distance_between_grid_samples = min_fff(UNPACK3(scale));
   capture_info_buf_.min_distance_to_surface *= min_distance_between_grid_samples;
   capture_info_buf_.max_virtual_offset *= min_distance_between_grid_samples;
-
-  std::cout << "min_distance_to_surface " << capture_info_buf_.min_distance_to_surface
-            << std::endl;
-  std::cout << "max_virtual_offset " << capture_info_buf_.max_virtual_offset << std::endl;
 
   eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                    GPU_TEXTURE_USAGE_HOST_READ;
