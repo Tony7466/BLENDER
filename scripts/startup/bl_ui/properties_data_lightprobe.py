@@ -113,6 +113,12 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.prop(probe, "grid_max_capture_offset")
             col.prop(probe, "surfel_density")
 
+            col.separator()
+
+            col.prop(probe, "grid_normal_bias")
+            col.prop(probe, "grid_view_bias")
+            col.prop(probe, "grid_irradiance_smoothing")
+
         elif probe.type == 'CUBEMAP':
             col = layout.column()
             col.prop(probe, "resolution")
