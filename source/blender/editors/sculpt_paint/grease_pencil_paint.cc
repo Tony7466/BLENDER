@@ -342,7 +342,6 @@ void PaintOperation::on_stroke_done(const bContext &C)
   Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
-  GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
 
   /* No stroke to create, return. */
   if (stroke_cache_->size == 0) {
