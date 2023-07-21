@@ -120,7 +120,7 @@ void gaussian_blur_1D(const GSpan src,
 
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,
-                                       FunctionRef<float(IndexRange, int64_t)> dist_function,
+                                       FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
                                        MutableSpan<bool> dst);
 
 }  // namespace blender::ed::greasepencil
