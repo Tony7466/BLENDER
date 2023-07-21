@@ -53,6 +53,7 @@
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
  * \{ */
+using NodeSocketPair = std::pair<bNode *, bNodeSocket *>;
 
 struct ShaderNodesPreviewJob {
   NestedNodePreviewMap *ng_data;
@@ -64,6 +65,8 @@ struct ShaderNodesPreviewJob {
   bool *do_update;
 
   Material *mat_copy;
+  bNode *mat_output_copy;
+  NodeSocketPair mat_displacement_copy;
   ListBase treepath_copy;
   blender::Vector<bNode *> AOV_nodes;
   blender::Vector<bNode *> shader_nodes;
@@ -319,18 +322,20 @@ static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &tre
     bNodeTree *nested_nt = path->nodetree;
     bNode *output_node = nullptr;
     for (bNode *iter_node : nested_nt->all_nodes()) {
-      if (iter_node->type == NODE_GROUP_OUTPUT) {
+      if (iter_node->is_group_output() && iter_node->flag & NODE_DO_OUTPUT) {
         output_node = iter_node;
         break;
       }
     }
     if (output_node == nullptr) {
       output_node = nodeAddStaticNode(nullptr, nested_nt, NODE_GROUP_OUTPUT);
+      output_node->flag |= NODE_DO_OUTPUT;
     }
 
-    ntreeAddSocketInterface(nested_nt, SOCK_OUT, nested_socket->idname, __func__);
+    ntreeAddSocketInterface(nested_nt, SOCK_OUT, nested_socket->idname, nested_node->name);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
-    bNodeSocket *out_socket = blender::bke::node_find_enabled_input_socket(*output_node, __func__);
+    bNodeSocket *out_socket = blender::bke::node_find_enabled_input_socket(*output_node,
+                                                                           nested_node->name);
 
     nodeAddLink(nested_nt, nested_node, nested_socket, output_node, out_socket);
 
@@ -352,37 +357,21 @@ static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &tre
 
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
  * should be the path to the node's nodetree */
-static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepath, bNode *node)
+static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepath,
+                                           bNode *node,
+                                           bNode *output_node)
 {
-  bNode *output_node = nullptr;
   bNodeSocket *out_surface_socket = nullptr;
   bNodeTree *main_nt = treepath.first()->nodetree;
   bNodeSocket *node_preview_socket = node_find_preview_socket(node);
   if (node_preview_socket == nullptr) {
     return;
   }
-  { /* Ensure output is usable. */
-    for (bNode *node : main_nt->all_nodes()) {
-      if (node->type == SH_NODE_OUTPUT_MATERIAL && node->flag & NODE_ACTIVE) {
-        output_node = node;
-        break;
-      }
-    }
-    if (output_node == nullptr) {
-      output_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_MATERIAL);
-      nodeSetActive(main_nt, output_node);
-    }
-
-    out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
-    /* If the node is already connected to the Surface output, then don't rewire it. */
-    if (out_surface_socket->link) {
-      if (out_surface_socket->link->fromsock == node_preview_socket) {
-        return;
-      }
-
-      /* make sure no node is already wired to the output before wiring */
-      nodeRemLink(main_nt, out_surface_socket->link);
-    }
+  /* Ensure output is usable. */
+  out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
+  if (out_surface_socket->link) {
+    /* make sure no node is already wired to the output before wiring */
+    nodeRemLink(main_nt, out_surface_socket->link);
   }
 
   connect_nested_node_to_node(
@@ -437,7 +426,16 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
     return job_data->AOV_nodes.size() > 0 && !vl->prev;
   }
   Vector<const bNodeTreePath *> treepath = job_data->treepath_copy;
-  connect_node_to_surface_output(treepath, node);
+  bNodeSocket *displacement_socket = nodeFindSocket(
+      job_data->mat_output_copy, SOCK_IN, "Displacement");
+  if (job_data->mat_displacement_copy.first != nullptr && displacement_socket->link == nullptr) {
+    nodeAddLink(treepath.first()->nodetree,
+                job_data->mat_displacement_copy.first,
+                job_data->mat_displacement_copy.second,
+                job_data->mat_output_copy,
+                displacement_socket);
+  }
+  connect_node_to_surface_output(treepath, node, job_data->mat_output_copy);
   return true;
 }
 
@@ -455,24 +453,20 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   if (sce == nullptr) {
     return;
   }
-
   Vector<const bNodeTreePath *> treepath = job_data.treepath_copy;
-  { /* Disconnect everything from the material output. */
-    bNode *output_node = nullptr;
-    for (bNode *node : treepath.first()->nodetree->all_nodes()) {
-      if (node->type == SH_NODE_OUTPUT_MATERIAL && node->flag & NODE_ACTIVE) {
-        output_node = node;
-        break;
-      }
-    }
-    if (output_node != nullptr) {
-      LISTBASE_FOREACH (bNodeSocket *, sock, &output_node->inputs) {
-        if (sock->link) {
-          nodeRemLink(treepath.first()->nodetree, sock->link);
-        }
-      }
-    }
+
+  /* Disconnect shader and displacement from the material output. */
+  bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
+  bNodeSocket *disp_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Displacement");
+  if (surface_socket->link != nullptr) {
+    nodeRemLink(treepath.first()->nodetree, surface_socket->link);
   }
+  if (disp_socket->link != nullptr) {
+    job_data.mat_displacement_copy = std::make_pair(disp_socket->link->fromnode,
+                                                    disp_socket->link->fromsock);
+    nodeRemLink(treepath.first()->nodetree, disp_socket->link);
+  }
+
   connect_nodes_to_aovs(treepath, job_data.AOV_nodes);
 
   /* Create the AOV passes for the viewlayer. */
@@ -575,6 +569,18 @@ static void shader_preview_startjob(void *customdata,
         original_path->node_name);
     new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
     BLI_addtail(&job_data->treepath_copy, new_path);
+  }
+
+  /* Find the shader output node. */
+  for (bNode *node_iter : job_data->mat_copy->nodetree->all_nodes()) {
+    if (node_iter->type == SH_NODE_OUTPUT_MATERIAL && node_iter->flag & NODE_DO_OUTPUT) {
+      job_data->mat_output_copy = node_iter;
+      break;
+    }
+  }
+  if (job_data->mat_output_copy == nullptr) {
+    job_data->mat_output_copy = nodeAddStaticNode(
+        nullptr, root_path->nodetree, SH_NODE_OUTPUT_MATERIAL);
   }
 
   bNodeTree *active_nodetree =
