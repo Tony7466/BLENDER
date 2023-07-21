@@ -618,23 +618,22 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
   *pdf_factor *= 0.5f * (selected_importance[0] / total_importance[0] +
                          selected_importance[1] / total_importance[1]);
 
-  if (selected_index != -1) {
-    const ccl_global KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
-                                                                           selected_index);
+  const ccl_global KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
+                                                                         selected_index);
 
-    if (is_mesh(kemitter)) {
-      /* Transform ray from world to local space. */
-      light_tree_to_local_space<in_volume_segment>(kg, kemitter->mesh.object_id, P, N_or_D, t);
+  if (is_mesh(kemitter)) {
+    /* Transform ray from world to local space. */
+    light_tree_to_local_space<in_volume_segment>(kg, kemitter->mesh.object_id, P, N_or_D, t);
 
-      *node_index = kemitter->mesh.node_id;
-      const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes,
-                                                                       *node_index);
-      if (knode->type == LIGHT_TREE_INSTANCE) {
-        /* Switch to the node with the subtree. */
-        *node_index = knode->instance.reference;
-      }
+    *node_index = kemitter->mesh.node_id;
+    const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes,
+                                                                     *node_index);
+    if (knode->type == LIGHT_TREE_INSTANCE) {
+      /* Switch to the node with the subtree. */
+      *node_index = knode->instance.reference;
     }
   }
+
   return selected_index;
 }
 

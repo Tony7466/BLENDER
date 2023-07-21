@@ -269,15 +269,17 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   VLOG_INFO << "Initial Slice sizes";
   int slice_stride = 0;
   int slice_sizes[num_works];
+  int remaining_rows = window_height;
   for (int i = 0; i < num_works; i++) {
     const double weight = work_balance_infos[i].weight;
     int slice_size = weight / work_balance_infos[smallest_weight].weight;
+    slice_size = std::max(remaining_rows - (num_works - (i + 1)), slice_size);
     slice_sizes[i] = slice_size;
     slice_stride += slice_size;
   }
   /* Instead of using interleaved slices create n bigger consecuitive slices */
   if (!interleaved_slices) {
-    /* enlarge slices so that there are only 2 big slices */
+    /* enlarge slices so that there are only num_works slices */
     int remaining_height = window_height - slice_stride;
     for (int i = 0; i < num_works; i++) {
       const double weight = work_balance_infos[i].weight;
