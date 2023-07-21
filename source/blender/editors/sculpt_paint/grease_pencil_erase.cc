@@ -888,14 +888,8 @@ struct EraseOperationExecutor {
     for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info))
     {
-      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
-        using T = decltype(dummy);
-
-        array_utils::gather<T, int>(
-            attribute.src.typed<T>(), dst_to_src_point, attribute.dst.span.typed<T>());
-
-        attribute.dst.finish();
-      });
+      bke::attribute_math::gather(attribute.src, dst_to_src_curve, attribute.dst.span);
+      attribute.dst.finish();
     }
 
     /* Write the opacity attribute*/
