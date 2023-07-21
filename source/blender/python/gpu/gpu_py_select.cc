@@ -36,11 +36,11 @@ PyDoc_STRVAR(pygpu_select_load_id_doc,
              "\n"
              "   :arg id: Number (32-bit uint).\n"
              "   :type select: int\n");
-static PyObject *pygpu_select_load_id(PyObject *UNUSED(self), PyObject *value)
+static PyObject *pygpu_select_load_id(PyObject * /*self*/, PyObject *value)
 {
   uint id;
   if ((id = PyC_Long_AsU32(value)) == (uint)-1) {
-    return NULL;
+    return nullptr;
   }
   GPU_select_load_id(id);
   Py_RETURN_NONE;
@@ -55,7 +55,7 @@ static PyObject *pygpu_select_load_id(PyObject *UNUSED(self), PyObject *value)
 static PyMethodDef pygpu_select__tp_methods[] = {
     /* Manage Stack */
     {"load_id", (PyCFunction)pygpu_select_load_id, METH_O, pygpu_select_load_id_doc},
-    {NULL, NULL, 0, NULL},
+    {nullptr, nullptr, 0, nullptr},
 };
 
 PyDoc_STRVAR(pygpu_select__tp_doc, "This module provides access to selection.");
@@ -65,10 +65,10 @@ static PyModuleDef pygpu_select_module_def = {
     /*m_doc*/ pygpu_select__tp_doc,
     /*m_size*/ 0,
     /*m_methods*/ pygpu_select__tp_methods,
-    /*m_slots*/ NULL,
-    /*m_traverse*/ NULL,
-    /*m_clear*/ NULL,
-    /*m_free*/ NULL,
+    /*m_slots*/ nullptr,
+    /*m_traverse*/ nullptr,
+    /*m_clear*/ nullptr,
+    /*m_free*/ nullptr,
 };
 
 PyObject *bpygpu_select_init(void)

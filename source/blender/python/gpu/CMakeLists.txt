@@ -25,7 +25,7 @@ set(SRC
   gpu_py_matrix.cc
   gpu_py_offscreen.cc
   gpu_py_platform.cc
-  gpu_py_select.c
+  gpu_py_select.cc
   gpu_py_shader.c
   gpu_py_shader_create_info.cc
   gpu_py_state.c
