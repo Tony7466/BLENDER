@@ -4,12 +4,10 @@
 
 set(INC
   ../include
-  ../../blentranslation
   ../../functions
   ../../geometry
   ../../gpu
   ../../makesrna
-  ../../../../intern/clog
   ../../bmesh
 
   # RNA_prototypes.h
@@ -29,8 +27,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::windowmanager
 )

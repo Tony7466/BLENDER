@@ -7,9 +7,7 @@ set(INC
   PUBLIC gizmo
   PRIVATE gizmo/intern
   ../asset_system
-  ../blenfont
   ../blenloader
-  ../blentranslation
   ../compositor
   ../editors/include
   ../draw
@@ -19,7 +17,6 @@ set(INC
   ../nodes
   ../render
   ../sequencer
-  ../../../intern/clog
   ../../../intern/ghost
   ../../../intern/memutil
   ../bmesh
@@ -95,11 +92,14 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_sequencer
 )
