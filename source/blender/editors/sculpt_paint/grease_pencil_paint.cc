@@ -336,12 +336,9 @@ void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing 
 void PaintOperation::on_stroke_done(const bContext &C)
 {
   using namespace blender::bke;
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
-  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
-
-  GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(object->data);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   /* No stroke to create, return. */
   if (stroke_cache_->size == 0) {
@@ -351,16 +348,16 @@ void PaintOperation::on_stroke_done(const bContext &C)
   this->simplify_stroke_cache(0.0005f);
 
   /* The object should have an active layer. */
-  BLI_assert(grease_pencil_orig.has_active_layer());
-  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
+  BLI_assert(grease_pencil.has_active_layer());
+  const bke::greasepencil::Layer &active_layer_orig = *grease_pencil.get_active_layer();
   const int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
 
   bke::greasepencil::Drawing &drawing_orig =
-      reinterpret_cast<GreasePencilDrawing *>(grease_pencil_orig.drawings()[index_orig])->wrap();
+      reinterpret_cast<GreasePencilDrawing *>(grease_pencil.drawings()[index_orig])->wrap();
   this->create_stroke_from_stroke_cache(drawing_orig);
 
-  DEG_id_tag_update(&grease_pencil_orig.id, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil_orig.id);
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil.id);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation()
