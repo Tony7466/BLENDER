@@ -57,6 +57,7 @@ struct EraseOperationExecutor {
   float2 mouse_position{};
   float eraser_radius{};
   float eraser_strength{};
+  Brush *brush_{};
 
   int2 mouse_position_pixels{};
   int64_t eraser_squared_radius_pixels{};
@@ -669,17 +670,18 @@ struct EraseOperationExecutor {
     return true;
   }
 
-  float compute_soft_eraser_influence(const float2 point) const
+  float compute_soft_eraser_opacity(const float2 point) const
   {
-    const float dist_squared = math::distance_squared(point, this->mouse_position);
-    const float eraser_radius_2 = this->eraser_radius * this->eraser_radius;
-    /* If the point lies outside the eraser, then it has no influence on it. */
-    if (dist_squared >= eraser_radius_2) {
-      return 0.0f;
+    const float distance = math::distance(point, this->mouse_position);
+
+    if (this->brush_ == nullptr) {
+      /* Default linear falloff. */
+      return 1.0f - this->eraser_strength * (1.0f - distance / this->eraser_radius);
     }
 
-    /* Compute the linear falloff. */
-    return this->eraser_strength * (1.0f - math::sqrt(dist_squared / eraser_radius_2));
+    /* Use the brush's curve to find the falloff value. */
+    return 1.0 - this->eraser_strength *
+                     BKE_brush_curve_strength(this->brush_, distance, this->eraser_radius);
   }
 
   /**
@@ -721,9 +723,10 @@ struct EraseOperationExecutor {
         {
           continue;
         }
-        src_new_opacity[src_point] = std::min(src_opacity[src_point],
-                                              1.0f - compute_soft_eraser_influence(pos));
-        opacity_changed = true;
+
+        const float new_opacity = compute_soft_eraser_opacity(pos);
+        src_new_opacity[src_point] = std::min(src_opacity[src_point], new_opacity);
+        opacity_changed = (src_opacity[src_point] > new_opacity);
       }
     });
 
@@ -984,6 +987,7 @@ struct EraseOperationExecutor {
       this->eraser_strength *= BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
     }
+    this->brush_ = brush;
 
     this->mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
                                        round_fl_to_int(mouse_position[1]));
