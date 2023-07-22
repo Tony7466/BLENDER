@@ -298,11 +298,10 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
       const bool selected_end = cyclic[curve_i] || end_parity_to_selected;
       selection_typed[points.last()] = !deselect_ends && selected_end;
 
-      /* Selected end require to deselect pre-last one point. Drop end and pre one and to check if
-       * curve is not only this point pair. */
-      const IndexRange pre_ends = points.drop_back(2);
-      if (!deselect_ends && cyclic[curve_i] && !pre_ends.is_empty()) {
-        selection_typed[pre_ends.one_after_last()] = false;
+      /* Selected end require to deselect pre-last one point. */
+      const IndexRange curve_body = points.drop_front(1).drop_back(1);
+      if (!deselect_ends && cyclic[curve_i] && !curve_body.is_empty()) {
+        selection_typed[curve_body.last()] = false;
       }
     }
   });
