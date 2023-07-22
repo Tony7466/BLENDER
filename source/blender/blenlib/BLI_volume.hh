@@ -12,8 +12,6 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
-#include "BKE_volume_openvdb.hh"
-
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #endif
