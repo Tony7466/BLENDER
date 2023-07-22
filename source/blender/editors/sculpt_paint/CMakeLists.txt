@@ -7,7 +7,6 @@ set(INC
   ../uvedit
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -16,7 +15,6 @@ set(INC
   ../../makesrna
   ../../nodes
   ../../render
-  ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/eigen
   # RNA_prototypes.h
@@ -39,6 +37,7 @@ set(SRC
   curves_sculpt_smooth.cc
   curves_sculpt_snake_hook.cc
   grease_pencil_draw_ops.cc
+  grease_pencil_erase.cc
   grease_pencil_paint.cc
   paint_canvas.cc
   paint_cursor.cc
@@ -59,6 +58,7 @@ set(SRC
   paint_vertex_proj.cc
   paint_vertex_weight_ops.cc
   paint_vertex_weight_utils.cc
+  paint_weight.cc
   sculpt.cc
   sculpt_automasking.cc
   sculpt_boundary.cc
@@ -93,9 +93,11 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(WITH_TBB)

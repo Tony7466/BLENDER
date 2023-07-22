@@ -152,12 +152,12 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
                                                     const short versionfile,
                                                     const short subversionfile)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, versionfile, subversionfile)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, versionfile, subversionfile)) {
     return false;
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_ATLEAST(library, versionfile, subversionfile)) {
+    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
       return false;
     }
   }
@@ -1307,7 +1307,7 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
 
   if (use_template_userpref) {
     if ((cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, U.app_template))) {
-      /* Also save app-template prefs */
+      /* Also save app-template preferences. */
       BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE);
 
       printf("Writing userprefs app-template: \"%s\" ", filepath);

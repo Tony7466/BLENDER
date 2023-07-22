@@ -5,10 +5,8 @@
 set(INC
   ../include
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../makesrna
-  ../../windowmanager
   ../../../../intern/clog
   ../../../../extern/curve_fit_nd
   # RNA_prototypes.h
@@ -19,16 +17,16 @@ set(INC_SYS
 )
 
 set(SRC
-  curve_ops.c
-  editcurve.c
-  editcurve_add.c
-  editcurve_paint.c
-  editcurve_pen.c
-  editcurve_query.c
-  editcurve_select.c
+  curve_ops.cc
+  editcurve.cc
+  editcurve_add.cc
+  editcurve_paint.cc
+  editcurve_pen.cc
+  editcurve_query.cc
+  editcurve_select.cc
   editcurve_undo.cc
-  editfont.c
-  editfont_undo.c
+  editfont.cc
+  editfont_undo.cc
 
   curve_intern.h
 )
@@ -36,8 +34,10 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
   extern_curve_fit_nd
 )
 

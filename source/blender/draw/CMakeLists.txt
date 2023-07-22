@@ -10,7 +10,6 @@ set(INC
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../editors/include
   ../editors/space_view3d
   ../functions
@@ -24,7 +23,6 @@ set(INC
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/algorithms
   ../compositor/realtime_compositor/cached_resources
-  ../windowmanager
 
   ../../../intern/clog
   ../../../intern/opensubdiv
@@ -353,10 +351,11 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
-  bf_windowmanager
+  PRIVATE bf::windowmanager
   PRIVATE bf::intern::atomic
 )
 
@@ -495,6 +494,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_geom_curves_vert.glsl
   engines/eevee_next/shaders/eevee_geom_gpencil_vert.glsl
   engines/eevee_next/shaders/eevee_geom_mesh_vert.glsl
+  engines/eevee_next/shaders/eevee_geom_point_cloud_vert.glsl
   engines/eevee_next/shaders/eevee_geom_world_vert.glsl
   engines/eevee_next/shaders/eevee_hiz_debug_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_update_comp.glsl
@@ -522,6 +522,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_remap_comp.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_update_irradiance_comp.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
