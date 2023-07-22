@@ -8,7 +8,7 @@
  * \ingroup bke
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -51,7 +51,7 @@ static char seq_clipboard_active_seq_name[SEQ_NAME_MAXSTR];
 
 void seq_clipboard_pointers_free(ListBase *seqbase);
 
-void SEQ_clipboard_free(void)
+void SEQ_clipboard_free()
 {
   seq_clipboard_pointers_free(&seqbase_clipboard);
 

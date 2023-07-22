@@ -8,12 +8,12 @@
  * Main internationalization functions to set the locale and query available languages.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #ifndef _WIN32
-#  include <locale.h>
+#  include <clocale>
 #endif
 
 #include "RNA_types.h"
@@ -26,8 +26,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
-
-#include "IMB_thumbs.h"
 
 #include "DNA_userdef_types.h"
 
@@ -46,7 +44,7 @@ static int num_locales = 0;
 static EnumPropertyItem *locales_menu = nullptr;
 static int num_locales_menu = 0;
 
-static void free_locales(void)
+static void free_locales()
 {
   if (locales) {
     int idx = num_locales_menu - 1; /* Last item does not need to be freed! */
@@ -63,7 +61,7 @@ static void free_locales(void)
   num_locales = num_locales_menu = 0;
 }
 
-static void fill_locales(void)
+static void fill_locales()
 {
   const char *const languages_path = BKE_appdir_folder_id(BLENDER_DATAFILES, "locale");
   char languages[FILE_MAX];
@@ -169,7 +167,7 @@ static void fill_locales(void)
 }
 #endif /* WITH_INTERNATIONAL */
 
-EnumPropertyItem *BLT_lang_RNA_enum_properties(void)
+EnumPropertyItem *BLT_lang_RNA_enum_properties()
 {
 #ifdef WITH_INTERNATIONAL
   return locales_menu;
@@ -178,7 +176,7 @@ EnumPropertyItem *BLT_lang_RNA_enum_properties(void)
 #endif
 }
 
-void BLT_lang_init(void)
+void BLT_lang_init()
 {
 #ifdef WITH_INTERNATIONAL
   const char *const messagepath = BKE_appdir_folder_id(BLENDER_DATAFILES, "locale");
@@ -223,7 +221,7 @@ void BLT_lang_init(void)
 #endif
 }
 
-void BLT_lang_free(void)
+void BLT_lang_free()
 {
 #ifdef WITH_INTERNATIONAL
   free_locales();
@@ -267,7 +265,7 @@ void BLT_lang_set(const char *str)
 #endif
 }
 
-const char *BLT_lang_get(void)
+const char *BLT_lang_get()
 {
 #ifdef WITH_INTERNATIONAL
   if (BLT_translate()) {

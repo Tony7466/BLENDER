@@ -20,7 +20,7 @@
 #include "BLI_string.h"
 #include "BLI_sys_types.h"
 #include "BLI_threads.h"
-#include <string.h>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -91,7 +91,7 @@ static void seq_sequence_lookup_build(const Scene *scene, SequenceLookup *lookup
   lookup->tag &= ~SEQ_LOOKUP_TAG_INVALID;
 }
 
-static SequenceLookup *seq_sequence_lookup_new(void)
+static SequenceLookup *seq_sequence_lookup_new()
 {
   SequenceLookup *lookup = static_cast<SequenceLookup *>(
       MEM_callocN(sizeof(SequenceLookup), __func__));
