@@ -31,6 +31,8 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "ED_node.h"
 #  include "WM_api.h"
 
+namespace node_interface = blender::bke::node_interface;
+
 static void rna_NodeTreeInterfaceItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
@@ -44,7 +46,7 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
 
   switch (item->item_type) {
     case NODE_INTERFACE_SOCKET: {
-      bNodeTreeInterfaceSocket &socket = item->get_as<bNodeTreeInterfaceSocket>();
+      bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(*item);
       bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
       if (socket_typeinfo) {
         return socket_typeinfo->ext_interface_new.srna;

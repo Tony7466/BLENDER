@@ -19,6 +19,10 @@
 #  include <memory>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
@@ -37,13 +41,13 @@ typedef struct bNodeTreeInterfaceItem {
   char item_type;
   char _pad[7];
 
-#ifdef __cplusplus
-  template<typename T> T &get_as();
-  template<typename T> const T &get_as() const;
-
-  template<typename T> T *get_as_ptr();
-  template<typename T> const T *get_as_ptr() const;
-#endif
+  // #ifdef __cplusplus
+  //   template<typename T> T &get_as();
+  //   template<typename T> const T &get_as() const;
+  //
+  //   template<typename T> T *get_as_ptr();
+  //   template<typename T> const T *get_as_ptr() const;
+  // #endif
 } bNodeTreeInterfaceItem;
 
 /* Socket interface flags */
@@ -79,8 +83,8 @@ typedef struct bNodeTreeInterfaceSocket {
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
 
-  template<typename T> T &get_data();
-  template<typename T> const T &get_data() const;
+  // template<typename T> T &get_data();
+  // template<typename T> const T &get_data() const;
 
   bool set_socket_type(const char *new_socket_type);
 #endif
@@ -293,3 +297,7 @@ typedef struct bNodeTreeInterface {
 
 #endif
 } bNodeTreeInterface;
+
+#ifdef __cplusplus
+}
+#endif

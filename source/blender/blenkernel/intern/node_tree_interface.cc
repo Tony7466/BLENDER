@@ -149,7 +149,7 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_free_impl(socket.get_data<SocketDataType>());
+    socket_data_free_impl(get_data<SocketDataType>(socket));
   });
 }
 
@@ -223,7 +223,7 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_write_impl(writer, socket.get_data<SocketDataType>());
+    socket_data_write_impl(writer, get_data<SocketDataType>(socket));
   });
 }
 
@@ -245,7 +245,7 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_read_data_impl(reader, socket.get_data<SocketDataType>());
+    socket_data_read_data_impl(reader, get_data<SocketDataType>(socket));
   });
 }
 
@@ -265,7 +265,7 @@ static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterf
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_read_lib_impl(reader, id, socket.get_data<SocketDataType>());
+    socket_data_read_lib_impl(reader, id, get_data<SocketDataType>(socket));
   });
 }
 
@@ -282,7 +282,7 @@ static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_expand(expander, socket.get_data<SocketDataType>());
+    socket_data_expand(expander, get_data<SocketDataType>(socket));
   });
 }
 
@@ -327,7 +327,7 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_foreach_id_impl(data, socket.get_data<SocketDataType>());
+    socket_data_foreach_id_impl(data, get_data<SocketDataType>(socket));
   });
 }
 
@@ -678,7 +678,7 @@ bool bNodeTreeInterfacePanel::find_item_parent(const bNodeTreeInterfaceItem &ite
         continue;
       }
 
-      bNodeTreeInterfacePanel *tpanel = titem->get_as_ptr<bNodeTreeInterfacePanel>();
+      bNodeTreeInterfacePanel *tpanel = get_as_ptr<bNodeTreeInterfacePanel>(titem);
       if (tpanel->contains_item(*titem)) {
         r_parent = tpanel;
         return true;
@@ -1059,7 +1059,7 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
     bNodeTreeInterfacePanel *parent = parent_stack.pop();
     for (bNodeTreeInterfaceItem *item : parent->items()) {
       items.append(item);
-      if (bNodeTreeInterfacePanel *panel = item->get_as_ptr<bNodeTreeInterfacePanel>()) {
+      if (bNodeTreeInterfacePanel *panel = get_as_ptr<bNodeTreeInterfacePanel>(item)) {
         parent_stack.push(panel);
       }
     }
