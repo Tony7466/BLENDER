@@ -29,3 +29,4 @@ Referenced by pull request #109793, Outliner: Port edit bone elements to new tre
 Referenced by commit bfae400ea55b75be6389c3b18179f0b30595a367, Outliner: Port edit bone elements to new tree-element code design
 Referenced by pull request #110003, Outliner: Port deform group elements to new tree-element code design
 Referenced by pull request #110245, Outliner: Port particle system elements to new tree-element code design
+Referenced by pull request #110371, Outliner: Port grease pencil effect elements to new tree-element code design
