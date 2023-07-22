@@ -7,9 +7,7 @@ set(INC
   exporter
   importer
   ../common
-  ../../bmesh
   ../../bmesh/intern
-  ../../depsgraph
   ../../editors/include
   ../../makesrna
   ../../nodes
@@ -55,6 +53,8 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_io_common

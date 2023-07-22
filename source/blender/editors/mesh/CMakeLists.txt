@@ -5,10 +5,6 @@
 set(INC
   ../include
   ../uvedit
-  ../../blenfont
-  ../../blentranslation
-  ../../bmesh
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -16,7 +12,6 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../render
-  ../../../../intern/clog
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -59,9 +54,14 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::windowmanager
 )

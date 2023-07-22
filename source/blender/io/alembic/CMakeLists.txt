@@ -6,12 +6,8 @@ set(INC
   .
   ../common
   ../../blenloader
-  ../../blentranslation
-  ../../bmesh
-  ../../depsgraph
   ../../editors/include
   ../../makesrna
-  ../../../../intern/clog
   ../../../../intern/utfconv
 )
 
@@ -88,7 +84,11 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
 

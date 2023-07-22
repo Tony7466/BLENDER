@@ -4,9 +4,6 @@
 
 set(INC
   ../include
-  ../../blentranslation
-  ../../bmesh
-  ../../depsgraph
   ../../io/alembic
   ../../io/collada
   ../../io/common
@@ -49,6 +46,9 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::windowmanager

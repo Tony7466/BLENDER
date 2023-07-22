@@ -6,10 +6,7 @@ set(INC
   .
   ../include
   ../../asset_system
-  ../../blenfont
   ../../blenloader
-  ../../blentranslation
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../gpu
@@ -20,7 +17,6 @@ set(INC
   ../../render
   ../../../../intern/ghost
   ../../../../extern/fmtlib/include
-  ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -93,8 +89,12 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_datafiles
   PRIVATE bf::intern::guardedalloc
