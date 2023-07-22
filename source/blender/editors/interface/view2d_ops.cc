@@ -1323,11 +1323,6 @@ static int view_zoomdrag_modal(bContext *C, wmOperator *op, const wmEvent *event
       dy *= -1.0f;
     }
     
-    if (!(U.uiflag & USER_NO_MULTITOUCH_GESTURES)) {
-      dx *= -1.0f;
-      dy *= -1.0f;
-    }
-
     /* set transform amount, and add current deltas to stored total delta (for redo) */
     RNA_float_set(op->ptr, "deltax", dx);
     RNA_float_set(op->ptr, "deltay", dy);
