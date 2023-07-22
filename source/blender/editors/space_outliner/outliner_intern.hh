@@ -25,6 +25,7 @@ struct ListBase;
 struct Main;
 struct Object;
 struct Scene;
+struct ShaderFxData;
 struct TreeStoreElem;
 struct ViewLayer;
 struct bContext;
@@ -294,6 +295,11 @@ struct BoneElementCreateData {
 struct EditBoneElementCreateData {
   ID *armature_id;
   EditBone *ebone;
+};
+
+struct GPencilEffectElementCreateData {
+  Object *object;
+  ShaderFxData *fx;
 };
 
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);
