@@ -279,13 +279,11 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
   threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
-
       if (!has_anything_selected(selection.span.slice(points))) {
         continue;
       }
 
       const int half_of_size = points.size() / 2;
-      const bool end_should_be_selected = !bool(points.size() % 2);
       const IndexRange selected = points.shift(deselect_ends ? 1 : 0);
       const IndexRange deselected = points.shift(deselect_ends ? 0 : 1);
       for (const int index : IndexRange(half_of_size)) {
@@ -294,8 +292,18 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
         selection_typed[selected_index] = true;
         selection_typed[deselected_index] = false;
       }
+
       selection_typed[points.first()] = !deselect_ends;
-      selection_typed[points.last()] = !deselect_ends && !end_should_be_selected;
+      const bool end_parity_to_selected = bool(points.size() % 2);
+      const bool selected_end = cyclic[curve_i] || end_parity_to_selected;
+      selection_typed[points.last()] = !deselect_ends && selected_end;
+
+      /* Selected end require to deselect pre-last one point. Drop end and pre one and to check if
+       * curve is not only this point pair. */
+      const IndexRange pre_ends = points.drop_back(2);
+      if (!deselect_ends && cyclic[curve_i] && !pre_ends.is_empty()) {
+        selection_typed[pre_ends.one_after_last()] = false;
+      }
     }
   });
 
