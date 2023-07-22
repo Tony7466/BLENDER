@@ -6,6 +6,7 @@
 
 #include "BKE_volume.h"
 #include "BKE_volume_geometry.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "DNA_volume_types.h"
 

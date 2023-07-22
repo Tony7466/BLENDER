@@ -44,6 +44,7 @@
 #include "BKE_scene.h"
 #include "BKE_volume.h"
 #include "BKE_volume_geometry.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
 

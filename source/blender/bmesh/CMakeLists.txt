@@ -4,15 +4,7 @@
 
 set(INC
   .
-  ../blenkernel
-  ../blenlib
-  ../blentranslation
-  ../depsgraph
-  ../makesdna
-  ../../../intern/atomic
-  ../../../intern/clog
   ../../../intern/eigen
-  ../../../intern/guardedalloc
   ../../../extern/rangetree
 )
 
@@ -170,9 +162,15 @@ set(SRC
 )
 
 set(LIB
-  bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::clog
+  PRIVATE bf::intern::guardedalloc
   extern_rangetree
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_BULLET)
