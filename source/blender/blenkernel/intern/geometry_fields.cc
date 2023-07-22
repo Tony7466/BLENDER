@@ -193,9 +193,9 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   return {};
 }
 
-volume::Grid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                             const volume::GridMask &mask,
-                                                             ResourceScope & /*scope*/) const
+volume::GGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                              const volume::GridMask &mask,
+                                                              ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
@@ -301,9 +301,9 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
   return {};
 }
 
-volume::Grid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                           const volume::GridMask &mask,
-                                                           ResourceScope & /*scope*/) const
+volume::GGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                            const volume::GridMask &mask,
+                                                            ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
@@ -568,8 +568,8 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       dst_attribute.finish();
       return true;
     }
-    if (GridAttributeWriter dst_attribute = attributes.l) {
-    }
+    // if (GridAttributeWriter dst_attribute = attributes.l) {
+    // }
   }
 
   const bool selection_is_full = !selection.node().depends_on_input() &&

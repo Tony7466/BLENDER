@@ -9,9 +9,13 @@
 #  include <openvdb/openvdb.h>
 #  include <openvdb/points/PointDataGrid.h>
 
+#  include "BKE_volume.h"
+
 #  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_string_ref.hh"
+
+struct VolumeGrid;
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,

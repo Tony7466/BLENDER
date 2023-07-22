@@ -42,6 +42,16 @@ GGrid::operator bool() const
   return grid_ != nullptr;
 }
 
+const CPPType *GGrid::value_type() const
+{
+  const CPPType *type = nullptr;
+  grid_to_static_type(grid_, [&](auto &grid) {
+    using GridType = typename std::decay<decltype(grid)>::type;
+    type = &CPPType::get<typename GridType::ValueType>();
+  });
+  return type;
+}
+
 GGrid GGrid::create(ResourceScope &scope, const CPPType &type, const void *background_value)
 {
   openvdb::GridBase::Ptr grid;
@@ -114,6 +124,11 @@ Grid<T> Grid<T>::create(ResourceScope &scope,
   return Grid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
 }
 
+template<typename T> const CPPType *Grid<T>::value_type() const
+{
+  return &CPPType::get<T>();
+}
+
 #else
 
 bool GridMask::is_empty() const
@@ -139,6 +154,11 @@ int64_t GGrid::voxel_count() const
 bool GGrid::is_empty() const
 {
   return true;
+}
+
+const CPPType *GGrid::value_type() const
+{
+  return nullptr;
 }
 
 GGrid GGrid::create(ResourceScope & /*scope*/,
@@ -198,6 +218,12 @@ template<typename T> operator Grid<T>::bool() const
 {
   return false;
 }
+
+template<typename T> const CPPType *Grid<T>::value_type() const
+{
+  return nullptr;
+}
+
 #endif
 
 }  // namespace blender::volume

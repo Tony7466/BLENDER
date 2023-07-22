@@ -168,11 +168,11 @@ class GeometryFieldInput : public fn::FieldInput {
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const GeometryFieldContext &context,
                                          const IndexMask &mask) const = 0;
-  virtual volume::Grid get_volume_grid_for_context(const fn::FieldContext &context,
-                                                   const volume::GridMask &mask,
-                                                   ResourceScope &scope) const override;
-  virtual volume::Grid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
-                                                   const volume::GridMask & /*mask*/) const
+  virtual volume::GGrid get_volume_grid_for_context(const fn::FieldContext &context,
+                                                    const volume::GridMask &mask,
+                                                    ResourceScope &scope) const override;
+  virtual volume::GGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
+                                                    const volume::GridMask & /*mask*/) const
   {
     return {};
   }
@@ -225,7 +225,7 @@ class InstancesFieldInput : public fn::FieldInput {
 
 class VolumeFieldInput : public fn::FieldInput {
  public:
-  using Grid = volume::Grid;
+  using GGrid = volume::GGrid;
   using GridMask = volume::GridMask;
 
   using fn::FieldInput::FieldInput;
@@ -235,11 +235,11 @@ class VolumeFieldInput : public fn::FieldInput {
   {
     return {};
   }
-  virtual Grid get_volume_grid_for_context(const fn::FieldContext &context,
-                                           const GridMask &mask,
-                                           ResourceScope &scope) const override;
-  virtual Grid get_volume_grid_for_context(const VolumeGridVector &grids,
-                                           const GridMask &mask) const = 0;
+  virtual GGrid get_volume_grid_for_context(const fn::FieldContext &context,
+                                            const GridMask &mask,
+                                            ResourceScope &scope) const override;
+  virtual GGrid get_volume_grid_for_context(const VolumeGridVector &grids,
+                                            const GridMask &mask) const = 0;
 };
 
 class AttributeFieldInput : public GeometryFieldInput {

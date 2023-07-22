@@ -1369,8 +1369,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_GRID_COORDINATE 2111
 #define GEO_NODE_VOLUME_DIVERGENCE 2112
 #define GEO_NODE_VOLUME_GRADIENT 2113
-#define GEO_NODE_VOLUME_SOLVE_POISSON 2113
-#define GEO_NODE_SET_GRID_VALUE 2114
+#define GEO_NODE_VOLUME_SOLVE_POISSON 2114
+#define GEO_NODE_SET_GRID_VALUE 2115
 
 /** \} */
 

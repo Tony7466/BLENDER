@@ -453,9 +453,11 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
                                     is_builtin<providers>,
                                     lookup<providers>,
                                     nullptr,
+                                    nullptr,
                                     for_all<providers>,
                                     lookup_validator<providers>,
                                     lookup_for_write<providers>,
+                                    nullptr,
                                     remove<providers>,
                                     add<providers>};
 }

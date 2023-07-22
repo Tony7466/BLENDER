@@ -12,6 +12,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
+#include "BKE_volume_openvdb.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #endif
@@ -181,6 +183,8 @@ struct GGrid {
   bool is_empty() const;
   operator bool() const;
 
+  const CPPType *value_type() const;
+
   template<typename T> Grid<T> typed();
   template<typename T> const Grid<T> typed() const;
 };
@@ -226,6 +230,8 @@ template<typename T> struct Grid {
   int64_t voxel_count() const;
   bool is_empty() const;
   operator bool() const;
+
+  const CPPType *value_type() const;
 };
 
 template<typename T> Grid<T> GGrid::typed()

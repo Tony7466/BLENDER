@@ -8,6 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_volume_attribute.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "attribute_access_volume.hh"
 
@@ -249,7 +250,6 @@ static openvdb::GridBase::Ptr add_generic_grid(VolumeGridVector &grids,
     if (grid_template) {
       typename GridType::Ptr typed_grid = GridType::create(*grid_template);
       result = typed_grid;
-
       volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(*grid_template), [&](auto tag) {
         using GridType = typename decltype(tag)::type;
         typename GridType::Ptr typed_template = openvdb::GridBase::grid<GridType>(grid_template);
