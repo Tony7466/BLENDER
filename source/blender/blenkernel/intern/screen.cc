@@ -13,9 +13,9 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -125,7 +125,7 @@ void BKE_screen_foreach_id_screen_area(LibraryForeachIDData *data, ScrArea *area
           if (sbuts->pinid == nullptr) {
             sbuts->flag &= ~SB_PIN_CONTEXT;
           }
-          /* Note: Restoring path pointers is complicated, if not impossible, because this contains
+          /* NOTE: Restoring path pointers is complicated, if not impossible, because this contains
            * data pointers too, not just ID ones. See #40046. */
           MEM_SAFE_FREE(sbuts->path);
         }
@@ -174,7 +174,7 @@ void BKE_screen_foreach_id_screen_area(LibraryForeachIDData *data, ScrArea *area
       }
       case SPACE_TEXT: {
         SpaceText *st = (SpaceText *)sl;
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, st->text, IDWALK_CB_NOP);
+        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, st->text, IDWALK_CB_USER_ONE);
         break;
       }
       case SPACE_SCRIPT: {
