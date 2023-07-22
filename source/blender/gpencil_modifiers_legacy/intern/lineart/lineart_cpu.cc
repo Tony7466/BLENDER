@@ -5001,6 +5001,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
     t_start = PIL_check_seconds_timer();
   }
 
+  bool re_override = false;
   if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA) {
     if (!lmd->source_camera ||
         (use_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type != OB_CAMERA)
@@ -5009,10 +5010,10 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
     }
   }
   else {
-
     Render *re = RE_GetSceneRender(scene);
     if (re && re->camera_override) {
       use_camera = DEG_get_evaluated_object(depsgraph, re->camera_override);
+      re_override = true;
     }
     if (!use_camera) {
       BKE_scene_camera_switch_update(scene);
@@ -5026,7 +5027,8 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartCache *lc = lineart_init_cache();
   *cached_result = lc;
 
-  ld = lineart_create_render_buffer(scene, lmd, use_camera, scene->camera, lc);
+  ld = lineart_create_render_buffer(
+      scene, lmd, use_camera, re_override ? use_camera : scene->camera, lc);
 
   /* Triangle thread testing data size varies depending on the thread count.
    * See definition of LineartTriangleThread for details. */
