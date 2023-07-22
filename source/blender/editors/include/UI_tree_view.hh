@@ -189,6 +189,7 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual ~AbstractTreeViewItem() = default;
 
   virtual void build_row(uiLayout &row) = 0;
+  virtual void add_treerow_button(uiBlock &block);
 
   virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
   virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
@@ -276,7 +277,6 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   /** See #AbstractTreeView::change_state_delayed() */
   void change_state_delayed();
 
-  void add_treerow_button(uiBlock &block);
   int indent_width() const;
   void add_indent(uiLayout &row) const;
   void add_collapse_chevron(uiBlock &block) const;

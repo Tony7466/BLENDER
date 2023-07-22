@@ -114,6 +114,24 @@ static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
 
+static int rna_Grease_Pencil_active_layer_index_get(PointerRNA *ptr)
+{
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  int val = grease_pencil->layers().first_index(grease_pencil->get_active_layer());
+  printf("something get");
+  return val;
+}
+
+static void rna_Grease_Pencil_active_layer_index_set(PointerRNA *ptr, const int value)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  blender::Span<const Layer *> layers = grease_pencil->layers();
+  const Layer *layer = layers[value];
+  grease_pencil->set_active_layer(layer);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+}
+
 static char *rna_GreasePencilLayerGroup_path(const PointerRNA *ptr)
 {
   GreasePencilLayerTreeGroup *group = static_cast<GreasePencilLayerTreeGroup *>(ptr->data);
@@ -235,6 +253,12 @@ static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cpro
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Layer", "Active Grease Pencil layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(
+      prop, "rna_Grease_Pencil_active_layer_index_get", "rna_Grease_Pencil_active_layer_index_set", nullptr);
+  RNA_def_property_ui_text(prop, "Active Layer Index", "");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 }
 
