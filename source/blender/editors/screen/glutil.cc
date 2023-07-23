@@ -6,8 +6,8 @@
  * \ingroup edscr
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
@@ -418,8 +418,8 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
                             float x,
                             float y,
                             bool use_filter,
-                            ColorManagedViewSettings *view_settings,
-                            ColorManagedDisplaySettings *display_settings,
+                            const ColorManagedViewSettings *view_settings,
+                            const ColorManagedDisplaySettings *display_settings,
                             float clip_min_x,
                             float clip_min_y,
                             float clip_max_x,
@@ -565,8 +565,8 @@ void ED_draw_imbuf(ImBuf *ibuf,
                    float x,
                    float y,
                    bool use_filter,
-                   ColorManagedViewSettings *view_settings,
-                   ColorManagedDisplaySettings *display_settings,
+                   const ColorManagedViewSettings *view_settings,
+                   const ColorManagedDisplaySettings *display_settings,
                    float zoom_x,
                    float zoom_y)
 {

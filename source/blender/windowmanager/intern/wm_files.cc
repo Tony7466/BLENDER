@@ -751,7 +751,7 @@ static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
   }
 
   if (use_data) {
-    /* important to do before nullptr'ing the context */
+    /* Important to do before nulling the context. */
     BKE_callback_exec_null(bmain, BKE_CB_EVT_VERSION_UPDATE);
     if (is_factory_startup) {
       BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_STARTUP_POST);
@@ -2618,7 +2618,7 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   PropertyRNA *prop;
   ot->name = "Reload Start-Up File";
   ot->idname = "WM_OT_read_homefile";
-  ot->description = "Open the default file (doesn't save the current file)";
+  ot->description = "Open the default file";
 
   ot->invoke = wm_homefile_read_invoke;
   ot->exec = wm_homefile_read_exec;
