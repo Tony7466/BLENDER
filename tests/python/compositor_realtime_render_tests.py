@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2015-2022 Blender Foundation
+# SPDX-FileCopyrightText: 2015-2023 Blender Foundation
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import os
-import shlex
-import shutil
-import subprocess
 import sys
 
 
@@ -18,13 +15,17 @@ try:
 except ImportError:
     inside_blender = False
 
+NOT_IMPLEMENTED = [
+    'node_kuwahara_anisotropic.+.blend',
+]
+
+ENABLE_REALTIME_COMPOSITOR_SCRIPT = "import bpy; " \
+    "bpy.context.preferences.experimental.use_experimental_compositors = True; " \
+    "bpy.data.scenes[0].node_tree.execution_mode = 'REALTIME'"
+
 
 def get_arguments(filepath, output_filepath):
-    dirname = os.path.dirname(filepath)
-    basedir = os.path.dirname(dirname)
-    compositor_dirname = os.path.basename(basedir)
-
-    args = [
+    return [
         "--background",
         "-noaudio",
         "--factory-startup",
@@ -32,17 +33,12 @@ def get_arguments(filepath, output_filepath):
         "--debug-memory",
         "--debug-exit-on-error",
         filepath,
-        "-P",
-        os.path.realpath(__file__),
+        "-P", os.path.realpath(__file__),
+        "--python-expr", ENABLE_REALTIME_COMPOSITOR_SCRIPT,
         "-o", output_filepath,
         "-F", "PNG",
-        "-f", "1"]
-
-    if compositor_dirname == 'compositor_realtime':
-        # F12 rendering with realtime compositor is experimental
-        args.extend(["--python-expr", "import bpy; bpy.context.preferences.experimental.use_experimental_compositors = True"])
-
-    return args
+        "-f", "1"
+    ]
 
 
 def create_argparse():
@@ -64,13 +60,8 @@ def main():
     output_dir = args.outdir[0]
 
     from modules import render_report
-    report = render_report.Report("Compositor", output_dir, idiff)
-    report.set_pixelated(True)
-    report.set_reference_dir("compositor_renders")
-
-    # Temporary change to pass OpenImageDenoise test with both 1.3 and 1.4.
-    if os.path.basename(test_dir) == 'filter':
-        report.set_fail_threshold(0.05)
+    report = render_report.Report("Compositor Realtime", output_dir, idiff, blacklist=NOT_IMPLEMENTED)
+    report.set_reference_dir("compositor_realtime_renders")
 
     ok = report.run(test_dir, blender, get_arguments, batch=True)
 

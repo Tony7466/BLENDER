@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2015-2023 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import argparse
+import os
+import sys
+
+
+# When run from inside Blender, render and exit.
+try:
+    import bpy
+    inside_blender = True
+except ImportError:
+    inside_blender = False
+
+
+def get_arguments(filepath, output_filepath):
+    dirname = os.path.dirname(filepath)
+    basedir = os.path.dirname(dirname)
+    compositor_dirname = os.path.basename(basedir)
+
+    args = [
+        "--background",
+        "-noaudio",
+        "--factory-startup",
+        "--enable-autoexec",
+        "--debug-memory",
+        "--debug-exit-on-error",
+        filepath,
+        "-P",
+        os.path.realpath(__file__),
+        "-o", output_filepath,
+        "-F", "PNG",
+        "-f", "1"]
+
+    if compositor_dirname == 'compositor_realtime':
+        # F12 rendering with realtime compositor is experimental
+        args.extend(["--python-expr", "import bpy; bpy.context.preferences.experimental.use_experimental_compositors = True"])
+
+    return args
+
+
+def create_argparse():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-blender", nargs="+")
+    parser.add_argument("-testdir", nargs=1)
+    parser.add_argument("-outdir", nargs=1)
+    parser.add_argument("-idiff", nargs=1)
+    return parser
+
+
+def main():
+    parser = create_argparse()
+    args = parser.parse_args()
+
+    blender = args.blender[0]
+    test_dir = args.testdir[0]
+    idiff = args.idiff[0]
+    output_dir = args.outdir[0]
+
+    from modules import render_report
+    report = render_report.Report("Compositor CPU", output_dir, idiff)
+    report.set_pixelated(True)
+    report.set_reference_dir("compositor_renders")
+
+    # Temporary change to pass OpenImageDenoise test with both 1.3 and 1.4.
+    if os.path.basename(test_dir) == 'filter':
+        report.set_fail_threshold(0.05)
+
+    ok = report.run(test_dir, blender, get_arguments, batch=True)
+
+    sys.exit(not ok)
+
+
+if not inside_blender and __name__ == "__main__":
+    main()
