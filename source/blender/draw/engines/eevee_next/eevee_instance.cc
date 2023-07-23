@@ -73,8 +73,9 @@ void Instance::init(const int2 &output_res,
   shadows.init();
   motion_blur.init();
   main_view.init();
-  irradiance_cache.init();
+  /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();
+  irradiance_cache.init();
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -103,8 +104,9 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   depth_of_field.init();
   shadows.init();
   main_view.init();
-  irradiance_cache.init();
+  /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();
+  irradiance_cache.init();
 }
 
 void Instance::set_time(float time)
@@ -207,7 +209,7 @@ void Instance::object_sync(Object *ob)
           continue;
         }
 
-        ObjectHandle _ob_handle = {0};
+        ObjectHandle _ob_handle{};
         _ob_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
         _ob_handle.recalc = particle_sys->recalc;
         ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
@@ -445,7 +447,7 @@ void Instance::draw_viewport(DefaultFramebufferList *dfbl)
   render_sample();
   velocity.step_swap();
 
-  /* Do not request redraw during viewport animation to lock the framerate to the animation
+  /* Do not request redraw during viewport animation to lock the frame-rate to the animation
    * playback rate. This is in order to preserve motion blur aspect and also to avoid TAA reset
    * that can show flickering. */
   if (!sampling.finished_viewport() && !DRW_state_is_playback()) {
