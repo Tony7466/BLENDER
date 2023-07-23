@@ -35,6 +35,13 @@ set(LIB
   ${TBB_LIBRARIES}
 )
 
+if(WITH_CYCLES_LOGGING)
+  list(APPEND LIB
+    ${GLOG_LIBRARIES}
+    ${GFLAGS_LIBRARIES}
+  )
+endif()
+
 set(SRC_HEADERS
   algorithm.h
   aligned_malloc.h

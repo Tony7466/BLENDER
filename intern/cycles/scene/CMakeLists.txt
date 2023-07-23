@@ -96,6 +96,7 @@ set(LIB
   cycles_integrator
   cycles_subd
   cycles_util
+  cycles_graph
 )
 
 if(CYCLES_STANDALONE_REPOSITORY)
