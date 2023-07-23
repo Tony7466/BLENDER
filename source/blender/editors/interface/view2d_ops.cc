@@ -1161,11 +1161,6 @@ static int view_zoomdrag_invoke(bContext *C, wmOperator *op, const wmEvent *even
         facx *= -1.0f;
         facy *= -1.0f;
       }
-        
-      if (!(U.uiflag & USER_NO_MULTITOUCH_GESTURES)) {
-          facx *= -1.0f;
-          facy *= -1.0f;
-      }
     }
     else { /* MOUSEZOOM */
       facx = facy = zoomfac * WM_event_absolute_delta_x(event);
