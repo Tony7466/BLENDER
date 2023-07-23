@@ -695,7 +695,8 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
         continue;
       }
       /* Still have to copy over the data in the destination provided by the caller. */
-      dst_grid.grid_->setTree(computed_grid.grid_->baseTreePtr());
+      // dst_grid.grid_->setTree(computed_grid.grid_->baseTreePtr());
+      dst_grid = computed_grid;
       r_grids[out_index] = dst_grid;
     }
   }

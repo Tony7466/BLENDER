@@ -177,6 +177,8 @@ struct GGrid {
                       const void *inactive_value,
                       const void *active_value);
 
+  bool try_assign(const GGrid &other);
+
   int64_t voxel_count() const;
   bool is_empty() const;
   operator bool() const;
@@ -208,22 +210,8 @@ template<typename T> struct Grid {
                         const T &inactive_value,
                         const T &active_value);
 
-  operator GGrid()
-  {
-#ifdef WITH_OPENVDB
-    return {grid_};
-#else
-    return {};
-#endif
-  }
-  operator GGrid const() const
-  {
-#ifdef WITH_OPENVDB
-    return {grid_};
-#else
-    return {};
-#endif
-  }
+  operator GGrid();
+  operator GGrid const() const;
 
   int64_t voxel_count() const;
   bool is_empty() const;

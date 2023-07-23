@@ -12,6 +12,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "CLG_log.h"
 
@@ -355,16 +356,17 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
-  static VolumeGridPositionAttributeProvider position(
-      "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
+  // static VolumeGridPositionAttributeProvider position(
+  //     "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
   // static VolumeGridValueAttributeProvider value(
   //     "value", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  static VolumeCustomAttributeProvider voxel_custom_data(
-      ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
+  // static VolumeCustomAttributeProvider voxel_custom_data(
+  //     ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  return ComponentAttributeProviders({&position}, {&voxel_custom_data});
+  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
+  return ComponentAttributeProviders({}, {});
 }
 
 static AttributeAccessorFunctions get_volume_accessor_functions()

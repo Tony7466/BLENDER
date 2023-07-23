@@ -7,6 +7,7 @@
 #include "BKE_type_conversions.hh"
 #include "BKE_volume_attribute.hh"
 #include "BKE_volume_geometry.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "BLI_virtual_array.hh"
 
@@ -278,51 +279,51 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 //   writer.finish();
 // }
 
-static void set_value_in_volume(GeometrySet &geometry,
-                                const Field<bool> &selection_field,
-                                const GField &value_field)
-{
-  VolumeGridVector &grids = *geometry.get_volume_for_write()->runtime.grids;
-  if (grids.empty()) {
-    return;
-  }
-  openvdb::GridBase &grid = *grids.front().grid();
-
-  const eAttrDomain domain = ATTR_DOMAIN_VOXEL;
-  const int domain_size = grid.activeVoxelCount();
-  if (domain_size == 0) {
-    return;
-  }
-
-  bke::volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(grid), [&](auto tag) {
-    using GridType = typename decltype(tag)::type;
-    using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
-    using AttributeType = typename Converter::AttributeType;
-
-    /* Type mismatch (XXX this will be solved when  grids become generic attributes) */
-    if (value_field.cpp_type() != CPPType::get<AttributeType>()) {
-      return;
-    }
-
-    MutableAttributeAccessor attributes = grids.attributes_for_write();
-    AttributeWriter<AttributeType> value_attribute = attributes.lookup_for_write<AttributeType>(
-        "value");
-    bke::GeometryFieldContext field_context{*geometry.get_component_for_read<VolumeComponent>(),
-                                            domain};
-    fn::FieldEvaluator evaluator{field_context, domain_size};
-
-    evaluator.set_selection(selection_field);
-    evaluator.add_with_destination(value_field, value_attribute.varray);
-    evaluator.evaluate();
-
-    // const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-    // if (selection.is_empty()) {
-    //   return;
-    // }
-
-    value_attribute.finish();
-  });
-}
+// static void set_value_in_volume(GeometrySet &geometry,
+//                                 const Field<bool> &selection_field,
+//                                 const GField &value_field)
+//{
+//   VolumeGridVector &grids = *geometry.get_volume_for_write()->runtime.grids;
+//   if (grids.empty()) {
+//     return;
+//   }
+//   openvdb::GridBase &grid = *grids.front().grid();
+//
+//   const eAttrDomain domain = ATTR_DOMAIN_VOXEL;
+//   const int domain_size = grid.activeVoxelCount();
+//   if (domain_size == 0) {
+//     return;
+//   }
+//
+//   bke::volume_grid_to_static_type_tag(BKE_volume_grid_type_openvdb(grid), [&](auto tag) {
+//     using GridType = typename decltype(tag)::type;
+//     using Converter = typename bke::template GridValueConverter<typename GridType::ValueType>;
+//     using AttributeType = typename Converter::AttributeType;
+//
+//     /* Type mismatch (XXX this will be solved when  grids become generic attributes) */
+//     if (value_field.cpp_type() != CPPType::get<AttributeType>()) {
+//       return;
+//     }
+//
+//     MutableAttributeAccessor attributes = grids.attributes_for_write();
+//     AttributeWriter<AttributeType> value_attribute = attributes.lookup_for_write<AttributeType>(
+//         "value");
+//     bke::GeometryFieldContext field_context{*geometry.get_component_for_read<VolumeComponent>(),
+//                                             domain};
+//     fn::FieldEvaluator evaluator{field_context, domain_size};
+//
+//     evaluator.set_selection(selection_field);
+//     evaluator.add_with_destination(value_field, value_attribute.varray);
+//     evaluator.evaluate();
+//
+//     // const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+//     // if (selection.is_empty()) {
+//     //   return;
+//     // }
+//
+//     value_attribute.finish();
+//   });
+// }
 
 #endif /* WITH_OPENVDB */
 
@@ -336,7 +337,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GField value_field = get_input_attribute_field(params, data_type);
 
   if (geometry.has_volume()) {
-    set_value_in_volume(geometry, selection_field, value_field);
+    // set_value_in_volume(geometry, selection_field, value_field);
   }
 
   params.set_output("Volume", std::move(geometry));

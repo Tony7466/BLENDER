@@ -28,36 +28,37 @@ struct VolumeGridAccessInfo {
   GridGetter get_grids;
   ConstGridGetter get_const_grids;
 };
-//
-// class VolumeGridValueAttributeProvider final : public BuiltinAttributeProvider {
-//  using UpdateOnChange = void (*)(void *owner);
-//  const VolumeGridAccessInfo grid_access_;
-//  const UpdateOnChange update_on_change_;
-//
-// public:
-//  VolumeGridValueAttributeProvider(std::string attribute_name,
-//                                   const eAttrDomain domain,
-//                                   const VolumeGridAccessInfo grid_access,
-//                                   const UpdateOnChange update_on_write,
-//                                   const AttributeValidator validator = {})
-//      : BuiltinAttributeProvider(std::move(attribute_name),
-//                                 domain,
-//                                 CD_AUTO_FROM_NAME,
-//                                 NonCreatable,
-//                                 NonDeletable,
-//                                 validator),
-//        grid_access_(grid_access),
-//        update_on_change_(update_on_write)
-//  {
-//  }
-//
-//  GAttributeReader try_get_for_read(const void *owner) const final;
-//  GAttributeWriter try_get_for_write(void *owner) const final;
-//  bool try_delete(void *owner) const final;
-//  bool try_create(void *owner, const AttributeInit &initializer) const final;
-//  bool exists(const void *owner) const final;
-//};
 
+//  class VolumeGridValueAttributeProvider final : public BuiltinAttributeProvider {
+//   using UpdateOnChange = void (*)(void *owner);
+//   const VolumeGridAccessInfo grid_access_;
+//   const UpdateOnChange update_on_change_;
+//
+//  public:
+//   VolumeGridValueAttributeProvider(std::string attribute_name,
+//                                    const eAttrDomain domain,
+//                                    const VolumeGridAccessInfo grid_access,
+//                                    const UpdateOnChange update_on_write,
+//                                    const AttributeValidator validator = {})
+//       : BuiltinAttributeProvider(std::move(attribute_name),
+//                                  domain,
+//                                  CD_AUTO_FROM_NAME,
+//                                  NonCreatable,
+//                                  NonDeletable,
+//                                  validator),
+//         grid_access_(grid_access),
+//         update_on_change_(update_on_write)
+//   {
+//   }
+//
+//   GAttributeReader try_get_for_read(const void *owner) const final;
+//   GAttributeWriter try_get_for_write(void *owner) const final;
+//   bool try_delete(void *owner) const final;
+//   bool try_create(void *owner, const AttributeInit &initializer) const final;
+//   bool exists(const void *owner) const final;
+// };
+
+#if 0
 class VolumeGridPositionAttributeProvider final : public BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
   const VolumeGridAccessInfo grid_access_;
@@ -133,5 +134,7 @@ class VolumeCustomAttributeProvider final : public DynamicAttributesProvider {
     return ((1ULL << data_type) & supported_types_mask) != 0;
   }
 };
+
+#endif
 
 }  // namespace blender::bke

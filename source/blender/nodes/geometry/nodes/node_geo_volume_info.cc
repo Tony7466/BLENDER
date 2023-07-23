@@ -210,7 +210,7 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
 
 #endif /* WITH_OPENVDB */
 
-static void node_geo_exec(GeoNodeExecParams params)
+static void node_geo_exec(GeoNodeExecParams /*params*/)
 {
 #ifdef WITH_OPENVDB
   // GeometrySet geometry_set = params.extract_input<GeometrySet>("Volume");

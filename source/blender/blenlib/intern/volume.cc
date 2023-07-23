@@ -129,6 +129,15 @@ template<typename T> const CPPType *Grid<T>::value_type() const
   return &CPPType::get<T>();
 }
 
+template<typename T> Grid<T>::operator GGrid()
+{
+  return {grid_};
+}
+template<typename T> Grid<T>::operator GGrid const() const
+{
+  return {grid_};
+}
+
 #else
 
 bool GridMask::is_empty() const
@@ -163,14 +172,12 @@ const CPPType *GGrid::value_type() const
 
 GGrid GGrid::create(ResourceScope & /*scope*/,
                     const CPPType & /*type*/,
-                    const int64_t /*voxel_count*/)
+                    const void * /*background_value*/)
 {
   return GGrid{};
 }
 
-GGrid GGrid::create(ResourceScope & /*scope*/,
-                    const CPPType & /*type*/,
-                    const void * /*background_value*/)
+GGrid GGrid::create(ResourceScope & /*scope*/, const CPPType & /*type*/)
 {
   return GGrid{};
 }
@@ -182,6 +189,11 @@ GGrid GGrid::create(ResourceScope & /*scope*/,
                     const void * /*active_value*/)
 {
   return GGrid{};
+}
+
+bool GGrid::try_assign(const GGrid &other)
+{
+  return false;
 }
 
 template<typename T>
@@ -214,7 +226,7 @@ template<typename T> bool Grid<T>::is_empty() const
   return true;
 }
 
-template<typename T> operator Grid<T>::bool() const
+template<typename T> Grid<T>::operator bool() const
 {
   return false;
 }
@@ -222,6 +234,16 @@ template<typename T> operator Grid<T>::bool() const
 template<typename T> const CPPType *Grid<T>::value_type() const
 {
   return nullptr;
+}
+
+template<typename T> Grid<T>::operator GGrid()
+{
+  return {};
+}
+
+template<typename T> Grid<T>::operator GGrid const() const
+{
+  return {};
 }
 
 #endif

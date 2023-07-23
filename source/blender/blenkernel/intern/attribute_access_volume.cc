@@ -73,7 +73,9 @@ int64_t VolumeGeometryGrid::active_voxel_num() const
 /** \} */
 #endif
 
-#ifdef WITH_OPENVDB
+#if 0
+
+#  ifdef WITH_OPENVDB
 
 namespace blender::bke {
 
@@ -417,4 +419,6 @@ bool VolumeCustomAttributeProvider::foreach_attribute(
 
 }  // namespace blender::bke
 
-#endif  // WITH_OPENVDB
+#  endif  // WITH_OPENVDB
+
+#endif

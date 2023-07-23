@@ -96,6 +96,7 @@ class VolumeGridValueFieldInput final : public bke::VolumeFieldInput {
   GVArray get_varray_for_context(const Volume *volume,
                                  const eAttrDomain domain,
                                  const IndexMask & /*mask*/) const final
+
   {
     switch (domain) {
       case ATTR_DOMAIN_VOXEL:
@@ -118,164 +119,166 @@ class VolumeGridValueFieldInput final : public bke::VolumeFieldInput {
 };
 #  endif
 
-static const StringRefNull get_grid_name(GField &field)
-{
-  if (const auto *attribute_field_input = dynamic_cast<const AttributeFieldInput *>(&field.node()))
-  {
-    return attribute_field_input->attribute_name();
-  }
-  return "";
-}
-
-static const blender::CPPType *vdb_grid_type_to_cpp_type(const VolumeGridType grid_type)
-{
-  switch (grid_type) {
-    case VOLUME_GRID_FLOAT:
-      return &CPPType::get<float>();
-    case VOLUME_GRID_VECTOR_FLOAT:
-      return &CPPType::get<float3>();
-    case VOLUME_GRID_INT:
-      return &CPPType::get<int>();
-    case VOLUME_GRID_BOOLEAN:
-      return &CPPType::get<bool>();
-    default:
-      break;
-  }
-  return nullptr;
-}
-
-template<typename GridT>
-void sample_grid(openvdb::GridBase::ConstPtr base_grid,
-                 const Span<float3> positions,
-                 const IndexMask &mask,
-                 GMutableSpan dst,
-                 const GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
-{
-  using ValueT = typename GridT::ValueType;
-  using AccessorT = typename GridT::ConstAccessor;
-  const typename GridT::ConstPtr grid = openvdb::gridConstPtrCast<GridT>(base_grid);
-  AccessorT accessor = grid->getConstAccessor();
-
-  auto sample_data = [&](auto sampler) {
-    mask.foreach_index([&](const int64_t i) {
-      const float3 &pos = positions[i];
-      ValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
-
-      /* Special case for vector. */
-      if constexpr (std::is_same_v<GridT, openvdb::VectorGrid>) {
-        openvdb::Vec3f vec = static_cast<openvdb::Vec3f>(value);
-        dst.typed<float3>()[i] = float3(vec.asV());
-      }
-      else {
-        dst.typed<ValueT>()[i] = value;
-      }
-    });
-  };
-
-  switch (interpolation_mode) {
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR: {
-      openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(
-          accessor, grid->transform());
-      sample_data(sampler);
-      break;
-    }
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC: {
-      openvdb::tools::GridSampler<AccessorT, openvdb::tools::QuadraticSampler> sampler(
-          accessor, grid->transform());
-      sample_data(sampler);
-      break;
-    }
-    case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST:
-    default: {
-      openvdb::tools::GridSampler<AccessorT, openvdb::tools::PointSampler> sampler(
-          accessor, grid->transform());
-      sample_data(sampler);
-      break;
-    }
-  }
-}
-
-class SampleVolumeFunction : public mf::MultiFunction {
-  openvdb::GridBase::ConstPtr base_grid_;
-  VolumeGridType grid_type_;
-  GeometryNodeSampleVolumeInterpolationMode interpolation_mode_;
-  mf::Signature signature_;
-
- public:
-  SampleVolumeFunction(openvdb::GridBase::ConstPtr base_grid,
-                       GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
-      : base_grid_(std::move(base_grid)), interpolation_mode_(interpolation_mode)
-  {
-    grid_type_ = BKE_volume_grid_type_openvdb(*base_grid_);
-    const CPPType *grid_cpp_type = vdb_grid_type_to_cpp_type(grid_type_);
-    BLI_assert(grid_cpp_type != nullptr);
-    mf::SignatureBuilder builder{"Sample Volume", signature_};
-    builder.single_input<float3>("Position");
-    builder.single_output("Value", *grid_cpp_type);
-    this->set_signature(&signature_);
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  {
-    const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
-    GMutableSpan dst = params.uninitialized_single_output(1, "Value");
-
-    switch (grid_type_) {
-      case VOLUME_GRID_FLOAT:
-        sample_grid<openvdb::FloatGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
-        break;
-      case VOLUME_GRID_INT:
-        sample_grid<openvdb::Int32Grid>(base_grid_, positions, mask, dst, interpolation_mode_);
-        break;
-      case VOLUME_GRID_BOOLEAN:
-        sample_grid<openvdb::BoolGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
-        break;
-      case VOLUME_GRID_VECTOR_FLOAT:
-        sample_grid<openvdb::VectorGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
-        break;
-      default:
-        BLI_assert_unreachable();
-        break;
-    }
-  }
-};
-
-static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return params.extract_input<Field<float>>("Grid_Float");
-    case CD_PROP_FLOAT3:
-      return params.extract_input<Field<float3>>("Grid_Vector");
-    case CD_PROP_BOOL:
-      return params.extract_input<Field<bool>>("Grid_Bool");
-    case CD_PROP_INT32:
-      return params.extract_input<Field<int>>("Grid_Int");
-    default:
-      BLI_assert_unreachable();
-  }
-  return {};
-}
-
-static void output_attribute_field(GeoNodeExecParams &params, GField field)
-{
-  switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
-    case CD_PROP_FLOAT:
-      params.set_output("Value_Float", Field<float>(field));
-      break;
-    case CD_PROP_FLOAT3:
-      params.set_output("Value_Vector", Field<float3>(field));
-      break;
-    case CD_PROP_BOOL:
-      params.set_output("Value_Bool", Field<bool>(field));
-      break;
-    case CD_PROP_INT32:
-      params.set_output("Value_Int", Field<int>(field));
-      break;
-    default:
-      break;
-  }
-}
+// static const StringRefNull get_grid_name(GField &field)
+//{
+//   if (const auto *attribute_field_input = dynamic_cast<const AttributeFieldInput
+//   *>(&field.node()))
+//   {
+//     return attribute_field_input->attribute_name();
+//   }
+//   return "";
+// }
+//
+// static const blender::CPPType *vdb_grid_type_to_cpp_type(const VolumeGridType grid_type)
+//{
+//   switch (grid_type) {
+//     case VOLUME_GRID_FLOAT:
+//       return &CPPType::get<float>();
+//     case VOLUME_GRID_VECTOR_FLOAT:
+//       return &CPPType::get<float3>();
+//     case VOLUME_GRID_INT:
+//       return &CPPType::get<int>();
+//     case VOLUME_GRID_BOOLEAN:
+//       return &CPPType::get<bool>();
+//     default:
+//       break;
+//   }
+//   return nullptr;
+// }
+//
+// template<typename GridT>
+// void sample_grid(openvdb::GridBase::ConstPtr base_grid,
+//                  const Span<float3> positions,
+//                  const IndexMask &mask,
+//                  GMutableSpan dst,
+//                  const GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
+//{
+//   using ValueT = typename GridT::ValueType;
+//   using AccessorT = typename GridT::ConstAccessor;
+//   const typename GridT::ConstPtr grid = openvdb::gridConstPtrCast<GridT>(base_grid);
+//   AccessorT accessor = grid->getConstAccessor();
+//
+//   auto sample_data = [&](auto sampler) {
+//     mask.foreach_index([&](const int64_t i) {
+//       const float3 &pos = positions[i];
+//       ValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
+//
+//       /* Special case for vector. */
+//       if constexpr (std::is_same_v<GridT, openvdb::VectorGrid>) {
+//         openvdb::Vec3f vec = static_cast<openvdb::Vec3f>(value);
+//         dst.typed<float3>()[i] = float3(vec.asV());
+//       }
+//       else {
+//         dst.typed<ValueT>()[i] = value;
+//       }
+//     });
+//   };
+//
+//   switch (interpolation_mode) {
+//     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR: {
+//       openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(
+//           accessor, grid->transform());
+//       sample_data(sampler);
+//       break;
+//     }
+//     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC: {
+//       openvdb::tools::GridSampler<AccessorT, openvdb::tools::QuadraticSampler> sampler(
+//           accessor, grid->transform());
+//       sample_data(sampler);
+//       break;
+//     }
+//     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST:
+//     default: {
+//       openvdb::tools::GridSampler<AccessorT, openvdb::tools::PointSampler> sampler(
+//           accessor, grid->transform());
+//       sample_data(sampler);
+//       break;
+//     }
+//   }
+// }
+//
+// class SampleVolumeFunction : public mf::MultiFunction {
+//   openvdb::GridBase::ConstPtr base_grid_;
+//   VolumeGridType grid_type_;
+//   GeometryNodeSampleVolumeInterpolationMode interpolation_mode_;
+//   mf::Signature signature_;
+//
+//  public:
+//   SampleVolumeFunction(openvdb::GridBase::ConstPtr base_grid,
+//                        GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
+//       : base_grid_(std::move(base_grid)), interpolation_mode_(interpolation_mode)
+//   {
+//     grid_type_ = BKE_volume_grid_type_openvdb(*base_grid_);
+//     const CPPType *grid_cpp_type = vdb_grid_type_to_cpp_type(grid_type_);
+//     BLI_assert(grid_cpp_type != nullptr);
+//     mf::SignatureBuilder builder{"Sample Volume", signature_};
+//     builder.single_input<float3>("Position");
+//     builder.single_output("Value", *grid_cpp_type);
+//     this->set_signature(&signature_);
+//   }
+//
+//   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+//   {
+//     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
+//     GMutableSpan dst = params.uninitialized_single_output(1, "Value");
+//
+//     switch (grid_type_) {
+//       case VOLUME_GRID_FLOAT:
+//         sample_grid<openvdb::FloatGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
+//         break;
+//       case VOLUME_GRID_INT:
+//         sample_grid<openvdb::Int32Grid>(base_grid_, positions, mask, dst, interpolation_mode_);
+//         break;
+//       case VOLUME_GRID_BOOLEAN:
+//         sample_grid<openvdb::BoolGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
+//         break;
+//       case VOLUME_GRID_VECTOR_FLOAT:
+//         sample_grid<openvdb::VectorGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
+//         break;
+//       default:
+//         BLI_assert_unreachable();
+//         break;
+//     }
+//   }
+// };
+//
+// static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustomDataType
+// data_type)
+//{
+//   switch (data_type) {
+//     case CD_PROP_FLOAT:
+//       return params.extract_input<Field<float>>("Grid_Float");
+//     case CD_PROP_FLOAT3:
+//       return params.extract_input<Field<float3>>("Grid_Vector");
+//     case CD_PROP_BOOL:
+//       return params.extract_input<Field<bool>>("Grid_Bool");
+//     case CD_PROP_INT32:
+//       return params.extract_input<Field<int>>("Grid_Int");
+//     default:
+//       BLI_assert_unreachable();
+//   }
+//   return {};
+// }
+//
+// static void output_attribute_field(GeoNodeExecParams &params, GField field)
+//{
+//   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
+//     case CD_PROP_FLOAT:
+//       params.set_output("Value_Float", Field<float>(field));
+//       break;
+//     case CD_PROP_FLOAT3:
+//       params.set_output("Value_Vector", Field<float3>(field));
+//       break;
+//     case CD_PROP_BOOL:
+//       params.set_output("Value_Bool", Field<bool>(field));
+//       break;
+//     case CD_PROP_INT32:
+//       params.set_output("Value_Int", Field<int>(field));
+//       break;
+//     default:
+//       break;
+//   }
+// }
 
 #endif /* WITH_OPENVDB */
 

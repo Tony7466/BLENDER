@@ -9,9 +9,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_volume.hh"
 
+#include "BKE_attribute.h"
 #include "BKE_volume.h"
-
-#include "intern/volume_grids.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
@@ -150,7 +149,9 @@ struct GAttributeGridWriter {
  * OLD CODE
  * OLD CODE */
 
-#ifdef WITH_OPENVDB
+#if 0
+
+#  ifdef WITH_OPENVDB
 
 namespace detail {
 
@@ -689,6 +690,8 @@ class VArrayImpl_For_VolumeGridPosition final : public VArrayImpl<float3> {
 };
 
 /** \} */
+
+#  endif
 
 #endif
 
