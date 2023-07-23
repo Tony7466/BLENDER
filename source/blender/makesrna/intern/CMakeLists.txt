@@ -440,6 +440,9 @@ if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
     target_link_libraries(makesrna PRIVATE ${PTHREADS_LIBRARIES})
   endif()
+  if(DEFINED TBB_LIBRARIES)
+    target_link_libraries(makesrna PRIVATE ${TBB_LIBRARIES})
+  endif()
 endif()
 
 # Output `rna_*_gen.c`.
