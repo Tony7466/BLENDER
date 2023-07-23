@@ -18,12 +18,17 @@ LightTasksDelegate::LightTasksDelegate(pxr::HdRenderIndex *parent_index,
   GetRenderIndex().InsertTask<pxr::HdxSimpleLightTask>(this, simple_task_id_);
 }
 
-pxr::HdTaskSharedPtrVector LightTasksDelegate::get_tasks()
+pxr::HdTaskSharedPtrVector LightTasksDelegate::get_tasks(const bool isTransparent)
 {
   /*Note that this task is intended to be the first "Render Task",
   so that the AOV's are properly cleared, however it
   does not spawn a HdRenderPass.*/
-  return {GetRenderIndex().GetTask(skydome_task_id_), GetRenderIndex().GetTask(simple_task_id_)};
+  pxr::HdTaskSharedPtrVector tasks;
+  if (!isTransparent) {
+    tasks.push_back(GetRenderIndex().GetTask(skydome_task_id_));
+  }
+  tasks.push_back(GetRenderIndex().GetTask(simple_task_id_));
+  return tasks;
 }
 
 void LightTasksDelegate::set_camera_and_viewport(pxr::SdfPath const &camera_id,

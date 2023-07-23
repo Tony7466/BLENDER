@@ -14,7 +14,7 @@ class LightTasksDelegate : public pxr::HdSceneDelegate {
   LightTasksDelegate(pxr::HdRenderIndex *parentIndex, pxr::SdfPath const &delegate_id);
   ~LightTasksDelegate() override = default;
 
-  pxr::HdTaskSharedPtrVector get_tasks();
+  pxr::HdTaskSharedPtrVector get_tasks(const bool isTransparent);
   void set_camera_and_viewport(pxr::SdfPath const &camera_id, pxr::GfVec4d const &viewport);
 
   /* Delegate methods */

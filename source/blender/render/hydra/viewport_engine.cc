@@ -222,9 +222,10 @@ void ViewportEngine::render(Depsgraph * /* depsgraph */)
   /* Empty function */
 }
 
-void ViewportEngine::render(Depsgraph * /* depsgraph */, bContext *context)
+void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 {
   ViewSettings view_settings(context);
+  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
   if (view_settings.width() * view_settings.height() == 0) {
     return;
   };
@@ -254,7 +255,7 @@ void ViewportEngine::render(Depsgraph * /* depsgraph */, bContext *context)
 
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
-    tasks = light_tasks_delegate_->get_tasks();
+    tasks = light_tasks_delegate_->get_tasks(scene->r.alphamode == R_ALPHAPREMUL);
   }
   tasks.push_back(render_task_delegate_->get_task());
 

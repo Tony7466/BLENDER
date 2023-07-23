@@ -109,7 +109,7 @@ void FinalEngine::prepare_for_render(Depsgraph *depsgraph)
   if (light_tasks_delegate_) {
     light_tasks_delegate_->set_camera_and_viewport(
         free_camera_delegate_->GetCameraId(), pxr::GfVec4d(0, 0, resolution_[0], resolution_[1]));
-    tasks_ = light_tasks_delegate_->get_tasks();
+    tasks_ = light_tasks_delegate_->get_tasks(scene->r.alphamode == R_ALPHAPREMUL);
   }
   tasks_.push_back(render_task_delegate_->get_task());
 
@@ -147,7 +147,7 @@ void FinalEngineGPU::render(Depsgraph *depsgraph)
 
   GPU_framebuffer_bind(framebuffer);
 
-  float clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
   GPU_framebuffer_clear_color_depth(framebuffer, clear_color, 1.0f);
 
