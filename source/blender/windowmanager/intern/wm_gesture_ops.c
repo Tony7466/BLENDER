@@ -350,6 +350,7 @@ int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
   rcti *rect = gesture->customdata;
 
   if (event->type == MOUSEMOVE) {
+
     rect->xmin = event->xy[0] - gesture->winrct.xmin;
     rect->ymin = event->xy[1] - gesture->winrct.ymin;
 
