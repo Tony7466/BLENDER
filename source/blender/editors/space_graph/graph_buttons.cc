@@ -8,10 +8,10 @@
  * Graph editor space & buttons.
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -403,11 +403,11 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
     /* easing extra */
     switch (bezt->ipo) {
       case BEZT_IPO_BACK:
-        col = uiLayoutColumn(layout, 1);
+        col = uiLayoutColumn(layout, true);
         uiItemR(col, &bezt_ptr, "back", 0, nullptr, 0);
         break;
       case BEZT_IPO_ELASTIC:
-        col = uiLayoutColumn(layout, 1);
+        col = uiLayoutColumn(layout, true);
         uiItemR(col, &bezt_ptr, "amplitude", 0, nullptr, 0);
         uiItemR(col, &bezt_ptr, "period", 0, nullptr, 0);
         break;
@@ -1268,7 +1268,10 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
                 DTAR_TRANSCHAN_ROTW) &&
            dvar->targets[0].rotation_mode != DTAR_ROTMODE_QUATERNION))
       {
-        SNPRINTF(valBuf, "%.3f (%4.1f°)", dvar->curval, RAD2DEGF(dvar->curval));
+        SNPRINTF(valBuf,
+                 "%.3f (%4.1f" BLI_STR_UTF8_DEGREE_SIGN ")",
+                 dvar->curval,
+                 RAD2DEGF(dvar->curval));
       }
       else {
         SNPRINTF(valBuf, "%.3f", dvar->curval);
