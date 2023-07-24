@@ -46,29 +46,29 @@ extern char datatoc_common_view_lib_glsl[];
 
 /* GPUViewport.storage
  * Is freed every time the viewport engine changes. */
-typedef struct EXTERNAL_Storage {
+struct EXTERNAL_Storage {
   int dummy;
-} EXTERNAL_Storage;
+};
 
-typedef struct EXTERNAL_StorageList {
+struct EXTERNAL_StorageList {
   EXTERNAL_Storage *storage;
   struct EXTERNAL_PrivateData *g_data;
-} EXTERNAL_StorageList;
+};
 
-typedef struct EXTERNAL_FramebufferList {
+struct EXTERNAL_FramebufferList {
   GPUFrameBuffer *depth_buffer_fb;
-} EXTERNAL_FramebufferList;
+};
 
-typedef struct EXTERNAL_TextureList {
+struct EXTERNAL_TextureList {
   /* default */
   GPUTexture *depth_buffer_tx;
-} EXTERNAL_TextureList;
+};
 
-typedef struct EXTERNAL_PassList {
+struct EXTERNAL_PassList {
   DRWPass *depth_pass;
-} EXTERNAL_PassList;
+};
 
-typedef struct EXTERNAL_Data {
+struct EXTERNAL_Data {
   void *engine_type;
   EXTERNAL_FramebufferList *fbl;
   EXTERNAL_TextureList *txl;
@@ -77,7 +77,7 @@ typedef struct EXTERNAL_Data {
   void *instance_data;
 
   char info[GPU_INFO_SIZE];
-} EXTERNAL_Data;
+};
 
 /* *********** STATIC *********** */
 
@@ -86,13 +86,13 @@ static struct {
   GPUShader *depth_sh;
 } e_data = {nullptr}; /* Engine data */
 
-typedef struct EXTERNAL_PrivateData {
+struct EXTERNAL_PrivateData {
   DRWShadingGroup *depth_shgrp;
 
   /* Do we need to update the depth or can we reuse the last calculated texture. */
   bool need_depth;
   bool update_depth;
-} EXTERNAL_PrivateData; /* Transient data */
+}; /* Transient data */
 
 /* Functions */
 
@@ -244,16 +244,20 @@ static void external_draw_scene_do_v3d(void *vedata)
   GPU_apply_state();
 
   /* Create render engine. */
-  if (!rv3d->render_engine) {
+  RenderEngine *render_engine = nullptr;
+  if (!rv3d->view_render) {
     RenderEngineType *engine_type = draw_ctx->engine_type;
 
     if (!(engine_type->view_update && engine_type->view_draw)) {
       return;
     }
 
-    RenderEngine *engine = RE_engine_create(engine_type);
-    engine_type->view_update(engine, draw_ctx->evil_C, draw_ctx->depsgraph);
-    rv3d->render_engine = engine;
+    rv3d->view_render = RE_NewViewRender(engine_type);
+    render_engine = RE_view_engine_get(rv3d->view_render);
+    engine_type->view_update(render_engine, draw_ctx->evil_C, draw_ctx->depsgraph);
+  }
+  else {
+    render_engine = RE_view_engine_get(rv3d->view_render);
   }
 
   /* Rendered draw. */
@@ -262,8 +266,8 @@ static void external_draw_scene_do_v3d(void *vedata)
   ED_region_pixelspace(region);
 
   /* Render result draw. */
-  const RenderEngineType *type = rv3d->render_engine->type;
-  type->view_draw(rv3d->render_engine, draw_ctx->evil_C, draw_ctx->depsgraph);
+  const RenderEngineType *type = render_engine->type;
+  type->view_draw(render_engine, draw_ctx->evil_C, draw_ctx->depsgraph);
 
   GPU_bgl_end();
 
@@ -272,8 +276,8 @@ static void external_draw_scene_do_v3d(void *vedata)
 
   /* Set render info. */
   EXTERNAL_Data *data = static_cast<EXTERNAL_Data *>(vedata);
-  if (rv3d->render_engine->text[0] != '\0') {
-    STRNCPY(data->info, rv3d->render_engine->text);
+  if (render_engine->text[0] != '\0') {
+    STRNCPY(data->info, render_engine->text);
   }
   else {
     data->info[0] = '\0';
