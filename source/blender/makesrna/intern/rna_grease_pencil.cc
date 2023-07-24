@@ -118,7 +118,7 @@ static int rna_Grease_Pencil_active_layer_index_get(PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
 
-  if (grease_pencil->get_active_layer() == nullptr) {
+  if (!grease_pencil->has_active_layer()) {
     return -1;
   }
   int val = grease_pencil->layers().first_index(grease_pencil->get_active_layer());
@@ -258,8 +258,10 @@ static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_funcs(
-      prop, "rna_Grease_Pencil_active_layer_index_get", "rna_Grease_Pencil_active_layer_index_set", nullptr);
+  RNA_def_property_int_funcs(prop,
+                             "rna_Grease_Pencil_active_layer_index_get",
+                             "rna_Grease_Pencil_active_layer_index_set",
+                             nullptr);
   RNA_def_property_ui_text(prop, "Active Layer Index", "");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 }
