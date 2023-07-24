@@ -1,1 +1,2 @@
 Referenced by commit 7fe1f1411636dabb1065a6d85f29159b2325ac04, BLI_linklist_stack: restore type safety without needing explicit casts
+Referenced by pull request #110420, I18n: restore unit messages after c++ migration broke extraction
