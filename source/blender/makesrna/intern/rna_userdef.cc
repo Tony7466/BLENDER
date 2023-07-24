@@ -4694,20 +4694,20 @@ static void rna_def_userdef_view(BlenderRNA *brna)
                            "overlay while animation is played back");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
-  prop = RNA_def_property(srna, "fresnel_effect", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "gpu_flag", USER_GPU_FLAG_FRESNEL);
+  prop = RNA_def_property(srna, "use_fresnel_edit", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "gpu_flag", USER_GPU_FLAG_FRESNEL_EDIT);
   RNA_def_property_ui_text(prop,
                            "Edit Mode",
-                           "Toggle a fresnel effect on edit mesh overlays.\n"
+                           "Enable a fresnel effect on edit mesh overlays.\n"
                            "It improves a bit the shape readability of very dense meshes, "
                            "but increases eye fatigue when modeling lower poly");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
-  prop = RNA_def_property(srna, "fresnel_effect_ob", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "gpu_flag", USER_GPU_FLAG_FRESNEL_OB);
+  prop = RNA_def_property(srna, "use_fresnel", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "gpu_flag", USER_GPU_FLAG_FRESNEL);
   RNA_def_property_ui_text(prop,
-                           "Object Mode",
-                           "Toggle a fresnel fading effect on object mode wireframes.\n"
+                           "Other Modes",
+                           "Enable a fresnel effect on wireframes.\n"
                            "It improves the shape readability of very dense meshes");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 

@@ -101,7 +101,7 @@ void main()
 
   /* Do interpolation in a non-linear space to have a better visual result. */
   finalColor.rgb = mix(finalColor.rgb, non_linear_blend_color(colorEditMeshMiddle.rgb,
-                                                              finalColor.rgb, facing), fresnelMix);
+                                                              finalColor.rgb, facing), fresnelMixEdit);
 #endif
 
   view_clipping_distances(world_pos);

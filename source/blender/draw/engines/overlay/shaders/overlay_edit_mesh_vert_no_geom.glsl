@@ -143,9 +143,9 @@ void main()
 
   /* Do interpolation in a non-linear space to have a better visual result. */
   out_finalColor[0].rgb = mix(out_finalColor[0].rgb, non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0), fresnelMix);
+      colorEditMeshMiddle.rgb, out_finalColor[0].rgb, facing0), fresnelMixEdit);
   out_finalColor[1].rgb = mix(out_finalColor[1].rgb, non_linear_blend_color(
-      colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1), fresnelMix);
+      colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1), fresnelMixEdit);
 #endif
 
   // -------- GEOM SHADER ALTERNATIVE ----------- //
