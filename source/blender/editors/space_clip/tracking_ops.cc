@@ -1771,7 +1771,7 @@ void CLIP_OT_clean_tracks(wmOperatorType *ot)
                 0.0f,
                 FLT_MAX,
                 "Reprojection Error",
-                "Affect tracks which have got larger reprojection error",
+                "Affect tracks which have a larger reprojection error",
                 0.0f,
                 100.0f);
   RNA_def_enum(ot->srna, "action", actions_items, 0, "Action", "Cleanup action to execute");
