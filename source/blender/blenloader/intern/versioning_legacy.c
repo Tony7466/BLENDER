@@ -2082,7 +2082,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 2)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 2)) {
     Image *ima;
 
     /* initialize 1:1 Aspect */
@@ -2091,7 +2091,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 4)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 4)) {
     bArmature *arm;
     ModifierData *md;
     Object *ob;
@@ -2109,7 +2109,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 5)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 5)) {
     /* foreground color needs to be something other than black */
     Scene *sce;
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2119,7 +2119,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 6)) {
     Scene *sce;
     /* fix frs_sec_base */
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2129,7 +2129,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 7)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 7)) {
     Object *ob;
     bPoseChannel *pchan;
 
@@ -2159,7 +2159,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 8)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 8)) {
     Scene *sce;
     Object *ob;
     PartEff *paf = NULL;
@@ -2323,7 +2323,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 10)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 10)) {
     Object *ob;
 
     /* dupliface scale */
@@ -2332,7 +2332,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 11)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 11)) {
     Object *ob;
     bActionStrip *strip;
 
@@ -2366,7 +2366,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 14)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 14)) {
     Scene *sce;
 
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2377,7 +2377,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* fix broken group lengths in id properties */
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 15)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 15)) {
     idproperties_fix_group_lengths(bmain->scenes);
     idproperties_fix_group_lengths(bmain->libraries);
     idproperties_fix_group_lengths(bmain->objects);
@@ -2406,7 +2406,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* convert fluids to modifier */
-  if (!MAIN_VERSION_ATLEAST(bmain, 246, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 246, 1)) {
     Object *ob;
 
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
@@ -2428,7 +2428,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 246, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 246, 1)) {
     Object *ob;
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->pd && (ob->pd->forcefield == PFIELD_WIND)) {
@@ -2438,7 +2438,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* set the curve radius interpolation to 2.47 default - easy */
-  if (!MAIN_VERSION_ATLEAST(bmain, 247, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 247, 6)) {
     Curve *cu;
     Nurb *nu;
 
@@ -2458,7 +2458,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 248, 2)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 248, 2)) {
     Scene *sce;
 
     /* NOTE: these will need to be added for painting. */
@@ -2468,7 +2468,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 248, 3)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 248, 3)) {
     bScreen *screen;
 
     /* adjust default settings for Animation Editors */

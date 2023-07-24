@@ -6,8 +6,8 @@
  * \ingroup spbuttons
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -328,7 +328,8 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         is_relative = false;
       }
 
-      /* Annoying exception!, if we're dealing with the user prefs, default relative to be off. */
+      /* Annoying exception!, if we're dealing with the user preferences,
+       * default relative to be off. */
       RNA_property_boolean_set(op->ptr, prop_relpath, is_relative);
     }
   }
