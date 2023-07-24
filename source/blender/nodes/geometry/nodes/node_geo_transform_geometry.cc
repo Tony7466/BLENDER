@@ -65,7 +65,10 @@ static void transform_positions_rotation_scale(MutableSpan<float3> positions,
 {
   threading::parallel_for(scales.index_range(), 1024, [&](const IndexRange range) {
     for (const int index : range) {
-      math::to_loc_rot_scale(matrix, positions[index], rotations[index], scales[index]);
+      const float4x4 old_matrix = math::from_loc_rot_scale<MatBase<float, 4, 4>>(
+          positions[index], rotations[index], scales[index]);
+      const float4x4 new_matrix = matrix * old_matrix;
+      math::to_loc_rot_scale(new_matrix, positions[index], rotations[index], scales[index]);
     }
   });
 }
@@ -124,17 +127,10 @@ static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transfo
 
 static void transform_gizmo(bke::GizmosGeometry &gizmo, const float4x4 &transform)
 {
-  MutableAttributeAccessor attributes = gizmo.attributes_for_write();
-  SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
-  SpanAttributeWriter scales = attributes.lookup_or_add_for_write_span<float3>("scale",
-                                                                               ATTR_DOMAIN_POINT);
-  SpanAttributeWriter rotations = attributes.lookup_or_add_for_write_span<math::Quaternion>(
-      "rotation", ATTR_DOMAIN_POINT);
-  transform_positions_rotation_scale(position.span, scales.span, rotations.span, transform);
-  position.finish();
-  scales.finish();
-  rotations.finish();
+  MutableSpan<float3> position = gizmo.positions_for_write();
+  MutableSpan<math::Quaternion> rotations = gizmo.rotations_for_write();
+  MutableSpan<float3> scales = gizmo.sizes_for_write();
+  transform_positions_rotation_scale(position, scales, rotations, transform);
 }
 
 static void translate_instances(bke::Instances &instances, const float3 translation)

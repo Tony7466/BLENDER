@@ -69,6 +69,28 @@ struct AttributeFallbacksArray {
   AttributeFallbacksArray(int size) : array(size, nullptr) {}
 };
 
+struct GizmosRealizeInfo {
+  const bke::GizmosGeometry *gizmos = nullptr;
+
+  Array<std::optional<GVArraySpan>> attributes;
+
+  Span<float3> positions;
+  Span<float3> sizes;
+  Span<math::Quaternion> rotations;
+  // Span<int> stored_ids;
+};
+
+struct RealizeGizmosTask {
+  int start_index;
+
+  const GizmosRealizeInfo *gizmos_info;
+
+  float4x4 transform;
+  AttributeFallbacksArray attribute_fallbacks;
+
+  uint32_t id = 0;
+};
+
 struct PointCloudRealizeInfo {
   const PointCloud *pointcloud = nullptr;
   /** Matches the order stored in #AllPointCloudsInfo.attributes. */
@@ -180,6 +202,18 @@ struct RealizeCurveTask {
   uint32_t id = 0;
 };
 
+struct AllGizmosInfo {
+  /** Ordering of all attributes that are propagated to the output point cloud generically. */
+  OrderedAttributes attributes;
+  /** Ordering of the original point clouds that are joined. */
+  VectorSet<const bke::GizmosGeometry *> order;
+
+  VectorSet<std::string> pathes;
+  /** Preprocessed data about every original point cloud. This is ordered by #order. */
+  Array<GizmosRealizeInfo> realize_info;
+  bool create_id_attribute = false;
+};
+
 struct AllPointCloudsInfo {
   /** Ordering of all attributes that are propagated to the output point cloud generically. */
   OrderedAttributes attributes;
@@ -224,6 +258,7 @@ struct AllCurvesInfo {
 
 /** Collects all tasks that need to be executed to realize all instances. */
 struct GatherTasks {
+  Vector<RealizeGizmosTask> gizmos_tasks;
   Vector<RealizePointCloudTask> pointcloud_tasks;
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
@@ -236,6 +271,7 @@ struct GatherTasks {
 
 /** Current offsets while during the gather operation. */
 struct GatherOffsets {
+  int gizmos_offset = 0;
   int pointcloud_offset = 0;
   MeshElementStartIndices mesh_offsets;
   CurvesElementStartIndices curves_offsets;
@@ -243,6 +279,7 @@ struct GatherOffsets {
 
 struct GatherTasksInfo {
   /** Static information about all geometries that are joined. */
+  const AllGizmosInfo &gizmos;
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
@@ -266,6 +303,8 @@ struct GatherTasksInfo {
  * Information about the parent instances in the current context.
  */
 struct InstanceContext {
+
+  AttributeFallbacksArray gizmos;
   /** Ordered by #AllPointCloudsInfo.attributes. */
   AttributeFallbacksArray pointclouds;
   /** Ordered by #AllMeshesInfo.attributes. */
@@ -276,7 +315,8 @@ struct InstanceContext {
   uint32_t id = 0;
 
   InstanceContext(const GatherTasksInfo &gather_info)
-      : pointclouds(gather_info.pointclouds.attributes.size()),
+      : gizmos(gather_info.gizmos.attributes.size()),
+        pointclouds(gather_info.pointclouds.attributes.size()),
         meshes(gather_info.meshes.attributes.size()),
         curves(gather_info.curves.attributes.size())
   {
@@ -290,6 +330,28 @@ static void copy_transformed_positions(const Span<float3> src,
   threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       dst[i] = math::transform_point(transform, src[i]);
+    }
+  });
+}
+
+static void copy_transformed_pos_rot_sizes(const Span<float3> positions,
+                                           const Span<math::Quaternion> rotations,
+                                           const Span<float3> sizes,
+                                           const float4x4 &transform,
+                                           MutableSpan<float3> r_positions,
+                                           MutableSpan<math::Quaternion> r_rotations,
+                                           MutableSpan<float3> r_sizes)
+{
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+    for (const int index : range) {
+      const float4x4 old_matrix = math::from_loc_rot_scale<MatBase<float, 4, 4>>(
+          positions[index], rotations[index], sizes[index]);
+      const float4x4 new_matrix = transform * old_matrix;
+      // std::cout << ">> <<++ " << positions[index] << ", " << rotations[index] << ", " <<
+      // sizes[index] << std::endl;
+      math::to_loc_rot_scale(new_matrix, r_positions[index], r_rotations[index], r_sizes[index]);
+      // std::cout << ">> >>++ " << r_positions[index] << ", " << r_rotations[index] << ", " <<
+      // r_sizes[index] << std::endl;
     }
   });
 }
@@ -601,6 +663,21 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
+      case bke::GeometryComponent::Type::Gizmos: {
+        const auto &gizmos_component = *static_cast<const bke::GizmosComponent *>(component);
+        const bke::GizmosGeometry *gizmos = gizmos_component.get_for_read();
+        if (gizmos != nullptr && gizmos->pathes_num() > 0) {
+          const int gizmo_index = gather_info.gizmos.order.index_of(gizmos);
+          const GizmosRealizeInfo &gizmos_info = gather_info.gizmos.realize_info[gizmo_index];
+          gather_info.r_tasks.gizmos_tasks.append({gather_info.r_offsets.gizmos_offset,
+                                                   &gizmos_info,
+                                                   base_transform,
+                                                   base_instance_context.gizmos,
+                                                   base_instance_context.id});
+          gather_info.r_offsets.gizmos_offset += gizmos->gizmos_num();
+        }
+        break;
+      }
       case bke::GeometryComponent::Type::Instance: {
         const auto &instances_component = *static_cast<const bke::InstancesComponent *>(component);
         const Instances *instances = instances_component.get_for_read();
@@ -628,6 +705,188 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
     }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Gizmos
+ * \{ */
+
+static OrderedAttributes gather_generic_gizmos_attributes_to_propagate(
+    const bke::GeometrySet &in_geometry_set,
+    const RealizeInstancesOptions &options,
+    bool &r_create_id)
+{
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Gizmos);
+  if (options.realize_instance_attributes) {
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
+  }
+
+  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    bke::GeometryComponent::Type::Gizmos,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
+  attributes_to_propagate.remove("position");
+  attributes_to_propagate.remove("rotation");
+  attributes_to_propagate.remove("size");
+  r_create_id = attributes_to_propagate.pop_try("id").has_value();
+  OrderedAttributes ordered_attributes;
+  for (const auto item : attributes_to_propagate.items()) {
+    ordered_attributes.ids.add_new(item.key);
+    ordered_attributes.kinds.append(item.value);
+  }
+  return ordered_attributes;
+}
+
+static void gather_gizmos_to_realize(const bke::GeometrySet &geometry_set,
+                                     VectorSet<const bke::GizmosGeometry *> &r_gizmos)
+{
+  if (const bke::GizmosGeometry *gizmo = geometry_set.get_gizmos_for_read()) {
+    if (gizmo->pathes_num() != 0) {
+      r_gizmos.add(gizmo);
+    }
+  }
+  if (const Instances *instances = geometry_set.get_instances_for_read()) {
+    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
+      gather_gizmos_to_realize(instance_geometry_set, r_gizmos);
+    });
+  }
+}
+
+static AllGizmosInfo preprocess_gizmos(const bke::GeometrySet &geometry_set,
+                                       const RealizeInstancesOptions &options)
+{
+  AllGizmosInfo info;
+  info.attributes = gather_generic_gizmos_attributes_to_propagate(
+      geometry_set, options, info.create_id_attribute);
+
+  gather_gizmos_to_realize(geometry_set, info.order);
+  info.realize_info.reinitialize(info.order.size());
+  for (const int gizmos_index : info.realize_info.index_range()) {
+    GizmosRealizeInfo &gizmos_info = info.realize_info[gizmos_index];
+    const bke::GizmosGeometry *gizmos = info.order[gizmos_index];
+    info.pathes.add_multiple(gizmos->pathes());
+    gizmos_info.gizmos = gizmos;
+
+    /* Access attributes. */
+    bke::AttributeAccessor attributes = gizmos->attributes();
+    gizmos_info.attributes.reinitialize(info.attributes.size());
+    for (const int attribute_index : info.attributes.index_range()) {
+      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
+      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
+      const eAttrDomain domain = info.attributes.kinds[attribute_index].domain;
+      if (attributes.contains(attribute_id)) {
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
+        gizmos_info.attributes[attribute_index].emplace(std::move(attribute));
+      }
+    }
+    gizmos_info.positions = gizmos->positions();
+    gizmos_info.rotations = gizmos->rotations();
+    gizmos_info.sizes = gizmos->sizes();
+  }
+  return info;
+}
+
+static void execute_realize_gizmos_task(const RealizeInstancesOptions & /*options*/,
+                                        const RealizeGizmosTask &task,
+                                        const OrderedAttributes &ordered_attributes,
+                                        const VectorSet<std::string> &all_pathes,
+                                        MutableSpan<GSpanAttributeWriter> dst_attribute_writers,
+                                        MutableSpan<float3> all_dst_positions,
+                                        MutableSpan<math::Quaternion> all_dst_rotations,
+                                        MutableSpan<float3> all_dst_sizes,
+                                        MutableSpan<int> all_dst_mapping)
+{
+  const GizmosRealizeInfo &gizmos_info = *task.gizmos_info;
+  const bke::GizmosGeometry &gizmos = *gizmos_info.gizmos;
+  const IndexRange point_slice{task.start_index, gizmos.gizmos_num()};
+
+  const Span<std::string> src_pathes = gizmos.pathes();
+  const Span<int> src_mapping = gizmos.paths_mapping();
+  for (const int index : point_slice.index_range()) {
+    const int final_index = point_slice[index];
+    const int src_index = src_mapping[index];
+    all_dst_mapping[final_index] = all_pathes.index_of(src_pathes[src_index]);
+  }
+
+  copy_transformed_pos_rot_sizes(gizmos_info.positions,
+                                 gizmos_info.rotations,
+                                 gizmos_info.sizes,
+                                 task.transform,
+                                 all_dst_positions.slice(point_slice),
+                                 all_dst_rotations.slice(point_slice),
+                                 all_dst_sizes.slice(point_slice));
+
+  copy_generic_attributes_to_result(
+      gizmos_info.attributes,
+      task.attribute_fallbacks,
+      ordered_attributes,
+      [&](const eAttrDomain domain) {
+        BLI_assert(domain == ATTR_DOMAIN_POINT);
+        UNUSED_VARS_NDEBUG(domain);
+        return point_slice;
+      },
+      dst_attribute_writers);
+}
+
+static void execute_realize_gizmos_tasks(const RealizeInstancesOptions &options,
+                                         const AllGizmosInfo &all_pointclouds_info,
+                                         const Span<RealizeGizmosTask> tasks,
+                                         const OrderedAttributes &ordered_attributes,
+                                         bke::GeometrySet &r_realized_geometry)
+{
+  if (tasks.is_empty()) {
+    return;
+  }
+
+  const RealizeGizmosTask &last_task = tasks.last();
+  const bke::GizmosGeometry &last_gizmos = *last_task.gizmos_info->gizmos;
+  const int tot_points = last_task.start_index + last_gizmos.gizmos_num();
+
+  /* Allocate new point cloud. */
+  bke::GizmosGeometry *dst_gizmos = new (bke::GizmosGeometry)(tot_points,
+                                                              all_pointclouds_info.pathes);
+  r_realized_geometry.replace_gizmos(dst_gizmos);
+  bke::MutableAttributeAccessor dst_attributes = dst_gizmos->attributes_for_write();
+
+  MutableSpan<float3> positions = dst_gizmos->positions_for_write();
+  MutableSpan<math::Quaternion> rotations = dst_gizmos->rotations_for_write();
+  MutableSpan<float3> sizes = dst_gizmos->sizes_for_write();
+  MutableSpan<int> mapping = dst_gizmos->mapping_for_write();
+
+  /* Prepare generic output attributes. */
+  Vector<GSpanAttributeWriter> dst_attribute_writers;
+  for (const int attribute_index : ordered_attributes.index_range()) {
+    const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
+    const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
+    dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
+        attribute_id, ATTR_DOMAIN_POINT, data_type));
+  }
+
+  /* Actually execute all tasks. */
+  threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
+    for (const int task_index : task_range) {
+      const RealizeGizmosTask &task = tasks[task_index];
+      execute_realize_gizmos_task(options,
+                                  task,
+                                  ordered_attributes,
+                                  all_pointclouds_info.pathes,
+                                  dst_attribute_writers,
+                                  positions,
+                                  rotations,
+                                  sizes,
+                                  mapping);
+    }
+  });
+
+  /* Tag modified attributes. */
+  for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
+    dst_attribute.finish();
   }
 }
 
@@ -1516,6 +1775,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     remove_id_attribute_from_instances(geometry_set);
   }
 
+  AllGizmosInfo all_gizmos_info = preprocess_gizmos(geometry_set, options);
   AllPointCloudsInfo all_pointclouds_info = preprocess_pointclouds(geometry_set, options);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options);
@@ -1524,7 +1784,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
                                    all_meshes_info.create_id_attribute ||
                                    all_curves_info.create_id_attribute;
-  GatherTasksInfo gather_info = {all_pointclouds_info,
+  GatherTasksInfo gather_info = {all_gizmos_info,
+                                 all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
                                  create_id_attribute,
@@ -1534,6 +1795,11 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
 
   bke::GeometrySet new_geometry_set;
+  execute_realize_gizmos_tasks(options,
+                               all_gizmos_info,
+                               gather_info.r_tasks.gizmos_tasks,
+                               all_gizmos_info.attributes,
+                               new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,

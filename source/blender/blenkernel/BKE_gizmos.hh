@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
@@ -14,14 +15,15 @@ namespace blender::bke {
 
 class GizmosGeometry {
  private:
-  blender::VectorSet<std::string> paths_;
-  blender::Array<int> mapping;
+  VectorSet<std::string> paths_;
+  Array<int> mapping;
 
   CustomDataAttributes attributes_;
 
  public:
   GizmosGeometry() = default;
   GizmosGeometry(std::string path);
+  GizmosGeometry(int gizmos, VectorSet<std::string> paths);
 
   GizmosGeometry *copy() const;
 
@@ -39,6 +41,20 @@ class GizmosGeometry {
   {
     return mapping;
   }
+
+  MutableSpan<int> mapping_for_write()
+  {
+    return mapping;
+  }
+
+  Span<float3> positions() const;
+  MutableSpan<float3> positions_for_write();
+
+  Span<math::Quaternion> rotations() const;
+  MutableSpan<math::Quaternion> rotations_for_write();
+
+  Span<float3> sizes() const;
+  MutableSpan<float3> sizes_for_write();
 
   /**
    * Remove the indices that are not contained in the mask input, and remove unused pathes

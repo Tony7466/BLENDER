@@ -157,13 +157,16 @@ static void refresh_data_to_new_meta(GizmoData &data,
     wmGizmo *gizmo = data.gizmos_objects.pop_last();
     WM_gizmo_unlink(&gzgroup->gizmos, gzgroup->parent_gzmap, gizmo, const_cast<bContext *>(C));
   }
-  if (data.meta_data.size < new_meta.size) {
+
+  MetaData tmp_meta = data.meta_data;
+  while (tmp_meta.size < new_meta.size) {
     wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", gzgroup, NULL);
     RNA_enum_set(gizmo->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_INVERTED);
     RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_ARROW_DRAW_FLAG_STEM);
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gizmo->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
     data.gizmos_objects.append(gizmo);
+    tmp_meta.size++;
   }
   data.meta_data = new_meta;
   // printf("%d -> %d;\n", sze, data.gizmos_objects.size());
@@ -187,7 +190,8 @@ static void geometry_node_refresh(const bContext *C, wmGizmoGroup *gzgroup)
   for (const int index : paths_mapping.index_range()) {
     wmGizmo *gizmo = gzgroup_data.gizmos_objects[index];
 
-    const StringRefNull rna_path = pathes[index];
+    const int path_index = paths_mapping[index];
+    const StringRefNull rna_path = pathes[path_index];
 
     PointerRNA blender_data_pointer;
     RNA_pointer_create(NULL, &RNA_BlendData, CTX_data_main(C), &blender_data_pointer);
@@ -215,7 +219,7 @@ static void geometry_node_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
   const bke::AttributeReader<float3> positions = attributes.lookup_or_default<float3>(
       "position", ATTR_DOMAIN_POINT, float3());
   const bke::AttributeReader<float3> scales = attributes.lookup_or_default<float3>(
-      "scale", ATTR_DOMAIN_POINT, float3());
+      "scale", ATTR_DOMAIN_POINT, float3(1.0f));
   const bke::AttributeReader<math::Quaternion> rotations =
       attributes.lookup_or_default<math::Quaternion>(
           "rotation", ATTR_DOMAIN_POINT, math::Quaternion());
@@ -233,13 +237,14 @@ static void geometry_node_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
     const float3 world_rotation = math::transform_point(object_mathix, position);
     WM_gizmo_set_matrix_location(gizmo, world_position);
 
-    const float4x4 mathix = math::from_loc_rot_scale<MatBase<float, 4, 4>>(
-        position, rotation, scale);
-
-    const float4x4 final_mathix = mathix * object_mathix;
+    const float3x3 mathix = math::from_rot_scale<MatBase<float, 3, 3>>(rotation, scale);
+    const float3x3 final_mathix = float3x3(object_mathix) * mathix;
 
     const float3 normal_a = math::transform_point(final_mathix, float3(0.0f, 1.0f, 0.0f));
     const float3 normal_b = math::transform_point(final_mathix, float3(0.0f, 0.0f, 1.0f));
+
+    // std::cout << index << ": " << normal_a << ", " << normal_b << std::endl;
+
     WM_gizmo_set_matrix_rotation_from_yz_axis(gizmo, normal_a, normal_b);
   }
 }

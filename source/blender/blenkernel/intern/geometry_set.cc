@@ -477,6 +477,20 @@ void GeometrySet::replace_curves(Curves *curves, GeometryOwnershipType ownership
   component.replace(curves, ownership);
 }
 
+void GeometrySet::replace_gizmos(GizmosGeometry *gizmos, GeometryOwnershipType ownership)
+{
+  if (gizmos == nullptr) {
+    this->remove<GizmosComponent>();
+    return;
+  }
+  if (gizmos == this->get_gizmos_for_read()) {
+    return;
+  }
+  this->remove<GizmosComponent>();
+  GizmosComponent &component = this->get_component_for_write<GizmosComponent>();
+  component.replace(gizmos, ownership);
+}
+
 void GeometrySet::replace_instances(Instances *instances, GeometryOwnershipType ownership)
 {
   if (instances == nullptr) {

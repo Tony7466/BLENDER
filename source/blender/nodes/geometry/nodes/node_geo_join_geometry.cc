@@ -4,6 +4,7 @@
 
 #include "GEO_realize_instances.hh"
 
+#include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 
 #include "node_geometry_util.hh"
@@ -204,6 +205,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   join_component_type<InstancesComponent>(geometry_sets, geometry_set_result, propagation_info);
   join_component_type<VolumeComponent>(geometry_sets, geometry_set_result, propagation_info);
   join_component_type<CurveComponent>(geometry_sets, geometry_set_result, propagation_info);
+  join_component_type<bke::GizmosComponent>(geometry_sets, geometry_set_result, propagation_info);
   join_component_type<GeometryComponentEditData>(
       geometry_sets, geometry_set_result, propagation_info);
 

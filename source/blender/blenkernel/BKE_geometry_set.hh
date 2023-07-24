@@ -384,6 +384,9 @@ struct GeometrySet {
    */
   void replace_curves(Curves *curves,
                       GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+
+  void replace_gizmos(GizmosGeometry *gizmos,
+                      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
    * Clear the existing instances and replace them with the given one.
    */
