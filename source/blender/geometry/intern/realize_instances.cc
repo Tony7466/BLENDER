@@ -311,14 +311,14 @@ static void threaded_fill(const GPointer value, GMutableSpan dst)
   });
 }
 
-static void apply_scale_radius(const float scale, MutableSpan<float> radius)
+static void apply_scale_radii(const float scale, MutableSpan<float> radii)
 {
   if (scale == 1.0f) {
     return;
   }
-  threading::parallel_for(radius.index_range(), 2048, [&](const IndexRange range) {
-    for (float &radii : radius.slice(range)) {
-      radii *= scale;
+  threading::parallel_for(radii.index_range(), 2048, [&](const IndexRange range) {
+    for (float &radius : radii.slice(range)) {
+      radius *= scale;
     }
   });
 }
@@ -761,7 +761,7 @@ static void execute_realize_pointcloud_task(
     pointcloud_info.radii.materialize(point_radii);
     const float3 scale = math::to_scale(task.transform);
     const float scale_mean = (scale.x + scale.y + scale.z) / 3.0f;
-    apply_scale_radius(scale_mean, point_radii);
+    apply_scale_radii(scale_mean, point_radii);
   }
 
   copy_generic_attributes_to_result(
@@ -1353,7 +1353,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
 
     const float3 scale = math::to_scale(task.transform);
     const float scale_mean = (scale.x + scale.y + scale.z) / 3.0f;
-    apply_scale_radius(scale_mean, all_radii.slice(dst_point_range));
+    apply_scale_radii(scale_mean, all_radii.slice(dst_point_range));
   }
   if (all_curves_info.create_nurbs_weight_attribute) {
     copy_point_span_with_default(curves_info.nurbs_weight, all_nurbs_weights, 1.0f);
