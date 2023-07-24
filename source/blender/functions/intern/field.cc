@@ -1051,9 +1051,9 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 
 static volume::GridMask grid_mask_from_selection(const volume::GridMask full_mask,
                                                  const volume::Grid<bool> &selection,
-                                                 ResourceScope &scope)
+                                                 ResourceScope & /*scope*/)
 {
-  return volume::GridMask::from_bools(full_mask, selection, scope.construct<IndexMaskMemory>());
+  return volume::GridMask::from_bools(full_mask, selection);
 }
 
 int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid dst)

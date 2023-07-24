@@ -8,6 +8,7 @@
  * \ingroup bli
  */
 
+#include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
@@ -18,8 +19,11 @@
 
 namespace blender {
 
-class CPPType;
 class ResourceScope;
+namespace volume {
+template<typename T> class Grid;
+template<typename T> class MutableGrid;
+}  // namespace volume
 
 /* XXX OpenVDB expects some math functions on vector types. */
 template<typename T, int Size> inline VecBase<T, Size> Abs(VecBase<T, Size> v)
@@ -149,6 +153,9 @@ class GridMask {
   GridMask(const openvdb::MaskGrid::ConstPtr &grid) : grid_(grid) {}
 #endif
 
+  static GridMask from_bools(const volume::GridMask &full_mask,
+                             const volume::Grid<bool> &selection);
+
   bool is_empty() const;
   int64_t min_voxel_count() const;
 
@@ -165,11 +172,9 @@ class GridMask {
  *  \note Using wrappers avoids checking for WITH_OPENVDB everywhere.
  * \{ */
 
-template<typename T> struct Grid;
-template<typename T> struct MutableGrid;
-
 /* Generic grid reference. */
-struct GGrid {
+class GGrid {
+ public:
 #ifdef WITH_OPENVDB
   openvdb::GridBase::ConstPtr grid_ = nullptr;
 #endif
@@ -184,7 +189,8 @@ struct GGrid {
 };
 
 /* Generic grid reference. */
-struct GMutableGrid {
+class GMutableGrid {
+ public:
 #ifdef WITH_OPENVDB
   openvdb::GridBase::Ptr grid_ = nullptr;
 #endif
@@ -218,7 +224,8 @@ struct GMutableGrid {
   template<typename T> MutableGrid<T> typed() const;
 };
 
-template<typename T> struct Grid {
+template<typename T> class Grid {
+ public:
   using ValueType = T;
 #ifdef WITH_OPENVDB
   using GridType = grid_types::GridCommon<T>;
@@ -239,7 +246,8 @@ template<typename T> struct Grid {
   const CPPType *value_type() const;
 };
 
-template<typename T> struct MutableGrid {
+template<typename T> class MutableGrid {
+ public:
   using ValueType = T;
 #ifdef WITH_OPENVDB
   using GridType = grid_types::GridCommon<T>;

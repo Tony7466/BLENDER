@@ -17,6 +17,11 @@ namespace blender::volume {
 
 const openvdb::MaskGrid::ConstPtr empty_grid_ = openvdb::MaskGrid::create();
 
+GridMask GridMask::from_bools(const volume::GridMask &full_mask,
+                              const volume::Grid<bool> &selection)
+{
+}
+
 bool GridMask::is_empty() const
 {
   return grid_ ? grid_->empty() : false;
@@ -151,6 +156,12 @@ template<typename T> Grid<T>::operator GGrid const() const
 }
 
 #else
+
+GridMask GridMask::from_bools(const volume::GridMask & /*full_mask*/,
+                              const volume::Grid<bool> & /*selection*/)
+{
+  return {nullptr};
+}
 
 bool GridMask::is_empty() const
 {
