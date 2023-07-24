@@ -1286,14 +1286,14 @@ class HydraRenderEngine(RenderEngine):
 
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
         if not self.engine_ptr:
-            self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.bl_delegate_id)
+            self.engine_ptr = _bpy_hydra.engine_create(self, engine_type, self.bl_delegate_id)
         if not self.engine_ptr:
             return
 
         for key, val in self.get_sync_settings(engine_type).items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), 0)
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, 0)
 
         for key, val in self.get_render_settings('PREVIEW' if self.is_preview else 'FINAL').items():
             _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
@@ -1303,20 +1303,20 @@ class HydraRenderEngine(RenderEngine):
             return
 
         import _bpy_hydra
-        _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
+        _bpy_hydra.engine_render(self.engine_ptr, depsgraph)
 
     # Viewport render.
     def view_update(self, context, depsgraph):
         import _bpy_hydra
         if not self.engine_ptr:
-            self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), 'VIEWPORT', self.bl_delegate_id)
+            self.engine_ptr = _bpy_hydra.engine_create(self, 'VIEWPORT', self.bl_delegate_id)
         if not self.engine_ptr:
             return
 
         for key, val in self.get_sync_settings('VIEWPORT').items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_update(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, context)
 
         for key, val in self.get_render_settings('VIEWPORT').items():
             _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
@@ -1326,4 +1326,4 @@ class HydraRenderEngine(RenderEngine):
             return
 
         import _bpy_hydra
-        _bpy_hydra.engine_view_draw(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
+        _bpy_hydra.engine_view_draw(self.engine_ptr, depsgraph, context)

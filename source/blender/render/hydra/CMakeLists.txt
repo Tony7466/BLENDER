@@ -50,6 +50,8 @@ set(INC
   ../../gpu
   ../../gpu/intern
   ../../python/intern
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
   ..
 )
 
@@ -89,3 +91,6 @@ set(SRC
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# RNA_prototypes.h
+add_dependencies(bf_render_hydra bf_rna)

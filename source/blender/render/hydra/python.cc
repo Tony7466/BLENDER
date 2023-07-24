@@ -7,23 +7,25 @@
 
 #include <Python.h>
 
-#include <boost/python/extract.hpp>
+#include "RE_engine.h"
 
-#include <pxr/base/plug/plugin.h>
-#include <pxr/base/plug/registry.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usdImaging/usdImagingGL/engine.h>
+#include "bpy_rna.h"
 
-#include "BLI_fileops.h"
-#include "BLI_path_util.h"
-
-#include "BKE_appdir.h"
+#include "BKE_context.h"
 
 #include "RE_engine.h"
+
+#include "RNA_prototypes.h"
 
 #include "hydra/image.h"
 
 namespace blender::render::hydra {
+
+template<typename T> T *pyrna_to_pointer(PyObject *pyobject, const StructRNA *rnatype)
+{
+  const PointerRNA *ptr = pyrna_struct_as_ptr_or_null(pyobject, rnatype);
+  return (ptr) ? static_cast<T *>(ptr->data) : nullptr;
+}
 
 static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 {
@@ -33,7 +35,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  RenderEngine *bl_engine = static_cast<RenderEngine *>(PyLong_AsVoidPtr(pyengine));
+  RenderEngine *bl_engine = pyrna_to_pointer<RenderEngine>(pyengine, &RNA_RenderEngine);
 
   Engine *engine = nullptr;
   try {
@@ -79,8 +81,8 @@ static PyObject *engine_update_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
-  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
-  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
+  Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
+  bContext *context = pyrna_to_pointer<bContext>(pycontext, &RNA_Context);
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
   engine->sync(depsgraph, context);
@@ -97,7 +99,7 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
-  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
+  Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
 
@@ -117,8 +119,8 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   }
 
   ViewportEngine *engine = static_cast<ViewportEngine *>(PyLong_AsVoidPtr(pyengine));
-  Depsgraph *depsgraph = static_cast<Depsgraph *>(PyLong_AsVoidPtr(pydepsgraph));
-  bContext *context = static_cast<bContext *>(PyLong_AsVoidPtr(pycontext));
+  Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
+  bContext *context = pyrna_to_pointer<bContext>(pycontext, &RNA_Context);
 
   CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p", engine);
 
