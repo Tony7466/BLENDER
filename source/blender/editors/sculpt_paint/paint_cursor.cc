@@ -2111,6 +2111,8 @@ static void paint_draw_cursor(bContext *C, int x, int y, void * /*unused*/)
       paint_draw_curve_cursor(pcontext.brush, &pcontext.vc);
       break;
     case PAINT_CURSOR_2D:
+      paint_update_mouse_cursor(&pcontext);
+
       paint_cursor_update_rake_rotation(&pcontext);
       paint_cursor_check_and_draw_alpha_overlays(&pcontext);
       paint_cursor_update_anchored_location(&pcontext);
