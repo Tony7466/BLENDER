@@ -31,6 +31,8 @@
 
 #include "WM_api.h"
 
+namespace node_interface = blender::bke::node_interface;
+
 namespace blender::ui::nodes {
 
 namespace {
@@ -266,14 +268,16 @@ class NodeTreeInterfaceView : public AbstractTreeView {
     for (bNodeTreeInterfaceItem *item : parent.items()) {
       switch (item->item_type) {
         case NODE_INTERFACE_SOCKET: {
-          bNodeTreeInterfaceSocket *socket = item->get_as_ptr<bNodeTreeInterfaceSocket>();
+          bNodeTreeInterfaceSocket *socket = node_interface::get_as_ptr<bNodeTreeInterfaceSocket>(
+              item);
           NodeSocketViewItem &socket_item = parent_item.add_tree_item<NodeSocketViewItem>(
               nodetree_, interface_, *socket);
           socket_item.set_collapsed(false);
           break;
         }
         case NODE_INTERFACE_PANEL: {
-          bNodeTreeInterfacePanel *panel = item->get_as_ptr<bNodeTreeInterfacePanel>();
+          bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+              item);
           NodePanelViewItem &panel_item = parent_item.add_tree_item<NodePanelViewItem>(
               nodetree_, interface_, *panel);
           panel_item.set_collapsed(false);
@@ -345,8 +349,9 @@ bool NodeSocketDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disabl
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (const bNodeTreeInterfacePanel *panel =
-          drag_data->item->get_as_ptr<bNodeTreeInterfacePanel>()) {
+  if (const bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+          drag_data->item))
+  {
     if (panel->contains_item(socket_.item)) {
       return false;
     }
@@ -427,8 +432,9 @@ bool NodePanelDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disable
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (const bNodeTreeInterfacePanel *panel =
-          drag_data->item->get_as_ptr<bNodeTreeInterfacePanel>()) {
+  if (const bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+          drag_data->item))
+  {
     if (panel->contains_item(panel_.item)) {
       return false;
     }

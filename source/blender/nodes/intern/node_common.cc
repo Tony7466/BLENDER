@@ -149,7 +149,7 @@ static std::function<ID *(const bNode &node)> get_default_id_getter(
       return nullptr;
     }
     const bNodeTree &ntree = *reinterpret_cast<const bNodeTree *>(node.id);
-    const bNodeTreeInterfaceItem *io_item = ntree.tree_interface.get_item_at_index(item_index);
+    const bNodeTreeInterfaceItem *io_item = ntree.interface.get_item_at_index(item_index);
     if (io_item == nullptr || io_item->item_type != NODE_INTERFACE_SOCKET) {
       return nullptr;
     }
@@ -586,11 +586,11 @@ static void group_output_declare_dynamic(const bNodeTree &node_tree,
                                          NodeDeclaration &r_declaration)
 {
   node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+    if (&item == &node_tree.interface.root_panel.item) {
+      /* Skip root panel. */
+      return true;
+    }
     switch (item.item_type) {
-      if (&item == &node_tree.interface.root_panel.item) {
-        /* Skip root panel. */
-        return true;
-      }
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(
             item);
