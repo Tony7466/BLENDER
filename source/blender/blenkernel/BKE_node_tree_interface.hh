@@ -204,10 +204,6 @@ template<typename Fn> void socket_data_to_static_type(const char *socket_type, c
   else if (STREQ(socket_type, socket_types::node_socket_data_material)) {
     fn.template operator()<bNodeSocketValueMaterial>();
   }
-  else {
-    /* Unhandled type */
-    BLI_assert_unreachable();
-  }
 }
 
 namespace detail {
