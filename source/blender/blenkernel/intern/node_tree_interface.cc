@@ -784,11 +784,11 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int 
 }
 
 void bNodeTreeInterfacePanel::foreach_item(
-    blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn)
+    blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn, bool include_self)
 {
   std::queue<bNodeTreeInterfacePanel *> queue;
 
-  if (fn(this->item) == false) {
+  if (include_self && fn(this->item) == false) {
     return;
   }
   queue.push(this);
@@ -811,11 +811,11 @@ void bNodeTreeInterfacePanel::foreach_item(
 }
 
 void bNodeTreeInterfacePanel::foreach_item(
-    blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const
+    blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn, bool include_self) const
 {
   std::queue<const bNodeTreeInterfacePanel *> queue;
 
-  if (fn(this->item) == false) {
+  if (include_self && fn(this->item) == false) {
     return;
   }
   queue.push(this);

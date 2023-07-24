@@ -140,16 +140,22 @@ typedef struct bNodeTreeInterfacePanel {
 
   /**
    * Apply a function to every item in the panel, including child panels.
-   * The items are visited in drawing order from top to bottom.
-   * Iteration stops when the function returns false.
+   * \note: The items are visited in drawing order from top to bottom.
+   *
+   * \param fn: Function to execute for each item, iterations stops if false is returned.
+   * \param include_root: Include the panel itself in the iteration.
    */
-  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn);
+  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn,
+                    bool include_self = false);
   /**
    * Apply a function to every item in the panel, including child panels.
-   * The items are visited in drawing order from top to bottom.
-   * Iteration stops when the function returns false.
+   * \note: The items are visited in drawing order from top to bottom.
+   *
+   * \param fn: Function to execute for each item, iterations stops if false is returned.
+   * \param include_root: Include the panel itself in the iteration.
    */
-  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const;
+  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn,
+                    bool include_self = false) const;
 #endif
 } bNodeTreeInterfacePanel;
 
@@ -276,21 +282,27 @@ typedef struct bNodeTreeInterface {
 
   /**
    * Apply a function to every item in the interface.
-   * The items are visited in drawing order from top to bottom.
-   * Iteration stops when the function returns false.
+   * \note: The items are visited in drawing order from top to bottom.
+   *
+   * \param fn: Function to execute for each item, iterations stops if false is returned.
+   * \param include_root: Include the root panel in the iteration.
    */
-  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn)
+  void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn,
+                    bool include_root = false)
   {
-    root_panel.foreach_item(fn);
+    root_panel.foreach_item(fn, /*include_self=*/include_root);
   }
   /**
    * Apply a function to every item in the interface.
-   * The items are visited in drawing order from top to bottom.
-   * Iteration stops when the function returns false.
+   * \note: The items are visited in drawing order from top to bottom.
+   *
+   * \param fn: Function to execute for each item, iterations stops if false is returned.
+   * \param include_root: Include the root panel in the iteration.
    */
-  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn) const
+  void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn,
+                    bool include_root = false) const
   {
-    root_panel.foreach_item(fn);
+    root_panel.foreach_item(fn, /*include_self=*/include_root);
   }
 
   void foreach_id(LibraryForeachIDData *cb);

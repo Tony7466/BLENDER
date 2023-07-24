@@ -32,11 +32,7 @@ inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
 {
   bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
-  foreach_item([this, &active, &count](bNodeTreeInterfaceItem &item) {
-    /* Skip root panel. */
-    if (&item == &root_panel.item) {
-      return true;
-    }
+  foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
     if (count == 0) {
       active = &item;
       return false;
@@ -51,11 +47,7 @@ inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
 {
   const bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
-  foreach_item([this, &active, &count](const bNodeTreeInterfaceItem &item) {
-    /* Skip root panel. */
-    if (&item == &root_panel.item) {
-      return true;
-    }
+  foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
     if (count == 0) {
       active = &item;
       return false;
@@ -71,10 +63,6 @@ inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
   active_index = 0;
   int count = 0;
   foreach_item([this, item, &count](bNodeTreeInterfaceItem &titem) {
-    /* Skip root panel. */
-    if (&titem == &root_panel.item) {
-      return true;
-    }
     if (&titem == item) {
       active_index = count;
       return false;

@@ -314,10 +314,6 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   r_declaration.skip_updating_sockets = false;
 
   group->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
-    if (&item == &group->interface.root_panel.item) {
-      /* Skip root panel. */
-      return true;
-    }
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(
@@ -550,10 +546,6 @@ static void group_input_declare_dynamic(const bNodeTree &node_tree,
                                         NodeDeclaration &r_declaration)
 {
   node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
-    if (&item == &node_tree.interface.root_panel.item) {
-      /* Skip root panel. */
-      return true;
-    }
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(
@@ -586,10 +578,6 @@ static void group_output_declare_dynamic(const bNodeTree &node_tree,
                                          NodeDeclaration &r_declaration)
 {
   node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
-    if (&item == &node_tree.interface.root_panel.item) {
-      /* Skip root panel. */
-      return true;
-    }
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(
