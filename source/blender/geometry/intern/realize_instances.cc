@@ -311,6 +311,18 @@ static void threaded_fill(const GPointer value, GMutableSpan dst)
   });
 }
 
+static void apply_scale_radius(const float scale, MutableSpan<float> radius)
+{
+  if (scale == 1.0f) {
+    return;
+  }
+  threading::parallel_for(radius.index_range(), 2048, [&](const IndexRange range) {
+    for (float &radii : radius.slice(range)) {
+      radii *= scale;
+    }
+  });
+}
+
 static void copy_generic_attributes_to_result(
     const Span<std::optional<GVArraySpan>> src_attributes,
     const AttributeFallbacksArray &attribute_fallbacks,
@@ -745,7 +757,11 @@ static void execute_realize_pointcloud_task(
         options, pointcloud_info.stored_ids, task.id, all_dst_ids.slice(point_slice));
   }
   if (!all_dst_radii.is_empty()) {
-    pointcloud_info.radii.materialize(all_dst_radii.slice(point_slice));
+    MutableSpan<float> point_radii = all_dst_radii.slice(point_slice);
+    pointcloud_info.radii.materialize(point_radii);
+    const float3 scale = math::to_scale(task.transform);
+    const float scale_mean = (scale.x + scale.y + scale.z) / 3.0f;
+    apply_scale_radius(scale_mean, point_radii);
   }
 
   copy_generic_attributes_to_result(
@@ -1334,6 +1350,10 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
       };
   if (all_curves_info.create_radius_attribute) {
     copy_point_span_with_default(curves_info.radius, all_radii, 1.0f);
+
+    const float3 scale = math::to_scale(task.transform);
+    const float scale_mean = (scale.x + scale.y + scale.z) / 3.0f;
+    apply_scale_radius(scale_mean, all_radii.slice(dst_point_range));
   }
   if (all_curves_info.create_nurbs_weight_attribute) {
     copy_point_span_with_default(curves_info.nurbs_weight, all_nurbs_weights, 1.0f);
