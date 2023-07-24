@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'2f5245b4340a')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-10 12:34:48\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2018-01-03 14:47+0000\n"
 "Last-Translator: Lockal <lockalsash@gmail.com>, 2023\n"
 "Language-Team: Russian (https://app.transifex.com/translateblender/teams/82039/ru/)\n"
@@ -2006,10 +2006,6 @@ msgid "Shape Key data-blocks"
 msgstr "Датаблоки ключей формы"
 
 
-msgid "Simulations"
-msgstr "Симуляции"
-
-
 msgid "Sounds"
 msgstr "Звуки"
 
@@ -3993,6 +3989,10 @@ msgid "Factor of Simplify using adaptive algorithm"
 msgstr "Коэффициент упрощения с использованием адаптивного алгоритма"
 
 
+msgid "Active Layer"
+msgstr "Активный слой"
+
+
 msgid "Default Eraser"
 msgstr "Ластик по умолчанию"
 
@@ -4179,10 +4179,6 @@ msgstr "RGBA-цвет в линейном цветовом пространст�
 
 msgid "Collection of cache layers"
 msgstr "Коллекция слоёв кэша"
-
-
-msgid "Active Layer"
-msgstr "Активный слой"
 
 
 msgid "Object Path"
@@ -9230,11 +9226,6 @@ msgstr "Сцена"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Симуляция"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Звук"
 
@@ -11758,10 +11749,6 @@ msgstr "Показать/скрыть датаблоки облаков точе
 
 msgid "Show Scene data-blocks"
 msgstr "Показать датаблоки сцен"
-
-
-msgid "Show Simulation data-blocks"
-msgstr "Показать датаблоки симуляций"
 
 
 msgid "Show Sound data-blocks"
@@ -20962,6 +20949,10 @@ msgstr "Минимальное расстояние снятия карты от
 
 msgid "Control how fast the probe influence decreases"
 msgstr "Скорость уменьшения влияния зонда"
+
+
+msgid "Smoother irradiance interpolation but introduce light bleeding"
+msgstr "Более мягкая интерполяция освещённости, но создает смешение источников света"
 
 
 msgid "Resolution X"
@@ -33122,10 +33113,6 @@ msgid "Add Threshold"
 msgstr "Порог добавления"
 
 
-msgid "Lower bound for a vertex's weight to be added to the vgroup"
-msgstr "Нижняя граница веса вершин, добавляемых в группу вершин"
-
-
 msgid "Default Weight"
 msgstr "Вес по умолчанию"
 
@@ -33219,10 +33206,6 @@ msgstr "Нормализовать веса"
 
 msgid "Remove Threshold"
 msgstr "Порог удаления"
-
-
-msgid "Upper bound for a vertex's weight to be removed from the vgroup"
-msgstr "Верхняя граница веса вершин, удаляемых из группы вершин"
 
 
 msgid "Group Add"
@@ -37308,10 +37291,6 @@ msgstr "Просвечивающий BSDF"
 
 msgid "Transparent BSDF"
 msgstr "Прозрачный BSDF"
-
-
-msgid "Velvet BSDF"
-msgstr "BSDF бархата"
 
 
 msgid "Bump"
@@ -46191,6 +46170,23 @@ msgstr "Переключить кисть в режим сглаживания �
 
 
 msgctxt "Operator"
+msgid "Select Mode"
+msgstr "Режим выделения"
+
+
+msgid "Select only points"
+msgstr "Выделять только точки"
+
+
+msgid "Select all stroke points"
+msgstr "Выделять все точки штрихов"
+
+
+msgid "Select all stroke points between other strokes"
+msgstr "Выделить все точки штриха между другими штрихами"
+
+
+msgctxt "Operator"
 msgid "Add Render Slot"
 msgstr "Добавить рендер слот"
 
@@ -49722,11 +49718,6 @@ msgstr "Выделить элементы меша, соответствующи
 
 msgid "Extend the existing selection"
 msgstr "Расширить существующее выделение"
-
-
-msgctxt "Operator"
-msgid "Select Mode"
-msgstr "Режим выделения"
 
 
 msgid "Change selection mode"
@@ -55478,15 +55469,6 @@ msgstr "Преувеличить текущую позу по отношению
 
 
 msgctxt "Operator"
-msgid "Push Pose from Rest Pose"
-msgstr "Сдвинуть позу от позы покоя"
-
-
-msgid "Push the current pose further away from the rest pose"
-msgstr "Преувеличить текущую позу по отношению к позе покоя"
-
-
-msgctxt "Operator"
 msgid "Flip Quats"
 msgstr "Отразить кватернионы"
 
@@ -55502,15 +55484,6 @@ msgstr "Смягчить позу к средней"
 
 msgid "Make the current pose more similar to its breakdown pose"
 msgstr "Сделать текущую позу более похожей на среднюю позу"
-
-
-msgctxt "Operator"
-msgid "Relax Pose to Rest Pose"
-msgstr "Смягчить позу к позе покоя"
-
-
-msgid "Make the current pose more similar to the rest pose"
-msgstr "Сделать текущую позу более похожей на позу покоя"
 
 
 msgctxt "Operator"
@@ -62452,10 +62425,6 @@ msgstr "Перезагрузить историю и закладки"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Перезагрузить начальный файл"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Открыть файл по умолчанию (без сохранения текущего файла)"
 
 
 msgid "Path to an alternative start-up file"
@@ -70830,10 +70799,6 @@ msgid "Irradiance Smoothing"
 msgstr "Сглаживание освещённости"
 
 
-msgid "Smoother irradiance interpolation but introduce light bleeding"
-msgstr "Более мягкая интерполяция освещённости, но создает смешение источников света"
-
-
 msgid "Show Cubemap Cache"
 msgstr "Отображать кэш кубической карты"
 
@@ -77024,18 +76989,6 @@ msgstr "Скульптинг Grease Pencil"
 
 msgid "Settings for stroke sculpting tools and brushes"
 msgstr "Свойства инструмента скульптинга штрихов Grease Pencil"
-
-
-msgid "Select only points"
-msgstr "Выделять только точки"
-
-
-msgid "Select all stroke points"
-msgstr "Выделять все точки штрихов"
-
-
-msgid "Select all stroke points between other strokes"
-msgstr "Выделить все точки штриха между другими штрихами"
 
 
 msgid "Stroke Placement (3D View)"
@@ -87201,11 +87154,6 @@ msgid "New"
 msgstr "Создать"
 
 
-msgctxt "Simulation"
-msgid "New"
-msgstr "Создать"
-
-
 msgid "%d items"
 msgstr "%d элем."
 
@@ -88717,6 +88665,14 @@ msgid "Missing%s%s%s%s detected!"
 msgstr "Недостающие элементы: %s%s%s%s!"
 
 
+msgid "The modifier used does not support deformed locations"
+msgstr "Использованный модификатор не поддерживает деформированные положения"
+
+
+msgid "No active vertex group for painting, aborting"
+msgstr "Нет активной группы вершин для рисования, операция прервана"
+
+
 msgid "Active group is locked, aborting"
 msgstr "Активная группа заблокирована, операция прервана"
 
@@ -88727,14 +88683,6 @@ msgstr "Симметричная группа заблокирована, отм
 
 msgid "Multipaint group is locked, aborting"
 msgstr "Группа мультирисования заблокирована, операция прервана"
-
-
-msgid "The modifier used does not support deformed locations"
-msgstr "Использованный модификатор не поддерживает деформированные положения"
-
-
-msgid "No active vertex group for painting, aborting"
-msgstr "Нет активной группы вершин для рисования, операция прервана"
 
 
 msgid "Click on the mesh to set the detail"
@@ -90211,16 +90159,16 @@ msgid "Gizmos hidden in this view"
 msgstr "Манипуляторы скрыты в этом вьюпорте"
 
 
-msgid "Cannot dolly when the view offset is locked"
-msgstr "Приближение невозможно при заблокированном смещении вида"
-
-
 msgid "Cannot fly when the view offset is locked"
 msgstr "Облёт невозможен при заблокированном смещении вида"
 
 
 msgid "Cannot fly an object with constraints"
 msgstr "Режим полёта невозможен для объекта с ограничителями"
+
+
+msgid "Cannot dolly when the view offset is locked"
+msgstr "Приближение невозможно при заблокированном смещении вида"
 
 
 msgid "Cannot navigate when the view offset is locked"
@@ -90533,14 +90481,6 @@ msgstr "Скос: %.3f %s (нажмите X или Y для установки �
 
 msgid " or Alt) Even Thickness %s"
 msgstr " или Alt) равномерная толщина %s"
-
-
-msgid "Tilt: %s° %s"
-msgstr "Наклон: %s° %s"
-
-
-msgid "Tilt: %.2f° %s"
-msgstr "Наклон: %.2f° %s"
 
 
 msgid "ScaleX: %s"
@@ -91093,6 +91033,10 @@ msgid "NLA strip '%s' not found in track '%s'"
 msgstr "НЛА-клип «%s» не найден в дорожке «%s»"
 
 
+msgid "Registering node socket class: '%s' is too long, maximum length is %d"
+msgstr "Регистрация класса нодового сокета: имя «%s» слишком длинное, максимальная длина — %d"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "Одинаковое входное/выходное направление сокетов"
 
@@ -91123,10 +91067,6 @@ msgstr "Нода «%s» не найдена в системе нодов"
 
 msgid "Unable to locate socket '%s' in node"
 msgstr "Сокет «%s» не найден в ноде"
-
-
-msgid "Registering node socket class: '%s' is too long, maximum length is %d"
-msgstr "Регистрация класса нодового сокета: имя «%s» слишком длинное, максимальная длина — %d"
 
 
 msgid "Can only assign evaluated data to evaluated object, or original data to original object"
@@ -91723,10 +91663,6 @@ msgid "Clearcoat Roughness"
 msgstr "Шероховатость лака"
 
 
-msgid "Transmission Roughness"
-msgstr "Шероховатость светопропускаемости"
-
-
 msgid "Emission Strength"
 msgstr "Интенсивность свечения"
 
@@ -92176,16 +92112,16 @@ msgid "Can't link data-block '%s' of type '%s'"
 msgstr "Невозможно связать датаблок «%s» типа «%s"
 
 
-msgid "'%s': not a library"
-msgstr "«%s»: не библиотека"
+msgid "'%s': cannot use current file as library"
+msgstr "«%s»: невозможно использовать файл как библиотеку"
 
 
 msgid "'%s': nothing indicated"
 msgstr "«%s»: ничего не указано"
 
 
-msgid "'%s': cannot use current file as library"
-msgstr "«%s»: невозможно использовать файл как библиотеку"
+msgid "'%s': not a library"
+msgstr "«%s»: не библиотека"
 
 
 msgid "'%s' is not a valid library filepath"
