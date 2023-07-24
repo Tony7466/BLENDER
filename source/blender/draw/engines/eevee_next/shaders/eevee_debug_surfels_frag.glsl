@@ -19,7 +19,8 @@ void main()
   }
 
   /* Display surfels as circles. */
-  if (distance(P, surfel.position) > surfel_radius) {
+  float radius = (surfel.lod) * surfel_radius;
+  if (distance(P, surfel.position) > radius) {
     discard;
     return;
   }

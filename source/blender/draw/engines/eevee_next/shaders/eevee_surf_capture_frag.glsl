@@ -38,13 +38,22 @@ void main()
   /* ----- Surfel output ----- */
 
   if (capture_info_buf.do_surfel_count) {
+    /* Reject surfels based on distance to the grid. */
+    vec3 lP = transform_point(capture_info_buf.irradiance_grid_world_to_local, g_data.P);
+    float dist = max_v3(abs(lP));
+    float lod = max(log2(dist), 0.0);
+    // float noise = interlieved_gradient_noise(gl_FragCoord.xy, 5.0, 0.0);
+    // float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).r;
+    float noise = transparency_hashed_alpha_threshold(1.0, noise_offset, g_data.P);
+    bool is_valid_surfel = noise < (1.0 / exp2(lod * 2.0));
     /* Generate a surfel only once. This check allow cases where no axis is dominant. */
     bool is_surface_view_aligned = dominant_axis(g_data.Ng) == dominant_axis(cameraForward);
-    if (is_surface_view_aligned) {
+    if (is_surface_view_aligned && is_valid_surfel) {
       uint surfel_id = atomicAdd(capture_info_buf.surfel_len, 1u);
       if (capture_info_buf.do_surfel_output) {
         surfel_buf[surfel_id].position = g_data.P;
         surfel_buf[surfel_id].normal = gl_FrontFacing ? g_data.Ng : -g_data.Ng;
+        surfel_buf[surfel_id].lod = lod;
         surfel_buf[surfel_id].albedo_front = albedo;
         surfel_buf[surfel_id].radiance_direct.front.rgb = g_emission;
         /* TODO(fclem): 2nd surface evaluation. */

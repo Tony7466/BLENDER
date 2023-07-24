@@ -866,7 +866,8 @@ struct Surfel {
   float ray_distance;
   /** Surface albedo to apply to incoming radiance. */
   packed_float3 albedo_back;
-  int _pad3;
+  /** LOD of this surfel. Determine the surfel size. */
+  float lod;
   /** Surface radiance: Emission + Direct Lighting. */
   SurfelRadiance radiance_direct;
   /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
@@ -875,7 +876,7 @@ struct Surfel {
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
 struct CaptureInfoData {
-  /** Number of surfels inside the surfel buffer or the needed len. */
+  /** Number of grid samples per dimensions. */
   packed_int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
   bool1 do_surfel_output;
@@ -889,6 +890,8 @@ struct CaptureInfoData {
   float sample_index;
   /** Transform of the light-probe object. */
   float4x4 irradiance_grid_local_to_world;
+  /** Transform of the light-probe object. */
+  float4x4 irradiance_grid_world_to_local;
   /** Transform vectors from world space to local space. Does not have location component. */
   /** TODO(fclem): This could be a float3x4 or a float3x3 if padded correctly. */
   float4x4 irradiance_grid_world_to_local_rotation;
@@ -899,7 +902,8 @@ struct CaptureInfoData {
   int scene_bound_x_max;
   int scene_bound_y_max;
   int scene_bound_z_max;
-  int _pad0;
+  /** Number of surfels per unit. */
+  uint surfel_density;
   int _pad1;
   int _pad2;
 };

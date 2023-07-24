@@ -533,6 +533,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid_resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
+  capture_info_buf_.irradiance_grid_world_to_local = float4x4(probe_object.world_to_object);
   capture_info_buf_.irradiance_grid_world_to_local_rotation = float4x4(
       invert(normalize(float3x3(grid_local_to_world))));
 
