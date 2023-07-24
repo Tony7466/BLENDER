@@ -50,7 +50,6 @@ PathTrace::PathTrace(Device *device,
       path_trace_works_.emplace_back(std::move(work));
     }
   });
-
   work_balance_infos_.resize(path_trace_works_.size());
   work_balance_do_initial(work_balance_infos_);
 
@@ -265,36 +264,41 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     }
   }
 
-  /* Assign a size to each slice based on its weight */
-  VLOG_INFO << "Initial Slice sizes";
+  int biggest_slice = work_balance_infos[largest_weight].weight/work_balance_infos[smallest_weight].weight;
   int slice_stride = 0;
   int slice_sizes[num_works];
   int remaining_rows = window_height;
-  for (int i = 0; i < num_works; i++) {
-    const double weight = work_balance_infos[i].weight;
-    int slice_size = weight / work_balance_infos[smallest_weight].weight;
-    slice_size = std::max(remaining_rows - (num_works - (i + 1)), slice_size);
-    slice_sizes[i] = slice_size;
-    slice_stride += slice_size;
-  }
-  /* Instead of using interleaved slices create n bigger consecuitive slices */
-  if (!interleaved_slices) {
-    /* enlarge slices so that there are only num_works slices */
-    int remaining_height = window_height - slice_stride;
-    for (int i = 0; i < num_works; i++) {
-      const double weight = work_balance_infos[i].weight;
-      int slice_size = remaining_height * weight;
-      slice_sizes[i] += slice_size;
-      slice_stride += slice_size;
+  /* Aim to acheive at least 1 Slice per device otherwise use consecutive slices */
+  if(biggest_slice < window_height/num_works && interleaved_slices) {
+        /* Assign a size to each slice based on its weight */
+        for (int i = 0; i < num_works; i++) {
+            const double weight = work_balance_infos[i].weight;
+            int slice_size = weight / work_balance_infos[smallest_weight].weight;
+            slice_size = std::min(remaining_rows - (num_works - (i + 1)), slice_size);
+            slice_sizes[i] = slice_size;
+            slice_stride += slice_size;
+        }
+    } else {
+        /* Instead of using interleaved slices create n bigger consecutive slices */
+        remaining_rows = remaining_rows - num_works; /* each slice must have at least 1 row*/
+        for (int i = 0; i < num_works; i++) {
+            const double weight = work_balance_infos[i].weight;
+            /* Slice size is 1 row plus it's weighted portion of the remaining rows */
+            int slice_size = remaining_rows * weight;
+            slice_size += 1;
+            slice_sizes[i] = slice_size;
+            slice_stride += slice_size;
+        }
+        /* If there are any remaining scanlines due to truncation add them to the device with the
+         * highest weight */
+        int leftover_scanlines = window_height - slice_stride;
+        if (leftover_scanlines > 0) {
+            slice_sizes[largest_weight] += leftover_scanlines;
+            slice_stride++;
+        }
     }
-    /* if there are any remaining scanlines due to truncation add them to the device with the
-     * highest weight */
-    int leftover_scanlines = window_height - slice_stride;
-    if (leftover_scanlines > 0) {
-      slice_sizes[largest_weight] += leftover_scanlines;
-    }
-  }
 
+  VLOG_INFO << "===================SLICE================";
   int slices = window_height / slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
@@ -323,6 +327,7 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     callback(path_trace_works[i].get(), slice_params);
 
     current_y += slice_sizes[i];
+    VLOG_INFO << "(" << i << ") Slice size:" << slice_sizes[i] << " weight:" << work_balance_infos[i].weight;
   }
 }
 
