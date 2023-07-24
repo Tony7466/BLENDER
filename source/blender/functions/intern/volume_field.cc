@@ -180,6 +180,7 @@ struct TypedAccessorWrapper : public AccessorWrapper<LeafNodeType> {
 
 template<typename GridType> struct EvalPerLeafOp {
   using GGrid = volume::GGrid;
+  using GMutableGrid = volume::GMutableGrid;
   using GridMask = volume::GridMask;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
@@ -285,12 +286,16 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
   using volume::GMutableGrid;
   using volume::GridMask;
 
+  if (mask.is_empty()) {
+    return;
+  }
+
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> GGrid {
+  auto get_dst_grid = [&](int index) -> GMutableGrid {
     if (dst_grids.is_empty()) {
       return {};
     }
-    const GGrid &grid = dst_grids[index];
+    const GMutableGrid &grid = dst_grids[index];
     if (!grid) {
       return {};
     }
@@ -306,7 +311,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     const int out_index = field_indices[i];
 
     /* Try to get an existing virtual array that the result should be written into. */
-    GGrid dst_grid = get_dst_grid(out_index);
+    GMutableGrid dst_grid = get_dst_grid(out_index);
     if (!dst_grid) {
       /* Create a destination grid for the computed result. */
       dst_grid = GMutableGrid::create(
@@ -326,7 +331,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     volume::grid_to_static_type(dst_grid.grid_, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
 
-      EvalPerLeafOp<GridType> func(field_context_inputs, procedure_executor, mask.grid());
+      EvalPerLeafOp<GridType> func(field_context_inputs, procedure_executor, *mask.grid());
       openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
                                func,
                                /*threaded=*/true,
@@ -340,9 +345,10 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
                                                   Span<volume::GGrid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  MutableSpan<volume::GMutableGrid> r_grids)
+                                                  MutableSpan<volume::GGrid> r_grids)
 {
   using volume::GGrid;
+  using volume::GMutableGrid;
   using volume::GridMask;
 
   mf::ProcedureExecutor procedure_executor{procedure};
@@ -358,7 +364,7 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
 
       /* XXX not all grid types have a background property. */
       // const ValueType input_value = input_grid.background();
-      typename InputGridType::Accessor accessor = input_grid.getAccessor();
+      typename InputGridType::ConstAccessor accessor = input_grid.getAccessor();
       const ValueType input_value = accessor.getValue(openvdb::Coord(0, 0, 0));
 
       VArray<ValueType> varray = VArray<ValueType>::ForSingle(input_value, 1);

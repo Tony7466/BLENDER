@@ -127,13 +127,13 @@ using SupportedGridTypes = openvdb::TypeList<BoolGrid,
 class GridMask {
 #ifdef WITH_OPENVDB
   static const openvdb::MaskGrid::ConstPtr empty_grid_;
-  const openvdb::MaskGrid &grid_;
+  openvdb::MaskGrid::ConstPtr grid_;
 #endif
 
  public:
   GridMask()
 #ifdef WITH_OPENVDB
-      : grid_(*empty_grid_)
+      : grid_(empty_grid_)
 #endif
   {
   }
@@ -142,17 +142,18 @@ class GridMask {
   GridMask &operator=(const GridMask &other)
   {
     grid_ = other.grid_;
+    return *this;
   }
 
 #ifdef WITH_OPENVDB
-  GridMask(const openvdb::MaskGrid &grid) : grid_(grid) {}
+  GridMask(const openvdb::MaskGrid::ConstPtr &grid) : grid_(grid) {}
 #endif
 
   bool is_empty() const;
   int64_t min_voxel_count() const;
 
 #ifdef WITH_OPENVDB
-  const openvdb::MaskGrid &grid() const
+  const openvdb::MaskGrid::ConstPtr &grid() const
   {
     return grid_;
   }
@@ -165,6 +166,7 @@ class GridMask {
  * \{ */
 
 template<typename T> struct Grid;
+template<typename T> struct MutableGrid;
 
 /* Generic grid reference. */
 struct GGrid {
@@ -249,14 +251,14 @@ template<typename T> struct MutableGrid {
 #endif
 
   /* Create an empty grid with a background value. */
-  static Grid<T> create(ResourceScope &scope, const T &background_value);
+  static MutableGrid<T> create(ResourceScope &scope, const T &background_value);
   /* Create an empty grid with the type default as background value. */
-  static Grid<T> create(ResourceScope &scope);
+  static MutableGrid<T> create(ResourceScope &scope);
   /* Create a grid with the active volume mask voxels. */
-  static Grid<T> create(ResourceScope &scope,
-                        const GridMask &mask,
-                        const T &inactive_value,
-                        const T &active_value);
+  static MutableGrid<T> create(ResourceScope &scope,
+                               const GridMask &mask,
+                               const T &inactive_value,
+                               const T &active_value);
 
   operator GMutableGrid();
   operator GMutableGrid const() const;
@@ -277,7 +279,7 @@ template<typename T> Grid<T> GGrid::typed() const
   if (!grid_) {
     return {};
   }
-  GridPtr typed_grid = grid_->grid<GridType>();
+  GridPtr typed_grid = openvdb::GridBase::grid<GridType>(grid_);
   if (!typed_grid) {
     return {};
   }

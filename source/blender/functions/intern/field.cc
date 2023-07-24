@@ -1106,12 +1106,12 @@ void VolumeFieldEvaluator::evaluate()
   for (const int i : fields_to_evaluate_.index_range()) {
     fields[i] = fields_to_evaluate_[i];
   }
-  evaluated_grids_ = evaluate_fields(scope_, fields, selection_mask_, context_, dst_grids_);
-  BLI_assert(fields_to_evaluate_.size() == evaluated_varrays_.size());
+  evaluated_grids_ = evaluate_volume_fields(scope_, fields, selection_mask_, context_, dst_grids_);
+  BLI_assert(fields_to_evaluate_.size() == evaluated_grids_.size());
   for (const int i : fields_to_evaluate_.index_range()) {
     OutputPointerInfo &info = output_pointer_infos_[i];
     if (info.dst != nullptr) {
-      info.set(info.dst, evaluated_varrays_[i], scope_);
+      info.set(info.dst, evaluated_grids_[i], scope_);
     }
   }
   is_evaluated_ = true;

@@ -178,7 +178,8 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {};
+struct TypedFieldBase {
+};
 }  // namespace detail
 
 /**
@@ -502,7 +503,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     void *dst = nullptr;
     /* When a destination grid is provided for an input, this is
      * unnecessary, otherwise this is used to construct the required grid. */
-    void (*set)(void *dst, const GVArray &varray, ResourceScope &scope) = nullptr;
+    void (*set)(void *dst, const GGrid &grid, ResourceScope &scope) = nullptr;
   };
 
   ResourceScope scope_;
