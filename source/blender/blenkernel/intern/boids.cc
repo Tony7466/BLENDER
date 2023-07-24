@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -218,7 +218,7 @@ static bool rule_avoid_collision(BoidRule *rule,
   float co1[3], vel1[3], co2[3], vel2[3];
   float len, t, inp, t_min = 2.0f;
   int n, neighbors = 0, nearest = 0;
-  bool ret = 0;
+  bool ret = false;
 
   /* Check deflector objects first. */
   if (acbr->options & BRULE_ACOLL_WITH_DEFLECTORS && bbd->sim->colliders) {
@@ -325,7 +325,7 @@ static bool rule_avoid_collision(BoidRule *rule,
               mul_v3_fl(vec, (2.0f - t) / 2.0f);
               sub_v3_v3v3(bbd->wanted_co, vel1, vec);
               bbd->wanted_speed = len_v3(bbd->wanted_co);
-              ret = 1;
+              ret = true;
             }
           }
         }
@@ -381,7 +381,7 @@ static bool rule_avoid_collision(BoidRule *rule,
                 mul_v3_fl(vec, (2.0f - t) / 2.0f);
                 sub_v3_v3v3(bbd->wanted_co, vel1, vec);
                 bbd->wanted_speed = len_v3(bbd->wanted_co);
-                ret = 1;
+                ret = true;
               }
             }
           }
@@ -417,7 +417,7 @@ static bool rule_separate(BoidRule * /*rule*/,
     add_v3_v3(bbd->wanted_co, vec);
     bbd->wanted_speed = val->max_speed;
     len = ptn[1].dist;
-    ret = 1;
+    ret = true;
   }
   MEM_SAFE_FREE(ptn);
 
@@ -466,8 +466,8 @@ static bool rule_flock(BoidRule * /*rule*/,
       add_v3_v3(vec, bbd->sim->psys->particles[ptn[n].index].prev_state.vel);
     }
 
-    mul_v3_fl(loc, 1.0f / ((float)neighbors - 1.0f));
-    mul_v3_fl(vec, 1.0f / ((float)neighbors - 1.0f));
+    mul_v3_fl(loc, 1.0f / (float(neighbors) - 1.0f));
+    mul_v3_fl(vec, 1.0f / (float(neighbors) - 1.0f));
 
     sub_v3_v3(loc, pa->prev_state.co);
     sub_v3_v3(vec, pa->prev_state.vel);
@@ -781,10 +781,10 @@ static bool rule_fight(BoidRule *rule, BoidBrainData *bbd, BoidValues *val, Part
   return ret;
 }
 
-typedef bool (*boid_rule_cb)(BoidRule *rule,
-                             BoidBrainData *data,
-                             BoidValues *val,
-                             ParticleData *pa);
+using boid_rule_cb = bool (*)(BoidRule *rule,
+                              BoidBrainData *data,
+                              BoidValues *val,
+                              ParticleData *pa);
 
 static boid_rule_cb boid_rules[] = {
     rule_none,
@@ -812,7 +812,7 @@ static void set_boid_values(BoidValues *val, BoidSettings *boids, ParticleData *
   if (ELEM(bpa->data.mode, eBoidMode_OnLand, eBoidMode_Climbing)) {
     val->max_speed = boids->land_max_speed * bpa->data.health / boids->health;
     val->max_acc = boids->land_max_acc * val->max_speed;
-    val->max_ave = boids->land_max_ave * (float)M_PI * bpa->data.health / boids->health;
+    val->max_ave = boids->land_max_ave * float(M_PI) * bpa->data.health / boids->health;
     val->min_speed = 0.0f; /* no minimum speed on land */
     val->personal_space = boids->land_personal_space;
     val->jump_speed = boids->land_jump_speed * bpa->data.health / boids->health;
@@ -820,7 +820,7 @@ static void set_boid_values(BoidValues *val, BoidSettings *boids, ParticleData *
   else {
     val->max_speed = boids->air_max_speed * bpa->data.health / boids->health;
     val->max_acc = boids->air_max_acc * val->max_speed;
-    val->max_ave = boids->air_max_ave * (float)M_PI * bpa->data.health / boids->health;
+    val->max_ave = boids->air_max_ave * float(M_PI) * bpa->data.health / boids->health;
     val->min_speed = boids->air_min_speed * boids->air_max_speed;
     val->personal_space = boids->air_personal_space;
     val->jump_speed = 0.0f; /* no jumping in air */
@@ -1085,8 +1085,8 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
   bbd->wanted_speed = 0.0f;
 
   /* create random seed for every particle & frame */
-  rand = (int)(psys_frand(psys, psys->seed + p) * 1000);
-  rand = (int)(psys_frand(psys, (int)bbd->cfra + rand) * 1000);
+  rand = int(psys_frand(psys, psys->seed + p) * 1000);
+  rand = int(psys_frand(psys, int(bbd->cfra) + rand) * 1000);
 
   set_boid_values(&val, bbd->part->boids, pa);
 
@@ -1123,8 +1123,8 @@ void boid_brain(BoidBrainData *bbd, int p, ParticleData *pa)
       }
 
       if (n > 1) {
-        mul_v3_fl(wanted_co, 1.0f / (float)n);
-        wanted_speed /= (float)n;
+        mul_v3_fl(wanted_co, 1.0f / float(n));
+        wanted_speed /= float(n);
       }
 
       copy_v3_v3(bbd->wanted_co, wanted_co);

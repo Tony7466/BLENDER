@@ -6,10 +6,10 @@
  * \ingroup bke
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -417,13 +417,13 @@ void outside_lattice(Lattice *lt)
     bp = lt->def;
 
     if (lt->pntsu > 1) {
-      du = 1.0f / ((float)lt->pntsu - 1);
+      du = 1.0f / float(lt->pntsu - 1);
     }
     if (lt->pntsv > 1) {
-      dv = 1.0f / ((float)lt->pntsv - 1);
+      dv = 1.0f / float(lt->pntsv - 1);
     }
     if (lt->pntsw > 1) {
-      dw = 1.0f / ((float)lt->pntsw - 1);
+      dw = 1.0f / float(lt->pntsw - 1);
     }
 
     for (w = 0; w < lt->pntsw; w++) {
@@ -548,7 +548,7 @@ void BKE_lattice_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     if (is_editmode && !(md->mode & eModifierMode_Editmode)) {
       continue;
     }
-    if (mti->isDisabled && mti->isDisabled(scene, md, 0)) {
+    if (mti->isDisabled && mti->isDisabled(scene, md, false)) {
       continue;
     }
     if (mti->type != eModifierTypeType_OnlyDeform) {
@@ -617,7 +617,7 @@ void BKE_lattice_center_median(Lattice *lt, float cent[3])
     add_v3_v3(cent, lt->def[i].vec);
   }
 
-  mul_v3_fl(cent, 1.0f / (float)numVerts);
+  mul_v3_fl(cent, 1.0f / float(numVerts));
 }
 
 static void boundbox_lattice(Object *ob)

@@ -34,7 +34,7 @@
 
 /* Temporary evaluation tree data used for Spline IK */
 struct tSplineIK_Tree {
-  struct tSplineIK_Tree *next, *prev;
+  tSplineIK_Tree *next, *prev;
 
   int type; /* type of IK that this serves (CONSTRAINT_TYPE_KINEMATIC or ..._SPLINEIK) */
 
@@ -107,7 +107,7 @@ static void splineik_init_tree_from_pchan(Scene * /*scene*/,
 
   /* Perform binding step if required. */
   if ((ik_data->flag & CONSTRAINT_SPLINEIK_BOUND) == 0) {
-    float segmentLen = (1.0f / (float)segcount);
+    float segmentLen = (1.0f / float(segcount));
 
     /* Setup new empty array for the points list. */
     if (ik_data->points) {
@@ -656,7 +656,7 @@ static void splineik_evaluate_bone(
 
               float range = bulge_max - 1.0f;
               float scale = (range > 0.0f) ? 1.0f / range : 0.0f;
-              float soft = 1.0f + range * atanf((bulge - 1.0f) * scale) / (float)M_PI_2;
+              float soft = 1.0f + range * atanf((bulge - 1.0f) * scale) / float(M_PI_2);
 
               bulge = interpf(soft, hard, ik_data->bulge_smooth);
             }
@@ -668,7 +668,7 @@ static void splineik_evaluate_bone(
 
               float range = 1.0f - bulge_min;
               float scale = (range > 0.0f) ? 1.0f / range : 0.0f;
-              float soft = 1.0f - range * atanf((1.0f - bulge) * scale) / (float)M_PI_2;
+              float soft = 1.0f - range * atanf((1.0f - bulge) * scale) / float(M_PI_2);
 
               bulge = interpf(soft, hard, ik_data->bulge_smooth);
             }
@@ -750,7 +750,7 @@ static void splineik_execute_tree(
     /* Firstly, calculate the bone matrix the standard way,
      * since this is needed for roll control. */
     for (int i = tree->chainlen - 1; i >= 0; i--) {
-      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, true);
     }
 
     /* After that, evaluate the actual Spline IK, unless there are missing dependencies. */
@@ -891,7 +891,7 @@ void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int 
         if ((pchan->flag & POSE_DONE) == 0) {
           /* TODO(sergey): Use time source node for time. */
           float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
         }
       }
     }
@@ -919,7 +919,7 @@ void BKE_pose_constraints_evaluate(Depsgraph *depsgraph,
   else {
     if ((pchan->flag & POSE_DONE) == 0) {
       float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
     }
   }
 }
