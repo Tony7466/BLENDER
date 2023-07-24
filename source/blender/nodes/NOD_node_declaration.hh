@@ -496,9 +496,9 @@ class PanelDeclaration : public ItemDeclaration {
  public:
   virtual ~PanelDeclaration() = default;
 
-  bNodePanelState &build(bNodeTree &ntree, bNode &node) const;
+  void build(bNodePanelState &panel) const;
   bool matches(const bNodePanelState &panel) const;
-  bNodePanelState &update_or_build(bNodeTree &ntree, bNode &node, bNodePanelState &panel) const;
+  void update_or_build(const bNodePanelState &old_panel, bNodePanelState &new_panel) const;
 };
 
 class PanelDeclarationBuilder {

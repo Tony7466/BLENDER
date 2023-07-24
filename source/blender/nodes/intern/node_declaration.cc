@@ -6,6 +6,8 @@
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
+#include "BLI_utildefines.h"
+
 #include "BKE_geometry_fields.hh"
 #include "BKE_node.hh"
 
@@ -225,20 +227,11 @@ bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
   return true;
 }
 
-bNodePanelState &PanelDeclaration::build(bNodeTree & /*ntree*/, bNode &node) const
+void PanelDeclaration::build(bNodePanelState &panel) const
 {
-  bNodePanelState *new_panel_states_array = MEM_cnew_array<bNodePanelState>(
-      node.num_panel_states + 1, __func__);
-  bNodePanelState *panel = &new_panel_states_array[node.num_panel_states];
-
-  panel->uid = this->uid;
-  SET_FLAG_FROM_TEST(panel->flag, this->default_collapsed, NODE_PANEL_COLLAPSED);
-
-  MEM_SAFE_FREE(node.panel_states_array);
-  node.panel_states_array = new_panel_states_array;
-  ++node.num_panel_states;
-
-  return *panel;
+  panel = {0};
+  panel.uid = this->uid;
+  SET_FLAG_FROM_TEST(panel.flag, this->default_collapsed, NODE_PANEL_COLLAPSED);
 }
 
 bool PanelDeclaration::matches(const bNodePanelState &panel) const
@@ -246,12 +239,12 @@ bool PanelDeclaration::matches(const bNodePanelState &panel) const
   return panel.uid == this->uid;
 }
 
-bNodePanelState &PanelDeclaration::update_or_build(bNodeTree &ntree,
-                                                   bNode &node,
-                                                   bNodePanelState & /*panel*/) const
+void PanelDeclaration::update_or_build(const bNodePanelState &old_panel,
+                                       bNodePanelState &new_panel) const
 {
-  /* By default just rebuild. */
-  return this->build(ntree, node);
+  build(new_panel);
+  /* Copy existing state to the new panel */
+  SET_FLAG_FROM_TEST(new_panel.flag, old_panel.is_collapsed(), NODE_PANEL_COLLAPSED);
 }
 
 namespace implicit_field_inputs {

@@ -178,77 +178,159 @@ static void verify_socket_template_list(bNodeTree *ntree,
 
 namespace blender::nodes {
 
-static void refresh_socket_list(bNodeTree &ntree,
+static void refresh_node_socket(bNodeTree &ntree,
                                 bNode &node,
-                                ListBase &sockets,
-                                Span<SocketDeclaration *> socket_decls,
-                                const bool do_id_user)
+                                const SocketDeclaration &socket_decl,
+                                Vector<bNodeSocket *> &old_sockets,
+                                VectorSet<bNodeSocket *> &new_sockets)
 {
-  Vector<bNodeSocket *> old_sockets = sockets;
-  VectorSet<bNodeSocket *> new_sockets;
-  for (const SocketDeclaration *socket_decl : socket_decls) {
-    /* Try to find a socket that corresponds to the declaration. */
-    bNodeSocket *old_socket_with_same_identifier = nullptr;
-    for (const int i : old_sockets.index_range()) {
-      bNodeSocket &old_socket = *old_sockets[i];
-      if (old_socket.identifier == socket_decl->identifier) {
-        old_sockets.remove_and_reorder(i);
-        old_socket_with_same_identifier = &old_socket;
-        break;
-      }
+  /* Try to find a socket that corresponds to the declaration. */
+  bNodeSocket *old_socket_with_same_identifier = nullptr;
+  for (const int i : old_sockets.index_range()) {
+    bNodeSocket &old_socket = *old_sockets[i];
+    if (old_socket.identifier == socket_decl.identifier) {
+      old_sockets.remove_and_reorder(i);
+      old_socket_with_same_identifier = &old_socket;
+      break;
     }
-    bNodeSocket *new_socket = nullptr;
-    if (old_socket_with_same_identifier == nullptr) {
-      /* Create a completely new socket. */
-      new_socket = &socket_decl->build(ntree, node);
+  }
+  bNodeSocket *new_socket = nullptr;
+  if (old_socket_with_same_identifier == nullptr) {
+    /* Create a completely new socket. */
+    new_socket = &socket_decl.build(ntree, node);
+  }
+  else {
+    STRNCPY(old_socket_with_same_identifier->name, socket_decl.name.c_str());
+    if (socket_decl.matches(*old_socket_with_same_identifier)) {
+      /* The existing socket matches exactly, just use it. */
+      new_socket = old_socket_with_same_identifier;
     }
     else {
-      STRNCPY(old_socket_with_same_identifier->name, socket_decl->name.c_str());
-      if (socket_decl->matches(*old_socket_with_same_identifier)) {
-        /* The existing socket matches exactly, just use it. */
-        new_socket = old_socket_with_same_identifier;
+      /* Clear out identifier to avoid name collisions when a new socket is created. */
+      old_socket_with_same_identifier->identifier[0] = '\0';
+      new_socket = &socket_decl.update_or_build(ntree, node, *old_socket_with_same_identifier);
+
+      if (new_socket == old_socket_with_same_identifier) {
+        /* The existing socket has been updated, set the correct identifier again. */
+        STRNCPY(new_socket->identifier, socket_decl.identifier.c_str());
       }
       else {
-        /* Clear out identifier to avoid name collisions when a new socket is created. */
-        old_socket_with_same_identifier->identifier[0] = '\0';
-        new_socket = &socket_decl->update_or_build(ntree, node, *old_socket_with_same_identifier);
-
-        if (new_socket == old_socket_with_same_identifier) {
-          /* The existing socket has been updated, set the correct identifier again. */
-          STRNCPY(new_socket->identifier, socket_decl->identifier.c_str());
-        }
-        else {
-          /* Move links to new socket with same identifier. */
-          LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
-            if (link->fromsock == old_socket_with_same_identifier) {
-              link->fromsock = new_socket;
-            }
-            else if (link->tosock == old_socket_with_same_identifier) {
-              link->tosock = new_socket;
-            }
+        /* Move links to new socket with same identifier. */
+        LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+          if (link->fromsock == old_socket_with_same_identifier) {
+            link->fromsock = new_socket;
           }
-          for (bNodeLink &internal_link : node.runtime->internal_links) {
-            if (internal_link.fromsock == old_socket_with_same_identifier) {
-              internal_link.fromsock = new_socket;
-            }
-            else if (internal_link.tosock == old_socket_with_same_identifier) {
-              internal_link.tosock = new_socket;
-            }
+          else if (link->tosock == old_socket_with_same_identifier) {
+            link->tosock = new_socket;
+          }
+        }
+        for (bNodeLink &internal_link : node.runtime->internal_links) {
+          if (internal_link.fromsock == old_socket_with_same_identifier) {
+            internal_link.fromsock = new_socket;
+          }
+          else if (internal_link.tosock == old_socket_with_same_identifier) {
+            internal_link.tosock = new_socket;
           }
         }
       }
     }
-    new_sockets.add_new(new_socket);
-    BKE_ntree_update_tag_socket_new(&ntree, new_socket);
   }
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, old_socket, &sockets) {
-    if (!new_sockets.contains(old_socket)) {
+  new_sockets.add_new(new_socket);
+  BKE_ntree_update_tag_socket_new(&ntree, new_socket);
+}
+
+static void refresh_node_panel(const PanelDeclaration &panel_decl,
+                               Vector<bNodePanelState> &old_panels,
+                               bNodePanelState &new_panel)
+{
+  /* Try to find a panel that corresponds to the declaration. */
+  bNodePanelState *old_panel_with_same_identifier = nullptr;
+  for (const int i : old_panels.index_range()) {
+    bNodePanelState &old_panel = old_panels[i];
+    if (old_panel.uid == panel_decl.uid) {
+      old_panels.remove_and_reorder(i);
+      old_panel_with_same_identifier = &old_panel;
+      break;
+    }
+  }
+
+  if (old_panel_with_same_identifier == nullptr) {
+    /* Create a completely new panel. */
+    panel_decl.build(new_panel);
+  }
+  else {
+    if (panel_decl.matches(*old_panel_with_same_identifier)) {
+      /* The existing socket matches exactly, just use it. */
+      new_panel = *old_panel_with_same_identifier;
+    }
+    else {
+      /* Clear out identifier to avoid name collisions when a new panel is created. */
+      old_panel_with_same_identifier->uid = -1;
+      panel_decl.update_or_build(*old_panel_with_same_identifier, new_panel);
+    }
+  }
+}
+
+static void refresh_node_sockets_and_panels(bNodeTree &ntree,
+                                            bNode &node,
+                                            Span<ItemDeclarationPtr> item_decls,
+                                            const bool do_id_user)
+{
+  Vector<bNodeSocket *> old_inputs = node.inputs;
+  Vector<bNodeSocket *> old_outputs = node.outputs;
+  Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
+  VectorSet<bNodeSocket *> new_inputs;
+  VectorSet<bNodeSocket *> new_outputs;
+
+  /* Count panels */
+  int num_panels = 0;
+  for (const ItemDeclarationPtr &item_decl : item_decls) {
+    if (dynamic_cast<const PanelDeclaration *>(item_decl.get())) {
+      ++num_panels;
+    }
+  }
+
+  node.num_panel_states = num_panels;
+  node.panel_states_array = MEM_cnew_array<bNodePanelState>(num_panels, __func__);
+  bNodePanelState *new_panel = node.panel_states_array;
+
+  for (const ItemDeclarationPtr &item_decl : item_decls) {
+    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
+            item_decl.get()))
+    {
+      if (socket_decl->in_out == SOCK_IN) {
+        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
+      }
+      else {
+        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
+      }
+    }
+    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
+                 item_decl.get()))
+    {
+      refresh_node_panel(*panel_decl, old_panels, *new_panel);
+      ++new_panel;
+    }
+  }
+
+  /* Update socket lists. */
+  for (bNodeSocket *old_socket : old_inputs) {
+    if (!new_inputs.contains(old_socket)) {
       blender::bke::nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
     }
   }
-  BLI_listbase_clear(&sockets);
-  for (bNodeSocket *socket : new_sockets) {
-    BLI_addtail(&sockets, socket);
+  for (bNodeSocket *old_socket : old_outputs) {
+    if (!new_outputs.contains(old_socket)) {
+      blender::bke::nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
+    }
+  }
+  BLI_listbase_clear(&node.inputs);
+  BLI_listbase_clear(&node.outputs);
+  for (bNodeSocket *socket : new_inputs) {
+    BLI_addtail(&node.inputs, socket);
+  }
+  for (bNodeSocket *socket : new_outputs) {
+    BLI_addtail(&node.outputs, socket);
   }
 }
 
@@ -261,8 +343,7 @@ static void refresh_node(bNodeTree &ntree,
     return;
   }
   if (!node_decl.matches(node)) {
-    refresh_socket_list(ntree, node, node.inputs, node_decl.inputs, do_id_user);
-    refresh_socket_list(ntree, node, node.outputs, node_decl.outputs, do_id_user);
+    refresh_node_sockets_and_panels(ntree, node, node_decl.items, do_id_user);
   }
   blender::bke::nodeSocketDeclarationsUpdate(&node);
 }
