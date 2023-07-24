@@ -19,7 +19,7 @@ void main()
   }
 
   /* Display surfels as circles. */
-  float radius = (surfel.lod) * surfel_radius;
+  float radius = exp2(float(surfel.lod)) * surfel_radius;
   if (distance(P, surfel.position) > radius) {
     discard;
     return;

@@ -307,7 +307,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 
     LightProbeGridCacheFrame *cache = grid.cache->grid_static_cache;
 
-    if (cache->surfels == nullptr || cache->surfels_len == 0) {
+    if (cache == nullptr || cache->surfels == nullptr || cache->surfels_len == 0) {
       continue;
     }
 
@@ -316,7 +316,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
                                 DRW_STATE_DEPTH_LESS_EQUAL);
     display_grids_ps_.framebuffer_set(&view_fb);
     debug_surfels_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_SURFELS));
-    debug_surfels_ps_.push_constant("surfel_radius", 1.5f / 4.0f);
+    debug_surfels_ps_.push_constant("surfel_radius", 0.5f / 4.0f);
     debug_surfels_ps_.push_constant("debug_mode", int(inst_.debug_mode));
 
     debug_surfels_buf_.resize(cache->surfels_len);
@@ -495,7 +495,10 @@ void IrradianceBake::surfel_raster_views_sync(const float3 &scene_min, const flo
 {
   using namespace blender::math;
 
-  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * (scene_max - scene_min)));
+  /* NOTE: We render the scene at twice the density to be able to make surfel LOD by rejecting some
+   * pixels. If we don't, we get alignment problem of the surfels. See capture shader for more
+   * details. */
+  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * 2.0f * (scene_max - scene_min)));
 
   grid_pixel_extent_ = min(grid_pixel_extent_, int3(16384));
 
@@ -726,6 +729,10 @@ void IrradianceBake::raylists_build()
   min += pixel_size * aa_offset;
 
   list_info_buf_.list_max = list_info_buf_.ray_grid_size.x * list_info_buf_.ray_grid_size.y;
+  /* Allocate enough for LODs. */
+  list_info_buf_.list_max = (list_info_buf_.list_max * 4) / 3;
+  list_info_buf_.ray_grid_lod_max = min_ii(log2_floor_u(list_info_buf_.ray_grid_size.x),
+                                           log2_floor_u(list_info_buf_.ray_grid_size.y));
   list_info_buf_.push_update();
 
   /* NOTE: Z values do not really matter since we are not doing any rasterization. */

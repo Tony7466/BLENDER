@@ -61,7 +61,7 @@ void main()
 
   /* Project to get ray linked list. */
   float irradiance_sample_ray_distance;
-  int list_index = surfel_list_index_get(P, irradiance_sample_ray_distance);
+  int list_index = surfel_list_index_get(P, 0, irradiance_sample_ray_distance);
 
   /* Walk the ray to get which surfels the irradiance sample is between. */
   int surfel_prev = -1;

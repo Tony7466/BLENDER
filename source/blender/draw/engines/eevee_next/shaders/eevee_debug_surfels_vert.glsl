@@ -38,7 +38,7 @@ void main()
   vec3 T, B;
   make_orthonormal_basis(N, T, B);
 
-  float radius = (surfel.lod) * surfel_radius;
+  float radius = exp2(float(surfel.lod)) * surfel_radius;
 
   mat4 model_matrix = mat4(
       vec4(T * radius, 0), vec4(B * radius, 0), vec4(N * radius, 0), vec4(surfel.position, 1));

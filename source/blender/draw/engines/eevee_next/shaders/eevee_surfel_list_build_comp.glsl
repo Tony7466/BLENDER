@@ -4,9 +4,6 @@
  *
  * The lists head are allocated to fit the surfel granularity.
  *
- * Due to alignment the link and list head are split into several int arrays to avoid too much
- * memory waste.
- *
  * Dispatch 1 thread per surfel.
  */
 
@@ -21,8 +18,10 @@ void main()
     return;
   }
 
+  vec3 P = surfel_buf[surfel_index].position;
+  int lod = surfel_buf[surfel_index].lod;
   float ray_distance;
-  int list_index = surfel_list_index_get(surfel_buf[surfel_index].position, ray_distance);
+  int list_index = surfel_list_index_get(P, lod, ray_distance);
   /* Do separate assignement to avoid reference to buffer in arguments which is tricky to cross
    * compile. */
   surfel_buf[surfel_index].ray_distance = ray_distance;

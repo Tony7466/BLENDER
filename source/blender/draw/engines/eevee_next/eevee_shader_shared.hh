@@ -867,7 +867,7 @@ struct Surfel {
   /** Surface albedo to apply to incoming radiance. */
   packed_float3 albedo_back;
   /** LOD of this surfel. Determine the surfel size. */
-  float lod;
+  int lod;
   /** Surface radiance: Emission + Direct Lighting. */
   SurfelRadiance radiance_direct;
   /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
@@ -914,8 +914,8 @@ struct SurfelListInfoData {
   int2 ray_grid_size;
   /** Maximum number of list. Is equal to `ray_grid_size.x * ray_grid_size.y`. */
   int list_max;
-
-  int _pad0;
+  /** Maximum number of lod for the ray grid. */
+  int ray_grid_lod_max;
 };
 BLI_STATIC_ASSERT_ALIGN(SurfelListInfoData, 16)
 
