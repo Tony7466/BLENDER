@@ -488,6 +488,78 @@ static ID **node_owner_pointer_get(ID *id)
 
 }  // namespace blender::bke
 
+/* Forward declaration. */
+static void write_node_socket_interface(BlendWriter *writer, bNodeSocket *sock);
+
+namespace blender::bke::forward_compat {
+
+/**
+ * Socket interface reconstruction for forward compatibility.
+ * To enable previous Blender versions to read the new interface DNA data,
+ * construct the bNodeSocket inputs/outputs lists.
+ * This discards any information about panels and alternating input/output order,
+ * but all functional information is preserved for executing node trees.
+ */
+static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
+{
+  /* Discard old data. */
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
+    node_socket_interface_free(ntree, socket, false);
+    MEM_freeN(socket);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs) {
+    node_socket_interface_free(ntree, socket, false);
+    MEM_freeN(socket);
+  }
+  BLI_listbase_clear(&ntree->inputs);
+  BLI_listbase_clear(&ntree->outputs);
+
+  /* Construct inputs/outputs socket lists in the node tree. */
+  ntree->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+    if (const bNodeTreeInterfaceSocket *socket =
+            node_interface::get_as_ptr<bNodeTreeInterfaceSocket>(&item))
+    {
+      if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
+        bNodeSocket *iosock = ntreeAddSocketInterface(
+            ntree, SOCK_IN, socket->socket_type, DATA_(socket->name));
+        node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
+                                            iosock->default_value,
+                                            socket->socket_data);
+      }
+      if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
+        bNodeSocket *iosock = ntreeAddSocketInterface(
+            ntree, SOCK_OUT, socket->socket_type, DATA_(socket->name));
+        node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
+                                            iosock->default_value,
+                                            socket->socket_data);
+      }
+    }
+    return true;
+  });
+
+  /* Write inputs/outputs */
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
+    write_node_socket_interface(writer, sock);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
+    write_node_socket_interface(writer, sock);
+  }
+
+  /* Clean up temporary inputs/outputs. */
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
+    node_socket_interface_free(ntree, socket, false);
+    MEM_freeN(socket);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs) {
+    node_socket_interface_free(ntree, socket, false);
+    MEM_freeN(socket);
+  }
+  BLI_listbase_clear(&ntree->inputs);
+  BLI_listbase_clear(&ntree->outputs);
+}
+
+}  // namespace blender::bke::forward_compat
+
 static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *sock)
 {
   if (sock->default_value == nullptr) {
@@ -708,6 +780,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
   }
 
   BKE_nodetree_interface_write(writer, &ntree->interface);
+  blender::bke::forward_compat::write_interface_as_sockets(writer, ntree);
 
   BLO_write_pointer_array(writer, ntree->panels_num, ntree->panels_array);
   for (const bNodePanel *panel : ntree->panels()) {

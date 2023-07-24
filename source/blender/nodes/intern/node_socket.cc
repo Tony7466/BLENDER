@@ -387,16 +387,13 @@ void node_verify_sockets(bNodeTree *ntree, bNode *node, bool do_id_user)
   }
 }
 
-void node_socket_init_default_value(bNodeSocket *sock)
+void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subtype, void **data)
 {
-  int type = sock->typeinfo->type;
-  int subtype = sock->typeinfo->subtype;
-
-  if (sock->default_value) {
-    return; /* already initialized */
+  if (!data) {
+    return;
   }
 
-  switch (type) {
+  switch (datatype) {
     case SOCK_FLOAT: {
       bNodeSocketValueFloat *dval = MEM_cnew<bNodeSocketValueFloat>("node socket value float");
       dval->subtype = subtype;
@@ -404,7 +401,7 @@ void node_socket_init_default_value(bNodeSocket *sock)
       dval->min = -FLT_MAX;
       dval->max = FLT_MAX;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_INT: {
@@ -414,19 +411,19 @@ void node_socket_init_default_value(bNodeSocket *sock)
       dval->min = INT_MIN;
       dval->max = INT_MAX;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_BOOLEAN: {
       bNodeSocketValueBoolean *dval = MEM_cnew<bNodeSocketValueBoolean>("node socket value bool");
       dval->value = false;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_ROTATION: {
       bNodeSocketValueRotation *dval = MEM_cnew<bNodeSocketValueRotation>(__func__);
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_VECTOR: {
@@ -437,7 +434,7 @@ void node_socket_init_default_value(bNodeSocket *sock)
       dval->min = -FLT_MAX;
       dval->max = FLT_MAX;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_RGBA: {
@@ -445,7 +442,7 @@ void node_socket_init_default_value(bNodeSocket *sock)
       bNodeSocketValueRGBA *dval = MEM_cnew<bNodeSocketValueRGBA>("node socket value color");
       copy_v4_v4(dval->value, default_value);
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_STRING: {
@@ -453,21 +450,21 @@ void node_socket_init_default_value(bNodeSocket *sock)
       dval->subtype = subtype;
       dval->value[0] = '\0';
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_OBJECT: {
       bNodeSocketValueObject *dval = MEM_cnew<bNodeSocketValueObject>("node socket value object");
       dval->value = nullptr;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_IMAGE: {
       bNodeSocketValueImage *dval = MEM_cnew<bNodeSocketValueImage>("node socket value image");
       dval->value = nullptr;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_COLLECTION: {
@@ -475,7 +472,7 @@ void node_socket_init_default_value(bNodeSocket *sock)
           "node socket value object");
       dval->value = nullptr;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_TEXTURE: {
@@ -483,7 +480,7 @@ void node_socket_init_default_value(bNodeSocket *sock)
           "node socket value texture");
       dval->value = nullptr;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
     case SOCK_MATERIAL: {
@@ -491,10 +488,118 @@ void node_socket_init_default_value(bNodeSocket *sock)
           "node socket value material");
       dval->value = nullptr;
 
-      sock->default_value = dval;
+      *data = dval;
       break;
     }
+
+    case SOCK_CUSTOM:
+    case SOCK_GEOMETRY:
+    case SOCK_SHADER:
+      break;
   }
+}
+
+void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to, const void *from)
+{
+  if (!to || !from) {
+    return;
+  }
+
+  switch (datatype) {
+    case SOCK_FLOAT: {
+      bNodeSocketValueFloat *toval = (bNodeSocketValueFloat *)to;
+      bNodeSocketValueFloat *fromval = (bNodeSocketValueFloat *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_INT: {
+      bNodeSocketValueInt *toval = (bNodeSocketValueInt *)to;
+      bNodeSocketValueInt *fromval = (bNodeSocketValueInt *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_BOOLEAN: {
+      bNodeSocketValueBoolean *toval = (bNodeSocketValueBoolean *)to;
+      bNodeSocketValueBoolean *fromval = (bNodeSocketValueBoolean *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_VECTOR: {
+      bNodeSocketValueVector *toval = (bNodeSocketValueVector *)to;
+      bNodeSocketValueVector *fromval = (bNodeSocketValueVector *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_RGBA: {
+      bNodeSocketValueRGBA *toval = (bNodeSocketValueRGBA *)to;
+      bNodeSocketValueRGBA *fromval = (bNodeSocketValueRGBA *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_ROTATION: {
+      bNodeSocketValueRotation *toval = (bNodeSocketValueRotation *)to;
+      bNodeSocketValueRotation *fromval = (bNodeSocketValueRotation *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_STRING: {
+      bNodeSocketValueString *toval = (bNodeSocketValueString *)to;
+      bNodeSocketValueString *fromval = (bNodeSocketValueString *)from;
+      *toval = *fromval;
+      break;
+    }
+    case SOCK_OBJECT: {
+      bNodeSocketValueObject *toval = (bNodeSocketValueObject *)to;
+      bNodeSocketValueObject *fromval = (bNodeSocketValueObject *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_IMAGE: {
+      bNodeSocketValueImage *toval = (bNodeSocketValueImage *)to;
+      bNodeSocketValueImage *fromval = (bNodeSocketValueImage *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_COLLECTION: {
+      bNodeSocketValueCollection *toval = (bNodeSocketValueCollection *)to;
+      bNodeSocketValueCollection *fromval = (bNodeSocketValueCollection *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_TEXTURE: {
+      bNodeSocketValueTexture *toval = (bNodeSocketValueTexture *)to;
+      bNodeSocketValueTexture *fromval = (bNodeSocketValueTexture *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_MATERIAL: {
+      bNodeSocketValueMaterial *toval = (bNodeSocketValueMaterial *)to;
+      bNodeSocketValueMaterial *fromval = (bNodeSocketValueMaterial *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+
+    case SOCK_CUSTOM:
+    case SOCK_GEOMETRY:
+    case SOCK_SHADER:
+      break;
+  }
+}
+
+void node_socket_init_default_value(bNodeSocket *sock)
+{
+  if (sock->default_value) {
+    return; /* already initialized */
+  }
+
+  node_socket_init_default_value_data(eNodeSocketDatatype(sock->typeinfo->type),
+                                      PropertySubType(sock->typeinfo->subtype),
+                                      &sock->default_value);
 }
 
 void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
@@ -515,85 +620,8 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
     STRNCPY(to->name, from->label);
   }
 
-  switch (from->typeinfo->type) {
-    case SOCK_FLOAT: {
-      bNodeSocketValueFloat *toval = (bNodeSocketValueFloat *)to->default_value;
-      bNodeSocketValueFloat *fromval = (bNodeSocketValueFloat *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_INT: {
-      bNodeSocketValueInt *toval = (bNodeSocketValueInt *)to->default_value;
-      bNodeSocketValueInt *fromval = (bNodeSocketValueInt *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_BOOLEAN: {
-      bNodeSocketValueBoolean *toval = (bNodeSocketValueBoolean *)to->default_value;
-      bNodeSocketValueBoolean *fromval = (bNodeSocketValueBoolean *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_VECTOR: {
-      bNodeSocketValueVector *toval = (bNodeSocketValueVector *)to->default_value;
-      bNodeSocketValueVector *fromval = (bNodeSocketValueVector *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_RGBA: {
-      bNodeSocketValueRGBA *toval = (bNodeSocketValueRGBA *)to->default_value;
-      bNodeSocketValueRGBA *fromval = (bNodeSocketValueRGBA *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_ROTATION: {
-      bNodeSocketValueRotation *toval = (bNodeSocketValueRotation *)to->default_value;
-      bNodeSocketValueRotation *fromval = (bNodeSocketValueRotation *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_STRING: {
-      bNodeSocketValueString *toval = (bNodeSocketValueString *)to->default_value;
-      bNodeSocketValueString *fromval = (bNodeSocketValueString *)from->default_value;
-      *toval = *fromval;
-      break;
-    }
-    case SOCK_OBJECT: {
-      bNodeSocketValueObject *toval = (bNodeSocketValueObject *)to->default_value;
-      bNodeSocketValueObject *fromval = (bNodeSocketValueObject *)from->default_value;
-      *toval = *fromval;
-      id_us_plus(&toval->value->id);
-      break;
-    }
-    case SOCK_IMAGE: {
-      bNodeSocketValueImage *toval = (bNodeSocketValueImage *)to->default_value;
-      bNodeSocketValueImage *fromval = (bNodeSocketValueImage *)from->default_value;
-      *toval = *fromval;
-      id_us_plus(&toval->value->id);
-      break;
-    }
-    case SOCK_COLLECTION: {
-      bNodeSocketValueCollection *toval = (bNodeSocketValueCollection *)to->default_value;
-      bNodeSocketValueCollection *fromval = (bNodeSocketValueCollection *)from->default_value;
-      *toval = *fromval;
-      id_us_plus(&toval->value->id);
-      break;
-    }
-    case SOCK_TEXTURE: {
-      bNodeSocketValueTexture *toval = (bNodeSocketValueTexture *)to->default_value;
-      bNodeSocketValueTexture *fromval = (bNodeSocketValueTexture *)from->default_value;
-      *toval = *fromval;
-      id_us_plus(&toval->value->id);
-      break;
-    }
-    case SOCK_MATERIAL: {
-      bNodeSocketValueMaterial *toval = (bNodeSocketValueMaterial *)to->default_value;
-      bNodeSocketValueMaterial *fromval = (bNodeSocketValueMaterial *)from->default_value;
-      *toval = *fromval;
-      id_us_plus(&toval->value->id);
-      break;
-    }
-  }
+  node_socket_copy_default_value_data(
+      eNodeSocketDatatype(to->typeinfo->type), to->default_value, from->default_value);
 
   to->flag |= (from->flag & SOCK_HIDE_VALUE);
 }
