@@ -182,9 +182,18 @@ static bool node_needs_own_transform_relation(const bNode &node)
   return false;
 }
 
+static bool node_needs_camera_transform_relation(const bNode &node) {
+  if (node.type == GEO_NODE_ACTIVE_CAMERA) {
+    return true;
+  }
+
+  return false;
+}
+
 static void process_nodes_for_depsgraph(const bNodeTree &tree,
                                         Set<ID *> &ids,
                                         bool &r_needs_own_transform_relation,
+                                        bool &r_needs_camera_transform_relation,
                                         Set<const bNodeTree *> &checked_groups)
 {
   if (!checked_groups.add(&tree)) {
@@ -196,11 +205,13 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
     add_used_ids_from_sockets(node->inputs, ids);
     add_used_ids_from_sockets(node->outputs, ids);
     r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
+    r_needs_camera_transform_relation |= node_needs_camera_transform_relation(*node);
   }
 
   for (const bNode *node : tree.group_nodes()) {
     if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
-      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation, checked_groups);
+      process_nodes_for_depsgraph(*sub_tree, ids, r_needs_own_transform_relation,
+                                  r_needs_camera_transform_relation, checked_groups);
     }
   }
 }
@@ -257,14 +268,14 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 
   DEG_add_node_tree_output_relation(ctx->node, nmd->node_group, "Nodes Modifier");
 
-  add_object_relation(ctx, *ctx->scene->camera);
-
   bool needs_own_transform_relation = false;
+  bool needs_camera_transform_relation = false;
   Set<ID *> used_ids;
   find_used_ids_from_settings(nmd->settings, used_ids);
   Set<const bNodeTree *> checked_groups;
   process_nodes_for_depsgraph(
-      *nmd->node_group, used_ids, needs_own_transform_relation, checked_groups);
+      *nmd->node_group, used_ids, needs_own_transform_relation,
+      needs_camera_transform_relation, checked_groups);
 
   if (ctx->object->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(ctx->object->data);
@@ -300,6 +311,9 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 
   if (needs_own_transform_relation) {
     DEG_add_depends_on_transform_relation(ctx->node, "Nodes Modifier");
+  }
+  if (needs_camera_transform_relation) {
+  add_object_relation(ctx, *ctx->scene->camera);
   }
 }
 
