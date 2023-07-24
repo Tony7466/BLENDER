@@ -143,11 +143,11 @@ struct PaintOperationExecutor {
         .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
 
 #ifdef DEBUG
-    /* Visualize active window. */
-    self.stroke_cache_->vertex_colors.fill(ColorGeometry4f(float4(0.0f)));
-    self.stroke_cache_->vertex_colors.as_mutable_span()
-        .drop_front(inverted_active_window_size)
-        .fill(ColorGeometry4f(float4(1.0f, 0.1f, 0.1f, 1.0f)));
+    // /* Visualize active window. */
+    // self.stroke_cache_->vertex_colors.fill(ColorGeometry4f(float4(0.0f)));
+    // self.stroke_cache_->vertex_colors.as_mutable_span()
+    //     .drop_front(inverted_active_window_size)
+    //     .fill(ColorGeometry4f(float4(1.0f, 0.1f, 0.1f, 1.0f)));
 #endif
 
     BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
