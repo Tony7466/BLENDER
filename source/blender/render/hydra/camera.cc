@@ -141,7 +141,7 @@ CameraData::CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile)
       lens_shift_[1] / t_size[1] + (t_pos[1] + t_size[1] * 0.5 - 0.5) / t_size[1]);
 
   switch (camera->type) {
-    case CAM_PERSP:
+    case CAM_PERSP: {
       focal_length_ = camera->lens;
 
       switch (camera->sensor_fit) {
@@ -165,8 +165,9 @@ CameraData::CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile)
       }
       sensor_size_ = pxr::GfVec2f(sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]);
       break;
+    }
 
-    case CAM_ORTHO:
+    case CAM_ORTHO: {
       focal_length_ = 0.0f;
       switch (camera->sensor_fit) {
         case CAMERA_SENSOR_FIT_VERT:
@@ -189,8 +190,9 @@ CameraData::CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile)
       }
       ortho_size_ = pxr::GfVec2f(ortho_size_[0] * t_size[0], ortho_size_[1] * t_size[1]);
       break;
+    }
 
-    case CAM_PANO:
+    case CAM_PANO: {
       /* TODO: Recheck parameters for PANO camera */
       focal_length_ = camera->lens;
 
@@ -214,10 +216,14 @@ CameraData::CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile)
           break;
       }
       sensor_size_ = pxr::GfVec2f(sensor_size_[0] * t_size[0], sensor_size_[1] * t_size[1]);
+      break;
+    }
 
-    default:
+    default: {
       focal_length_ = camera->lens;
       sensor_size_ = pxr::GfVec2f(camera->sensor_y * ratio, camera->sensor_y);
+      break;
+    }
   }
 }
 

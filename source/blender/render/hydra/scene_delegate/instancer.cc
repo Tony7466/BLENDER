@@ -128,7 +128,7 @@ void InstancerData::pre_update()
   }
 }
 
-void InstancerData::update_instance(Object *parent_ob, DupliObject *dupli)
+void InstancerData::update_instance(Object * /* parent_ob */, DupliObject *dupli)
 {
   Object *object = dupli->ob;
   pxr::SdfPath p_id = object_prim_id(object);
@@ -207,14 +207,14 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 pxr::SdfPath InstancerData::nonmesh_prim_id(pxr::SdfPath const &prim_id, int index) const
 {
   char name[16];
-  snprintf(name, sizeof(name), "NM_%08x", index);
+  snprintf(name, sizeof(name), "NM_%08d", index);
   return prim_id.AppendElementString(name);
 }
 
 int InstancerData::nonmesh_prim_id_index(pxr::SdfPath const &id) const
 {
   int index;
-  sscanf(id.GetName().c_str(), "NM_%x", &index);
+  sscanf(id.GetName().c_str(), "NM_%d", &index);
   return index;
 }
 
@@ -275,7 +275,7 @@ InstancerData::MeshInstance *InstancerData::mesh_instance(pxr::SdfPath const &id
 InstancerData::NonmeshInstance *InstancerData::nonmesh_instance(pxr::SdfPath const &id) const
 {
   auto nm_inst = nonmesh_instances_.lookup_ptr(id.GetPathElementCount() == 4 ? id.GetParentPath() :
-                                                                            id);
+                                                                               id);
   if (!nm_inst) {
     return nullptr;
   }

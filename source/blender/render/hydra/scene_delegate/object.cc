@@ -101,7 +101,7 @@ bool ObjectData::is_visible(BlenderSceneDelegate *scene_delegate, Object *object
   return ret;
 }
 
-pxr::VtValue ObjectData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
+pxr::VtValue ObjectData::get_data(pxr::SdfPath const & /* id */, pxr::TfToken const &key) const
 {
   return get_data(key);
 }
@@ -111,12 +111,12 @@ pxr::SdfPath ObjectData::material_id() const
   return pxr::SdfPath();
 }
 
-pxr::SdfPath ObjectData::material_id(pxr::SdfPath const &id) const
+pxr::SdfPath ObjectData::material_id(pxr::SdfPath const & /* id */) const
 {
   return material_id();
 }
 
-void ObjectData::available_materials(Set<pxr::SdfPath> &paths) const {}
+void ObjectData::available_materials(Set<pxr::SdfPath> & /* paths */) const {}
 
 void ObjectData::write_transform()
 {

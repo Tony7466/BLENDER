@@ -96,7 +96,7 @@ std::string cache_image_color(float color[4])
   char name[128];
   snprintf(name,
            sizeof(name),
-           "color_%02x%02x%02x.hdr",
+           "color_%02d%02d%02d.hdr",
            int(color[0] * 255),
            int(color[1] * 255),
            int(color[2] * 255));

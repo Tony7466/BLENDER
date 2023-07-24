@@ -258,6 +258,8 @@ static struct PyModuleDef module = {
 extern "C" {
 #endif
 
+PyObject *BPyInit_hydra(void);
+
 PyObject *BPyInit_hydra(void)
 {
   PyObject *mod = PyModule_Create(&blender::render::hydra::module);

@@ -202,14 +202,14 @@ void MeshData::write_materials()
 pxr::SdfPath MeshData::submesh_prim_id(int index) const
 {
   char name[16];
-  snprintf(name, sizeof(name), "SM_%04x", index);
+  snprintf(name, sizeof(name), "SM_%04d", index);
   return prim_id.AppendElementString(name);
 }
 
 const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
 {
   int index;
-  sscanf(id.GetName().c_str(), "SM_%x", &index);
+  sscanf(id.GetName().c_str(), "SM_%d", &index);
   return submeshes_[index];
 }
 
