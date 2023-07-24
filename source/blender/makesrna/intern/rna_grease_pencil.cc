@@ -117,8 +117,11 @@ static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
 static int rna_Grease_Pencil_active_layer_index_get(PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+
+  if (grease_pencil->get_active_layer() == nullptr) {
+    return -1;
+  }
   int val = grease_pencil->layers().first_index(grease_pencil->get_active_layer());
-  printf("something get");
   return val;
 }
 
@@ -126,8 +129,7 @@ static void rna_Grease_Pencil_active_layer_index_set(PointerRNA *ptr, const int 
 {
   using namespace blender::bke::greasepencil;
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  blender::Span<const Layer *> layers = grease_pencil->layers();
-  const Layer *layer = layers[value];
+  const Layer *layer = grease_pencil->layers()[value];
   grease_pencil->set_active_layer(layer);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
