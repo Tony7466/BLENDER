@@ -510,6 +510,12 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
   }
 
+  if (!attribute_matches) {
+    if (attributes.is_builtin(attribute_id)) {
+      return false;
+    }
+  }
+
   const bool selection_is_full = !selection.node().depends_on_input() &&
                                  fn::evaluate_constant_field(selection);
 
