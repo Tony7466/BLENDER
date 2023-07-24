@@ -168,7 +168,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -341,14 +342,14 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
 {
-  bNodeTreeInterface &interface = ntree->interface;
+  bNodeTreeInterface &tree_interface = ntree->tree_interface;
 
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
     eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
     SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
     SET_FLAG_FROM_TEST(
         flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-    bNodeTreeInterfaceSocket *new_socket = interface.add_socket(
+    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
         socket->name, socket->description, socket->idname, flag, nullptr);
     BLI_assert(new_socket != nullptr);
     /* Compatibility identifier string, only used for old sockets. */
@@ -359,7 +360,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
     SET_FLAG_FROM_TEST(
         flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-    bNodeTreeInterfaceSocket *new_socket = interface.add_socket(
+    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
         socket->name, socket->description, socket->idname, flag, nullptr);
     BLI_assert(new_socket != nullptr);
     /* Compatibility identifier string, only used for old sockets. */

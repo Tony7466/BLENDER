@@ -135,9 +135,9 @@ bool nodeGroupPoll(const bNodeTree *nodetree,
 namespace blender::nodes {
 
 static std::function<ID *(const bNode &node)> get_default_id_getter(
-    const bNodeTreeInterface &interface, const bNodeTreeInterfaceSocket &io_socket)
+    const bNodeTreeInterface &tree_interface, const bNodeTreeInterfaceSocket &io_socket)
 {
-  const int item_index = interface.find_item_index(io_socket.item);
+  const int item_index = tree_interface.find_item_index(io_socket.item);
   BLI_assert(item_index >= 0);
 
   /* Avoid capturing pointers that can become dangling. */
@@ -149,7 +149,7 @@ static std::function<ID *(const bNode &node)> get_default_id_getter(
       return nullptr;
     }
     const bNodeTree &ntree = *reinterpret_cast<const bNodeTree *>(node.id);
-    const bNodeTreeInterfaceItem *io_item = ntree.interface.get_item_at_index(item_index);
+    const bNodeTreeInterfaceItem *io_item = ntree.tree_interface.get_item_at_index(item_index);
     if (io_item == nullptr || io_item->item_type != NODE_INTERFACE_SOCKET) {
       return nullptr;
     }
@@ -270,13 +270,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     }
     case SOCK_OBJECT: {
       auto value = std::make_unique<decl::Object>();
-      value->default_value_fn = get_default_id_getter(ntree.interface, io_socket);
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
     }
     case SOCK_IMAGE: {
       auto value = std::make_unique<decl::Image>();
-      value->default_value_fn = get_default_id_getter(ntree.interface, io_socket);
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
     }
@@ -285,19 +285,19 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       break;
     case SOCK_COLLECTION: {
       auto value = std::make_unique<decl::Collection>();
-      value->default_value_fn = get_default_id_getter(ntree.interface, io_socket);
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
     }
     case SOCK_TEXTURE: {
       auto value = std::make_unique<decl::Texture>();
-      value->default_value_fn = get_default_id_getter(ntree.interface, io_socket);
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
     }
     case SOCK_MATERIAL: {
       auto value = std::make_unique<decl::Material>();
-      value->default_value_fn = get_default_id_getter(ntree.interface, io_socket);
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
     }
@@ -342,7 +342,7 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   }
   r_declaration.skip_updating_sockets = false;
 
-  group->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+  group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket =
@@ -540,7 +540,8 @@ bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNo
     for (const bNodeSocket *socket : next_node->output_sockets()) {
       for (const bNodeLink *link : socket->directly_linked_links()) {
         if (link->tonode->typeinfo->nclass == NODE_CLASS_OUTPUT &&
-            link->tonode->flag & NODE_DO_OUTPUT) {
+            link->tonode->flag & NODE_DO_OUTPUT)
+        {
           return true;
         }
         nodes_to_check.push(link->tonode);
@@ -574,7 +575,7 @@ static void group_input_declare_dynamic(const bNodeTree &node_tree,
                                         const bNode & /*node*/,
                                         NodeDeclaration &r_declaration)
 {
-  node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+  node_tree.tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket =
@@ -599,7 +600,7 @@ static void group_output_declare_dynamic(const bNodeTree &node_tree,
                                          const bNode & /*node*/,
                                          NodeDeclaration &r_declaration)
 {
-  node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+  node_tree.tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
         const bNodeTreeInterfaceSocket &socket =

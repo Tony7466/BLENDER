@@ -148,7 +148,7 @@ static void ntree_init_data(ID *id)
   ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
   ntree_set_typeinfo(ntree, nullptr);
 
-  BKE_nodetree_interface_init(&ntree->interface);
+  BKE_nodetree_interface_init(&ntree->tree_interface);
 }
 
 static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
@@ -199,7 +199,7 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
     nodeDeclarationEnsure(ntree_dst, node);
   }
 
-  BKE_nodetree_interface_copy(&ntree_dst->interface, &ntree_src->interface, flag);
+  BKE_nodetree_interface_copy(&ntree_dst->tree_interface, &ntree_src->tree_interface, flag);
   /* Legacy inputs/outputs lists may contain unmanaged pointers, don't copy these. */
   BLI_listbase_clear(&ntree_dst->inputs_legacy);
   BLI_listbase_clear(&ntree_dst->outputs_legacy);
@@ -290,7 +290,7 @@ static void ntree_free_data(ID *id)
     node_free_node(ntree, node);
   }
 
-  BKE_nodetree_interface_free(&ntree->interface);
+  BKE_nodetree_interface_free(&ntree->tree_interface);
   /* Free legacy interface data */
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
     node_socket_interface_free(ntree, socket, false);
@@ -395,7 +395,7 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     }
   }
 
-  ntree->interface.foreach_id(data);
+  ntree->tree_interface.foreach_id(data);
 }
 
 static void node_foreach_cache(ID *id,
@@ -522,7 +522,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
   BLI_listbase_clear(&ntree->outputs_legacy);
 
   /* Construct inputs/outputs socket lists in the node tree. */
-  ntree->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+  ntree->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     if (const bNodeTreeInterfaceSocket *socket =
             node_interface::get_item_as<bNodeTreeInterfaceSocket>(&item))
     {
@@ -774,7 +774,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     BLO_write_struct(writer, bNodeLink, link);
   }
 
-  BKE_nodetree_interface_write(writer, &ntree->interface);
+  BKE_nodetree_interface_write(writer, &ntree->tree_interface);
   if (!BLO_write_is_undo(writer)) {
     blender::bke::forward_compat::write_interface_as_sockets(writer, ntree);
   }
@@ -1005,7 +1005,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     direct_link_node_socket(reader, sock);
   }
 
-  BKE_nodetree_interface_read_data(reader, &ntree->interface);
+  BKE_nodetree_interface_read_data(reader, &ntree->tree_interface);
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     BLO_read_data_address(reader, &link->fromnode);
@@ -1104,7 +1104,7 @@ void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
     lib_link_node_sockets(reader, &ntree->id, &node->outputs);
   }
 
-  BKE_nodetree_interface_read_lib(reader, &ntree->id, &ntree->interface);
+  BKE_nodetree_interface_read_lib(reader, &ntree->id, &ntree->tree_interface);
 
   /* Set `node->typeinfo` pointers. This is done in lib linking, after the
    * first versioning that can change types still without functions that
@@ -1200,7 +1200,7 @@ void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree)
     expand_node_sockets(expander, &node->outputs);
   }
 
-  BKE_nodetree_interface_read_expand(expander, &ntree->interface);
+  BKE_nodetree_interface_read_expand(expander, &ntree->tree_interface);
 }
 
 static void ntree_blend_read_expand(BlendExpander *expander, ID *id)

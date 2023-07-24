@@ -11709,7 +11709,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
       "Node Tree type (deprecated, bl_idname is the actual node tree type identifier)");
 
   prop = RNA_def_property(srna, "interface", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "interface");
+  RNA_def_property_pointer_sdna(prop, nullptr, "tree_interface");
   RNA_def_property_struct_type(prop, "NodeTreeInterface");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Interface", "Interface declaration for this node tree");

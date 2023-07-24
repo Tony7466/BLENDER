@@ -665,7 +665,7 @@ typedef struct bNodeTree {
    */
   ListBase inputs_legacy DNA_DEPRECATED, outputs_legacy DNA_DEPRECATED;
 
-  bNodeTreeInterface interface;
+  bNodeTreeInterface tree_interface;
 
   /**
    * Node preview hash table.
