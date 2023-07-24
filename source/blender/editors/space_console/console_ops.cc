@@ -1228,7 +1228,7 @@ struct SetConsoleCursor {
 };
 
 static void console_cursor_set_to_pos(
-    SpaceConsole *sc, ARegion *region, SetConsoleCursor *scu, const int mval[2], int /*sel*/)
+    SpaceConsole *sc, ARegion *region, SetConsoleCursor *scu, const int mval[2], bool move_cursor)
 {
   int pos;
   pos = console_char_pick(sc, region, mval);
@@ -1251,21 +1251,23 @@ static void console_cursor_set_to_pos(
     sc->sel_start = sc->sel_end = pos;
   }
 
-  /* Move text cursor to the last selection point. */
-  ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
+  if (move_cursor) {
+    /* Move text cursor to the last selection point. */
+    ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
 
-  if (cl != NULL) {
-    if (pos <= cl->len) {
-      console_line_cursor_set(cl, cl->len - pos);
-    }
-    else if (sc->sel_end > cl->len && sc->sel_start < cl->len) {
-      /* if mixed selection, move cursor to the start. */
-      console_line_cursor_set(cl, cl->len - sc->sel_start);
+    if (cl != NULL) {
+      if (pos <= cl->len) {
+        console_line_cursor_set(cl, cl->len - pos);
+      }
+      else if (sc->sel_end > cl->len && sc->sel_start < cl->len) {
+        /* if mixed selection, move cursor to the start. */
+        console_line_cursor_set(cl, cl->len - sc->sel_start);
+      }
     }
   }
 }
 
-static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEvent *event)
+static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEvent *event, bool move_cursor)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
@@ -1279,12 +1281,8 @@ static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEven
   sel_prev[0] = sc->sel_start;
   sel_prev[1] = sc->sel_end;
 
-  console_cursor_set_to_pos(sc, region, scu, mval, true);
-
-  /* only redraw if the selection changed */
-  if (sel_prev[0] != sc->sel_start || sel_prev[1] != sc->sel_end) {
-    ED_area_tag_redraw(CTX_wm_area(C));
-  }
+  console_cursor_set_to_pos(sc, region, scu, mval, move_cursor);
+  ED_area_tag_redraw(CTX_wm_area(C));
 }
 
 static void console_cursor_set_exit(bContext *C, wmOperator *op)
@@ -1321,7 +1319,7 @@ static int console_modal_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   WM_event_add_modal_handler(C, op);
 
-  console_modal_select_apply(C, op, event);
+  console_modal_select_apply(C, op, event, true);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -1332,13 +1330,21 @@ static int console_modal_select(bContext *C, wmOperator *op, const wmEvent *even
     case LEFTMOUSE:
     case MIDDLEMOUSE:
     case RIGHTMOUSE:
-      if (event->val == KM_RELEASE) {
+      if (event->val == KM_PRESS) {
+        /* Change text cursor on press down. */
+        console_modal_select_apply(C, op, event, true);
+        break;
+      }
+      else if (event->val == KM_RELEASE) {
+        /* Change text cursor on release. */
+        console_modal_select_apply(C, op, event, true);
         console_cursor_set_exit(C, op);
         return OPERATOR_FINISHED;
       }
       break;
     case MOUSEMOVE:
-      console_modal_select_apply(C, op, event);
+      /* No change to text cursor if just moving. */
+      console_modal_select_apply(C, op, event, false);
       break;
   }
 
