@@ -1227,11 +1227,13 @@ struct SetConsoleCursor {
   int sel_init;
 };
 
-static void console_cursor_set_to_pos(
-    SpaceConsole *sc, ARegion *region, SetConsoleCursor *scu, const int mval[2], bool move_cursor)
+static void console_cursor_set_to_pos(SpaceConsole *sc,
+                                      ARegion *region,
+                                      SetConsoleCursor *scu,
+                                      const wmEvent *event)
 {
-  int pos;
-  pos = console_char_pick(sc, region, mval);
+  int pos = console_char_pick(sc, region, event->mval);
+  bool dragging = event->type == MOUSEMOVE;
 
   if (scu->sel_init == INT_MAX) {
     scu->sel_init = pos;
@@ -1251,38 +1253,36 @@ static void console_cursor_set_to_pos(
     sc->sel_start = sc->sel_end = pos;
   }
 
-  if (move_cursor) {
-    /* Move text cursor to the last selection point. */
-    ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
+  /* Move text cursor to the last selection point. */
+  ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
 
-    if (cl != NULL) {
-      if (pos <= cl->len) {
-        console_line_cursor_set(cl, cl->len - pos);
-      }
-      else if (sc->sel_end > cl->len && sc->sel_start < cl->len) {
-        /* if mixed selection, move cursor to the start. */
-        console_line_cursor_set(cl, cl->len - sc->sel_start);
-      }
+  if (cl != NULL) {
+    if (dragging && sc->sel_end > cl->len && pos <= cl->len) {
+      /* Do not move cursor while dragging into the editable area. */
+    }
+    else if (pos <= cl->len) {
+      console_line_cursor_set(cl, cl->len - pos);
+    }
+    else if (pos > cl->len && sc->sel_start < cl->len) {
+      /* Dragging out of editable area, move cursor to start of selection. */
+      console_line_cursor_set(cl, cl->len - sc->sel_start);
     }
   }
 }
 
-static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEvent *event, bool move_cursor)
+static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceConsole *sc = CTX_wm_space_console(C);
   ARegion *region = CTX_wm_region(C);
   SetConsoleCursor *scu = static_cast<SetConsoleCursor *>(op->customdata);
-  int mval[2];
-  int sel_prev[2];
+  int sel_prev[2] = {sc->sel_start, sc->sel_end};
 
-  mval[0] = event->mval[0];
-  mval[1] = event->mval[1];
+  console_cursor_set_to_pos(sc, region, scu, event);
 
-  sel_prev[0] = sc->sel_start;
-  sel_prev[1] = sc->sel_end;
-
-  console_cursor_set_to_pos(sc, region, scu, mval, move_cursor);
-  ED_area_tag_redraw(CTX_wm_area(C));
+  /* only redraw if the selection changed */
+  if (sel_prev[0] != sc->sel_start || sel_prev[1] != sc->sel_end) {
+    ED_area_tag_redraw(CTX_wm_area(C));
+  }
 }
 
 static void console_cursor_set_exit(bContext *C, wmOperator *op)
@@ -1319,32 +1319,34 @@ static int console_modal_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   WM_event_add_modal_handler(C, op);
 
-  console_modal_select_apply(C, op, event, true);
+  console_modal_select_apply(C, op, event);
 
   return OPERATOR_RUNNING_MODAL;
 }
 
 static int console_modal_select(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  /* Move text cursor to the last selection point. */
+  SpaceConsole *sc = CTX_wm_space_console(C);
+  ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
+
   switch (event->type) {
     case LEFTMOUSE:
     case MIDDLEMOUSE:
     case RIGHTMOUSE:
       if (event->val == KM_PRESS) {
-        /* Change text cursor on press down. */
-        console_modal_select_apply(C, op, event, true);
+        console_modal_select_apply(C, op, event);
         break;
       }
       else if (event->val == KM_RELEASE) {
-        /* Change text cursor on release. */
-        console_modal_select_apply(C, op, event, true);
+        console_modal_select_apply(C, op, event);
+        ED_area_tag_redraw(CTX_wm_area(C));
         console_cursor_set_exit(C, op);
         return OPERATOR_FINISHED;
       }
       break;
     case MOUSEMOVE:
-      /* No change to text cursor if just moving. */
-      console_modal_select_apply(C, op, event, false);
+      console_modal_select_apply(C, op, event);
       break;
   }
 
