@@ -47,6 +47,8 @@
 #include "BKE_object.h"
 #include "BKE_type_conversions.hh"
 
+#include "IMB_imbuf.h"
+
 #include "DEG_depsgraph.h"
 
 #include "BLF_api.h"
@@ -432,44 +434,6 @@ static void node_update_basis(const bContext &C,
 
   if (add_output_space) {
     dy -= NODE_DY / 4;
-  }
-
-  node.runtime->prvr.xmin = loc.x + NODE_DYS;
-  node.runtime->prvr.xmax = loc.x + NODE_WIDTH(node) - NODE_DYS;
-
-  /* preview rect? */
-  if (node.flag & NODE_PREVIEW) {
-    float aspect = 1.0f;
-
-    if (node.runtime->preview_xsize && node.runtime->preview_ysize) {
-      aspect = float(node.runtime->preview_ysize) / float(node.runtime->preview_xsize);
-    }
-
-    dy -= NODE_DYS / 2;
-    node.runtime->prvr.ymax = dy;
-
-    if (aspect <= 1.0f) {
-      node.runtime->prvr.ymin = dy - aspect * (NODE_WIDTH(node) - NODE_DY);
-    }
-    else {
-      /* Width correction of image. XXX huh? (ton) */
-      float dx = (NODE_WIDTH(node) - NODE_DYS) - (NODE_WIDTH(node) - NODE_DYS) / aspect;
-
-      node.runtime->prvr.ymin = dy - (NODE_WIDTH(node) - NODE_DY);
-
-      node.runtime->prvr.xmin += 0.5f * dx;
-      node.runtime->prvr.xmax -= 0.5f * dx;
-    }
-
-    dy = node.runtime->prvr.ymin - NODE_DYS / 2;
-
-    /* Make sure that maximums are bigger or equal to minimums. */
-    if (node.runtime->prvr.xmax < node.runtime->prvr.xmin) {
-      std::swap(node.runtime->prvr.xmax, node.runtime->prvr.xmin);
-    }
-    if (node.runtime->prvr.ymax < node.runtime->prvr.ymin) {
-      std::swap(node.runtime->prvr.ymax, node.runtime->prvr.ymin);
-    }
   }
 
   /* Buttons rect? */
@@ -887,6 +851,15 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
     const blender::ColorGeometry4f &color = *static_cast<blender::ColorGeometry4f *>(socket_value);
     ss << fmt::format(TIP_("({}, {}, {}, {}) (Color)"), color.r, color.g, color.b, color.a);
   }
+  else if (socket_type.is<math::Quaternion>()) {
+    const math::Quaternion &rotation = *static_cast<math::Quaternion *>(socket_value);
+    const math::EulerXYZ euler = math::to_euler(rotation);
+    ss << fmt::format(TIP_("({}" BLI_STR_UTF8_DEGREE_SIGN ", {}" BLI_STR_UTF8_DEGREE_SIGN
+                           ", {}" BLI_STR_UTF8_DEGREE_SIGN ") (Rotation)"),
+                      euler.x().degree(),
+                      euler.y().degree(),
+                      euler.z().degree());
+  }
   else if (socket_type.is<bool>()) {
     ss << fmt::format(TIP_("{} (Boolean)"),
                       ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")));
@@ -923,6 +896,9 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
     }
     else if (socket_type.is<blender::ColorGeometry4f>()) {
       ss << TIP_("Color field based on:");
+    }
+    else if (socket_type.is<math::Quaternion>()) {
+      ss << TIP_("Rotation field based on:");
     }
     ss << "\n";
 
@@ -1364,24 +1340,24 @@ static void node_draw_preview_background(rctf *rect)
 }
 
 /* Not a callback. */
-static void node_draw_preview(bNodePreview *preview, rctf *prv)
+static void node_draw_preview(const Scene *scene, ImBuf *preview, rctf *prv)
 {
   float xrect = BLI_rctf_size_x(prv);
   float yrect = BLI_rctf_size_y(prv);
-  float xscale = xrect / float(preview->xsize);
-  float yscale = yrect / float(preview->ysize);
+  float xscale = xrect / float(preview->x);
+  float yscale = yrect / float(preview->y);
   float scale;
 
   /* Uniform scale and offset. */
   rctf draw_rect = *prv;
   if (xscale < yscale) {
-    float offset = 0.5f * (yrect - float(preview->ysize) * xscale);
+    float offset = 0.5f * (yrect - float(preview->y) * xscale);
     draw_rect.ymin += offset;
     draw_rect.ymax -= offset;
     scale = xscale;
   }
   else {
-    float offset = 0.5f * (xrect - float(preview->xsize) * yscale);
+    float offset = 0.5f * (xrect - float(preview->x) * yscale);
     draw_rect.xmin += offset;
     draw_rect.xmax -= offset;
     scale = yscale;
@@ -1393,26 +1369,25 @@ static void node_draw_preview(bNodePreview *preview, rctf *prv)
   /* Premul graphics. */
   GPU_blend(GPU_BLEND_ALPHA);
 
-  IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
-  immDrawPixelsTexTiled(&state,
-                        draw_rect.xmin,
-                        draw_rect.ymin,
-                        preview->xsize,
-                        preview->ysize,
-                        GPU_RGBA8,
-                        true,
-                        preview->rect,
-                        scale,
-                        scale,
-                        nullptr);
+  ED_draw_imbuf(preview,
+                draw_rect.xmin,
+                draw_rect.ymin,
+                false,
+                &scene->view_settings,
+                &scene->display_settings,
+                scale,
+                scale);
 
   GPU_blend(GPU_BLEND_NONE);
 
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColorShadeAlpha(TH_BACK, -15, +100);
-  imm_draw_box_wire_2d(pos, draw_rect.xmin, draw_rect.ymin, draw_rect.xmax, draw_rect.ymax);
-  immUnbindProgram();
+  float black[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  const float outline_width = 1.0f;
+  draw_rect.xmin -= outline_width;
+  draw_rect.xmax += outline_width;
+  draw_rect.ymin -= outline_width;
+  draw_rect.ymax += outline_width;
+  UI_draw_roundbox_4fv(&draw_rect, false, BASIS_RAD / 2, black);
 }
 
 /* Common handle function for operator buttons that need to select the node first. */
@@ -2005,20 +1980,19 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
                                                     const bNode &node)
 {
   Vector<NodeExtraInfoRow> rows;
-  if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS)) {
+  if (!(snode.edittree->type == NTREE_GEOMETRY)) {
+    /* Currently geometry nodes are the only nodes to have extra infos per nodes. */
     return rows;
   }
 
-  if (snode.overlay.flag & SN_OVERLAY_SHOW_NAMED_ATTRIBUTES &&
-      snode.edittree->type == NTREE_GEOMETRY)
-  {
+  if (snode.overlay.flag & SN_OVERLAY_SHOW_NAMED_ATTRIBUTES) {
     if (std::optional<NodeExtraInfoRow> row = node_get_accessed_attributes_row(tree_draw_ctx,
                                                                                node)) {
       rows.append(std::move(*row));
     }
   }
 
-  if (snode.overlay.flag & SN_OVERLAY_SHOW_TIMINGS && snode.edittree->type == NTREE_GEOMETRY &&
+  if (snode.overlay.flag & SN_OVERLAY_SHOW_TIMINGS &&
       (ELEM(node.typeinfo->nclass, NODE_CLASS_GEOMETRY, NODE_CLASS_GROUP, NODE_CLASS_ATTRIBUTE) ||
        ELEM(node.type, NODE_FRAME, NODE_GROUP_OUTPUT)))
   {
@@ -2033,26 +2007,24 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
     }
   }
 
-  if (snode.edittree->type == NTREE_GEOMETRY) {
-    geo_log::GeoTreeLog *tree_log = [&]() -> geo_log::GeoTreeLog * {
-      const bNodeTreeZones *tree_zones = node.owner_tree().zones();
-      if (!tree_zones) {
-        return nullptr;
-      }
-      const bNodeTreeZone *zone = tree_zones->get_zone_by_node(node.identifier);
-      return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
-    }();
+  geo_log::GeoTreeLog *tree_log = [&]() -> geo_log::GeoTreeLog * {
+    const bNodeTreeZones *tree_zones = node.owner_tree().zones();
+    if (!tree_zones) {
+      return nullptr;
+    }
+    const bNodeTreeZone *zone = tree_zones->get_zone_by_node(node.identifier);
+    return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+  }();
 
-    if (tree_log) {
-      tree_log->ensure_debug_messages();
-      const geo_log::GeoNodeLog *node_log = tree_log->nodes.lookup_ptr(node.identifier);
-      if (node_log != nullptr) {
-        for (const StringRef message : node_log->debug_messages) {
-          NodeExtraInfoRow row;
-          row.text = message;
-          row.icon = ICON_INFO;
-          rows.append(std::move(row));
-        }
+  if (tree_log) {
+    tree_log->ensure_debug_messages();
+    const geo_log::GeoNodeLog *node_log = tree_log->nodes.lookup_ptr(node.identifier);
+    if (node_log != nullptr) {
+      for (const StringRef message : node_log->debug_messages) {
+        NodeExtraInfoRow row;
+        row.text = message;
+        row.icon = ICON_INFO;
+        rows.append(std::move(row));
       }
     }
   }
@@ -2118,13 +2090,18 @@ static void node_draw_extra_info_row(const bNode &node,
   }
 }
 
-static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
+static void node_draw_extra_info_panel(const Scene *scene,
+                                       TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
+                                       ImBuf *preview,
                                        uiBlock &block)
 {
+  if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS)) {
+    return;
+  }
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
-  if (extra_info_rows.size() == 0) {
+  if (extra_info_rows.size() == 0 && !preview) {
     return;
   }
 
@@ -2141,10 +2118,37 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
+    float preview_height = 0;
+    rctf preview_rect;
+
     extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = rct.xmin + width;
+    extra_info_rect.xmax = extra_info_rect.xmin + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    if (preview) {
+      if (preview->x > preview->y) {
+        const float preview_padding = 3.0f * UI_SCALE_FAC;
+        preview_height = (width - 2.0 * preview_padding) * float(preview->y) / float(preview->x) +
+                         2.0 * preview_padding;
+        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
+        preview_rect.xmin = extra_info_rect.xmin + preview_padding;
+        preview_rect.xmax = extra_info_rect.xmax - preview_padding;
+        extra_info_rect.ymax += preview_height;
+      }
+      else {
+        const float preview_padding = 3.0f * UI_SCALE_FAC;
+        preview_height = width;
+        const float preview_width = (width - 2.0 * preview_padding) * float(preview->x) /
+                                        float(preview->y) +
+                                    2.0 * preview_padding;
+        preview_rect.ymin = extra_info_rect.ymin + preview_padding;
+        preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
+        preview_rect.xmin = extra_info_rect.xmin + preview_padding + (width - preview_width) / 2;
+        preview_rect.xmax = extra_info_rect.xmax - preview_padding - (width - preview_width) / 2;
+        extra_info_rect.ymax += preview_height;
+      }
+    }
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2160,17 +2164,23 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
 
     /* Draw outline. */
     const float outline_width = 1.0f;
-    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
-    extra_info_rect.xmax = rct.xmin + width + outline_width;
-    extra_info_rect.ymin = rct.ymax - outline_width;
-    extra_info_rect.ymax = rct.ymax + outline_width +
-                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    extra_info_rect.xmin -= outline_width;
+    extra_info_rect.xmax += outline_width;
+    extra_info_rect.ymin -= outline_width;
+    extra_info_rect.ymax += outline_width;
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
         ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
+
+    if (preview) {
+      node_draw_preview(scene, preview, &preview_rect);
+    }
+
+    /* Resize the rect to draw the textual infos on top of the preview. */
+    extra_info_rect.ymin += preview_height;
   }
 
   for (int row : extra_info_rows.index_range()) {
@@ -2188,9 +2198,15 @@ static void node_draw_basis(const bContext &C,
                             bNodeInstanceKey key)
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
+  bNodeInstanceHash *previews = static_cast<bNodeInstanceHash *>(
+      CTX_data_pointer_get(&C, "node_previews").data);
 
   /* Skip if out of view. */
-  if (BLI_rctf_isect(&node.runtime->totr, &v2d.cur, nullptr) == false) {
+  rctf rect_with_preview = node.runtime->totr;
+  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+    rect_with_preview.ymax += NODE_WIDTH(node);
+  }
+  if (BLI_rctf_isect(&rect_with_preview, &v2d.cur, nullptr) == false) {
     UI_block_end(&C, &block);
     return;
   }
@@ -2211,7 +2227,19 @@ static void node_draw_basis(const bContext &C,
 
   GPU_line_width(1.0f);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block);
+  ImBuf *preview = nullptr;
+  if (node.flag & NODE_PREVIEW && previews && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+    bNodePreview *preview_compositor = static_cast<bNodePreview *>(
+        BKE_node_instance_hash_lookup(previews, key));
+    if (preview_compositor) {
+      preview = preview_compositor->ibuf;
+    }
+  }
+  if (!preview || !(preview->x && preview->y)) {
+    preview = nullptr;
+  }
+
+  node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
 
   /* Header. */
   {
@@ -2501,18 +2529,6 @@ static void node_draw_basis(const bContext &C,
     node_draw_sockets(v2d, C, ntree, node, block, true, false);
   }
 
-  /* Preview. */
-  bNodeInstanceHash *previews =
-      (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
-  if (node.flag & NODE_PREVIEW && previews) {
-    bNodePreview *preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
-    if (preview && (preview->xsize && preview->ysize)) {
-      if (preview->rect && !BLI_rctf_is_empty(&node.runtime->prvr)) {
-        node_draw_preview(preview, &node.runtime->prvr);
-      }
-    }
-  }
-
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
 }
@@ -2534,7 +2550,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block);
+  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -3020,7 +3036,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block);
+  node_draw_extra_info_panel(nullptr, tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);

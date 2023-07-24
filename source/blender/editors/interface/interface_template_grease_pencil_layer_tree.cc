@@ -73,7 +73,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     return "";
   }
 
-  bool on_drop(struct bContext * /*C*/, const DragInfo &drag_info) const override
+  bool on_drop(bContext * /*C*/, const DragInfo &drag_info) const override
   {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
@@ -85,6 +85,10 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
        */
       BLI_assert_unreachable();
+      return false;
+    }
+
+    if (&drop_tree_node_ == &drag_layer.as_node()) {
       return false;
     }
 
@@ -318,7 +322,7 @@ void LayerTreeView::build_tree()
 {
   using namespace blender::bke::greasepencil;
   LISTBASE_FOREACH_BACKWARD (
-      GreasePencilLayerTreeNode *, node, &this->grease_pencil_.root_group.children)
+      GreasePencilLayerTreeNode *, node, &this->grease_pencil_.root_group_ptr->children)
   {
     this->build_tree_node_recursive(*this, node->wrap());
   }

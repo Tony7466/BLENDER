@@ -47,13 +47,9 @@ set(INC
   .
   ../common
   ../../blenloader
-  ../../blentranslation
-  ../../bmesh
-  ../../depsgraph
   ../../editors/include
   ../../imbuf
   ../../makesrna
-  ../../windowmanager
   ../../../../intern/utfconv
 )
 
@@ -126,10 +122,14 @@ set(SRC
 set(LIB
   PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::blentranslation
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_imbuf
   PRIVATE bf::intern::guardedalloc
   bf_io_common
+  PRIVATE bf::windowmanager
 )
 
 list(APPEND LIB
@@ -151,6 +151,10 @@ if(WITH_OPENVDB)
 endif()
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(COMMAND target_precompile_headers)
+  target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
+endif()
 
 if(WITH_GTESTS)
   set(TEST_SRC

@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <string.h>
+#include <cstring>
 
 #include <CLG_log.h>
 
@@ -715,7 +715,8 @@ bool RNA_struct_override_matches(Main *bmain,
       continue;
     }
 
-#if 0 /* This actually makes things slower, since it has to check for animation paths etc! */
+#if 0
+    /* This actually makes things slower, since it has to check for animation paths etc! */
     if (RNA_property_animated(ptr_local, prop_local)) {
       /* We cannot do anything here really, animation is some kind of dynamic overrides that has
        * precedence over static one... */
@@ -805,7 +806,7 @@ bool RNA_struct_override_matches(Main *bmain,
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
     if (!root_path) {
-      const float _delta_time = (float)(PIL_check_seconds_timer() - _timeit_time_diffing);
+      const float _delta_time = float(PIL_check_seconds_timer() - _timeit_time_diffing);
       _delta_time_diffing += _delta_time;
       _num_delta_time_diffing++;
     }
@@ -823,9 +824,16 @@ bool RNA_struct_override_matches(Main *bmain,
           op ? op->operations.first : nullptr);
 
       if (op != nullptr) {
-        /* Do not use #BKE_lib_override_library_operations_tag here, in collection case some of the
-         * operations may still be unused. */
-        op->tag &= ~LIBOVERRIDE_PROP_OP_TAG_UNUSED;
+        /* Only set all operations from this property as used (via
+         * #BKE_lib_override_library_operations_tag) if the property itself is still tagged as
+         * unused.
+         *
+         * In case the property itself is already tagged as used, in means lower-level diffing code
+         * took care of this property (as is needed for e.g. collections of items, since then some
+         * operations may be valid, while others may need to be purged). */
+        if (op->tag & LIBOVERRIDE_PROP_OP_TAG_UNUSED) {
+          BKE_lib_override_library_operations_tag(op, LIBOVERRIDE_PROP_OP_TAG_UNUSED, false);
+        }
       }
 
       if ((do_restore || do_tag_for_restore) &&
@@ -887,8 +895,9 @@ bool RNA_struct_override_matches(Main *bmain,
           else {
             /* Too noisy for now, this triggers on runtime props like transform matrices etc. */
 #if 0
-            BLI_assert_msg(0, "We have differences between reference and "
-                       "overriding data on non-editable property.");
+            BLI_assert_msg(0,
+                           "We have differences between reference and "
+                           "overriding data on non-editable property.");
 #endif
             matching = false;
           }
@@ -917,7 +926,7 @@ bool RNA_struct_override_matches(Main *bmain,
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
   if (!root_path) {
-    const float _delta_time = (float)(PIL_check_seconds_timer() - _timeit_time_global);
+    const float _delta_time = float(PIL_check_seconds_timer() - _timeit_time_global);
     _sum_time_global += _delta_time;
     _num_time_global++;
     _sum_time_diffing += _delta_time_diffing;
@@ -928,7 +937,7 @@ bool RNA_struct_override_matches(Main *bmain,
            __func__,
            (_sum_time_global / _num_time_global),
            _sum_time_global,
-           (int)_num_time_global);
+           int(_num_time_global));
     printf("diffing time end      (%s): %.6f (in %d runs)\n",
            __func__,
            _delta_time_diffing,
@@ -937,7 +946,7 @@ bool RNA_struct_override_matches(Main *bmain,
            __func__,
            (_sum_time_diffing / _num_time_diffing),
            _sum_time_diffing,
-           (int)_num_time_diffing);
+           int(_num_time_diffing));
   }
 #endif
 
@@ -1010,7 +1019,7 @@ static void rna_property_override_collection_subitem_name_index_lookup(
       if (item_name != nullptr) {
         PropertyRNA *nameprop = r_ptr_item_index->type->nameproperty;
         char name[256], *nameptr;
-        int keylen = static_cast<int>(strlen(item_name));
+        int keylen = int(strlen(item_name));
         int namelen;
 
         nameptr = RNA_property_string_get_alloc(
@@ -1203,7 +1212,7 @@ static void rna_property_override_collection_subitem_lookup(
     CLOG_INFO(&LOG,
               2,
               "Failed to find destination sub-item '%s' (%d) of '%s' in new override data '%s'",
-              opop->subitem_reference_name != NULL ? opop->subitem_reference_name : "",
+              opop->subitem_reference_name != nullptr ? opop->subitem_reference_name : "",
               opop->subitem_reference_index,
               op->rna_path,
               ptr_dst->owner_id->name);
@@ -1215,7 +1224,7 @@ static void rna_property_override_collection_subitem_lookup(
     CLOG_INFO(&LOG,
               2,
               "Failed to find source sub-item '%s' (%d) of '%s' in old override data '%s'",
-              opop->subitem_local_name != NULL ? opop->subitem_local_name : "",
+              opop->subitem_local_name != nullptr ? opop->subitem_local_name : "",
               opop->subitem_local_index,
               op->rna_path,
               ptr_src->owner_id->name);
@@ -1474,7 +1483,7 @@ void RNA_struct_override_apply(Main *bmain,
       if ((flag & RNA_OVERRIDE_APPLY_FLAG_SKIP_RESYNC_CHECK) == 0 &&
           (ptr_dst->owner_id->tag & LIB_TAG_LIBOVERRIDE_NEED_RESYNC) == 0)
       {
-        if (op->rna_prop_type == PROP_POINTER && op->operations.first != NULL &&
+        if (op->rna_prop_type == PROP_POINTER && op->operations.first != nullptr &&
             (((IDOverrideLibraryPropertyOperation *)op->operations.first)->flag &
              LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE) != 0)
         {

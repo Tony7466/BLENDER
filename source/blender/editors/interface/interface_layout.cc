@@ -1657,7 +1657,7 @@ void uiItemsFullEnumO(uiLayout *layout,
        */
 #if 0
       RNA_property_enum_items_gettexted_all(
-          static_cast<bContext*>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
+          static_cast<bContext *>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
 #else
       RNA_property_enum_items_gettexted(
           static_cast<bContext *>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
@@ -3510,7 +3510,7 @@ void uiItemProgressIndicator(uiLayout *layout,
                         0,
                         "");
 
-  if (has_text && ELEM(progress_type, UI_BUT_PROGRESS_TYPE_RING, UI_BUT_PROGRESS_TYPE_PIE)) {
+  if (has_text && (progress_type == UI_BUT_PROGRESS_TYPE_RING)) {
     /* For progress bar, centered is okay, left aligned for ring/pie. */
     but->drawflag |= UI_BUT_TEXT_LEFT;
   }

@@ -201,7 +201,7 @@ static std::ostream &operator<<(std::ostream &stream, const GPUInput *input)
     case GPU_SOURCE_ATTR:
       return stream << "var_attrs.v" << input->attr->id;
     case GPU_SOURCE_UNIFORM_ATTR:
-      return stream << "unf_attrs[resource_id].attr" << input->uniform_attr->id;
+      return stream << "UNI_ATTR(unf_attrs[resource_id].attr" << input->uniform_attr->id << ")";
     case GPU_SOURCE_LAYER_ATTR:
       return stream << "attr_load_layer(" << input->layer_attr->hash_code << ")";
     case GPU_SOURCE_STRUCT:
@@ -990,7 +990,7 @@ void GPU_pass_cache_free()
 /** \name Module
  * \{ */
 
-void gpu_codegen_init(void) {}
+void gpu_codegen_init() {}
 
 void gpu_codegen_exit()
 {

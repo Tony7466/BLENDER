@@ -6,9 +6,9 @@
  * \ingroup edanimation
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -419,9 +419,9 @@ static eAnimChannels_SetFlag anim_channels_selection_flag_for_toggle(const ListB
         break;
       case ANIMTYPE_OBJECT:
 #if 0 /* for now, do not take object selection into account, since it gets too annoying */
-if (ale->flag & SELECT) {
-return ACHANNEL_SETFLAG_CLEAR;
-}
+        if (ale->flag & SELECT) {
+          return ACHANNEL_SETFLAG_CLEAR;
+        }
 #endif
         break;
       case ANIMTYPE_GROUP:
@@ -515,15 +515,15 @@ static void anim_channels_select_set(bAnimContext *ac,
       }
       case ANIMTYPE_OBJECT: {
 #if 0 /* for now, do not take object selection into account, since it gets too annoying */
-Base *base = (Base *)ale->data;
-Object *ob = base->object;
+        Base *base = (Base *)ale->data;
+        Object *ob = base->object;
 
-ACHANNEL_SET_FLAG(base, sel, SELECT);
-ACHANNEL_SET_FLAG(ob, sel, SELECT);
+        ACHANNEL_SET_FLAG(base, sel, SELECT);
+        ACHANNEL_SET_FLAG(ob, sel, SELECT);
 
-if (ob->adt) {
-ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
-}
+        if (ob->adt) {
+          ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
+        }
 #endif
         break;
       }
@@ -974,12 +974,12 @@ static bool animedit_poll_channels_nla_tweakmode_off(bContext *C)
 
 /* constants for channel rearranging */
 /* WARNING: don't change existing ones without modifying rearrange func accordingly */
-typedef enum eRearrangeAnimChan_Mode {
+enum eRearrangeAnimChan_Mode {
   REARRANGE_ANIMCHAN_TOP = -2,
   REARRANGE_ANIMCHAN_UP = -1,
   REARRANGE_ANIMCHAN_DOWN = 1,
   REARRANGE_ANIMCHAN_BOTTOM = 2,
-} eRearrangeAnimChan_Mode;
+};
 
 /* defines for rearranging channels */
 static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
@@ -994,19 +994,19 @@ static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
 
 /* Island definition - just a listbase container */
 struct tReorderChannelIsland {
-  struct tReorderChannelIsland *next, *prev;
+  tReorderChannelIsland *next, *prev;
 
   ListBase channels; /* channels within this region with the same state */
   int flag;          /* eReorderIslandFlag */
 };
 
 /* flags for channel reordering islands */
-typedef enum eReorderIslandFlag {
+enum eReorderIslandFlag {
   REORDER_ISLAND_SELECTED = (1 << 0),    /* island is selected */
   REORDER_ISLAND_UNTOUCHABLE = (1 << 1), /* island should be ignored */
   REORDER_ISLAND_MOVED = (1 << 2),       /* island has already been moved */
   REORDER_ISLAND_HIDDEN = (1 << 3),      /* island is not visible */
-} eReorderIslandFlag;
+};
 
 /* Rearrange Methods --------------------------------------------- */
 
@@ -1125,7 +1125,7 @@ static bool rearrange_island_bottom(ListBase *list, tReorderChannelIsland *islan
  * \param island: Island to be moved
  * \return Whether operation was a success
  */
-typedef bool (*AnimChanRearrangeFp)(ListBase *list, tReorderChannelIsland *island);
+using AnimChanRearrangeFp = bool (*)(ListBase *list, tReorderChannelIsland *island);
 
 /* get rearranging function, given 'rearrange' mode */
 static AnimChanRearrangeFp rearrange_get_mode_func(eRearrangeAnimChan_Mode mode)
@@ -2532,7 +2532,7 @@ static void ANIM_OT_channels_expand(wmOperatorType *ot)
 
   /* props */
   ot->prop = RNA_def_boolean(
-      ot->srna, "all", 1, "All", "Expand all channels (not just selected ones)");
+      ot->srna, "all", true, "All", "Expand all channels (not just selected ones)");
 }
 
 /** \} */
@@ -2639,7 +2639,7 @@ static int animchannels_clean_empty_exec(bContext *C, wmOperator * /*op*/)
       action_empty = true;
     }
     else {
-      /* TODO: check for keyframe + fmodifier data on these too */
+      /* TODO: check for keyframe + F-modifier data on these too. */
     }
 
     /* 2) No NLA Tracks and/or NLA Strips */
