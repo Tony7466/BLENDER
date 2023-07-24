@@ -6270,7 +6270,10 @@ class VIEW3D_PT_shading_color(Panel):
         if shading.type == 'SOLID':
             layout.row().label(text="Color")
             self._draw_color_type(context)
-        self._draw_background_color(context)
+            self.layout.separator()
+            self._draw_background_color(context)
+        elif shading.type == 'WIREFRAME':
+            self._draw_background_color(context)
 
 
 class VIEW3D_PT_shading_options(Panel):
