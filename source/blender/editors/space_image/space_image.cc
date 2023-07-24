@@ -541,59 +541,59 @@ static void image_widgets()
 
 /************************** main region ***************************/
 
-/* sets up the fields of the View2D from zoom and offset */
-static void image_main_region_set_view2d(SpaceImage *sima, ARegion *region)
+static float space_image_get_full_aspect_y(SpaceImage *sima)
 {
-  Image *ima = ED_space_image(sima);
+  float aspx = 1.0f;
+  float aspy = 1.0f;
+  ED_space_image_get_aspect(sima, &aspx, &aspy);
 
-  int width, height;
+  int width = IMG_SIZE_FALLBACK;
+  int height = IMG_SIZE_FALLBACK;
   ED_space_image_get_size(sima, &width, &height);
 
-  float w = width;
-  float h = height;
+  return (aspy / aspx) * (float(height) / width);
+}
 
-  if (ima) {
-    h *= ima->aspy / ima->aspx;
-  }
-
-  int winx = BLI_rcti_size_x(&region->winrct) + 1;
-  int winy = BLI_rcti_size_y(&region->winrct) + 1;
+/* Sets up the fields of the View2D from zoom and offset. */
+static void image_main_region_set_view2d(SpaceImage *sima, ARegion *region)
+{
+  const float winx = BLI_rcti_size_x(&region->winrct) + 1.0f;
+  const float winy = BLI_rcti_size_y(&region->winrct) + 1.0f;
 
   /* For region overlap, move center so image doesn't overlap header. */
   const rcti *visible_rect = ED_region_visible_rect(region);
-  const int visible_winy = BLI_rcti_size_y(visible_rect) + 1;
-  int visible_centerx = 0;
-  int visible_centery = visible_rect->ymin + (visible_winy - winy) / 2;
+  const float visible_winy = BLI_rcti_size_y(visible_rect) + 1.0f;
+  const float visible_centerx = 0;
+  const float visible_centery = visible_rect->ymin + (visible_winy - winy) / 2;
+
+  const float width = IMG_SIZE_FALLBACK;
+  const float height = IMG_SIZE_FALLBACK * space_image_get_full_aspect_y(sima);
 
   region->v2d.tot.xmin = 0;
   region->v2d.tot.ymin = 0;
-  region->v2d.tot.xmax = w;
-  region->v2d.tot.ymax = h;
+  region->v2d.tot.xmax = width;
+  region->v2d.tot.ymax = height;
 
-  region->v2d.mask.xmin = region->v2d.mask.ymin = 0;
+  region->v2d.mask.xmin = 0;
+  region->v2d.mask.ymin = 0;
   region->v2d.mask.xmax = winx;
   region->v2d.mask.ymax = winy;
 
-  /* which part of the image space do we see? */
-  float x1 = region->winrct.xmin + visible_centerx + (winx - sima->zoom * w) / 2.0f;
-  float y1 = region->winrct.ymin + visible_centery + (winy - sima->zoom * h) / 2.0f;
+  /* Which part of the image space do we see? */
+  const float x1 = visible_centerx + (winx - sima->zoom * width) / 2.0f;
+  const float y1 = visible_centery + (winy - sima->zoom * height) / 2.0f;
 
-  x1 -= sima->zoom * sima->xof;
-  y1 -= sima->zoom * sima->yof;
+  region->v2d.cur.xmin = sima->xof - x1 / sima->zoom;
+  region->v2d.cur.xmax = region->v2d.cur.xmin + winx / sima->zoom;
 
-  /* relative display right */
-  region->v2d.cur.xmin = ((region->winrct.xmin - float(x1)) / sima->zoom);
-  region->v2d.cur.xmax = region->v2d.cur.xmin + (float(winx) / sima->zoom);
+  region->v2d.cur.ymin = sima->yof - y1 / sima->zoom;
+  region->v2d.cur.ymax = region->v2d.cur.ymin + winy / sima->zoom;
 
-  /* relative display left */
-  region->v2d.cur.ymin = ((region->winrct.ymin - float(y1)) / sima->zoom);
-  region->v2d.cur.ymax = region->v2d.cur.ymin + (float(winy) / sima->zoom);
-
-  /* normalize 0.0..1.0 */
-  region->v2d.cur.xmin /= w;
-  region->v2d.cur.xmax /= w;
-  region->v2d.cur.ymin /= h;
-  region->v2d.cur.ymax /= h;
+  /* Normalize 0.0..1.0 */
+  region->v2d.cur.xmin /= width;
+  region->v2d.cur.xmax /= width;
+  region->v2d.cur.ymin /= height;
+  region->v2d.cur.ymax /= height;
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
