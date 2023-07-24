@@ -79,7 +79,7 @@ enum {
                                         MREMAP_USE_INTERP,
 
   /* Nearest vertex of nearest face. */
-  MREMAP_MODE_VERT_POLY_NEAREST = MREMAP_MODE_VERT | MREMAP_USE_POLY | MREMAP_USE_NEAREST,
+  MREMAP_MODE_VERT_FACE_NEAREST = MREMAP_MODE_VERT | MREMAP_USE_POLY | MREMAP_USE_NEAREST,
   /* Those two use all verts of selected face (weighted interpolation). */
   /* Nearest point on nearest face. */
   MREMAP_MODE_VERT_POLYINTERP_NEAREST = MREMAP_MODE_VERT | MREMAP_USE_POLY | MREMAP_USE_NEAREST |

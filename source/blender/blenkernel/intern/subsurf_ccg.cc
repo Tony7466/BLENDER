@@ -309,7 +309,7 @@ static int ss_sync_from_uv(CCGSubSurf *ss,
   }
 
   /* create edges */
-  eset = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_POLYS(totface));
+  eset = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_FACES(totface));
 
   for (i = 0; i < totface; i++) {
     const blender::IndexRange face = faces[i];

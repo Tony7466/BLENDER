@@ -304,7 +304,7 @@ void looptris_calc_face_indices(const OffsetIndices<int> faces, MutableSpan<int>
     for (const int64_t i : range) {
       const IndexRange face = faces[i];
       const int start = poly_to_tri_count(int(i), int(face.start()));
-      const int num = ME_POLY_TRI_TOT(int(face.size()));
+      const int num = ME_FACE_TRI_TOT(int(face.size()));
       looptri_faces.slice(start, num).fill(int(i));
     }
   });

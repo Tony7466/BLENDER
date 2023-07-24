@@ -445,7 +445,7 @@ const EnumPropertyItem rna_enum_dt_method_vertex_items[] = {
      0,
      "Nearest Edge Interpolated",
      "Copy from interpolated values of vertices from closest point on closest edge"},
-    {MREMAP_MODE_VERT_POLY_NEAREST,
+    {MREMAP_MODE_VERT_FACE_NEAREST,
      "POLY_NEAREST",
      0,
      "Nearest Face Vertex",

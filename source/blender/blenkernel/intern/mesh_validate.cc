@@ -1326,7 +1326,7 @@ void mesh_strip_edges(Mesh *me)
 void BKE_mesh_calc_edges_tessface(Mesh *mesh)
 {
   const int numFaces = mesh->totface_legacy;
-  EdgeSet *eh = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_POLYS(numFaces));
+  EdgeSet *eh = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_FACES(numFaces));
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
       &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
 

@@ -562,7 +562,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
       }
     }
     else if (ELEM(mode,
-                  MREMAP_MODE_VERT_POLY_NEAREST,
+                  MREMAP_MODE_VERT_FACE_NEAREST,
                   MREMAP_MODE_VERT_POLYINTERP_NEAREST,
                   MREMAP_MODE_VERT_POLYINTERP_VNORPROJ))
     {
@@ -631,7 +631,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
                   &treedata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
             const int face_index = looptri_faces[nearest.index];
 
-            if (mode == MREMAP_MODE_VERT_POLY_NEAREST) {
+            if (mode == MREMAP_MODE_VERT_FACE_NEAREST) {
               int index;
               mesh_remap_interp_face_data_get(faces_src[face_index],
                                               corner_verts_src,

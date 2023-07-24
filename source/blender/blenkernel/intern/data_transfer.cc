@@ -59,7 +59,7 @@ void BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types,
       else if (DT_DATATYPE_IS_LOOP(dtdata_type)) {
         r_data_masks->lmask |= 1LL << cddata_type;
       }
-      else if (DT_DATATYPE_IS_POLY(dtdata_type)) {
+      else if (DT_DATATYPE_IS_FACE(dtdata_type)) {
         r_data_masks->pmask |= 1LL << cddata_type;
       }
     }
@@ -174,7 +174,7 @@ int BKE_object_data_transfer_get_dttypes_item_types(const int dtdata_types)
     if (DT_DATATYPE_IS_LOOP(dtdata_type)) {
       ret |= ME_LOOP;
     }
-    if (DT_DATATYPE_IS_POLY(dtdata_type)) {
+    if (DT_DATATYPE_IS_FACE(dtdata_type)) {
       ret |= ME_POLY;
     }
   }
@@ -1291,7 +1291,7 @@ void BKE_object_data_transfer_layout(Depsgraph *depsgraph,
             me_dst, me_src, ATTR_DOMAIN_MASK_CORNER, cddata_type);
       }
     }
-    if (DT_DATATYPE_IS_POLY(dtdata_type)) {
+    if (DT_DATATYPE_IS_FACE(dtdata_type)) {
       const int num_elem_dst = me_dst->faces_num;
 
       data_transfer_layersmapping_generate(nullptr,
@@ -1710,7 +1710,7 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
         BLI_freelistN(&lay_map);
       }
     }
-    if (DT_DATATYPE_IS_POLY(dtdata_type)) {
+    if (DT_DATATYPE_IS_FACE(dtdata_type)) {
       const blender::Span<blender::float3> positions_dst = me_dst->vert_positions();
       const int num_verts_dst = me_dst->totvert;
       const blender::OffsetIndices faces_dst = me_dst->faces();
