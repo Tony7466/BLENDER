@@ -11,6 +11,7 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../windowmanager
+  ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -25,6 +26,7 @@ set(SRC
   intern/grease_pencil_layers.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_select.cc
+  intern/grease_pencil_utils.cc
 )
 
 set(LIB
