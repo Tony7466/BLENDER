@@ -475,6 +475,16 @@ struct EraseOperationExecutor {
             }
           }
 
+          if (src_cyclic[src_curve]) {
+            const float dist_to_eraser = dist_to_line_segment_v2(
+                this->mouse_position,
+                screen_space_positions[src_curve_points.first()],
+                screen_space_positions[src_curve_points.last()]);
+            if (dist_to_eraser < this->eraser_radius) {
+              return true;
+            }
+          }
+
           return false;
         });
 
