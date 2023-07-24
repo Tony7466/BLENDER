@@ -13,6 +13,8 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
+
+#include "GPU_context.h"
 #include "GPU_matrix.h"
 #include "PIL_time.h"
 
@@ -232,6 +234,14 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
     render_task_delegate_->add_aov(pxr::HdAovTokens->color);
   }
 
+  /* Workaround missing/buggy VAOs in hgiGL and hdSt. For OpenGL compatibility
+   * profile this is not a problem, but for core profile it is. */
+  GLuint VAO;
+  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+  }
+
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
   GPU_shader_bind(shader);
 
@@ -252,6 +262,10 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
   }
 
   GPU_shader_unbind();
+
+  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+    glDeleteVertexArrays(1, &VAO);
+  }
 
   if (renderer_percent_done() == 0.0f) {
     time_begin_ = PIL_check_seconds_timer();
