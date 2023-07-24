@@ -481,8 +481,8 @@ static void convert_mfaces_to_mpolys(ID *id,
   bool *sharp_faces = static_cast<bool *>(
       CustomData_get_layer_named_for_write(pdata, CD_PROP_BOOL, "sharp_face", faces_num));
   if (!sharp_faces) {
-    sharp_faces = static_cast<bool *>(CustomData_add_layer_named(
-        pdata, CD_PROP_BOOL, CD_SET_DEFAULT, faces_num, "sharp_face"));
+    sharp_faces = static_cast<bool *>(
+        CustomData_add_layer_named(pdata, CD_PROP_BOOL, CD_SET_DEFAULT, faces_num, "sharp_face"));
   }
 
   numTex = CustomData_number_of_layers(fdata_legacy, CD_MTFACE);
@@ -1280,9 +1280,8 @@ void BKE_mesh_legacy_sharp_faces_from_flags(Mesh *mesh)
   if (attributes.contains("sharp_face") || !CustomData_get_layer(&mesh->pdata, CD_MPOLY)) {
     return;
   }
-  const Span<MPoly> polys(
-      static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
-      mesh->faces_num);
+  const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
+                          mesh->faces_num);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return !(poly.flag_legacy & ME_SMOOTH);
       }))
@@ -1597,9 +1596,8 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
     }
   }
 
-  const Span<MPoly> polys(
-      static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
-      mesh->faces_num);
+  const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
+                          mesh->faces_num);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return poly.flag_legacy & ME_HIDE;
       }))
@@ -1629,9 +1627,8 @@ void BKE_mesh_legacy_convert_mpoly_to_material_indices(Mesh *mesh)
   if (!CustomData_has_layer(&mesh->pdata, CD_MPOLY) || attributes.contains("material_index")) {
     return;
   }
-  const Span<MPoly> polys(
-      static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
-      mesh->faces_num);
+  const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
+                          mesh->faces_num);
   if (std::any_of(
           polys.begin(), polys.end(), [](const MPoly &poly) { return poly.mat_nr_legacy != 0; }))
   {
@@ -1823,9 +1820,8 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
     }
   }
 
-  const Span<MPoly> polys(
-      static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
-      mesh->faces_num);
+  const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
+                          mesh->faces_num);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return poly.flag_legacy & ME_FACE_SEL;
       }))
@@ -2027,9 +2023,8 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
   if (mesh->face_offset_indices) {
     return;
   }
-  const Span<MPoly> polys(
-      static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
-      mesh->faces_num);
+  const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
+                          mesh->faces_num);
 
   BKE_mesh_face_offsets_ensure_alloc(mesh);
   MutableSpan<int> offsets = mesh->face_offsets_for_write();
@@ -2063,7 +2058,7 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
       }
     });
 
-    CustomData_free(&old_poly_data, mesh->totpoly);
+    CustomData_free(&old_poly_data, mesh->faces_num);
   }
 
   CustomData_free_layers(&mesh->pdata, CD_MPOLY, mesh->faces_num);
