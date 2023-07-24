@@ -178,8 +178,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**
@@ -490,6 +489,123 @@ class FieldEvaluator : NonMovable, NonCopyable {
 };
 
 /**
+ * Utility class that makes it easier to evaluate volume fields.
+ */
+class VolumeFieldEvaluator : NonMovable, NonCopyable {
+ public:
+  using GridMask = volume::GridMask;
+  using GGrid = volume::GGrid;
+  using GMutableGrid = volume::GMutableGrid;
+
+ private:
+  struct OutputPointerInfo {
+    void *dst = nullptr;
+    /* When a destination grid is provided for an input, this is
+     * unnecessary, otherwise this is used to construct the required grid. */
+    void (*set)(void *dst, const GVArray &varray, ResourceScope &scope) = nullptr;
+  };
+
+  ResourceScope scope_;
+  const FieldContext &context_;
+  const GridMask &mask_;
+  Vector<GField> fields_to_evaluate_;
+  Vector<GMutableGrid> dst_grids_;
+  Vector<GGrid> evaluated_grids_;
+  Vector<OutputPointerInfo> output_pointer_infos_;
+  bool is_evaluated_ = false;
+
+  Field<bool> selection_field_;
+  GridMask selection_mask_;
+
+ public:
+  /** Takes #mask by pointer because the mask has to live longer than the evaluator. */
+  VolumeFieldEvaluator(const FieldContext &context, const GridMask *mask)
+      : context_(context), mask_(*mask)
+  {
+  }
+
+  ~VolumeFieldEvaluator()
+  {
+    /* While this assert isn't strictly necessary, and could be replaced with a warning,
+     * it will catch cases where someone forgets to call #evaluate(). */
+    BLI_assert(is_evaluated_);
+  }
+
+  /**
+   * The selection field is evaluated first to determine which voxels of the other fields should
+   * be evaluated. Calling this method multiple times will just replace the previously set
+   * selection field. Only the voxels selected by both this selection and the selection provided
+   * in the constructor are calculated. If no selection field is set, it is assumed that all
+   * voxels of the grid mask are selected.
+   */
+  void set_selection(Field<bool> selection)
+  {
+    selection_field_ = std::move(selection);
+  }
+
+  /**
+   * \param field: Field to add to the evaluator.
+   * \param dst: Mutable grid that the evaluated result for this field is written into.
+   */
+  int add_with_destination(GField field, GMutableGrid dst);
+
+  /** Same as #add_with_destination but typed. */
+  template<typename T> int add_with_destination(Field<T> field, volume::MutableGrid<T> dst)
+  {
+    return this->add_with_destination(GField(std::move(field)), GMutableGrid(std::move(dst)));
+  }
+
+  int add(GField field, GGrid *grid_ptr);
+
+  /**
+   * \param field: Field to add to the evaluator.
+   * \param gridy_ptr: Once #evaluate is called, the resulting virtual array will be will be
+   *   assigned to the given position.
+   * \return Index of the field in the evaluator which can be used in the #get_evaluated methods.
+   */
+  template<typename T> int add(Field<T> field, volume::Grid<T> *grid_ptr)
+  {
+    const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
+    dst_grids_.append({});
+    output_pointer_infos_.append(
+        OutputPointerInfo{grid_ptr, [](void *dst, const GGrid &grid, ResourceScope & /*scope*/) {
+                            *(volume::Grid<T> *)dst = grid.typed<T>();
+                          }});
+    return field_index;
+  }
+
+  /**
+   * \return Index of the field in the evaluator which can be used in the #get_evaluated methods.
+   */
+  int add(GField field);
+
+  /**
+   * Evaluate all fields on the evaluator. This can only be called once.
+   */
+  void evaluate();
+
+  const GGrid &get_evaluated(const int field_index) const
+  {
+    BLI_assert(is_evaluated_);
+    return evaluated_grids_[field_index];
+  }
+
+  template<typename T> VArray<T> get_evaluated(const int field_index)
+  {
+    return this->get_evaluated(field_index).typed<T>();
+  }
+
+  GridMask get_evaluated_selection_as_mask();
+
+  /**
+   * Retrieve the output of an evaluated boolean field and convert it to a mask, which can be used
+   * to avoid calculations for unnecessary elements later on. The evaluator will own the indices in
+   * some cases, so it must live at least as long as the returned mask.
+   */
+  GridMask get_evaluated_as_mask(int field_index);
+};
+
+/**
  * Evaluate fields in the given context. If possible, multiple fields should be evaluated together,
  * because that can be more efficient when they share common sub-fields.
  *
@@ -535,7 +651,7 @@ Vector<volume::GGrid> evaluate_volume_fields(ResourceScope &scope,
                                              Span<GFieldRef> fields_to_evaluate,
                                              const volume::GridMask &mask,
                                              const FieldContext &context,
-                                             Span<volume::GGrid> dst_grids = {});
+                                             Span<volume::GMutableGrid> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation

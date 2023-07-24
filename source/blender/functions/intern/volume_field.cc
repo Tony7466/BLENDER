@@ -273,7 +273,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
                                                  Span<volume::GGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::GGrid> dst_grids,
+                                                 Span<volume::GMutableGrid> dst_grids,
                                                  MutableSpan<volume::GGrid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst)
 {
@@ -282,6 +282,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
    * The leaf buffers' active voxel masks are used as index masks. */
 
   using volume::GGrid;
+  using volume::GMutableGrid;
   using volume::GridMask;
 
   /* Destination arrays are optional. Create a small utility method to access them. */
@@ -308,7 +309,8 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     GGrid dst_grid = get_dst_grid(out_index);
     if (!dst_grid) {
       /* Create a destination grid for the computed result. */
-      dst_grid = GGrid::create(scope, type, mask, type.default_value(), type.default_value());
+      dst_grid = GMutableGrid::create(
+          scope, type, mask, type.default_value(), type.default_value());
       r_grids[out_index] = dst_grid;
     }
     else {
@@ -338,7 +340,7 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
                                                   Span<volume::GGrid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  MutableSpan<volume::GGrid> r_grids)
+                                                  MutableSpan<volume::GMutableGrid> r_grids)
 {
   using volume::GGrid;
   using volume::GridMask;

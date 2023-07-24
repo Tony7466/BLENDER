@@ -13,6 +13,7 @@
 #include "BKE_pointcloud.h"
 #include "BKE_type_conversions.hh"
 #include "BKE_volume.h"
+#include "BKE_volume_attribute.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
@@ -568,8 +569,20 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       dst_attribute.finish();
       return true;
     }
-    // if (GridAttributeWriter dst_attribute = attributes.l) {
-    // }
+    if (GAttributeGridWriter dst_attribute = attributes.lookup_grid_for_write(attribute_id)) {
+      const bke::GeometryFieldContext field_context{component, domain};
+      fn::VolumeFieldEvaluator evaluator{field_context, domain_size};
+      evaluator.add(validator.validate_field_if_necessary(field));
+      evaluator.set_selection(selection);
+      evaluator.evaluate();
+
+      const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+
+      array_utils::copy(evaluator.get_evaluated(0), selection, dst_attribute.span);
+
+      dst_attribute.finish();
+      return true;
+    }
   }
 
   const bool selection_is_full = !selection.node().depends_on_input() &&

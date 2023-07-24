@@ -138,6 +138,12 @@ class GridMask {
   {
   }
 
+  GridMask(const GridMask &other) = default;
+  GridMask &operator=(const GridMask &other)
+  {
+    grid_ = other.grid_;
+  }
+
 #ifdef WITH_OPENVDB
   GridMask(const openvdb::MaskGrid &grid) : grid_(grid) {}
 #endif
@@ -163,21 +169,8 @@ template<typename T> struct Grid;
 /* Generic grid reference. */
 struct GGrid {
 #ifdef WITH_OPENVDB
-  openvdb::GridBase::Ptr grid_ = nullptr;
+  openvdb::GridBase::ConstPtr grid_ = nullptr;
 #endif
-
-  /* Create an empty grid with a background value. */
-  static GGrid create(ResourceScope &scope, const CPPType &type, const void *background_value);
-  /* Create an empty grid with the type default as background value. */
-  static GGrid create(ResourceScope &scope, const CPPType &type);
-  /* Create a grid with the active volume mask voxels. */
-  static GGrid create(ResourceScope &scope,
-                      const CPPType &type,
-                      const GridMask &mask,
-                      const void *inactive_value,
-                      const void *active_value);
-
-  bool try_assign(const GGrid &other);
 
   int64_t voxel_count() const;
   bool is_empty() const;
@@ -185,11 +178,66 @@ struct GGrid {
 
   const CPPType *value_type() const;
 
-  template<typename T> Grid<T> typed();
-  template<typename T> const Grid<T> typed() const;
+  template<typename T> Grid<T> typed() const;
+};
+
+/* Generic grid reference. */
+struct GMutableGrid {
+#ifdef WITH_OPENVDB
+  openvdb::GridBase::Ptr grid_ = nullptr;
+#endif
+
+  operator GGrid() const
+  {
+    return {grid_};
+  }
+
+  /* Create an empty grid with a background value. */
+  static GMutableGrid create(ResourceScope &scope,
+                             const CPPType &type,
+                             const void *background_value);
+  /* Create an empty grid with the type default as background value. */
+  static GMutableGrid create(ResourceScope &scope, const CPPType &type);
+  /* Create a grid with the active volume mask voxels. */
+  static GMutableGrid create(ResourceScope &scope,
+                             const CPPType &type,
+                             const GridMask &mask,
+                             const void *inactive_value,
+                             const void *active_value);
+
+  bool try_assign(const GMutableGrid &other);
+
+  int64_t voxel_count() const;
+  bool is_empty() const;
+  operator bool() const;
+
+  const CPPType *value_type() const;
+
+  template<typename T> MutableGrid<T> typed() const;
 };
 
 template<typename T> struct Grid {
+  using ValueType = T;
+#ifdef WITH_OPENVDB
+  using GridType = grid_types::GridCommon<T>;
+  using TreeType = typename GridType::TreeType;
+  using GridPtr = typename GridType::Ptr;
+  using GridConstPtr = typename GridType::ConstPtr;
+
+  GridConstPtr grid_ = nullptr;
+#endif
+
+  operator GGrid();
+  operator GGrid const() const;
+
+  int64_t voxel_count() const;
+  bool is_empty() const;
+  operator bool() const;
+
+  const CPPType *value_type() const;
+};
+
+template<typename T> struct MutableGrid {
   using ValueType = T;
 #ifdef WITH_OPENVDB
   using GridType = grid_types::GridCommon<T>;
@@ -210,8 +258,8 @@ template<typename T> struct Grid {
                         const T &inactive_value,
                         const T &active_value);
 
-  operator GGrid();
-  operator GGrid const() const;
+  operator GMutableGrid();
+  operator GMutableGrid const() const;
 
   int64_t voxel_count() const;
   bool is_empty() const;
@@ -220,11 +268,11 @@ template<typename T> struct Grid {
   const CPPType *value_type() const;
 };
 
-template<typename T> Grid<T> GGrid::typed()
+template<typename T> Grid<T> GGrid::typed() const
 {
 #ifdef WITH_OPENVDB
   using GridType = typename Grid<T>::GridType;
-  using GridPtr = typename Grid<T>::GridPtr;
+  using GridPtr = typename Grid<T>::GridConstPtr;
 
   if (!grid_) {
     return {};
@@ -239,7 +287,24 @@ template<typename T> Grid<T> GGrid::typed()
 #endif
 }
 
-template<typename T> const Grid<T> GGrid::typed() const {}
+template<typename T> MutableGrid<T> GMutableGrid::typed() const
+{
+#ifdef WITH_OPENVDB
+  using GridType = typename MutableGrid<T>::GridType;
+  using GridPtr = typename MutableGrid<T>::GridPtr;
+
+  if (!grid_) {
+    return {};
+  }
+  GridPtr typed_grid = grid_->grid<GridType>();
+  if (!typed_grid) {
+    return {};
+  }
+  return {typed_grid};
+#else
+  return {};
+#endif
+}
 
 /** \} */
 
@@ -274,6 +339,13 @@ template<typename Func> void field_to_static_type(const CPPType &type, Func func
 
 /* Helper function to evaluate a function with a static field type. */
 template<typename Func> void grid_to_static_type(const openvdb::GridBase::Ptr &grid, Func func)
+{
+  grid->apply<grid_types::SupportedGridTypes>(func);
+}
+
+/* Helper function to evaluate a function with a static field type. */
+template<typename Func>
+void grid_to_static_type(const openvdb::GridBase::ConstPtr &grid, Func func)
 {
   grid->apply<grid_types::SupportedGridTypes>(func);
 }
