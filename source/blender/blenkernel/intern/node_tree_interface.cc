@@ -354,6 +354,7 @@ static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem 
       dst_socket.default_attribute_name = src_socket.default_attribute_name ?
                                               BLI_strdup(src_socket.default_attribute_name) :
                                               nullptr;
+      dst_socket.uid_compat = src_socket.uid_compat ? BLI_strdup(src_socket.uid_compat) : nullptr;
 
       if (src_socket.socket_data != nullptr) {
         dst_socket.socket_data = MEM_dupallocN(src_socket.socket_data);
@@ -389,6 +390,7 @@ static void item_free(bNodeTreeInterfaceItem &item)
       MEM_SAFE_FREE(socket.description);
       MEM_SAFE_FREE(socket.socket_type);
       MEM_SAFE_FREE(socket.default_attribute_name);
+      MEM_SAFE_FREE(socket.uid_compat);
       break;
     }
     case NODE_INTERFACE_PANEL: {
@@ -455,6 +457,8 @@ static void item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem &item
       BLO_read_data_address(reader, &socket.description);
       BLO_read_data_address(reader, &socket.socket_type);
       BLO_read_data_address(reader, &socket.default_attribute_name);
+      /* Only used for backwards compatibility. */
+      socket.uid_compat = nullptr;
 
       socket_types::socket_data_read_data(reader, socket);
       break;
@@ -534,7 +538,7 @@ using namespace blender::bke::node_interface;
 
 std::string bNodeTreeInterfaceSocket::socket_identifier() const
 {
-  return "Socket" + std::to_string(uid);
+  return uid_compat ? uid_compat : "Socket" + std::to_string(uid);
 }
 
 bNodeSocketType *bNodeTreeInterfaceSocket::socket_typeinfo() const

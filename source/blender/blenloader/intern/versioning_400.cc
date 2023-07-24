@@ -266,6 +266,34 @@ static void version_replace_texcoord_normal_socket(bNodeTree *ntree)
   }
 }
 
+static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
+{
+  bNodeTreeInterface &interface = ntree->interface;
+
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs) {
+    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
+    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+    bNodeTreeInterfaceSocket *new_socket = interface.add_socket(
+        socket->name, socket->description, socket->idname, flag, nullptr);
+    BLI_assert(new_socket != nullptr);
+    /* Compatibility identifier string, only used for old sockets. */
+    new_socket->uid_compat = BLI_strdup(socket->identifier);
+  }
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs) {
+    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
+    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+    bNodeTreeInterfaceSocket *new_socket = interface.add_socket(
+        socket->name, socket->description, socket->idname, flag, nullptr);
+    BLI_assert(new_socket != nullptr);
+    /* Compatibility identifier string, only used for old sockets. */
+    new_socket->uid_compat = BLI_strdup(socket->identifier);
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -415,5 +443,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         layer->opacity = 1.0f;
       }
     }
+
+    /* Convert old socket lists into new interface items. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_convert_node_tree_socket_lists_to_interface(ntree);
+    }
+    FOREACH_NODETREE_END;
   }
 }

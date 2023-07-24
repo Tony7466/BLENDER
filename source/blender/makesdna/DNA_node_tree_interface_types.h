@@ -75,6 +75,8 @@ typedef struct bNodeTreeInterfaceSocket {
   /* Unique id for constructing socket identifiers. */
   int uid;
   char _pad[4];
+  /* String identifier for backwards compatibility, not used for new sockets. */
+  char *uid_compat;
 
   void *socket_data;
 
