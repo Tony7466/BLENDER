@@ -605,7 +605,12 @@ static int view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
     float delta, factor;
 
-    delta = event->prev_xy[0] - event->xy[0] + event->prev_xy[1] - event->xy[1];
+    if (U.uiflag & USER_ZOOM_HORIZ) {
+      delta = WM_event_absolute_delta_x(event);
+    }
+    else {
+      delta = WM_event_absolute_delta_y(event);
+    }
 
     if (U.uiflag & USER_ZOOM_INVERT) {
       delta *= -1;

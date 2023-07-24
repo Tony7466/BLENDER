@@ -499,9 +499,10 @@ int viewzoom_invoke_impl(bContext *C, ViewOpsData *vod, const wmEvent *event, Po
         vod->init.event_xy[0] = vod->prev.event_xy[0] = xy[0];
       }
       else {
-          vod->init.event_xy[1] = vod->prev.event_xy[1] = event->type == MOUSEPAN ? xy[1] : xy[1] + xy[0] - event->prev_xy[0];
+        vod->init.event_xy[1] = vod->prev.event_xy[1] = event->type == MOUSEPAN ? xy[1] : xy[1] + xy[0] - event->prev_xy[0];
       }
-      viewzoom_apply(vod, event->prev_xy, USER_ZOOM_DOLLY, ((U.uiflag & USER_ZOOM_INVERT) != 0) ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0 ));
+
+      viewzoom_apply(vod, event->prev_xy, USER_ZOOM_DOLLY, ((U.uiflag & USER_ZOOM_INVERT) != 0) ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
       ED_view3d_camera_lock_autokey(vod->v3d, vod->rv3d, C, false, true);
 
       return OPERATOR_FINISHED;
