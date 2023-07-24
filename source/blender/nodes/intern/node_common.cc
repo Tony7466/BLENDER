@@ -296,6 +296,7 @@ static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*n
   dst->name = io_panel.name ? io_panel.name : "";
   dst->description = "";          /* TODO io_panel.description */
   dst->default_collapsed = false; /* TODO io_panel.default_collapsed */
+  dst->num_items = io_panel.items_num;
   return dst;
 }
 
