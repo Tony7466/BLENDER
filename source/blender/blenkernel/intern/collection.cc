@@ -11,7 +11,7 @@
 
 #include "CLG_log.h"
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_blenlib.h"
 #include "BLI_iterator.h"
@@ -1095,7 +1095,7 @@ static void collection_gobject_assert_internal_consistency(Collection *collectio
 
 static GHash *collection_gobject_hash_alloc(const Collection *collection)
 {
-  return BLI_ghash_ptr_new_ex(__func__, (uint)BLI_listbase_count(&collection->gobject));
+  return BLI_ghash_ptr_new_ex(__func__, uint(BLI_listbase_count(&collection->gobject)));
 }
 
 static void collection_gobject_hash_create(Collection *collection)

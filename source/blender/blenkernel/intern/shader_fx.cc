@@ -6,7 +6,7 @@
  * \ingroup bke
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "MEM_guardedalloc.h"
 
@@ -55,7 +55,7 @@ bool BKE_shaderfx_has_gpencil(const Object *ob)
   return false;
 }
 
-void BKE_shaderfx_init(void)
+void BKE_shaderfx_init()
 {
   /* Initialize shaders */
   shaderfx_type_init(shader_fx_types); /* FX_shader_util.c */
@@ -179,8 +179,8 @@ void BKE_shaderfx_copydata_generic(const ShaderFxData *fx_src, ShaderFxData *fx_
   const size_t data_size = sizeof(ShaderFxData);
   const char *fx_src_data = ((const char *)fx_src) + data_size;
   char *fx_dst_data = ((char *)fx_dst) + data_size;
-  BLI_assert(data_size <= (size_t)fxi->struct_size);
-  memcpy(fx_dst_data, fx_src_data, (size_t)fxi->struct_size - data_size);
+  BLI_assert(data_size <= size_t(fxi->struct_size));
+  memcpy(fx_dst_data, fx_src_data, size_t(fxi->struct_size) - data_size);
 }
 
 static void shaderfx_copy_data_id_us_cb(void * /*userData*/,

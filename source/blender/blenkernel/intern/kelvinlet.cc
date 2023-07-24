@@ -14,7 +14,7 @@
 void BKE_kelvinlet_init_params(
     KelvinletParams *params, float radius, float force, float shear_modulus, float poisson_ratio)
 {
-  params->a = 1.0f / (4.0f * (float)M_PI * shear_modulus);
+  params->a = 1.0f / (4.0f * float(M_PI) * shear_modulus);
   params->b = params->a / (4.0f * (1.0f - poisson_ratio));
   params->c = 2 * (3.0f * params->a - 2.0f * params->b);
 
@@ -113,8 +113,8 @@ void BKE_kelvinlet_grab_triscale(float radius_elem_disp[3],
   mul_v3_v3fl(radius_elem_disp, brush_delta, fade);
 }
 
-typedef void (*kelvinlet_fn)(
-    float[3], const float *, const float *, const float *, const KelvinletParams *);
+using kelvinlet_fn =
+    void (*)(float[3], const float *, const float *, const float *, const KelvinletParams *);
 
 static void sculpt_kelvinet_integrate(kelvinlet_fn kelvinlet,
                                       float r_disp[3],

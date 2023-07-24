@@ -107,7 +107,7 @@ static void copy_lineset(FreestyleLineSet *new_lineset, FreestyleLineSet *linese
   }
 }
 
-static FreestyleModuleConfig *alloc_module(void)
+static FreestyleModuleConfig *alloc_module()
 {
   return (FreestyleModuleConfig *)MEM_callocN(sizeof(FreestyleModuleConfig),
                                               "style module configuration");
@@ -155,14 +155,12 @@ void BKE_freestyle_lineset_unique_name(FreestyleConfig *config, FreestyleLineSet
                  sizeof(lineset->name));
 }
 
-static FreestyleLineSet *alloc_lineset(void)
+static FreestyleLineSet *alloc_lineset()
 {
   return (FreestyleLineSet *)MEM_callocN(sizeof(FreestyleLineSet), "Freestyle line set");
 }
 
-FreestyleLineSet *BKE_freestyle_lineset_add(struct Main *bmain,
-                                            FreestyleConfig *config,
-                                            const char *name)
+FreestyleLineSet *BKE_freestyle_lineset_add(Main *bmain, FreestyleConfig *config, const char *name)
 {
   int lineset_index = BLI_listbase_count(&config->linesets);
 

@@ -8,9 +8,9 @@
  * Application level startup/shutdown functionality.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -56,7 +56,7 @@ UserDef U;
 /** \name Blender Free on Exit
  * \{ */
 
-void BKE_blender_free(void)
+void BKE_blender_free()
 {
   /* samples are in a global list..., also sets G_MAIN->sound->sample nullptr */
 
@@ -93,7 +93,7 @@ void BKE_blender_free(void)
 
 static char blender_version_string[48] = "";
 
-static void blender_version_init(void)
+static void blender_version_init()
 {
   const char *version_cycle = "";
   if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
@@ -120,12 +120,12 @@ static void blender_version_init(void)
            version_cycle);
 }
 
-const char *BKE_blender_version_string(void)
+const char *BKE_blender_version_string()
 {
   return blender_version_string;
 }
 
-bool BKE_blender_version_is_alpha(void)
+bool BKE_blender_version_is_alpha()
 {
   bool is_alpha = STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha");
   return is_alpha;
@@ -137,7 +137,7 @@ bool BKE_blender_version_is_alpha(void)
 /** \name Blender #Global Initialize/Clear
  * \{ */
 
-void BKE_blender_globals_init(void)
+void BKE_blender_globals_init()
 {
   blender_version_init();
 
@@ -158,7 +158,7 @@ void BKE_blender_globals_init(void)
   G.log.level = 1;
 }
 
-void BKE_blender_globals_clear(void)
+void BKE_blender_globals_clear()
 {
   if (G_MAIN == nullptr) {
     return;
@@ -399,7 +399,7 @@ void BKE_blender_userdef_app_template_data_set_and_free(UserDef *userdef)
  * \{ */
 
 static struct AtExitData {
-  struct AtExitData *next;
+  AtExitData *next;
 
   void (*func)(void *user_data);
   void *user_data;
@@ -407,7 +407,7 @@ static struct AtExitData {
 
 void BKE_blender_atexit_register(void (*func)(void *user_data), void *user_data)
 {
-  struct AtExitData *ae = static_cast<AtExitData *>(malloc(sizeof(*ae)));
+  AtExitData *ae = static_cast<AtExitData *>(malloc(sizeof(*ae)));
   ae->next = g_atexit;
   ae->func = func;
   ae->user_data = user_data;
@@ -416,8 +416,8 @@ void BKE_blender_atexit_register(void (*func)(void *user_data), void *user_data)
 
 void BKE_blender_atexit_unregister(void (*func)(void *user_data), const void *user_data)
 {
-  struct AtExitData *ae = g_atexit;
-  struct AtExitData **ae_p = &g_atexit;
+  AtExitData *ae = g_atexit;
+  AtExitData **ae_p = &g_atexit;
 
   while (ae) {
     if ((ae->func == func) && (ae->user_data == user_data)) {
@@ -430,9 +430,9 @@ void BKE_blender_atexit_unregister(void (*func)(void *user_data), const void *us
   }
 }
 
-void BKE_blender_atexit(void)
+void BKE_blender_atexit()
 {
-  struct AtExitData *ae = g_atexit, *ae_next;
+  AtExitData *ae = g_atexit, *ae_next;
   while (ae) {
     ae_next = ae->next;
 

@@ -6,12 +6,12 @@
  * \ingroup bke
  */
 
-#include <ctype.h>
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -1393,7 +1393,7 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
   const float log_scale_out_len = logf(param->scale_out[1]);
 
   for (int i = 0; i < param->segments; i++) {
-    const float fac = ((float)i) / (param->segments - 1);
+    const float fac = float(i) / (param->segments - 1);
     segment_scales[i] = expf(interpf(log_scale_out_len, log_scale_in_len, fac));
   }
 
@@ -1429,7 +1429,7 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
     for (int a = 1; a < param->segments; a++) {
       evaluate_cubic_bezier(bezt_controls, bezt_points[a], cur, axis);
 
-      float fac = ((float)a) / param->segments;
+      float fac = float(a) / param->segments;
       float roll = interpf(roll2, roll1, fac);
       float scalex = interpf(param->scale_out[0], param->scale_in[0], fac);
       float scalez = interpf(param->scale_out[2], param->scale_in[2], fac);
@@ -1481,13 +1481,13 @@ static void allocate_bbone_cache(bPoseChannel *pchan, int segments)
 
     runtime->bbone_segments = segments;
     runtime->bbone_rest_mats = static_cast<Mat4 *>(MEM_malloc_arrayN(
-        1 + (uint)segments, sizeof(Mat4), "bPoseChannel_Runtime::bbone_rest_mats"));
+        1 + uint(segments), sizeof(Mat4), "bPoseChannel_Runtime::bbone_rest_mats"));
     runtime->bbone_pose_mats = static_cast<Mat4 *>(MEM_malloc_arrayN(
-        1 + (uint)segments, sizeof(Mat4), "bPoseChannel_Runtime::bbone_pose_mats"));
+        1 + uint(segments), sizeof(Mat4), "bPoseChannel_Runtime::bbone_pose_mats"));
     runtime->bbone_deform_mats = static_cast<Mat4 *>(MEM_malloc_arrayN(
-        2 + (uint)segments, sizeof(Mat4), "bPoseChannel_Runtime::bbone_deform_mats"));
+        2 + uint(segments), sizeof(Mat4), "bPoseChannel_Runtime::bbone_deform_mats"));
     runtime->bbone_dual_quats = static_cast<DualQuat *>(MEM_malloc_arrayN(
-        1 + (uint)segments, sizeof(DualQuat), "bPoseChannel_Runtime::bbone_dual_quats"));
+        1 + uint(segments), sizeof(DualQuat), "bPoseChannel_Runtime::bbone_dual_quats"));
   }
 }
 
@@ -1578,9 +1578,9 @@ void BKE_pchan_bbone_deform_segment_index(const bPoseChannel *pchan,
    * Integer part is the first segment's index.
    * Integer part plus 1 is the second segment's index.
    * Fractional part is the blend factor. */
-  float pre_blend = pos * (float)segments;
+  float pre_blend = pos * float(segments);
 
-  int index = (int)floorf(pre_blend);
+  int index = int(floorf(pre_blend));
   CLAMP(index, 0, segments - 1);
 
   float blend = pre_blend - index;
@@ -1907,8 +1907,8 @@ void BKE_armature_mat_pose_to_bone_ex(Depsgraph *depsgraph,
 {
   bPoseChannel work_pchan = blender::dna::shallow_copy(*pchan);
 
-  /* recalculate pose matrix with only parent transformations,
-   * bone loc/sca/rot is ignored, scene and frame are not used. */
+  /* Recalculate pose matrix with only parent transformations,
+   * bone location/scale/rotation is ignored, scene and frame are not used. */
   BKE_pose_where_is_bone(depsgraph, nullptr, ob, &work_pchan, 0.0f, false);
 
   /* Find the matrix, need to remove the bone transforms first so this is calculated
@@ -2611,7 +2611,7 @@ void BKE_pose_where_is(Depsgraph *depsgraph, Scene *scene, Object *ob)
       }
       /* 5. otherwise just call the normal solver */
       else if (!(pchan->flag & POSE_DONE)) {
-        BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, 1);
+        BKE_pose_where_is_bone(depsgraph, scene, ob, pchan, ctime, true);
       }
     }
     /* 6. release the IK tree */
