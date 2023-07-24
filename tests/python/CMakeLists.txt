@@ -715,39 +715,6 @@ if(WITH_COMPOSITOR_CPU)
   endif()
 endif()
 
-if(WITH_COMPOSITOR_REALTIME_TEST)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling Realtime Compositor tests because OIIO idiff does not exist")
-  else()
-    set(compositor_tests
-      color
-      converter
-      filter
-      input
-      output
-      vector
-      matte
-
-      multiple_node_setups
-    )
-    
-    if(WITH_LIBMV)
-      list(APPEND compositor_tests distort)
-    endif()
-
-    foreach(comp_test ${compositor_tests})
-        add_python_test(
-          compositor_${comp_test}_realtime_test
-          ${CMAKE_CURRENT_LIST_DIR}/compositor_render_tests.py
-          -blender "${TEST_BLENDER_EXE}"
-          -testdir "${TEST_SRC_DIR}/compositor_realtime/${comp_test}"
-          -idiff "${OPENIMAGEIO_IDIFF}"
-          -outdir "${TEST_OUT_DIR}/compositor_realtime"
-        )
-    endforeach()
-  endif()
-endif()
-
 set(geo_node_tests
   attributes
   curve_primitives

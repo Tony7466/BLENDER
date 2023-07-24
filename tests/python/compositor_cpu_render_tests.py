@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2015-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2015-2022 Blender Foundation
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import os
+import shlex
+import shutil
+import subprocess
 import sys
 
 
@@ -17,11 +20,7 @@ except ImportError:
 
 
 def get_arguments(filepath, output_filepath):
-    dirname = os.path.dirname(filepath)
-    basedir = os.path.dirname(dirname)
-    compositor_dirname = os.path.basename(basedir)
-
-    args = [
+    return [
         "--background",
         "-noaudio",
         "--factory-startup",
@@ -34,12 +33,6 @@ def get_arguments(filepath, output_filepath):
         "-o", output_filepath,
         "-F", "PNG",
         "-f", "1"]
-
-    if compositor_dirname == 'compositor_realtime':
-        # F12 rendering with realtime compositor is experimental
-        args.extend(["--python-expr", "import bpy; bpy.context.preferences.experimental.use_experimental_compositors = True"])
-
-    return args
 
 
 def create_argparse():

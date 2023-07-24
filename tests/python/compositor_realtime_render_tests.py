@@ -15,10 +15,6 @@ try:
 except ImportError:
     inside_blender = False
 
-NOT_IMPLEMENTED = [
-    'node_kuwahara_anisotropic.+.blend',
-]
-
 ENABLE_REALTIME_COMPOSITOR_SCRIPT = "import bpy; " \
     "bpy.context.preferences.experimental.use_experimental_compositors = True; " \
     "bpy.data.scenes[0].node_tree.execution_mode = 'REALTIME'"
@@ -60,7 +56,7 @@ def main():
     output_dir = args.outdir[0]
 
     from modules import render_report
-    report = render_report.Report("Compositor Realtime", output_dir, idiff, blacklist=NOT_IMPLEMENTED)
+    report = render_report.Report("Compositor Realtime", output_dir, idiff)
     report.set_reference_dir("compositor_realtime_renders")
 
     ok = report.run(test_dir, blender, get_arguments, batch=True)
