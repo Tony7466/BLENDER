@@ -552,6 +552,9 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
   if (@available(macOS 12.0, *)) {
     options.languageVersion = MTLLanguageVersion2_4;
   }
+  if (@available(macOS 14.0, *)) {
+    options.languageVersion = MTLLanguageVersion3_1;
+  }
 
   if (getenv("CYCLES_METAL_PROFILING") || getenv("CYCLES_METAL_DEBUG")) {
     path_write_text(path_cache_get(string_printf("%s.metal", kernel_type_as_string(pso_type))),
@@ -1372,24 +1375,14 @@ void MetalDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
         stats.mem_alloc(blas_buffer.allocatedSize);
 
         for (uint64_t i = 0; i < count; ++i) {
-          [mtlBlasArgEncoder setArgumentBuffer:blas_buffer
-                                        offset:i * mtlBlasArgEncoder.encodedLength];
-          [mtlBlasArgEncoder setAccelerationStructure:bvhMetalRT->blas_array[i] atIndex:0];
+          if (bvhMetalRT->blas_array[i]) {
+            [mtlBlasArgEncoder setArgumentBuffer:blas_buffer
+                                          offset:i * mtlBlasArgEncoder.encodedLength];
+            [mtlBlasArgEncoder setAccelerationStructure:bvhMetalRT->blas_array[i] atIndex:0];
+          }
         }
-
-        count = bvhMetalRT->blas_lookup.size();
-        bufferSize = sizeof(uint32_t) * count;
-        blas_lookup_buffer = [mtlDevice newBufferWithLength:bufferSize
-                                                    options:default_storage_mode];
-        stats.mem_alloc(blas_lookup_buffer.allocatedSize);
-
-        memcpy([blas_lookup_buffer contents],
-               bvhMetalRT -> blas_lookup.data(),
-               blas_lookup_buffer.allocatedSize);
-
         if (default_storage_mode == MTLResourceStorageModeManaged) {
           [blas_buffer didModifyRange:NSMakeRange(0, blas_buffer.length)];
-          [blas_lookup_buffer didModifyRange:NSMakeRange(0, blas_lookup_buffer.length)];
         }
       }
     }
