@@ -32,7 +32,7 @@ set(SRC
   operators/bmo_fill_grid.cc
   operators/bmo_fill_holes.cc
   operators/bmo_hull.cc
-  operators/bmo_inset.c
+  operators/bmo_inset.cc
   operators/bmo_join_triangles.c
   operators/bmo_mesh_convert.c
   operators/bmo_mirror.c

@@ -41,43 +41,43 @@
  * \{ */
 
 /* just enough of a face to store interpolation data we can use once the inset is done */
-typedef struct InterpFace {
+struct InterpFace {
   BMFace *f;
   void **blocks_l;
   void **blocks_v;
   float (*cos_2d)[2];
   float axis_mat[3][3];
-} InterpFace;
+};
 
 /* basically a clone of #BM_vert_interp_from_face */
 static void bm_interp_face_store(InterpFace *iface, BMesh *bm, BMFace *f, MemArena *interp_arena)
 {
   BMLoop *l_iter, *l_first;
-  void **blocks_l = iface->blocks_l = BLI_memarena_alloc(interp_arena,
-                                                         sizeof(*iface->blocks_l) * f->len);
-  void **blocks_v = iface->blocks_v = BLI_memarena_alloc(interp_arena,
-                                                         sizeof(*iface->blocks_v) * f->len);
-  float(*cos_2d)[2] = iface->cos_2d = BLI_memarena_alloc(interp_arena,
-                                                         sizeof(*iface->cos_2d) * f->len);
+  void **blocks_l = iface->blocks_l = static_cast<void **>(
+      BLI_memarena_alloc(interp_arena, sizeof(*iface->blocks_l) * f->len));
+  void **blocks_v = iface->blocks_v = static_cast<void **>(
+      BLI_memarena_alloc(interp_arena, sizeof(*iface->blocks_v) * f->len));
+  float(*cos_2d)[2] = iface->cos_2d = static_cast<float(*)[2]>(
+      BLI_memarena_alloc(interp_arena, sizeof(*iface->cos_2d) * f->len));
   void *axis_mat = iface->axis_mat;
   int i;
 
   BLI_assert(BM_face_is_normal_valid(f));
 
-  axis_dominant_v3_to_m3(axis_mat, f->no);
+  axis_dominant_v3_to_m3(static_cast<float(*)[3]>(axis_mat), f->no);
 
   iface->f = f;
 
   i = 0;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
-    mul_v2_m3v3(cos_2d[i], axis_mat, l_iter->v->co);
-    blocks_l[i] = NULL;
+    mul_v2_m3v3(cos_2d[i], static_cast<const float(*)[3]>(axis_mat), l_iter->v->co);
+    blocks_l[i] = nullptr;
     CustomData_bmesh_copy_data(&bm->ldata, &bm->ldata, l_iter->head.data, &blocks_l[i]);
     /* if we were not modifying the loops later we would do... */
     // blocks[i] = l_iter->head.data;
 
-    blocks_v[i] = NULL;
+    blocks_v[i] = nullptr;
     CustomData_bmesh_copy_data(&bm->vdata, &bm->vdata, l_iter->v->head.data, &blocks_v[i]);
 
     /* use later for index lookups */
@@ -175,11 +175,11 @@ static void bm_loop_customdata_merge(BMesh *bm,
     }
 
     /* check we begin with merged data */
-    if ((CustomData_data_equals(type,
+    if ((CustomData_data_equals(eCustomDataType(type),
                                 BM_ELEM_CD_GET_VOID_P(l_a_outer, offset),
                                 BM_ELEM_CD_GET_VOID_P(l_b_outer, offset)) == true)
 
-    /* Epsilon for comparing UVs is too big, gives noticeable problems. */
+/* Epsilon for comparing UVs is too big, gives noticeable problems. */
 #  if 0
         &&
         /* check if the data ends up diverged */
@@ -196,12 +196,12 @@ static void bm_loop_customdata_merge(BMesh *bm,
        */
       const void *data_src;
 
-      CustomData_data_mix_value(type,
+      CustomData_data_mix_value(eCustomDataType(type),
                                 BM_ELEM_CD_GET_VOID_P(l_a_inner_inset, offset),
                                 BM_ELEM_CD_GET_VOID_P(l_b_inner_inset, offset),
                                 CDT_MIX_MIX,
                                 0.5f);
-      CustomData_data_copy_value(type,
+      CustomData_data_copy_value(eCustomDataType(type),
                                  BM_ELEM_CD_GET_VOID_P(l_a_inner_inset, offset),
                                  BM_ELEM_CD_GET_VOID_P(l_b_inner_inset, offset));
 
@@ -225,18 +225,20 @@ static void bm_loop_customdata_merge(BMesh *bm,
             if (!ELEM(l_iter, l_a_inner, l_b_inner, l_a_inner_inset, l_b_inner_inset)) {
               void *data_dst = BM_ELEM_CD_GET_VOID_P(l_iter, offset);
 
-              if (CustomData_data_equals(type, data_dst, data_cmp_a) ||
-                  CustomData_data_equals(type, data_dst, data_cmp_b))
+              if (CustomData_data_equals(eCustomDataType(type), data_dst, data_cmp_a) ||
+                  CustomData_data_equals(eCustomDataType(type), data_dst, data_cmp_b))
               {
-                CustomData_data_copy_value(type, data_src, data_dst);
+                CustomData_data_copy_value(eCustomDataType(type), data_src, data_dst);
               }
             }
           }
         }
       }
 
-      CustomData_data_copy_value(type, data_src, BM_ELEM_CD_GET_VOID_P(l_b_inner, offset));
-      CustomData_data_copy_value(type, data_src, BM_ELEM_CD_GET_VOID_P(l_a_inner, offset));
+      CustomData_data_copy_value(
+          eCustomDataType(type), data_src, BM_ELEM_CD_GET_VOID_P(l_b_inner, offset));
+      CustomData_data_copy_value(
+          eCustomDataType(type), data_src, BM_ELEM_CD_GET_VOID_P(l_a_inner, offset));
     }
   }
 }
@@ -259,7 +261,7 @@ static void bmo_face_inset_individual(BMesh *bm,
                                       const bool use_relative_offset,
                                       const bool use_interpolate)
 {
-  InterpFace *iface = NULL;
+  InterpFace *iface = nullptr;
 
   /* stores verts split away from the face (aligned with face verts) */
   BMVert **verts = BLI_array_alloca(verts, f->len);
@@ -317,7 +319,7 @@ static void bmo_face_inset_individual(BMesh *bm,
 
   /* hold interpolation values */
   if (use_interpolate) {
-    iface = BLI_memarena_alloc(interp_arena, sizeof(*iface));
+    iface = static_cast<InterpFace *>(BLI_memarena_alloc(interp_arena, sizeof(*iface)));
     bm_interp_face_store(iface, bm, f, interp_arena);
   }
 
@@ -408,7 +410,7 @@ void bmo_inset_individual_exec(BMesh *bm, BMOperator *op)
   BMFace *f;
 
   BMOIter oiter;
-  MemArena *interp_arena = NULL;
+  MemArena *interp_arena = nullptr;
 
   const float thickness = BMO_slot_float_get(op->slots_in, "thickness");
   const float depth = BMO_slot_float_get(op->slots_in, "depth");
@@ -456,13 +458,13 @@ void bmo_inset_individual_exec(BMesh *bm, BMOperator *op)
  * The boundary between tagged and untagged faces is inset (more involved logic).
  * \{ */
 
-typedef struct SplitEdgeInfo {
+struct SplitEdgeInfo {
   float no[3];
   float length;
   BMEdge *e_old;
   BMEdge *e_new;
   BMLoop *l;
-} SplitEdgeInfo;
+};
 
 /**
  * Return the tag loop where there is:
@@ -474,17 +476,17 @@ typedef struct SplitEdgeInfo {
  */
 static BMLoop *bm_edge_is_mixed_face_tag(BMLoop *l)
 {
-  if (LIKELY(l != NULL)) {
+  if (LIKELY(l != nullptr)) {
     int tot_tag = 0;
     int tot_untag = 0;
     BMLoop *l_iter;
-    BMLoop *l_tag = NULL;
+    BMLoop *l_tag = nullptr;
     l_iter = l;
     do {
       if (BM_elem_flag_test(l_iter->f, BM_ELEM_TAG)) {
         /* more than one tagged face - bail out early! */
         if (tot_tag == 1) {
-          return NULL;
+          return nullptr;
         }
         l_tag = l_iter;
         tot_tag++;
@@ -495,9 +497,9 @@ static BMLoop *bm_edge_is_mixed_face_tag(BMLoop *l)
 
     } while ((l_iter = l_iter->radial_next) != l);
 
-    return ((tot_tag == 1) && (tot_untag >= 1)) ? l_tag : NULL;
+    return ((tot_tag == 1) && (tot_untag >= 1)) ? l_tag : nullptr;
   }
-  return NULL;
+  return nullptr;
 }
 
 static float bm_edge_info_average_length(BMVert *v, SplitEdgeInfo *edge_info)
@@ -562,8 +564,9 @@ static float bm_edge_info_average_length_fallback(BMVert *v_lookup,
   } *vert_lengths = *vert_lengths_p;
 
   /* Only run this once, if needed. */
-  if (UNLIKELY(vert_lengths == NULL)) {
-    BMVert **vert_stack = MEM_mallocN(sizeof(*vert_stack) * bm->totvert, __func__);
+  if (UNLIKELY(vert_lengths == nullptr)) {
+    BMVert **vert_stack = static_cast<BMVert **>(
+        MEM_mallocN(sizeof(*vert_stack) * bm->totvert, __func__));
     STACK_DECLARE(vert_stack);
     STACK_INIT(vert_stack, bm->totvert);
 
@@ -687,14 +690,14 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
 
   /* Interpolation Vars */
   /* an array aligned with faces but only fill items which are used. */
-  InterpFace **iface_array = NULL;
+  InterpFace **iface_array = nullptr;
   int iface_array_len;
-  MemArena *interp_arena = NULL;
+  MemArena *interp_arena = nullptr;
 
   /* BMVert original location storage */
   const bool use_vert_coords_orig = use_edge_rail;
-  MemArena *vert_coords_orig = NULL;
-  GHash *vert_coords = NULL;
+  MemArena *vert_coords_orig = nullptr;
+  GHash *vert_coords = nullptr;
 
   BMVert *v;
   BMEdge *e;
@@ -704,7 +707,8 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
   if (use_interpolate) {
     interp_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
     /* warning, we could be more clever here and not over alloc */
-    iface_array = MEM_callocN(sizeof(*iface_array) * bm->totface, __func__);
+    iface_array = static_cast<InterpFace **>(
+        MEM_callocN(sizeof(*iface_array) * bm->totface, __func__));
     iface_array_len = bm->totface;
   }
 
@@ -746,7 +750,8 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
   }
   bm->elem_index_dirty |= BM_EDGE;
 
-  edge_info = MEM_mallocN(edge_info_len * sizeof(SplitEdgeInfo), __func__);
+  edge_info = static_cast<SplitEdgeInfo *>(
+      MEM_mallocN(edge_info_len * sizeof(SplitEdgeInfo), __func__));
 
   /* fill in array and initialize tagging */
   es = edge_info;
@@ -766,18 +771,18 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
     vert_coords = BLI_ghash_ptr_new(__func__);
   }
 
-  /* Utility macros. */
+/* Utility macros. */
 #define VERT_ORIG_STORE(_v) \
   { \
-    float *_co = BLI_memarena_alloc(vert_coords_orig, sizeof(float[3])); \
+    float *_co = static_cast<float *>(BLI_memarena_alloc(vert_coords_orig, sizeof(float[3]))); \
     copy_v3_v3(_co, (_v)->co); \
     BLI_ghash_insert(vert_coords, _v, _co); \
   } \
   (void)0
 #define VERT_ORIG_GET(_v) (const float *)BLI_ghash_lookup_default(vert_coords, (_v), (_v)->co)
-  /* memory for the coords isn't given back to the arena,
-   * acceptable in this case since it runs a fixed number of times. */
-#define VERT_ORIG_REMOVE(_v) BLI_ghash_remove(vert_coords, (_v), NULL, NULL)
+/* memory for the coords isn't given back to the arena,
+ * acceptable in this case since it runs a fixed number of times. */
+#define VERT_ORIG_REMOVE(_v) BLI_ghash_remove(vert_coords, (_v), nullptr, nullptr)
 
   for (i = 0, es = edge_info; i < edge_info_len; i++, es++) {
     if ((es->l = bm_edge_is_mixed_face_tag(es->e_old->l))) {
@@ -822,8 +827,9 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
         BMIter fiter;
         BM_ITER_ELEM (f, &fiter, v, BM_FACES_OF_VERT) {
           const int j = BM_elem_index_get(f);
-          if (iface_array[j] == NULL) {
-            InterpFace *iface = BLI_memarena_alloc(interp_arena, sizeof(*iface));
+          if (iface_array[j] == nullptr) {
+            InterpFace *iface = static_cast<InterpFace *>(
+                BLI_memarena_alloc(interp_arena, sizeof(*iface)));
             bm_interp_face_store(iface, bm, f, interp_arena);
             iface_array[j] = iface;
           }
@@ -833,7 +839,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
     /* done interpolation */
   }
 
-  /* show edge normals for debugging */
+/* show edge normals for debugging */
 #if 0
   for (i = 0, es = edge_info; i < edge_info_len; i++, es++) {
     float tvec[3];
@@ -841,10 +847,10 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
 
     mid_v3_v3v3(tvec, es->e_new->v1->co, es->e_new->v2->co);
 
-    v1 = BM_vert_create(bm, tvec, NULL, BM_CREATE_NOP);
-    v2 = BM_vert_create(bm, tvec, NULL, BM_CREATE_NOP);
+    v1 = BM_vert_create(bm, tvec, nullptr, BM_CREATE_NOP);
+    v2 = BM_vert_create(bm, tvec, nullptr, BM_CREATE_NOP);
     madd_v3_v3fl(v2->co, es->no, 0.1f);
-    BM_edge_create(bm, v1, v2, NULL, 0);
+    BM_edge_create(bm, v1, v2, nullptr, 0);
   }
 #endif
 
@@ -864,13 +870,13 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
       if (/* v->e && */ BM_elem_flag_test(v, BM_ELEM_TAG)) {
         BMVert **vout;
         int r_vout_len;
-        BMVert *v_glue = NULL;
+        BMVert *v_glue = nullptr;
 
         /* disable touching twice, this _will_ happen if the flags not disabled */
         BM_elem_flag_disable(v, BM_ELEM_TAG);
 
         bmesh_kernel_vert_separate(bm, v, &vout, &r_vout_len, false);
-        v = NULL; /* don't use again */
+        v = nullptr; /* don't use again */
 
         /* in some cases the edge doesn't split off */
         if (r_vout_len == 1) {
@@ -959,7 +965,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
                   is_mid = false;
                 }
 
-                /* Disable since this gives odd results at times, see #39288. */
+/* Disable since this gives odd results at times, see #39288. */
 #if 0
                 else if (compare_v3v3(f_a->no, f_b->no, 0.001f) == false) {
                   /* epsilon increased to fix #32329. */
@@ -1059,7 +1065,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
                 }
                 else {
                   BLI_assert(0);
-                  e_other = NULL;
+                  e_other = nullptr;
                 }
 
                 v_other = BM_edge_other_vert(e_other, v_split);
@@ -1094,7 +1100,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
           /* this saves expensive/slow glue check for common cases */
           if (r_vout_len > 2) {
             bool ok = true;
-            /* last step, NULL this vertex if has a tagged face */
+            /* last step, nullptr this vertex if has a tagged face */
             BM_ITER_ELEM (f, &iter, v_split, BM_FACES_OF_VERT) {
               if (BM_elem_flag_test(f, BM_ELEM_TAG)) {
                 ok = false;
@@ -1103,7 +1109,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
             }
 
             if (ok) {
-              if (v_glue == NULL) {
+              if (v_glue == nullptr) {
                 v_glue = v_split;
               }
               else {
@@ -1124,7 +1130,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
 
   if (use_vert_coords_orig) {
     BLI_memarena_free(vert_coords_orig);
-    BLI_ghash_free(vert_coords, NULL, NULL);
+    BLI_ghash_free(vert_coords, nullptr, nullptr);
   }
 
   if (use_interpolate) {
@@ -1145,7 +1151,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
 
   /* create faces */
   for (i = 0, es = edge_info; i < edge_info_len; i++, es++) {
-    BMVert *varr[4] = {NULL};
+    BMVert *varr[4] = {nullptr};
     int j;
     /* get the verts in the correct order */
     BM_edge_ordered_verts_ex(es->e_new, &varr[1], &varr[0], es->l);
@@ -1196,7 +1202,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
     if (0) {
       /* Don't use this because face boundaries have no adjacent loops and won't be filled in.
        * instead copy from the opposite side with the code below */
-      BM_face_copy_shared(bm, f, NULL, NULL);
+      BM_face_copy_shared(bm, f, nullptr, nullptr);
     }
     else {
       /* 2 inner loops on the edge between the new face and the original */
@@ -1346,8 +1352,8 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
      * which BM_vert_calc_shell_factor uses. */
 
     /* over allocate */
-    varr_co = MEM_callocN(sizeof(*varr_co) * bm->totvert, __func__);
-    void *vert_lengths_p = NULL;
+    varr_co = static_cast<float(*)[3]>(MEM_callocN(sizeof(*varr_co) * bm->totvert, __func__));
+    void *vert_lengths_p = nullptr;
 
     BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
       if (BM_elem_flag_test(v, BM_ELEM_TAG)) {
@@ -1366,7 +1372,7 @@ void bmo_inset_region_exec(BMesh *bm, BMOperator *op)
       }
     }
 
-    if (vert_lengths_p != NULL) {
+    if (vert_lengths_p != nullptr) {
       MEM_freeN(vert_lengths_p);
     }
 
