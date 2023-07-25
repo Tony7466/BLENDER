@@ -390,6 +390,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 
 ModifierTypeInfo modifierType_WeightVGEdit = {
     /*name*/ N_("VertexWeightEdit"),
+    /*panelIDName*/ MOD_PANEL_ID("VertexWeightEdit"),
     /*structName*/ "WeightVGEditModifierData",
     /*structSize*/ sizeof(WeightVGEditModifierData),
     /*srna*/ &RNA_VertexWeightEditModifier,

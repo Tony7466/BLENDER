@@ -249,6 +249,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Solidify = {
     /*name*/ N_("Solidify"),
+    /*panelIDName*/ MOD_PANEL_ID("Solidify"),
     /*structName*/ "SolidifyModifierData",
     /*structSize*/ sizeof(SolidifyModifierData),
     /*srna*/ &RNA_SolidifyModifier,

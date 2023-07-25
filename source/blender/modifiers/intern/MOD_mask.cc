@@ -798,6 +798,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Mask = {
     /*name*/ N_("Mask"),
+    /*panelIDName*/ MOD_PANEL_ID("Mask"),
     /*structName*/ "MaskModifierData",
     /*structSize*/ sizeof(MaskModifierData),
     /*srna*/ &RNA_MaskModifier,

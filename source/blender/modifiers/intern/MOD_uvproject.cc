@@ -338,6 +338,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_UVProject = {
     /*name*/ N_("UVProject"),
+    /*panelIDName*/ MOD_PANEL_ID("UVProject"),
     /*structName*/ "UVProjectModifierData",
     /*structSize*/ sizeof(UVProjectModifierData),
     /*srna*/ &RNA_UVProjectModifier,

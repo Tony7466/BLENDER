@@ -25,6 +25,7 @@ static bool isDisabled(const Scene * /*scene*/, ModifierData * /*md*/, bool /*us
 
 ModifierTypeInfo modifierType_None = {
     /*name*/ "None",
+    /*panelIDName*/ MOD_PANEL_ID("None"),
     /*structName*/ "ModifierData",
     /*structSize*/ sizeof(ModifierData),
     /*srna*/ &RNA_Modifier,

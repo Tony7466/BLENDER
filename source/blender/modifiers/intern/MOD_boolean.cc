@@ -665,6 +665,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Boolean = {
     /*name*/ N_("Boolean"),
+    /*panelIDName*/ MOD_PANEL_ID("Boolean"),
     /*structName*/ "BooleanModifierData",
     /*structSize*/ sizeof(BooleanModifierData),
     /*srna*/ &RNA_BooleanModifier,

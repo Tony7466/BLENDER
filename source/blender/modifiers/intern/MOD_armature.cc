@@ -255,6 +255,7 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 
 ModifierTypeInfo modifierType_Armature = {
     /*name*/ N_("Armature"),
+    /*panelIDName*/ MOD_PANEL_ID("Armature"),
     /*structName*/ "ArmatureModifierData",
     /*structSize*/ sizeof(ArmatureModifierData),
     /*srna*/ &RNA_ArmatureModifier,

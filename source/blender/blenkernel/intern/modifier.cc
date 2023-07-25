@@ -123,7 +123,7 @@ const ModifierTypeInfo *BKE_modifier_get_info(ModifierType type)
 void BKE_modifier_type_panel_id(ModifierType type, char *r_idname)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info(type);
-  BLI_string_join(r_idname, sizeof(PanelType::idname), MODIFIER_TYPE_PANEL_PREFIX, mti->name);
+  BLI_strncpy(r_idname, mti->panelIDName, sizeof(PanelType::idname));
 }
 
 void BKE_modifier_panel_expand(ModifierData *md)

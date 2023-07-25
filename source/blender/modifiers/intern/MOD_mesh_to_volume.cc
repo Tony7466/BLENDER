@@ -195,6 +195,7 @@ static void modifyGeometrySet(ModifierData *md,
 
 ModifierTypeInfo modifierType_MeshToVolume = {
     /*name*/ N_("Mesh to Volume"),
+    /*panelIDName*/ MOD_PANEL_ID("Mesh to Volume"),
     /*structName*/ "MeshToVolumeModifierData",
     /*structSize*/ sizeof(MeshToVolumeModifierData),
     /*srna*/ &RNA_MeshToVolumeModifier,

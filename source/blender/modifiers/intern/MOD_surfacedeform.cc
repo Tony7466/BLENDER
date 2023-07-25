@@ -1709,6 +1709,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 
 ModifierTypeInfo modifierType_SurfaceDeform = {
     /*name*/ N_("SurfaceDeform"),
+    /*panelIDName*/ MOD_PANEL_ID("SurfaceDeform"),
     /*structName*/ "SurfaceDeformModifierData",
     /*structSize*/ sizeof(SurfaceDeformModifierData),
     /*srna*/ &RNA_SurfaceDeformModifier,

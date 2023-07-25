@@ -1119,6 +1119,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Screw = {
     /*name*/ N_("Screw"),
+    /*panelIDName*/ MOD_PANEL_ID("Screw"),
     /*structName*/ "ScrewModifierData",
     /*structSize*/ sizeof(ScrewModifierData),
     /*srna*/ &RNA_ScrewModifier,

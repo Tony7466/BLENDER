@@ -193,6 +193,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Curve = {
     /*name*/ N_("Curve"),
+    /*panelIDName*/ MOD_PANEL_ID("Curve"),
     /*structName*/ "CurveModifierData",
     /*structSize*/ sizeof(CurveModifierData),
     /*srna*/ &RNA_CurveModifier,

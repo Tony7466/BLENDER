@@ -304,6 +304,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_UVWarp = {
     /*name*/ N_("UVWarp"),
+    /*panelIDName*/ MOD_PANEL_ID("UVWarp"),
     /*structName*/ "UVWarpModifierData",
     /*structSize*/ sizeof(UVWarpModifierData),
     /*srna*/ &RNA_UVWarpModifier,

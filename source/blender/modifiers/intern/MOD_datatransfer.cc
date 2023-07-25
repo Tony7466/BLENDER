@@ -484,6 +484,7 @@ static void panelRegister(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_DataTransfer = {
     /*name*/ N_("DataTransfer"),
+    /*panelIDName*/ MOD_PANEL_ID("DataTransfer"),
     /*structName*/ "DataTransferModifierData",
     /*structSize*/ sizeof(DataTransferModifierData),
     /*srna*/ &RNA_DataTransferModifier,

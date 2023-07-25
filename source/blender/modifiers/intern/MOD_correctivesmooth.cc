@@ -822,6 +822,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 
 ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /*name*/ N_("CorrectiveSmooth"),
+    /*panelIDName*/ MOD_PANEL_ID("CorrectiveSmooth"),
     /*structName*/ "CorrectiveSmoothModifierData",
     /*structSize*/ sizeof(CorrectiveSmoothModifierData),
     /*srna*/ &RNA_CorrectiveSmoothModifier,

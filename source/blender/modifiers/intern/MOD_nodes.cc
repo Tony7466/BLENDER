@@ -1530,6 +1530,7 @@ static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cdda
 
 ModifierTypeInfo modifierType_Nodes = {
     /*name*/ N_("GeometryNodes"),
+    /*panelIDName*/ MOD_PANEL_ID("GeometryNodes"),
     /*structName*/ "NodesModifierData",
     /*structSize*/ sizeof(NodesModifierData),
     /*srna*/ &RNA_NodesModifier,

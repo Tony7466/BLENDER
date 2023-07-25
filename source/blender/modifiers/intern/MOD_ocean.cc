@@ -688,6 +688,7 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 
 ModifierTypeInfo modifierType_Ocean = {
     /*name*/ N_("Ocean"),
+    /*panelIDName*/ MOD_PANEL_ID("Ocean"),
     /*structName*/ "OceanModifierData",
     /*structSize*/ sizeof(OceanModifierData),
     /*srna*/ &RNA_OceanModifier,
