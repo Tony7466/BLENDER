@@ -24,6 +24,7 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "BKE_node.h"
+#  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
 #  include "BLI_math.h"
@@ -370,6 +371,85 @@ static bool rna_NodeTreeInterfaceSocketMaterial_default_value_poll(PointerRNA * 
   return ma->gp_style == nullptr;
 }
 
+static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  if (!ntree->runtime) {
+    return;
+  }
+
+  ntree->ensure_topology_cache();
+  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  rna_iterator_array_begin(iter,
+                           cache.items.data(),
+                           sizeof(bNodeTreeInterfaceItem *),
+                           cache.items.size(),
+                           false,
+                           nullptr);
+}
+
+static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  if (!ntree->runtime) {
+    return 0;
+  }
+
+  ntree->ensure_topology_cache();
+  return ntree->runtime->interface_cache.items.size();
+}
+
+static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  if (!ntree->runtime) {
+    return 0;
+  }
+
+  ntree->ensure_topology_cache();
+  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  if (!cache.items.index_range().contains(index)) {
+    return false;
+  }
+
+  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, cache.items[index], r_ptr);
+  return true;
+}
+
+static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
+                                                     const char *key,
+                                                     struct PointerRNA *r_ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  if (!ntree->runtime) {
+    return 0;
+  }
+
+  ntree->ensure_topology_cache();
+  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  for (bNodeTreeInterfaceItem *item : cache.items) {
+    switch (item->item_type) {
+      case NODE_INTERFACE_SOCKET: {
+        bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);
+        if (STREQ(socket->name, key)) {
+          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceSocket, socket, r_ptr);
+          return true;
+        }
+        break;
+      }
+      case NODE_INTERFACE_PANEL: {
+        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+        if (STREQ(panel->name, key)) {
+          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfacePanel, panel, r_ptr);
+          return true;
+        }
+        break;
+      }
+    }
+  }
+  return false;
+}
+
 #else
 
 static void rna_def_node_interface_item(BlenderRNA *brna)
@@ -583,11 +663,26 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
 static void rna_def_node_tree_interface(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "NodeTreeInterface", nullptr);
   RNA_def_struct_ui_text(
       srna, "Node Tree Interface", "Declaration of sockets and ui panels of a node group");
   RNA_def_struct_sdna(srna, "bNodeTreeInterface");
+
+  prop = RNA_def_property(srna, "ui_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_NodeTreeInterface_items_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    "rna_NodeTreeInterface_items_length",
+                                    "rna_NodeTreeInterface_items_lookup_int",
+                                    "rna_NodeTreeInterface_items_lookup_string",
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Items", "Items in the node interface");
 
   rna_def_node_tree_interface_items_api(srna);
 }
