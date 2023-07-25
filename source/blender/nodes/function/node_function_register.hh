@@ -18,6 +18,7 @@ void register_node_type_fn_input_int();
 void register_node_type_fn_input_special_characters();
 void register_node_type_fn_input_string();
 void register_node_type_fn_input_vector();
+void register_node_type_fn_invert_rotation();
 void register_node_type_fn_random_value();
 void register_node_type_fn_replace_string();
 void register_node_type_fn_rotate_euler();

@@ -557,6 +557,7 @@ class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeAxisAngleToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeCombineQuaternion")
         node_add_menu.add_node_type(layout, "FunctionNodeEulerToRotation")
+        node_add_menu.add_node_type(layout, "FunctionNodeInvertRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeRotateEuler")
         node_add_menu.add_node_type(layout, "FunctionNodeRotateVector")
         node_add_menu.add_node_type(layout, "FunctionNodeRotationToAxisAngle")
