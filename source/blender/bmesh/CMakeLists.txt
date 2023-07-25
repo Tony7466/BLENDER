@@ -17,7 +17,7 @@ set(SRC
   operators/bmo_beautify.cc
   operators/bmo_bevel.cc
   operators/bmo_bisect_plane.cc
-  operators/bmo_bridge.c
+  operators/bmo_bridge.cc
   operators/bmo_connect.c
   operators/bmo_connect_concave.c
   operators/bmo_connect_nonplanar.c
