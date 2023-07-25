@@ -34,7 +34,7 @@ set(SRC
   operators/bmo_hull.cc
   operators/bmo_inset.cc
   operators/bmo_join_triangles.cc
-  operators/bmo_mesh_convert.c
+  operators/bmo_mesh_convert.cc
   operators/bmo_mirror.c
   operators/bmo_normals.c
   operators/bmo_offset_edgeloops.c
