@@ -131,6 +131,12 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
     bActionGroup *agrp = (bActionGroup *)ale->data;
     agroup_to_keylist(adt, agrp, keylist, 0);
   }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+    /* TODO: why don't we just give grease pencil layers key_data too? */
+    using namespace blender::bke::greasepencil;
+    Layer *layer = static_cast<Layer *>(ale->data);
+    grease_pencil_cels_to_keylist(adt, layer, keylist, 0);
+  }
   else if (ale->type == ANIMTYPE_GPLAYER) {
     /* TODO: why don't we just give gplayers key_data too? */
     bGPDlayer *gpl = (bGPDlayer *)ale->data;
