@@ -34,7 +34,7 @@ void bmo_create_vert_exec(BMesh *bm, BMOperator *op)
 
   BMO_slot_vec_get(op->slots_in, "co", vec);
 
-  BMO_vert_flag_enable(bm, BM_vert_create(bm, vec, NULL, BM_CREATE_NOP), ELE_NEW);
+  BMO_vert_flag_enable(bm, BM_vert_create(bm, vec, nullptr, BM_CREATE_NOP), ELE_NEW);
   BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "vert.out", BM_VERT, ELE_NEW);
 }
 
@@ -61,7 +61,7 @@ void bmo_transform_exec(BMesh *bm, BMOperator *op)
     mul_m4_v3(mat, v->co);
 
     if (shape_keys_len != 0) {
-      float(*co_dst)[3] = BM_ELEM_CD_GET_VOID_P(v, cd_shape_key_offset);
+      float(*co_dst)[3] = static_cast<float(*)[3]>(BM_ELEM_CD_GET_VOID_P(v, cd_shape_key_offset));
       for (int i = 0; i < shape_keys_len; i++, co_dst++) {
         mul_m4_v3(mat, *co_dst);
       }
@@ -397,14 +397,14 @@ void bmo_region_extend_exec(BMesh *bm, BMOperator *op)
   BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "geom.out", BM_ALL_NOLOOP, SEL_FLAG);
 }
 
-void bmo_smooth_vert_exec(BMesh *UNUSED(bm), BMOperator *op)
+void bmo_smooth_vert_exec(BMesh * /*bm*/, BMOperator *op)
 {
   BMOIter siter;
   BMIter iter;
   BMVert *v;
   BMEdge *e;
-  float(*cos)[3] = MEM_mallocN(sizeof(*cos) * BMO_slot_buffer_len(op->slots_in, "verts"),
-                               __func__);
+  float(*cos)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*cos) * BMO_slot_buffer_len(op->slots_in, "verts"), __func__));
   float *co, *co2, clip_dist = BMO_slot_float_get(op->slots_in, "clip_dist");
   const float fac = BMO_slot_float_get(op->slots_in, "factor");
   int i, j, clipx, clipy, clipz;
@@ -583,8 +583,7 @@ static void bmo_get_loop_color_ref(BMesh *bm,
                                    int *r_cd_color_offset,
                                    int *r_cd_color_type)
 {
-  Mesh me_query;
-  memset(&me_query, 0, sizeof(Mesh));
+  Mesh me_query = blender::dna::shallow_zero_initialize();
   CustomData_reset(&me_query.vdata);
   CustomData_reset(&me_query.edata);
   CustomData_reset(&me_query.pdata);
@@ -687,7 +686,7 @@ static void bm_face_reverse_colors(BMFace *f,
 
   const size_t size = cd_loop_color_type == CD_PROP_COLOR ? sizeof(MPropCol) : sizeof(MLoopCol);
 
-  char *cols = alloca(size * f->len);
+  char *cols = static_cast<char *>(alloca(size * f->len));
 
   char *col = cols;
   BM_ITER_ELEM_INDEX (l, &iter, f, BM_LOOPS_OF_FACE, i) {

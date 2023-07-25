@@ -50,7 +50,7 @@ set(SRC
   operators/bmo_symmetrize.cc
   operators/bmo_triangulate.cc
   operators/bmo_unsubdivide.cc
-  operators/bmo_utils.c
+  operators/bmo_utils.cc
   operators/bmo_wireframe.c
 
   intern/bmesh_callback_generic.c
