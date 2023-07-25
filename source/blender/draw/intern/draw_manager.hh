@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -177,6 +177,14 @@ class Manager {
   {
     GPU_texture_ref(texture);
     acquired_textures.append(texture);
+  }
+
+  /**
+   * Return the number of resource handles allocated.
+   */
+  uint resource_handle_count() const
+  {
+    return resource_len_;
   }
 
   /** TODO(fclem): The following should become private at some point. */

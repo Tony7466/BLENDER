@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -454,8 +455,6 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   bool setConsoleWindowState(GHOST_TConsoleWindowState action);
 
-  /** The virtual-key code (VKey) of the last press event. Used to detect repeat events. */
-  unsigned short m_keycode_last_repeat_key;
   /** State variable set at initialization. */
   bool m_hasPerformanceCounter;
   /** High frequency timer variable. */

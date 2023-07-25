@@ -7,6 +7,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_simulation_state_serialize.hh"
 
@@ -18,6 +19,7 @@
 #include "BLI_endian_switch.h"
 #include "BLI_fileops.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_path_util.h"
 
 #include "RNA_access.h"
@@ -446,6 +448,8 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
     return cancel();
   }
 
+  curves.update_curve_types();
+
   return curves_id;
 }
 
@@ -470,7 +474,7 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   CustomData_free_layer_named(&mesh->ldata, ".corner_edge", 0);
   mesh->totvert = io_mesh->lookup_int("num_vertices").value_or(0);
   mesh->totedge = io_mesh->lookup_int("num_edges").value_or(0);
-  mesh->totpoly = io_mesh->lookup_int("num_polygons").value_or(0);
+  mesh->faces_num = io_mesh->lookup_int("num_polygons").value_or(0);
   mesh->totloop = io_mesh->lookup_int("num_corners").value_or(0);
 
   auto cancel = [&]() {
@@ -478,17 +482,17 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
     return nullptr;
   };
 
-  if (mesh->totpoly > 0) {
-    const auto io_poly_offsets = io_mesh->lookup_dict("poly_offsets");
-    if (!io_poly_offsets) {
+  if (mesh->faces_num > 0) {
+    const auto io_face_offsets = io_mesh->lookup_dict("face_offsets");
+    if (!io_face_offsets) {
       return cancel();
     }
-    if (!read_bdata_shared_simple_span(*io_poly_offsets,
+    if (!read_bdata_shared_simple_span(*io_face_offsets,
                                        bdata_reader,
                                        bdata_sharing,
-                                       mesh->totpoly + 1,
-                                       &mesh->poly_offset_indices,
-                                       &mesh->runtime->poly_offsets_sharing_info))
+                                       mesh->faces_num + 1,
+                                       &mesh->face_offset_indices,
+                                       &mesh->runtime->face_offsets_sharing_info))
     {
       return cancel();
     }
@@ -643,15 +647,15 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
 
     io_mesh->append_int("num_vertices", mesh.totvert);
     io_mesh->append_int("num_edges", mesh.totedge);
-    io_mesh->append_int("num_polygons", mesh.totpoly);
+    io_mesh->append_int("num_polygons", mesh.faces_num);
     io_mesh->append_int("num_corners", mesh.totloop);
 
-    if (mesh.totpoly > 0) {
-      io_mesh->append("poly_offsets",
+    if (mesh.faces_num > 0) {
+      io_mesh->append("face_offsets",
                       write_bdata_shared_simple_gspan(bdata_writer,
                                                       bdata_sharing,
-                                                      mesh.poly_offsets(),
-                                                      mesh.runtime->poly_offsets_sharing_info));
+                                                      mesh.face_offsets(),
+                                                      mesh.runtime->face_offsets_sharing_info));
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
@@ -778,6 +782,10 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
       const ColorGeometry4f value = *static_cast<const ColorGeometry4f *>(value_ptr);
       return serialize_float_array({&value.r, 4});
     }
+    case CD_PROP_QUATERNION: {
+      const math::Quaternion value = *static_cast<const math::Quaternion *>(value_ptr);
+      return serialize_float_array({&value.x, 4});
+    }
     default:
       break;
   }
@@ -785,12 +793,17 @@ static std::shared_ptr<io::serialize::Value> serialize_primitive_value(
   return {};
 }
 
+/**
+ * Version written to the baked data.
+ */
+static constexpr int serialize_format_version = 2;
+
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
                                          BDataSharing &bdata_sharing,
                                          DictionaryValue &r_io_root)
 {
-  r_io_root.append_int("version", 1);
+  r_io_root.append_int("version", serialize_format_version);
   auto io_zones = r_io_root.append_array("zones");
 
   for (const auto item : state.zone_states_.items()) {
@@ -799,11 +812,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
     auto io_zone = io_zones->append_dict();
 
-    auto io_zone_id = io_zone->append_array("zone_id");
-
-    for (const int node_id : zone_id.node_ids) {
-      io_zone_id->append_int(node_id);
-    }
+    io_zone->append_int("state_id", zone_id.nested_node_id);
 
     auto io_state_items = io_zone->append_array("state_items");
     for (const MapItem<int, std::unique_ptr<SimulationStateItem>> &state_item_with_id :
@@ -889,7 +898,7 @@ template<typename T> static std::optional<T> deserialize_int(const io::serialize
     return std::nullopt;
   }
   const int64_t value = io_int->value();
-  if (value < std::numeric_limits<T>::min()) {
+  if (value < std::numeric_limits<T>::lowest()) {
     return std::nullopt;
   }
   if (value > std::numeric_limits<T>::max()) {
@@ -966,13 +975,17 @@ template<typename T>
     case CD_PROP_COLOR: {
       return deserialize_float_array(io_value, {static_cast<float *>(r_value), 4});
     }
+    case CD_PROP_QUATERNION: {
+      return deserialize_float_array(io_value, {static_cast<float *>(r_value), 4});
+    }
     default:
       break;
   }
   return false;
 }
 
-void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
+void deserialize_modifier_simulation_state(const bNodeTree &ntree,
+                                           const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state)
@@ -982,7 +995,7 @@ void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
   if (!version) {
     return;
   }
-  if (*version != 1) {
+  if (*version > serialize_format_version) {
     return;
   }
   const io::serialize::ArrayValue *io_zones = io_root.lookup_array("zones");
@@ -994,14 +1007,27 @@ void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
     if (!io_zone) {
       continue;
     }
-    const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id");
     bke::sim::SimulationZoneID zone_id;
-    for (const auto &io_zone_id_element : io_zone_id->elements()) {
-      const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();
-      if (!io_node_id) {
+    if (const std::optional<int> state_id = io_zone->lookup_int("state_id")) {
+      zone_id.nested_node_id = *state_id;
+    }
+    else if (const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id")) {
+      /* In the initial release of simulation nodes, the entire node id path was written to the
+       * baked data. For backward compatibility the node ids are read here and then the nested node
+       * id is looked up. */
+      Vector<int> node_ids;
+      for (const auto &io_zone_id_element : io_zone_id->elements()) {
+        const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();
+        if (!io_node_id) {
+          continue;
+        }
+        node_ids.append(io_node_id->value());
+      }
+      const bNestedNodeRef *nested_node_ref = ntree.nested_node_ref_from_node_id_path(node_ids);
+      if (!nested_node_ref) {
         continue;
       }
-      zone_id.node_ids.append(io_node_id->value());
+      zone_id.nested_node_id = nested_node_ref->id;
     }
 
     const io::serialize::ArrayValue *io_state_items = io_zone->lookup_array("state_items");

@@ -163,7 +163,8 @@ static void spreadsheet_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDR
 
 static void spreadsheet_main_region_init(wmWindowManager *wm, ARegion *region)
 {
-  region->v2d.scroll = V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM;
+  region->v2d.scroll = V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM | V2D_SCROLL_VERTICAL_HIDE |
+                       V2D_SCROLL_HORIZONTAL_HIDE;
   region->v2d.align = V2D_ALIGN_NO_NEG_X | V2D_ALIGN_NO_POS_Y;
   region->v2d.keepzoom = V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y | V2D_LIMITZOOM | V2D_KEEPASPECT;
   region->v2d.keeptot = V2D_KEEPTOT_STRICT;
@@ -346,6 +347,7 @@ static float get_default_column_width(const ColumnValues &values)
       return 3.0f * float_width;
     case SPREADSHEET_VALUE_TYPE_COLOR:
     case SPREADSHEET_VALUE_TYPE_BYTE_COLOR:
+    case SPREADSHEET_VALUE_TYPE_QUATERNION:
       return 4.0f * float_width;
     case SPREADSHEET_VALUE_TYPE_INSTANCES:
       return 8.0f;
@@ -724,7 +726,7 @@ void ED_spacetype_spreadsheet()
   /* regions: main window */
   art = MEM_cnew<ARegionType>("spacetype spreadsheet region");
   art->regionid = RGN_TYPE_WINDOW;
-  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES;
   art->lock = 1;
 
   art->init = spreadsheet_main_region_init;
@@ -737,7 +739,7 @@ void ED_spacetype_spreadsheet()
   art->regionid = RGN_TYPE_HEADER;
   art->prefsizey = HEADERY;
   art->keymapflag = 0;
-  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER | ED_KEYMAP_FRAMES;
   art->lock = 1;
 
   art->init = spreadsheet_header_region_init;
@@ -751,7 +753,7 @@ void ED_spacetype_spreadsheet()
   art->regionid = RGN_TYPE_FOOTER;
   art->prefsizey = HEADERY;
   art->keymapflag = 0;
-  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_HEADER | ED_KEYMAP_FRAMES;
   art->lock = 1;
 
   art->init = spreadsheet_footer_region_init;
@@ -780,7 +782,7 @@ void ED_spacetype_spreadsheet()
   art = MEM_cnew<ARegionType>("spreadsheet dataset region");
   art->regionid = RGN_TYPE_TOOLS;
   art->prefsizex = 150 + V2D_SCROLL_WIDTH;
-  art->keymapflag = ED_KEYMAP_UI;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->lock = 1;
   art->init = ED_region_panels_init;
   art->draw = spreadsheet_dataset_region_draw;

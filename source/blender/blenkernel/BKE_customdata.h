@@ -698,14 +698,15 @@ enum {
   /* Multiple types of mesh elements... */
   CD_FAKE_UV =
       CD_FAKE |
-      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and poly's textures. */
+      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and face's textures. */
 
   CD_FAKE_LNOR = CD_FAKE |
                  CD_CUSTOMLOOPNORMAL, /* Because we play with clnor and temp lnor layers here. */
 
   CD_FAKE_SHARP = CD_FAKE | 200, /* Sharp flag for edges, smooth flag for faces. */
 
-  CD_FAKE_BWEIGHT = CD_FAKE | 300, /* UV seam flag for edges. */
+  CD_FAKE_BWEIGHT = CD_FAKE | 300,
+  CD_FAKE_CREASE = CD_FAKE | 400,
 };
 
 enum {

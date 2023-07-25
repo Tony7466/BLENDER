@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 /** \file
  * \ingroup GHOST
  * \brief GHOST C-API function and type declarations.
@@ -237,7 +238,7 @@ extern bool GHOST_ValidWindow(GHOST_SystemHandle systemhandle, GHOST_WindowHandl
  *         This window is invalid after full screen has been ended.
  */
 extern GHOST_WindowHandle GHOST_BeginFullScreen(GHOST_SystemHandle systemhandle,
-                                                GHOST_DisplaySetting *setting,
+                                                const GHOST_DisplaySetting *setting,
                                                 const bool stereoVisual);
 
 /**
@@ -428,7 +429,7 @@ void GHOST_GetCursorGrabState(GHOST_WindowHandle windowhandle,
 extern GHOST_TSuccess GHOST_SetCursorGrab(GHOST_WindowHandle windowhandle,
                                           GHOST_TGrabCursorMode mode,
                                           GHOST_TAxisFlag wrap_axis,
-                                          int bounds[4],
+                                          const int bounds[4],
                                           const int mouse_ungrab_xy[2]);
 
 /***************************************************************************************

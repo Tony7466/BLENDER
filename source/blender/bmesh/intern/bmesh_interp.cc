@@ -345,14 +345,14 @@ static bool mdisp_in_mdispquad(BMLoop *l_src,
   add_v3_v3(v4, c);
 
   if (!quad_co(v1, v2, v3, v4, p, l_src->v->no, r_uv)) {
-    return 0;
+    return false;
   }
 
   mul_v2_fl(r_uv, float(res - 1));
 
   mdisp_axis_from_quad(v1, v2, v3, v4, r_axis_x, r_axis_y);
 
-  return 1;
+  return true;
 }
 
 static float bm_loop_flip_equotion(float mat[2][2],
@@ -405,7 +405,7 @@ static void bm_loop_flip_disp(const float source_axis_x[3],
   disp[1] = (mat[0][0] * b[1] - b[0] * mat[1][0]) / d;
 }
 
-typedef struct BMLoopInterpMultiresData {
+struct BMLoopInterpMultiresData {
   BMLoop *l_dst;
   BMLoop *l_src_first;
   int cd_loop_mdisp_offset;
@@ -419,7 +419,7 @@ typedef struct BMLoopInterpMultiresData {
 
   int res;
   float d;
-} BMLoopInterpMultiresData;
+};
 
 static void loop_interp_multires_cb(void *__restrict userdata,
                                     const int ix,

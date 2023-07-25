@@ -192,16 +192,16 @@ void BKE_crazyspace_set_quats_mesh(Mesh *me,
 
   /* first store two sets of tangent vectors in vertices, we derive it just from the face-edges */
   const Span<float3> positions = me->vert_positions();
-  const OffsetIndices polys = me->polys();
+  const OffsetIndices faces = me->faces();
   const Span<int> corner_verts = me->corner_verts();
 
-  for (int i = 0; i < me->totpoly; i++) {
-    const IndexRange poly = polys[i];
-    const int *corner_vert_next = &corner_verts[poly.start()];
-    const int *corner_vert_curr = &corner_vert_next[poly.size() - 1];
-    const int *corner_vert_prev = &corner_vert_next[poly.size() - 2];
+  for (int i = 0; i < me->faces_num; i++) {
+    const IndexRange face = faces[i];
+    const int *corner_vert_next = &corner_verts[face.start()];
+    const int *corner_vert_curr = &corner_vert_next[face.size() - 1];
+    const int *corner_vert_prev = &corner_vert_next[face.size() - 2];
 
-    for (int j = 0; j < poly.size(); j++) {
+    for (int j = 0; j < face.size(); j++) {
       if (!BLI_BITMAP_TEST(vert_tag, *corner_vert_curr)) {
         const float *co_prev, *co_curr, *co_next; /* orig */
         const float *vd_prev, *vd_curr, *vd_next; /* deform */
@@ -247,7 +247,8 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
   ModifierData *md;
   Mesh *me_input = static_cast<Mesh *>(ob->data);
   Mesh *me = nullptr;
-  int i, a, modifiers_left_num = 0, verts_num = 0;
+  int i, a, modifiers_left_num = 0;
+  const int verts_num = em->bm->totvert;
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
   float(*defmats)[3][3] = nullptr, (*deformedVerts)[3] = nullptr;
   VirtualModifierData virtualModifierData;
@@ -276,8 +277,10 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
         cd_mask_extra = datamasks->mask;
         BLI_linklist_free((LinkNode *)datamasks, nullptr);
 
-        me = BKE_mesh_wrapper_from_editmesh_with_coords(em, &cd_mask_extra, nullptr, me_input);
-        deformedVerts = editbmesh_vert_coords_alloc(em, &verts_num);
+        me = BKE_mesh_wrapper_from_editmesh(em, &cd_mask_extra, me_input);
+        deformedVerts = static_cast<float(*)[3]>(
+            MEM_mallocN(sizeof(*deformedVerts) * verts_num, __func__));
+        BKE_mesh_wrapper_vert_coords_copy(me, deformedVerts, verts_num);
         defmats = static_cast<float(*)[3][3]>(
             MEM_mallocN(sizeof(*defmats) * verts_num, "defmats"));
 

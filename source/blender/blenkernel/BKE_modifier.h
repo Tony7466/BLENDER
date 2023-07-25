@@ -12,6 +12,15 @@
 #include "DNA_modifier_types.h" /* needed for all enum typdefs */
 
 #ifdef __cplusplus
+namespace blender::bke {
+struct GeometrySet;
+}
+using GeometrySetHandle = blender::bke::GeometrySet;
+#else
+typedef struct GeometrySetHandle GeometrySetHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -23,7 +32,6 @@ struct BlendWriter;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
 struct Depsgraph;
-struct GeometrySet;
 struct ID;
 struct ListBase;
 struct Main;
@@ -179,10 +187,9 @@ typedef struct ModifierTypeInfo {
   /********************* Deform modifier functions *********************/
 
   /**
-   * Only for deform types, should apply the deformation
-   * to the given vertex array. If the deformer requires information from
-   * the object it can obtain it from the mesh argument if non-NULL,
-   * and otherwise the ob argument.
+   * Apply a deformation to the positions in the \a vertexCos array. If the \a mesh argument is
+   * non-null, if will contain proper (not wrapped) mesh data. The \a vertexCos array may or may
+   * not be the same as the mesh's position attribute.
    */
   void (*deformVerts)(struct ModifierData *md,
                       const struct ModifierEvalContext *ctx,
@@ -200,7 +207,8 @@ typedef struct ModifierTypeInfo {
                          float (*defMats)[3][3],
                          int numVerts);
   /**
-   * Like deformVerts but called during editmode (for supporting modifiers)
+   * Like deformVerts but called during edit-mode if supported. The \a mesh argument might be a
+   * wrapper around edit BMesh data.
    */
   void (*deformVertsEM)(struct ModifierData *md,
                         const struct ModifierEvalContext *ctx,
@@ -242,7 +250,7 @@ typedef struct ModifierTypeInfo {
    */
   void (*modifyGeometrySet)(struct ModifierData *md,
                             const struct ModifierEvalContext *ctx,
-                            struct GeometrySet *geometry_set);
+                            GeometrySetHandle *geometry_set);
 
   /********************* Optional functions *********************/
 

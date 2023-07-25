@@ -45,16 +45,16 @@
 
 #include "undo_intern.hh"
 
-#include <stdio.h>
+#include <cstdio>
 
 /* -------------------------------------------------------------------- */
 /** \name Implements ED Undo System
  * \{ */
 
-typedef struct MemFileUndoStep {
+struct MemFileUndoStep {
   UndoStep step;
   MemFileUndoData *data;
-} MemFileUndoStep;
+};
 
 static bool memfile_undosys_poll(bContext *C)
 {

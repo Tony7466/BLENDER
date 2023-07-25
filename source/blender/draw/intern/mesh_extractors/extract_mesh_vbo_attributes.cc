@@ -107,6 +107,7 @@ static uint gpu_component_size_for_attribute_type(eCustomDataType type)
       return 3;
     case CD_PROP_COLOR:
     case CD_PROP_BYTE_COLOR:
+    case CD_PROP_QUATERNION:
       return 4;
     default:
       return 0;
@@ -214,10 +215,10 @@ static void fill_vertbuf_with_attribute(const MeshRenderData *mr,
       }
       break;
     case ATTR_DOMAIN_FACE:
-      for (int poly_index = 0; poly_index < mr->poly_len; poly_index++) {
-        const IndexRange poly = mr->polys[poly_index];
-        const VBOType value = Converter::convert_value(attr_data[poly_index]);
-        for (int l = 0; l < poly.size(); l++) {
+      for (int face_index = 0; face_index < mr->face_len; face_index++) {
+        const IndexRange face = mr->faces[face_index];
+        const VBOType value = Converter::convert_value(attr_data[face_index]);
+        for (int l = 0; l < face.size(); l++) {
           *vbo_data++ = value;
         }
       }
@@ -315,6 +316,7 @@ static void extract_attr(const MeshRenderData *mr,
     case CD_PROP_FLOAT3:
       extract_attr_generic<float3>(mr, vbo, request);
       break;
+    case CD_PROP_QUATERNION:
     case CD_PROP_COLOR:
       extract_attr_generic<float4>(mr, vbo, request);
       break;

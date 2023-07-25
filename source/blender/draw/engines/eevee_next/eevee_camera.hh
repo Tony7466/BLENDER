@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -59,7 +59,7 @@ inline float4x4 cubeface_mat(int face)
 
 inline void cubeface_winmat_get(float4x4 &winmat, float near, float far)
 {
-  /* Simple 90° FOV projection. */
+  /* Simple 90 degree FOV projection. */
   perspective_m4(winmat.ptr(), -near, near, -near, near, near, far);
 }
 

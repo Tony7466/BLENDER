@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -220,7 +222,7 @@ void Operators::bidirectionalChain(ViewEdgeIterator &it,
     return;
   }
 
-  unsigned id = 0;
+  uint id = 0;
   ViewEdge *edge;
   Chain *new_chain;
 
@@ -269,7 +271,7 @@ void Operators::bidirectionalChain(ViewEdgeIterator &it, UnaryPredicate1D &pred)
     return;
   }
 
-  unsigned id = 0;
+  uint id = 0;
   Functions1D::IncrementChainingTimeStampF1D ts;
   Predicates1D::EqualToChainingTimeStampUP1D pred_ts(TimeStamp::instance()->getTimeStamp() + 1);
 
@@ -904,7 +906,7 @@ static int __recursiveSplit(Chain *_curve,
       bsplit = true;
     }
   }
-  // mean /= (float)count;
+  // mean /= float(count);
 
   // if ((!bsplit) || (mean - _min > mean)) { // we didn't find any minimum
   if (!bsplit) {  // we didn't find any minimum

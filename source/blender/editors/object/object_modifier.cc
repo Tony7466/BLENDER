@@ -113,7 +113,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   BKE_object_eval_reset(ob_eval);
   if (ob->type == OB_MESH) {
-    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_DERIVEDMESH);
     BKE_mesh_eval_delete(me_eval);
   }
   else if (ob->type == OB_LATTICE) {
@@ -657,7 +657,7 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
   CustomData_add_layer_named(&me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, verts_num, "position");
   CustomData_add_layer_named(
       &me->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, me->totedge, ".edge_verts");
-  CustomData_add_layer(&me->fdata, CD_MFACE, CD_SET_DEFAULT, 0);
+  CustomData_add_layer(&me->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, 0);
 
   blender::MutableSpan<float3> positions = me->vert_positions_for_write();
   blender::MutableSpan<int2> edges = me->edges_for_write();
@@ -754,6 +754,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
                                               const bool build_shapekey_layers,
                                               ReportList *reports)
 {
+  using namespace blender;
   Mesh *me = ob_eval->runtime.data_orig ? reinterpret_cast<Mesh *>(ob_eval->runtime.data_orig) :
                                           reinterpret_cast<Mesh *>(ob_eval->data);
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
@@ -827,14 +828,14 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
     }
 
     if (mti->modifyGeometrySet) {
-      GeometrySet geometry_set = GeometrySet::create_with_mesh(mesh_temp,
-                                                               GeometryOwnershipType::Owned);
+      bke::GeometrySet geometry_set = bke::GeometrySet::create_with_mesh(
+          mesh_temp, bke::GeometryOwnershipType::Owned);
       mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
       if (!geometry_set.has_mesh()) {
         BKE_report(reports, RPT_ERROR, "Evaluated geometry from modifier does not contain a mesh");
         return nullptr;
       }
-      result = geometry_set.get_component_for_write<MeshComponent>().release();
+      result = geometry_set.get_component_for_write<bke::MeshComponent>().release();
     }
     else {
       result = mti->modifyMesh(md_eval, &mectx, mesh_temp);
@@ -954,6 +955,7 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
 static bool modifier_apply_obdata(
     ReportList *reports, Depsgraph *depsgraph, Scene *scene, Object *ob, ModifierData *md_eval)
 {
+  using namespace blender;
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
   if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {
@@ -1064,10 +1066,8 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    GeometrySet geometry_set;
-    geometry_set.get_component_for_write<CurveComponent>().replace(
-        &curves, GeometryOwnershipType::ReadOnly);
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
+        &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
@@ -1077,10 +1077,9 @@ static bool modifier_apply_obdata(
     }
     Curves &curves_eval = *geometry_set.get_curves_for_write();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     curves_eval.geometry.wrap().attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     curves.geometry.wrap() = std::move(curves_eval.geometry.wrap());
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &curves_eval.id);
@@ -1092,10 +1091,8 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    GeometrySet geometry_set;
-    geometry_set.get_component_for_write<PointCloudComponent>().replace(
-        &points, GeometryOwnershipType::ReadOnly);
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
+        &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
@@ -1105,12 +1102,11 @@ static bool modifier_apply_obdata(
       return false;
     }
     PointCloud *pointcloud_eval =
-        geometry_set.get_component_for_write<PointCloudComponent>().release();
+        geometry_set.get_component_for_write<bke::PointCloudComponent>().release();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     pointcloud_eval->attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &pointcloud_eval->id);
     BKE_pointcloud_nomain_to_pointcloud(pointcloud_eval, &points);
@@ -1515,7 +1511,7 @@ static int modifier_remove_exec(bContext *C, wmOperator *op)
 
   /* Store name temporarily for report. */
   char name[MAX_NAME];
-  strcpy(name, md->name);
+  STRNCPY(name, md->name);
 
   if (!ED_object_modifier_remove(op->reports, bmain, scene, ob, md)) {
     return OPERATOR_CANCELLED;
@@ -1767,7 +1763,7 @@ static int modifier_apply_exec_ex(bContext *C, wmOperator *op, int apply_as, boo
   char name[MAX_NAME];
   if (do_report) {
     reports_len = BLI_listbase_count(&op->reports->list);
-    strcpy(name, md->name); /* Store name temporarily since the modifier is removed. */
+    STRNCPY(name, md->name); /* Store name temporarily since the modifier is removed. */
   }
 
   if (!ED_object_modifier_apply(

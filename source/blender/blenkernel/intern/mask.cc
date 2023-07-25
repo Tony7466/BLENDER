@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -336,12 +336,7 @@ MaskLayer *BKE_mask_layer_new(Mask *mask, const char *name)
 {
   MaskLayer *masklay = MEM_cnew<MaskLayer>(__func__);
 
-  if (name && name[0]) {
-    STRNCPY(masklay->name, name);
-  }
-  else {
-    strcpy(masklay->name, DATA_("MaskLayer"));
-  }
+  STRNCPY(masklay->name, name && name[0] ? name : DATA_("MaskLayer"));
 
   BLI_addtail(&mask->masklayers, masklay);
 
@@ -1011,12 +1006,7 @@ Mask *BKE_mask_new(Main *bmain, const char *name)
   Mask *mask;
   char mask_name[MAX_ID_NAME - 2];
 
-  if (name && name[0]) {
-    STRNCPY(mask_name, name);
-  }
-  else {
-    strcpy(mask_name, "Mask");
-  }
+  STRNCPY(mask_name, (name && name[0]) ? name : "Mask");
 
   mask = mask_alloc(bmain, mask_name);
 
@@ -1351,7 +1341,7 @@ static void mask_calc_point_handle(MaskSplinePoint *point,
 
 #if 1
   if (bezt_prev || bezt_next) {
-    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, 0, 0);
+    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, false, 0);
   }
 #else
   if (handle_type == HD_VECT) {
@@ -2014,7 +2004,7 @@ static void mask_clipboard_free_ex(bool final_free)
   }
 }
 
-void BKE_mask_clipboard_free(void)
+void BKE_mask_clipboard_free()
 {
   mask_clipboard_free_ex(true);
 }
@@ -2040,7 +2030,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
           if (!BLI_ghash_lookup(mask_clipboard.id_hash, point->parent.id)) {
             int len = strlen(point->parent.id->name);
             char *name_copy = static_cast<char *>(MEM_mallocN(len + 1, "mask clipboard ID name"));
-            strcpy(name_copy, point->parent.id->name);
+            memcpy(name_copy, point->parent.id->name, len + 1);
             BLI_ghash_insert(mask_clipboard.id_hash, point->parent.id, name_copy);
           }
         }
@@ -2051,7 +2041,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
   }
 }
 
-bool BKE_mask_clipboard_is_empty(void)
+bool BKE_mask_clipboard_is_empty()
 {
   return BLI_listbase_is_empty(&mask_clipboard.splines);
 }

@@ -33,7 +33,7 @@ static VArray<bool> select_mesh_faces_by_material(const Mesh &mesh,
     }
   }
   if (slots.is_empty()) {
-    return VArray<bool>::ForSingle(false, mesh.totpoly);
+    return VArray<bool>::ForSingle(false, mesh.faces_num);
   }
 
   const AttributeAccessor attributes = mesh.attributes();
@@ -41,18 +41,15 @@ static VArray<bool> select_mesh_faces_by_material(const Mesh &mesh,
       "material_index", ATTR_DOMAIN_FACE, 0);
   if (material_indices.is_single()) {
     const int slot_i = material_indices.get_internal_single();
-    return VArray<bool>::ForSingle(slots.contains(slot_i), mesh.totpoly);
+    return VArray<bool>::ForSingle(slots.contains(slot_i), mesh.faces_num);
   }
 
   const VArraySpan<int> material_indices_span(material_indices);
 
   Array<bool> face_selection(face_mask.min_array_size());
-  threading::parallel_for(face_mask.index_range(), 1024, [&](IndexRange range) {
-    for (const int i : range) {
-      const int face_index = face_mask[i];
-      const int slot_i = material_indices_span[face_index];
-      face_selection[face_index] = slots.contains(slot_i);
-    }
+  face_mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int face_index) {
+    const int slot_i = material_indices_span[face_index];
+    face_selection[face_index] = slots.contains(slot_i);
   });
 
   return VArray<bool>::ForContainer(std::move(face_selection));
@@ -72,7 +69,7 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final
   {
-    if (context.type() != GEO_COMPONENT_TYPE_MESH) {
+    if (context.type() != GeometryComponent::Type::Mesh) {
       return {};
     }
     const Mesh *mesh = context.mesh();
@@ -81,7 +78,7 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
     }
 
     const eAttrDomain domain = context.domain();
-    const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask : IndexMask(mesh->totpoly);
+    const IndexMask domain_mask = (domain == ATTR_DOMAIN_FACE) ? mask : IndexMask(mesh->faces_num);
 
     VArray<bool> selection = select_mesh_faces_by_material(*mesh, material_, domain_mask);
     return mesh->attributes().adapt_domain<bool>(std::move(selection), ATTR_DOMAIN_FACE, domain);

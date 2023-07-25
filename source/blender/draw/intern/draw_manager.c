@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,7 +35,6 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
 #include "BKE_screen.h"
@@ -829,7 +828,7 @@ typedef struct IdDdtTemplate {
 static bool id_type_can_have_drawdata(const short id_type)
 {
   /* Only some ID-blocks have this info for now */
-  /* TODO: finish adding this for the other blocktypes */
+  /* TODO: finish adding this for the other block-types. */
   switch (id_type) {
     /* has DrawData */
     case ID_OB:
@@ -1274,8 +1273,8 @@ static void drw_engines_enable(ViewLayer *UNUSED(view_layer),
 
   drw_engines_enable_from_engine(engine_type, drawtype);
   if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(((U.experimental.use_grease_pencil_version3) ? &draw_engine_gpencil_next_type :
-                                                                  &draw_engine_gpencil_type));
+    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                               &draw_engine_gpencil_type);
   }
 
   if (is_compositor_enabled()) {
@@ -2100,10 +2099,7 @@ void DRW_render_object_iter(
   drw_task_graph_deinit();
 }
 
-void DRW_custom_pipeline(DrawEngineType *draw_engine_type,
-                         Depsgraph *depsgraph,
-                         void (*callback)(void *vedata, void *user_data),
-                         void *user_data)
+void DRW_custom_pipeline_begin(DrawEngineType *draw_engine_type, Depsgraph *depsgraph)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
@@ -2130,11 +2126,11 @@ void DRW_custom_pipeline(DrawEngineType *draw_engine_type,
   DRW_volume_init(DST.vmempool);
   DRW_smoke_init(DST.vmempool);
 
-  ViewportEngineData *data = DRW_view_data_engine_data_get_ensure(DST.view_data_active,
-                                                                  draw_engine_type);
+  DRW_view_data_engine_data_get_ensure(DST.view_data_active, draw_engine_type);
+}
 
-  /* Execute the callback */
-  callback(data, user_data);
+void DRW_custom_pipeline_end(void)
+{
   DST.buffer_finish_called = false;
 
   DRW_smoke_exit(DST.vmempool);
@@ -2151,6 +2147,21 @@ void DRW_custom_pipeline(DrawEngineType *draw_engine_type,
   }
 
   drw_manager_exit(&DST);
+}
+
+void DRW_custom_pipeline(DrawEngineType *draw_engine_type,
+                         Depsgraph *depsgraph,
+                         void (*callback)(void *vedata, void *user_data),
+                         void *user_data)
+{
+  DRW_custom_pipeline_begin(draw_engine_type, depsgraph);
+
+  ViewportEngineData *data = DRW_view_data_engine_data_get_ensure(DST.view_data_active,
+                                                                  draw_engine_type);
+  /* Execute the callback. */
+  callback(data, user_data);
+
+  DRW_custom_pipeline_end();
 }
 
 void DRW_cache_restart(void)
@@ -2470,9 +2481,8 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
   else if (!draw_surface) {
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(((U.experimental.use_grease_pencil_version3) ?
-                          &draw_engine_gpencil_next_type :
-                          &draw_engine_gpencil_type));
+      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                                 &draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2482,9 +2492,8 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
     drw_engines_enable_basic();
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(((U.experimental.use_grease_pencil_version3) ?
-                          &draw_engine_gpencil_next_type :
-                          &draw_engine_gpencil_type));
+      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                                 &draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2656,8 +2665,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_init(&DST, viewport, NULL);
 
   if (use_gpencil) {
-    use_drw_engine(((U.experimental.use_grease_pencil_version3) ? &draw_engine_gpencil_next_type :
-                                                                  &draw_engine_gpencil_type));
+    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
+                                                               &draw_engine_gpencil_type);
   }
   if (use_basic) {
     drw_engines_enable_basic();
@@ -3175,8 +3184,7 @@ void DRW_render_context_enable(Render *render)
   if (re_system_gpu_context != NULL) {
     DRW_system_gpu_render_context_enable(re_system_gpu_context);
     /* We need to query gpu context after a gl context has been bound. */
-    void *re_blender_gpu_context = NULL;
-    re_blender_gpu_context = RE_blender_gpu_context_get(render);
+    void *re_blender_gpu_context = RE_blender_gpu_context_ensure(render);
     DRW_blender_gpu_render_context_enable(re_blender_gpu_context);
   }
   else {
@@ -3196,8 +3204,7 @@ void DRW_render_context_disable(Render *render)
   void *re_system_gpu_context = RE_system_gpu_context_get(render);
 
   if (re_system_gpu_context != NULL) {
-    void *re_blender_gpu_context = NULL;
-    re_blender_gpu_context = RE_blender_gpu_context_get(render);
+    void *re_blender_gpu_context = RE_blender_gpu_context_ensure(render);
     /* GPU rendering may occur during context disable. */
     DRW_blender_gpu_render_context_disable(re_blender_gpu_context);
     GPU_render_end();

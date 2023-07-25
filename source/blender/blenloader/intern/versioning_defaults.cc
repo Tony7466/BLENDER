@@ -24,6 +24,7 @@
 
 #include "DNA_camera_types.h"
 #include "DNA_curveprofile_types.h"
+#include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mask_types.h"
@@ -264,7 +265,7 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
     /* For 2D animation template. */
     if (STREQ(workspace->id.name + 2, "Drawing")) {
-      workspace->object_mode = OB_MODE_PAINT_GPENCIL;
+      workspace->object_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
     }
 
     /* For Sculpting template. */
@@ -348,7 +349,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   }
 
   if (ts->sculpt) {
-    ts->sculpt->paint.symmetry_flags |= PAINT_SYMMETRY_FEATHER;
+    ts->sculpt->flags = static_cast<const Sculpt *>(DNA_struct_default_get(Sculpt))->flags;
   }
 
   /* Correct default startup UVs. */
@@ -555,7 +556,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       if (object->type == OB_GPENCIL_LEGACY) {
         /* Set grease pencil object in drawing mode */
         bGPdata *gpd = (bGPdata *)object->data;
-        object->mode = OB_MODE_PAINT_GPENCIL;
+        object->mode = OB_MODE_PAINT_GPENCIL_LEGACY;
         gpd->flag |= GP_DATA_STROKE_PAINTMODE;
         break;
       }
