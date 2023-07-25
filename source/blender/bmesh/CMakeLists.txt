@@ -30,7 +30,7 @@ set(SRC
   operators/bmo_fill_attribute.cc
   operators/bmo_fill_edgeloop.cc
   operators/bmo_fill_grid.cc
-  operators/bmo_fill_holes.c
+  operators/bmo_fill_holes.cc
   operators/bmo_hull.c
   operators/bmo_inset.c
   operators/bmo_join_triangles.c
