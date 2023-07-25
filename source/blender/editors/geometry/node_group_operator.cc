@@ -84,8 +84,14 @@ static const asset_system::AssetRepresentation *get_asset_at_full_path(
     }
     return true;
   });
+
   if (reports && !matching_asset) {
-    BKE_reportf(reports, RPT_ERROR, "No asset found at path \"%s\"", asset_full_path.c_str());
+    if (ED_assetlist_is_loaded(&library_ref)) {
+      BKE_reportf(reports, RPT_ERROR, "No asset found at path \"%s\"", asset_full_path.c_str());
+    }
+    else {
+      BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+    }
   }
   return matching_asset;
 }
