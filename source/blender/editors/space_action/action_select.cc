@@ -133,9 +133,8 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
   }
   else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
     /* TODO: why don't we just give grease pencil layers key_data too? */
-    using namespace blender::bke::greasepencil;
-    Layer *layer = static_cast<Layer *>(ale->data);
-    grease_pencil_cels_to_keylist(adt, layer, keylist, 0);
+    grease_pencil_cels_to_keylist(
+        adt, static_cast<blender::bke::greasepencil::Layer *>(ale->data), keylist, 0);
   }
   else if (ale->type == ANIMTYPE_GPLAYER) {
     /* TODO: why don't we just give gplayers key_data too? */
@@ -282,9 +281,9 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
         }
       }
       else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-        using namespace blender::bke::greasepencil;
-        const Layer *layer = static_cast<Layer *>(ale->data);
-        if (blender::ed::greasepencil::layer_has_frame_selected(layer)) {
+        if (blender::ed::greasepencil::layer_has_frame_selected(
+                static_cast<blender::bke::greasepencil::Layer *>(ale->data)))
+        {
           sel = SELECT_SUBTRACT;
         }
         break;
@@ -313,9 +312,8 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
       ED_masklayer_frame_select_set(static_cast<MaskLayer *>(ale->data), sel);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      using namespace blender::bke::greasepencil;
-      Layer *layer = static_cast<Layer *>(ale->data);
-      blender::ed::greasepencil::select_all_frames(layer, sel);
+      blender::ed::greasepencil::select_all_frames(
+          static_cast<blender::bke::greasepencil::Layer *>(ale->data), sel);
       ale->update |= ANIM_UPDATE_DEPS;
     }
     else {
@@ -1649,12 +1647,9 @@ static void actkeys_mselect_single(bAnimContext *ac,
     ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale->data), selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
   }
-  else if ((U.experimental.use_grease_pencil_version3) &&
-           (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER))
-  {
-    using namespace blender::bke::greasepencil;
-    Layer *layer = static_cast<Layer *>(ale->data);
-    blender::ed::greasepencil::select_frame_at(layer, selx, select_mode);
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+    blender::ed::greasepencil::select_frame_at(
+        static_cast<blender::bke::greasepencil::Layer *>(ale->data), selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
   }
   else if (ale->type == ANIMTYPE_MASKLAYER) {
@@ -1723,9 +1718,8 @@ static void actkeys_mselect_column(bAnimContext *ac, short select_mode, float se
       ED_mask_select_frame(static_cast<MaskLayer *>(ale->data), selx, select_mode);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      using namespace blender::bke::greasepencil;
-      Layer *layer = static_cast<Layer *>(ale->data);
-      blender::ed::greasepencil::select_frame_at(layer, selx, select_mode);
+      blender::ed::greasepencil::select_frame_at(
+          static_cast<blender::bke::greasepencil::Layer *>(ale->data), selx, select_mode);
       ale->update |= ANIM_UPDATE_DEPS;
     }
     else {
@@ -1885,10 +1879,8 @@ static int mouse_action_keys(bAnimContext *ac,
           if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER)
           {
             using namespace blender::bke::greasepencil;
-            GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-            Layer *layer = static_cast<Layer *>(ale->data);
-
-            blender::ed::greasepencil::set_active_layer(grease_pencil, layer);
+            blender::ed::greasepencil::set_active_layer(reinterpret_cast<GreasePencil *>(ale->id),
+                                                        static_cast<Layer *>(ale->data));
           }
         }
         else {
