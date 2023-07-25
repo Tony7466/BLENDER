@@ -155,7 +155,7 @@ static bool bm_edge_delimit_cdata(CustomData *ldata,
 {
   const int layer_len = CustomData_number_of_layers(ldata, type);
   r_delim_cd->cd_type = type;
-  r_delim_cd->cd_size = CustomData_sizeof(r_delim_cd->cd_type);
+  r_delim_cd->cd_size = CustomData_sizeof(eCustomDataType(r_delim_cd->cd_type));
   r_delim_cd->cd_offset = CustomData_get_n_offset(ldata, type, 0);
   r_delim_cd->cd_offset_end = r_delim_cd->cd_offset + (r_delim_cd->cd_size * layer_len);
   return (r_delim_cd->cd_offset != -1);
@@ -320,7 +320,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   }
 
   /* over alloc, some of the edges will be delimited */
-  jedges = MEM_mallocN(sizeof(*jedges) * totedge_tag, __func__);
+  jedges = static_cast<SortPtrByFloat *>(MEM_mallocN(sizeof(*jedges) * totedge_tag, __func__));
 
   i = 0;
   BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
@@ -346,7 +346,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   for (i = 0; i < totedge; i++) {
     BMLoop *l_a, *l_b;
 
-    e = jedges[i].data;
+    e = static_cast<BMEdge *>(jedges[i].data);
     l_a = e->l;
     l_b = e->l->radial_next;
 
