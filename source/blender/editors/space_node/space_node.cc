@@ -333,7 +333,7 @@ static void node_init(wmWindowManager * /*wm*/, ScrArea *area)
 
 static void node_exit(wmWindowManager *wm, ScrArea *area)
 {
-  SpaceNode *snode = (SpaceNode *)area->spacedata.first;
+  SpaceNode *snode = static_cast<SpaceNode *>(area->spacedata.first);
 
   if (snode->runtime) {
     ED_spacenode_free_previews(wm, snode);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edrend
@@ -638,7 +639,7 @@ static void ensure_nodetree_previews(const bContext *C,
                               "Shader Previews",
                               WM_JOB_EXCL_RENDER,
                               WM_JOB_TYPE_RENDER_PREVIEW);
-  ShaderNodesPreviewJob *job_data = MEM_new<ShaderNodesPreviewJob>("shader previews");
+  ShaderNodesPreviewJob *job_data = MEM_new<ShaderNodesPreviewJob>(__func__);
 
   job_data->scene = scene;
   job_data->tree_previews = tree_previews;

@@ -197,7 +197,7 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
 #endif
 }
 
-bool ED_check_engine_supports_preview(Scene *scene)
+bool ED_check_engine_supports_preview(const Scene *scene)
 {
   RenderEngineType *type = RE_engines_find(scene->r.engine);
   return (type->flag & RE_USE_PREVIEW) != 0;

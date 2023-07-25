@@ -74,7 +74,7 @@ typedef enum ePreviewRenderMethod {
   PR_ICON_DEFERRED = 2,
 } ePreviewRenderMethod;
 
-bool ED_check_engine_supports_preview(struct Scene *scene);
+bool ED_check_engine_supports_preview(const struct Scene *scene);
 const char *ED_preview_collection_name(ePreviewType pr_type);
 
 void ED_preview_ensure_dbase(bool with_gpencil);
