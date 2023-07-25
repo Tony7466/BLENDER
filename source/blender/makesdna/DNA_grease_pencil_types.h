@@ -400,7 +400,7 @@ typedef struct GreasePencil {
   char _pad[4];
 
   /* Root group of the layer tree. */
-  GreasePencilLayerTreeGroup root_group;
+  GreasePencilLayerTreeGroup *root_group_ptr;
 
   /**
    * Pointer to the active layer. Can be NULL.
@@ -435,6 +435,10 @@ typedef struct GreasePencil {
   /* Layer tree read/write functions. */
   void read_layer_tree(BlendDataReader *reader);
   void write_layer_tree(BlendWriter *writer);
+
+  /* Root group. */
+  const blender::bke::greasepencil::LayerGroup &root_group() const;
+  blender::bke::greasepencil::LayerGroup &root_group();
 
   /* Drawings read/write access. */
   blender::Span<GreasePencilDrawingBase *> drawings() const;
@@ -489,6 +493,13 @@ typedef struct GreasePencil {
                           eBezTriple_KeyframeType keytype);
 
   void remove_drawing(int index);
+
+  /**
+   * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
+   * drawing exists.
+   */
+  blender::bke::greasepencil::Drawing *get_editable_drawing_at(
+      const blender::bke::greasepencil::Layer *layer, int frame_number) const;
 
   void foreach_visible_drawing(
       int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);

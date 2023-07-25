@@ -885,6 +885,7 @@ typedef enum {
    * deleted in a safe context. */
   WM_TIMER_TAGGED_FOR_REMOVAL = 1 << 16,
 } wmTimerFlags;
+ENUM_OPERATORS(wmTimerFlags, WM_TIMER_TAGGED_FOR_REMOVAL)
 
 typedef struct wmTimer {
   struct wmTimer *next, *prev;
@@ -1199,7 +1200,7 @@ typedef struct wmDrag {
   double value;
 
   /** If no icon but imbuf should be drawn around cursor. */
-  struct ImBuf *imb;
+  const struct ImBuf *imb;
   float imbuf_scale;
 
   wmDragActiveDropState drop_state;

@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -2835,7 +2835,7 @@ static void rna_FileBrowser_FileSelectEntry_name_get(PointerRNA *ptr, char *valu
 static int rna_FileBrowser_FileSelectEntry_name_length(PointerRNA *ptr)
 {
   const FileDirEntry *entry = static_cast<const FileDirEntry *>(ptr->data);
-  return (int)strlen(entry->name);
+  return int(strlen(entry->name));
 }
 
 static void rna_FileBrowser_FileSelectEntry_relative_path_get(PointerRNA *ptr, char *value)
@@ -2847,7 +2847,7 @@ static void rna_FileBrowser_FileSelectEntry_relative_path_get(PointerRNA *ptr, c
 static int rna_FileBrowser_FileSelectEntry_relative_path_length(PointerRNA *ptr)
 {
   const FileDirEntry *entry = static_cast<const FileDirEntry *>(ptr->data);
-  return (int)strlen(entry->relpath);
+  return int(strlen(entry->relpath));
 }
 
 static const EnumPropertyItem *rna_FileBrowser_FileSelectEntry_id_type_itemf(
@@ -2922,7 +2922,7 @@ static int rna_FileBrowser_FSMenuEntry_path_length(PointerRNA *ptr)
 {
   char *path = ED_fsmenu_entry_get_path(static_cast<FSMenuEntry *>(ptr->data));
 
-  return (int)(path ? strlen(path) : 0);
+  return int(path ? strlen(path) : 0);
 }
 
 static void rna_FileBrowser_FSMenuEntry_path_set(PointerRNA *ptr, const char *value)
@@ -2941,7 +2941,7 @@ static void rna_FileBrowser_FSMenuEntry_name_get(PointerRNA *ptr, char *value)
 
 static int rna_FileBrowser_FSMenuEntry_name_length(PointerRNA *ptr)
 {
-  return (int)strlen(ED_fsmenu_entry_get_name(static_cast<FSMenuEntry *>(ptr->data)));
+  return int(strlen(ED_fsmenu_entry_get_name(static_cast<FSMenuEntry *>(ptr->data))));
 }
 
 static void rna_FileBrowser_FSMenuEntry_name_set(PointerRNA *ptr, const char *value)
@@ -4116,12 +4116,12 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "selected_studio_light", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "StudioLight");
-  RNA_define_verify_sdna(0);
+  RNA_define_verify_sdna(false);
   RNA_def_property_ui_text(prop, "Studio Light", "Selected StudioLight");
   RNA_def_property_pointer_funcs(
       prop, "rna_View3DShading_selected_studio_light_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_define_verify_sdna(1);
+  RNA_define_verify_sdna(true);
 
   prop = RNA_def_property(srna, "studiolight_rotate_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "studiolight_rot_z");

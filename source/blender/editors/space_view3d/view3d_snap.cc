@@ -179,8 +179,8 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator * /*op*/)
                                               SCE_XFORM_SKIP_CHILDREN);
     const bool use_transform_data_origin = (scene->toolsettings->transform_flag &
                                             SCE_XFORM_DATA_ORIGIN);
-    struct XFormObjectSkipChild_Container *xcs = nullptr;
-    struct XFormObjectData_Container *xds = nullptr;
+    XFormObjectSkipChild_Container *xcs = nullptr;
+    XFormObjectData_Container *xds = nullptr;
 
     /* Build object array. */
     Object **objects_eval = nullptr;
@@ -494,8 +494,8 @@ static bool snap_selected_to_location(bContext *C,
     const bool use_transform_data_origin = use_toolsettings &&
                                            (scene->toolsettings->transform_flag &
                                             SCE_XFORM_DATA_ORIGIN);
-    struct XFormObjectSkipChild_Container *xcs = nullptr;
-    struct XFormObjectData_Container *xds = nullptr;
+    XFormObjectSkipChild_Container *xcs = nullptr;
+    XFormObjectData_Container *xds = nullptr;
 
     if (use_transform_skip_children) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
@@ -636,7 +636,7 @@ void VIEW3D_OT_snap_selected_to_cursor(wmOperatorType *ot)
   /* rna */
   RNA_def_boolean(ot->srna,
                   "use_offset",
-                  1,
+                  true,
                   "Offset",
                   "If the selection should be snapped as a whole or by each object center");
 }
@@ -766,7 +766,7 @@ static void bundle_midpoint(Scene *scene, Object *ob, float r_vec[3])
 
     LISTBASE_FOREACH (const MovieTrackingTrack *, track, &tracking_object->tracks) {
       if ((track->flag & TRACK_HAS_BUNDLE) && TRACK_SELECTED(track)) {
-        ok = 1;
+        ok = true;
         mul_v3_m4v3(pos, obmat, track->bundle_pos);
         minmax_v3v3_v3(min, max, pos);
       }
@@ -882,7 +882,7 @@ static bool snap_curs_to_sel_ex(bContext *C, const int pivot_point, float r_curs
     mid_v3_v3v3(r_cursor, min, max);
   }
   else {
-    mul_v3_fl(centroid, 1.0f / (float)count);
+    mul_v3_fl(centroid, 1.0f / float(count));
     copy_v3_v3(r_cursor, centroid);
   }
   return true;

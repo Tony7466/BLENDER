@@ -935,6 +935,9 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
        tab = tab->next)
   {
     UI_but_drawflag_enable(tab, ui_but_align_opposite_to_area_align_get(CTX_wm_region(C)));
+    if (icon_only) {
+      UI_but_drawflag_enable(tab, UI_BUT_HAS_TOOLTIP_LABEL);
+    }
   }
 
   const bool use_custom_highlight = (prop_highlight != nullptr);
@@ -3510,7 +3513,7 @@ void uiItemProgressIndicator(uiLayout *layout,
                         0,
                         "");
 
-  if (has_text && ELEM(progress_type, UI_BUT_PROGRESS_TYPE_RING, UI_BUT_PROGRESS_TYPE_PIE)) {
+  if (has_text && (progress_type == UI_BUT_PROGRESS_TYPE_RING)) {
     /* For progress bar, centered is okay, left aligned for ring/pie. */
     but->drawflag |= UI_BUT_TEXT_LEFT;
   }

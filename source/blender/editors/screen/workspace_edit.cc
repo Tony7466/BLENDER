@@ -6,8 +6,8 @@
  * \ingroup edscr
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
@@ -633,7 +633,7 @@ static void WORKSPACE_OT_scene_pin_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_INTERNAL;
 }
 
-void ED_operatortypes_workspace(void)
+void ED_operatortypes_workspace()
 {
   WM_operatortype_append(WORKSPACE_OT_duplicate);
   WM_operatortype_append(WORKSPACE_OT_delete);

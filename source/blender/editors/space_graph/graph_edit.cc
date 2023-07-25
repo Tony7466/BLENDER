@@ -8,10 +8,10 @@
  * Insert duplicate and bake keyframes.
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #ifdef WITH_AUDASPACE
 #  include <AUD_Special.h>
@@ -63,12 +63,12 @@
  * \{ */
 
 /* Mode defines for insert keyframes tool. */
-typedef enum eGraphKeys_InsertKey_Types {
+enum eGraphKeys_InsertKey_Types {
   GRAPHKEYS_INSERTKEY_ALL = (1 << 0),
   GRAPHKEYS_INSERTKEY_SEL = (1 << 1),
   GRAPHKEYS_INSERTKEY_CURSOR = (1 << 2),
   GRAPHKEYS_INSERTKEY_ACTIVE = (1 << 3),
-} eGraphKeys_InsertKey_Types;
+};
 
 /* RNA mode types for insert keyframes tool. */
 static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
@@ -164,10 +164,10 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
         x = sipo->cursorTime;
       }
       else if (adt) {
-        x = BKE_nla_tweakedit_remap(adt, (float)scene->r.cfra, NLATIME_CONVERT_UNMAP);
+        x = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
       }
       else {
-        x = (float)scene->r.cfra;
+        x = float(scene->r.cfra);
       }
 
       /* Normalize units of cursor's value. */
@@ -187,7 +187,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
   else {
     const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-        ac->depsgraph, (float)scene->r.cfra);
+        ac->depsgraph, float(scene->r.cfra));
     for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
       FCurve *fcu = (FCurve *)ale->key_data;
 
@@ -220,12 +220,12 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
         AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
         /* Adjust current frame for NLA-mapping. */
-        float cfra = (float)scene->r.cfra;
+        float cfra = float(scene->r.cfra);
         if ((sipo) && (sipo->mode == SIPO_MODE_DRIVERS)) {
           cfra = sipo->cursorTime;
         }
         else if (adt) {
-          cfra = BKE_nla_tweakedit_remap(adt, (float)scene->r.cfra, NLATIME_CONVERT_UNMAP);
+          cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
         }
 
         const float curval = evaluate_fcurve_only_curve(fcu, cfra);
@@ -1249,7 +1249,7 @@ void GRAPH_OT_sound_bake(wmOperatorType *ot)
                 0.0,
                 2.0,
                 "Attack Time",
-                "Value for the hull curve calculation that tells how fast the hull curve can rise "
+                "Value for the envelope calculation that tells how fast the envelope can rise "
                 "(the lower the value the steeper it can rise)",
                 0.01,
                 0.1);
@@ -1259,7 +1259,7 @@ void GRAPH_OT_sound_bake(wmOperatorType *ot)
                 0.0,
                 5.0,
                 "Release Time",
-                "Value for the hull curve calculation that tells how fast the hull curve can fall "
+                "Value for the envelope calculation that tells how fast the envelope can fall "
                 "(the lower the value the steeper it can fall)",
                 0.01,
                 0.2);
@@ -1269,25 +1269,24 @@ void GRAPH_OT_sound_bake(wmOperatorType *ot)
                 0.0,
                 1.0,
                 "Threshold",
-                "Minimum amplitude value needed to influence the hull curve",
+                "Minimum amplitude value needed to influence the envelope",
                 0.01,
                 0.1);
   RNA_def_boolean(ot->srna,
                   "use_accumulate",
-                  0,
+                  false,
                   "Accumulate",
-                  "Only the positive differences of the hull curve amplitudes are summarized to "
+                  "Only the positive differences of the envelope amplitudes are summarized to "
                   "produce the output");
-  RNA_def_boolean(
-      ot->srna,
-      "use_additive",
-      0,
-      "Additive",
-      "The amplitudes of the hull curve are summarized (or, when Accumulate is enabled, "
-      "both positive and negative differences are accumulated)");
+  RNA_def_boolean(ot->srna,
+                  "use_additive",
+                  false,
+                  "Additive",
+                  "The amplitudes of the envelope are summarized (or, when Accumulate is enabled, "
+                  "both positive and negative differences are accumulated)");
   RNA_def_boolean(ot->srna,
                   "use_square",
-                  0,
+                  false,
                   "Square",
                   "The output is a square curve (negative values always result in -1, and "
                   "positive ones in 1)");
@@ -1766,7 +1765,7 @@ void GRAPH_OT_handle_type(wmOperatorType *ot)
 
 /* Set of three euler-rotation F-Curves. */
 struct tEulerFilter {
-  struct tEulerFilter *next, *prev;
+  tEulerFilter *next, *prev;
 
   /** ID-block which owns the channels */
   ID *id;
@@ -1941,15 +1940,15 @@ static bool euler_filter_single_channel(FCurve *fcu)
     const float sign = (prev->vec[1][1] > bezt->vec[1][1]) ? 1.0f : -1.0f;
 
     /* >= 180 degree flip? */
-    if ((sign * (prev->vec[1][1] - bezt->vec[1][1])) < (float)M_PI) {
+    if ((sign * (prev->vec[1][1] - bezt->vec[1][1])) < float(M_PI)) {
       continue;
     }
 
     /* 360 degrees to add/subtract frame value until difference
      * is acceptably small that there's no more flip. */
-    const float fac = sign * 2.0f * (float)M_PI;
+    const float fac = sign * 2.0f * float(M_PI);
 
-    while ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= (float)M_PI) {
+    while ((sign * (prev->vec[1][1] - bezt->vec[1][1])) >= float(M_PI)) {
       bezt->vec[0][1] += fac;
       bezt->vec[1][1] += fac;
       bezt->vec[2][1] += fac;
@@ -2140,10 +2139,10 @@ static KeyframeEditData sum_selected_keyframes(bAnimContext *ac)
     memset(&current_ked, 0, sizeof(current_ked));
 
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 1);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, true);
       ANIM_fcurve_keyframes_loop(
           &current_ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_calc_average, nullptr);
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 1);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, true);
     }
     else {
       ANIM_fcurve_keyframes_loop(
@@ -2187,14 +2186,14 @@ static int graphkeys_framejump_exec(bContext *C, wmOperator * /*op*/)
   /* Take the average values, rounding to the nearest int as necessary for int results. */
   if (sipo->mode == SIPO_MODE_DRIVERS) {
     /* Drivers Mode - Affects cursor (float) */
-    sipo->cursorTime = sum_time / (float)num_keyframes;
+    sipo->cursorTime = sum_time / float(num_keyframes);
   }
   else {
     /* Animation Mode - Affects current frame (int) */
     scene->r.cfra = round_fl_to_int(sum_time / num_keyframes);
     scene->r.subframe = 0.0f;
   }
-  sipo->cursorVal = sum_value / (float)num_keyframes;
+  sipo->cursorVal = sum_value / float(num_keyframes);
 
   /* Set notifier that things have changed. */
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);
@@ -2334,7 +2333,7 @@ static int graphkeys_snap_cursor_value_exec(bContext *C, wmOperator * /*op*/)
   }
 
   SpaceGraph *sipo = (SpaceGraph *)ac.sl;
-  sipo->cursorVal = sum_value / (float)num_keyframes;
+  sipo->cursorVal = sum_value / float(num_keyframes);
   // WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);
   ED_region_tag_redraw(CTX_wm_region(C));
 
@@ -2456,12 +2455,12 @@ static void snap_graph_keys(bAnimContext *ac, short mode)
 
     /* Perform snapping. */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
       ANIM_fcurve_keyframes_loop(
           &ked, static_cast<FCurve *>(ale->key_data), nullptr, edit_cb, BKE_fcurve_handles_recalc);
       BKE_fcurve_merge_duplicate_keys(
           static_cast<FCurve *>(ale->key_data), BEZT_FLAG_TEMP_TAG, use_handle);
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
     }
     else {
       ANIM_fcurve_keyframes_loop(
@@ -2726,7 +2725,7 @@ static void mirror_graph_keys(bAnimContext *ac, short mode)
 
     /* Store marker's time (if available). */
     if (marker) {
-      ked.f1 = (float)marker->frame;
+      ked.f1 = float(marker->frame);
     }
     else {
       return;
@@ -2773,10 +2772,10 @@ static void mirror_graph_keys(bAnimContext *ac, short mode)
 
     /* Perform actual mirroring. */
     if (adt) {
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
       ANIM_fcurve_keyframes_loop(
           &ked, static_cast<FCurve *>(ale->key_data), nullptr, edit_cb, BKE_fcurve_handles_recalc);
-      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
     }
     else {
       ANIM_fcurve_keyframes_loop(
@@ -3047,7 +3046,7 @@ static int graph_fmodifier_copy_exec(bContext *C, wmOperator *op)
     FCurve *fcu = (FCurve *)ale->data;
 
     /* TODO: When 'active' vs 'all' boolean is added, change last param! (Joshua Leung 2010) */
-    ok = ANIM_fmodifiers_copy_to_buf(&fcu->modifiers, 0);
+    ok = ANIM_fmodifiers_copy_to_buf(&fcu->modifiers, false);
 
     /* Free temp data now. */
     MEM_freeN(ale);

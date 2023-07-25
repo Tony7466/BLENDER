@@ -6,8 +6,8 @@
  * \ingroup spgraph
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "DNA_scene_types.h"
 
@@ -329,7 +329,7 @@ static void GRAPH_OT_hide(wmOperatorType *ot)
 
   /* props */
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected curves");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected curves");
 }
 
 /* ........ */
@@ -421,7 +421,7 @@ static void GRAPH_OT_reveal(wmOperatorType *ot)
 /** \name Registration: operator types
  * \{ */
 
-void graphedit_operatortypes(void)
+void graphedit_operatortypes()
 {
   /* view */
   WM_operatortype_append(GRAPH_OT_cursor_set);
@@ -473,6 +473,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_ease);
   WM_operatortype_append(GRAPH_OT_blend_to_default);
   WM_operatortype_append(GRAPH_OT_gaussian_smooth);
+  WM_operatortype_append(GRAPH_OT_butterworth_smooth);
   WM_operatortype_append(GRAPH_OT_euler_filter);
   WM_operatortype_append(GRAPH_OT_delete);
   WM_operatortype_append(GRAPH_OT_duplicate);
@@ -494,7 +495,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_driver_delete_invalid);
 }
 
-void ED_operatormacros_graph(void)
+void ED_operatormacros_graph()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;

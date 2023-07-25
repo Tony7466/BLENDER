@@ -64,13 +64,13 @@ static const float value_clamp_max[NUM_VALUE_KINDS] = {1e6, 100.0f, 1.0f, SEGMEN
 static const float value_start[NUM_VALUE_KINDS] = {0.0f, 0.0f, 0.5f, 1.0f};
 static const float value_scale_per_inch[NUM_VALUE_KINDS] = {0.0f, 100.0f, 1.0f, 4.0f};
 
-typedef struct {
+struct BevelObjectStore {
   /** Every object must have a valid #BMEditMesh. */
   Object *ob;
   BMBackup mesh_backup;
-} BevelObjectStore;
+};
 
-typedef struct {
+struct BevelData {
   float initial_length[NUM_VALUE_KINDS];
   float scale[NUM_VALUE_KINDS];
   NumInput num_input[NUM_VALUE_KINDS];
@@ -90,7 +90,7 @@ typedef struct {
   float segments;   /* Segments as float so smooth mouse pan works in small increments */
 
   CurveProfile *custom_profile;
-} BevelData;
+};
 
 enum {
   BEV_MODAL_CANCEL = 1,
@@ -137,7 +137,7 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
     SNPRINTF(offset_str, "%.1f%%", RNA_float_get(op->ptr, "offset_pct"));
   }
   else {
-    double offset_val = (double)RNA_float_get(op->ptr, "offset");
+    double offset_val = double(RNA_float_get(op->ptr, "offset"));
     BKE_unit_value_as_string(offset_str,
                              NUM_STR_REP_LEN,
                              offset_val * sce->unit.scale_length,
@@ -261,7 +261,7 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   opdata->is_modal = is_modal;
   int otype = RNA_enum_get(op->ptr, "offset_type");
   opdata->value_mode = (otype == BEVEL_AMT_PERCENT) ? OFFSET_VALUE_PERCENT : OFFSET_VALUE;
-  opdata->segments = (float)RNA_int_get(op->ptr, "segments");
+  opdata->segments = float(RNA_int_get(op->ptr, "segments"));
   float pixels_per_inch = U.dpi;
 
   for (int i = 0; i < NUM_VALUE_KINDS; i++) {
@@ -564,7 +564,7 @@ static void edbm_bevel_mouse_set_value(wmOperator *op, const wmEvent *event)
   CLAMP(value, value_clamp_min[vmode], value_clamp_max[vmode]);
   if (vmode == SEGMENTS_VALUE) {
     opdata->segments = value;
-    RNA_int_set(op->ptr, "segments", (int)(value + 0.5f));
+    RNA_int_set(op->ptr, "segments", int(value + 0.5f));
   }
   else {
     RNA_float_set(op->ptr, value_rna_name[vmode], value);
@@ -702,7 +702,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
     else {
       opdata->segments += delta;
     }
-    RNA_int_set(op->ptr, "segments", (int)opdata->segments);
+    RNA_int_set(op->ptr, "segments", int(opdata->segments));
     edbm_bevel_calc(op);
     edbm_bevel_update_status_text(C, op);
     handled = true;
@@ -722,7 +722,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
       case BEV_MODAL_SEGMENTS_UP:
         opdata->segments = opdata->segments + 1;
-        RNA_int_set(op->ptr, "segments", (int)opdata->segments);
+        RNA_int_set(op->ptr, "segments", int(opdata->segments));
         edbm_bevel_calc(op);
         edbm_bevel_update_status_text(C, op);
         handled = true;
@@ -730,7 +730,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
       case BEV_MODAL_SEGMENTS_DOWN:
         opdata->segments = max_ff(opdata->segments - 1, 1);
-        RNA_int_set(op->ptr, "segments", (int)opdata->segments);
+        RNA_int_set(op->ptr, "segments", int(opdata->segments));
         edbm_bevel_calc(op);
         edbm_bevel_update_status_text(C, op);
         handled = true;
@@ -1183,6 +1183,6 @@ void MESH_OT_bevel(wmOperatorType *ot)
                "Vertex Mesh Method",
                "The method to use to create meshes at intersections");
 
-  prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
+  prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }

@@ -73,7 +73,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_gpencil_legacy.h"
 #include "ED_grease_pencil.h"
 #include "ED_lattice.h"
@@ -387,7 +387,7 @@ static bool edbm_backbuf_check_and_select_faces_obmode(Mesh *me,
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  for (int index = 0; index < me->totpoly; index++) {
+  for (int index = 0; index < me->faces_num; index++) {
     if (!hide_poly[index]) {
       const bool is_select = select_poly.span[index];
       const bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
@@ -1313,7 +1313,7 @@ static bool do_lasso_select_paintface(ViewContext *vc,
   Mesh *me = static_cast<Mesh *>(ob->data);
   rcti rect;
 
-  if (me == nullptr || me->totpoly == 0) {
+  if (me == nullptr || me->faces_num == 0) {
     return false;
   }
 
@@ -3578,7 +3578,7 @@ static bool do_paintface_box_select(ViewContext *vc,
   Mesh *me;
 
   me = BKE_mesh_from_object(ob);
-  if ((me == nullptr) || (me->totpoly == 0)) {
+  if ((me == nullptr) || (me->faces_num == 0)) {
     return false;
   }
 

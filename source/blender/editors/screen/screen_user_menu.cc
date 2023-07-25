@@ -6,10 +6,10 @@
  * \ingroup spview3d
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_scene_types.h"
 
@@ -327,7 +327,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
   }
 }
 
-void ED_screen_user_menu_register(void)
+void ED_screen_user_menu_register()
 {
   MenuType *mt = static_cast<MenuType *>(MEM_callocN(sizeof(MenuType), __func__));
   STRNCPY(mt->idname, "SCREEN_MT_user_menu");
