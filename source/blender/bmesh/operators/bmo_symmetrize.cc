@@ -84,7 +84,7 @@ void bmo_symmetrize_exec(BMesh *bm, BMOperator *op)
   slot_targetmap = BMO_slot_get(op_weld.slots_in, "targetmap");
 
   BMO_ITER (v, &siter, op_bisect.slots_out, "geom_cut.out", BM_VERT) {
-    BMVert *v_dupe = BMO_slot_map_elem_get(slot_vertmap, v);
+    BMVert *v_dupe = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_vertmap, v));
     BMO_slot_map_elem_insert(&op_weld, slot_targetmap, v_dupe, v);
   }
 

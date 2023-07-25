@@ -47,7 +47,7 @@ set(SRC
   operators/bmo_split_edges.cc
   operators/bmo_subdivide.cc
   operators/bmo_subdivide_edgering.cc
-  operators/bmo_symmetrize.c
+  operators/bmo_symmetrize.cc
   operators/bmo_triangulate.c
   operators/bmo_unsubdivide.c
   operators/bmo_utils.c
