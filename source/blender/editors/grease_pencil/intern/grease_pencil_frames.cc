@@ -51,17 +51,7 @@ bool select_frame_at(bke::greasepencil::Layer *layer,
   if (frame == nullptr) {
     return false;
   }
-  switch (select_mode) {
-    case SELECT_ADD:
-      frame->flag |= GP_FRAME_SELECTED;
-      break;
-    case SELECT_SUBTRACT:
-      frame->flag &= ~GP_FRAME_SELECTED;
-      break;
-    case SELECT_INVERT:
-      frame->flag ^= GP_FRAME_SELECTED;
-      break;
-  }
+  select_frame(frame, select_mode);
   return true;
 }
 
