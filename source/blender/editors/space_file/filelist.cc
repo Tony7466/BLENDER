@@ -1200,6 +1200,9 @@ static std::optional<ThumbSource> file_thumbnail_source_get(const FileDirEntry *
   else if (file->typeflag & FILE_TYPE_FTFONT) {
     return THB_SOURCE_FONT;
   }
+  else if (file->typeflag & FILE_TYPE_OBJECT_IO) {
+    return THB_SOURCE_OBJECT_IO;
+  }
   return std::nullopt;
 }
 
