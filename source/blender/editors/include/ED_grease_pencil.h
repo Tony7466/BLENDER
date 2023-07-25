@@ -67,6 +67,8 @@ bool select_frame_at(bke::greasepencil::Layer *layer,
                      const int frame_number,
                      const short select_mode);
 
+void select_all_frames(bke::greasepencil::Layer *layer, const short select_mode);
+
 /**
  * Checks if any frame of the \a layer is selected.
  */
