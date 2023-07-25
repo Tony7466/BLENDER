@@ -543,7 +543,7 @@ static float bm_edge_info_average_length_fallback(BMVert *v_lookup,
                                                   BMesh *bm,
                                                   void **vert_lengths_p)
 {
-  struct {
+  struct VertLengths {
     /**
      * Use to fill in length accumulated values based on the topological distance
      * to vertices at the inset boundaries.
@@ -561,7 +561,7 @@ static float bm_edge_info_average_length_fallback(BMVert *v_lookup,
      * - Minus One: Part of previous passes, `length_accum` value has been divided.
      */
     int count;
-  } *vert_lengths = *vert_lengths_p;
+  } *vert_lengths = static_cast<VertLengths *>(*vert_lengths_p);
 
   /* Only run this once, if needed. */
   if (UNLIKELY(vert_lengths == nullptr)) {
@@ -570,7 +570,8 @@ static float bm_edge_info_average_length_fallback(BMVert *v_lookup,
     STACK_DECLARE(vert_stack);
     STACK_INIT(vert_stack, bm->totvert);
 
-    vert_lengths = MEM_callocN(sizeof(*vert_lengths) * bm->totvert, __func__);
+    vert_lengths = static_cast<VertLengths *>(
+        MEM_callocN(sizeof(*vert_lengths) * bm->totvert, __func__));
 
     /* Needed for 'vert_lengths' lookup from connected vertices. */
     BM_mesh_elem_index_ensure(bm, BM_VERT);
