@@ -22,7 +22,7 @@ set(SRC
   operators/bmo_connect_concave.cc
   operators/bmo_connect_nonplanar.cc
   operators/bmo_connect_pair.cc
-  operators/bmo_create.c
+  operators/bmo_create.cc
   operators/bmo_dissolve.c
   operators/bmo_dupe.c
   operators/bmo_edgenet.c

@@ -57,7 +57,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
 
     if (BMO_iter_as_array(op->slots_in, "geom", BM_VERT, (void **)verts, 2) == 2) {
       /* create edge */
-      e = BM_edge_create(bm, verts[0], verts[1], NULL, BM_CREATE_NO_DOUBLE);
+      e = BM_edge_create(bm, verts[0], verts[1], nullptr, BM_CREATE_NO_DOUBLE);
       BMO_edge_flag_enable(bm, e, ELE_OUT);
       tote += 1;
       BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "edges.out", BM_EDGE, ELE_OUT);
@@ -84,7 +84,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
   /* Here we check for consistency and create 2 edges */
   if (totf == 0 && totv >= 4 && totv == tote + 2) {
     /* find a free standing vertex and 2 endpoint verts */
-    BMVert *v, *v_free = NULL, *v_a = NULL, *v_b = NULL;
+    BMVert *v, *v_free = nullptr, *v_a = nullptr, *v_b = nullptr;
     bool ok = true;
 
     BMO_ITER (v, &oiter, op->slots_in, "geom", BM_VERT) {
@@ -92,7 +92,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
       const int tot_edges = BMO_iter_elem_count_flag(bm, BM_EDGES_OF_VERT, v, ELE_NEW, true);
       if (tot_edges == 0) {
         /* only accept 1 free vert */
-        if (v_free == NULL) {
+        if (v_free == nullptr) {
           v_free = v;
         }
         else {
@@ -100,10 +100,10 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
         } /* only ever want one of these */
       }
       else if (tot_edges == 1) {
-        if (v_a == NULL) {
+        if (v_a == nullptr) {
           v_a = v;
         }
-        else if (v_b == NULL) {
+        else if (v_b == nullptr) {
           v_b = v;
         }
         else {
@@ -125,10 +125,10 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
     if (ok == true && v_free && v_a && v_b) {
       BMEdge *e;
 
-      e = BM_edge_create(bm, v_free, v_a, NULL, BM_CREATE_NO_DOUBLE);
+      e = BM_edge_create(bm, v_free, v_a, nullptr, BM_CREATE_NO_DOUBLE);
       BMO_edge_flag_enable(bm, e, ELE_NEW);
 
-      e = BM_edge_create(bm, v_free, v_b, NULL, BM_CREATE_NO_DOUBLE);
+      e = BM_edge_create(bm, v_free, v_b, nullptr, BM_CREATE_NO_DOUBLE);
       BMO_edge_flag_enable(bm, e, ELE_NEW);
       tote += 2;
     }
@@ -226,7 +226,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
     BMEditSelection *ese;
     int tot_ese_v = 0;
 
-    for (ese = bm->selected.first; ese; ese = ese->next) {
+    for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
       if (ese->htype == BM_VERT) {
         if (BMO_vert_flag_test(bm, (BMVert *)ese->ele, ELE_NEW)) {
           tot_ese_v++;
@@ -240,14 +240,14 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
     }
 
     if (tot_ese_v == totv) {
-      BMVert *v_prev = NULL;
+      BMVert *v_prev = nullptr;
       /* yes, all select-history verts are accounted for, now make edges */
 
-      for (ese = bm->selected.first; ese; ese = ese->next) {
+      for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
         if (ese->htype == BM_VERT) {
           BMVert *v = (BMVert *)ese->ele;
           if (v_prev) {
-            BMEdge *e = BM_edge_create(bm, v, v_prev, NULL, BM_CREATE_NO_DOUBLE);
+            BMEdge *e = BM_edge_create(bm, v, v_prev, nullptr, BM_CREATE_NO_DOUBLE);
             BMO_edge_flag_enable(bm, e, ELE_OUT);
           }
           v_prev = v;
@@ -270,7 +270,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
      * this connectivity could be used rather than treating
      * them as a bunch of isolated verts. */
 
-    BMVert **vert_arr = MEM_mallocN(sizeof(BMVert *) * totv, __func__);
+    BMVert **vert_arr = static_cast<BMVert **>(MEM_mallocN(sizeof(BMVert *) * totv, __func__));
     BMFace *f;
 
     totv = BMO_iter_as_array(op->slots_in, "geom", BM_VERT, (void **)vert_arr, totv);
@@ -278,7 +278,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
     BM_verts_sort_radial_plane(vert_arr, totv);
 
     /* create edges and find the winding (if faces are attached to any existing edges) */
-    f = BM_face_create_ngon_verts(bm, vert_arr, totv, NULL, BM_CREATE_NO_DOUBLE, true, true);
+    f = BM_face_create_ngon_verts(bm, vert_arr, totv, nullptr, BM_CREATE_NO_DOUBLE, true, true);
 
     if (f) {
       BMO_face_flag_enable(bm, f, ELE_OUT);
@@ -286,7 +286,7 @@ void bmo_contextual_create_exec(BMesh *bm, BMOperator *op)
       if (use_smooth) {
         BM_elem_flag_enable(f, BM_ELEM_SMOOTH);
       }
-      BM_face_copy_shared(bm, f, NULL, NULL);
+      BM_face_copy_shared(bm, f, nullptr, nullptr);
       BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "faces.out", BM_FACE, ELE_OUT);
     }
 
