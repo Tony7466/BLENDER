@@ -23,8 +23,8 @@ void FinalEngine::render(Depsgraph *depsgraph)
   const Scene *scene = DEG_get_evaluated_scene(depsgraph);
   const ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 
-  char scene_name[MAX_NAME];
-  BKE_id_full_name_get(scene_name, (ID *)scene, 0);
+  char scene_name[MAX_ID_FULL_NAME];
+  BKE_id_full_name_get(scene_name, &scene->id, 0);
   scene_name_ = scene_name;
   layer_name_ = view_layer->name;
 
