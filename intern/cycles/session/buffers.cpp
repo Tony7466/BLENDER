@@ -274,11 +274,6 @@ RenderBuffers::~RenderBuffers()
   buffer.free();
 }
 
-void RenderBuffers::reset(size_t width, size_t height)
-{
-  buffer.alloc(width, height);
-}
-
 void RenderBuffers::reset(const BufferParams &params_)
 {
   DCHECK(params_.pass_stride != -1);
