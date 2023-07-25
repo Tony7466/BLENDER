@@ -26,7 +26,7 @@
 #  include "intern/bmesh_operators_private.h" /* own include */
 
 /* Internal operator flags */
-typedef enum {
+enum {
   HULL_FLAG_INPUT = (1 << 0),
 
   HULL_FLAG_INTERIOR_ELE = (1 << 1),
@@ -34,16 +34,16 @@ typedef enum {
 
   HULL_FLAG_DEL = (1 << 3),
   HULL_FLAG_HOLE = (1 << 4),
-} HullFlags;
+};
 
 /* Store hull triangles separate from BMesh faces until the end; this
  * way we don't have to worry about cleaning up extraneous edges or
  * incorrectly deleting existing geometry. */
-typedef struct HullTriangle {
+struct HullTriangle {
   BMVert *v[3];
   float no[3];
   int skip;
-} HullTriangle;
+};
 
 /*************************** Hull Triangles ***************************/
 
@@ -53,7 +53,7 @@ static void hull_add_triangle(
   HullTriangle *t;
   int i;
 
-  t = BLI_mempool_calloc(hull_triangles);
+  t = static_cast<HullTriangle *>(BLI_mempool_calloc(hull_triangles));
   t->v[0] = v1;
   t->v[1] = v2;
   t->v[2] = v3;
@@ -79,7 +79,7 @@ static BMFace *hull_find_example_face(BMesh *bm, BMEdge *e)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static void hull_output_triangles(BMesh *bm, BLI_mempool *hull_triangles)
@@ -88,19 +88,19 @@ static void hull_output_triangles(BMesh *bm, BLI_mempool *hull_triangles)
   BLI_mempool_iternew(hull_triangles, &iter);
   HullTriangle *t;
 
-  while ((t = BLI_mempool_iterstep(&iter))) {
+  while ((t = static_cast<HullTriangle *>(BLI_mempool_iterstep(&iter)))) {
     int i;
 
     if (!t->skip) {
       BMEdge *edges[3] = {
-          BM_edge_create(bm, t->v[0], t->v[1], NULL, BM_CREATE_NO_DOUBLE),
-          BM_edge_create(bm, t->v[1], t->v[2], NULL, BM_CREATE_NO_DOUBLE),
-          BM_edge_create(bm, t->v[2], t->v[0], NULL, BM_CREATE_NO_DOUBLE),
+          BM_edge_create(bm, t->v[0], t->v[1], nullptr, BM_CREATE_NO_DOUBLE),
+          BM_edge_create(bm, t->v[1], t->v[2], nullptr, BM_CREATE_NO_DOUBLE),
+          BM_edge_create(bm, t->v[2], t->v[0], nullptr, BM_CREATE_NO_DOUBLE),
       };
-      BMFace *f, *example = NULL;
+      BMFace *f, *example = nullptr;
 
       f = BM_face_exists(t->v, 3);
-      if (f != NULL) {
+      if (f != nullptr) {
         /* If the operator is run with "use_existing_faces"
          * disabled, but an output face in the hull is the
          * same as a face in the existing mesh, it should not
@@ -119,7 +119,7 @@ static void hull_output_triangles(BMesh *bm, BLI_mempool *hull_triangles)
 
         /* Create new hull face */
         f = BM_face_create_verts(bm, t->v, 3, example, BM_CREATE_NO_DOUBLE, true);
-        BM_face_copy_shared(bm, f, NULL, NULL);
+        BM_face_copy_shared(bm, f, nullptr, nullptr);
       }
       /* Mark face for 'geom.out' slot and select */
       BMO_face_flag_enable(bm, f, HULL_FLAG_OUTPUT_GEOM);
@@ -151,22 +151,22 @@ static void hull_output_triangles(BMesh *bm, BLI_mempool *hull_triangles)
 
 /***************************** Final Edges ****************************/
 
-typedef struct {
+struct HullFinalEdges {
   GHash *edges;
   BLI_mempool *base_pool, *link_pool;
-} HullFinalEdges;
+};
 
 static LinkData *final_edges_find_link(ListBase *adj, BMVert *v)
 {
   LinkData *link;
 
-  for (link = adj->first; link; link = link->next) {
+  for (link = static_cast<LinkData *>(adj->first); link; link = link->next) {
     if (link->data == v) {
       return link;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static int hull_final_edges_lookup(HullFinalEdges *final_edges, BMVert *v1, BMVert *v2)
@@ -178,7 +178,7 @@ static int hull_final_edges_lookup(HullFinalEdges *final_edges, BMVert *v1, BMVe
     SWAP(BMVert *, v1, v2);
   }
 
-  adj = BLI_ghash_lookup(final_edges->edges, v1);
+  adj = static_cast<ListBase *>(BLI_ghash_lookup(final_edges->edges, v1));
   if (!adj) {
     return false;
   }
@@ -191,7 +191,8 @@ static HullFinalEdges *hull_final_edges(BLI_mempool *hull_triangles)
 {
   HullFinalEdges *final_edges;
 
-  final_edges = MEM_callocN(sizeof(HullFinalEdges), "HullFinalEdges");
+  final_edges = static_cast<HullFinalEdges *>(
+      MEM_callocN(sizeof(HullFinalEdges), "HullFinalEdges"));
   final_edges->edges = BLI_ghash_ptr_new("final edges ghash");
   final_edges->base_pool = BLI_mempool_create(sizeof(ListBase), 0, 128, BLI_MEMPOOL_NOP);
   final_edges->link_pool = BLI_mempool_create(sizeof(LinkData), 0, 128, BLI_MEMPOOL_NOP);
@@ -200,7 +201,7 @@ static HullFinalEdges *hull_final_edges(BLI_mempool *hull_triangles)
   BLI_mempool_iternew(hull_triangles, &iter);
   HullTriangle *t;
 
-  while ((t = BLI_mempool_iterstep(&iter))) {
+  while ((t = static_cast<HullTriangle *>(BLI_mempool_iterstep(&iter)))) {
     LinkData *link;
     int i;
 
@@ -214,14 +215,14 @@ static HullFinalEdges *hull_final_edges(BLI_mempool *hull_triangles)
         SWAP(BMVert *, v1, v2);
       }
 
-      adj = BLI_ghash_lookup(final_edges->edges, v1);
+      adj = static_cast<ListBase *>(BLI_ghash_lookup(final_edges->edges, v1));
       if (!adj) {
-        adj = BLI_mempool_calloc(final_edges->base_pool);
+        adj = static_cast<ListBase *>(BLI_mempool_calloc(final_edges->base_pool));
         BLI_ghash_insert(final_edges->edges, v1, adj);
       }
 
       if (!final_edges_find_link(adj, v2)) {
-        link = BLI_mempool_calloc(final_edges->link_pool);
+        link = static_cast<LinkData *>(BLI_mempool_calloc(final_edges->link_pool));
         link->data = v2;
         BLI_addtail(adj, link);
       }
@@ -233,7 +234,7 @@ static HullFinalEdges *hull_final_edges(BLI_mempool *hull_triangles)
 
 static void hull_final_edges_free(HullFinalEdges *final_edges)
 {
-  BLI_ghash_free(final_edges->edges, NULL, NULL);
+  BLI_ghash_free(final_edges->edges, nullptr, nullptr);
   BLI_mempool_destroy(final_edges->base_pool);
   BLI_mempool_destroy(final_edges->link_pool);
   MEM_freeN(final_edges);
@@ -249,7 +250,7 @@ static void hull_remove_overlapping(BMesh *bm,
   BLI_mempool_iternew(hull_triangles, &iter);
   HullTriangle *t;
 
-  while ((t = BLI_mempool_iterstep(&iter))) {
+  while ((t = static_cast<HullTriangle *>(BLI_mempool_iterstep(&iter)))) {
     BMIter bm_iter1, bm_iter2;
     BMFace *f;
     bool f_on_hull;
@@ -415,7 +416,8 @@ static BMVert **hull_input_verts_copy(BMOperator *op, const int num_input_verts)
 {
   BMOIter oiter;
   BMVert *v;
-  BMVert **input_verts = MEM_callocN(sizeof(*input_verts) * num_input_verts, AT);
+  BMVert **input_verts = static_cast<BMVert **>(
+      MEM_callocN(sizeof(*input_verts) * num_input_verts, AT));
   int i = 0;
 
   BMO_ITER (v, &oiter, op->slots_in, "input", BM_VERT) {
@@ -427,7 +429,8 @@ static BMVert **hull_input_verts_copy(BMOperator *op, const int num_input_verts)
 
 static float (*hull_verts_for_bullet(BMVert **input_verts, const int num_input_verts))[3]
 {
-  float(*coords)[3] = MEM_callocN(sizeof(*coords) * num_input_verts, __func__);
+  float(*coords)[3] = static_cast<float(*)[3]>(
+      MEM_callocN(sizeof(*coords) * num_input_verts, __func__));
   int i;
 
   for (i = 0; i < num_input_verts; i++) {
@@ -442,7 +445,7 @@ static BMVert **hull_verts_from_bullet(plConvexHull hull,
                                        const int num_input_verts)
 {
   const int num_verts = plConvexHullNumVertices(hull);
-  BMVert **hull_verts = MEM_mallocN(sizeof(*hull_verts) * num_verts, AT);
+  BMVert **hull_verts = static_cast<BMVert **>(MEM_mallocN(sizeof(*hull_verts) * num_verts, AT));
   int i;
 
   for (i = 0; i < num_verts; i++) {
@@ -463,7 +466,7 @@ static BMVert **hull_verts_from_bullet(plConvexHull hull,
 
 static void hull_from_bullet(BMesh *bm, BMOperator *op, BLI_mempool *hull_triangles)
 {
-  int *fvi = NULL;
+  int *fvi = nullptr;
   BLI_array_declare(fvi);
 
   BMVert **input_verts;
