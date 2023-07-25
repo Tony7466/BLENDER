@@ -54,13 +54,20 @@ using NodeSocketPair = std::pair<bNode *, bNodeSocket *>;
 struct ShaderNodesPreviewJob {
   NestedTreePreviews *tree_previews;
   Scene *scene;
+  /* Pointer to the job's stop variable which is used to know when the job is asked for finishing.
+   * The idea is that the renderer will read this value frequently and abort the render if it is
+   * true. */
   bool *stop;
+  /* Pointer to the job's update variable which is set to true to refresh the UI when the renderer
+   * is delivering a fresh result. It allows the job to give some UI refresh tags to the WM. */
   bool *do_update;
 
   Material *mat_copy;
   bNode *mat_output_copy;
   NodeSocketPair mat_displacement_copy;
-  ListBase treepath_copy;
+  /* TreePath used to locate the nodetree.
+   * bNodeTreePath elements have some listbase pointers which should not be used. */
+  blender::Vector<bNodeTreePath *> treepath_copy;
   blender::Vector<bNode *> AOV_nodes;
   blender::Vector<bNode *> shader_nodes;
 
@@ -306,15 +313,16 @@ void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
  * nested nodegroup. To do so we cover all nested nodetrees starting from the farthest, and
  * update the `nested_node` pointer to the current nodegroup instance used for linking. We stop
  * before getting to the main nodetree because the output type is different. */
-static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &treepath,
+static void connect_nested_node_to_node(const Vector<bNodeTreePath *> &treepath,
                                         bNode *nested_node,
                                         bNodeSocket *nested_socket,
                                         bNode *final_node,
                                         bNodeSocket *final_socket)
 {
-  for (bNodeTreePath *path = (bNodeTreePath *)treepath.last(); path->prev != nullptr;
-       path = path->prev)
+  for (int i = treepath.size() - 1; i > 0; --i)
   {
+    bNodeTreePath *path = treepath[i];
+    bNodeTreePath *path_prev = treepath[i-1];
     bNodeTree *nested_nt = path->nodetree;
     bNode *output_node = nullptr;
     for (bNode *iter_node : nested_nt->all_nodes()) {
@@ -337,11 +345,11 @@ static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &tre
 
     nodeSetActive(nested_nt, output_node);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
-    BKE_ntree_update_main_tree(G.pr_main, path->prev->nodetree, nullptr);
+    BKE_ntree_update_main_tree(G.pr_main, path_prev->nodetree, nullptr);
 
     /* Change the `nested_node` pointer to the nested nodegroup instance node. The tree path
      * contains the name of the instance node but not its ID. */
-    nested_node = nodeFindNodebyName(path->prev->nodetree, path->node_name);
+    nested_node = nodeFindNodebyName(path_prev->nodetree, path->node_name);
 
     /* Now use the newly created socket of the nodegroup as previewing socket of the nodegroup
      * instance node. */
@@ -353,7 +361,7 @@ static void connect_nested_node_to_node(const Vector<const bNodeTreePath *> &tre
 
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
  * should be the path to the node's nodetree */
-static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepath,
+static void connect_node_to_surface_output(const Vector<bNodeTreePath *> treepath,
                                            bNode *node,
                                            bNode *output_node)
 {
@@ -377,7 +385,7 @@ static void connect_node_to_surface_output(Vector<const bNodeTreePath *> treepat
 
 /* Connect the nodes to some aov nodes located in the first nodetree from `treepath`. Last element
  * of `treepath` should be the path to the nodes nodetree. */
-static void connect_nodes_to_aovs(const Vector<const bNodeTreePath *> &treepath,
+static void connect_nodes_to_aovs(const Vector<bNodeTreePath *> &treepath,
                                   const Vector<bNode *> &nodes)
 {
   if (nodes.size() == 0) {
@@ -421,17 +429,17 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
     /* The AOV layer is the default `ViewLayer` of the scene(which should be the first one). */
     return job_data->AOV_nodes.size() > 0 && !vl->prev;
   }
-  Vector<const bNodeTreePath *> treepath = job_data->treepath_copy;
+
   bNodeSocket *displacement_socket = nodeFindSocket(
       job_data->mat_output_copy, SOCK_IN, "Displacement");
   if (job_data->mat_displacement_copy.first != nullptr && displacement_socket->link == nullptr) {
-    nodeAddLink(treepath.first()->nodetree,
+    nodeAddLink(job_data->treepath_copy.first()->nodetree,
                 job_data->mat_displacement_copy.first,
                 job_data->mat_displacement_copy.second,
                 job_data->mat_output_copy,
                 displacement_socket);
   }
-  connect_node_to_surface_output(treepath, node, job_data->mat_output_copy);
+  connect_node_to_surface_output(job_data->treepath_copy, node, job_data->mat_output_copy);
   return true;
 }
 
@@ -449,7 +457,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   if (sce == nullptr) {
     return;
   }
-  Vector<const bNodeTreePath *> treepath = job_data.treepath_copy;
+  Vector<bNodeTreePath *> &treepath = job_data.treepath_copy;
 
   /* Disconnect shader, volume and displacement from the material output. */
   bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
@@ -562,8 +570,7 @@ static void shader_preview_startjob(void *customdata,
         nullptr, job_data->mat_copy->nodetree, SH_NODE_OUTPUT_MATERIAL);
   }
 
-  bNodeTree *active_nodetree =
-      static_cast<bNodeTreePath *>(job_data->treepath_copy.last)->nodetree;
+  bNodeTree *active_nodetree = job_data->treepath_copy.last()->nodetree;
   for (bNode *node : active_nodetree->all_nodes()) {
     if (!(node->flag & NODE_PREVIEW)) {
       continue;
@@ -583,7 +590,10 @@ static void shader_preview_startjob(void *customdata,
 static void shader_preview_free(void *customdata)
 {
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(customdata);
-  BLI_freelistN(&job_data->treepath_copy);
+  for (bNodeTreePath *path : job_data->treepath_copy) {
+    MEM_freeN(path);
+  }
+  job_data->treepath_copy.clear();
   job_data->tree_previews->rendering = false;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
@@ -603,8 +613,8 @@ static void ensure_nodetree_previews(const bContext *C,
     return;
   }
 
-  bNodeTree *displayed_nt = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
-  update_needed_flag(displayed_nt, tree_previews);
+  bNodeTree *displayed_nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
+  update_needed_flag(displayed_nodetree, tree_previews);
   if (!(tree_previews->restart_needed)) {
     return;
   }
@@ -616,7 +626,7 @@ static void ensure_nodetree_previews(const bContext *C,
   }
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
-  tree_previews->previews_refresh_state = displayed_nt->preview_refresh_state;
+  tree_previews->previews_refresh_state = displayed_nodetree->preview_refresh_state;
 
   ED_preview_ensure_dbase(false);
 
@@ -636,7 +646,7 @@ static void ensure_nodetree_previews(const bContext *C,
   /* Update the treepath copied to fit the structure of the nodetree copied. */
   bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
   root_path->nodetree = job_data->mat_copy->nodetree;
-  BLI_addtail(&job_data->treepath_copy, root_path);
+  job_data->treepath_copy.append(root_path);
   for (bNodeTreePath *original_path =
            static_cast<bNodeTreePath *>(treepath->first)->next;
        original_path;
@@ -644,11 +654,10 @@ static void ensure_nodetree_previews(const bContext *C,
   {
     bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
     memcpy(new_path, original_path, sizeof(bNodeTreePath));
-    bNode *parent = nodeFindNodebyName(
-        static_cast<bNodeTreePath *>(job_data->treepath_copy.last)->nodetree,
-        original_path->node_name);
+    bNode *parent = nodeFindNodebyName(job_data->treepath_copy.last()->nodetree,
+                                       original_path->node_name);
     new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
-    BLI_addtail(&job_data->treepath_copy, new_path);
+    job_data->treepath_copy.append(new_path);
   }
 
   WM_jobs_customdata_set(wm_job, job_data, shader_preview_free);
