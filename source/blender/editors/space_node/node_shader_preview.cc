@@ -12,7 +12,7 @@
  *
  * We separate the previewed nodes in two categories: the shader ones and the non-shader ones.
  * - for non-shader nodes, we use AOVs(Arbitrary Output Variable) which highly speed up the
- * rendering process by rendering every non-shader nodes at the same time. They are rendered in the
+ * rendering process by rendering every non-shader node at the same time. They are rendered in the
  * first ViewLayer.
  * - for shader nodes, we render them each in a different ViewLayer, by routing the node to the
  * output of the material in the preview scene.
@@ -123,7 +123,7 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
     tree_previews = sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
       tree_previews = static_cast<NestedTreePreviews *>(
           MEM_callocN(sizeof(NestedTreePreviews), __func__));
-      tree_previews->pr_size = U.node_preview_res;
+      tree_previews->preview_size = U.node_preview_res;
       return tree_previews;
     });
     Material *ma = reinterpret_cast<Material *>(sn->id);
@@ -483,8 +483,8 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
     ViewLayerAOV *aov = BKE_view_layer_add_aov(AOV_layer);
     strcpy(aov->name, node->name);
   }
-  sce->r.xsch = job_data.tree_previews->pr_size;
-  sce->r.ysch = job_data.tree_previews->pr_size;
+  sce->r.xsch = job_data.tree_previews->preview_size;
+  sce->r.ysch = job_data.tree_previews->preview_size;
   sce->r.size = 100;
 
   if (job_data.tree_previews->previews_render == nullptr) {
@@ -532,7 +532,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 static void update_needed_flag(const bNodeTree *nt, NestedTreePreviews *tree_previews)
 {
   if (nt->preview_refresh_state != tree_previews->previews_refresh_state ||
-      tree_previews->pr_size != U.node_preview_res)
+      tree_previews->preview_size != U.node_preview_res)
   {
     tree_previews->restart_needed = true;
   }
@@ -548,9 +548,9 @@ static void shader_preview_startjob(void *customdata,
   job_data->stop = stop;
   job_data->do_update = do_update;
   *do_update = true;
-  bool size_changed = job_data->tree_previews->pr_size != U.node_preview_res;
+  bool size_changed = job_data->tree_previews->preview_size != U.node_preview_res;
   if (size_changed) {
-    job_data->tree_previews->pr_size = U.node_preview_res;
+    job_data->tree_previews->preview_size = U.node_preview_res;
   }
 
   /* Duplicate material for each preview and update things related to it: treepath and previewed

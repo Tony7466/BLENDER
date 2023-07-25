@@ -109,8 +109,10 @@ struct SpaceNode_Runtime {
   /** Temporary data for node insert offset (in UI called Auto-offset). */
   struct NodeInsertOfsData *iofsd;
 
-  /** Use this to store data for the displayed node tree. It has an entry for every distinct
-   * nested nodegroup. */
+  /**
+   * Use this to store data for the displayed node tree. It has an entry for every distinct
+   * nested nodegroup.
+   */
   Map<ComputeContextHash, NestedTreePreviews *> tree_previews_per_context;
 
   /**
