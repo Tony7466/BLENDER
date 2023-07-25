@@ -1783,8 +1783,28 @@ static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
   return items;
 }
 
+static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
+                                                        bDopeSheet * /*ads*/,
+                                                        GreasePencil *grease_pencil,
+                                                        int filter_mode)
+{
+  using namespace blender::bke::greasepencil;
+  size_t items = 0;
+
+  blender::Span<Layer *> layers = grease_pencil->layers_for_write();
+
+  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
+    Layer *layer = layers[layer_index];
+
+    /* Add layer channel. */
+    ANIMCHANNEL_NEW_CHANNEL(
+        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+  }
+  return items;
+}
+
 static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
-                                                 bDopeSheet * /*ads*/,
+                                                 bDopeSheet *ads,
                                                  GreasePencil *grease_pencil,
                                                  int filter_mode)
 {
@@ -1792,21 +1812,44 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 
   size_t items = 0;
 
-  /* Add data block container */
-  ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
+  /* When asked from "AnimData" blocks (i.e. the top-level containers for normal animation),
+   * for convenience, this will return grease pencil data-blocks instead.
+   * This may cause issues down the track, but for now, this will do.
+   */
+  if (filter_mode & ANIMFILTER_ANIMDATA) {
+    /* Just add data block container. */
+    ANIMCHANNEL_NEW_CHANNEL(
+        grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
+  }
+  else {
+    ListBase tmp_data = {nullptr, nullptr};
+    size_t tmp_items = 0;
 
-  Span<bke::greasepencil::Layer *> layers = grease_pencil->layers_for_write();
+    if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
+      /* Add grease pencil layer channels. */
+      BEGIN_ANIMFILTER_SUBCHANNELS (grease_pencil->flag &GREASE_PENCIL_ANIM_CHANNEL_EXPANDED) {
+        tmp_items += animdata_filter_grease_pencil_layers_data(
+            &tmp_data, ads, grease_pencil, filter_mode);
+      }
+      END_ANIMFILTER_SUBCHANNELS;
+    }
 
-  BEGIN_ANIMFILTER_SUBCHANNELS (grease_pencil->flag &GREASE_PENCIL_ANIM_CHANNEL_EXPANDED) {
-    for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
-      bke::greasepencil::Layer *layer = layers[layer_index];
+    if (tmp_items == 0) {
+      /* If no sub-channels, return early. */
+      return items;
+    }
 
-      /* Add layer channel */
+    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+      /* Add data block container (if for drawing, and it contains sub-channels). */
       ANIMCHANNEL_NEW_CHANNEL(
-          static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+          grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
+
+      /* Add the list of collected channels. */
+      BLI_movelisttolist(anim_data, &tmp_data);
+      BLI_assert(BLI_listbase_is_empty(&tmp_data));
+      items += tmp_items;
     }
   }
-  END_ANIMFILTER_SUBCHANNELS;
 
   return items;
 }
