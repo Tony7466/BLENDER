@@ -324,6 +324,8 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
                                         bNode *final_node,
                                         bNodeSocket *final_socket)
 {
+  /* This is used to create the right socket names along the way. */
+  const bNode *nested_node_orig = nested_node;
   for (int i = treepath.size() - 1; i > 0; --i) {
     bNodeTreePath *path = treepath[i];
     bNodeTreePath *path_prev = treepath[i - 1];
@@ -340,10 +342,10 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
       output_node->flag |= NODE_DO_OUTPUT;
     }
 
-    ntreeAddSocketInterface(nested_nt, SOCK_OUT, nested_socket->idname, nested_node->name);
+    ntreeAddSocketInterface(nested_nt, SOCK_OUT, nested_socket->idname, nested_node_orig->name);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
     bNodeSocket *out_socket = blender::bke::node_find_enabled_input_socket(*output_node,
-                                                                           nested_node->name);
+                                                                           nested_node_orig->name);
 
     nodeAddLink(nested_nt, nested_node, nested_socket, output_node, out_socket);
 
