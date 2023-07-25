@@ -25,7 +25,7 @@ void bmo_edgeloop_fill_exec(BMesh *bm, BMOperator *op)
   /* first collect an array of unique from the edges */
   const int tote = BMO_slot_buffer_len(op->slots_in, "edges");
   const int totv = tote; /* these should be the same */
-  BMVert **verts = MEM_mallocN(sizeof(*verts) * totv, __func__);
+  BMVert **verts = static_cast<BMVert **>(MEM_mallocN(sizeof(*verts) * totv, __func__));
 
   BMVert *v;
   BMEdge *e;
@@ -74,12 +74,12 @@ void bmo_edgeloop_fill_exec(BMesh *bm, BMOperator *op)
 
   if (ok) {
     /* NOTE: in the case of multiple loops, this over-allocates (which is fine). */
-    BMVert **f_verts = MEM_mallocN(sizeof(*verts) * totv, __func__);
+    BMVert **f_verts = static_cast<BMVert **>(MEM_mallocN(sizeof(*verts) * totv, __func__));
     BMIter eiter;
 
     /* build array of connected verts and edges */
-    BMEdge *e_prev = NULL;
-    BMEdge *e_next = NULL;
+    BMEdge *e_prev = nullptr;
+    BMEdge *e_next = nullptr;
     int totv_used = 0;
 
     while (totv_used < totv) {
@@ -122,7 +122,7 @@ void bmo_edgeloop_fill_exec(BMesh *bm, BMOperator *op)
         BMFace *f;
 
         /* don't use calc_edges option because we already have the edges */
-        f = BM_face_create_ngon_verts(bm, f_verts, i, NULL, BM_CREATE_NOP, true, false);
+        f = BM_face_create_ngon_verts(bm, f_verts, i, nullptr, BM_CREATE_NOP, true, false);
         BMO_face_flag_enable(bm, f, ELE_OUT);
         f->mat_nr = mat_nr;
         if (use_smooth) {
