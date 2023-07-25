@@ -241,8 +241,7 @@ class device_memory {
   void *shared_pointer;
   /* reference counter for shared_pointer */
   int shared_counter;
-  /* Indicated if this device_memory is a slice of an existing buffer*/
-  bool mem_slice;
+
   virtual ~device_memory();
 
   void swap_device(Device *new_device, size_t new_device_size, device_ptr new_device_ptr);
@@ -274,7 +273,7 @@ class device_memory {
   /* Host allocation on the device. All host_pointer memory should be
    * allocated with these functions, for devices that support using
    * the same pointer for host and device. */
-  void *host_alloc(size_t size, bool pinned = false);
+  void *host_alloc(size_t size);
   void host_free();
 
   /* Device memory allocation and copying. */
@@ -291,7 +290,6 @@ class device_memory {
   Device *original_device;
   bool need_realloc_;
   bool modified;
-  bool pinned;
 };
 
 /* Device Only Memory
@@ -366,7 +364,7 @@ template<typename T> class device_vector : public device_memory {
     data_elements = device_type_traits<T>::num_elements;
     modified = true;
     need_realloc_ = true;
-    pinned = false;
+
     assert(data_elements > 0);
   }
 
@@ -376,14 +374,14 @@ template<typename T> class device_vector : public device_memory {
   }
 
   /* Host memory allocation. */
-  T *alloc(size_t width, size_t height = 0, size_t depth = 0, bool pinned_mem = false)
+  T *alloc(size_t width, size_t height = 0, size_t depth = 0)
   {
     size_t new_size = size(width, height, depth);
 
     if (new_size != data_size) {
       device_free();
       host_free();
-      host_pointer = host_alloc(sizeof(T) * new_size, pinned_mem);
+      host_pointer = host_alloc(sizeof(T) * new_size);
       modified = true;
       assert(device_pointer == 0);
     }
@@ -403,7 +401,7 @@ template<typename T> class device_vector : public device_memory {
     size_t new_size = size(width, height, depth);
 
     if (new_size != data_size) {
-      void *new_ptr = host_alloc(sizeof(T) * new_size, pinned);
+      void *new_ptr = host_alloc(sizeof(T) * new_size);
 
       if (new_size && data_size) {
         size_t min_size = ((new_size < data_size) ? new_size : data_size);

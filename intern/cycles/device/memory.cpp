@@ -24,7 +24,6 @@ device_memory::device_memory(Device *device, const char *name, MemoryType type)
       host_pointer(0),
       shared_pointer(0),
       shared_counter(0),
-      mem_slice(false),
       original_device_ptr(0),
       original_device_size(0),
       original_device(0),
@@ -39,21 +38,13 @@ device_memory::~device_memory()
   assert(shared_counter == 0);
 }
 
-void *device_memory::host_alloc(size_t size, bool pinned_mem)
+void *device_memory::host_alloc(size_t size)
 {
   if (!size) {
     return 0;
   }
 
-  void *ptr = NULL;
-  if (!pinned_mem) {
-    ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
-    pinned = false;
-  }
-  else {
-    device->alloc_host(ptr, size, pinned);
-    pinned = true;
-  }
+  void *ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
 
   if (ptr) {
     util_guarded_mem_alloc(size);
@@ -68,16 +59,8 @@ void *device_memory::host_alloc(size_t size, bool pinned_mem)
 void device_memory::host_free()
 {
   if (host_pointer) {
-    if (!mem_slice) {
-      util_guarded_mem_free(memory_size());
-      if (!pinned) {
-        util_aligned_free((void *)host_pointer);
-      }
-      else {
-        device->free_host((void *)host_pointer);
-        pinned = false;
-      }
-    }
+    util_guarded_mem_free(memory_size());
+    util_aligned_free((void *)host_pointer);
     host_pointer = 0;
   }
 }
@@ -91,12 +74,7 @@ void device_memory::device_alloc()
 void device_memory::device_free()
 {
   if (device_pointer) {
-    if (!mem_slice) {
-      device->mem_free(*this);
-    }
-    else {
-      device_pointer = 0;
-    }
+    device->mem_free(*this);
   }
 }
 
@@ -234,7 +212,7 @@ void *device_texture::alloc(const size_t width, const size_t height, const size_
   if (new_size != data_size) {
     device_free();
     host_free();
-    host_pointer = host_alloc(data_elements * datatype_size(data_type) * new_size, false);
+    host_pointer = host_alloc(data_elements * datatype_size(data_type) * new_size);
     assert(device_pointer == 0);
   }
 

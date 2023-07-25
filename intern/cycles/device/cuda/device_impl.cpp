@@ -522,20 +522,12 @@ void CUDADevice::free_device(void *device_pointer)
   cuda_assert(cuMemFree((CUdeviceptr)device_pointer));
 }
 
-bool CUDADevice::alloc_host(void *&shared_pointer, size_t size, bool pinned)
+bool CUDADevice::alloc_host(void *&shared_pointer, size_t size)
 {
   CUDAContextScope scope(this);
 
-  CUresult mem_alloc_result;
-  if (!pinned) {
-    mem_alloc_result = cuMemHostAlloc(
-        &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_WRITECOMBINED);
-  }
-  else {
-    mem_alloc_result = cuMemHostAlloc(
-        &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_PORTABLE);
-  }
-
+  CUresult mem_alloc_result = cuMemHostAlloc(
+      &shared_pointer, size, CU_MEMHOSTALLOC_DEVICEMAP | CU_MEMHOSTALLOC_WRITECOMBINED);
   return mem_alloc_result == CUDA_SUCCESS;
 }
 

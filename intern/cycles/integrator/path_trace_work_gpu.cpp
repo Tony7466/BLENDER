@@ -179,7 +179,7 @@ void PathTraceWorkGPU::alloc_integrator_soa()
 void PathTraceWorkGPU::alloc_integrator_queue()
 {
   if (integrator_queue_counter_.size() == 0) {
-    integrator_queue_counter_.alloc(1, 0, 0, true);
+    integrator_queue_counter_.alloc(1, 0, 0);
     integrator_queue_counter_.zero_to_device();
     integrator_queue_counter_.copy_from_device();
     integrator_state_gpu_.queue_counter = (IntegratorQueueCounter *)
@@ -188,7 +188,7 @@ void PathTraceWorkGPU::alloc_integrator_queue()
 
   /* Allocate data for active path index arrays. */
   if (num_queued_paths_.size() == 0) {
-    num_queued_paths_.alloc(1, 0, 0, true);
+    num_queued_paths_.alloc(1, 0, 0);
     num_queued_paths_.zero_to_device();
   }
 
@@ -262,7 +262,7 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
 void PathTraceWorkGPU::alloc_integrator_path_split()
 {
   if (integrator_next_shadow_path_index_.size() == 0) {
-    integrator_next_shadow_path_index_.alloc(1, 0, 0, true);
+    integrator_next_shadow_path_index_.alloc(1, 0, 0);
     integrator_next_shadow_path_index_.zero_to_device();
 
     integrator_state_gpu_.next_shadow_path_index =
@@ -270,7 +270,7 @@ void PathTraceWorkGPU::alloc_integrator_path_split()
   }
 
   if (integrator_next_main_path_index_.size() == 0) {
-    integrator_next_main_path_index_.alloc(1, 0, 0, true);
+    integrator_next_main_path_index_.alloc(1, 0, 0);
     integrator_next_shadow_path_index_.data()[0] = 0;
     integrator_next_main_path_index_.zero_to_device();
 
@@ -897,7 +897,7 @@ bool PathTraceWorkGPU::should_use_graphics_interop()
    *   attempting to register OpenGL PBO which has been mapped. Which makes sense, because
    *   otherwise one would run into a conflict of where the source of truth is. */
   if (has_multiple_works()) {
-     return false;
+    return false;
   }
 
   if (!interop_use_checked_) {

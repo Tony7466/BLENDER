@@ -64,7 +64,7 @@ class HIPDevice : public GPUDevice {
   virtual void get_device_memory_info(size_t &total, size_t &free) override;
   virtual bool alloc_device(void *&device_pointer, size_t size) override;
   virtual void free_device(void *device_pointer) override;
-  virtual bool alloc_host(void *&shared_pointer, size_t size, bool pinned) override;
+  virtual bool alloc_host(void *&shared_pointer, size_t size) override;
   virtual void free_host(void *shared_pointer) override;
   virtual void transform_host_pointer(void *&device_pointer, void *&shared_pointer) override;
   virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size) override;

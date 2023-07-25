@@ -483,19 +483,12 @@ void HIPDevice::free_device(void *device_pointer)
   hip_assert(hipFree((hipDeviceptr_t)device_pointer));
 }
 
-bool HIPDevice::alloc_host(void *&shared_pointer, size_t size, bool pinned)
+bool HIPDevice::alloc_host(void *&shared_pointer, size_t size)
 {
   HIPContextScope scope(this);
 
-  hipError_t mem_alloc_result;
-  if (!pinned) {
-    mem_alloc_result = hipHostMalloc(
-        &shared_pointer, size, hipHostMallocMapped | hipHostMallocWriteCombined);
-  }
-  else {
-    mem_alloc_result = hipHostMalloc(
-        &shared_pointer, size, hipHostMallocMapped | hipHostMallocPortable);
-  }
+  hipError_t mem_alloc_result = hipHostMalloc(
+      &shared_pointer, size, hipHostMallocMapped | hipHostMallocWriteCombined);
 
   return mem_alloc_result == hipSuccess;
 }
