@@ -24,7 +24,7 @@ set(SRC
   operators/bmo_connect_pair.cc
   operators/bmo_create.cc
   operators/bmo_dissolve.cc
-  operators/bmo_dupe.c
+  operators/bmo_dupe.cc
   operators/bmo_edgenet.c
   operators/bmo_extrude.c
   operators/bmo_fill_attribute.c

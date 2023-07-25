@@ -38,7 +38,7 @@ static BMVert *bmo_vert_copy(BMOperator *op,
   BMVert *v_dst;
 
   /* Create a new vertex */
-  v_dst = BM_vert_create(bm_dst, v_src->co, NULL, BM_CREATE_SKIP_CD);
+  v_dst = BM_vert_create(bm_dst, v_src->co, nullptr, BM_CREATE_SKIP_CD);
   BMO_slot_map_elem_insert(op, slot_vertmap_out, v_src, v_dst);
   BMO_slot_map_elem_insert(op, slot_vertmap_out, v_dst, v_src);
 
@@ -89,11 +89,11 @@ static BMEdge *bmo_edge_copy(BMOperator *op,
   }
 
   /* Lookup v1 and v2 */
-  e_dst_v1 = BLI_ghash_lookup(vhash, e_src->v1);
-  e_dst_v2 = BLI_ghash_lookup(vhash, e_src->v2);
+  e_dst_v1 = static_cast<BMVert *>(BLI_ghash_lookup(vhash, e_src->v1));
+  e_dst_v2 = static_cast<BMVert *>(BLI_ghash_lookup(vhash, e_src->v2));
 
   /* Create a new edge */
-  e_dst = BM_edge_create(bm_dst, e_dst_v1, e_dst_v2, NULL, BM_CREATE_SKIP_CD);
+  e_dst = BM_edge_create(bm_dst, e_dst_v1, e_dst_v2, nullptr, BM_CREATE_SKIP_CD);
   BMO_slot_map_elem_insert(op, slot_edgemap_out, e_src, e_dst);
   BMO_slot_map_elem_insert(op, slot_edgemap_out, e_dst, e_src);
 
@@ -149,13 +149,13 @@ static BMFace *bmo_face_copy(BMOperator *op,
   l_iter_src = l_first_src;
   i = 0;
   do {
-    vtar[i] = BLI_ghash_lookup(vhash, l_iter_src->v);
-    edar[i] = BLI_ghash_lookup(ehash, l_iter_src->e);
+    vtar[i] = static_cast<BMVert *>(BLI_ghash_lookup(vhash, l_iter_src->v));
+    edar[i] = static_cast<BMEdge *>(BLI_ghash_lookup(ehash, l_iter_src->e));
     i++;
   } while ((l_iter_src = l_iter_src->next) != l_first_src);
 
   /* create new face */
-  f_dst = BM_face_create(bm_dst, vtar, edar, f_src->len, NULL, BM_CREATE_SKIP_CD);
+  f_dst = BM_face_create(bm_dst, vtar, edar, f_src->len, nullptr, BM_CREATE_SKIP_CD);
   BMO_slot_map_elem_insert(op, slot_facemap_out, f_src, f_dst);
   BMO_slot_map_elem_insert(op, slot_facemap_out, f_dst, f_src);
 
@@ -185,9 +185,9 @@ static void bmo_mesh_copy(BMOperator *op, BMesh *bm_dst, BMesh *bm_src)
   const bool use_select_history = BMO_slot_bool_get(op->slots_in, "use_select_history");
   const bool use_edge_flip_from_face = BMO_slot_bool_get(op->slots_in, "use_edge_flip_from_face");
 
-  BMVert *v = NULL, *v2;
-  BMEdge *e = NULL;
-  BMFace *f = NULL;
+  BMVert *v = nullptr, *v2;
+  BMEdge *e = nullptr;
+  BMFace *f = nullptr;
 
   BMIter viter, eiter, fiter;
   GHash *vhash, *ehash;
@@ -296,8 +296,8 @@ static void bmo_mesh_copy(BMOperator *op, BMesh *bm_dst, BMesh *bm_src)
   }
 
   /* free pointer hashes */
-  BLI_ghash_free(vhash, NULL, NULL);
-  BLI_ghash_free(ehash, NULL, NULL);
+  BLI_ghash_free(vhash, nullptr, nullptr);
+  BLI_ghash_free(ehash, nullptr, nullptr);
 
   if (use_select_history) {
     BLI_assert(bm_src == bm_dst);
@@ -329,7 +329,7 @@ static void bmo_mesh_copy(BMOperator *op, BMesh *bm_dst, BMesh *bm_src)
 void bmo_duplicate_exec(BMesh *bm, BMOperator *op)
 {
   BMOperator *dupeop = op;
-  BMesh *bm_dst = BMO_slot_ptr_get(op->slots_in, "dest");
+  BMesh *bm_dst = static_cast<BMesh *>(BMO_slot_ptr_get(op->slots_in, "dest"));
 
   if (!bm_dst) {
     bm_dst = bm;
@@ -495,9 +495,9 @@ void bmo_spin_exec(BMesh *bm, BMOperator *op)
 
   axis_angle_normalized_to_mat3(rmat, axis, phi);
 
-  BMVert **vtable = NULL;
+  BMVert **vtable = nullptr;
   if (use_merge) {
-    vtable = MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__);
+    vtable = static_cast<BMVert **>(MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__));
     int i = 0;
     BMIter iter;
     BMVert *v;
@@ -577,7 +577,7 @@ void bmo_spin_exec(BMesh *bm, BMOperator *op)
           if (elem_array[i]->head.htype == BM_EDGE) {
             BMEdge *e_src = (BMEdge *)elem_array[i];
             BMEdge *e_dst = BM_edge_find_double(e_src);
-            if (e_dst != NULL) {
+            if (e_dst != nullptr) {
               BM_edge_splice(bm, e_dst, e_src);
               elem_array_len--;
               elem_array[i] = elem_array[elem_array_len];
@@ -591,7 +591,7 @@ void bmo_spin_exec(BMesh *bm, BMOperator *op)
           if (elem_array[i]->head.htype == BM_FACE) {
             BMFace *f_src = (BMFace *)elem_array[i];
             BMFace *f_dst = BM_face_find_double(f_src);
-            if (f_dst != NULL) {
+            if (f_dst != nullptr) {
               BM_face_kill(bm, f_src);
               elem_array_len--;
               elem_array[i] = elem_array[elem_array_len];
