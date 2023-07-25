@@ -34,7 +34,7 @@ static bool bm_loop_is_all_radial_tag(BMLoop *l)
 /**
  * Callback to run on source-loops for #BM_face_copy_shared
  */
-static bool bm_loop_is_face_untag(const BMLoop *l, void *UNUSED(user_data))
+static bool bm_loop_is_face_untag(const BMLoop *l, void * /*user_data*/)
 {
   return (BM_elem_flag_test(l->f, BM_ELEM_TAG) == 0);
 }
@@ -59,7 +59,7 @@ static void bm_face_copy_shared_all(BMesh *bm,
     BM_elem_attrs_copy(bm, bm, f_other, f);
 
     /* copy loop-attrs */
-    BM_face_copy_shared(bm, f, bm_loop_is_face_untag, NULL);
+    BM_face_copy_shared(bm, f, bm_loop_is_face_untag, nullptr);
   }
 
   if (use_normals) {

@@ -27,7 +27,7 @@ set(SRC
   operators/bmo_dupe.cc
   operators/bmo_edgenet.cc
   operators/bmo_extrude.cc
-  operators/bmo_fill_attribute.c
+  operators/bmo_fill_attribute.cc
   operators/bmo_fill_edgeloop.c
   operators/bmo_fill_grid.c
   operators/bmo_fill_holes.c
