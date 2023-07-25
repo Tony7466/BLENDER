@@ -45,16 +45,31 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_float(
   const int pixel_stride = destination.pixel_stride ? destination.pixel_stride :
                                                       destination.num_components;
 
-  // parallel_for(0, buffer_params.window_height, [&](int64_t y) {
+  /* Calculate how many full plus partial slices there are */
+  int slice_height;
+  int slice_stride;
+  int slices;
+  if(buffer_params.slice_height > 0) {
+    /* Copy over each slice */
+    slices = buffer_params.window_height/buffer_params.slice_height;
+    slices += (slices*buffer_params.slice_height < buffer_params.window_height) ? 1 : 0;
+    slice_height = buffer_params.slice_height;
+    slice_stride = buffer_params.slice_stride;
+  }
+  else {
+    /* Assign each row to a slice */
+    slices = buffer_params.window_height;
+    slice_height = 1;
+    slice_stride = 1;
+  }
 
-  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height :
-                                                        buffer_params.window_height;
-  int tileOffset = destination.offset / buffer_params.width;
-  for (int y = 0; y < buffer_params.window_height; y += slice_height) {
+  /* Copy over each slice to the destination */
+  parallel_for(0, slices, [&](int slice) {
+  //for(int slice = 0;slice < slices;++slice) {
+    int y = slice*slice_height;
     const float *buffer = window_data + y * buffer_row_stride;
-    int slice = y / slice_height;
     int height = std::min(slice_height, buffer_params.window_height - y);
-    int pixel_y = /*buffer_params.full_y +*/ slice * buffer_params.slice_stride;
+    int pixel_y = slice * slice_stride;
     float *pixels = destination.pixels +
                     (pixel_y * buffer_params.width + destination.offset) * pixel_stride;
     for (int row = 0; row < height;
@@ -62,7 +77,7 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_float(
     {
       func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride, pixel_stride);
     }
-  }  //);
+  });
 }
 
 inline void PassAccessorCPU::run_get_pass_kernel_processor_half_rgba(
@@ -82,21 +97,36 @@ inline void PassAccessorCPU::run_get_pass_kernel_processor_half_rgba(
   const int destination_stride = destination.stride != 0 ? destination.stride :
                                                            buffer_params.width;
 
-  // parallel_for(0, buffer_params.window_height, [&](int64_t y) {
-  int slice_height = (buffer_params.slice_height > 0) ? buffer_params.slice_height :
-                                                        buffer_params.window_height;
-  for (int y = 0; y < buffer_params.window_height; y += slice_height) {
+  /* Calculate how many full plus partial slices there are */
+  int slice_height;
+  int slice_stride;
+  int slices;
+  if(buffer_params.slice_height > 0) {
+    /* Copy over each slice */
+    slices = buffer_params.window_height/buffer_params.slice_height;
+    slices += (slices*buffer_params.slice_height < buffer_params.window_height) ? 1 : 0;
+    slice_height = buffer_params.slice_height;
+    slice_stride = buffer_params.slice_stride;
+  }
+  else {
+    /* Assign each row to a slice */
+    slices = buffer_params.window_height;
+    slice_height = 1;
+    slice_stride = 1;
+  }
+  
+  parallel_for(0, slices, [&](int slice) {
+  //for (int slice = 0; slice < slices; ++slice) {
+    int y = slice*slice_height;
     const float *buffer = window_data + y * buffer_row_stride;
-    int slice = y / slice_height;
     int height = std::min(slice_height, buffer_params.window_height - y);
-    int pixel_y = /*buffer_params.full_y +*/ slice * buffer_params.slice_stride;
+    int pixel_y = slice * buffer_params.slice_stride;
     half4 *pixels = dst_start + pixel_y * destination_stride;
     for (int row = 0; row < height;
          row++, buffer += buffer_row_stride, pixels += destination_stride) {
       func(kfilm_convert, buffer, pixels, buffer_params.window_width, pass_stride);
     }
-  }
-  //);
+  });
 }
 
 /* --------------------------------------------------------------------
