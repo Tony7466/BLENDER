@@ -55,7 +55,7 @@ void bmo_poke_exec(BMesh *bm, BMOperator *op)
 
   BMO_ITER (f, &oiter, op->slots_in, "faces", BM_FACE) {
     float f_center[3];
-    BMVert *v_center = NULL;
+    BMVert *v_center = nullptr;
     BMLoop *l_iter, *l_first;
     /* only interpolate the central loop from the face once,
      * then copy to all others in the fan */
@@ -67,7 +67,7 @@ void bmo_poke_exec(BMesh *bm, BMOperator *op)
     int i;
 
     bm_face_calc_center_fn(f, f_center);
-    v_center = BM_vert_create(bm, f_center, NULL, BM_CREATE_NOP);
+    v_center = BM_vert_create(bm, f_center, nullptr, BM_CREATE_NOP);
     BMO_vert_flag_enable(bm, v_center, ELE_NEW);
 
     /* handled by BM_loop_interp_from_face */
@@ -85,7 +85,7 @@ void bmo_poke_exec(BMesh *bm, BMOperator *op)
     do {
       BMLoop *l_new;
       BMFace *f_new = BM_face_create_quad_tri(
-          bm, l_iter->v, l_iter->next->v, v_center, NULL, f, BM_CREATE_NOP);
+          bm, l_iter->v, l_iter->next->v, v_center, nullptr, f, BM_CREATE_NOP);
       l_new = BM_FACE_FIRST_LOOP(f_new);
 
       if (i == 0) {
