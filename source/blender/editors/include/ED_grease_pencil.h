@@ -59,6 +59,14 @@ namespace blender::ed::greasepencil {
 
 void set_active_layer(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer);
 
+/**
+ * Sets the selection flag, according to \a selection_mode to the frame at \a frame_number in the
+ * \a layer if such frame exists. Returns false if no such frame exists.
+ */
+bool select_frame_at(bke::greasepencil::Layer *layer,
+                     const int frame_number,
+                     const short select_mode);
+
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);

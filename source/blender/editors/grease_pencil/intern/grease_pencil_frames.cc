@@ -14,6 +14,7 @@
 #include "DNA_scene_types.h"
 
 #include "ED_grease_pencil.h"
+#include "ED_keyframes_edit.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -21,6 +22,29 @@
 #include "WM_api.h"
 
 namespace blender::ed::greasepencil {
+
+bool select_frame_at(bke::greasepencil::Layer *layer,
+                     const int frame_number,
+                     const short select_mode)
+{
+
+  GreasePencilFrame *frame = layer->frames_for_write().lookup_ptr(frame_number);
+  if (frame == nullptr) {
+    return false;
+  }
+  switch (select_mode) {
+    case SELECT_ADD:
+      frame->flag |= GP_FRAME_SELECTED;
+      break;
+    case SELECT_SUBTRACT:
+      frame->flag &= ~GP_FRAME_SELECTED;
+      break;
+    case SELECT_INVERT:
+      frame->flag ^= GP_FRAME_SELECTED;
+      break;
+  }
+  return true;
+}
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)
 {

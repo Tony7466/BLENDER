@@ -1640,10 +1640,7 @@ static void actkeys_mselect_single(bAnimContext *ac,
   {
     using namespace blender::bke::greasepencil;
     Layer *layer = static_cast<Layer *>(ale->data);
-    if (layer->frames().contains(selx)) {
-      GreasePencilFrame *frame = layer->frames_for_write().lookup_ptr(selx);
-      frame->flag |= GP_FRAME_SELECTED;
-    }
+    blender::ed::greasepencil::select_frame_at(layer, selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
   }
   else if (ale->type == ANIMTYPE_MASKLAYER) {
