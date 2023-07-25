@@ -43,7 +43,7 @@ set(SRC
   operators/bmo_primitive.cc
   operators/bmo_removedoubles.cc
   operators/bmo_rotate_edges.cc
-  operators/bmo_smooth_laplacian.c
+  operators/bmo_smooth_laplacian.cc
   operators/bmo_split_edges.c
   operators/bmo_subdivide.c
   operators/bmo_subdivide_edgering.c
