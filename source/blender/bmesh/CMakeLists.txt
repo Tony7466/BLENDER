@@ -51,7 +51,7 @@ set(SRC
   operators/bmo_triangulate.cc
   operators/bmo_unsubdivide.cc
   operators/bmo_utils.cc
-  operators/bmo_wireframe.c
+  operators/bmo_wireframe.cc
 
   intern/bmesh_callback_generic.c
   intern/bmesh_callback_generic.h
