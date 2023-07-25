@@ -334,8 +334,6 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 void PathTrace::update_allocated_work_buffer_params()
 {
   const int overscan = tile_manager_.get_tile_overscan();
-
-  /* Assign each slice */
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
@@ -378,6 +376,7 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
                                                                   resolution_divider);
 
   const int overscan = tile_manager_.get_tile_overscan();
+
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                scaled_big_tile_params,
@@ -394,14 +393,12 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
 void PathTrace::update_work_buffer_params_if_needed(const RenderWork &render_work)
 {
   if (render_state_.need_reset_params) {
-    VLOG_INFO << "UPDATING ALLOCATED WORK BUFFER PARAMS";
     update_allocated_work_buffer_params();
   }
 
   if (render_state_.need_reset_params ||
       render_state_.resolution_divider != render_work.resolution_divider)
   {
-    VLOG_INFO << "UPDATING WORK BUFFER PARAMS";
     update_effective_work_buffer_params(render_work);
   }
 
@@ -417,7 +414,6 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
 
   /* Handle initialization scheduled by the render scheduler. */
   if (render_work.init_render_buffers) {
-    /* Buffer is already initialized to zero on creation to allocate the device memory */
     parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
       path_trace_work->zero_render_buffers();
     });

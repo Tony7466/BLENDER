@@ -73,7 +73,6 @@ bool PathTraceWork::has_multiple_works() const
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
-  VLOG_INFO << "Copy to render buffers";
   SCOPED_MARKER(device_, "copy_to_render_buffers");
   copy_render_buffers_from_device();
   const int y_stride = effective_buffer_params_.slice_stride;
