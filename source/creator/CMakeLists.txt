@@ -3,24 +3,23 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  ../../intern/clog
-  ../../intern/guardedalloc
-  ../blender/blenkernel
-  ../blender/blenlib
-  ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
   ../blender/io/usd
-  ../blender/bmesh
-  ../blender/makesdna
   ../blender/makesrna
   ../blender/render
-  ../blender/windowmanager
 )
 
 set(LIB
-  bf_windowmanager
+  PRIVATE bf::blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::bmesh
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::clog
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::windowmanager
 )
 
 if(HAVE_FEENABLEEXCEPT)
@@ -55,6 +54,10 @@ if(WITH_CYCLES)
     list(APPEND INC ../../intern/cycles/blender)
     add_definitions(-DWITH_CYCLES_LOGGING)
   endif()
+endif()
+
+if(WITH_OPENGL_BACKEND)
+  add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_VULKAN_BACKEND)
@@ -547,16 +550,24 @@ if(WIN32)
   endif()
 endif()
 
-# Helpful tip when using make.
+# Show helpful tip.
+set(_install_cmd "")
 if("${CMAKE_GENERATOR}" MATCHES ".*Makefiles.*")
+  set(_install_cmd "make install")
+elseif("${CMAKE_GENERATOR}" MATCHES "Ninja")
+  set(_install_cmd "ninja install")
+endif()
+if(NOT ("${_install_cmd}" STREQUAL ""))
   # Message to display after building.
+  get_filename_component(_install_dst ${TARGETDIR_VER} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
   add_custom_command(
     TARGET blender POST_BUILD MAIN_DEPENDENCY blender
-    COMMAND
-      ${CMAKE_COMMAND} -E
-      echo 'now run: \"make install\" to copy runtime files and scripts to ${TARGETDIR_VER}'
+    COMMAND ${CMAKE_COMMAND} -E echo
+    "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
   )
+  unset(_install_dst)
 endif()
+unset(_install_cmd)
 
 # macro to help install files without dragging in unnecessary data.
 macro(install_dir from to)
@@ -645,6 +656,7 @@ if(UNIX AND NOT APPLE)
 
       install(
         PROGRAMS
+        ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
         ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
         DESTINATION "."
       )
@@ -1566,7 +1578,7 @@ endif()
 # Setup link libraries
 
 add_dependencies(blender makesdna)
-target_link_libraries(blender ${LIB})
+target_link_libraries(blender PRIVATE ${LIB})
 unset(LIB)
 
 setup_platform_linker_flags(blender)

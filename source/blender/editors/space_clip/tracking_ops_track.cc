@@ -38,7 +38,7 @@
 
 /********************** Track operator *********************/
 
-typedef struct TrackMarkersJob {
+struct TrackMarkersJob {
   AutoTrackContext *context; /* Tracking context */
   int sfra, efra, lastfra;   /* Start, end and recently tracked frames */
   int backwards;             /* Backwards tracking flag */
@@ -50,9 +50,9 @@ typedef struct TrackMarkersJob {
   Main *main;
   Scene *scene;
   bScreen *screen;
-} TrackMarkersJob;
+};
 
-static bool track_markers_testbreak(void)
+static bool track_markers_testbreak()
 {
   return G.is_break;
 }
@@ -431,10 +431,10 @@ void CLIP_OT_track_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
   RNA_def_boolean(ot->srna,
                   "sequence",
-                  0,
+                  false,
                   "Track Sequence",
                   "Track marker during image sequence rather than "
                   "single image");
@@ -481,5 +481,5 @@ void CLIP_OT_refine_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
 }

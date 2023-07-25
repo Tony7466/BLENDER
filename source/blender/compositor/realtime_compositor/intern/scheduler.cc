@@ -28,14 +28,14 @@ using namespace nodes::derived_node_tree_types;
 static bool add_viewer_nodes_in_context(const DTreeContext *context, Stack<DNode> &node_stack)
 {
   for (const bNode *node : context->btree().nodes_by_type("CompositorNodeViewer")) {
-    if (node->flag & NODE_DO_OUTPUT) {
+    if (node->flag & NODE_DO_OUTPUT && !(node->flag & NODE_MUTED)) {
       node_stack.push(DNode(context, node));
       return true;
     }
   }
 
   for (const bNode *node : context->btree().nodes_by_type("CompositorNodeSplitViewer")) {
-    if (node->flag & NODE_DO_OUTPUT) {
+    if (node->flag & NODE_DO_OUTPUT && !(node->flag & NODE_MUTED)) {
       node_stack.push(DNode(context, node));
       return true;
     }
@@ -49,7 +49,7 @@ static bool add_viewer_nodes_in_context(const DTreeContext *context, Stack<DNode
   /* No active viewers exist in this context, try to add the Composite node as a fallback viewer if
    * it was not already added. */
   for (const bNode *node : context->btree().nodes_by_type("CompositorNodeComposite")) {
-    if (node->flag & NODE_DO_OUTPUT) {
+    if (node->flag & NODE_DO_OUTPUT && !(node->flag & NODE_MUTED)) {
       node_stack.push(DNode(context, node));
       return true;
     }
@@ -73,7 +73,9 @@ static void add_output_nodes(const Context &context,
   /* Only add File Output nodes if the context supports them. */
   if (context.use_file_output()) {
     for (const bNode *node : root_context.btree().nodes_by_type("CompositorNodeOutputFile")) {
-      node_stack.push(DNode(&root_context, node));
+      if (!(node->flag & NODE_MUTED)) {
+        node_stack.push(DNode(&root_context, node));
+      }
     }
   }
 
@@ -81,7 +83,7 @@ static void add_output_nodes(const Context &context,
    * Composite node may still be added as a fallback viewer output below. */
   if (context.use_composite_output()) {
     for (const bNode *node : root_context.btree().nodes_by_type("CompositorNodeComposite")) {
-      if (node->flag & NODE_DO_OUTPUT) {
+      if (node->flag & NODE_DO_OUTPUT && !(node->flag & NODE_MUTED)) {
         node_stack.push(DNode(&root_context, node));
         break;
       }
@@ -343,8 +345,7 @@ Schedule compute_schedule(const Context &context, const DerivedNodeTree &tree)
       int insertion_position = 0;
       for (int i = 0; i < sorted_dependency_nodes.size(); i++) {
         if (needed_buffers.lookup(doutput.node()) >
-            needed_buffers.lookup(sorted_dependency_nodes[i]))
-        {
+            needed_buffers.lookup(sorted_dependency_nodes[i])) {
           insertion_position++;
         }
         else {

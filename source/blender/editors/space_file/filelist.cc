@@ -256,7 +256,9 @@ struct FileList {
    * \param do_change: When true, the callback may change given string in place to a valid value.
    * \return True when `dirpath` is valid.
    */
-  bool (*check_dir_fn)(FileList *filelist, char dirpath[FILE_MAX_LIBEXTRA], const bool do_change);
+  bool (*check_dir_fn)(const FileList *filelist,
+                       char dirpath[FILE_MAX_LIBEXTRA],
+                       const bool do_change);
 
   /** Fill `filelist` (to be called by read job). */
   void (*read_job_fn)(FileListReadJob *job_params, bool *stop, bool *do_update, float *progress);
@@ -1093,7 +1095,7 @@ void filelist_setlibrary(FileList *filelist, const AssetLibraryReference *asset_
 
 /* ********** Icon/image helpers ********** */
 
-void filelist_init_icons(void)
+void filelist_init_icons()
 {
   short x, y, k;
   ImBuf *bbuf;
@@ -1132,7 +1134,7 @@ void filelist_init_icons(void)
   }
 }
 
-void filelist_free_icons(void)
+void filelist_free_icons()
 {
   BLI_assert(G.background == false);
 
@@ -1147,7 +1149,7 @@ void filelist_file_get_full_path(const FileList *filelist,
                                  char r_filepath[/*FILE_MAX_LIBEXTRA*/])
 {
   if (file->asset) {
-    const std::string asset_path = AS_asset_representation_full_path_get(file->asset);
+    const std::string asset_path = file->asset->get_identifier().full_path();
     BLI_strncpy(r_filepath, asset_path.c_str(), FILE_MAX_LIBEXTRA);
     return;
   }
@@ -1363,7 +1365,7 @@ static void parent_dir_until_exists_or_default_root(char *dir)
   }
 }
 
-static bool filelist_checkdir_dir(FileList * /*filelist*/,
+static bool filelist_checkdir_dir(const FileList * /*filelist*/,
                                   char dirpath[FILE_MAX_LIBEXTRA],
                                   const bool do_change)
 {
@@ -1374,7 +1376,7 @@ static bool filelist_checkdir_dir(FileList * /*filelist*/,
   return BLI_is_dir(dirpath);
 }
 
-static bool filelist_checkdir_lib(FileList * /*filelist*/,
+static bool filelist_checkdir_lib(const FileList * /*filelist*/,
                                   char dirpath[FILE_MAX_LIBEXTRA],
                                   const bool do_change)
 {
@@ -1393,7 +1395,7 @@ static bool filelist_checkdir_lib(FileList * /*filelist*/,
   return is_valid;
 }
 
-static bool filelist_checkdir_main(FileList *filelist,
+static bool filelist_checkdir_main(const FileList *filelist,
                                    char dirpath[FILE_MAX_LIBEXTRA],
                                    const bool do_change)
 {
@@ -1401,7 +1403,7 @@ static bool filelist_checkdir_main(FileList *filelist,
   return filelist_checkdir_lib(filelist, dirpath, do_change);
 }
 
-static bool filelist_checkdir_return_always_valid(FileList * /*filelist*/,
+static bool filelist_checkdir_return_always_valid(const FileList * /*filelist*/,
                                                   char /*dirpath*/[FILE_MAX_LIBEXTRA],
                                                   const bool /*do_change*/)
 {
@@ -1516,7 +1518,7 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   //  printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
   BLI_assert(preview->flags &
              (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
-              FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
+              FILE_TYPE_OBJECT_IO | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
 
   if (preview->flags & FILE_TYPE_IMAGE) {
     source = THB_SOURCE_IMAGE;
@@ -1530,6 +1532,9 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   }
   else if (preview->flags & FILE_TYPE_FTFONT) {
     source = THB_SOURCE_FONT;
+  }
+  else if (preview->flags & FILE_TYPE_OBJECT_IO) {
+    source = THB_SOURCE_OBJECT_IO;
   }
 
   IMB_thumb_path_lock(preview->filepath);
@@ -1632,8 +1637,9 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     return;
   }
 
-  if (!(entry->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
-                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
+  if (!(entry->typeflag &
+        (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_OBJECT_IO |
+         FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
   {
     return;
   }
@@ -2023,7 +2029,7 @@ const char *filelist_dir(const FileList *filelist)
   return filelist->filelist.root;
 }
 
-bool filelist_is_dir(FileList *filelist, const char *path)
+bool filelist_is_dir(const FileList *filelist, const char *path)
 {
   return filelist->check_dir_fn(filelist, (char *)path, false);
 }
@@ -2053,7 +2059,7 @@ void filelist_setrecursion(FileList *filelist, const int recursion_level)
   }
 }
 
-bool filelist_needs_force_reset(FileList *filelist)
+bool filelist_needs_force_reset(const FileList *filelist)
 {
   return (filelist->flags & (FL_FORCE_RESET | FL_FORCE_RESET_MAIN_FILES)) != 0;
 }
@@ -2071,12 +2077,12 @@ void filelist_tag_force_reset_mainfiles(FileList *filelist)
   filelist->flags |= FL_FORCE_RESET_MAIN_FILES;
 }
 
-bool filelist_is_ready(FileList *filelist)
+bool filelist_is_ready(const FileList *filelist)
 {
   return (filelist->flags & FL_IS_READY) != 0;
 }
 
-bool filelist_pending(FileList *filelist)
+bool filelist_pending(const FileList *filelist)
 {
   return (filelist->flags & FL_IS_PENDING) != 0;
 }
@@ -2339,9 +2345,9 @@ static void filelist_file_cache_block_release(FileList *filelist, const int size
   for (i = 0; i < size; i++, cursor++) {
     FileDirEntry *entry = cache->block_entries[cursor];
 #if 0
-      printf("%s: release cacheidx %d (%%p %%s)\n",
-             __func__,
-             cursor /*, cache->block_entries[cursor], cache->block_entries[cursor]->relpath*/);
+    printf("%s: release cacheidx %d (%%p %%s)\n",
+           __func__,
+           cursor /*, cache->block_entries[cursor], cache->block_entries[cursor]->relpath*/);
 #endif
     BLI_ghash_remove(cache->uids, POINTER_FROM_UINT(entry->uid), nullptr, nullptr);
     filelist_file_release_entry(filelist, entry);
@@ -2818,7 +2824,7 @@ int ED_file_extension_icon(const char *path)
   }
 }
 
-int filelist_needs_reading(FileList *filelist)
+int filelist_needs_reading(const FileList *filelist)
 {
   return (filelist->filelist.entries_num == FILEDIR_NBR_ENTRIES_UNSET) ||
          filelist_needs_force_reset(filelist);
