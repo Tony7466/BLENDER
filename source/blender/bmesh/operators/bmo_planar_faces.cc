@@ -41,7 +41,8 @@ void bmo_planar_faces_exec(BMesh *bm, BMOperator *op)
   float(*faces_center)[3];
   int i, iter_step, shared_vert_num;
 
-  faces_center = MEM_mallocN(sizeof(*faces_center) * faces_num, __func__);
+  faces_center = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(*faces_center) * faces_num, __func__));
 
   shared_vert_num = 0;
   BMO_ITER_INDEX (f, &oiter, op->slots_in, "faces", BM_FACE, i) {
@@ -82,7 +83,7 @@ void bmo_planar_faces_exec(BMesh *bm, BMOperator *op)
 
       BLI_assert(f->len != 3);
 
-      /* keep original face data (else we 'move' the face) */
+/* keep original face data (else we 'move' the face) */
 #if 0
       BM_face_normal_update(f);
       BM_face_calc_center_median_weighted(f, f_center);
@@ -99,7 +100,7 @@ void bmo_planar_faces_exec(BMesh *bm, BMOperator *op)
         if (!BLI_ghash_ensure_p(vaccum_map, l_iter->v, &va_p)) {
           *va_p = BLI_mempool_calloc(vert_accum_pool);
         }
-        va = *va_p;
+        va = static_cast<VertAccum *>(*va_p);
 
         closest_to_plane_normalized_v3(co, plane, l_iter->v->co);
         va->co_tot += 1;
@@ -109,8 +110,8 @@ void bmo_planar_faces_exec(BMesh *bm, BMOperator *op)
     }
 
     GHASH_ITER (gh_iter, vaccum_map) {
-      BMVert *v = BLI_ghashIterator_getKey(&gh_iter);
-      struct VertAccum *va = BLI_ghashIterator_getValue(&gh_iter);
+      BMVert *v = static_cast<BMVert *>(BLI_ghashIterator_getKey(&gh_iter));
+      struct VertAccum *va = static_cast<VertAccum *>(BLI_ghashIterator_getValue(&gh_iter));
       BMIter iter;
 
       if (len_squared_v3v3(v->co, va->co) > eps_sq) {
@@ -132,11 +133,11 @@ void bmo_planar_faces_exec(BMesh *bm, BMOperator *op)
       break;
     }
 
-    BLI_ghash_clear(vaccum_map, NULL, NULL);
+    BLI_ghash_clear(vaccum_map, nullptr, nullptr);
     BLI_mempool_clear(vert_accum_pool);
   }
 
   MEM_freeN(faces_center);
-  BLI_ghash_free(vaccum_map, NULL, NULL);
+  BLI_ghash_free(vaccum_map, nullptr, nullptr);
   BLI_mempool_destroy(vert_accum_pool);
 }

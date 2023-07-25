@@ -38,7 +38,7 @@ set(SRC
   operators/bmo_mirror.cc
   operators/bmo_normals.cc
   operators/bmo_offset_edgeloops.cc
-  operators/bmo_planar_faces.c
+  operators/bmo_planar_faces.cc
   operators/bmo_poke.c
   operators/bmo_primitive.c
   operators/bmo_removedoubles.c
