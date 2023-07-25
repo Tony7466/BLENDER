@@ -116,7 +116,7 @@ static bool bm_face_split_by_angle(BMesh *bm,
     BMFace *f_new;
     BMLoop *l_new;
 
-    f_new = BM_face_split(bm, f, l_pair[0], l_pair[1], &l_new, NULL, false);
+    f_new = BM_face_split(bm, f, l_pair[0], l_pair[1], &l_new, nullptr, false);
     if (f_new) {
       r_f_pair[0] = f;
       r_f_pair[1] = f_new;
