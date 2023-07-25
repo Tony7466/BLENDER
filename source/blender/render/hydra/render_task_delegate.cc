@@ -249,8 +249,8 @@ void GPURenderTaskDelegate::bind()
   float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   GPU_framebuffer_clear_color_depth(framebuffer_, clear_color, 1.0f);
 
-  /* Important: we have to create and bind at least one Vertex Array Object (VAO) before render
-     execution: More info at https://open.gl/drawing */
+  /* Workaround missing/buggy VAOs in hgiGL and hdSt. For OpenGL compatibility
+   * profile this is not a problem, but for core profile it is. */
   if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
     if (VAO_ == 0) {
       glGenVertexArrays(1, &VAO_);
