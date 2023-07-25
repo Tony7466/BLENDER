@@ -132,13 +132,12 @@ ccl_device void noise_texture_4d(float4 co,
   }
 }
 
-ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
-                                           ccl_private ShaderData *sd,
-                                           ccl_private float *stack,
-                                           uint dimensions,
-                                           uint offsets1,
-                                           uint offsets2,
-                                           int offset)
+ccl_device_noinline void svm_node_tex_noise(KernelGlobals kg,
+                                            ccl_private ShaderData *sd,
+                                            ccl_private SVMState *svm,
+                                            uint dimensions,
+                                            uint offsets1,
+                                            uint offsets2)
 {
   uint vector_stack_offset, w_stack_offset, scale_stack_offset;
   uint detail_stack_offset, roughness_stack_offset, distortion_stack_offset;
@@ -152,15 +151,15 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                          &value_stack_offset,
                          &color_stack_offset);
 
-  uint4 defaults1 = read_node(kg, &offset);
-  uint4 defaults2 = read_node(kg, &offset);
+  uint4 defaults1 = read_node(kg, svm);
+  uint4 defaults2 = read_node(kg, svm);
 
-  float3 vector = stack_load_float3(stack, vector_stack_offset);
-  float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
-  float scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
-  float detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
-  float roughness = stack_load_float_default(stack, roughness_stack_offset, defaults1.w);
-  float distortion = stack_load_float_default(stack, distortion_stack_offset, defaults2.x);
+  float3 vector = stack_load_float3(svm, vector_stack_offset);
+  float w = stack_load_float_default(svm, w_stack_offset, defaults1.x);
+  float scale = stack_load_float_default(svm, scale_stack_offset, defaults1.y);
+  float detail = stack_load_float_default(svm, detail_stack_offset, defaults1.z);
+  float roughness = stack_load_float_default(svm, roughness_stack_offset, defaults1.w);
+  float distortion = stack_load_float_default(svm, distortion_stack_offset, defaults2.x);
 
   vector *= scale;
   w *= scale;
@@ -199,12 +198,11 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   }
 
   if (stack_valid(value_stack_offset)) {
-    stack_store_float(stack, value_stack_offset, value);
+    stack_store_float(svm, value_stack_offset, value);
   }
   if (stack_valid(color_stack_offset)) {
-    stack_store_float3(stack, color_stack_offset, color);
+    stack_store_float3(svm, color_stack_offset, color);
   }
-  return offset;
 }
 
 CCL_NAMESPACE_END

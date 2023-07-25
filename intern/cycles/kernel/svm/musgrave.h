@@ -704,13 +704,12 @@ ccl_device_noinline_cpu float noise_musgrave_ridged_multi_fractal_4d(
   return value;
 }
 
-ccl_device_noinline int svm_node_tex_musgrave(KernelGlobals kg,
-                                              ccl_private ShaderData *sd,
-                                              ccl_private float *stack,
-                                              uint offsets1,
-                                              uint offsets2,
-                                              uint offsets3,
-                                              int offset)
+ccl_device_noinline void svm_node_tex_musgrave(KernelGlobals kg,
+                                               ccl_private ShaderData *sd,
+                                               ccl_private SVMState *svm,
+                                               uint offsets1,
+                                               uint offsets2,
+                                               uint offsets3)
 {
   uint type, dimensions, co_stack_offset, w_stack_offset;
   uint scale_stack_offset, detail_stack_offset, dimension_stack_offset, lacunarity_stack_offset;
@@ -724,17 +723,17 @@ ccl_device_noinline int svm_node_tex_musgrave(KernelGlobals kg,
                          &lacunarity_stack_offset);
   svm_unpack_node_uchar3(offsets3, &offset_stack_offset, &gain_stack_offset, &fac_stack_offset);
 
-  uint4 defaults1 = read_node(kg, &offset);
-  uint4 defaults2 = read_node(kg, &offset);
+  uint4 defaults1 = read_node(kg, svm);
+  uint4 defaults2 = read_node(kg, svm);
 
-  float3 co = stack_load_float3(stack, co_stack_offset);
-  float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
-  float scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
-  float detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
-  float dimension = stack_load_float_default(stack, dimension_stack_offset, defaults1.w);
-  float lacunarity = stack_load_float_default(stack, lacunarity_stack_offset, defaults2.x);
-  float foffset = stack_load_float_default(stack, offset_stack_offset, defaults2.y);
-  float gain = stack_load_float_default(stack, gain_stack_offset, defaults2.z);
+  float3 co = stack_load_float3(svm, co_stack_offset);
+  float w = stack_load_float_default(svm, w_stack_offset, defaults1.x);
+  float scale = stack_load_float_default(svm, scale_stack_offset, defaults1.y);
+  float detail = stack_load_float_default(svm, detail_stack_offset, defaults1.z);
+  float dimension = stack_load_float_default(svm, dimension_stack_offset, defaults1.w);
+  float lacunarity = stack_load_float_default(svm, lacunarity_stack_offset, defaults2.x);
+  float foffset = stack_load_float_default(svm, offset_stack_offset, defaults2.y);
+  float gain = stack_load_float_default(svm, gain_stack_offset, defaults2.z);
 
   dimension = fmaxf(dimension, 1e-5f);
   detail = clamp(detail, 0.0f, 15.0f);
@@ -847,8 +846,7 @@ ccl_device_noinline int svm_node_tex_musgrave(KernelGlobals kg,
       fac = 0.0f;
   }
 
-  stack_store_float(stack, fac_stack_offset, fac);
-  return offset;
+  stack_store_float(svm, fac_stack_offset, fac);
 }
 
 CCL_NAMESPACE_END
