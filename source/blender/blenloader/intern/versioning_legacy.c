@@ -61,14 +61,13 @@
 #include "BKE_mesh.h" /* for ME_ defines (patching) */
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_modifier.h"
+#include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
-
-#include "NOD_socket.h"
 
 #include "BLO_readfile.h"
 
@@ -87,14 +86,14 @@ static void vcol_to_fcol(Mesh *me)
   uint *mcol, *mcoln, *mcolmain;
   int a;
 
-  if (me->totface == 0 || me->mcol == NULL) {
+  if (me->totface_legacy == 0 || me->mcol == NULL) {
     return;
   }
 
-  mcoln = mcolmain = MEM_malloc_arrayN(me->totface, sizeof(int[4]), "mcoln");
+  mcoln = mcolmain = MEM_malloc_arrayN(me->totface_legacy, sizeof(int[4]), "mcoln");
   mcol = (uint *)me->mcol;
   mface = me->mface;
-  for (a = me->totface; a > 0; a--, mface++) {
+  for (a = me->totface_legacy; a > 0; a--, mface++) {
     mcoln[0] = mcol[mface->v1];
     mcoln[1] = mcol[mface->v2];
     mcoln[2] = mcol[mface->v3];
@@ -273,34 +272,37 @@ static void customdata_version_242(Mesh *me)
   TFace *tf;
   int a, mtfacen, mcoln;
 
-  if (!me->vdata.totlayer) {
-    CustomData_add_layer_with_data(&me->vdata, CD_MVERT, me->mvert, me->totvert, NULL);
+  if (!me->vert_data.totlayer) {
+    CustomData_add_layer_with_data(&me->vert_data, CD_MVERT, me->mvert, me->totvert, NULL);
 
     if (me->dvert) {
-      CustomData_add_layer_with_data(&me->vdata, CD_MDEFORMVERT, me->dvert, me->totvert, NULL);
+      CustomData_add_layer_with_data(&me->vert_data, CD_MDEFORMVERT, me->dvert, me->totvert, NULL);
     }
   }
 
-  if (!me->edata.totlayer) {
-    CustomData_add_layer_with_data(&me->edata, CD_MEDGE, me->medge, me->totedge, NULL);
+  if (!me->edge_data.totlayer) {
+    CustomData_add_layer_with_data(&me->edge_data, CD_MEDGE, me->medge, me->totedge, NULL);
   }
 
-  if (!me->fdata.totlayer) {
-    CustomData_add_layer_with_data(&me->fdata, CD_MFACE, me->mface, me->totface, NULL);
+  if (!me->fdata_legacy.totlayer) {
+    CustomData_add_layer_with_data(
+        &me->fdata_legacy, CD_MFACE, me->mface, me->totface_legacy, NULL);
 
     if (me->tface) {
       if (me->mcol) {
         MEM_freeN(me->mcol);
       }
 
-      me->mcol = CustomData_add_layer(&me->fdata, CD_MCOL, CD_SET_DEFAULT, me->totface);
-      me->mtface = CustomData_add_layer(&me->fdata, CD_MTFACE, CD_SET_DEFAULT, me->totface);
+      me->mcol = CustomData_add_layer(
+          &me->fdata_legacy, CD_MCOL, CD_SET_DEFAULT, me->totface_legacy);
+      me->mtface = CustomData_add_layer(
+          &me->fdata_legacy, CD_MTFACE, CD_SET_DEFAULT, me->totface_legacy);
 
       mtf = me->mtface;
       mcol = me->mcol;
       tf = me->tface;
 
-      for (a = 0; a < me->totface; a++, mtf++, tf++, mcol += 4) {
+      for (a = 0; a < me->totface_legacy; a++, mtf++, tf++, mcol += 4) {
         memcpy(mcol, tf->col, sizeof(tf->col));
         memcpy(mtf->uv, tf->uv, sizeof(tf->uv));
       }
@@ -309,7 +311,8 @@ static void customdata_version_242(Mesh *me)
       me->tface = NULL;
     }
     else if (me->mcol) {
-      CustomData_add_layer_with_data(&me->fdata, CD_MCOL, me->mcol, me->totface, NULL);
+      CustomData_add_layer_with_data(
+          &me->fdata_legacy, CD_MCOL, me->mcol, me->totface_legacy, NULL);
     }
   }
 
@@ -318,8 +321,8 @@ static void customdata_version_242(Mesh *me)
     me->tface = NULL;
   }
 
-  for (a = 0, mtfacen = 0, mcoln = 0; a < me->fdata.totlayer; a++) {
-    layer = &me->fdata.layers[a];
+  for (a = 0, mtfacen = 0, mcoln = 0; a < me->fdata_legacy.totlayer; a++) {
+    layer = &me->fdata_legacy.layers[a];
 
     if (layer->type == CD_MTFACE) {
       if (layer->name[0] == 0) {
@@ -352,8 +355,8 @@ static void customdata_version_243(Mesh *me)
   CustomDataLayer *layer;
   int a;
 
-  for (a = 0; a < me->fdata.totlayer; a++) {
-    layer = &me->fdata.layers[a];
+  for (a = 0; a < me->fdata_legacy.totlayer; a++) {
+    layer = &me->fdata_legacy.layers[a];
     layer->active_rnd = layer->active;
   }
 }
@@ -650,7 +653,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
     while (me) {
       if (me->tface) {
-        nr = me->totface;
+        nr = me->totface_legacy;
         tface = me->tface;
         while (nr--) {
           int j;
@@ -737,7 +740,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     while (me) {
       if (me->tface) {
         TFace *tface = me->tface;
-        for (a = 0; a < me->totface; a++, tface++) {
+        for (a = 0; a < me->totface_legacy; a++, tface++) {
           for (b = 0; b < 4; b++) {
             tface->uv[b][0] /= 32767.0f;
             tface->uv[b][1] /= 32767.0f;
@@ -818,7 +821,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       if (me->mcol) {
         int i;
 
-        for (i = 0; i < me->totface * 4; i++) {
+        for (i = 0; i < me->totface_legacy * 4; i++) {
           MCol *mcol = &me->mcol[i];
           mcol->a = 255;
         }
@@ -826,7 +829,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       if (me->tface) {
         int i, j;
 
-        for (i = 0; i < me->totface; i++) {
+        for (i = 0; i < me->totface_legacy; i++) {
           TFace *tf = &((TFace *)me->tface)[i];
 
           for (j = 0; j < 4; j++) {
@@ -1546,7 +1549,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   if (bmain->versionfile <= 241) {
     Object *ob;
     Scene *sce;
-    Light *la;
     bArmature *arm;
     bNodeTree *ntree;
 
@@ -1589,12 +1591,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
 
     for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {
       ntree_version_241(ntree);
-    }
-
-    for (la = bmain->lights.first; la; la = la->id.next) {
-      if (la->buffers == 0) {
-        la->buffers = 1;
-      }
     }
 
     /* for empty drawsize and drawtype */
@@ -1922,7 +1918,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     Scene *sce;
     Object *ob;
     Image *ima;
-    Light *la;
     Material *ma;
     ParticleSettings *part;
     bNodeTree *ntree;
@@ -2039,17 +2034,6 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       }
     }
 
-    if (bmain->versionfile != 245 || bmain->subversionfile < 1) {
-      for (la = bmain->lights.first; la; la = la->id.next) {
-        la->falloff_type = LA_FALLOFF_INVLINEAR;
-
-        if (la->curfalloff == NULL) {
-          la->curfalloff = BKE_curvemapping_add(1, 0.0f, 1.0f, 1.0f, 0.0f);
-          BKE_curvemapping_init(la->curfalloff);
-        }
-      }
-    }
-
     for (ma = bmain->materials.first; ma; ma = ma->id.next) {
       if (ma->gloss_mir == 0.0f) {
         ma->gloss_mir = 1.0f;
@@ -2098,7 +2082,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 2)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 2)) {
     Image *ima;
 
     /* initialize 1:1 Aspect */
@@ -2107,7 +2091,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 4)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 4)) {
     bArmature *arm;
     ModifierData *md;
     Object *ob;
@@ -2125,7 +2109,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 5)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 5)) {
     /* foreground color needs to be something other than black */
     Scene *sce;
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2135,7 +2119,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 6)) {
     Scene *sce;
     /* fix frs_sec_base */
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2145,7 +2129,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 7)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 7)) {
     Object *ob;
     bPoseChannel *pchan;
 
@@ -2175,7 +2159,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 8)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 8)) {
     Scene *sce;
     Object *ob;
     PartEff *paf = NULL;
@@ -2339,7 +2323,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 10)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 10)) {
     Object *ob;
 
     /* dupliface scale */
@@ -2348,7 +2332,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 11)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 11)) {
     Object *ob;
     bActionStrip *strip;
 
@@ -2382,7 +2366,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 14)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 14)) {
     Scene *sce;
 
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
@@ -2393,7 +2377,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* fix broken group lengths in id properties */
-  if (!MAIN_VERSION_ATLEAST(bmain, 245, 15)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 245, 15)) {
     idproperties_fix_group_lengths(bmain->scenes);
     idproperties_fix_group_lengths(bmain->libraries);
     idproperties_fix_group_lengths(bmain->objects);
@@ -2422,7 +2406,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* convert fluids to modifier */
-  if (!MAIN_VERSION_ATLEAST(bmain, 246, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 246, 1)) {
     Object *ob;
 
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
@@ -2444,7 +2428,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 246, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 246, 1)) {
     Object *ob;
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       if (ob->pd && (ob->pd->forcefield == PFIELD_WIND)) {
@@ -2454,7 +2438,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
   }
 
   /* set the curve radius interpolation to 2.47 default - easy */
-  if (!MAIN_VERSION_ATLEAST(bmain, 247, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 247, 6)) {
     Curve *cu;
     Nurb *nu;
 
@@ -2474,7 +2458,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 248, 2)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 248, 2)) {
     Scene *sce;
 
     /* NOTE: these will need to be added for painting. */
@@ -2484,7 +2468,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 248, 3)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 248, 3)) {
     bScreen *screen;
 
     /* adjust default settings for Animation Editors */

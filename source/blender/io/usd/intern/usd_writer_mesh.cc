@@ -183,7 +183,7 @@ void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_
 
   pxr::UsdGeomPrimvarsAPI primvarsAPI(usd_mesh.GetPrim());
 
-  const CustomData *ldata = &mesh->ldata;
+  const CustomData *ldata = &mesh->loop_data;
   for (int layer_idx = 0; layer_idx < ldata->totlayer; layer_idx++) {
     const CustomDataLayer *layer = &ldata->layers[layer_idx];
     if (layer->type != CD_PROP_FLOAT2) {
@@ -357,16 +357,16 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
     }
   }
 
-  usd_mesh_data.face_vertex_counts.reserve(mesh->totpoly);
+  usd_mesh_data.face_vertex_counts.reserve(mesh->faces_num);
   usd_mesh_data.face_indices.reserve(mesh->totloop);
 
-  const OffsetIndices polys = mesh->polys();
+  const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    usd_mesh_data.face_vertex_counts.push_back(poly.size());
-    for (const int vert : corner_verts.slice(poly)) {
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    usd_mesh_data.face_vertex_counts.push_back(face.size());
+    for (const int vert : corner_verts.slice(face)) {
       usd_mesh_data.face_indices.push_back(vert);
     }
   }
@@ -511,10 +511,10 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      const OffsetIndices polys = mesh->polys();
-      const Span<float3> poly_normals = mesh->poly_normals();
-      for (const int i : polys.index_range()) {
-        dst_normals.slice(polys[i]).fill(poly_normals[i]);
+      const OffsetIndices faces = mesh->faces();
+      const Span<float3> face_normals = mesh->face_normals();
+      for (const int i : faces.index_range()) {
+        dst_normals.slice(faces[i]).fill(face_normals[i]);
       }
       break;
     }

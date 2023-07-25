@@ -11,6 +11,8 @@
 void ED_operatortypes_grease_pencil()
 {
   ED_operatortypes_grease_pencil_draw();
+  ED_operatortypes_grease_pencil_frames();
   ED_operatortypes_grease_pencil_layers();
   ED_operatortypes_grease_pencil_select();
+  ED_operatortypes_grease_pencil_edit();
 }

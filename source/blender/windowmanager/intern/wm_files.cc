@@ -603,29 +603,28 @@ void WM_file_autoexec_init(const char *filepath)
   }
 }
 
-void wm_file_read_report(bContext *C, Main *bmain)
+void wm_file_read_report(Main *bmain, wmWindow *win)
 {
-  ReportList *reports = nullptr;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+  ReportList *reports = &wm->reports;
+  bool found = false;
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
     if (scene->r.engine[0] &&
         BLI_findstring(&R_engines, scene->r.engine, offsetof(RenderEngineType, idname)) == nullptr)
     {
-      if (reports == nullptr) {
-        reports = CTX_wm_reports(C);
-      }
-
       BKE_reportf(reports,
                   RPT_ERROR,
                   "Engine '%s' not available for scene '%s' (an add-on may need to be installed "
                   "or enabled)",
                   scene->r.engine,
                   scene->id.name + 2);
+      found = true;
     }
   }
 
-  if (reports) {
+  if (found) {
     if (!G.background) {
-      WM_report_banner_show();
+      WM_report_banner_show(wm, win);
     }
   }
 }
@@ -669,7 +668,9 @@ struct wmFileReadPost_Params {
  * Logic shared between #WM_file_read & #wm_homefile_read,
  * updates to make after reading a file.
  */
-static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
+static void wm_file_read_post(bContext *C,
+                              const char *filepath,
+                              const wmFileReadPost_Params *params)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
 
@@ -752,8 +753,15 @@ static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
   }
 
   if (use_data) {
-    /* important to do before nullptr'ing the context */
+    /* Important to do before nulling the context. */
     BKE_callback_exec_null(bmain, BKE_CB_EVT_VERSION_UPDATE);
+
+    /* Load-post must run before evaluating drivers & depsgraph, see: #109720.
+     * On failure, the caller handles #BKE_CB_EVT_LOAD_POST_FAIL. */
+    if (params->success) {
+      BKE_callback_exec_string(bmain, BKE_CB_EVT_LOAD_POST, filepath);
+    }
+
     if (is_factory_startup) {
       BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_STARTUP_POST);
     }
@@ -778,7 +786,7 @@ static void wm_file_read_post(bContext *C, const wmFileReadPost_Params *params)
   /* report any errors.
    * currently disabled if addons aren't yet loaded */
   if (addons_loaded) {
-    wm_file_read_report(C, bmain);
+    wm_file_read_report(bmain, static_cast<wmWindow *>(wm->windows.first));
   }
 
   if (use_data) {
@@ -828,8 +836,11 @@ static void wm_read_callback_post_wrapper(bContext *C, const char *filepath, con
     wmWindow *win = static_cast<wmWindow *>(wm->windows.first);
     CTX_wm_window_set(C, win);
   }
-  BKE_callback_exec_string(
-      bmain, success ? BKE_CB_EVT_LOAD_POST : BKE_CB_EVT_LOAD_POST_FAIL, filepath);
+
+  /* On success: #BKE_CB_EVT_LOAD_POST runs from #wm_file_read_post. */
+  if (success == false) {
+    BKE_callback_exec_string(bmain, BKE_CB_EVT_LOAD_POST_FAIL, filepath);
+  }
 
   /* This function should leave the window null when the function entered. */
   if (!has_window) {
@@ -1049,7 +1060,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       read_file_post_params.reset_app_template = false;
       read_file_post_params.success = true;
       read_file_post_params.is_alloc = false;
-      wm_file_read_post(C, &read_file_post_params);
+      wm_file_read_post(C, filepath, &read_file_post_params);
 
       bf_reports.duration.whole = PIL_check_seconds_timer() - bf_reports.duration.whole;
       file_read_reports_finalize(&bf_reports);
@@ -1133,7 +1144,8 @@ void wm_homefile_read_ex(bContext *C,
                          ReportList *reports,
                          wmFileReadPost_Params **r_params_file_read_post)
 {
-#if 0 /* UNUSED, keep as this may be needed later & the comment below isn't self evident. */
+/* UNUSED, keep as this may be needed later & the comment below isn't self evident. */
+#if 0
   /* Context does not always have valid main pointer here. */
   Main *bmain = G_MAIN;
 #endif
@@ -1485,10 +1497,11 @@ void wm_homefile_read(bContext *C,
 
 void wm_homefile_read_post(bContext *C, const wmFileReadPost_Params *params_file_read_post)
 {
-  wm_file_read_post(C, params_file_read_post);
+  const char *filepath = "";
+  wm_file_read_post(C, filepath, params_file_read_post);
 
   if (params_file_read_post->use_data) {
-    wm_read_callback_post_wrapper(C, "", params_file_read_post->success);
+    wm_read_callback_post_wrapper(C, filepath, params_file_read_post->success);
   }
 
   if (params_file_read_post->is_alloc) {
@@ -2090,7 +2103,7 @@ static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
   wm_autosave_timer_end(wm);
 
   if (U.flag & USER_AUTOSAVE) {
-    wm->autosavetimer = WM_event_add_timer(wm, nullptr, TIMERAUTOSAVE, timestep);
+    wm->autosavetimer = WM_event_timer_add(wm, nullptr, TIMERAUTOSAVE, timestep);
   }
 }
 
@@ -2102,7 +2115,7 @@ void wm_autosave_timer_begin(wmWindowManager *wm)
 void wm_autosave_timer_end(wmWindowManager *wm)
 {
   if (wm->autosavetimer) {
-    WM_event_remove_timer(wm, nullptr, wm->autosavetimer);
+    WM_event_timer_remove(wm, nullptr, wm->autosavetimer);
     wm->autosavetimer = nullptr;
   }
 }
@@ -2618,7 +2631,7 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   PropertyRNA *prop;
   ot->name = "Reload Start-Up File";
   ot->idname = "WM_OT_read_homefile";
-  ot->description = "Open the default file (doesn't save the current file)";
+  ot->description = "Open the default file";
 
   ot->invoke = wm_homefile_read_invoke;
   ot->exec = wm_homefile_read_exec;
@@ -3263,7 +3276,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (RNA_boolean_get(op->ptr, "incremental")) {
+  if ((is_save_as == false) && RNA_boolean_get(op->ptr, "incremental")) {
     char head[FILE_MAXFILE], tail[FILE_MAXFILE];
     ushort digits;
     int num = BLI_path_sequence_decode(filepath, head, sizeof(head), tail, sizeof(tail), &digits);
@@ -3739,6 +3752,7 @@ static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_
 static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_data)
 {
   const Main *bmain = CTX_data_main(C);
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   wmGenericCallback *callback = WM_generic_callback_steal((wmGenericCallback *)arg_data);
   bool execute_callback = true;
 
@@ -3750,7 +3764,7 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
     if (ED_image_should_save_modified(bmain)) {
       ReportList *reports = CTX_wm_reports(C);
       ED_image_save_all_modified(C, reports);
-      WM_report_banner_show();
+      WM_report_banner_show(wm, win);
     }
     else {
       execute_callback = false;

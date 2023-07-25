@@ -362,7 +362,7 @@ static void deformVerts_do(HookModifierData *hmd,
     const int *origindex_ar;
     /* if mesh is present and has original index data, use it */
     if (mesh && (origindex_ar = static_cast<const int *>(
-                     CustomData_get_layer(&mesh->vdata, CD_ORIGINDEX))))
+                     CustomData_get_layer(&mesh->vert_data, CD_ORIGINDEX))))
     {
       int verts_orig_num = verts_num;
       if (ob->type == OB_MESH) {
@@ -431,13 +431,7 @@ static void deformVerts(ModifierData *md,
                         int verts_num)
 {
   HookModifierData *hmd = (HookModifierData *)md;
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
-
-  deformVerts_do(hmd, ctx, ctx->object, mesh_src, nullptr, vertexCos, verts_num);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
+  deformVerts_do(hmd, ctx, ctx->object, mesh, nullptr, vertexCos, verts_num);
 }
 
 static void deformVertsEM(ModifierData *md,
@@ -449,7 +443,13 @@ static void deformVertsEM(ModifierData *md,
 {
   HookModifierData *hmd = (HookModifierData *)md;
 
-  deformVerts_do(hmd, ctx, ctx->object, mesh, mesh ? nullptr : editData, vertexCos, verts_num);
+  deformVerts_do(hmd,
+                 ctx,
+                 ctx->object,
+                 mesh,
+                 mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH ? editData : nullptr,
+                 vertexCos,
+                 verts_num);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)

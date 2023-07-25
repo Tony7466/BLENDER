@@ -63,7 +63,7 @@ namespace blender::io::alembic {
 
 static void get_vertices(Mesh *mesh, std::vector<Imath::V3f> &points);
 static void get_topology(Mesh *mesh,
-                         std::vector<int32_t> &poly_verts,
+                         std::vector<int32_t> &face_verts,
                          std::vector<int32_t> &loop_counts);
 static void get_edge_creases(Mesh *mesh,
                              std::vector<int32_t> &indices,
@@ -176,9 +176,9 @@ void ABCGenericMeshWriter::do_write(HierarchyContext &context)
 
   m_custom_data_config.pack_uvs = args_.export_params->packuv;
   m_custom_data_config.mesh = mesh;
-  m_custom_data_config.poly_offsets = mesh->poly_offsets_for_write().data();
+  m_custom_data_config.face_offsets = mesh->face_offsets_for_write().data();
   m_custom_data_config.corner_verts = mesh->corner_verts_for_write().data();
-  m_custom_data_config.totpoly = mesh->totpoly;
+  m_custom_data_config.faces_num = mesh->faces_num;
   m_custom_data_config.totloop = mesh->totloop;
   m_custom_data_config.totvert = mesh->totvert;
   m_custom_data_config.timesample_index = timesample_index_;
@@ -211,23 +211,23 @@ void ABCGenericMeshWriter::free_export_mesh(Mesh *mesh)
 void ABCGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   std::vector<Imath::V3f> points, normals;
-  std::vector<int32_t> poly_verts, loop_counts;
+  std::vector<int32_t> face_verts, loop_counts;
   std::vector<Imath::V3f> velocities;
 
   get_vertices(mesh, points);
-  get_topology(mesh, poly_verts, loop_counts);
+  get_topology(mesh, face_verts, loop_counts);
 
   if (!frame_has_been_written_ && args_.export_params->face_sets) {
     write_face_sets(context.object, mesh, abc_poly_mesh_schema_);
   }
 
   OPolyMeshSchema::Sample mesh_sample = OPolyMeshSchema::Sample(
-      V3fArraySample(points), Int32ArraySample(poly_verts), Int32ArraySample(loop_counts));
+      V3fArraySample(points), Int32ArraySample(face_verts), Int32ArraySample(loop_counts));
 
   UVSample uvs_and_indices;
 
   if (args_.export_params->uvs) {
-    const char *name = get_uv_sample(uvs_and_indices, m_custom_data_config, &mesh->ldata);
+    const char *name = get_uv_sample(uvs_and_indices, m_custom_data_config, &mesh->loop_data);
 
     if (!uvs_and_indices.indices.empty() && !uvs_and_indices.uvs.empty()) {
       OV2fGeomParam::Sample uv_sample;
@@ -241,7 +241,7 @@ void ABCGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 
     write_custom_data(abc_poly_mesh_schema_.getArbGeomParams(),
                       m_custom_data_config,
-                      &mesh->ldata,
+                      &mesh->loop_data,
                       CD_PROP_FLOAT2);
   }
 
@@ -277,11 +277,11 @@ void ABCGenericMeshWriter::write_subd(HierarchyContext &context, Mesh *mesh)
 {
   std::vector<float> edge_crease_sharpness, vert_crease_sharpness;
   std::vector<Imath::V3f> points;
-  std::vector<int32_t> poly_verts, loop_counts;
+  std::vector<int32_t> face_verts, loop_counts;
   std::vector<int32_t> edge_crease_indices, edge_crease_lengths, vert_crease_indices;
 
   get_vertices(mesh, points);
-  get_topology(mesh, poly_verts, loop_counts);
+  get_topology(mesh, face_verts, loop_counts);
   get_edge_creases(mesh, edge_crease_indices, edge_crease_lengths, edge_crease_sharpness);
   get_vert_creases(mesh, vert_crease_indices, vert_crease_sharpness);
 
@@ -290,11 +290,11 @@ void ABCGenericMeshWriter::write_subd(HierarchyContext &context, Mesh *mesh)
   }
 
   OSubDSchema::Sample subdiv_sample = OSubDSchema::Sample(
-      V3fArraySample(points), Int32ArraySample(poly_verts), Int32ArraySample(loop_counts));
+      V3fArraySample(points), Int32ArraySample(face_verts), Int32ArraySample(loop_counts));
 
   UVSample sample;
   if (args_.export_params->uvs) {
-    const char *name = get_uv_sample(sample, m_custom_data_config, &mesh->ldata);
+    const char *name = get_uv_sample(sample, m_custom_data_config, &mesh->loop_data);
 
     if (!sample.indices.empty() && !sample.uvs.empty()) {
       OV2fGeomParam::Sample uv_sample;
@@ -306,8 +306,10 @@ void ABCGenericMeshWriter::write_subd(HierarchyContext &context, Mesh *mesh)
       subdiv_sample.setUVs(uv_sample);
     }
 
-    write_custom_data(
-        abc_subdiv_schema_.getArbGeomParams(), m_custom_data_config, &mesh->ldata, CD_PROP_FLOAT2);
+    write_custom_data(abc_subdiv_schema_.getArbGeomParams(),
+                      m_custom_data_config,
+                      &mesh->loop_data,
+                      CD_PROP_FLOAT2);
   }
 
   if (args_.export_params->orcos) {
@@ -360,7 +362,7 @@ void ABCGenericMeshWriter::write_arb_geo_params(Mesh *me)
   else {
     arb_geom_params = abc_poly_mesh_.getSchema().getArbGeomParams();
   }
-  write_custom_data(arb_geom_params, m_custom_data_config, &me->ldata, CD_PROP_BYTE_COLOR);
+  write_custom_data(arb_geom_params, m_custom_data_config, &me->loop_data, CD_PROP_BYTE_COLOR);
 }
 
 bool ABCGenericMeshWriter::get_velocities(Mesh *mesh, std::vector<Imath::V3f> &vels)
@@ -421,7 +423,7 @@ void ABCGenericMeshWriter::get_geo_groups(Object *object,
 
     std::vector<int32_t> faceArray;
 
-    for (int i = 0, e = mesh->totface; i < e; i++) {
+    for (int i = 0, e = mesh->totface_legacy; i < e; i++) {
       faceArray.push_back(i);
     }
 
@@ -443,25 +445,25 @@ static void get_vertices(Mesh *mesh, std::vector<Imath::V3f> &points)
 }
 
 static void get_topology(Mesh *mesh,
-                         std::vector<int32_t> &poly_verts,
+                         std::vector<int32_t> &face_verts,
                          std::vector<int32_t> &loop_counts)
 {
-  const OffsetIndices polys = mesh->polys();
+  const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
-  poly_verts.clear();
+  face_verts.clear();
   loop_counts.clear();
-  poly_verts.reserve(corner_verts.size());
-  loop_counts.reserve(polys.size());
+  face_verts.reserve(corner_verts.size());
+  loop_counts.reserve(faces.size());
 
   /* NOTE: data needs to be written in the reverse order. */
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    loop_counts.push_back(poly.size());
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    loop_counts.push_back(face.size());
 
-    int corner = poly.start() + (poly.size() - 1);
-    for (int j = 0; j < poly.size(); j++, corner--) {
-      poly_verts.push_back(corner_verts[corner]);
+    int corner = face.start() + (face.size() - 1);
+    for (int j = 0; j < face.size(); j++, corner--) {
+      face_verts.push_back(corner_verts[corner]);
     }
   }
 }
@@ -525,7 +527,7 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
 
   switch (mesh->normal_domain_all_info()) {
     case ATTR_DOMAIN_POINT: {
-      /* If all polygons are smooth shaded, and there are no custom normals, we don't need to
+      /* If all faces are smooth shaded, and there are no custom normals, we don't need to
        * export normals at all. This is also done by other software, see #71246. */
       break;
     }
@@ -533,13 +535,13 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
       normals.resize(mesh->totloop);
       MutableSpan dst_normals(reinterpret_cast<float3 *>(normals.data()), normals.size());
 
-      const OffsetIndices polys = mesh->polys();
-      const Span<float3> poly_normals = mesh->poly_normals();
-      threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
+      const OffsetIndices faces = mesh->faces();
+      const Span<float3> face_normals = mesh->face_normals();
+      threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
         for (const int i : range) {
           float3 y_up;
-          copy_yup_from_zup(y_up, poly_normals[i]);
-          dst_normals.slice(polys[i]).fill(y_up);
+          copy_yup_from_zup(y_up, face_normals[i]);
+          dst_normals.slice(faces[i]).fill(y_up);
         }
       });
       break;
@@ -549,13 +551,13 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
       MutableSpan dst_normals(reinterpret_cast<float3 *>(normals.data()), normals.size());
 
       /* NOTE: data needs to be written in the reverse order. */
-      const OffsetIndices polys = mesh->polys();
+      const OffsetIndices faces = mesh->faces();
       const Span<float3> corner_normals = mesh->corner_normals();
-      threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
+      threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
         for (const int i : range) {
-          const IndexRange poly = polys[i];
-          for (const int i : IndexRange(poly.size())) {
-            copy_yup_from_zup(dst_normals[poly.last(i)], corner_normals[poly[i]]);
+          const IndexRange face = faces[i];
+          for (const int i : IndexRange(face.size())) {
+            copy_yup_from_zup(dst_normals[face.last(i)], corner_normals[face[i]]);
           }
         }
       });

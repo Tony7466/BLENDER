@@ -252,6 +252,15 @@ class Prefs(bpy.types.KeyConfigPreferences):
         update=update_fn,
     )
 
+    use_alt_navigation: BoolProperty(
+        name="Transform Navigation with Alt",
+        description=(
+            "During transformations, use Alt to navigate in the 3D View. "
+            "Note that if disabled, Proportional Influence, Automatic Constraints and Auto IK Chain Length hotkeys will require holding Alt"),
+        default=True,
+        update=update_fn,
+    )
+
     def draw(self, layout):
         from bpy import context
 
@@ -315,6 +324,7 @@ class Prefs(bpy.types.KeyConfigPreferences):
         sub.prop(self, "use_v3d_tab_menu")
         sub.prop(self, "use_pie_click_drag")
         sub.prop(self, "use_v3d_shade_ex_pie")
+        sub.prop(self, "use_alt_navigation")
 
         # File Browser settings.
         col = layout.column()
@@ -375,6 +385,7 @@ def load():
             use_pie_click_drag=kc_prefs.use_pie_click_drag,
             use_file_single_click=kc_prefs.use_file_single_click,
             experimental=prefs.experimental,
+            use_alt_navigation=kc_prefs.use_alt_navigation,
         ),
     )
 

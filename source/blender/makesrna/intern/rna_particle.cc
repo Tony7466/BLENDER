@@ -6,9 +6,9 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
 
 #include "DNA_boid_types.h"
 #include "DNA_cloth_types.h"
@@ -380,31 +380,31 @@ static void rna_Particle_uv_on_emitter(ParticleData *particle,
     return;
   }
 
-  /* get uvco & mcol */
+  /* Get UV-coordinate & color. */
   int num = particle->num_dmcache;
   int from = modifier->psys->part->from;
 
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     return;
   }
   BKE_mesh_tessface_ensure(modifier->mesh_final); /* BMESH - UNTIL MODIFIER IS UPDATED FOR POLYS */
 
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < modifier->mesh_final->totface) {
+    if (particle->num < modifier->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
 
-  /* get uvco */
+  /* Get UV-coordinate. */
   if (r_uv && ELEM(from, PART_FROM_FACE, PART_FROM_VOLUME) &&
       !ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD))
   {
 
     const MFace *mface = static_cast<const MFace *>(
-        CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+        CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
     const MTFace *mtface = static_cast<const MTFace *>(
-        CustomData_get_layer(&modifier->mesh_final->fdata, CD_MTFACE));
+        CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MTFACE));
 
     if (mface && mtface) {
       mtface += num;
@@ -451,7 +451,7 @@ static void rna_ParticleSystem_co_hair(
 
   if (particle_no < totpart && particlesystem->pathcache) {
     cache = particlesystem->pathcache[particle_no];
-    max_k = (int)cache->segments;
+    max_k = int(cache->segments);
   }
   else if (particle_no < totpart + totchild && particlesystem->childcache) {
     cache = particlesystem->childcache[particle_no - totpart];
@@ -460,7 +460,7 @@ static void rna_ParticleSystem_co_hair(
       max_k = 0;
     }
     else {
-      max_k = (int)cache->segments;
+      max_k = int(cache->segments);
     }
   }
   else {
@@ -532,7 +532,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
   int num = -1;
 
   BKE_mesh_tessface_ensure(modifier->mesh_final); /* BMESH - UNTIL MODIFIER IS UPDATED FOR POLYS */
-  totface = modifier->mesh_final->totface;
+  totface = modifier->mesh_final->totface_legacy;
   totvert = modifier->mesh_final->totvert;
 
   /* 1. check that everything is ok & updated */
@@ -569,7 +569,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
     else if (part->from == PART_FROM_VERT) {
       if (num != DMCACHE_NOTFOUND && num < totvert) {
         const MFace *mface = static_cast<const MFace *>(
-            CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+            CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
 
         *r_fuv = &particle->fuv;
 
@@ -613,7 +613,7 @@ static int rna_ParticleSystem_tessfaceidx_on_emitter(ParticleSystem *particlesys
       else if (part->from == PART_FROM_VERT) {
         if (num != DMCACHE_NOTFOUND && num < totvert) {
           const MFace *mface = static_cast<const MFace *>(
-              CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+              CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
 
           *r_fuv = &parent->fuv;
 
@@ -646,7 +646,7 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
     zero_v2(r_uv);
     return;
   }
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_FLOAT2)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_FLOAT2)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no UV data");
     zero_v2(r_uv);
     return;
@@ -664,10 +664,10 @@ static void rna_ParticleSystem_uv_on_emitter(ParticleSystem *particlesystem,
     }
     else {
       const MFace *mfaces = static_cast<const MFace *>(
-          CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+          CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
       const MFace *mface = &mfaces[num];
       const MTFace *mtface = (const MTFace *)CustomData_get_layer_n(
-          &modifier->mesh_final->fdata, CD_MTFACE, uv_no);
+          &modifier->mesh_final->fdata_legacy, CD_MTFACE, uv_no);
 
       psys_interpolate_uvs(&mtface[num], mface->v4, *fuv, r_uv);
     }
@@ -682,7 +682,7 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
                                                int vcol_no,
                                                float r_mcol[3])
 {
-  if (!CustomData_has_layer(&modifier->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
+  if (!CustomData_has_layer(&modifier->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
     BKE_report(reports, RPT_ERROR, "Mesh has no VCol data");
     zero_v3(r_mcol);
     return;
@@ -700,16 +700,16 @@ static void rna_ParticleSystem_mcol_on_emitter(ParticleSystem *particlesystem,
     }
     else {
       const MFace *mfaces = static_cast<const MFace *>(
-          CustomData_get_layer(&modifier->mesh_final->fdata, CD_MFACE));
+          CustomData_get_layer(&modifier->mesh_final->fdata_legacy, CD_MFACE));
       const MFace *mface = &mfaces[num];
       const MCol *mc = (const MCol *)CustomData_get_layer_n(
-          &modifier->mesh_final->fdata, CD_MCOL, vcol_no);
+          &modifier->mesh_final->fdata_legacy, CD_MCOL, vcol_no);
       MCol mcol;
 
       psys_interpolate_mcol(&mc[num * 4], mface->v4, *fuv, &mcol);
-      r_mcol[0] = (float)mcol.b / 255.0f;
-      r_mcol[1] = (float)mcol.g / 255.0f;
-      r_mcol[2] = (float)mcol.r / 255.0f;
+      r_mcol[0] = float(mcol.b) / 255.0f;
+      r_mcol[1] = float(mcol.g) / 255.0f;
+      r_mcol[2] = float(mcol.r) / 255.0f;
     }
   }
 }
@@ -1055,17 +1055,17 @@ static float rna_PartSetting_linelenhead_get(PointerRNA *ptr)
 static bool rna_PartSettings_is_fluid_get(PointerRNA *ptr)
 {
   ParticleSettings *part = static_cast<ParticleSettings *>(ptr->data);
-  return (ELEM(part->type,
-               PART_FLUID,
-               PART_FLUID_FLIP,
-               PART_FLUID_FOAM,
-               PART_FLUID_SPRAY,
-               PART_FLUID_BUBBLE,
-               PART_FLUID_TRACER,
-               PART_FLUID_SPRAYFOAM,
-               PART_FLUID_SPRAYBUBBLE,
-               PART_FLUID_FOAMBUBBLE,
-               PART_FLUID_SPRAYFOAMBUBBLE));
+  return ELEM(part->type,
+              PART_FLUID,
+              PART_FLUID_FLIP,
+              PART_FLUID_FOAM,
+              PART_FLUID_SPRAY,
+              PART_FLUID_BUBBLE,
+              PART_FLUID_TRACER,
+              PART_FLUID_SPRAYFOAM,
+              PART_FLUID_SPRAYBUBBLE,
+              PART_FLUID_FOAMBUBBLE,
+              PART_FLUID_SPRAYFOAMBUBBLE);
 }
 
 static void rna_ParticleSettings_use_clump_curve_update(Main *bmain, Scene *scene, PointerRNA *ptr)

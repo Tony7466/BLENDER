@@ -2,14 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# WITH_OPENGL limits the visibility of the opengl headers to just GPU and bg_gpu,
-# to more easily highlight code-paths in other libraries that need to be refactored,
-# bf_gpu is allowed to have opengl regardless of this option.
-
-if(NOT WITH_OPENGL AND NOT WITH_METAL_BACKEND AND NOT WITH_HEADLESS)
-  add_definitions(-DWITH_OPENGL)
-endif()
-
 set(INC
   .
   intern
@@ -17,11 +9,9 @@ set(INC
   opengl
   vulkan
   ../blenkernel
-  ../blenlib
   ../bmesh
   ../draw
   ../imbuf
-  ../makesdna
   ../makesrna
 
   # For theme color access.
@@ -40,7 +30,6 @@ set(INC
 
   ../../../intern/clog
   ../../../intern/ghost
-  ../../../intern/guardedalloc
   ../../../intern/mantaflow/extern
 )
 
@@ -326,13 +315,18 @@ set(METAL_SRC
 )
 
 set(LIB
-  PRIVATE bf_intern_atomic
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
   ${Epoxy_LIBRARIES}
+  PRIVATE bf::intern::guardedalloc
 )
 
 # Select Backend source based on availability
-if(WITH_OPENGL)
+if(WITH_OPENGL_BACKEND)
   list(APPEND SRC ${OPENGL_SRC})
+
+  add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_METAL_BACKEND)
@@ -520,6 +514,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_separate_xyz.glsl
   shaders/material/gpu_shader_material_set.glsl
   shaders/material/gpu_shader_material_shader_to_rgba.glsl
+  shaders/material/gpu_shader_material_sheen.glsl
   shaders/material/gpu_shader_material_squeeze.glsl
   shaders/material/gpu_shader_material_subsurface_scattering.glsl
   shaders/material/gpu_shader_material_tangent.glsl
@@ -544,7 +539,6 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_vector_displacement.glsl
   shaders/material/gpu_shader_material_vector_math.glsl
   shaders/material/gpu_shader_material_vector_rotate.glsl
-  shaders/material/gpu_shader_material_velvet.glsl
   shaders/material/gpu_shader_material_vertex_color.glsl
   shaders/material/gpu_shader_material_volume_absorption.glsl
   shaders/material/gpu_shader_material_volume_principled.glsl
@@ -679,6 +673,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/workbench/shaders/infos/workbench_effect_dof_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_effect_outline_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_merge_infront_info.hh
+  ../draw/engines/workbench/shaders/infos/workbench_overlay_depth_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_prepass_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_shadow_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_transparent_resolve_info.hh
@@ -823,6 +818,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
+    PRIVATE bf::intern::guardedalloc
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 

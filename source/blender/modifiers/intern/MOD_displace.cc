@@ -301,7 +301,7 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
   }
 
   if (direction == MOD_DISP_DIR_CLNOR) {
-    if (CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL)) {
+    if (CustomData_has_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL)) {
       vert_clnors = static_cast<float(*)[3]>(
           MEM_malloc_arrayN(verts_num, sizeof(*vert_clnors), __func__));
       BKE_mesh_normals_loop_to_vertex(
@@ -365,34 +365,7 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
-
-  displaceModifier_do((DisplaceModifierData *)md, ctx, mesh_src, vertexCos, verts_num);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
-}
-
-static void deformVertsEM(ModifierData *md,
-                          const ModifierEvalContext *ctx,
-                          BMEditMesh *editData,
-                          Mesh *mesh,
-                          float (*vertexCos)[3],
-                          int verts_num)
-{
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
-
-  /* TODO(@ideasman42): use edit-mode data only (remove this line). */
-  if (mesh_src != nullptr) {
-    BKE_mesh_wrapper_ensure_mdata(mesh_src);
-  }
-
-  displaceModifier_do((DisplaceModifierData *)md, ctx, mesh_src, vertexCos, verts_num);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
+  displaceModifier_do((DisplaceModifierData *)md, ctx, mesh, vertexCos, verts_num);
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
@@ -478,7 +451,7 @@ ModifierTypeInfo modifierType_Displace = {
 
     /*deformVerts*/ deformVerts,
     /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ deformVertsEM,
+    /*deformVertsEM*/ nullptr,
     /*deformMatricesEM*/ nullptr,
     /*modifyMesh*/ nullptr,
     /*modifyGeometrySet*/ nullptr,

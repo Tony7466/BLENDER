@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
@@ -120,9 +120,6 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(pointclouds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(scenes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(screens)
 RNA_MAIN_LISTBASE_FUNCS_DEF(shapekeys)
-#  ifdef WITH_SIMULATION_DATABLOCK
-RNA_MAIN_LISTBASE_FUNCS_DEF(simulations)
-#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(sounds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(speakers)
 RNA_MAIN_LISTBASE_FUNCS_DEF(texts)
@@ -157,7 +154,7 @@ static PointerRNA rna_Test_test_get(PointerRNA *ptr)
 #else
 
 /* local convenience types */
-typedef void(CollectionDefFunc)(BlenderRNA *brna, PropertyRNA *cprop);
+using CollectionDefFunc = void(BlenderRNA *brna, PropertyRNA *cprop);
 
 struct MainCollectionDef {
   const char *identifier;
@@ -408,14 +405,6 @@ void RNA_def_main(BlenderRNA *brna)
        "Volumes",
        "Volume data-blocks",
        RNA_def_main_volumes},
-#  ifdef WITH_SIMULATION_DATABLOCK
-      {"simulations",
-       "Simulation",
-       "rna_Main_simulations_begin",
-       "Simulations",
-       "Simulation data-blocks",
-       RNA_def_main_simulations},
-#  endif
       {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
   };
 

@@ -8,6 +8,11 @@
 
 #pragma once
 
+#ifdef __cplusplus
+#  include <functional>
+#  include <string>
+#endif
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
@@ -85,6 +90,11 @@ typedef struct uiViewItemHandle uiViewItemHandle;
  */
 #define UI_SEP_CHAR '|'
 #define UI_SEP_CHAR_S "|"
+
+/**
+ * Character used when value is indeterminate (multiple, unknown, unset).
+ */
+#define UI_VALUE_INDETERMINATE_CHAR BLI_STR_UTF8_EM_DASH
 
 /* Separator for text in search menus (right pointing arrow).
  * keep in sync with `string_search.cc`. */
@@ -289,8 +299,11 @@ enum {
   UI_BUT_TEXT_RIGHT = 1 << 3,
   /** Prevent the button to show any tooltip. */
   UI_BUT_NO_TOOLTIP = 1 << 4,
+  /** Show a quick tooltip label, that is, a short tooltip that appears faster than the full one
+   * and only shows the label. After a short delay the full toolitp is shown if any. */
+  UI_BUT_HAS_TOOLTIP_LABEL = 1 << 5,
   /** Do not add the usual horizontal padding for text drawing. */
-  UI_BUT_NO_TEXT_PADDING = 1 << 5,
+  UI_BUT_NO_TEXT_PADDING = 1 << 6,
 
   /* Button align flag, for drawing groups together.
    * Used in 'uiBlock.flag', take care! */
@@ -326,6 +339,9 @@ enum {
 
   /* Draw the checkbox buttons inverted. */
   UI_BUT_CHECKBOX_INVERT = 1 << 25,
+
+  /* Drawn in a way that indicates that the state/value is unknown. */
+  UI_BUT_INDETERMINATE = 1 << 26,
 };
 
 /**
@@ -404,7 +420,7 @@ typedef enum {
   UI_BTYPE_HISTOGRAM = 48 << 9,
   UI_BTYPE_WAVEFORM = 49 << 9,
   UI_BTYPE_VECTORSCOPE = 50 << 9,
-  UI_BTYPE_PROGRESS_BAR = 51 << 9,
+  UI_BTYPE_PROGRESS = 51 << 9,
   UI_BTYPE_NODE_SOCKET = 53 << 9,
   UI_BTYPE_SEPR = 54 << 9,
   UI_BTYPE_SEPR_LINE = 55 << 9,
@@ -1386,6 +1402,10 @@ typedef enum uiStringInfoType {
   BUT_GET_RNASTRUCT_IDENTIFIER,
   BUT_GET_RNAENUM_IDENTIFIER,
   BUT_GET_LABEL,
+  /** Sometimes the button doesn't have a label itself, but provides one for the tooltip. This can
+   * be displayed in a quick tooltip, appearing after a smaller timeout and expanding to the full
+   * tooltip after the regular timeout. */
+  BUT_GET_TIP_LABEL,
   BUT_GET_RNA_LABEL,
   BUT_GET_RNAENUM_LABEL,
   BUT_GET_RNA_LABEL_CONTEXT, /* Context specified in CTX_XXX_ macros are just unreachable! */
@@ -1448,6 +1468,11 @@ enum {
 enum {
   UI_TEMPLATE_ID_FILTER_ALL = 0,
   UI_TEMPLATE_ID_FILTER_AVAILABLE = 1,
+};
+
+enum eButProgressType {
+  UI_BUT_PROGRESS_TYPE_BAR = 0,
+  UI_BUT_PROGRESS_TYPE_RING = 1,
 };
 
 /***************************** ID Utilities *******************************/
@@ -1741,6 +1766,9 @@ void UI_but_func_drawextra_set(
 void UI_but_func_menu_step_set(uiBut *but, uiMenuStepFunc func);
 
 void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFreeArgFunc free_arg);
+#ifdef __cplusplus
+void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const uiBut *but)> func);
+#endif
 /**
  * Recreate tool-tip (use to update dynamic tips)
  */
@@ -1808,17 +1836,21 @@ void UI_but_drag_set_id(uiBut *but, struct ID *id);
  *
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  */
-void UI_but_drag_attach_image(uiBut *but, struct ImBuf *imb, float scale);
+void UI_but_drag_attach_image(uiBut *but, const struct ImBuf *imb, float scale);
+
+#ifdef __cplusplus
 /**
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  * \param asset: May be passed from a temporary variable, drag data only stores a copy of this.
  */
 void UI_but_drag_set_asset(uiBut *but,
-                           const struct AssetRepresentation *asset,
+                           const blender::asset_system::AssetRepresentation *asset,
                            int import_type, /* eAssetImportType */
                            int icon,
-                           struct ImBuf *imb,
+                           const struct ImBuf *imb,
                            float scale);
+#endif
+
 void UI_but_drag_set_rna(uiBut *but, struct PointerRNA *ptr);
 /**
  * Enable dragging a path from this button.
@@ -1835,7 +1867,8 @@ void UI_but_drag_set_value(uiBut *but);
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  * \param path: The path to drag. The passed string may be destructed, button keeps a copy.
  */
-void UI_but_drag_set_image(uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale);
+void UI_but_drag_set_image(
+    uiBut *but, const char *path, int icon, const struct ImBuf *imb, float scale);
 
 /* Panels
  *
@@ -2415,10 +2448,7 @@ void uiTemplateImage(uiLayout *layout,
                      struct PointerRNA *userptr,
                      bool compact,
                      bool multiview);
-void uiTemplateImageSettings(uiLayout *layout,
-                             struct PointerRNA *imfptr,
-                             bool color_management,
-                             bool show_z_buffer);
+void uiTemplateImageSettings(uiLayout *layout, struct PointerRNA *imfptr, bool color_management);
 void uiTemplateImageStereo3d(uiLayout *layout, struct PointerRNA *stereo3d_format_ptr);
 void uiTemplateImageViews(uiLayout *layout, struct PointerRNA *imaptr);
 void uiTemplateImageFormatViews(uiLayout *layout,
@@ -2880,6 +2910,11 @@ void uiItemS(uiLayout *layout);
 void uiItemS_ex(uiLayout *layout, float factor);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
+
+void uiItemProgressIndicator(uiLayout *layout,
+                             const char *text,
+                             float factor,
+                             enum eButProgressType progress_type);
 
 /* popover */
 void uiItemPopoverPanel_ptr(
