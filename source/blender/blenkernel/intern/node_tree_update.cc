@@ -473,7 +473,7 @@ class NodeTreeMainUpdater {
     this->update_internal_links(ntree);
     this->update_generic_callback(ntree);
     this->remove_unused_previews_when_necessary(ntree);
-    this->needs_preview_redraw(ntree);
+    this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
@@ -719,14 +719,16 @@ class NodeTreeMainUpdater {
     blender::bke::node_preview_remove_unused(&ntree);
   }
 
-  void needs_preview_redraw(bNodeTree &ntree)
+  void make_node_previews_dirty(bNodeTree &ntree)
   {
     ntree.preview_refresh_state++;
-    ntree.ensure_topology_cache();
-    for (bNode *node : ntree.group_nodes()) {
-      bNodeTree *nested_tree = (bNodeTree *)node->id;
+    LISTBASE_FOREACH(bNode *, node, &ntree.nodes) {
+      if (node->type != NODE_GROUP) {
+        continue;
+      }
+      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
       if (nested_tree) {
-        this->needs_preview_redraw(*nested_tree);
+        this->make_node_previews_dirty(*nested_tree);
       }
     }
   }
