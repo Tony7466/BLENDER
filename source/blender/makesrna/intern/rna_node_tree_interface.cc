@@ -63,6 +63,24 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
   }
 }
 
+static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  const bNodeTreeInterfaceItem *item = static_cast<const bNodeTreeInterfaceItem *>(ptr->data);
+  if (!ntree->runtime) {
+    return nullptr;
+  }
+
+  ntree->ensure_topology_cache();
+  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  for (const int index : cache.items.index_range()) {
+    if (cache.items[index] == item) {
+      return BLI_sprintfN("interface.ui_items[%d]", index);
+    }
+  }
+  return nullptr;
+}
+
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
@@ -461,6 +479,7 @@ static void rna_def_node_interface_item(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Node Tree Interface Item", "Item in a node tree interface");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceItem");
   RNA_def_struct_refine_func(srna, "rna_NodeTreeInterfaceItem_refine");
+  RNA_def_struct_path_func(srna, "rna_NodeTreeInterfaceItem_path");
 
   prop = RNA_def_property(srna, "item_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "item_type");
