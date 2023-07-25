@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
@@ -434,9 +434,7 @@ static PointerRNA rna_Curve_bevelObject_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
 }
 
-static void rna_Curve_bevelObject_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Curve_bevelObject_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
   Object *ob = static_cast<Object *>(value.data);
@@ -509,9 +507,7 @@ static PointerRNA rna_Curve_taperObject_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
 }
 
-static void rna_Curve_taperObject_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Curve_taperObject_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
   Object *ob = static_cast<Object *>(value.data);
@@ -759,7 +755,7 @@ static PointerRNA rna_Curve_active_spline_get(PointerRNA *ptr)
 
 static void rna_Curve_active_spline_set(PointerRNA *ptr,
                                         PointerRNA value,
-                                        struct ReportList * /*reports*/)
+                                        ReportList * /*reports*/)
 {
   Curve *cu = static_cast<Curve *>(ptr->data);
   Nurb *nu = static_cast<Nurb *>(value.data);
@@ -1309,7 +1305,7 @@ static void rna_def_font(BlenderRNA * /*brna*/, StructRNA *srna)
   prop = RNA_def_property(srna, "is_select_smallcaps", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, nullptr, "editfont->select_char_info_flag", CU_CHINFO_SMALLCAPS);
-  RNA_def_property_ui_text(prop, "Selected Smallcaps", "Whether the selected text is small caps");
+  RNA_def_property_ui_text(prop, "Selected Small Caps", "Whether the selected text is small caps");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "has_selection", PROP_BOOLEAN, PROP_NONE);
@@ -1878,7 +1874,7 @@ static void rna_def_curve(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
-  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
+  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.cc */
   RNA_def_property_collection_funcs(prop,
                                     nullptr,
                                     nullptr,

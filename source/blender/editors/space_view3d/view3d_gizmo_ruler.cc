@@ -206,7 +206,8 @@ static void ruler_item_as_string(
         ruler_item->co[0], ruler_item->co[1], ruler_item->co[2]);
 
     if (unit->system == USER_UNIT_NONE) {
-      BLI_snprintf(numstr, numstr_size, "%.*f°", prec, RAD2DEGF(ruler_angle));
+      BLI_snprintf(
+          numstr, numstr_size, "%.*f" BLI_STR_UTF8_DEGREE_SIGN, prec, RAD2DEGF(ruler_angle));
     }
     else {
       BKE_unit_value_as_string(
@@ -376,7 +377,7 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
                                                               depsgraph,
                                                               ruler_info->region,
                                                               v3d,
-                                                              SCE_SNAP_MODE_FACE,
+                                                              SCE_SNAP_TO_FACE,
                                                               &snap_object_params,
                                                               nullptr,
                                                               mval_fl,

@@ -113,7 +113,7 @@ void GPENCIL_engine_init(void *ved)
     stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
     /* Special case: If Vertex Paint mode, use always Vertex mode. */
     if (v3d->shading.type == OB_SOLID && ctx->obact && ctx->obact->type == OB_GPENCIL_LEGACY &&
-        ctx->obact->mode == OB_MODE_VERTEX_GPENCIL)
+        ctx->obact->mode == OB_MODE_VERTEX_GPENCIL_LEGACY)
     {
       stl->pd->v3d_color_type = V3D_SHADING_VERTEX_COLOR;
     }
@@ -975,19 +975,19 @@ static void GPENCIL_engine_free(void)
 static const DrawEngineDataSize GPENCIL_data_size = DRW_VIEWPORT_DATA_SIZE(GPENCIL_Data);
 
 DrawEngineType draw_engine_gpencil_type = {
-    NULL,
-    NULL,
-    N_("GpencilMode"),
-    &GPENCIL_data_size,
-    &GPENCIL_engine_init,
-    &GPENCIL_engine_free,
-    /*instance_free*/ NULL,
-    &GPENCIL_cache_init,
-    &GPENCIL_cache_populate,
-    &GPENCIL_cache_finish,
-    &GPENCIL_draw_scene,
-    NULL,
-    NULL,
-    &GPENCIL_render_to_image,
-    NULL,
+    /*next*/ NULL,
+    /*prev*/ NULL,
+    /*idname*/ N_("GpencilMode"),
+    /*vedata_size*/ &GPENCIL_data_size,
+    /*engine_init*/ &GPENCIL_engine_init,
+    /*engine_free*/ &GPENCIL_engine_free,
+    /*instance_free*/ /*instance_free*/ NULL,
+    /*cache_init*/ &GPENCIL_cache_init,
+    /*cache_populate*/ &GPENCIL_cache_populate,
+    /*cache_finish*/ &GPENCIL_cache_finish,
+    /*draw_scene*/ &GPENCIL_draw_scene,
+    /*view_update*/ NULL,
+    /*id_update*/ NULL,
+    /*render_to_image*/ &GPENCIL_render_to_image,
+    /*store_metadata*/ NULL,
 };

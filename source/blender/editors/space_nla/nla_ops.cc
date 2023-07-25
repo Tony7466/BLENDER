@@ -37,15 +37,15 @@ bool nlaop_poll_tweakmode_off(bContext *C)
    *    but not all AnimData blocks will be in tweak-mode for various reasons.
    */
   if (ED_operator_nla_active(C) == 0) {
-    return 0;
+    return false;
   }
 
   scene = CTX_data_scene(C);
   if ((scene == nullptr) || (scene->flag & SCE_NLA_EDIT_ON)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 bool nlaop_poll_tweakmode_on(bContext *C)
@@ -59,15 +59,15 @@ bool nlaop_poll_tweakmode_on(bContext *C)
    *    but not all AnimData blocks will be in tweak-mode for various reasons.
    */
   if (ED_operator_nla_active(C) == 0) {
-    return 0;
+    return false;
   }
 
   scene = CTX_data_scene(C);
   if ((scene == nullptr) || !(scene->flag & SCE_NLA_EDIT_ON)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 bool nlaedit_is_tweakmode_on(bAnimContext *ac)
@@ -75,12 +75,12 @@ bool nlaedit_is_tweakmode_on(bAnimContext *ac)
   if (ac && ac->scene) {
     return (ac->scene->flag & SCE_NLA_EDIT_ON) != 0;
   }
-  return 0;
+  return false;
 }
 
 /* ************************** registration - operator types **********************************/
 
-void nla_operatortypes(void)
+void nla_operatortypes()
 {
   /* channels */
   WM_operatortype_append(NLA_OT_channels_click);
@@ -141,7 +141,7 @@ void nla_operatortypes(void)
   WM_operatortype_append(NLA_OT_fmodifier_paste);
 }
 
-void ED_operatormacros_nla(void)
+void ED_operatormacros_nla()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
