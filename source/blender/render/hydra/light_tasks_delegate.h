@@ -4,8 +4,8 @@
 #pragma once
 
 #include <pxr/imaging/hd/sceneDelegate.h>
-#include <pxr/imaging/hdx/renderSetupTask.h>
 #include <pxr/imaging/hdx/simpleLightTask.h>
+#include <pxr/imaging/hdx/skydomeTask.h>
 
 namespace blender::render::hydra {
 
@@ -14,11 +14,13 @@ class LightTasksDelegate : public pxr::HdSceneDelegate {
   LightTasksDelegate(pxr::HdRenderIndex *parentIndex, pxr::SdfPath const &delegate_id);
   ~LightTasksDelegate() override = default;
 
-  pxr::HdTaskSharedPtrVector get_tasks(const bool isTransparent);
-  void set_camera_and_viewport(pxr::SdfPath const &camera_id, pxr::GfVec4d const &viewport);
-
   /* Delegate methods */
   pxr::VtValue Get(pxr::SdfPath const &id, pxr::TfToken const &key) override;
+
+  pxr::HdTaskSharedPtr simple_task();
+  pxr::HdTaskSharedPtr skydome_task();
+  void set_camera(pxr::SdfPath const &camera_id);
+  void set_viewport(pxr::GfVec4d const &viewport);
 
  private:
   pxr::SdfPath simple_task_id_;

@@ -1,9 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <pxr/imaging/hdx/simpleLightTask.h>
-#include <pxr/imaging/hdx/skydomeTask.h>
-
 #include "light_tasks_delegate.h"
 
 namespace blender::render::hydra {
@@ -12,39 +9,10 @@ LightTasksDelegate::LightTasksDelegate(pxr::HdRenderIndex *parent_index,
                                        pxr::SdfPath const &delegate_id)
     : pxr::HdSceneDelegate(parent_index, delegate_id)
 {
-  skydome_task_id_ = GetDelegateID().AppendElementString("simpleLightTask");
-  simple_task_id_ = GetDelegateID().AppendElementString("skydomeTask");
-  GetRenderIndex().InsertTask<pxr::HdxSkydomeTask>(this, skydome_task_id_);
+  simple_task_id_ = GetDelegateID().AppendElementString("simpleTask");
   GetRenderIndex().InsertTask<pxr::HdxSimpleLightTask>(this, simple_task_id_);
-}
-
-pxr::HdTaskSharedPtrVector LightTasksDelegate::get_tasks(const bool isTransparent)
-{
-  /*Note that this task is intended to be the first "Render Task",
-  so that the AOV's are properly cleared, however it
-  does not spawn a HdRenderPass.*/
-  pxr::HdTaskSharedPtrVector tasks;
-  if (!isTransparent) {
-    tasks.push_back(GetRenderIndex().GetTask(skydome_task_id_));
-  }
-  tasks.push_back(GetRenderIndex().GetTask(simple_task_id_));
-  return tasks;
-}
-
-void LightTasksDelegate::set_camera_and_viewport(pxr::SdfPath const &camera_id,
-                                                 pxr::GfVec4d const &viewport)
-{
-  if (simple_task_params_.cameraPath != camera_id) {
-    simple_task_params_.cameraPath = camera_id;
-    GetRenderIndex().GetChangeTracker().MarkTaskDirty(simple_task_id_,
-                                                      pxr::HdChangeTracker::DirtyParams);
-  }
-  if (skydome_task_params_.viewport != viewport || skydome_task_params_.camera != camera_id) {
-    skydome_task_params_.viewport = viewport;
-    skydome_task_params_.camera = camera_id;
-    GetRenderIndex().GetChangeTracker().MarkTaskDirty(skydome_task_id_,
-                                                      pxr::HdChangeTracker::DirtyParams);
-  }
+  skydome_task_id_ = GetDelegateID().AppendElementString("skydomeTask");
+  GetRenderIndex().InsertTask<pxr::HdxSkydomeTask>(this, skydome_task_id_);
 }
 
 pxr::VtValue LightTasksDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
@@ -58,6 +26,42 @@ pxr::VtValue LightTasksDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const 
     }
   }
   return pxr::VtValue();
+}
+
+pxr::HdTaskSharedPtr LightTasksDelegate::simple_task()
+{
+  return GetRenderIndex().GetTask(simple_task_id_);
+}
+
+pxr::HdTaskSharedPtr LightTasksDelegate::skydome_task()
+{
+  /* Note that this task is intended to be the first "Render Task",
+     so that the AOV's are properly cleared, however it
+     does not spawn a HdRenderPass. */
+  return GetRenderIndex().GetTask(skydome_task_id_);
+}
+
+void LightTasksDelegate::set_camera(pxr::SdfPath const &camera_id)
+{
+  if (simple_task_params_.cameraPath == camera_id) {
+    return;
+  }
+  simple_task_params_.cameraPath = camera_id;
+  GetRenderIndex().GetChangeTracker().MarkTaskDirty(simple_task_id_,
+                                                    pxr::HdChangeTracker::DirtyParams);
+  skydome_task_params_.camera = camera_id;
+  GetRenderIndex().GetChangeTracker().MarkTaskDirty(skydome_task_id_,
+                                                    pxr::HdChangeTracker::DirtyParams);
+}
+
+void LightTasksDelegate::set_viewport(pxr::GfVec4d const &viewport)
+{
+  if (skydome_task_params_.viewport == viewport) {
+    return;
+  }
+  skydome_task_params_.viewport = viewport;
+  GetRenderIndex().GetChangeTracker().MarkTaskDirty(skydome_task_id_,
+                                                    pxr::HdChangeTracker::DirtyParams);
 }
 
 }  // namespace blender::render::hydra

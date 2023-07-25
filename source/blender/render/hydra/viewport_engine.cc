@@ -5,19 +5,15 @@
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
-#include "DNA_camera_types.h"
-#include "DNA_screen_types.h"
 #include "DNA_vec_types.h" /* this include must be before BKE_camera.h due to "rctf" type */
 
 #include "BKE_camera.h"
-
 #include "BLI_math_matrix.h"
 #include "BLI_timecode.h"
-
 #include "DEG_depsgraph_query.h"
-
+#include "DNA_camera_types.h"
+#include "DNA_screen_types.h"
 #include "GPU_matrix.h"
-
 #include "PIL_time.h"
 
 #include "camera.h"
@@ -136,7 +132,7 @@ pxr::GfCamera ViewSettings::gf_camera()
                                             (float)border[3] / screen_height));
 }
 
-DrawTexture::DrawTexture() : texture_(nullptr), width_(0), height_(0), channels_(4)
+DrawTexture::DrawTexture()
 {
   float coords[8] = {0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
 
@@ -154,67 +150,57 @@ DrawTexture::DrawTexture() : texture_(nullptr), width_(0), height_(0), channels_
 DrawTexture::~DrawTexture()
 {
   if (texture_) {
-    free();
+    GPU_texture_free(texture_);
   }
   GPU_batch_discard(batch_);
 }
 
-void DrawTexture::set_buffer(pxr::HdRenderBuffer *buffer)
+void DrawTexture::write_data(int width, int height, const void *data)
 {
-  if (!texture_) {
-    create(buffer);
+  if (texture_ && width == GPU_texture_width(texture_) && height == GPU_texture_height(texture_)) {
+    if (data) {
+      GPU_texture_update(texture_, GPU_DATA_FLOAT, data);
+    }
     return;
   }
 
-  if (width_ != buffer->GetWidth() || height_ != buffer->GetHeight()) {
-    free();
-    create(buffer);
-    return;
+  if (texture_) {
+    GPU_texture_free(texture_);
   }
 
-  void *data = buffer->Map();
-  GPU_texture_update(texture_, GPU_DATA_FLOAT, data);
-  buffer->Unmap();
+  texture_ = GPU_texture_create_2d("tex_hydra_render_viewport",
+                                   width,
+                                   height,
+                                   1,
+                                   GPU_RGBA16F,
+                                   GPU_TEXTURE_USAGE_GENERAL,
+                                   (float *)data);
+  GPU_texture_filter_mode(texture_, true);
+  GPU_texture_mipmap_mode(texture_, true, true);
 }
 
-void DrawTexture::draw(GPUShader *shader, float x, float y)
+void DrawTexture::draw(GPUShader *shader, const pxr::GfVec4d &viewport)
+{
+  draw(shader, texture_, viewport);
+}
+
+void DrawTexture::draw(GPUShader *shader, GPUTexture *tex, const pxr::GfVec4d &viewport)
 {
   int slot = GPU_shader_get_sampler_binding(shader, "image");
-  GPU_texture_bind(texture_, slot);
+  GPU_texture_bind(tex, slot);
   GPU_shader_uniform_1i(shader, "image", slot);
 
   GPU_matrix_push();
-  GPU_matrix_translate_2f(x, y);
-  GPU_matrix_scale_2f(width_, height_);
+  GPU_matrix_translate_2f(viewport[0], viewport[1]);
+  GPU_matrix_scale_2f(viewport[2] - viewport[0], viewport[3] - viewport[1]);
   GPU_batch_set_shader(batch_, shader);
   GPU_batch_draw(batch_);
   GPU_matrix_pop();
 }
 
-void DrawTexture::create(pxr::HdRenderBuffer *buffer)
+GPUTexture *DrawTexture::texture() const
 {
-  width_ = buffer->GetWidth();
-  height_ = buffer->GetHeight();
-  channels_ = pxr::HdGetComponentCount(buffer->GetFormat());
-
-  void *data = buffer->Map();
-  texture_ = GPU_texture_create_2d("tex_hydra_render_viewport",
-                                   width_,
-                                   height_,
-                                   1,
-                                   GPU_RGBA16F,
-                                   GPU_TEXTURE_USAGE_GENERAL,
-                                   (float *)data);
-  buffer->Unmap();
-
-  GPU_texture_filter_mode(texture_, true);
-  GPU_texture_mipmap_mode(texture_, true, true);
-}
-
-void DrawTexture::free()
-{
-  GPU_texture_free(texture_);
-  texture_ = nullptr;
+  return texture_;
 }
 
 void ViewportEngine::render(Depsgraph * /* depsgraph */)
@@ -232,22 +218,18 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 
   pxr::GfCamera gf_camera = view_settings.gf_camera();
   free_camera_delegate_->SetCamera(gf_camera);
-  render_task_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                 pxr::GfVec4d(view_settings.border[0],
-                                                              view_settings.border[1],
-                                                              view_settings.border[2],
-                                                              view_settings.border[3]));
 
+  pxr::GfVec4d viewport(view_settings.border[0],
+                        view_settings.border[1],
+                        view_settings.border[2],
+                        view_settings.border[3]);
+  render_task_delegate_->set_viewport(viewport);
   if (light_tasks_delegate_) {
-    light_tasks_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                   pxr::GfVec4d(view_settings.border[0],
-                                                                view_settings.border[1],
-                                                                view_settings.border[2],
-                                                                view_settings.border[3]));
+    light_tasks_delegate_->set_viewport(viewport);
   }
 
   if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-    render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
+    render_task_delegate_->add_aov(pxr::HdAovTokens->color);
   }
 
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
@@ -255,15 +237,18 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
-    tasks = light_tasks_delegate_->get_tasks(scene->r.alphamode == R_ALPHAPREMUL);
+    if (scene->r.alphamode != R_ALPHAPREMUL) {
+      tasks.push_back(light_tasks_delegate_->skydome_task());
+    }
+    tasks.push_back(light_tasks_delegate_->simple_task());
   }
-  tasks.push_back(render_task_delegate_->get_task());
-
+  tasks.push_back(render_task_delegate_->task());
   engine_->Execute(render_index_.get(), &tasks);
 
   if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-    draw_texture_.set_buffer(render_task_delegate_->get_renderer_aov(pxr::HdAovTokens->color));
-    draw_texture_.draw(shader, view_settings.border[0], view_settings.border[1]);
+    draw_texture_.write_data(view_settings.width(), view_settings.height(), nullptr);
+    render_task_delegate_->read_aov(pxr::HdAovTokens->color, draw_texture_.texture());
+    draw_texture_.draw(shader, viewport);
   }
 
   GPU_shader_unbind();

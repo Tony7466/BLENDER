@@ -18,16 +18,14 @@ class DrawTexture {
   DrawTexture();
   ~DrawTexture();
 
-  void set_buffer(pxr::HdRenderBuffer *buffer);
-  void draw(GPUShader *shader, float x, float y);
+  void write_data(int width, int height, const void *data);
+  void draw(GPUShader *shader, const pxr::GfVec4d &viewport);
+  void draw(GPUShader *shader, GPUTexture *tex, const pxr::GfVec4d &viewport);
+  GPUTexture *texture() const;
 
  private:
-  void create(pxr::HdRenderBuffer *buffer);
-  void free();
-
-  GPUTexture *texture_;
+  GPUTexture *texture_ = nullptr;
   GPUBatch *batch_;
-  int width_, height_, channels_;
 };
 
 class ViewportEngine : public Engine {

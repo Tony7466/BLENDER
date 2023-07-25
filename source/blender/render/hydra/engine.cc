@@ -50,11 +50,21 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   render_index_.reset(pxr::HdRenderIndex::New(render_delegate_.Get(), hd_drivers));
   free_camera_delegate_ = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
-  render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
-      render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+
+  if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
+    render_task_delegate_ = std::make_unique<GPURenderTaskDelegate>(
+        render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+  }
+  else {
+    render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
+        render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+  }
+  render_task_delegate_->set_camera(free_camera_delegate_->GetCameraId());
+
   if (render_delegate_name == "HdStormRendererPlugin") {
     light_tasks_delegate_ = std::make_unique<LightTasksDelegate>(
         render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("lightTasks"));
+    light_tasks_delegate_->set_camera(free_camera_delegate_->GetCameraId());
   }
 
   engine_ = std::make_unique<pxr::HdEngine>();
