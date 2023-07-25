@@ -30,6 +30,7 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_nla.h"
 
 #include "UI_interface.h"
@@ -37,6 +38,7 @@
 
 #include "ED_anim_api.h"
 #include "ED_gpencil_legacy.h"
+#include "ED_grease_pencil.h"
 #include "ED_keyframes_edit.h"
 #include "ED_keyframes_keylist.h"
 #include "ED_markers.h"
@@ -1839,12 +1841,25 @@ static int mouse_action_keys(bAnimContext *ac,
         /* deselect all other channels first */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
-        /* Highlight GPencil Layer */
-        if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GPLAYER) {
-          bGPdata *gpd = (bGPdata *)ale->id;
-          bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
+        if (U.experimental.use_grease_pencil_version3) {
+          /* Highlight grease pencil Layer. */
+          if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER)
+          {
+            using namespace blender::bke::greasepencil;
+            GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+            Layer *layer = static_cast<Layer *>(ale->data);
 
-          ED_gpencil_set_active_channel(gpd, gpl);
+            blender::ed::greasepencil::set_active_layer(grease_pencil, layer);
+          }
+        }
+        else {
+          /* Highlight GPencil Layer (Legacy). */
+          if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GPLAYER) {
+            bGPdata *gpd = (bGPdata *)ale->id;
+            bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
+
+            ED_gpencil_set_active_channel(gpd, gpl);
+          }
         }
       }
       else if (ac->datatype == ANIMCONT_MASK) {
