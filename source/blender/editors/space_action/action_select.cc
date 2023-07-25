@@ -1629,6 +1629,16 @@ static void actkeys_mselect_single(bAnimContext *ac,
     ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale->data), selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
   }
+  else if ((U.experimental.use_grease_pencil_version3) &&
+           (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER))
+  {
+    using namespace blender::bke::greasepencil;
+    Layer *layer = static_cast<Layer *>(ale->data);
+    if (layer->frames().contains(selx)) {
+      GreasePencilFrame *frame = layer->frames_for_write().lookup_ptr(selx);
+      frame->flag |= GP_FRAME_SELECTED;
+    }
+  }
   else if (ale->type == ANIMTYPE_MASKLAYER) {
     ED_mask_select_frame(static_cast<MaskLayer *>(ale->data), selx, select_mode);
   }
