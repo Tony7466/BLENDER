@@ -793,6 +793,7 @@ bool OIDNDenoiser::denoise_create_if_needed(DenoiseContext &context)
 #    if defined(OIDN_DEVICE_SYCL)
     case DEVICE_ONEAPI:
       oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_SYCL);
+      denoiser_queue_->init_execution();
       break;
 #    endif
 #if defined(OIDN_DEVICE_CUDA) && defined(WITH_CUDA)
