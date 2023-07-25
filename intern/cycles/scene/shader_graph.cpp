@@ -1043,7 +1043,46 @@ void ShaderGraph::transform_multi_closure(ShaderNode *node, ShaderOutput *weight
    * avoid building a closure tree and then flattening it, and instead write it
    * directly to an array */
 
-  if (node->special_type == SHADER_SPECIAL_TYPE_COMBINE_CLOSURE) {
+  if (node->type == LayerClosureNode::get_node_type()) {
+    /* The layer closure works by first executing the top layer subtree, then computing
+     * the base weight from the albedo of all top layer closures, and then executing
+     * the base layer subtree with that weight.
+     * To implement that in SVM, we need the following order of nodes:
+     * - LayerClosureAccumulateNode, which allocates space on the stack to store the
+     *   accumulated albedo and sets a flag telling closure nodes to write to it
+     * - Top Layer subtree (using the layer node's input weight)
+     * - LayerClosureWeightNode, which reads the accumulated albedo and the layer node's
+     *   input weight and outputs the base layer subtree weight
+     * - Base Layer subtree (using the output from above)
+     * In order to get this ordering, we can make the SVM compiler recurse into the top
+     * layer before the base layer, taking care of that. The LayerClosureWeightNode will
+     * automatically be compiled before the base layer, since it's a dependency.
+     * To ensure that the LayerClosureAccumulateNode is compiled before the top layer,
+     * we make it a fake dependency by connecting the top layer weight input to an output
+     * of the Accumulate node. In reality, this just passes through the input Weight, but
+     * it's enough to make the ordering work. */
+    ShaderInput *base_in = node->input("Base");
+    ShaderInput *top_in = node->input("Top");
+
+    LayerClosureAccumulateNode *accumulate_node = create_node<LayerClosureAccumulateNode>();
+    add(accumulate_node);
+
+    LayerClosureWeightNode *weight_node = create_node<LayerClosureWeightNode>();
+    add(weight_node);
+
+    connect(accumulate_node->output("Albedo"), weight_node->input("Albedo"));
+
+    if (weight_out) {
+      connect(weight_out, weight_node->input("Weight"));
+      connect(weight_out, accumulate_node->input("Weight"));
+    }
+
+    if (base_in->link)
+      transform_multi_closure(base_in->link->parent, weight_node->output("BaseWeight"), volume);
+    if (top_in->link)
+      transform_multi_closure(top_in->link->parent, accumulate_node->output("TopWeight"), volume);
+  }
+  else if (node->special_type == SHADER_SPECIAL_TYPE_COMBINE_CLOSURE) {
     ShaderInput *fin = node->input("Fac");
     ShaderInput *cl1in = node->input("Closure1");
     ShaderInput *cl2in = node->input("Closure2");

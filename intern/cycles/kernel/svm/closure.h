@@ -59,6 +59,9 @@ ccl_device_noinline void svm_node_closure_bsdf(KernelGlobals kg,
     return;
   }
 
+  const bool need_albedo = (svm->layer_albedo_offset != SVM_STACK_INVALID);
+  float3 albedo = one_float3();
+
   float3 N = stack_valid(data_node.x) ? safe_normalize(stack_load_float3(svm, data_node.x)) :
                                         sd->N;
 
@@ -453,6 +456,11 @@ ccl_device_noinline void svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
+      if (need_albedo) {
+        albedo = bsdf->energy_scale *
+                 bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+      }
+
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
@@ -552,6 +560,10 @@ ccl_device_noinline void svm_node_closure_bsdf(KernelGlobals kg,
         bsdf->roughness = param1;
 
         sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
+
+        if (need_albedo) {
+          albedo = bsdf->weight;
+        }
       }
       break;
     }
@@ -756,6 +768,12 @@ ccl_device_noinline void svm_node_closure_bsdf(KernelGlobals kg,
 #endif
     default:
       break;
+  }
+
+  /* Accumulate albedo for layering. */
+  if (need_albedo) {
+    albedo += stack_load_float3(svm, svm->layer_albedo_offset);
+    stack_store_float3(svm, svm->layer_albedo_offset, albedo);
   }
 }
 
@@ -1038,6 +1056,33 @@ ccl_device_noinline void svm_node_mix_closure(ccl_private ShaderData *sd,
     stack_store_float(svm, weight1_offset, in_weight * (1.0f - weight));
   if (stack_valid(weight2_offset))
     stack_store_float(svm, weight2_offset, in_weight * weight);
+}
+
+ccl_device_noinline void svm_node_layer_closure_accumulate(ccl_private ShaderData *sd,
+                                                           ccl_private SVMState *svm,
+                                                           uint4 node)
+{
+  uint weight_in_offset = node.y, albedo_out_offset = node.z, weight_out_offset = node.w;
+  float weight = stack_load_float(svm, weight_in_offset);
+  stack_store_float(svm, weight_out_offset, weight);
+  stack_store_float3(svm, albedo_out_offset, make_float3(0.0f, 0.0f, 0.0f));
+
+  kernel_assert(svm->layer_albedo_offset == SVM_STACK_INVALID);
+  svm->layer_albedo_offset = albedo_out_offset;
+}
+
+ccl_device_noinline void svm_node_layer_closure(ccl_private ShaderData *sd,
+                                                ccl_private SVMState *svm,
+                                                uint4 node)
+{
+  uint weight_in_offset = node.y, albedo_in_offset = node.z, weight_out_offset = node.w;
+  float weight = stack_load_float(svm, weight_in_offset);
+  float3 albedo = stack_load_float3(svm, albedo_in_offset);
+  weight *= saturatef(1.0f - reduce_max(albedo / weight));
+  stack_store_float(svm, weight_out_offset, weight);
+
+  kernel_assert(svm->layer_albedo_offset == albedo_in_offset);
+  svm->layer_albedo_offset = SVM_STACK_INVALID;
 }
 
 /* (Bump) normal */

@@ -1,0 +1,9 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2011-2022 Blender Foundation */
+
+shader node_mix_closure(closure color Base = 0,
+                        closure color Top = 0,
+                        output closure color Closure = 0)
+{
+  Closure = layer(Top, Base);
+}

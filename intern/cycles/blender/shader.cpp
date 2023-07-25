@@ -511,6 +511,9 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeMixShader)) {
     node = graph->create_node<MixClosureNode>();
   }
+  else if (b_node.is_a(&RNA_ShaderNodeLayerShader)) {
+    node = graph->create_node<LayerClosureNode>();
+  }
   else if (b_node.is_a(&RNA_ShaderNodeAttribute)) {
     BL::ShaderNodeAttribute b_attr_node(b_node);
     AttributeNode *attr = graph->create_node<AttributeNode>();

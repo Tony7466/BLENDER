@@ -674,6 +674,8 @@ static void ntree_weight_tree_merge_weight(bNodeTree *ntree,
   *tosock = addsock_out;
 }
 
+/* TODO */
+
 static bool ntree_weight_tree_tag_nodes(bNode *fromnode, bNode *tonode, void *userdata)
 {
   int *node_count = (int *)userdata;
@@ -939,6 +941,7 @@ static bool closure_node_filter(const bNode *node)
   switch (node->type) {
     case SH_NODE_ADD_SHADER:
     case SH_NODE_MIX_SHADER:
+    case SH_NODE_LAYER_SHADER:
     case SH_NODE_BACKGROUND:
     case SH_NODE_BSDF_DIFFUSE:
     case SH_NODE_BSDF_GLASS:

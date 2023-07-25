@@ -1059,6 +1059,27 @@ class MixClosureWeightNode : public ShaderNode {
   NODE_SOCKET_API(float, fac)
 };
 
+class LayerClosureNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(LayerClosureNode)
+  void constant_fold(const ConstantFolder &folder);
+};
+
+class LayerClosureAccumulateNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(LayerClosureAccumulateNode)
+
+  NODE_SOCKET_API(float, weight)
+};
+
+class LayerClosureWeightNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(LayerClosureWeightNode)
+
+  NODE_SOCKET_API(float, weight)
+  NODE_SOCKET_API(float3, albedo)
+};
+
 class InvertNode : public ShaderNode {
  public:
   SHADER_NODE_CLASS(InvertNode)

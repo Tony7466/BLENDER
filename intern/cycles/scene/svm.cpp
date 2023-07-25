@@ -567,7 +567,16 @@ void SVMCompiler::generate_multi_closure(ShaderNode *root_node,
 
   state->closure_done.insert(node);
 
-  if (node->special_type == SHADER_SPECIAL_TYPE_COMBINE_CLOSURE) {
+  if (node->type == LayerClosureNode::get_node_type()) {
+    ShaderInput *base_in = node->input("Base");
+    ShaderInput *top_in = node->input("Top");
+
+    if (top_in->link)
+      generate_multi_closure(root_node, top_in->link->parent, state);
+    if (base_in->link)
+      generate_multi_closure(root_node, base_in->link->parent, state);
+  }
+  else if (node->special_type == SHADER_SPECIAL_TYPE_COMBINE_CLOSURE) {
     /* weighting is already taken care of in ShaderGraph::transform_multi_closure */
     ShaderInput *cl1in = node->input("Closure1");
     ShaderInput *cl2in = node->input("Closure2");

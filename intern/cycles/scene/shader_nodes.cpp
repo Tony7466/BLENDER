@@ -4728,6 +4728,107 @@ void MixClosureWeightNode::compile(OSLCompiler & /*compiler*/)
   assert(0);
 }
 
+/* Layer Closure */
+
+NODE_DEFINE(LayerClosureNode)
+{
+  NodeType *type = NodeType::add("layer_closure", create, NodeType::SHADER);
+
+  SOCKET_IN_CLOSURE(base, "Base");
+  SOCKET_IN_CLOSURE(top, "Top");
+  SOCKET_OUT_CLOSURE(closure, "Closure");
+
+  return type;
+}
+
+LayerClosureNode::LayerClosureNode() : ShaderNode(get_node_type()) {}
+
+void LayerClosureNode::compile(SVMCompiler & /*compiler*/)
+{
+  /* handled in the SVM compiler */
+}
+
+void LayerClosureNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_layer_closure");
+}
+
+void LayerClosureNode::constant_fold(const ConstantFolder &folder)
+{
+  ShaderInput *base_in = input("Base");
+  ShaderInput *top_in = input("Top");
+
+  /* remove useless layer closures nodes */
+  if (!base_in->link) {
+    folder.bypass_or_discard(top_in);
+  }
+  else if (!top_in->link) {
+    folder.bypass_or_discard(base_in);
+  }
+  /* We could theoretically also check for top layers that are known to be opaque
+   * and skip the base in that case, but that's quite ugly to get right. */
+}
+
+NODE_DEFINE(LayerClosureAccumulateNode)
+{
+  NodeType *type = NodeType::add("layer_closure_accumulate", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(weight, "Weight", 1.0f);
+  SOCKET_OUT_COLOR(albedo, "Albedo");
+  SOCKET_OUT_FLOAT(weight_top, "TopWeight");
+
+  return type;
+}
+
+LayerClosureAccumulateNode::LayerClosureAccumulateNode() : ShaderNode(get_node_type()) {}
+
+void LayerClosureAccumulateNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *weight_in = input("Weight");
+  ShaderOutput *albedo_out = output("Albedo");
+  ShaderOutput *weight_top_out = output("TopWeight");
+
+  compiler.add_node(NODE_LAYER_CLOSURE_ACCUMULATE,
+                    compiler.stack_assign(weight_in),
+                    compiler.stack_assign(albedo_out),
+                    compiler.stack_assign(weight_top_out));
+}
+
+void LayerClosureAccumulateNode::compile(OSLCompiler & /*compiler*/)
+{
+  assert(0);
+}
+
+NODE_DEFINE(LayerClosureWeightNode)
+{
+  NodeType *type = NodeType::add("layer_closure_weight", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(weight, "Weight", 1.0f);
+  SOCKET_IN_COLOR(albedo, "Albedo", one_float3());
+  SOCKET_OUT_FLOAT(weight_base, "BaseWeight");
+
+  return type;
+}
+
+LayerClosureWeightNode::LayerClosureWeightNode() : ShaderNode(get_node_type()) {}
+
+void LayerClosureWeightNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *weight_in = input("Weight");
+  ShaderInput *albedo_in = input("Albedo");
+  ShaderOutput *weight_base_out = output("BaseWeight");
+
+  compiler.add_node(NODE_LAYER_CLOSURE,
+                    compiler.stack_assign(weight_in),
+                    compiler.stack_assign(albedo_in),
+                    compiler.stack_assign(weight_base_out));
+}
+
+void LayerClosureWeightNode::compile(OSLCompiler & /*compiler*/)
+{
+  assert(0);
+}
+
 /* Invert */
 
 NODE_DEFINE(InvertNode)

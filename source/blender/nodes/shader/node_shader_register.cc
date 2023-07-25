@@ -50,6 +50,7 @@ void register_shader_nodes()
   register_node_type_sh_holdout();
   register_node_type_sh_hue_sat();
   register_node_type_sh_invert();
+  register_node_type_sh_layer_shader();
   register_node_type_sh_layer_weight();
   register_node_type_sh_light_falloff();
   register_node_type_sh_light_path();

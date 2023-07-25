@@ -48,6 +48,7 @@ set(SRC_OSL
   node_ies_light.osl
   node_image_texture.osl
   node_invert.osl
+  node_layer_closure.osl
   node_layer_weight.osl
   node_light_falloff.osl
   node_light_path.osl

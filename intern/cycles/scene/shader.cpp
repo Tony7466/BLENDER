@@ -192,6 +192,7 @@ static float3 output_estimate_emission(ShaderOutput *output, bool &is_constant)
 
     return estimate1 + estimate2;
   }
+  /* TODO Layer */
   else if (node->type == MixClosureNode::get_node_type()) {
     /* Mix Closure. */
     ShaderInput *fac_in = node->input("Fac");

@@ -187,6 +187,7 @@ shader_node_categories = [
     ShaderNodeCategory("SH_NEW_SHADER", "Shader", items=[
         NodeItem("ShaderNodeMixShader", poll=eevee_cycles_shader_nodes_poll),
         NodeItem("ShaderNodeAddShader", poll=eevee_cycles_shader_nodes_poll),
+        NodeItem("ShaderNodeLayerShader", poll=eevee_cycles_shader_nodes_poll),
         NodeItem("ShaderNodeBsdfDiffuse", poll=object_eevee_cycles_shader_nodes_poll),
         NodeItem("ShaderNodeBsdfPrincipled", poll=object_eevee_cycles_shader_nodes_poll),
         NodeItem("ShaderNodeBsdfGlossy", poll=object_eevee_cycles_shader_nodes_poll),

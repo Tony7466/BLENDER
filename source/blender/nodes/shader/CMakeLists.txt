@@ -54,6 +54,7 @@ set(SRC
   nodes/node_shader_hueSatVal.cc
   nodes/node_shader_ies_light.cc
   nodes/node_shader_invert.cc
+  nodes/node_shader_layer_shader.cc
   nodes/node_shader_layer_weight.cc
   nodes/node_shader_light_falloff.cc
   nodes/node_shader_light_path.cc

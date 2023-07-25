@@ -33,6 +33,7 @@ typedef struct SVMState {
   float stack[SVM_STACK_SIZE];
   int offset;
   float3 closure_weight;
+  int layer_albedo_offset;
 } SVMState;
 
 /* Stack */
@@ -230,6 +231,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
 {
   SVMState svm;
   svm.offset = sd->shader & SHADER_MASK;
+  svm.layer_albedo_offset = SVM_STACK_INVALID;
 
   while (1) {
     uint4 node = read_node(kg, &svm);
@@ -278,6 +280,12 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_MIX_CLOSURE)
       svm_node_mix_closure(sd, &svm, node);
+      break;
+      SVM_CASE(NODE_LAYER_CLOSURE_ACCUMULATE)
+      svm_node_layer_closure_accumulate(sd, &svm, node);
+      break;
+      SVM_CASE(NODE_LAYER_CLOSURE)
+      svm_node_layer_closure(sd, &svm, node);
       break;
       SVM_CASE(NODE_JUMP_IF_ZERO)
       if (stack_load_float(&svm, node.z) <= 0.0f)
