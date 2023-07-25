@@ -125,8 +125,7 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
   NestedTreePreviews *tree_previews = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
     tree_previews = sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
-      tree_previews = static_cast<NestedTreePreviews *>(
-          MEM_callocN(sizeof(NestedTreePreviews), __func__));
+      tree_previews = MEM_new<NestedTreePreviews>(__func__);
       tree_previews->preview_size = U.node_preview_res;
       return tree_previews;
     });
@@ -158,55 +157,60 @@ static Material *duplicate_material(const Material *mat)
 }
 
 static Scene *preview_prepare_scene(const Main *bmain,
-                                    const Scene *scene,
+                                    const Scene *scene_orig,
                                     Main *pr_main,
-                                    Material *matcopy)
+                                    Material *mat_copy)
 {
-  Scene *sce;
+  Scene *scene_preview;
 
   memcpy(pr_main->filepath, BKE_main_blendfile_path(bmain), sizeof(pr_main->filepath));
 
   if (pr_main == nullptr) {
     return nullptr;
   }
-  sce = static_cast<Scene *>(pr_main->scenes.first);
-  if (sce == nullptr) {
+  scene_preview = static_cast<Scene *>(pr_main->scenes.first);
+  if (scene_preview == nullptr) {
     return nullptr;
   }
 
-  ViewLayer *view_layer = static_cast<ViewLayer *>(sce->view_layers.first);
+  ViewLayer *view_layer = static_cast<ViewLayer *>(scene_preview->view_layers.first);
 
   /* Only enable the combined render-pass. */
   view_layer->passflag = SCE_PASS_COMBINED;
   view_layer->eevee.render_passes = 0;
 
   /* This flag tells render to not execute depsgraph or F-Curves etc. */
-  sce->r.scemode |= R_BUTS_PREVIEW;
-  STRNCPY(sce->r.engine, scene->r.engine);
+  scene_preview->r.scemode |= R_BUTS_PREVIEW;
+  STRNCPY(scene_preview->r.engine, scene_orig->r.engine);
 
-  sce->r.color_mgt_flag = scene->r.color_mgt_flag;
-  BKE_color_managed_display_settings_copy(&sce->display_settings, &scene->display_settings);
+  scene_preview->r.color_mgt_flag = scene_orig->r.color_mgt_flag;
+  BKE_color_managed_display_settings_copy(&scene_preview->display_settings,
+                                          &scene_orig->display_settings);
 
-  BKE_color_managed_view_settings_free(&sce->view_settings);
-  BKE_color_managed_view_settings_copy(&sce->view_settings, &scene->view_settings);
+  BKE_color_managed_view_settings_free(&scene_preview->view_settings);
+  BKE_color_managed_view_settings_copy(&scene_preview->view_settings, &scene_orig->view_settings);
 
-  sce->r.alphamode = R_ADDSKY;
+  scene_preview->r.alphamode = R_ADDSKY;
 
-  sce->r.cfra = scene->r.cfra;
+  scene_preview->r.cfra = scene_orig->r.cfra;
 
   /* Setup the world. */
-  sce->world = ED_preview_prepare_world(pr_main, sce, scene->world, ID_MA, PR_BUTS_RENDER);
+  scene_preview->world = ED_preview_prepare_world(
+      pr_main, scene_preview, scene_orig->world, ID_MA, PR_BUTS_RENDER);
 
-  BLI_addtail(&pr_main->materials, matcopy);
-  sce->world->use_nodes = false;
-  sce->world->horr = 0.05f;
-  sce->world->horg = 0.05f;
-  sce->world->horb = 0.05f;
+  BLI_addtail(&pr_main->materials, mat_copy);
+  scene_preview->world->use_nodes = false;
+  scene_preview->world->horr = 0.05f;
+  scene_preview->world->horg = 0.05f;
+  scene_preview->world->horb = 0.05f;
 
-  ED_preview_set_visibility(
-      pr_main, sce, view_layer, static_cast<ePreviewType>(matcopy->pr_type), PR_BUTS_RENDER);
+  ED_preview_set_visibility(pr_main,
+                            scene_preview,
+                            view_layer,
+                            static_cast<ePreviewType>(mat_copy->pr_type),
+                            PR_BUTS_RENDER);
 
-  BKE_view_layer_synced_ensure(sce, view_layer);
+  BKE_view_layer_synced_ensure(scene_preview, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
     if (base->object->id.name[2] == 'p') {
       if (OB_TYPE_SUPPORT_MATERIAL(base->object->type)) {
@@ -215,7 +219,7 @@ static Scene *preview_prepare_scene(const Main *bmain,
         int actcol = max_ii(base->object->actcol - 1, 0);
 
         if (matar && actcol < base->object->totcol) {
-          (*matar)[actcol] = matcopy;
+          (*matar)[actcol] = mat_copy;
         }
       }
       else if (base->object->type == OB_LAMP) {
@@ -224,7 +228,7 @@ static Scene *preview_prepare_scene(const Main *bmain,
     }
   }
 
-  return sce;
+  return scene_preview;
 }
 
 /** \} */
@@ -313,16 +317,15 @@ void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
  * nested nodegroup. To do so we cover all nested nodetrees starting from the farthest, and
  * update the `nested_node` pointer to the current nodegroup instance used for linking. We stop
  * before getting to the main nodetree because the output type is different. */
-static void connect_nested_node_to_node(const Vector<bNodeTreePath *> &treepath,
+static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
                                         bNode *nested_node,
                                         bNodeSocket *nested_socket,
                                         bNode *final_node,
                                         bNodeSocket *final_socket)
 {
-  for (int i = treepath.size() - 1; i > 0; --i)
-  {
+  for (int i = treepath.size() - 1; i > 0; --i) {
     bNodeTreePath *path = treepath[i];
-    bNodeTreePath *path_prev = treepath[i-1];
+    bNodeTreePath *path_prev = treepath[i - 1];
     bNodeTree *nested_nt = path->nodetree;
     bNode *output_node = nullptr;
     for (bNode *iter_node : nested_nt->all_nodes()) {
@@ -361,7 +364,7 @@ static void connect_nested_node_to_node(const Vector<bNodeTreePath *> &treepath,
 
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
  * should be the path to the node's nodetree */
-static void connect_node_to_surface_output(const Vector<bNodeTreePath *> treepath,
+static void connect_node_to_surface_output(const Span<bNodeTreePath *> treepath,
                                            bNode *node,
                                            bNode *output_node)
 {
@@ -385,8 +388,7 @@ static void connect_node_to_surface_output(const Vector<bNodeTreePath *> treepat
 
 /* Connect the nodes to some aov nodes located in the first nodetree from `treepath`. Last element
  * of `treepath` should be the path to the nodes nodetree. */
-static void connect_nodes_to_aovs(const Vector<bNodeTreePath *> &treepath,
-                                  const Vector<bNode *> &nodes)
+static void connect_nodes_to_aovs(const Span<bNodeTreePath *> treepath, const Span<bNode *> &nodes)
 {
   if (nodes.size() == 0) {
     return;
@@ -457,7 +459,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   if (sce == nullptr) {
     return;
   }
-  Vector<bNodeTreePath *> &treepath = job_data.treepath_copy;
+  Span<bNodeTreePath *> treepath = job_data.treepath_copy;
 
   /* Disconnect shader, volume and displacement from the material output. */
   bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
@@ -647,8 +649,7 @@ static void ensure_nodetree_previews(const bContext *C,
   bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
   root_path->nodetree = job_data->mat_copy->nodetree;
   job_data->treepath_copy.append(root_path);
-  for (bNodeTreePath *original_path =
-           static_cast<bNodeTreePath *>(treepath->first)->next;
+  for (bNodeTreePath *original_path = static_cast<bNodeTreePath *>(treepath->first)->next;
        original_path;
        original_path = original_path->next)
   {
@@ -675,7 +676,7 @@ static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedTreePrevi
     RE_FreeRender(tree_previews->previews_render);
     tree_previews->previews_render = nullptr;
   }
-  MEM_freeN(tree_previews);
+  MEM_delete(tree_previews);
 }
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
