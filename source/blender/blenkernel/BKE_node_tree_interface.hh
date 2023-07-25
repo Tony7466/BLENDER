@@ -7,6 +7,8 @@
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
 
+#include "BKE_node.h"
+
 #ifdef __cplusplus
 #  include <queue>
 #  include <type_traits>
@@ -21,7 +23,9 @@ namespace blender::bke {
 
 /* Runtime topology cache for linear access to items. */
 typedef struct bNodeTreeInterfaceCache {
-  blender::Vector<bNodeTreeInterfaceItem *> items;
+  Vector<bNodeTreeInterfaceItem *> items;
+  Vector<bNodeTreeInterfaceSocket *> inputs;
+  Vector<bNodeTreeInterfaceSocket *> outputs;
 
   void rebuild(bNodeTreeInterface &interface);
 } bNodeTreeInterfaceCache;
@@ -264,6 +268,48 @@ template<typename T> const T &get_data(const bNodeTreeInterfaceSocket &item)
 //   BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
 //   return *static_cast<const T *>(socket_data);
 // }
+
+namespace blender::bke::node_interface {
+
+inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
+                                                                const bNode &from_node,
+                                                                const bNodeSocket &from_sock,
+                                                                const StringRef socket_type,
+                                                                const StringRef name)
+{
+  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
+  SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
+
+  bNodeTreeInterfaceSocket *iosock = ntree.interface.add_socket(
+      name.data(), from_sock.description, socket_type, flag, nullptr);
+  if (iosock == nullptr) {
+    return nullptr;
+  }
+  const bNodeSocketType *typeinfo = iosock->socket_typeinfo();
+  if (typeinfo->interface_from_socket) {
+    typeinfo->interface_from_socket(&ntree, iosock, &from_node, &from_sock);
+  }
+  return iosock;
+}
+
+inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
+                                                                const bNode &from_node,
+                                                                const bNodeSocket &from_sock,
+                                                                const StringRef socket_type)
+{
+  return add_interface_socket_from_node(ntree, from_node, from_sock, socket_type, from_sock.name);
+}
+
+inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
+                                                                const bNode &from_node,
+                                                                const bNodeSocket &from_sock)
+{
+  return add_interface_socket_from_node(
+      ntree, from_node, from_sock, from_sock.typeinfo->idname, from_sock.name);
+}
+
+}  // namespace blender::bke::node_interface
 
 #endif
 

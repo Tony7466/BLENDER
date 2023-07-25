@@ -1059,6 +1059,8 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
 {
   /* Rebuild draw-order list of interface items for linear access. */
   items.clear();
+  inputs.clear();
+  outputs.clear();
 
   /* DFS over all items */
   Stack<bNodeTreeInterfacePanel *> parent_stack;
@@ -1067,6 +1069,15 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
     bNodeTreeInterfacePanel *parent = parent_stack.pop();
     for (bNodeTreeInterfaceItem *item : parent->items()) {
       items.append(item);
+      if (bNodeTreeInterfaceSocket *socket = get_as_ptr<bNodeTreeInterfaceSocket>(item)) {
+        if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
+          inputs.append(socket);
+        }
+        if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
+          outputs.append(socket);
+        }
+      }
+
       if (bNodeTreeInterfacePanel *panel = get_as_ptr<bNodeTreeInterfacePanel>(item)) {
         parent_stack.push(panel);
       }

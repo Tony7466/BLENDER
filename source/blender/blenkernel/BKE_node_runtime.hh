@@ -165,8 +165,6 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   bool has_undefined_nodes_or_sockets = false;
   bNode *group_output_node = nullptr;
   Vector<bNode *> root_frames;
-  Vector<bNodeSocket *> interface_inputs;
-  Vector<bNodeSocket *> interface_outputs;
   bNodeTreeInterfaceCache interface_cache;
 };
 
@@ -477,17 +475,17 @@ inline blender::Span<const bNode *> bNodeTree::group_input_nodes() const
   return this->nodes_by_type("NodeGroupInput");
 }
 
-inline blender::Span<const bNodeSocket *> bNodeTree::interface_inputs() const
-{
-  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->interface_inputs;
-}
+// inline blender::Span<const bNodeSocket *> bNodeTree::interface_inputs() const
+//{
+//  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+//  return this->runtime->interface_inputs;
+//}
 
-inline blender::Span<const bNodeSocket *> bNodeTree::interface_outputs() const
-{
-  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->interface_outputs;
-}
+// inline blender::Span<const bNodeSocket *> bNodeTree::interface_outputs() const
+//{
+//  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+//  return this->runtime->interface_outputs;
+//}
 
 inline blender::Span<const bNodeSocket *> bNodeTree::all_input_sockets() const
 {
@@ -543,15 +541,15 @@ inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
   return this->runtime->links;
 }
 
-inline blender::Span<const bNodePanel *> bNodeTree::panels() const
-{
-  return blender::Span(panels_array, panels_num);
-}
+// inline blender::Span<const bNodePanel *> bNodeTree::panels() const
+//{
+//  return blender::Span(panels_array, panels_num);
+//}
 
-inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
-{
-  return blender::MutableSpan(panels_array, panels_num);
-}
+// inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
+//{
+//  return blender::MutableSpan(panels_array, panels_num);
+//}
 
 inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
 {
@@ -561,6 +559,12 @@ inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
 inline blender::Span<bNestedNodeRef> bNodeTree::nested_node_refs_span() const
 {
   return {this->nested_node_refs, this->nested_node_refs_num};
+}
+
+inline const blender::bke::bNodeTreeInterfaceCache &bNodeTree::interface_cache() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->interface_cache;
 }
 
 /** \} */

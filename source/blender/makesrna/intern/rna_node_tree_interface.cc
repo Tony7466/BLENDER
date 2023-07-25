@@ -72,7 +72,7 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   for (const int index : cache.items.index_range()) {
     if (cache.items[index] == item) {
       return BLI_sprintfN("interface.ui_items[%d]", index);
@@ -397,9 +397,9 @@ static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, 
   }
 
   ntree->ensure_topology_cache();
-  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   rna_iterator_array_begin(iter,
-                           cache.items.data(),
+                           const_cast<bNodeTreeInterfaceItem **>(cache.items.data()),
                            sizeof(bNodeTreeInterfaceItem *),
                            cache.items.size(),
                            false,
@@ -414,7 +414,7 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  return ntree->runtime->interface_cache.items.size();
+  return ntree->interface_cache().items.size();
 }
 
 static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -425,7 +425,7 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
   }
 
   ntree->ensure_topology_cache();
-  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   if (!cache.items.index_range().contains(index)) {
     return false;
   }
@@ -444,7 +444,7 @@ static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
   }
 
   ntree->ensure_topology_cache();
-  blender::bke::bNodeTreeInterfaceCache &cache = ntree->runtime->interface_cache;
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   for (bNodeTreeInterfaceItem *item : cache.items) {
     switch (item->item_type) {
       case NODE_INTERFACE_SOCKET: {

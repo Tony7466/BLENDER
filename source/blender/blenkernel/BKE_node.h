@@ -176,12 +176,12 @@ typedef struct bNodeSocketType {
   void (*interface_draw)(struct bContext *C, struct uiLayout *layout, struct PointerRNA *ptr);
   void (*interface_draw_color)(struct bContext *C, struct PointerRNA *ptr, float *r_color);
   void (*interface_init_socket)(struct bNodeTree *ntree,
-                                const struct bNodeSocket *interface_socket,
+                                const struct bNodeTreeInterfaceSocket *interface_socket,
                                 struct bNode *node,
                                 struct bNodeSocket *sock,
                                 const char *data_path);
   void (*interface_from_socket)(struct bNodeTree *ntree,
-                                struct bNodeSocket *interface_socket,
+                                struct bNodeTreeInterfaceSocket *interface_socket,
                                 const struct bNode *node,
                                 const struct bNodeSocket *sock);
 
@@ -544,24 +544,25 @@ void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
 /** \name Node Tree Interface
  * \{ */
 
-/** Run this after relevant changes to panels to ensure sockets remain sorted by panel. */
-void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree);
+///** Run this after relevant changes to panels to ensure sockets remain sorted by panel. */
+// void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree);
 
-void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
+// void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
 
-void ntreeMoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *socket, int new_index);
+// void ntreeMoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *socket, int
+// new_index);
 
-void ntreeInsertSocketInterfaceBefore(struct bNodeTree *ntree,
-                                      struct bNodeSocket *socket,
-                                      struct bNodeSocket *before);
+// void ntreeInsertSocketInterfaceBefore(struct bNodeTree *ntree,
+//                                      struct bNodeSocket *socket,
+//                                      struct bNodeSocket *before);
 
-struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
-                                            eNodeSocketInOut in_out,
-                                            const char *idname,
-                                            const char *name);
+// struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
+//                                            eNodeSocketInOut in_out,
+//                                            const char *idname,
+//                                            const char *name);
 
-/** Set the panel of the interface socket. */
-void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodePanel *panel);
+///** Set the panel of the interface socket. */
+// void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodePanel *panel);
 
 /** \} */
 
@@ -569,44 +570,44 @@ void ntreeSetSocketInterfacePanel(bNodeTree *ntree, bNodeSocket *sock, bNodePane
 /** \name Node Tree Socket Panels
  * \{ */
 
-/**
- * Check if a panel is part of the node tree.
- * \return True if the panel is part of the node tree.
- */
-bool ntreeContainsPanel(const bNodeTree *ntree, const bNodePanel *panel);
+///**
+// * Check if a panel is part of the node tree.
+// * \return True if the panel is part of the node tree.
+// */
+// bool ntreeContainsPanel(const bNodeTree *ntree, const bNodePanel *panel);
 
-/**
- * Index of a panel in the node tree.
- * \return Index of the panel in the node tree or -1 if the tree does not contain the panel.
- */
-int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
+///**
+// * Index of a panel in the node tree.
+// * \return Index of the panel in the node tree or -1 if the tree does not contain the panel.
+// */
+// int ntreeGetPanelIndex(const bNodeTree *ntree, const bNodePanel *panel);
 
-/**
- * Add a new panel to the node tree.
- * \param name: Name of the new panel.
- */
-bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name);
+///**
+// * Add a new panel to the node tree.
+// * \param name: Name of the new panel.
+// */
+// bNodePanel *ntreeAddPanel(bNodeTree *ntree, const char *name);
 
-/**
- * Insert a new panel in the node tree.
- * \param name: Name of the new panel.
- * \param index: Index at which to insert the panel.
- */
-bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int index);
+///**
+// * Insert a new panel in the node tree.
+// * \param name: Name of the new panel.
+// * \param index: Index at which to insert the panel.
+// */
+// bNodePanel *ntreeInsertPanel(bNodeTree *ntree, const char *name, int index);
 
-/** Remove a panel from the node tree. */
-void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel);
+///** Remove a panel from the node tree. */
+// void ntreeRemovePanel(bNodeTree *ntree, bNodePanel *panel);
 
-/** Remove all panels from the node tree. */
-void ntreeClearPanels(bNodeTree *ntree);
+///** Remove all panels from the node tree. */
+// void ntreeClearPanels(bNodeTree *ntree);
 
-/**
- * Move a panel up or down in the node tree.
- * \param index: Index to which to move the panel.
- */
-void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index);
+///**
+// * Move a panel up or down in the node tree.
+// * \param index: Index to which to move the panel.
+// */
+// void ntreeMovePanel(bNodeTree *ntree, bNodePanel *panel, int new_index);
 
-void ntreeInsertPanelBefore(bNodeTree *ntree, bNodePanel *panel, bNodePanel *before);
+// void ntreeInsertPanelBefore(bNodeTree *ntree, bNodePanel *panel, bNodePanel *before);
 
 /** \} */
 

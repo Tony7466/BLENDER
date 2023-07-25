@@ -34,6 +34,7 @@ namespace blender::bke {
 class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
+struct bNodeTreeInterfaceCache;
 }  // namespace blender::bke
 namespace blender::bke {
 class bNodeTreeZones;
@@ -671,7 +672,7 @@ typedef struct bNodeTree {
    * Warning! Don't make links to these sockets, input/output nodes are used for that.
    * These sockets are used only for generating external interfaces.
    */
-  ListBase inputs, outputs;
+  ListBase inputs DNA_DEPRECATED, outputs DNA_DEPRECATED;
 
   bNodeTreeInterface interface;
 
@@ -697,9 +698,9 @@ typedef struct bNodeTree {
   struct PreviewImage *preview;
 
   /* UI panels */
-  struct bNodePanel **panels_array;
-  int panels_num;
-  int active_panel;
+  struct bNodePanel **panels_array DNA_DEPRECATED;
+  int panels_num DNA_DEPRECATED;
+  int active_panel DNA_DEPRECATED;
 
   bNodeTreeRuntimeHandle *runtime;
 
@@ -773,14 +774,16 @@ typedef struct bNodeTree {
   const bNode *group_output_node() const;
   /** Get all input nodes of the node group. */
   blender::Span<const bNode *> group_input_nodes() const;
-  /** Inputs and outputs of the entire node group. */
-  blender::Span<const bNodeSocket *> interface_inputs() const;
-  blender::Span<const bNodeSocket *> interface_outputs() const;
+  //  /** Inputs and outputs of the entire node group. */
+  //  blender::Span<const bNodeSocket *> interface_inputs() const;
+  //  blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<const bNodePanel *> panels() const;
-  blender::MutableSpan<bNodePanel *> panels_for_write();
+  //  blender::Span<const bNodePanel *> panels() const;
+  //  blender::MutableSpan<bNodePanel *> panels_for_write();
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;
+
+  const blender::bke::bNodeTreeInterfaceCache &interface_cache() const;
 #endif
 } bNodeTree;
 
