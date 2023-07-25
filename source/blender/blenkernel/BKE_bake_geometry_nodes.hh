@@ -14,7 +14,7 @@ namespace blender::bke {
 
 class BakeNodeState {
  public:
-  std::optional<GeometrySet> geometry;
+  Map<int, std::unique_ptr<BakeItem>> item_by_identifier;
 };
 
 class BakeNodeStateAtFrame {

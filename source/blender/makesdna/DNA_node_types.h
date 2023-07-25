@@ -1789,7 +1789,8 @@ typedef struct NodeGeometryBakeItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
-  char _pad[2];
+  /** #eAttrDomain. */
+  short attribute_domain;
   /**
    * Generated unique identifier for sockets which stays the same even when the item order or
    * names change.

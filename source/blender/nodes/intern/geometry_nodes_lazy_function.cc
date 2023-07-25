@@ -3243,17 +3243,20 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
-    {
-      lf::InputSocket &lf_socket = lf_node.input(0);
-      const bNodeSocket &bsocket = bnode.input_socket(0);
-      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
-    }
-    {
-      lf::OutputSocket &lf_socket = lf_node.output(0);
-      const bNodeSocket &bsocket = bnode.output_socket(0);
-      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
-      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    const NodeGeometryBake &storage = *static_cast<const NodeGeometryBake *>(bnode.storage);
+    for (const int i : IndexRange(storage.items_num)) {
+      {
+        lf::InputSocket &lf_socket = lf_node.input(i);
+        const bNodeSocket &bsocket = bnode.input_socket(i);
+        graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+      }
+      {
+        lf::OutputSocket &lf_socket = lf_node.output(i);
+        const bNodeSocket &bsocket = bnode.output_socket(i);
+        graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+      }
     }
 
     mapping_->bake_node_map.add(&bnode, &lf_node);
@@ -3267,7 +3270,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
-    graph_params.usage_by_bsocket.add(&bnode.input_socket(0), &lf_node.output(0));
+    const NodeGeometryBake &storage = *static_cast<const NodeGeometryBake *>(bnode.storage);
+    for (const int i : IndexRange(storage.items_num)) {
+      graph_params.usage_by_bsocket.add(&bnode.input_socket(i), &lf_node.output(0));
+    }
   }
 
   void build_undefined_node(const bNode &bnode, BuildGraphParams &graph_params)

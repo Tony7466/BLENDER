@@ -7,6 +7,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BKE_bake_items_socket.hh"
 #include "BKE_context.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -107,6 +108,20 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   }
   r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+
+  aal::RelationsInNode &relations =
+      NodeDeclarationBuilder(r_declaration).get_anonymous_attribute_relations();
+  int last_geometry_index = -1;
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeGeometryBakeItem &item = storage.items[i];
+    if (item.socket_type == SOCK_GEOMETRY) {
+      last_geometry_index = i;
+    }
+    else if (last_geometry_index != -1) {
+      relations.eval_relations.append({i, last_geometry_index});
+      relations.available_relations.append({i, last_geometry_index});
+    }
+  }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -424,6 +439,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 class LazyFunctionForBakeNode : public LazyFunction {
   const bNode &node_;
+  bke::BakeSocketConfig bake_socket_config_;
 
  public:
   LazyFunctionForBakeNode(const bNode &node, GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info)
@@ -431,16 +447,35 @@ class LazyFunctionForBakeNode : public LazyFunction {
   {
     debug_name_ = "Bake";
 
+    const NodeGeometryBake &storage = node_storage(node);
+
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
 
-    const bNodeSocket &input_bsocket = node.input_socket(0);
-    const bNodeSocket &output_bsocket = node.output_socket(0);
-    const CPPType &type = CPPType::get<GeometrySet>();
+    bake_socket_config_.types.resize(storage.items_num);
+    bake_socket_config_.domains.resize(storage.items_num);
+    bake_socket_config_.geometries_by_attribute.resize(storage.items_num);
 
-    lf_index_by_bsocket[input_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
-        "Geometry", type, lf::ValueUsage::Maybe);
-    lf_index_by_bsocket[output_bsocket.index_in_tree()] = outputs_.append_and_get_index_as(
-        "Geometry", type);
+    int last_geometry_index = -1;
+    for (const int i : IndexRange(storage.items_num)) {
+      const NodeGeometryBakeItem &item = storage.items[i];
+      const bNodeSocket &input_bsocket = node.input_socket(i);
+      const bNodeSocket &output_bsocket = node.output_socket(i);
+      const CPPType &type = *input_bsocket.typeinfo->geometry_nodes_cpp_type;
+      lf_index_by_bsocket[input_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
+          item.name, type, lf::ValueUsage::Maybe);
+      lf_index_by_bsocket[output_bsocket.index_in_tree()] = outputs_.append_and_get_index_as(
+          item.name, type);
+
+      bake_socket_config_.types[i] = eNodeSocketDatatype(item.socket_type);
+      bake_socket_config_.domains[i] = eAttrDomain(item.attribute_domain);
+
+      if (item.socket_type == SOCK_GEOMETRY) {
+        last_geometry_index = i;
+      }
+      else if (last_geometry_index != -1) {
+        bake_socket_config_.geometries_by_attribute[i].append(last_geometry_index);
+      }
+    }
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
@@ -451,6 +486,8 @@ class LazyFunctionForBakeNode : public LazyFunction {
       this->pass_through(params);
       return;
     }
+
+    const NodeGeometryBake &storage = node_storage(node_);
 
     const Depsgraph *depsgraph = user_data.modifier_data->depsgraph;
     const Scene *scene = DEG_get_input_scene(depsgraph);
@@ -471,22 +508,43 @@ class LazyFunctionForBakeNode : public LazyFunction {
       return;
     }
 
+    bke::BakeNodeState *state_to_read_from = nullptr;
+
     if (bake_storage->current_bake_state) {
+      bool has_missing_inputs = false;
+      Array<void *> input_values(storage.items_num);
+      for (const int i : IndexRange(storage.items_num)) {
+        void *data = params.try_get_input_data_ptr_or_request(i);
+        if (data == nullptr) {
+          has_missing_inputs = true;
+        }
+        input_values[i] = data;
+      }
+      if (has_missing_inputs) {
+        /* Wait until all inputs are available. */
+        return;
+      }
+
       GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
       if (geometry == nullptr) {
         /* Wait until value is available. */
         return;
       }
-      bke::GeometryBakeItem::cleanup_geometry(*geometry);
-      bake_storage->current_bake_state->geometry.emplace(*geometry);
-      params.set_output(0, std::move(*geometry));
-    }
-    else {
-      if (bake_storage->states.is_empty()) {
-        this->pass_through(params);
-        return;
+
+      Vector<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
+          input_values, bake_socket_config_);
+      for (const int i : IndexRange(storage.items_num)) {
+        const NodeGeometryBakeItem &item = storage.items[i];
+        std::unique_ptr<bke::BakeItem> &bake_item = bake_items[i];
+        if (bake_item) {
+          bake_storage->current_bake_state->item_by_identifier.add_new(item.identifier,
+                                                                       std::move(bake_item));
+        }
       }
 
+      state_to_read_from = bake_storage->current_bake_state.get();
+    }
+    else if (!bake_storage->states.is_empty()) {
       int state_index = binary_search::find_predicate_begin(
           bake_storage->states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
             return state_at_frame.frame > frame;
@@ -496,25 +554,70 @@ class LazyFunctionForBakeNode : public LazyFunction {
       if (state_index > 0) {
         state_index--;
       }
+      state_to_read_from = bake_storage->states[state_index].state.get();
+    }
 
-      const bke::BakeNodeState &state = *bake_storage->states[state_index].state;
-      if (!state.geometry.has_value()) {
-        params.set_output(0, GeometrySet());
-        return;
+    if (state_to_read_from == nullptr) {
+      this->pass_through(params);
+    }
+    else {
+      Vector<void *> output_values(storage.items_num);
+      Vector<const bke::BakeItem *> bake_items(storage.items_num);
+      for (const int i : IndexRange(storage.items_num)) {
+        const NodeGeometryBakeItem &item = storage.items[i];
+        output_values[i] = params.get_output_data_ptr(i);
+        const std::unique_ptr<bke::BakeItem> *bake_item =
+            state_to_read_from->item_by_identifier.lookup_ptr(item.identifier);
+        bake_items[i] = bake_item ? bake_item->get() : nullptr;
       }
-      params.set_output(0, *state.geometry);
+
+      bke::copy_bake_items_to_socket_values(
+          bake_items,
+          bake_socket_config_,
+          [&](const int item_i,
+              const CPPType &cpp_type) -> std::shared_ptr<AnonymousAttributeFieldInput> {
+            const NodeGeometryBakeItem &item = storage.items[item_i];
+            AnonymousAttributeIDPtr attribute_id = MEM_new<NodeAnonymousAttributeID>(
+                __func__,
+                *user_data.modifier_data->self_object,
+                *user_data.compute_context,
+                node_,
+                std::to_string(item.identifier),
+                item.name);
+            return std::make_shared<AnonymousAttributeFieldInput>(
+                attribute_id, cpp_type, node_.label_or_name());
+          },
+          output_values);
+
+      for (const int i : IndexRange(storage.items_num)) {
+        params.output_set(i);
+      }
     }
   }
 
   void pass_through(lf::Params &params) const
   {
-    GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
-    if (geometry == nullptr) {
-      /* Wait until value is available. */
-      return;
+    const NodeGeometryBake &storage = node_storage(node_);
+
+    for (const int i : IndexRange(storage.items_num)) {
+      if (params.output_was_set(i)) {
+        /* Don't pass through the same socket more than once. */
+        continue;
+      }
+      if (params.get_output_usage(i) != lf::ValueUsage::Used) {
+        /* Don't compute inputs that might not be used. */
+        continue;
+      }
+      void *input_value = params.try_get_input_data_ptr_or_request(i);
+      if (input_value == nullptr) {
+        /* Wait until the input becomes available. */
+        continue;
+      }
+      void *output_value = params.get_output_data_ptr(i);
+      const CPPType &type = *inputs_[i].type;
+      type.move_construct(input_value, output_value);
+      params.output_set(i);
     }
-    bke::GeometryBakeItem::cleanup_geometry(*geometry);
-    params.set_output(0, std::move(*geometry));
   }
 };
 
@@ -525,6 +628,7 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
   LazyFunctionForBakeNodeInputUsage(const bNode &node) : node_(node)
   {
     debug_name_ = "Bake Input Usage";
+    /* TODO: Handle case when not all outputs are required in pass-through mode. */
     outputs_.append_as("Usage", CPPType::get<bool>());
   }
 

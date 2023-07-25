@@ -148,17 +148,16 @@ static bke::BakeSocketConfig make_bake_socket_config(
   config.types.resize(items_num);
   config.geometries_by_attribute.resize(items_num);
 
+  int last_geometry_index = -1;
   for (const int item_i : node_simulation_items.index_range()) {
     const NodeSimulationItem &item = node_simulation_items[item_i];
     config.types[item_i] = eNodeSocketDatatype(item.socket_type);
     config.domains[item_i] = eAttrDomain(item.attribute_domain);
-    if (!ELEM(item.socket_type, SOCK_GEOMETRY, SOCK_STRING)) {
-      for (int i = item_i - 1; i >= 0; i--) {
-        if (node_simulation_items[i].socket_type == SOCK_GEOMETRY) {
-          config.geometries_by_attribute[item_i].append(i);
-          break;
-        }
-      }
+    if (item.socket_type == SOCK_GEOMETRY) {
+      last_geometry_index = item_i;
+    }
+    else if (last_geometry_index != -1) {
+      config.geometries_by_attribute[item_i].append(last_geometry_index);
     }
   }
   return config;
