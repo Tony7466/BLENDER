@@ -2,3 +2,4 @@ Referenced by commit 0239eee1c6231e193bf587353f3eb8d3e1c83d37, Fix build error o
 Referenced by issue #107759, Regression: Crash when running modal operator in load_post handler
 Referenced by commit 95a114f3cae4c4b3875c26e244761bc88f51131b, Fix #107759: Crash when running modal operator in load_post handler
 Referenced by issue #109720, bpy.app.driver_namespace: no way to properly initialize for driver in material
+Referenced by commit c6725b935c2d84c6649682aba4499417dbd8f358, Fix #109720: load_post can't be used to initialize the driver namespace
