@@ -36,7 +36,7 @@ set(SRC
   operators/bmo_join_triangles.cc
   operators/bmo_mesh_convert.cc
   operators/bmo_mirror.cc
-  operators/bmo_normals.c
+  operators/bmo_normals.cc
   operators/bmo_offset_edgeloops.c
   operators/bmo_planar_faces.c
   operators/bmo_poke.c
