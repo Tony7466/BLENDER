@@ -845,11 +845,11 @@ static void modifyGeometry(ModifierData *md,
 
   bool use_orig_index_verts = false;
   bool use_orig_index_edges = false;
-  bool use_orig_index_polys = false;
+  bool use_orig_index_faces = false;
   if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
-    use_orig_index_verts = CustomData_has_layer(&mesh->vdata, CD_ORIGINDEX);
-    use_orig_index_edges = CustomData_has_layer(&mesh->edata, CD_ORIGINDEX);
-    use_orig_index_polys = CustomData_has_layer(&mesh->pdata, CD_ORIGINDEX);
+    use_orig_index_verts = CustomData_has_layer(&mesh->vert_data, CD_ORIGINDEX);
+    use_orig_index_edges = CustomData_has_layer(&mesh->edge_data, CD_ORIGINDEX);
+    use_orig_index_faces = CustomData_has_layer(&mesh->face_data, CD_ORIGINDEX);
   }
 
   nodes::GeoNodesModifierData modifier_eval_data{};
@@ -885,19 +885,19 @@ static void modifyGeometry(ModifierData *md,
     nmd_orig->runtime->eval_log = std::move(eval_log);
   }
 
-  if (use_orig_index_verts || use_orig_index_edges || use_orig_index_polys) {
+  if (use_orig_index_verts || use_orig_index_edges || use_orig_index_faces) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
       /* Add #CD_ORIGINDEX layers if they don't exist already. This is required because the
        * #eModifierTypeFlag_SupportsMapping flag is set. If the layers did not exist before, it is
        * assumed that the output mesh does not have a mapping to the original mesh. */
       if (use_orig_index_verts) {
-        CustomData_add_layer(&mesh->vdata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totvert);
+        CustomData_add_layer(&mesh->vert_data, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totvert);
       }
       if (use_orig_index_edges) {
-        CustomData_add_layer(&mesh->edata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totedge);
+        CustomData_add_layer(&mesh->edge_data, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totedge);
       }
-      if (use_orig_index_polys) {
-        CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totpoly);
+      if (use_orig_index_faces) {
+        CustomData_add_layer(&mesh->face_data, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->faces_num);
       }
     }
   }
