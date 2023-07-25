@@ -19,30 +19,6 @@
 
 namespace blender::geometry {
 
-/** Stores where in the output edge domain each "type" of edge should be stored. */
-struct ResultEdgeRanges {
-  int total_size;
-  /** All of the unselected edges that aren't affected by the operation. */
-  IndexRange unselected;
-  /** The (potentially duplicated) edges that come from the selected split edges. */
-  IndexRange duplicate;
-  /**
-   * Selected loose edges, separate from the "duplicate" edges because loose edges will always
-   * be unique in the result anyway, and aren't the mapping isn't tracked with the corner edges
-   * arrays.
-   */
-  IndexRange loose;
-};
-
-struct ResultEdgeMaps {
-  /** Original indices of unaffected edges. */
-  const IndexMask &unselected;
-  /** Map from new duplicate edge indices (within their range) to original edges. */
-  Span<int> duplicate;
-  /* Original indices of selected loose edges. */
-  const IndexMask &loose;
-};
-
 static void propagate_vert_attributes(Mesh &mesh, const Span<int> new_to_old_verts_map)
 {
   /* These types aren't supported for interpolation below. */
@@ -86,98 +62,38 @@ static void propagate_vert_attributes(Mesh &mesh, const Span<int> new_to_old_ver
   }
 }
 
-static void propagate_edge_attributes(
-    Mesh &mesh,
-    const ResultEdgeRanges &ranges,
-    const ResultEdgeMaps &maps,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+static void propagate_edge_attributes(Mesh &mesh, const Span<int> new_to_old_edge_map)
 {
-  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  CustomData_free_layers(&mesh.edata, CD_FREESTYLE_EDGE, mesh.totedge);
+  CustomData_realloc(&mesh.edata, mesh.totedge, mesh.totedge + new_to_old_edge_map.size());
+  mesh.totedge += new_to_old_edge_map.size();
 
-  /* Store a copy of the IDs locally since we will remove the existing attributes which
-   * can also free the names, since the API does not provide pointer stability. */
-  Vector<std::string> named_ids;
-  Vector<bke::AnonymousAttributeIDPtr> anonymous_ids;
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   for (const bke::AttributeIDRef &id : attributes.all_ids()) {
     if (attributes.lookup_meta_data(id)->domain != ATTR_DOMAIN_EDGE) {
       continue;
     }
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+    if (id.name() == ".edge_verts") {
       continue;
     }
-    if (!id.is_anonymous()) {
-      if (id.name() != ".edge_verts") {
-        named_ids.append(id.name());
-      }
-    }
-    else {
-      anonymous_ids.append(&id.anonymous_id());
-      id.anonymous_id().add_user();
-    }
-  }
-  Vector<bke::AttributeIDRef> local_edge_ids;
-  for (const StringRef name : named_ids) {
-    local_edge_ids.append(name);
-  }
-  for (const bke::AnonymousAttributeIDPtr &id : anonymous_ids) {
-    local_edge_ids.append(*id);
-  }
-
-  const int new_edges_num = ranges.total_size;
-
-  /* Build new arrays for the copied edge attributes. Unlike vertices, new edges aren't all at the
-   * end of the array, so just copying to the new edges would overwrite old values when they were
-   * still needed. */
-  struct NewAttributeData {
-    const bke::AttributeIDRef &local_id;
-    const CPPType &type;
-    void *array;
-  };
-  Vector<NewAttributeData> dst_attributes;
-  for (const bke::AttributeIDRef &local_id : local_edge_ids) {
-    const GVArray src = *attributes.lookup(local_id);
-    if (!src) {
+    bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    if (!attribute) {
       continue;
     }
 
-    const CPPType &type = src.type();
-    void *new_data = MEM_malloc_arrayN(new_edges_num, type.size(), __func__);
-    GMutableSpan dst(type, new_data, new_edges_num);
+    bke::attribute_math::gather(
+        attribute.span, new_to_old_edge_map, attribute.span.take_back(new_to_old_edge_map.size()));
 
-    array_utils::gather(src, maps.unselected, dst.slice(ranges.unselected));
-    bke::attribute_math::gather(src, maps.duplicate, dst.slice(ranges.duplicate));
-    array_utils::gather(src, maps.loose, dst.slice(ranges.loose));
-
-    /* Free the original attribute as soon as possible to lower peak memory usage. */
-    attributes.remove(local_id);
-    dst_attributes.append({local_id, type, new_data});
+    attribute.finish();
   }
 
-  int *new_orig_indices = nullptr;
-  if (const int *orig_indices = static_cast<const int *>(
-          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX)))
+  if (int *orig_indices = static_cast<int *>(
+          CustomData_get_layer_for_write(&mesh.edata, CD_ORIGINDEX, mesh.totedge)))
   {
-    new_orig_indices = static_cast<int *>(MEM_malloc_arrayN(new_edges_num, sizeof(int), __func__));
-    const Span src(orig_indices, mesh.totedge);
-    MutableSpan dst(new_orig_indices, new_edges_num);
-    array_utils::gather(src, maps.unselected, dst.slice(ranges.unselected));
-    bke::attribute_math::gather(src, maps.duplicate, dst.slice(ranges.duplicate));
-    array_utils::gather(src, maps.loose, dst.slice(ranges.loose));
-  }
-
-  CustomData_free(&mesh.edata, mesh.totedge);
-  mesh.totedge = new_edges_num;
-
-  if (new_orig_indices != nullptr) {
-    CustomData_add_layer_with_data(
-        &mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge, nullptr);
-  }
-
-  for (NewAttributeData &new_data : dst_attributes) {
-    attributes.add(new_data.local_id,
-                   ATTR_DOMAIN_EDGE,
-                   bke::cpp_type_to_custom_data_type(new_data.type),
-                   bke::AttributeInitMoveArray(new_data.array));
+    array_utils::gather(
+        Span(orig_indices, mesh.totedge),
+        new_to_old_edge_map,
+        MutableSpan(orig_indices, mesh.totedge).take_back(new_to_old_edge_map.size()));
   }
 }
 
@@ -380,67 +296,46 @@ static void calc_updated_corner_verts(const int orig_verts_num,
   });
 }
 
+struct NewEdgeInfo {
+  Vector<std::pair<int, int2>> reused_edges;
+  VectorSet<OrderedEdge> new_edges;
+};
+
 /**
  * When each of an edge's vertices only have a single grouped edge fan, the vertices will not be
  * split, meaning all output edges will reuse the same vertices. Because edges must be unique, they
  * must be deduplicated. Though smarter heuristics may be possible given the available information,
  * using a #VectorSet is a foolproof way to do this deduplication.
  */
-static VectorSet<OrderedEdge> calc_duplicate_edges(const OffsetIndices<int> faces,
-                                                   const Span<int> orig_corner_edges,
-                                                   const BitSpan selection,
-                                                   const Span<int> new_corner_verts,
-                                                   const int duplicate_edge_start,
-                                                   MutableSpan<int> new_corner_edges)
+static NewEdgeInfo calc_deduplicated_new_edges(const OffsetIndices<int> faces,
+                                               const Span<int> orig_corner_edges,
+                                               const BitSpan selection,
+                                               const Span<int> new_corner_verts,
+                                               const int new_edge_start,
+                                               MutableSpan<int> new_corner_edges)
 {
-  VectorSet<OrderedEdge> duplicate_edges;
-  duplicate_edges.reserve(selection.size());
+  BitVector<> edge_is_reused;
+  NewEdgeInfo result;
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
     for (const int corner : face) {
-      const int orig_edge = orig_corner_edges[corner];
-      if (selection[orig_edge]) {
+      const int edge = orig_corner_edges[corner];
+      if (selection[edge]) {
         const int vert_1 = new_corner_verts[corner];
         const int vert_2 = new_corner_verts[bke::mesh::face_corner_next(face, corner)];
-        const int duplicate_i = duplicate_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
-        new_corner_edges[corner] = duplicate_edge_start + duplicate_i;
+        if (edge_is_reused[edge]) {
+          // TODO: Wrong because this isn't deduplicated with the reused edge
+          const int new_i = result.new_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
+          new_corner_edges[corner] = new_edge_start + new_i;
+        }
+        else {
+          result.reused_edges.append({edge, int2(vert_1, vert_2)});
+          edge_is_reused[edge].set();
+        }
       }
     }
   }
-  return duplicate_edges;
-}
-
-static ResultEdgeRanges get_result_edge_ranges(const int unselected_num,
-                                               const int duplicate_num,
-                                               const int loose_num)
-{
-  const IndexRange all(unselected_num + duplicate_num + loose_num);
-  ResultEdgeRanges ranges;
-  ranges.total_size = all.size();
-  ranges.unselected = all.take_front(unselected_num);
-  ranges.duplicate = all.drop_front(unselected_num).take_front(duplicate_num);
-  ranges.loose = all.take_back(loose_num);
-  return ranges;
-}
-
-static void combine_result_edges(const Span<int2> orig_edges,
-                                 const ResultEdgeRanges &ranges,
-                                 const ResultEdgeMaps &maps,
-                                 const Span<OrderedEdge> duplicate_edges,
-                                 MutableSpan<int2> result_edges)
-{
-  array_utils::gather(orig_edges, maps.unselected, result_edges.slice(ranges.unselected));
-  result_edges.slice(ranges.duplicate).copy_from(duplicate_edges.cast<int2>());
-  array_utils::gather(orig_edges, maps.loose, result_edges.slice(ranges.loose));
-}
-
-static void create_reverse_map(const IndexMask &mask, MutableSpan<int> r_map)
-{
-#ifdef DEBUG
-  r_map.fill(-1);
-#endif
-  mask.foreach_index_optimized<int>(
-      GrainSize(4096), [&](const int src_i, const int dst_i) { r_map[src_i] = dst_i; });
+  return result;
 }
 
 static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
@@ -459,22 +354,13 @@ static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
  * to the vertex, they all reuse the original vertex.
  */
 static void reassign_loose_edge_verts(const int orig_verts_num,
-                                      const int orig_edges_num,
                                       const IndexMask &affected_verts,
                                       const LooseEdgeInfo &loose_edge_info,
                                       const BitSpan split_edges,
                                       const Span<Vector<CornerFan>> corner_fans,
                                       const OffsetIndices<int> new_verts_by_affected_vert,
-                                      const ResultEdgeRanges &ranges,
-                                      const IndexMask &result_loose_map,
                                       MutableSpan<int2> edges)
 {
-  /* This map is only useful because loose edges are not duplicated. Non-loose edges can
-   * potentially be duplicated into multiple final edges. In the end this is equivalent
-   * to using O(logn) lookup of the index in the index mask, but should be faster. */
-  Array<int> old_to_new_edge_map(orig_edges_num);
-  create_reverse_map(result_loose_map, old_to_new_edge_map);
-
   affected_verts.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
     const IndexRange new_verts = new_verts_by_affected_vert[mask];
     /* Account for the reuse of the original vertex by non-loose edge fans. */
@@ -485,10 +371,9 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
 
     const VertLooseEdges vert_info = calc_vert_loose_edges(loose_edge_info, split_edges, vert);
 
-    for (const int orig_edge : vert_info.split) {
+    for (const int edge : vert_info.split) {
       const int new_vert = orig_verts_num + new_verts[new_vert_i];
-      const int new_edge = ranges.loose[old_to_new_edge_map[orig_edge]];
-      swap_edge_vert(edges[new_edge], vert, new_vert);
+      swap_edge_vert(edges[edge], vert, new_vert);
       new_vert_i++;
       if (new_vert_i == new_verts.size()) {
         return;
@@ -505,15 +390,16 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
 }
 
 /**
- * Using the original corner edge array and the updated one, calculate the mapping from duplicate
+ * Using the original corner edge array and the updated one, calculate the mapping from new
  * edges to original edges.
  */
-static Array<int> calc_duplicate_to_old_edge_map(const OffsetIndices<int> faces,
-                                                 const Span<int> orig_corner_edges,
-                                                 const BitSpan selection,
-                                                 const Span<int> new_corner_edges,
-                                                 const IndexRange duplicates)
+static Array<int> calc_new_to_old_edge_map(const OffsetIndices<int> faces,
+                                           const Span<int> orig_corner_edges,
+                                           const BitSpan selection,
+                                           const Span<int> new_corner_edges,
+                                           const IndexRange duplicates)
 {
+  // TODO: Reuse original edge too
   Array<int> duplicate_to_old_edge_map(duplicates.size());
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
@@ -577,7 +463,7 @@ void split_edges(Mesh &mesh,
   Array<int> vert_to_edge_offsets;
   Array<int> vert_to_edge_indices;
   GroupedSpan<int> vert_to_edge_map;
-  if (mesh.loose_edges().count > 0) {
+  if (loose_edges.count > 0) {
     vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
         orig_edges, orig_verts_num, vert_to_edge_offsets, vert_to_edge_indices);
   }
@@ -598,7 +484,7 @@ void split_edges(Mesh &mesh,
   const OffsetIndices new_verts_by_affected_vert = calc_vert_ranges_per_old_vert(
       affected_verts,
       corner_fans,
-      mesh.loose_edges().count == 0 ? nullptr : &loose_edge_info,
+      loose_edges.count > 0 ? &loose_edge_info : nullptr,
       selection_bits,
       vert_new_vert_offset_data);
 
@@ -607,41 +493,34 @@ void split_edges(Mesh &mesh,
       orig_verts_num, corner_fans, new_verts_by_affected_vert, new_corner_verts);
 
   MutableSpan<int> new_corner_edges = mesh.corner_edges_for_write();
-  VectorSet<OrderedEdge> duplicate_edges = calc_duplicate_edges(faces,
-                                                                orig_corner_edges,
-                                                                selection_bits,
-                                                                new_corner_verts,
-                                                                unselected_edges.size(),
-                                                                new_corner_edges);
+  VectorSet<OrderedEdge> new_edges = calc_deduplicated_new_edges(faces,
+                                                                 orig_corner_edges,
+                                                                 selection_bits,
+                                                                 new_corner_verts,
+                                                                 orig_edges.size(),
+                                                                 new_corner_edges);
 
-  const ResultEdgeRanges edge_ranges = get_result_edge_ranges(
-      unselected_edges.size(), duplicate_edges.size(), selected_loose_edges.size());
+  const Array<int> new_edge_indices = calc_new_to_old_edge_map(
+      faces, orig_corner_edges, selection_bits, new_corner_edges, orig_edges.size());
 
-  const Array<int> duplicate_edge_map = calc_duplicate_to_old_edge_map(
-      faces, orig_corner_edges, selection_bits, new_corner_edges, edge_ranges.duplicate);
+  Array<int2> result_edges(orig_edges.size() + new_edges.size());
+  result_edges.as_mutable_span().take_front(orig_edges.size()).copy_from(orig_edges);
+  result_edges.as_mutable_span()
+      .take_back(new_edges.size())
+      .copy_from(new_edges.as_span().cast<int2>());
 
-  const ResultEdgeMaps edge_maps{unselected_edges, duplicate_edge_map, selected_loose_edges};
-
-  Array<int2> result_edges(edge_ranges.total_size);
-  combine_result_edges(orig_edges, edge_ranges, edge_maps, duplicate_edges, result_edges);
-  if (!edge_ranges.loose.is_empty()) {
+  if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
-                              orig_edges.size(),
                               affected_verts,
                               loose_edge_info,
                               selection_bits,
                               corner_fans,
                               new_verts_by_affected_vert,
-                              edge_ranges,
-                              edge_maps.loose,
                               result_edges);
   }
 
-  propagate_edge_attributes(mesh, edge_ranges, edge_maps, propagation_info);
-  mesh.attributes_for_write().add<int2>(
-      ".edge_verts",
-      ATTR_DOMAIN_EDGE,
-      bke::AttributeInitVArray(VArray<int2>::ForSpan(result_edges)));
+  propagate_edge_attributes(mesh, new_edge_indices);
+  mesh.edges_for_write().copy_from(result_edges);
 
   const Array<int> vert_map = calc_new_to_old_vert_map(affected_verts, new_verts_by_affected_vert);
   propagate_vert_attributes(mesh, vert_map);
