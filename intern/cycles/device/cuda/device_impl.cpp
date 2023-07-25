@@ -990,16 +990,6 @@ int CUDADevice::get_device_default_attribute(CUdevice_attribute attribute, int d
   return value;
 }
 
-void CUDADevice::push_marker(const string name)
-{
-  nvtxRangePushA(name.c_str());
-}
-
-void CUDADevice::pop_marker()
-{
-  nvtxRangePop();
-}
-
 CCL_NAMESPACE_END
 
 #endif

@@ -889,8 +889,6 @@ typedef struct _nvrtcProgram* nvrtcProgram;
 
 
 /* Function types. */
-typedef void CUDAAPI tnvtxRangePushA(const char *msg);
-typedef void CUDAAPI tnvtxRangePop();
 typedef CUresult CUDAAPI tcuGetErrorString(CUresult error, const char** pStr);
 typedef CUresult CUDAAPI tcuGetErrorName(CUresult error, const char** pStr);
 typedef CUresult CUDAAPI tcuInit(unsigned int Flags);
@@ -1132,8 +1130,6 @@ typedef nvrtcResult CUDAAPI tnvrtcGetLoweredName(nvrtcProgram prog, const char* 
 
 
 /* Function declarations. */
-extern tnvtxRangePushA *nvtxRangePushA;
-extern tnvtxRangePop *nvtxRangePop;
 extern tcuGetErrorString *cuGetErrorString;
 extern tcuGetErrorName *cuGetErrorName;
 extern tcuInit *cuInit;
@@ -1382,8 +1378,7 @@ enum {
 
 enum {
 	CUEW_INIT_CUDA = 1,
-	CUEW_INIT_NVRTC = 2,
-	CUEW_INIT_NVTX = 4
+	CUEW_INIT_NVRTC = 2
 };
 
 int cuewInit(cuuint32_t flags);

@@ -73,7 +73,6 @@ bool PathTraceWork::has_multiple_works() const
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
-  SCOPED_MARKER(device_, "copy_to_render_buffers");
   copy_render_buffers_from_device();
   const int y_stride = effective_buffer_params_.slice_stride;
   const int slice_height = effective_buffer_params_.slice_height;
@@ -97,7 +96,6 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 
 void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers)
 {
-  SCOPED_MARKER(device_, "copy_from_render_buffers");
   const int y_stride = effective_buffer_params_.slice_stride;
   const int slice_height = effective_buffer_params_.slice_height;
   const int total_height = effective_buffer_params_.height;

@@ -101,9 +101,6 @@ class CUDADevice : public GPUDevice {
   int get_num_multiprocessors();
   int get_max_num_threads_per_multiprocessor();
 
-  virtual void push_marker(const string name) override;
-  virtual void pop_marker() override;
-
  protected:
   bool get_device_attribute(CUdevice_attribute attribute, int *value);
   int get_device_default_attribute(CUdevice_attribute attribute, int default_value);
