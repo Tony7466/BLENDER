@@ -450,14 +450,14 @@ static void fluid_free_endjob(void *customdata)
   if (job->success) {
     /* Show free job info */
     WM_reportf(
-        RPT_INFO, "Fluid: %s complete (%.2f)", job->name, PIL_check_seconds_timer() - job->start);
+        RPT_INFO, "Fluid: %s complete! (%.2f)", job->name, PIL_check_seconds_timer() - job->start);
   }
   else {
     if (fds->error[0] != '\0') {
       WM_reportf(RPT_ERROR, "Fluid: %s failed: %s", job->name, fds->error);
     }
     else { /* User canceled the free job */
-      WM_reportf(RPT_WARNING, "Fluid: %s canceled", job->name);
+      WM_reportf(RPT_WARNING, "Fluid: %s canceled!", job->name);
     }
   }
 }
