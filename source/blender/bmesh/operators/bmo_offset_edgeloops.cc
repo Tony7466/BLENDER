@@ -56,7 +56,7 @@ static BMFace *bm_face_split_walk_back(BMesh *bm, BMLoop *l_src, BMLoop **r_l)
     copy_v3_v3(cos[num - (i + 1)], l_dst->v->co);
   }
 
-  f = BM_face_split_n(bm, l_src->f, l_dst->prev, l_src->next, cos, num, r_l, NULL);
+  f = BM_face_split_n(bm, l_src->f, l_dst->prev, l_src->next, cos, num, r_l, nullptr);
 
   return f;
 }
@@ -81,7 +81,7 @@ void bmo_offset_edgeloops_exec(BMesh *bm, BMOperator *op)
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
 
   /* over alloc */
-  verts = MEM_mallocN(sizeof(*verts) * (edges_num * 2), __func__);
+  verts = static_cast<BMVert **>(MEM_mallocN(sizeof(*verts) * (edges_num * 2), __func__));
 
   STACK_INIT(verts, (edges_num * 2));
 
@@ -148,7 +148,7 @@ void bmo_offset_edgeloops_exec(BMesh *bm, BMOperator *op)
         }
 
         v_other = BM_edge_other_vert(e, v);
-        BM_edge_split(bm, e, v_other, NULL, 1.0f - OFFSET);
+        BM_edge_split(bm, e, v_other, nullptr, 1.0f - OFFSET);
       }
       else {
         v_edges_num_untag += 1;
@@ -180,7 +180,7 @@ void bmo_offset_edgeloops_exec(BMesh *bm, BMOperator *op)
 #endif
           {
             BMLoop *l_new;
-            BM_face_split(bm, l->f, l->prev, l->next, &l_new, NULL, true);
+            BM_face_split(bm, l->f, l->prev, l->next, &l_new, nullptr, true);
             BLI_assert(f_cmp == l->f);
             BLI_assert(f_cmp != l_new->f);
             UNUSED_VARS_NDEBUG(f_cmp);
@@ -192,7 +192,7 @@ void bmo_offset_edgeloops_exec(BMesh *bm, BMOperator *op)
             if (BM_elem_index_get(l->next->v) == -1) {
               if (BM_elem_index_get(l->prev->prev->v) == -1) {
                 BMLoop *l_new;
-                BM_face_split(bm, l->f, l->prev->prev, l->next, &l_new, NULL, true);
+                BM_face_split(bm, l->f, l->prev->prev, l->next, &l_new, nullptr, true);
                 BLI_assert(f_cmp == l->f);
                 BLI_assert(f_cmp != l_new->f);
                 BMO_edge_flag_enable(bm, l_new->e, ELE_NEW);
@@ -210,8 +210,8 @@ void bmo_offset_edgeloops_exec(BMesh *bm, BMOperator *op)
               }
             }
 
-            /* NOTE: instead of duplicate code in alternate direction,
-             * we can be sure to hit the other vertex, so the code above runs. */
+/* NOTE: instead of duplicate code in alternate direction,
+ * we can be sure to hit the other vertex, so the code above runs. */
 #if 0
             else if (BM_elem_index_get(l->prev->v) == -1) {
               if (BM_elem_index_get(l->next->next->v) == -1) {
