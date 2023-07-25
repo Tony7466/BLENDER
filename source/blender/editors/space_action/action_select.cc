@@ -1767,6 +1767,11 @@ static void actkeys_mselect_channel_only(bAnimContext *ac, bAnimListElem *ale, s
   else if (ale->type == ANIMTYPE_MASKLAYER) {
     ED_mask_select_frames(static_cast<MaskLayer *>(ale->data), select_mode);
   }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+    blender::ed::greasepencil::select_all_frames(
+        static_cast<blender::bke::greasepencil::Layer *>(ale->data), select_mode);
+    ale->update |= ANIM_UPDATE_DEPS;
+  }
   else {
     if (ale->type == ANIMTYPE_SUMMARY && ale->datatype == ALE_ALL) {
       ListBase anim_data = {nullptr, nullptr};
