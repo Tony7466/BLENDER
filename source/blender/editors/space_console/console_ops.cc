@@ -405,11 +405,6 @@ static int console_move_exec(bContext *C, wmOperator *op)
   if (!select && sc->sel_start != sc->sel_end) {
     /* Clear selection if we are not extending it. */
     sc->sel_start = sc->sel_end;
-    if (sc->sel_end <= ci->len && sc->sel_start <= ci->len) {
-      /* If selection is in an editable section, do nothing else. */
-      ED_area_tag_redraw(CTX_wm_area(C));
-      return OPERATOR_FINISHED;
-    }
   }
 
   switch (type) {
