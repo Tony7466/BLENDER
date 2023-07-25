@@ -264,41 +264,44 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     }
   }
 
-  int biggest_slice = work_balance_infos[largest_weight].weight/work_balance_infos[smallest_weight].weight;
+  int biggest_slice = work_balance_infos[largest_weight].weight /
+                      work_balance_infos[smallest_weight].weight;
   int slice_stride = 0;
   int slice_sizes[num_works];
   int remaining_rows = window_height;
-  /* Aim to acheive at least 1 Slice per device otherwise use consecutive slices */
-  if(biggest_slice < window_height/num_works && interleaved_slices) {
-        /* Assign a size to each slice based on its weight */
-        for (int i = 0; i < num_works; i++) {
-            const double weight = work_balance_infos[i].weight;
-            int slice_size = weight / work_balance_infos[smallest_weight].weight;
-            slice_size = std::min(remaining_rows - (num_works - (i + 1)), slice_size);
-            slice_sizes[i] = slice_size;
-            slice_stride += slice_size;
-        }
-    } else {
-        /* Instead of using interleaved slices create n bigger consecutive slices */
-        remaining_rows = remaining_rows - num_works; /* each slice must have at least 1 row*/
-        for (int i = 0; i < num_works; i++) {
-            const double weight = work_balance_infos[i].weight;
-            /* Slice size is 1 row plus it's weighted portion of the remaining rows */
-            int slice_size = remaining_rows * weight;
-            slice_size += 1;
-            slice_sizes[i] = slice_size;
-            slice_stride += slice_size;
-        }
-        /* If there are any remaining scanlines due to truncation add them to the device with the
-         * highest weight */
-        int leftover_scanlines = window_height - slice_stride;
-        if (leftover_scanlines > 0) {
-            slice_sizes[largest_weight] += leftover_scanlines;
-            slice_stride++;
-        }
-    }
+  double allocatable_slices;
+  double fixed_slices;
+  bool use_interleaved = (biggest_slice < (window_height / num_works)) && interleaved_slices;
+  if (use_interleaved) {
+    /* Assign the slices entirely based on the weight */
+    allocatable_slices = 1.0 / work_balance_infos[smallest_weight].weight;
+    fixed_slices = 0.5; /* Round up so that smallest always gets 1 */
+  }
+  else {
+    /* Instead of using interleaved slices create n bigger consecutive slices */
+    /* Aim to acheive at least 1 slice per device otherwise use consecutive slices */
+    allocatable_slices = remaining_rows - num_works; /* each slice must have at least 1 row */
+    fixed_slices = 1; /* Make sure all slices get at least 1  */
+  }
 
-  VLOG_INFO << "===================SLICE================";
+  /* Assign a size to each slice based on its weight */
+  for (int i = 0; i < num_works; i++) {
+    int slice_size = std::floor(work_balance_infos[i].weight * allocatable_slices + fixed_slices);
+    slice_sizes[i] = slice_size;
+    slice_stride += slice_size;
+  }
+
+  /* If there are any remaining scanlines due to truncation add them to the device with the
+   * highest weight */
+  int leftover_scanlines = allocatable_slices - slice_stride;
+  if (leftover_scanlines > 0) {
+    slice_sizes[largest_weight] += leftover_scanlines;
+    slice_stride++;
+  } else if(leftover_scanlines < 0) {
+    VLOG_WARNING << "#######Used to many scanlines";
+  }
+
+  VLOG_INFO << "===================SLICE allocatable:" << allocatable_slices << " fixed:"<< fixed_slices <<  "================";
   int slices = window_height / slice_stride;
   int current_y = 0;
   for (int i = 0; i < num_works; ++i) {
