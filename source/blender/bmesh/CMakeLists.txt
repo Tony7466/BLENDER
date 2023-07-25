@@ -40,7 +40,7 @@ set(SRC
   operators/bmo_offset_edgeloops.cc
   operators/bmo_planar_faces.cc
   operators/bmo_poke.cc
-  operators/bmo_primitive.c
+  operators/bmo_primitive.cc
   operators/bmo_removedoubles.c
   operators/bmo_rotate_edges.c
   operators/bmo_smooth_laplacian.c
