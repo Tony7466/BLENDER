@@ -89,14 +89,14 @@ static BMEdge *edge_next(BMesh *bm, BMEdge *e)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
 {
   BMOIter siter;
   BMEdge *e;
-  BMEdge **edges1 = NULL, **edges2 = NULL, **edges;
+  BMEdge **edges1 = nullptr, **edges2 = nullptr, **edges;
   BLI_array_declare(edges1);
   BLI_array_declare(edges2);
   BLI_array_declare(edges);
@@ -187,13 +187,13 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
       return;
     }
     edges1 = edges2;
-    edges2 = NULL;
+    edges2 = nullptr;
   }
 
   if (edges2 && BLI_array_len(edges2) > 2 &&
       BM_edge_share_vert_check(edges2[0], edges2[BLI_array_len(edges2) - 1]))
   {
-    edges2 = NULL;
+    edges2 = nullptr;
   }
 
   /* two unconnected loops, connect the */
@@ -222,7 +222,7 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
       v4 = BM_vert_in_edge(edges2[i - 1], edges2[i]->v1) ? edges2[i]->v2 : edges2[i]->v1;
     }
 
-    /* if there is ever bow-tie quads between two edges the problem is here! #30367. */
+/* if there is ever bow-tie quads between two edges the problem is here! #30367. */
 #if 0
     normal_tri_v3(dvec1, v1->co, v2->co, v4->co);
     normal_tri_v3(dvec2, v1->co, v4->co, v3->co);
@@ -241,9 +241,9 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
       SWAP(BMVert *, v3, v4);
     }
 
-    e = BM_edge_create(bm, v1, v3, NULL, BM_CREATE_NO_DOUBLE);
+    e = BM_edge_create(bm, v1, v3, nullptr, BM_CREATE_NO_DOUBLE);
     BMO_edge_flag_enable(bm, e, ELE_NEW);
-    e = BM_edge_create(bm, v2, v4, NULL, BM_CREATE_NO_DOUBLE);
+    e = BM_edge_create(bm, v2, v4, nullptr, BM_CREATE_NO_DOUBLE);
     BMO_edge_flag_enable(bm, e, ELE_NEW);
   }
   else if (edges1) {
@@ -253,7 +253,7 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
       v1 = BM_vert_in_edge(edges1[1], edges1[0]->v1) ? edges1[0]->v2 : edges1[0]->v1;
       i = BLI_array_len(edges1) - 1;
       v2 = BM_vert_in_edge(edges1[i - 1], edges1[i]->v1) ? edges1[i]->v2 : edges1[i]->v1;
-      e = BM_edge_create(bm, v1, v2, NULL, BM_CREATE_NO_DOUBLE);
+      e = BM_edge_create(bm, v1, v2, nullptr, BM_CREATE_NO_DOUBLE);
       BMO_edge_flag_enable(bm, e, ELE_NEW);
     }
   }
