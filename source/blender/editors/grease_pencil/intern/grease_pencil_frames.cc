@@ -6,6 +6,8 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_map.hh"
+
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
@@ -44,6 +46,17 @@ bool select_frame_at(bke::greasepencil::Layer *layer,
       break;
   }
   return true;
+}
+
+bool layer_has_frame_selected(const bke::greasepencil::Layer *layer)
+{
+  for (auto item : layer->frames().items()) {
+    const GreasePencilFrame &frame = item.value;
+    if ((frame.flag & GP_FRAME_SELECTED) != 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)

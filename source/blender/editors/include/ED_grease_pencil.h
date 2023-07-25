@@ -67,6 +67,11 @@ bool select_frame_at(bke::greasepencil::Layer *layer,
                      const int frame_number,
                      const short select_mode);
 
+/**
+ * Checks if any frame of the \a layer is selected.
+ */
+bool layer_has_frame_selected(const bke::greasepencil::Layer *layer);
+
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
