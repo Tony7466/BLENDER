@@ -1644,6 +1644,7 @@ static void actkeys_mselect_single(bAnimContext *ac,
       GreasePencilFrame *frame = layer->frames_for_write().lookup_ptr(selx);
       frame->flag |= GP_FRAME_SELECTED;
     }
+    ale->update |= ANIM_UPDATE_DEPS;
   }
   else if (ale->type == ANIMTYPE_MASKLAYER) {
     ED_mask_select_frame(static_cast<MaskLayer *>(ale->data), selx, select_mode);
