@@ -678,9 +678,8 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
     ARegion *redo_region_from_hud = (region_orig->regiontype == RGN_TYPE_HUD) ?
                                         ED_area_type_hud_redo_region_find(area, region_orig) :
                                         nullptr;
-    ARegion *region_repeat = redo_region_from_hud ?
-                                 redo_region_from_hud :
-                                 BKE_area_find_region_active_win(CTX_wm_area(C));
+    ARegion *region_repeat = redo_region_from_hud ? redo_region_from_hud :
+                                                    BKE_area_find_region_active_win(area);
 
     if (region_repeat) {
       CTX_wm_region_set(C, region_repeat);
