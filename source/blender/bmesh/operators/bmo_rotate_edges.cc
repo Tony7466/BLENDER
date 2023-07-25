@@ -36,7 +36,7 @@ static void bm_rotate_edges_simple(BMesh *bm,
      * #BM_edge_rotate to get some extra speed. */
     if (BM_edge_rotate_check(e)) {
       BMEdge *e_rotate = BM_edge_rotate(bm, e, use_ccw, check_flag);
-      if (e_rotate != NULL) {
+      if (e_rotate != nullptr) {
         BMO_edge_flag_enable(bm, e_rotate, EDGE_OUT);
       }
     }
@@ -87,7 +87,8 @@ static void bm_rotate_edges_shared(
     BMesh *bm, BMOperator *op, short check_flag, const bool use_ccw, const int edges_len)
 {
   Heap *heap = BLI_heap_new_ex(edges_len);
-  HeapNode **eheap_table = MEM_mallocN(sizeof(*eheap_table) * edges_len, __func__);
+  HeapNode **eheap_table = static_cast<HeapNode **>(
+      MEM_mallocN(sizeof(*eheap_table) * edges_len, __func__));
   int edges_len_rotate = 0;
 
   {
@@ -105,7 +106,7 @@ static void bm_rotate_edges_shared(
     uint i;
     BMO_ITER_INDEX (e, &siter, op->slots_in, "edges", BM_EDGE, i) {
       BM_elem_index_set(e, BM_edge_is_manifold(e) ? i : -1); /* set_dirty! */
-      eheap_table[i] = NULL;
+      eheap_table[i] = nullptr;
     }
   }
 
@@ -125,7 +126,7 @@ static void bm_rotate_edges_shared(
       BMEdge *e;
       uint i;
       BMO_ITER_INDEX (e, &siter, op->slots_in, "edges", BM_EDGE, i) {
-        BLI_assert(eheap_table[i] == NULL);
+        BLI_assert(eheap_table[i] == nullptr);
 
         bool ok = (BM_elem_index_get(e) != -1) && BM_edge_rotate_check(e);
 
@@ -164,13 +165,13 @@ static void bm_rotate_edges_shared(
 
     const int edges_len_rotate_prev = edges_len_rotate;
     while (!BLI_heap_is_empty(heap)) {
-      BMEdge *e_best = BLI_heap_pop_min(heap);
-      eheap_table[BM_elem_index_get(e_best)] = NULL;
+      BMEdge *e_best = static_cast<BMEdge *>(BLI_heap_pop_min(heap));
+      eheap_table[BM_elem_index_get(e_best)] = nullptr;
 
       /* No problem if this fails, re-evaluate if faces connected to this edge are touched. */
       if (BM_edge_rotate_check(e_best)) {
         BMEdge *e_rotate = BM_edge_rotate(bm, e_best, use_ccw, check_flag);
-        if (e_rotate != NULL) {
+        if (e_rotate != nullptr) {
           BMO_edge_flag_enable(bm, e_rotate, EDGE_OUT);
 
           /* invalidate so we don't try touch this again. */
@@ -193,7 +194,7 @@ static void bm_rotate_edges_shared(
             do {
               BMEdge *e_iter = l_iter->e;
               const int e_iter_index = BM_elem_index_get(e_iter);
-              if ((e_iter_index != -1) && (eheap_table[e_iter_index] == NULL)) {
+              if ((e_iter_index != -1) && (eheap_table[e_iter_index] == nullptr)) {
                 if (BM_edge_rotate_check(e_iter)) {
                   /* Previously degenerate, now valid. */
                   float cost = bm_edge_calc_rotate_cost(e_iter);
@@ -213,7 +214,7 @@ static void bm_rotate_edges_shared(
     }
   }
 
-  BLI_heap_free(heap, NULL);
+  BLI_heap_free(heap, nullptr);
   MEM_freeN(eheap_table);
 }
 

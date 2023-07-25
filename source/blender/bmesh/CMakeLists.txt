@@ -42,7 +42,7 @@ set(SRC
   operators/bmo_poke.cc
   operators/bmo_primitive.cc
   operators/bmo_removedoubles.cc
-  operators/bmo_rotate_edges.c
+  operators/bmo_rotate_edges.cc
   operators/bmo_smooth_laplacian.c
   operators/bmo_split_edges.c
   operators/bmo_subdivide.c
