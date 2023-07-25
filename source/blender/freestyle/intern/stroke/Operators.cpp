@@ -222,7 +222,7 @@ void Operators::bidirectionalChain(ViewEdgeIterator &it,
     return;
   }
 
-  unsigned id = 0;
+  uint id = 0;
   ViewEdge *edge;
   Chain *new_chain;
 
@@ -271,7 +271,7 @@ void Operators::bidirectionalChain(ViewEdgeIterator &it, UnaryPredicate1D &pred)
     return;
   }
 
-  unsigned id = 0;
+  uint id = 0;
   Functions1D::IncrementChainingTimeStampF1D ts;
   Predicates1D::EqualToChainingTimeStampUP1D pred_ts(TimeStamp::instance()->getTimeStamp() + 1);
 

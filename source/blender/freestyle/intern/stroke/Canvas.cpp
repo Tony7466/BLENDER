@@ -362,8 +362,8 @@ void Canvas::loadMap(const char *iFileName, const char *iMapName, uint iNbLevels
     int w = newMap->width();
     int h = newMap->height();
     QImage *tmp = new QImage(w, h, 8);
-    for (unsigned int y = 0; y < h; ++y) {
-      for (unsigned int x = 0; x < w; ++x) {
+    for (uint y = 0; y < h; ++y) {
+      for (uint x = 0; x < w; ++x) {
         int c = qGray(newMap->pixel(x, y));
         tmp->setPixel(x, y, c);
       }
