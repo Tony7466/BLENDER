@@ -50,10 +50,14 @@ eAttrDomain ED_grease_pencil_selection_domain_get(struct bContext *C);
 
 #ifdef __cplusplus
 
+#  include "BKE_grease_pencil.hh"
+
 #  include "BLI_generic_span.hh"
 #  include "BLI_math_matrix_types.hh"
 
 namespace blender::ed::greasepencil {
+
+void set_active_layer(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer);
 
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
