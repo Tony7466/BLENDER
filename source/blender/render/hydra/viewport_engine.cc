@@ -177,8 +177,6 @@ void DrawTexture::write_data(int width, int height, const void *data)
                                    GPU_RGBA16F,
                                    GPU_TEXTURE_USAGE_GENERAL,
                                    (float *)data);
-  GPU_texture_filter_mode(texture_, true);
-  GPU_texture_mipmap_mode(texture_, true, true);
 }
 
 void DrawTexture::draw(GPUShader *shader, const pxr::GfVec4d &viewport)
