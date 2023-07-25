@@ -1838,11 +1838,11 @@ static int mouse_action_keys(bAnimContext *ac,
         }
       }
       else if (ac->datatype == ANIMCONT_GPENCIL) {
-        /* deselect all other channels first */
+        /* Deselect all other channels first. */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
         if (U.experimental.use_grease_pencil_version3) {
-          /* Highlight grease pencil Layer. */
+          /* Highlight the grease pencil channel, and set the corresponding layer as active. */
           if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER)
           {
             using namespace blender::bke::greasepencil;
