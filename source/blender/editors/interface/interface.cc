@@ -6085,7 +6085,7 @@ void UI_but_func_menu_step_set(uiBut *but, uiMenuStepFunc func)
 
 void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const uiBut *but)> func)
 {
-  but->tip_label_func = func;
+  but->tip_label_func = std::move(func);
   UI_but_drawflag_enable(but, UI_BUT_HAS_TOOLTIP_LABEL);
 }
 
