@@ -1722,6 +1722,12 @@ static void actkeys_mselect_column(bAnimContext *ac, short select_mode, float se
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_mask_select_frame(static_cast<MaskLayer *>(ale->data), selx, select_mode);
     }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      using namespace blender::bke::greasepencil;
+      Layer *layer = static_cast<Layer *>(ale->data);
+      blender::ed::greasepencil::select_frame_at(layer, selx, select_mode);
+      ale->update |= ANIM_UPDATE_DEPS;
+    }
     else {
       AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
