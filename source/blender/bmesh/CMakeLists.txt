@@ -19,7 +19,7 @@ set(SRC
   operators/bmo_bisect_plane.cc
   operators/bmo_bridge.cc
   operators/bmo_connect.c
-  operators/bmo_connect_concave.c
+  operators/bmo_connect_concave.cc
   operators/bmo_connect_nonplanar.c
   operators/bmo_connect_pair.c
   operators/bmo_create.c

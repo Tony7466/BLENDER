@@ -36,8 +36,8 @@
 
 static int bm_edge_length_cmp(const void *a_, const void *b_)
 {
-  const BMEdge *e_a = *(const void **)a_;
-  const BMEdge *e_b = *(const void **)b_;
+  const BMEdge *e_a = static_cast<const BMEdge *>(*(const void **)a_);
+  const BMEdge *e_b = static_cast<const BMEdge *>(*(const void **)b_);
 
   int e_a_concave = (BM_elem_flag_test(e_a->v1, BM_ELEM_TAG) &&
                      BM_elem_flag_test(e_a->v2, BM_ELEM_TAG));
@@ -78,7 +78,7 @@ static bool bm_face_split_by_concave(BMesh *bm,
   BMFace **faces_array = BLI_array_alloca(faces_array, faces_array_tot);
   BMEdge **edges_array = BLI_array_alloca(edges_array, edges_array_tot);
   const int quad_method = 0, ngon_method = 0; /* beauty */
-  LinkNode *faces_double = NULL;
+  LinkNode *faces_double = nullptr;
 
   float normal[3];
   BLI_assert(f_base->len > 3);
@@ -150,11 +150,11 @@ static bool bm_face_split_by_concave(BMesh *bm,
     }
   }
 
-  BLI_heap_clear(pf_heap, NULL);
+  BLI_heap_clear(pf_heap, nullptr);
 
   while (faces_double) {
     LinkNode *next = faces_double->next;
-    BM_face_kill(bm, faces_double->link);
+    BM_face_kill(bm, static_cast<BMFace *>(faces_double->link));
     MEM_freeN(faces_double);
     faces_double = next;
   }
@@ -208,5 +208,5 @@ void bmo_connect_verts_concave_exec(BMesh *bm, BMOperator *op)
   }
 
   BLI_memarena_free(pf_arena);
-  BLI_heap_free(pf_heap, NULL);
+  BLI_heap_free(pf_heap, nullptr);
 }
