@@ -210,7 +210,7 @@ static int corner_on_edge_connected_to_vert(const Span<int> corner_verts,
   if (corner_verts[corner] == vert) {
     return corner;
   }
-  const int other = bke::mesh::face_corner_prev(face, corner);
+  const int other = bke::mesh::face_corner_next(face, corner);
   BLI_assert(corner_verts[other] == vert);
   return other;
 }
@@ -349,7 +349,10 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(const IndexMask &affecte
     affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
       const VertLooseEdges info = calc_vert_loose_edges(*loose_edge_info, split_edges, vert);
       offset_data[mask] += info.split.size();
-      offset_data[mask] += info.unselected.size() > 0;
+      if (corner_fans[mask].is_empty()) {
+        /* Loose edges share their vertex with a corner fan if possible. */
+        offset_data[mask] += info.unselected.size() > 0;
+      }
     });
   }
   return offset_indices::accumulate_counts_to_offsets(offset_data);
@@ -473,9 +476,13 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
   create_reverse_map(result_loose_map, old_to_new_edge_map);
 
   affected_verts.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
+    const IndexRange new_verts = new_verts_by_affected_vert[mask];
     /* Account for the reuse of the original vertex by non-loose edge fans. */
     int new_vert_i = std::max<int>(corner_fans[mask].size() - 1, 0);
-    const IndexRange new_verts = new_verts_by_affected_vert[mask];
+    if (new_vert_i == new_verts.size()) {
+      return;
+    }
+
     const VertLooseEdges vert_info = calc_vert_loose_edges(loose_edge_info, split_edges, vert);
 
     for (const int orig_edge : vert_info.split) {
@@ -484,14 +491,15 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
       swap_edge_vert(edges[new_edge], vert, new_vert);
       new_vert_i++;
       if (new_vert_i == new_verts.size()) {
-        break;
+        return;
       }
     }
-    if (new_vert_i == new_verts.size() - 1) {
-      const int new_vert = orig_verts_num + new_verts[new_vert_i];
-      for (const int orig_edge : vert_info.unselected) {
-        swap_edge_vert(edges[orig_edge], vert, new_vert);
-      }
+    if (new_vert_i == new_verts.size()) {
+      return;
+    }
+    const int new_vert = orig_verts_num + new_verts[new_vert_i];
+    for (const int orig_edge : vert_info.unselected) {
+      swap_edge_vert(edges[orig_edge], vert, new_vert);
     }
   });
 }
