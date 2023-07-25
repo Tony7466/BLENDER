@@ -53,9 +53,6 @@ using NodeSocketPair = std::pair<bNode *, bNodeSocket *>;
 
 struct ShaderNodesPreviewJob {
   NestedTreePreviews *tree_previews;
-  Material *mat_orig;
-  /* Listbase containing bNodeTreePath * guiding to the viewed nodetree of mat_orig. */
-  ListBase *treepath;
   Scene *scene;
   bool *stop;
   bool *do_update;
@@ -553,28 +550,6 @@ static void shader_preview_startjob(void *customdata,
     job_data->tree_previews->preview_size = U.node_preview_res;
   }
 
-  /* Duplicate material for each preview and update things related to it: treepath and previewed
-   * node. */
-  job_data->mat_copy = duplicate_material(job_data->mat_orig);
-
-  /* Update the treepath copied to fit the structure of the nodetree copied. */
-  bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
-  root_path->nodetree = job_data->mat_copy->nodetree;
-  BLI_addtail(&job_data->treepath_copy, root_path);
-  for (bNodeTreePath *original_path =
-           static_cast<bNodeTreePath *>(job_data->treepath->first)->next;
-       original_path;
-       original_path = original_path->next)
-  {
-    bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
-    memcpy(new_path, original_path, sizeof(bNodeTreePath));
-    bNode *parent = nodeFindNodebyName(
-        static_cast<bNodeTreePath *>(job_data->treepath_copy.last)->nodetree,
-        original_path->node_name);
-    new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
-    BLI_addtail(&job_data->treepath_copy, new_path);
-  }
-
   /* Find the shader output node. */
   for (bNode *node_iter : job_data->mat_copy->nodetree->all_nodes()) {
     if (node_iter->type == SH_NODE_OUTPUT_MATERIAL && node_iter->flag & NODE_DO_OUTPUT) {
@@ -584,7 +559,7 @@ static void shader_preview_startjob(void *customdata,
   }
   if (job_data->mat_output_copy == nullptr) {
     job_data->mat_output_copy = nodeAddStaticNode(
-        nullptr, root_path->nodetree, SH_NODE_OUTPUT_MATERIAL);
+        nullptr, job_data->mat_copy->nodetree, SH_NODE_OUTPUT_MATERIAL);
   }
 
   bNodeTree *active_nodetree =
@@ -651,15 +626,32 @@ static void ensure_nodetree_previews(const bContext *C,
                               "Shader Previews",
                               WM_JOB_EXCL_RENDER,
                               WM_JOB_TYPE_RENDER_PREVIEW);
-  ShaderNodesPreviewJob *nt_previews = MEM_new<ShaderNodesPreviewJob>("shader previews");
+  ShaderNodesPreviewJob *job_data = MEM_new<ShaderNodesPreviewJob>("shader previews");
 
-  nt_previews->scene = scene;
-  nt_previews->tree_previews = tree_previews;
-  nt_previews->mat_orig = material;
-  nt_previews->bmain = CTX_data_main(C);
-  nt_previews->treepath = treepath;
+  job_data->scene = scene;
+  job_data->tree_previews = tree_previews;
+  job_data->bmain = CTX_data_main(C);
+  job_data->mat_copy = duplicate_material(material);
 
-  WM_jobs_customdata_set(wm_job, nt_previews, shader_preview_free);
+  /* Update the treepath copied to fit the structure of the nodetree copied. */
+  bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
+  root_path->nodetree = job_data->mat_copy->nodetree;
+  BLI_addtail(&job_data->treepath_copy, root_path);
+  for (bNodeTreePath *original_path =
+           static_cast<bNodeTreePath *>(treepath->first)->next;
+       original_path;
+       original_path = original_path->next)
+  {
+    bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
+    memcpy(new_path, original_path, sizeof(bNodeTreePath));
+    bNode *parent = nodeFindNodebyName(
+        static_cast<bNodeTreePath *>(job_data->treepath_copy.last)->nodetree,
+        original_path->node_name);
+    new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
+    BLI_addtail(&job_data->treepath_copy, new_path);
+  }
+
+  WM_jobs_customdata_set(wm_job, job_data, shader_preview_free);
   WM_jobs_timer(wm_job, 0.2, NC_NODE, NC_NODE);
   WM_jobs_callbacks(wm_job, shader_preview_startjob, nullptr, nullptr, nullptr);
 

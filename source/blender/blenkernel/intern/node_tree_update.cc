@@ -722,7 +722,7 @@ class NodeTreeMainUpdater {
   void make_node_previews_dirty(bNodeTree &ntree)
   {
     ntree.preview_refresh_state++;
-    LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+    for (bNode *node: ntree.all_nodes()) {
       if (node->type != NODE_GROUP) {
         continue;
       }
