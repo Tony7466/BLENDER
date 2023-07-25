@@ -436,23 +436,12 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
         }
       }
 
-      if (rv3d->rflag & RV3D_NAVIGATING) {
-        /* Navigation is running. */
-
-        /* Do not update transform while navigating. This can be distracting. */
-        return OPERATOR_RUNNING_MODAL;
-      }
-
       {
-        /* Navigation has ended. */
-
-        /* Make sure `t->mval` is up to date before calling #transformViewUpdate. */
-        copy_v2_v2_int(t->mval, event->mval);
-
         /* Call before #applyMouseInput. */
         tranformViewUpdate(t);
 
         /* Mouse input is outdated. */
+        copy_v2_v2_int(t->mval, event->mval);
         applyMouseInput(t, &t->mouse, t->mval, t->values);
         t->redraw |= TREDRAW_HARD;
       }
