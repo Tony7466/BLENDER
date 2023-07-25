@@ -26,7 +26,7 @@ struct GreasePencil;
 
 namespace blender::bke {
 
-#define GEO_COMPONENT_TYPE_ENUM_SIZE 6
+#define GEO_COMPONENT_TYPE_ENUM_SIZE 7
 
 enum class GeometryOwnershipType {
   /* The geometry is owned. This implies that it can be changed. */
