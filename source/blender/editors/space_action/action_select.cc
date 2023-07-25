@@ -281,6 +281,14 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
           break;
         }
       }
+      else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+        using namespace blender::bke::greasepencil;
+        const Layer *layer = static_cast<Layer *>(ale->data);
+        if (blender::ed::greasepencil::layer_has_frame_selected(layer)) {
+          sel = SELECT_SUBTRACT;
+        }
+        break;
+      }
       else {
         if (ANIM_fcurve_keyframes_loop(
                 &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr))
@@ -303,6 +311,12 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_masklayer_frame_select_set(static_cast<MaskLayer *>(ale->data), sel);
+    }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      using namespace blender::bke::greasepencil;
+      Layer *layer = static_cast<Layer *>(ale->data);
+      blender::ed::greasepencil::select_all_frames(layer, sel);
+      ale->update |= ANIM_UPDATE_DEPS;
     }
     else {
       ANIM_fcurve_keyframes_loop(
