@@ -104,8 +104,8 @@ static void bm_loop_pair_from_verts(BMVert *v_a, BMVert *v_b, BMLoop *l_pair[2])
     }
   }
   else {
-    l_pair[0] = NULL;
-    l_pair[1] = NULL;
+    l_pair[0] = nullptr;
+    l_pair[1] = nullptr;
   }
 }
 
@@ -117,11 +117,11 @@ static void bm_loop_pair_from_verts(BMVert *v_a, BMVert *v_b, BMLoop *l_pair[2])
 static void bm_loop_pair_test_copy(BMLoop *l_pair_a[2], BMLoop *l_pair_b[2])
 {
   /* if the first one is set, we know the second is too */
-  if (l_pair_a[0] && l_pair_b[0] == NULL) {
+  if (l_pair_a[0] && l_pair_b[0] == nullptr) {
     l_pair_b[0] = l_pair_a[1];
     l_pair_b[1] = l_pair_a[0];
   }
-  else if (l_pair_b[0] && l_pair_a[0] == NULL) {
+  else if (l_pair_b[0] && l_pair_a[0] == nullptr) {
     l_pair_a[0] = l_pair_b[1];
     l_pair_a[1] = l_pair_b[0];
   }
@@ -140,7 +140,7 @@ static void bm_loop_interp_from_grid_boundary_4(BMesh *bm,
   const void *l_cdata[4] = {
       l_bound[0]->head.data, l_bound[1]->head.data, l_bound[2]->head.data, l_bound[3]->head.data};
 
-  CustomData_bmesh_interp(&bm->ldata, l_cdata, w, NULL, 4, l->head.data);
+  CustomData_bmesh_interp(&bm->ldata, l_cdata, w, nullptr, 4, l->head.data);
 }
 
 static void bm_loop_interp_from_grid_boundary_2(BMesh *bm,
@@ -152,7 +152,7 @@ static void bm_loop_interp_from_grid_boundary_2(BMesh *bm,
 
   const float w[2] = {1.0f - t, t};
 
-  CustomData_bmesh_interp(&bm->ldata, l_cdata, w, NULL, 2, l->head.data);
+  CustomData_bmesh_interp(&bm->ldata, l_cdata, w, nullptr, 2, l->head.data);
 }
 
 /** \} */
@@ -202,7 +202,7 @@ static void bm_grid_fill_array(BMesh *bm,
   uint x, y;
 
   /* for use_loop_interp */
-  BMLoop *((*larr_x_a)[2]), *((*larr_x_b)[2]), *((*larr_y_a)[2]), *((*larr_y_b)[2]);
+  BMLoop *(*larr_x_a)[2], *(*larr_x_b)[2], *(*larr_y_a)[2], *(*larr_y_b)[2];
 
   float(*weight_table)[4];
 
@@ -218,8 +218,8 @@ static void bm_grid_fill_array(BMesh *bm,
                                 v_grid[XY(xtot - 1, 0)]->co,
                                 v_grid[XY(0, 1)]->co,
                                 v_grid[XY(xtot - 1, 1)]->co,
-                                NULL,
-                                NULL,
+                                nullptr,
+                                nullptr,
                                 false);
 
   quad_verts_to_barycentric_tri(tri_b,
@@ -227,27 +227,28 @@ static void bm_grid_fill_array(BMesh *bm,
                                 v_grid[XY(xtot - 1, (ytot - 1))]->co,
                                 v_grid[XY(0, (ytot - 2))]->co,
                                 v_grid[XY(xtot - 1, (ytot - 2))]->co,
-                                NULL,
-                                NULL,
+                                nullptr,
+                                nullptr,
                                 true);
 #endif
 
   if (use_interp_simple || use_vert_interp || use_loop_interp) {
-    weight_table = MEM_mallocN(sizeof(*weight_table) * (size_t)(xtot * ytot), __func__);
+    weight_table = static_cast<float(*)[4]>(
+        MEM_mallocN(sizeof(*weight_table) * (size_t)(xtot * ytot), __func__));
     barycentric_weights_v2_grid_cache(xtot, ytot, weight_table);
   }
   else {
-    weight_table = NULL;
+    weight_table = nullptr;
   }
 
   /* Store loops */
   if (use_loop_interp) {
     /* x2 because each edge connects 2 loops */
-    larr_x_a = MEM_mallocN(sizeof(*larr_x_a) * (xtot - 1), __func__);
-    larr_x_b = MEM_mallocN(sizeof(*larr_x_b) * (xtot - 1), __func__);
+    larr_x_a = static_cast<BMLoop *(*)[2]>(MEM_mallocN(sizeof(*larr_x_a) * (xtot - 1), __func__));
+    larr_x_b = static_cast<BMLoop *(*)[2]>(MEM_mallocN(sizeof(*larr_x_b) * (xtot - 1), __func__));
 
-    larr_y_a = MEM_mallocN(sizeof(*larr_y_a) * (ytot - 1), __func__);
-    larr_y_b = MEM_mallocN(sizeof(*larr_y_b) * (ytot - 1), __func__);
+    larr_y_a = static_cast<BMLoop *(*)[2]>(MEM_mallocN(sizeof(*larr_y_a) * (ytot - 1), __func__));
+    larr_y_b = static_cast<BMLoop *(*)[2]>(MEM_mallocN(sizeof(*larr_y_b) * (ytot - 1), __func__));
 
     /* fill in the loops */
     for (x = 0; x < xtot - 1; x++) {
@@ -279,9 +280,9 @@ static void bm_grid_fill_array(BMesh *bm,
       float co[3];
       BMVert *v;
       /* we may want to allow sparse filled arrays, but for now, ensure its empty */
-      BLI_assert(v_grid[(y * xtot) + x] == NULL);
+      BLI_assert(v_grid[(y * xtot) + x] == nullptr);
 
-      /* place the vertex */
+/* place the vertex */
 #ifdef BARYCENTRIC_INTERP
       if (use_interp_simple == false) {
         float co_a[3], co_b[3];
@@ -311,7 +312,7 @@ static void bm_grid_fill_array(BMesh *bm,
         madd_v3_v3fl(co, v_grid[XY(xtot - 1, y)]->co, w[3]);
       }
 
-      v = BM_vert_create(bm, co, NULL, BM_CREATE_NOP);
+      v = BM_vert_create(bm, co, nullptr, BM_CREATE_NOP);
       v_grid[(y * xtot) + x] = v;
 
       /* Interpolate only along one axis, this could be changed
@@ -326,7 +327,7 @@ static void bm_grid_fill_array(BMesh *bm,
             v_grid[XY(xtot - 1, y)]->head.data,
         };
 
-        CustomData_bmesh_interp(&bm->vdata, v_cdata, w, NULL, 4, v->head.data);
+        CustomData_bmesh_interp(&bm->vdata, v_cdata, w, nullptr, 4, v->head.data);
       }
     }
   }
@@ -342,7 +343,7 @@ static void bm_grid_fill_array(BMesh *bm,
                                     v_grid[XY(x, y + 1)],     /* TL */
                                     v_grid[XY(x + 1, y + 1)], /* TR */
                                     v_grid[XY(x + 1, y + 0)], /* BR */
-                                    NULL,
+                                    nullptr,
                                     BM_CREATE_NOP);
       }
       else {
@@ -351,7 +352,7 @@ static void bm_grid_fill_array(BMesh *bm,
                                     v_grid[XY(x + 1, y + 1)], /* TR */
                                     v_grid[XY(x, y + 1)],     /* TL */
                                     v_grid[XY(x, y + 0)],     /* BL */
-                                    NULL,
+                                    nullptr,
                                     BM_CREATE_NOP);
       }
 
@@ -485,7 +486,8 @@ static void bm_grid_fill(BMesh *bm,
   ListBase *lb_rail_a = BM_edgeloop_verts_get(estore_rail_a);
   ListBase *lb_rail_b = BM_edgeloop_verts_get(estore_rail_b);
 
-  BMVert **v_grid = MEM_callocN(sizeof(BMVert *) * (size_t)(xtot * ytot), __func__);
+  BMVert **v_grid = static_cast<BMVert **>(
+      MEM_callocN(sizeof(BMVert *) * (size_t)(xtot * ytot), __func__));
   /**
    * <pre>
    *           estore_b
@@ -508,22 +510,22 @@ static void bm_grid_fill(BMesh *bm,
   BLI_assert(((LinkData *)lb_b->last)->data == ((LinkData *)lb_rail_b->last)->data);   /* TR */
   BLI_assert(((LinkData *)lb_a->last)->data == ((LinkData *)lb_rail_b->first)->data);  /* BR */
 
-  for (el = lb_a->first, i = 0; el; el = el->next, i++) {
-    v_grid[i] = el->data;
+  for (el = static_cast<LinkData *>(lb_a->first), i = 0; el; el = el->next, i++) {
+    v_grid[i] = static_cast<BMVert *>(el->data);
   }
-  for (el = lb_b->first, i = 0; el; el = el->next, i++) {
-    v_grid[(ytot * xtot) + (i - xtot)] = el->data;
+  for (el = static_cast<LinkData *>(lb_b->first), i = 0; el; el = el->next, i++) {
+    v_grid[(ytot * xtot) + (i - xtot)] = static_cast<BMVert *>(el->data);
   }
-  for (el = lb_rail_a->first, i = 0; el; el = el->next, i++) {
-    v_grid[xtot * i] = el->data;
+  for (el = static_cast<LinkData *>(lb_rail_a->first), i = 0; el; el = el->next, i++) {
+    v_grid[xtot * i] = static_cast<BMVert *>(el->data);
   }
-  for (el = lb_rail_b->first, i = 0; el; el = el->next, i++) {
-    v_grid[(xtot * i) + (xtot - 1)] = el->data;
+  for (el = static_cast<LinkData *>(lb_rail_b->first), i = 0; el; el = el->next, i++) {
+    v_grid[(xtot * i) + (xtot - 1)] = static_cast<BMVert *>(el->data);
   }
 #ifdef DEBUG
   for (x = 1; x < xtot - 1; x++) {
     for (y = 1; y < ytot - 1; y++) {
-      BLI_assert(v_grid[(y * xtot) + x] == NULL);
+      BLI_assert(v_grid[(y * xtot) + x] == nullptr);
     }
   }
 #endif
@@ -536,8 +538,10 @@ static void bm_grid_fill(BMesh *bm,
 
     for (i = 0; i < 4; i++) {
       LinkData *el_next;
-      for (el = lb_iter[i]->first; el && (el_next = el->next); el = el->next) {
-        BMEdge *e = BM_edge_exists(el->data, el_next->data);
+      for (el = static_cast<LinkData *>(lb_iter[i]->first); el && (el_next = el->next);
+           el = el->next) {
+        BMEdge *e = BM_edge_exists(static_cast<BMVert *>(el->data),
+                                   static_cast<BMVert *>(el_next->data));
         if (BM_edge_is_boundary(e)) {
           winding_votes += (e->l->v == el->data) ? lb_iter_dir[i] : -lb_iter_dir[i];
         }
@@ -556,10 +560,11 @@ static void bm_grid_fill(BMesh *bm,
 static void bm_edgeloop_flag_set(struct BMEdgeLoopStore *estore, char hflag, bool set)
 {
   /* only handle closed loops in this case */
-  LinkData *link = BM_edgeloop_verts_get(estore)->first;
+  LinkData *link = static_cast<LinkData *>(BM_edgeloop_verts_get(estore)->first);
   link = link->next;
   while (link) {
-    BMEdge *e = BM_edge_exists(link->data, link->prev->data);
+    BMEdge *e = BM_edge_exists(static_cast<BMVert *>(link->data),
+                               static_cast<BMVert *>(link->prev->data));
     if (e) {
       BM_elem_flag_set(e, hflag, set);
     }
@@ -572,7 +577,7 @@ static bool bm_edge_test_cb(BMEdge *e, void *bm_v)
   return BMO_edge_flag_test_bool((BMesh *)bm_v, e, EDGE_MARK);
 }
 
-static bool bm_edge_test_rail_cb(BMEdge *e, void *UNUSED(bm_v))
+static bool bm_edge_test_rail_cb(BMEdge *e, void * /*bm_v*/)
 {
   /* Normally operators don't check for hidden state
    * but alternative would be to pass slot of rail edges. */
@@ -584,8 +589,8 @@ static bool bm_edge_test_rail_cb(BMEdge *e, void *UNUSED(bm_v))
 
 void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
 {
-  ListBase eloops = {NULL, NULL};
-  ListBase eloops_rail = {NULL, NULL};
+  ListBase eloops = {nullptr, nullptr};
+  ListBase eloops_rail = {nullptr, nullptr};
   struct BMEdgeLoopStore *estore_a, *estore_b;
   struct BMEdgeLoopStore *estore_rail_a, *estore_rail_b;
   BMVert *v_a_first, *v_a_last;
@@ -593,7 +598,7 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
   const short mat_nr = (short)BMO_slot_int_get(op->slots_in, "mat_nr");
   const bool use_smooth = BMO_slot_bool_get(op->slots_in, "use_smooth");
   const bool use_interp_simple = BMO_slot_bool_get(op->slots_in, "use_interp_simple");
-  GSet *split_edges = NULL;
+  GSet *split_edges = nullptr;
 
   int count;
   bool changed = false;
@@ -613,13 +618,13 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
     goto cleanup;
   }
 
-  estore_a = eloops.first;
-  estore_b = eloops.last;
+  estore_a = static_cast<BMEdgeLoopStore *>(eloops.first);
+  estore_b = static_cast<BMEdgeLoopStore *>(eloops.last);
 
-  v_a_first = ((LinkData *)BM_edgeloop_verts_get(estore_a)->first)->data;
-  v_a_last = ((LinkData *)BM_edgeloop_verts_get(estore_a)->last)->data;
-  v_b_first = ((LinkData *)BM_edgeloop_verts_get(estore_b)->first)->data;
-  v_b_last = ((LinkData *)BM_edgeloop_verts_get(estore_b)->last)->data;
+  v_a_first = static_cast<BMVert *>(((LinkData *)BM_edgeloop_verts_get(estore_a)->first)->data);
+  v_a_last = static_cast<BMVert *>(((LinkData *)BM_edgeloop_verts_get(estore_a)->last)->data);
+  v_b_first = static_cast<BMVert *>(((LinkData *)BM_edgeloop_verts_get(estore_b)->first)->data);
+  v_b_last = static_cast<BMVert *>(((LinkData *)BM_edgeloop_verts_get(estore_b)->last)->data);
 
   if (BM_edgeloop_is_closed(estore_a) || BM_edgeloop_is_closed(estore_b)) {
     BMO_error_raise(bm, op, BMO_ERROR_CANCEL, "Closed loops unsupported");
@@ -637,8 +642,8 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
           bm, &eloops_rail, bm_edge_test_rail_cb, bm, v_a_first, v_b_first) &&
       BM_mesh_edgeloops_find_path(bm, &eloops_rail, bm_edge_test_rail_cb, bm, v_a_last, v_b_last))
   {
-    estore_rail_a = eloops_rail.first;
-    estore_rail_b = eloops_rail.last;
+    estore_rail_a = static_cast<BMEdgeLoopStore *>(eloops_rail.first);
+    estore_rail_b = static_cast<BMEdgeLoopStore *>(eloops_rail.last);
   }
   else {
     BM_mesh_edgeloops_free(&eloops_rail);
@@ -648,8 +653,8 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
         BM_mesh_edgeloops_find_path(
             bm, &eloops_rail, bm_edge_test_rail_cb, bm, v_a_last, v_b_first))
     {
-      estore_rail_a = eloops_rail.first;
-      estore_rail_b = eloops_rail.last;
+      estore_rail_a = static_cast<BMEdgeLoopStore *>(eloops_rail.first);
+      estore_rail_b = static_cast<BMEdgeLoopStore *>(eloops_rail.last);
       BM_edgeloop_flip(bm, estore_b);
     }
     else {
@@ -685,7 +690,7 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
       const int len_a = BM_edgeloop_length_get(estore_pairs[i][0]);
       const int len_b = BM_edgeloop_length_get(estore_pairs[i][1]);
       if (len_a != len_b) {
-        if (split_edges == NULL) {
+        if (split_edges == nullptr) {
           split_edges = BLI_gset_ptr_new(__func__);
         }
 
@@ -708,10 +713,10 @@ void bmo_grid_fill_exec(BMesh *bm, BMOperator *op)
   if (split_edges) {
     GSetIterator gs_iter;
     GSET_ITER (gs_iter, split_edges) {
-      BMEdge *e = BLI_gsetIterator_getKey(&gs_iter);
+      BMEdge *e = static_cast<BMEdge *>(BLI_gsetIterator_getKey(&gs_iter));
       BM_edge_collapse(bm, e, e->v2, true, true);
     }
-    BLI_gset_free(split_edges, NULL);
+    BLI_gset_free(split_edges, nullptr);
   }
 
 cleanup:

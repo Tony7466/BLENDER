@@ -29,7 +29,7 @@ set(SRC
   operators/bmo_extrude.cc
   operators/bmo_fill_attribute.cc
   operators/bmo_fill_edgeloop.cc
-  operators/bmo_fill_grid.c
+  operators/bmo_fill_grid.cc
   operators/bmo_fill_holes.c
   operators/bmo_hull.c
   operators/bmo_inset.c
