@@ -54,7 +54,9 @@ static bool UNUSED_FUNCTION(check_hole_in_region)(BMesh *bm, BMFace *f)
            BMW_FLAG_NOP,
            BMW_NIL_LAY);
 
-  for (f2 = BMW_begin(&regwalker, f); f2; f2 = BMW_step(&regwalker)) {
+  for (f2 = static_cast<BMFace *>(BMW_begin(&regwalker, f)); f2;
+       f2 = static_cast<BMFace *>(BMW_step(&regwalker)))
+  {
     BM_ITER_ELEM (l2, &liter2, f2, BM_LOOPS_OF_FACE) {
       l3 = l2->radial_next;
       if (BMO_face_flag_test(bm, l3->f, FACE_MARK) != BMO_face_flag_test(bm, l2->f, FACE_MARK)) {
@@ -89,7 +91,7 @@ static void bm_face_split(BMesh *bm, const short oflag, bool use_edge_delete)
             if (BMO_vert_flag_test(bm, l->next->v, oflag) == 0 &&
                 BMO_vert_flag_test(bm, l->prev->v, oflag) == 0)
             {
-              BM_face_split(bm, l->f, l->next, l->prev, NULL, NULL, true);
+              BM_face_split(bm, l->f, l->next, l->prev, nullptr, nullptr, true);
             }
           }
         }
@@ -121,8 +123,8 @@ void bmo_dissolve_faces_exec(BMesh *bm, BMOperator *op)
   struct {
     BMFace **faces;
     int faces_len;
-  } *regions = NULL, *region;
-  BMFace **faces = NULL;
+  } *regions = nullptr, *region;
+  BMFace **faces = nullptr;
   BLI_array_declare(regions);
   BLI_array_declare(faces);
   BMFace *act_face = bm->act_face;
@@ -163,14 +165,16 @@ void bmo_dissolve_faces_exec(BMesh *bm, BMOperator *op)
 
     /* Check there are at least two faces before creating the array. */
     BMFace *faces_init[2];
-    if ((faces_init[0] = BMW_begin(&regwalker, f)) && (faces_init[1] = BMW_step(&regwalker))) {
+    if ((faces_init[0] = static_cast<BMFace *>(BMW_begin(&regwalker, f))) &&
+        (faces_init[1] = static_cast<BMFace *>(BMW_step(&regwalker))))
+    {
 
       BLI_assert(BLI_array_len(faces) == 0);
 
       BLI_array_append(faces, faces_init[0]);
       BLI_array_append(faces, faces_init[1]);
 
-      while ((f_iter = BMW_step(&regwalker))) {
+      while ((f_iter = static_cast<BMFace *>(BMW_step(&regwalker)))) {
         BLI_array_append(faces, f_iter);
       }
 
@@ -186,7 +190,7 @@ void bmo_dissolve_faces_exec(BMesh *bm, BMOperator *op)
 
       BLI_array_clear(faces);
       /* Forces a new allocation. */
-      faces = NULL;
+      faces = nullptr;
     }
 
     BMW_end(&regwalker);
@@ -202,9 +206,9 @@ void bmo_dissolve_faces_exec(BMesh *bm, BMOperator *op)
     faces = region->faces;
 
     BMFace *f_new = BM_faces_join(bm, faces, faces_len, true);
-    if (f_new != NULL) {
+    if (f_new != nullptr) {
       /* Maintain the active face. */
-      if (act_face && bm->act_face == NULL) {
+      if (act_face && bm->act_face == nullptr) {
         bm->act_face = f_new;
       }
       totface_target -= faces_len - 1;
@@ -322,12 +326,12 @@ void bmo_dissolve_edges_exec(BMesh *bm, BMOperator *op)
       f_new = BM_faces_join_pair(bm, l_a, l_b, false);
       if (f_new && BM_face_find_double(f_new)) {
         BM_face_kill(bm, f_new);
-        f_new = NULL;
+        f_new = nullptr;
       }
 
       if (f_new) {
         /* maintain active face */
-        if (act_face && bm->act_face == NULL) {
+        if (act_face && bm->act_face == nullptr) {
           bm->act_face = f_new;
         }
       }
@@ -337,12 +341,12 @@ void bmo_dissolve_edges_exec(BMesh *bm, BMOperator *op)
   /* Cleanup geometry (#BM_faces_join_pair, but it removes geometry we're looping on)
    * so do this in a separate pass instead. */
   BM_ITER_MESH_MUTABLE (e, e_next, &iter, bm, BM_EDGES_OF_MESH) {
-    if ((e->l == NULL) && BMO_edge_flag_test(bm, e, EDGE_ISGC)) {
+    if ((e->l == nullptr) && BMO_edge_flag_test(bm, e, EDGE_ISGC)) {
       BM_edge_kill(bm, e);
     }
   }
   BM_ITER_MESH_MUTABLE (v, v_next, &iter, bm, BM_VERTS_OF_MESH) {
-    if ((v->e == NULL) && BMO_vert_flag_test(bm, v, VERT_ISGC)) {
+    if ((v->e == nullptr) && BMO_vert_flag_test(bm, v, VERT_ISGC)) {
       BM_vert_kill(bm, v);
     }
   }
@@ -396,7 +400,7 @@ void bmo_dissolve_verts_exec(BMesh *bm, BMOperator *op)
   BMO_ITER (v, &oiter, op->slots_in, "verts", BM_VERT) {
     BMIter itersub;
     BMLoop *l_first;
-    BMEdge *e_first = NULL;
+    BMEdge *e_first = nullptr;
     BM_ITER_ELEM (l_first, &itersub, v, BM_LOOPS_OF_VERT) {
       BMLoop *l_iter;
       l_iter = l_first;
@@ -440,12 +444,12 @@ void bmo_dissolve_verts_exec(BMesh *bm, BMOperator *op)
           f_new = BM_faces_join_pair(bm, l_a, l_b, false);
           if (f_new && BM_face_find_double(f_new)) {
             BM_face_kill(bm, f_new);
-            f_new = NULL;
+            f_new = nullptr;
           }
 
           if (f_new) {
             /* maintain active face */
-            if (act_face && bm->act_face == NULL) {
+            if (act_face && bm->act_face == nullptr) {
               bm->act_face = f_new;
             }
           }
@@ -457,7 +461,7 @@ void bmo_dissolve_verts_exec(BMesh *bm, BMOperator *op)
   /* Cleanup geometry (#BM_faces_join_pair, but it removes geometry we're looping on)
    * so do this in a separate pass instead. */
   BM_ITER_MESH_MUTABLE (e, e_next, &iter, bm, BM_EDGES_OF_MESH) {
-    if ((e->l == NULL) && BMO_edge_flag_test(bm, e, EDGE_ISGC)) {
+    if ((e->l == nullptr) && BMO_edge_flag_test(bm, e, EDGE_ISGC)) {
       BM_edge_kill(bm, e);
     }
   }
@@ -470,7 +474,7 @@ void bmo_dissolve_verts_exec(BMesh *bm, BMOperator *op)
   }
 
   BM_ITER_MESH_MUTABLE (v, v_next, &iter, bm, BM_VERTS_OF_MESH) {
-    if ((v->e == NULL) && BMO_vert_flag_test(bm, v, VERT_ISGC)) {
+    if ((v->e == nullptr) && BMO_vert_flag_test(bm, v, VERT_ISGC)) {
       BM_vert_kill(bm, v);
     }
   }
@@ -484,7 +488,7 @@ void bmo_dissolve_limit_exec(BMesh *bm, BMOperator *op)
   const float angle_max = M_PI_2;
   const float angle_limit = min_ff(angle_max, BMO_slot_float_get(op->slots_in, "angle_limit"));
   const bool do_dissolve_boundaries = BMO_slot_bool_get(op->slots_in, "use_dissolve_boundaries");
-  const BMO_Delimit delimit = BMO_slot_int_get(op->slots_in, "delimit");
+  const BMO_Delimit delimit = BMO_Delimit(BMO_slot_int_get(op->slots_in, "delimit"));
 
   BM_mesh_decimate_dissolve_ex(bm,
                                angle_limit,
@@ -584,8 +588,8 @@ void bmo_dissolve_degenerate_exec(BMesh *bm, BMOperator *op)
               else {
                 /* add a joining edge and tag for removal */
                 BMLoop *l_split;
-                if (BM_face_split(bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, NULL, true))
-                {
+                if (BM_face_split(
+                        bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, nullptr, true)) {
                   BMO_edge_flag_enable(bm, l_split->e, EDGE_COLLAPSE);
                   found = true;
                   reset = true;
@@ -600,7 +604,8 @@ void bmo_dissolve_degenerate_exec(BMesh *bm, BMOperator *op)
               v_new = BM_edge_split(bm, l_iter->e, l_iter->v, &e_new, len_prev / len_next);
               BLI_assert(v_new == l_iter->next->v);
               (void)v_new;
-              if (BM_face_split(bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, NULL, true)) {
+              if (BM_face_split(
+                      bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, nullptr, true)) {
                 BMO_edge_flag_enable(bm, l_split->e, EDGE_COLLAPSE);
                 found = true;
               }
@@ -614,7 +619,8 @@ void bmo_dissolve_degenerate_exec(BMesh *bm, BMOperator *op)
               v_new = BM_edge_split(bm, l_iter->prev->e, l_iter->v, &e_new, len_next / len_prev);
               BLI_assert(v_new == l_iter->prev->v);
               (void)v_new;
-              if (BM_face_split(bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, NULL, true)) {
+              if (BM_face_split(
+                      bm, l_iter->f, l_iter->prev, l_iter->next, &l_split, nullptr, true)) {
                 BMO_edge_flag_enable(bm, l_split->e, EDGE_COLLAPSE);
                 found = true;
               }
