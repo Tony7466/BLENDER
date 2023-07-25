@@ -60,8 +60,8 @@ void bmo_mirror_exec(BMesh *bm, BMOperator *op)
 
   BMO_ITER (v, &siter, op->slots_in, "geom", BM_VERT) {
     if (fabsf(v->co[axis]) <= dist) {
-      BMVert *v_new = BMO_slot_map_elem_get(slot_vertmap, v);
-      BLI_assert(v_new != NULL);
+      BMVert *v_new = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_vertmap, v));
+      BLI_assert(v_new != nullptr);
       BMO_slot_map_elem_insert(&weldop, slot_targetmap, v_new, v);
     }
   }
@@ -76,7 +76,8 @@ void bmo_mirror_exec(BMesh *bm, BMOperator *op)
     BMO_ITER (f, &siter, dupeop.slots_out, "geom.out", BM_FACE) {
       BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
         for (i = 0; i < totlayer; i++) {
-          luv = CustomData_bmesh_get_n(&bm->ldata, l->head.data, CD_PROP_FLOAT2, i);
+          luv = static_cast<float *>(
+              CustomData_bmesh_get_n(&bm->ldata, l->head.data, CD_PROP_FLOAT2, i));
           if (mirror_u) {
             float uv_u = luv[0];
             if (mirror_udim) {
