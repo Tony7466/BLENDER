@@ -435,6 +435,28 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiItemEnumO(up_down_col, "NODE_OT_bake_item_move", "", ICON_TRIA_UP, "direction", 0);
     uiItemEnumO(up_down_col, "NODE_OT_bake_item_move", "", ICON_TRIA_DOWN, "direction", 1);
   }
+
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  NodeGeometryBake &storage = node_storage(node);
+  if (storage.active_index < 0 || storage.active_index >= storage.items_num) {
+    return;
+  }
+  NodeGeometryBakeItem &active_item = storage.items[storage.active_index];
+
+  PointerRNA active_item_ptr;
+  RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryBakeItem, &active_item, &active_item_ptr);
+
+  uiItemR(layout, &active_item_ptr, "socket_type", 0, nullptr, ICON_NONE);
+  if (ELEM(active_item.socket_type,
+           SOCK_BOOLEAN,
+           SOCK_INT,
+           SOCK_FLOAT,
+           SOCK_VECTOR,
+           SOCK_RGBA,
+           SOCK_ROTATION))
+  {
+    uiItemR(layout, &active_item_ptr, "attribute_domain", 0, nullptr, ICON_NONE);
+  }
 }
 
 class LazyFunctionForBakeNode : public LazyFunction {

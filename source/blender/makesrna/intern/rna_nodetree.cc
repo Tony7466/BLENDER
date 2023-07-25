@@ -10133,6 +10133,13 @@ static void rna_def_bake_item(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeGeometryBakeItem_update");
 
+  prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_ui_text(
+      prop, "Attribute Domain", "Attribute domain where the attribute is stored");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeGeometryBakeItem_update");
+
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_float_funcs(prop, "rna_NodeGeometryBakeItem_color_get", nullptr, nullptr);
