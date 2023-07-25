@@ -131,7 +131,7 @@ void main()
   /* Volumetric resolve and compositing. */
   vec2 uvs = gl_FragCoord.xy * volumes_info_buf.viewport_size_inv;
   VolumeResolveSample vol = volume_resolve(
-      vec3(uvs, gl_FragCoord.z), volume_scattering_tx, volume_transmittance_tx);
+      vec3(uvs, gl_FragCoord.z), volume_transmittance_tx, volume_scattering_tx);
 
   /* Removes the part of the volume scattering that has
    * already been added to the destination pixels by the opaque resolve.
