@@ -66,8 +66,8 @@ static void reset_normals(MeshRuntime &mesh_runtime)
 {
   mesh_runtime.vert_normals.clear_and_shrink();
   mesh_runtime.face_normals.clear_and_shrink();
-  mesh_runtime.vert_normals_dirty = true;
-  mesh_runtime.face_normals_dirty = true;
+  mesh_runtime.vert_normals_mutex.tag_dirty();
+  mesh_runtime.face_normals_mutex.tag_dirty();
 }
 
 static void free_batch_cache(MeshRuntime &mesh_runtime)
@@ -279,11 +279,9 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 
 void BKE_mesh_tag_edges_split(Mesh *mesh)
 {
-  /* Triangulation didn't change because vertex positions and loop vertex indices didn't change.
-   * Face normals didn't change either, but tag those anyway, since there is no API function to
-   * only tag vertex normals dirty. */
+  /* Triangulation didn't change because vertex positions and loop vertex indices didn't change. */
   free_bvh_cache(*mesh->runtime);
-  reset_normals(*mesh->runtime);
+  mesh->runtime->vert_normals_mutex.tag_dirty();
   free_subdiv_ccg(*mesh->runtime);
   if (mesh->runtime->loose_edges_cache.is_cached() &&
       mesh->runtime->loose_edges_cache.data().count != 0)
@@ -310,14 +308,14 @@ void BKE_mesh_tag_edges_split(Mesh *mesh)
 
 void BKE_mesh_tag_face_winding_changed(Mesh *mesh)
 {
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->face_normals_dirty = true;
+  mesh->runtime->vert_normals_mutex.tag_dirty();
+  mesh->runtime->face_normals_mutex.tag_dirty();
 }
 
 void BKE_mesh_tag_positions_changed(Mesh *mesh)
 {
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->face_normals_dirty = true;
+  mesh->runtime->vert_normals_mutex.tag_dirty();
+  mesh->runtime->face_normals_mutex.tag_dirty();
   free_bvh_cache(*mesh->runtime);
   mesh->runtime->looptris_cache.tag_dirty();
   mesh->runtime->bounds_cache.tag_dirty();

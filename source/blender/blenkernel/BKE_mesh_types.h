@@ -94,10 +94,6 @@ struct MeshRuntime {
   Mesh *mesh_eval = nullptr;
   std::mutex eval_mutex;
 
-  /* A separate mutex is needed for normal calculation, because sometimes
-   * the normals are needed while #eval_mutex is already locked. */
-  std::mutex normals_mutex;
-
   /** Needed to ensure some thread-safety during render data pre-processing. */
   std::mutex render_mutex;
 
@@ -166,8 +162,8 @@ struct MeshRuntime {
    * #CustomData because they can be calculated on a `const` mesh, and adding custom data layers on
    * a `const` mesh is not thread-safe.
    */
-  bool vert_normals_dirty = true;
-  bool face_normals_dirty = true;
+  CacheMutex vert_normals_mutex;
+  CacheMutex face_normals_mutex;
   mutable Vector<float3> vert_normals;
   mutable Vector<float3> face_normals;
 

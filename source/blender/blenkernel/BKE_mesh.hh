@@ -70,16 +70,16 @@ void normals_calc_faces(Span<float3> vert_positions,
                         MutableSpan<float3> face_normals);
 
 /**
- * Calculate face and vertex normals directly into result arrays.
+ * Calculate vertex normals directly into the result array.
  *
  * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
  * since they may already be calculated and cached on the mesh.
  */
-void normals_calc_face_vert(Span<float3> vert_positions,
-                            OffsetIndices<int> faces,
-                            Span<int> corner_verts,
-                            MutableSpan<float3> face_normals,
-                            MutableSpan<float3> vert_normals);
+void normals_calc_verts(Span<float3> vert_positions,
+                        OffsetIndices<int> faces,
+                        Span<int> corner_verts,
+                        Span<float3> face_normals,
+                        MutableSpan<float3> vert_normals);
 
 /** \} */
 

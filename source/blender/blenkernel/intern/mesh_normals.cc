@@ -97,18 +97,18 @@ float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
 
 void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
 {
-  mesh->runtime->vert_normals_dirty = false;
+  mesh->runtime->vert_normals_mutex.ensure([&]() {});
   BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
 }
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->vert_normals_dirty;
+  return mesh->runtime->vert_normals_mutex.is_dirty();
 }
 
 bool BKE_mesh_face_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->face_normals_dirty;
+  return mesh->runtime->face_normals_mutex.is_dirty();
 }
 
 /** \} */
@@ -190,43 +190,26 @@ void normals_calc_faces(const Span<float3> positions,
   });
 }
 
-void normals_calc_face_vert(const Span<float3> positions,
-                            const OffsetIndices<int> faces,
-                            const Span<int> corner_verts,
-                            MutableSpan<float3> face_normals,
-                            MutableSpan<float3> vert_normals)
+void normals_calc_verts(const Span<float3> positions,
+                        const OffsetIndices<int> faces,
+                        const Span<int> corner_verts,
+                        const Span<float3> face_normals,
+                        MutableSpan<float3> vert_normals)
 {
-
   /* Zero the vertex normal array for accumulation. */
   {
     memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
   }
 
-  /* Compute face normals, accumulating them into vertex normals. */
+  /* Accumulate face normals into vertex normals. */
   {
     threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
       for (const int face_i : range) {
         const Span<int> face_verts = corner_verts.slice(faces[face_i]);
 
-        float3 &pnor = face_normals[face_i];
+        const float3 &pnor = face_normals[face_i];
 
         const int i_end = face_verts.size() - 1;
-
-        /* Polygon Normal and edge-vector. */
-        /* Inline version of #face_normal_calc, also does edge-vectors. */
-        {
-          zero_v3(pnor);
-          /* Newell's Method */
-          const float *v_curr = positions[face_verts[i_end]];
-          for (int i_next = 0; i_next <= i_end; i_next++) {
-            const float *v_next = positions[face_verts[i_next]];
-            add_newell_cross_v3_v3v3(pnor, v_curr, v_next);
-            v_curr = v_next;
-          }
-          if (UNLIKELY(normalize_v3(pnor) == 0.0f)) {
-            pnor[2] = 1.0f; /* Other axes set to zero. */
-          }
-        }
 
         /* Accumulate angle weighted face normal into the vertex normal. */
         /* Inline version of #accumulate_vertex_normals_poly_v3. */
@@ -289,61 +272,30 @@ void normals_calc_face_vert(const Span<float3> positions,
 blender::Span<blender::float3> Mesh::vert_normals() const
 {
   using namespace blender;
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
-  }
-
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
+  this->runtime->vert_normals_mutex.ensure([&]() {
     const Span<float3> positions = this->vert_positions();
     const OffsetIndices faces = this->faces();
     const Span<int> corner_verts = this->corner_verts();
+    const Span<float3> face_normals = this->face_normals();
 
     this->runtime->vert_normals.reinitialize(positions.size());
-    this->runtime->face_normals.reinitialize(faces.size());
-    bke::mesh::normals_calc_face_vert(
-        positions, faces, corner_verts, this->runtime->face_normals, this->runtime->vert_normals);
-
-    this->runtime->vert_normals_dirty = false;
-    this->runtime->face_normals_dirty = false;
+    bke::mesh::normals_calc_verts(
+        positions, faces, corner_verts, face_normals, this->runtime->vert_normals);
   });
-
   return this->runtime->vert_normals;
 }
 
 blender::Span<blender::float3> Mesh::face_normals() const
 {
   using namespace blender;
-  if (!this->runtime->face_normals_dirty) {
-    BLI_assert(this->runtime->face_normals.size() == this->faces_num);
-    return this->runtime->face_normals;
-  }
-
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->face_normals_dirty) {
-    BLI_assert(this->runtime->face_normals.size() == this->faces_num);
-    return this->runtime->face_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
+  this->runtime->face_normals_mutex.ensure([&]() {
     const Span<float3> positions = this->vert_positions();
     const OffsetIndices faces = this->faces();
     const Span<int> corner_verts = this->corner_verts();
 
     this->runtime->face_normals.reinitialize(faces.size());
     bke::mesh::normals_calc_faces(positions, faces, corner_verts, this->runtime->face_normals);
-
-    this->runtime->face_normals_dirty = false;
   });
-
   return this->runtime->face_normals;
 }
 
