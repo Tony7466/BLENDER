@@ -78,7 +78,9 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
     calc_winding = (calc_winding || BM_edge_is_boundary(e));
 
     for (i = 0; i < 2; i++) {
-      if ((sf_verts[i] = BLI_ghash_lookup(sf_vert_map, e_verts[i])) == NULL) {
+      if ((sf_verts[i] = static_cast<ScanFillVert *>(BLI_ghash_lookup(sf_vert_map, e_verts[i]))) ==
+          nullptr)
+      {
         sf_verts[i] = BLI_scanfill_vert_add(&sf_ctx, e_verts[i]->co);
         sf_verts[i]->tmp.p = e_verts[i];
         BLI_ghash_insert(sf_vert_map, e_verts[i], sf_verts[i]);
@@ -89,7 +91,7 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
     /* sf_edge->tmp.p = e; */ /* UNUSED */
   }
   nors_tot = BLI_ghash_len(sf_vert_map);
-  BLI_ghash_free(sf_vert_map, NULL, NULL);
+  BLI_ghash_free(sf_vert_map, nullptr, nullptr);
 
   if (is_zero_v3(normal)) {
     /* calculate the normal from the cross product of vert-edge pairs.
@@ -99,10 +101,12 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
     uint i;
     bool is_degenerate = true;
 
-    nors = MEM_mallocN(sizeof(*nors) * nors_tot, __func__);
+    nors = static_cast<SortNormal *>(MEM_mallocN(sizeof(*nors) * nors_tot, __func__));
 
-    for (sf_vert = sf_ctx.fillvertbase.first, i = 0; sf_vert; sf_vert = sf_vert->next, i++) {
-      BMVert *v = sf_vert->tmp.p;
+    for (sf_vert = static_cast<ScanFillVert *>(sf_ctx.fillvertbase.first), i = 0; sf_vert;
+         sf_vert = sf_vert->next, i++)
+    {
+      BMVert *v = static_cast<BMVert *>(sf_vert->tmp.p);
       BMIter eiter;
       BMEdge *e_pair[2];
       uint e_index = 0;
@@ -177,8 +181,12 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
   /* if we have existing faces, base winding on those */
   if (calc_winding) {
     int winding_votes = 0;
-    for (sf_tri = sf_ctx.fillfacebase.first; sf_tri; sf_tri = sf_tri->next) {
-      BMVert *v_tri[3] = {sf_tri->v1->tmp.p, sf_tri->v2->tmp.p, sf_tri->v3->tmp.p};
+    for (sf_tri = static_cast<ScanFillFace *>(sf_ctx.fillfacebase.first); sf_tri;
+         sf_tri = sf_tri->next)
+    {
+      BMVert *v_tri[3] = {static_cast<BMVert *>(sf_tri->v1->tmp.p),
+                          static_cast<BMVert *>(sf_tri->v2->tmp.p),
+                          static_cast<BMVert *>(sf_tri->v3->tmp.p)};
       uint i, i_prev;
 
       for (i = 0, i_prev = 2; i < 3; i_prev = i++) {
@@ -190,23 +198,27 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
     }
 
     if (winding_votes < 0) {
-      for (sf_tri = sf_ctx.fillfacebase.first; sf_tri; sf_tri = sf_tri->next) {
+      for (sf_tri = static_cast<ScanFillFace *>(sf_ctx.fillfacebase.first); sf_tri;
+           sf_tri = sf_tri->next)
+      {
         SWAP(ScanFillVert *, sf_tri->v2, sf_tri->v3);
       }
     }
   }
 
-  for (sf_tri = sf_ctx.fillfacebase.first; sf_tri; sf_tri = sf_tri->next) {
+  for (sf_tri = static_cast<ScanFillFace *>(sf_ctx.fillfacebase.first); sf_tri;
+       sf_tri = sf_tri->next)
+  {
     BMFace *f;
     BMLoop *l;
     BMIter liter;
 
     f = BM_face_create_quad_tri(bm,
-                                sf_tri->v1->tmp.p,
-                                sf_tri->v2->tmp.p,
-                                sf_tri->v3->tmp.p,
-                                NULL,
-                                NULL,
+                                static_cast<BMVert *>(sf_tri->v1->tmp.p),
+                                static_cast<BMVert *>(sf_tri->v2->tmp.p),
+                                static_cast<BMVert *>(sf_tri->v3->tmp.p),
+                                nullptr,
+                                nullptr,
                                 BM_CREATE_NO_DOUBLE);
 
     BMO_face_flag_enable(bm, f, ELE_NEW);
@@ -242,7 +254,7 @@ void bmo_triangle_fill_exec(BMesh *bm, BMOperator *op)
             BM_edge_kill(bm, e);
           }
         }
-        else if (e->l == NULL) {
+        else if (e->l == nullptr) {
           BM_edge_kill(bm, e);
         }
         else {
