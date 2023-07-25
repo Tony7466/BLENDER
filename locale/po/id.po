@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2021-12-25 23:57-0800\n"
 "Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -1629,10 +1629,6 @@ msgid "Shape Key data-blocks"
 msgstr "Kunci Bentuk data-blok"
 
 
-msgid "Simulations"
-msgstr "Simulasi"
-
-
 msgid "Sounds"
 msgstr "Suara"
 
@@ -2681,16 +2677,8 @@ msgid "Bone Matrix"
 msgstr "Matriks Tulang"
 
 
-msgid "3x3 bone matrix"
-msgstr "3x3 matriks tulang"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "Matriks Relatif-Armatur Tulang"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "4x4 relatif matriks tulang ke armatur"
 
 
 msgid "Parent"
@@ -3361,6 +3349,10 @@ msgid "Show Lasso"
 msgstr "Tampilkan Lasso"
 
 
+msgid "Active Layer"
+msgstr "Layer Aktif"
+
+
 msgid "Default Eraser"
 msgstr "Penghapus Default"
 
@@ -3453,20 +3445,12 @@ msgid "Byte Color Attribute Value"
 msgstr "Nilai Atribut Warna Byte"
 
 
-msgid "Active Layer"
-msgstr "Layer Aktif"
-
-
 msgid "Object Path"
 msgstr "Jalur Objek"
 
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Jalur suatu objek dalam suatu arsip Alembic"
-
-
-msgid "Path"
-msgstr "Jalur"
 
 
 msgid "Object path"
@@ -6562,11 +6546,6 @@ msgstr "Adegan"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulasi"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Suara"
 
@@ -6724,14 +6703,6 @@ msgstr "Hanya Gunakan Alpha"
 
 msgid "Replace Color"
 msgstr "Gantikan Warna"
-
-
-msgid "Wave Type"
-msgstr "Tipe"
-
-
-msgid "Force"
-msgstr "Gaya"
 
 
 msgid "Brush Collection"
@@ -6912,6 +6883,10 @@ msgstr "Menyeret"
 
 msgid "Drag effector weight"
 msgstr "Beban efektor seret"
+
+
+msgid "Force"
+msgstr "Gaya"
 
 
 msgid "Harmonic"
@@ -7282,10 +7257,6 @@ msgid "Axis"
 msgstr "Axis"
 
 
-msgid "Radial"
-msgstr "Radial"
-
-
 msgid "Field originates from all of the vertices of the object"
 msgstr "Lapangan berasal dari semua sudut objek"
 
@@ -7384,10 +7355,6 @@ msgstr "Tampilkan/sembunyikan Awan Titik data-blok"
 
 msgid "Show Scene data-blocks"
 msgstr "Tampilkan Adegan data-blok"
-
-
-msgid "Show Simulation data-blocks"
-msgstr "Tampilkan Simulasi data-blok"
 
 
 msgid "Show Sound data-blocks"
@@ -8538,6 +8505,10 @@ msgid "Circular"
 msgstr "Bundar"
 
 
+msgid "Radial"
+msgstr "Radial"
+
+
 msgid "Parallel lines"
 msgstr "Garis paralel"
 
@@ -9451,6 +9422,10 @@ msgid "Map Taper"
 msgstr "Tipe"
 
 
+msgid "Path"
+msgstr "Jalur"
+
+
 msgid "Text Curve"
 msgstr "Tekstur"
 
@@ -9914,54 +9889,6 @@ msgstr "Keluaran pohon node"
 
 msgid "Texture nodes"
 msgstr "Node Tekstur"
-
-
-msgid "32x32"
-msgstr "32x32"
-
-
-msgid "Chunksize of 32x32"
-msgstr "Ukuran chunk 32x32"
-
-
-msgid "64x64"
-msgstr "64x64"
-
-
-msgid "Chunksize of 64x64"
-msgstr "Ukuran chunk 64x64"
-
-
-msgid "128x128"
-msgstr "128x128"
-
-
-msgid "Chunksize of 128x128"
-msgstr "Ukuran chunk 128x128"
-
-
-msgid "256x256"
-msgstr "256x256"
-
-
-msgid "Chunksize of 256x256"
-msgstr "Ukuran chunk 256x256"
-
-
-msgid "512x512"
-msgstr "512x512"
-
-
-msgid "Chunksize of 512x512"
-msgstr "Ukuran chunk 512x512"
-
-
-msgid "1024x1024"
-msgstr "1024x1024"
-
-
-msgid "Chunksize of 1024x1024"
-msgstr "Ukuran chunk 1024x1024"
 
 
 msgid "Edit Quality"
@@ -10669,14 +10596,6 @@ msgstr "Bioskop"
 
 msgid "YCC"
 msgstr "YCC"
-
-
-msgid "Z Buffer"
-msgstr "Buffer Z"
-
-
-msgid "Save the z-depth per pixel (32-bit unsigned integer z-buffer)"
-msgstr "Simpan z-kedalaman tiap pixel (z-buffer integer unsigned 32-bit)"
 
 
 msgid "Image Preview"
@@ -14415,6 +14334,10 @@ msgid "Wave Texture"
 msgstr "Tekstur"
 
 
+msgid "Wave Type"
+msgstr "Tipe"
+
+
 msgid "Length of A"
 msgstr "Panjang A"
 
@@ -15938,6 +15861,11 @@ msgstr "Gantikan kuas ke mode halus untuk durasi garis luar"
 
 
 msgctxt "Operator"
+msgid "Select Mode"
+msgstr "Seleksi"
+
+
+msgctxt "Operator"
 msgid "Set Curves Point"
 msgstr "Tekstur"
 
@@ -16173,6 +16101,10 @@ msgstr "Menimpna Material yang ada (berdasarkan nama material)"
 
 msgid "Decal Offset"
 msgstr "Decal Offset"
+
+
+msgid "Clamp Size"
+msgstr "Ukurang"
 
 
 msgctxt "Operator"
@@ -16639,11 +16571,6 @@ msgstr "Seleksi"
 
 msgid "Number of Vertices"
 msgstr "Partikel"
-
-
-msgctxt "Operator"
-msgid "Select Mode"
-msgstr "Seleksi"
 
 
 msgid "Change selection mode"
@@ -18431,18 +18358,6 @@ msgstr "Vertex Aktif"
 msgctxt "Operator"
 msgid "Sculpt UVs"
 msgstr "Modus Pahat"
-
-
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
 
 
 msgctxt "Operator"
@@ -20665,10 +20580,6 @@ msgstr "Format Film"
 
 msgid "Automatic pixel size, depends on the user interface scale"
 msgstr "Ukuran pixel otomatis, tergantung skala antarmuka pengguna"
-
-
-msgid "1x"
-msgstr "1x"
 
 
 msgid "Display method used in the sequencer view"
@@ -25338,11 +25249,6 @@ msgid "New"
 msgstr "Baru"
 
 
-msgctxt "Simulation"
-msgid "New"
-msgstr "Baru"
-
-
 msgid "%d items"
 msgstr "%d item"
 
@@ -25726,26 +25632,6 @@ msgstr "Batu"
 
 msgid "Stone (Crushed)"
 msgstr "Batu (Hancur)"
-
-
-msgid "Frame:%d "
-msgstr "Frame:%d "
-
-
-msgid "| Last:%s "
-msgstr "| Terakhir:%s "
-
-
-msgid "Time:%s "
-msgstr "Waktu:%s "
-
-
-msgid "| Mem:%.2fM (Peak %.2fM) "
-msgstr "| Mem:%.2fM (Peak %.2fM) "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| Mem:%.2fM, Peak: %.2fM "
 
 
 msgid "Scene has no camera"

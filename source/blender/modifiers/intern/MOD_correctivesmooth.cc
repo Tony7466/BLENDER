@@ -129,15 +129,15 @@ static void mesh_get_weights(const MDeformVert *dvert,
 static void mesh_get_boundaries(Mesh *mesh, float *smooth_weights)
 {
   const blender::Span<blender::int2> edges = mesh->edges();
-  const blender::OffsetIndices polys = mesh->polys();
+  const blender::OffsetIndices faces = mesh->faces();
   const blender::Span<int> corner_edges = mesh->corner_edges();
 
   /* Flag boundary edges so only boundaries are set to 1. */
   uint8_t *boundaries = static_cast<uint8_t *>(
       MEM_calloc_arrayN(size_t(edges.size()), sizeof(*boundaries), __func__));
 
-  for (const int64_t i : polys.index_range()) {
-    for (const int edge : corner_edges.slice(polys[i])) {
+  for (const int64_t i : faces.index_range()) {
+    for (const int edge : corner_edges.slice(faces[i])) {
       uint8_t *e_value = &boundaries[edge];
       *e_value |= uint8_t((*e_value) + 1);
     }
@@ -433,17 +433,17 @@ static void calc_tangent_spaces(const Mesh *mesh,
                                 float *r_tangent_weights_per_vertex)
 {
   const uint mvert_num = uint(mesh->totvert);
-  const blender::OffsetIndices polys = mesh->polys();
+  const blender::OffsetIndices faces = mesh->faces();
   blender::Span<int> corner_verts = mesh->corner_verts();
 
   if (r_tangent_weights_per_vertex != nullptr) {
     copy_vn_fl(r_tangent_weights_per_vertex, int(mvert_num), 0.0f);
   }
 
-  for (const int64_t i : polys.index_range()) {
-    const blender::IndexRange poly = polys[i];
-    int next_corner = int(poly.start());
-    int term_corner = next_corner + int(poly.size());
+  for (const int64_t i : faces.index_range()) {
+    const blender::IndexRange face = faces[i];
+    int next_corner = int(face.start());
+    int term_corner = next_corner + int(face.size());
     int prev_corner = term_corner - 2;
     int curr_corner = term_corner - 1;
 
@@ -462,7 +462,8 @@ static void calc_tangent_spaces(const Mesh *mesh,
 
       /* re-use the previous value */
 #if 0
-      sub_v3_v3v3(v_dir_prev, vertexCos[corner_verts[prev_corner]], vertexCos[corner_verts[curr_corner]]);
+      sub_v3_v3v3(
+          v_dir_prev, vertexCos[corner_verts[prev_corner]], vertexCos[corner_verts[curr_corner]]);
       normalize_v3(v_dir_prev);
 #endif
       sub_v3_v3v3(
@@ -744,36 +745,8 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
-
   correctivesmooth_modifier_do(
-      md, ctx->depsgraph, ctx->object, mesh_src, vertexCos, uint(verts_num), nullptr);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
-}
-
-static void deformVertsEM(ModifierData *md,
-                          const ModifierEvalContext *ctx,
-                          BMEditMesh *editData,
-                          Mesh *mesh,
-                          float (*vertexCos)[3],
-                          int verts_num)
-{
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
-
-  /* TODO(@ideasman42): use edit-mode data only (remove this line). */
-  if (mesh_src != nullptr) {
-    BKE_mesh_wrapper_ensure_mdata(mesh_src);
-  }
-
-  correctivesmooth_modifier_do(
-      md, ctx->depsgraph, ctx->object, mesh_src, vertexCos, uint(verts_num), editData);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
+      md, ctx->depsgraph, ctx->object, mesh, vertexCos, uint(verts_num), nullptr);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -860,7 +833,7 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
 
     /*deformVerts*/ deformVerts,
     /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ deformVertsEM,
+    /*deformVertsEM*/ nullptr,
     /*deformMatricesEM*/ nullptr,
     /*modifyMesh*/ nullptr,
     /*modifyGeometrySet*/ nullptr,

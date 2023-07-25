@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2015-03-03 16:21+0530\n"
 "Last-Translator: Roshan Lal Gumasta <roshan@anisecrets.com>\n"
 "Language-Team: Hindi <www.anisecrets.com>\n"
@@ -699,10 +699,6 @@ msgid "Hue"
 msgstr "छटा"
 
 
-msgid "Path"
-msgstr "पथ"
-
-
 msgid "Background Image"
 msgstr "पृष्ठभूमि छवि"
 
@@ -1160,22 +1156,6 @@ msgid "Factor"
 msgstr "कारक"
 
 
-msgid "Wave Type"
-msgstr "लहर प्रकार"
-
-
-msgid "Depth Change"
-msgstr "गहनता परिवर्तन"
-
-
-msgid "Obstacle"
-msgstr "प्रतिबंधी"
-
-
-msgid "Force"
-msgstr "बल"
-
-
 msgid "Canvas Settings"
 msgstr "चित्रपटी विन्यास"
 
@@ -1304,6 +1284,10 @@ msgid "Drag"
 msgstr "खींचें"
 
 
+msgid "Force"
+msgstr "बल"
+
+
 msgid "Wind"
 msgstr "पवन"
 
@@ -1389,18 +1373,6 @@ msgid "Axis"
 msgstr "अक्ष"
 
 
-msgid "Kink"
-msgstr "ऐंठन"
-
-
-msgid "Curl"
-msgstr "लट"
-
-
-msgid "Wave"
-msgstr "लहर"
-
-
 msgid "Noise"
 msgstr "खुरदुरा"
 
@@ -1419,6 +1391,10 @@ msgstr "आकार"
 
 msgid "Texture Mode"
 msgstr "बनावट रूप"
+
+
+msgid "Curl"
+msgstr "लट"
 
 
 msgid "2D"
@@ -1511,6 +1487,10 @@ msgstr "धुआँ"
 
 msgid "Fluid"
 msgstr "तरल पदार्थ"
+
+
+msgid "Obstacle"
+msgstr "प्रतिबंधी"
 
 
 msgid "Full Sample"
@@ -1970,6 +1950,10 @@ msgid "Z-Up"
 msgstr "Z-ऊर्ध्व"
 
 
+msgid "Path"
+msgstr "पथ"
+
+
 msgid "Flush"
 msgstr "फ्लश"
 
@@ -2250,30 +2234,6 @@ msgid "Nodes"
 msgstr "ग्रन्थि्"
 
 
-msgid "32x32"
-msgstr "३२ x ३२"
-
-
-msgid "64x64"
-msgstr "६४ x ६४"
-
-
-msgid "128x128"
-msgstr "१२८ x १२८"
-
-
-msgid "256x256"
-msgstr "२५६ x २५६"
-
-
-msgid "512x512"
-msgstr "५१२ x ५१२"
-
-
-msgid "1024x1024"
-msgstr "१०२४ x १०२४"
-
-
 msgid "High"
 msgstr "उच्च"
 
@@ -2304,10 +2264,6 @@ msgstr "ठोस"
 
 msgid "Circle"
 msgstr "चक्र"
-
-
-msgid "Both"
-msgstr "दोनों"
 
 
 msgid "Faces"
@@ -3013,6 +2969,10 @@ msgid "Warp"
 msgstr "विकृति"
 
 
+msgid "Wave"
+msgstr "लहर"
+
+
 msgid "Dynamic Paint"
 msgstr "गतिकी रंग"
 
@@ -3352,6 +3312,10 @@ msgstr "प्रक्षेपण"
 
 msgid "Air"
 msgstr "वायु"
+
+
+msgid "Wave Type"
+msgstr "लहर प्रकार"
 
 
 msgid "At"
@@ -3729,10 +3693,6 @@ msgid "Only Selected"
 msgstr "केवल चयनित"
 
 
-msgid "Ascii"
-msgstr "ऐस्की"
-
-
 msgid "X Up"
 msgstr "X ऊर्ध्व"
 
@@ -3751,6 +3711,10 @@ msgstr "-Y ऊर्ध्व"
 
 msgid "-Z Up"
 msgstr "-Z ऊर्ध्व"
+
+
+msgid "Ascii"
+msgstr "ऐस्की"
 
 
 msgid "Null"
@@ -3823,6 +3787,10 @@ msgid "Modifier"
 msgstr "संशोधक"
 
 
+msgid "Both"
+msgstr "दोनों"
+
+
 msgid "Flatten"
 msgstr "समतल"
 
@@ -3833,6 +3801,11 @@ msgstr "सिग्मा"
 
 msgid "Next Keyframe"
 msgstr "अगले अनुबोधक चिन्ह"
+
+
+msgctxt "Operator"
+msgid "Select Mode"
+msgstr "दृश्य रूप का चयन करें"
 
 
 msgid "Create a new image"
@@ -4030,11 +4003,6 @@ msgstr "सकारात्मक अक्ष"
 
 msgid "Negative Axis"
 msgstr "नकारात्मक अक्ष"
-
-
-msgctxt "Operator"
-msgid "Select Mode"
-msgstr "दृश्य रूप का चयन करें"
 
 
 msgid "Fan"
@@ -4719,6 +4687,10 @@ msgid "Predefined node color"
 msgstr "पूर्वनिर्धारित नोड रंग"
 
 
+msgid "Kink"
+msgstr "ऐंठन"
+
+
 msgid "Physics"
 msgstr "भौतिकी"
 
@@ -4829,22 +4801,6 @@ msgstr "जारी रखें"
 
 msgid "Dolly"
 msgstr "डॉली"
-
-
-msgid "2x"
-msgstr "२ एक्स"
-
-
-msgid "4x"
-msgstr "४ एक्स"
-
-
-msgid "8x"
-msgstr "८ एक्स"
-
-
-msgid "16x"
-msgstr "१६ x"
 
 
 msgid "Manual"

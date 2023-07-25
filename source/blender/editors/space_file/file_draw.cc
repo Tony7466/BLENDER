@@ -12,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "AS_asset_representation.h"
+#include "AS_asset_representation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops_types.h"
@@ -117,9 +117,9 @@ static char *file_draw_tooltip_func(bContext * /*C*/, void *argN, const char * /
 
 static char *file_draw_asset_tooltip_func(bContext * /*C*/, void *argN, const char * /*tip*/)
 {
-  const AssetRepresentation *asset = static_cast<AssetRepresentation *>(argN);
-  std::string complete_string = AS_asset_representation_name_get(asset);
-  const AssetMetaData &meta_data = *AS_asset_representation_metadata_get(asset);
+  const auto *asset = static_cast<blender::asset_system::AssetRepresentation *>(argN);
+  std::string complete_string = asset->get_name();
+  const AssetMetaData &meta_data = asset->get_metadata();
   if (meta_data.description) {
     complete_string += '\n';
     complete_string += meta_data.description;
@@ -142,7 +142,7 @@ static void file_but_enable_drag(uiBut *but,
                                  const SpaceFile *sfile,
                                  const FileDirEntry *file,
                                  const char *path,
-                                 ImBuf *preview_image,
+                                 const ImBuf *preview_image,
                                  int icon,
                                  float scale)
 {
@@ -305,7 +305,7 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
                                       const FileDirEntry *file,
                                       const char *path,
                                       const rcti *tile_draw_rect,
-                                      ImBuf *preview_image,
+                                      const ImBuf *preview_image,
                                       const int icon,
                                       const float scale)
 {
@@ -379,8 +379,8 @@ static void file_draw_preview(const FileList *files,
   float scaledx, scaledy;
   float scale;
   int ex, ey;
-  bool show_outline = !is_icon &&
-                      (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
+  bool show_outline = !is_icon && (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_OBJECT_IO |
+                                                     FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   const bool is_offline = (file->attributes & FILE_ATTR_OFFLINE);
   /* Don't show previews while loading the file list, even when available already. Too much
    * flickering while things move around in the view. */
@@ -439,6 +439,11 @@ static void file_draw_preview(const FileList *files,
 
   if (dimmed) {
     document_img_col[3] *= 0.3f;
+  }
+
+  if (!is_icon && ELEM(file->typeflag, FILE_TYPE_IMAGE, FILE_TYPE_OBJECT_IO)) {
+    /* Draw checker pattern behind image previews in case they have transparency. */
+    imm_draw_box_checker_2d(float(xco), float(yco), float(xco + ex), float(yco + ey));
   }
 
   if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
@@ -593,7 +598,7 @@ static void file_draw_preview(const FileList *files,
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.15f};
     float bgcolor[4];
     UI_GetThemeColor4fv(TH_BACK, bgcolor);
     if (rgb_to_grayscale(bgcolor) > 0.5f) {
@@ -602,7 +607,7 @@ static void file_draw_preview(const FileList *files,
       border_color[2] = 0.0f;
     }
     immUniformColor4fv(border_color);
-    imm_draw_box_wire_2d(pos, float(xco), float(yco), float(xco + ex), float(yco + ey));
+    imm_draw_box_wire_2d(pos, float(xco), float(yco), float(xco + ex + 1), float(yco + ey + 1));
     immUnbindProgram();
   }
 
@@ -634,7 +639,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
       errno = 0;
       if ((BLI_rename(orgname, newname) != 0) || !BLI_exists(newname)) {
         WM_reportf(RPT_ERROR, "Could not rename: %s", errno ? strerror(errno) : "unknown error");
-        WM_report_banner_show();
+        WM_report_banner_show(wm, win);
       }
       else {
         /* If rename is successful, scroll to newly renamed entry. */

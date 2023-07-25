@@ -79,7 +79,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *socket_color4f = socket_float->next;
   bNodeSocket *socket_boolean = socket_color4f->next;
   bNodeSocket *socket_int32 = socket_boolean->next;
-  bNodeSocket *socket_quat = socket_boolean->next;
+  bNodeSocket *socket_quat = socket_int32->next;
 
   bke::nodeSetSocketAvailability(ntree, socket_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, socket_float, data_type == CD_PROP_FLOAT);
@@ -93,7 +93,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *out_socket_color4f = out_socket_float->next;
   bNodeSocket *out_socket_boolean = out_socket_color4f->next;
   bNodeSocket *out_socket_int32 = out_socket_boolean->next;
-  bNodeSocket *out_socket_quat = out_socket_boolean->next;
+  bNodeSocket *out_socket_quat = out_socket_int32->next;
 
   bke::nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
@@ -326,7 +326,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  if (target.get_mesh_for_read()->totpoly == 0) {
+  if (target.get_mesh_for_read()->faces_num == 0) {
     params.error_message_add(NodeWarningType::Error, TIP_("The target mesh must have faces"));
     params.set_default_remaining_outputs();
     return;

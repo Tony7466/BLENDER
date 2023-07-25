@@ -102,7 +102,6 @@ static void deformVerts(ModifierData *md,
                         float (*vertexCos)[3],
                         int /*verts_num*/)
 {
-  Mesh *mesh_src = mesh;
   ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
   ParticleSystem *psys = nullptr;
 
@@ -115,14 +114,6 @@ static void deformVerts(ModifierData *md,
 
   if (!psys_check_enabled(ctx->object, psys, (ctx->flag & MOD_APPLY_RENDER) != 0)) {
     return;
-  }
-
-  if (mesh_src == nullptr) {
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, nullptr, vertexCos);
-    if (mesh_src == nullptr) {
-      return;
-    }
-    BKE_mesh_orco_ensure(ctx->object, mesh_src);
   }
 
   /* Clear old evaluated mesh. */
@@ -156,7 +147,7 @@ static void deformVerts(ModifierData *md,
   }
 
   /* make new mesh */
-  psmd->mesh_final = BKE_mesh_copy_for_eval(mesh_src);
+  psmd->mesh_final = BKE_mesh_copy_for_eval(mesh);
   BKE_mesh_vert_coords_apply(psmd->mesh_final, vertexCos);
 
   BKE_mesh_tessface_ensure(psmd->mesh_final);
@@ -180,7 +171,7 @@ static void deformVerts(ModifierData *md,
       }
     }
     else {
-      mesh_original = mesh_src;
+      mesh_original = mesh;
     }
 
     if (mesh_original) {
@@ -193,23 +184,19 @@ static void deformVerts(ModifierData *md,
     BKE_mesh_tessface_ensure(psmd->mesh_original);
   }
 
-  if (!ELEM(mesh_src, nullptr, mesh, psmd->mesh_final)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
-
   /* Report change in mesh structure.
    * This is an unreliable check for the topology check, but allows some
    * handy configuration like emitting particles from inside particle
    * instance. */
   if (had_mesh_final && (psmd->mesh_final->totvert != psmd->totdmvert ||
                          psmd->mesh_final->totedge != psmd->totdmedge ||
-                         psmd->mesh_final->totface != psmd->totdmface))
+                         psmd->mesh_final->totface_legacy != psmd->totdmface))
   {
     psys->recalc |= ID_RECALC_PSYS_RESET;
   }
   psmd->totdmvert = psmd->mesh_final->totvert;
   psmd->totdmedge = psmd->mesh_final->totedge;
-  psmd->totdmface = psmd->mesh_final->totface;
+  psmd->totdmface = psmd->mesh_final->totface_legacy;
 
   {
     Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);

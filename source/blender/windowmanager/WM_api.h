@@ -14,7 +14,6 @@
  * \todo document
  */
 
-/* dna-savable wmStructs here */
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 #include "DNA_windowmanager_types.h"
@@ -67,6 +66,12 @@ typedef struct wmGizmo wmGizmo;
 typedef struct wmGizmoMap wmGizmoMap;
 typedef struct wmGizmoMapType wmGizmoMapType;
 typedef struct wmJob wmJob;
+
+#ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+#endif
 
 /* General API. */
 
@@ -168,7 +173,10 @@ typedef enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_GPU_FRONT_BUFFER_READ = (1 << 3),
   /** Ability to copy/paste system clipboard images. */
   WM_CAPABILITY_CLIPBOARD_IMAGES = (1 << 4),
+  /** The initial value, indicates the value needs to be set by inspecting GHOST. */
+  WM_CAPABILITY_INITIALIZED = (1 << 31),
 } eWM_CapabilitiesFlag;
+ENUM_OPERATORS(eWM_CapabilitiesFlag, WM_CAPABILITY_CLIPBOARD_IMAGES)
 
 eWM_CapabilitiesFlag WM_capabilities_flag(void);
 
@@ -325,24 +333,30 @@ typedef enum eWindowAlignment {
 } eWindowAlignment;
 
 /**
- * \param space_type: SPACE_VIEW3D, SPACE_INFO, ... (eSpace_Type)
+ * \param rect: Position & size of the window.
+ * \param space_type: #SPACE_VIEW3D, #SPACE_INFO, ... (#eSpace_Type).
  * \param toplevel: Not a child owned by other windows. A peer of main window.
  * \param dialog: whether this should be made as a dialog-style window
  * \param temp: whether this is considered a short-lived window
  * \param alignment: how this window is positioned relative to its parent
+ * \param area_setup_fn: An optional callback which can be used to initialize the area
+ * before it's initialized. When set, `space_type` should be #SPACE_EMTPY,
+ * so the setup function can take a blank area and initialize it.
+ * \param area_setup_user_data: User data argument passed to `area_setup_fn`.
  * \return the window or NULL in case of failure.
  */
 struct wmWindow *WM_window_open(struct bContext *C,
                                 const char *title,
-                                int x,
-                                int y,
-                                int sizex,
-                                int sizey,
+                                const struct rcti *rect_unscaled,
                                 int space_type,
                                 bool toplevel,
                                 bool dialog,
                                 bool temp,
-                                eWindowAlignment alignment);
+                                eWindowAlignment alignment,
+                                void (*area_setup_fn)(bScreen *screen,
+                                                      ScrArea *area,
+                                                      void *user_data),
+                                void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
 
@@ -592,8 +606,9 @@ void WM_main_remap_editor_id_reference(const struct IDRemapper *mappings);
 /* reports */
 /**
  * Show the report in the info header.
+ * \param win: When NULL, a best-guess is used.
  */
-void WM_report_banner_show(void);
+void WM_report_banner_show(struct wmWindowManager *wm, struct wmWindow *win) ATTR_NONNULL(1);
 /**
  * Hide all currently displayed banners and abort their timer.
  */
@@ -610,20 +625,30 @@ struct wmEvent *wm_event_add(struct wmWindow *win, const struct wmEvent *event_t
 void wm_event_init_from_window(struct wmWindow *win, struct wmEvent *event);
 
 /* at maximum, every timestep seconds it triggers event_type events */
-struct wmTimer *WM_event_add_timer(struct wmWindowManager *wm,
+struct wmTimer *WM_event_timer_add(struct wmWindowManager *wm,
                                    struct wmWindow *win,
                                    int event_type,
                                    double timestep);
-struct wmTimer *WM_event_add_timer_notifier(struct wmWindowManager *wm,
+struct wmTimer *WM_event_timer_add_notifier(struct wmWindowManager *wm,
                                             struct wmWindow *win,
                                             unsigned int type,
                                             double timestep);
+
+void WM_event_timer_free_data(struct wmTimer *timer);
+/**
+ * Free all timers immediately.
+ *
+ * \note This should only be used on-exit,
+ * in all other cases timers should be tagged for removal by #WM_event_timer_remove.
+ */
+void WM_event_timers_free_all(wmWindowManager *wm);
+
 /** Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
  * internally by the window manager code. */
-void WM_event_remove_timer(struct wmWindowManager *wm,
+void WM_event_timer_remove(struct wmWindowManager *wm,
                            struct wmWindow *win,
                            struct wmTimer *timer);
-void WM_event_remove_timer_notifier(struct wmWindowManager *wm,
+void WM_event_timer_remove_notifier(struct wmWindowManager *wm,
                                     struct wmWindow *win,
                                     struct wmTimer *timer);
 /**
@@ -1401,7 +1426,7 @@ wmDrag *WM_drag_data_create(struct bContext *C,
  * Invoke dragging using the given \a drag data.
  */
 void WM_event_start_prepared_drag(struct bContext *C, wmDrag *drag);
-void WM_event_drag_image(struct wmDrag *, struct ImBuf *, float scale);
+void WM_event_drag_image(struct wmDrag *, const struct ImBuf *, float scale);
 void WM_drag_free(struct wmDrag *drag);
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(struct ListBase *lb);
@@ -1440,11 +1465,14 @@ struct ID *WM_drag_get_local_ID_from_event(const struct wmEvent *event, short id
  */
 bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
 
+#ifdef __cplusplus
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-wmDragAsset *WM_drag_create_asset_data(const struct AssetRepresentation *asset,
+wmDragAsset *WM_drag_create_asset_data(const blender::asset_system::AssetRepresentation *asset,
                                        int /* #eAssetImportMethod */ import_type);
+#endif
+
 struct wmDragAsset *WM_drag_get_asset_data(const struct wmDrag *drag, int idcode);
 struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int idcode);
 /**
@@ -1470,10 +1498,14 @@ void WM_drag_free_imported_drag_ID(struct Main *bmain,
 
 struct wmDragAssetCatalog *WM_drag_get_asset_catalog_data(const struct wmDrag *drag);
 
+#ifdef __cplusplus
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetRepresentation *asset);
+void WM_drag_add_asset_list_item(wmDrag *drag,
+                                 const blender::asset_system::AssetRepresentation *asset);
+#endif
+
 const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);

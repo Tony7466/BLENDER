@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'58c6a278d3b0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-21 15:21:42\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2021-12-05 20:05+0100\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -694,6 +694,10 @@ msgid "Show Lines"
 msgstr "Toon Lijnen"
 
 
+msgid "Active Layer"
+msgstr "Actieve Laag"
+
+
 msgid "Random Settings"
 msgstr "Willekeurige Instellingen"
 
@@ -702,16 +706,8 @@ msgid "Mode Type"
 msgstr "Type Modus"
 
 
-msgid "Active Layer"
-msgstr "Actieve Laag"
-
-
 msgid "Object Path"
 msgstr "Object Pad"
-
-
-msgid "Path"
-msgstr "Pad"
 
 
 msgid "Opacity"
@@ -1069,11 +1065,6 @@ msgstr "Scene"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulatie"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Geluid"
 
@@ -1133,14 +1124,6 @@ msgstr "Vervang Kleur"
 
 msgid "Factor"
 msgstr "Factor"
-
-
-msgid "Obstacle"
-msgstr "Obstakel"
-
-
-msgid "Force"
-msgstr "Kracht"
 
 
 msgid "Canvas Settings"
@@ -1213,6 +1196,10 @@ msgstr "Gebruik Uitvoer"
 
 msgid "Smoothness"
 msgstr "Gladheid"
+
+
+msgid "Force"
+msgstr "Kracht"
 
 
 msgid "Group"
@@ -1339,18 +1326,6 @@ msgid "Frequency"
 msgstr "Frequentie"
 
 
-msgid "Kink"
-msgstr "Knik"
-
-
-msgid "Curl"
-msgstr "Krul"
-
-
-msgid "Wave"
-msgstr "Golf"
-
-
 msgid "Seed"
 msgstr "Zaad"
 
@@ -1373,6 +1348,10 @@ msgstr "Domein Object"
 
 msgid "Strength of force field"
 msgstr "Kracht van het krachtveld"
+
+
+msgid "Curl"
+msgstr "Krul"
 
 
 msgid "Gradient"
@@ -1485,6 +1464,10 @@ msgstr "Kracht Collectie"
 
 msgid "Fluid"
 msgstr "Vloeistof"
+
+
+msgid "Obstacle"
+msgstr "Obstakel"
 
 
 msgid "Nearest"
@@ -2101,6 +2084,10 @@ msgid "Fill Caps"
 msgstr "Vul Kap"
 
 
+msgid "Path"
+msgstr "Pad"
+
+
 msgid "Follow"
 msgstr "Volg"
 
@@ -2202,14 +2189,6 @@ msgstr "Zon"
 msgctxt "Light"
 msgid "Area"
 msgstr "Gebied"
-
-
-msgid "Falloff Type"
-msgstr "Type Afvlakking"
-
-
-msgid "Inverse Square"
-msgstr "Inverse Wortel"
 
 
 msgid "Shadow Color"
@@ -2334,10 +2313,6 @@ msgstr "Stijheid"
 
 msgid "Hair Length"
 msgstr "Haarlengte"
-
-
-msgid "Spiral"
-msgstr "Spiraal"
 
 
 msgid "Mass"
@@ -2872,6 +2847,10 @@ msgstr "Bal"
 
 msgid "Data Transfer"
 msgstr "Gegevens Overdracht"
+
+
+msgid "Wave"
+msgstr "Golf"
 
 
 msgid "Soft Body"
@@ -3839,12 +3818,17 @@ msgstr "Exporteer BVH"
 
 
 msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exporteer STL"
+msgid "Export PLY"
+msgstr "Exporteer PLY"
 
 
 msgid "Apply Modifiers"
 msgstr "Pas Aanpassers Toe"
+
+
+msgctxt "Operator"
+msgid "Export STL"
+msgstr "Exporteer STL"
 
 
 msgctxt "Operator"
@@ -3878,6 +3862,15 @@ msgstr "Algemeen"
 
 msgid "Animation settings"
 msgstr "Animatie-instellingen"
+
+
+msgctxt "Operator"
+msgid "Export OBJ"
+msgstr "Exporteer OBJ"
+
+
+msgid "Apply modifiers"
+msgstr "Pas aanpassers toe"
 
 
 msgctxt "Operator"
@@ -4378,6 +4371,11 @@ msgstr "Importeer Afbeeldingen als Vlakken"
 
 
 msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importeer PLY"
+
+
+msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importeer STL"
 
@@ -4393,6 +4391,11 @@ msgstr "Importeer Animatie"
 
 msgid "Import FBX animation"
 msgstr "Importeer FBX Animatie"
+
+
+msgctxt "Operator"
+msgid "Import OBJ"
+msgstr "Importeer OBJ"
 
 
 msgctxt "Operator"
@@ -5728,6 +5731,10 @@ msgid "Change value"
 msgstr "Wijzig waarde"
 
 
+msgid "Falloff Type"
+msgstr "Type Afvlakking"
+
+
 msgid "Modify Active"
 msgstr "Wijzig Actieve"
 
@@ -6188,16 +6195,6 @@ msgid "Open a Blender file"
 msgstr "Open een Blender Bestand"
 
 
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exporteer PLY"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importeer PLY"
-
-
 msgid "All Types"
 msgstr "Alle Types"
 
@@ -6244,10 +6241,6 @@ msgstr "Herlaad Geschiedenis Bestand"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Herlaad Opstart Bestand"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Open Opstart Bestand (huidige bestand wordt niet opgelsagen)"
 
 
 msgctxt "Operator"
@@ -6442,6 +6435,10 @@ msgstr "Schalen"
 msgctxt "Operator"
 msgid "Draw"
 msgstr "Tekenen"
+
+
+msgid "Kink"
+msgstr "Knik"
 
 
 msgid "Force Field Settings"
@@ -9062,11 +9059,6 @@ msgstr "Nieuw"
 
 
 msgctxt "Volume"
-msgid "New"
-msgstr "Nieuw"
-
-
-msgctxt "Simulation"
 msgid "New"
 msgstr "Nieuw"
 

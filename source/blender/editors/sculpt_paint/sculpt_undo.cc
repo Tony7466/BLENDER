@@ -30,7 +30,7 @@
  * Operators must have the OPTYPE_UNDO flag set for this to work properly.
  */
 
-#include <stddef.h>
+#include <cstddef>
 
 #include "MEM_guardedalloc.h"
 
@@ -126,20 +126,20 @@
 
 #define NO_ACTIVE_LAYER ATTR_DOMAIN_AUTO
 
-typedef struct UndoSculpt {
+struct UndoSculpt {
   ListBase nodes;
 
   size_t undo_size;
-} UndoSculpt;
+};
 
-typedef struct SculptAttrRef {
+struct SculptAttrRef {
   eAttrDomain domain;
   eCustomDataType type;
   char name[MAX_CUSTOMDATA_LAYER_NAME];
   bool was_set;
-} SculptAttrRef;
+};
 
-typedef struct SculptUndoStep {
+struct SculptUndoStep {
   UndoStep step;
   /* NOTE: will split out into list for multi-object-sculpt-mode. */
   UndoSculpt data;
@@ -155,7 +155,7 @@ typedef struct SculptUndoStep {
 #ifdef SCULPT_UNDO_DEBUG
   int id;
 #endif
-} SculptUndoStep;
+};
 
 static UndoSculpt *sculpt_undo_get_nodes(void);
 static bool sculpt_attribute_ref_equals(SculptAttrRef *a, SculptAttrRef *b);
@@ -417,7 +417,7 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
 
     /* No need for float comparison here (memory is exactly equal or not). */
     index = unode->index;
-    float(*positions)[3] = ss->vert_positions;
+    blender::MutableSpan<blender::float3> positions = ss->vert_positions;
 
     if (ss->shapekey_active) {
       float(*vertCos)[3];
@@ -744,16 +744,16 @@ static void sculpt_undo_geometry_store_data(SculptUndoNodeGeometry *geometry, Ob
   CustomData_copy(&mesh->vdata, &geometry->vdata, CD_MASK_MESH.vmask, mesh->totvert);
   CustomData_copy(&mesh->edata, &geometry->edata, CD_MASK_MESH.emask, mesh->totedge);
   CustomData_copy(&mesh->ldata, &geometry->ldata, CD_MASK_MESH.lmask, mesh->totloop);
-  CustomData_copy(&mesh->pdata, &geometry->pdata, CD_MASK_MESH.pmask, mesh->totpoly);
-  blender::implicit_sharing::copy_shared_pointer(mesh->poly_offset_indices,
-                                                 mesh->runtime->poly_offsets_sharing_info,
-                                                 &geometry->poly_offset_indices,
-                                                 &geometry->poly_offsets_sharing_info);
+  CustomData_copy(&mesh->pdata, &geometry->pdata, CD_MASK_MESH.pmask, mesh->faces_num);
+  blender::implicit_sharing::copy_shared_pointer(mesh->face_offset_indices,
+                                                 mesh->runtime->face_offsets_sharing_info,
+                                                 &geometry->face_offset_indices,
+                                                 &geometry->face_offsets_sharing_info);
 
   geometry->totvert = mesh->totvert;
   geometry->totedge = mesh->totedge;
   geometry->totloop = mesh->totloop;
-  geometry->totpoly = mesh->totpoly;
+  geometry->faces_num = mesh->faces_num;
 }
 
 static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, Object *object)
@@ -767,17 +767,17 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
   mesh->totvert = geometry->totvert;
   mesh->totedge = geometry->totedge;
   mesh->totloop = geometry->totloop;
-  mesh->totpoly = geometry->totpoly;
-  mesh->totface = 0;
+  mesh->faces_num = geometry->faces_num;
+  mesh->totface_legacy = 0;
 
   CustomData_copy(&geometry->vdata, &mesh->vdata, CD_MASK_MESH.vmask, geometry->totvert);
   CustomData_copy(&geometry->edata, &mesh->edata, CD_MASK_MESH.emask, geometry->totedge);
   CustomData_copy(&geometry->ldata, &mesh->ldata, CD_MASK_MESH.lmask, geometry->totloop);
-  CustomData_copy(&geometry->pdata, &mesh->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
-  blender::implicit_sharing::copy_shared_pointer(geometry->poly_offset_indices,
-                                                 geometry->poly_offsets_sharing_info,
-                                                 &mesh->poly_offset_indices,
-                                                 &mesh->runtime->poly_offsets_sharing_info);
+  CustomData_copy(&geometry->pdata, &mesh->pdata, CD_MASK_MESH.pmask, geometry->faces_num);
+  blender::implicit_sharing::copy_shared_pointer(geometry->face_offset_indices,
+                                                 geometry->face_offsets_sharing_info,
+                                                 &mesh->face_offset_indices,
+                                                 &mesh->runtime->face_offsets_sharing_info);
 }
 
 static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
@@ -791,11 +791,11 @@ static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
   if (geometry->totloop) {
     CustomData_free(&geometry->ldata, geometry->totloop);
   }
-  if (geometry->totpoly) {
-    CustomData_free(&geometry->pdata, geometry->totpoly);
+  if (geometry->faces_num) {
+    CustomData_free(&geometry->pdata, geometry->faces_num);
   }
-  blender::implicit_sharing::free_shared_data(&geometry->poly_offset_indices,
-                                              &geometry->poly_offsets_sharing_info);
+  blender::implicit_sharing::free_shared_data(&geometry->face_offset_indices,
+                                              &geometry->face_offsets_sharing_info);
 }
 
 static void sculpt_undo_geometry_restore(SculptUndoNode *unode, Object *object)
@@ -1560,9 +1560,9 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob, PBVHNode *node, Sculpt
     }
     else if (type == SCULPT_UNDO_DYNTOPO_BEGIN) {
       /* Store a copy of the mesh's current vertices, loops, and
-       * polys. A full copy like this is needed because entering
+       * faces. A full copy like this is needed because entering
        * dynamic-topology immediately does topological edits
-       * (converting polys to triangles) that the BMLog can't
+       * (converting faces to triangles) that the BMLog can't
        * fully restore from. */
       SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
       sculpt_undo_geometry_store_data(geometry, ob);
@@ -1840,8 +1840,7 @@ static void sculpt_undo_set_active_layer(bContext *C, SculptAttrRef *attr)
   SculptAttrRef existing;
   sculpt_save_active_attribute(ob, &existing);
 
-  CustomDataLayer *layer;
-  layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
+  CustomDataLayer *layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
 
   /* Temporary fix for #97408. This is a fundamental
    * bug in the undo stack; the operator code needs to push
@@ -1864,11 +1863,8 @@ static void sculpt_undo_set_active_layer(bContext *C, SculptAttrRef *attr)
 
   if (!layer) {
     /* Memfile undo killed the layer; re-create it. */
-    CustomData *cdata = attr->domain == ATTR_DOMAIN_POINT ? &me->vdata : &me->ldata;
-    int totelem = attr->domain == ATTR_DOMAIN_POINT ? me->totvert : me->totloop;
-
-    CustomData_add_layer_named(
-        cdata, eCustomDataType(attr->type), CD_SET_DEFAULT, totelem, attr->name);
+    me->attributes_for_write().add(
+        attr->name, attr->domain, attr->type, blender::bke::AttributeInitDefaultValue());
     layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
   }
 
@@ -2092,7 +2088,7 @@ static UndoSculpt *sculpt_undosys_step_get_nodes(UndoStep *us_p)
   return &us->data;
 }
 
-static UndoSculpt *sculpt_undo_get_nodes(void)
+static UndoSculpt *sculpt_undo_get_nodes()
 {
   UndoStack *ustack = ED_undo_stack_get();
   UndoStep *us = BKE_undosys_stack_init_or_active_with_type(ustack, BKE_UNDOSYS_TYPE_SCULPT);
