@@ -1190,17 +1190,16 @@ static std::optional<ThumbSource> file_thumbnail_source_get(const FileDirEntry *
   if (file->typeflag & FILE_TYPE_IMAGE) {
     return THB_SOURCE_IMAGE;
   }
-  else if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB))
-  {
+  if (file->typeflag & (FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)) {
     return THB_SOURCE_BLEND;
   }
-  else if (file->typeflag & FILE_TYPE_MOVIE) {
+  if (file->typeflag & FILE_TYPE_MOVIE) {
     return THB_SOURCE_MOVIE;
   }
-  else if (file->typeflag & FILE_TYPE_FTFONT) {
+  if (file->typeflag & FILE_TYPE_FTFONT) {
     return THB_SOURCE_FONT;
   }
-  else if (file->typeflag & FILE_TYPE_OBJECT_IO) {
+  if (file->typeflag & FILE_TYPE_OBJECT_IO) {
     return THB_SOURCE_OBJECT_IO;
   }
   return std::nullopt;
