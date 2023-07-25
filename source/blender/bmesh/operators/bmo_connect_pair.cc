@@ -77,7 +77,7 @@
 
 // #define DEBUG_PRINT
 
-typedef struct PathContext {
+struct PathContext {
   HeapSimple *states;
   float matrix[3][3];
   float axis_sep;
@@ -88,25 +88,25 @@ typedef struct PathContext {
   BMVert *v_pair[2];
 
   BLI_mempool *link_pool;
-} PathContext;
+};
 
 /**
  * Single linked list where each item contains state and points to previous path item.
  */
-typedef struct PathLink {
+struct PathLink {
   struct PathLink *next;
   BMElem *ele;      /* edge or vert */
   BMElem *ele_from; /* edge or face we came from (not 'next->ele') */
-} PathLink;
+};
 
-typedef struct PathLinkState {
+struct PathLinkState {
   /* chain of links */
   PathLink *link_last;
 
   /* length along links */
   float dist;
   float co_prev[3];
-} PathLinkState;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Min Dist Dir Utilities
@@ -122,12 +122,12 @@ typedef struct PathLinkState {
  * - Caller stores best outcome in both directions.
  * \{ */
 
-typedef struct MinDistDir {
+struct MinDistDir {
   /* distance in both directions (FLT_MAX == uninitialized) */
   float dist_min[2];
   /* direction of the first intersection found */
   float dir[3];
-} MinDistDir;
+};
 
 #define MIN_DIST_DIR_INIT \
   { \
@@ -228,7 +228,7 @@ static bool state_link_find(const PathLinkState *state, BMElem *ele)
 
 static void state_link_add(PathContext *pc, PathLinkState *state, BMElem *ele, BMElem *ele_from)
 {
-  PathLink *step_new = BLI_mempool_alloc(pc->link_pool);
+  PathLink *step_new = static_cast<PathLink *>(BLI_mempool_alloc(pc->link_pool));
   BLI_assert(ele != ele_from);
   BLI_assert(state_link_find(state, ele) == false);
 
@@ -247,8 +247,8 @@ static void state_link_add(PathContext *pc, PathLinkState *state, BMElem *ele, B
     BLI_assert(0);
   }
 
-  if (ele_from == NULL) {
-    printf("from NULL\n");
+  if (ele_from == nullptr) {
+    printf("from nullptr\n");
   }
   else if (ele_from->head.htype == BM_EDGE) {
     printf("from edge %d\n", BM_elem_index_get(ele_from));
@@ -289,7 +289,7 @@ static void state_link_add(PathContext *pc, PathLinkState *state, BMElem *ele, B
 
 static PathLinkState *state_dupe_add(PathLinkState *state, const PathLinkState *state_orig)
 {
-  state = MEM_mallocN(sizeof(*state), __func__);
+  state = static_cast<PathLinkState *>(MEM_mallocN(sizeof(*state), __func__));
   *state = *state_orig;
   return state;
 }
@@ -324,7 +324,7 @@ static PathLinkState *state_step__face_edges(PathContext *pc,
                                              MinDistDir *mddir)
 {
 
-  BMLoop *l_iter_best[2] = {NULL, NULL};
+  BMLoop *l_iter_best[2] = {nullptr, nullptr};
   int i;
 
   do {
@@ -371,7 +371,7 @@ static PathLinkState *state_step__face_verts(PathContext *pc,
                                              BMLoop *l_last,
                                              MinDistDir *mddir)
 {
-  BMLoop *l_iter_best[2] = {NULL, NULL};
+  BMLoop *l_iter_best[2] = {nullptr, nullptr};
   int i;
 
   do {
@@ -587,7 +587,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
   BMOpSlot *op_verts_slot = BMO_slot_get(op->slots_in, "verts");
 
   PathContext pc;
-  PathLinkState state_best = {NULL};
+  PathLinkState state_best = {nullptr};
 
   if (op_verts_slot->len != 2) {
     /* fail! */
@@ -627,8 +627,8 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
   /* add first vertex */
   {
     PathLinkState *state;
-    state = MEM_callocN(sizeof(*state), __func__);
-    state_link_add(&pc, state, (BMElem *)pc.v_pair[0], NULL);
+    state = static_cast<PathLinkState *>(MEM_callocN(sizeof(*state), __func__));
+    state_link_add(&pc, state, (BMElem *)pc.v_pair[0], nullptr);
     BLI_heapsimple_insert(pc.states, state->dist, state);
   }
 
@@ -639,13 +639,13 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 #endif
 
     while (!BLI_heapsimple_is_empty(pc.states)) {
-      PathLinkState *state = BLI_heapsimple_pop_min(pc.states);
+      PathLinkState *state = static_cast<PathLinkState *>(BLI_heapsimple_pop_min(pc.states));
 
       /* either we insert this into 'pc.states' or its freed */
       bool continue_search;
 
       if (state->link_last->ele == (BMElem *)pc.v_pair[1]) {
-        /* pass, wait until all are found */
+/* pass, wait until all are found */
 #ifdef DEBUG_PRINT
         printf("%s: state %p loop found %.4f\n", __func__, state, state->dist);
 #endif
@@ -687,7 +687,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
         BMEdge *e = (BMEdge *)link->ele;
         BMVert *v_new;
         float e_fac = state_calc_co_pair_fac(&pc, e->v1->co, e->v2->co);
-        v_new = BM_edge_split(bm, e, e->v1, NULL, e_fac);
+        v_new = BM_edge_split(bm, e, e->v1, nullptr, e_fac);
         BMO_vert_flag_enable(bm, v_new, VERT_OUT);
       }
       else if (link->ele->head.htype == BM_VERT) {
