@@ -29,8 +29,8 @@ static void remdoubles_splitface(BMFace *f, BMesh *bm, BMOperator *op, BMOpSlot 
   bool split = false;
 
   BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
-    BMVert *v_tar = BMO_slot_map_elem_get(slot_targetmap, l->v);
-    /* ok: if v_tar is NULL (e.g. not in the map) then it's
+    BMVert *v_tar = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_targetmap, l->v));
+    /* ok: if v_tar is nullptr (e.g. not in the map) then it's
      *     a target vert, otherwise it's a double */
     if (v_tar) {
       l_tar = BM_face_vert_share_loop(f, v_tar);
@@ -47,7 +47,7 @@ static void remdoubles_splitface(BMFace *f, BMesh *bm, BMOperator *op, BMOpSlot 
     BMLoop *l_new;
     BMFace *f_new;
 
-    f_new = BM_face_split(bm, f, l_double, l_tar, &l_new, NULL, false);
+    f_new = BM_face_split(bm, f, l_double, l_tar, &l_new, nullptr, false);
 
     remdoubles_splitface(f, bm, op, slot_targetmap);
     remdoubles_splitface(f_new, bm, op, slot_targetmap);
@@ -90,7 +90,7 @@ static BMFace *remdoubles_createface(BMesh *bm,
   v_map = l_init->v; \
   is_del = BMO_vert_flag_test_bool(bm, v_map, ELE_DEL); \
   if (is_del) { \
-    v_map = BMO_slot_map_elem_get(slot_targetmap, v_map); \
+    v_map = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_targetmap, v_map)); \
   } \
   ((void)0)
 
@@ -113,7 +113,7 @@ static BMFace *remdoubles_createface(BMesh *bm,
         e_new = l_curr->e;
       }
       else if (v_curr == v_next) {
-        e_new = NULL; /* skip */
+        e_new = nullptr; /* skip */
       }
       else {
         e_new = BM_edge_exists(v_curr, v_next);
@@ -168,7 +168,7 @@ finally : {
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -188,7 +188,7 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
   /* Maintain selection history. */
   const bool has_selected = !BLI_listbase_is_empty(&bm->selected);
   const bool use_targetmap_all = has_selected;
-  GHash *targetmap_all = NULL;
+  GHash *targetmap_all = nullptr;
   if (use_targetmap_all) {
     /* Map deleted to keep elem. */
     targetmap_all = BLI_ghash_ptr_new(__func__);
@@ -196,8 +196,8 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
 
   /* mark merge verts for deletion */
   BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-    BMVert *v_dst = BMO_slot_map_elem_get(slot_targetmap, v);
-    if (v_dst != NULL) {
+    BMVert *v_dst = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_targetmap, v));
+    if (v_dst != nullptr) {
       BMO_vert_flag_enable(bm, v, ELE_DEL);
 
       /* merge the vertex flags, else we get randomly selected/unselected verts */
@@ -223,10 +223,10 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
 
     if (is_del_v1 || is_del_v2) {
       if (is_del_v1) {
-        v1 = BMO_slot_map_elem_get(slot_targetmap, v1);
+        v1 = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_targetmap, v1));
       }
       if (is_del_v2) {
-        v2 = BMO_slot_map_elem_get(slot_targetmap, v2);
+        v2 = static_cast<BMVert *>(BMO_slot_map_elem_get(slot_targetmap, v2));
       }
 
       if (v1 == v2) {
@@ -235,7 +235,7 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
       else {
         /* always merge flags, even for edges we already created */
         BMEdge *e_new = BM_edge_exists(v1, v2);
-        if (e_new == NULL) {
+        if (e_new == nullptr) {
           e_new = BM_edge_create(bm, v1, v2, e, BM_CREATE_NOP);
         }
         BM_elem_flag_merge_ex(e_new, e, BM_ELEM_HIDDEN);
@@ -266,7 +266,7 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
 
     if (vert_delete) {
       bool use_in_place = false;
-      BMFace *f_new = NULL;
+      BMFace *f_new = nullptr;
       BMO_face_flag_enable(bm, f, ELE_DEL);
 
       if (f->len - edge_collapse >= 3) {
@@ -291,7 +291,7 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
         }
       }
 
-      if ((use_in_place == false) && (f_new != NULL)) {
+      if ((use_in_place == false) && (f_new != nullptr)) {
         BLI_assert(f != f_new);
         if (use_targetmap_all) {
           BLI_ghash_insert(targetmap_all, f, f_new);
@@ -308,7 +308,7 @@ void bmo_weld_verts_exec(BMesh *bm, BMOperator *op)
   }
 
   if (use_targetmap_all) {
-    BLI_ghash_free(targetmap_all, NULL, NULL);
+    BLI_ghash_free(targetmap_all, nullptr, nullptr);
   }
 
   BMO_mesh_delete_oflag_context(bm, ELE_DEL, DEL_ONLYTAGGED);
@@ -323,11 +323,12 @@ void bmo_pointmerge_facedata_exec(BMesh *bm, BMOperator *op)
   BMOIter siter;
   BMIter iter;
   BMVert *v, *vert_snap;
-  BMLoop *l, *l_first = NULL;
+  BMLoop *l, *l_first = nullptr;
   float fac;
   int i, tot;
 
-  vert_snap = BMO_slot_buffer_get_single(BMO_slot_get(op->slots_in, "vert_snap"));
+  vert_snap = static_cast<BMVert *>(
+      BMO_slot_buffer_get_single(BMO_slot_get(op->slots_in, "vert_snap")));
   tot = BM_vert_face_count(vert_snap);
 
   if (!tot) {
@@ -336,7 +337,7 @@ void bmo_pointmerge_facedata_exec(BMesh *bm, BMOperator *op)
 
   fac = 1.0f / tot;
   BM_ITER_ELEM (l, &iter, vert_snap, BM_LOOPS_OF_VERT) {
-    if (l_first == NULL) {
+    if (l_first == nullptr) {
       l_first = l;
     }
 
@@ -349,10 +350,10 @@ void bmo_pointmerge_facedata_exec(BMesh *bm, BMOperator *op)
         e1 = BM_ELEM_CD_GET_VOID_P(l_first, offset);
         e2 = BM_ELEM_CD_GET_VOID_P(l, offset);
 
-        CustomData_data_multiply(type, e2, fac);
+        CustomData_data_multiply(eCustomDataType(type), e2, fac);
 
         if (l != l_first) {
-          CustomData_data_add(type, e1, e2);
+          CustomData_data_add(eCustomDataType(type), e1, e2);
         }
       }
     }
@@ -386,23 +387,23 @@ void bmo_average_vert_facedata_exec(BMesh *bm, BMOperator *op)
       continue;
     }
 
-    CustomData_data_initminmax(type, &min, &max);
+    CustomData_data_initminmax(eCustomDataType(type), &min, &max);
 
     BMO_ITER (v, &siter, op->slots_in, "verts", BM_VERT) {
       BM_ITER_ELEM (l, &iter, v, BM_LOOPS_OF_VERT) {
         void *block = BM_ELEM_CD_GET_VOID_P(l, offset);
-        CustomData_data_dominmax(type, block, &min, &max);
+        CustomData_data_dominmax(eCustomDataType(type), block, &min, &max);
       }
     }
 
-    CustomData_data_multiply(type, &min, 0.5f);
-    CustomData_data_multiply(type, &max, 0.5f);
-    CustomData_data_add(type, &min, &max);
+    CustomData_data_multiply(eCustomDataType(type), &min, 0.5f);
+    CustomData_data_multiply(eCustomDataType(type), &max, 0.5f);
+    CustomData_data_add(eCustomDataType(type), &min, &max);
 
     BMO_ITER (v, &siter, op->slots_in, "verts", BM_VERT) {
       BM_ITER_ELEM (l, &iter, v, BM_LOOPS_OF_VERT) {
         void *block = BM_ELEM_CD_GET_VOID_P(l, offset);
-        CustomData_data_copy_value(type, &min, block);
+        CustomData_data_copy_value(eCustomDataType(type), &min, block);
       }
     }
   }
@@ -412,7 +413,7 @@ void bmo_pointmerge_exec(BMesh *bm, BMOperator *op)
 {
   BMOperator weldop;
   BMOIter siter;
-  BMVert *v, *vert_snap = NULL;
+  BMVert *v, *vert_snap = nullptr;
   float vec[3];
   BMOpSlot *slot_targetmap;
 
@@ -479,7 +480,9 @@ void bmo_collapse_exec(BMesh *bm, BMOperator *op)
 
     BLI_assert(BLI_stack_is_empty(edge_stack));
 
-    for (e = BMW_begin(&walker, e->v1); e; e = BMW_step(&walker)) {
+    for (e = static_cast<BMEdge *>(BMW_begin(&walker, e->v1)); e;
+         e = static_cast<BMEdge *>(BMW_step(&walker)))
+    {
       BLI_stack_push(edge_stack, &e);
 
       add_v3_v3(center, e->v1->co);
@@ -553,23 +556,25 @@ static void bmo_collapsecon_do_layer(BMesh *bm, const int layer, const short ofl
         /* walk */
         BLI_assert(BLI_stack_is_empty(block_stack));
 
-        CustomData_data_initminmax(type, &min, &max);
-        for (l2 = BMW_begin(&walker, l); l2; l2 = BMW_step(&walker)) {
+        CustomData_data_initminmax(eCustomDataType(type), &min, &max);
+        for (l2 = static_cast<BMLoop *>(BMW_begin(&walker, l)); l2;
+             l2 = static_cast<BMLoop *>(BMW_step(&walker)))
+        {
           void *block = BM_ELEM_CD_GET_VOID_P(l2, offset);
-          CustomData_data_dominmax(type, block, &min, &max);
+          CustomData_data_dominmax(eCustomDataType(type), block, &min, &max);
           BLI_stack_push(block_stack, &block);
         }
 
         if (!BLI_stack_is_empty(block_stack)) {
-          CustomData_data_multiply(type, &min, 0.5f);
-          CustomData_data_multiply(type, &max, 0.5f);
-          CustomData_data_add(type, &min, &max);
+          CustomData_data_multiply(eCustomDataType(type), &min, 0.5f);
+          CustomData_data_multiply(eCustomDataType(type), &max, 0.5f);
+          CustomData_data_add(eCustomDataType(type), &min, &max);
 
           /* Snap custom-data (UV, vertex-colors) points to their centroid. */
           while (!BLI_stack_is_empty(block_stack)) {
             void *block;
             BLI_stack_pop(block_stack, &block);
-            CustomData_data_copy_value(type, &min, block);
+            CustomData_data_copy_value(eCustomDataType(type), &min, block);
           }
         }
       }
@@ -586,7 +591,7 @@ void bmo_collapse_uvs_exec(BMesh *bm, BMOperator *op)
   const short oflag = EDGE_MARK;
   int i;
 
-  /* Check flags don't change once set. */
+/* Check flags don't change once set. */
 #ifndef NDEBUG
   int tot_test;
 #endif
@@ -629,7 +634,7 @@ static void bmesh_find_doubles_common(BMesh *bm,
   /* Test whether keep_verts arg exists and is non-empty */
   if (BMO_slot_exists(op->slots_in, "keep_verts")) {
     BMOIter oiter;
-    has_keep_vert = BMO_iter_new(&oiter, op->slots_in, "keep_verts", BM_VERT) != NULL;
+    has_keep_vert = BMO_iter_new(&oiter, op->slots_in, "keep_verts", BM_VERT) != nullptr;
   }
 
   /* Flag keep_verts */
@@ -637,7 +642,7 @@ static void bmesh_find_doubles_common(BMesh *bm,
     BMO_slot_buffer_flag_enable(bm, op->slots_in, "keep_verts", BM_VERT, VERT_KEEP);
   }
 
-  int *duplicates = MEM_mallocN(sizeof(int) * verts_len, __func__);
+  int *duplicates = static_cast<int *>(MEM_mallocN(sizeof(int) * verts_len, __func__));
   {
     KDTree_3d *tree = BLI_kdtree_3d_new(verts_len);
     for (int i = 0; i < verts_len; i++) {
