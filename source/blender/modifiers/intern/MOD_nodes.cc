@@ -1529,7 +1529,7 @@ static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cdda
 }  // namespace blender
 
 ModifierTypeInfo modifierType_Nodes = {
-    /*id*/ "GeometryNodes",
+    /*idname*/ "GeometryNodes",
     /*name*/ N_("GeometryNodes"),
     /*structName*/ "NodesModifierData",
     /*structSize*/ sizeof(NodesModifierData),

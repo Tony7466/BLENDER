@@ -523,7 +523,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_SimpleDeform = {
-    /*id*/ "SimpleDeform",
+    /*idname*/ "SimpleDeform",
     /*name*/ N_("SimpleDeform"),
     /*structName*/ "SimpleDeformModifierData",
     /*structSize*/ sizeof(SimpleDeformModifierData),

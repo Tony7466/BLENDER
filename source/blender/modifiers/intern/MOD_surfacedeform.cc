@@ -1708,7 +1708,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_SurfaceDeform = {
-    /*id*/ "SurfaceDeform",
+    /*idname*/ "SurfaceDeform",
     /*name*/ N_("SurfaceDeform"),
     /*structName*/ "SurfaceDeformModifierData",
     /*structSize*/ sizeof(SurfaceDeformModifierData),

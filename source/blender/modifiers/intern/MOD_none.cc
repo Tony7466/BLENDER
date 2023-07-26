@@ -24,7 +24,7 @@ static bool isDisabled(const Scene * /*scene*/, ModifierData * /*md*/, bool /*us
 }
 
 ModifierTypeInfo modifierType_None = {
-    /*id*/ "None",
+    /*idname*/ "None",
     /*name*/ "None",
     /*structName*/ "ModifierData",
     /*structSize*/ sizeof(ModifierData),

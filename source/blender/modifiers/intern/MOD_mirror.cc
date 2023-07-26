@@ -232,7 +232,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Mirror = {
-    /*id*/ "Mirror",
+    /*idname*/ "Mirror",
     /*name*/ N_("Mirror"),
     /*structName*/ "MirrorModifierData",
     /*structSize*/ sizeof(MirrorModifierData),

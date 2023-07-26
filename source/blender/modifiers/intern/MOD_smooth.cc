@@ -217,7 +217,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Smooth = {
-    /*id*/ "Smooth",
+    /*idname*/ "Smooth",
     /*name*/ N_("Smooth"),
     /*structName*/ "SmoothModifierData",
     /*structSize*/ sizeof(SmoothModifierData),

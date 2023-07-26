@@ -156,7 +156,7 @@ typedef struct ModifierEvalContext {
 typedef struct ModifierTypeInfo {
   /* A unique identifier for this modifier. Used to generate the panel id type name.
    * See #BKE_modifier_type_panel_id. */
-  char id[32];
+  char idname[32];
 
   /* The user visible name for this modifier */
   char name[32];

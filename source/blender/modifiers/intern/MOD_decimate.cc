@@ -271,7 +271,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Decimate = {
-    /*id*/ "Decimate",
+    /*idname*/ "Decimate",
     /*name*/ N_("Decimate"),
     /*structName*/ "DecimateModifierData",
     /*structSize*/ sizeof(DecimateModifierData),

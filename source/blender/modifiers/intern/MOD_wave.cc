@@ -417,7 +417,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Wave = {
-    /*id*/ "Wave",
+    /*idname*/ "Wave",
     /*name*/ N_("Wave"),
     /*structName*/ "WaveModifierData",
     /*structSize*/ sizeof(WaveModifierData),

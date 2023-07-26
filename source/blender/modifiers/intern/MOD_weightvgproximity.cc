@@ -732,7 +732,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_WeightVGProximity = {
-    /*id*/ "VertexWeightProximity",
+    /*idname*/ "VertexWeightProximity",
     /*name*/ N_("VertexWeightProximity"),
     /*structName*/ "WeightVGProximityModifierData",
     /*structSize*/ sizeof(WeightVGProximityModifierData),

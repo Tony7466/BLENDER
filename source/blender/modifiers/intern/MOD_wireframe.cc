@@ -165,7 +165,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Wireframe = {
-    /*id*/ "Wireframe",
+    /*idname*/ "Wireframe",
     /*name*/ N_("Wireframe"),
     /*structName*/ "WireframeModifierData",
     /*structSize*/ sizeof(WireframeModifierData),

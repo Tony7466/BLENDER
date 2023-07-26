@@ -192,7 +192,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Curve = {
-    /*id*/ "Curve",
+    /*idname*/ "Curve",
     /*name*/ N_("Curve"),
     /*structName*/ "CurveModifierData",
     /*structSize*/ sizeof(CurveModifierData),
