@@ -49,7 +49,7 @@ static bool drw_texture_format_supports_framebuffer(eGPUTextureFormat format)
 
 void drw_texture_set_parameters(GPUTexture *tex, DRWTextureFlag flags)
 {
-  if (tex == NULL) {
+  if (tex == nullptr) {
     return;
   }
 
@@ -227,9 +227,9 @@ void DRW_texture_ensure_fullscreen_2d_ex(GPUTexture **tex,
                                          eGPUTextureUsage usage,
                                          DRWTextureFlag flags)
 {
-  if (*(tex) == NULL) {
+  if (*(tex) == nullptr) {
     const float *size = DRW_viewport_size_get();
-    *(tex) = DRW_texture_create_2d_ex((int)size[0], (int)size[1], format, usage, flags, NULL);
+    *(tex) = DRW_texture_create_2d_ex((int)size[0], (int)size[1], format, usage, flags, nullptr);
   }
 }
 
@@ -247,8 +247,8 @@ void DRW_texture_ensure_2d_ex(GPUTexture **tex,
                               eGPUTextureUsage usage,
                               DRWTextureFlag flags)
 {
-  if (*(tex) == NULL) {
-    *(tex) = DRW_texture_create_2d_ex(w, h, format, usage, flags, NULL);
+  if (*(tex) == nullptr) {
+    *(tex) = DRW_texture_create_2d_ex(w, h, format, usage, flags, nullptr);
   }
 }
 
