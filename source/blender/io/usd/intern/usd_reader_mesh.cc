@@ -532,12 +532,12 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
       varying_type == pxr::UsdGeomTokens->varying) {
     if (is_left_handed_) {
       /* Reverse the index order. */
-      const OffsetIndices polys = mesh->polys();
-      for (const int i : polys.index_range()) {
-        const IndexRange poly = polys[i];
-        for (int j = 0; j < poly.size(); j++) {
-          const int rev_index = poly.start() + poly.size() - 1 - j;
-          uv_data.span[poly.start() + j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
+      const OffsetIndices faces = mesh->faces();
+      for (const int i : faces.index_range()) {
+        const IndexRange face = faces[i];
+        for (int j = 0; j < face.size(); j++) {
+          const int rev_index = face.start() + face.size() - 1 - j;
+          uv_data.span[face.start() + j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
         }
       }
     }
@@ -604,12 +604,12 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
   else if (interp == pxr::UsdGeomTokens->faceVarying) {
     if (is_left_handed_) {
       /* Reverse the index order. */
-      const OffsetIndices polys = mesh->polys();
-      for (const int i : polys.index_range()) {
-        const IndexRange poly = polys[i];
-        for (int j = 0; j < poly.size(); j++) {
-          const int rev_index = poly.start() + poly.size() - 1 - j;
-          attribute[poly.start() + j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
+      const OffsetIndices faces = mesh->faces();
+      for (const int i : faces.index_range()) {
+        const IndexRange face = faces[i];
+        for (int j = 0; j < face.size(); j++) {
+          const int rev_index = face.start() + face.size() - 1 - j;
+          attribute[face.start() + j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
         }
       }
     }
@@ -972,10 +972,10 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
 
   if (!active_uv_set_name.IsEmpty()) {
     int layer_index = CustomData_get_named_layer_index(
-        &mesh->ldata, CD_PROP_FLOAT2, active_uv_set_name.GetText());
+        &mesh->loop_data, CD_PROP_FLOAT2, active_uv_set_name.GetText());
     if (layer_index > -1) {
-      CustomData_set_layer_active_index(&mesh->ldata, CD_PROP_FLOAT2, layer_index);
-      CustomData_set_layer_render_index(&mesh->ldata, CD_PROP_FLOAT2, layer_index);
+      CustomData_set_layer_active_index(&mesh->loop_data, CD_PROP_FLOAT2, layer_index);
+      CustomData_set_layer_render_index(&mesh->loop_data, CD_PROP_FLOAT2, layer_index);
     }
   }
 }

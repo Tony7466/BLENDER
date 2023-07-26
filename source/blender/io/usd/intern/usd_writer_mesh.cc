@@ -84,9 +84,9 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
   const bke::AttributeAccessor attributes = mesh->attributes();
 
   char *active_set_name = nullptr;
-  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->ldata, CD_PROP_FLOAT2);
+  const int active_uv_set_index = CustomData_get_render_layer_index(&mesh->loop_data, CD_PROP_FLOAT2);
   if (active_uv_set_index != -1) {
-    active_set_name = mesh->ldata.layers[active_uv_set_index].name;
+    active_set_name = mesh->loop_data.layers[active_uv_set_index].name;
   }
 
   attributes.for_all(
