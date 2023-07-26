@@ -25,7 +25,7 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/MOD_gpencil_legacy_ui_common.c
+  intern/MOD_gpencil_legacy_ui_common.cc
 
   intern/MOD_gpencil_legacy_armature.cc
   intern/MOD_gpencil_legacy_array.cc

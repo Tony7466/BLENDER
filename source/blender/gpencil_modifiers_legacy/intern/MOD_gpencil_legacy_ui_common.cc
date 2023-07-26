@@ -38,11 +38,11 @@
 /**
  * Poll function so these modifier panels only show for grease pencil objects.
  */
-static bool gpencil_modifier_ui_poll(const bContext *C, PanelType *UNUSED(pt))
+static bool gpencil_modifier_ui_poll(const bContext *C, PanelType * /*pt*/)
 {
   Object *ob = ED_object_active_context(C);
 
-  return (ob != NULL) && (ob->type == OB_GPENCIL_LEGACY);
+  return (ob != nullptr) && (ob->type == OB_GPENCIL_LEGACY);
 }
 
 /* -------------------------------------------------------------------- */
@@ -62,18 +62,18 @@ static void gpencil_modifier_reorder(bContext *C, Panel *panel, int new_index)
   WM_operator_properties_create_ptr(&props_ptr, ot);
   RNA_string_set(&props_ptr, "modifier", md->name);
   RNA_int_set(&props_ptr, "index", new_index);
-  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, NULL);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, nullptr);
   WM_operator_properties_free(&props_ptr);
 }
 
-static short get_gpencil_modifier_expand_flag(const bContext *UNUSED(C), Panel *panel)
+static short get_gpencil_modifier_expand_flag(const bContext * /*C*/, Panel *panel)
 {
   PointerRNA *md_ptr = UI_panel_custom_data_get(panel);
   GpencilModifierData *md = (GpencilModifierData *)md_ptr->data;
   return md->ui_expand_flag;
 }
 
-static void set_gpencil_modifier_expand_flag(const bContext *UNUSED(C),
+static void set_gpencil_modifier_expand_flag(const bContext * /*C*/,
                                              Panel *panel,
                                              short expand_flag)
 {
@@ -103,14 +103,14 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
 
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
-  uiItemPointerR(row, ptr, "layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
+  uiItemPointerR(row, ptr, "layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_layer);
   uiLayoutSetPropDecorate(sub, false);
   uiItemR(sub, ptr, "invert_layers", 0, "", ICON_ARROW_LEFTRIGHT);
 
   row = uiLayoutRow(col, true);
-  uiItemR(row, ptr, "layer_pass", 0, NULL, ICON_NONE);
+  uiItemR(row, ptr, "layer_pass", 0, nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, RNA_int_get(ptr, "layer_pass") != 0);
   uiLayoutSetPropDecorate(sub, false);
@@ -128,8 +128,8 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
         valid = true;
       }
       else {
-        Material *current_material = material_ptr.data;
-        Object *ob = ob_ptr.data;
+        Material *current_material = static_cast<Material *>(material_ptr.data);
+        Object *ob = static_cast<Object *>(ob_ptr.data);
         for (int i = 0; i <= ob->totcol; i++) {
           Material *mat = BKE_object_material_get(ob, i);
           if (mat == current_material) {
@@ -148,7 +148,7 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
                    "material",
                    &obj_data_ptr,
                    "materials",
-                   NULL,
+                   nullptr,
                    valid ? ICON_SHADING_TEXTURE : ICON_ERROR);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_material);
@@ -156,7 +156,7 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
     uiItemR(sub, ptr, "invert_materials", 0, "", ICON_ARROW_LEFTRIGHT);
 
     row = uiLayoutRow(col, true);
-    uiItemR(row, ptr, "pass_index", 0, NULL, ICON_NONE);
+    uiItemR(row, ptr, "pass_index", 0, nullptr, ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, RNA_int_get(ptr, "pass_index") != 0);
     uiLayoutSetPropDecorate(sub, false);
@@ -167,7 +167,7 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
     bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
 
     row = uiLayoutRow(layout, true);
-    uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+    uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiLayoutSetPropDecorate(sub, false);
@@ -175,27 +175,27 @@ void gpencil_modifier_masking_panel_draw(Panel *panel, bool use_material, bool u
   }
 }
 
-void gpencil_modifier_curve_header_draw(const bContext *UNUSED(C), Panel *panel)
+void gpencil_modifier_curve_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_custom_curve", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_custom_curve", 0, nullptr, ICON_NONE);
 }
 
-void gpencil_modifier_curve_panel_draw(const bContext *UNUSED(C), Panel *panel)
+void gpencil_modifier_curve_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false);
 }
 
 void gpencil_modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
 {
-  GpencilModifierData *md = ptr->data;
+  GpencilModifierData *md = static_cast<GpencilModifierData *>(ptr->data);
   if (md->error) {
     uiLayout *row = uiLayoutRow(layout, false);
     uiItemL(row, IFACE_(md->error), ICON_ERROR);
@@ -211,7 +211,7 @@ PointerRNA *gpencil_modifier_panel_get_property_pointers(Panel *panel, PointerRN
   PointerRNA *ptr = UI_panel_custom_data_get(panel);
   BLI_assert(RNA_struct_is_a(ptr->type, &RNA_GpencilModifier));
 
-  if (r_ob_ptr != NULL) {
+  if (r_ob_ptr != nullptr) {
     RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id, r_ob_ptr);
   }
 
@@ -229,7 +229,8 @@ static void gpencil_modifier_ops_extra_draw(bContext *C, uiLayout *layout, void 
   PointerRNA op_ptr;
   uiLayout *row;
   GpencilModifierData *md = (GpencilModifierData *)md_v;
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      GpencilModifierType(md->type));
 
   PointerRNA ptr;
   Object *ob = ED_object_active_context(C);
@@ -266,7 +267,7 @@ static void gpencil_modifier_ops_extra_draw(bContext *C, uiLayout *layout, void 
               "OBJECT_OT_gpencil_modifier_move_to_index",
               IFACE_("Move to First"),
               ICON_TRIA_UP,
-              NULL,
+              nullptr,
               WM_OP_INVOKE_DEFAULT,
               0,
               &op_ptr);
@@ -281,7 +282,7 @@ static void gpencil_modifier_ops_extra_draw(bContext *C, uiLayout *layout, void 
               "OBJECT_OT_gpencil_modifier_move_to_index",
               IFACE_("Move to Last"),
               ICON_TRIA_DOWN,
-              NULL,
+              nullptr,
               WM_OP_INVOKE_DEFAULT,
               0,
               &op_ptr);
@@ -291,7 +292,7 @@ static void gpencil_modifier_ops_extra_draw(bContext *C, uiLayout *layout, void 
   }
 }
 
-static void gpencil_modifier_panel_header(const bContext *UNUSED(C), Panel *panel)
+static void gpencil_modifier_panel_header(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
@@ -301,7 +302,8 @@ static void gpencil_modifier_panel_header(const bContext *UNUSED(C), Panel *pane
 
   UI_panel_context_pointer_set(panel, "modifier", ptr);
 
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
+      GpencilModifierType(md->type));
   bool narrow_panel = (panel->sizex < UI_UNIT_X * 9 && panel->sizex != 0);
 
   /* Modifier Icon. */
@@ -351,7 +353,7 @@ PanelType *gpencil_modifier_panel_register(ARegionType *region_type,
                                            GpencilModifierType type,
                                            PanelDrawFn draw)
 {
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
+  PanelType *panel_type = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), __func__));
 
   BKE_gpencil_modifierType_panel_id(type, panel_type->idname);
   STRNCPY(panel_type->label, "");
@@ -381,7 +383,7 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
                                               PanelDrawFn draw,
                                               PanelType *parent)
 {
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
+  PanelType *panel_type = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), __func__));
 
   SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
   STRNCPY(panel_type->label, label);
@@ -393,7 +395,7 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
   panel_type->poll = gpencil_modifier_ui_poll;
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
-  BLI_assert(parent != NULL);
+  BLI_assert(parent != nullptr);
   STRNCPY(panel_type->parent_id, parent->idname);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
