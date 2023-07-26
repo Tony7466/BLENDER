@@ -121,7 +121,7 @@ set(SRC
   intern/bmesh_error.h
   intern/bmesh_operator_api.h
 
-  tools/bmesh_beautify.c
+  tools/bmesh_beautify.cc
   tools/bmesh_beautify.h
   tools/bmesh_bevel.c
   tools/bmesh_bevel.h

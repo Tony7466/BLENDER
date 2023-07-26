@@ -36,7 +36,7 @@
 /* -------------------------------------------------------------------- */
 /* GSet for edge rotation */
 
-typedef struct EdRotState {
+struct EdRotState {
   /**
    * Edge vert indices (ordered small -> large).
    */
@@ -48,7 +48,7 @@ typedef struct EdRotState {
    * that's isn't part of the edge defined by `v_pair`.
    */
   int f_pair[2];
-} EdRotState;
+};
 
 #if 0
 /* use BLI_ghashutil_inthash_v4 direct */
@@ -197,7 +197,7 @@ static float bm_edge_calc_rotate_beauty__area(const float v1[3],
      * (when performed iteratively).
      */
     return BLI_polyfill_beautify_quad_rotate_calc_ex(
-        v1_xy, v2_xy, v3_xy, v4_xy, lock_degenerate, NULL);
+        v1_xy, v2_xy, v3_xy, v4_xy, lock_degenerate, nullptr);
   } while (false);
 
   return FLT_MAX;
@@ -302,14 +302,14 @@ static void bm_edge_update_beauty_cost_single(BMEdge *e,
 
     if (eheap_table[i]) {
       BLI_heap_remove(eheap, eheap_table[i]);
-      eheap_table[i] = NULL;
+      eheap_table[i] = nullptr;
     }
 
     /* check if we can add it back */
     BLI_assert(BM_edge_is_manifold(e) == true);
 
     /* check we're not moving back into a state we have been in before */
-    if (e_state_set != NULL) {
+    if (e_state_set != nullptr) {
       EdRotState e_state_alt;
       erot_state_alternate(e, &e_state_alt);
       if (BLI_gset_haskey(e_state_set, (void *)&e_state_alt)) {
@@ -325,7 +325,7 @@ static void bm_edge_update_beauty_cost_single(BMEdge *e,
         eheap_table[i] = BLI_heap_insert(eheap, cost, e);
       }
       else {
-        eheap_table[i] = NULL;
+        eheap_table[i] = nullptr;
       }
     }
   }
@@ -375,7 +375,8 @@ void BM_mesh_beautify_fill(BMesh *bm,
   Heap *eheap;            /* edge heap */
   HeapNode **eheap_table; /* edge index aligned table pointing to the eheap */
 
-  GSet **edge_state_arr = MEM_callocN((size_t)edge_array_len * sizeof(GSet *), __func__);
+  GSet **edge_state_arr = static_cast<GSet **>(
+      MEM_callocN((size_t)edge_array_len * sizeof(GSet *), __func__));
   BLI_mempool *edge_state_pool = BLI_mempool_create(sizeof(EdRotState), 0, 512, BLI_MEMPOOL_NOP);
   int i;
 
@@ -384,7 +385,8 @@ void BM_mesh_beautify_fill(BMesh *bm,
 #endif
 
   eheap = BLI_heap_new_ex((uint)edge_array_len);
-  eheap_table = MEM_mallocN(sizeof(HeapNode *) * (size_t)edge_array_len, __func__);
+  eheap_table = static_cast<HeapNode **>(
+      MEM_mallocN(sizeof(HeapNode *) * (size_t)edge_array_len, __func__));
 
   /* build heap */
   for (i = 0; i < edge_array_len; i++) {
@@ -394,7 +396,7 @@ void BM_mesh_beautify_fill(BMesh *bm,
       eheap_table[i] = BLI_heap_insert(eheap, cost, e);
     }
     else {
-      eheap_table[i] = NULL;
+      eheap_table[i] = nullptr;
     }
 
     BM_elem_index_set(e, i); /* set_dirty */
@@ -402,15 +404,15 @@ void BM_mesh_beautify_fill(BMesh *bm,
   bm->elem_index_dirty |= BM_EDGE;
 
   while (BLI_heap_is_empty(eheap) == false) {
-    BMEdge *e = BLI_heap_pop_min(eheap);
+    BMEdge *e = static_cast<BMEdge *>(BLI_heap_pop_min(eheap));
     i = BM_elem_index_get(e);
-    eheap_table[i] = NULL;
+    eheap_table[i] = nullptr;
 
     BLI_assert(BM_edge_face_count_is_equal(e, 2));
 
     e = BM_edge_rotate(bm, e, false, BM_EDGEROT_CHECK_EXISTS);
 
-    BLI_assert(e == NULL || BM_edge_face_count_is_equal(e, 2));
+    BLI_assert(e == nullptr || BM_edge_face_count_is_equal(e, 2));
 
     if (LIKELY(e)) {
       GSet *e_state_set = edge_state_arr[i];
@@ -418,9 +420,9 @@ void BM_mesh_beautify_fill(BMesh *bm,
       /* add the new state into the set so we don't move into this state again
        * NOTE: we could add the previous state too but this isn't essential)
        *       for avoiding eternal loops */
-      EdRotState *e_state = BLI_mempool_alloc(edge_state_pool);
+      EdRotState *e_state = static_cast<EdRotState *>(BLI_mempool_alloc(edge_state_pool));
       erot_state_current(e, e_state);
-      if (UNLIKELY(e_state_set == NULL)) {
+      if (UNLIKELY(e_state_set == nullptr)) {
         edge_state_arr[i] = e_state_set = erot_gset_new(); /* store previous state */
       }
       BLI_assert(BLI_gset_haskey(e_state_set, (void *)e_state) == false);
@@ -454,12 +456,12 @@ void BM_mesh_beautify_fill(BMesh *bm,
     }
   }
 
-  BLI_heap_free(eheap, NULL);
+  BLI_heap_free(eheap, nullptr);
   MEM_freeN(eheap_table);
 
   for (i = 0; i < edge_array_len; i++) {
     if (edge_state_arr[i]) {
-      BLI_gset_free(edge_state_arr[i], NULL);
+      BLI_gset_free(edge_state_arr[i], nullptr);
     }
   }
 
