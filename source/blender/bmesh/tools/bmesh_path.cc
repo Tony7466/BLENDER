@@ -121,7 +121,7 @@ LinkNode *BM_mesh_calc_path_vert(BMesh *bm,
                                  bool (*filter_fn)(BMVert *, void *user_data),
                                  void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* #BM_ELEM_TAG flag is used to store visited edges. */
   BMVert *v;
   BMIter viter;
@@ -141,8 +141,8 @@ LinkNode *BM_mesh_calc_path_vert(BMesh *bm,
 
   /* Allocate. */
   totvert = bm->totvert;
-  verts_prev = MEM_callocN(sizeof(*verts_prev) * totvert, __func__);
-  cost = MEM_mallocN(sizeof(*cost) * totvert, __func__);
+  verts_prev = static_cast<BMVert **>(MEM_callocN(sizeof(*verts_prev) * totvert, __func__));
+  cost = static_cast<float *>(MEM_mallocN(sizeof(*cost) * totvert, __func__));
 
   copy_vn_fl(cost, totvert, COST_INIT_MAX);
 
@@ -163,7 +163,7 @@ LinkNode *BM_mesh_calc_path_vert(BMesh *bm,
   cost[BM_elem_index_get(v_src)] = 0.0f;
 
   while (!BLI_heapsimple_is_empty(heap)) {
-    v = BLI_heapsimple_pop_min(heap);
+    v = static_cast<BMVert *>(BLI_heapsimple_pop_min(heap));
 
     if (v == v_dst) {
       break;
@@ -183,7 +183,7 @@ LinkNode *BM_mesh_calc_path_vert(BMesh *bm,
 
   MEM_freeN(verts_prev);
   MEM_freeN(cost);
-  BLI_heapsimple_free(heap, NULL);
+  BLI_heapsimple_free(heap, nullptr);
 
   return path;
 }
@@ -223,7 +223,7 @@ static void edgetag_add_adjacent(HeapSimple *heap,
 
   /* Unlike vert/face, stepping faces disables scanning connected edges
    * and only steps over faces (selecting a ring of edges instead of a loop). */
-  if (params->use_step_face == false || e_a->l == NULL) {
+  if (params->use_step_face == false || e_a->l == nullptr) {
     BMIter viter;
     BMVert *v;
 
@@ -265,7 +265,7 @@ static void edgetag_add_adjacent(HeapSimple *heap,
       l_cycle_iter = l_iter->next;
       l_cycle_end = l_iter;
 
-      /* Good, but we need to allow this otherwise paths may fail to connect at all. */
+/* Good, but we need to allow this otherwise paths may fail to connect at all. */
 #if 0
       if (l_iter->f->len > 3) {
         l_cycle_iter = l_cycle_iter->next;
@@ -301,7 +301,7 @@ LinkNode *BM_mesh_calc_path_edge(BMesh *bm,
                                  bool (*filter_fn)(BMEdge *, void *user_data),
                                  void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* #BM_ELEM_TAG flag is used to store visited edges. */
   BMEdge *e;
   BMIter eiter;
@@ -321,8 +321,8 @@ LinkNode *BM_mesh_calc_path_edge(BMesh *bm,
 
   /* Allocate. */
   totedge = bm->totedge;
-  edges_prev = MEM_callocN(sizeof(*edges_prev) * totedge, __func__);
-  cost = MEM_mallocN(sizeof(*cost) * totedge, __func__);
+  edges_prev = static_cast<BMEdge **>(MEM_callocN(sizeof(*edges_prev) * totedge, __func__));
+  cost = static_cast<float *>(MEM_mallocN(sizeof(*cost) * totedge, __func__));
 
   copy_vn_fl(cost, totedge, COST_INIT_MAX);
 
@@ -343,7 +343,7 @@ LinkNode *BM_mesh_calc_path_edge(BMesh *bm,
   cost[BM_elem_index_get(e_src)] = 0.0f;
 
   while (!BLI_heapsimple_is_empty(heap)) {
-    e = BLI_heapsimple_pop_min(heap);
+    e = static_cast<BMEdge *>(BLI_heapsimple_pop_min(heap));
 
     if (e == e_dst) {
       break;
@@ -363,7 +363,7 @@ LinkNode *BM_mesh_calc_path_edge(BMesh *bm,
 
   MEM_freeN(edges_prev);
   MEM_freeN(cost);
-  BLI_heapsimple_free(heap, NULL);
+  BLI_heapsimple_free(heap, nullptr);
 
   return path;
 }
@@ -499,7 +499,7 @@ LinkNode *BM_mesh_calc_path_face(BMesh *bm,
                                  bool (*filter_fn)(BMFace *, void *user_data),
                                  void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* #BM_ELEM_TAG flag is used to store visited edges. */
   BMFace *f;
   BMIter fiter;
@@ -522,8 +522,8 @@ LinkNode *BM_mesh_calc_path_face(BMesh *bm,
 
   /* Allocate. */
   totface = bm->totface;
-  faces_prev = MEM_callocN(sizeof(*faces_prev) * totface, __func__);
-  cost = MEM_mallocN(sizeof(*cost) * totface, __func__);
+  faces_prev = static_cast<BMFace **>(MEM_callocN(sizeof(*faces_prev) * totface, __func__));
+  cost = static_cast<float *>(MEM_mallocN(sizeof(*cost) * totface, __func__));
 
   copy_vn_fl(cost, totface, COST_INIT_MAX);
 
@@ -544,7 +544,7 @@ LinkNode *BM_mesh_calc_path_face(BMesh *bm,
   cost[BM_elem_index_get(f_src)] = 0.0f;
 
   while (!BLI_heapsimple_is_empty(heap)) {
-    f = BLI_heapsimple_pop_min(heap);
+    f = static_cast<BMFace *>(BLI_heapsimple_pop_min(heap));
 
     if (f == f_dst) {
       break;
@@ -564,7 +564,7 @@ LinkNode *BM_mesh_calc_path_face(BMesh *bm,
 
   MEM_freeN(faces_prev);
   MEM_freeN(cost);
-  BLI_heapsimple_free(heap, NULL);
+  BLI_heapsimple_free(heap, nullptr);
 
   return path;
 }
