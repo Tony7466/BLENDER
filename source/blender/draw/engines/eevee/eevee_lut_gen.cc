@@ -26,10 +26,11 @@ float *EEVEE_lut_update_ggx_brdf(int lut_size)
   DRWPass *pass = DRW_pass_create(__func__, DRW_STATE_WRITE_COLOR);
   DRWShadingGroup *grp = DRW_shgroup_create(EEVEE_shaders_ggx_lut_sh_get(), pass);
   DRW_shgroup_uniform_float_copy(grp, "sampleCount", 64.0f); /* Actual sample count is squared. */
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
-  GPUTexture *tex = DRW_texture_create_2d(lut_size, lut_size, GPU_RG16F, 0, NULL);
-  GPUFrameBuffer *fb = NULL;
+  GPUTexture *tex = DRW_texture_create_2d(
+      lut_size, lut_size, GPU_RG16F, DRWTextureFlag(0), nullptr);
+  GPUFrameBuffer *fb = nullptr;
   GPU_framebuffer_ensure_config(&fb,
                                 {
                                     GPU_ATTACHMENT_NONE,
@@ -39,7 +40,7 @@ float *EEVEE_lut_update_ggx_brdf(int lut_size)
   DRW_draw_pass(pass);
   GPU_FRAMEBUFFER_FREE_SAFE(fb);
 
-  float *data = GPU_texture_read(tex, GPU_DATA_FLOAT, 0);
+  float *data = static_cast<float *>(GPU_texture_read(tex, GPU_DATA_FLOAT, 0));
   GPU_texture_free(tex);
 #if DO_FILE_OUTPUT
   /* Content is to be put inside eevee_lut.c */
@@ -65,10 +66,11 @@ float *EEVEE_lut_update_ggx_btdf(int lut_size, int lut_depth)
   DRWShadingGroup *grp = DRW_shgroup_create(EEVEE_shaders_ggx_refraction_lut_sh_get(), pass);
   DRW_shgroup_uniform_float_copy(grp, "sampleCount", 64.0f); /* Actual sample count is squared. */
   DRW_shgroup_uniform_float(grp, "z_factor", &roughness, 1);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
-  GPUTexture *tex = DRW_texture_create_2d_array(lut_size, lut_size, lut_depth, GPU_RG16F, 0, NULL);
-  GPUFrameBuffer *fb = NULL;
+  GPUTexture *tex = DRW_texture_create_2d_array(
+      lut_size, lut_size, lut_depth, GPU_RG16F, DRWTextureFlag(0), nullptr);
+  GPUFrameBuffer *fb = nullptr;
   for (int i = 0; i < lut_depth; i++) {
     GPU_framebuffer_ensure_config(&fb,
                                   {
@@ -82,7 +84,7 @@ float *EEVEE_lut_update_ggx_btdf(int lut_size, int lut_depth)
 
   GPU_FRAMEBUFFER_FREE_SAFE(fb);
 
-  float *data = GPU_texture_read(tex, GPU_DATA_FLOAT, 0);
+  float *data = static_cast<float *>(GPU_texture_read(tex, GPU_DATA_FLOAT, 0));
   GPU_texture_free(tex);
 
 #if DO_FILE_OUTPUT
