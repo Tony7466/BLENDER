@@ -71,7 +71,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
   BKE_gpencil_modifier_copydata_generic(md, target);
 
-  dmd->segments = MEM_dupallocN(dmd_src->segments);
+  dmd->segments = static_cast<DashGpencilModifierSegment *>(MEM_dupallocN(dmd_src->segments));
 }
 
 static void freeData(GpencilModifierData *md)
@@ -199,7 +199,7 @@ static void apply_dash_for_frame(
     return;
   }
 
-  ListBase result = {NULL, NULL};
+  ListBase result = {nullptr, nullptr};
 
   LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
     if (is_stroke_affected_by_modifier(ob,
@@ -222,18 +222,18 @@ static void apply_dash_for_frame(
     }
   }
   bGPDstroke *gps_dash;
-  while ((gps_dash = BLI_pophead(&result))) {
+  while ((gps_dash = static_cast<bGPDstroke *>(BLI_pophead(&result)))) {
     BLI_addtail(&gpf->strokes, gps_dash);
     BKE_gpencil_stroke_geometry_update(gpd, gps_dash);
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
-                         Depsgraph *UNUSED(depsgraph),
+static void bakeModifier(Main * /*bmain*/,
+                         Depsgraph * /*depsgraph*/,
                          GpencilModifierData *md,
                          Object *ob)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
@@ -244,7 +244,7 @@ static void bakeModifier(Main *UNUSED(bmain),
 
 /* -------------------------------- */
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   DashGpencilModifierData *dmd = (DashGpencilModifierData *)md;
 
@@ -260,11 +260,11 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     apply_dash_for_frame(ob, gpl, gpd, gpf, (DashGpencilModifierData *)md);
@@ -278,16 +278,16 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void segment_list_item(uiList *UNUSED(ui_list),
-                              const bContext *UNUSED(C),
+static void segment_list_item(uiList * /*ui_list*/,
+                              const bContext * /*C*/,
                               uiLayout *layout,
-                              PointerRNA *UNUSED(idataptr),
+                              PointerRNA * /*idataptr*/,
                               PointerRNA *itemptr,
-                              int UNUSED(icon),
-                              PointerRNA *UNUSED(active_dataptr),
-                              const char *UNUSED(active_propname),
-                              int UNUSED(index),
-                              int UNUSED(flt_flag))
+                              int /*icon*/,
+                              PointerRNA * /*active_dataptr*/,
+                              const char * /*active_propname*/,
+                              int /*index*/,
+                              int /*flt_flag*/)
 {
   uiLayout *row = uiLayoutRow(layout, true);
   uiItemR(row, itemptr, "name", UI_ITEM_R_NO_BG, "", ICON_NONE);
@@ -297,11 +297,11 @@ static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "dash_offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "dash_offset", 0, nullptr, ICON_NONE);
 
   uiLayout *row = uiLayoutRow(layout, false);
   uiLayoutSetPropSep(row, false);
@@ -314,7 +314,7 @@ static void panel_draw(const bContext *C, Panel *panel)
                  "segments",
                  ptr,
                  "segment_active_index",
-                 NULL,
+                 nullptr,
                  3,
                  10,
                  0,
@@ -330,7 +330,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiItemEnumO_string(sub, "", ICON_TRIA_UP, "GPENCIL_OT_segment_move", "type", "UP");
   uiItemEnumO_string(sub, "", ICON_TRIA_DOWN, "GPENCIL_OT_segment_move", "type", "DOWN");
 
-  DashGpencilModifierData *dmd = ptr->data;
+  DashGpencilModifierData *dmd = static_cast<DashGpencilModifierData *>(ptr->data);
 
   if (dmd->segment_active_index >= 0 && dmd->segment_active_index < dmd->segments_len) {
     PointerRNA ds_ptr;
@@ -340,20 +340,20 @@ static void panel_draw(const bContext *C, Panel *panel)
                        &ds_ptr);
 
     sub = uiLayoutColumn(layout, true);
-    uiItemR(sub, &ds_ptr, "dash", 0, NULL, ICON_NONE);
-    uiItemR(sub, &ds_ptr, "gap", 0, NULL, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "dash", 0, nullptr, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "gap", 0, nullptr, ICON_NONE);
 
     sub = uiLayoutColumn(layout, false);
-    uiItemR(sub, &ds_ptr, "radius", 0, NULL, ICON_NONE);
-    uiItemR(sub, &ds_ptr, "opacity", 0, NULL, ICON_NONE);
-    uiItemR(sub, &ds_ptr, "material_index", 0, NULL, ICON_NONE);
-    uiItemR(sub, &ds_ptr, "use_cyclic", 0, NULL, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "radius", 0, nullptr, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "opacity", 0, nullptr, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "material_index", 0, nullptr, ICON_NONE);
+    uiItemR(sub, &ds_ptr, "use_cyclic", 0, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -363,9 +363,10 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Dash, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 
-  uiListType *list_type = MEM_callocN(sizeof(uiListType), "dash modifier segment uilist");
+  uiListType *list_type = static_cast<uiListType *>(
+      MEM_callocN(sizeof(uiListType), "dash modifier segment uilist"));
   STRNCPY(list_type->idname, "MOD_UL_dash_segment");
   list_type->draw_item = segment_list_item;
   WM_uilisttype_add(list_type);
@@ -380,17 +381,17 @@ GpencilModifierTypeInfo modifierType_Gpencil_Dash = {
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
     /*isDisabled*/ isDisabled,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
