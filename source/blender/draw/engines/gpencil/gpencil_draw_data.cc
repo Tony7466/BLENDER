@@ -28,10 +28,11 @@
 
 static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
 {
-  GPENCIL_MaterialPool *matpool = BLI_memblock_alloc(pd->gp_material_pool);
-  matpool->next = NULL;
+  GPENCIL_MaterialPool *matpool = static_cast<GPENCIL_MaterialPool *>(
+      BLI_memblock_alloc(pd->gp_material_pool));
+  matpool->next = nullptr;
   matpool->used_count = 0;
-  if (matpool->ubo == NULL) {
+  if (matpool->ubo == nullptr) {
     matpool->ubo = GPU_uniformbuf_create(sizeof(matpool->mat_data));
   }
   pd->last_material_pool = matpool;
@@ -41,13 +42,13 @@ static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
 static GPUTexture *gpencil_image_texture_get(Image *image, bool *r_alpha_premult)
 {
   ImBuf *ibuf;
-  ImageUser iuser = {NULL};
-  GPUTexture *gpu_tex = NULL;
+  ImageUser iuser = {nullptr};
+  GPUTexture *gpu_tex = nullptr;
   void *lock;
 
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-  if (ibuf != NULL && ibuf->byte_buffer.data != NULL) {
+  if (ibuf != nullptr && ibuf->byte_buffer.data != nullptr) {
     gpu_tex = BKE_image_get_gpu_texture(image, &iuser, ibuf);
     *r_alpha_premult = (image->alpha_mode == IMA_ALPHA_PREMUL);
   }
@@ -68,7 +69,7 @@ static void gpencil_uv_transform_get(const float ofs[2],
   /* Offset to center. */
   translate_m4(mat, 0.5f, 0.5f, 0.0f);
   /* Reversed order. */
-  rescale_m4(mat, (float[3]){1.0f / scale[0], 1.0f / scale[1], 0.0});
+  rescale_m4(mat, blender::float3{1.0f / scale[0], 1.0f / scale[1], 0.0});
   rotate_m4(mat, 'Z', -rotation);
   translate_m4(mat, ofs[0], ofs[1], 0.0f);
   /* Convert to 3x2 */
@@ -113,7 +114,7 @@ static MaterialGPencilStyle *gpencil_viewport_material_overrides(
       gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
       break;
     case V3D_SHADING_TEXTURE_COLOR:
-      memcpy(&gp_style_tmp, gp_style, sizeof(*gp_style));
+      gp_style_tmp = blender::dna::shallow_copy(*gp_style);
       gp_style = &gp_style_tmp;
       if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
         copy_v4_fl(gp_style->stroke_rgba, 1.0f);
@@ -185,8 +186,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
   int color_type = (pd->v3d_color_type != -1 && GPENCIL_VERTEX_MODE(gpd)) ?
                        V3D_SHADING_VERTEX_COLOR :
                        pd->v3d_color_type;
-  const eV3DShadingLightingMode lighting_mode = (pd->v3d != NULL) ? pd->v3d->shading.light :
-                                                                    V3D_LIGHTING_STUDIO;
+  const eV3DShadingLightingMode lighting_mode = eV3DShadingLightingMode(
+      (pd->v3d != nullptr) ? pd->v3d->shading.light : V3D_LIGHTING_STUDIO);
 
   GPENCIL_MaterialPool *pool = matpool;
   for (int i = 0; i < mat_len; i++) {
@@ -258,7 +259,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->stroke_u_scale = 500.0f / gp_style->texture_pixsize;
     }
     else /* if (gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_SOLID) */ {
-      pool->tex_stroke[mat_id] = NULL;
+      pool->tex_stroke[mat_id] = nullptr;
       mat_data->flag &= ~GP_STROKE_TEXTURE_USE;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
       mat_data->stroke_texture_mix = 0.0f;
@@ -275,20 +276,20 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       gpencil_uv_transform_get(gp_style->texture_offset,
                                gp_style->texture_scale,
                                gp_style->texture_angle,
-                               (float(*)[2])mat_data->fill_uv_rot_scale,
+                               reinterpret_cast<float(*)[2]>(&mat_data->fill_uv_rot_scale),
                                mat_data->fill_uv_offset);
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       mat_data->fill_texture_mix = 1.0f - gp_style->mix_factor;
     }
     else if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_GRADIENT) {
       bool use_radial = (gp_style->gradient_type == GP_MATERIAL_GRADIENT_RADIAL);
-      pool->tex_fill[mat_id] = NULL;
+      pool->tex_fill[mat_id] = nullptr;
       mat_data->flag |= GP_FILL_GRADIENT_USE;
       mat_data->flag |= use_radial ? GP_FILL_GRADIENT_RADIAL : 0;
       gpencil_uv_transform_get(gp_style->texture_offset,
                                gp_style->texture_scale,
                                gp_style->texture_angle,
-                               (float(*)[2])mat_data->fill_uv_rot_scale,
+                               reinterpret_cast<float(*)[2]>(&mat_data->fill_uv_rot_scale),
                                mat_data->fill_uv_offset);
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       copy_v4_v4(mat_data->fill_mix_color, gp_style->mix_rgba);
@@ -298,7 +299,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       }
     }
     else /* if (gp_style->fill_style == GP_MATERIAL_FILL_STYLE_SOLID) */ {
-      pool->tex_fill[mat_id] = NULL;
+      pool->tex_fill[mat_id] = nullptr;
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       mat_data->fill_texture_mix = 0.0f;
     }
@@ -336,11 +337,12 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
 
 GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd)
 {
-  GPENCIL_LightPool *lightpool = BLI_memblock_alloc(pd->gp_light_pool);
+  GPENCIL_LightPool *lightpool = static_cast<GPENCIL_LightPool *>(
+      BLI_memblock_alloc(pd->gp_light_pool));
   lightpool->light_used = 0;
   /* Tag light list end. */
   lightpool->light_data[0].color[0] = -1.0;
-  if (lightpool->ubo == NULL) {
+  if (lightpool->ubo == nullptr) {
     lightpool->ubo = GPU_uniformbuf_create(sizeof(lightpool->light_data));
   }
   pd->last_light_pool = lightpool;
@@ -385,7 +387,7 @@ void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
   }
 
   gpLight *gp_light = &lightpool->light_data[lightpool->light_used];
-  float(*mat)[4] = (float(*)[4])gp_light->right;
+  float(*mat)[4] = reinterpret_cast<float(*)[4]>(&gp_light->right);
 
   if (la->type == LA_SPOT) {
     copy_m4_m4(mat, ob->world_to_object);
@@ -420,11 +422,11 @@ void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
   }
 }
 
-GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *UNUSED(ob))
+GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object * /*ob*/)
 {
   GPENCIL_LightPool *lightpool = pd->last_light_pool;
 
-  if (lightpool == NULL) {
+  if (lightpool == nullptr) {
     lightpool = gpencil_light_pool_add(pd);
   }
   /* TODO(fclem): Light linking. */
@@ -457,10 +459,10 @@ static void gpencil_view_layer_data_free(void *storage)
 
   BLI_memblock_destroy(vldata->gp_light_pool, gpencil_light_pool_free);
   BLI_memblock_destroy(vldata->gp_material_pool, gpencil_material_pool_free);
-  BLI_memblock_destroy(vldata->gp_maskbit_pool, NULL);
-  BLI_memblock_destroy(vldata->gp_object_pool, NULL);
-  BLI_memblock_destroy(vldata->gp_layer_pool, NULL);
-  BLI_memblock_destroy(vldata->gp_vfx_pool, NULL);
+  BLI_memblock_destroy(vldata->gp_maskbit_pool, nullptr);
+  BLI_memblock_destroy(vldata->gp_object_pool, nullptr);
+  BLI_memblock_destroy(vldata->gp_layer_pool, nullptr);
+  BLI_memblock_destroy(vldata->gp_vfx_pool, nullptr);
 }
 
 GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void)
@@ -471,8 +473,9 @@ GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void)
   /* NOTE(@fclem): Putting this stuff in view-layer means it is shared by all viewports.
    * For now it is ok, but in the future, it could become a problem if we implement
    * the caching system. */
-  if (*vldata == NULL) {
-    *vldata = MEM_callocN(sizeof(**vldata), "GPENCIL_ViewLayerData");
+  if (*vldata == nullptr) {
+    *vldata = static_cast<GPENCIL_ViewLayerData *>(
+        MEM_callocN(sizeof(**vldata), "GPENCIL_ViewLayerData"));
 
     (*vldata)->gp_light_pool = BLI_memblock_create(sizeof(GPENCIL_LightPool));
     (*vldata)->gp_material_pool = BLI_memblock_create(sizeof(GPENCIL_MaterialPool));
