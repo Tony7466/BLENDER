@@ -192,7 +192,7 @@ bool BM_mesh_validate(BMesh *bm)
     } while ((l_iter = l_iter->next) != l_first);
   }
 
-  BLI_edgehash_free(edge_hash, NULL);
+  BLI_edgehash_free(edge_hash, nullptr);
 
   const bool is_valid = (errtot == 0);
   ERRMSG("Finished - errors %d", errtot);
