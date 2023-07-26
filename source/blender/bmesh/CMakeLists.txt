@@ -93,7 +93,7 @@ set(SRC
   intern/bmesh_mesh_tessellate.h
   intern/bmesh_mesh_validate.cc
   intern/bmesh_mesh_validate.h
-  intern/bmesh_mods.c
+  intern/bmesh_mods.cc
   intern/bmesh_mods.h
   intern/bmesh_opdefines.c
   intern/bmesh_operator_api_inline.h
