@@ -398,7 +398,10 @@ static void interpolate_curve_shapes(bke::CurvesGeometry &child_curves,
             if (!is_same_up_vector) {
               rotated_relative = normal_rotation * rotated_relative;
             }
-            child_positions.fill(rotated_relative);
+            const float3 global_pos = rotated_relative * neighbor_weight;
+            for (float3 &position : child_positions) {
+              position += global_pos;
+            }
             continue;
           }
 
