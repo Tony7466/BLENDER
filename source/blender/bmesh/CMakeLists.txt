@@ -143,7 +143,7 @@ set(SRC
   tools/bmesh_intersect_edges.h
   tools/bmesh_path.c
   tools/bmesh_path.h
-  tools/bmesh_path_region.c
+  tools/bmesh_path_region.cc
   tools/bmesh_path_region.h
   tools/bmesh_path_region_uv.cc
   tools/bmesh_path_region_uv.h
