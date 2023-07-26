@@ -1879,8 +1879,8 @@ static int mouse_action_keys(bAnimContext *ac,
           if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER)
           {
             using namespace blender::bke::greasepencil;
-            blender::ed::greasepencil::set_active_layer(reinterpret_cast<GreasePencil *>(ale->id),
-                                                        static_cast<Layer *>(ale->data));
+            blender::ed::greasepencil::select_layer_channel(
+                reinterpret_cast<GreasePencil *>(ale->id), static_cast<Layer *>(ale->data));
           }
         }
         else {
