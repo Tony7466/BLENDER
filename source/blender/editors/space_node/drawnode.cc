@@ -1497,10 +1497,6 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   if (sock->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
-
-  if (U.experimental.use_node_panels) {
-    uiItemPointerR(col, ptr, "panel", &tree_ptr, "panels", nullptr, 0);
-  }
 }
 
 static void node_socket_virtual_draw_color(bContext * /*C*/,

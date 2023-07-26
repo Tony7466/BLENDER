@@ -3953,10 +3953,6 @@ void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 
 // void ntreeEnsureSocketInterfacePanelOrder(bNodeTree *ntree)
 //{
-//  if (!U.experimental.use_node_panels) {
-//    return;
-//  }
-
 //  /* Store panel index for sorting. */
 //  blender::bke::PanelIndexMap panel_index_map(ntree->panels());
 //  BLI_listbase_sort_r(&ntree->inputs, blender::bke::node_socket_panel_cmp, &panel_index_map);

@@ -959,9 +959,6 @@ class NODE_PT_node_tree_declaration(Panel):
 
     @classmethod
     def poll(cls, context):
-        if not context.preferences.experimental.use_node_panels:
-            return False
-
         snode = context.space_data
         if snode is None:
             return False
@@ -1057,9 +1054,6 @@ class NODE_PT_node_tree_declaration(Panel):
 
 #     @classmethod
 #     def poll(cls, context):
-#         if not context.preferences.experimental.use_node_panels:
-#             return False
-
 #         snode = context.space_data
 #         if snode is None:
 #             return False
