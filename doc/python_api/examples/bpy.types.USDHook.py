@@ -19,12 +19,14 @@ following accessors to the scene data:
 
 Hook function ``on_material_export()`` is called for each material that is exported,
 allowing modifications to the USD material, such as shader generation.
-It is called with a single argument of internally defined type ``USDMaterialExportContext``
-which implements the following accessors:
+It is called with three arguments:
 
-- ``get_stage()`` returns the USD stage to be saved.
-- ``get_blender_material()`` returns the source Blender material being convered.
-- ``get_usd_material()`` returns the target USD material to be exported.
+-``export_context``: An instance of the internally defined type ``USDMaterialExportContext``.
+-.``bl_material: The source Blender material.
+-``usd_material``: The target USD material to be exported.
+
+``USDMaterialExportContext`` implements a ``get_stage()`` function which returns the
+USD stage to be saved.
 
 Note that the target USD material might already have connected shaders created by the USD exporter or
 by other material export hooks.
@@ -47,14 +49,15 @@ class USDHookExample(bpy.types.USDHook):
     bl_label = "Example"
     bl_description = "Example implementation of USD IO hooks"
 
-    # Include the Blender filepath in the root layer custom data.
+    @staticmethod
     def on_export(export_context):
+        """ Include the Blender filepath in the root layer custom data.
+        """
 
         stage = export_context.get_stage()
 
         if stage is None:
             return
-
         data = bpy.data
         if data is None:
             return
@@ -65,16 +68,12 @@ class USDHookExample(bpy.types.USDHook):
         customData["blenderFilepath"] = data.filepath
         rootLayer.customLayerData = customData
 
-    # Create a simple MaterialX shader on the exported material.
-    def on_material_export(export_context):
-        # The stage to be exported.
+    @staticmethod
+    def on_material_export(export_context, bl_material, usd_material):
+        """ Create a simple MaterialX shader on the exported material.
+        """
+
         stage = export_context.get_stage()
-        # The source Blender material.
-        material = export_context.get_blender_material()
-        # The target USD material to be exported.  Note that this material
-        # might already have connected shaders created by the USD exporter
-        # or by other material export hooks.
-        usd_material = export_context.get_usd_material()
 
         # Create a MaterialX standard surface shader
         mtl_path = usd_material.GetPrim().GetPath()
@@ -85,8 +84,9 @@ class USDHookExample(bpy.types.USDHook):
         usd_material.CreateSurfaceOutput("mtlx").ConnectToSource(shader.ConnectableAPI(), "out")
 
         # Set the color to the Blender material's viewport display color.
-        col = material.diffuse_color
+        col = bl_material.diffuse_color
         shader.CreateInput("base_color", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(col[0], col[1], col[2]))
+
 
 def register():
   bpy.utils.register_class(USDHookExample)

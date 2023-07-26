@@ -100,15 +100,10 @@ struct USDSceneExportContext {
 
 /* Encapsulate arguments for material export. */
 struct USDMaterialExportContext {
+  USDMaterialExportContext() {}
 
-  USDMaterialExportContext() : material_ptr({}) {}
-
-  USDMaterialExportContext(pxr::UsdStageRefPtr in_stage,
-                           Material *material,
-                           pxr::UsdShadeMaterial &in_usd_material)
-      : stage(in_stage), usd_material(in_usd_material)
+  USDMaterialExportContext(pxr::UsdStageRefPtr in_stage) : stage(in_stage)
   {
-    RNA_pointer_create(NULL, &RNA_Material, material, &material_ptr);
   }
 
   pxr::UsdStageRefPtr get_stage()
@@ -116,19 +111,7 @@ struct USDMaterialExportContext {
     return stage;
   }
 
-  const PointerRNA &get_blender_material() const
-  {
-    return material_ptr;
-  }
-
-  pxr::UsdShadeMaterial &get_usd_material()
-  {
-    return usd_material;
-  }
-
   pxr::UsdStageRefPtr stage;
-  pxr::UsdShadeMaterial usd_material;
-  PointerRNA material_ptr;
 };
 
 void register_export_hook_converters()
@@ -163,14 +146,7 @@ void register_export_hook_converters()
            python::return_value_policy<python::return_by_value>());
 
   python::class_<USDMaterialExportContext>("USDMaterialExportContext")
-      .def("get_stage", &USDMaterialExportContext::get_stage)
-      .def("get_blender_material",
-           &USDMaterialExportContext::get_blender_material,
-           python::return_value_policy<python::return_by_value>())
-      .def("get_usd_material",
-           &USDMaterialExportContext::get_usd_material,
-           python::return_value_policy<python::return_by_value>());
-  ;
+      .def("get_stage", &USDMaterialExportContext::get_stage);
 
   PyGILState_Release(gilstate);
 }
@@ -211,51 +187,105 @@ static void handle_python_error(USDHook *hook)
              err_msg.c_str());
 }
 
-/* Invoke the member function with the given name of all registered hook instances.
- * The given context will be provided as the function argument. */
-template<class T> void call_hooks(const char *func_name, T &hook_context)
-{
-  if (g_usd_hooks.empty()) {
-    return;
-  }
-
-  PyGILState_STATE gilstate = PyGILState_Ensure();
-
-  /* Iterate over the hooks and invoke the hook function, if it's defined. */
-  USDHookList::const_iterator hook_iter = g_usd_hooks.begin();
-  while (hook_iter != g_usd_hooks.end()) {
-
-    /* XXX: Not sure if this is necessary:
-     * Advance the iterator before invoking the callback, to guard
-     * against the unlikely error where the hook is deregistered in
-     * the callback. This would prevent a crash due to the iterator
-     * getting invalidated. */
-    USDHook *hook = *hook_iter;
-    ++hook_iter;
-
-    if (!hook->rna_ext.data) {
-      continue;
+class USDHookCall {
+ public:
+  void call() const
+  {
+    if (g_usd_hooks.empty()) {
+      return;
     }
 
-    try {
-      PyObject *hook_obj = static_cast<PyObject *>(hook->rna_ext.data);
+    PyGILState_STATE gilstate = PyGILState_Ensure();
 
-      if (!PyObject_HasAttrString(hook_obj, func_name)) {
+    /* Iterate over the hooks and invoke the hook function, if it's defined. */
+    USDHookList::const_iterator hook_iter = g_usd_hooks.begin();
+    while (hook_iter != g_usd_hooks.end()) {
+
+      /* XXX: Not sure if this is necessary:
+       * Advance the iterator before invoking the callback, to guard
+       * against the unlikely error where the hook is deregistered in
+       * the callback. This would prevent a crash due to the iterator
+       * getting invalidated. */
+      USDHook *hook = *hook_iter;
+      ++hook_iter;
+
+      if (!hook->rna_ext.data) {
         continue;
       }
 
-      python::call_method<void>(hook_obj, func_name, hook_context);
+      try {
+        PyObject *hook_obj = static_cast<PyObject *>(hook->rna_ext.data);
+
+        if (!PyObject_HasAttrString(hook_obj, function_name())) {
+          continue;
+        }
+
+        call_hook(hook_obj);
+      }
+      catch (python::error_already_set const &) {
+        handle_python_error(hook);
+      }
+      catch (...) {
+        WM_reportf(RPT_ERROR, "An exception occurred invoking USD hook '%s'", hook->name);
+      }
     }
-    catch (python::error_already_set const &) {
-      handle_python_error(hook);
-    }
-    catch (...) {
-      WM_reportf(RPT_ERROR, "An exception occurred invoking USD hook '%s'", hook->name);
-    }
+
+    PyGILState_Release(gilstate);
   }
 
-  PyGILState_Release(gilstate);
-}
+ protected:
+  virtual const char *function_name() const = 0;
+  virtual void call_hook(PyObject *hook_obj) const = 0;
+};
+
+class OnExportCall : public USDHookCall {
+ private:
+  USDSceneExportContext hook_context_;
+
+ public:
+  OnExportCall(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph) : hook_context_(stage, depsgraph)
+  {
+  }
+
+ protected:
+  const char *function_name() const override
+  {
+    return "on_export";
+  }
+
+  void call_hook(PyObject *hook_obj) const override
+  {
+    python::call_method<void>(hook_obj, function_name(), hook_context_);
+  }
+};
+
+class OnMaterialExportCall : public USDHookCall {
+ private:
+  USDMaterialExportContext hook_context_;
+  pxr::UsdShadeMaterial usd_material_;
+  PointerRNA material_ptr_;
+
+ public:
+  OnMaterialExportCall(pxr::UsdStageRefPtr stage,
+                       Material *material,
+                       pxr::UsdShadeMaterial &usd_material)
+      : hook_context_(stage), usd_material_(usd_material)
+  {
+    RNA_pointer_create(NULL, &RNA_Material, material, &material_ptr_);
+  }
+
+ protected:
+  const char *function_name() const override
+  {
+    return "on_material_export";
+  }
+
+  void call_hook(PyObject *hook_obj) const override
+  {
+    python::call_method<void>(
+        hook_obj, function_name(), hook_context_, material_ptr_, usd_material_);
+  }
+};
 
 void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
 {
@@ -263,8 +293,8 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
     return;
   }
 
-  USDSceneExportContext export_context(stage, depsgraph);
-  call_hooks("on_export", export_context);
+  OnExportCall on_export(stage, depsgraph);
+  on_export.call();
 }
 
 void call_material_export_hooks(pxr::UsdStageRefPtr stage,
@@ -275,8 +305,8 @@ void call_material_export_hooks(pxr::UsdStageRefPtr stage,
     return;
   }
 
-  USDMaterialExportContext export_context(stage, material, usd_material);
-  call_hooks("on_material_export", export_context);
+  OnMaterialExportCall on_material_export(stage, material, usd_material);
+  on_material_export.call();
 }
 
 }  // namespace blender::io::usd
