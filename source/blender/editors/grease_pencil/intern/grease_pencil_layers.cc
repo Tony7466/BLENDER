@@ -31,17 +31,9 @@ void select_layer_channel(GreasePencil *grease_pencil, bke::greasepencil::Layer 
   }
 
   if (grease_pencil->active_layer != layer) {
-    set_active_layer(grease_pencil, layer);
+    grease_pencil->set_active_layer(layer);
+    WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
   }
-}
-
-void set_active_layer(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer)
-{
-  using namespace blender::bke::greasepencil;
-
-  grease_pencil->active_layer = layer;
-
-  WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
 }
 
 static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
