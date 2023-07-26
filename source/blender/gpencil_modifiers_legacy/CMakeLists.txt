@@ -61,7 +61,7 @@ set(SRC
   intern/MOD_gpencil_legacy_util.h
 
   # Lineart code
-  intern/lineart/lineart_chain.c
+  intern/lineart/lineart_chain.cc
   intern/lineart/lineart_cpu.cc
   intern/lineart/lineart_ops.c
   intern/lineart/lineart_shadow.c
