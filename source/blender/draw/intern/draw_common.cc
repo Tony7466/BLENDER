@@ -30,7 +30,7 @@
 /**
  * Colors & Constant.
  */
-struct DRW_Global G_draw = {{{0}}};
+DRW_Global G_draw{};
 
 static bool weight_ramp_custom = false;
 static ColorBand weight_ramp_copy;
@@ -88,7 +88,7 @@ void DRW_globals_update(void)
   interp_v4_v4v4(gb->color_edit_mesh_middle, gb->color_vertex_select, gb->color_wire_edit, 0.35f);
   copy_v3_fl(gb->color_edit_mesh_middle,
              dot_v3v3(gb->color_edit_mesh_middle,
-                      (float[3]){0.3333f, 0.3333f, 0.3333f})); /* Desaturate */
+                      blender::float3{0.3333f, 0.3333f, 0.3333f})); /* Desaturate */
 
 #ifdef WITH_FREESTYLE
   UI_GetThemeColor4fv(TH_FREESTYLE_EDGE_MARK, gb->color_edge_freestyle);
@@ -196,7 +196,7 @@ void DRW_globals_update(void)
     } while (color <= gb->UBO_LAST_COLOR);
   }
 
-  if (G_draw.block_ubo == NULL) {
+  if (G_draw.block_ubo == nullptr) {
     G_draw.block_ubo = GPU_uniformbuf_create_ex(
         sizeof(GlobalsUboStorage), gb, "GlobalsUboStorage");
   }
@@ -236,7 +236,7 @@ void DRW_globals_update(void)
     DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
   }
 
-  if (G_draw.weight_ramp == NULL) {
+  if (G_draw.weight_ramp == nullptr) {
     weight_ramp_custom = user_weight_ramp;
     memcpy(&weight_ramp_copy, &U.coba_weight, sizeof(ColorBand));
 
@@ -324,7 +324,7 @@ int DRW_object_wire_theme_get(Object *ob, ViewLayer *view_layer, float **r_color
     }
   }
 
-  if (r_color != NULL) {
+  if (r_color != nullptr) {
     if (UNLIKELY(ob->base_flag & BASE_FROM_SET)) {
       *r_color = G_draw.block.color_wire;
     }
@@ -441,7 +441,7 @@ bool DRW_object_is_flat(Object *ob, int *r_axis)
 bool DRW_object_axis_orthogonal_to_view(Object *ob, int axis)
 {
   float ob_rot[3][3], invviewmat[4][4];
-  DRW_view_viewmat_get(NULL, invviewmat, true);
+  DRW_view_viewmat_get(nullptr, invviewmat, true);
   BKE_object_rot_to_mat3(ob, ob_rot, true);
   float dot = dot_v3v3(ob_rot[axis], invviewmat[2]);
   if (fabsf(dot) < 1e-3) {
