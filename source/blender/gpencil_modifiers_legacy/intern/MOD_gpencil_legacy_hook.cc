@@ -86,9 +86,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   HookGpencilModifierData *gmd = (HookGpencilModifierData *)md;
   HookGpencilModifierData *tgmd = (HookGpencilModifierData *)target;
 
-  if (tgmd->curfalloff != NULL) {
+  if (tgmd->curfalloff != nullptr) {
     BKE_curvemapping_free(tgmd->curfalloff);
-    tgmd->curfalloff = NULL;
+    tgmd->curfalloff = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -181,10 +181,10 @@ static void gpencil_hook_co_apply(struct GPHookData_cb *tData, float weight, bGP
 
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   HookGpencilModifierData *mmd = (HookGpencilModifierData *)md;
@@ -213,7 +213,7 @@ static void deformStroke(GpencilModifierData *md,
   {
     return;
   }
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   /* init struct */
   tData.curfalloff = mmd->curfalloff;
@@ -248,7 +248,7 @@ static void deformStroke(GpencilModifierData *md,
   /* loop points and apply deform */
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     /* verify vertex group */
     const float weight = get_modifier_point_weight(
@@ -265,14 +265,14 @@ static void deformStroke(GpencilModifierData *md,
 /* FIXME: Ideally we be doing this on a copy of the main depsgraph
  * (i.e. one where we don't have to worry about restoring state)
  */
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   HookGpencilModifierData *mmd = (HookGpencilModifierData *)md;
 
-  if (mmd->object == NULL) {
+  if (mmd->object == nullptr) {
     return;
   }
 
@@ -288,7 +288,7 @@ static void freeData(GpencilModifierData *md)
   }
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   HookGpencilModifierData *mmd = (HookGpencilModifierData *)md;
 
@@ -297,10 +297,10 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   HookGpencilModifierData *lmd = (HookGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Hook Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
   }
@@ -315,7 +315,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
@@ -329,7 +329,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "object", 0, nullptr, ICON_NONE);
   if (!RNA_pointer_is_null(&hook_object_ptr) &&
       RNA_enum_get(&hook_object_ptr, "type") == OB_ARMATURE)
   {
@@ -339,23 +339,23 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   }
 
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiLayoutSetPropSep(sub, false);
   uiItemR(sub, ptr, "invert_vertex", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void falloff_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void falloff_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   bool use_falloff = RNA_enum_get(ptr, "falloff_type") != eWarp_Falloff_None;
 
@@ -365,16 +365,16 @@ static void falloff_panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, use_falloff);
-  uiItemR(row, ptr, "falloff_radius", 0, NULL, ICON_NONE);
+  uiItemR(row, ptr, "falloff_radius", 0, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "use_falloff_uniform", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_falloff_uniform", 0, nullptr, ICON_NONE);
 
   if (RNA_enum_get(ptr, "falloff_type") == eWarp_Falloff_Curve) {
     uiTemplateCurveMapping(layout, ptr, "falloff_curve", 0, false, false, false, false);
   }
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -384,9 +384,9 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Hook, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "falloff", "Falloff", NULL, falloff_panel_draw, panel_type);
+      region_type, "falloff", "Falloff", nullptr, falloff_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Hook = {
@@ -399,16 +399,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Hook = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
