@@ -1293,6 +1293,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     PointerRNA bmain_ptr;
     RNA_main_pointer_create(bmain, &bmain_ptr);
 
+    nmd->node_group->ensure_topology_cache();
+
     for (const int socket_index : nmd->node_group->interface_cache().inputs.index_range()) {
       const bNodeTreeInterfaceSocket *socket =
           nmd->node_group->interface_cache().inputs[socket_index];
