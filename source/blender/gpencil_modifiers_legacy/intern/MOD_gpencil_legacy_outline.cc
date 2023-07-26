@@ -65,7 +65,7 @@ static void free_old_strokes(Depsgraph *depsgraph, Object *ob, bGPdata *gpd)
   /* Free old strokes. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
@@ -157,7 +157,7 @@ static void convert_stroke(GpencilModifierData *md,
   for (int i = 0; i < gps_perimeter->totpoints; i++) {
     pt = &gps_perimeter->points[i];
     pt->pressure = 1.0f;
-    pt->runtime.pt_orig = NULL;
+    pt->runtime.pt_orig = nullptr;
     /* If any target object is defined, find the nearest point. */
     if (mmd->object) {
       float wpt[3];
@@ -203,7 +203,7 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     /* Prepare transform matrix. */
@@ -220,13 +220,13 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   free_old_strokes(depsgraph, ob, gpd);
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
   /* Calc camera view matrix. */
@@ -274,7 +274,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   OutlineGpencilModifierData *lmd = (OutlineGpencilModifierData *)md;
   if (ctx->scene->camera) {
@@ -283,7 +283,7 @@ static void updateDepsgraph(GpencilModifierData *md,
     DEG_add_object_relation(
         ctx->node, ctx->scene->camera, DEG_OB_COMP_PARAMETERS, "Outline Modifier");
   }
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Outline Modifier");
   }
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Outline Modifier");
@@ -293,26 +293,26 @@ static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "thickness", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "use_keep_shape", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "subdivision", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "sample_length", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "outline_material", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "thickness", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_keep_shape", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "subdivision", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "sample_length", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "outline_material", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
 
   Scene *scene = CTX_data_scene(C);
-  if (scene->camera == NULL) {
+  if (scene->camera == nullptr) {
     uiItemL(layout, IFACE_("Outline requires an active camera"), ICON_ERROR);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -322,7 +322,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Outline, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Outline = {
@@ -334,17 +334,17 @@ GpencilModifierTypeInfo modifierType_Gpencil_Outline = {
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
