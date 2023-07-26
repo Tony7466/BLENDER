@@ -33,7 +33,7 @@ set(INC
 )
 
 set(SRC
-  intern/draw_cache.c
+  intern/draw_cache.cc
   intern/draw_cache_extract_mesh.cc
   intern/draw_cache_extract_mesh_render_data.cc
   intern/mesh_extractors/extract_mesh.cc
