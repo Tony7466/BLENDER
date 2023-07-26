@@ -105,7 +105,7 @@ set(SRC
   intern/bmesh_polygon_edgenet.cc
   intern/bmesh_polygon_edgenet.h
   intern/bmesh_private.h
-  intern/bmesh_query.c
+  intern/bmesh_query.cc
   intern/bmesh_query.h
   intern/bmesh_query_inline.h
   intern/bmesh_query_uv.cc
