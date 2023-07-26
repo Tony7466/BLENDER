@@ -101,9 +101,9 @@ static void duplicateStroke(Object *ob,
                             float fading_thickness,
                             float fading_opacity)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int i;
-  bGPDstroke *new_gps = NULL;
+  bGPDstroke *new_gps = nullptr;
   float stroke_normal[3];
   bGPDspoint *pt;
   float thickness_factor;
@@ -118,20 +118,20 @@ static void duplicateStroke(Object *ob,
     normalize_v3(stroke_normal);
   }
 
-  float *t1_array = MEM_callocN(sizeof(float[3]) * gps->totpoints,
-                                "duplicate_temp_result_array_1");
-  float *t2_array = MEM_callocN(sizeof(float[3]) * gps->totpoints,
-                                "duplicate_temp_result_array_2");
+  float *t1_array = static_cast<float *>(
+      MEM_callocN(sizeof(float[3]) * gps->totpoints, "duplicate_temp_result_array_1"));
+  float *t2_array = static_cast<float *>(
+      MEM_callocN(sizeof(float[3]) * gps->totpoints, "duplicate_temp_result_array_2"));
 
   pt = gps->points;
 
   for (int j = 0; j < gps->totpoints; j++) {
     float minter[3];
     if (j == 0) {
-      minter_v3_v3v3v3_ref(minter, NULL, &pt[j].x, &pt[j + 1].x, stroke_normal);
+      minter_v3_v3v3v3_ref(minter, nullptr, &pt[j].x, &pt[j + 1].x, stroke_normal);
     }
     else if (j == gps->totpoints - 1) {
-      minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, NULL, stroke_normal);
+      minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, nullptr, stroke_normal);
     }
     else {
       minter_v3_v3v3v3_ref(minter, &pt[j - 1].x, &pt[j].x, &pt[j + 1].x, stroke_normal);
@@ -171,7 +171,7 @@ static void duplicateStroke(Object *ob,
     }
   }
   /* Calc geometry data. */
-  if (new_gps != NULL) {
+  if (new_gps != nullptr) {
     BKE_gpencil_stroke_geometry_update(gpd, new_gps);
   }
   MEM_freeN(t1_array);
@@ -184,7 +184,7 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
   bGPDstroke *gps;
   ListBase duplicates = {0};
-  for (gps = gpf->strokes.first; gps; gps = gps->next) {
+  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
     if (!is_stroke_affected_by_modifier(ob,
                                         mmd->layername,
                                         mmd->material,
@@ -218,12 +218,12 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
-                         Depsgraph *UNUSED(depsgraph),
+static void bakeModifier(Main * /*bmain*/,
+                         Depsgraph * /*depsgraph*/,
                          GpencilModifierData *md,
                          Object *ob)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
@@ -240,7 +240,7 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     generate_geometry(md, ob, gpl, gpf);
@@ -254,52 +254,52 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "duplicates", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "duplicates", 0, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(layout, RNA_int_get(ptr, "duplicates") > 0);
-  uiItemR(col, ptr, "distance", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "offset", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, ptr, "distance", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "offset", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void fade_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void fade_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_fade", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_fade", 0, nullptr, ICON_NONE);
 }
 
-static void fade_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void fade_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_fade"));
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "fading_center", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "fading_thickness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(col, ptr, "fading_opacity", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(col, ptr, "fading_center", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "fading_thickness", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "fading_opacity", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -311,7 +311,7 @@ static void panelRegister(ARegionType *region_type)
   gpencil_modifier_subpanel_register(
       region_type, "fade", "", fade_header_draw, fade_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
@@ -319,21 +319,21 @@ GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
     /*structName*/ "MultiplyGpencilModifierData",
     /*structSize*/ sizeof(MultiplyGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
-    /*flags*/ 0,
+    /*flags*/ GpencilModifierTypeFlag(0),
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };

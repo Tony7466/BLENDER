@@ -38,7 +38,7 @@ set(SRC
   intern/MOD_gpencil_legacy_length.cc
   intern/MOD_gpencil_legacy_lineart.cc
   intern/MOD_gpencil_legacy_mirror.cc
-  intern/MOD_gpencil_legacy_multiply.c
+  intern/MOD_gpencil_legacy_multiply.cc
   intern/MOD_gpencil_legacy_noise.c
   intern/MOD_gpencil_legacy_offset.c
   intern/MOD_gpencil_legacy_opacity.c
