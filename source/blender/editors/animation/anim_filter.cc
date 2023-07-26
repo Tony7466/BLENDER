@@ -1770,10 +1770,8 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
     }
 
     /* Skip layer if the name doesn't match the filter string. */
-    char layer_name[256];
-    layer->name().copy(layer_name);
     if (ads != nullptr && ads->searchstr[0] != '\0' &&
-        name_matches_dopesheet_filter(ads, layer_name) == false)
+        name_matches_dopesheet_filter(ads, layer->name().c_str()) == false)
     {
       continue;
     }
