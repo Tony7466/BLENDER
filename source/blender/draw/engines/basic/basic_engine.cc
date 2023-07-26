@@ -31,34 +31,34 @@
 
 /* GPUViewport.storage
  * Is freed every time the viewport engine changes. */
-typedef struct BASIC_StorageList {
+struct BASIC_StorageList {
   struct BASIC_PrivateData *g_data;
-} BASIC_StorageList;
+};
 
-typedef struct BASIC_PassList {
+struct BASIC_PassList {
   DRWPass *depth_pass[2];
   DRWPass *depth_pass_pointcloud[2];
   DRWPass *depth_pass_cull[2];
-} BASIC_PassList;
+};
 
-typedef struct BASIC_Data {
+struct BASIC_Data {
   void *engine_type;
   DRWViewportEmptyList *fbl;
   DRWViewportEmptyList *txl;
   BASIC_PassList *psl;
   BASIC_StorageList *stl;
-} BASIC_Data;
+};
 
 /* *********** STATIC *********** */
 
-typedef struct BASIC_PrivateData {
+struct BASIC_PrivateData {
   DRWShadingGroup *depth_shgrp[2];
   DRWShadingGroup *depth_shgrp_cull[2];
   DRWShadingGroup *depth_hair_shgrp[2];
   DRWShadingGroup *depth_curves_shgrp[2];
   DRWShadingGroup *depth_pointcloud_shgrp[2];
   bool use_material_slot_selection;
-} BASIC_PrivateData; /* Transient data */
+}; /* Transient data */
 
 static void basic_cache_init(void *vedata)
 {
@@ -70,15 +70,17 @@ static void basic_cache_init(void *vedata)
 
   if (!stl->g_data) {
     /* Alloc transient pointers */
-    stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
+    stl->g_data = static_cast<BASIC_PrivateData *>(MEM_callocN(sizeof(*stl->g_data), __func__));
   }
 
   stl->g_data->use_material_slot_selection = DRW_state_is_material_select();
 
   /* Twice for normal and in front objects. */
   for (int i = 0; i < 2; i++) {
-    DRWState clip_state = (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? DRW_STATE_CLIP_PLANES : 0;
-    DRWState infront_state = (DRW_state_is_select() && (i == 1)) ? DRW_STATE_IN_FRONT_SELECT : 0;
+    DRWState clip_state = DRWState(
+        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? DRW_STATE_CLIP_PLANES : 0);
+    DRWState infront_state = DRWState(
+        (DRW_state_is_select() && (i == 1)) ? DRW_STATE_IN_FRONT_SELECT : 0);
     DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
 
     GPUShader *sh = DRW_state_is_select() ?
@@ -114,7 +116,7 @@ static void basic_cache_init(void *vedata)
   }
 }
 
-/* TODO(fclem): DRW_cache_object_surface_material_get needs a refactor to allow passing NULL
+/* TODO(fclem): DRW_cache_object_surface_material_get needs a refactor to allow passing nullptr
  * instead of gpumat_array. Avoiding all this boilerplate code. */
 static struct GPUBatch **basic_object_surface_material_get(Object *ob)
 {
@@ -129,19 +131,22 @@ static void basic_cache_populate_particles(void *vedata, Object *ob)
 {
   const bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   BASIC_StorageList *stl = ((BASIC_Data *)vedata)->stl;
-  for (ParticleSystem *psys = ob->particlesystem.first; psys != NULL; psys = psys->next) {
+  for (ParticleSystem *psys = static_cast<ParticleSystem *>(ob->particlesystem.first);
+       psys != nullptr;
+       psys = psys->next)
+  {
     if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
       continue;
     }
     ParticleSettings *part = psys->part;
     const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
     if (draw_as == PART_DRAW_PATH) {
-      struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
+      struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, nullptr);
       if (stl->g_data->use_material_slot_selection) {
         const short material_slot = part->omat;
         DRW_select_load_id(ob->runtime.select_id | (material_slot << 16));
       }
-      DRW_shgroup_call(stl->g_data->depth_hair_shgrp[do_in_front], hairs, NULL);
+      DRW_shgroup_call(stl->g_data->depth_hair_shgrp[do_in_front], hairs, nullptr);
     }
   }
 }
@@ -163,11 +168,12 @@ static void basic_cache_populate(void *vedata, Object *ob)
 
   const bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   if (ob->type == OB_CURVES) {
-    DRW_shgroup_curves_create_sub(ob, stl->g_data->depth_curves_shgrp[do_in_front], NULL);
+    DRW_shgroup_curves_create_sub(ob, stl->g_data->depth_curves_shgrp[do_in_front], nullptr);
   }
 
   if (ob->type == OB_POINTCLOUD) {
-    DRW_shgroup_pointcloud_create_sub(ob, stl->g_data->depth_pointcloud_shgrp[do_in_front], NULL);
+    DRW_shgroup_pointcloud_create_sub(
+        ob, stl->g_data->depth_pointcloud_shgrp[do_in_front], nullptr);
     return;
   }
 
@@ -207,7 +213,7 @@ static void basic_cache_populate(void *vedata, Object *ob)
       if (geoms) {
         const int materials_len = DRW_cache_object_material_count_get(ob);
         for (int i = 0; i < materials_len; i++) {
-          if (geoms[i] == NULL) {
+          if (geoms[i] == nullptr) {
             continue;
           }
           const short material_slot_select_id = i + 1;
@@ -258,21 +264,21 @@ static void basic_engine_free(void)
 static const DrawEngineDataSize basic_data_size = DRW_VIEWPORT_DATA_SIZE(BASIC_Data);
 
 DrawEngineType draw_engine_basic_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ N_("Basic"),
     /*vedata_size*/ &basic_data_size,
-    /*engine_init*/ NULL,
+    /*engine_init*/ nullptr,
     /*engine_free*/ &basic_engine_free,
-    /*instance_free*/ /*instance_free*/ NULL,
+    /*instance_free*/ /*instance_free*/ nullptr,
     /*cache_init*/ &basic_cache_init,
     /*cache_populate*/ &basic_cache_populate,
     /*cache_finish*/ &basic_cache_finish,
     /*draw_scene*/ &basic_draw_scene,
-    /*view_update*/ NULL,
-    /*id_update*/ NULL,
-    /*render_to_image*/ NULL,
-    /*store_metadata*/ NULL,
+    /*view_update*/ nullptr,
+    /*id_update*/ nullptr,
+    /*render_to_image*/ nullptr,
+    /*store_metadata*/ nullptr,
 };
 
 #undef BASIC_ENGINE

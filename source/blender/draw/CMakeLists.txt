@@ -102,7 +102,7 @@ set(SRC
   intern/draw_view.cc
   intern/draw_view_data.cc
   intern/draw_volume.cc
-  engines/basic/basic_engine.c
+  engines/basic/basic_engine.cc
   engines/basic/basic_shader.c
   engines/compositor/compositor_engine.cc
   engines/image/image_engine.cc
