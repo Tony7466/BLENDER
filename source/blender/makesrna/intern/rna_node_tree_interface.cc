@@ -109,6 +109,19 @@ static void rna_NodeTreeInterfaceSocket_socket_type_set(PointerRNA *ptr, int val
   }
 }
 
+static void rna_NodeTreeInterfaceSocket_draw_socket_properties(ID *id,
+                                                               bNodeTreeInterfaceSocket *socket,
+                                                               bContext *C,
+                                                               uiLayout *layout)
+{
+  bNodeSocketType *typeinfo = socket->socket_typeinfo();
+  if (typeinfo && typeinfo->interface_draw) {
+    PointerRNA ptr;
+    RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, socket, &ptr);
+    typeinfo->interface_draw(C, layout, &ptr);
+  }
+}
+
 static bool is_socket_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
 {
   /* Check if the node tree supports the socket type. */
@@ -497,6 +510,8 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   srna = RNA_def_struct(brna, "NodeTreeInterfaceSocket", "NodeTreeInterfaceItem");
   RNA_def_struct_ui_text(srna, "Node Tree Interface Socket", "Declaration of a node socket");
@@ -572,6 +587,17 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
                            "The attribute name used by default when the node group is used by a "
                            "geometry nodes modifier");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
+  func = RNA_def_function(
+      srna, "draw_socket_properties", "rna_NodeTreeInterfaceSocket_draw_socket_properties");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(func, "Draw template settings");
+  parm = RNA_def_pointer(func, "context", "Context", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(parm, "UILayout");
+  RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }
 
 static void rna_def_node_interface_panel(BlenderRNA *brna)

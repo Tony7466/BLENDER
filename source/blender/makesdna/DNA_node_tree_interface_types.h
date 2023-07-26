@@ -23,12 +23,15 @@
 extern "C" {
 #endif
 
+struct bContext;
 struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
 struct IDProperty;
 struct LibraryForeachIDData;
+struct PointerRNA;
+struct uiLayout;
 
 /** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {

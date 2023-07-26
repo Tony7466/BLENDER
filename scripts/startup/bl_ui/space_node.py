@@ -1005,23 +1005,7 @@ class NODE_PT_node_tree_declaration(Panel):
                 layout.prop(active_item, "is_output", toggle=True)
                 layout.prop(active_item, "socket_type")
 
-                if active_item.socket_type == "NodeSocketFloat":
-                    layout.prop(active_item, "subtype")
-                    layout.prop(active_item, "default_value")
-                    layout.prop(active_item, "min_value")
-                    layout.prop(active_item, "max_value")
-                elif active_item.socket_type == "NodeSocketInt":
-                    layout.prop(active_item, "subtype")
-                    layout.prop(active_item, "default_value")
-                    layout.prop(active_item, "min_value")
-                    layout.prop(active_item, "max_value")
-                elif active_item.socket_type == "NodeSocketBool":
-                    layout.prop(active_item, "default_value")
-                elif active_item.socket_type == "NodeSocketString":
-                    layout.prop(active_item, "subtype")
-                    layout.prop(active_item, "default_value")
-                elif active_item.socket_type == "NodeSocketObject":
-                    layout.prop(active_item, "default_value")
+                active_item.draw_socket_properties(context, layout)
 
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':

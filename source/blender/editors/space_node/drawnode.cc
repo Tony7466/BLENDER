@@ -1220,8 +1220,9 @@ static void std_node_socket_draw_color(bContext * /*C*/,
 }
 static void std_node_socket_interface_draw_color(bContext * /*C*/, PointerRNA *ptr, float *r_color)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
+  bNodeTreeInterfaceSocket *sock = (bNodeTreeInterfaceSocket *)ptr->data;
+  const bNodeSocketType *typeinfo = sock->socket_typeinfo();
+  eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
   copy_v4_v4(r_color, std_node_socket_colors[type]);
 }
 
@@ -1436,8 +1437,10 @@ static void std_node_socket_draw(
 
 static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
+  bNodeTreeInterfaceSocket *sock = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  const bNodeSocketType *typeinfo = sock->socket_typeinfo();
+  BLI_assert(typeinfo != nullptr);
+  eNodeSocketDatatype type = eNodeSocketDatatype(typeinfo->type);
 
   PointerRNA tree_ptr;
   RNA_id_pointer_create(ptr->owner_id, &tree_ptr);
@@ -1478,13 +1481,20 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
       uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), 0);
       break;
     }
+    case SOCK_SHADER:
+    case SOCK_GEOMETRY:
+      break;
+
+    case SOCK_CUSTOM:
+      BLI_assert_unreachable();
+      break;
   }
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "hide_value", DEFAULT_FLAGS, nullptr, 0);
 
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
-  if (sock->in_out == SOCK_IN && node_tree->type == NTREE_GEOMETRY) {
+  if (sock->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
 
@@ -1567,29 +1577,34 @@ void draw_nodespace_back_pix(const bContext &C,
   GPU_matrix_push_projection();
   GPU_matrix_push();
 
-  /* The draw manager is used to draw the backdrop image. */
+  /* The draw manager is used to draw the
+   * backdrop image. */
   GPUFrameBuffer *old_fb = GPU_framebuffer_active_get();
   GPU_framebuffer_restore();
   BLI_thread_lock(LOCK_DRAW_IMAGE);
   DRW_draw_view(&C);
   BLI_thread_unlock(LOCK_DRAW_IMAGE);
   GPU_framebuffer_bind_no_srgb(old_fb);
-  /* Draw manager changes the depth state. Set it back to NONE. Without this the node preview
-   * images aren't drawn correctly. */
+  /* Draw manager changes the depth state.
+   * Set it back to NONE. Without this the
+   * node preview images aren't drawn
+   * correctly. */
   GPU_depth_test(GPU_DEPTH_NONE);
 
   void *lock;
   Image *ima = BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
   if (ibuf) {
-    /* somehow the offset has to be calculated inverse */
+    /* somehow the offset has to be
+     * calculated inverse */
     wmOrtho2_region_pixelspace(&region);
     const float offset_x = snode.xof + ima->offset_x * snode.zoom;
     const float offset_y = snode.yof + ima->offset_y * snode.zoom;
     const float x = (region.winx - snode.zoom * ibuf->x) / 2 + offset_x;
     const float y = (region.winy - snode.zoom * ibuf->y) / 2 + offset_y;
 
-    /** \note draw selected info on backdrop */
+    /** \note draw selected info on backdrop
+     */
     if (snode.edittree) {
       bNode *node = (bNode *)snode.edittree->nodes.first;
       rctf *viewer_border = &snode.nodetree->viewer_border;
@@ -1988,7 +2003,8 @@ static void nodelink_batch_add_link(const SpaceNode &snode,
                                     const std::array<float2, 4> &points,
                                     const NodeLinkDrawConfig &draw_config)
 {
-  /* Only allow these colors. If more is needed, you need to modify the shader accordingly. */
+  /* Only allow these colors. If more is needed, you need to modify the shader accordingly.
+   */
   BLI_assert(
       ELEM(draw_config.th_col1, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECT, TH_REDALERT));
   BLI_assert(
