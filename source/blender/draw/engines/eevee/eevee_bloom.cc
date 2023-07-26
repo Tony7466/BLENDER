@@ -18,7 +18,7 @@
 
 static const bool use_highres = true;
 
-int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+int EEVEE_bloom_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -142,7 +142,7 @@ static DRWShadingGroup *eevee_create_bloom_pass(const char *name,
   *pass = DRW_pass_create(name, DRW_STATE_WRITE_COLOR);
 
   DRWShadingGroup *grp = DRW_shgroup_create(sh, *pass);
-  DRW_shgroup_call(grp, quad, NULL);
+  DRW_shgroup_call(grp, quad, nullptr);
   DRW_shgroup_uniform_texture_ref(grp, "sourceBuffer", &effects->unf_source_buffer);
   DRW_shgroup_uniform_vec2(grp, "sourceBufferTexelSize", effects->unf_source_texel_size, 1);
   if (upsample) {
@@ -157,13 +157,13 @@ static DRWShadingGroup *eevee_create_bloom_pass(const char *name,
   return grp;
 }
 
-void EEVEE_bloom_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_bloom_cache_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
 
-  psl->bloom_accum_ps = NULL;
+  psl->bloom_accum_ps = nullptr;
 
   if ((effects->enabled_effects & EFFECT_BLOOM) != 0) {
     /**
@@ -302,9 +302,9 @@ void EEVEE_bloom_draw(EEVEE_Data *vedata)
   }
 }
 
-void EEVEE_bloom_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_bloom_output_init(EEVEE_ViewLayerData * /*sldata*/,
                              EEVEE_Data *vedata,
-                             uint UNUSED(tot_samples))
+                             uint /*tot_samples*/)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_TextureList *txl = vedata->txl;
@@ -313,7 +313,7 @@ void EEVEE_bloom_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
 
   /* Create FrameBuffer. */
-  DRW_texture_ensure_fullscreen_2d(&txl->bloom_accum, GPU_R11F_G11F_B10F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->bloom_accum, GPU_R11F_G11F_B10F, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->bloom_pass_accum_fb,
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->bloom_accum)});
@@ -328,7 +328,7 @@ void EEVEE_bloom_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
                           false);
 }
 
-void EEVEE_bloom_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_bloom_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_PassList *psl = vedata->psl;
