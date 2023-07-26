@@ -54,7 +54,7 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgra
 
   /* Alloc transient data. */
   if (!stl->g_data) {
-    stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
+    stl->g_data = static_cast<EEVEE_PrivateData *>(MEM_callocN(sizeof(*stl->g_data), __func__));
   }
   EEVEE_PrivateData *g_data = stl->g_data;
   g_data->background_alpha = DRW_state_draw_background() ? 1.0f : 0.0f;
@@ -66,7 +66,7 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgra
     g_data->overscan = scene->eevee.overscan / 100.0f;
     g_data->overscan_pixels = roundf(max_ff(size_orig[0], size_orig[1]) * g_data->overscan);
 
-    madd_v2_v2v2fl(size_final, size_orig, (float[2]){2.0f, 2.0f}, g_data->overscan_pixels);
+    madd_v2_v2v2fl(size_final, size_orig, blender::float2{2.0f, 2.0f}, g_data->overscan_pixels);
 
     camtexcofac[0] = size_final[0] / size_orig[0];
     camtexcofac[1] = size_final[1] / size_orig[1];
@@ -82,8 +82,8 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgra
   }
 
   const int final_res[2] = {
-      size_orig[0] + g_data->overscan_pixels * 2.0f,
-      size_orig[1] + g_data->overscan_pixels * 2.0f,
+      int(size_orig[0] + g_data->overscan_pixels * 2.0f),
+      int(size_orig[1] + g_data->overscan_pixels * 2.0f),
   };
 
   int max_dim = max_ii(final_res[0], final_res[1]);
@@ -102,7 +102,7 @@ bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgra
   DRW_render_viewport_size_set(final_res);
 
   /* TODO: 32 bit depth. */
-  DRW_texture_ensure_fullscreen_2d(&dtxl->depth, GPU_DEPTH24_STENCIL8, 0);
+  DRW_texture_ensure_fullscreen_2d(&dtxl->depth, GPU_DEPTH24_STENCIL8, DRWTextureFlag(0));
   DRW_texture_ensure_fullscreen_2d(&txl->color, GPU_RGBA32F, DRW_TEX_FILTER);
 
   GPU_framebuffer_ensure_config(
@@ -153,7 +153,7 @@ void EEVEE_render_view_sync(EEVEE_Data *vedata, RenderEngine *engine, Depsgraph 
 
   invert_m4_m4(viewmat, viewinv);
 
-  DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+  DRWView *view = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
   DRW_view_reset();
   DRW_view_default_set(view);
   DRW_view_set_active(view);
@@ -180,13 +180,13 @@ void EEVEE_render_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 void EEVEE_render_cache(void *vedata, Object *ob, RenderEngine *engine, Depsgraph *depsgraph)
 {
   EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
-  EEVEE_Data *data = vedata;
+  EEVEE_Data *data = static_cast<EEVEE_Data *>(vedata);
   EEVEE_StorageList *stl = data->stl;
   EEVEE_PrivateData *g_data = stl->g_data;
   EEVEE_LightProbesInfo *pinfo = sldata->probes;
   bool cast_shadow = false;
 
-  const bool do_cryptomatte = (engine != NULL) &&
+  const bool do_cryptomatte = (engine != nullptr) &&
                               ((g_data->render_passes & EEVEE_RENDER_PASS_CRYPTOMATTE) != 0);
 
   eevee_id_update(vedata, &ob->id);
@@ -207,12 +207,13 @@ void EEVEE_render_cache(void *vedata, Object *ob, RenderEngine *engine, Depsgrap
   if (engine && (ob->base_flag & BASE_FROM_DUPLI) == 0) {
     char info[42];
     SNPRINTF(info, "Syncing %s", ob->id.name + 2);
-    RE_engine_update_stats(engine, NULL, info);
+    RE_engine_update_stats(engine, nullptr, info);
   }
 
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   if (ob_visibility & OB_VISIBLE_PARTICLES) {
-    EEVEE_particle_hair_cache_populate(vedata, sldata, ob, &cast_shadow);
+    EEVEE_particle_hair_cache_populate(
+        static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
     if (do_cryptomatte) {
       EEVEE_cryptomatte_particle_hair_cache_populate(data, sldata, ob);
     }
@@ -220,23 +221,24 @@ void EEVEE_render_cache(void *vedata, Object *ob, RenderEngine *engine, Depsgrap
 
   if (ob_visibility & OB_VISIBLE_SELF) {
     if (ob->type == OB_MESH) {
-      EEVEE_materials_cache_populate(vedata, sldata, ob, &cast_shadow);
+      EEVEE_materials_cache_populate(static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
       if (do_cryptomatte) {
         EEVEE_cryptomatte_cache_populate(data, sldata, ob);
       }
     }
     else if (ob->type == OB_CURVES) {
-      EEVEE_object_curves_cache_populate(vedata, sldata, ob, &cast_shadow);
+      EEVEE_object_curves_cache_populate(
+          static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
       if (do_cryptomatte) {
         EEVEE_cryptomatte_object_curves_cache_populate(data, sldata, ob);
       }
     }
     else if (ob->type == OB_VOLUME) {
       Scene *scene = DEG_get_evaluated_scene(depsgraph);
-      EEVEE_volumes_cache_object_add(sldata, vedata, scene, ob);
+      EEVEE_volumes_cache_object_add(sldata, static_cast<EEVEE_Data *>(vedata), scene, ob);
     }
     else if (ob->type == OB_LIGHTPROBE) {
-      EEVEE_lightprobes_cache_add(sldata, vedata, ob);
+      EEVEE_lightprobes_cache_add(sldata, static_cast<EEVEE_Data *>(vedata), ob);
     }
     else if (ob->type == OB_LAMP) {
       EEVEE_lights_cache_add(sldata, ob);
@@ -257,7 +259,7 @@ static void eevee_render_color_result(RenderLayer *rl,
                                       EEVEE_Data *vedata)
 {
   RenderPass *rp = RE_pass_find_by_name(rl, render_pass_name, viewname);
-  if (rp == NULL) {
+  if (rp == nullptr) {
     return;
   }
   GPU_framebuffer_bind(framebuffer);
@@ -276,7 +278,7 @@ static void eevee_render_result_combined(RenderLayer *rl,
                                          const char *viewname,
                                          const rcti *rect,
                                          EEVEE_Data *vedata,
-                                         EEVEE_ViewLayerData *UNUSED(sldata))
+                                         EEVEE_ViewLayerData * /*sldata*/)
 {
   eevee_render_color_result(
       rl, viewname, rect, RE_PASSNAME_COMBINED, 4, vedata->stl->effects->final_fb, vedata);
@@ -586,7 +588,7 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     else if ((render_samples % 25) == 0 || (render_samples + 1) == tot_sample) {
       char info[42];
       SNPRINTF(info, "Rendering %u / %u samples", render_samples + 1, tot_sample);
-      RE_engine_update_stats(engine, NULL, info);
+      RE_engine_update_stats(engine, nullptr, info);
     }
 
     /* Copy previous persmat to UBO data */
