@@ -37,7 +37,7 @@ class MeshData : public ObjectData {
   pxr::SdfPath material_id(pxr::SdfPath const &id) const override;
   void available_materials(Set<pxr::SdfPath> &paths) const override;
 
-  pxr::HdMeshTopology mesh_topology(pxr::SdfPath const &id) const;
+  pxr::HdMeshTopology topology(pxr::SdfPath const &id) const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
   pxr::HdCullStyle cull_style(pxr::SdfPath const &id) const;
   bool double_sided(pxr::SdfPath const &id) const;

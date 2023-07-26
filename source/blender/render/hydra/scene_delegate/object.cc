@@ -24,7 +24,6 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
                                                pxr::SdfPath const &prim_id)
 {
   std::unique_ptr<ObjectData> obj_data;
-
   switch (object->type) {
     case OB_MESH:
     case OB_SURF:
@@ -67,6 +66,24 @@ bool ObjectData::is_supported(Object *object)
     case OB_VOLUME:
       return true;
 
+    default:
+      break;
+  }
+  return false;
+}
+
+bool ObjectData::is_mesh(Object *object)
+{
+  switch (object->type) {
+    case OB_MESH:
+    case OB_SURF:
+    case OB_FONT:
+    case OB_CURVES_LEGACY:
+    case OB_MBALL:
+      if (VolumeModifierData::is_volume_modifier(object)) {
+        return false;
+      }
+      return true;
     default:
       break;
   }

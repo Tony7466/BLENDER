@@ -38,7 +38,7 @@ pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MeshData *m_data = mesh_data(id);
-  return m_data->mesh_topology(id);
+  return m_data->topology(id);
 }
 
 pxr::HdBasisCurvesTopology BlenderSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
@@ -53,7 +53,7 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   InstancerData *i_data = instancer_data(id, true);
   if (i_data) {
-    return i_data->get_transform(id);
+    return i_data->transform(id);
   }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
@@ -162,7 +162,7 @@ pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", prim_id.GetText());
   InstancerData *i_data = instancer_data(prim_id, true);
-  if (i_data) {
+  if (i_data && mesh_data(prim_id)) {
     return i_data->prim_id;
   }
   return pxr::SdfPath();
@@ -187,7 +187,7 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
-  return i_data->get_transform(instancer_id);
+  return i_data->transform(instancer_id);
 }
 
 pxr::HdVolumeFieldDescriptorVector BlenderSceneDelegate::GetVolumeFieldDescriptors(
@@ -449,17 +449,21 @@ void BlenderSceneDelegate::update_collection()
               object)
   {
     if (data.dupli_object_current) {
-      instancer_data_->update_instance(data.dupli_parent, data.dupli_object_current);
+      DupliObject *dupli = data.dupli_object_current;
+      if (!ObjectData::is_supported(dupli->ob) ||
+          !ObjectData::is_visible(this, data.dupli_parent, OB_VISIBLE_INSTANCES) ||
+          (!shading_settings.use_scene_lights && object->type == OB_LAMP))
+      {
+        continue;
+      }
+
+      instancer_data_->update_instance(data.dupli_parent, dupli);
       continue;
     }
 
-    if (!ObjectData::is_supported(object)) {
-      continue;
-    }
-    if (!ObjectData::is_visible(this, object)) {
-      continue;
-    }
-    if (!shading_settings.use_scene_lights && object->type == OB_LAMP) {
+    if (!ObjectData::is_supported(object) || !ObjectData::is_visible(this, object) ||
+        (!shading_settings.use_scene_lights && object->type == OB_LAMP))
+    {
       continue;
     }
 

@@ -119,7 +119,7 @@ void MeshData::available_materials(Set<pxr::SdfPath> &paths) const
   }
 }
 
-pxr::HdMeshTopology MeshData::mesh_topology(pxr::SdfPath const &id) const
+pxr::HdMeshTopology MeshData::topology(pxr::SdfPath const &id) const
 {
   const SubMesh &sm = submesh(id);
   return pxr::HdMeshTopology(pxr::PxOsdOpenSubdivTokens->none,
