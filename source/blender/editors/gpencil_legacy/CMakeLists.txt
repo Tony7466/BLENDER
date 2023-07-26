@@ -33,7 +33,7 @@ set(SRC
   gpencil_bake_animation.cc
   gpencil_convert.cc
   gpencil_data.cc
-  gpencil_edit.c
+  gpencil_edit.cc
   gpencil_edit_curve.cc
   gpencil_fill.c
   gpencil_interpolate.c
