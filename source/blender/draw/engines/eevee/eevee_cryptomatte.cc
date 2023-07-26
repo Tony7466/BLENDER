@@ -56,8 +56,8 @@
 
 BLI_INLINE eViewLayerCryptomatteFlags eevee_cryptomatte_active_layers(const ViewLayer *view_layer)
 {
-  const eViewLayerCryptomatteFlags cryptomatte_layers = view_layer->cryptomatte_flag &
-                                                        VIEW_LAYER_CRYPTOMATTE_ALL;
+  const eViewLayerCryptomatteFlags cryptomatte_layers = eViewLayerCryptomatteFlags(
+      view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_ALL);
   return cryptomatte_layers;
 }
 
@@ -125,15 +125,16 @@ void EEVEE_cryptomatte_renderpasses_init(EEVEE_Data *vedata)
     }
     g_data->cryptomatte_session = session;
 
-    g_data->render_passes |= EEVEE_RENDER_PASS_CRYPTOMATTE | EEVEE_RENDER_PASS_VOLUME_LIGHT;
+    g_data->render_passes = eViewLayerEEVEEPassType(
+        g_data->render_passes | EEVEE_RENDER_PASS_CRYPTOMATTE | EEVEE_RENDER_PASS_VOLUME_LIGHT);
     g_data->cryptomatte_accurate_mode = (view_layer->cryptomatte_flag &
                                          VIEW_LAYER_CRYPTOMATTE_ACCURATE) != 0;
   }
 }
 
-void EEVEE_cryptomatte_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_cryptomatte_output_init(EEVEE_ViewLayerData * /*sldata*/,
                                    EEVEE_Data *vedata,
-                                   int UNUSED(tot_samples))
+                                   int /*tot_samples*/)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_TextureList *txl = vedata->txl;
@@ -151,14 +152,14 @@ void EEVEE_cryptomatte_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
   const float *viewport_size = DRW_viewport_size_get();
   const int buffer_size = viewport_size[0] * viewport_size[1];
 
-  if (g_data->cryptomatte_accum_buffer == NULL) {
-    g_data->cryptomatte_accum_buffer = MEM_calloc_arrayN(
-        buffer_size * eevee_cryptomatte_pixel_stride(view_layer),
-        sizeof(EEVEE_CryptomatteSample),
-        __func__);
+  if (g_data->cryptomatte_accum_buffer == nullptr) {
+    g_data->cryptomatte_accum_buffer = static_cast<EEVEE_CryptomatteSample *>(
+        MEM_calloc_arrayN(buffer_size * eevee_cryptomatte_pixel_stride(view_layer),
+                          sizeof(EEVEE_CryptomatteSample),
+                          __func__));
     /* Download buffer should store a float per active cryptomatte layer. */
-    g_data->cryptomatte_download_buffer = MEM_malloc_arrayN(
-        buffer_size * num_cryptomatte_layers, sizeof(float), __func__);
+    g_data->cryptomatte_download_buffer = static_cast<float *>(
+        MEM_malloc_arrayN(buffer_size * num_cryptomatte_layers, sizeof(float), __func__));
   }
   else {
     /* During multiview rendering the `cryptomatte_accum_buffer` is deallocated after all views
@@ -169,7 +170,7 @@ void EEVEE_cryptomatte_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
                sizeof(EEVEE_CryptomatteSample));
   }
 
-  DRW_texture_ensure_fullscreen_2d(&txl->cryptomatte, format, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->cryptomatte, format, DRWTextureFlag(0));
   GPU_framebuffer_ensure_config(&fbl->cryptomatte_fb,
                                 {
                                     GPU_ATTACHMENT_TEXTURE(dtxl->depth),
@@ -183,7 +184,7 @@ void EEVEE_cryptomatte_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
 /** \name Populate Cache
  * \{ */
 
-void EEVEE_cryptomatte_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_cryptomatte_cache_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   if ((vedata->stl->g_data->render_passes & EEVEE_RENDER_PASS_CRYPTOMATTE) != 0) {
@@ -242,7 +243,7 @@ static void eevee_cryptomatte_curves_cache_populate(EEVEE_Data *vedata,
 {
   DRWShadingGroup *grp = eevee_cryptomatte_shading_group_create(
       vedata, sldata, ob, material, true);
-  DRW_shgroup_hair_create_sub(ob, psys, md, grp, NULL);
+  DRW_shgroup_hair_create_sub(ob, psys, md, grp, nullptr);
 }
 
 void EEVEE_cryptomatte_object_curves_cache_populate(EEVEE_Data *vedata,
@@ -253,7 +254,7 @@ void EEVEE_cryptomatte_object_curves_cache_populate(EEVEE_Data *vedata,
   Material *material = BKE_object_material_get_eval(ob, CURVES_MATERIAL_NR);
   DRWShadingGroup *grp = eevee_cryptomatte_shading_group_create(
       vedata, sldata, ob, material, true);
-  DRW_shgroup_curves_create_sub(ob, grp, NULL);
+  DRW_shgroup_curves_create_sub(ob, grp, nullptr);
 }
 
 void EEVEE_cryptomatte_particle_hair_cache_populate(EEVEE_Data *vedata,
@@ -299,7 +300,7 @@ void EEVEE_cryptomatte_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *s
     if (geoms) {
       for (int i = 0; i < materials_len; i++) {
         GPUBatch *geom = geoms[i];
-        if (geom == NULL) {
+        if (geom == nullptr) {
           continue;
         }
         Material *material = BKE_object_material_get_eval(ob, i + 1);
@@ -313,7 +314,7 @@ void EEVEE_cryptomatte_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *s
     GPUBatch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRWShadingGroup *grp = eevee_cryptomatte_shading_group_create(
-          vedata, sldata, ob, NULL, false);
+          vedata, sldata, ob, nullptr, false);
       DRW_shgroup_call(grp, geom, ob);
     }
   }
@@ -387,7 +388,7 @@ static void eevee_cryptomatte_download_buffer(EEVEE_Data *vedata, GPUFrameBuffer
   }
 }
 
-void EEVEE_cryptomatte_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_cryptomatte_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_StorageList *stl = vedata->stl;
@@ -462,8 +463,8 @@ void EEVEE_cryptomatte_update_passes(RenderEngine *engine, Scene *scene, ViewLay
  * beginning of the list. */
 static int eevee_cryptomatte_sample_cmp_reverse(const void *a_, const void *b_)
 {
-  const EEVEE_CryptomatteSample *a = a_;
-  const EEVEE_CryptomatteSample *b = b_;
+  const EEVEE_CryptomatteSample *a = static_cast<const EEVEE_CryptomatteSample *>(a_);
+  const EEVEE_CryptomatteSample *b = static_cast<const EEVEE_CryptomatteSample *>(b_);
   if (a->weight < b->weight) {
     return 1;
   }
@@ -491,10 +492,10 @@ static void eevee_cryptomatte_postprocess_weights(EEVEE_Data *vedata)
 
   EEVEE_CryptomatteSample *accum_buffer = g_data->cryptomatte_accum_buffer;
   BLI_assert(accum_buffer);
-  float *volumetric_transmittance_buffer = NULL;
+  float *volumetric_transmittance_buffer = nullptr;
   if ((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) {
-    volumetric_transmittance_buffer = GPU_texture_read(
-        txl->volume_transmittance_accum, GPU_DATA_FLOAT, 0);
+    volumetric_transmittance_buffer = static_cast<float *>(
+        GPU_texture_read(txl->volume_transmittance_accum, GPU_DATA_FLOAT, 0));
   }
   const int num_samples = effects->taa_current_sample - 1;
 
@@ -505,7 +506,7 @@ static void eevee_cryptomatte_postprocess_weights(EEVEE_Data *vedata)
        pixel_index++, accum_pixel_index += accum_pixel_stride)
   {
     float coverage = 1.0f;
-    if (volumetric_transmittance_buffer != NULL) {
+    if (volumetric_transmittance_buffer != nullptr) {
       coverage = (volumetric_transmittance_buffer[pixel_index * 4] +
                   volumetric_transmittance_buffer[pixel_index * 4 + 1] +
                   volumetric_transmittance_buffer[pixel_index * 4 + 2]) /
@@ -612,13 +613,13 @@ void EEVEE_cryptomatte_render_result(RenderLayer *rl,
                                      const char *viewname,
                                      const rcti *rect,
                                      EEVEE_Data *vedata,
-                                     EEVEE_ViewLayerData *UNUSED(sldata))
+                                     EEVEE_ViewLayerData * /*sldata*/)
 {
   EEVEE_PrivateData *g_data = vedata->stl->g_data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const ViewLayer *view_layer = draw_ctx->view_layer;
-  const eViewLayerCryptomatteFlags cryptomatte_layers = view_layer->cryptomatte_flag &
-                                                        VIEW_LAYER_CRYPTOMATTE_ALL;
+  const eViewLayerCryptomatteFlags cryptomatte_layers = eViewLayerCryptomatteFlags(
+      view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_ALL);
 
   eevee_cryptomatte_postprocess_weights(vedata);
 
@@ -708,6 +709,6 @@ void EEVEE_cryptomatte_free(EEVEE_Data *vedata)
   MEM_SAFE_FREE(g_data->cryptomatte_download_buffer);
   if (g_data->cryptomatte_session) {
     BKE_cryptomatte_free(g_data->cryptomatte_session);
-    g_data->cryptomatte_session = NULL;
+    g_data->cryptomatte_session = nullptr;
   }
 }
