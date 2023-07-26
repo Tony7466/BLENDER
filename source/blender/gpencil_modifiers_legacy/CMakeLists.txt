@@ -47,7 +47,7 @@ set(SRC
   intern/MOD_gpencil_legacy_simplify.cc
   intern/MOD_gpencil_legacy_smooth.cc
   intern/MOD_gpencil_legacy_subdiv.cc
-  intern/MOD_gpencil_legacy_texture.c
+  intern/MOD_gpencil_legacy_texture.cc
   intern/MOD_gpencil_legacy_thick.c
   intern/MOD_gpencil_legacy_time.c
   intern/MOD_gpencil_legacy_tint.c
