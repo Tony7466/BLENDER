@@ -63,12 +63,12 @@ static void workbench_shadow_update(WORKBENCH_PrivateData *wpd)
   }
 
   float planes[6][4];
-  DRW_culling_frustum_planes_get(NULL, planes);
+  DRW_culling_frustum_planes_get(nullptr, planes);
   /* we only need the far plane. */
   copy_v4_v4(wpd->shadow_far_plane, planes[2]);
 
   BoundBox frustum_corners;
-  DRW_culling_frustum_corners_get(NULL, &frustum_corners);
+  DRW_culling_frustum_corners_get(nullptr, &frustum_corners);
 
   float shadow_near_corners[4][3];
   mul_v3_mat3_m4v3(shadow_near_corners[0], wpd->shadow_inv, frustum_corners.vec[0]);
@@ -97,7 +97,7 @@ void workbench_shadow_data_update(WORKBENCH_PrivateData *wpd, WORKBENCH_UBO_Worl
   const Scene *scene = draw_ctx->scene;
 
   float view_matrix[4][4];
-  DRW_view_viewmat_get(NULL, view_matrix, false);
+  DRW_view_viewmat_get(nullptr, view_matrix, false);
 
   /* Turn the light in a way where it's more user friendly to control. */
   copy_v3_v3(wpd->shadow_direction_ws, scene->display.light_direction);
@@ -162,8 +162,8 @@ void workbench_shadow_cache_init(WORKBENCH_Data *data)
     }
   }
   else {
-    psl->shadow_ps[0] = NULL;
-    psl->shadow_ps[1] = NULL;
+    psl->shadow_ps[0] = nullptr;
+    psl->shadow_ps[1] = nullptr;
   }
 }
 
@@ -298,7 +298,7 @@ void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const boo
 
   bool is_manifold;
   struct GPUBatch *geom_shadow = DRW_cache_object_edge_detection_get(ob, &is_manifold);
-  if (geom_shadow == NULL) {
+  if (geom_shadow == nullptr) {
     return;
   }
 
@@ -307,7 +307,7 @@ void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const boo
       &draw_engine_workbench,
       sizeof(WORKBENCH_ObjectData),
       &workbench_init_object_data,
-      NULL);
+      nullptr);
 
   if (workbench_shadow_object_cast_visible_shadow(wpd, ob, engine_object_data)) {
     mul_v3_mat3_m4v3(
@@ -333,7 +333,7 @@ void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const boo
       DRW_shgroup_uniform_float_copy(grp, "lightDistance", 1e5f);
       DRW_shgroup_call_no_cull(grp, geom_shadow, ob);
 #if DEBUG_SHADOW_VOLUME
-      DRW_debug_bbox(&engine_object_data->shadow_bbox, (float[4]){1.0f, 0.0f, 0.0f, 1.0f});
+      DRW_debug_bbox(&engine_object_data->shadow_bbox, blender::float4{1.0f, 0.0f, 0.0f, 1.0f});
 #endif
     }
     else {
@@ -354,7 +354,7 @@ void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const boo
       DRW_shgroup_uniform_float_copy(grp, "lightDistance", extrude_distance);
       DRW_shgroup_call_no_cull(grp, geom_shadow, ob);
 #if DEBUG_SHADOW_VOLUME
-      DRW_debug_bbox(&engine_object_data->shadow_bbox, (float[4]){0.0f, 1.0f, 0.0f, 1.0f});
+      DRW_debug_bbox(&engine_object_data->shadow_bbox, blender::float4{0.0f, 1.0f, 0.0f, 1.0f});
 #endif
     }
   }

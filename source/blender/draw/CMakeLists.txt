@@ -180,8 +180,8 @@ set(SRC
   engines/workbench/workbench_resources.cc
   engines/workbench/workbench_shader.cc
   engines/workbench/workbench_shader_cache.cc
-  engines/workbench/workbench_shadow.c
   engines/workbench/workbench_shadow.cc
+  engines/workbench/workbench_shadow_c.cc
   engines/workbench/workbench_state.cc
   engines/workbench/workbench_transparent.c
   engines/workbench/workbench_volume.c
