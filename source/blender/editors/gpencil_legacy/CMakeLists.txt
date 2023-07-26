@@ -49,7 +49,7 @@ set(SRC
   gpencil_utils.cc
   gpencil_uv.cc
   gpencil_vertex_ops.cc
-  gpencil_vertex_paint.c
+  gpencil_vertex_paint.cc
   gpencil_weight_paint.c
 
   gpencil_intern.h
