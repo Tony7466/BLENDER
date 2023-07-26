@@ -345,10 +345,10 @@ void EEVEE_effects_draw_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedat
 }
 
 #if 0 /* Not required for now */
-static void min_downsample_cb(void *vedata, int  /*level*/)
+static void min_downsample_cb(void *vedata, int /*level*/)
 {
-EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
-DRW_draw_pass(psl->minz_downlevel_ps);
+  EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
+  DRW_draw_pass(psl->minz_downlevel_ps);
 }
 #endif
 
