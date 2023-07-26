@@ -1177,8 +1177,8 @@ int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/
 
 static void wm_operator_block_cancel(bContext *C, void *arg_op, void *arg_block)
 {
-  wmOperator *op = arg_op;
-  uiBlock *block = arg_block;
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
   UI_popup_block_close(C, CTX_wm_window(C), block);
   WM_redraw_windows(C);
   if (op) {
@@ -1191,8 +1191,8 @@ static void wm_operator_block_cancel(bContext *C, void *arg_op, void *arg_block)
 
 static void wm_operator_block_confirm(bContext *C, void *arg_op, void *arg_block)
 {
-  wmOperator *op = arg_op;
-  uiBlock *block = arg_block;
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
   UI_popup_block_close(C, CTX_wm_window(C), block);
   WM_redraw_windows(C);
   if (op) {
@@ -1202,7 +1202,7 @@ static void wm_operator_block_confirm(bContext *C, void *arg_op, void *arg_block
 
 static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_op)
 {
-  wmOperator *op = arg_op;
+  wmOperator *op = static_cast<wmOperator *>(arg_op);
 
   wmWarningDetails warning = {0};
 
@@ -1239,10 +1239,24 @@ static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_
   UI_block_flag_enable(block, block_flags);
 
   const uiStyle *style = UI_style_get_dpi();
-  int text_width = MAX3(
+  int text_width = MAX2(
       120 * UI_SCALE_FAC,
-      BLF_width(style->widget.uifont_id, warning.title, ARRAY_SIZE(warning.title)),
-      BLF_width(style->widget.uifont_id, warning.message, ARRAY_SIZE(warning.message)));
+      BLF_width(style->widget.uifont_id, warning.title, ARRAY_SIZE(warning.title)));
+  if (warning.message[0]) {
+    text_width = MAX2(
+        text_width,
+        BLF_width(style->widget.uifont_id, warning.message, ARRAY_SIZE(warning.message)));
+  }
+  if (warning.message2[0]) {
+    text_width = MAX2(
+        text_width,
+        BLF_width(style->widget.uifont_id, warning.message2, ARRAY_SIZE(warning.message2)));
+  }
+  if (warning.link_text[0]) {
+    text_width = MAX2(
+        text_width,
+        BLF_width(style->widget.uifont_id, warning.link_text, ARRAY_SIZE(warning.link_text)));
+  }
 
   const bool small = warning.size == WM_WARNING_SIZE_SMALL;
   const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
@@ -1273,6 +1287,13 @@ static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_
   }
   if (warning.message[0]) {
     uiItemL(layout, warning.message, ICON_NONE);
+  }
+  if (warning.message2[0]) {
+    uiItemL(layout, warning.message2, ICON_NONE);
+  }
+
+  if (warning.link_target[0] && warning.link_text[0]) {
+    uiItemL(layout, warning.link_text, ICON_NONE);
   }
 
   uiItemS_ex(layout, small ? 0.5f : 4.0f);
@@ -1326,9 +1347,10 @@ static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_
   }
 
   if (warning.position == WM_WARNING_POSITION_MOUSE) {
-    int x = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
-    int y = UI_UNIT_Y * (warning.message[0] ? 3.1 : 2.5);
-    UI_block_bounds_set_popup(block, padding, (const int[2]){x, y});
+    int bounds_offset[2];
+    bounds_offset[0] = uiLayoutGetWidth(layout) * (windows_layout ? -0.33f : -0.66f);
+    bounds_offset[1] = UI_UNIT_Y * (warning.message[0] ? 3.1 : 2.5);
+    UI_block_bounds_set_popup(block, padding, bounds_offset);
   }
   else if (warning.position == WM_WARNING_POSITION_CENTER) {
     UI_block_bounds_set_centered(block, padding);

@@ -930,6 +930,9 @@ typedef enum wmWarningPosition {
 typedef struct wmWarningDetails {
   char title[1024];
   char message[1024];
+  char message2[1024];
+  char link_target[1024];
+  char link_text[1024];
   char confirm_button[256];
   char cancel_button[256];
   int icon;
