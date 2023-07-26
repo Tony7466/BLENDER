@@ -100,7 +100,7 @@ void color3ubv_from_seq(const Scene *curscene,
   Editing *ed = SEQ_editing_get(curscene);
   ListBase *channels = SEQ_channels_displayed_get(ed);
 
-  if (show_strip_color_tag && (uint)seq->color_tag < SEQUENCE_COLOR_TOT &&
+  if (show_strip_color_tag && uint(seq->color_tag) < SEQUENCE_COLOR_TOT &&
       seq->color_tag != SEQUENCE_COLOR_NONE)
   {
     bTheme *btheme = UI_GetTheme();
@@ -1478,7 +1478,7 @@ void sequencer_special_update_set(Sequence *seq)
   special_seq_update = seq;
 }
 
-Sequence *ED_sequencer_special_preview_get(void)
+Sequence *ED_sequencer_special_preview_get()
 {
   return special_seq_update;
 }
@@ -1493,7 +1493,7 @@ void ED_sequencer_special_preview_set(bContext *C, const int mval[2])
   sequencer_special_update_set(seq);
 }
 
-void ED_sequencer_special_preview_clear(void)
+void ED_sequencer_special_preview_clear()
 {
   sequencer_special_update_set(nullptr);
 }
@@ -1632,7 +1632,7 @@ static void sequencer_draw_gpencil_overlay(const bContext *C)
   UI_view2d_view_restore(C);
 
   /* Draw grease-pencil (screen aligned). */
-  ED_annotation_draw_view2d(C, 0);
+  ED_annotation_draw_view2d(C, false);
 }
 
 /**
@@ -1701,7 +1701,7 @@ void sequencer_draw_maskedit(const bContext *C, Scene *scene, ARegion *region, S
       float aspx = 1.0f, aspy = 1.0f;
       // ED_mask_get_size(C, &width, &height);
 
-      //Scene *scene = CTX_data_scene(C);
+      // Scene *scene = CTX_data_scene(C);
       BKE_render_resolution(&scene->r, false, &width, &height);
 
       ED_mask_draw_region(mask,
@@ -1769,9 +1769,9 @@ static void *sequencer_OCIO_transform_ibuf(const bContext *C,
       display_buffer = nullptr;
     }
 
-    if (ibuf->float_colorspace) {
+    if (ibuf->float_buffer.colorspace) {
       *r_glsl_used = IMB_colormanagement_setup_glsl_draw_from_space_ctx(
-          C, ibuf->float_colorspace, ibuf->dither, true);
+          C, ibuf->float_buffer.colorspace, ibuf->dither, true);
     }
     else {
       *r_glsl_used = IMB_colormanagement_setup_glsl_draw_ctx(C, ibuf->dither, true);
@@ -1781,7 +1781,7 @@ static void *sequencer_OCIO_transform_ibuf(const bContext *C,
     display_buffer = ibuf->byte_buffer.data;
 
     *r_glsl_used = IMB_colormanagement_setup_glsl_draw_from_space_ctx(
-        C, ibuf->rect_colorspace, ibuf->dither, false);
+        C, ibuf->byte_buffer.colorspace, ibuf->dither, false);
   }
   else {
     display_buffer = nullptr;
@@ -1811,7 +1811,7 @@ static void sequencer_stop_running_jobs(const bContext *C, Scene *scene)
   }
 }
 
-static void sequencer_preview_clear(void)
+static void sequencer_preview_clear()
 {
   UI_ThemeClearColor(TH_SEQ_PREVIEW);
 }
@@ -2729,7 +2729,7 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
 
   UI_view2d_view_ortho(v2d);
 
-  UI_view2d_view_orthoSpecial(region, v2d, 1);
+  UI_view2d_view_orthoSpecial(region, v2d, true);
   int marker_draw_flag = DRAW_MARKERS_MARGIN;
   if (sseq->flag & SEQ_SHOW_MARKERS) {
     ED_markers_draw(C, marker_draw_flag);

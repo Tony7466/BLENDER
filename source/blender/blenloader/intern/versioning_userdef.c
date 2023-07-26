@@ -14,6 +14,7 @@
 #include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -61,7 +62,7 @@
 static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 {
 
-#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(userdef, ver, subver)
+#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_FILE_ATLEAST(userdef, ver, subver)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
   if (!USER_VERSION_ATLEAST(300, 41)) {
@@ -115,6 +116,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -205,7 +207,7 @@ static bool keymap_item_update_tweak_event(wmKeyMapItem *kmi, void *UNUSED(user_
 void blo_do_versions_userdef(UserDef *userdef)
 {
   /* #UserDef & #Main happen to have the same struct member. */
-#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_ATLEAST(userdef, ver, subver)
+#define USER_VERSION_ATLEAST(ver, subver) MAIN_VERSION_FILE_ATLEAST(userdef, ver, subver)
 
   /* the UserDef struct is not corrected with do_versions() .... ugh! */
   if (userdef->menuthreshold1 == 0) {
@@ -708,10 +710,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     };
     const int replace_table_len = ARRAY_SIZE(replace_table);
 
-    BLI_str_replace_table_exact(
+    BLI_string_replace_table_exact(
         userdef->keyconfigstr, sizeof(userdef->keyconfigstr), replace_table, replace_table_len);
     LISTBASE_FOREACH (wmKeyConfigPref *, kpt, &userdef->user_keyconfig_prefs) {
-      BLI_str_replace_table_exact(
+      BLI_string_replace_table_exact(
           kpt->idname, sizeof(kpt->idname), replace_table, replace_table_len);
     }
   }
@@ -843,6 +845,13 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+#ifdef __APPLE__
+    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
+    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
+      userdef->gpu_backend = GPU_BACKEND_METAL;
+    }
+#endif
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

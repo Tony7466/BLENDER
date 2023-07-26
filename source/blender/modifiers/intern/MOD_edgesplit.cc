@@ -74,7 +74,7 @@ Mesh *doEdgeSplit(const Mesh *mesh, EdgeSplitModifierData *emd)
       if ((l1 = e->l) && (l2 = e->l->radial_next) != l1) {
         if (/* 3+ faces on this edge, always split */
             UNLIKELY(l1 != l2->radial_next) ||
-            /* O° angle setting, we want to split on all edges. */
+            /* O degree angle setting, we want to split on all edges. */
             do_split_all ||
             /* 2 face edge - check angle. */
             (dot_v3v3(l1->f->no, l2->f->no) < threshold))
@@ -156,6 +156,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_EdgeSplit = {
+    /*idname*/ "EdgeSplit",
     /*name*/ N_("EdgeSplit"),
     /*structName*/ "EdgeSplitModifierData",
     /*structSize*/ sizeof(EdgeSplitModifierData),

@@ -13,6 +13,7 @@
 #include "BKE_object.h"
 #include "BKE_texture.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
 
@@ -312,6 +313,7 @@ static void modifyGeometrySet(ModifierData *md,
 }
 
 ModifierTypeInfo modifierType_VolumeDisplace = {
+    /*idname*/ "Volume Displace",
     /*name*/ N_("Volume Displace"),
     /*structName*/ "VolumeDisplaceModifierData",
     /*structSize*/ sizeof(VolumeDisplaceModifierData),

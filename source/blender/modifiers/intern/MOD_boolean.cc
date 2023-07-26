@@ -125,14 +125,14 @@ static Mesh *get_quick_mesh(
 {
   Mesh *result = nullptr;
 
-  if (mesh_self->totpoly == 0 || mesh_operand_ob->totpoly == 0) {
+  if (mesh_self->faces_num == 0 || mesh_operand_ob->faces_num == 0) {
     switch (operation) {
       case eBooleanModifierOp_Intersect:
         result = BKE_mesh_new_nomain(0, 0, 0, 0);
         break;
 
       case eBooleanModifierOp_Union:
-        if (mesh_self->totpoly != 0) {
+        if (mesh_self->faces_num != 0) {
           result = mesh_self;
         }
         else {
@@ -279,8 +279,8 @@ static void BMD_mesh_intersection(BMesh *bm,
 
   BooleanModifierData *bmd = (BooleanModifierData *)md;
 
-  /* main bmesh intersection setup */
-  /* create tessface & intersect */
+  /* Main BMesh intersection setup. */
+  /* Create tessellation & intersect. */
   const int looptris_tot = poly_to_tri_count(bm->totface, bm->totloop);
   BMLoop *(*looptris)[3] = (BMLoop * (*)[3])
       MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
@@ -293,7 +293,7 @@ static void BMD_mesh_intersection(BMesh *bm,
     BMIter iter;
     int i;
     const int i_verts_end = mesh_operand_ob->totvert;
-    const int i_faces_end = mesh_operand_ob->totpoly;
+    const int i_faces_end = mesh_operand_ob->faces_num;
 
     float imat[4][4];
     float omat[4][4];
@@ -664,6 +664,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Boolean = {
+    /*idname*/ "Boolean",
     /*name*/ N_("Boolean"),
     /*structName*/ "BooleanModifierData",
     /*structSize*/ sizeof(BooleanModifierData),

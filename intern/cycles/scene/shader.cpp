@@ -103,7 +103,6 @@ Shader::Shader() : Node(get_node_type())
   has_surface_spatial_varying = false;
   has_volume_spatial_varying = false;
   has_volume_attribute_dependency = false;
-  has_integrator_dependency = false;
   has_volume_connected = false;
   prev_volume_step_rate = 0.0f;
 
@@ -575,6 +574,7 @@ void ShaderManager::device_update_common(Device * /*device*/,
   ktables->ggx_glass_Eavg = ensure_bsdf_table(dscene, scene, table_ggx_glass_Eavg);
   ktables->ggx_glass_inv_E = ensure_bsdf_table(dscene, scene, table_ggx_glass_inv_E);
   ktables->ggx_glass_inv_Eavg = ensure_bsdf_table(dscene, scene, table_ggx_glass_inv_Eavg);
+  ktables->sheen_ltc = ensure_bsdf_table(dscene, scene, table_sheen_ltc);
 
   /* integrator */
   KernelIntegrator *kintegrator = &dscene->data.integrator;

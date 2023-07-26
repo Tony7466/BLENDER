@@ -113,7 +113,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   BKE_object_eval_reset(ob_eval);
   if (ob->type == OB_MESH) {
-    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+    Mesh *me_eval = mesh_create_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_DERIVEDMESH);
     BKE_mesh_eval_delete(me_eval);
   }
   else if (ob->type == OB_LATTICE) {
@@ -654,10 +654,10 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
   me->totvert = verts_num;
   me->totedge = edges_num;
 
-  CustomData_add_layer_named(&me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, verts_num, "position");
+  CustomData_add_layer_named(&me->vert_data, CD_PROP_FLOAT3, CD_CONSTRUCT, verts_num, "position");
   CustomData_add_layer_named(
-      &me->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, me->totedge, ".edge_verts");
-  CustomData_add_layer(&me->fdata, CD_MFACE, CD_SET_DEFAULT, 0);
+      &me->edge_data, CD_PROP_INT32_2D, CD_CONSTRUCT, me->totedge, ".edge_verts");
+  CustomData_add_layer(&me->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, 0);
 
   blender::MutableSpan<float3> positions = me->vert_positions_for_write();
   blender::MutableSpan<int2> edges = me->edges_for_write();
@@ -734,10 +734,10 @@ static void add_shapekey_layers(Mesh &mesh_dest, const Mesh &mesh_src)
     }
 
     CustomData_add_layer_named_with_data(
-        &mesh_dest.vdata, CD_SHAPEKEY, array, mesh_dest.totvert, kb->name, nullptr);
-    const int ci = CustomData_get_layer_index_n(&mesh_dest.vdata, CD_SHAPEKEY, i);
+        &mesh_dest.vert_data, CD_SHAPEKEY, array, mesh_dest.totvert, kb->name, nullptr);
+    const int ci = CustomData_get_layer_index_n(&mesh_dest.vert_data, CD_SHAPEKEY, i);
 
-    mesh_dest.vdata.layers[ci].uid = kb->uid;
+    mesh_dest.vert_data.layers[ci].uid = kb->uid;
   }
 }
 
@@ -1066,9 +1066,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    bke::GeometrySet geometry_set;
-    geometry_set.get_component_for_write<bke::CurveComponent>().replace(
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
         &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1079,10 +1077,9 @@ static bool modifier_apply_obdata(
     }
     Curves &curves_eval = *geometry_set.get_curves_for_write();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     curves_eval.geometry.wrap().attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     curves.geometry.wrap() = std::move(curves_eval.geometry.wrap());
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &curves_eval.id);
@@ -1094,9 +1091,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    /* Create a temporary geometry set and component. */
-    bke::GeometrySet geometry_set;
-    geometry_set.get_component_for_write<bke::PointCloudComponent>().replace(
+    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
         &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1109,10 +1104,9 @@ static bool modifier_apply_obdata(
     PointCloud *pointcloud_eval =
         geometry_set.get_component_for_write<bke::PointCloudComponent>().release();
 
-    /* Anonymous attributes shouldn't be available on the applied geometry. */
+    /* Anonymous attributes shouldn't be available on original geometry. */
     pointcloud_eval->attributes_for_write().remove_anonymous();
 
-    /* Copy the relevant information to the original. */
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &pointcloud_eval->id);
     BKE_pointcloud_nomain_to_pointcloud(pointcloud_eval, &points);
@@ -2429,7 +2423,7 @@ static int multires_external_save_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (CustomData_external_test(&me->ldata, CD_MDISPS)) {
+  if (CustomData_external_test(&me->loop_data, CD_MDISPS)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -2439,8 +2433,8 @@ static int multires_external_save_exec(bContext *C, wmOperator *op)
     BLI_path_rel(filepath, BKE_main_blendfile_path(bmain));
   }
 
-  CustomData_external_add(&me->ldata, &me->id, CD_MDISPS, me->totloop, filepath);
-  CustomData_external_write(&me->ldata, &me->id, CD_MASK_MESH.lmask, me->totloop, 0);
+  CustomData_external_add(&me->loop_data, &me->id, CD_MDISPS, me->totloop, filepath);
+  CustomData_external_write(&me->loop_data, &me->id, CD_MASK_MESH.lmask, me->totloop, 0);
 
   return OPERATOR_FINISHED;
 }
@@ -2462,7 +2456,7 @@ static int multires_external_save_invoke(bContext *C, wmOperator *op, const wmEv
     return OPERATOR_CANCELLED;
   }
 
-  if (CustomData_external_test(&me->ldata, CD_MDISPS)) {
+  if (CustomData_external_test(&me->loop_data, CD_MDISPS)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -2515,12 +2509,12 @@ static int multires_external_pack_exec(bContext *C, wmOperator * /*op*/)
   Object *ob = ED_object_active_context(C);
   Mesh *me = static_cast<Mesh *>(ob->data);
 
-  if (!CustomData_external_test(&me->ldata, CD_MDISPS)) {
+  if (!CustomData_external_test(&me->loop_data, CD_MDISPS)) {
     return OPERATOR_CANCELLED;
   }
 
   /* XXX don't remove. */
-  CustomData_external_remove(&me->ldata, &me->id, CD_MDISPS, me->totloop);
+  CustomData_external_remove(&me->loop_data, &me->id, CD_MDISPS, me->totloop);
 
   return OPERATOR_FINISHED;
 }
@@ -2712,7 +2706,7 @@ static void modifier_skin_customdata_delete(Object *ob)
     BM_data_layer_free(em->bm, &em->bm->vdata, CD_MVERT_SKIN);
   }
   else {
-    CustomData_free_layer_active(&me->vdata, CD_MVERT_SKIN, me->totvert);
+    CustomData_free_layer_active(&me->vert_data, CD_MVERT_SKIN, me->totvert);
   }
 }
 
@@ -2956,7 +2950,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   const Span<float3> positions_eval = me_eval_deform->vert_positions();
 
   /* add vertex weights to original mesh */
-  CustomData_add_layer(&me->vdata, CD_MDEFORMVERT, CD_SET_DEFAULT, me->totvert);
+  CustomData_add_layer(&me->vert_data, CD_MDEFORMVERT, CD_SET_DEFAULT, me->totvert);
 
   Scene *scene = DEG_get_input_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
@@ -2969,7 +2963,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   arm->edbo = MEM_cnew<ListBase>("edbo armature");
 
   MVertSkin *mvert_skin = static_cast<MVertSkin *>(
-      CustomData_get_layer_for_write(&me->vdata, CD_MVERT_SKIN, me->totvert));
+      CustomData_get_layer_for_write(&me->vert_data, CD_MVERT_SKIN, me->totvert));
 
   blender::Array<int> vert_to_edge_offsets;
   blender::Array<int> vert_to_edge_indices;
@@ -3020,7 +3014,7 @@ static int skin_armature_create_exec(bContext *C, wmOperator *op)
   Mesh *me = static_cast<Mesh *>(ob->data);
   ModifierData *skin_md;
 
-  if (!CustomData_has_layer(&me->vdata, CD_MVERT_SKIN)) {
+  if (!CustomData_has_layer(&me->vert_data, CD_MVERT_SKIN)) {
     BKE_reportf(op->reports, RPT_WARNING, "Mesh '%s' has no skin vertex data", me->id.name + 2);
     return OPERATOR_CANCELLED;
   }

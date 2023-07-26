@@ -154,6 +154,10 @@ typedef struct ModifierEvalContext {
 } ModifierEvalContext;
 
 typedef struct ModifierTypeInfo {
+  /* A unique identifier for this modifier. Used to generate the panel id type name.
+   * See #BKE_modifier_type_panel_id. */
+  char idname[32];
+
   /* The user visible name for this modifier */
   char name[32];
 
@@ -187,10 +191,9 @@ typedef struct ModifierTypeInfo {
   /********************* Deform modifier functions *********************/
 
   /**
-   * Only for deform types, should apply the deformation
-   * to the given vertex array. If the deformer requires information from
-   * the object it can obtain it from the mesh argument if non-NULL,
-   * and otherwise the ob argument.
+   * Apply a deformation to the positions in the \a vertexCos array. If the \a mesh argument is
+   * non-null, if will contain proper (not wrapped) mesh data. The \a vertexCos array may or may
+   * not be the same as the mesh's position attribute.
    */
   void (*deformVerts)(struct ModifierData *md,
                       const struct ModifierEvalContext *ctx,
@@ -208,7 +211,8 @@ typedef struct ModifierTypeInfo {
                          float (*defMats)[3][3],
                          int numVerts);
   /**
-   * Like deformVerts but called during editmode (for supporting modifiers)
+   * Like deformVerts but called during edit-mode if supported. The \a mesh argument might be a
+   * wrapper around edit BMesh data.
    */
   void (*deformVertsEM)(struct ModifierData *md,
                         const struct ModifierEvalContext *ctx,
@@ -386,7 +390,7 @@ typedef struct ModifierTypeInfo {
   void (*blendRead)(struct BlendDataReader *reader, struct ModifierData *md);
 } ModifierTypeInfo;
 
-/* Used to find a modifier's panel type. */
+/* Used to set a modifier's panel type. */
 #define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
 /* Initialize modifier's global data (type info and some common global storage). */

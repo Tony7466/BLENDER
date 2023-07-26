@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -1341,7 +1341,7 @@ static void mask_calc_point_handle(MaskSplinePoint *point,
 
 #if 1
   if (bezt_prev || bezt_next) {
-    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, 0, 0);
+    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, false, 0);
   }
 #else
   if (handle_type == HD_VECT) {
@@ -2004,7 +2004,7 @@ static void mask_clipboard_free_ex(bool final_free)
   }
 }
 
-void BKE_mask_clipboard_free(void)
+void BKE_mask_clipboard_free()
 {
   mask_clipboard_free_ex(true);
 }
@@ -2041,7 +2041,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
   }
 }
 
-bool BKE_mask_clipboard_is_empty(void)
+bool BKE_mask_clipboard_is_empty()
 {
   return BLI_listbase_is_empty(&mask_clipboard.splines);
 }

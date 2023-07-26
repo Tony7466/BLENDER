@@ -15,18 +15,21 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
-#include "BLI_hash.hh"
-#include "usd_hash_types.h"
-
+#include "BLI_math.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 
+#include "usd_hash_types.h"
+
 #include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include "WM_api.h"
 
@@ -36,6 +39,7 @@
 #include <pxr/base/vt/types.h>
 #include <pxr/base/vt/value.h>
 #include <pxr/usd/sdf/types.h>
+#include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
@@ -296,13 +300,13 @@ bool USDMeshReader::topology_changed(const Mesh *existing_mesh, const double mot
   }
 
   return positions_.size() != existing_mesh->totvert ||
-         face_counts_.size() != existing_mesh->totpoly ||
+         face_counts_.size() != existing_mesh->faces_num ||
          face_indices_.size() != existing_mesh->totloop;
 }
 
 void USDMeshReader::read_mpolys(Mesh *mesh)
 {
-  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   int loop_index = 0;
@@ -310,7 +314,7 @@ void USDMeshReader::read_mpolys(Mesh *mesh)
   for (int i = 0; i < face_counts_.size(); i++) {
     const int face_size = face_counts_[i];
 
-    poly_offsets[i] = loop_index;
+    face_offsets[i] = loop_index;
 
     /* Polygons are always assumed to be smooth-shaded. If the mesh should be flat-shaded,
      * this is encoded in custom loop normals. */
@@ -377,7 +381,7 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
       (interp == pxr::UsdGeomTokens->varying && usd_colors.size() != mesh->totloop) ||
       (interp == pxr::UsdGeomTokens->vertex && usd_colors.size() != mesh->totvert) ||
       (interp == pxr::UsdGeomTokens->constant && usd_colors.size() != 1) ||
-      (interp == pxr::UsdGeomTokens->uniform && usd_colors.size() != mesh->totpoly))
+      (interp == pxr::UsdGeomTokens->uniform && usd_colors.size() != mesh->faces_num))
   {
     WM_reportf(RPT_WARNING,
                "USD Import: color attribute value '%s' count inconsistent with interpolation type",
@@ -442,12 +446,12 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     }
 
     else {
-      const OffsetIndices polys = mesh->polys();
+      const OffsetIndices faces = mesh->faces();
       const Span<int> corner_verts = mesh->corner_verts();
-      for (const int i : polys.index_range()) {
-        const IndexRange &poly = polys[i];
-        for (int j = 0; j < poly.size(); ++j) {
-          int loop_index = poly[j];
+      for (const int i : faces.index_range()) {
+        const IndexRange &face = faces[i];
+        for (int j = 0; j < face.size(); ++j) {
+          int loop_index = face[j];
 
           /* Default for constant varying interpolation. */
           int usd_index = 0;
@@ -456,16 +460,16 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
             usd_index = corner_verts[loop_index];
           }
           else if (interp == pxr::UsdGeomTokens->faceVarying) {
-            usd_index = poly.start();
+            usd_index = face.start();
             if (is_left_handed_) {
-              usd_index += poly.size() - 1 - j;
+              usd_index += face.size() - 1 - j;
             }
             else {
               usd_index += j;
             }
           }
           else if (interp == pxr::UsdGeomTokens->uniform) {
-            /* Uniform varying uses the poly index. */
+            /* Uniform varying uses the face index. */
             usd_index = i;
           }
 
@@ -765,15 +769,15 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh)
   float(*lnors)[3] = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(loop_count, sizeof(float[3]), "USD::FaceNormals"));
 
-  const OffsetIndices polys = mesh->polys();
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    for (int j = 0; j < poly.size(); j++) {
-      int blender_index = poly.start() + j;
+  const OffsetIndices faces = mesh->faces();
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    for (int j = 0; j < face.size(); j++) {
+      int blender_index = face.start() + j;
 
-      int usd_index = poly.start();
+      int usd_index = face.start();
       if (is_left_handed_) {
-        usd_index += poly.size() - 1 - j;
+        usd_index += face.size() - 1 - j;
       }
       else {
         usd_index += j;
@@ -796,7 +800,7 @@ void USDMeshReader::process_normals_uniform(Mesh *mesh)
   }
 
   /* Check for normals count mismatches to prevent crashes. */
-  if (normals_.size() != mesh->totpoly) {
+  if (normals_.size() != mesh->faces_num) {
     std::cerr << "WARNING: uniform normal count mismatch for mesh " << mesh->id.name << std::endl;
     return;
   }
@@ -804,9 +808,9 @@ void USDMeshReader::process_normals_uniform(Mesh *mesh)
   float(*lnors)[3] = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(mesh->totloop, sizeof(float[3]), "USD::FaceNormals"));
 
-  const OffsetIndices polys = mesh->polys();
-  for (const int i : polys.index_range()) {
-    for (const int corner : polys[i]) {
+  const OffsetIndices faces = mesh->faces();
+  for (const int i : faces.index_range()) {
+    for (const int corner : faces[i]) {
       lnors[corner][0] = normals_[i][0];
       lnors[corner][1] = normals_[i][1];
       lnors[corner][2] = normals_[i][2];
@@ -824,7 +828,7 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
                                      const double motionSampleTime,
                                      const bool new_mesh)
 {
-  /* Note that for new meshes we always want to read verts and polys,
+  /* Note that for new meshes we always want to read verts and faces,
    * regardless of the value of the read_flag, to avoid a crash downstream
    * in code that expect this data to be there. */
 
@@ -848,7 +852,7 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
     }
   }
 
-  /* Process point normals after reading polys. */
+  /* Process point normals after reading faces. */
   if ((settings->read_flag & MOD_MESHSEQ_READ_VERT) != 0 &&
       normal_interpolation_ == pxr::UsdGeomTokens->vertex)
   {
@@ -1098,7 +1102,7 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
     /* Here we assume that the number of materials doesn't change, i.e. that
      * the material slots that were created when the object was loaded from
      * USD are still valid now. */
-    if (active_mesh->totpoly != 0 && import_params_.import_materials) {
+    if (active_mesh->faces_num != 0 && import_params_.import_materials) {
       std::map<pxr::SdfPath, int> mat_map;
       bke::MutableAttributeAccessor attributes = active_mesh->attributes_for_write();
       bke::SpanAttributeWriter<int> material_indices =

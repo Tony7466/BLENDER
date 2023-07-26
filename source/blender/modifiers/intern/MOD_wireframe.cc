@@ -165,6 +165,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Wireframe = {
+    /*idname*/ "Wireframe",
     /*name*/ N_("Wireframe"),
     /*structName*/ "WireframeModifierData",
     /*structSize*/ sizeof(WireframeModifierData),
@@ -186,7 +187,7 @@ ModifierTypeInfo modifierType_Wireframe = {
     /*requiredDataMask*/ requiredDataMask,
     /*freeData*/ nullptr,
     /*isDisabled*/ nullptr,
-    /*updateDepgraph*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
     /*dependsOnTime*/ nullptr,
     /*dependsOnNormals*/ dependsOnNormals,
     /*foreachIDLink*/ nullptr,

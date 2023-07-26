@@ -12,6 +12,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 #include "BKE_volume_to_mesh.hh"
 
 #include "BLT_translation.h"
@@ -196,6 +197,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 }
 
 ModifierTypeInfo modifierType_VolumeToMesh = {
+    /*idname*/ "Volume to Mesh",
     /*name*/ N_("Volume to Mesh"),
     /*structName*/ "VolumeToMeshModifierData",
     /*structSize*/ sizeof(VolumeToMeshModifierData),

@@ -8,6 +8,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Depsgraph;
 struct GpencilModifierData;
 struct MDeformVert;
@@ -36,7 +40,7 @@ bool is_stroke_affected_by_modifier(struct Object *ob,
 /**
  * Verify if valid vertex group *and return weight.
  */
-float get_modifier_point_weight(struct MDeformVert *dvert, bool inverse, int def_nr);
+float get_modifier_point_weight(const struct MDeformVert *dvert, bool inverse, int def_nr);
 /**
  * Generic bake function for deformStroke.
  */
@@ -52,3 +56,7 @@ void generic_bake_deform_stroke(struct Depsgraph *depsgraph,
                                 struct Object *ob,
                                 bool retime,
                                 gpBakeCb bake_cb);
+
+#ifdef __cplusplus
+}
+#endif

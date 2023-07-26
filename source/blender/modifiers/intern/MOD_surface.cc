@@ -107,13 +107,7 @@ static void deformVerts(ModifierData *md,
   }
 
   if (mesh) {
-    /* Not possible to use get_mesh() in this case as we'll modify its vertices
-     * and get_mesh() would return 'mesh' directly. */
-    surmd->runtime.mesh = (Mesh *)BKE_id_copy_ex(
-        nullptr, (ID *)mesh, nullptr, LIB_ID_COPY_LOCALIZE);
-  }
-  else {
-    surmd->runtime.mesh = MOD_deform_mesh_eval_get(ctx->object, nullptr, nullptr, nullptr);
+    surmd->runtime.mesh = BKE_mesh_copy_for_eval(mesh);
   }
 
   if (!ctx->object->pd) {
@@ -166,13 +160,13 @@ static void deformVerts(ModifierData *md,
 
     surmd->runtime.cfra_prev = cfra;
 
-    const bool has_poly = surmd->runtime.mesh->totpoly > 0;
+    const bool has_face = surmd->runtime.mesh->faces_num > 0;
     const bool has_edge = surmd->runtime.mesh->totedge > 0;
-    if (has_poly || has_edge) {
+    if (has_face || has_edge) {
       surmd->runtime.bvhtree = static_cast<BVHTreeFromMesh *>(
           MEM_callocN(sizeof(BVHTreeFromMesh), __func__));
 
-      if (has_poly) {
+      if (has_face) {
         BKE_bvhtree_from_mesh_get(
             surmd->runtime.bvhtree, surmd->runtime.mesh, BVHTREE_FROM_LOOPTRI, 2);
       }
@@ -208,6 +202,7 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Surface = {
+    /*idname*/ "Surface",
     /*name*/ N_("Surface"),
     /*structName*/ "SurfaceModifierData",
     /*structSize*/ sizeof(SurfaceModifierData),

@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
@@ -91,9 +91,9 @@ static void rna_Lattice_update_data(Main * /*bmain*/, Scene * /*scene*/, Pointer
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
 }
 
-/* copy settings to editlattice,
- * we could split this up differently (one update call per property)
- * but for now that's overkill
+/**
+ * Copy settings to edit-lattice, we could split this up differently
+ * (one update call per property) but for now that's overkill.
  */
 static void rna_Lattice_update_data_editlatt(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -229,7 +229,7 @@ static char *rna_LatticePoint_path(const PointerRNA *ptr)
 
     /* only return index if in range */
     if ((point >= (void *)points) && (point < (void *)(points + tot))) {
-      int pt_index = (int)((BPoint *)point - points);
+      int pt_index = int((BPoint *)point - points);
 
       return BLI_sprintfN("points[%d]", pt_index);
     }

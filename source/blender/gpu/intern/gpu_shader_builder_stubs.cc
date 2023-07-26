@@ -20,7 +20,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_node.hh"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.h"
 
 #include "DNA_userdef_types.h"
@@ -120,7 +120,7 @@ eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BKE_paint.h
  * \{ */
-bool paint_is_face_hidden(const int * /*looptri_polys*/,
+bool paint_is_face_hidden(const int * /*looptri_faces*/,
                           const bool * /*hide_poly*/,
                           int /*tri_index*/)
 {
@@ -193,22 +193,6 @@ int CustomData_get_render_layer_index(const struct CustomData * /*data*/, eCusto
 bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*type*/)
 {
   return false;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Stubs of BKE_pbvh.h
- * \{ */
-
-int BKE_pbvh_count_grid_quads(BLI_bitmap ** /*grid_hidden*/,
-                              const int * /*grid_indices*/,
-                              int /*totgrid*/,
-                              int /*gridsize*/,
-                              int /*display_gridsize*/)
-{
-  BLI_assert_unreachable();
-  return 0;
 }
 
 /** \} */
@@ -304,3 +288,19 @@ bool IMB_saveiff(struct ImBuf * /*ibuf*/, const char * /*filepath*/, int /*flags
 
 /** \} */
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Stubs of BKE_pbvh.hh
+ * \{ */
+
+int BKE_pbvh_count_grid_quads(BLI_bitmap ** /*grid_hidden*/,
+                              const int * /*grid_indices*/,
+                              int /*totgrid*/,
+                              int /*gridsize*/,
+                              int /*display_gridsize*/)
+{
+  BLI_assert_unreachable();
+  return 0;
+}
+
+/** \} */

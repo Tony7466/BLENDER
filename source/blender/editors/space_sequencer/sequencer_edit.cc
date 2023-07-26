@@ -197,8 +197,7 @@ bool sequencer_editing_initialized_and_active(bContext *C)
 bool sequencer_strip_poll(bContext *C)
 {
   Editing *ed;
-  return (((ed = SEQ_editing_get(CTX_data_scene(C))) != nullptr) &&
-          (ed->act_seq != nullptr));
+  return (((ed = SEQ_editing_get(CTX_data_scene(C))) != nullptr) && (ed->act_seq != nullptr));
 }
 #endif
 
@@ -305,7 +304,7 @@ void SEQUENCER_OT_gap_remove(wmOperatorType *ot)
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "all", 0, "All Gaps", "Do all gaps to right of current frame");
+  RNA_def_boolean(ot->srna, "all", false, "All Gaps", "Do all gaps to right of current frame");
 }
 
 /** \} */
@@ -914,7 +913,7 @@ void SEQUENCER_OT_mute(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Mute unselected rather than selected strips");
+      ot->srna, "unselected", false, "Unselected", "Mute unselected rather than selected strips");
 }
 
 /** \} */
@@ -969,8 +968,11 @@ void SEQUENCER_OT_unmute(wmOperatorType *ot)
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Unmute unselected rather than selected strips");
+  RNA_def_boolean(ot->srna,
+                  "unselected",
+                  false,
+                  "Unselected",
+                  "Unmute unselected rather than selected strips");
 }
 
 /** \} */
@@ -1095,7 +1097,7 @@ void SEQUENCER_OT_reload(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna,
                          "adjust_length",
-                         0,
+                         false,
                          "Adjust Length",
                          "Adjust length of strips to their data length");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -1110,7 +1112,7 @@ void SEQUENCER_OT_reload(wmOperatorType *ot)
 static bool sequencer_refresh_all_poll(bContext *C)
 {
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
   return sequencer_edit_poll(C);
 }
@@ -1296,11 +1298,11 @@ static bool sequencer_effect_poll(bContext *C)
   if (ed) {
     Sequence *last_seq = SEQ_select_active_get(scene);
     if (last_seq && (last_seq->type & SEQ_TYPE_EFFECT)) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
 void SEQUENCER_OT_reassign_inputs(wmOperatorType *ot)
@@ -1572,7 +1574,7 @@ void SEQUENCER_OT_split(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "use_cursor_position",
-                  0,
+                  false,
                   "Use Cursor Position",
                   "Split at position of the cursor instead of current frame");
 
@@ -1590,7 +1592,7 @@ void SEQUENCER_OT_split(wmOperatorType *ot)
       "ignore_selection",
       false,
       "Ignore Selection",
-      "Make cut event if strip is not selected preserving selection state after cut");
+      "Make cut even if strip is not selected preserving selection state after cut");
 
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
@@ -2137,7 +2139,7 @@ static bool sequencer_strip_jump_poll(bContext *C)
 {
   /* Prevent changes during render. */
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
 
   return sequencer_edit_poll(C);
@@ -2741,9 +2743,9 @@ void SEQUENCER_OT_swap_data(wmOperatorType *ot)
  * \{ */
 
 static const EnumPropertyItem prop_change_effect_input_types[] = {
-    {0, "A_B", 0, "A -> B", ""},
-    {1, "B_C", 0, "B -> C", ""},
-    {2, "A_C", 0, "A -> C", ""},
+    {0, "A_B", 0, "A " BLI_STR_UTF8_RIGHTWARDS_ARROW " B", ""},
+    {1, "B_C", 0, "B " BLI_STR_UTF8_RIGHTWARDS_ARROW " C", ""},
+    {2, "A_C", 0, "A " BLI_STR_UTF8_RIGHTWARDS_ARROW " C", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -3174,7 +3176,7 @@ static int sequencer_export_subtitles_exec(bContext *C, wmOperator *op)
   Sequence *seq, *seq_next;
   Editing *ed = SEQ_editing_get(scene);
   ListBase text_seq = {0};
-  int iter = 0;
+  int iter = 1; /* Sequence numbers in .srt files are 1-indexed. */
   FILE *file;
   char filepath[FILE_MAX];
 

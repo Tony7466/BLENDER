@@ -99,7 +99,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 #endif
 
   /* Set up front so we don't show invalid info in the UI. */
-  updateFaceCount(ctx, dmd, mesh->totpoly);
+  updateFaceCount(ctx, dmd, mesh->faces_num);
 
   switch (dmd->mode) {
     case MOD_DECIM_MODE_COLLAPSE:
@@ -271,6 +271,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Decimate = {
+    /*idname*/ "Decimate",
     /*name*/ N_("Decimate"),
     /*structName*/ "DecimateModifierData",
     /*structSize*/ sizeof(DecimateModifierData),
