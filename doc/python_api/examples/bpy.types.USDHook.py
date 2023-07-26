@@ -22,7 +22,7 @@ allowing modifications to the USD material, such as shader generation.
 It is called with three arguments:
 
 -``export_context``: An instance of the internally defined type ``USDMaterialExportContext``.
--.``bl_material: The source Blender material.
+-``bl_material``: The source Blender material.
 -``usd_material``: The target USD material to be exported.
 
 ``USDMaterialExportContext`` implements a ``get_stage()`` function which returns the
