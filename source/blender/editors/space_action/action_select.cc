@@ -1004,7 +1004,7 @@ static void markers_selectkeys_between(bAnimContext *ac)
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     switch (ale->type) {
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        // GPv3: To be implemented
+        /* GPv3: To be implemented. */
         break;
       case ANIMTYPE_GPLAYER:
         ED_gpencil_layer_frames_select_box(
@@ -1441,7 +1441,7 @@ static void actkeys_select_leftright(bAnimContext *ac, short leftright, short se
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
     switch (ale->type) {
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        // GPv3: To be implemented
+        /* GPv3: To be implemented. */
         break;
       case ANIMTYPE_GPLAYER:
         ED_gpencil_layer_frames_select_box(
