@@ -170,8 +170,8 @@ set(SRC
   engines/workbench/workbench_effect_dof_c.cc
   engines/workbench/workbench_effect_outline.cc
   engines/workbench/workbench_effect_outline_c.cc
-  engines/workbench/workbench_engine.c
   engines/workbench/workbench_engine.cc
+  engines/workbench/workbench_engine_c.cc
   engines/workbench/workbench_materials.cc
   engines/workbench/workbench_materials_next.cc
   engines/workbench/workbench_mesh_passes.cc
