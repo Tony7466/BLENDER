@@ -24,14 +24,14 @@ GPUBatch *GPU_batch_tris_from_poly_2d_encoded(const uchar *polys_flat,
                                               uint polys_flat_len,
                                               const rctf *rect)
 {
-  const uchar(*polys)[2] = (const void *)polys_flat;
+  const uchar(*polys)[2] = static_cast<const uchar(*)[2]>((const void *)polys_flat);
   const uint polys_len = polys_flat_len / 2;
   BLI_assert(polys_flat_len == polys_len * 2);
 
   /* Over alloc in both cases */
-  float(*verts)[2] = MEM_mallocN(sizeof(*verts) * polys_len, __func__);
+  float(*verts)[2] = static_cast<float(*)[2]>(MEM_mallocN(sizeof(*verts) * polys_len, __func__));
   float(*verts_step)[2] = verts;
-  uint(*tris)[3] = MEM_mallocN(sizeof(*tris) * polys_len, __func__);
+  uint(*tris)[3] = static_cast<uint(*)[3]>(MEM_mallocN(sizeof(*tris) * polys_len, __func__));
   uint(*tris_step)[3] = tris;
 
   const float range_uchar[2] = {
@@ -92,7 +92,7 @@ GPUBatch *GPU_batch_tris_from_poly_2d_encoded(const uchar *polys_flat,
   GPU_vertbuf_attr_get_raw_data(vbo, attr_id.pos, &pos_step);
 
   for (uint i = 0; i < verts_len; i++) {
-    copy_v2_v2(GPU_vertbuf_raw_step(&pos_step), verts[i]);
+    copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(&pos_step)), verts[i]);
   }
 
   GPUIndexBufBuilder elb;
@@ -113,13 +113,13 @@ GPUBatch *GPU_batch_wire_from_poly_2d_encoded(const uchar *polys_flat,
                                               uint polys_flat_len,
                                               const rctf *rect)
 {
-  const uchar(*polys)[2] = (const void *)polys_flat;
+  const uchar(*polys)[2] = static_cast<const uchar(*)[2]>((const void *)polys_flat);
   const uint polys_len = polys_flat_len / 2;
   BLI_assert(polys_flat_len == polys_len * 2);
 
   /* Over alloc */
   /* Lines are pairs of (x, y) byte locations packed into an int32_t. */
-  int32_t *lines = MEM_mallocN(sizeof(*lines) * polys_len, __func__);
+  int32_t *lines = static_cast<int32_t *>(MEM_mallocN(sizeof(*lines) * polys_len, __func__));
   int32_t *lines_step = lines;
 
   const float range_uchar[2] = {
@@ -199,7 +199,7 @@ GPUBatch *GPU_batch_wire_from_poly_2d_encoded(const uchar *polys_flat,
     } data;
     data.as_u32 = lines[i];
     for (uint k = 0; k < 2; k++) {
-      float *pos_v2 = GPU_vertbuf_raw_step(&pos_step);
+      float *pos_v2 = static_cast<float *>(GPU_vertbuf_raw_step(&pos_step));
       for (uint j = 0; j < 2; j++) {
         pos_v2[j] = min_uchar[j] + ((float)data.as_u8_pair[k][j] * range_uchar[j]);
       }
@@ -207,7 +207,7 @@ GPUBatch *GPU_batch_wire_from_poly_2d_encoded(const uchar *polys_flat,
   }
   BLI_assert(vbo_len_capacity == GPU_vertbuf_raw_used(&pos_step));
   MEM_freeN(lines);
-  return GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  return GPU_batch_create_ex(GPU_PRIM_LINES, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
 /** \} */
