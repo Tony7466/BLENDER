@@ -116,9 +116,8 @@ using NodeDeclareFunction = void (*)(blender::nodes::NodeDeclarationBuilder &bui
 using NodeDeclareDynamicFunction = void (*)(const bNodeTree &tree,
                                             const bNode &node,
                                             blender::nodes::NodeDeclaration &r_declaration);
-using SocketGetCPPValueFunction = void (*)(const struct bNodeSocket &socket, void *r_value);
-using SocketGetGeometryNodesCPPValueFunction = void (*)(const struct bNodeSocket &socket,
-                                                        void *r_value);
+using SocketGetCPPValueFunction = void (*)(const void *socket_value, void *r_value);
+using SocketGetGeometryNodesCPPValueFunction = void (*)(const void *socket_value, void *r_value);
 
 /* Adds socket link operations that are specific to this node type. */
 using NodeGatherSocketLinkOperationsFunction =
