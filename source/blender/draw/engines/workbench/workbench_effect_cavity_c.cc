@@ -32,7 +32,8 @@ static float *create_disk_samples(int num_samples, int num_iterations)
   const int total_samples = num_samples * num_iterations;
   const float num_samples_inv = 1.0f / num_samples;
   /* vec4 to ensure memory alignment. */
-  float(*texels)[4] = MEM_callocN(sizeof(float[4]) * CAVITY_MAX_SAMPLES, __func__);
+  float(*texels)[4] = static_cast<float(*)[4]>(
+      MEM_callocN(sizeof(float[4]) * CAVITY_MAX_SAMPLES, __func__));
   for (int i = 0; i < total_samples; i++) {
     float it_add = (i / num_samples) * 0.499f;
     float r = fmodf((i + 0.5f + it_add) * num_samples_inv, 1.0f);
@@ -121,7 +122,7 @@ void workbench_cavity_samples_ubo_ensure(WORKBENCH_PrivateData *wpd)
     DRW_TEXTURE_FREE_SAFE(wpd->vldata->cavity_jitter_tx);
   }
 
-  if (wpd->vldata->cavity_sample_ubo == NULL) {
+  if (wpd->vldata->cavity_sample_ubo == nullptr) {
     float *samples = create_disk_samples(cavity_sample_count_single_iteration, max_iter_count);
     wpd->vldata->cavity_jitter_tx = create_jitter_texture(cavity_sample_count);
     /* NOTE: Uniform buffer needs to always be filled to be valid. */
@@ -144,7 +145,7 @@ void workbench_cavity_cache_init(WORKBENCH_Data *data)
     workbench_cavity_samples_ubo_ensure(wpd);
 
     int state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_MUL;
-    DRW_PASS_CREATE(psl->cavity_ps, state);
+    DRW_PASS_CREATE(psl->cavity_ps, DRWState(state));
 
     sh = workbench_shader_cavity_get(SSAO_ENABLED(wpd), CURVATURE_ENABLED(wpd));
 
@@ -160,9 +161,9 @@ void workbench_cavity_cache_init(WORKBENCH_Data *data)
     if (CURVATURE_ENABLED(wpd)) {
       DRW_shgroup_uniform_texture(grp, "objectIdBuffer", wpd->object_id_tx);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   else {
-    psl->cavity_ps = NULL;
+    psl->cavity_ps = nullptr;
   }
 }

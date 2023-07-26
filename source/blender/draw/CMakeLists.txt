@@ -164,8 +164,8 @@ set(SRC
   engines/workbench/workbench_data.cc
   engines/workbench/workbench_effect_antialiasing.cc
   engines/workbench/workbench_effect_antialiasing_c.cc
-  engines/workbench/workbench_effect_cavity.c
   engines/workbench/workbench_effect_cavity.cc
+  engines/workbench/workbench_effect_cavity_c.cc
   engines/workbench/workbench_effect_dof.c
   engines/workbench/workbench_effect_dof.cc
   engines/workbench/workbench_effect_outline.c
