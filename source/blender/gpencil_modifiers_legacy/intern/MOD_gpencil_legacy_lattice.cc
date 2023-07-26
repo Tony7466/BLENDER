@@ -61,13 +61,13 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 }
 
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
 
@@ -87,13 +87,13 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  if (mmd->cache_data == NULL) {
+  if (mmd->cache_data == nullptr) {
     return;
   }
 
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     /* verify vertex group */
     const float weight = get_modifier_point_weight(
@@ -111,18 +111,18 @@ static void deformStroke(GpencilModifierData *md,
 /* FIXME: Ideally we be doing this on a copy of the main depsgraph
  * (i.e. one where we don't have to worry about restoring state)
  */
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  struct LatticeDeformData *ldata = NULL;
-  bGPdata *gpd = ob->data;
+  struct LatticeDeformData *ldata = nullptr;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
-  if ((mmd->object == NULL) || (mmd->object->type != OB_LATTICE)) {
+  if ((mmd->object == nullptr) || (mmd->object->type != OB_LATTICE)) {
     return;
   }
 
@@ -151,7 +151,7 @@ static void bakeModifier(Main *UNUSED(bmain),
   ldata = (struct LatticeDeformData *)mmd->cache_data;
   if (ldata) {
     BKE_lattice_deform_data_destroy(ldata);
-    mmd->cache_data = NULL;
+    mmd->cache_data = nullptr;
   }
 
   /* Return frame state and DB to original state. */
@@ -169,7 +169,7 @@ static void freeData(GpencilModifierData *md)
   }
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
 
@@ -183,10 +183,10 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   LatticeGpencilModifierData *lmd = (LatticeGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Lattice Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Lattice Modifier");
   }
@@ -201,7 +201,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
@@ -215,7 +215,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "object", 0, nullptr, ICON_NONE);
   if (!RNA_pointer_is_null(&hook_object_ptr) &&
       RNA_enum_get(&hook_object_ptr, "type") == OB_ARMATURE)
   {
@@ -225,18 +225,18 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   }
 
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiLayoutSetPropSep(sub, false);
   uiItemR(sub, ptr, "invert_vertex", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "strength", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -246,7 +246,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Lattice, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Lattice = {
@@ -259,16 +259,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Lattice = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };

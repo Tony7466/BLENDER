@@ -34,7 +34,7 @@ set(SRC
   intern/MOD_gpencil_legacy_dash.cc
   intern/MOD_gpencil_legacy_envelope.cc
   intern/MOD_gpencil_legacy_hook.cc
-  intern/MOD_gpencil_legacy_lattice.c
+  intern/MOD_gpencil_legacy_lattice.cc
   intern/MOD_gpencil_legacy_length.c
   intern/MOD_gpencil_legacy_lineart.c
   intern/MOD_gpencil_legacy_mirror.c
