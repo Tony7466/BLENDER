@@ -66,9 +66,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   ThickGpencilModifierData *gmd = (ThickGpencilModifierData *)md;
   ThickGpencilModifierData *tgmd = (ThickGpencilModifierData *)target;
 
-  if (tgmd->curve_thickness != NULL) {
+  if (tgmd->curve_thickness != nullptr) {
     BKE_curvemapping_free(tgmd->curve_thickness);
-    tgmd->curve_thickness = NULL;
+    tgmd->curve_thickness = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -78,10 +78,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* change stroke thickness */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   ThickGpencilModifierData *mmd = (ThickGpencilModifierData *)md;
@@ -110,7 +110,7 @@ static void deformStroke(GpencilModifierData *md,
 
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
     /* Verify point is part of vertex group. */
     float weight = get_modifier_point_weight(dvert, is_inverted, def_nr);
     if (weight < 0.0f) {
@@ -148,7 +148,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -163,23 +163,23 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_normalized_thickness", 0, nullptr, ICON_NONE);
   if (RNA_boolean_get(ptr, "use_normalized_thickness")) {
-    uiItemR(layout, ptr, "thickness", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "thickness", 0, nullptr, ICON_NONE);
   }
   else {
     const bool is_weighted = !RNA_boolean_get(ptr, "use_weight_factor");
     uiLayout *row = uiLayoutRow(layout, true);
     uiLayoutSetActive(row, is_weighted);
-    uiItemR(row, ptr, "thickness_factor", 0, NULL, ICON_NONE);
+    uiItemR(row, ptr, "thickness_factor", 0, nullptr, ICON_NONE);
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, true);
     uiItemR(row, ptr, "use_weight_factor", 0, "", ICON_MOD_VERTEX_WEIGHT);
@@ -188,7 +188,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -198,7 +198,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Thick, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
                                      "curve",
                                      "",
@@ -217,16 +217,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Thick = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
