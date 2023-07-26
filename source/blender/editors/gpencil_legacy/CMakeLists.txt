@@ -37,7 +37,7 @@ set(SRC
   gpencil_edit_curve.cc
   gpencil_fill.cc
   gpencil_interpolate.cc
-  gpencil_merge.c
+  gpencil_merge.cc
   gpencil_mesh.cc
   gpencil_ops.c
   gpencil_ops_versioning.c
