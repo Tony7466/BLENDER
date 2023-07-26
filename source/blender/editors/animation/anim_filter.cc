@@ -1755,7 +1755,7 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
     Layer *layer = layers[layer_index];
 
     /* Only if the layer is selected. */
-    if (!ANIMCHANNEL_SELOK(layer->base.flag & GP_LAYER_TREE_NODE_SELECT)) {
+    if (!ANIMCHANNEL_SELOK(layer->is_selected())) {
       continue;
     }
 
