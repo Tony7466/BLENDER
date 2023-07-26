@@ -24,7 +24,7 @@ set(SRC
   annotate_draw.cc
   annotate_paint.cc
   drawgpencil.cc
-  editaction_gpencil.c
+  editaction_gpencil.cc
   gpencil_add_blank.c
   gpencil_add_lineart.c
   gpencil_add_monkey.c
