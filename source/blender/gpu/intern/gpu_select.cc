@@ -26,7 +26,7 @@
  * \{ */
 
 /* Internal algorithm used */
-typedef enum eGPUSelectAlgo {
+enum eGPUSelectAlgo {
   /** glBegin/EndQuery(GL_SAMPLES_PASSED... ), `gpu_select_query.c`
    * Only sets 4th component (ID) correctly. */
   ALGO_GL_QUERY = 1,
@@ -35,9 +35,9 @@ typedef enum eGPUSelectAlgo {
   ALGO_GL_PICK = 2,
   /** Use Select-Next draw engine. */
   ALGO_SELECT_NEXT = 3,
-} eGPUSelectAlgo;
+};
 
-typedef struct GPUSelectState {
+struct GPUSelectState {
   /* To ignore selection id calls when not initialized */
   bool select_is_active;
   /* mode of operation */
@@ -55,7 +55,7 @@ typedef struct GPUSelectState {
    * where the `mode` to pass to #GPU_select_begin yet isn't known.
    */
   bool use_cache_needs_init;
-} GPUSelectState;
+};
 
 static GPUSelectState g_select_state = {0};
 
@@ -247,7 +247,7 @@ bool GPU_select_is_cached(void)
 
 const GPUSelectResult *GPU_select_buffer_near(const GPUSelectResult *buffer, int hits)
 {
-  const GPUSelectResult *buffer_near = NULL;
+  const GPUSelectResult *buffer_near = nullptr;
   uint depth_min = (uint)-1;
   for (int i = 0; i < hits; i++) {
     if (buffer->depth < depth_min) {
