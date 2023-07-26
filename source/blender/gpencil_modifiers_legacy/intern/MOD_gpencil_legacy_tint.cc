@@ -84,15 +84,15 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
   MEM_SAFE_FREE(tgmd->colorband);
 
-  if (tgmd->curve_intensity != NULL) {
+  if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = NULL;
+    tgmd->curve_intensity = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
 
   if (gmd->colorband) {
-    tgmd->colorband = MEM_dupallocN(gmd->colorband);
+    tgmd->colorband = static_cast<ColorBand *>(MEM_dupallocN(gmd->colorband));
   }
 
   tgmd->curve_intensity = BKE_curvemapping_copy(gmd->curve_intensity);
@@ -100,10 +100,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
@@ -153,7 +153,7 @@ static void deformStroke(GpencilModifierData *md,
   bool fill_done = false;
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     if (!fill_done) {
       /* Apply to fill. */
@@ -163,7 +163,7 @@ static void deformStroke(GpencilModifierData *md,
         /* Use weighted factor. */
         if (mmd->flag & GP_TINT_WEIGHT_FACTOR) {
           /* Use first point for weight. */
-          MDeformVert *dvert_fill = (gps->dvert != NULL) ? &gps->dvert[0] : NULL;
+          MDeformVert *dvert_fill = (gps->dvert != nullptr) ? &gps->dvert[0] : nullptr;
           float weight = get_modifier_point_weight(dvert_fill, is_inverted, def_nr);
           if (weight >= 0.0f) {
             fill_factor = ((mmd->flag & GP_TINT_INVERT_VGROUP) ? 1.0f - weight : weight);
@@ -171,7 +171,7 @@ static void deformStroke(GpencilModifierData *md,
         }
 
         /* If not using Vertex Color, use the material color. */
-        if ((gp_style != NULL) && (gps->vert_color_fill[3] == 0.0f) &&
+        if ((gp_style != nullptr) && (gps->vert_color_fill[3] == 0.0f) &&
             (gp_style->fill_rgba[3] > 0.0f)) {
           copy_v4_v4(gps->vert_color_fill, gp_style->fill_rgba);
           gps->vert_color_fill[3] = 1.0f;
@@ -221,7 +221,8 @@ static void deformStroke(GpencilModifierData *md,
       }
 
       /* If not using Vertex Color, use the material color. */
-      if ((gp_style != NULL) && (pt->vert_color[3] == 0.0f) && (gp_style->stroke_rgba[3] > 0.0f)) {
+      if ((gp_style != nullptr) && (pt->vert_color[3] == 0.0f) &&
+          (gp_style->stroke_rgba[3] > 0.0f)) {
         copy_v4_v4(pt->vert_color, gp_style->stroke_rgba);
         pt->vert_color[3] = 1.0f;
       }
@@ -258,14 +259,14 @@ static void deformStroke(GpencilModifierData *md,
 /* FIXME: Ideally we be doing this on a copy of the main depsgraph
  * (i.e. one where we don't have to worry about restoring state)
  */
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
 
-  if ((mmd->type == GP_TINT_GRADIENT) && (mmd->object == NULL)) {
+  if ((mmd->type == GP_TINT_GRADIENT) && (mmd->object == nullptr)) {
     return;
   }
 
@@ -281,7 +282,7 @@ static void freeData(GpencilModifierData *md)
   }
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
   if (mmd->type == GP_TINT_UNIFORM) {
@@ -293,10 +294,10 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   TintGpencilModifierData *lmd = (TintGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Vertexcolor Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Vertexcolor Modifier");
   }
@@ -311,45 +312,45 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   int tint_type = RNA_enum_get(ptr, "tint_type");
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "vertex_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "vertex_mode", 0, nullptr, ICON_NONE);
 
   const bool is_weighted = !RNA_boolean_get(ptr, "use_weight_factor");
   uiLayout *row = uiLayoutRow(layout, true);
   uiLayoutSetActive(row, is_weighted);
-  uiItemR(row, ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(row, ptr, "factor", 0, nullptr, ICON_NONE);
   uiLayout *sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, true);
   uiItemR(row, ptr, "use_weight_factor", 0, "", ICON_MOD_VERTEX_WEIGHT);
 
-  uiItemR(layout, ptr, "tint_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "tint_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   if (tint_type == GP_TINT_UNIFORM) {
-    uiItemR(layout, ptr, "color", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "color", 0, nullptr, ICON_NONE);
   }
   else {
     col = uiLayoutColumn(layout, false);
     uiLayoutSetPropSep(col, false);
     uiTemplateColorRamp(col, ptr, "colors", true);
     uiItemS(layout);
-    uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
-    uiItemR(layout, ptr, "radius", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "radius", 0, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -359,7 +360,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Tint, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
                                      "curve",
                                      "",
@@ -378,16 +379,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Tint = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
