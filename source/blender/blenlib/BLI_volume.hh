@@ -130,14 +130,20 @@ using SupportedGridTypes = openvdb::TypeList<BoolGrid,
 /* Mask defined by active voxels of the grid. */
 class GridMask {
 #ifdef WITH_OPENVDB
-  static const openvdb::MaskGrid::ConstPtr empty_grid_;
   openvdb::MaskGrid::ConstPtr grid_;
+
+  static const openvdb::MaskGrid::ConstPtr empty_grid()
+  {
+    static openvdb::MaskGrid::ConstPtr grid = openvdb::MaskGrid::create();
+    return grid;
+  }
+
 #endif
 
  public:
   GridMask()
 #ifdef WITH_OPENVDB
-      : grid_(empty_grid_)
+      : grid_(empty_grid())
 #endif
   {
   }

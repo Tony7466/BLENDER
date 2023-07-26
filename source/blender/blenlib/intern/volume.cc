@@ -15,8 +15,6 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
-const openvdb::MaskGrid::ConstPtr empty_grid_ = openvdb::MaskGrid::create();
-
 GridMask GridMask::from_bools(const volume::GridMask &full_mask,
                               const volume::Grid<bool> &selection)
 {
