@@ -24,11 +24,11 @@
 /* verify if this fx is active */
 static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_viewport)
 {
-  if (fx == NULL) {
+  if (fx == nullptr) {
     return false;
   }
 
-  if (gpd == NULL) {
+  if (gpd == nullptr) {
     return false;
   }
 
@@ -46,7 +46,7 @@ static bool effect_is_active(bGPdata *gpd, ShaderFxData *fx, bool is_viewport)
   return false;
 }
 
-typedef struct gpIterVfxData {
+struct gpIterVfxData {
   GPENCIL_PrivateData *pd;
   GPENCIL_tObject *tgp_ob;
   GPUFrameBuffer **target_fb;
@@ -55,7 +55,7 @@ typedef struct gpIterVfxData {
   GPUTexture **source_color_tx;
   GPUTexture **target_reveal_tx;
   GPUTexture **source_reveal_tx;
-} gpIterVfxData;
+};
 
 static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
                                                 DRWState state,
@@ -67,7 +67,7 @@ static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
   DRW_shgroup_uniform_texture_ref(grp, "colorBuf", iter->source_color_tx);
   DRW_shgroup_uniform_texture_ref(grp, "revealBuf", iter->source_reveal_tx);
 
-  GPENCIL_tVfx *tgp_vfx = BLI_memblock_alloc(iter->pd->gp_vfx_pool);
+  GPENCIL_tVfx *tgp_vfx = static_cast<GPENCIL_tVfx *>(BLI_memblock_alloc(iter->pd->gp_vfx_pool));
   tgp_vfx->target_fb = iter->target_fb;
   tgp_vfx->vfx_ps = pass;
 
@@ -86,7 +86,7 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
     return;
   }
 
-  if ((fx->flag & FX_BLUR_DOF_MODE) && iter->pd->camera == NULL) {
+  if ((fx->flag & FX_BLUR_DOF_MODE) && iter->pd->camera == nullptr) {
     /* No blur outside camera view (or when DOF is disabled on the camera). */
     return;
   }
@@ -97,7 +97,7 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
 
   float winmat[4][4], persmat[4][4];
   float blur_size[2] = {fx->radius[0], fx->radius[1]};
-  DRW_view_persmat_get(NULL, persmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->object_to_world[3]));
 
   if (fx->flag & FX_BLUR_DOF_MODE) {
@@ -107,7 +107,7 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
   }
   else {
     /* Modify by distance to camera and object scale. */
-    DRW_view_winmat_get(NULL, winmat, false);
+    DRW_view_winmat_get(nullptr, winmat, false);
     const float *vp_size = DRW_viewport_size_get();
     float world_pixel_scale = 1.0f / GPENCIL_PIXEL_FACTOR;
     float scale = mat4_to_scale(ob->object_to_world);
@@ -120,19 +120,21 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
   DRWState state = DRW_STATE_WRITE_COLOR;
   if (blur_size[0] > 0.0f) {
     grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
-    DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){blur_size[0] * c, blur_size[0] * s});
+    DRW_shgroup_uniform_vec2_copy(
+        grp, "offset", blender::float2{blur_size[0] * c, blur_size[0] * s});
     DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   if (blur_size[1] > 0.0f) {
     grp = gpencil_vfx_pass_create("Fx Blur V", state, iter, sh);
-    DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){-blur_size[1] * s, blur_size[1] * c});
+    DRW_shgroup_uniform_vec2_copy(
+        grp, "offset", blender::float2{-blur_size[1] * s, blur_size[1] * c});
     DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
-static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object * /*ob*/, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
 
@@ -144,10 +146,10 @@ static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), g
   DRW_shgroup_uniform_vec3_copy(grp, "highColor", fx->high_color);
   DRW_shgroup_uniform_float_copy(grp, "factor", fx->factor);
   DRW_shgroup_uniform_int_copy(grp, "mode", fx->mode);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
-static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+static void gpencil_vfx_flip(FlipShaderFxData *fx, Object * /*ob*/, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
 
@@ -160,9 +162,9 @@ static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
   DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", axis_flip);
-  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", (float[2]){0.0f, 0.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", blender::float2{0.0f, 0.0f});
   DRW_shgroup_uniform_float_copy(grp, "swirlRadius", 0.0f);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
 static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter)
@@ -170,10 +172,10 @@ static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter
   DRWShadingGroup *grp;
 
   float winmat[4][4], persmat[4][4];
-  float offset[2] = {fx->offset[0], fx->offset[1]};
-  float blur_size[2] = {fx->blur[0], fx->blur[1]};
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_persmat_get(NULL, persmat, false);
+  float offset[2] = {float(fx->offset[0]), float(fx->offset[1])};
+  float blur_size[2] = {float(fx->blur[0]), float(fx->blur[1])};
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
   const float *vp_size_inv = DRW_viewport_invert_size_get();
 
@@ -191,12 +193,13 @@ static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Rim H", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", (float[2]){blur_size[0] * vp_size_inv[0], 0.0f});
+  DRW_shgroup_uniform_vec2_copy(
+      grp, "blurDir", blender::float2{blur_size[0] * vp_size_inv[0], 0.0f});
   DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", offset);
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
   DRW_shgroup_uniform_vec3_copy(grp, "maskColor", fx->mask_rgb);
   DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", true);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   switch (fx->mode) {
     case eShaderFxRimMode_Normal:
@@ -218,13 +221,14 @@ static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter
   zero_v2(offset);
 
   grp = gpencil_vfx_pass_create("Fx Rim V", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", (float[2]){0.0f, blur_size[1] * vp_size_inv[1]});
+  DRW_shgroup_uniform_vec2_copy(
+      grp, "blurDir", blender::float2{0.0f, blur_size[1] * vp_size_inv[1]});
   DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", offset);
   DRW_shgroup_uniform_vec3_copy(grp, "rimColor", fx->rim_rgb);
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
   DRW_shgroup_uniform_int_copy(grp, "blendMode", fx->mode);
   DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", false);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   if (fx->mode == eShaderFxRimMode_Overlay) {
     /* We cannot do custom blending on multi-target frame-buffers.
@@ -233,7 +237,7 @@ static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter
     DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
     DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
     DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
@@ -242,11 +246,11 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
   DRWShadingGroup *grp;
 
   float persmat[4][4], winmat[4][4], ob_center[3], pixsize_uniform[2];
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_persmat_get(NULL, persmat, false);
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
   const float *vp_size_inv = DRW_viewport_invert_size_get();
-  float pixel_size[2] = {fx->size[0], fx->size[1]};
+  float pixel_size[2] = {float(fx->size[0]), float(fx->size[1])};
   mul_v2_v2(pixel_size, vp_size_inv);
 
   /* Fixed pixelisation center from object center. */
@@ -278,20 +282,20 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
     grp = gpencil_vfx_pass_create("Fx Pixelize X", state, iter, sh);
     DRW_shgroup_uniform_vec2_copy(grp, "targetPixelSize", pixsize_uniform);
     DRW_shgroup_uniform_vec2_copy(grp, "targetPixelOffset", ob_center);
-    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", (float[2]){pixel_size[0], 0.0f});
+    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", blender::float2{pixel_size[0], 0.0f});
     int samp_count = (pixel_size[0] / vp_size_inv[0] > 3.0) ? 2 : 1;
     DRW_shgroup_uniform_int_copy(grp, "sampCount", use_antialiasing ? samp_count : 0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 
   if (pixel_size[1] > vp_size_inv[1]) {
     copy_v2_fl2(pixsize_uniform, vp_size_inv[0], pixel_size[1]);
     grp = gpencil_vfx_pass_create("Fx Pixelize Y", state, iter, sh);
     DRW_shgroup_uniform_vec2_copy(grp, "targetPixelSize", pixsize_uniform);
-    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", (float[2]){0.0f, pixel_size[1]});
+    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", blender::float2{0.0f, pixel_size[1]});
     int samp_count = (pixel_size[1] / vp_size_inv[1] > 3.0) ? 2 : 1;
     DRW_shgroup_uniform_int_copy(grp, "sampCount", use_antialiasing ? samp_count : 0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
@@ -304,10 +308,10 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
 
   float uv_mat[4][4], winmat[4][4], persmat[4][4], rot_center[3];
   float wave_ofs[3], wave_dir[3], wave_phase, blur_dir[2], tmp[2];
-  float offset[2] = {fx->offset[0], fx->offset[1]};
-  float blur_size[2] = {fx->blur[0], fx->blur[1]};
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_persmat_get(NULL, persmat, false);
+  float offset[2] = {float(fx->offset[0]), float(fx->offset[1])};
+  float blur_size[2] = {float(fx->blur[0]), float(fx->blur[1])};
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
   const float *vp_size_inv = DRW_viewport_invert_size_get();
   const float ratio = vp_size_inv[1] / vp_size_inv[0];
@@ -334,11 +338,11 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
   /* UV transform matrix. (loc, rot, scale) Sent to shader as 2x3 matrix. */
   unit_m4(uv_mat);
   translate_m4(uv_mat, rot_center[0], rot_center[1], 0.0f);
-  rescale_m4(uv_mat, (float[3]){1.0f / fx->scale[0], 1.0f / fx->scale[1], 1.0f});
+  rescale_m4(uv_mat, blender::float3{1.0f / fx->scale[0], 1.0f / fx->scale[1], 1.0f});
   translate_m4(uv_mat, -offset[0], -offset[1], 0.0f);
-  rescale_m4(uv_mat, (float[3]){1.0f / ratio, 1.0f, 1.0f});
+  rescale_m4(uv_mat, blender::float3{1.0f / ratio, 1.0f, 1.0f});
   rotate_m4(uv_mat, 'Z', fx->rotation);
-  rescale_m4(uv_mat, (float[3]){ratio, 1.0f, 1.0f});
+  rescale_m4(uv_mat, blender::float3{ratio, 1.0f, 1.0f});
   translate_m4(uv_mat, -rot_center[0], -rot_center[1], 0.0f);
 
   if (use_wave) {
@@ -386,7 +390,7 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
   DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", uv_mat[3]);
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
   DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", true);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   unit_m4(uv_mat);
   zero_v2(wave_ofs);
@@ -406,10 +410,10 @@ static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData
   DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", uv_mat[3]);
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
   DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", false);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
-static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+static void gpencil_vfx_glow(GlowShaderFxData *fx, Object * /*ob*/, gpIterVfxData *iter)
 {
   const bool use_glow_under = (fx->flag & FX_GLOW_USE_ALPHA) != 0;
   DRWShadingGroup *grp;
@@ -435,13 +439,13 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Glow H", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->blur[0] * c, fx->blur[0] * s});
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", blender::float2{fx->blur[0] * c, fx->blur[0] * s});
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
   DRW_shgroup_uniform_vec4_copy(grp, "threshold", ref_col);
   DRW_shgroup_uniform_vec4_copy(grp, "glowColor", fx->glow_color);
   DRW_shgroup_uniform_bool_copy(grp, "glowUnder", use_glow_under);
   DRW_shgroup_uniform_bool_copy(grp, "firstPass", true);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   state = DRW_STATE_WRITE_COLOR;
   /* Blending: Force blending. */
@@ -469,13 +473,14 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   }
 
   grp = gpencil_vfx_pass_create("Fx Glow V", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){-fx->blur[1] * s, fx->blur[1] * c});
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", blender::float2{-fx->blur[1] * s, fx->blur[1] * c});
   DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
-  DRW_shgroup_uniform_vec4_copy(grp, "threshold", (float[4]){-1.0f, -1.0f, -1.0f, -1.0});
-  DRW_shgroup_uniform_vec4_copy(grp, "glowColor", (float[4]){1.0f, 1.0f, 1.0f, fx->glow_color[3]});
+  DRW_shgroup_uniform_vec4_copy(grp, "threshold", blender::float4{-1.0f, -1.0f, -1.0f, -1.0});
+  DRW_shgroup_uniform_vec4_copy(
+      grp, "glowColor", blender::float4{1.0f, 1.0f, 1.0f, fx->glow_color[3]});
   DRW_shgroup_uniform_bool_copy(grp, "firstPass", false);
   DRW_shgroup_uniform_int_copy(grp, "blendMode", fx->blend_mode);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
 static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *iter)
@@ -484,8 +489,8 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
 
   float winmat[4][4], persmat[4][4], wave_center[3];
   float wave_ofs[3], wave_dir[3], wave_phase;
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_persmat_get(NULL, persmat, false);
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
   const float *vp_size_inv = DRW_viewport_invert_size_get();
 
@@ -525,25 +530,25 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Wave", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", (float[2]){1.0f, 1.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", blender::float2{1.0f, 1.0f});
   DRW_shgroup_uniform_vec2_copy(grp, "waveDir", wave_dir);
   DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", wave_ofs);
   DRW_shgroup_uniform_float_copy(grp, "wavePhase", wave_phase);
   DRW_shgroup_uniform_float_copy(grp, "swirlRadius", 0.0f);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
-static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object * /*ob*/, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
 
-  if (fx->object == NULL) {
+  if (fx->object == nullptr) {
     return;
   }
 
   float winmat[4][4], persmat[4][4], swirl_center[3];
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_persmat_get(NULL, persmat, false);
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_persmat_get(nullptr, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
 
   copy_v3_v3(swirl_center, fx->object->object_to_world[3]);
@@ -570,12 +575,12 @@ static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object *UNUSED(ob), gpIterV
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", (float[2]){1.0f, 1.0f});
-  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", (float[2]){0.0f, 0.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", blender::float2{1.0f, 1.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", blender::float2{0.0f, 0.0f});
   DRW_shgroup_uniform_vec2_copy(grp, "swirlCenter", swirl_center);
   DRW_shgroup_uniform_float_copy(grp, "swirlAngle", fx->angle);
   DRW_shgroup_uniform_float_copy(grp, "swirlRadius", radius);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob)
@@ -585,16 +590,16 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
   GPENCIL_PrivateData *pd = vedata->stl->pd;
 
   /* These may not be allocated yet, use address of future pointer. */
-  gpIterVfxData iter = {
-      .pd = pd,
-      .tgp_ob = tgp_ob,
-      .target_fb = &fbl->layer_fb,
-      .source_fb = &fbl->object_fb,
-      .target_color_tx = &pd->color_layer_tx,
-      .source_color_tx = &pd->color_object_tx,
-      .target_reveal_tx = &pd->reveal_layer_tx,
-      .source_reveal_tx = &pd->reveal_object_tx,
-  };
+  gpIterVfxData iter{};
+  iter.pd = pd;
+  iter.tgp_ob = tgp_ob;
+  iter.target_fb = &fbl->layer_fb;
+  iter.source_fb = &fbl->object_fb;
+  iter.target_color_tx = &pd->color_layer_tx;
+  iter.source_color_tx = &pd->color_object_tx;
+  iter.target_reveal_tx = &pd->reveal_layer_tx;
+  iter.source_reveal_tx = &pd->reveal_object_tx;
+
   /* If simplify enabled, nothing more to do. */
   if (!pd->simplify_fx) {
     LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
@@ -634,7 +639,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
     }
   }
 
-  if ((!pd->simplify_fx && tgp_ob->vfx.first != NULL) || tgp_ob->do_mat_holdout) {
+  if ((!pd->simplify_fx && tgp_ob->vfx.first != nullptr) || tgp_ob->do_mat_holdout) {
     /* We need an extra pass to combine result to main buffer. */
     iter.target_fb = &fbl->gpencil_fb;
 
@@ -643,7 +648,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_MUL;
     DRWShadingGroup *grp = gpencil_vfx_pass_create("GPencil Object Compose", state, &iter, sh);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     /* We cannot do custom blending on multi-target frame-buffers.
      * Workaround by doing 2 passes. */
@@ -651,7 +656,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
     DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
     DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", false);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     pd->use_object_fb = true;
     pd->use_layer_fb = true;
