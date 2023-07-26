@@ -98,8 +98,8 @@ set(SRC
   intern/draw_select_buffer.cc
   intern/draw_shader.cc
   intern/draw_texture_pool.cc
-  intern/draw_view.c
   intern/draw_view.cc
+  intern/draw_view_c.cc
   intern/draw_view_data.cc
   intern/draw_volume.cc
   engines/basic/basic_engine.cc

@@ -63,7 +63,7 @@ static bool is_cursor_visible(const DRWContextState *draw_ctx, Scene *scene, Vie
   if ((draw_ctx->object_mode & (OB_MODE_ALL_PAINT | OB_MODE_SCULPT_CURVES)) != 0) {
     /* exception: object is in weight paint and has deforming armature in pose mode */
     if (draw_ctx->object_mode & OB_MODE_WEIGHT_PAINT) {
-      if (BKE_object_pose_armature_get(draw_ctx->obact) != NULL) {
+      if (BKE_object_pose_armature_get(draw_ctx->obact) != nullptr) {
         return true;
       }
     }
@@ -110,7 +110,7 @@ void DRW_draw_cursor(void)
             region, cursor->location, co, V3D_PROJ_TEST_NOP | V3D_PROJ_TEST_CLIP_NEAR) ==
         V3D_PROJ_RET_OK)
     {
-      RegionView3D *rv3d = region->regiondata;
+      RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
       float cursor_quat[4];
       BKE_scene_cursor_rot_to_quat(cursor, cursor_quat);
@@ -197,7 +197,7 @@ void DRW_draw_cursor(void)
 static bool is_cursor_visible_2d(const DRWContextState *draw_ctx)
 {
   SpaceInfo *space_data = (SpaceInfo *)draw_ctx->space_data;
-  if (space_data == NULL) {
+  if (space_data == nullptr) {
     return false;
   }
   if (space_data->spacetype != SPACE_IMAGE) {
