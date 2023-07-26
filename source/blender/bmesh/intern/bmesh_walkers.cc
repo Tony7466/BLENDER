@@ -43,7 +43,7 @@ void *BMW_begin(BMWalker *walker, void *start)
 
   walker->begin(walker, start);
 
-  return BMW_current_state(walker) ? walker->step(walker) : NULL;
+  return BMW_current_state(walker) ? walker->step(walker) : nullptr;
 }
 
 void BMW_init(BMWalker *walker,
@@ -71,7 +71,7 @@ void BMW_init(BMWalker *walker,
   if (UNLIKELY(type >= BMW_MAXWALKERS || type < 0)) {
     fprintf(stderr,
             "%s: Invalid walker type in BMW_init; type: %d, "
-            "searchmask: (v:%d, e:%d, f:%d), flag: %u, layer: %d\n",
+            "searchmask: (v:%d, e:%d, f:%d), flag: %d, layer: %d\n",
             __func__,
             type,
             mask_vert,
@@ -107,15 +107,15 @@ void BMW_init(BMWalker *walker,
 void BMW_end(BMWalker *walker)
 {
   BLI_mempool_destroy(walker->worklist);
-  BLI_gset_free(walker->visit_set, NULL);
-  BLI_gset_free(walker->visit_set_alt, NULL);
+  BLI_gset_free(walker->visit_set, nullptr);
+  BLI_gset_free(walker->visit_set_alt, nullptr);
 }
 
 void *BMW_step(BMWalker *walker)
 {
   BMHeader *head;
 
-  head = BMW_walk(walker);
+  head = static_cast<BMHeader *>(BMW_walk(walker));
 
   return head;
 }
@@ -127,7 +127,7 @@ int BMW_current_depth(BMWalker *walker)
 
 void *BMW_walk(BMWalker *walker)
 {
-  void *current = NULL;
+  void *current = nullptr;
 
   while (BMW_current_state(walker)) {
     current = walker->step(walker);
@@ -135,12 +135,12 @@ void *BMW_walk(BMWalker *walker)
       return current;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void *BMW_current_state(BMWalker *walker)
 {
-  BMwGenericWalker *currentstate = walker->states.first;
+  BMwGenericWalker *currentstate = static_cast<BMwGenericWalker *>(walker->states.first);
   if (currentstate) {
     /* Automatic update of depth. For most walkers that
      * follow the standard "Step" pattern of:
@@ -168,7 +168,7 @@ void BMW_state_remove(BMWalker *walker)
 void *BMW_state_add(BMWalker *walker)
 {
   BMwGenericWalker *newstate;
-  newstate = BLI_mempool_alloc(walker->worklist);
+  newstate = static_cast<BMwGenericWalker *>(BLI_mempool_alloc(walker->worklist));
   newstate->depth = walker->depth;
   switch (walker->order) {
     case BMW_DEPTH_FIRST:
@@ -190,6 +190,6 @@ void BMW_reset(BMWalker *walker)
     BMW_state_remove(walker);
   }
   walker->depth = 0;
-  BLI_gset_clear(walker->visit_set, NULL);
-  BLI_gset_clear(walker->visit_set_alt, NULL);
+  BLI_gset_clear(walker->visit_set, nullptr);
+  BLI_gset_clear(walker->visit_set_alt, nullptr);
 }

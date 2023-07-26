@@ -113,7 +113,7 @@ set(SRC
   intern/bmesh_structure.cc
   intern/bmesh_structure.h
   intern/bmesh_structure_inline.h
-  intern/bmesh_walkers.c
+  intern/bmesh_walkers.cc
   intern/bmesh_walkers.h
   intern/bmesh_walkers_impl.cc
   intern/bmesh_walkers_private.h
