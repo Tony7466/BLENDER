@@ -83,36 +83,40 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
     active_set_name = mesh->ldata.layers[active_uv_set_index].name;
   }
 
-  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
-                         const bke::AttributeMetaData &meta_data) {
-    /* Skipping "internal" Blender properties. Also skipping
-     * material_index as it's dealt with elsewhere. */
-    if (attribute_id.name()[0] == '.' || ELEM(attribute_id.name(), "position", "material_index")) {
-      return true;
-    }
+  attributes.for_all(
+      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
+        /* Skipping "internal" Blender properties. Skipping
+         * material_index as it's dealt with elsewhere. Skipping
+         * edge sharp and crease because USD doesn't have a
+         * conversion for them. */
+        if (attribute_id.name()[0] == '.' ||
+            ELEM(attribute_id.name(), "position", "material_index", "sharp_edge", "crease_edge"))
+        {
+          return true;
+        }
 
-    /* UV Data. */
-    if (meta_data.domain == ATTR_DOMAIN_CORNER && meta_data.data_type == CD_PROP_FLOAT2) {
-      if (usd_export_context_.export_params.export_uvmaps) {
-        write_uv_data(mesh, usd_mesh, attribute_id, active_set_name);
-      }
-    }
+        /* UV Data. */
+        if (meta_data.domain == ATTR_DOMAIN_CORNER && meta_data.data_type == CD_PROP_FLOAT2) {
+          if (usd_export_context_.export_params.export_uvmaps) {
+            write_uv_data(mesh, usd_mesh, attribute_id, active_set_name);
+          }
+        }
 
-    /* Color data. */
-    else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
-             ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
-    {
-      if (usd_export_context_.export_params.export_mesh_colors) {
-        write_color_data(mesh, usd_mesh, attribute_id, meta_data);
-      }
-    }
+        /* Color data. */
+        else if (ELEM(meta_data.domain, ATTR_DOMAIN_CORNER, ATTR_DOMAIN_POINT) &&
+                 ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
+        {
+          if (usd_export_context_.export_params.export_mesh_colors) {
+            write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+          }
+        }
 
-    else {
-      write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
-    }
+        else {
+          write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
+        }
 
-    return true;
-  });
+        return true;
+      });
 }
 
 static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(
@@ -196,11 +200,19 @@ void USDGenericMeshWriter::copy_blender_buffer_to_prim(const Span<BlenderT> buff
       data[i] = convert_value<BlenderT, USDT>(buffer[i]);
     }
   }
-  attribute_pv.Set(data, timecode);
+
+  if (!attribute_pv.HasValue() && timecode != pxr::UsdTimeCode::Default()) {
+    attribute_pv.Set(data, pxr::UsdTimeCode::Default());
+  }
+  else {
+    attribute_pv.Set(data, timecode);
+  }
+
   const pxr::UsdAttribute &prim_attr = attribute_pv.GetAttr();
   usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
 }
 
+#pragma optimize("", off)
 void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
                                               pxr::UsdGeomMesh usd_mesh,
                                               const bke::AttributeIDRef &attribute_id,
@@ -222,9 +234,12 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
     return;
   }
 
-  if (!prim_varying.has_value() || !prim_attr_type.has_value()) {
-    WM_reportf(
-        RPT_WARNING, "Mesh %s, Attribute %s cannot be converted to USD.", &mesh->id.name[2]);
+  if (!prim_varying || !prim_varying.has_value() || !prim_attr_type || !prim_attr_type.has_value())
+  {
+    WM_reportf(RPT_WARNING,
+               "Mesh %s, Attribute %s cannot be converted to USD.",
+               &mesh->id.name[2],
+               attribute_id.name().data());
     return;
   }
 
@@ -289,7 +304,7 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
   pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(name));
 
   pxr::UsdGeomPrimvar uv_pv = pvApi.CreatePrimvar(
-      primvar_name, pxr::SdfValueTypeNames->TexCoord2dArray, pxr::UsdGeomTokens->faceVarying);
+      primvar_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
 
   const VArraySpan<float2> buffer = *mesh->attributes().lookup<float2>(attribute_id,
                                                                        ATTR_DOMAIN_CORNER);

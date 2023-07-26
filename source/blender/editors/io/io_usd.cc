@@ -410,7 +410,6 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool read_mesh_uvs = RNA_boolean_get(op->ptr, "read_mesh_uvs");
   const bool read_mesh_colors = RNA_boolean_get(op->ptr, "read_mesh_colors");
-  const bool read_mesh_attributes = RNA_boolean_get(op->ptr, "read_mesh_attributes");
 
   char mesh_read_flag = MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY;
   if (read_mesh_uvs) {
