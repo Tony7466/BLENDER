@@ -92,7 +92,8 @@ void workbench_transparent_cache_init(WORKBENCH_Data *vedata)
         DRW_PASS_INSTANCE_CREATE(psl->transp_depth_ps, pass, state | DRW_STATE_WRITE_DEPTH);
       }
 
-      for (eWORKBENCH_DataType data = 0; data < WORKBENCH_DATATYPE_MAX; data++) {
+      for (int data_i = 0; data_i < WORKBENCH_DATATYPE_MAX; data_i++) {
+        eWORKBENCH_DataType data = eWORKBENCH_DataType(data_i);
         wpd->prepass[transp][infront][data].material_hash = BLI_ghash_ptr_new(__func__);
 
         sh = workbench_shader_transparent_get(wpd, data);
@@ -132,7 +133,7 @@ void workbench_transparent_cache_init(WORKBENCH_Data *vedata)
     grp = DRW_shgroup_create(sh, psl->transp_resolve_ps);
     DRW_shgroup_uniform_texture(grp, "transparentAccum", wpd->accum_buffer_tx);
     DRW_shgroup_uniform_texture(grp, "transparentRevealage", wpd->reveal_buffer_tx);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
