@@ -73,7 +73,7 @@ start:
 #ifdef DEBUG_SHADOW_DISTRIBUTION
   float p[3];
   add_v3_v3v3(p, jitter, ws_sample_pos);
-  DRW_debug_sphere(p, 0.01f, (float[4]){1.0f, (sample_ofs == i) ? 1.0f : 0.0f, 0.0f, 1.0f});
+  DRW_debug_sphere(p, 0.01f, blender::float4{1.0f, (sample_ofs == i) ? 1.0f : 0.0f, 0.0f, 1.0f});
   if (i++ < sample_ofs) {
     goto start;
   }
@@ -141,11 +141,11 @@ static void eevee_ensure_cube_views(
     float tmp[4][4];
     mul_m4_m4m4(tmp, cubefacemat[i], viewmat);
 
-    if (view[i] == NULL) {
-      view[i] = DRW_view_create(tmp, winmat, NULL, NULL, NULL);
+    if (view[i] == nullptr) {
+      view[i] = DRW_view_create(tmp, winmat, nullptr, nullptr, nullptr);
     }
     else {
-      DRW_view_update(view[i], tmp, winmat, NULL, NULL);
+      DRW_view_update(view[i], tmp, winmat, nullptr, nullptr);
     }
   }
 }
