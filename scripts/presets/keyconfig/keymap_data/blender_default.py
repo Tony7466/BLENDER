@@ -5109,7 +5109,7 @@ def km_image_paint(params):
          {"properties": [("data_path", 'image_paint_object.data.use_paint_mask')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.use_smooth_stroke')]}),
-        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS'},
+        ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', "alt": True},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.stroke_method')]}),
         *_template_items_context_panel("VIEW3D_PT_paint_texture_context_menu", params.context_menu_event),
     ])
@@ -5282,7 +5282,7 @@ def km_sculpt(params):
              ("invert", False),
              ("use_mask_preserve", True),
          ]}),
-        ("sculpt.expand", {"type": 'E', "value": 'PRESS', "shift": True},
+        ("sculpt.expand", {"type": 'W', "value": 'PRESS', "shift": True},
          {"properties": [
              ("target", "FACE_SETS"),
              ("falloff_type", "GEODESIC"),
@@ -5290,7 +5290,7 @@ def km_sculpt(params):
              ("use_mask_preserve", False),
              ("use_modify_active", False),
          ]}),
-        ("sculpt.expand", {"type": 'E', "value": 'PRESS', "shift": True, "alt": True},
+        ("sculpt.expand", {"type": 'W', "value": 'PRESS', "shift": True, "alt": True},
          {"properties": [
              ("target", "FACE_SETS"),
              ("falloff_type", "BOUNDARY_FACE_SET"),
@@ -5307,9 +5307,9 @@ def km_sculpt(params):
         ("sculpt.reveal_all", {"type": 'H', "value": 'PRESS', "alt": True},
          {"properties": []}),
 
-        ("sculpt.face_set_edit", {"type": 'E', "value": 'PRESS', "ctrl": True},
+        ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'GROW')]}),
-        ("sculpt.face_set_edit", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True},
+        ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'SHRINK')]}),
         # Subdivision levels
         *_template_items_object_subdivision_set(),
@@ -5391,7 +5391,7 @@ def km_sculpt(params):
          {"properties": [("data_path", 'tool_settings.sculpt.brush.use_smooth_stroke')]}),
         op_menu_pie("VIEW3D_MT_sculpt_mask_edit_pie", {"type": 'A', "value": 'PRESS'}),
         op_menu_pie("VIEW3D_MT_sculpt_automasking_pie", {"type": 'A', "alt": True, "value": 'PRESS'}),
-        op_menu_pie("VIEW3D_MT_sculpt_face_sets_edit_pie", {"type": 'E', "value": 'PRESS'}),
+        op_menu_pie("VIEW3D_MT_sculpt_face_sets_edit_pie", {"type": 'W', "alt": True, "value": 'PRESS'}),
         *_template_items_context_panel("VIEW3D_PT_sculpt_context_menu", params.context_menu_event),
     ])
 
