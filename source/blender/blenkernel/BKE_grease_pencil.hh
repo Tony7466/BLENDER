@@ -77,6 +77,7 @@ class Drawing : public ::GreasePencilDrawing {
    */
   Span<uint3> triangles() const;
   void tag_positions_changed();
+  void tag_topology_changed();
 
   /**
    * Radii of the points. Values are expected to be in blender units.
@@ -242,6 +243,8 @@ class Layer : public ::GreasePencilLayer {
   bool is_visible() const;
   bool is_locked() const;
   bool is_editable() const;
+  bool is_empty() const;
+  bool is_selected() const;
 
   /**
    * Adds a new frame into the layer frames map.
