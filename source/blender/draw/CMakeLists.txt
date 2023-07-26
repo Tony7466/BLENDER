@@ -192,7 +192,7 @@ set(SRC
   engines/gpencil/gpencil_draw_data.cc
   engines/gpencil/gpencil_engine.cc
   engines/gpencil/gpencil_engine_c.cc
-  engines/gpencil/gpencil_render.c
+  engines/gpencil/gpencil_render.cc
   engines/gpencil/gpencil_shader.c
   engines/gpencil/gpencil_shader.cc
   engines/gpencil/gpencil_shader_fx.c

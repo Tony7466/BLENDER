@@ -43,7 +43,7 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
 
   invert_m4_m4(viewmat, viewinv);
 
-  DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+  DRWView *view = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
   DRW_view_default_set(view);
   DRW_view_set_active(view);
 
@@ -52,8 +52,8 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
   RenderPass *rpass_z_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_Z, viewname);
   RenderPass *rpass_col_src = RE_pass_find_by_name(render_layer, RE_PASSNAME_COMBINED, viewname);
 
-  float *pix_z = (rpass_z_src) ? rpass_z_src->ibuf->float_buffer.data : NULL;
-  float *pix_col = (rpass_col_src) ? rpass_col_src->ibuf->float_buffer.data : NULL;
+  float *pix_z = (rpass_z_src) ? rpass_z_src->ibuf->float_buffer.data : nullptr;
+  float *pix_col = (rpass_col_src) ? rpass_col_src->ibuf->float_buffer.data : nullptr;
 
   if (!pix_z || !pix_col) {
     RE_engine_set_error_message(engine,
@@ -62,7 +62,7 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
 
   if (pix_z) {
     /* Depth need to be remapped to [0..1] range. */
-    pix_z = MEM_dupallocN(pix_z);
+    pix_z = static_cast<float *>(MEM_dupallocN(pix_z));
 
     int pix_num = rpass_z_src->rectx * rpass_z_src->recty;
 
@@ -96,14 +96,14 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
   }
   else {
     txl->render_depth_tx = DRW_texture_create_2d(
-        size[0], size[1], GPU_DEPTH_COMPONENT24, 0, do_region ? NULL : pix_z);
+        size[0], size[1], GPU_DEPTH_COMPONENT24, DRWTextureFlag(0), do_region ? nullptr : pix_z);
   }
   if (txl->render_color_tx && !do_clear_col) {
     GPU_texture_update(txl->render_color_tx, GPU_DATA_FLOAT, pix_col);
   }
   else {
     txl->render_color_tx = DRW_texture_create_2d(
-        size[0], size[1], GPU_RGBA16F, 0, do_region ? NULL : pix_col);
+        size[0], size[1], GPU_RGBA16F, DRWTextureFlag(0), do_region ? nullptr : pix_col);
   }
 
   GPU_framebuffer_ensure_config(&fbl->render_fb,
@@ -143,8 +143,8 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
 /* render all objects and select only grease pencil */
 static void GPENCIL_render_cache(void *vedata,
                                  Object *ob,
-                                 RenderEngine *UNUSED(engine),
-                                 Depsgraph *UNUSED(depsgraph))
+                                 RenderEngine * /*engine*/,
+                                 Depsgraph * /*depsgraph*/)
 {
   if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_LAMP)) {
     if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
@@ -164,7 +164,7 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
     return;
   }
   RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_Z, viewname);
-  if (rp == NULL) {
+  if (rp == nullptr) {
     return;
   }
 
@@ -179,12 +179,12 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
                              ro_buffer_data);
 
   float winmat[4][4];
-  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_winmat_get(nullptr, winmat, false);
 
   int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
   /* Convert GPU depth [0..1] to view Z [near..far] */
-  if (DRW_view_is_persp_get(NULL)) {
+  if (DRW_view_is_persp_get(nullptr)) {
     for (int i = 0; i < pix_num; i++) {
       if (ro_buffer_data[i] == 1.0f) {
         ro_buffer_data[i] = 1e10f; /* Background */
@@ -197,8 +197,8 @@ static void GPENCIL_render_result_z(RenderLayer *rl,
   }
   else {
     /* Keep in mind, near and far distance are negatives. */
-    float near = DRW_view_near_distance_get(NULL);
-    float far = DRW_view_far_distance_get(NULL);
+    float near = DRW_view_near_distance_get(nullptr);
+    float far = DRW_view_far_distance_get(nullptr);
     float range = fabsf(far - near);
 
     for (int i = 0; i < pix_num; i++) {
