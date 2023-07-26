@@ -60,25 +60,27 @@ static void eevee_lookdev_hdri_preview_init(EEVEE_Data *vedata, EEVEE_ViewLayerD
 
   {
     Material *ma = EEVEE_material_default_diffuse_get();
-    GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, NULL, mat_options);
+    GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, nullptr, mat_options);
     GPUShader *sh = GPU_material_get_shader(gpumat);
 
     DRW_PASS_CREATE(psl->lookdev_diffuse_pass, state);
     grp = DRW_shgroup_create(sh, psl->lookdev_diffuse_pass);
-    EEVEE_material_bind_resources(grp, gpumat, sldata, vedata, NULL, NULL, -1.0f, false, false);
+    EEVEE_material_bind_resources(
+        grp, gpumat, sldata, vedata, nullptr, nullptr, -1.0f, false, false);
     DRW_shgroup_add_material_resources(grp, gpumat);
-    DRW_shgroup_call(grp, sphere, NULL);
+    DRW_shgroup_call(grp, sphere, nullptr);
   }
   {
     Material *ma = EEVEE_material_default_glossy_get();
-    GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, NULL, mat_options);
+    GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, ma, nullptr, mat_options);
     GPUShader *sh = GPU_material_get_shader(gpumat);
 
     DRW_PASS_CREATE(psl->lookdev_glossy_pass, state);
     grp = DRW_shgroup_create(sh, psl->lookdev_glossy_pass);
-    EEVEE_material_bind_resources(grp, gpumat, sldata, vedata, NULL, NULL, -1.0f, false, false);
+    EEVEE_material_bind_resources(
+        grp, gpumat, sldata, vedata, nullptr, nullptr, -1.0f, false, false);
     DRW_shgroup_add_material_resources(grp, gpumat);
-    DRW_shgroup_call(grp, sphere, NULL);
+    DRW_shgroup_call(grp, sphere, nullptr);
   }
 }
 
@@ -87,7 +89,7 @@ void EEVEE_lookdev_init(EEVEE_Data *vedata)
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  /* The view will be NULL when rendering previews. */
+  /* The view will be nullptr when rendering previews. */
   const View3D *v3d = draw_ctx->v3d;
 
   if (eevee_hdri_preview_overlay_enabled(v3d)) {
@@ -149,13 +151,13 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
   EEVEE_EffectsInfo *effects = stl->effects;
   EEVEE_PrivateData *g_data = stl->g_data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  /* The view will be NULL when rendering previews. */
+  /* The view will be nullptr when rendering previews. */
   const View3D *v3d = draw_ctx->v3d;
   const Scene *scene = draw_ctx->scene;
 
-  const bool probe_render = pinfo != NULL;
+  const bool probe_render = pinfo != nullptr;
 
-  effects->lookdev_view = NULL;
+  effects->lookdev_view = nullptr;
 
   if (eevee_hdri_preview_overlay_enabled(v3d)) {
     eevee_lookdev_hdri_preview_init(vedata, sldata);
@@ -165,7 +167,7 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
     const View3DShading *shading = &v3d->shading;
     StudioLight *sl = BKE_studiolight_find(shading->lookdev_light,
                                            STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE);
-    if (sl == NULL || (sl->flag & STUDIOLIGHT_TYPE_WORLD) == 0) {
+    if (sl == nullptr || (sl->flag & STUDIOLIGHT_TYPE_WORLD) == 0) {
       return;
     }
 
@@ -176,14 +178,14 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
     int cube_res = scene_eval->eevee.gi_cubemap_resolution;
 
     /* If one of the component is missing we start from scratch. */
-    if ((stl->lookdev_grid_data == NULL) || (stl->lookdev_cube_data == NULL) ||
-        (txl->lookdev_grid_tx == NULL) || (txl->lookdev_cube_tx == NULL) ||
+    if ((stl->lookdev_grid_data == nullptr) || (stl->lookdev_cube_data == nullptr) ||
+        (txl->lookdev_grid_tx == nullptr) || (txl->lookdev_cube_tx == nullptr) ||
         (g_data->light_cache && g_data->light_cache->ref_res != cube_res))
     {
       eevee_lookdev_lightcache_delete(vedata);
     }
 
-    if (stl->lookdev_lightcache == NULL) {
+    if (stl->lookdev_lightcache == nullptr) {
 #if defined(IRRADIANCE_SH_L2)
       int grid_res = 4;
 #elif defined(IRRADIANCE_HL2)
@@ -191,7 +193,7 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
 #endif
 
       stl->lookdev_lightcache = EEVEE_lightcache_create(
-          1, 1, cube_res, 8, (int[3]){grid_res, grid_res, 1});
+          1, 1, cube_res, 8, blender::int3{grid_res, grid_res, 1});
 
       /* XXX: Fix memleak. TODO: find out why. */
       MEM_SAFE_FREE(stl->lookdev_cube_mips);
@@ -218,7 +220,7 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
       float view_matrix[4][4];
       float view_rot_matrix[3][3];
       float x_rot_matrix[3][3];
-      DRW_view_viewmat_get(NULL, view_matrix, false);
+      DRW_view_viewmat_get(nullptr, view_matrix, false);
       copy_m3_m4(view_rot_matrix, view_matrix);
       axis_angle_to_mat3_single(x_rot_matrix, 'X', M_PI_2);
       mul_m3_m3m3(view_rot_matrix, x_rot_matrix, view_rot_matrix);
@@ -322,7 +324,7 @@ void EEVEE_lookdev_draw(EEVEE_Data *vedata)
     eevee_lookdev_apply_taa(effects, effects->sphere_size, winmat);
 
     /* "Remove" view matrix location. Leaving only rotation. */
-    DRW_view_viewmat_get(NULL, viewmat, false);
+    DRW_view_viewmat_get(nullptr, viewmat, false);
     zero_v3(viewmat[3]);
 
     if (effects->lookdev_view) {
@@ -346,7 +348,7 @@ void EEVEE_lookdev_draw(EEVEE_Data *vedata)
     GPU_framebuffer_bind(fb);
 
     const int sphere_margin = effects->sphere_size / 6.0f;
-    float offset[2] = {0.0f, sphere_margin};
+    float offset[2] = {0.0f, float(sphere_margin)};
 
     offset[0] = effects->sphere_size + sphere_margin;
     GPU_framebuffer_viewport_set(fb,
@@ -371,6 +373,6 @@ void EEVEE_lookdev_draw(EEVEE_Data *vedata)
 
     DRW_stats_group_end();
 
-    DRW_view_set_active(NULL);
+    DRW_view_set_active(nullptr);
   }
 }
