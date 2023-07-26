@@ -22,7 +22,8 @@
 
 void BM_mesh_separate_faces(BMesh *bm, BMFaceFilterFunc filter_fn, void *user_data)
 {
-  BMFace **faces_array_all = MEM_mallocN(bm->totface * sizeof(BMFace *), __func__);
+  BMFace **faces_array_all = static_cast<BMFace **>(
+      MEM_mallocN(bm->totface * sizeof(BMFace *), __func__));
   /*
    * - Create an array of faces based on 'filter_fn'.
    *   First part of array for match, for non-match.
@@ -82,7 +83,7 @@ void BM_mesh_separate_faces(BMesh *bm, BMFaceFilterFunc filter_fn, void *user_da
           BMEdge *e_first, *e_iter;
           e_iter = e_first = l_iter->e;
           do {
-            if (e_iter->l != NULL) {
+            if (e_iter->l != nullptr) {
               BMLoop *l_radial_first, *l_radial_iter;
               l_radial_first = l_radial_iter = e_iter->l;
               do {
@@ -97,7 +98,7 @@ void BM_mesh_separate_faces(BMesh *bm, BMFaceFilterFunc filter_fn, void *user_da
         }
 
         /* Perform the split */
-        BM_face_loop_separate_multi(bm, loop_split.data, loop_split.count);
+        BM_face_loop_separate_multi(bm, static_cast<BMLoop **>(loop_split.data), loop_split.count);
 
         BLI_buffer_clear(&loop_split);
       }
