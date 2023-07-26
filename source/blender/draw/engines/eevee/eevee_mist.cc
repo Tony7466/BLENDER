@@ -31,7 +31,7 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   /* Create FrameBuffer. */
   /* Should be enough precision for many samples. */
-  DRW_texture_ensure_fullscreen_2d(&txl->mist_accum, GPU_R32F, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->mist_accum, GPU_R32F, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->mist_accum_fb,
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->mist_accum)});
@@ -54,8 +54,8 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     }
   }
   else {
-    float near = DRW_view_near_distance_get(NULL);
-    float far = DRW_view_far_distance_get(NULL);
+    float near = DRW_view_near_distance_get(nullptr);
+    float far = DRW_view_far_distance_get(nullptr);
     /* Fallback */
     g_data->mist_start = near;
     g_data->mist_inv_dist = 1.0f / fabsf(far - near);
@@ -73,16 +73,16 @@ void EEVEE_mist_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
   DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
   DRW_shgroup_uniform_vec3(grp, "mistSettings", &g_data->mist_start, 1);
-  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
 }
 
-void EEVEE_mist_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_mist_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_EffectsInfo *effects = vedata->stl->effects;
 
-  if (fbl->mist_accum_fb != NULL) {
+  if (fbl->mist_accum_fb != nullptr) {
     GPU_framebuffer_bind(fbl->mist_accum_fb);
 
     /* Clear texture. */
