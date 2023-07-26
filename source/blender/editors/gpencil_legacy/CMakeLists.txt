@@ -66,7 +66,7 @@ set(LIB
 if(WITH_POTRACE)
   list(APPEND SRC
     gpencil_trace_ops.cc
-    gpencil_trace_utils.c
+    gpencil_trace_utils.cc
   )
   list(APPEND INC
     ${POTRACE_INCLUDE_DIRS}
