@@ -28,7 +28,7 @@ set(SRC
   intern/MOD_gpencil_legacy_ui_common.c
 
   intern/MOD_gpencil_legacy_armature.cc
-  intern/MOD_gpencil_legacy_array.c
+  intern/MOD_gpencil_legacy_array.cc
   intern/MOD_gpencil_legacy_build.c
   intern/MOD_gpencil_legacy_color.c
   intern/MOD_gpencil_legacy_dash.c

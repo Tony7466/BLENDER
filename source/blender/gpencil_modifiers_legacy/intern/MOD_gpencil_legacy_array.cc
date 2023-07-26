@@ -49,11 +49,11 @@
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-typedef struct tmpStrokes {
+struct tmpStrokes {
   struct tmpStrokes *next, *prev;
   bGPDframe *gpf;
   bGPDstroke *gps;
-} tmpStrokes;
+};
 
 static void initData(GpencilModifierData *md)
 {
@@ -123,14 +123,14 @@ static bool gpencil_data_selected_minmax(
 
   INIT_MINMAX(r_min, r_max);
 
-  if (gpd == NULL) {
+  if (gpd == nullptr) {
     return changed;
   }
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, cfra, GP_GETFRAME_USE_PREV);
 
-    if (gpf != NULL) {
+    if (gpf != nullptr) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (is_stroke_affected_by_modifier(ob,
                                            mmd->layername,
@@ -162,7 +162,7 @@ static void generate_geometry(GpencilModifierData *md,
                               int cfra)
 {
   ArrayGpencilModifierData *mmd = (ArrayGpencilModifierData *)md;
-  ListBase stroke_cache = {NULL, NULL};
+  ListBase stroke_cache = {nullptr, nullptr};
   /* Load the strokes to be duplicated. */
   bGPdata *gpd = (bGPdata *)ob->data;
   bool found = false;
@@ -189,7 +189,7 @@ static void generate_geometry(GpencilModifierData *md,
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = (apply) ? BKE_gpencil_layer_frame_get(gpl, cfra, GP_GETFRAME_USE_PREV) :
                                BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
@@ -206,7 +206,7 @@ static void generate_geometry(GpencilModifierData *md,
                                          mmd->flag & GP_ARRAY_INVERT_LAYERPASS,
                                          mmd->flag & GP_ARRAY_INVERT_MATERIAL))
       {
-        tmpStrokes *tmp = MEM_callocN(sizeof(tmpStrokes), __func__);
+        tmpStrokes *tmp = static_cast<tmpStrokes *>(MEM_callocN(sizeof(tmpStrokes), __func__));
         tmp->gpf = gpf;
         tmp->gps = gps;
         BLI_addtail(&stroke_cache, tmp);
@@ -323,13 +323,13 @@ static void generate_geometry(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   /* Get list of frames. */
   GHash *keyframe_list = BLI_ghash_int_new(__func__);
@@ -350,8 +350,8 @@ static void bakeModifier(Main *UNUSED(bmain),
   }
 
   /* Free temp hash table. */
-  if (keyframe_list != NULL) {
-    BLI_ghash_free(keyframe_list, NULL, NULL);
+  if (keyframe_list != nullptr) {
+    BLI_ghash_free(keyframe_list, nullptr, nullptr);
   }
 }
 
@@ -366,10 +366,10 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   ArrayGpencilModifierData *lmd = (ArrayGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Array Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Array Modifier");
   }
@@ -384,34 +384,34 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "count", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "count", 0, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "replace_material", 0, IFACE_("Material Override"), ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void relative_offset_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void relative_offset_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_relative_offset", 0, IFACE_("Relative Offset"), ICON_NONE);
 }
 
-static void relative_offset_draw(const bContext *UNUSED(C), Panel *panel)
+static void relative_offset_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -421,20 +421,20 @@ static void relative_offset_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(col, ptr, "relative_offset", 0, IFACE_("Factor"), ICON_NONE);
 }
 
-static void constant_offset_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void constant_offset_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_constant_offset", 0, IFACE_("Constant Offset"), ICON_NONE);
 }
 
-static void constant_offset_draw(const bContext *UNUSED(C), Panel *panel)
+static void constant_offset_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -447,20 +447,20 @@ static void constant_offset_draw(const bContext *UNUSED(C), Panel *panel)
 /**
  * Object offset in a subpanel for consistency with the other offset types.
  */
-static void object_offset_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void object_offset_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_object_offset", 0, IFACE_("Object Offset"), ICON_NONE);
 }
 
-static void object_offset_draw(const bContext *UNUSED(C), Panel *panel)
+static void object_offset_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -470,22 +470,22 @@ static void object_offset_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(col, ptr, "offset_object", 0, IFACE_("Object"), ICON_NONE);
 }
 
-static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void random_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, ptr, "random_offset", 0, IFACE_("Offset"), ICON_NONE);
   uiItemR(layout, ptr, "random_rotation", 0, IFACE_("Rotation"), ICON_NONE);
   uiItemR(layout, ptr, "random_scale", 0, IFACE_("Scale"), ICON_NONE);
-  uiItemR(layout, ptr, "use_uniform_random_scale", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "seed", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_uniform_random_scale", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "seed", 0, nullptr, ICON_NONE);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -509,9 +509,9 @@ static void panelRegister(ARegionType *region_type)
   gpencil_modifier_subpanel_register(
       region_type, "object_offset", "", object_offset_header_draw, object_offset_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "randomize", "Randomize", NULL, random_panel_draw, panel_type);
+      region_type, "randomize", "Randomize", nullptr, random_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Array = {
@@ -523,17 +523,17 @@ GpencilModifierTypeInfo modifierType_Gpencil_Array = {
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
