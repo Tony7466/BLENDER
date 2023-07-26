@@ -99,7 +99,7 @@ static bool bmw_edge_is_wire(const BMWalker *walker, const BMEdge *e)
 
 static void bmw_VertShellWalker_visitEdge(BMWalker *walker, BMEdge *e)
 {
-  BMwShellWalker *shellWalk = NULL;
+  BMwShellWalker *shellWalk = nullptr;
 
   if (BLI_gset_haskey(walker->visit_set, e)) {
     return;
@@ -109,7 +109,7 @@ static void bmw_VertShellWalker_visitEdge(BMWalker *walker, BMEdge *e)
     return;
   }
 
-  shellWalk = BMW_state_add(walker);
+  shellWalk = static_cast<BMwShellWalker *>(BMW_state_add(walker));
   shellWalk->curedge = e;
   BLI_gset_insert(walker->visit_set, e);
 }
@@ -117,11 +117,11 @@ static void bmw_VertShellWalker_visitEdge(BMWalker *walker, BMEdge *e)
 static void bmw_VertShellWalker_begin(BMWalker *walker, void *data)
 {
   BMIter eiter;
-  BMHeader *h = data;
+  BMHeader *h = static_cast<BMHeader *>(data);
   BMEdge *e;
   BMVert *v;
 
-  if (UNLIKELY(h == NULL)) {
+  if (UNLIKELY(h == nullptr)) {
     return;
   }
 
@@ -148,7 +148,7 @@ static void bmw_VertShellWalker_begin(BMWalker *walker, void *data)
 
 static void *bmw_VertShellWalker_yield(BMWalker *walker)
 {
-  BMwShellWalker *shellWalk = BMW_current_state(walker);
+  BMwShellWalker *shellWalk = static_cast<BMwShellWalker *>(BMW_current_state(walker));
   return shellWalk->curedge;
 }
 
@@ -178,8 +178,8 @@ static void *bmw_VertShellWalker_step(BMWalker *walker)
 #if 0
 static void *bmw_VertShellWalker_step(BMWalker *walker)
 {
-  BMEdge *curedge, *next = NULL;
-  BMVert *v_old = NULL;
+  BMEdge *curedge, *next = nullptr;
+  BMVert *v_old = nullptr;
   bool restrictpass = true;
   BMwShellWalker shellWalk = *((BMwShellWalker *)BMW_current_state(walker));
 
@@ -195,7 +195,8 @@ static void *bmw_VertShellWalker_step(BMWalker *walker)
     if (!BLI_gset_haskey(walker->visit_set, curedge)) {
       if (!walker->visibility_flag ||
           (walker->visibility_flag &&
-           BMO_edge_flag_test(walker->bm, curedge, walker->visibility_flag))) {
+           BMO_edge_flag_test(walker->bm, curedge, walker->visibility_flag)))
+      {
         BMwShellWalker *newstate;
 
         v_old = BM_edge_other_vert(curedge, shellWalk.base);
@@ -229,7 +230,7 @@ static void *bmw_VertShellWalker_step(BMWalker *walker)
 
 static void bmw_LoopShellWalker_visitLoop(BMWalker *walker, BMLoop *l)
 {
-  BMwLoopShellWalker *shellWalk = NULL;
+  BMwLoopShellWalker *shellWalk = nullptr;
 
   if (BLI_gset_haskey(walker->visit_set, l)) {
     return;
@@ -239,7 +240,7 @@ static void bmw_LoopShellWalker_visitLoop(BMWalker *walker, BMLoop *l)
     return;
   }
 
-  shellWalk = BMW_state_add(walker);
+  shellWalk = static_cast<BMwLoopShellWalker *>(BMW_state_add(walker));
   shellWalk->curloop = l;
   BLI_gset_insert(walker->visit_set, l);
 }
@@ -247,9 +248,9 @@ static void bmw_LoopShellWalker_visitLoop(BMWalker *walker, BMLoop *l)
 static void bmw_LoopShellWalker_begin(BMWalker *walker, void *data)
 {
   BMIter iter;
-  BMHeader *h = data;
+  BMHeader *h = static_cast<BMHeader *>(data);
 
-  if (UNLIKELY(h == NULL)) {
+  if (UNLIKELY(h == nullptr)) {
     return;
   }
 
@@ -291,7 +292,7 @@ static void bmw_LoopShellWalker_begin(BMWalker *walker, void *data)
 
 static void *bmw_LoopShellWalker_yield(BMWalker *walker)
 {
-  BMwLoopShellWalker *shellWalk = BMW_current_state(walker);
+  BMwLoopShellWalker *shellWalk = static_cast<BMwLoopShellWalker *>(BMW_current_state(walker));
   return shellWalk->curloop;
 }
 
@@ -357,7 +358,7 @@ static void *bmw_LoopShellWalker_step(BMWalker *walker)
 
 static void bmw_LoopShellWalker_visitEdgeWire(BMWalker *walker, BMEdge *e)
 {
-  BMwLoopShellWireWalker *shellWalk = NULL;
+  BMwLoopShellWireWalker *shellWalk = nullptr;
 
   BLI_assert(bmw_edge_is_wire(walker, e));
 
@@ -369,7 +370,7 @@ static void bmw_LoopShellWalker_visitEdgeWire(BMWalker *walker, BMEdge *e)
     return;
   }
 
-  shellWalk = BMW_state_add(walker);
+  shellWalk = static_cast<BMwLoopShellWireWalker *>(BMW_state_add(walker));
   shellWalk->curelem = (BMElem *)e;
   BLI_gset_insert(walker->visit_set_alt, e);
 }
@@ -411,9 +412,9 @@ static void bmw_LoopShellWireWalker_visitVert(BMWalker *walker, BMVert *v, const
 
 static void bmw_LoopShellWireWalker_begin(BMWalker *walker, void *data)
 {
-  BMHeader *h = data;
+  BMHeader *h = static_cast<BMHeader *>(data);
 
-  if (UNLIKELY(h == NULL)) {
+  if (UNLIKELY(h == nullptr)) {
     return;
   }
 
@@ -422,22 +423,22 @@ static void bmw_LoopShellWireWalker_begin(BMWalker *walker, void *data)
   switch (h->htype) {
     case BM_LOOP: {
       BMLoop *l = (BMLoop *)h;
-      bmw_LoopShellWireWalker_visitVert(walker, l->v, NULL);
+      bmw_LoopShellWireWalker_visitVert(walker, l->v, nullptr);
       break;
     }
 
     case BM_VERT: {
       BMVert *v = (BMVert *)h;
       if (v->e) {
-        bmw_LoopShellWireWalker_visitVert(walker, v, NULL);
+        bmw_LoopShellWireWalker_visitVert(walker, v, nullptr);
       }
       break;
     }
     case BM_EDGE: {
       BMEdge *e = (BMEdge *)h;
       if (bmw_mask_check_edge(walker, e)) {
-        bmw_LoopShellWireWalker_visitVert(walker, e->v1, NULL);
-        bmw_LoopShellWireWalker_visitVert(walker, e->v2, NULL);
+        bmw_LoopShellWireWalker_visitVert(walker, e->v1, nullptr);
+        bmw_LoopShellWireWalker_visitVert(walker, e->v2, nullptr);
       }
       else if (e->l) {
         BMLoop *l_iter, *l_first;
@@ -461,7 +462,8 @@ static void bmw_LoopShellWireWalker_begin(BMWalker *walker, void *data)
 
 static void *bmw_LoopShellWireWalker_yield(BMWalker *walker)
 {
-  BMwLoopShellWireWalker *shellWalk = BMW_current_state(walker);
+  BMwLoopShellWireWalker *shellWalk = static_cast<BMwLoopShellWireWalker *>(
+      BMW_current_state(walker));
   return shellWalk->curelem;
 }
 
@@ -477,7 +479,7 @@ static void *bmw_LoopShellWireWalker_step(BMWalker *walker)
 
     bmw_LoopShellWalker_step_impl(walker, l);
 
-    bmw_LoopShellWireWalker_visitVert(walker, l->v, NULL);
+    bmw_LoopShellWireWalker_visitVert(walker, l->v, nullptr);
 
     return l;
   }
@@ -503,7 +505,7 @@ static void *bmw_LoopShellWireWalker_step(BMWalker *walker)
 
 static void bmw_FaceShellWalker_visitEdge(BMWalker *walker, BMEdge *e)
 {
-  BMwShellWalker *shellWalk = NULL;
+  BMwShellWalker *shellWalk = nullptr;
 
   if (BLI_gset_haskey(walker->visit_set, e)) {
     return;
@@ -513,20 +515,20 @@ static void bmw_FaceShellWalker_visitEdge(BMWalker *walker, BMEdge *e)
     return;
   }
 
-  shellWalk = BMW_state_add(walker);
+  shellWalk = static_cast<BMwShellWalker *>(BMW_state_add(walker));
   shellWalk->curedge = e;
   BLI_gset_insert(walker->visit_set, e);
 }
 
 static void bmw_FaceShellWalker_begin(BMWalker *walker, void *data)
 {
-  BMEdge *e = data;
+  BMEdge *e = static_cast<BMEdge *>(data);
   bmw_FaceShellWalker_visitEdge(walker, e);
 }
 
 static void *bmw_FaceShellWalker_yield(BMWalker *walker)
 {
-  BMwShellWalker *shellWalk = BMW_current_state(walker);
+  BMwShellWalker *shellWalk = static_cast<BMwShellWalker *>(BMW_current_state(walker));
   return shellWalk->curedge;
 }
 
@@ -581,20 +583,21 @@ static void bmw_ConnectedVertexWalker_visitVertex(BMWalker *walker, BMVert *v)
     return;
   }
 
-  vwalk = BMW_state_add(walker);
+  vwalk = static_cast<BMwConnectedVertexWalker *>(BMW_state_add(walker));
   vwalk->curvert = v;
   BLI_gset_insert(walker->visit_set, v);
 }
 
 static void bmw_ConnectedVertexWalker_begin(BMWalker *walker, void *data)
 {
-  BMVert *v = data;
+  BMVert *v = static_cast<BMVert *>(data);
   bmw_ConnectedVertexWalker_visitVertex(walker, v);
 }
 
 static void *bmw_ConnectedVertexWalker_yield(BMWalker *walker)
 {
-  BMwConnectedVertexWalker *vwalk = BMW_current_state(walker);
+  BMwConnectedVertexWalker *vwalk = static_cast<BMwConnectedVertexWalker *>(
+      BMW_current_state(walker));
   return vwalk->curvert;
 }
 
@@ -637,10 +640,10 @@ static void *bmw_ConnectedVertexWalker_step(BMWalker *walker)
 
 static void bmw_IslandboundWalker_begin(BMWalker *walker, void *data)
 {
-  BMLoop *l = data;
-  BMwIslandboundWalker *iwalk = NULL;
+  BMLoop *l = static_cast<BMLoop *>(data);
+  BMwIslandboundWalker *iwalk = nullptr;
 
-  iwalk = BMW_state_add(walker);
+  iwalk = static_cast<BMwIslandboundWalker *>(BMW_state_add(walker));
 
   iwalk->base = iwalk->curloop = l;
   iwalk->lastv = l->v;
@@ -650,7 +653,7 @@ static void bmw_IslandboundWalker_begin(BMWalker *walker, void *data)
 
 static void *bmw_IslandboundWalker_yield(BMWalker *walker)
 {
-  BMwIslandboundWalker *iwalk = BMW_current_state(walker);
+  BMwIslandboundWalker *iwalk = static_cast<BMwIslandboundWalker *>(BMW_current_state(walker));
 
   return iwalk->curloop;
 }
@@ -698,14 +701,14 @@ static void *bmw_IslandboundWalker_step(BMWalker *walker)
   }
 
   if (l == owalk.curloop) {
-    return NULL;
+    return nullptr;
   }
   if (BLI_gset_haskey(walker->visit_set, l)) {
     return owalk.curloop;
   }
 
   BLI_gset_insert(walker->visit_set, l);
-  iwalk = BMW_state_add(walker);
+  iwalk = static_cast<BMwIslandboundWalker *>(BMW_state_add(walker));
   iwalk->base = owalk.base;
 
 #if 0
@@ -733,21 +736,21 @@ static void *bmw_IslandboundWalker_step(BMWalker *walker)
 
 static void bmw_IslandWalker_begin(BMWalker *walker, void *data)
 {
-  BMwIslandWalker *iwalk = NULL;
+  BMwIslandWalker *iwalk = nullptr;
 
-  if (!bmw_mask_check_face(walker, data)) {
+  if (!bmw_mask_check_face(walker, static_cast<BMFace *>(data))) {
     return;
   }
 
-  iwalk = BMW_state_add(walker);
+  iwalk = static_cast<BMwIslandWalker *>(BMW_state_add(walker));
   BLI_gset_insert(walker->visit_set, data);
 
-  iwalk->cur = data;
+  iwalk->cur = static_cast<BMFace *>(data);
 }
 
 static void *bmw_IslandWalker_yield(BMWalker *walker)
 {
-  BMwIslandWalker *iwalk = BMW_current_state(walker);
+  BMwIslandWalker *iwalk = static_cast<BMwIslandWalker *>(BMW_current_state(walker));
 
   return iwalk->cur;
 }
@@ -804,7 +807,7 @@ static void *bmw_IslandWalker_step_ex(BMWalker *walker, bool only_manifold)
         continue;
       }
 
-      iwalk = BMW_state_add(walker);
+      iwalk = static_cast<BMwIslandWalker *>(BMW_state_add(walker));
       iwalk->cur = f;
       BLI_gset_insert(walker->visit_set, f);
       break;
@@ -844,8 +847,8 @@ static bool bm_edge_is_single(BMEdge *e)
 
 static void bmw_EdgeLoopWalker_begin(BMWalker *walker, void *data)
 {
-  BMwEdgeLoopWalker *lwalk = NULL, owalk, *owalk_pt;
-  BMEdge *e = data;
+  BMwEdgeLoopWalker *lwalk = nullptr, owalk, *owalk_pt;
+  BMEdge *e = static_cast<BMEdge *>(data);
   BMVert *v;
   const int vert_edge_count[2] = {
       BM_vert_edge_count_nonwire(e->v1),
@@ -858,7 +861,7 @@ static void bmw_EdgeLoopWalker_begin(BMWalker *walker, void *data)
 
   v = e->v1;
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
   BLI_gset_insert(walker->visit_set, e);
 
   lwalk->cur = lwalk->start = e;
@@ -938,10 +941,10 @@ static void bmw_EdgeLoopWalker_begin(BMWalker *walker, void *data)
   {
     BMIter iter;
     BMFace *f_iter;
-    BMFace *f_best = NULL;
+    BMFace *f_best = nullptr;
 
     BM_ITER_ELEM (f_iter, &iter, e, BM_FACES_OF_EDGE) {
-      if (f_best == NULL || f_best->len < f_iter->len) {
+      if (f_best == nullptr || f_best->len < f_iter->len) {
         f_best = f_iter;
       }
     }
@@ -949,35 +952,35 @@ static void bmw_EdgeLoopWalker_begin(BMWalker *walker, void *data)
     if (f_best) {
       /* Only use hub selection for 5+ sides else this could
        * conflict with normal edge loop selection. */
-      lwalk->f_hub = f_best->len > 4 ? f_best : NULL;
+      lwalk->f_hub = f_best->len > 4 ? f_best : nullptr;
     }
     else {
       /* Edge doesn't have any faces connected to it. */
-      lwalk->f_hub = NULL;
+      lwalk->f_hub = nullptr;
     }
   }
   else {
-    lwalk->f_hub = NULL;
+    lwalk->f_hub = nullptr;
   }
 
   /* Rewind. */
-  while ((owalk_pt = BMW_current_state(walker))) {
+  while ((owalk_pt = static_cast<BMwEdgeLoopWalker *>(BMW_current_state(walker)))) {
     owalk = *((BMwEdgeLoopWalker *)owalk_pt);
     BMW_walk(walker);
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
   *lwalk = owalk;
 
   lwalk->lastv = lwalk->startv = BM_edge_other_vert(owalk.cur, lwalk->lastv);
 
-  BLI_gset_clear(walker->visit_set, NULL);
+  BLI_gset_clear(walker->visit_set, nullptr);
   BLI_gset_insert(walker->visit_set, owalk.cur);
 }
 
 static void *bmw_EdgeLoopWalker_yield(BMWalker *walker)
 {
-  BMwEdgeLoopWalker *lwalk = BMW_current_state(walker);
+  BMwEdgeLoopWalker *lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_current_state(walker));
 
   return lwalk->cur;
 }
@@ -985,7 +988,7 @@ static void *bmw_EdgeLoopWalker_yield(BMWalker *walker)
 static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
 {
   BMwEdgeLoopWalker *lwalk, owalk;
-  BMEdge *e, *nexte = NULL;
+  BMEdge *e, *nexte = nullptr;
   BMLoop *l;
   BMVert *v;
 
@@ -1010,7 +1013,7 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
           /* Never step onto a boundary edge, this gives odd-results. */
           (BM_edge_is_boundary(nexte) == false))
       {
-        lwalk = BMW_state_add(walker);
+        lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
         lwalk->cur = nexte;
         lwalk->lastv = v;
 
@@ -1022,7 +1025,7 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
       }
     }
   }
-  else if (l == NULL) { /* WIRE EDGE */
+  else if (l == nullptr) { /* WIRE EDGE */
     BMIter eiter;
 
     /* Match trunk: mark all connected wire edges. */
@@ -1030,10 +1033,10 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
       v = i ? e->v2 : e->v1;
 
       BM_ITER_ELEM (nexte, &eiter, v, BM_EDGES_OF_VERT) {
-        if ((nexte->l == NULL) && bmw_mask_check_edge(walker, nexte) &&
+        if ((nexte->l == nullptr) && bmw_mask_check_edge(walker, nexte) &&
             !BLI_gset_haskey(walker->visit_set, nexte))
         {
-          lwalk = BMW_state_add(walker);
+          lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
           lwalk->cur = nexte;
           lwalk->lastv = v;
 
@@ -1064,19 +1067,19 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
           l = l->radial_next;
         }
         else {
-          l = NULL;
+          l = nullptr;
           break;
         }
       } while (++i != i_opposite);
     }
     else {
-      l = NULL;
+      l = nullptr;
     }
 
-    if (l != NULL) {
+    if (l != nullptr) {
       if (l != e->l && bmw_mask_check_edge(walker, l->e) &&
           !BLI_gset_haskey(walker->visit_set, l->e)) {
-        lwalk = BMW_state_add(walker);
+        lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
         lwalk->cur = l->e;
         lwalk->lastv = v;
 
@@ -1114,20 +1117,20 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
           break;
         }
         else {
-          l = NULL;
+          l = nullptr;
           break;
         }
       } while (true);
     }
 
     if (owalk.is_single == false && l && bm_edge_is_single(l->e)) {
-      l = NULL;
+      l = nullptr;
     }
 
-    if (l != NULL) {
+    if (l != nullptr) {
       if (l != e->l && bmw_mask_check_edge(walker, l->e) &&
           !BLI_gset_haskey(walker->visit_set, l->e)) {
-        lwalk = BMW_state_add(walker);
+        lwalk = static_cast<BMwEdgeLoopWalker *>(BMW_state_add(walker));
         lwalk->cur = l->e;
         lwalk->lastv = v;
 
@@ -1202,7 +1205,7 @@ static bool bmw_FaceLoopWalker_edge_begins_loop(BMWalker *walker, BMEdge *e)
 static void bmw_FaceLoopWalker_begin(BMWalker *walker, void *data)
 {
   BMwFaceLoopWalker *lwalk, owalk, *owalk_pt;
-  BMEdge *e = data;
+  BMEdge *e = static_cast<BMEdge *>(data);
   // BMesh *bm = walker->bm;              /* UNUSED */
   // int fcount = BM_edge_face_count(e);  /* UNUSED */
 
@@ -1210,34 +1213,34 @@ static void bmw_FaceLoopWalker_begin(BMWalker *walker, void *data)
     return;
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwFaceLoopWalker *>(BMW_state_add(walker));
   lwalk->l = e->l;
   lwalk->no_calc = false;
   BLI_gset_insert(walker->visit_set, lwalk->l->f);
 
   /* Rewind. */
-  while ((owalk_pt = BMW_current_state(walker))) {
+  while ((owalk_pt = static_cast<BMwFaceLoopWalker *>(BMW_current_state(walker)))) {
     owalk = *((BMwFaceLoopWalker *)owalk_pt);
     BMW_walk(walker);
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwFaceLoopWalker *>(BMW_state_add(walker));
   *lwalk = owalk;
   lwalk->no_calc = false;
 
-  BLI_gset_clear(walker->visit_set_alt, NULL);
+  BLI_gset_clear(walker->visit_set_alt, nullptr);
   BLI_gset_insert(walker->visit_set_alt, lwalk->l->e);
 
-  BLI_gset_clear(walker->visit_set, NULL);
+  BLI_gset_clear(walker->visit_set, nullptr);
   BLI_gset_insert(walker->visit_set, lwalk->l->f);
 }
 
 static void *bmw_FaceLoopWalker_yield(BMWalker *walker)
 {
-  BMwFaceLoopWalker *lwalk = BMW_current_state(walker);
+  BMwFaceLoopWalker *lwalk = static_cast<BMwFaceLoopWalker *>(BMW_current_state(walker));
 
   if (!lwalk) {
-    return NULL;
+    return nullptr;
   }
 
   return lwalk->l->f;
@@ -1269,7 +1272,7 @@ static void *bmw_FaceLoopWalker_step(BMWalker *walker)
   }
 
   if (bmw_FaceLoopWalker_include_face(walker, l)) {
-    lwalk = BMW_state_add(walker);
+    lwalk = static_cast<BMwFaceLoopWalker *>(BMW_state_add(walker));
     lwalk->l = l;
 
     if (l->f->len != 4) {
@@ -1303,26 +1306,26 @@ static void *bmw_FaceLoopWalker_step(BMWalker *walker)
 static void bmw_EdgeringWalker_begin(BMWalker *walker, void *data)
 {
   BMwEdgeringWalker *lwalk, owalk, *owalk_pt;
-  BMEdge *e = data;
+  BMEdge *e = static_cast<BMEdge *>(data);
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwEdgeringWalker *>(BMW_state_add(walker));
   lwalk->l = e->l;
 
   if (!lwalk->l) {
     lwalk->wireedge = e;
     return;
   }
-  lwalk->wireedge = NULL;
+  lwalk->wireedge = nullptr;
 
   BLI_gset_insert(walker->visit_set, lwalk->l->e);
 
   /* Rewind. */
-  while ((owalk_pt = BMW_current_state(walker))) {
+  while ((owalk_pt = static_cast<BMwEdgeringWalker *>(BMW_current_state(walker)))) {
     owalk = *((BMwEdgeringWalker *)owalk_pt);
     BMW_walk(walker);
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwEdgeringWalker *>(BMW_state_add(walker));
   *lwalk = owalk;
 
 #ifdef BMW_EDGERING_NGON
@@ -1334,16 +1337,16 @@ static void bmw_EdgeringWalker_begin(BMWalker *walker, void *data)
     lwalk->l = lwalk->l->radial_next;
   }
 
-  BLI_gset_clear(walker->visit_set, NULL);
+  BLI_gset_clear(walker->visit_set, nullptr);
   BLI_gset_insert(walker->visit_set, lwalk->l->e);
 }
 
 static void *bmw_EdgeringWalker_yield(BMWalker *walker)
 {
-  BMwEdgeringWalker *lwalk = BMW_current_state(walker);
+  BMwEdgeringWalker *lwalk = static_cast<BMwEdgeringWalker *>(BMW_current_state(walker));
 
   if (!lwalk) {
-    return NULL;
+    return nullptr;
   }
 
   if (lwalk->l) {
@@ -1412,9 +1415,9 @@ static void *bmw_EdgeringWalker_step(BMWalker *walker)
   if ((l->f->len == 4) && EDGE_CHECK(l->e) && !BLI_gset_haskey(walker->visit_set, l->e))
 #endif
   {
-    lwalk = BMW_state_add(walker);
+    lwalk = static_cast<BMwEdgeringWalker *>(BMW_state_add(walker));
     lwalk->l = l;
-    lwalk->wireedge = NULL;
+    lwalk->wireedge = nullptr;
 
     BLI_gset_insert(walker->visit_set, l->e);
   }
@@ -1433,7 +1436,7 @@ static void *bmw_EdgeringWalker_step(BMWalker *walker)
 static void bmw_EdgeboundaryWalker_begin(BMWalker *walker, void *data)
 {
   BMwEdgeboundaryWalker *lwalk;
-  BMEdge *e = data;
+  BMEdge *e = static_cast<BMEdge *>(data);
 
   BLI_assert(BM_edge_is_boundary(e));
 
@@ -1441,17 +1444,17 @@ static void bmw_EdgeboundaryWalker_begin(BMWalker *walker, void *data)
     return;
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwEdgeboundaryWalker *>(BMW_state_add(walker));
   lwalk->e = e;
   BLI_gset_insert(walker->visit_set, e);
 }
 
 static void *bmw_EdgeboundaryWalker_yield(BMWalker *walker)
 {
-  BMwEdgeboundaryWalker *lwalk = BMW_current_state(walker);
+  BMwEdgeboundaryWalker *lwalk = static_cast<BMwEdgeboundaryWalker *>(BMW_current_state(walker));
 
   if (!lwalk) {
-    return NULL;
+    return nullptr;
   }
 
   return lwalk->e;
@@ -1485,7 +1488,7 @@ static void *bmw_EdgeboundaryWalker_step(BMWalker *walker)
           continue;
         }
 
-        lwalk = BMW_state_add(walker);
+        lwalk = static_cast<BMwEdgeboundaryWalker *>(BMW_state_add(walker));
         BLI_gset_insert(walker->visit_set, e_other);
 
         lwalk->e = e_other;
@@ -1511,23 +1514,23 @@ static void *bmw_EdgeboundaryWalker_step(BMWalker *walker)
 static void bmw_UVEdgeWalker_begin(BMWalker *walker, void *data)
 {
   BMwUVEdgeWalker *lwalk;
-  BMLoop *l = data;
+  BMLoop *l = static_cast<BMLoop *>(data);
 
   if (BLI_gset_haskey(walker->visit_set, l)) {
     return;
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwUVEdgeWalker *>(BMW_state_add(walker));
   lwalk->l = l;
   BLI_gset_insert(walker->visit_set, l);
 }
 
 static void *bmw_UVEdgeWalker_yield(BMWalker *walker)
 {
-  BMwUVEdgeWalker *lwalk = BMW_current_state(walker);
+  BMwUVEdgeWalker *lwalk = static_cast<BMwUVEdgeWalker *>(BMW_current_state(walker));
 
   if (!lwalk) {
-    return NULL;
+    return nullptr;
   }
 
   return lwalk->l;
@@ -1579,11 +1582,11 @@ static void *bmw_UVEdgeWalker_step(BMWalker *walker)
         l_other = (l_radial->v != l_pivot->v) ? l_radial->next : l_radial;
         data_other = BM_ELEM_CD_GET_VOID_P(l_other, offset);
 
-        if (!CustomData_data_equals(type, data_pivot, data_other)) {
+        if (!CustomData_data_equals(eCustomDataType(type), data_pivot, data_other)) {
           continue;
         }
 
-        lwalk = BMW_state_add(walker);
+        lwalk = static_cast<BMwUVEdgeWalker *>(BMW_state_add(walker));
         BLI_gset_insert(walker->visit_set, l_radial);
 
         lwalk->l = l_radial;
@@ -1604,13 +1607,13 @@ static void *bmw_UVEdgeWalker_step(BMWalker *walker)
 static void bmw_NonManifoldedgeWalker_begin(BMWalker *walker, void *data)
 {
   BMwNonManifoldEdgeLoopWalker *lwalk;
-  BMEdge *e = data;
+  BMEdge *e = static_cast<BMEdge *>(data);
 
   if (BLI_gset_haskey(walker->visit_set, e)) {
     return;
   }
 
-  lwalk = BMW_state_add(walker);
+  lwalk = static_cast<BMwNonManifoldEdgeLoopWalker *>(BMW_state_add(walker));
   lwalk->start = e;
   lwalk->cur = e;
   lwalk->startv = e->v1;
@@ -1621,17 +1624,18 @@ static void bmw_NonManifoldedgeWalker_begin(BMWalker *walker, void *data)
 
 static void *bmw_NonManifoldedgeWalker_yield(BMWalker *walker)
 {
-  BMwNonManifoldEdgeLoopWalker *lwalk = BMW_current_state(walker);
+  BMwNonManifoldEdgeLoopWalker *lwalk = static_cast<BMwNonManifoldEdgeLoopWalker *>(
+      BMW_current_state(walker));
 
   if (!lwalk) {
-    return NULL;
+    return nullptr;
   }
   return lwalk->cur;
 }
 
 /**
  * Walk over manifold loops around `v` until loop-edge is found with `face_count` users.
- * or return NULL if not found.
+ * or return nullptr if not found.
  */
 static BMLoop *bmw_NonManifoldLoop_find_next_around_vertex(BMLoop *l, BMVert *v, int face_count)
 {
@@ -1648,7 +1652,7 @@ static BMLoop *bmw_NonManifoldLoop_find_next_around_vertex(BMLoop *l, BMVert *v,
       break;
     }
   } while (true);
-  return NULL;
+  return nullptr;
 }
 
 static void *bmw_NonManifoldedgeWalker_step(BMWalker *walker)
@@ -1656,10 +1660,10 @@ static void *bmw_NonManifoldedgeWalker_step(BMWalker *walker)
   BMwNonManifoldEdgeLoopWalker *lwalk, owalk;
   BMW_state_remove_r(walker, &owalk);
   lwalk = &owalk;
-  BMLoop *l_cur = NULL;
+  BMLoop *l_cur = nullptr;
   const int face_count = lwalk->face_count;
 
-  BMVert *v = NULL;
+  BMVert *v = nullptr;
 
   /* Use the second pass is unlikely, only needed to walk back in the opposite direction. */
   for (int pass = 0; pass < 2; pass++) {
@@ -1677,28 +1681,28 @@ static void *bmw_NonManifoldedgeWalker_step(BMWalker *walker)
     BMLoop *l = e->l;
     do {
       BMLoop *l_next = bmw_NonManifoldLoop_find_next_around_vertex(l, v, face_count);
-      if ((l_next != NULL) && !BLI_gset_haskey(walker->visit_set, l_next->e)) {
-        if (l_cur == NULL) {
+      if ((l_next != nullptr) && !BLI_gset_haskey(walker->visit_set, l_next->e)) {
+        if (l_cur == nullptr) {
           l_cur = l_next;
         }
         else if (l_cur->e != l_next->e) {
           /* If there are more than one possible edge to step onto (unlikely but possible),
            * treat as a junction and stop walking as there is no correct answer in this case. */
-          l_cur = NULL;
+          l_cur = nullptr;
           break;
         }
       }
     } while ((l = l->radial_next) != e->l);
 
-    if (l_cur != NULL) {
+    if (l_cur != nullptr) {
       break;
     }
   }
 
-  if (l_cur != NULL) {
+  if (l_cur != nullptr) {
     BLI_assert(!BLI_gset_haskey(walker->visit_set, l_cur->e));
     BLI_assert(BM_edge_face_count(l_cur->e) == face_count);
-    lwalk = BMW_state_add(walker);
+    lwalk = static_cast<BMwNonManifoldEdgeLoopWalker *>(BMW_state_add(walker));
     lwalk->lastv = v;
     lwalk->cur = l_cur->e;
     lwalk->face_count = face_count;

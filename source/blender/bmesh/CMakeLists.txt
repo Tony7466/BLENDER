@@ -115,7 +115,7 @@ set(SRC
   intern/bmesh_structure_inline.h
   intern/bmesh_walkers.c
   intern/bmesh_walkers.h
-  intern/bmesh_walkers_impl.c
+  intern/bmesh_walkers_impl.cc
   intern/bmesh_walkers_private.h
 
   intern/bmesh_error.h
