@@ -54,7 +54,7 @@ short select_id_get_object_select_mode(Scene *scene, Object *ob)
      * Note this is not working correctly for vertex-paint (yet), but has been discussed
      * in #66645 and there is a solution by @mano-wii in P1032.
      * So OB_MODE_VERTEX_PAINT is already included here [required for P1032 I guess]. */
-    Mesh *me_orig = DEG_get_original_object(ob)->data;
+    Mesh *me_orig = static_cast<Mesh *>(DEG_get_original_object(ob)->data);
     if (me_orig->editflag & ME_EDIT_PAINT_VERT_SEL) {
       r_select_mode = SCE_SELECT_VERTEX;
     }
@@ -91,7 +91,7 @@ static void draw_select_id_edit_mesh(SELECTID_StorageList *stl,
                                      uint *r_edge_offset,
                                      uint *r_face_offset)
 {
-  Mesh *me = ob->data;
+  Mesh *me = static_cast<Mesh *>(ob->data);
   BMEditMesh *em = me->edit_mesh;
 
   BM_mesh_elem_table_ensure(em->bm, BM_VERT | BM_EDGE | BM_FACE);
@@ -156,7 +156,7 @@ static void draw_select_id_mesh(SELECTID_StorageList *stl,
                                 uint *r_edge_offset,
                                 uint *r_face_offset)
 {
-  Mesh *me = ob->data;
+  Mesh *me = static_cast<Mesh *>(ob->data);
 
   struct GPUBatch *geom_faces = DRW_mesh_batch_cache_get_triangles_with_select_id(me);
   DRWShadingGroup *face_shgrp;
@@ -211,7 +211,7 @@ void select_id_draw_object(void *vedata,
   switch (ob->type) {
     case OB_MESH:
       if (ob->mode & OB_MODE_EDIT) {
-        bool draw_facedot = check_ob_drawface_dot(select_mode, v3d, ob->dt);
+        bool draw_facedot = check_ob_drawface_dot(select_mode, v3d, eDrawType(ob->dt));
         draw_select_id_edit_mesh(stl,
                                  ob,
                                  select_mode,

@@ -196,7 +196,7 @@ set(SRC
   engines/gpencil/gpencil_shader.cc
   engines/gpencil/gpencil_shader_c.cc
   engines/gpencil/gpencil_shader_fx.cc
-  engines/select/select_draw_utils.c
+  engines/select/select_draw_utils.cc
   engines/select/select_engine.c
   engines/select/select_instance.cc
   engines/overlay/overlay_antialiasing.cc
