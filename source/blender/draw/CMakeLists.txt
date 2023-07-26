@@ -193,8 +193,8 @@ set(SRC
   engines/gpencil/gpencil_engine.cc
   engines/gpencil/gpencil_engine_c.cc
   engines/gpencil/gpencil_render.cc
-  engines/gpencil/gpencil_shader.c
   engines/gpencil/gpencil_shader.cc
+  engines/gpencil/gpencil_shader_c.cc
   engines/gpencil/gpencil_shader_fx.cc
   engines/select/select_draw_utils.c
   engines/select/select_engine.c

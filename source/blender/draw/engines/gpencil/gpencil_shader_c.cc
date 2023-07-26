@@ -46,7 +46,7 @@ static struct {
   GPUShader *fx_rim_sh;
   GPUShader *fx_shadow_sh;
   GPUShader *fx_transform_sh;
-} g_shaders = {{NULL}};
+} g_shaders = {{nullptr}};
 
 void GPENCIL_shader_free(void)
 {
