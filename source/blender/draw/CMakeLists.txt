@@ -83,8 +83,8 @@ set(SRC
   intern/draw_fluid.cc
   intern/draw_hair.cc
   intern/draw_instance_data.cc
-  intern/draw_manager.c
   intern/draw_manager.cc
+  intern/draw_manager_c.cc
   intern/draw_manager_data.cc
   intern/draw_manager_exec.cc
   intern/draw_manager_profiling.cc
