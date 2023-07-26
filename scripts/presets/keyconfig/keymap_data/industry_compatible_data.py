@@ -2783,6 +2783,10 @@ def km_grease_pencil_stroke_weight_mode(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
+        ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
+         {"properties": [("data_path_primary", 'tool_settings.gpencil_weight_paint.brush.weight')]}),
+        # Weight sample
+        ("gpencil.weight_sample", {"type": 'I', "value": 'PRESS'}, None),
         # Tools
         op_tool_cycle("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
         # Keyframes
@@ -3344,7 +3348,7 @@ def radial_control_properties(paint, prop, secondary_prop, secondary_rotation=Fa
 # Radial controls for the paint and sculpt modes.
 
 
-def _template_paint_radial_control(paint, rotation=False, secondary_rotation=False, color=False, zoom=False):
+def _template_paint_radial_control(paint, rotation=False, secondary_rotation=False, color=False, zoom=False, weight=False):
     items = []
 
     items.extend([
@@ -3367,6 +3371,17 @@ def _template_paint_radial_control(paint, rotation=False, secondary_rotation=Fal
             ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True, "alt": True},
              radial_control_properties(
                  paint, 'mask_texture_slot.angle', None, secondary_rotation=secondary_rotation, color=color)),
+        ])
+
+    if weight:
+        items.extend([
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True, "alt": True},
+             radial_control_properties(
+                 paint, 'mask_texture_slot.angle', None, secondary_rotation=secondary_rotation, color=color)),
+
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
+             radial_control_properties(
+                paint, 'weight', 'use_unified_weight'))
         ])
 
     return items
@@ -3511,7 +3526,7 @@ def km_weight_paint(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
-        *_template_paint_radial_control("weight_paint"),
+        *_template_paint_radial_control("weight_paint", weight=True),
         # Mask Modes
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask')]}),
