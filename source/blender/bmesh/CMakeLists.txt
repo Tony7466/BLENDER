@@ -130,7 +130,7 @@ set(SRC
   tools/bmesh_boolean.cc
   tools/bmesh_boolean.h
   tools/bmesh_decimate.h
-  tools/bmesh_decimate_collapse.c
+  tools/bmesh_decimate_collapse.cc
   tools/bmesh_decimate_dissolve.c
   tools/bmesh_decimate_unsubdivide.c
   tools/bmesh_edgenet.c

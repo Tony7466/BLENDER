@@ -55,11 +55,12 @@
 #define OPTIMIZE_EPS 1e-8
 #define COST_INVALID FLT_MAX
 
-typedef enum CD_UseFlag {
+enum CD_UseFlag {
   CD_DO_VERT = (1 << 0),
   CD_DO_EDGE = (1 << 1),
   CD_DO_LOOP = (1 << 2),
-} CD_UseFlag;
+};
+ENUM_OPERATORS(CD_UseFlag, CD_DO_LOOP)
 
 /* BMesh Helper Functions
  * ********************** */
@@ -285,7 +286,7 @@ static void bm_decim_build_edge_cost_single(BMEdge *e,
      *
      * keep topology cost below 0.0 so their values don't interfere with quadric cost,
      * (and they get handled first). */
-    if (vweights == NULL) {
+    if (vweights == nullptr) {
       cost = bm_decim_build_edge_cost_single_squared__topology(e) - cost;
     }
     else {
@@ -320,14 +321,14 @@ clear:
   if (eheap_table[BM_elem_index_get(e)]) {
     BLI_heap_remove(eheap, eheap_table[BM_elem_index_get(e)]);
   }
-  eheap_table[BM_elem_index_get(e)] = NULL;
+  eheap_table[BM_elem_index_get(e)] = nullptr;
 }
 
 /* use this for degenerate cases - add back to the heap with an invalid cost,
  * this way it may be calculated again if surrounding geometry changes */
 static void bm_decim_invalid_edge_cost_single(BMEdge *e, Heap *eheap, HeapNode **eheap_table)
 {
-  BLI_assert(eheap_table[BM_elem_index_get(e)] == NULL);
+  BLI_assert(eheap_table[BM_elem_index_get(e)] == nullptr);
   eheap_table[BM_elem_index_get(e)] = BLI_heap_insert(eheap, COST_INVALID, e);
 }
 
@@ -344,7 +345,7 @@ static void bm_decim_build_edge_cost(BMesh *bm,
 
   BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
     /* keep sanity check happy */
-    eheap_table[i] = NULL;
+    eheap_table[i] = nullptr;
     bm_decim_build_edge_cost_single(e, vquadrics, vweights, vweight_factor, eheap, eheap_table);
   }
 }
@@ -366,10 +367,10 @@ struct KD_Symmetry_Data {
 
 static bool bm_edge_symmetry_check_cb(void *user_data,
                                       int index,
-                                      const float UNUSED(co[3]),
-                                      float UNUSED(dist_sq))
+                                      const float[3] /*co*/,
+                                      float /*dist_sq*/)
 {
-  struct KD_Symmetry_Data *sym_data = user_data;
+  struct KD_Symmetry_Data *sym_data = static_cast<KD_Symmetry_Data *>(user_data);
   BMEdge *e_other = sym_data->etable[index];
   float e_other_dir[3];
 
@@ -407,8 +408,9 @@ static int *bm_edge_symmetry_map(BMesh *bm, uint symmetry_axis, float limit)
 
   tree = BLI_kdtree_3d_new(bm->totedge);
 
-  etable = MEM_mallocN(sizeof(*etable) * bm->totedge, __func__);
-  edge_symmetry_map = MEM_mallocN(sizeof(*edge_symmetry_map) * bm->totedge, __func__);
+  etable = static_cast<BMEdge **>(MEM_mallocN(sizeof(*etable) * bm->totedge, __func__));
+  edge_symmetry_map = static_cast<int *>(
+      MEM_mallocN(sizeof(*edge_symmetry_map) * bm->totedge, __func__));
 
   BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
     float co[3];
@@ -548,15 +550,15 @@ static bool bm_decim_triangulate_begin(BMesh *bm, int *r_edges_tri_tot)
     MemArena *pf_arena;
     Heap *pf_heap;
 
-    LinkNode *faces_double = NULL;
+    LinkNode *faces_double = nullptr;
 
     if (has_ngon) {
       pf_arena = BLI_memarena_new(BLI_POLYFILL_ARENA_SIZE, __func__);
       pf_heap = BLI_heap_new_ex(BLI_POLYFILL_ALLOC_NGON_RESERVE);
     }
     else {
-      pf_arena = NULL;
-      pf_heap = NULL;
+      pf_arena = nullptr;
+      pf_heap = nullptr;
     }
 
     /* Adding new faces as we loop over faces
@@ -576,14 +578,14 @@ static bool bm_decim_triangulate_begin(BMesh *bm, int *r_edges_tri_tot)
 
     while (faces_double) {
       LinkNode *next = faces_double->next;
-      BM_face_kill(bm, faces_double->link);
+      BM_face_kill(bm, static_cast<BMFace *>(faces_double->link));
       MEM_freeN(faces_double);
       faces_double = next;
     }
 
     if (has_ngon) {
       BLI_memarena_free(pf_arena);
-      BLI_heap_free(pf_heap, NULL);
+      BLI_heap_free(pf_heap, nullptr);
     }
 
     BLI_assert((bm->elem_index_dirty & BM_VERT) == 0);
@@ -604,8 +606,8 @@ static void bm_decim_triangulate_end(BMesh *bm, const int edges_tri_tot)
   BMEdge *e;
 
   /* we need to collect before merging for ngons since the loops indices will be lost */
-  BMEdge **edges_tri = MEM_mallocN(MIN2(edges_tri_tot, bm->totedge) * sizeof(*edges_tri),
-                                   __func__);
+  BMEdge **edges_tri = static_cast<BMEdge **>(
+      MEM_mallocN(MIN2(edges_tri_tot, bm->totedge) * sizeof(*edges_tri), __func__));
   STACK_DECLARE(edges_tri);
 
   STACK_INIT(edges_tri, MIN2(edges_tri_tot, bm->totedge));
@@ -661,7 +663,7 @@ static void bm_decim_triangulate_end(BMesh *bm, const int edges_tri_tot)
     if (BM_edge_loop_pair(e, &l_a, &l_b)) {
       BMFace *f_array[2] = {l_a->f, l_b->f};
       BM_faces_join(bm, f_array, 2, false);
-      if (e->l == NULL) {
+      if (e->l == nullptr) {
         BM_edge_kill(bm, e);
       }
     }
@@ -711,7 +713,7 @@ static void bm_edge_collapse_loop_customdata(
     bool is_seam = false;
 #  endif
     void *src[2];
-    BMFace *f_exit = is_manifold ? l->radial_next->f : NULL;
+    BMFace *f_exit = is_manifold ? l->radial_next->f : nullptr;
     BMEdge *e_prev = l->e;
     BMLoop *l_first;
     BMLoop *l_iter;
@@ -739,7 +741,7 @@ static void bm_edge_collapse_loop_customdata(
     /* WATCH IT! - should NOT reference (_clear or _other) vars for this while loop */
 
     /* walk around the fan using 'e_prev' */
-    while (((l_iter = BM_vert_step_fan_loop(l_iter, &e_prev)) != l_first) && (l_iter != NULL)) {
+    while (((l_iter = BM_vert_step_fan_loop(l_iter, &e_prev)) != l_first) && (l_iter != nullptr)) {
       int i;
       /* quit once we hit the opposite face, if we have one */
       if (f_exit && UNLIKELY(f_exit == l_iter->f)) {
@@ -763,11 +765,11 @@ static void bm_edge_collapse_loop_customdata(
           void *cd_iter = POINTER_OFFSET(l_iter->head.data, offset);
 
           /* detect seams */
-          if (CustomData_data_equals(type, cd_src[0], cd_iter)) {
+          if (CustomData_data_equals(eCustomDataType(type), cd_src[0], cd_iter)) {
             CustomData_bmesh_interp_n(&bm->ldata,
                                       cd_src,
                                       w,
-                                      NULL,
+                                      nullptr,
                                       ARRAY_SIZE(cd_src),
                                       POINTER_OFFSET(l_iter->head.data, offset),
                                       i);
@@ -947,15 +949,15 @@ static bool bm_edge_collapse(BMesh *bm,
                              const CD_UseFlag customdata_flag,
                              const float customdata_fac
 #else
-                             const CD_UseFlag UNUSED(customdata_flag),
-                             const float UNUSED(customdata_fac)
+                             const CD_UseFlag /*customdata_flag*/,
+                             const float /*customdata_fac*/
 #endif
 )
 {
   BMVert *v_other;
 
   v_other = BM_edge_other_vert(e_clear, v_clear);
-  BLI_assert(v_other != NULL);
+  BLI_assert(v_other != nullptr);
 
   if (BM_edge_is_manifold(e_clear)) {
     BMLoop *l_a, *l_b;
@@ -988,7 +990,7 @@ static bool bm_edge_collapse(BMesh *bm,
       e_b_other[0] = l_b->next->e;
     }
 
-    /* we could assert this case, but better just bail out */
+/* we could assert this case, but better just bail out */
 #if 0
     BLI_assert(e_a_other[0] != e_b_other[0]);
     BLI_assert(e_a_other[0] != e_b_other[1]);
@@ -1195,26 +1197,26 @@ static bool bm_decim_edge_collapse(BMesh *bm,
     }
 
     /* paranoid safety check */
-    e = NULL;
+    e = nullptr;
 
     copy_v3_v3(v_other->co, optimize_co);
 
     /* remove eheap */
     for (i = 0; i < 2; i++) {
-      /* highly unlikely 'eheap_table[ke_other[i]]' would be NULL, but do for sanity sake */
-      if ((e_clear_other[i] != -1) && (eheap_table[e_clear_other[i]] != NULL)) {
+      /* highly unlikely 'eheap_table[ke_other[i]]' would be nullptr, but do for sanity sake */
+      if ((e_clear_other[i] != -1) && (eheap_table[e_clear_other[i]] != nullptr)) {
         BLI_heap_remove(eheap, eheap_table[e_clear_other[i]]);
-        eheap_table[e_clear_other[i]] = NULL;
+        eheap_table[e_clear_other[i]] = nullptr;
       }
     }
 
     /* update vertex quadric, add kept vertex from killed vertex */
     BLI_quadric_add_qu_qu(&vquadrics[v_other_index], &vquadrics[v_clear_index]);
 
-    /* update connected normals */
+/* update connected normals */
 
-    /* in fact face normals are not used for progressive updates, no need to update them */
-    // BM_vert_normal_update_all(v);
+/* in fact face normals are not used for progressive updates, no need to update them */
+// BM_vert_normal_update_all(v);
 #ifdef USE_VERT_NORMAL_INTERP
     interp_v3_v3v3(v_other->no, v_other->no, v_clear_no, customdata_fac);
     normalize_v3(v_other->no);
@@ -1228,15 +1230,15 @@ static bool bm_decim_edge_collapse(BMesh *bm,
       BMEdge *e_first;
       e_iter = e_first = v_other->e;
       do {
-        BLI_assert(BM_edge_find_double(e_iter) == NULL);
+        BLI_assert(BM_edge_find_double(e_iter) == nullptr);
         bm_decim_build_edge_cost_single(
             e_iter, vquadrics, vweights, vweight_factor, eheap, eheap_table);
       } while ((e_iter = bmesh_disk_edge_next(e_iter, v_other)) != e_first);
     }
 
-    /* this block used to be disabled,
-     * but enable now since surrounding faces may have been
-     * set to COST_INVALID because of a face overlap that no longer occurs */
+/* this block used to be disabled,
+ * but enable now since surrounding faces may have been
+ * set to COST_INVALID because of a face overlap that no longer occurs */
 #if 1
     /* optional, update edges around the vertex face fan */
     {
@@ -1288,7 +1290,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
   int tot_edge_orig;
   int face_tot_target;
 
-  CD_UseFlag customdata_flag = 0;
+  CD_UseFlag customdata_flag = CD_UseFlag(0);
 
 #ifdef USE_SYMMETRY
   bool use_symmetry = (symmetry_axis != -1);
@@ -1304,10 +1306,10 @@ void BM_mesh_decimate_collapse(BMesh *bm,
 #endif
 
   /* Allocate variables. */
-  vquadrics = MEM_callocN(sizeof(Quadric) * bm->totvert, __func__);
+  vquadrics = static_cast<Quadric *>(MEM_callocN(sizeof(Quadric) * bm->totvert, __func__));
   /* Since some edges may be degenerate, we might be over allocating a little here. */
   eheap = BLI_heap_new_ex(bm->totedge);
-  eheap_table = MEM_mallocN(sizeof(HeapNode *) * bm->totedge, __func__);
+  eheap_table = static_cast<HeapNode **>(MEM_mallocN(sizeof(HeapNode *) * bm->totedge, __func__));
   tot_edge_orig = bm->totedge;
 
   /* build initial edge collapse cost data */
@@ -1320,7 +1322,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
 
 #ifdef USE_SYMMETRY
   edge_symmetry_map = (use_symmetry) ? bm_edge_symmetry_map(bm, symmetry_axis, symmetry_eps) :
-                                       NULL;
+                                       nullptr;
 #else
   UNUSED_VARS(symmetry_axis, symmetry_eps);
 #endif
@@ -1338,7 +1340,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
   }
 #endif
 
-  /* iterative edge collapse and maintain the eheap */
+/* iterative edge collapse and maintain the eheap */
 #ifdef USE_SYMMETRY
   if (use_symmetry == false)
 #endif
@@ -1348,14 +1350,14 @@ void BM_mesh_decimate_collapse(BMesh *bm,
            (BLI_heap_top_value(eheap) != COST_INVALID))
     {
       // const float value = BLI_heap_node_value(BLI_heap_top(eheap));
-      BMEdge *e = BLI_heap_pop_min(eheap);
+      BMEdge *e = static_cast<BMEdge *>(BLI_heap_pop_min(eheap));
       float optimize_co[3];
       /* handy to detect corruptions elsewhere */
       BLI_assert(BM_elem_index_get(e) < tot_edge_orig);
 
       /* Under normal conditions won't be accessed again,
-       * but NULL just in case so we don't use freed node. */
-      eheap_table[BM_elem_index_get(e)] = NULL;
+       * but nullptr just in case so we don't use freed node. */
+      eheap_table[BM_elem_index_get(e)] = nullptr;
 
       bm_decim_edge_collapse(bm,
                              e,
@@ -1384,23 +1386,23 @@ void BM_mesh_decimate_collapse(BMesh *bm,
        * - edges sharing a vertex are ignored, so the pivot vertex isn't moved to one side.
        */
 
-      BMEdge *e = BLI_heap_pop_min(eheap);
+      BMEdge *e = static_cast<BMEdge *>(BLI_heap_pop_min(eheap));
       const int e_index = BM_elem_index_get(e);
       const int e_index_mirr = edge_symmetry_map[e_index];
-      BMEdge *e_mirr = NULL;
+      BMEdge *e_mirr = nullptr;
       float optimize_co[3];
       char e_invalidate = 0;
 
       BLI_assert(e_index < tot_edge_orig);
 
-      eheap_table[e_index] = NULL;
+      eheap_table[e_index] = nullptr;
 
       if (e_index_mirr != -1) {
         if (e_index_mirr == e_index) {
           /* pass */
         }
         else if (eheap_table[e_index_mirr]) {
-          e_mirr = BLI_heap_node_ptr(eheap_table[e_index_mirr]);
+          e_mirr = static_cast<BMEdge *>(BLI_heap_node_ptr(eheap_table[e_index_mirr]));
           /* for now ignore edges with a shared vertex */
           if (BM_edge_share_vert_check(e, e_mirr)) {
             /* ignore permanently!
@@ -1459,7 +1461,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
         if (e_mirr && (eheap_table[e_index_mirr])) {
           BLI_assert(e_index_mirr != e_index);
           BLI_heap_remove(eheap, eheap_table[e_index_mirr]);
-          eheap_table[e_index_mirr] = NULL;
+          eheap_table[e_index_mirr] = nullptr;
           optimize_co[symmetry_axis] *= -1.0f;
           bm_decim_edge_collapse(bm,
                                  e_mirr,
@@ -1490,9 +1492,9 @@ void BM_mesh_decimate_collapse(BMesh *bm,
       }
 
       if (e_invalidate & 2) {
-        BLI_assert(eheap_table[e_index_mirr] != NULL);
+        BLI_assert(eheap_table[e_index_mirr] != nullptr);
         BLI_heap_remove(eheap, eheap_table[e_index_mirr]);
-        eheap_table[e_index_mirr] = NULL;
+        eheap_table[e_index_mirr] = nullptr;
         bm_decim_invalid_edge_cost_single(e_mirr, eheap, eheap_table);
       }
     }
@@ -1514,7 +1516,7 @@ void BM_mesh_decimate_collapse(BMesh *bm,
   /* free vars */
   MEM_freeN(vquadrics);
   MEM_freeN(eheap_table);
-  BLI_heap_free(eheap, NULL);
+  BLI_heap_free(eheap, nullptr);
 
   /* testing only */
   // BM_mesh_validate(bm);
