@@ -1807,9 +1807,9 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
       mesh->face_normals(),
       sharp_edges,
       sharp_faces,
+      clnors,
       use_split_normals,
       split_angle,
-      clnors,
       nullptr,
       {reinterpret_cast<float3 *>(r_corner_normals), mesh->totloop});
 }

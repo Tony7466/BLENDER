@@ -351,9 +351,9 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
                                             mr->face_normals,
                                             sharp_edges,
                                             mr->sharp_faces,
+                                            clnors,
                                             is_auto_smooth,
                                             split_angle,
-                                            clnors,
                                             nullptr,
                                             mr->loop_normals);
     }

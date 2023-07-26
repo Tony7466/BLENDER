@@ -398,9 +398,9 @@ static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
                                             me_dst->face_normals(),
                                             sharp_edges,
                                             sharp_faces,
+                                            custom_nors_dst,
                                             use_split_nors_dst,
                                             split_angle_dst,
-                                            custom_nors_dst,
                                             nullptr,
                                             {loop_nors_dst, me_dst->totloop});
     }

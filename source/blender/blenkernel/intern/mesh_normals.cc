@@ -1003,7 +1003,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
         lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
       }
       if (!clnors_data.is_empty()) {
-        /* Accumulate all clnors. */
         clnors_avg += int2(clnors_data[mlfan_vert_index]);
       }
     }
@@ -1216,9 +1215,9 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       const short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
@@ -1402,9 +1401,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     face_normals,
                     sharp_edges.data(),
                     sharp_faces,
+                    r_clnors_data.data(),
                     use_split_normals,
                     split_angle,
-                    r_clnors_data.data(),
                     &lnors_spacearr,
                     loop_normals);
 
@@ -1524,9 +1523,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       face_normals,
                       sharp_edges.data(),
                       sharp_faces,
+                      r_clnors_data.data(),
                       use_split_normals,
                       split_angle,
-                      r_clnors_data.data(),
                       &lnors_spacearr,
                       loop_normals);
   }
