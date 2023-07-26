@@ -184,7 +184,7 @@ set(SRC
   engines/workbench/workbench_shadow_c.cc
   engines/workbench/workbench_state.cc
   engines/workbench/workbench_transparent.cc
-  engines/workbench/workbench_volume.c
+  engines/workbench/workbench_volume.cc
   engines/workbench/workbench_volume_next.cc
   engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.c

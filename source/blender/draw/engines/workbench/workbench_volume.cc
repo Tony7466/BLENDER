@@ -28,7 +28,7 @@ void workbench_volume_engine_init(WORKBENCH_Data *vedata)
 {
   WORKBENCH_TextureList *txl = vedata->txl;
 
-  if (txl->dummy_volume_tx == NULL) {
+  if (txl->dummy_volume_tx == nullptr) {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
 
     const float zero[4] = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -58,7 +58,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   WORKBENCH_TextureList *txl = vedata->txl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
   if (!fds->fluid) {
     return;
@@ -75,8 +75,8 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
     return;
   }
 
-  if ((!fds->use_coba && (fds->tex_density == NULL && fds->tex_color == NULL)) ||
-      (fds->use_coba && fds->tex_field == NULL))
+  if ((!fds->use_coba && (fds->tex_density == nullptr && fds->tex_color == nullptr)) ||
+      (fds->use_coba && fds->tex_field == nullptr))
   {
     return;
   }
@@ -107,7 +107,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
 
   if (use_slice) {
     float invviewmat[4][4];
-    DRW_view_viewmat_get(NULL, invviewmat, true);
+    DRW_view_viewmat_get(nullptr, invviewmat, true);
 
     const int axis = (fds->slice_axis == SLICE_AXIS_AUTO) ?
                          axis_dominant_v3_single(invviewmat[2]) :
@@ -128,7 +128,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
     double noise_ofs;
     BLI_halton_1d(3, 0.0, wpd->taa_sample, &noise_ofs);
     float dim[3], step_length, max_slice;
-    float slice_count[3] = {fds->res[0], fds->res[1], fds->res[2]};
+    float slice_count[3] = {float(fds->res[0]), float(fds->res[1]), float(fds->res[2])};
     mul_v3_fl(slice_count, max_ff(0.001f, fds->slice_per_voxel));
     max_slice = max_fff(slice_count[0], slice_count[1], slice_count[2]);
     BKE_object_dimensions_get(ob, dim);
@@ -200,21 +200,21 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
                                                    eV3DShadingColorType color_type)
 {
   /* Create 3D textures. */
-  Volume *volume = ob->data;
+  Volume *volume = static_cast<Volume *>(ob->data);
   BKE_volume_load(volume, G.main);
   const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
-  if (volume_grid == NULL) {
+  if (volume_grid == nullptr) {
     return;
   }
   DRWVolumeGrid *grid = DRW_volume_batch_cache_get_grid(volume, volume_grid);
-  if (grid == NULL) {
+  if (grid == nullptr) {
     return;
   }
 
   WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   WORKBENCH_TextureList *txl = vedata->txl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
   wpd->volumes_do = true;
   const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
@@ -245,7 +245,7 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
 
   if (use_slice) {
     float invviewmat[4][4];
-    DRW_view_viewmat_get(NULL, invviewmat, true);
+    DRW_view_viewmat_get(nullptr, invviewmat, true);
 
     const int axis = (volume->display.slice_axis == SLICE_AXIS_AUTO) ?
                          axis_dominant_v3_single(invviewmat[2]) :
@@ -277,7 +277,7 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
     float step_length, max_slice;
     int resolution[3];
     GPU_texture_get_mipmap_size(grid->texture, 0, resolution);
-    float slice_count[3] = {resolution[0], resolution[1], resolution[2]};
+    float slice_count[3] = {float(resolution[0]), float(resolution[1]), float(resolution[2])};
     mul_v3_fl(slice_count, max_ff(0.001f, 5.0f));
     max_slice = max_fff(slice_count[0], slice_count[1], slice_count[2]);
     invert_v3(slice_count);
@@ -312,12 +312,12 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
 }
 
 void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
-                                     Scene *UNUSED(scene),
+                                     Scene * /*scene*/,
                                      Object *ob,
                                      ModifierData *md,
                                      eV3DShadingColorType color_type)
 {
-  if (md == NULL) {
+  if (md == nullptr) {
     workbench_volume_object_cache_populate(vedata, ob, color_type);
   }
   else {
