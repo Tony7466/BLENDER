@@ -53,7 +53,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 }
 
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
                          bGPDframe *gpf,
@@ -76,7 +76,7 @@ static void deformStroke(GpencilModifierData *md,
   {
     return;
   }
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   /* Select simplification mode. */
   switch (mmd->mode) {
     case GP_SIMPLIFY_FIXED: {
@@ -103,7 +103,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -118,36 +118,36 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   int mode = RNA_enum_get(ptr, "mode");
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
 
   if (mode == GP_SIMPLIFY_FIXED) {
-    uiItemR(layout, ptr, "step", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "step", 0, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_ADAPTIVE) {
-    uiItemR(layout, ptr, "factor", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_SAMPLE) {
-    uiItemR(layout, ptr, "length", 0, NULL, ICON_NONE);
-    uiItemR(layout, ptr, "sharp_threshold", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "length", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "sharp_threshold", 0, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_MERGE) {
-    uiItemR(layout, ptr, "distance", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "distance", 0, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -157,7 +157,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Simplify, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Simplify = {
@@ -170,16 +170,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Simplify = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
