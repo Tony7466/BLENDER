@@ -4,6 +4,10 @@
 
 set(INC
   .
+  ../blenkernel
+  ../blentranslation
+  ../depsgraph
+  ../../../intern/clog
   ../../../intern/eigen
   ../../../extern/rangetree
 )
@@ -162,12 +166,9 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   extern_rangetree
   PRIVATE bf::intern::atomic

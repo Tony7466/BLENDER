@@ -266,6 +266,36 @@ static void version_replace_texcoord_normal_socket(bNodeTree *ntree)
   }
 }
 
+static void version_principled_transmission_roughness(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+    bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, "Transmission Roughness");
+    if (sock != nullptr) {
+      nodeRemoveSocket(ntree, node, sock);
+    }
+  }
+}
+
+/* Convert legacy Velvet BSDF nodes into the new Sheen BSDF node. */
+static void version_replace_velvet_sheen_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_BSDF_SHEEN) {
+      STRNCPY(node->idname, "ShaderNodeBsdfSheen");
+
+      bNodeSocket *sigmaInput = nodeFindSocket(node, SOCK_IN, "Sigma");
+      if (sigmaInput != nullptr) {
+        node->custom1 = SHD_SHEEN_ASHIKHMIN;
+        STRNCPY(sigmaInput->identifier, "Roughness");
+        STRNCPY(sigmaInput->name, "Roughness");
+      }
+    }
+  }
+}
+
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
 {
   bNodeTreeInterface &interface = ntree->interface;
@@ -402,8 +432,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
-    /* Convert anisotropic BSDF node to glossy BSDF. */
-
     /* Keep this block, even when empty. */
 
     if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "int", "grid_bake_samples")) {
@@ -443,6 +471,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         layer->opacity = 1.0f;
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        /* Remove Transmission Roughness from Principled BSDF. */
+        version_principled_transmission_roughness(ntree);
+        /* Convert legacy Velvet BSDF nodes into the new Sheen BSDF node. */
+        version_replace_velvet_sheen_node(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
 
     /* Convert old socket lists into new interface items. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {

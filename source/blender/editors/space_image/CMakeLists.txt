@@ -4,13 +4,19 @@
 
 set(INC
   ../include
+  ../../blenfont
+  ../../blenkernel
   ../../blenloader
+  ../../blentranslation
   ../../bmesh
+  ../../depsgraph
   ../../draw
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../render
+  ../../windowmanager
+  ../../../../intern/clog
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -32,16 +38,11 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_uvedit
-  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_IMAGE_OPENJPEG)

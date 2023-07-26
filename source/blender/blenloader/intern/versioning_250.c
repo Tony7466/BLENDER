@@ -952,7 +952,8 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
       {
         data = key->refkey->data;
         tot = MIN2(me->totvert, key->refkey->totelem);
-        MVert *verts = (MVert *)CustomData_get_layer_for_write(&me->vdata, CD_MVERT, me->totvert);
+        MVert *verts = (MVert *)CustomData_get_layer_for_write(
+            &me->vert_data, CD_MVERT, me->totvert);
         for (a = 0; a < tot; a++, data += 3) {
           copy_v3_v3(verts[a].co_legacy, data);
         }
@@ -1109,7 +1110,7 @@ void blo_do_versions_250(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (bmain->versionfile == 250 && bmain->subversionfile > 1) {
       LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
-        CustomData_free_layer_active(&me->fdata, CD_MDISPS, me->totface);
+        CustomData_free_layer_active(&me->fdata_legacy, CD_MDISPS, me->totface_legacy);
       }
 
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {

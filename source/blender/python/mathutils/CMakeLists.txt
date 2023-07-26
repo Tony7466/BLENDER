@@ -4,7 +4,9 @@
 
 set(INC
   .
+  ../../blenkernel
   ../../bmesh
+  ../../depsgraph
   ../../imbuf
 )
 
@@ -39,9 +41,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_imbuf
   PRIVATE bf::intern::guardedalloc
