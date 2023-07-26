@@ -145,6 +145,7 @@ class PathTraceWork {
   /* Initializes the per-thread guiding kernel data. */
   virtual void guiding_init_kernel_globals(void *, void *, const bool) {}
 #endif
+
  protected:
   PathTraceWork(Device *device,
                 Film *film,
