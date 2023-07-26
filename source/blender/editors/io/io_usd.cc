@@ -316,7 +316,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "export_mesh_colors",
                   true,
                   "Color Attributes",
-                  "Include Mesh Color Attributes in the export");
+                  "Include mesh color attributes in the export");
   RNA_def_boolean(ot->srna,
                   "export_normals",
                   true,

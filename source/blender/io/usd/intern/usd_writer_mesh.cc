@@ -39,7 +39,6 @@
 
 namespace blender::io::usd {
 
-const pxr::TfToken empty_token;
 const pxr::UsdTimeCode defaultTime = pxr::UsdTimeCode::Default();
 
 USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
@@ -95,7 +94,7 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
          * material_index as it's dealt with elsewhere. Skipping
          * edge sharp and crease because USD doesn't have a
          * conversion for them. */
-        if (attribute_id.name()[0] == '.' ||
+        if (attribute_id.name()[0] == '.' || attribute_id.is_anonymous() ||
             ELEM(attribute_id.name(), "position", "material_index", "sharp_edge", "crease_edge"))
         {
           return true;
@@ -218,7 +217,6 @@ void USDGenericMeshWriter::copy_blender_buffer_to_prim(const Span<BlenderT> buff
   usd_value_writer_.SetAttribute(prim_attr, pxr::VtValue(data), timecode);
 }
 
-#pragma optimize("", off)
 void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
                                               pxr::UsdGeomMesh usd_mesh,
                                               const bke::AttributeIDRef &attribute_id,
@@ -253,40 +251,40 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
       primvar_name, *prim_attr_type, *prim_varying);
 
   switch (meta_data.data_type) {
-    case CD_PROP_FLOAT: {
+    case CD_PROP_FLOAT:
       copy_blender_buffer_to_prim<float, float>(attribute.typed<float>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_INT8: {
+
+    case CD_PROP_INT8:
       copy_blender_buffer_to_prim<int8_t, int32_t>(
           attribute.typed<int8_t>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_INT32: {
+
+    case CD_PROP_INT32:
       copy_blender_buffer_to_prim<int, int32_t>(attribute.typed<int>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_FLOAT2: {
+
+    case CD_PROP_FLOAT2:
       copy_blender_buffer_to_prim<float2, pxr::GfVec2f>(
           attribute.typed<float2>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_FLOAT3: {
+
+    case CD_PROP_FLOAT3:
       copy_blender_buffer_to_prim<float3, pxr::GfVec3f>(
           attribute.typed<float3>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_BOOL: {
+
+    case CD_PROP_BOOL:
       copy_blender_buffer_to_prim<bool, bool>(attribute.typed<bool>(), timecode, attribute_pv);
       break;
-    }
-    case CD_PROP_QUATERNION: {
+
+    case CD_PROP_QUATERNION:
       copy_blender_buffer_to_prim<math::Quaternion, pxr::GfQuatf>(
           attribute.typed<math::Quaternion>(), timecode, attribute_pv);
       break;
-    }
+
     default:
-      BLI_assert_msg(0, "Unsupported domain for mesh data.");
+      BLI_assert_msg(0, "Unsupported type for mesh data.");
   }
 }
 

@@ -518,8 +518,7 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter<float2> uv_data;
-  uv_data = attributes.lookup_or_add_for_write_only_span<float2>(primvar_name, ATTR_DOMAIN_CORNER);
+  bke::SpanAttributeWriter<float2> uv_data = attributes.lookup_or_add_for_write_only_span<float2>(primvar_name, ATTR_DOMAIN_CORNER);
 
   if (!uv_data) {
     WM_reportf(RPT_WARNING,
@@ -928,14 +927,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
                   pxr::UsdGeomTokens->vertex,
                   pxr::UsdGeomTokens->faceVarying,
                   pxr::UsdGeomTokens->varying) &&
-             ELEM(type,
-                  pxr::SdfValueTypeNames->TexCoord2dArray,
-                  pxr::SdfValueTypeNames->TexCoord2fArray,
-                  pxr::SdfValueTypeNames->TexCoord2hArray,
-                  pxr::SdfValueTypeNames->TexCoord3dArray,
-                  pxr::SdfValueTypeNames->TexCoord3fArray,
-                  pxr::SdfValueTypeNames->TexCoord3hArray,
-                  pxr::SdfValueTypeNames->Float2Array))
+             convert_usd_type_to_blender(type) == CD_PROP_FLOAT2)
     {
       if ((settings->read_flag & MOD_MESHSEQ_READ_UV) != 0) {
         /* Set the active uv set name to 'st', if a uv set primvar
