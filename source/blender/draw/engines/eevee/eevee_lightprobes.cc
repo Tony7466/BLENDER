@@ -41,7 +41,7 @@ static struct {
   GPUTexture *depth_array_placeholder;
 
   GPUVertFormat *format_probe_display_planar;
-} e_data = {NULL}; /* Engine data */
+} e_data = {nullptr}; /* Engine data */
 
 /* *********** FUNCTIONS *********** */
 
@@ -51,8 +51,8 @@ bool EEVEE_lightprobes_obj_visibility_cb(bool vis_in, void *user_data)
 {
   EEVEE_ObjectEngineData *oed = (EEVEE_ObjectEngineData *)user_data;
 
-  /* test disabled if group is NULL */
-  if (oed == NULL || oed->test_data->collection == NULL) {
+  /* test disabled if group is nullptr */
+  if (oed == nullptr || oed->test_data->collection == nullptr) {
     return vis_in;
   }
 
@@ -108,23 +108,35 @@ static void planar_pool_ensure_alloc(EEVEE_Data *vedata, int num_planar_ref)
     eGPUTextureUsage planar_usage_depth = GPU_TEXTURE_USAGE_ATTACHMENT |
                                           GPU_TEXTURE_USAGE_SHADER_READ;
     if (num_planar_ref > 0) {
-      txl->planar_pool = DRW_texture_create_2d_array_ex(width,
-                                                        height,
-                                                        num_planar_ref,
-                                                        GPU_R11F_G11F_B10F,
-                                                        planar_usage,
-                                                        DRW_TEX_FILTER | DRW_TEX_MIPMAP,
-                                                        NULL);
-      txl->planar_depth = DRW_texture_create_2d_array_ex(
-          width, height, num_planar_ref, GPU_DEPTH_COMPONENT24, planar_usage_depth, 0, NULL);
+      txl->planar_pool = DRW_texture_create_2d_array_ex(
+          width,
+          height,
+          num_planar_ref,
+          GPU_R11F_G11F_B10F,
+          planar_usage,
+          DRWTextureFlag(DRW_TEX_FILTER | DRW_TEX_MIPMAP),
+          nullptr);
+      txl->planar_depth = DRW_texture_create_2d_array_ex(width,
+                                                         height,
+                                                         num_planar_ref,
+                                                         GPU_DEPTH_COMPONENT24,
+                                                         planar_usage_depth,
+                                                         DRWTextureFlag(0),
+                                                         nullptr);
     }
     else if (num_planar_ref == 0) {
       /* Makes Opengl Happy : Create a placeholder texture that will never be sampled but still
        * bound to shader. */
       txl->planar_pool = DRW_texture_create_2d_array_ex(
-          1, 1, 1, GPU_RGBA8, planar_usage, DRW_TEX_FILTER | DRW_TEX_MIPMAP, NULL);
+          1,
+          1,
+          1,
+          GPU_RGBA8,
+          planar_usage,
+          DRWTextureFlag(DRW_TEX_FILTER | DRW_TEX_MIPMAP),
+          nullptr);
       txl->planar_depth = DRW_texture_create_2d_array_ex(
-          1, 1, 1, GPU_DEPTH_COMPONENT24, planar_usage_depth, 0, NULL);
+          1, 1, 1, GPU_DEPTH_COMPONENT24, planar_usage_depth, DRWTextureFlag(0), nullptr);
     }
   }
 }
@@ -167,13 +179,14 @@ void EEVEE_lightprobes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
           1,
           scene_eval->eevee.gi_cubemap_resolution,
           scene_eval->eevee.gi_visibility_resolution,
-          (int[3]){grid_res, grid_res, 1});
+          blender::int3{grid_res, grid_res, 1});
     }
     stl->g_data->light_cache = sldata->fallback_lightcache;
   }
 
   if (!sldata->probes) {
-    sldata->probes = MEM_callocN(sizeof(EEVEE_LightProbesInfo), "EEVEE_LightProbesInfo");
+    sldata->probes = static_cast<EEVEE_LightProbesInfo *>(
+        MEM_callocN(sizeof(EEVEE_LightProbesInfo), "EEVEE_LightProbesInfo"));
     sldata->probe_ubo = GPU_uniformbuf_create(sizeof(EEVEE_LightProbe) * MAX_PROBE);
     sldata->grid_ubo = GPU_uniformbuf_create(sizeof(EEVEE_LightGrid) * MAX_GRID);
     sldata->planar_ubo = GPU_uniformbuf_create(sizeof(EEVEE_PlanarReflection) * MAX_PLANAR);
@@ -193,7 +206,7 @@ void EEVEE_lightprobes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     eGPUTextureUsage planar_usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ |
                                     GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
     e_data.planar_pool_placeholder = DRW_texture_create_2d_array_ex(
-        1, 1, 1, GPU_RGBA8, planar_usage, DRW_TEX_FILTER, NULL);
+        1, 1, 1, GPU_RGBA8, planar_usage, DRW_TEX_FILTER, nullptr);
   }
 }
 
@@ -227,7 +240,7 @@ void EEVEE_lightbake_cache_init(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
     struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-    DRW_shgroup_call_instances(grp, NULL, geom, 6);
+    DRW_shgroup_call_instances(grp, nullptr, geom, 6);
   }
 
   {
@@ -247,7 +260,7 @@ void EEVEE_lightbake_cache_init(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
     struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-    DRW_shgroup_call(grp, geom, NULL);
+    DRW_shgroup_call(grp, geom, nullptr);
   }
 
   {
@@ -266,7 +279,7 @@ void EEVEE_lightbake_cache_init(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
     struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-    DRW_shgroup_call(grp, geom, NULL);
+    DRW_shgroup_call(grp, geom, nullptr);
   }
 
   {
@@ -278,7 +291,7 @@ void EEVEE_lightbake_cache_init(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_texture_ref(grp, "irradianceGrid", &light_cache->grid_tx.tex);
 
     struct GPUBatch *geom = DRW_cache_fullscreen_quad_get();
-    DRW_shgroup_call(grp, geom, NULL);
+    DRW_shgroup_call(grp, geom, nullptr);
   }
 }
 
@@ -293,22 +306,22 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
   pinfo->num_planar = 0;
-  pinfo->vis_data.collection = NULL;
+  pinfo->vis_data.collection = nullptr;
   pinfo->do_grid_update = false;
   pinfo->do_cube_update = false;
 
   {
     DRW_PASS_CREATE(psl->probe_background, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
 
-    DRWShadingGroup *grp = NULL;
+    DRWShadingGroup *grp = nullptr;
     EEVEE_lookdev_cache_init(vedata, sldata, psl->probe_background, pinfo, &grp);
 
-    if (grp == NULL) {
+    if (grp == nullptr) {
       Scene *scene = draw_ctx->scene;
       World *world = (scene->world) ? scene->world : EEVEE_world_default_get();
 
       const int options = VAR_WORLD_BACKGROUND | VAR_WORLD_PROBE;
-      GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, NULL, world, options);
+      GPUMaterial *gpumat = EEVEE_material_get(vedata, scene, nullptr, world, options);
 
       grp = DRW_shgroup_material_create(gpumat, psl->probe_background);
       DRW_shgroup_uniform_float_copy(grp, "backgroundAlpha", 1.0f);
@@ -321,7 +334,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
     DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
     DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
     DRW_shgroup_uniform_block_ref(grp, "renderpass_block", &stl->g_data->renderpass_ubo);
-    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
   }
 
   if (DRW_state_draw_support()) {
@@ -346,7 +359,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
         DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
         DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
-        DRW_shgroup_call_procedural_triangles(grp, NULL, cube_len * 2);
+        DRW_shgroup_call_procedural_triangles(grp, nullptr, cube_len * 2);
       }
 
       /* Grid Display */
@@ -372,7 +385,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
           DRW_shgroup_uniform_block(shgrp, "common_block", sldata->common_ubo);
           DRW_shgroup_uniform_block(shgrp, "renderpass_block", sldata->renderpass_ubo.combined);
           int tri_count = egrid->resolution[0] * egrid->resolution[1] * egrid->resolution[2] * 2;
-          DRW_shgroup_call_procedural_triangles(shgrp, NULL, tri_count);
+          DRW_shgroup_call_procedural_triangles(shgrp, nullptr, tri_count);
         }
       }
     }
@@ -395,7 +408,7 @@ void EEVEE_lightprobes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedat
     }
   }
   else {
-    stl->g_data->planar_display_shgrp = NULL;
+    stl->g_data->planar_display_shgrp = nullptr;
   }
 }
 
@@ -652,9 +665,9 @@ static void lightbake_planar_ensure_view(EEVEE_PlanarReflection *eplanar,
   /* Reflect Camera Matrix. */
   mul_m4_m4m4(viewmat, viewmat, eplanar->mtx);
 
-  if (*r_planar_view == NULL) {
+  if (*r_planar_view == nullptr) {
     *r_planar_view = DRW_view_create(
-        viewmat, winmat, NULL, NULL, EEVEE_lightprobes_obj_visibility_cb);
+        viewmat, winmat, nullptr, nullptr, EEVEE_lightprobes_obj_visibility_cb);
     /* Compute offset plane equation (fix missing texels near reflection plane). */
     float clip_plane[4];
     copy_v4_v4(clip_plane, eplanar->plane_equation);
@@ -663,7 +676,7 @@ static void lightbake_planar_ensure_view(EEVEE_PlanarReflection *eplanar,
     DRW_view_clip_planes_set(*r_planar_view, &clip_plane, 1);
   }
   else {
-    DRW_view_update(*r_planar_view, viewmat, winmat, NULL, NULL);
+    DRW_view_update(*r_planar_view, viewmat, winmat, nullptr, nullptr);
   }
 }
 
@@ -717,7 +730,7 @@ void EEVEE_lightprobes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 
     if (draw_ctx->scene->eevee.flag & SCE_EEVEE_GI_AUTOBAKE) {
       Scene *scene_orig = DEG_get_input_scene(draw_ctx->depsgraph);
-      if (scene_orig->eevee.light_cache_data != NULL) {
+      if (scene_orig->eevee.light_cache_data != nullptr) {
         if (pinfo->do_grid_update) {
           scene_orig->eevee.light_cache_data->flag |= LIGHTCACHE_UPDATE_GRID;
         }
@@ -742,7 +755,7 @@ void EEVEE_lightprobes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 
     DRW_shgroup_uniform_texture_ref(grp, "source", &txl->planar_pool);
     DRW_shgroup_uniform_float(grp, "fireflyFactor", &sldata->common_data.ssr_firefly_fac, 1);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, pinfo->num_planar);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, pinfo->num_planar);
   }
 }
 
@@ -750,11 +763,11 @@ void EEVEE_lightprobes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 /** \name Rendering
  * \{ */
 
-typedef struct EEVEE_BakeRenderData {
+struct EEVEE_BakeRenderData {
   EEVEE_Data *vedata;
   EEVEE_ViewLayerData *sldata;
   GPUFrameBuffer **face_fb; /* should contain 6 framebuffer */
-} EEVEE_BakeRenderData;
+};
 
 static void render_cubemap(void (*callback)(int face, EEVEE_BakeRenderData *user_data),
                            EEVEE_BakeRenderData *user_data,
@@ -776,15 +789,15 @@ static void render_cubemap(void (*callback)(int face, EEVEE_BakeRenderData *user
     mul_m4_m4m4(viewmat, cubefacemat[i], viewmat);
 
     if (do_culling) {
-      if (views[i] == NULL) {
-        views[i] = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+      if (views[i] == nullptr) {
+        views[i] = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
       }
       else {
-        DRW_view_update(views[i], viewmat, winmat, NULL, NULL);
+        DRW_view_update(views[i], viewmat, winmat, nullptr, nullptr);
       }
     }
     else {
-      if (views[i] == NULL) {
+      if (views[i] == nullptr) {
         const DRWView *default_view = DRW_view_default_get();
         views[i] = DRW_view_create_sub(default_view, viewmat, winmat);
       }
@@ -834,16 +847,15 @@ static void lightbake_render_world_face(int face, EEVEE_BakeRenderData *user_dat
   DRW_draw_pass(psl->probe_background);
 }
 
-void EEVEE_lightbake_render_world(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_lightbake_render_world(EEVEE_ViewLayerData * /*sldata*/,
                                   EEVEE_Data *vedata,
                                   GPUFrameBuffer *face_fb[6])
 {
-  EEVEE_BakeRenderData brdata = {
-      .vedata = vedata,
-      .face_fb = face_fb,
-  };
+  EEVEE_BakeRenderData brdata{};
+  brdata.vedata = vedata;
+  brdata.face_fb = face_fb;
 
-  render_cubemap(lightbake_render_world_face, &brdata, (float[3]){0.0f}, 1.0f, 10.0f, false);
+  render_cubemap(lightbake_render_world_face, &brdata, blender::float3(0.0f), 1.0f, 10.0f, false);
 }
 
 static void lightbake_render_scene_face(int face, EEVEE_BakeRenderData *user_data)
@@ -875,11 +887,10 @@ void EEVEE_lightbake_render_scene(EEVEE_ViewLayerData *sldata,
                                   float near_clip,
                                   float far_clip)
 {
-  EEVEE_BakeRenderData brdata = {
-      .vedata = vedata,
-      .sldata = sldata,
-      .face_fb = face_fb,
-  };
+  EEVEE_BakeRenderData brdata{};
+  brdata.vedata = vedata;
+  brdata.sldata = sldata;
+  brdata.face_fb = face_fb;
 
   render_cubemap(lightbake_render_scene_face, &brdata, pos, near_clip, far_clip, true);
 }
@@ -955,10 +966,9 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
 static void eevee_lightbake_render_scene_to_planars(EEVEE_ViewLayerData *sldata,
                                                     EEVEE_Data *vedata)
 {
-  EEVEE_BakeRenderData brdata = {
-      .vedata = vedata,
-      .sldata = sldata,
-  };
+  EEVEE_BakeRenderData brdata{};
+  brdata.vedata = vedata;
+  brdata.sldata = sldata;
 
   render_reflections(lightbake_render_scene_reflected,
                      &brdata,
@@ -1075,8 +1085,8 @@ void EEVEE_lightbake_filter_diffuse(EEVEE_ViewLayerData *sldata,
 
   pinfo->intensity_fac = intensity;
 
-  /* Find cell position on the virtual 3D texture. */
-  /* NOTE: Keep in sync with `load_irradiance_cell()`. */
+/* Find cell position on the virtual 3D texture. */
+/* NOTE: Keep in sync with `load_irradiance_cell()`. */
 #if defined(IRRADIANCE_SH_L2)
   int size[2] = {3, 3};
 #elif defined(IRRADIANCE_HL2)
@@ -1114,7 +1124,7 @@ void EEVEE_lightbake_filter_diffuse(EEVEE_ViewLayerData *sldata,
 
 void EEVEE_lightbake_filter_visibility(EEVEE_ViewLayerData *sldata,
                                        EEVEE_Data *vedata,
-                                       GPUTexture *UNUSED(rt_depth),
+                                       GPUTexture * /*rt_depth*/,
                                        GPUFrameBuffer *fb,
                                        int grid_offset,
                                        float clipsta,
@@ -1222,7 +1232,7 @@ void EEVEE_lightprobes_refresh_planar(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
   eevee_lightbake_render_scene_to_planars(sldata, vedata);
 
   /* Make sure no additional visibility check runs after this. */
-  pinfo->vis_data.collection = NULL;
+  pinfo->vis_data.collection = nullptr;
 
   GPU_uniformbuf_update(sldata->planar_ubo, &sldata->probes->planar_data);
 
