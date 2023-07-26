@@ -83,7 +83,7 @@ set(SRC
   intern/bmesh_mesh_convert.h
   intern/bmesh_mesh_debug.cc
   intern/bmesh_mesh_debug.h
-  intern/bmesh_mesh_duplicate.c
+  intern/bmesh_mesh_duplicate.cc
   intern/bmesh_mesh_duplicate.h
   intern/bmesh_mesh_normals.cc
   intern/bmesh_mesh_normals.h

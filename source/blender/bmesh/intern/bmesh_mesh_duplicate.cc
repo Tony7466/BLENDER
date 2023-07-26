@@ -20,7 +20,7 @@
 
 static BMVert *bm_vert_copy(BMesh *bm_src, BMesh *bm_dst, BMVert *v_src)
 {
-  BMVert *v_dst = BM_vert_create(bm_dst, v_src->co, NULL, BM_CREATE_SKIP_CD);
+  BMVert *v_dst = BM_vert_create(bm_dst, v_src->co, nullptr, BM_CREATE_SKIP_CD);
   BM_elem_attrs_copy(bm_src, bm_dst, v_src, v_dst);
   return v_dst;
 }
@@ -32,7 +32,7 @@ static BMEdge *bm_edge_copy_with_arrays(BMesh *bm_src,
 {
   BMVert *e_dst_v1 = verts_dst[BM_elem_index_get(e_src->v1)];
   BMVert *e_dst_v2 = verts_dst[BM_elem_index_get(e_src->v2)];
-  BMEdge *e_dst = BM_edge_create(bm_dst, e_dst_v1, e_dst_v2, NULL, BM_CREATE_SKIP_CD);
+  BMEdge *e_dst = BM_edge_create(bm_dst, e_dst_v1, e_dst_v2, nullptr, BM_CREATE_SKIP_CD);
   BM_elem_attrs_copy(bm_src, bm_dst, e_src, e_dst);
   return e_dst;
 }
@@ -58,7 +58,7 @@ static BMFace *bm_face_copy_with_arrays(
   } while ((l_iter_src = l_iter_src->next) != l_first_src);
 
   /* Create new face. */
-  f_dst = BM_face_create(bm_dst, vtar, edar, f_src->len, NULL, BM_CREATE_SKIP_CD);
+  f_dst = BM_face_create(bm_dst, vtar, edar, f_src->len, nullptr, BM_CREATE_SKIP_CD);
 
   /* Copy attributes. */
   BM_elem_attrs_copy(bm_src, bm_dst, f_src, f_dst);
@@ -83,7 +83,8 @@ void BM_mesh_copy_arrays(BMesh *bm_src,
                          uint faces_src_len)
 {
   /* Vertices. */
-  BMVert **verts_dst = MEM_mallocN(sizeof(*verts_dst) * verts_src_len, __func__);
+  BMVert **verts_dst = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(*verts_dst) * verts_src_len, __func__));
   for (uint i = 0; i < verts_src_len; i++) {
     BMVert *v_src = verts_src[i];
     BM_elem_index_set(v_src, i); /* set_dirty! */
@@ -96,7 +97,8 @@ void BM_mesh_copy_arrays(BMesh *bm_src,
   bm_dst->elem_index_dirty &= ~BM_VERT;
 
   /* Edges. */
-  BMEdge **edges_dst = MEM_mallocN(sizeof(*edges_dst) * edges_src_len, __func__);
+  BMEdge **edges_dst = static_cast<BMEdge **>(
+      MEM_mallocN(sizeof(*edges_dst) * edges_src_len, __func__));
   for (uint i = 0; i < edges_src_len; i++) {
     BMEdge *e_src = edges_src[i];
     BM_elem_index_set(e_src, i); /* set_dirty! */
