@@ -26,8 +26,8 @@
 
 GPUUniformBuf *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd)
 {
-  GPUUniformBuf **ubo = BLI_memblock_alloc(wpd->material_ubo);
-  if (*ubo == NULL) {
+  GPUUniformBuf **ubo = static_cast<GPUUniformBuf **>(BLI_memblock_alloc(wpd->material_ubo));
+  if (*ubo == nullptr) {
     *ubo = GPU_uniformbuf_create(sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL);
   }
   return *ubo;
@@ -35,7 +35,7 @@ GPUUniformBuf *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd)
 
 static void workbench_ubo_free(void *elem)
 {
-  GPUUniformBuf **ubo = elem;
+  GPUUniformBuf **ubo = static_cast<GPUUniformBuf **>(elem);
   DRW_UBO_FREE_SAFE(*ubo);
 }
 
@@ -48,7 +48,7 @@ static void workbench_view_layer_data_free(void *storage)
   DRW_UBO_FREE_SAFE(vldata->cavity_sample_ubo);
   DRW_TEXTURE_FREE_SAFE(vldata->cavity_jitter_tx);
 
-  BLI_memblock_destroy(vldata->material_ubo_data, NULL);
+  BLI_memblock_destroy(vldata->material_ubo_data, nullptr);
   BLI_memblock_destroy(vldata->material_ubo, workbench_ubo_free);
 }
 
@@ -59,12 +59,14 @@ static WORKBENCH_ViewLayerData *workbench_view_layer_data_ensure_ex(ViewLayer *v
                                            (DrawEngineType *)&workbench_view_layer_data_ensure_ex,
                                            &workbench_view_layer_data_free);
 
-  if (*vldata == NULL) {
-    *vldata = MEM_callocN(sizeof(**vldata), "WORKBENCH_ViewLayerData");
+  if (*vldata == nullptr) {
+    *vldata = static_cast<WORKBENCH_ViewLayerData *>(
+        MEM_callocN(sizeof(**vldata), "WORKBENCH_ViewLayerData"));
     size_t matbuf_size = sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL;
     (*vldata)->material_ubo_data = BLI_memblock_create_ex(matbuf_size, matbuf_size * 2);
     (*vldata)->material_ubo = BLI_memblock_create_ex(sizeof(void *), sizeof(void *) * 8);
-    (*vldata)->world_ubo = GPU_uniformbuf_create_ex(sizeof(WORKBENCH_UBO_World), NULL, "wb_World");
+    (*vldata)->world_ubo = GPU_uniformbuf_create_ex(
+        sizeof(WORKBENCH_UBO_World), nullptr, "wb_World");
   }
 
   return *vldata;
@@ -76,7 +78,7 @@ static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBE
 {
   StudioLight *studiolight = wpd->studio_light;
   float view_matrix[4][4], rot_matrix[4][4];
-  DRW_view_viewmat_get(NULL, view_matrix, false);
+  DRW_view_viewmat_get(nullptr, view_matrix, false);
 
   if (USE_WORLD_ORIENTATION(wpd)) {
     axis_angle_to_mat4_single(rot_matrix, 'Z', -wpd->shading.studiolight_rot_z);
@@ -96,7 +98,7 @@ static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBE
   for (int i = 0; i < 4; i++) {
     WORKBENCH_UBO_Light *light = &wd->lights[i];
 
-    SolidLight *sl = (studiolight) ? &studiolight->light[i] : NULL;
+    SolidLight *sl = (studiolight) ? &studiolight->light[i] : nullptr;
     if (sl && sl->flag) {
       copy_v3_v3(light->light_direction, sl->vec);
       mul_mat3_m4_v3(rot_matrix, light->light_direction);
@@ -126,7 +128,7 @@ static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBE
 void workbench_private_data_alloc(WORKBENCH_StorageList *stl)
 {
   if (!stl->wpd) {
-    stl->wpd = MEM_callocN(sizeof(*stl->wpd), __func__);
+    stl->wpd = static_cast<WORKBENCH_PrivateData *>(MEM_callocN(sizeof(*stl->wpd), __func__));
     stl->wpd->taa_sample_len_previous = -1;
     stl->wpd->view_updated = true;
   }
@@ -152,7 +154,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
    * But this is a workaround for a missing update tagging. */
-  DRWState clip_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : 0;
+  DRWState clip_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : DRWState(0);
   if (clip_state != wpd->clip_state) {
     wpd->view_updated = true;
   }
@@ -167,7 +169,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
 
   /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
    * But this is a workaround for a missing update tagging. */
-  if ((rv3d != NULL) && (rv3d->rflag & RV3D_GPULIGHT_UPDATE)) {
+  if ((rv3d != nullptr) && (rv3d->rflag & RV3D_GPULIGHT_UPDATE)) {
     wpd->view_updated = true;
     rv3d->rflag &= ~RV3D_GPULIGHT_UPDATE;
   }
@@ -237,7 +239,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     copy_v4_fl(wpd->background_color, 0.0f);
   }
 
-  wpd->cull_state = CULL_BACKFACE_ENABLED(wpd) ? DRW_STATE_CULL_BACK : 0;
+  wpd->cull_state = CULL_BACKFACE_ENABLED(wpd) ? DRW_STATE_CULL_BACK : DRWState(0);
 
   if (wpd->shading.light == V3D_LIGHTING_MATCAP) {
     wpd->studio_light = BKE_studiolight_find(wpd->shading.matcap, STUDIOLIGHT_TYPE_MATCAP);
@@ -247,7 +249,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   }
 
   /* If matcaps are missing, use this as fallback. */
-  if (UNLIKELY(wpd->studio_light == NULL)) {
+  if (UNLIKELY(wpd->studio_light == nullptr)) {
     wpd->studio_light = BKE_studiolight_find(wpd->shading.studio_light, STUDIOLIGHT_TYPE_STUDIO);
   }
 
@@ -259,11 +261,12 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     wpd->material_chunk_curr = 0;
     wpd->material_index = 1;
     /* Create default material ubo. */
-    wpd->material_ubo_data_curr = BLI_memblock_alloc(wpd->material_ubo_data);
+    wpd->material_ubo_data_curr = static_cast<WORKBENCH_UBO_Material *>(
+        BLI_memblock_alloc(wpd->material_ubo_data));
     wpd->material_ubo_curr = workbench_material_ubo_alloc(wpd);
     /* Init default material used by vertex color & texture. */
     workbench_material_ubo_data(
-        wpd, NULL, NULL, &wpd->material_ubo_data_curr[0], V3D_SHADING_MATERIAL_COLOR);
+        wpd, nullptr, nullptr, &wpd->material_ubo_data_curr[0], V3D_SHADING_MATERIAL_COLOR);
   }
 }
 
@@ -285,7 +288,7 @@ void workbench_update_world_ubo(WORKBENCH_PrivateData *wpd)
   GPU_uniformbuf_update(wpd->world_ubo, &wd);
 }
 
-void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
+void workbench_update_material_ubos(WORKBENCH_PrivateData * /*wpd*/)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   WORKBENCH_ViewLayerData *vldata = workbench_view_layer_data_ensure_ex(draw_ctx->view_layer);
@@ -294,12 +297,12 @@ void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
   BLI_memblock_iternew(vldata->material_ubo, &iter);
   BLI_memblock_iternew(vldata->material_ubo_data, &iter_data);
   WORKBENCH_UBO_Material *matchunk;
-  while ((matchunk = BLI_memblock_iterstep(&iter_data))) {
-    GPUUniformBuf **ubo = BLI_memblock_iterstep(&iter);
-    BLI_assert(*ubo != NULL);
+  while ((matchunk = static_cast<WORKBENCH_UBO_Material *>(BLI_memblock_iterstep(&iter_data)))) {
+    GPUUniformBuf **ubo = static_cast<GPUUniformBuf **>(BLI_memblock_iterstep(&iter));
+    BLI_assert(*ubo != nullptr);
     GPU_uniformbuf_update(*ubo, matchunk);
   }
 
   BLI_memblock_clear(vldata->material_ubo, workbench_ubo_free);
-  BLI_memblock_clear(vldata->material_ubo_data, NULL);
+  BLI_memblock_clear(vldata->material_ubo_data, nullptr);
 }
