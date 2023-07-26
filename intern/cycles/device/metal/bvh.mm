@@ -252,14 +252,14 @@ bool BVHMetal::build_BLAS_mesh(Progress &progress,
   return false;
 }
 
-#define CYCLES_METAL_USE_METALRT_CURVES 1
 bool BVHMetal::build_BLAS_hair(Progress &progress,
                                id<MTLDevice> device,
                                id<MTLCommandQueue> queue,
                                Geometry *const geom,
                                bool refit)
 {
-  if (@available(macos 12.0, *)) {
+#  if defined(MAC_OS_VERSION_14_0)
+  if (@available(macos 14.0, *)) {
     /* Build BLAS for hair curves */
     Hair *hair = static_cast<Hair *>(geom);
     if (hair->num_curves() == 0) {
@@ -575,6 +575,7 @@ bool BVHMetal::build_BLAS_hair(Progress &progress,
 
     return true;
   }
+#  endif /* MAC_OS_VERSION_14_0 */
   return false;
 }
 
