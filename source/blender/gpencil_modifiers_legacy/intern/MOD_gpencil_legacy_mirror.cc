@@ -94,7 +94,7 @@ static void update_mirror_object(Object *ob,
 
 static void update_position(Object *ob, MirrorGpencilModifierData *mmd, bGPDstroke *gps, int axis)
 {
-  if (mmd->object == NULL) {
+  if (mmd->object == nullptr) {
     update_mirror_local(gps, axis);
   }
   else {
@@ -106,8 +106,8 @@ static void generate_geometry(
     GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, const bool update)
 {
   MirrorGpencilModifierData *mmd = (MirrorGpencilModifierData *)md;
-  bGPdata *gpd = ob->data;
-  bGPDstroke *gps, *gps_new = NULL;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+  bGPDstroke *gps, *gps_new = nullptr;
   int tot_strokes;
   int i;
 
@@ -118,7 +118,9 @@ static void generate_geometry(
       /* count strokes to avoid infinite loop after adding new strokes to tail of listbase */
       tot_strokes = BLI_listbase_count(&gpf->strokes);
 
-      for (i = 0, gps = gpf->strokes.first; i < tot_strokes; i++, gps = gps->next) {
+      for (i = 0, gps = static_cast<bGPDstroke *>(gpf->strokes.first); i < tot_strokes;
+           i++, gps = gps->next)
+      {
         if (is_stroke_affected_by_modifier(ob,
                                            mmd->layername,
                                            mmd->material,
@@ -152,20 +154,20 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     generate_geometry(md, ob, gpl, gpf, false);
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -184,7 +186,7 @@ static void bakeModifier(Main *UNUSED(bmain),
   BKE_scene_graph_update_for_newframe(depsgraph);
 }
 
-static bool isDisabled(GpencilModifierData *UNUSED(md), int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData * /*md*/, int /*userRenderParams*/)
 {
   // MirrorGpencilModifierData *mmd = (MirrorGpencilModifierData *)md;
 
@@ -193,10 +195,10 @@ static bool isDisabled(GpencilModifierData *UNUSED(md), int UNUSED(userRenderPar
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   MirrorGpencilModifierData *lmd = (MirrorGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Mirror Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Mirror Modifier");
   }
@@ -211,27 +213,27 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
-  uiItemR(row, ptr, "use_axis_x", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, ptr, "use_axis_y", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, ptr, "use_axis_z", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "use_axis_x", toggles_flag, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "use_axis_y", toggles_flag, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "use_axis_z", toggles_flag, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -241,7 +243,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Mirror, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Mirror = {
@@ -253,17 +255,17 @@ GpencilModifierTypeInfo modifierType_Gpencil_Mirror = {
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
+    /*freeData*/ nullptr,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
