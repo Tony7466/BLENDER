@@ -24,7 +24,7 @@
 
 static struct {
   GPUTexture *dummy_horizon_tx;
-} e_data = {NULL}; /* Engine data */
+} e_data = {nullptr}; /* Engine data */
 
 int EEVEE_occlusion_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 {
@@ -80,7 +80,7 @@ int EEVEE_occlusion_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
           {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(effects->gtao_horizons_debug)});
     }
     else {
-      effects->gtao_horizons_debug = NULL;
+      effects->gtao_horizons_debug = nullptr;
     }
 
     effects->gtao_horizons = (scene_eval->eevee.flag & SCE_EEVEE_GTAO_ENABLED) ?
@@ -112,7 +112,7 @@ void EEVEE_occlusion_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   /* Should be enough precision for many samples. */
-  DRW_texture_ensure_fullscreen_2d(&txl->ao_accum, texture_format, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->ao_accum, texture_format, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->ao_accum_fb,
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->ao_accum)});
@@ -129,7 +129,7 @@ void EEVEE_occlusion_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata
   DRW_shgroup_uniform_texture_ref(grp, "horizonBuffer", &effects->gtao_horizons_renderpass);
   DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
   DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
 }
 
 void EEVEE_occlusion_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
@@ -160,7 +160,7 @@ void EEVEE_occlusion_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_texture_ref(grp, "maxzBuffer", &txl->maxzbuffer);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     if (G.debug_value == 6) {
       DRW_PASS_CREATE(psl->ao_horizon_debug, DRW_STATE_WRITE_COLOR);
@@ -173,7 +173,7 @@ void EEVEE_occlusion_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
       DRW_shgroup_uniform_texture_ref(grp, "horizonBuffer", &effects->gtao_horizons_renderpass);
       DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
       DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     }
   }
 }
@@ -218,7 +218,7 @@ void EEVEE_occlusion_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 }
 
-void EEVEE_occlusion_draw_debug(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_occlusion_draw_debug(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -244,7 +244,7 @@ void EEVEE_occlusion_output_accumulate(EEVEE_ViewLayerData *sldata, EEVEE_Data *
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_EffectsInfo *effects = vedata->stl->effects;
 
-  if (fbl->ao_accum_fb != NULL) {
+  if (fbl->ao_accum_fb != nullptr) {
     DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
     /* Update the min_max/horizon buffers so the refraction materials appear in it. */
