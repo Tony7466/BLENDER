@@ -162,8 +162,8 @@ set(SRC
   engines/eevee_next/eevee_view.cc
   engines/eevee_next/eevee_world.cc
   engines/workbench/workbench_data.cc
-  engines/workbench/workbench_effect_antialiasing.c
   engines/workbench/workbench_effect_antialiasing.cc
+  engines/workbench/workbench_effect_antialiasing_c.cc
   engines/workbench/workbench_effect_cavity.c
   engines/workbench/workbench_effect_cavity.cc
   engines/workbench/workbench_effect_dof.c

@@ -151,7 +151,7 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
   WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   DrawEngineType *owner = (DrawEngineType *)&workbench_antialiasing_engine_init;
 
-  wpd->view = NULL;
+  wpd->view = nullptr;
 
   /* Reset complete drawing when navigating or during viewport playback or when
    * leaving one of those states. In case of multires modifier the navigation
@@ -186,7 +186,7 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
 
   {
     float persmat[4][4];
-    DRW_view_persmat_get(NULL, persmat, false);
+    DRW_view_persmat_get(nullptr, persmat, false);
     if (!equals_m4m4(persmat, wpd->last_mat)) {
       copy_m4_m4(wpd->last_mat, persmat);
       wpd->taa_sample = 0;
@@ -198,11 +198,12 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     DRW_texture_ensure_fullscreen_2d_ex(
         &txl->history_buffer_tx, GPU_RGBA16F, usage, DRW_TEX_FILTER);
-    DRW_texture_ensure_fullscreen_2d_ex(&txl->depth_buffer_tx, GPU_DEPTH24_STENCIL8, usage, 0);
+    DRW_texture_ensure_fullscreen_2d_ex(
+        &txl->depth_buffer_tx, GPU_DEPTH24_STENCIL8, usage, DRWTextureFlag(0));
     const bool in_front_history = workbench_in_front_history_needed(vedata);
     if (in_front_history) {
       DRW_texture_ensure_fullscreen_2d_ex(
-          &txl->depth_buffer_in_front_tx, GPU_DEPTH24_STENCIL8, usage, 0);
+          &txl->depth_buffer_in_front_tx, GPU_DEPTH24_STENCIL8, usage, DRWTextureFlag(0));
     }
     else {
       DRW_TEXTURE_FREE_SAFE(txl->depth_buffer_in_front_tx);
@@ -236,13 +237,13 @@ void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata)
                                   });
 
     /* TODO: could be shared for all viewports. */
-    if (txl->smaa_search_tx == NULL) {
+    if (txl->smaa_search_tx == nullptr) {
       txl->smaa_search_tx = GPU_texture_create_2d(
-          "smaa_search", SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1, GPU_R8, usage, NULL);
+          "smaa_search", SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1, GPU_R8, usage, nullptr);
       GPU_texture_update(txl->smaa_search_tx, GPU_DATA_UBYTE, searchTexBytes);
 
       txl->smaa_area_tx = GPU_texture_create_2d(
-          "smaa_area", AREATEX_WIDTH, AREATEX_HEIGHT, 1, GPU_RG8, usage, NULL);
+          "smaa_area", AREATEX_WIDTH, AREATEX_HEIGHT, 1, GPU_RG8, usage, nullptr);
       GPU_texture_update(txl->smaa_area_tx, GPU_DATA_UBYTE, areaTexBytes);
 
       GPU_texture_filter_mode(txl->smaa_search_tx, true);
@@ -279,7 +280,7 @@ static void workbench_antialiasing_weights_get(const float offset[2],
   int i = 0;
   for (int x = -1; x <= 1; x++) {
     for (int y = -1; y <= 1; y++, i++) {
-      float sample_co[2] = {x, y};
+      float sample_co[2] = {float(x), float(y)};
       sub_v2_v2(sample_co, offset);
       float r = len_v2(sample_co);
       /* fclem: is radial distance ok here? */
@@ -296,7 +297,7 @@ void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata)
   WORKBENCH_PrivateData *wpd = vedata->stl->wpd;
   WORKBENCH_PassList *psl = vedata->psl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
   if (wpd->taa_sample_len == 0) {
     return;
@@ -308,9 +309,10 @@ void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata)
 
     GPUShader *shader = workbench_shader_antialiasing_accumulation_get();
     grp = DRW_shgroup_create(shader, psl->aa_accum_ps);
-    DRW_shgroup_uniform_texture_ex(grp, "colorBuffer", dtxl->color, GPU_SAMPLER_DEFAULT);
+    DRW_shgroup_uniform_texture_ex(
+        grp, "colorBuffer", dtxl->color, GPUSamplerState::default_sampler());
     DRW_shgroup_uniform_float(grp, "samplesWeights", wpd->taa_weights, 9);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 
   const float *size = DRW_viewport_size_get();
@@ -327,7 +329,7 @@ void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
     DRW_shgroup_clear_framebuffer(grp, GPU_COLOR_BIT, 0, 0, 0, 0, 0.0f, 0x0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   {
     /* Stage 2: Blend Weight/Coord. */
@@ -341,7 +343,7 @@ void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
     DRW_shgroup_clear_framebuffer(grp, GPU_COLOR_BIT, 0, 0, 0, 0, 0.0f, 0x0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   {
     /* Stage 3: Resolve. */
@@ -355,7 +357,7 @@ void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata)
     DRW_shgroup_uniform_float(grp, "mixFactor", &wpd->smaa_mix_factor, 1);
     DRW_shgroup_uniform_float(grp, "taaAccumulatedWeight", &wpd->taa_weight_accum, 1);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
