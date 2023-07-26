@@ -34,13 +34,15 @@ void EEVEE_shadows_init(EEVEE_ViewLayerData *sldata)
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
   if (!sldata->lights) {
-    sldata->lights = MEM_callocN(sizeof(EEVEE_LightsInfo), "EEVEE_LightsInfo");
-    sldata->light_ubo = GPU_uniformbuf_create_ex(sizeof(EEVEE_Light) * MAX_LIGHT, NULL, "evLight");
-    sldata->shadow_ubo = GPU_uniformbuf_create_ex(shadow_ubo_size, NULL, "evShadow");
+    sldata->lights = static_cast<EEVEE_LightsInfo *>(
+        MEM_callocN(sizeof(EEVEE_LightsInfo), "EEVEE_LightsInfo"));
+    sldata->light_ubo = GPU_uniformbuf_create_ex(
+        sizeof(EEVEE_Light) * MAX_LIGHT, nullptr, "evLight");
+    sldata->shadow_ubo = GPU_uniformbuf_create_ex(shadow_ubo_size, nullptr, "evShadow");
 
     for (int i = 0; i < 2; i++) {
-      sldata->shcasters_buffers[i].bbox = MEM_mallocN(
-          sizeof(EEVEE_BoundBox) * SH_CASTER_ALLOC_CHUNK, __func__);
+      sldata->shcasters_buffers[i].bbox = static_cast<EEVEE_BoundBox *>(
+          MEM_mallocN(sizeof(EEVEE_BoundBox) * SH_CASTER_ALLOC_CHUNK, __func__));
       sldata->shcasters_buffers[i].update = BLI_BITMAP_NEW(SH_CASTER_ALLOC_CHUNK, __func__);
       sldata->shcasters_buffers[i].alloc_count = SH_CASTER_ALLOC_CHUNK;
       sldata->shcasters_buffers[i].count = 0;
@@ -122,8 +124,8 @@ void EEVEE_shadows_caster_register(EEVEE_ViewLayerData *sldata, Object *ob)
   if (id >= frontbuffer->alloc_count) {
     /* Double capacity to prevent exponential slowdown. */
     frontbuffer->alloc_count *= 2;
-    frontbuffer->bbox = MEM_reallocN(frontbuffer->bbox,
-                                     sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count);
+    frontbuffer->bbox = static_cast<EEVEE_BoundBox *>(
+        MEM_reallocN(frontbuffer->bbox, sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count));
     BLI_BITMAP_RESIZE(frontbuffer->update, frontbuffer->alloc_count);
   }
 
@@ -143,7 +145,7 @@ void EEVEE_shadows_caster_register(EEVEE_ViewLayerData *sldata, Object *ob)
     update = oedata->need_update;
 
     /* Always update shadow buffers in sculpt modes. */
-    update |= ob->sculpt != NULL;
+    update |= ob->sculpt != nullptr;
 
     oedata->need_update = false;
   }
@@ -217,13 +219,14 @@ void EEVEE_shadows_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   eGPUTextureUsage shadow_usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
   if (!sldata->shadow_cube_pool) {
-    sldata->shadow_cube_pool = DRW_texture_create_2d_array_ex(linfo->shadow_cube_size,
-                                                              linfo->shadow_cube_size,
-                                                              max_ii(1, linfo->num_cube_layer * 6),
-                                                              shadow_pool_format,
-                                                              shadow_usage,
-                                                              DRW_TEX_FILTER | DRW_TEX_COMPARE,
-                                                              NULL);
+    sldata->shadow_cube_pool = DRW_texture_create_2d_array_ex(
+        linfo->shadow_cube_size,
+        linfo->shadow_cube_size,
+        max_ii(1, linfo->num_cube_layer * 6),
+        shadow_pool_format,
+        shadow_usage,
+        DRWTextureFlag(DRW_TEX_FILTER | DRW_TEX_COMPARE),
+        nullptr);
   }
 
   if (!sldata->shadow_cascade_pool) {
@@ -233,11 +236,11 @@ void EEVEE_shadows_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
         max_ii(1, linfo->num_cascade_layer),
         shadow_pool_format,
         shadow_usage,
-        DRW_TEX_FILTER | DRW_TEX_COMPARE,
-        NULL);
+        DRWTextureFlag(DRW_TEX_FILTER | DRW_TEX_COMPARE),
+        nullptr);
   }
 
-  if (sldata->shadow_fb == NULL) {
+  if (sldata->shadow_fb == nullptr) {
     sldata->shadow_fb = GPU_framebuffer_create("shadow_fb");
   }
 
@@ -286,8 +289,8 @@ void EEVEE_shadows_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     frontbuffer->alloc_count = divide_ceil_u(max_ii(1, frontbuffer->count),
                                              SH_CASTER_ALLOC_CHUNK) *
                                SH_CASTER_ALLOC_CHUNK;
-    frontbuffer->bbox = MEM_reallocN(frontbuffer->bbox,
-                                     sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count);
+    frontbuffer->bbox = static_cast<EEVEE_BoundBox *>(
+        MEM_reallocN(frontbuffer->bbox, sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count));
     BLI_BITMAP_RESIZE(frontbuffer->update, frontbuffer->alloc_count);
   }
 }
@@ -347,7 +350,7 @@ void EEVEE_shadows_draw(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
 
 void EEVEE_shadow_output_init(EEVEE_ViewLayerData *sldata,
                               EEVEE_Data *vedata,
-                              uint UNUSED(tot_samples))
+                              uint /*tot_samples*/)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_TextureList *txl = vedata->txl;
@@ -356,7 +359,7 @@ void EEVEE_shadow_output_init(EEVEE_ViewLayerData *sldata,
 
   /* Create FrameBuffer. */
   const eGPUTextureFormat texture_format = GPU_R32F;
-  DRW_texture_ensure_fullscreen_2d(&txl->shadow_accum, texture_format, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->shadow_accum, texture_format, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->shadow_accum_fb,
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->shadow_accum)});
@@ -378,16 +381,16 @@ void EEVEE_shadow_output_init(EEVEE_ViewLayerData *sldata,
   DRW_shgroup_uniform_texture_ref(grp, "shadowCubeTexture", &sldata->shadow_cube_pool);
   DRW_shgroup_uniform_texture_ref(grp, "shadowCascadeTexture", &sldata->shadow_cascade_pool);
 
-  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
 }
 
-void EEVEE_shadow_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_shadow_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_EffectsInfo *effects = vedata->stl->effects;
 
-  if (fbl->shadow_accum_fb != NULL) {
+  if (fbl->shadow_accum_fb != nullptr) {
     GPU_framebuffer_bind(fbl->shadow_accum_fb);
 
     /* Clear texture. */

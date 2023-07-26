@@ -129,7 +129,7 @@ set(SRC
   engines/eevee/eevee_screen_raytrace.cc
   engines/eevee/eevee_shaders.cc
   engines/eevee/eevee_shaders_extra.cc
-  engines/eevee/eevee_shadows.c
+  engines/eevee/eevee_shadows.cc
   engines/eevee/eevee_shadows_cascade.cc
   engines/eevee/eevee_shadows_cube.cc
   engines/eevee/eevee_subsurface.c
