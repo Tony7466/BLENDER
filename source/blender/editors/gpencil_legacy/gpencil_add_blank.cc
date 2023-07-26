@@ -27,11 +27,11 @@
 #include "ED_gpencil_legacy.h"
 
 /* Definition of the most important info from a color */
-typedef struct ColorTemplate {
+struct ColorTemplate {
   const char *name;
   float line[4];
   float fill[4];
-} ColorTemplate;
+};
 
 /* Add color an ensure duplications (matched by name) */
 static int gpencil_stroke_material(Main *bmain, Object *ob, const ColorTemplate *pct)
@@ -63,7 +63,7 @@ static const ColorTemplate gp_stroke_material_black = {
 /* ***************************************************************** */
 /* Blank API */
 
-void ED_gpencil_create_blank(bContext *C, Object *ob, float UNUSED(mat[4][4]))
+void ED_gpencil_create_blank(bContext *C, Object *ob, float[4][4] /*mat*/)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
