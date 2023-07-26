@@ -188,7 +188,7 @@ set(SRC
   engines/workbench/workbench_volume_next.cc
   engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.cc
-  engines/gpencil/gpencil_cache_utils.c
+  engines/gpencil/gpencil_cache_utils.cc
   engines/gpencil/gpencil_draw_data.c
   engines/gpencil/gpencil_engine.c
   engines/gpencil/gpencil_engine.cc

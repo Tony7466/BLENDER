@@ -36,10 +36,10 @@
 GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
-  GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
+  GPENCIL_tObject *tgp_ob = static_cast<GPENCIL_tObject *>(BLI_memblock_alloc(pd->gp_object_pool));
 
-  tgp_ob->layers.first = tgp_ob->layers.last = NULL;
-  tgp_ob->vfx.first = tgp_ob->vfx.last = NULL;
+  tgp_ob->layers.first = tgp_ob->layers.last = nullptr;
+  tgp_ob->vfx.first = tgp_ob->vfx.last = nullptr;
   tgp_ob->camera_z = dot_v3v3(pd->camera_z_axis, ob->object_to_world[3]);
   tgp_ob->is_drawmode3d = (gpd->draw_mode == GP_DRAWMODE_3D) || pd->draw_depth_only;
   tgp_ob->object_scale = mat4_to_scale(ob->object_to_world);
@@ -49,7 +49,7 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   const int tot_materials = BKE_object_material_count_eval(ob);
   for (int i = 0; i < tot_materials; i++) {
     MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-    if (((gp_style != NULL) && (gp_style->flag & GP_MATERIAL_IS_STROKE_HOLDOUT)) ||
+    if (((gp_style != nullptr) && (gp_style->flag & GP_MATERIAL_IS_STROKE_HOLDOUT)) ||
         (gp_style->flag & GP_MATERIAL_IS_FILL_HOLDOUT))
     {
       tgp_ob->do_mat_holdout = true;
@@ -74,7 +74,7 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   rescale_m4(mat, size);
   /* BBox space to World. */
   mul_m4_m4m4(mat, ob->object_to_world, mat);
-  if (DRW_view_is_persp_get(NULL)) {
+  if (DRW_view_is_persp_get(nullptr)) {
     /* BBox center to camera vector. */
     sub_v3_v3v3(tgp_ob->plane_normal, pd->camera_pos, mat[3]);
   }
@@ -101,7 +101,7 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd, Object *ob)
   mul_mat3_m4_v3(ob->object_to_world, size);
   float radius = len_v3(size);
   mul_m4_v3(ob->object_to_world, center);
-  rescale_m4(tgp_ob->plane_mat, (float[3]){radius, radius, radius});
+  rescale_m4(tgp_ob->plane_mat, blender::float3{radius, radius, radius});
   copy_v3_v3(tgp_ob->plane_mat[3], center);
 
   /* Add to corresponding list if is in front. */
@@ -158,8 +158,8 @@ void gpencil_object_cache_sort(GPENCIL_PrivateData *pd)
   }
 
   /* Join both lists, adding in front. */
-  if (pd->tobjects_infront.first != NULL) {
-    if (pd->tobjects.last != NULL) {
+  if (pd->tobjects_infront.first != nullptr) {
+    if (pd->tobjects.last != nullptr) {
       pd->tobjects.last->next = pd->tobjects_infront.first;
       pd->tobjects.last = pd->tobjects_infront.last;
     }
@@ -205,7 +205,7 @@ static void gpencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd
                                                    float r_tint[4],
                                                    float *r_alpha)
 {
-  const bool use_onion = (gpf != NULL) && (gpf->runtime.onion_id != 0.0f);
+  const bool use_onion = (gpf != nullptr) && (gpf->runtime.onion_id != 0.0f);
   if (use_onion) {
     const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
     const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
@@ -282,20 +282,21 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
   gpencil_layer_final_tint_and_alpha_get(pd, gpd, gpl, gpf, layer_tint, &layer_alpha);
 
   /* Create the new layer descriptor. */
-  GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
+  GPENCIL_tLayer *tgp_layer = static_cast<GPENCIL_tLayer *>(BLI_memblock_alloc(pd->gp_layer_pool));
   BLI_LINKS_APPEND(&tgp_ob->layers, tgp_layer);
   tgp_layer->layer_id = BLI_findindex(&gpd->layers, gpl);
-  tgp_layer->mask_bits = NULL;
-  tgp_layer->mask_invert_bits = NULL;
-  tgp_layer->blend_ps = NULL;
+  tgp_layer->mask_bits = nullptr;
+  tgp_layer->mask_invert_bits = nullptr;
+  tgp_layer->blend_ps = nullptr;
 
   /* Masking: Go through mask list and extract valid masks in a bitmap. */
   if (is_masked) {
     bool valid_mask = false;
     /* WARNING: only #GP_MAX_MASKBITS amount of bits.
      * TODO(fclem): Find a better system without any limitation. */
-    tgp_layer->mask_bits = BLI_memblock_alloc(pd->gp_maskbit_pool);
-    tgp_layer->mask_invert_bits = BLI_memblock_alloc(pd->gp_maskbit_pool);
+    tgp_layer->mask_bits = static_cast<BLI_bitmap *>(BLI_memblock_alloc(pd->gp_maskbit_pool));
+    tgp_layer->mask_invert_bits = static_cast<BLI_bitmap *>(
+        BLI_memblock_alloc(pd->gp_maskbit_pool));
     BLI_bitmap_set_all(tgp_layer->mask_bits, false, GP_MAX_MASKBITS);
 
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
@@ -317,7 +318,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
       pd->use_mask_fb = true;
     }
     else {
-      tgp_layer->mask_bits = NULL;
+      tgp_layer->mask_bits = nullptr;
     }
     is_masked = valid_mask;
   }
@@ -357,7 +358,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "maskBuf", (is_masked) ? &pd->mask_tx : &pd->dummy_tx);
     DRW_shgroup_stencil_mask(grp, 0xFF);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     if (gpl->blend_mode == eGplBlendMode_HardLight) {
       /* We cannot do custom blending on Multi-Target frame-buffers.
@@ -366,7 +367,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
       DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
       DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     }
 
     pd->use_layer_fb = true;
@@ -417,14 +418,14 @@ GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number)
 {
   if (number >= 0) {
     GPENCIL_tLayer *layer = tgp_ob->layers.first;
-    while (layer != NULL) {
+    while (layer != nullptr) {
       if (layer->layer_id == number) {
         return layer;
       }
       layer = layer->next;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /** \} */
