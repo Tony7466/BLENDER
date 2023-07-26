@@ -100,7 +100,7 @@ set(SRC
   intern/bmesh_operators.cc
   intern/bmesh_operators.h
   intern/bmesh_operators_private.h
-  intern/bmesh_polygon.c
+  intern/bmesh_polygon.cc
   intern/bmesh_polygon.h
   intern/bmesh_polygon_edgenet.cc
   intern/bmesh_polygon_edgenet.h

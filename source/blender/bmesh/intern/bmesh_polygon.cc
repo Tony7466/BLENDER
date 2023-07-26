@@ -287,7 +287,7 @@ float BM_face_calc_perimeter_with_mat3(const BMFace *f, const float mat3[3][3])
  */
 static int bm_vert_tri_find_unique_edge(BMVert *verts[3])
 {
-  /* find the most 'unique' loop, (greatest difference to others) */
+/* find the most 'unique' loop, (greatest difference to others) */
 #if 1
   /* optimized version that avoids sqrt */
   float difs[3];
@@ -385,7 +385,7 @@ void BM_face_calc_tangent_edge_pair(const BMFace *f, float r_tangent[3])
   else {
     /* For ngons use two longest disconnected edges */
     BMLoop *l_long = BM_face_find_longest_loop((BMFace *)f);
-    BMLoop *l_long_other = NULL;
+    BMLoop *l_long_other = nullptr;
 
     float len_max_sq = 0.0f;
     float vec_a[3], vec_b[3];
@@ -786,7 +786,7 @@ void BM_verts_calc_normal_from_cloud_ex(
 
   /* Find the 'co_a' point from center. */
   int co_a_index = 0;
-  const float *co_a = NULL;
+  const float *co_a = nullptr;
   {
     float dist_sq_max = -1.0f;
     for (int i = 0; i < varr_len; i++) {
@@ -803,7 +803,7 @@ void BM_verts_calc_normal_from_cloud_ex(
   sub_v3_v3v3(dir_a, co_a, center);
   normalize_v3(dir_a);
 
-  const float *co_b = NULL;
+  const float *co_b = nullptr;
   float dir_b[3] = {0.0f, 0.0f, 0.0f};
   {
     float dist_sq_max = -1.0f;
@@ -828,50 +828,52 @@ void BM_verts_calc_normal_from_cloud_ex(
     goto finally;
   }
 
-  normalize_v3(dir_b);
-
-  const float *co_a_opposite = NULL;
-  const float *co_b_opposite = NULL;
-
   {
-    float dot_a_min = FLT_MAX;
-    float dot_b_min = FLT_MAX;
-    for (int i = 0; i < varr_len; i++) {
-      const float *co_test = varr[i]->co;
-      float dot_test;
+    normalize_v3(dir_b);
 
-      if (co_test != co_a) {
-        dot_test = dot_v3v3(dir_a, co_test);
-        if (dot_test < dot_a_min) {
-          dot_a_min = dot_test;
-          co_a_opposite = co_test;
+    const float *co_a_opposite = nullptr;
+    const float *co_b_opposite = nullptr;
+
+    {
+      float dot_a_min = FLT_MAX;
+      float dot_b_min = FLT_MAX;
+      for (int i = 0; i < varr_len; i++) {
+        const float *co_test = varr[i]->co;
+        float dot_test;
+
+        if (co_test != co_a) {
+          dot_test = dot_v3v3(dir_a, co_test);
+          if (dot_test < dot_a_min) {
+            dot_a_min = dot_test;
+            co_a_opposite = co_test;
+          }
         }
-      }
 
-      if (co_test != co_b) {
-        dot_test = dot_v3v3(dir_b, co_test);
-        if (dot_test < dot_b_min) {
-          dot_b_min = dot_test;
-          co_b_opposite = co_test;
+        if (co_test != co_b) {
+          dot_test = dot_v3v3(dir_b, co_test);
+          if (dot_test < dot_b_min) {
+            dot_b_min = dot_test;
+            co_b_opposite = co_test;
+          }
         }
       }
     }
-  }
 
-  normal_quad_v3(r_normal, co_a, co_b, co_a_opposite, co_b_opposite);
+    normal_quad_v3(r_normal, co_a, co_b, co_a_opposite, co_b_opposite);
+  }
 
 finally:
-  if (r_center != NULL) {
+  if (r_center != nullptr) {
     copy_v3_v3(r_center, center);
   }
-  if (r_index_tangent != NULL) {
+  if (r_index_tangent != nullptr) {
     *r_index_tangent = co_a_index;
   }
 }
 
 void BM_verts_calc_normal_from_cloud(BMVert **varr, int varr_len, float r_normal[3])
 {
-  BM_verts_calc_normal_from_cloud_ex(varr, varr_len, r_normal, NULL, NULL);
+  BM_verts_calc_normal_from_cloud_ex(varr, varr_len, r_normal, nullptr, nullptr);
 }
 
 float BM_face_calc_normal_subset(const BMLoop *l_first, const BMLoop *l_last, float r_no[3])
@@ -968,8 +970,8 @@ void BM_face_triangulate(BMesh *bm,
 
   BLI_assert(BM_face_is_normal_valid(f));
 
-  /* ensure both are valid or NULL */
-  BLI_assert((r_faces_new == NULL) == (r_faces_new_tot == NULL));
+  /* ensure both are valid or nullptr */
+  BLI_assert((r_faces_new == nullptr) == (r_faces_new_tot == nullptr));
 
   BLI_assert(f->len > 3);
 
@@ -1232,7 +1234,7 @@ void BM_face_splits_check_legal(BMesh *bm, BMFace *f, BMLoop *(*loops)[2], int l
     }
 
     if (isect % 2 == 0) {
-      loops[i][0] = NULL;
+      loops[i][0] = nullptr;
     }
   }
 
@@ -1243,9 +1245,9 @@ void BM_face_splits_check_legal(BMesh *bm, BMFace *f, BMLoop *(*loops)[2], int l
   for (i = 0, i_prev = f->len - 1; i < f->len; i_prev = i++) {
     const float *f_edge[2] = {projverts[i_prev], projverts[i]};
     for (j = 0; j < len; j++) {
-      if ((loops[j][0] != NULL) && !EDGE_SHARE_VERT(f_edge, edgeverts[j])) {
+      if ((loops[j][0] != nullptr) && !EDGE_SHARE_VERT(f_edge, edgeverts[j])) {
         if (isect_seg_seg_v2(UNPACK2(f_edge), UNPACK2(edgeverts[j])) == ISECT_LINE_LINE_CROSS) {
-          loops[j][0] = NULL;
+          loops[j][0] = nullptr;
         }
       }
     }
@@ -1255,10 +1257,10 @@ void BM_face_splits_check_legal(BMesh *bm, BMFace *f, BMLoop *(*loops)[2], int l
   for (i = 0; i < len; i++) {
     if (loops[i][0]) {
       for (j = i + 1; j < len; j++) {
-        if ((loops[j][0] != NULL) && !EDGE_SHARE_VERT(edgeverts[i], edgeverts[j])) {
+        if ((loops[j][0] != nullptr) && !EDGE_SHARE_VERT(edgeverts[i], edgeverts[j])) {
           if (isect_seg_seg_v2(UNPACK2(edgeverts[i]), UNPACK2(edgeverts[j])) ==
               ISECT_LINE_LINE_CROSS) {
-            loops[i][0] = NULL;
+            loops[i][0] = nullptr;
             break;
           }
         }
@@ -1278,7 +1280,7 @@ void BM_face_splits_check_optimal(BMFace *f, BMLoop *(*loops)[2], int len)
     if (f != BM_vert_pair_share_face_by_angle(
                  loops[i][0]->v, loops[i][1]->v, &l_a_dummy, &l_b_dummy, false))
     {
-      loops[i][0] = NULL;
+      loops[i][0] = nullptr;
     }
   }
 }
