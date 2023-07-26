@@ -7028,7 +7028,7 @@ static void bevel_build_edge_polygons(BMesh *bm, BevelParams *bp, BMEdge *bme)
   BMFace *fchoices[2] = {f1, f2};
   BMFace *f_choice = nullptr;
   int center_adj_k = -1;
-  if (odd & e1->is_seam) {
+  if (odd && e1->is_seam) {
     f_choice = choose_rep_face(bp, fchoices, 2);
     if (nseg > 1) {
       center_adj_k = f_choice == f1 ? mid + 2 : mid;
