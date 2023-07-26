@@ -46,7 +46,7 @@ set(SRC
   gpencil_sculpt_paint.cc
   gpencil_select.cc
   gpencil_undo.cc
-  gpencil_utils.c
+  gpencil_utils.cc
   gpencil_uv.c
   gpencil_vertex_ops.c
   gpencil_vertex_paint.c
