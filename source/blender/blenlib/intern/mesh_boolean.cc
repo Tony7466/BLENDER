@@ -2778,17 +2778,18 @@ static IMesh raycast_tris_boolean(const IMesh &tm,
       }
       bool do_flip;
       bool do_remove = raycast_test_remove(op, winding, shape, &do_flip);
+      if (do_remove) {
+        continue;
+      }
       {
 #  ifdef WITH_TBB
         tbb::spin_mutex::scoped_lock lock(mtx);
 #  endif
-        if (!do_remove) {
-          if (!do_flip) {
-            out_faces.append(&tri);
-          }
-          else {
-            raycast_add_flipped(out_faces, tri, arena);
-          }
+        if (!do_flip) {
+          out_faces.append(&tri);
+        }
+        else {
+          raycast_add_flipped(out_faces, tri, arena);
         }
       }
     }
