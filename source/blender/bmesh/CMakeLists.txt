@@ -123,7 +123,7 @@ set(SRC
 
   tools/bmesh_beautify.cc
   tools/bmesh_beautify.h
-  tools/bmesh_bevel.c
+  tools/bmesh_bevel.cc
   tools/bmesh_bevel.h
   tools/bmesh_bisect_plane.c
   tools/bmesh_bisect_plane.h
