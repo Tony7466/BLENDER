@@ -63,7 +63,7 @@ set(SRC
   # Lineart code
   intern/lineart/lineart_chain.cc
   intern/lineart/lineart_cpu.cc
-  intern/lineart/lineart_ops.c
+  intern/lineart/lineart_ops.cc
   intern/lineart/lineart_shadow.c
   intern/lineart/lineart_util.c
 
