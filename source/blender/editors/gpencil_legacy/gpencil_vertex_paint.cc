@@ -1188,10 +1188,10 @@ static void gpencil_vertexpaint_brush_apply(bContext *C, wmOperator *op, Pointer
   gso->pressure = RNA_float_get(itemptr, "pressure");
 
   if (RNA_boolean_get(itemptr, "pen_flip")) {
-    eGPDvertex_brush_Flag(gso->flag |= GP_VERTEX_FLAG_INVERT);
+    gso->flag |= GP_VERTEX_FLAG_INVERT;
   }
   else {
-    eGPDvertex_brush_Flag(gso->flag &= ~GP_VERTEX_FLAG_INVERT);
+    gso->flag &= ~GP_VERTEX_FLAG_INVERT;
   }
 
   /* Store coordinates as reference, if operator just started running */

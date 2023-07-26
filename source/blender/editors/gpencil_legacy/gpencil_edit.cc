@@ -5755,7 +5755,7 @@ static int gpencil_cutter_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  struct GP_SelectLassoUserData data = {0};
+  GP_SelectLassoUserData data{};
   data.mcoords = WM_gesture_lasso_path_to_array(C, op, &data.mcoords_len);
 
   /* Sanity check. */
