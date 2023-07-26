@@ -97,7 +97,7 @@ set(SRC
   intern/bmesh_mods.h
   intern/bmesh_opdefines.cc
   intern/bmesh_operator_api_inline.h
-  intern/bmesh_operators.c
+  intern/bmesh_operators.cc
   intern/bmesh_operators.h
   intern/bmesh_operators_private.h
   intern/bmesh_polygon.c
