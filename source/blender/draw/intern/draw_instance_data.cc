@@ -54,15 +54,15 @@ struct DRWInstanceDataList {
   BLI_memblock *pool_buffers;
 };
 
-typedef struct DRWTempBufferHandle {
+struct DRWTempBufferHandle {
   GPUVertBuf *buf;
   /** Format pointer for reuse. */
   GPUVertFormat *format;
   /** Touched vertex length for resize. */
   int *vert_len;
-} DRWTempBufferHandle;
+};
 
-typedef struct DRWTempInstancingHandle {
+struct DRWTempInstancingHandle {
   /** Copy of geom but with the per-instance attributes. */
   GPUBatch *batch;
   /** Batch containing instancing attributes. */
@@ -71,9 +71,9 @@ typedef struct DRWTempInstancingHandle {
   GPUVertBuf *buf;
   /** Original non-instanced batch pointer. */
   GPUBatch *geom;
-} DRWTempInstancingHandle;
+};
 
-static ListBase g_idatalists = {NULL, NULL};
+static ListBase g_idatalists = {nullptr, nullptr};
 
 static void instancing_batch_references_add(GPUBatch *batch)
 {
@@ -103,10 +103,11 @@ GPUVertBuf *DRW_temp_buffer_request(DRWInstanceDataList *idatalist,
                                     GPUVertFormat *format,
                                     int *vert_len)
 {
-  BLI_assert(format != NULL);
-  BLI_assert(vert_len != NULL);
+  BLI_assert(format != nullptr);
+  BLI_assert(vert_len != nullptr);
 
-  DRWTempBufferHandle *handle = BLI_memblock_alloc(idatalist->pool_buffers);
+  DRWTempBufferHandle *handle = static_cast<DRWTempBufferHandle *>(
+      BLI_memblock_alloc(idatalist->pool_buffers));
 
   if (handle->format != format) {
     handle->format = format;
@@ -128,12 +129,13 @@ GPUBatch *DRW_temp_batch_instance_request(DRWInstanceDataList *idatalist,
                                           GPUBatch *geom)
 {
   /* Do not call this with a batch that is already an instancing batch. */
-  BLI_assert(geom->inst[0] == NULL);
+  BLI_assert(geom->inst[0] == nullptr);
   /* Only call with one of them. */
-  BLI_assert((instancer != NULL) != (buf != NULL));
+  BLI_assert((instancer != nullptr) != (buf != nullptr));
 
-  DRWTempInstancingHandle *handle = BLI_memblock_alloc(idatalist->pool_instancing);
-  if (handle->batch == NULL) {
+  DRWTempInstancingHandle *handle = static_cast<DRWTempInstancingHandle *>(
+      BLI_memblock_alloc(idatalist->pool_instancing));
+  if (handle->batch == nullptr) {
     handle->batch = GPU_batch_calloc();
   }
 
@@ -166,8 +168,8 @@ GPUBatch *DRW_temp_batch_request(DRWInstanceDataList *idatalist,
                                  GPUVertBuf *buf,
                                  GPUPrimType prim_type)
 {
-  GPUBatch **batch_ptr = BLI_memblock_alloc(idatalist->pool_batching);
-  if (*batch_ptr == NULL) {
+  GPUBatch **batch_ptr = static_cast<GPUBatch **>(BLI_memblock_alloc(idatalist->pool_batching));
+  if (*batch_ptr == nullptr) {
     *batch_ptr = GPU_batch_calloc();
   }
 
@@ -176,14 +178,14 @@ GPUBatch *DRW_temp_batch_request(DRWInstanceDataList *idatalist,
                        (GPU_vertbuf_get_status(buf) & GPU_VERTBUF_DATA_UPLOADED);
   if (!is_compatible) {
     GPU_batch_clear(batch);
-    GPU_batch_init(batch, prim_type, buf, NULL);
+    GPU_batch_init(batch, prim_type, buf, nullptr);
   }
   return batch;
 }
 
 static void temp_buffer_handle_free(DRWTempBufferHandle *handle)
 {
-  handle->format = NULL;
+  handle->format = nullptr;
   GPU_VERTBUF_DISCARD_SAFE(handle->buf);
 }
 
@@ -204,8 +206,8 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
   BLI_memblock_iter iter;
   DRWTempBufferHandle *handle;
   BLI_memblock_iternew(idatalist->pool_buffers, &iter);
-  while ((handle = BLI_memblock_iterstep(&iter))) {
-    if (handle->vert_len != NULL) {
+  while ((handle = static_cast<DRWTempBufferHandle *>(BLI_memblock_iterstep(&iter)))) {
+    if (handle->vert_len != nullptr) {
       uint vert_len = *(handle->vert_len);
       uint target_buf_size = ((vert_len / DRW_BUFFER_VERTS_CHUNK) + 1) * DRW_BUFFER_VERTS_CHUNK;
       if (target_buf_size < GPU_vertbuf_get_vertex_alloc(handle->buf)) {
@@ -218,14 +220,14 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
   /* Finish pending instancing batches. */
   DRWTempInstancingHandle *handle_inst;
   BLI_memblock_iternew(idatalist->pool_instancing, &iter);
-  while ((handle_inst = BLI_memblock_iterstep(&iter))) {
+  while ((handle_inst = static_cast<DRWTempInstancingHandle *>(BLI_memblock_iterstep(&iter)))) {
     GPUBatch *batch = handle_inst->batch;
     if (batch && batch->flag == GPU_BATCH_BUILDING) {
       GPUVertBuf *inst_buf = handle_inst->buf;
       GPUBatch *inst_batch = handle_inst->instancer;
       GPUBatch *geom = handle_inst->geom;
       GPU_batch_copy(batch, geom);
-      if (inst_batch != NULL) {
+      if (inst_batch != nullptr) {
         for (int i = 0; i < GPU_BATCH_INST_VBO_MAX_LEN && inst_batch->verts[i]; i++) {
           GPU_batch_instbuf_add(batch, inst_batch->verts[i], false);
         }
@@ -252,8 +254,9 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
 
 static DRWInstanceData *drw_instance_data_create(DRWInstanceDataList *idatalist, uint attr_size)
 {
-  DRWInstanceData *idata = MEM_callocN(sizeof(DRWInstanceData), "DRWInstanceData");
-  idata->next = NULL;
+  DRWInstanceData *idata = static_cast<DRWInstanceData *>(
+      MEM_callocN(sizeof(DRWInstanceData), "DRWInstanceData"));
+  idata->next = nullptr;
   idata->used = true;
   idata->data_size = attr_size;
   idata->mempool = BLI_mempool_create(sizeof(float) * idata->data_size, 0, 16, 0);
@@ -261,7 +264,7 @@ static DRWInstanceData *drw_instance_data_create(DRWInstanceDataList *idatalist,
   BLI_assert(attr_size > 0);
 
   /* Push to linked list. */
-  if (idatalist->idata_head[attr_size - 1] == NULL) {
+  if (idatalist->idata_head[attr_size - 1] == nullptr) {
     idatalist->idata_head[attr_size - 1] = idata;
   }
   else {
@@ -307,7 +310,8 @@ DRWInstanceData *DRW_instance_data_request(DRWInstanceDataList *idatalist, uint 
 
 DRWInstanceDataList *DRW_instance_data_list_create(void)
 {
-  DRWInstanceDataList *idatalist = MEM_callocN(sizeof(DRWInstanceDataList), "DRWInstanceDataList");
+  DRWInstanceDataList *idatalist = static_cast<DRWInstanceDataList *>(
+      MEM_callocN(sizeof(DRWInstanceDataList), "DRWInstanceDataList"));
 
   idatalist->pool_batching = BLI_memblock_create(sizeof(GPUBatch *));
   idatalist->pool_instancing = BLI_memblock_create(sizeof(DRWTempInstancingHandle));
@@ -328,8 +332,8 @@ void DRW_instance_data_list_free(DRWInstanceDataList *idatalist)
       DRW_instance_data_free(idata);
       MEM_freeN(idata);
     }
-    idatalist->idata_head[i] = NULL;
-    idatalist->idata_tail[i] = NULL;
+    idatalist->idata_head[i] = nullptr;
+    idatalist->idata_tail[i] = nullptr;
   }
 
   BLI_memblock_destroy(idatalist->pool_buffers, (MemblockValFreeFP)temp_buffer_handle_free);
@@ -358,7 +362,7 @@ void DRW_instance_data_list_free_unused(DRWInstanceDataList *idatalist)
 
   /* Remove unused data blocks and sanitize each list. */
   for (int i = 0; i < MAX_INSTANCE_DATA_SIZE; i++) {
-    idatalist->idata_tail[i] = NULL;
+    idatalist->idata_tail[i] = nullptr;
     for (idata = idatalist->idata_head[i]; idata; idata = next_idata) {
       next_idata = idata->next;
       if (idata->used == false) {
@@ -373,7 +377,7 @@ void DRW_instance_data_list_free_unused(DRWInstanceDataList *idatalist)
         MEM_freeN(idata);
       }
       else {
-        if (idatalist->idata_tail[i] != NULL) {
+        if (idatalist->idata_tail[i] != nullptr) {
           idatalist->idata_tail[i]->next = idata;
         }
         idatalist->idata_tail[i] = idata;
@@ -402,7 +406,7 @@ void DRW_instance_data_list_resize(DRWInstanceDataList *idatalist)
 #define CHUNK_LIST_STEP (1 << 4)
 
 /** A chunked UBO manager that doesn't actually allocate unneeded chunks. */
-typedef struct DRWSparseUniformBuf {
+struct DRWSparseUniformBuf {
   /* Memory buffers used to stage chunk data before transfer to UBOs. */
   char **chunk_buffers;
   /* Uniform buffer objects with flushed data. */
@@ -412,15 +416,15 @@ typedef struct DRWSparseUniformBuf {
 
   int num_chunks;
   uint item_size, chunk_size, chunk_bytes;
-} DRWSparseUniformBuf;
+};
 
 static void drw_sparse_uniform_buffer_init(DRWSparseUniformBuf *buffer,
                                            uint item_size,
                                            uint chunk_size)
 {
-  buffer->chunk_buffers = NULL;
-  buffer->chunk_used = NULL;
-  buffer->chunk_ubos = NULL;
+  buffer->chunk_buffers = nullptr;
+  buffer->chunk_used = nullptr;
+  buffer->chunk_ubos = nullptr;
   buffer->num_chunks = 0;
   buffer->item_size = item_size;
   buffer->chunk_size = chunk_size;
@@ -429,7 +433,8 @@ static void drw_sparse_uniform_buffer_init(DRWSparseUniformBuf *buffer,
 
 DRWSparseUniformBuf *DRW_sparse_uniform_buffer_new(uint item_size, uint chunk_size)
 {
-  DRWSparseUniformBuf *buf = MEM_mallocN(sizeof(DRWSparseUniformBuf), __func__);
+  DRWSparseUniformBuf *buf = static_cast<DRWSparseUniformBuf *>(
+      MEM_mallocN(sizeof(DRWSparseUniformBuf), __func__));
   drw_sparse_uniform_buffer_init(buf, item_size, chunk_size);
   return buf;
 }
@@ -438,7 +443,7 @@ void DRW_sparse_uniform_buffer_flush(DRWSparseUniformBuf *buffer)
 {
   for (int i = 0; i < buffer->num_chunks; i++) {
     if (BLI_BITMAP_TEST(buffer->chunk_used, i)) {
-      if (buffer->chunk_ubos[i] == NULL) {
+      if (buffer->chunk_ubos[i] == nullptr) {
         buffer->chunk_ubos[i] = GPU_uniformbuf_create(buffer->chunk_bytes);
       }
       GPU_uniformbuf_update(buffer->chunk_ubos[i], buffer->chunk_buffers[i]);
@@ -457,7 +462,7 @@ void DRW_sparse_uniform_buffer_clear(DRWSparseUniformBuf *buffer, bool free_all)
 
       if (buffer->chunk_ubos[i]) {
         GPU_uniformbuf_free(buffer->chunk_ubos[i]);
-        buffer->chunk_ubos[i] = NULL;
+        buffer->chunk_ubos[i] = nullptr;
       }
     }
     else {
@@ -479,9 +484,10 @@ void DRW_sparse_uniform_buffer_clear(DRWSparseUniformBuf *buffer, bool free_all)
   }
 
   if (buffer->num_chunks != old_num_chunks) {
-    buffer->chunk_buffers = MEM_recallocN(buffer->chunk_buffers,
-                                          buffer->num_chunks * sizeof(void *));
-    buffer->chunk_ubos = MEM_recallocN(buffer->chunk_ubos, buffer->num_chunks * sizeof(void *));
+    buffer->chunk_buffers = static_cast<char **>(
+        MEM_recallocN(buffer->chunk_buffers, buffer->num_chunks * sizeof(void *)));
+    buffer->chunk_ubos = static_cast<GPUUniformBuf **>(
+        MEM_recallocN(buffer->chunk_ubos, buffer->num_chunks * sizeof(void *)));
     BLI_BITMAP_RESIZE(buffer->chunk_used, buffer->num_chunks);
   }
 
@@ -504,7 +510,7 @@ static GPUUniformBuf *drw_sparse_uniform_buffer_get_ubo(DRWSparseUniformBuf *buf
   if (buffer && chunk < buffer->num_chunks && BLI_BITMAP_TEST(buffer->chunk_used, chunk)) {
     return buffer->chunk_ubos[chunk];
   }
-  return NULL;
+  return nullptr;
 }
 
 void DRW_sparse_uniform_buffer_bind(DRWSparseUniformBuf *buffer, int chunk, int location)
@@ -527,16 +533,18 @@ void *DRW_sparse_uniform_buffer_ensure_item(DRWSparseUniformBuf *buffer, int chu
 {
   if (chunk >= buffer->num_chunks) {
     buffer->num_chunks = (chunk + CHUNK_LIST_STEP) & ~(CHUNK_LIST_STEP - 1);
-    buffer->chunk_buffers = MEM_recallocN(buffer->chunk_buffers,
-                                          buffer->num_chunks * sizeof(void *));
-    buffer->chunk_ubos = MEM_recallocN(buffer->chunk_ubos, buffer->num_chunks * sizeof(void *));
+    buffer->chunk_buffers = static_cast<char **>(
+        MEM_recallocN(buffer->chunk_buffers, buffer->num_chunks * sizeof(void *)));
+    buffer->chunk_ubos = static_cast<GPUUniformBuf **>(
+        MEM_recallocN(buffer->chunk_ubos, buffer->num_chunks * sizeof(void *)));
     BLI_BITMAP_RESIZE(buffer->chunk_used, buffer->num_chunks);
   }
 
   char *chunk_buffer = buffer->chunk_buffers[chunk];
 
-  if (chunk_buffer == NULL) {
-    buffer->chunk_buffers[chunk] = chunk_buffer = MEM_callocN(buffer->chunk_bytes, __func__);
+  if (chunk_buffer == nullptr) {
+    buffer->chunk_buffers[chunk] = chunk_buffer = static_cast<char *>(
+        MEM_callocN(buffer->chunk_bytes, __func__));
   }
   else if (!BLI_BITMAP_TEST(buffer->chunk_used, chunk)) {
     memset(chunk_buffer, 0, buffer->chunk_bytes);
@@ -554,7 +562,7 @@ void *DRW_sparse_uniform_buffer_ensure_item(DRWSparseUniformBuf *buffer, int chu
  * \{ */
 
 /** Sparse UBO buffer for a specific uniform attribute list. */
-typedef struct DRWUniformAttrBuf {
+struct DRWUniformAttrBuf {
   /* Attribute list (also used as hash table key) handled by this buffer. */
   GPUUniformAttrList key;
   /* Sparse UBO buffer containing the attribute values. */
@@ -563,7 +571,7 @@ typedef struct DRWUniformAttrBuf {
   DRWResourceHandle last_handle;
   /* Linked list pointer used for freeing the empty unneeded buffers. */
   struct DRWUniformAttrBuf *next_empty;
-} DRWUniformAttrBuf;
+};
 
 static DRWUniformAttrBuf *drw_uniform_attrs_pool_ensure(GHash *table,
                                                         const GPUUniformAttrList *key)
@@ -571,7 +579,8 @@ static DRWUniformAttrBuf *drw_uniform_attrs_pool_ensure(GHash *table,
   void **pkey, **pval;
 
   if (!BLI_ghash_ensure_p_ex(table, key, &pkey, &pval)) {
-    DRWUniformAttrBuf *buffer = MEM_callocN(sizeof(*buffer), __func__);
+    DRWUniformAttrBuf *buffer = static_cast<DRWUniformAttrBuf *>(
+        MEM_callocN(sizeof(*buffer), __func__));
 
     *pkey = &buffer->key;
     *pval = buffer;
@@ -597,7 +606,7 @@ static void drw_uniform_attribute_lookup(GPUUniformAttr *attr,
     BKE_object_dupli_find_rgba_attribute(ob, dupli_source, dupli_parent, attr->name, r_data);
   }
   else {
-    BKE_object_dupli_find_rgba_attribute(ob, NULL, NULL, attr->name, r_data);
+    BKE_object_dupli_find_rgba_attribute(ob, nullptr, nullptr, attr->name, r_data);
   }
 }
 
@@ -615,7 +624,8 @@ void drw_uniform_attrs_pool_update(GHash *table,
 
     int chunk = DRW_handle_chunk_get(handle);
     int item = DRW_handle_id_get(handle);
-    float(*values)[4] = DRW_sparse_uniform_buffer_ensure_item(&buffer->ubos, chunk, item);
+    float(*values)[4] = static_cast<float(*)[4]>(
+        DRW_sparse_uniform_buffer_ensure_item(&buffer->ubos, chunk, item));
 
     LISTBASE_FOREACH (GPUUniformAttr *, attr, &buffer->key.list) {
       drw_uniform_attribute_lookup(attr, ob, dupli_parent, dupli_source, *values++);
@@ -627,16 +637,16 @@ GPUUniformBuf *drw_ensure_layer_attribute_buffer(void)
 {
   DRWData *data = DST.vmempool;
 
-  if (data->vlattrs_ubo_ready && data->vlattrs_ubo != NULL) {
+  if (data->vlattrs_ubo_ready && data->vlattrs_ubo != nullptr) {
     return data->vlattrs_ubo;
   }
 
   /* Allocate the buffer data. */
   const int buf_size = DRW_RESOURCE_CHUNK_LEN;
 
-  if (data->vlattrs_buf == NULL) {
-    data->vlattrs_buf = MEM_calloc_arrayN(
-        buf_size, sizeof(LayerAttribute), "View Layer Attr Data");
+  if (data->vlattrs_buf == nullptr) {
+    data->vlattrs_buf = static_cast<LayerAttribute *>(
+        MEM_calloc_arrayN(buf_size, sizeof(LayerAttribute), "View Layer Attr Data"));
   }
 
   /* Look up attributes.
@@ -667,7 +677,7 @@ GPUUniformBuf *drw_ensure_layer_attribute_buffer(void)
   buffer[0].buffer_length = count;
 
   /* Update or create the UBO object. */
-  if (data->vlattrs_ubo != NULL) {
+  if (data->vlattrs_ubo != nullptr) {
     GPU_uniformbuf_update(data->vlattrs_ubo, buffer);
   }
   else {
@@ -682,8 +692,8 @@ GPUUniformBuf *drw_ensure_layer_attribute_buffer(void)
 
 DRWSparseUniformBuf *DRW_uniform_attrs_pool_find_ubo(GHash *table, const GPUUniformAttrList *key)
 {
-  DRWUniformAttrBuf *buffer = BLI_ghash_lookup(table, key);
-  return buffer ? &buffer->ubos : NULL;
+  DRWUniformAttrBuf *buffer = static_cast<DRWUniformAttrBuf *>(BLI_ghash_lookup(table, key));
+  return buffer ? &buffer->ubos : nullptr;
 }
 
 GHash *DRW_uniform_attrs_pool_new(void)
@@ -701,7 +711,7 @@ void DRW_uniform_attrs_pool_flush_all(GHash *table)
 
 static void drw_uniform_attrs_pool_free_cb(void *ptr)
 {
-  DRWUniformAttrBuf *buffer = ptr;
+  DRWUniformAttrBuf *buffer = static_cast<DRWUniformAttrBuf *>(ptr);
 
   GPU_uniform_attr_list_free(&buffer->key);
   DRW_sparse_uniform_buffer_clear(&buffer->ubos, true);
@@ -710,7 +720,7 @@ static void drw_uniform_attrs_pool_free_cb(void *ptr)
 
 void DRW_uniform_attrs_pool_clear_all(GHash *table)
 {
-  DRWUniformAttrBuf *remove_list = NULL;
+  DRWUniformAttrBuf *remove_list = nullptr;
 
   GHASH_FOREACH_BEGIN (DRWUniformAttrBuf *, buffer, table) {
     buffer->last_handle = (DRWResourceHandle)-1;
@@ -726,13 +736,13 @@ void DRW_uniform_attrs_pool_clear_all(GHash *table)
   while (remove_list) {
     DRWUniformAttrBuf *buffer = remove_list;
     remove_list = buffer->next_empty;
-    BLI_ghash_remove(table, &buffer->key, NULL, drw_uniform_attrs_pool_free_cb);
+    BLI_ghash_remove(table, &buffer->key, nullptr, drw_uniform_attrs_pool_free_cb);
   }
 }
 
 void DRW_uniform_attrs_pool_free(GHash *table)
 {
-  BLI_ghash_free(table, NULL, drw_uniform_attrs_pool_free_cb);
+  BLI_ghash_free(table, nullptr, drw_uniform_attrs_pool_free_cb);
 }
 
 /** \} */
