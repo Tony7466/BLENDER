@@ -85,6 +85,8 @@ typedef struct bNodeTreeInterfaceSocket {
   std::string socket_identifier() const;
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
+  /* XXX eNodeSocketDatatype is defined in BKE, can't use it in DNA. */
+  //  eNodeSocketDatatype socket_static_type() const;
   IDProperty *socket_id_props();
 
   // template<typename T> T &get_data();
