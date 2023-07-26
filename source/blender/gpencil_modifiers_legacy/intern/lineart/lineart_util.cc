@@ -25,10 +25,10 @@
 void *lineart_list_append_pointer_pool(ListBase *h, LineartStaticMemPool *smp, void *data)
 {
   LinkData *lip;
-  if (h == NULL) {
+  if (h == nullptr) {
     return 0;
   }
-  lip = lineart_mem_acquire(smp, sizeof(LinkData));
+  lip = static_cast<LinkData *>(lineart_mem_acquire(smp, sizeof(LinkData)));
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -39,10 +39,10 @@ void *lineart_list_append_pointer_pool_sized(ListBase *h,
                                              int size)
 {
   LinkData *lip;
-  if (h == NULL) {
+  if (h == nullptr) {
     return 0;
   }
-  lip = lineart_mem_acquire(smp, size);
+  lip = static_cast<LinkData *>(lineart_mem_acquire(smp, size));
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -50,10 +50,10 @@ void *lineart_list_append_pointer_pool_sized(ListBase *h,
 void *lineart_list_append_pointer_pool_thread(ListBase *h, LineartStaticMemPool *smp, void *data)
 {
   LinkData *lip;
-  if (h == NULL) {
+  if (h == nullptr) {
     return 0;
   }
-  lip = lineart_mem_acquire_thread(smp, sizeof(LinkData));
+  lip = static_cast<LinkData *>(lineart_mem_acquire_thread(smp, sizeof(LinkData)));
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -64,10 +64,10 @@ void *lineart_list_append_pointer_pool_sized_thread(ListBase *h,
                                                     int size)
 {
   LinkData *lip;
-  if (h == NULL) {
+  if (h == nullptr) {
     return 0;
   }
-  lip = lineart_mem_acquire_thread(smp, size);
+  lip = static_cast<LinkData *>(lineart_mem_acquire_thread(smp, size));
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
@@ -77,10 +77,10 @@ void *lineart_list_pop_pointer_no_free(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
-  if (h == NULL) {
+  if (h == nullptr) {
     return 0;
   }
-  lip = BLI_pophead(h);
+  lip = static_cast<LinkData *>(BLI_pophead(h));
   rev = lip ? lip->data : 0;
   return rev;
 }
@@ -96,7 +96,8 @@ LineartStaticMemPoolNode *lineart_mem_new_static_pool(LineartStaticMemPool *smp,
     set_size = LRT_MEMORY_POOL_1MB; /* Prevent too many small allocations. */
   }
   size_t total_size = set_size + sizeof(LineartStaticMemPoolNode);
-  LineartStaticMemPoolNode *smpn = MEM_callocN(total_size, "mempool");
+  LineartStaticMemPoolNode *smpn = static_cast<LineartStaticMemPoolNode *>(
+      MEM_callocN(total_size, "mempool"));
   smpn->size = total_size;
   smpn->used_byte = sizeof(LineartStaticMemPoolNode);
   BLI_addhead(&smp->pools, smpn);
@@ -104,7 +105,7 @@ LineartStaticMemPoolNode *lineart_mem_new_static_pool(LineartStaticMemPool *smp,
 }
 void *lineart_mem_acquire(LineartStaticMemPool *smp, size_t size)
 {
-  LineartStaticMemPoolNode *smpn = smp->pools.first;
+  LineartStaticMemPoolNode *smpn = static_cast<LineartStaticMemPoolNode *>(smp->pools.first);
   void *ret;
 
   if (!smpn || (smpn->used_byte + size) > smpn->size) {
@@ -123,7 +124,7 @@ void *lineart_mem_acquire_thread(LineartStaticMemPool *smp, size_t size)
 
   BLI_spin_lock(&smp->lock_mem);
 
-  LineartStaticMemPoolNode *smpn = smp->pools.first;
+  LineartStaticMemPoolNode *smpn = static_cast<LineartStaticMemPoolNode *>(smp->pools.first);
 
   if (!smpn || (smpn->used_byte + size) > smpn->size) {
     smpn = lineart_mem_new_static_pool(smp, size);
@@ -140,14 +141,14 @@ void *lineart_mem_acquire_thread(LineartStaticMemPool *smp, size_t size)
 void lineart_mem_destroy(LineartStaticMemPool *smp)
 {
   LineartStaticMemPoolNode *smpn;
-  while ((smpn = BLI_pophead(&smp->pools)) != NULL) {
+  while ((smpn = static_cast<LineartStaticMemPoolNode *>(BLI_pophead(&smp->pools))) != nullptr) {
     MEM_freeN(smpn);
   }
 }
 
 void lineart_prepend_pool(LinkNode **first, LineartStaticMemPool *smp, void *link)
 {
-  LinkNode *ln = lineart_mem_acquire_thread(smp, sizeof(LinkNode));
+  LinkNode *ln = static_cast<LinkNode *>(lineart_mem_acquire_thread(smp, sizeof(LinkNode)));
   ln->next = (*first);
   ln->link = link;
   (*first) = ln;
