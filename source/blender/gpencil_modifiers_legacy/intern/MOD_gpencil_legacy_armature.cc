@@ -65,7 +65,8 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 static void gpencil_deform_verts(ArmatureGpencilModifierData *mmd, Object *target, bGPDstroke *gps)
 {
   bGPDspoint *pt = gps->points;
-  float(*vert_coords)[3] = MEM_mallocN(sizeof(float[3]) * gps->totpoints, __func__);
+  float(*vert_coords)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(float[3]) * gps->totpoints, __func__));
   int i;
 
   BKE_gpencil_dvert_ensure(gps);
@@ -79,7 +80,7 @@ static void gpencil_deform_verts(ArmatureGpencilModifierData *mmd, Object *targe
   BKE_armature_deform_coords_with_gpencil_stroke(mmd->object,
                                                  target,
                                                  vert_coords,
-                                                 NULL,
+                                                 nullptr,
                                                  gps->totpoints,
                                                  mmd->deformflag,
                                                  mmd->vert_coords_prev,
@@ -97,37 +98,37 @@ static void gpencil_deform_verts(ArmatureGpencilModifierData *mmd, Object *targe
 
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
-                         bGPDlayer *UNUSED(gpl),
-                         bGPDframe *UNUSED(gpf),
+                         bGPDlayer * /*gpl*/,
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
   if (!mmd->object) {
     return;
   }
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   gpencil_deform_verts(mmd, ob, gps);
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, gps);
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
 
-  if (mmd->object == NULL) {
+  if (mmd->object == nullptr) {
     return;
   }
   generic_bake_deform_stroke(depsgraph, md, ob, true, deformStroke);
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
 
@@ -140,10 +141,10 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   ArmatureGpencilModifierData *lmd = (ArmatureGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_EVAL_POSE, "Armature Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Armature Modifier");
   }
@@ -157,7 +158,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
@@ -169,9 +170,9 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, has_vertex_group);
   uiLayoutSetPropDecorate(sub, false);
@@ -199,15 +200,15 @@ GpencilModifierTypeInfo modifierType_Gpencil_Armature = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
     /*initData*/ initData,
-    /*freeData*/ NULL,
+    /*freeData*/ nullptr,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
