@@ -33,49 +33,49 @@
 /** \name Recounting total selection.
  * \{ */
 
-typedef struct SelectionCountChunkData {
+struct SelectionCountChunkData {
   int selection_len;
-} SelectionCountChunkData;
+};
 
-static void recount_totsels_range_vert_func(void *UNUSED(userdata),
+static void recount_totsels_range_vert_func(void * /*userdata*/,
                                             MempoolIterData *iter,
                                             const TaskParallelTLS *__restrict tls)
 {
-  SelectionCountChunkData *count = tls->userdata_chunk;
+  SelectionCountChunkData *count = static_cast<SelectionCountChunkData *>(tls->userdata_chunk);
   const BMVert *eve = (const BMVert *)iter;
   if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
     count->selection_len += 1;
   }
 }
 
-static void recount_totsels_range_edge_func(void *UNUSED(userdata),
+static void recount_totsels_range_edge_func(void * /*userdata*/,
                                             MempoolIterData *iter,
                                             const TaskParallelTLS *__restrict tls)
 {
-  SelectionCountChunkData *count = tls->userdata_chunk;
+  SelectionCountChunkData *count = static_cast<SelectionCountChunkData *>(tls->userdata_chunk);
   const BMEdge *eed = (const BMEdge *)iter;
   if (BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
     count->selection_len += 1;
   }
 }
 
-static void recount_totsels_range_face_func(void *UNUSED(userdata),
+static void recount_totsels_range_face_func(void * /*userdata*/,
                                             MempoolIterData *iter,
                                             const TaskParallelTLS *__restrict tls)
 {
-  SelectionCountChunkData *count = tls->userdata_chunk;
+  SelectionCountChunkData *count = static_cast<SelectionCountChunkData *>(tls->userdata_chunk);
   const BMFace *efa = (const BMFace *)iter;
   if (BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
     count->selection_len += 1;
   }
 }
 
-static void recount_totsels_reduce(const void *__restrict UNUSED(userdata),
+static void recount_totsels_reduce(const void *__restrict /*userdata*/,
                                    void *__restrict chunk_join,
                                    void *__restrict chunk)
 {
-  SelectionCountChunkData *dst = chunk_join;
-  const SelectionCountChunkData *src = chunk;
+  SelectionCountChunkData *dst = static_cast<SelectionCountChunkData *>(chunk_join);
+  const SelectionCountChunkData *src = static_cast<const SelectionCountChunkData *>(chunk);
   dst->selection_len += src->selection_len;
 }
 
@@ -83,7 +83,7 @@ static TaskParallelMempoolFunc recount_totsels_get_range_func(BMIterType iter_ty
 {
   BLI_assert(ELEM(iter_type, BM_VERTS_OF_MESH, BM_EDGES_OF_MESH, BM_FACES_OF_MESH));
 
-  TaskParallelMempoolFunc range_func = NULL;
+  TaskParallelMempoolFunc range_func = nullptr;
   if (iter_type == BM_VERTS_OF_MESH) {
     range_func = recount_totsels_range_vert_func;
   }
@@ -110,7 +110,7 @@ static int recount_totsel(BMesh *bm, BMIterType iter_type)
   settings.userdata_chunk_size = sizeof(count);
 
   TaskParallelMempoolFunc range_func = recount_totsels_get_range_func(iter_type);
-  BM_iter_parallel(bm, iter_type, range_func, NULL, &settings);
+  BM_iter_parallel(bm, iter_type, range_func, nullptr, &settings);
   return count.selection_len;
 }
 
@@ -308,15 +308,16 @@ void BM_mesh_select_mode_clean(BMesh *bm)
 /** \name Select mode flush selection
  * \{ */
 
-typedef struct SelectionFlushChunkData {
+struct SelectionFlushChunkData {
   int delta_selection_len;
-} SelectionFlushChunkData;
+};
 
-static void bm_mesh_select_mode_flush_vert_to_edge_iter_fn(void *UNUSED(userdata),
+static void bm_mesh_select_mode_flush_vert_to_edge_iter_fn(void * /*userdata*/,
                                                            MempoolIterData *iter,
                                                            const TaskParallelTLS *__restrict tls)
 {
-  SelectionFlushChunkData *chunk_data = tls->userdata_chunk;
+  SelectionFlushChunkData *chunk_data = static_cast<SelectionFlushChunkData *>(
+      tls->userdata_chunk);
   BMEdge *e = (BMEdge *)iter;
   const bool is_selected = BM_elem_flag_test(e, BM_ELEM_SELECT);
   const bool is_hidden = BM_elem_flag_test(e, BM_ELEM_HIDDEN);
@@ -332,11 +333,12 @@ static void bm_mesh_select_mode_flush_vert_to_edge_iter_fn(void *UNUSED(userdata
   }
 }
 
-static void bm_mesh_select_mode_flush_edge_to_face_iter_fn(void *UNUSED(userdata),
+static void bm_mesh_select_mode_flush_edge_to_face_iter_fn(void * /*userdata*/,
                                                            MempoolIterData *iter,
                                                            const TaskParallelTLS *__restrict tls)
 {
-  SelectionFlushChunkData *chunk_data = tls->userdata_chunk;
+  SelectionFlushChunkData *chunk_data = static_cast<SelectionFlushChunkData *>(
+      tls->userdata_chunk);
   BMFace *f = (BMFace *)iter;
   BMLoop *l_iter;
   BMLoop *l_first;
@@ -364,12 +366,12 @@ static void bm_mesh_select_mode_flush_edge_to_face_iter_fn(void *UNUSED(userdata
   }
 }
 
-static void bm_mesh_select_mode_flush_reduce_fn(const void *__restrict UNUSED(userdata),
+static void bm_mesh_select_mode_flush_reduce_fn(const void *__restrict /*userdata*/,
                                                 void *__restrict chunk_join,
                                                 void *__restrict chunk)
 {
-  SelectionFlushChunkData *dst = chunk_join;
-  const SelectionFlushChunkData *src = chunk;
+  SelectionFlushChunkData *dst = static_cast<SelectionFlushChunkData *>(chunk_join);
+  const SelectionFlushChunkData *src = static_cast<const SelectionFlushChunkData *>(chunk);
   dst->delta_selection_len += src->delta_selection_len;
 }
 
@@ -385,7 +387,7 @@ static void bm_mesh_select_mode_flush_vert_to_edge(BMesh *bm)
   settings.func_reduce = bm_mesh_select_mode_flush_reduce_fn;
 
   BM_iter_parallel(
-      bm, BM_EDGES_OF_MESH, bm_mesh_select_mode_flush_vert_to_edge_iter_fn, NULL, &settings);
+      bm, BM_EDGES_OF_MESH, bm_mesh_select_mode_flush_vert_to_edge_iter_fn, nullptr, &settings);
   bm->totedgesel += chunk_data.delta_selection_len;
 }
 
@@ -401,7 +403,7 @@ static void bm_mesh_select_mode_flush_edge_to_face(BMesh *bm)
   settings.func_reduce = bm_mesh_select_mode_flush_reduce_fn;
 
   BM_iter_parallel(
-      bm, BM_FACES_OF_MESH, bm_mesh_select_mode_flush_edge_to_face_iter_fn, NULL, &settings);
+      bm, BM_FACES_OF_MESH, bm_mesh_select_mode_flush_edge_to_face_iter_fn, nullptr, &settings);
   bm->totfacesel += chunk_data.delta_selection_len;
 }
 
@@ -706,7 +708,7 @@ void BM_mesh_select_mode_set(BMesh *bm, int selectmode)
   bm->selectmode = selectmode;
 
   if (bm->selectmode & SCE_SELECT_VERTEX) {
-    /* disabled because selection flushing handles these */
+/* disabled because selection flushing handles these */
 #if 0
     BM_ITER_MESH (ele, &iter, bm, BM_EDGES_OF_MESH) {
       BM_elem_flag_disable(ele, BM_ELEM_SELECT);
@@ -718,7 +720,7 @@ void BM_mesh_select_mode_set(BMesh *bm, int selectmode)
     BM_mesh_select_mode_flush(bm);
   }
   else if (bm->selectmode & SCE_SELECT_EDGE) {
-    /* disabled because selection flushing handles these */
+/* disabled because selection flushing handles these */
 #if 0
     BM_ITER_MESH (ele, &iter, bm, BM_VERTS_OF_MESH) {
       BM_elem_flag_disable(ele, BM_ELEM_SELECT);
@@ -733,7 +735,7 @@ void BM_mesh_select_mode_set(BMesh *bm, int selectmode)
     BM_mesh_select_mode_flush(bm);
   }
   else if (bm->selectmode & SCE_SELECT_FACE) {
-    /* disabled because selection flushing handles these */
+/* disabled because selection flushing handles these */
 #if 0
     BM_ITER_MESH (ele, &iter, bm, BM_EDGES_OF_MESH) {
       BM_elem_flag_disable(ele, BM_ELEM_SELECT);
@@ -843,20 +845,20 @@ BMFace *BM_mesh_active_face_get(BMesh *bm, const bool is_sloppy, const bool is_s
   }
   if (is_sloppy) {
     BMIter iter;
-    BMFace *f = NULL;
+    BMFace *f = nullptr;
     BMEditSelection *ese;
 
     /* Find the latest non-hidden face from the BMEditSelection */
-    ese = bm->selected.last;
+    ese = static_cast<BMEditSelection *>(bm->selected.last);
     for (; ese; ese = ese->prev) {
       if (ese->htype == BM_FACE) {
         f = (BMFace *)ese->ele;
 
         if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-          f = NULL;
+          f = nullptr;
         }
         else if (is_selected && !BM_elem_flag_test(f, BM_ELEM_SELECT)) {
-          f = NULL;
+          f = nullptr;
         }
         else {
           break;
@@ -864,7 +866,7 @@ BMFace *BM_mesh_active_face_get(BMesh *bm, const bool is_sloppy, const bool is_s
       }
     }
     /* Last attempt: try to find any selected face */
-    if (f == NULL) {
+    if (f == nullptr) {
       BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
           break;
@@ -873,46 +875,46 @@ BMFace *BM_mesh_active_face_get(BMesh *bm, const bool is_sloppy, const bool is_s
     }
     return f; /* can still be null */
   }
-  return NULL;
+  return nullptr;
 }
 
 BMEdge *BM_mesh_active_edge_get(BMesh *bm)
 {
   if (bm->selected.last) {
-    BMEditSelection *ese = bm->selected.last;
+    BMEditSelection *ese = static_cast<BMEditSelection *>(bm->selected.last);
 
     if (ese && ese->htype == BM_EDGE) {
       return (BMEdge *)ese->ele;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 BMVert *BM_mesh_active_vert_get(BMesh *bm)
 {
   if (bm->selected.last) {
-    BMEditSelection *ese = bm->selected.last;
+    BMEditSelection *ese = static_cast<BMEditSelection *>(bm->selected.last);
 
     if (ese && ese->htype == BM_VERT) {
       return (BMVert *)ese->ele;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 BMElem *BM_mesh_active_elem_get(BMesh *bm)
 {
   if (bm->selected.last) {
-    BMEditSelection *ese = bm->selected.last;
+    BMEditSelection *ese = static_cast<BMEditSelection *>(bm->selected.last);
 
     if (ese) {
       return ese->ele;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void BM_editselection_center(BMEditSelection *ese, float r_center[3])
@@ -1028,12 +1030,13 @@ static BMEditSelection *bm_select_history_create(BMHeader *ele)
 
 bool _bm_select_history_check(BMesh *bm, const BMHeader *ele)
 {
-  return (BLI_findptr(&bm->selected, ele, offsetof(BMEditSelection, ele)) != NULL);
+  return (BLI_findptr(&bm->selected, ele, offsetof(BMEditSelection, ele)) != nullptr);
 }
 
 bool _bm_select_history_remove(BMesh *bm, BMHeader *ele)
 {
-  BMEditSelection *ese = BLI_findptr(&bm->selected, ele, offsetof(BMEditSelection, ele));
+  BMEditSelection *ese = static_cast<BMEditSelection *>(
+      BLI_findptr(&bm->selected, ele, offsetof(BMEditSelection, ele)));
   if (ese) {
     BLI_freelinkN(&bm->selected, ese);
     return true;
@@ -1090,7 +1093,7 @@ void BM_select_history_validate(BMesh *bm)
 {
   BMEditSelection *ese, *ese_next;
 
-  for (ese = bm->selected.first; ese; ese = ese_next) {
+  for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese_next) {
     ese_next = ese->next;
     if (!BM_elem_flag_test(ese->ele, BM_ELEM_SELECT)) {
       BLI_freelinkN(&(bm->selected), ese);
@@ -1100,10 +1103,10 @@ void BM_select_history_validate(BMesh *bm)
 
 bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
 {
-  BMEditSelection *ese_last = bm->selected.last;
+  BMEditSelection *ese_last = static_cast<BMEditSelection *>(bm->selected.last);
   BMFace *efa = BM_mesh_active_face_get(bm, false, true);
 
-  ese->next = ese->prev = NULL;
+  ese->next = ese->prev = nullptr;
 
   if (ese_last) {
     /* If there is an active face, use it over the last selected face. */
@@ -1127,7 +1130,7 @@ bool BM_select_history_active_get(BMesh *bm, BMEditSelection *ese)
     ese->htype = BM_FACE;
   }
   else {
-    ese->ele = NULL;
+    ese->ele = nullptr;
     return false;
   }
 
@@ -1140,12 +1143,12 @@ GHash *BM_select_history_map_create(BMesh *bm)
   GHash *map;
 
   if (BLI_listbase_is_empty(&bm->selected)) {
-    return NULL;
+    return nullptr;
   }
 
   map = BLI_ghash_ptr_new(__func__);
 
-  for (ese = bm->selected.first; ese; ese = ese->next) {
+  for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
     BLI_ghash_insert(map, ese->ele, ese);
   }
 
@@ -1166,7 +1169,7 @@ void BM_select_history_merge_from_targetmap(
     BM_ELEM_API_FLAG_ENABLE(ese->ele, _FLAG_OVERLAP);
 
     /* Only loop when (use_chain == true). */
-    GHash *map = NULL;
+    GHash *map = nullptr;
     switch (ese->ele->head.htype) {
       case BM_VERT:
         map = vert_map;
@@ -1181,12 +1184,12 @@ void BM_select_history_merge_from_targetmap(
         BMESH_ASSERT(0);
         break;
     }
-    if (map != NULL) {
+    if (map != nullptr) {
       BMElem *ele_dst = ese->ele;
       while (true) {
-        BMElem *ele_dst_next = BLI_ghash_lookup(map, ele_dst);
+        BMElem *ele_dst_next = static_cast<BMElem *>(BLI_ghash_lookup(map, ele_dst));
         BLI_assert(ele_dst != ele_dst_next);
-        if (ele_dst_next == NULL) {
+        if (ele_dst_next == nullptr) {
           break;
         }
         ele_dst = ele_dst_next;
@@ -1204,7 +1207,9 @@ void BM_select_history_merge_from_targetmap(
   }
 
   /* Remove overlapping duplicates. */
-  for (BMEditSelection *ese = bm->selected.first, *ese_next; ese; ese = ese_next) {
+  for (BMEditSelection *ese = static_cast<BMEditSelection *>(bm->selected.first), *ese_next; ese;
+       ese = ese_next)
+  {
     ese_next = ese->next;
     if (BM_ELEM_API_FLAG_TEST(ese->ele, _FLAG_OVERLAP)) {
       BM_ELEM_API_FLAG_DISABLE(ese->ele, _FLAG_OVERLAP);
@@ -1245,8 +1250,8 @@ void BM_mesh_elem_hflag_disable_test(BMesh *bm,
       BMIter iter;
       BMElem *ele;
 
-      ele = BM_iter_new(&iter, bm, iter_types[i], NULL);
-      for (; ele; ele = BM_iter_step(&iter)) {
+      ele = static_cast<BMElem *>(BM_iter_new(&iter, bm, iter_types[i], nullptr));
+      for (; ele; ele = static_cast<BMElem *>(BM_iter_step(&iter))) {
         BM_elem_flag_disable(ele, BM_ELEM_SELECT);
       }
     }
@@ -1259,8 +1264,8 @@ void BM_mesh_elem_hflag_disable_test(BMesh *bm,
       BMElem *ele;
 
       if (htype & flag_types[i]) {
-        ele = BM_iter_new(&iter, bm, iter_types[i], NULL);
-        for (; ele; ele = BM_iter_step(&iter)) {
+        ele = static_cast<BMElem *>(BM_iter_new(&iter, bm, iter_types[i], nullptr));
+        for (; ele; ele = static_cast<BMElem *>(BM_iter_step(&iter))) {
 
           if (UNLIKELY(respecthide && BM_elem_flag_test(ele, BM_ELEM_HIDDEN))) {
             /* pass */
@@ -1313,8 +1318,8 @@ void BM_mesh_elem_hflag_enable_test(BMesh *bm,
 
   for (i = 0; i < 3; i++) {
     if (htype & flag_types[i]) {
-      ele = BM_iter_new(&iter, bm, iter_types[i], NULL);
-      for (; ele; ele = BM_iter_step(&iter)) {
+      ele = static_cast<BMElem *>(BM_iter_new(&iter, bm, iter_types[i], nullptr));
+      for (; ele; ele = static_cast<BMElem *>(BM_iter_step(&iter))) {
 
         if (UNLIKELY(respecthide && BM_elem_flag_test(ele, BM_ELEM_HIDDEN))) {
           /* pass */

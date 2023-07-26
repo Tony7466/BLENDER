@@ -75,7 +75,7 @@ set(SRC
   intern/bmesh_iterators_inline.h
   intern/bmesh_log.cc
   intern/bmesh_log.h
-  intern/bmesh_marking.c
+  intern/bmesh_marking.cc
   intern/bmesh_marking.h
   intern/bmesh_mesh.cc
   intern/bmesh_mesh.h
