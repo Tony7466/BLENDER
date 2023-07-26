@@ -44,17 +44,17 @@ static void eevee_engine_init(void *ved)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   RegionView3D *rv3d = draw_ctx->rv3d;
-  Object *camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
+  Object *camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : nullptr;
 
   if (!stl->g_data) {
     /* Alloc transient pointers */
-    stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
+    stl->g_data = static_cast<EEVEE_PrivateData *>(MEM_callocN(sizeof(*stl->g_data), __func__));
   }
   stl->g_data->use_color_render_settings = USE_SCENE_LIGHT(v3d) ||
                                            !LOOK_DEV_STUDIO_LIGHT_ENABLED(v3d);
   stl->g_data->background_alpha = DRW_state_draw_background() ? 1.0f : 0.0f;
-  stl->g_data->valid_double_buffer = (txl->color_double_buffer != NULL);
-  stl->g_data->valid_taa_history = (txl->taa_history != NULL);
+  stl->g_data->valid_double_buffer = (txl->color_double_buffer != nullptr);
+  stl->g_data->valid_taa_history = (txl->taa_history != nullptr);
   stl->g_data->queued_shaders_count = 0;
   stl->g_data->queued_optimise_shaders_count = 0;
   stl->g_data->render_timesteps = 1;
@@ -88,18 +88,18 @@ static void eevee_cache_init(void *vedata)
 {
   EEVEE_ViewLayerData *sldata = EEVEE_view_layer_data_ensure();
 
-  EEVEE_bloom_cache_init(sldata, vedata);
-  EEVEE_depth_of_field_cache_init(sldata, vedata);
-  EEVEE_effects_cache_init(sldata, vedata);
-  EEVEE_lightprobes_cache_init(sldata, vedata);
-  EEVEE_lights_cache_init(sldata, vedata);
-  EEVEE_materials_cache_init(sldata, vedata);
-  EEVEE_motion_blur_cache_init(sldata, vedata);
-  EEVEE_occlusion_cache_init(sldata, vedata);
-  EEVEE_screen_raytrace_cache_init(sldata, vedata);
-  EEVEE_subsurface_cache_init(sldata, vedata);
-  EEVEE_temporal_sampling_cache_init(sldata, vedata);
-  EEVEE_volumes_cache_init(sldata, vedata);
+  EEVEE_bloom_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_depth_of_field_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_effects_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_lightprobes_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_lights_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_materials_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_motion_blur_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_occlusion_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_screen_raytrace_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_subsurface_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_temporal_sampling_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_volumes_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
 }
 
 void EEVEE_cache_populate(void *vedata, Object *ob)
@@ -111,18 +111,21 @@ void EEVEE_cache_populate(void *vedata, Object *ob)
   bool cast_shadow = false;
 
   if (ob_visibility & OB_VISIBLE_PARTICLES) {
-    EEVEE_particle_hair_cache_populate(vedata, sldata, ob, &cast_shadow);
+    EEVEE_particle_hair_cache_populate(
+        static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
   }
 
   if (DRW_object_is_renderable(ob) && (ob_visibility & OB_VISIBLE_SELF)) {
     if (ob->type == OB_MESH) {
-      EEVEE_materials_cache_populate(vedata, sldata, ob, &cast_shadow);
+      EEVEE_materials_cache_populate(static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
     }
     else if (ob->type == OB_CURVES) {
-      EEVEE_object_curves_cache_populate(vedata, sldata, ob, &cast_shadow);
+      EEVEE_object_curves_cache_populate(
+          static_cast<EEVEE_Data *>(vedata), sldata, ob, &cast_shadow);
     }
     else if (ob->type == OB_VOLUME) {
-      EEVEE_volumes_cache_object_add(sldata, vedata, draw_ctx->scene, ob);
+      EEVEE_volumes_cache_object_add(
+          sldata, static_cast<EEVEE_Data *>(vedata), draw_ctx->scene, ob);
     }
     else if (!USE_SCENE_LIGHT(draw_ctx->v3d)) {
       /* do not add any scene light sources to the cache */
@@ -132,7 +135,7 @@ void EEVEE_cache_populate(void *vedata, Object *ob)
         /* TODO: Special case for dupli objects because we cannot save the object pointer. */
       }
       else {
-        EEVEE_lightprobes_cache_add(sldata, vedata, ob);
+        EEVEE_lightprobes_cache_add(sldata, static_cast<EEVEE_Data *>(vedata), ob);
       }
     }
     else if (ob->type == OB_LAMP) {
@@ -154,15 +157,15 @@ static void eevee_cache_finish(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-  EEVEE_volumes_cache_finish(sldata, vedata);
-  EEVEE_materials_cache_finish(sldata, vedata);
-  EEVEE_lights_cache_finish(sldata, vedata);
-  EEVEE_lightprobes_cache_finish(sldata, vedata);
-  EEVEE_renderpasses_cache_finish(sldata, vedata);
+  EEVEE_volumes_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_materials_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_lights_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_lightprobes_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_renderpasses_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
 
-  EEVEE_subsurface_draw_init(sldata, vedata);
-  EEVEE_effects_draw_init(sldata, vedata);
-  EEVEE_volumes_draw_init(sldata, vedata);
+  EEVEE_subsurface_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_effects_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
+  EEVEE_volumes_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
 
   uint tot_samples = scene_eval->eevee.taa_render_samples;
   if (tot_samples == 0) {
@@ -170,13 +173,13 @@ static void eevee_cache_finish(void *vedata)
      * will have the highest possible precision. */
     tot_samples = 1024;
   }
-  EEVEE_renderpasses_output_init(sldata, vedata, tot_samples);
+  EEVEE_renderpasses_output_init(sldata, static_cast<EEVEE_Data *>(vedata), tot_samples);
 
   /* Restart TAA if a shader has finish compiling. */
   /* HACK: We should use notification of some sort from the compilation job instead. */
   if (g_data->queued_shaders_count != g_data->queued_shaders_count_prev) {
     g_data->queued_shaders_count_prev = g_data->queued_shaders_count;
-    EEVEE_temporal_sampling_reset(vedata);
+    EEVEE_temporal_sampling_reset(static_cast<EEVEE_Data *>(vedata));
   }
 
   if (g_data->queued_shaders_count > 0) {
@@ -238,7 +241,7 @@ static void eevee_draw_scene(void *vedata)
       BLI_halton_3d(primes, offset, samp, r);
       EEVEE_update_noise(psl, fbl, r);
       EEVEE_volumes_set_jitter(sldata, samp - 1);
-      EEVEE_materials_init(sldata, vedata, stl, fbl);
+      EEVEE_materials_init(sldata, static_cast<EEVEE_Data *>(vedata), stl, fbl);
     }
     /* Copy previous persmat to UBO data */
     copy_m4_m4(sldata->common_data.prev_persmat, stl->effects->prev_persmat);
@@ -246,14 +249,14 @@ static void eevee_draw_scene(void *vedata)
     /* Refresh Probes
      * Shadows needs to be updated for correct probes */
     DRW_stats_group_start("Probes Refresh");
-    EEVEE_shadows_update(sldata, vedata);
-    EEVEE_lightprobes_refresh(sldata, vedata);
-    EEVEE_lightprobes_refresh_planar(sldata, vedata);
+    EEVEE_shadows_update(sldata, static_cast<EEVEE_Data *>(vedata));
+    EEVEE_lightprobes_refresh(sldata, static_cast<EEVEE_Data *>(vedata));
+    EEVEE_lightprobes_refresh_planar(sldata, static_cast<EEVEE_Data *>(vedata));
     DRW_stats_group_end();
 
     /* Refresh shadows */
     DRW_stats_group_start("Shadows");
-    EEVEE_shadows_draw(sldata, vedata, stl->effects->taa_view);
+    EEVEE_shadows_draw(sldata, static_cast<EEVEE_Data *>(vedata), stl->effects->taa_view);
     DRW_stats_group_end();
 
     if (((stl->effects->enabled_effects & EFFECT_TAA) != 0) &&
@@ -268,7 +271,7 @@ static void eevee_draw_scene(void *vedata)
     else if (((stl->effects->enabled_effects & EFFECT_TAA) != 0) &&
              (stl->effects->taa_current_sample > 1) && DRW_state_is_image_render())
     {
-      EEVEE_temporal_sampling_update_matrices(vedata);
+      EEVEE_temporal_sampling_update_matrices(static_cast<EEVEE_Data *>(vedata));
     }
 
     /* Set ray type. */
@@ -293,11 +296,11 @@ static void eevee_draw_scene(void *vedata)
 
     /* Create minmax texture */
     DRW_stats_group_start("Main MinMax buffer");
-    EEVEE_create_minmax_buffer(vedata, dtxl->depth, -1);
+    EEVEE_create_minmax_buffer(static_cast<EEVEE_Data *>(vedata), dtxl->depth, -1);
     DRW_stats_group_end();
 
-    EEVEE_occlusion_compute(sldata, vedata);
-    EEVEE_volumes_compute(sldata, vedata);
+    EEVEE_occlusion_compute(sldata, static_cast<EEVEE_Data *>(vedata));
+    EEVEE_volumes_compute(sldata, static_cast<EEVEE_Data *>(vedata));
 
     /* Shading pass */
     DRW_stats_group_start("Shading");
@@ -305,17 +308,17 @@ static void eevee_draw_scene(void *vedata)
       DRW_draw_pass(psl->background_ps);
     }
     DRW_draw_pass(psl->material_ps);
-    EEVEE_subsurface_data_render(sldata, vedata);
+    EEVEE_subsurface_data_render(sldata, static_cast<EEVEE_Data *>(vedata));
     DRW_stats_group_end();
 
     /* Effects pre-transparency */
-    EEVEE_subsurface_compute(sldata, vedata);
-    EEVEE_reflection_compute(sldata, vedata);
-    EEVEE_occlusion_draw_debug(sldata, vedata);
+    EEVEE_subsurface_compute(sldata, static_cast<EEVEE_Data *>(vedata));
+    EEVEE_reflection_compute(sldata, static_cast<EEVEE_Data *>(vedata));
+    EEVEE_occlusion_draw_debug(sldata, static_cast<EEVEE_Data *>(vedata));
     if (psl->probe_display) {
       DRW_draw_pass(psl->probe_display);
     }
-    EEVEE_refraction_compute(sldata, vedata);
+    EEVEE_refraction_compute(sldata, static_cast<EEVEE_Data *>(vedata));
 
     /* Opaque refraction */
     DRW_stats_group_start("Opaque Refraction");
@@ -324,13 +327,13 @@ static void eevee_draw_scene(void *vedata)
     DRW_stats_group_end();
 
     /* Volumetrics Resolve Opaque */
-    EEVEE_volumes_resolve(sldata, vedata);
+    EEVEE_volumes_resolve(sldata, static_cast<EEVEE_Data *>(vedata));
 
     /* Render-passes. */
-    EEVEE_renderpasses_output_accumulate(sldata, vedata, false);
+    EEVEE_renderpasses_output_accumulate(sldata, static_cast<EEVEE_Data *>(vedata), false);
 
     /* Transparent */
-    EEVEE_material_transparent_output_accumulate(vedata);
+    EEVEE_material_transparent_output_accumulate(static_cast<EEVEE_Data *>(vedata));
     /* TODO(@fclem): should be its own Frame-buffer.
      * This is needed because dual-source blending only works with 1 color buffer. */
     GPU_framebuffer_texture_attach(fbl->main_color_fb, dtxl->depth, 0, 0);
@@ -341,10 +344,10 @@ static void eevee_draw_scene(void *vedata)
 
     /* Post Process */
     DRW_stats_group_start("Post FX");
-    EEVEE_draw_effects(sldata, vedata);
+    EEVEE_draw_effects(sldata, static_cast<EEVEE_Data *>(vedata));
     DRW_stats_group_end();
 
-    DRW_view_set_active(NULL);
+    DRW_view_set_active(nullptr);
 
     if (DRW_state_is_image_render() && (stl->effects->enabled_effects & EFFECT_SSR) &&
         !stl->effects->ssr_was_valid_double_buffer)
@@ -353,7 +356,7 @@ static void eevee_draw_scene(void *vedata)
       loop_len++;
       /* Reset sampling (and accumulation) after the first sample to avoid
        * washed out first bounce for SSR. */
-      EEVEE_temporal_sampling_reset(vedata);
+      EEVEE_temporal_sampling_reset(static_cast<EEVEE_Data *>(vedata));
       stl->effects->ssr_was_valid_double_buffer = stl->g_data->valid_double_buffer;
     }
 
@@ -374,7 +377,7 @@ static void eevee_draw_scene(void *vedata)
     DRW_transform_none(stl->effects->final_tx);
   }
   else {
-    EEVEE_renderpasses_draw(sldata, vedata);
+    EEVEE_renderpasses_draw(sldata, static_cast<EEVEE_Data *>(vedata));
   }
 
   if (stl->effects->bypass_drawing) {
@@ -382,11 +385,11 @@ static void eevee_draw_scene(void *vedata)
     GPU_framebuffer_blit(fbl->double_buffer_depth_fb, 0, dfbl->default_fb, 0, GPU_DEPTH_BIT);
   }
 
-  EEVEE_renderpasses_draw_debug(vedata);
+  EEVEE_renderpasses_draw_debug(static_cast<EEVEE_Data *>(vedata));
 
   stl->g_data->view_updated = false;
 
-  DRW_view_set_active(NULL);
+  DRW_view_set_active(nullptr);
 }
 
 static void eevee_view_update(void *vedata)
@@ -397,20 +400,20 @@ static void eevee_view_update(void *vedata)
   }
 }
 
-static void eevee_id_object_update(void *UNUSED(vedata), Object *object)
+static void eevee_id_object_update(void * /*vedata*/, Object *object)
 {
   EEVEE_LightProbeEngineData *ped = EEVEE_lightprobe_data_get(object);
-  if (ped != NULL && ped->dd.recalc != 0) {
+  if (ped != nullptr && ped->dd.recalc != 0) {
     ped->need_update = (ped->dd.recalc & ID_RECALC_TRANSFORM) != 0;
     ped->dd.recalc = 0;
   }
   EEVEE_LightEngineData *led = EEVEE_light_data_get(object);
-  if (led != NULL && led->dd.recalc != 0) {
+  if (led != nullptr && led->dd.recalc != 0) {
     led->need_update = true;
     led->dd.recalc = 0;
   }
   EEVEE_ObjectEngineData *oedata = EEVEE_object_data_get(object);
-  if (oedata != NULL && oedata->dd.recalc != 0) {
+  if (oedata != nullptr && oedata->dd.recalc != 0) {
     oedata->need_update = true;
     oedata->geom_update = (oedata->dd.recalc & (ID_RECALC_GEOMETRY)) != 0;
     oedata->dd.recalc = 0;
@@ -422,14 +425,14 @@ static void eevee_id_world_update(void *vedata, World *wo)
   EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
   LightCache *lcache = stl->g_data->light_cache;
 
-  if (ELEM(lcache, NULL, stl->lookdev_lightcache)) {
+  if (ELEM(lcache, nullptr, stl->lookdev_lightcache)) {
     /* Avoid Lookdev viewport clearing the update flag (see #67741). */
     return;
   }
 
   EEVEE_WorldEngineData *wedata = EEVEE_world_data_ensure(wo);
 
-  if (wedata != NULL && wedata->dd.recalc != 0) {
+  if (wedata != nullptr && wedata->dd.recalc != 0) {
     if ((lcache->flag & LIGHTCACHE_BAKING) == 0) {
       lcache->flag |= LIGHTCACHE_UPDATE_WORLD;
     }
@@ -472,7 +475,7 @@ static void eevee_render_to_image(void *vedata,
   const bool do_motion_blur = (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) != 0;
   const bool do_motion_blur_fx = do_motion_blur && (scene->eevee.motion_blur_max > 0);
 
-  if (!EEVEE_render_init(vedata, engine, depsgraph)) {
+  if (!EEVEE_render_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph)) {
     return;
   }
   EEVEE_PrivateData *g_data = ved->stl->g_data;
@@ -483,13 +486,13 @@ static void eevee_render_to_image(void *vedata,
   int time_steps_tot = (do_motion_blur) ? max_ii(1, scene->eevee.motion_blur_steps) : 1;
   g_data->render_timesteps = time_steps_tot;
 
-  EEVEE_render_modules_init(vedata, engine, depsgraph);
+  EEVEE_render_modules_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph);
 
   g_data->render_sample_count_per_timestep = EEVEE_temporal_sampling_sample_count_get(scene,
                                                                                       ved->stl);
 
   /* Reset in case the same engine is used on multiple views. */
-  EEVEE_temporal_sampling_reset(vedata);
+  EEVEE_temporal_sampling_reset(static_cast<EEVEE_Data *>(vedata));
 
   /* Compute start time. The motion blur will cover `[time ...time + shuttertime]`. */
   float time = initial_frame + initial_subframe;
@@ -520,16 +523,16 @@ static void eevee_render_to_image(void *vedata,
       if (i == 0) {
         EEVEE_motion_blur_step_set(ved, MB_PREV);
         DRW_render_set_time(engine, depsgraph, floorf(time_prev), fractf(time_prev));
-        EEVEE_render_modules_init(vedata, engine, depsgraph);
+        EEVEE_render_modules_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph);
         sldata = EEVEE_view_layer_data_ensure();
 
-        EEVEE_render_cache_init(sldata, vedata);
+        EEVEE_render_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
 
         DRW_render_object_iter(vedata, engine, depsgraph, EEVEE_render_cache);
 
-        EEVEE_motion_blur_cache_finish(vedata);
-        EEVEE_materials_cache_finish(sldata, vedata);
-        eevee_render_reset_passes(vedata);
+        EEVEE_motion_blur_cache_finish(static_cast<EEVEE_Data *>(vedata));
+        EEVEE_materials_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+        eevee_render_reset_passes(static_cast<EEVEE_Data *>(vedata));
       }
     }
 
@@ -537,16 +540,16 @@ static void eevee_render_to_image(void *vedata,
     if (do_motion_blur_fx) {
       EEVEE_motion_blur_step_set(ved, MB_NEXT);
       DRW_render_set_time(engine, depsgraph, floorf(time_next), fractf(time_next));
-      EEVEE_render_modules_init(vedata, engine, depsgraph);
+      EEVEE_render_modules_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph);
       sldata = EEVEE_view_layer_data_ensure();
 
-      EEVEE_render_cache_init(sldata, vedata);
+      EEVEE_render_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
 
       DRW_render_object_iter(vedata, engine, depsgraph, EEVEE_render_cache);
 
-      EEVEE_motion_blur_cache_finish(vedata);
-      EEVEE_materials_cache_finish(sldata, vedata);
-      eevee_render_reset_passes(vedata);
+      EEVEE_motion_blur_cache_finish(static_cast<EEVEE_Data *>(vedata));
+      EEVEE_materials_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+      eevee_render_reset_passes(static_cast<EEVEE_Data *>(vedata));
     }
 
     /* Current motion step. */
@@ -554,38 +557,39 @@ static void eevee_render_to_image(void *vedata,
       if (do_motion_blur) {
         EEVEE_motion_blur_step_set(ved, MB_CURR);
         DRW_render_set_time(engine, depsgraph, floorf(time_curr), fractf(time_curr));
-        EEVEE_render_modules_init(vedata, engine, depsgraph);
+        EEVEE_render_modules_init(static_cast<EEVEE_Data *>(vedata), engine, depsgraph);
         sldata = EEVEE_view_layer_data_ensure();
       }
 
-      EEVEE_render_cache_init(sldata, vedata);
+      EEVEE_render_cache_init(sldata, static_cast<EEVEE_Data *>(vedata));
 
       DRW_render_object_iter(vedata, engine, depsgraph, EEVEE_render_cache);
 
-      EEVEE_motion_blur_cache_finish(vedata);
-      EEVEE_volumes_cache_finish(sldata, vedata);
-      EEVEE_materials_cache_finish(sldata, vedata);
-      EEVEE_lights_cache_finish(sldata, vedata);
-      EEVEE_lightprobes_cache_finish(sldata, vedata);
-      EEVEE_renderpasses_cache_finish(sldata, vedata);
+      EEVEE_motion_blur_cache_finish(static_cast<EEVEE_Data *>(vedata));
+      EEVEE_volumes_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_materials_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_lights_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_lightprobes_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_renderpasses_cache_finish(sldata, static_cast<EEVEE_Data *>(vedata));
 
-      EEVEE_subsurface_draw_init(sldata, vedata);
-      EEVEE_effects_draw_init(sldata, vedata);
-      EEVEE_volumes_draw_init(sldata, vedata);
+      EEVEE_subsurface_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_effects_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
+      EEVEE_volumes_draw_init(sldata, static_cast<EEVEE_Data *>(vedata));
     }
 
     /* Actual drawing. */
     {
-      EEVEE_renderpasses_output_init(
-          sldata, vedata, g_data->render_sample_count_per_timestep * time_steps_tot);
+      EEVEE_renderpasses_output_init(sldata,
+                                     static_cast<EEVEE_Data *>(vedata),
+                                     g_data->render_sample_count_per_timestep * time_steps_tot);
 
       if (scene->world) {
         /* Update world in case of animated world material. */
         eevee_id_world_update(vedata, scene->world);
       }
 
-      EEVEE_temporal_sampling_create_view(vedata);
-      EEVEE_render_draw(vedata, engine, render_layer, rect);
+      EEVEE_temporal_sampling_create_view(static_cast<EEVEE_Data *>(vedata));
+      EEVEE_render_draw(static_cast<EEVEE_Data *>(vedata), engine, render_layer, rect);
 
       if (i < time_steps_tot - 1) {
         /* Don't reset after the last loop. Since EEVEE_render_read_result
@@ -599,7 +603,7 @@ static void eevee_render_to_image(void *vedata,
        * So we just swap the resources to avoid too much re-evaluation.
        * Note that this also clears the VBO references from the GPUBatches of deformed
        * geometries. */
-      EEVEE_motion_blur_swap_data(vedata);
+      EEVEE_motion_blur_swap_data(static_cast<EEVEE_Data *>(vedata));
     }
   }
 
@@ -609,10 +613,11 @@ static void eevee_render_to_image(void *vedata,
     return;
   }
 
-  EEVEE_render_read_result(vedata, engine, render_layer, rect);
+  EEVEE_render_read_result(static_cast<EEVEE_Data *>(vedata), engine, render_layer, rect);
 
   /* Restore original viewport size. */
-  DRW_render_viewport_size_set((int[2]){g_data->size_orig[0], g_data->size_orig[1]});
+  int viewport_size[2] = {int(g_data->size_orig[0]), int(g_data->size_orig[1])};
+  DRW_render_viewport_size_set(viewport_size);
 
   if (scene->r.cfra != initial_frame || scene->r.subframe != initial_subframe) {
     /* Restore original frame number. This is because the render pipeline expects it. */
@@ -642,13 +647,13 @@ static void eevee_engine_free(void)
 static const DrawEngineDataSize eevee_data_size = DRW_VIEWPORT_DATA_SIZE(EEVEE_Data);
 
 DrawEngineType draw_engine_eevee_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ N_("Eevee"),
     /*vedata_size*/ &eevee_data_size,
     /*engine_init*/ &eevee_engine_init,
     /*engine_free*/ &eevee_engine_free,
-    /*instance_free*/ /*instance_free*/ NULL,
+    /*instance_free*/ /*instance_free*/ nullptr,
     /*cache_init*/ &eevee_cache_init,
     /*cache_populate*/ &EEVEE_cache_populate,
     /*cache_finish*/ &eevee_cache_finish,
@@ -660,26 +665,26 @@ DrawEngineType draw_engine_eevee_type = {
 };
 
 RenderEngineType DRW_engine_viewport_eevee_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ EEVEE_ENGINE,
     /*name*/ N_("Eevee"),
     /*flag*/ RE_INTERNAL | RE_USE_PREVIEW | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
-    /*update*/ NULL,
+    /*update*/ nullptr,
     /*render*/ &DRW_render_to_image,
-    /*render_frame_finish*/ NULL,
-    /*draw*/ NULL,
-    /*bake*/ NULL,
-    /*view_update*/ NULL,
-    /*view_draw*/ NULL,
-    /*update_script_node*/ NULL,
+    /*render_frame_finish*/ nullptr,
+    /*draw*/ nullptr,
+    /*bake*/ nullptr,
+    /*view_update*/ nullptr,
+    /*view_draw*/ nullptr,
+    /*update_script_node*/ nullptr,
     /*update_render_passes*/ &EEVEE_render_update_passes,
     /*draw_engine*/ &draw_engine_eevee_type,
     /*rna_ext*/
     {
-        /*data*/ NULL,
-        /*srna*/ NULL,
-        /*call*/ NULL,
+        /*data*/ nullptr,
+        /*srna*/ nullptr,
+        /*call*/ nullptr,
     },
 };
 
