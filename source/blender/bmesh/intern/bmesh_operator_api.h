@@ -211,6 +211,8 @@ typedef enum eBMOpSlotSubType_Elem {
   BMO_OP_SLOT_SUBTYPE_ELEM_FACE = BM_FACE,
   BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE = (BM_FACE << 1),
 } eBMOpSlotSubType_Elem;
+ENUM_OPERATORS(eBMOpSlotSubType_Elem, BMO_OP_SLOT_SUBTYPE_ELEM_IS_SINGLE)
+
 typedef enum eBMOpSlotSubType_Map {
   BMO_OP_SLOT_SUBTYPE_MAP_EMPTY = 64, /* use as a set(), unused value */
   BMO_OP_SLOT_SUBTYPE_MAP_ELEM = 65,
@@ -295,6 +297,7 @@ typedef enum {
   BMO_OPTYPE_FLAG_SELECT_VALIDATE = (1 << 3),
   BMO_OPTYPE_FLAG_INVALIDATE_CLNOR_ALL = (1 << 4),
 } BMOpTypeFlag;
+ENUM_OPERATORS(BMOpTypeFlag, BMO_OPTYPE_FLAG_INVALIDATE_CLNOR_ALL)
 
 typedef struct BMOperator {
   struct BMOpSlot slots_in[BMO_OP_MAX_SLOTS];
