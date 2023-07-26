@@ -57,7 +57,7 @@ set(SRC
   operators/bmo_utils.cc
   operators/bmo_wireframe.cc
 
-  intern/bmesh_callback_generic.c
+  intern/bmesh_callback_generic.cc
   intern/bmesh_callback_generic.h
   intern/bmesh_construct.c
   intern/bmesh_construct.h
