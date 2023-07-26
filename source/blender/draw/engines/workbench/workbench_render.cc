@@ -32,8 +32,8 @@
 
 static void workbench_render_cache(void *vedata,
                                    Object *ob,
-                                   RenderEngine *UNUSED(engine),
-                                   Depsgraph *UNUSED(depsgraph))
+                                   RenderEngine * /*engine*/,
+                                   Depsgraph * /*depsgraph*/)
 {
   workbench_cache_populate(vedata, ob);
 }
@@ -51,7 +51,7 @@ static void workbench_render_matrices_init(RenderEngine *engine, Depsgraph *deps
 
   invert_m4_m4(viewmat, viewinv);
 
-  DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+  DRWView *view = DRW_view_create(viewmat, winmat, nullptr, nullptr, nullptr);
   DRW_view_default_set(view);
   DRW_view_set_active(view);
 }
@@ -66,12 +66,13 @@ static bool workbench_render_framebuffers_init(void)
 
   /* When doing a multi view rendering the first view will allocate the buffers
    * the other views will reuse these buffers */
-  if (dtxl->color == NULL) {
+  if (dtxl->color == nullptr) {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-    BLI_assert(dtxl->depth == NULL);
-    dtxl->color = GPU_texture_create_2d("txl.color", UNPACK2(size), 1, GPU_RGBA16F, usage, NULL);
+    BLI_assert(dtxl->depth == nullptr);
+    dtxl->color = GPU_texture_create_2d(
+        "txl.color", UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
     dtxl->depth = GPU_texture_create_2d(
-        "txl.depth", UNPACK2(size), 1, GPU_DEPTH24_STENCIL8, usage, NULL);
+        "txl.depth", UNPACK2(size), 1, GPU_DEPTH24_STENCIL8, usage, nullptr);
   }
 
   if (!(dtxl->depth && dtxl->color)) {
@@ -91,9 +92,9 @@ static bool workbench_render_framebuffers_init(void)
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(dtxl->color)});
 
   bool ok = true;
-  ok = ok && GPU_framebuffer_check_valid(dfbl->default_fb, NULL);
-  ok = ok && GPU_framebuffer_check_valid(dfbl->color_only_fb, NULL);
-  ok = ok && GPU_framebuffer_check_valid(dfbl->depth_only_fb, NULL);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->default_fb, nullptr);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->color_only_fb, nullptr);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->depth_only_fb, nullptr);
 
   return ok;
 }
@@ -118,12 +119,12 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
                                rp_buffer_data);
 
     float winmat[4][4];
-    DRW_view_winmat_get(NULL, winmat, false);
+    DRW_view_winmat_get(nullptr, winmat, false);
 
     int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
     /* Convert GPU depth [0..1] to view Z [near..far] */
-    if (DRW_view_is_persp_get(NULL)) {
+    if (DRW_view_is_persp_get(nullptr)) {
       for (int i = 0; i < pix_num; i++) {
         if (rp_buffer_data[i] == 1.0f) {
           rp_buffer_data[i] = 1e10f; /* Background */
@@ -136,8 +137,8 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
     }
     else {
       /* Keep in mind, near and far distance are negatives. */
-      float near = DRW_view_near_distance_get(NULL);
-      float far = DRW_view_far_distance_get(NULL);
+      float near = DRW_view_near_distance_get(nullptr);
+      float far = DRW_view_far_distance_get(nullptr);
       float range = fabsf(far - near);
 
       for (int i = 0; i < pix_num; i++) {
@@ -154,7 +155,7 @@ static void workbench_render_result_z(RenderLayer *rl, const char *viewname, con
 
 void workbench_render(void *ved, RenderEngine *engine, RenderLayer *render_layer, const rcti *rect)
 {
-  WORKBENCH_Data *data = ved;
+  WORKBENCH_Data *data = static_cast<WORKBENCH_Data *>(ved);
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Depsgraph *depsgraph = draw_ctx->depsgraph;
