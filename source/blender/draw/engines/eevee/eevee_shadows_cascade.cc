@@ -51,7 +51,7 @@ static void shadow_cascade_random_matrix_set(float mat[4][4], float radius, int 
     EEVEE_sample_ellipse(i, mat[0], mat[1], radius, radius, jitter);
     float p[3];
     add_v3_v3v3(p, jitter, mat[2]);
-    DRW_debug_sphere(p, 0.01f, (float[4]){1.0f, (sample_ofs == i) ? 1.0f : 0.0f, 0.0f, 1.0f});
+    DRW_debug_sphere(p, 0.01f, blender::float4{1.0f, (sample_ofs == i) ? 1.0f : 0.0f, 0.0f, 1.0f});
   }
 #endif
   add_v3_v3(mat[2], jitter);
@@ -372,11 +372,12 @@ static void eevee_ensure_cascade_views(EEVEE_ShadowCascadeRender *csm_render,
                                        DRWView *view[MAX_CASCADE_NUM])
 {
   for (int i = 0; i < csm_render->cascade_count; i++) {
-    if (view[i] == NULL) {
-      view[i] = DRW_view_create(csm_render->viewmat, csm_render->projmat[i], NULL, NULL, NULL);
+    if (view[i] == nullptr) {
+      view[i] = DRW_view_create(
+          csm_render->viewmat, csm_render->projmat[i], nullptr, nullptr, nullptr);
     }
     else {
-      DRW_view_update(view[i], csm_render->viewmat, csm_render->projmat[i], NULL, NULL);
+      DRW_view_update(view[i], csm_render->viewmat, csm_render->projmat[i], nullptr, nullptr);
     }
   }
 }
