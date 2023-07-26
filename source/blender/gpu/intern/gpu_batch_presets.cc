@@ -8,8 +8,10 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "GPU_batch.h"
@@ -56,7 +58,7 @@ static struct {
   } attr_id;
 } g_presets_2d = {{0}};
 
-static ListBase presets_list = {NULL, NULL};
+static ListBase presets_list = {nullptr, nullptr};
 
 /** \} */
 
@@ -97,8 +99,8 @@ static void batch_sphere_lat_lon_vert(GPUVertBufRaw *pos_step,
   pos[0] = sinf(lat) * cosf(lon);
   pos[1] = cosf(lat);
   pos[2] = sinf(lat) * sinf(lon);
-  copy_v3_v3(GPU_vertbuf_raw_step(pos_step), pos);
-  copy_v3_v3(GPU_vertbuf_raw_step(nor_step), pos);
+  copy_v3_v3(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), pos);
+  copy_v3_v3(static_cast<float *>(GPU_vertbuf_raw_step(nor_step)), pos);
 }
 GPUBatch *GPU_batch_preset_sphere(int lod)
 {
@@ -168,7 +170,7 @@ static GPUBatch *gpu_batch_sphere(int lat_res, int lon_res)
   BLI_assert(vbo_len == GPU_vertbuf_raw_used(&pos_step));
   BLI_assert(vbo_len == GPU_vertbuf_raw_used(&nor_step));
 
-  return GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  return GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
 static GPUBatch *batch_sphere_wire(int lat_res, int lon_res)
@@ -202,7 +204,7 @@ static GPUBatch *batch_sphere_wire(int lat_res, int lon_res)
   BLI_assert(vbo_len == GPU_vertbuf_raw_used(&pos_step));
   BLI_assert(vbo_len == GPU_vertbuf_raw_used(&nor_step));
 
-  return GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  return GPU_batch_create_ex(GPU_PRIM_LINES, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
 /** \} */
@@ -219,23 +221,23 @@ static void gpu_batch_preset_rectf_tris_color_ex(GPUVertBufRaw *pos_step,
                                                  GPUVertBufRaw *col_step,
                                                  const float color[4])
 {
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x1, y1});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x1, y1});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x2, y1});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x2, y1});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x2, y2});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x2, y2});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x1, y1});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x1, y1});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x2, y2});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x2, y2});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 
-  copy_v2_v2(GPU_vertbuf_raw_step(pos_step), (const float[2]){x1, y2});
-  copy_v4_v4(GPU_vertbuf_raw_step(col_step), color);
+  copy_v2_v2(static_cast<float *>(GPU_vertbuf_raw_step(pos_step)), blender::float2{x1, y2});
+  copy_v4_v4(static_cast<float *>(GPU_vertbuf_raw_step(col_step)), color);
 }
 
 static GPUBatch *gpu_batch_preset_panel_drag_widget(float pixelsize,
@@ -277,7 +279,7 @@ static GPUBatch *gpu_batch_preset_panel_drag_widget(float pixelsize,
           &pos_step, x_co - box_size, y_co, x_co, y_co + box_size, &col_step, col_high);
     }
   }
-  return GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  return GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
 GPUBatch *GPU_batch_preset_panel_drag_widget(const float pixelsize,
@@ -294,7 +296,7 @@ GPUBatch *GPU_batch_preset_panel_drag_widget(const float pixelsize,
   if (g_presets_2d.batch.panel_drag_widget && parameters_changed) {
     gpu_batch_presets_unregister(g_presets_2d.batch.panel_drag_widget);
     GPU_batch_discard(g_presets_2d.batch.panel_drag_widget);
-    g_presets_2d.batch.panel_drag_widget = NULL;
+    g_presets_2d.batch.panel_drag_widget = nullptr;
   }
 
   if (!g_presets_2d.batch.panel_drag_widget) {
@@ -320,7 +322,7 @@ GPUBatch *GPU_batch_preset_quad(void)
     /* Don't fill the color. */
 
     g_presets_2d.batch.quad = GPU_batch_create_ex(
-        GPU_PRIM_TRI_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
+        GPU_PRIM_TRI_STRIP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 
     gpu_batch_presets_register(g_presets_2d.batch.quad);
   }
@@ -364,7 +366,7 @@ void gpu_batch_presets_register(GPUBatch *preset_batch)
 bool gpu_batch_presets_unregister(GPUBatch *preset_batch)
 {
   BLI_mutex_lock(&g_presets_3d.mutex);
-  for (LinkData *link = presets_list.last; link; link = link->prev) {
+  for (LinkData *link = static_cast<LinkData *>(presets_list.last); link; link = link->prev) {
     if (preset_batch == link->data) {
       BLI_remlink(&presets_list, link);
       BLI_mutex_unlock(&g_presets_3d.mutex);
@@ -379,8 +381,8 @@ bool gpu_batch_presets_unregister(GPUBatch *preset_batch)
 void gpu_batch_presets_exit(void)
 {
   LinkData *link;
-  while ((link = BLI_pophead(&presets_list))) {
-    GPUBatch *preset = link->data;
+  while ((link = static_cast<LinkData *>(BLI_pophead(&presets_list)))) {
+    GPUBatch *preset = static_cast<GPUBatch *>(link->data);
     GPU_batch_discard(preset);
     MEM_freeN(link);
   }

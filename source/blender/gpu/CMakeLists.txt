@@ -47,7 +47,7 @@ set(INC_SYS
 
 set(SRC
   intern/gpu_batch.cc
-  intern/gpu_batch_presets.c
+  intern/gpu_batch_presets.cc
   intern/gpu_batch_utils.c
   intern/gpu_capabilities.cc
   intern/gpu_codegen.cc
