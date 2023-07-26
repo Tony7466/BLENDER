@@ -290,6 +290,7 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
     }
   }
 
+  MEM_SAFE_FREE(node.panel_states_array);
   node.num_panel_states = num_panels;
   node.panel_states_array = MEM_cnew_array<bNodePanelState>(num_panels, __func__);
   bNodePanelState *new_panel = node.panel_states_array;
