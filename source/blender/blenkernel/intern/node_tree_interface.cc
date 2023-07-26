@@ -333,6 +333,27 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Return ID properties if used by socket type
+ * \{ */
+
+template<typename T> static IDProperty *socket_data_get_id_props_impl(T & /*data*/)
+{
+  return nullptr;
+}
+
+static IDProperty *socket_data_get_id_props(bNodeTreeInterfaceSocket &socket)
+{
+  IDProperty *result = nullptr;
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    result = socket_data_get_id_props_impl(get_data<SocketDataType>(socket));
+  });
+  return result;
+}
+
+/** \} */
+
 }  // namespace socket_types
 
 namespace item_types {
@@ -574,6 +595,11 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
   float color[4];
   typeinfo->draw_color(C, &socket_ptr, &node_ptr, color);
   return blender::ColorGeometry4f(color);
+}
+
+IDProperty *bNodeTreeInterfaceSocket::socket_id_props()
+{
+  return socket_types::socket_data_get_id_props(*this);
 }
 
 bool bNodeTreeInterfaceSocket::set_socket_type(const char *new_socket_type)

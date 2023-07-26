@@ -27,6 +27,7 @@ struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
+struct IDProperty;
 struct LibraryForeachIDData;
 
 /** Type of interface item. */
@@ -84,6 +85,7 @@ typedef struct bNodeTreeInterfaceSocket {
   std::string socket_identifier() const;
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
+  IDProperty *socket_id_props();
 
   // template<typename T> T &get_data();
   // template<typename T> const T &get_data() const;

@@ -2880,11 +2880,11 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
     }
   }
 
-  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
-    build_idproperties(socket->prop);
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
+    build_idproperties(socket->socket_id_props());
   }
-  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
-    build_idproperties(socket->prop);
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().outputs) {
+    build_idproperties(socket->socket_id_props());
   }
 
   if (check_id_has_anim_component(&ntree->id)) {
