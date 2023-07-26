@@ -784,7 +784,6 @@ struct LoopSplitTaskDataCommon {
    * different elements in the arrays. */
   CornerNormalSpaceArray *lnors_spacearr;
   MutableSpan<float3> loop_normals;
-  MutableSpan<short2> clnors_data;
 
   /* Read-only. */
   Span<float3> positions;
@@ -796,6 +795,7 @@ struct LoopSplitTaskDataCommon {
   Span<int> loop_to_face;
   Span<float3> face_normals;
   Span<float3> vert_normals;
+  Span<short2> clnors_data;
 };
 
 #define INDEX_UNSET INT_MIN
@@ -1038,7 +1038,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 {
   CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
-  MutableSpan<short2> clnors_data = common_data->clnors_data;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
@@ -1048,6 +1047,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<int2> edge_to_loops = common_data->edge_to_loops;
   const Span<int> loop_to_face = common_data->loop_to_face;
   const Span<float3> face_normals = common_data->face_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
   const int face_index = loop_to_face[ml_curr_index];
   const int ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
@@ -1068,11 +1068,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
-  const short2 *clnor_ref = nullptr;
-  int clnors_count = 0;
-  bool clnors_invalid = false;
 
   Vector<int, 8> processed_corners;
 
@@ -1117,19 +1113,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     /* Calculate angle between the two face edges incident on this vertex. */
     lnor += face_normals[loop_to_face[mlfan_curr_index]] * saacos(math::dot(vec_curr, vec_prev));
 
-    if (!clnors_data.is_empty()) {
-      /* Accumulate all clnors, if they are not all equal we have to fix that! */
-      const short2 &clnor = clnors_data[mlfan_vert_index];
-      if (clnors_count) {
-        clnors_invalid |= *clnor_ref != clnor;
-      }
-      else {
-        clnor_ref = &clnor;
-      }
-      clnors_avg += int2(clnor);
-      clnors_count++;
-    }
-
     processed_corners.append(mlfan_vert_index);
 
     if (lnors_spacearr) {
@@ -1139,6 +1122,9 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       }
       if (!lnors_spacearr->corners_by_space.is_empty()) {
         lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
+      }
+      if (!clnors_data.is_empty()) {
+        clnors_avg += int2(clnors_data[mlfan_vert_index]);
       }
     }
 
@@ -1180,18 +1166,8 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     edge_vectors->clear();
 
     if (!clnors_data.is_empty()) {
-      if (clnors_invalid) {
-        clnors_avg /= clnors_count;
-        /* Fix/update all clnors of this fan with computed average value. */
-        if (G.debug & G_DEBUG) {
-          printf("Invalid clnors in this fan!\n");
-        }
-        clnors_data.fill_indices(processed_corners.as_span(), short2(clnors_avg));
-      }
-      /* Extra bonus: since small-stack is local to this function,
-       * no more need to empty it at all cost! */
-
-      lnor = lnor_space_custom_data_to_normal(lnor_space, *clnor_ref);
+      clnors_avg /= processed_corners.size();
+      lnor = lnor_space_custom_data_to_normal(lnor_space, short2(clnors_avg));
     }
   }
 
@@ -1406,8 +1382,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   LoopSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
   common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {const_cast<short2 *>(custom_normals_data),
-                             custom_normals_data ? corner_verts.size() : 0};
+  common_data.clnors_data = {custom_normals_data, custom_normals_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
   common_data.faces = faces;
