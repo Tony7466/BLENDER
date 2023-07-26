@@ -57,9 +57,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   OpacityGpencilModifierData *gmd = (OpacityGpencilModifierData *)md;
   OpacityGpencilModifierData *tgmd = (OpacityGpencilModifierData *)target;
 
-  if (tgmd->curve_intensity != NULL) {
+  if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = NULL;
+    tgmd->curve_intensity = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -69,10 +69,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* opacity strokes */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   OpacityGpencilModifierData *mmd = (OpacityGpencilModifierData *)md;
@@ -108,7 +108,7 @@ static void deformStroke(GpencilModifierData *md,
 
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     /* Stroke using strength. */
     if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
@@ -163,7 +163,7 @@ static void deformStroke(GpencilModifierData *md,
 
     if ((mmd->flag & GP_OPACITY_WEIGHT_FACTOR) && (!is_normalized)) {
       /* Use first point for weight. */
-      MDeformVert *dvert = (gps->dvert != NULL) ? &gps->dvert[0] : NULL;
+      MDeformVert *dvert = (gps->dvert != nullptr) ? &gps->dvert[0] : nullptr;
       float weight = get_modifier_point_weight(
           dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
       if (weight >= 0.0f) {
@@ -176,7 +176,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -200,26 +200,26 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   int modify_color = RNA_enum_get(ptr, "modify_color");
 
-  uiItemR(layout, ptr, "modify_color", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "modify_color", 0, nullptr, ICON_NONE);
 
   if (modify_color == GP_MODIFY_COLOR_HARDNESS) {
-    uiItemR(layout, ptr, "hardness", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "hardness", 0, nullptr, ICON_NONE);
   }
   else {
     const bool is_normalized = RNA_boolean_get(ptr, "use_normalized_opacity");
     const bool is_weighted = RNA_boolean_get(ptr, "use_weight_factor");
 
-    uiItemR(layout, ptr, "use_normalized_opacity", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "use_normalized_opacity", 0, nullptr, ICON_NONE);
     const char *text = (is_normalized) ? IFACE_("Strength") : IFACE_("Opacity Factor");
 
     uiLayout *row = uiLayoutRow(layout, true);
@@ -235,9 +235,9 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   int modify_color = RNA_enum_get(ptr, "modify_color");
   bool show_vertex = (modify_color != GP_MODIFY_COLOR_HARDNESS);
@@ -249,7 +249,7 @@ static void curve_header_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   int modify_color = RNA_enum_get(ptr, "modify_color");
   uiLayoutSetActive(layout, modify_color != GP_MODIFY_COLOR_HARDNESS);
@@ -261,7 +261,7 @@ static void curve_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   int modify_color = RNA_enum_get(ptr, "modify_color");
   uiLayoutSetActive(layout, modify_color != GP_MODIFY_COLOR_HARDNESS);
@@ -275,7 +275,7 @@ static void panelRegister(ARegionType *region_type)
       region_type, eGpencilModifierType_Opacity, panel_draw);
 
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
       region_type, "curve", "", curve_header_draw, curve_panel_draw, mask_panel_type);
 }
@@ -290,16 +290,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Opacity = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
