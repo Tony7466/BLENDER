@@ -29,10 +29,10 @@
 static void eevee_motion_blur_mesh_data_free(void *val)
 {
   EEVEE_ObjectMotionData *mb_data = (EEVEE_ObjectMotionData *)val;
-  if (mb_data->hair_data != NULL) {
+  if (mb_data->hair_data != nullptr) {
     MEM_freeN(mb_data->hair_data);
   }
-  if (mb_data->geometry_data != NULL) {
+  if (mb_data->geometry_data != nullptr) {
     MEM_freeN(mb_data->geometry_data);
   }
   MEM_freeN(val);
@@ -81,15 +81,15 @@ void EEVEE_motion_hair_step_free(EEVEE_HairMotionStepData *step_data)
 
 void EEVEE_motion_blur_data_init(EEVEE_MotionBlurData *mb)
 {
-  if (mb->object == NULL) {
+  if (mb->object == nullptr) {
     mb->object = BLI_ghash_new(eevee_object_key_hash, eevee_object_key_cmp, "EEVEE Object Motion");
   }
   for (int i = 0; i < 2; i++) {
-    if (mb->position_vbo_cache[i] == NULL) {
+    if (mb->position_vbo_cache[i] == nullptr) {
       mb->position_vbo_cache[i] = BLI_ghash_new(
           BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "EEVEE duplicate vbo cache");
     }
-    if (mb->hair_motion_step_cache[i] == NULL) {
+    if (mb->hair_motion_step_cache[i] == nullptr) {
       mb->hair_motion_step_cache[i] = BLI_ghash_new(
           BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "EEVEE hair motion step cache");
     }
@@ -100,17 +100,17 @@ void EEVEE_motion_blur_data_free(EEVEE_MotionBlurData *mb)
 {
   if (mb->object) {
     BLI_ghash_free(mb->object, MEM_freeN, eevee_motion_blur_mesh_data_free);
-    mb->object = NULL;
+    mb->object = nullptr;
   }
   for (int i = 0; i < 2; i++) {
     if (mb->position_vbo_cache[i]) {
-      BLI_ghash_free(mb->position_vbo_cache[i], NULL, (GHashValFreeFP)GPU_vertbuf_discard);
-      mb->position_vbo_cache[i] = NULL;
+      BLI_ghash_free(mb->position_vbo_cache[i], nullptr, (GHashValFreeFP)GPU_vertbuf_discard);
+      mb->position_vbo_cache[i] = nullptr;
     }
     if (mb->hair_motion_step_cache[i]) {
       BLI_ghash_free(
-          mb->hair_motion_step_cache[i], NULL, (GHashValFreeFP)EEVEE_motion_hair_step_free);
-      mb->hair_motion_step_cache[i] = NULL;
+          mb->hair_motion_step_cache[i], nullptr, (GHashValFreeFP)EEVEE_motion_hair_step_free);
+      mb->hair_motion_step_cache[i] = nullptr;
     }
   }
 }
@@ -119,8 +119,8 @@ EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *
                                                           Object *ob,
                                                           bool is_psys)
 {
-  if (mb->object == NULL) {
-    return NULL;
+  if (mb->object == nullptr) {
+    return nullptr;
   }
 
   EEVEE_ObjectKey key, *key_p;
@@ -139,12 +139,14 @@ EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *
     memset(key.id, 0, sizeof(key.id));
   }
 
-  EEVEE_ObjectMotionData *ob_step = BLI_ghash_lookup(mb->object, &key);
-  if (ob_step == NULL) {
-    key_p = MEM_mallocN(sizeof(*key_p), __func__);
+  EEVEE_ObjectMotionData *ob_step = static_cast<EEVEE_ObjectMotionData *>(
+      BLI_ghash_lookup(mb->object, &key));
+  if (ob_step == nullptr) {
+    key_p = static_cast<EEVEE_ObjectKey *>(MEM_mallocN(sizeof(*key_p), __func__));
     memcpy(key_p, &key, sizeof(*key_p));
 
-    ob_step = MEM_callocN(sizeof(EEVEE_ObjectMotionData), __func__);
+    ob_step = static_cast<EEVEE_ObjectMotionData *>(
+        MEM_callocN(sizeof(EEVEE_ObjectMotionData), __func__));
 
     BLI_ghash_insert(mb->object, key_p, ob_step);
   }
@@ -153,8 +155,9 @@ EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *
 
 EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_ObjectMotionData *mb_data)
 {
-  if (mb_data->geometry_data == NULL) {
-    EEVEE_GeometryMotionData *geom_step = MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__);
+  if (mb_data->geometry_data == nullptr) {
+    EEVEE_GeometryMotionData *geom_step = static_cast<EEVEE_GeometryMotionData *>(
+        MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__));
     geom_step->type = EEVEE_MOTION_DATA_MESH;
     mb_data->geometry_data = geom_step;
   }
@@ -163,11 +166,11 @@ EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_ObjectMotion
 
 EEVEE_HairMotionData *EEVEE_motion_blur_hair_data_get(EEVEE_ObjectMotionData *mb_data, Object *ob)
 {
-  if (mb_data->hair_data == NULL) {
+  if (mb_data->hair_data == nullptr) {
     /* Ugly, we allocate for each modifiers and just fill based on modifier index in the list. */
     int psys_len = BLI_listbase_count(&ob->modifiers);
-    EEVEE_HairMotionData *hair_step = MEM_callocN(
-        sizeof(EEVEE_HairMotionData) + sizeof(hair_step->psys[0]) * psys_len, __func__);
+    EEVEE_HairMotionData *hair_step = static_cast<EEVEE_HairMotionData *>(MEM_callocN(
+        sizeof(EEVEE_HairMotionData) + sizeof(hair_step->psys[0]) * psys_len, __func__));
     hair_step->psys_len = psys_len;
     hair_step->type = EEVEE_MOTION_DATA_HAIR;
     mb_data->hair_data = hair_step;
@@ -177,9 +180,9 @@ EEVEE_HairMotionData *EEVEE_motion_blur_hair_data_get(EEVEE_ObjectMotionData *mb
 
 EEVEE_HairMotionData *EEVEE_motion_blur_curves_data_get(EEVEE_ObjectMotionData *mb_data)
 {
-  if (mb_data->hair_data == NULL) {
-    EEVEE_HairMotionData *hair_step = MEM_callocN(
-        sizeof(EEVEE_HairMotionData) + sizeof(hair_step->psys[0]), __func__);
+  if (mb_data->hair_data == nullptr) {
+    EEVEE_HairMotionData *hair_step = static_cast<EEVEE_HairMotionData *>(
+        MEM_callocN(sizeof(EEVEE_HairMotionData) + sizeof(hair_step->psys[0]), __func__));
     hair_step->psys_len = 1;
     hair_step->type = EEVEE_MOTION_DATA_HAIR;
     mb_data->hair_data = hair_step;
@@ -207,7 +210,7 @@ void EEVEE_view_layer_data_free(void *storage)
 
   if (sldata->fallback_lightcache) {
     EEVEE_lightcache_free(sldata->fallback_lightcache);
-    sldata->fallback_lightcache = NULL;
+    sldata->fallback_lightcache = nullptr;
   }
 
   /* Probes */
@@ -229,8 +232,8 @@ void EEVEE_view_layer_data_free(void *storage)
   }
 
   if (sldata->material_cache) {
-    BLI_memblock_destroy(sldata->material_cache, NULL);
-    sldata->material_cache = NULL;
+    BLI_memblock_destroy(sldata->material_cache, nullptr);
+    sldata->material_cache = nullptr;
   }
 }
 
@@ -249,8 +252,9 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure_ex(ViewLayer *view_layer)
   EEVEE_ViewLayerData **sldata = (EEVEE_ViewLayerData **)DRW_view_layer_engine_data_ensure_ex(
       view_layer, &draw_engine_eevee_type, &EEVEE_view_layer_data_free);
 
-  if (*sldata == NULL) {
-    *sldata = MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData");
+  if (*sldata == nullptr) {
+    *sldata = static_cast<EEVEE_ViewLayerData *>(
+        MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData"));
     eevee_view_layer_init(*sldata);
   }
 
@@ -262,8 +266,9 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure(void)
   EEVEE_ViewLayerData **sldata = (EEVEE_ViewLayerData **)DRW_view_layer_engine_data_ensure(
       &draw_engine_eevee_type, &EEVEE_view_layer_data_free);
 
-  if (*sldata == NULL) {
-    *sldata = MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData");
+  if (*sldata == nullptr) {
+    *sldata = static_cast<EEVEE_ViewLayerData *>(
+        MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData"));
     eevee_view_layer_init(*sldata);
   }
 
@@ -283,7 +288,7 @@ static void eevee_object_data_init(DrawData *dd)
 EEVEE_ObjectEngineData *EEVEE_object_data_get(Object *ob)
 {
   if (ELEM(ob->type, OB_LIGHTPROBE, OB_LAMP)) {
-    return NULL;
+    return nullptr;
   }
   return (EEVEE_ObjectEngineData *)DRW_drawdata_get(&ob->id, &draw_engine_eevee_type);
 }
@@ -295,7 +300,7 @@ EEVEE_ObjectEngineData *EEVEE_object_data_ensure(Object *ob)
                                                        &draw_engine_eevee_type,
                                                        sizeof(EEVEE_ObjectEngineData),
                                                        eevee_object_data_init,
-                                                       NULL);
+                                                       nullptr);
 }
 
 /* Light probe data. */
@@ -309,7 +314,7 @@ static void eevee_lightprobe_data_init(DrawData *dd)
 EEVEE_LightProbeEngineData *EEVEE_lightprobe_data_get(Object *ob)
 {
   if (ob->type != OB_LIGHTPROBE) {
-    return NULL;
+    return nullptr;
   }
   return (EEVEE_LightProbeEngineData *)DRW_drawdata_get(&ob->id, &draw_engine_eevee_type);
 }
@@ -321,7 +326,7 @@ EEVEE_LightProbeEngineData *EEVEE_lightprobe_data_ensure(Object *ob)
                                                            &draw_engine_eevee_type,
                                                            sizeof(EEVEE_LightProbeEngineData),
                                                            eevee_lightprobe_data_init,
-                                                           NULL);
+                                                           nullptr);
 }
 
 /* Light data. */
@@ -335,7 +340,7 @@ static void eevee_light_data_init(DrawData *dd)
 EEVEE_LightEngineData *EEVEE_light_data_get(Object *ob)
 {
   if (ob->type != OB_LAMP) {
-    return NULL;
+    return nullptr;
   }
   return (EEVEE_LightEngineData *)DRW_drawdata_get(&ob->id, &draw_engine_eevee_type);
 }
@@ -347,7 +352,7 @@ EEVEE_LightEngineData *EEVEE_light_data_ensure(Object *ob)
                                                       &draw_engine_eevee_type,
                                                       sizeof(EEVEE_LightEngineData),
                                                       eevee_light_data_init,
-                                                      NULL);
+                                                      nullptr);
 }
 
 /* World data. */
@@ -369,5 +374,5 @@ EEVEE_WorldEngineData *EEVEE_world_data_ensure(World *wo)
                                                       &draw_engine_eevee_type,
                                                       sizeof(EEVEE_WorldEngineData),
                                                       eevee_world_data_init,
-                                                      NULL);
+                                                      nullptr);
 }

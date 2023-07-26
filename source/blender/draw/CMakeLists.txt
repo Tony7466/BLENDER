@@ -109,7 +109,7 @@ set(SRC
   engines/image/image_shader.cc
   engines/eevee/eevee_bloom.cc
   engines/eevee/eevee_cryptomatte.cc
-  engines/eevee/eevee_data.c
+  engines/eevee/eevee_data.cc
   engines/eevee/eevee_depth_of_field.c
   engines/eevee/eevee_effects.c
   engines/eevee/eevee_engine.c
