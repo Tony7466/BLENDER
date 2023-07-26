@@ -113,8 +113,8 @@ static void deformMatricesEM(ModifierData * /*md*/,
 }
 
 ModifierTypeInfo modifierType_ShapeKey = {
+    /*id*/ "ShapeKey",
     /*name*/ N_("ShapeKey"),
-    /*panelIDName*/ MOD_PANEL_ID("ShapeKey"),
     /*structName*/ "ShapeKeyModifierData",
     /*structSize*/ sizeof(ShapeKeyModifierData),
     /*srna*/ &RNA_Modifier,

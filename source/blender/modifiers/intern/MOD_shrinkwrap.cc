@@ -204,8 +204,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Shrinkwrap = {
+    /*id*/ "Shrinkwrap",
     /*name*/ N_("Shrinkwrap"),
-    /*panelIDName*/ MOD_PANEL_ID("Shrinkwrap"),
     /*structName*/ "ShrinkwrapModifierData",
     /*structSize*/ sizeof(ShrinkwrapModifierData),
     /*srna*/ &RNA_ShrinkwrapModifier,

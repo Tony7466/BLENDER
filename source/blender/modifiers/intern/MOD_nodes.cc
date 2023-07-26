@@ -1529,8 +1529,8 @@ static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cdda
 }  // namespace blender
 
 ModifierTypeInfo modifierType_Nodes = {
+    /*id*/ "GeometryNodes",
     /*name*/ N_("GeometryNodes"),
-    /*panelIDName*/ MOD_PANEL_ID("GeometryNodes"),
     /*structName*/ "NodesModifierData",
     /*structSize*/ sizeof(NodesModifierData),
     /*srna*/ &RNA_NodesModifier,

@@ -546,8 +546,8 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Hook = {
+    /*id*/ "Hook",
     /*name*/ N_("Hook"),
-    /*panelIDName*/ MOD_PANEL_ID("Hook"),
     /*structName*/ "HookModifierData",
     /*structSize*/ sizeof(HookModifierData),
     /*srna*/ &RNA_HookModifier,

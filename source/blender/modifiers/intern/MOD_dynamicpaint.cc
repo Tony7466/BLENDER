@@ -191,8 +191,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_DynamicPaint = {
+    /*id*/ "Dynamic Paint",
     /*name*/ N_("Dynamic Paint"),
-    /*panelIDName*/ MOD_PANEL_ID("Dynamic Paint"),
     /*structName*/ "DynamicPaintModifierData",
     /*structSize*/ sizeof(DynamicPaintModifierData),
     /*srna*/ &RNA_DynamicPaintModifier,

@@ -313,8 +313,8 @@ static void modifyGeometrySet(ModifierData *md,
 }
 
 ModifierTypeInfo modifierType_VolumeDisplace = {
+    /*id*/ "Volume Displace",
     /*name*/ N_("Volume Displace"),
-    /*panelIDName*/ MOD_PANEL_ID("Volume Displace"),
     /*structName*/ "VolumeDisplaceModifierData",
     /*structSize*/ sizeof(VolumeDisplaceModifierData),
     /*srna*/ &RNA_VolumeDisplaceModifier,

@@ -297,8 +297,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Build = {
+    /*id*/ "Build",
     /*name*/ N_("Build"),
-    /*panelIDName*/ MOD_PANEL_ID("Build"),
     /*structName*/ "BuildModifierData",
     /*structSize*/ sizeof(BuildModifierData),
     /*srna*/ &RNA_BuildModifier,

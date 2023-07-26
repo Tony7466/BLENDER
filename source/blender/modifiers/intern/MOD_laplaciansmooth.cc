@@ -551,8 +551,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_LaplacianSmooth = {
+    /*id*/ "LaplacianSmooth",
     /*name*/ N_("LaplacianSmooth"),
-    /*panelIDName*/ MOD_PANEL_ID("LaplacianSmooth"),
     /*structName*/ "LaplacianSmoothModifierData",
     /*structSize*/ sizeof(LaplacianSmoothModifierData),
     /*srna*/ &RNA_LaplacianSmoothModifier,

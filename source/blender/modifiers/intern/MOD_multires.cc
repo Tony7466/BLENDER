@@ -488,8 +488,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Multires = {
+    /*id*/ "Multires",
     /*name*/ N_("Multires"),
-    /*panelIDName*/ MOD_PANEL_ID("Multires"),
     /*structName*/ "MultiresModifierData",
     /*structSize*/ sizeof(MultiresModifierData),
     /*srna*/ &RNA_MultiresModifier,

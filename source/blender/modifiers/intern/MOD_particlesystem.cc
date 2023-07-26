@@ -264,8 +264,8 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_ParticleSystem = {
+    /*id*/ "ParticleSystem",
     /*name*/ N_("ParticleSystem"),
-    /*panelIDName*/ MOD_PANEL_ID("ParticleSystem"),
     /*structName*/ "ParticleSystemModifierData",
     /*structSize*/ sizeof(ParticleSystemModifierData),
     /*srna*/ &RNA_ParticleSystemModifier,

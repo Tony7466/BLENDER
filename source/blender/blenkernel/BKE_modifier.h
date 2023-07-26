@@ -154,11 +154,12 @@ typedef struct ModifierEvalContext {
 } ModifierEvalContext;
 
 typedef struct ModifierTypeInfo {
+  /* A unique identifier for this modifier. Used to generate the panel id type name.
+   * See #BKE_modifier_type_panel_id. */
+  char id[32];
+
   /* The user visible name for this modifier */
   char name[32];
-
-  /* Name used for the panel id. See #BKE_modifier_type_panel_id. */
-  char panelIDName[32];
 
   /* The DNA struct name for the modifier data type, used to
    * write the DNA data out.
@@ -389,9 +390,8 @@ typedef struct ModifierTypeInfo {
   void (*blendRead)(struct BlendDataReader *reader, struct ModifierData *md);
 } ModifierTypeInfo;
 
-#define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 /* Used to set a modifier's panel type. */
-#define MOD_PANEL_ID(id_name) MODIFIER_TYPE_PANEL_PREFIX id_name
+#define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
 /* Initialize modifier's global data (type info and some common global storage). */
 void BKE_modifier_init(void);

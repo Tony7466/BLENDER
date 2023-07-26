@@ -483,8 +483,8 @@ static void panelRegister(ARegionType *region_type)
 #undef DT_TYPES_AFFECT_MESH
 
 ModifierTypeInfo modifierType_DataTransfer = {
+    /*id*/ "DataTransfer",
     /*name*/ N_("DataTransfer"),
-    /*panelIDName*/ MOD_PANEL_ID("DataTransfer"),
     /*structName*/ "DataTransferModifierData",
     /*structSize*/ sizeof(DataTransferModifierData),
     /*srna*/ &RNA_DataTransferModifier,

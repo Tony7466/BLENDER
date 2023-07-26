@@ -491,8 +491,8 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Subsurf = {
+    /*id*/ "Subdivision",
     /*name*/ N_("Subdivision"),
-    /*panelIDName*/ MOD_PANEL_ID("Subdivision"),
     /*structName*/ "SubsurfModifierData",
     /*structSize*/ sizeof(SubsurfModifierData),
     /*srna*/ &RNA_SubsurfModifier,

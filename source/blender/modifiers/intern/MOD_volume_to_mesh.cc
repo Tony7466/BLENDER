@@ -197,8 +197,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 }
 
 ModifierTypeInfo modifierType_VolumeToMesh = {
+    /*id*/ "Volume to Mesh",
     /*name*/ N_("Volume to Mesh"),
-    /*panelIDName*/ MOD_PANEL_ID("Volume to Mesh"),
     /*structName*/ "VolumeToMeshModifierData",
     /*structSize*/ sizeof(VolumeToMeshModifierData),
     /*srna*/ &RNA_VolumeToMeshModifier,

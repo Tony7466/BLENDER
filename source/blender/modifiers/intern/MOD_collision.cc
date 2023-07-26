@@ -271,8 +271,8 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Collision = {
+    /*id*/ "Collision",
     /*name*/ N_("Collision"),
-    /*panelIDName*/ MOD_PANEL_ID("Collision"),
     /*structName*/ "CollisionModifierData",
     /*structSize*/ sizeof(CollisionModifierData),
     /*srna*/ &RNA_CollisionModifier,

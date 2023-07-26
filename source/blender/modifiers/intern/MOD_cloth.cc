@@ -266,8 +266,8 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Cloth = {
+    /*id*/ "Cloth",
     /*name*/ N_("Cloth"),
-    /*panelIDName*/ MOD_PANEL_ID("Cloth"),
     /*structName*/ "ClothModifierData",
     /*structSize*/ sizeof(ClothModifierData),
     /*srna*/ &RNA_ClothModifier,
