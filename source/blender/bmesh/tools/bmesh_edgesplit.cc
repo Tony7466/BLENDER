@@ -25,13 +25,13 @@ void BM_mesh_edgesplit(BMesh *bm,
   BMEdge *e;
 
   bool use_ese = false;
-  GHash *ese_gh = NULL;
+  GHash *ese_gh = nullptr;
 
   if (copy_select && bm->selected.first) {
     BMEditSelection *ese;
 
     ese_gh = BLI_ghash_ptr_new(__func__);
-    for (ese = bm->selected.first; ese; ese = ese->next) {
+    for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
       if (ese->htype != BM_FACE) {
         BLI_ghash_insert(ese_gh, ese->ele, ese);
       }
@@ -87,7 +87,7 @@ void BM_mesh_edgesplit(BMesh *bm,
 
             /* first value is always in 'v' */
             if (vtar_len > 1) {
-              BMEditSelection *ese = BLI_ghash_lookup(ese_gh, v);
+              BMEditSelection *ese = static_cast<BMEditSelection *>(BLI_ghash_lookup(ese_gh, v));
               BLI_assert(v == vtar[0]);
               if (UNLIKELY(ese)) {
                 int j;
@@ -100,7 +100,7 @@ void BM_mesh_edgesplit(BMesh *bm,
             MEM_freeN(vtar);
           }
           else {
-            BM_vert_separate_hflag(bm, v, BM_ELEM_TAG, copy_select, NULL, NULL);
+            BM_vert_separate_hflag(bm, v, BM_ELEM_TAG, copy_select, nullptr, nullptr);
           }
         }
       }
@@ -111,12 +111,12 @@ void BM_mesh_edgesplit(BMesh *bm,
   /* ensure we don't have any double edges! */
   BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
     if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
-      BLI_assert(BM_edge_find_double(e) == NULL);
+      BLI_assert(BM_edge_find_double(e) == nullptr);
     }
   }
 #endif
 
   if (use_ese) {
-    BLI_ghash_free(ese_gh, NULL, NULL);
+    BLI_ghash_free(ese_gh, nullptr, nullptr);
   }
 }
