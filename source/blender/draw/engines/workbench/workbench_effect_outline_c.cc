@@ -25,7 +25,7 @@ void workbench_outline_cache_init(WORKBENCH_Data *data)
 
   if (OBJECT_OUTLINE_ENABLED(wpd)) {
     int state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-    DRW_PASS_CREATE(psl->outline_ps, state);
+    DRW_PASS_CREATE(psl->outline_ps, DRWState(state));
 
     sh = workbench_shader_outline_get();
 
@@ -33,9 +33,9 @@ void workbench_outline_cache_init(WORKBENCH_Data *data)
     DRW_shgroup_uniform_texture(grp, "objectIdBuffer", wpd->object_id_tx);
     DRW_shgroup_uniform_texture(grp, "depthBuffer", dtxl->depth);
     DRW_shgroup_uniform_block(grp, "world_data", wpd->world_ubo);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   else {
-    psl->outline_ps = NULL;
+    psl->outline_ps = nullptr;
   }
 }
