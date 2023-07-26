@@ -65,7 +65,7 @@ static void bmo_remove_tagged_verts_loose(BMesh *bm, const short oflag)
   BMIter iter;
 
   BM_ITER_MESH_MUTABLE (v, v_next, &iter, bm, BM_VERTS_OF_MESH) {
-    if (BMO_vert_flag_test(bm, v, oflag) && (v->e == NULL)) {
+    if (BMO_vert_flag_test(bm, v, oflag) && (v->e == nullptr)) {
       BM_vert_kill(bm, v);
     }
   }
@@ -237,7 +237,7 @@ static void bm_remove_tagged_verts_loose(BMesh *bm, const char hflag)
   BMIter iter;
 
   BM_ITER_MESH_MUTABLE (v, v_next, &iter, bm, BM_VERTS_OF_MESH) {
-    if (BM_elem_flag_test(v, hflag) && (v->e == NULL)) {
+    if (BM_elem_flag_test(v, hflag) && (v->e == nullptr)) {
       BM_vert_kill(bm, v);
     }
   }
