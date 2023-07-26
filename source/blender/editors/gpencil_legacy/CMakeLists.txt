@@ -40,7 +40,7 @@ set(SRC
   gpencil_merge.cc
   gpencil_mesh.cc
   gpencil_ops.c
-  gpencil_ops_versioning.c
+  gpencil_ops_versioning.cc
   gpencil_paint.c
   gpencil_primitive.c
   gpencil_sculpt_paint.c
