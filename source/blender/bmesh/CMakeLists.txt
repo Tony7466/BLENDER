@@ -65,7 +65,7 @@ set(SRC
   intern/bmesh_core.h
   intern/bmesh_delete.cc
   intern/bmesh_delete.h
-  intern/bmesh_edgeloop.c
+  intern/bmesh_edgeloop.cc
   intern/bmesh_edgeloop.h
   intern/bmesh_inline.h
   intern/bmesh_interp.cc
