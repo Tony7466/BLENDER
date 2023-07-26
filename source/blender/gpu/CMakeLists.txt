@@ -57,7 +57,7 @@ set(SRC
   intern/gpu_drawlist.cc
   intern/gpu_framebuffer.cc
   intern/gpu_immediate.cc
-  intern/gpu_immediate_util.c
+  intern/gpu_immediate_util.cc
   intern/gpu_index_buffer.cc
   intern/gpu_init_exit.c
   intern/gpu_material.c
