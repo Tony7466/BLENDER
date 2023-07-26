@@ -22,6 +22,19 @@
 
 namespace blender::ed::greasepencil {
 
+void select_layer_channel(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer)
+{
+  using namespace blender::bke::greasepencil;
+
+  if (layer != nullptr) {
+    layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
+  }
+
+  if (grease_pencil->active_layer != layer) {
+    set_active_layer(grease_pencil, layer);
+  }
+}
+
 void set_active_layer(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer)
 {
   using namespace blender::bke::greasepencil;
