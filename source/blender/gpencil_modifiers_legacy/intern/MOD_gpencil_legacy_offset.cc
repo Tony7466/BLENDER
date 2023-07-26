@@ -64,7 +64,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* Change stroke offset. */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
                          bGPDframe *gpf,
@@ -104,7 +104,7 @@ static void deformStroke(GpencilModifierData *md,
 
   float rand[3][3];
   float rand_offset = BLI_hash_int_01(seed);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   if (is_randomized && mmd->mode == GP_OFFSET_RANDOM) {
     /* Get stroke index for random offset. */
@@ -165,7 +165,7 @@ static void deformStroke(GpencilModifierData *md,
   }
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     /* Verify vertex group. */
     const float weight = get_modifier_point_weight(
@@ -212,7 +212,7 @@ static void deformStroke(GpencilModifierData *md,
   BKE_gpencil_stroke_geometry_update(gpd, gps);
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -220,9 +220,9 @@ static void bakeModifier(struct Main *UNUSED(bmain),
   generic_bake_deform_stroke(depsgraph, md, ob, false, deformStroke);
 }
 
-static void updateDepsgraph(GpencilModifierData *UNUSED(md),
+static void updateDepsgraph(GpencilModifierData * /*md*/,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Offset Modifier");
 }
@@ -234,41 +234,41 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "location", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "rotation", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "location", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "rotation", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "scale", 0, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
   uiLayoutSetActive(layout, true);
 }
 
-static void empty_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void empty_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   uiLayoutSetPropSep(layout, true);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void random_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
   uiLayout *col;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   int mode = RNA_enum_get(ptr, "mode");
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
 
   uiItemR(layout, ptr, "random_offset", 0, IFACE_("Offset"), ICON_NONE);
   uiItemR(layout, ptr, "random_rotation", 0, IFACE_("Rotation"), ICON_NONE);
@@ -277,8 +277,8 @@ static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
   col = uiLayoutColumn(layout, true);
   switch (mode) {
     case GP_OFFSET_RANDOM:
-      uiItemR(layout, ptr, "use_uniform_random_scale", 0, NULL, ICON_NONE);
-      uiItemR(layout, ptr, "seed", 0, NULL, ICON_NONE);
+      uiItemR(layout, ptr, "use_uniform_random_scale", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "seed", 0, nullptr, ICON_NONE);
       break;
     case GP_OFFSET_STROKE:
       uiItemR(col, ptr, "stroke_step", 0, IFACE_("Stroke Step"), ICON_NONE);
@@ -296,7 +296,7 @@ static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -306,11 +306,11 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Offset, empty_panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "general", "General", NULL, panel_draw, panel_type);
+      region_type, "general", "General", nullptr, panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "randomize", "Advanced", NULL, random_panel_draw, panel_type);
+      region_type, "randomize", "Advanced", nullptr, random_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Offset = {
@@ -323,16 +323,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Offset = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
