@@ -20,7 +20,7 @@
 
 #include "eevee_private.h"
 
-void EEVEE_subsurface_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *UNUSED(vedata)) {}
+void EEVEE_subsurface_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data * /*vedata*/) {}
 
 void EEVEE_subsurface_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 {
@@ -93,16 +93,16 @@ void EEVEE_subsurface_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     GPU_FRAMEBUFFER_FREE_SAFE(fbl->sss_clear_fb);
     GPU_FRAMEBUFFER_FREE_SAFE(fbl->sss_accum_fb);
     DRW_TEXTURE_FREE_SAFE(txl->sss_accum);
-    effects->sss_stencil = NULL;
-    effects->sss_blur = NULL;
-    effects->sss_irradiance = NULL;
-    effects->sss_radius = NULL;
+    effects->sss_stencil = nullptr;
+    effects->sss_blur = nullptr;
+    effects->sss_irradiance = nullptr;
+    effects->sss_radius = nullptr;
   }
 }
 
-void EEVEE_subsurface_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_subsurface_output_init(EEVEE_ViewLayerData * /*sldata*/,
                                   EEVEE_Data *vedata,
-                                  uint UNUSED(tot_samples))
+                                  uint /*tot_samples*/)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_TextureList *txl = vedata->txl;
@@ -110,8 +110,8 @@ void EEVEE_subsurface_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_EffectsInfo *effects = stl->effects;
 
   const eGPUTextureFormat texture_format_light = GPU_RGBA32F;
-  const bool texture_created = txl->sss_accum == NULL;
-  DRW_texture_ensure_fullscreen_2d(&txl->sss_accum, texture_format_light, 0);
+  const bool texture_created = txl->sss_accum == nullptr;
+  DRW_texture_ensure_fullscreen_2d(&txl->sss_accum, texture_format_light, DRWTextureFlag(0));
 
   GPUTexture *stencil_tex = effects->sss_stencil;
 
@@ -172,7 +172,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   GPUTexture **depth_src = GPU_depth_blitting_workaround() ? &effects->sss_stencil : &dtxl->depth;
 
-  GPUTexture *sss_tex_profile = NULL;
+  GPUTexture *sss_tex_profile = nullptr;
   GPUUniformBuf *sss_profile = GPU_material_sss_profile_get(
       gpumat, stl->effects->sss_sample_count, &sss_tex_profile);
 
@@ -193,7 +193,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
   DRW_shgroup_stencil_mask(shgrp, sss_id);
 
   {
-    GPUSamplerState state = GPU_SAMPLER_DEFAULT;
+    GPUSamplerState state = GPUSamplerState::default_sampler();
 
     DRWShadingGroup *grp = DRW_shgroup_create(EEVEE_shaders_subsurface_first_pass_sh_get(),
                                               psl->sss_blur_ps);
@@ -205,7 +205,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     grp = DRW_shgroup_create(EEVEE_shaders_subsurface_second_pass_sh_get(), psl->sss_resolve_ps);
     DRW_shgroup_uniform_texture(grp, "utilTex", EEVEE_materials_get_util_tex());
@@ -217,7 +217,7 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 
   if (ma->blend_flag & MA_BL_TRANSLUCENCY) {
@@ -235,11 +235,11 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_stencil_mask(grp, sss_id);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
-void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_subsurface_data_render(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -327,14 +327,14 @@ void EEVEE_subsurface_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 }
 
-void EEVEE_subsurface_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_subsurface_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
 
-  if (((effects->enabled_effects & EFFECT_SSS) != 0) && (fbl->sss_accum_fb != NULL)) {
+  if (((effects->enabled_effects & EFFECT_SSS) != 0) && (fbl->sss_accum_fb != nullptr)) {
     /* Copy stencil channel, could be avoided (see EEVEE_subsurface_init) */
     GPU_framebuffer_blit(fbl->main_fb, 0, fbl->sss_accum_fb, 0, GPU_STENCIL_BIT);
 
