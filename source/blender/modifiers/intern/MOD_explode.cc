@@ -746,11 +746,11 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
 
   layers_num = CustomData_number_of_layers(&split_m->fdata_legacy, CD_MTFACE);
 
-  float(*split_m_positions)[3] = BKE_mesh_vert_positions_for_write(split_m);
+  blender::MutableSpan<blender::float3> split_m_positions = split_m->vert_positions_for_write();
 
   /* copy new faces & verts (is it really this painful with custom data??) */
   for (i = 0; i < totvert; i++) {
-    CustomData_copy_data(&mesh->vdata, &split_m->vdata, i, i, 1);
+    CustomData_copy_data(&mesh->vert_data, &split_m->vert_data, i, i, 1);
   }
 
   /* override original facepa (original pointer is saved in caller function) */
@@ -770,7 +770,7 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
     BLI_edgehashIterator_getKey(ehi, &ed_v1, &ed_v2);
     esplit = POINTER_AS_INT(BLI_edgehashIterator_getValue(ehi));
 
-    CustomData_copy_data(&split_m->vdata, &split_m->vdata, ed_v2, esplit, 1);
+    CustomData_copy_data(&split_m->vert_data, &split_m->vert_data, ed_v2, esplit, 1);
 
     dupve = split_m_positions[esplit];
     copy_v3_v3(dupve, split_m_positions[ed_v2]);
@@ -1004,7 +1004,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   psys_sim_data_init(&sim);
 
   const blender::Span<blender::float3> positions = mesh->vert_positions();
-  float(*explode_positions)[3] = BKE_mesh_vert_positions_for_write(explode);
+  blender::MutableSpan<blender::float3> explode_positions = explode->vert_positions_for_write();
 
   /* duplicate & displace vertices */
   ehi = BLI_edgehashIterator_new(vertpahash);
@@ -1017,7 +1017,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
     copy_v3_v3(explode_positions[v], positions[ed_v1]);
 
-    CustomData_copy_data(&mesh->vdata, &explode->vdata, ed_v1, v, 1);
+    CustomData_copy_data(&mesh->vert_data, &explode->vert_data, ed_v1, v, 1);
 
     copy_v3_v3(explode_positions[v], positions[ed_v1]);
 

@@ -584,10 +584,10 @@ static void bmo_get_loop_color_ref(BMesh *bm,
                                    int *r_cd_color_type)
 {
   Mesh me_query = blender::dna::shallow_zero_initialize();
-  CustomData_reset(&me_query.vdata);
-  CustomData_reset(&me_query.edata);
-  CustomData_reset(&me_query.pdata);
-  me_query.ldata = bm->ldata;
+  CustomData_reset(&me_query.vert_data);
+  CustomData_reset(&me_query.edge_data);
+  CustomData_reset(&me_query.face_data);
+  me_query.loop_data = bm->ldata;
   *((short *)me_query.id.name) = ID_ME;
 
   CustomDataLayer *layer = BKE_id_attribute_from_index(
