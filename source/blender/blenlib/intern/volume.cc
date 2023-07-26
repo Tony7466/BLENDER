@@ -20,6 +20,8 @@ const openvdb::MaskGrid::ConstPtr empty_grid_ = openvdb::MaskGrid::create();
 GridMask GridMask::from_bools(const volume::GridMask &full_mask,
                               const volume::Grid<bool> &selection)
 {
+  BLI_assert_unreachable();
+  return {};
 }
 
 bool GridMask::is_empty() const
@@ -108,6 +110,16 @@ GMutableGrid GMutableGrid::create(ResourceScope &scope,
   });
 
   return GMutableGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+}
+
+bool GMutableGrid::try_assign(const GGrid & /*other*/)
+{
+  return false;
+}
+
+bool GMutableGrid::try_copy_masked(const GGrid & /*other*/, const GridMask & /*mask*/)
+{
+  return false;
 }
 
 template<typename T>
@@ -212,11 +224,6 @@ GGrid GGrid::create(ResourceScope & /*scope*/,
                     const void * /*active_value*/)
 {
   return GGrid{};
-}
-
-bool GGrid::try_assign(const GGrid &other)
-{
-  return false;
 }
 
 template<typename T>

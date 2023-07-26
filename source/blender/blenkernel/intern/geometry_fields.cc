@@ -571,14 +571,14 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
     if (GAttributeGridWriter dst_attribute = attributes.lookup_grid_for_write(attribute_id)) {
       const bke::GeometryFieldContext field_context{component, domain};
-      fn::VolumeFieldEvaluator evaluator{field_context, domain_size};
+      fn::VolumeFieldEvaluator evaluator{field_context};
       evaluator.add(validator.validate_field_if_necessary(field));
       evaluator.set_selection(selection);
       evaluator.evaluate();
 
-      const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+      const volume::GridMask selection = evaluator.get_evaluated_selection_as_mask();
 
-      array_utils::copy(evaluator.get_evaluated(0), selection, dst_attribute.span);
+      dst_attribute.grid.try_copy_masked(evaluator.get_evaluated(0), selection);
 
       dst_attribute.finish();
       return true;

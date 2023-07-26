@@ -145,7 +145,9 @@ class GridMask {
   GridMask(const GridMask &other) = default;
   GridMask &operator=(const GridMask &other)
   {
+#ifdef WITH_OPENVDB
     grid_ = other.grid_;
+#endif
     return *this;
   }
 
@@ -197,7 +199,9 @@ class GMutableGrid {
 
   operator GGrid() const
   {
-    return {grid_};
+#ifdef WITH_OPENVDB
+    return GGrid{grid_};
+#endif
   }
 
   /* Create an empty grid with a background value. */
@@ -213,7 +217,8 @@ class GMutableGrid {
                              const void *inactive_value,
                              const void *active_value);
 
-  bool try_assign(const GMutableGrid &other);
+  bool try_assign(const GGrid &other);
+  bool try_copy_masked(const GGrid &other, const GridMask &selection);
 
   int64_t voxel_count() const;
   bool is_empty() const;

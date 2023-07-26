@@ -62,7 +62,7 @@ template<typename T> struct AttributeGridWriter {
   /**
    * Grid pointer giving read and write access to the attribute. This may be empty.
    */
-  volume::Grid<T> grid;
+  volume::MutableGrid<T> grid;
   /**
    * Domain where the attribute is stored on the geometry. Also determines the size of the
    * virtual array.
@@ -121,7 +121,7 @@ struct GAttributeGridReader {
  * A generic version of #AttributeWriter.
  */
 struct GAttributeGridWriter {
-  volume::GGrid &grid;
+  volume::GMutableGrid &grid;
   eAttrDomain domain;
   std::function<void()> tag_modified_fn;
 
