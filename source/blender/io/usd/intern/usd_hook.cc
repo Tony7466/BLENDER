@@ -102,9 +102,7 @@ struct USDSceneExportContext {
 struct USDMaterialExportContext {
   USDMaterialExportContext() {}
 
-  USDMaterialExportContext(pxr::UsdStageRefPtr in_stage) : stage(in_stage)
-  {
-  }
+  USDMaterialExportContext(pxr::UsdStageRefPtr in_stage) : stage(in_stage) {}
 
   pxr::UsdStageRefPtr get_stage()
   {
@@ -181,10 +179,8 @@ static void handle_python_error(USDHook *hook)
   python::object formatted = python::str("\n").join(formatted_list);
   std::string err_msg = python::extract<std::string>(formatted);
 
-  WM_reportf(RPT_ERROR,
-             "An exception occurred invoking USD hook '%s':\n%s",
-             hook->name,
-             err_msg.c_str());
+  WM_reportf(
+      RPT_ERROR, "An exception occurred invoking USD hook '%s':\n%s", hook->name, err_msg.c_str());
 }
 
 class USDHookCall {
