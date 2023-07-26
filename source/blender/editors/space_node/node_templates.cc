@@ -26,6 +26,7 @@
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
+#include "BKE_node_tree_interface.hh"
 #include "BKE_node_tree_update.h"
 
 #include "RNA_access.h"
@@ -323,7 +324,6 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
   /* XXX this should become a callback for node types! */
   if (arg->node_type->type == NODE_GROUP) {
     bNodeTree *ngroup;
-    int i;
 
     for (ngroup = (bNodeTree *)arg->bmain->nodetrees.first; ngroup;
          ngroup = (bNodeTree *)ngroup->id.next)
@@ -335,7 +335,6 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       }
     }
 
-    i = 0;
     for (ngroup = (bNodeTree *)arg->bmain->nodetrees.first; ngroup;
          ngroup = (bNodeTree *)ngroup->id.next)
     {
@@ -345,17 +344,19 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
         continue;
       }
 
-      ListBase *lb = (in_out == SOCK_IN ? &ngroup->inputs : &ngroup->outputs);
-      bNodeSocket *stemp;
-      int index;
-      for (stemp = (bNodeSocket *)lb->first, index = 0; stemp; stemp = stemp->next, index++, i++) {
+      Span<bNodeTreeInterfaceSocket *> iosockets = (in_out == SOCK_IN ?
+                                                        ngroup->interface_cache().inputs :
+                                                        ngroup->interface_cache().outputs);
+      for (const int index : iosockets.index_range()) {
+        bNodeTreeInterfaceSocket *iosock = iosockets[index];
         NodeLinkItem item;
         item.socket_index = index;
         /* NOTE: int stemp->type is not fully reliable, not used for node group
          * interface sockets. use the typeinfo->type instead.
          */
-        item.socket_type = stemp->typeinfo->type;
-        item.socket_name = stemp->name;
+        const bNodeSocketType *typeinfo = iosock->socket_typeinfo();
+        item.socket_type = typeinfo->type;
+        item.socket_name = iosock->name;
         item.node_name = ngroup->id.name + 2;
         item.ngroup = ngroup;
 
