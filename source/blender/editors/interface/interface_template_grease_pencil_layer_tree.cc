@@ -14,7 +14,6 @@
 #include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
-#include "interface_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
@@ -166,33 +165,6 @@ class LayerViewItem : public AbstractTreeViewItem {
     uiLayoutSetPropDecorate(sub, false);
 
     build_layer_buttons(*sub);
-  }
-
-  void add_treerow_button(uiBlock &block)
-  {
-
-    PointerRNA layer_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, &layer_, &layer_ptr);
-
-    view_item_but_ = (uiButViewItem *)uiDefBut(&block,
-                                               UI_BTYPE_VIEW_ITEM,
-                                               0,
-                                               "",
-                                               0,
-                                               0,
-                                               UI_UNIT_X * 10,
-                                               UI_UNIT_Y,
-                                               nullptr,
-                                               0,
-                                               grease_pencil_.layers().first_index(&layer_),
-                                               0,
-                                               0,
-                                               "Grease Pencil Layer");
-    UI_but_flag_enable(view_item_but_, UI_BUT_UNDO);
-
-    view_item_but_->view_item = reinterpret_cast<uiViewItemHandle *>(this);
-    view_item_but_->rnaprop = RNA_struct_find_property(&layer_ptr, "active_index");
-    view_item_but_->rnapoin = layer_ptr;
   }
 
   bool supports_collapsing() const override
