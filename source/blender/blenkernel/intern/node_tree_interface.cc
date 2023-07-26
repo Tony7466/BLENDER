@@ -134,7 +134,16 @@ static void *make_socket_data(const char *socket_type)
   id_us_plus(reinterpret_cast<ID *>(dst.value));
 }
 /* Default implementation */
-template<typename T> static void socket_data_copy(T & /*dst*/, const T & /*src*/) {}
+template<typename T> static void socket_data_copy_impl(T & /*dst*/, const T & /*src*/) {}
+
+static void socket_data_copy(bNodeTreeInterfaceSocket &dst, const bNodeTreeInterfaceSocket &src)
+{
+  socket_data_to_static_type_tag(dst.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    dst.socket_data = MEM_dupallocN(src.socket_data);
+    socket_data_copy_impl(get_data<SocketDataType>(dst), get_data<SocketDataType>(src));
+  });
+}
 
 /** \} */
 
@@ -219,6 +228,8 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket)
   BLO_write_struct(writer, bNodeSocketValueMaterial, &data);
 }
 
+/* Note: no default implementation, every used type must write at least the base struct. */
+
 static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &socket)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
@@ -227,8 +238,6 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
   });
 }
 
-/* Note: no default implementation, every used type must write at least the base struct. */
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -236,16 +245,16 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
  * \{ */
 
 /* Default implementation */
-template<typename T>
-static void socket_data_read_data_impl(BlendDataReader * /*reader*/, T & /*data*/)
+template<typename T> static void socket_data_read_data_impl(BlendDataReader *reader, T *data)
 {
+  BLO_read_data_address(reader, &data);
 }
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_read_data_impl(reader, get_data<SocketDataType>(socket));
+    socket_data_read_data_impl(reader, &get_data<SocketDataType>(socket));
   });
 }
 
@@ -255,6 +264,36 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
 /** \name Read ID pointer data
  * \{ */
 
+[[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
+                                                       ID *id,
+                                                       bNodeSocketValueObject &data)
+{
+  BLO_read_id_address(reader, id, &data.value);
+}
+[[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
+                                                       ID *id,
+                                                       bNodeSocketValueImage &data)
+{
+  BLO_read_id_address(reader, id, &data.value);
+}
+[[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
+                                                       ID *id,
+                                                       bNodeSocketValueCollection &data)
+{
+  BLO_read_id_address(reader, id, &data.value);
+}
+[[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
+                                                       ID *id,
+                                                       bNodeSocketValueTexture &data)
+{
+  BLO_read_id_address(reader, id, &data.value);
+}
+[[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
+                                                       ID *id,
+                                                       bNodeSocketValueMaterial &data)
+{
+  BLO_read_id_address(reader, id, &data.value);
+}
 /* Default implementation */
 template<typename T>
 static void socket_data_read_lib_impl(BlendLibReader * /*reader*/, ID * /*id*/, T & /*data*/)
@@ -275,14 +314,42 @@ static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterf
 /** \name Expand socket data
  * \{ */
 
+[[maybe_unused]] static void socket_data_expand_impl(BlendExpander *expander,
+                                                     bNodeSocketValueObject &data)
+{
+  BLO_expand(expander, &data.value);
+}
+[[maybe_unused]] static void socket_data_expand_impl(BlendExpander *expander,
+                                                     bNodeSocketValueImage &data)
+{
+  BLO_expand(expander, &data.value);
+}
+[[maybe_unused]] static void socket_data_expand_impl(BlendExpander *expander,
+                                                     bNodeSocketValueCollection &data)
+{
+  BLO_expand(expander, &data.value);
+}
+[[maybe_unused]] static void socket_data_expand_impl(BlendExpander *expander,
+                                                     bNodeSocketValueTexture &data)
+{
+  BLO_expand(expander, &data.value);
+}
+[[maybe_unused]] static void socket_data_expand_impl(BlendExpander *expander,
+                                                     bNodeSocketValueMaterial &data)
+{
+  BLO_expand(expander, &data.value);
+}
 /* Default implementation */
-template<typename T> static void socket_data_expand(BlendExpander * /*expander*/, T & /*data*/) {}
+template<typename T>
+static void socket_data_expand_impl(BlendExpander * /*expander*/, T & /*data*/)
+{
+}
 
 static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket &socket)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_expand(expander, get_data<SocketDataType>(socket));
+    socket_data_expand_impl(expander, get_data<SocketDataType>(socket));
   });
 }
 
@@ -378,7 +445,6 @@ static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem 
       dst_socket.uid_compat = src_socket.uid_compat ? BLI_strdup(src_socket.uid_compat) : nullptr;
 
       if (src_socket.socket_data != nullptr) {
-        dst_socket.socket_data = MEM_dupallocN(src_socket.socket_data);
         socket_types::socket_data_copy(dst_socket, src_socket);
       }
       break;
