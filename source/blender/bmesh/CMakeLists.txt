@@ -147,7 +147,7 @@ set(SRC
   tools/bmesh_path_region.h
   tools/bmesh_path_region_uv.cc
   tools/bmesh_path_region_uv.h
-  tools/bmesh_path_uv.c
+  tools/bmesh_path_uv.cc
   tools/bmesh_path_uv.h
   tools/bmesh_region_match.c
   tools/bmesh_region_match.h
