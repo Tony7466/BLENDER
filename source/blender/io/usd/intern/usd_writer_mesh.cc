@@ -92,10 +92,11 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
         /* Skipping "internal" Blender properties. Skipping
          * material_index as it's dealt with elsewhere. Skipping
-         * edge sharp and crease because USD doesn't have a
+         * edge domain because USD doesn't have a good
          * conversion for them. */
         if (attribute_id.name()[0] == '.' || attribute_id.is_anonymous() ||
-            ELEM(attribute_id.name(), "position", "material_index", "sharp_edge", "crease_edge"))
+            meta_data.domain == ATTR_DOMAIN_EDGE ||
+            ELEM(attribute_id.name(), "position", "material_index"))
         {
           return true;
         }
