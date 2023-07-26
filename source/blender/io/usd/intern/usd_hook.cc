@@ -149,6 +149,7 @@ void register_export_hook_converters()
   PyGILState_Release(gilstate);
 }
 
+/* Retrieve and report the current Python error. */
 static void handle_python_error(USDHook *hook)
 {
   PyObject *ptype = nullptr;
@@ -183,8 +184,15 @@ static void handle_python_error(USDHook *hook)
       RPT_ERROR, "An exception occurred invoking USD hook '%s':\n%s", hook->name, err_msg.c_str());
 }
 
-class USDHookCall {
+/* Abstract base class to facilitate calling a function with a given
+ * signature defined by the registered USDHook classes.  Subclasses
+ * override virtual methods to specify the hook function name and to
+ * call the hook with the required arguments.
+ */
+class USDHookInvoker {
  public:
+
+  /* Attempt to call the function, if defined by the registered hooks. */
   void call() const
   {
     if (g_usd_hooks.empty()) {
@@ -230,16 +238,21 @@ class USDHookCall {
   }
 
  protected:
+  /* Override to specify the name of the function to be called. */
   virtual const char *function_name() const = 0;
+  /* Override to call the function of the given object with the
+   * required arguments, e.g.,
+   *
+   * python::call_method<void>(hook_obj, function_name(), arg1, arg2); */
   virtual void call_hook(PyObject *hook_obj) const = 0;
 };
 
-class OnExportCall : public USDHookCall {
+class OnExportInvoker : public USDHookInvoker {
  private:
   USDSceneExportContext hook_context_;
 
  public:
-  OnExportCall(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph) : hook_context_(stage, depsgraph)
+  OnExportInvoker(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph) : hook_context_(stage, depsgraph)
   {
   }
 
@@ -255,16 +268,16 @@ class OnExportCall : public USDHookCall {
   }
 };
 
-class OnMaterialExportCall : public USDHookCall {
+class OnMaterialExportInvoker : public USDHookInvoker {
  private:
   USDMaterialExportContext hook_context_;
   pxr::UsdShadeMaterial usd_material_;
   PointerRNA material_ptr_;
 
  public:
-  OnMaterialExportCall(pxr::UsdStageRefPtr stage,
-                       Material *material,
-                       pxr::UsdShadeMaterial &usd_material)
+  OnMaterialExportInvoker(pxr::UsdStageRefPtr stage,
+                          Material *material,
+                          pxr::UsdShadeMaterial &usd_material)
       : hook_context_(stage), usd_material_(usd_material)
   {
     RNA_pointer_create(NULL, &RNA_Material, material, &material_ptr_);
@@ -289,7 +302,7 @@ void call_export_hooks(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
     return;
   }
 
-  OnExportCall on_export(stage, depsgraph);
+  OnExportInvoker on_export(stage, depsgraph);
   on_export.call();
 }
 
@@ -301,7 +314,7 @@ void call_material_export_hooks(pxr::UsdStageRefPtr stage,
     return;
   }
 
-  OnMaterialExportCall on_material_export(stage, material, usd_material);
+  OnMaterialExportInvoker on_material_export(stage, material, usd_material);
   on_material_export.call();
 }
 
