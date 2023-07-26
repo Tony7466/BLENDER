@@ -47,10 +47,9 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     const IndexRange cyclic_curves,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const int total_points = vert_indices.size();
-  bke::CurvesGeometry curves(total_points, curve_offsets.size());
+  bke::CurvesGeometry curves(vert_indices.size(), curve_offsets.size());
   curves.offsets_for_write().drop_back(1).copy_from(curve_offsets);
-  curves.offsets_for_write().last() = total_points;
+  curves.offsets_for_write().last() = vert_indices.size();
   curves.fill_curve_types(CURVE_TYPE_POLY);
 
   bke::MutableAttributeAccessor curves_attributes = curves.attributes_for_write();
@@ -60,16 +59,16 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
   }
 
   const int src_total_points = mesh_attributes.domain_size(ATTR_DOMAIN_POINT);
-  const bool share_vert_data = indices_are_full_ordered_copy(vert_indices);
-  const bool same_size = total_points == src_total_points;
-  if (share_vert_data && same_size) {
+  const bool share_vert_data = vert_indices.size() == src_total_points &&
+                               indices_are_full_ordered_copy(vert_indices);
+  if (share_vert_data) {
     bke::copy_attributes(
         mesh_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves_attributes);
   }
 
   mesh_attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-        if (share_vert_data && same_size) {
+        if (share_vert_data) {
           if (meta_data.domain == ATTR_DOMAIN_POINT) {
             return true;
           }
@@ -91,7 +90,7 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
         }
         bke::GSpanAttributeWriter dst = curves_attributes.lookup_or_add_for_write_only_span(
             id, ATTR_DOMAIN_POINT, meta_data.data_type);
-        if (share_vert_data && same_size) {
+        if (share_vert_data) {
           array_utils::copy(*src, dst.span);
         }
         else {
