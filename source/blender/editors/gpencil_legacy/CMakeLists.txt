@@ -23,7 +23,7 @@ set(INC_SYS
 set(SRC
   annotate_draw.cc
   annotate_paint.cc
-  drawgpencil.c
+  drawgpencil.cc
   editaction_gpencil.c
   gpencil_add_blank.c
   gpencil_add_lineart.c
