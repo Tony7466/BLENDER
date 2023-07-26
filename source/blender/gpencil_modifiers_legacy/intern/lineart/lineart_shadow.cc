@@ -40,7 +40,7 @@ LineartElementLinkNode *lineart_find_matching_eln(ListBase *shadow_elns, int obi
       return eln;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 LineartEdge *lineart_find_matching_edge(LineartElementLinkNode *shadow_eln,
@@ -52,7 +52,7 @@ LineartEdge *lineart_find_matching_edge(LineartElementLinkNode *shadow_eln,
       return &elist[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static bool lineart_contour_viewed_from_dark_side(LineartData *ld, LineartEdge *e)
@@ -127,8 +127,8 @@ void lineart_register_intersection_shadow_cuts(LineartData *ld, ListBase *shadow
     return;
   }
 
-  LineartElementLinkNode *eln_isect_shadow = NULL;
-  LineartElementLinkNode *eln_isect_original = NULL;
+  LineartElementLinkNode *eln_isect_shadow = nullptr;
+  LineartElementLinkNode *eln_isect_original = nullptr;
 
   LISTBASE_FOREACH (LineartElementLinkNode *, eln, shadow_elns) {
     if (eln->flags & LRT_ELEMENT_INTERSECTION_DATA) {
@@ -297,7 +297,7 @@ static void lineart_shadow_create_shadow_edge_array(LineartData *ld,
                                                     bool transform_edge_cuts,
                                                     bool do_light_contour)
 {
-  /* If the segment is short enough, we ignore them because it's not prominently visible anyway. */
+/* If the segment is short enough, we ignore them because it's not prominently visible anyway. */
 #define DISCARD_NONSENSE_SEGMENTS \
   if (es->occlusion != 0 || \
       (es->next && LRT_DOUBLE_CLOSE_ENOUGH(es->ratio, ((LineartEdgeSegment *)es->next)->ratio))) \
@@ -358,10 +358,10 @@ static void lineart_shadow_create_shadow_edge_array(LineartData *ld,
   }
   LRT_ITER_ALL_LINES_END
 
-  LineartShadowEdge *sedge = lineart_mem_acquire(&ld->render_data_pool,
-                                                 sizeof(LineartShadowEdge) * segment_count);
-  LineartShadowSegment *sseg = lineart_mem_acquire(
-      &ld->render_data_pool, sizeof(LineartShadowSegment) * segment_count * 2);
+  LineartShadowEdge *sedge = static_cast<LineartShadowEdge *>(
+      lineart_mem_acquire(&ld->render_data_pool, sizeof(LineartShadowEdge) * segment_count));
+  LineartShadowSegment *sseg = static_cast<LineartShadowSegment *>(lineart_mem_acquire(
+      &ld->render_data_pool, sizeof(LineartShadowSegment) * segment_count * 2));
 
   ld->shadow_edges = sedge;
   ld->shadow_edges_count = segment_count;
@@ -496,9 +496,12 @@ static void lineart_shadow_edge_cut(LineartData *ld,
                                     uint32_t target_reference)
 {
   LineartShadowSegment *seg, *i_seg;
-  LineartShadowSegment *cut_start_after = e->shadow_segments.first,
-                       *cut_end_before = e->shadow_segments.last;
-  LineartShadowSegment *new_seg_1 = NULL, *new_seg_2 = NULL, *seg_1 = NULL, *seg_2 = NULL;
+  LineartShadowSegment *cut_start_after = static_cast<LineartShadowSegment *>(
+                           e->shadow_segments.first),
+                       *cut_end_before = static_cast<LineartShadowSegment *>(
+                           e->shadow_segments.last);
+  LineartShadowSegment *new_seg_1 = nullptr, *new_seg_2 = nullptr, *seg_1 = nullptr,
+                       *seg_2 = nullptr;
   int untouched = 0;
 
   /* If for some reason the occlusion function may give a result that has zero length, or
@@ -525,13 +528,13 @@ static void lineart_shadow_edge_cut(LineartData *ld,
   /* Begin looking for starting position of the segment. */
   /* Not using a list iteration macro because of it more clear when using for loops to iterate
    * through the segments. */
-  for (seg = e->shadow_segments.first; seg; seg = seg->next) {
+  for (seg = static_cast<LineartShadowSegment *>(e->shadow_segments.first); seg; seg = seg->next) {
     if (LRT_DOUBLE_CLOSE_ENOUGH(seg->ratio, start)) {
       cut_start_after = seg;
       new_seg_1 = cut_start_after;
       break;
     }
-    if (seg->next == NULL) {
+    if (seg->next == nullptr) {
       break;
     }
     i_seg = seg->next;
@@ -569,10 +572,10 @@ static void lineart_shadow_edge_cut(LineartData *ld,
   }
 
   /* When we still can't find any existing cut in the line, we allocate new ones. */
-  if (new_seg_1 == NULL) {
+  if (new_seg_1 == nullptr) {
     new_seg_1 = lineart_give_shadow_segment(ld);
   }
-  if (new_seg_2 == NULL) {
+  if (new_seg_2 == nullptr) {
     if (untouched) {
       new_seg_2 = new_seg_1;
       cut_end_before = new_seg_2;
@@ -969,22 +972,22 @@ static bool lineart_shadow_cast_generate_edges(LineartData *ld,
   if (!edge_alloc) {
     return false;
   }
-  LineartElementLinkNode *veln = lineart_mem_acquire(ld->shadow_data_pool,
-                                                     sizeof(LineartElementLinkNode));
-  LineartElementLinkNode *eeln = lineart_mem_acquire(ld->shadow_data_pool,
-                                                     sizeof(LineartElementLinkNode));
+  LineartElementLinkNode *veln = static_cast<LineartElementLinkNode *>(
+      lineart_mem_acquire(ld->shadow_data_pool, sizeof(LineartElementLinkNode)));
+  LineartElementLinkNode *eeln = static_cast<LineartElementLinkNode *>(
+      lineart_mem_acquire(ld->shadow_data_pool, sizeof(LineartElementLinkNode)));
   veln->pointer = lineart_mem_acquire(ld->shadow_data_pool, sizeof(LineartVert) * edge_alloc * 2);
   eeln->pointer = lineart_mem_acquire(ld->shadow_data_pool, sizeof(LineartEdge) * edge_alloc);
-  LineartEdgeSegment *es = lineart_mem_acquire(ld->shadow_data_pool,
-                                               sizeof(LineartEdgeSegment) * edge_alloc);
+  LineartEdgeSegment *es = static_cast<LineartEdgeSegment *>(
+      lineart_mem_acquire(ld->shadow_data_pool, sizeof(LineartEdgeSegment) * edge_alloc));
   *r_veln = veln;
   *r_eeln = eeln;
 
   veln->element_count = edge_alloc * 2;
   eeln->element_count = edge_alloc;
 
-  LineartVert *vlist = veln->pointer;
-  LineartEdge *elist = eeln->pointer;
+  LineartVert *vlist = static_cast<LineartVert *>(veln->pointer);
+  LineartEdge *elist = static_cast<LineartEdge *>(eeln->pointer);
 
   int ei = 0;
   for (int i = 0; i < ld->shadow_edges_count; i++) {
@@ -1082,7 +1085,7 @@ static void lineart_shadow_register_enclosed_shapes(LineartData *ld, LineartData
     if (e->min_occ > 0) {
       continue;
     }
-    for (es = e->segments.first; es; es = es->next) {
+    for (es = static_cast<LineartEdgeSegment *>(e->segments.first); es; es = es->next) {
       if (es->occlusion > 0) {
         continue;
       }
@@ -1157,7 +1160,8 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
     }
   }
 
-  LineartData *ld = MEM_callocN(sizeof(LineartData), "LineArt render buffer copied");
+  LineartData *ld = static_cast<LineartData *>(
+      MEM_callocN(sizeof(LineartData), "LineArt render buffer copied"));
   memcpy(ld, original_ld, sizeof(LineartData));
 
   BLI_spin_init(&ld->lock_task);
@@ -1234,7 +1238,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
   lineart_main_get_view_vector(ld);
 
   lineart_main_load_geometries(
-      depsgraph, scene, NULL, ld, lmd->flags & LRT_ALLOW_DUPLI_OBJECTS, true, NULL);
+      depsgraph, scene, nullptr, ld, lmd->flags & LRT_ALLOW_DUPLI_OBJECTS, true, nullptr);
 
   if (!ld->geom.vertex_buffer_pointers.first) {
     /* No geometry loaded, return early. */
@@ -1283,15 +1287,15 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
   return any_generated;
 }
 
-typedef struct LineartShadowFinalizeData {
+struct LineartShadowFinalizeData {
   LineartData *ld;
   LineartVert *v;
   LineartEdge *e;
-} LineartShadowFinalizeData;
+};
 
 static void lineart_shadow_transform_task(void *__restrict userdata,
                                           const int element_index,
-                                          const TaskParallelTLS *__restrict UNUSED(tls))
+                                          const TaskParallelTLS *__restrict /*tls*/)
 {
   LineartShadowFinalizeData *data = (LineartShadowFinalizeData *)userdata;
   LineartData *ld = data->ld;
@@ -1299,8 +1303,9 @@ static void lineart_shadow_transform_task(void *__restrict userdata,
   mul_v4_m4v3_db(v->fbcoord, ld->conf.view_projection, v->gloc);
 }
 
-static void lineart_shadow_finalize_shadow_edges_task(
-    void *__restrict userdata, const int i, const TaskParallelTLS *__restrict UNUSED(tls))
+static void lineart_shadow_finalize_shadow_edges_task(void *__restrict userdata,
+                                                      const int i,
+                                                      const TaskParallelTLS *__restrict /*tls*/)
 {
   LineartShadowFinalizeData *data = (LineartShadowFinalizeData *)userdata;
   LineartData *ld = data->ld;
@@ -1382,7 +1387,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
 
   if (shadow_ld->pending_edges.array) {
     MEM_freeN(shadow_ld->pending_edges.array);
-    shadow_ld->pending_edges.array = NULL;
+    shadow_ld->pending_edges.array = nullptr;
     shadow_ld->pending_edges.next = shadow_ld->pending_edges.max = 0;
   }
 
@@ -1394,7 +1399,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
     return;
   }
 
-  LineartVert *v = shadow_veln->pointer;
+  LineartVert *v = static_cast<LineartVert *>(shadow_veln->pointer);
   for (int i = 0; i < shadow_veln->element_count; i++) {
     mul_v4_m4v3_db(v[i].fbcoord, shadow_ld->conf.view_projection, v[i].gloc);
     if (shadow_ld->conf.cam_is_persp) {
@@ -1405,7 +1410,7 @@ void lineart_main_make_enclosed_shapes(LineartData *ld, LineartData *shadow_ld)
   lineart_finalize_object_edge_array_reserve(&shadow_ld->pending_edges,
                                              shadow_eeln->element_count);
 
-  LineartEdge *se = shadow_eeln->pointer;
+  LineartEdge *se = static_cast<LineartEdge *>(shadow_eeln->pointer);
   for (int i = 0; i < shadow_eeln->element_count; i++) {
     lineart_add_edge_to_array(&shadow_ld->pending_edges, &se[i]);
   }
