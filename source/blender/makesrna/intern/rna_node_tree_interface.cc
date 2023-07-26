@@ -183,6 +183,8 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
     ReportList *reports,
     const char *name,
     const char *description,
+    bool is_input,
+    bool is_output,
     int socket_type_enum,
     bNodeTreeInterfacePanel *parent)
 {
@@ -207,9 +209,12 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
   }
   const char *socket_type = typeinfo->idname;
 
-  const eNodeTreeInterfaceSocketFlag default_flags = NODE_INTERFACE_SOCKET_INPUT;
+  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  SET_FLAG_FROM_TEST(flag, is_input, NODE_INTERFACE_SOCKET_INPUT);
+  SET_FLAG_FROM_TEST(flag, is_output, NODE_INTERFACE_SOCKET_OUTPUT);
+
   bNodeTreeInterfaceSocket *socket = interface->add_socket(
-      name, description, socket_type, default_flags, parent);
+      name, description, socket_type, flag, parent);
 
   if (socket == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
@@ -619,6 +624,8 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of the socket");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_string(func, "description", nullptr, 0, "Description", "Description of the socket");
+  RNA_def_boolean(func, "is_input", false, "Is Input", "Create an input socket");
+  RNA_def_boolean(func, "is_output", false, "Is Output", "Create an output socket");
   parm = RNA_def_enum(func,
                       "socket_type",
                       DummyRNA_DEFAULT_items,
