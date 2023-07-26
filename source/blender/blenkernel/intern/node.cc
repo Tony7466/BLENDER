@@ -4967,9 +4967,9 @@ void BKE_node_system_exit()
       if (st->ext_socket.free) {
         st->ext_socket.free(st->ext_socket.data);
       }
-      if (st->ext_interface.free) {
-        st->ext_interface.free(st->ext_interface.data);
-      }
+      //      if (st->ext_interface.free) {
+      //        st->ext_interface.free(st->ext_interface.data);
+      //      }
       if (st->ext_interface_new.free) {
         st->ext_interface_new.free(st->ext_interface_new.data);
       }
