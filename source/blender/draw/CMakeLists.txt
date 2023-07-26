@@ -121,7 +121,7 @@ set(SRC
   engines/eevee/eevee_lut_gen.cc
   engines/eevee/eevee_materials.cc
   engines/eevee/eevee_mist.cc
-  engines/eevee/eevee_motion_blur.c
+  engines/eevee/eevee_motion_blur.cc
   engines/eevee/eevee_occlusion.c
   engines/eevee/eevee_render.c
   engines/eevee/eevee_renderpasses.c

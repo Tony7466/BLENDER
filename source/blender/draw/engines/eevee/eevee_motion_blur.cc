@@ -36,7 +36,7 @@
 #include "GPU_texture.h"
 #include "eevee_private.h"
 
-int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+int EEVEE_motion_blur_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -55,9 +55,9 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
   if ((effects->motion_blur_max > 0) && (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED)) {
     if (DRW_state_is_scene_render()) {
       int mb_step = effects->motion_blur_step;
-      DRW_view_viewmat_get(NULL, effects->motion_blur.camera[mb_step].viewmat, false);
-      DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persmat, false);
-      DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persinv, true);
+      DRW_view_viewmat_get(nullptr, effects->motion_blur.camera[mb_step].viewmat, false);
+      DRW_view_persmat_get(nullptr, effects->motion_blur.camera[mb_step].persmat, false);
+      DRW_view_persmat_get(nullptr, effects->motion_blur.camera[mb_step].persinv, true);
     }
 
     const float *fs_size = DRW_viewport_size_get();
@@ -98,16 +98,16 @@ static void eevee_motion_blur_sync_camera(EEVEE_Data *vedata)
   EEVEE_EffectsInfo *effects = vedata->stl->effects;
   if (DRW_state_is_scene_render()) {
     int mb_step = effects->motion_blur_step;
-    DRW_view_viewmat_get(NULL, effects->motion_blur.camera[mb_step].viewmat, false);
-    DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persmat, false);
-    DRW_view_persmat_get(NULL, effects->motion_blur.camera[mb_step].persinv, true);
+    DRW_view_viewmat_get(nullptr, effects->motion_blur.camera[mb_step].viewmat, false);
+    DRW_view_persmat_get(nullptr, effects->motion_blur.camera[mb_step].persmat, false);
+    DRW_view_persmat_get(nullptr, effects->motion_blur.camera[mb_step].persinv, true);
   }
 
-  effects->motion_blur_near_far[0] = fabsf(DRW_view_near_distance_get(NULL));
-  effects->motion_blur_near_far[1] = fabsf(DRW_view_far_distance_get(NULL));
+  effects->motion_blur_near_far[0] = fabsf(DRW_view_near_distance_get(nullptr));
+  effects->motion_blur_near_far[1] = fabsf(DRW_view_far_distance_get(nullptr));
 }
 
-void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
@@ -135,17 +135,19 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       GPUShader *sh = EEVEE_shaders_effect_motion_blur_velocity_tiles_sh_get();
       grp = DRW_shgroup_create(sh, psl->velocity_tiles_x);
       DRW_shgroup_uniform_texture(grp, "velocityBuffer", effects->velocity_tx);
-      DRW_shgroup_uniform_ivec2_copy(grp, "velocityBufferSize", (int[2]){fs_size[0], fs_size[1]});
+      DRW_shgroup_uniform_ivec2_copy(
+          grp, "velocityBufferSize", blender::int2{int(fs_size[0]), int(fs_size[1])});
       DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
       DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
-      DRW_shgroup_uniform_ivec2_copy(grp, "gatherStep", (int[2]){1, 0});
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_uniform_ivec2_copy(grp, "gatherStep", blender::int2{1, 0});
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
       grp = DRW_shgroup_create(sh, psl->velocity_tiles);
       DRW_shgroup_uniform_texture(grp, "velocityBuffer", effects->velocity_tiles_x_tx);
-      DRW_shgroup_uniform_ivec2_copy(grp, "velocityBufferSize", (int[2]){tx_size[0], fs_size[1]});
-      DRW_shgroup_uniform_ivec2_copy(grp, "gatherStep", (int[2]){0, 1});
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_uniform_ivec2_copy(
+          grp, "velocityBufferSize", blender::int2{tx_size[0], int(fs_size[1])});
+      DRW_shgroup_uniform_ivec2_copy(grp, "gatherStep", blender::int2{0, 1});
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
       /* Expand max tiles by keeping the max tile in each tile neighborhood. */
       DRW_PASS_CREATE(psl->velocity_tiles_expand[0], DRW_STATE_WRITE_COLOR);
@@ -158,12 +160,12 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
         DRW_shgroup_uniform_texture(grp, "velocityBuffer", tile_tx);
         DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
         DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
-        DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+        DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
       }
     }
     {
       DRW_PASS_CREATE(psl->motion_blur, DRW_STATE_WRITE_COLOR);
-      const GPUSamplerState state = GPU_SAMPLER_DEFAULT;
+      const GPUSamplerState state = GPUSamplerState::default_sampler();
       int expand_steps = 1 + (max_ii(0, effects->motion_blur_max - 1) / EEVEE_VELOCITY_TILE_SIZE);
       GPUTexture *tile_tx = (expand_steps & 1) ? effects->velocity_tiles_x_tx :
                                                  effects->velocity_tiles_tx;
@@ -176,11 +178,11 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
       DRW_shgroup_uniform_texture(grp, "tileMaxBuffer", tile_tx);
       DRW_shgroup_uniform_float_copy(grp, "depthScale", scene->eevee.motion_blur_depth_scale);
       DRW_shgroup_uniform_vec2(grp, "nearFar", effects->motion_blur_near_far, 1);
-      DRW_shgroup_uniform_bool_copy(grp, "isPerspective", DRW_view_is_persp_get(NULL));
+      DRW_shgroup_uniform_bool_copy(grp, "isPerspective", DRW_view_is_persp_get(nullptr));
       DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
       DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
       DRW_shgroup_uniform_ivec2_copy(grp, "tileBufferSize", tx_size);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     }
     {
       DRW_PASS_CREATE(psl->velocity_object, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
@@ -205,13 +207,13 @@ void EEVEE_motion_blur_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
     EEVEE_motion_blur_data_init(mb_data);
   }
   else {
-    psl->motion_blur = NULL;
-    psl->velocity_object = NULL;
-    psl->velocity_hair = NULL;
+    psl->motion_blur = nullptr;
+    psl->velocity_object = nullptr;
+    psl->velocity_hair = nullptr;
   }
 }
 
-void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
                                            EEVEE_Data *vedata,
                                            Object *ob,
                                            ParticleSystem *psys,
@@ -220,9 +222,9 @@ void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
-  if (!DRW_state_is_scene_render() || psl->velocity_hair == NULL) {
+  if (!DRW_state_is_scene_render() || psl->velocity_hair == nullptr) {
     return;
   }
 
@@ -236,7 +238,7 @@ void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
     DRW_hair_duplimat_get(ob, psys, md, mb_data->obmat[mb_step]);
 
     EEVEE_HairMotionData *mb_hair = EEVEE_motion_blur_hair_data_get(mb_data, ob);
-    int psys_id = (md != NULL) ? BLI_findindex(&ob->modifiers, md) : 0;
+    int psys_id = (md != nullptr) ? BLI_findindex(&ob->modifiers, md) : 0;
 
     if (psys_id >= mb_hair->psys_len) {
       /* This should never happen. It means the modifier list was changed by frame evaluation. */
@@ -256,7 +258,7 @@ void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
       GPUTexture *tex_prev = mb_hair->psys[psys_id].step_data[MB_PREV].hair_pos_tx;
       GPUTexture *tex_next = mb_hair->psys[psys_id].step_data[MB_NEXT].hair_pos_tx;
 
-      grp = DRW_shgroup_hair_create_sub(ob, psys, md, effects->motion_blur.hair_grp, NULL);
+      grp = DRW_shgroup_hair_create_sub(ob, psys, md, effects->motion_blur.hair_grp, nullptr);
       DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mb_data->obmat[MB_PREV]);
       DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mb_data->obmat[MB_CURR]);
       DRW_shgroup_uniform_mat4(grp, "nextModelMatrix", mb_data->obmat[MB_NEXT]);
@@ -272,7 +274,7 @@ void EEVEE_motion_blur_hair_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
   }
 }
 
-void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
                                              EEVEE_Data *vedata,
                                              Object *ob)
 {
@@ -280,14 +282,14 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata)
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
 
-  if (!DRW_state_is_scene_render() || psl->velocity_hair == NULL) {
+  if (!DRW_state_is_scene_render() || psl->velocity_hair == nullptr) {
     return;
   }
 
   /* For now we assume curves objects are always moving. */
   EEVEE_ObjectMotionData *mb_data = EEVEE_motion_blur_object_data_get(
       &effects->motion_blur, ob, false);
-  if (mb_data == NULL) {
+  if (mb_data == nullptr) {
     return;
   }
 
@@ -309,7 +311,8 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata)
     GPUTexture *tex_prev = mb_curves->psys[0].step_data[MB_PREV].hair_pos_tx;
     GPUTexture *tex_next = mb_curves->psys[0].step_data[MB_NEXT].hair_pos_tx;
 
-    DRWShadingGroup *grp = DRW_shgroup_curves_create_sub(ob, effects->motion_blur.hair_grp, NULL);
+    DRWShadingGroup *grp = DRW_shgroup_curves_create_sub(
+        ob, effects->motion_blur.hair_grp, nullptr);
     DRW_shgroup_uniform_mat4(grp, "prevModelMatrix", mb_data->obmat[MB_PREV]);
     DRW_shgroup_uniform_mat4(grp, "currModelMatrix", mb_data->obmat[MB_CURR]);
     DRW_shgroup_uniform_mat4(grp, "nextModelMatrix", mb_data->obmat[MB_NEXT]);
@@ -324,16 +327,16 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata)
   }
 }
 
-void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
                                       EEVEE_Data *vedata,
                                       Object *ob)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
-  if (!DRW_state_is_scene_render() || psl->velocity_object == NULL) {
+  if (!DRW_state_is_scene_render() || psl->velocity_object == nullptr) {
     return;
   }
 
@@ -369,7 +372,7 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
 
     if (mb_step == MB_CURR) {
       GPUBatch *batch = DRW_cache_object_surface_get(ob);
-      if (batch == NULL) {
+      if (batch == nullptr) {
         return;
       }
 
@@ -406,10 +409,10 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData *UNUSED(sldata),
     else if (is_deform) {
       /* Store vertex position buffer. */
       mb_geom->vbo[mb_step] = DRW_cache_object_pos_vertbuf_get(ob);
-      mb_geom->use_deform = (mb_geom->vbo[mb_step] != NULL);
+      mb_geom->use_deform = (mb_geom->vbo[mb_step] != nullptr);
     }
     else {
-      mb_geom->vbo[mb_step] = NULL;
+      mb_geom->vbo[mb_step] = nullptr;
       mb_geom->use_deform = false;
     }
   }
@@ -423,7 +426,7 @@ static void motion_blur_remove_vbo_reference_from_batch(GPUBatch *batch,
   for (int i = 0; i < GPU_BATCH_VBO_MAX_LEN; i++) {
     if (ELEM(batch->verts[i], vbo1, vbo2)) {
       /* Avoid double reference of the VBOs. */
-      batch->verts[i] = NULL;
+      batch->verts[i] = nullptr;
     }
   }
 }
@@ -456,10 +459,11 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
        BLI_ghashIterator_done(&ghi) == false;
        BLI_ghashIterator_step(&ghi))
   {
-    EEVEE_ObjectMotionData *mb_data = BLI_ghashIterator_getValue(&ghi);
+    EEVEE_ObjectMotionData *mb_data = static_cast<EEVEE_ObjectMotionData *>(
+        BLI_ghashIterator_getValue(&ghi));
     EEVEE_HairMotionData *mb_hair = mb_data->hair_data;
     EEVEE_GeometryMotionData *mb_geom = mb_data->geometry_data;
-    if (mb_hair != NULL && mb_hair->use_deform) {
+    if (mb_hair != nullptr && mb_hair->use_deform) {
       if (mb_step == MB_CURR) {
         /* TODO(fclem): Check if vertex count mismatch. */
         mb_hair->use_deform = true;
@@ -467,7 +471,7 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
       else {
         for (int i = 0; i < mb_hair->psys_len; i++) {
           GPUVertBuf *vbo = mb_hair->psys[i].step_data[mb_step].hair_pos;
-          if (vbo == NULL) {
+          if (vbo == nullptr) {
             continue;
           }
           EEVEE_HairMotionStepData **step_data_cache_ptr;
@@ -475,8 +479,8 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
                                   vbo,
                                   (void ***)&step_data_cache_ptr))
           {
-            EEVEE_HairMotionStepData *new_step_data = MEM_callocN(sizeof(EEVEE_HairMotionStepData),
-                                                                  __func__);
+            EEVEE_HairMotionStepData *new_step_data = static_cast<EEVEE_HairMotionStepData *>(
+                MEM_callocN(sizeof(EEVEE_HairMotionStepData), __func__));
             /* Duplicate the vbo, otherwise it would be lost when evaluating another frame. */
             new_step_data->hair_pos = GPU_vertbuf_duplicate(vbo);
             /* Create vbo immediately to bind to texture buffer. */
@@ -489,7 +493,7 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
         }
       }
     }
-    if (mb_geom != NULL && mb_geom->use_deform) {
+    if (mb_geom != nullptr && mb_geom->use_deform) {
       if (mb_step == MB_CURR) {
         /* Modify batch to have data from adjacent frames. */
         GPUBatch *batch = mb_geom->batch;
@@ -560,29 +564,29 @@ void EEVEE_motion_blur_swap_data(EEVEE_Data *vedata)
   /* Swap #position_vbo_cache pointers. */
   if (effects->motion_blur.position_vbo_cache[MB_PREV]) {
     BLI_ghash_free(effects->motion_blur.position_vbo_cache[MB_PREV],
-                   NULL,
+                   nullptr,
                    (GHashValFreeFP)GPU_vertbuf_discard);
   }
   effects->motion_blur.position_vbo_cache[MB_PREV] =
       effects->motion_blur.position_vbo_cache[MB_NEXT];
-  effects->motion_blur.position_vbo_cache[MB_NEXT] = NULL;
+  effects->motion_blur.position_vbo_cache[MB_NEXT] = nullptr;
 
   /* Swap #hair_motion_step_cache pointers. */
   if (effects->motion_blur.hair_motion_step_cache[MB_PREV]) {
     BLI_ghash_free(effects->motion_blur.hair_motion_step_cache[MB_PREV],
-                   NULL,
+                   nullptr,
                    (GHashValFreeFP)EEVEE_motion_hair_step_free);
   }
   effects->motion_blur.hair_motion_step_cache[MB_PREV] =
       effects->motion_blur.hair_motion_step_cache[MB_NEXT];
-  effects->motion_blur.hair_motion_step_cache[MB_NEXT] = NULL;
+  effects->motion_blur.hair_motion_step_cache[MB_NEXT] = nullptr;
 
   /* Rename attributes in #position_vbo_cache. */
   for (BLI_ghashIterator_init(&ghi, effects->motion_blur.position_vbo_cache[MB_PREV]);
        !BLI_ghashIterator_done(&ghi);
        BLI_ghashIterator_step(&ghi))
   {
-    GPUVertBuf *vbo = BLI_ghashIterator_getValue(&ghi);
+    GPUVertBuf *vbo = static_cast<GPUVertBuf *>(BLI_ghashIterator_getValue(&ghi));
     GPUVertFormat *format = (GPUVertFormat *)GPU_vertbuf_get_format(vbo);
     int attrib_id = GPU_vertformat_attr_id_get(format, "nxt");
     GPU_vertformat_attr_rename(format, attrib_id, "prv");
@@ -592,29 +596,30 @@ void EEVEE_motion_blur_swap_data(EEVEE_Data *vedata)
   for (BLI_ghashIterator_init(&ghi, effects->motion_blur.object); !BLI_ghashIterator_done(&ghi);
        BLI_ghashIterator_step(&ghi))
   {
-    EEVEE_ObjectMotionData *mb_data = BLI_ghashIterator_getValue(&ghi);
+    EEVEE_ObjectMotionData *mb_data = static_cast<EEVEE_ObjectMotionData *>(
+        BLI_ghashIterator_getValue(&ghi));
     EEVEE_GeometryMotionData *mb_geom = mb_data->geometry_data;
     EEVEE_HairMotionData *mb_hair = mb_data->hair_data;
 
     copy_m4_m4(mb_data->obmat[MB_PREV], mb_data->obmat[MB_NEXT]);
 
-    if (mb_hair != NULL) {
+    if (mb_hair != nullptr) {
       for (int i = 0; i < mb_hair->psys_len; i++) {
         mb_hair->psys[i].step_data[MB_PREV].hair_pos =
             mb_hair->psys[i].step_data[MB_NEXT].hair_pos;
         mb_hair->psys[i].step_data[MB_PREV].hair_pos_tx =
             mb_hair->psys[i].step_data[MB_NEXT].hair_pos_tx;
-        mb_hair->psys[i].step_data[MB_NEXT].hair_pos = NULL;
-        mb_hair->psys[i].step_data[MB_NEXT].hair_pos_tx = NULL;
+        mb_hair->psys[i].step_data[MB_NEXT].hair_pos = nullptr;
+        mb_hair->psys[i].step_data[MB_NEXT].hair_pos_tx = nullptr;
       }
     }
-    if (mb_geom != NULL) {
-      if (mb_geom->batch != NULL) {
+    if (mb_geom != nullptr) {
+      if (mb_geom->batch != nullptr) {
         motion_blur_remove_vbo_reference_from_batch(
             mb_geom->batch, mb_geom->vbo[MB_PREV], mb_geom->vbo[MB_NEXT]);
       }
       mb_geom->vbo[MB_PREV] = mb_geom->vbo[MB_NEXT];
-      mb_geom->vbo[MB_NEXT] = NULL;
+      mb_geom->vbo[MB_NEXT] = nullptr;
     }
   }
 }
