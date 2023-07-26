@@ -133,7 +133,7 @@ set(SRC
   engines/eevee/eevee_shadows_cascade.cc
   engines/eevee/eevee_shadows_cube.cc
   engines/eevee/eevee_subsurface.cc
-  engines/eevee/eevee_temporal_sampling.c
+  engines/eevee/eevee_temporal_sampling.cc
   engines/eevee/eevee_volumes.c
   engines/eevee_next/eevee_ambient_occlusion.cc
   engines/eevee_next/eevee_camera.cc

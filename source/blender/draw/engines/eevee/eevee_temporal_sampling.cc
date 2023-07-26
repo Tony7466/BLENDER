@@ -27,7 +27,7 @@ static struct {
   float inverted_cdf[FILTER_CDF_TABLE_SIZE];
 } e_data = {false}; /* Engine data */
 
-static float UNUSED_FUNCTION(filter_box)(float UNUSED(x))
+static float UNUSED_FUNCTION(filter_box)(float /*x*/)
 {
   return 1.0f;
 }
@@ -92,7 +92,8 @@ static float eval_table(const float *table, float x)
 
 static void eevee_create_cdf_table_temporal_sampling(void)
 {
-  float *cdf_table = MEM_mallocN(sizeof(float) * FILTER_CDF_TABLE_SIZE, "Eevee Filter CDF table");
+  float *cdf_table = static_cast<float *>(
+      MEM_mallocN(sizeof(float) * FILTER_CDF_TABLE_SIZE, "Eevee Filter CDF table"));
 
   float filter_width = 2.0f; /* Use a 2 pixel footprint by default. */
 
@@ -129,10 +130,10 @@ void EEVEE_temporal_sampling_matrices_calc(EEVEE_EffectsInfo *effects, const dou
   RenderData *rd = &scene->r;
 
   float persmat[4][4], viewmat[4][4], winmat[4][4], wininv[4][4];
-  DRW_view_persmat_get(NULL, persmat, false);
-  DRW_view_viewmat_get(NULL, viewmat, false);
-  DRW_view_winmat_get(NULL, winmat, false);
-  DRW_view_winmat_get(NULL, wininv, true);
+  DRW_view_persmat_get(nullptr, persmat, false);
+  DRW_view_viewmat_get(nullptr, viewmat, false);
+  DRW_view_winmat_get(nullptr, winmat, false);
+  DRW_view_winmat_get(nullptr, wininv, true);
 
   float ofs[2];
   EEVEE_temporal_sampling_offset_calc(ht_point, rd->gauss, ofs);
@@ -176,7 +177,7 @@ void EEVEE_temporal_sampling_matrices_calc(EEVEE_EffectsInfo *effects, const dou
     }
   }
 
-  BLI_assert(effects->taa_view != NULL);
+  BLI_assert(effects->taa_view != nullptr);
 
   /* When rendering just update the view. This avoids recomputing the culling. */
   DRW_view_update_sub(effects->taa_view, viewmat, winmat);
@@ -213,7 +214,7 @@ void EEVEE_temporal_sampling_create_view(EEVEE_Data *vedata)
   DRW_view_viewmat_get(default_view, viewmat, false);
   DRW_view_winmat_get(default_view, winmat, false);
   effects->taa_view = DRW_view_create_sub(default_view, viewmat, winmat);
-  DRW_view_clip_planes_set(effects->taa_view, NULL, 0);
+  DRW_view_clip_planes_set(effects->taa_view, nullptr, 0);
 }
 
 int EEVEE_temporal_sampling_sample_count_get(const Scene *scene, const EEVEE_StorageList *stl)
@@ -226,12 +227,13 @@ int EEVEE_temporal_sampling_sample_count_get(const Scene *scene, const EEVEE_Sto
   sample_count = (sample_count == 0) ? TAA_MAX_SAMPLE : sample_count;
   sample_count = divide_ceil_u(sample_count, timesteps);
 
-  int dof_sample_count = EEVEE_depth_of_field_sample_count_get(stl->effects, sample_count, NULL);
+  int dof_sample_count = EEVEE_depth_of_field_sample_count_get(
+      stl->effects, sample_count, nullptr);
   sample_count = dof_sample_count * divide_ceil_u(sample_count, dof_sample_count);
   return sample_count;
 }
 
-int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
@@ -270,9 +272,9 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
 
     view_is_valid = view_is_valid && (stl->g_data->view_updated == false);
 
-    if (draw_ctx->evil_C != NULL) {
+    if (draw_ctx->evil_C != nullptr) {
       struct wmWindowManager *wm = CTX_wm_manager(draw_ctx->evil_C);
-      view_is_valid = view_is_valid && (ED_screen_animation_no_scrub(wm) == NULL);
+      view_is_valid = view_is_valid && (ED_screen_animation_no_scrub(wm) == nullptr);
     }
 
     effects->taa_total_sample = EEVEE_temporal_sampling_sample_count_get(scene_eval, stl);
@@ -284,7 +286,7 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
 
     /* Motion blur steps could reset the sampling when camera is animated (see #79970). */
     if (!DRW_state_is_scene_render()) {
-      DRW_view_persmat_get(NULL, persmat, false);
+      DRW_view_persmat_get(nullptr, persmat, false);
       view_is_valid = view_is_valid && compare_m4m4(persmat, effects->prev_drw_persmat, FLT_MIN);
     }
 
@@ -355,7 +357,7 @@ void EEVEE_temporal_sampling_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data 
     else {
       DRW_shgroup_uniform_float(grp, "alpha", &effects->taa_alpha, 1);
     }
-    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
   }
 }
 
@@ -421,6 +423,6 @@ void EEVEE_temporal_sampling_draw(EEVEE_Data *vedata)
       }
     }
 
-    DRW_view_persmat_get(NULL, effects->prev_drw_persmat, false);
+    DRW_view_persmat_get(nullptr, effects->prev_drw_persmat, false);
   }
 }
