@@ -51,7 +51,7 @@ extern char datatoc_common_fullscreen_vert_glsl[];
  *
  * \{ */
 
-typedef struct DRWShaderCompiler {
+struct DRWShaderCompiler {
   /** Default compilation queue. */
   ListBase queue; /* GPUMaterial */
   SpinLock list_lock;
@@ -62,23 +62,23 @@ typedef struct DRWShaderCompiler {
   void *system_gpu_context;
   GPUContext *blender_gpu_context;
   bool own_context;
-} DRWShaderCompiler;
+};
 
 static void drw_deferred_shader_compilation_exec(
     void *custom_data,
     /* Cannot be const, this function implements wm_jobs_start_callback.
      * NOLINTNEXTLINE: readability-non-const-parameter. */
     bool *stop,
-    bool *UNUSED(do_update),
-    float *UNUSED(progress))
+    bool * /*do_update*/,
+    float * /*progress*/)
 {
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
   void *system_gpu_context = comp->system_gpu_context;
   GPUContext *blender_gpu_context = comp->blender_gpu_context;
 
-  BLI_assert(system_gpu_context != NULL);
-  BLI_assert(blender_gpu_context != NULL);
+  BLI_assert(system_gpu_context != nullptr);
+  BLI_assert(blender_gpu_context != nullptr);
 
   const bool use_main_context_workaround = GPU_use_main_context_workaround();
   if (use_main_context_workaround) {
@@ -100,7 +100,7 @@ static void drw_deferred_shader_compilation_exec(
     /* Pop tail because it will be less likely to lock the main thread
      * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
     LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
-    GPUMaterial *mat = link ? (GPUMaterial *)link->data : NULL;
+    GPUMaterial *mat = link ? (GPUMaterial *)link->data : nullptr;
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
@@ -120,7 +120,7 @@ static void drw_deferred_shader_compilation_exec(
       /* Pop tail because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
       link = (LinkData *)BLI_poptail(&comp->optimize_queue);
-      GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : NULL;
+      GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : nullptr;
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
         GPU_material_acquire(optimize_mat);
@@ -144,7 +144,7 @@ static void drw_deferred_shader_compilation_exec(
     }
   }
 
-  GPU_context_active_set(NULL);
+  GPU_context_active_set(nullptr);
   WM_system_gpu_context_release(system_gpu_context);
   if (use_main_context_workaround) {
     GPU_context_main_unlock();
@@ -191,11 +191,12 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   /* Get the running job or a new one if none is running. Can only have one job per type & owner.
    */
   wmJob *wm_job = WM_jobs_get(
-      wm, win, wm, "Shaders Compilation", 0, WM_JOB_TYPE_SHADER_COMPILATION);
+      wm, win, wm, "Shaders Compilation", eWM_JobFlag(0), WM_JOB_TYPE_SHADER_COMPILATION);
 
   DRWShaderCompiler *old_comp = (DRWShaderCompiler *)WM_jobs_customdata_get(wm_job);
 
-  DRWShaderCompiler *comp = MEM_callocN(sizeof(DRWShaderCompiler), "DRWShaderCompiler");
+  DRWShaderCompiler *comp = static_cast<DRWShaderCompiler *>(
+      MEM_callocN(sizeof(DRWShaderCompiler), "DRWShaderCompiler"));
   BLI_spin_init(&comp->list_lock);
 
   if (old_comp) {
@@ -226,15 +227,15 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   }
 
   /* Create only one context. */
-  if (comp->system_gpu_context == NULL) {
+  if (comp->system_gpu_context == nullptr) {
     if (use_main_context) {
       comp->system_gpu_context = DST.system_gpu_context;
       comp->blender_gpu_context = DST.blender_gpu_context;
     }
     else {
       comp->system_gpu_context = WM_system_gpu_context_create();
-      comp->blender_gpu_context = GPU_context_create(NULL, comp->system_gpu_context);
-      GPU_context_active_set(NULL);
+      comp->blender_gpu_context = GPU_context_create(nullptr, comp->system_gpu_context);
+      GPU_context_active_set(nullptr);
 
       WM_system_gpu_context_activate(DST.system_gpu_context);
       GPU_context_active_set(DST.blender_gpu_context);
@@ -245,7 +246,7 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   WM_jobs_customdata_set(wm_job, comp, drw_deferred_shader_compilation_free);
   WM_jobs_timer(wm_job, 0.1, NC_MATERIAL | ND_SHADING_DRAW, 0);
   WM_jobs_delay_start(wm_job, 0.1);
-  WM_jobs_callbacks(wm_job, drw_deferred_shader_compilation_exec, NULL, NULL, NULL);
+  WM_jobs_callbacks(wm_job, drw_deferred_shader_compilation_exec, nullptr, nullptr, nullptr);
 
   G.is_break = false;
 
@@ -260,7 +261,7 @@ static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
 
   /* Do not defer the compilation if we are rendering for image.
    * deferred rendering is only possible when `evil_C` is available */
-  if (DST.draw_ctx.evil_C == NULL || DRW_state_is_image_render() || !USE_DEFERRED_COMPILATION) {
+  if (DST.draw_ctx.evil_C == nullptr || DRW_state_is_image_render() || !USE_DEFERRED_COMPILATION) {
     deferred = false;
   }
 
@@ -310,16 +311,16 @@ static void drw_register_shader_vlattrs(GPUMaterial *mat)
     if (!BLI_ghash_ensure_p(hash, POINTER_FROM_UINT(attr->hash_code), (void ***)&p_val)) {
       DST.vmempool->vlattrs_ubo_ready = false;
 
-      GPULayerAttr *new_link = *p_val = MEM_dupallocN(attr);
+      GPULayerAttr *new_link = *p_val = static_cast<GPULayerAttr *>(MEM_dupallocN(attr));
 
       /* Insert into the list ensuring sorted order. */
-      GPULayerAttr *link = list->first;
+      GPULayerAttr *link = static_cast<GPULayerAttr *>(list->first);
 
       while (link && link->hash_code <= attr->hash_code) {
         link = link->next;
       }
 
-      new_link->prev = new_link->next = NULL;
+      new_link->prev = new_link->next = nullptr;
       BLI_insertlinkbefore(list, link, new_link);
     }
 
@@ -334,14 +335,14 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       DRWShaderCompiler *comp = (DRWShaderCompiler *)WM_jobs_customdata_from_type(
           wm, wm, WM_JOB_TYPE_SHADER_COMPILATION);
-      if (comp != NULL) {
+      if (comp != nullptr) {
         BLI_spin_lock(&comp->list_lock);
 
         /* Search for compilation job in queue. */
         LinkData *link = (LinkData *)BLI_findptr(&comp->queue, mat, offsetof(LinkData, data));
         if (link) {
           BLI_remlink(&comp->queue, link);
-          GPU_material_status_set(link->data, GPU_MAT_CREATED);
+          GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
         }
 
         MEM_SAFE_FREE(link);
@@ -351,7 +352,8 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
             &comp->optimize_queue, mat, offsetof(LinkData, data));
         if (opti_link) {
           BLI_remlink(&comp->optimize_queue, opti_link);
-          GPU_material_optimization_status_set(opti_link->data, GPU_MAT_OPTIMIZATION_READY);
+          GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
+                                               GPU_MAT_OPTIMIZATION_READY);
         }
         BLI_spin_unlock(&comp->list_lock);
 
@@ -367,14 +369,15 @@ void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       DRWShaderCompiler *comp = (DRWShaderCompiler *)WM_jobs_customdata_from_type(
           wm, wm, WM_JOB_TYPE_SHADER_COMPILATION);
-      if (comp != NULL) {
+      if (comp != nullptr) {
         BLI_spin_lock(&comp->list_lock);
         /* Search for optimization job in queue. */
         LinkData *opti_link = (LinkData *)BLI_findptr(
             &comp->optimize_queue, mat, offsetof(LinkData, data));
         if (opti_link) {
           BLI_remlink(&comp->optimize_queue, opti_link);
-          GPU_material_optimization_status_set(opti_link->data, GPU_MAT_OPTIMIZATION_READY);
+          GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
+                                               GPU_MAT_OPTIMIZATION_READY);
         }
         BLI_spin_unlock(&comp->list_lock);
 
@@ -398,7 +401,7 @@ GPUShader *DRW_shader_create_from_info_name(const char *info_name)
 GPUShader *DRW_shader_create_ex(
     const char *vert, const char *geom, const char *frag, const char *defines, const char *name)
 {
-  return GPU_shader_create(vert, frag, geom, NULL, defines, name);
+  return GPU_shader_create(vert, frag, geom, nullptr, defines, name);
 }
 
 GPUShader *DRW_shader_create_with_lib_ex(const char *vert,
@@ -409,9 +412,9 @@ GPUShader *DRW_shader_create_with_lib_ex(const char *vert,
                                          const char *name)
 {
   GPUShader *sh;
-  char *vert_with_lib = NULL;
-  char *frag_with_lib = NULL;
-  char *geom_with_lib = NULL;
+  char *vert_with_lib = nullptr;
+  char *frag_with_lib = nullptr;
+  char *geom_with_lib = nullptr;
 
   vert_with_lib = BLI_string_joinN(lib, vert);
   frag_with_lib = BLI_string_joinN(lib, frag);
@@ -419,7 +422,7 @@ GPUShader *DRW_shader_create_with_lib_ex(const char *vert,
     geom_with_lib = BLI_string_joinN(lib, geom);
   }
 
-  sh = GPU_shader_create(vert_with_lib, frag_with_lib, geom_with_lib, NULL, defines, name);
+  sh = GPU_shader_create(vert_with_lib, frag_with_lib, geom_with_lib, nullptr, defines, name);
 
   MEM_freeN(vert_with_lib);
   MEM_freeN(frag_with_lib);
@@ -440,9 +443,9 @@ GPUShader *DRW_shader_create_with_shaderlib_ex(const char *vert,
   GPUShader *sh;
   char *vert_with_lib = DRW_shader_library_create_shader_string(lib, vert);
   char *frag_with_lib = DRW_shader_library_create_shader_string(lib, frag);
-  char *geom_with_lib = (geom) ? DRW_shader_library_create_shader_string(lib, geom) : NULL;
+  char *geom_with_lib = (geom) ? DRW_shader_library_create_shader_string(lib, geom) : nullptr;
 
-  sh = GPU_shader_create(vert_with_lib, frag_with_lib, geom_with_lib, NULL, defines, name);
+  sh = GPU_shader_create(vert_with_lib, frag_with_lib, geom_with_lib, nullptr, defines, name);
 
   MEM_SAFE_FREE(vert_with_lib);
   MEM_SAFE_FREE(frag_with_lib);
@@ -461,8 +464,8 @@ GPUShader *DRW_shader_create_with_transform_feedback(const char *vert,
   return GPU_shader_create_ex(vert,
                               datatoc_gpu_shader_depth_only_frag_glsl,
                               geom,
-                              NULL,
-                              NULL,
+                              nullptr,
+                              nullptr,
                               defines,
                               prim_type,
                               varying_names,
@@ -472,7 +475,8 @@ GPUShader *DRW_shader_create_with_transform_feedback(const char *vert,
 
 GPUShader *DRW_shader_create_fullscreen_ex(const char *frag, const char *defines, const char *name)
 {
-  return GPU_shader_create(datatoc_common_fullscreen_vert_glsl, frag, NULL, NULL, defines, name);
+  return GPU_shader_create(
+      datatoc_common_fullscreen_vert_glsl, frag, nullptr, nullptr, defines, name);
 }
 
 GPUShader *DRW_shader_create_fullscreen_with_shaderlib_ex(const char *frag,
@@ -485,7 +489,7 @@ GPUShader *DRW_shader_create_fullscreen_with_shaderlib_ex(const char *frag,
   char *vert = datatoc_common_fullscreen_vert_glsl;
   char *frag_with_lib = DRW_shader_library_create_shader_string(lib, frag);
 
-  sh = GPU_shader_create(vert, frag_with_lib, NULL, NULL, defines, name);
+  sh = GPU_shader_create(vert, frag_with_lib, nullptr, nullptr, defines, name);
 
   MEM_SAFE_FREE(frag_with_lib);
 
@@ -502,7 +506,7 @@ GPUMaterial *DRW_shader_from_world(World *wo,
 {
   Scene *scene = (Scene *)DEG_get_original_id(&DST.draw_ctx.scene->id);
   GPUMaterial *mat = GPU_material_from_nodetree(scene,
-                                                NULL,
+                                                nullptr,
                                                 ntree,
                                                 &wo->gpumaterial,
                                                 wo->id.name,
@@ -631,7 +635,8 @@ struct DRWShaderLibrary {
 
 DRWShaderLibrary *DRW_shader_library_create(void)
 {
-  return MEM_callocN(sizeof(DRWShaderLibrary), "DRWShaderLibrary");
+  return static_cast<DRWShaderLibrary *>(
+      MEM_callocN(sizeof(DRWShaderLibrary), "DRWShaderLibrary"));
 }
 
 void DRW_shader_library_free(DRWShaderLibrary *lib)
@@ -658,7 +663,7 @@ static int drw_shader_library_search(const DRWShaderLibrary *lib, const char *na
 static uint64_t drw_shader_dependencies_get(const DRWShaderLibrary *lib,
                                             const char *pragma_str,
                                             const char *lib_code,
-                                            const char *UNUSED(lib_name))
+                                            const char * /*lib_name*/)
 {
   /* Search dependencies. */
   uint pragma_len = strlen(pragma_str);
@@ -694,7 +699,7 @@ void DRW_shader_library_add_file(DRWShaderLibrary *lib, const char *lib_code, co
 {
   int index = -1;
   for (int i = 0; i < MAX_LIB; i++) {
-    if (lib->libs[i] == NULL) {
+    if (lib->libs[i] == nullptr) {
       index = i;
       break;
     }
