@@ -124,7 +124,7 @@ set(SRC
   engines/eevee/eevee_motion_blur.cc
   engines/eevee/eevee_occlusion.cc
   engines/eevee/eevee_render.cc
-  engines/eevee/eevee_renderpasses.c
+  engines/eevee/eevee_renderpasses.cc
   engines/eevee/eevee_sampling.c
   engines/eevee/eevee_screen_raytrace.c
   engines/eevee/eevee_shaders.cc

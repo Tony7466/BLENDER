@@ -20,7 +20,7 @@
 
 #include "eevee_private.h"
 
-typedef enum eRenderPassPostProcessType {
+enum eRenderPassPostProcessType {
   PASS_POST_UNDEFINED = 0,
   PASS_POST_ACCUMULATED_COLOR = 1,
   PASS_POST_ACCUMULATED_COLOR_ALPHA = 2,
@@ -31,7 +31,7 @@ typedef enum eRenderPassPostProcessType {
   PASS_POST_NORMAL = 7,
   PASS_POST_TWO_LIGHT_BUFFERS = 8,
   PASS_POST_ACCUMULATED_TRANSMITTANCE_COLOR = 9,
-} eRenderPassPostProcessType;
+};
 
 /* bitmask containing all renderpasses that need post-processing */
 #define EEVEE_RENDERPASSES_WITH_POST_PROCESSING \
@@ -78,7 +78,7 @@ void EEVEE_renderpasses_init(EEVEE_Data *vedata)
 
   if (v3d) {
     const Scene *scene = draw_ctx->scene;
-    eViewLayerEEVEEPassType render_pass = v3d->shading.render_pass;
+    eViewLayerEEVEEPassType render_pass = eViewLayerEEVEEPassType(v3d->shading.render_pass);
     g_data->aov_hash = 0;
 
     if (render_pass == EEVEE_RENDER_PASS_BLOOM &&
@@ -86,9 +86,9 @@ void EEVEE_renderpasses_init(EEVEE_Data *vedata)
       render_pass = EEVEE_RENDER_PASS_COMBINED;
     }
     if (render_pass == EEVEE_RENDER_PASS_AOV) {
-      ViewLayerAOV *aov = BLI_findstring(
-          &view_layer->aovs, v3d->shading.aov_name, offsetof(ViewLayerAOV, name));
-      if (aov != NULL) {
+      ViewLayerAOV *aov = static_cast<ViewLayerAOV *>(
+          BLI_findstring(&view_layer->aovs, v3d->shading.aov_name, offsetof(ViewLayerAOV, name)));
+      if (aov != nullptr) {
         g_data->aov_hash = EEVEE_renderpasses_aov_hash(aov);
       }
       else {
@@ -100,7 +100,8 @@ void EEVEE_renderpasses_init(EEVEE_Data *vedata)
     g_data->render_passes = render_pass;
   }
   else {
-    eViewLayerEEVEEPassType enabled_render_passes = view_layer->eevee.render_passes;
+    eViewLayerEEVEEPassType enabled_render_passes = eViewLayerEEVEEPassType(
+        view_layer->eevee.render_passes);
 
 #define ENABLE_FROM_LEGACY(name_legacy, name_eevee) \
   SET_FLAG_FROM_TEST(enabled_render_passes, \
@@ -166,7 +167,7 @@ void EEVEE_renderpasses_output_init(EEVEE_ViewLayerData *sldata,
     /* Should be enough to store the data needs for a single pass.
      * Some passes will use less, but it is only relevant for final renderings and
      * when renderpasses other than `EEVEE_RENDER_PASS_COMBINED` are requested */
-    DRW_texture_ensure_fullscreen_2d(&txl->renderpass, GPU_RGBA16F, 0);
+    DRW_texture_ensure_fullscreen_2d(&txl->renderpass, GPU_RGBA16F, DRWTextureFlag(0));
     GPU_framebuffer_ensure_config(&fbl->renderpass_fb,
                                   {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->renderpass)});
 
@@ -237,14 +238,14 @@ void EEVEE_renderpasses_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *ve
     DRW_shgroup_uniform_int(grp, "currentSample", &g_data->renderpass_current_sample, 1);
     DRW_shgroup_uniform_int(grp, "renderpassType", &g_data->renderpass_type, 1);
     DRW_shgroup_uniform_int(grp, "postProcessType", &g_data->renderpass_postprocess, 1);
-    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
   }
   else {
-    psl->renderpass_pass = NULL;
+    psl->renderpass_pass = nullptr;
   }
 }
 
-void EEVEE_renderpasses_postprocess(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_renderpasses_postprocess(EEVEE_ViewLayerData * /*sldata*/,
                                     EEVEE_Data *vedata,
                                     eViewLayerEEVEEPassType renderpass_type,
                                     int aov_index)
@@ -467,7 +468,7 @@ void EEVEE_renderpasses_draw_debug(EEVEE_Data *vedata)
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
 
-  GPUTexture *tx = NULL;
+  GPUTexture *tx = nullptr;
   /* Debug : Output buffer to view. */
   switch (G.debug_value) {
     case 1:
