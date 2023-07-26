@@ -117,7 +117,7 @@ set(SRC
   engines/eevee/eevee_lightprobes.cc
   engines/eevee/eevee_lights.cc
   engines/eevee/eevee_lookdev.cc
-  engines/eevee/eevee_lut.c
+  engines/eevee/eevee_lut.cc
   engines/eevee/eevee_lut_gen.cc
   engines/eevee/eevee_materials.c
   engines/eevee/eevee_mist.c
