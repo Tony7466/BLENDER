@@ -157,11 +157,12 @@ static LinkNode *mesh_calc_path_region_elem(BMesh *bm,
     ele_loops_len[side] = j;
   }
 
-  int *depths[2] = {NULL};
+  int *depths[2] = {nullptr};
   int pass = 0;
 
-  BMLoop **stack = MEM_mallocN(sizeof(*stack) * bm->totloop, __func__);
-  BMLoop **stack_other = MEM_mallocN(sizeof(*stack_other) * bm->totloop, __func__);
+  BMLoop **stack = static_cast<BMLoop **>(MEM_mallocN(sizeof(*stack) * bm->totloop, __func__));
+  BMLoop **stack_other = static_cast<BMLoop **>(
+      MEM_mallocN(sizeof(*stack_other) * bm->totloop, __func__));
 
   STACK_DECLARE(stack);
   STACK_INIT(stack, bm->totloop);
@@ -179,7 +180,7 @@ static LinkNode *mesh_calc_path_region_elem(BMesh *bm,
     const int side_other = !side;
 
     /* initialize depths to -1 (un-touched), fill in with the depth as we walk over the edges. */
-    depths[side] = MEM_mallocN(sizeof(*depths[side]) * bm->totloop, __func__);
+    depths[side] = static_cast<int *>(MEM_mallocN(sizeof(*depths[side]) * bm->totloop, __func__));
     copy_vn_i(depths[side], bm->totloop, -1);
 
     /* needed for second side */
@@ -309,7 +310,7 @@ static LinkNode *mesh_calc_path_region_elem(BMesh *bm,
 
   /* Now we have depths recorded from both sides,
    * select elements that use tagged verts. */
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
 
   if (found_all == false) {
     /* fail! (do nothing) */
@@ -406,7 +407,7 @@ LinkNode *BM_mesh_calc_path_uv_region_vert(BMesh *bm,
                                            bool (*filter_fn)(BMLoop *, void *user_data),
                                            void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* BM_ELEM_TAG flag is used to store visited verts */
   BMFace *f;
   BMIter fiter;
@@ -435,7 +436,7 @@ LinkNode *BM_mesh_calc_path_uv_region_edge(BMesh *bm,
                                            bool (*filter_fn)(BMLoop *, void *user_data),
                                            void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* BM_ELEM_TAG flag is used to store visited verts */
   BMFace *f;
   BMIter fiter;
@@ -464,7 +465,7 @@ LinkNode *BM_mesh_calc_path_uv_region_face(BMesh *bm,
                                            bool (*filter_fn)(BMFace *, void *user_data),
                                            void *user_data)
 {
-  LinkNode *path = NULL;
+  LinkNode *path = nullptr;
   /* BM_ELEM_TAG flag is used to store visited verts */
   BMFace *f;
   BMIter fiter;
