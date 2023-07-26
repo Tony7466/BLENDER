@@ -27,7 +27,7 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -172,7 +172,7 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
     else if (UNLIKELY(me->totvert != verts_num)) {
       BKE_modifier_set_error(ob, &mcmd->modifier, "'Integrate' original mesh vertex mismatch");
     }
-    else if (UNLIKELY(me->totpoly == 0)) {
+    else if (UNLIKELY(me->faces_num == 0)) {
       BKE_modifier_set_error(ob, &mcmd->modifier, "'Integrate' requires faces");
     }
     else {
@@ -180,11 +180,12 @@ static void meshcache_do(MeshCacheModifierData *mcmd,
           MEM_malloc_arrayN(verts_num, sizeof(*vertexCos_New), __func__));
 
       BKE_mesh_calc_relative_deform(
-          BKE_mesh_poly_offsets(me),
-          me->totpoly,
-          BKE_mesh_corner_verts(me),
+          me->face_offsets().data(),
+          me->faces_num,
+          me->corner_verts().data(),
           me->totvert,
-          BKE_mesh_vert_positions(me),       /* From the original Mesh. */
+          reinterpret_cast<const float(*)[3]>(
+              me->vert_positions().data()),  /* From the original Mesh. */
           (const float(*)[3])vertexCos_Real, /* the input we've been given (shape keys!) */
           (const float(*)[3])vertexCos,      /* The result of this modifier. */
           vertexCos_New                      /* The result of this function. */
@@ -281,44 +282,7 @@ static void deformVerts(ModifierData *md,
   MeshCacheModifierData *mcmd = (MeshCacheModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 
-  Mesh *mesh_src = nullptr;
-
-  if (ctx->object->type == OB_MESH && mcmd->defgrp_name[0] != '\0') {
-    /* `mesh_src` is only needed for vertex groups. */
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr);
-  }
-  meshcache_do(mcmd, scene, ctx->object, mesh_src, vertexCos, verts_num);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
-}
-
-static void deformVertsEM(ModifierData *md,
-                          const ModifierEvalContext *ctx,
-                          BMEditMesh *editData,
-                          Mesh *mesh,
-                          float (*vertexCos)[3],
-                          int verts_num)
-{
-  MeshCacheModifierData *mcmd = (MeshCacheModifierData *)md;
-  Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-
-  Mesh *mesh_src = nullptr;
-
-  if (ctx->object->type == OB_MESH && mcmd->defgrp_name[0] != '\0') {
-    /* `mesh_src` is only needed for vertex groups. */
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, nullptr);
-  }
-  if (mesh_src != nullptr) {
-    BKE_mesh_wrapper_ensure_mdata(mesh_src);
-  }
-
-  meshcache_do(mcmd, scene, ctx->object, mesh_src, vertexCos, verts_num);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
+  meshcache_do(mcmd, scene, ctx->object, mesh, vertexCos, verts_num);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -416,7 +380,7 @@ ModifierTypeInfo modifierType_MeshCache = {
 
     /*deformVerts*/ deformVerts,
     /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ deformVertsEM,
+    /*deformVertsEM*/ nullptr,
     /*deformMatricesEM*/ nullptr,
     /*modifyMesh*/ nullptr,
     /*modifyGeometrySet*/ nullptr,

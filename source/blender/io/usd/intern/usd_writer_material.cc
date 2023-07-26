@@ -22,6 +22,7 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 
 #include "DNA_material_types.h"
 
@@ -171,8 +172,8 @@ void create_usd_preview_surface_material(const USDExporterContext &usd_export_co
       pxr::TfToken source_name;
       if (input_spec.input_type == pxr::SdfValueTypeNames->Float) {
         /* If the input is a float, we connect it to either the texture alpha or red channels. */
-        source_name = strcmp(input_link->fromsock->identifier, "Alpha") == 0 ? usdtokens::a :
-                                                                               usdtokens::r;
+        source_name = STREQ(input_link->fromsock->identifier, "Alpha") ? usdtokens::a :
+                                                                         usdtokens::r;
       }
       else {
         source_name = usdtokens::rgb;
@@ -279,8 +280,6 @@ void create_usd_viewport_material(const USDExporterContext &usd_export_context,
 
   shader.CreateIdAttr(pxr::VtValue(usdtokens::preview_surface));
   shader.CreateInput(usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f)
-      .Set(pxr::GfVec3f(material->r, material->g, material->b));
-  shader.CreateInput(usdtokens::emissive_color, pxr::SdfValueTypeNames->Color3f)
       .Set(pxr::GfVec3f(material->r, material->g, material->b));
   shader.CreateInput(usdtokens::roughness, pxr::SdfValueTypeNames->Float).Set(material->roughness);
   shader.CreateInput(usdtokens::metallic, pxr::SdfValueTypeNames->Float).Set(material->metallic);
@@ -412,7 +411,7 @@ static std::string get_in_memory_texture_filename(Image *ima)
 
   char file_name[FILE_MAX];
   /* Use the image name for the file name. */
-  strcpy(file_name, ima->id.name + 2);
+  STRNCPY(file_name, ima->id.name + 2);
 
   BKE_image_path_ext_from_imformat_ensure(file_name, sizeof(file_name), &imageFormat);
 
@@ -432,7 +431,7 @@ static void export_in_memory_texture(Image *ima,
   }
   else {
     /* Use the image name for the file name. */
-    strcpy(file_name, ima->id.name + 2);
+    STRNCPY(file_name, ima->id.name + 2);
   }
 
   ImBuf *imbuf = BKE_image_acquire_ibuf(ima, nullptr, nullptr);
@@ -661,7 +660,7 @@ static std::string get_tex_image_asset_filepath(bNode *node,
       BLI_path_split_dir_part(stage_path.c_str(), dir_path, FILE_MAX);
       BLI_path_join(exp_path, FILE_MAX, dir_path, "textures", file_path);
     }
-    BLI_str_replace_char(exp_path, '\\', '/');
+    BLI_string_replace_char(exp_path, '\\', '/');
     return exp_path;
   }
 
@@ -674,13 +673,13 @@ static std::string get_tex_image_asset_filepath(bNode *node,
     }
 
     char rel_path[FILE_MAX];
-    strcpy(rel_path, path.c_str());
+    STRNCPY(rel_path, path.c_str());
 
     BLI_path_rel(rel_path, stage_path.c_str());
     if (!BLI_path_is_rel(rel_path)) {
       return path;
     }
-    BLI_str_replace_char(rel_path, '\\', '/');
+    BLI_string_replace_char(rel_path, '\\', '/');
     return rel_path + 2;
   }
 

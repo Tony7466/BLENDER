@@ -25,7 +25,7 @@ void transform_operatortypes(void);
 /* ******************** Macros & Prototypes *********************** */
 
 /* MODE AND NUMINPUT FLAGS */
-typedef enum {
+enum eTfmMode {
   TFM_INIT = -1,
   TFM_DUMMY,
   TFM_TRANSLATION,
@@ -63,7 +63,7 @@ typedef enum {
   TFM_BONE_ENVELOPE_DIST,
   TFM_NORMAL_ROTATION,
   TFM_GPENCIL_OPACITY,
-} eTfmMode;
+};
 
 /* Standalone call to get the transformation center corresponding to the current situation
  * returns 1 if successful, 0 otherwise (usually means there's no selection)
@@ -126,7 +126,7 @@ int BIF_countTransformOrientation(const struct bContext *C);
 #define P_CURSOR_EDIT (1 << 16)
 #define P_CLNOR_INVALIDATE (1 << 17)
 #define P_VIEW2D_EDGE_PAN (1 << 18)
-#define P_VIEW3D_NAVIGATION (1 << 19)
+#define P_VIEW3D_ALT_NAVIGATION (1 << 19)
 /* For properties performed when confirming the transformation. */
 #define P_POST_TRANSFORM (1 << 20)
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -334,7 +336,7 @@ float CurvePoint::shape_importance() const
   return __A->shape_importance();
 }
 
-const unsigned CurvePoint::qi() const
+const uint CurvePoint::qi() const
 {
   if (__A == 0) {
     return __B->qi();

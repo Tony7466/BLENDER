@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -10,6 +11,7 @@
 #include "kernel/closure/bsdf_phong_ramp.h"
 #include "kernel/closure/bsdf_diffuse_ramp.h"
 #include "kernel/closure/bsdf_microfacet.h"
+#include "kernel/closure/bsdf_sheen.h"
 #include "kernel/closure/bsdf_transparent.h"
 #include "kernel/closure/bsdf_ashikhmin_shirley.h"
 #include "kernel/closure/bsdf_toon.h"
@@ -156,12 +158,6 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       *sampled_roughness = zero_float2();
       *eta = 1.0f;
       break;
-    case CLOSURE_BSDF_REFLECTION_ID:
-    case CLOSURE_BSDF_REFRACTION_ID:
-    case CLOSURE_BSDF_SHARP_GLASS_ID:
-      label = bsdf_microfacet_sharp_sample(
-          sc, path_flag, Ng, sd->wi, rand, eval, wo, pdf, sampled_roughness, eta);
-      break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
@@ -216,6 +212,11 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       break;
     case CLOSURE_BSDF_PRINCIPLED_SHEEN_ID:
       label = bsdf_principled_sheen_sample(sc, Ng, sd->wi, rand_xy, eval, wo, pdf);
+      *sampled_roughness = one_float2();
+      *eta = 1.0f;
+      break;
+    case CLOSURE_BSDF_SHEEN_ID:
+      label = bsdf_sheen_sample(sc, Ng, sd->wi, rand_xy, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
@@ -295,9 +296,6 @@ ccl_device_inline void bsdf_roughness_eta(const KernelGlobals kg,
       *roughness = zero_float2();
       *eta = 1.0f;
       break;
-    case CLOSURE_BSDF_REFLECTION_ID:
-    case CLOSURE_BSDF_REFRACTION_ID:
-    case CLOSURE_BSDF_SHARP_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
@@ -357,6 +355,11 @@ ccl_device_inline void bsdf_roughness_eta(const KernelGlobals kg,
       *roughness = one_float2();
       *eta = 1.0f;
       break;
+    case CLOSURE_BSDF_SHEEN_ID:
+      alpha = ((ccl_private SheenBsdf *)sc)->roughness;
+      *roughness = make_float2(alpha, alpha);
+      *eta = 1.0f;
+      break;
 #endif
     default:
       *roughness = one_float2();
@@ -397,9 +400,6 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
     case CLOSURE_BSDF_TRANSPARENT_ID:
       label = LABEL_TRANSMIT | LABEL_TRANSPARENT;
       break;
-    case CLOSURE_BSDF_REFLECTION_ID:
-    case CLOSURE_BSDF_REFRACTION_ID:
-    case CLOSURE_BSDF_SHARP_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
@@ -409,7 +409,7 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID: {
       ccl_private const MicrofacetBsdf *bsdf = (ccl_private const MicrofacetBsdf *)sc;
       label = ((bsdf_is_transmission(sc, wo)) ? LABEL_TRANSMIT : LABEL_REFLECT) |
-              ((bsdf->alpha_x * bsdf->alpha_y <= 1e-7f) ? LABEL_SINGULAR : LABEL_GLOSSY);
+              ((bsdf_microfacet_eval_flag(bsdf)) ? LABEL_GLOSSY : LABEL_SINGULAR);
       break;
     }
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
@@ -440,6 +440,7 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
       label = LABEL_REFLECT | LABEL_DIFFUSE;
       break;
     case CLOSURE_BSDF_PRINCIPLED_SHEEN_ID:
+    case CLOSURE_BSDF_SHEEN_ID:
       label = LABEL_REFLECT | LABEL_DIFFUSE;
       break;
 #endif
@@ -498,11 +499,6 @@ ccl_device_inline
     case CLOSURE_BSDF_TRANSPARENT_ID:
       eval = bsdf_transparent_eval(sc, sd->wi, wo, pdf);
       break;
-    case CLOSURE_BSDF_REFLECTION_ID:
-    case CLOSURE_BSDF_REFRACTION_ID:
-    case CLOSURE_BSDF_SHARP_GLASS_ID:
-      eval = bsdf_microfacet_sharp_eval(sc, sd->N, sd->wi, wo, pdf);
-      break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
@@ -541,6 +537,9 @@ ccl_device_inline
     case CLOSURE_BSDF_PRINCIPLED_SHEEN_ID:
       eval = bsdf_principled_sheen_eval(sc, sd->wi, wo, pdf);
       break;
+    case CLOSURE_BSDF_SHEEN_ID:
+      eval = bsdf_sheen_eval(sc, sd->wi, wo, pdf);
+      break;
 #endif
     default:
       break;
@@ -578,13 +577,11 @@ ccl_device void bsdf_blur(KernelGlobals kg, ccl_private ShaderClosure *sc, float
     case CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:
-      /* TODO: Recompute energy preservation after blur? */
-      bsdf_microfacet_ggx_blur(sc, roughness);
-      break;
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:
-      bsdf_microfacet_beckmann_blur(sc, roughness);
+      /* TODO: Recompute energy preservation after blur? */
+      bsdf_microfacet_blur(sc, roughness);
       break;
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
       bsdf_ashikhmin_shirley_blur(sc, roughness);

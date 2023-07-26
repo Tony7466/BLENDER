@@ -47,6 +47,12 @@
 
 static ThreadMutex sample_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+enum {
+  POINT_DATA_VEL = 1 << 0,
+  POINT_DATA_LIFE = 1 << 1,
+  POINT_DATA_COLOR = 1 << 2,
+};
+
 static int point_data_used(PointDensity *pd)
 {
   int pd_bitflag = 0;
@@ -276,12 +282,13 @@ static void pointdensity_cache_vertex_color(PointDensity *pd,
 
   BLI_assert(data_color);
 
-  if (!CustomData_has_layer(&mesh->ldata, CD_PROP_BYTE_COLOR)) {
+  if (!CustomData_has_layer(&mesh->loop_data, CD_PROP_BYTE_COLOR)) {
     return;
   }
   CustomData_validate_layer_name(
-      &mesh->ldata, CD_PROP_BYTE_COLOR, pd->vertex_attribute_name, layername);
-  const MLoopCol *mcol = CustomData_get_layer_named(&mesh->ldata, CD_PROP_BYTE_COLOR, layername);
+      &mesh->loop_data, CD_PROP_BYTE_COLOR, pd->vertex_attribute_name, layername);
+  const MLoopCol *mcol = CustomData_get_layer_named(
+      &mesh->loop_data, CD_PROP_BYTE_COLOR, layername);
   if (!mcol) {
     return;
   }
@@ -327,7 +334,7 @@ static void pointdensity_cache_vertex_weight(PointDensity *pd,
 
   BLI_assert(data_color);
 
-  const MDeformVert *mdef = CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT);
+  const MDeformVert *mdef = CustomData_get_layer(&mesh->vert_data, CD_MDEFORMVERT);
   if (!mdef) {
     return;
   }

@@ -51,6 +51,9 @@ void ED_node_cursor_location_get(const struct SpaceNode *snode, float value[2]);
 void ED_node_cursor_location_set(struct SpaceNode *snode, const float value[2]);
 
 int ED_node_tree_path_length(struct SpaceNode *snode);
+/**
+ * \param value: The path output at least the size of `ED_node_tree_path_length(snode) + 1`.
+ */
 void ED_node_tree_path_get(struct SpaceNode *snode, char *value);
 
 void ED_node_tree_start(struct SpaceNode *snode,
@@ -90,6 +93,7 @@ bool ED_node_is_compositor(struct SpaceNode *snode);
 bool ED_node_is_shader(struct SpaceNode *snode);
 bool ED_node_is_texture(struct SpaceNode *snode);
 bool ED_node_is_geometry(struct SpaceNode *snode);
+bool ED_node_supports_preview(struct SpaceNode *snode);
 
 /**
  * Assumes nothing being done in ntree yet, sets the default in/out node.

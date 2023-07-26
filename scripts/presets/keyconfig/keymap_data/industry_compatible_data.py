@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # ------------------------------------------------------------------------------
@@ -2215,7 +2217,9 @@ def km_animation_channels(params):
     items.extend([
         # Click select.
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
+         {"properties": [("extend_range", True)]}),
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
          {"properties": [("extend", True)]}),
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("children_only", True)]}),
@@ -3857,9 +3861,9 @@ def km_font(params):
         ("font.move_select", {"type": 'END', "value": 'PRESS', "shift": True, "ctrl": True, "repeat": True},
          {"properties": [("type", 'TEXT_END')]}),
         ("font.change_spacing", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", -1)]}),
+         {"properties": [("delta", -1.0)]}),
         ("font.change_spacing", {"type": 'RIGHT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", 1)]}),
+         {"properties": [("delta", 1.0)]}),
         ("font.change_character", {"type": 'UP_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("delta", 1)]}),
         ("font.change_character", {"type": 'DOWN_ARROW', "value": 'PRESS', "alt": True, "repeat": True},

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
 # Standalone or with Blender
 if(NOT WITH_BLENDER)
@@ -81,6 +82,13 @@ elseif(WIN32 AND MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # Unlike GCC/clang we still use fast math, because there is no fine
   # grained control and the speedup we get here is too big to ignore.
   set(CYCLES_KERNEL_FLAGS "/fp:fast -D_CRT_SECURE_NO_WARNINGS /GS-")
+
+  # "jumptablerdata" improves performance when there is contention in large switch statements such as in svm.h
+  # This flag is supported starting with MSVC 17.7 preview 3:
+  # https://learn.microsoft.com/en-us/cpp/build/reference/jump-table-rdata
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.37.32820)
+    string(APPEND CYCLES_KERNEL_FLAGS " /jumptablerdata")
+  endif()
 
   # there is no /arch:SSE3, but intrinsics are available anyway
   if(CMAKE_CL_64)

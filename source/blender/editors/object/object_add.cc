@@ -56,8 +56,8 @@
 #include "BKE_displist.h"
 #include "BKE_duplilist.h"
 #include "BKE_effect.h"
-#include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -103,7 +103,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_gpencil_legacy.h"
 #include "ED_grease_pencil.h"
 #include "ED_mball.h"
@@ -130,7 +130,7 @@ using blender::Vector;
 /** \name Local Enum Declarations
  * \{ */
 
-/* This is an exact copy of the define in `rna_light.c`
+/* This is an exact copy of the define in `rna_light.cc`
  * kept here because of linking order.
  * Icons are only defined here. */
 
@@ -142,7 +142,7 @@ const EnumPropertyItem rna_enum_light_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-/* copy from rna_object_force.c */
+/* copy from rna_object_force.cc */
 static const EnumPropertyItem field_type_items[] = {
     {PFIELD_FORCE, "FORCE", ICON_FORCE_FORCE, "Force", ""},
     {PFIELD_WIND, "WIND", ICON_FORCE_WIND, "Wind", ""},
@@ -1449,7 +1449,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
         md->source_type = LRT_SOURCE_SCENE;
       }
       /* Only created one layer and one material. */
-      strcpy(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
+      STRNCPY(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
       md->target_material = BKE_gpencil_material(ob, 1);
       if (md->target_material) {
         id_us_plus(&md->target_material->id);
@@ -2233,7 +2233,7 @@ static int object_curves_empty_hair_add_exec(bContext *C, wmOperator *op)
 
   /* Decide which UV map to use for attachment. */
   Mesh *surface_mesh = static_cast<Mesh *>(surface_ob->data);
-  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->ldata, CD_PROP_FLOAT2);
+  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->loop_data, CD_PROP_FLOAT2);
   if (uv_name != nullptr) {
     curves_id->surface_uv_map = BLI_strdup(uv_name);
   }
@@ -2577,7 +2577,9 @@ static uint dupliobject_instancer_hash(const void *ptr)
   return hash;
 }
 
-/* Compare function that matches dupliobject_hash */
+/**
+ * Compare function that matches #dupliobject_hash.
+ */
 static bool dupliobject_cmp(const void *a_, const void *b_)
 {
   const DupliObject *a = static_cast<const DupliObject *>(a_);
@@ -2643,7 +2645,8 @@ static void make_object_duplilist_real(bContext *C,
 
   Object *object_eval = DEG_get_evaluated_object(depsgraph, base->object);
 
-  if (!(base->object->transflag & OB_DUPLI) && !BKE_object_has_geometry_set_instances(object_eval))
+  if (!(base->object->transflag & OB_DUPLI) &&
+      !blender::bke::object_has_geometry_set_instances(*object_eval))
   {
     return;
   }
@@ -3244,7 +3247,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-      GeometrySet geometry;
+      bke::GeometrySet geometry;
       if (ob_eval->runtime.geometry_set_eval != nullptr) {
         geometry = *ob_eval->runtime.geometry_set_eval;
       }
@@ -3265,8 +3268,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        const CurveComponent &curve_component = *geometry.get_component_for_read<CurveComponent>();
-        const Curves *curves_eval = curve_component.get_for_read();
+        const Curves *curves_eval = geometry.get_curves_for_read();
         Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
 
         newob->data = new_curves;
@@ -3543,7 +3545,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-      GeometrySet geometry;
+      bke::GeometrySet geometry;
       if (ob_eval->runtime.geometry_set_eval != nullptr) {
         geometry = *ob_eval->runtime.geometry_set_eval;
       }
