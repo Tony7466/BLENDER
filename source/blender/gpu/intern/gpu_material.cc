@@ -57,15 +57,15 @@
  * worker thread as well. */
 #define ASYNC_OPTIMIZED_PASS_CREATION 0
 
-typedef struct GPUColorBandBuilder {
+struct GPUColorBandBuilder {
   float pixels[MAX_COLOR_BAND][CM_TABLE + 1][4];
   int current_layer;
-} GPUColorBandBuilder;
+};
 
-typedef struct GPUSkyBuilder {
+struct GPUSkyBuilder {
   float pixels[MAX_GPU_SKIES][GPU_SKY_WIDTH * GPU_SKY_HEIGHT][4];
   int current_layer;
-} GPUSkyBuilder;
+};
 
 struct GPUMaterial {
   /* Contains #GPUShader and source code for deferred compilation.
@@ -158,8 +158,9 @@ GPUTexture **gpu_material_sky_texture_layer_set(
   BLI_assert(height == GPU_SKY_HEIGHT);
   UNUSED_VARS_NDEBUG(width, height);
 
-  if (mat->sky_builder == NULL) {
-    mat->sky_builder = MEM_mallocN(sizeof(GPUSkyBuilder), "GPUSkyBuilder");
+  if (mat->sky_builder == nullptr) {
+    mat->sky_builder = static_cast<GPUSkyBuilder *>(
+        MEM_mallocN(sizeof(GPUSkyBuilder), "GPUSkyBuilder"));
     mat->sky_builder->current_layer = 0;
   }
 
@@ -188,8 +189,9 @@ GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
   BLI_assert(size == CM_TABLE + 1);
   UNUSED_VARS_NDEBUG(size);
 
-  if (mat->coba_builder == NULL) {
-    mat->coba_builder = MEM_mallocN(sizeof(GPUColorBandBuilder), "GPUColorBandBuilder");
+  if (mat->coba_builder == nullptr) {
+    mat->coba_builder = static_cast<GPUColorBandBuilder *>(
+        MEM_mallocN(sizeof(GPUColorBandBuilder), "GPUColorBandBuilder"));
     mat->coba_builder->current_layer = 0;
   }
 
@@ -210,7 +212,7 @@ GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
 
 static void gpu_material_ramp_texture_build(GPUMaterial *mat)
 {
-  if (mat->coba_builder == NULL) {
+  if (mat->coba_builder == nullptr) {
     return;
   }
 
@@ -225,12 +227,12 @@ static void gpu_material_ramp_texture_build(GPUMaterial *mat)
                                               (float *)builder->pixels);
 
   MEM_freeN(builder);
-  mat->coba_builder = NULL;
+  mat->coba_builder = nullptr;
 }
 
 static void gpu_material_sky_texture_build(GPUMaterial *mat)
 {
-  if (mat->sky_builder == NULL) {
+  if (mat->sky_builder == nullptr) {
     return;
   }
 
@@ -244,7 +246,7 @@ static void gpu_material_sky_texture_build(GPUMaterial *mat)
                                              (float *)mat->sky_builder->pixels);
 
   MEM_freeN(mat->sky_builder);
-  mat->sky_builder = NULL;
+  mat->sky_builder = nullptr;
 }
 
 void GPU_material_free_single(GPUMaterial *material)
@@ -256,25 +258,25 @@ void GPU_material_free_single(GPUMaterial *material)
 
   gpu_node_graph_free(&material->graph);
 
-  if (material->optimized_pass != NULL) {
+  if (material->optimized_pass != nullptr) {
     GPU_pass_release(material->optimized_pass);
   }
-  if (material->pass != NULL) {
+  if (material->pass != nullptr) {
     GPU_pass_release(material->pass);
   }
-  if (material->ubo != NULL) {
+  if (material->ubo != nullptr) {
     GPU_uniformbuf_free(material->ubo);
   }
-  if (material->coba_tex != NULL) {
+  if (material->coba_tex != nullptr) {
     GPU_texture_free(material->coba_tex);
   }
-  if (material->sky_tex != NULL) {
+  if (material->sky_tex != nullptr) {
     GPU_texture_free(material->sky_tex);
   }
-  if (material->sss_profile != NULL) {
+  if (material->sss_profile != nullptr) {
     GPU_uniformbuf_free(material->sss_profile);
   }
-  if (material->sss_tex_profile != NULL) {
+  if (material->sss_tex_profile != nullptr) {
     GPU_texture_free(material->sss_tex_profile);
   }
   MEM_freeN(material);
@@ -283,7 +285,7 @@ void GPU_material_free_single(GPUMaterial *material)
 void GPU_material_free(ListBase *gpumaterial)
 {
   LISTBASE_FOREACH (LinkData *, link, gpumaterial) {
-    GPUMaterial *material = link->data;
+    GPUMaterial *material = static_cast<GPUMaterial *>(link->data);
     DRW_deferred_shader_remove(material);
     GPU_material_free_single(material);
   }
@@ -313,13 +315,13 @@ GPUShader *GPU_material_get_shader(GPUMaterial *material)
                         GPU_MAT_OPTIMIZATION_SUCCESS) &&
                        material->optimized_pass) ?
                           GPU_pass_shader_get(material->optimized_pass) :
-                          NULL;
-  return (shader) ? shader : ((material->pass) ? GPU_pass_shader_get(material->pass) : NULL);
+                          nullptr;
+  return (shader) ? shader : ((material->pass) ? GPU_pass_shader_get(material->pass) : nullptr);
 }
 
 GPUShader *GPU_material_get_shader_base(GPUMaterial *material)
 {
-  return (material->pass) ? GPU_pass_shader_get(material->pass) : NULL;
+  return (material->pass) ? GPU_pass_shader_get(material->pass) : nullptr;
 }
 
 const char *GPU_material_get_name(GPUMaterial *material)
@@ -355,13 +357,13 @@ ListBase GPU_material_textures(GPUMaterial *material)
 const GPUUniformAttrList *GPU_material_uniform_attributes(const GPUMaterial *material)
 {
   const GPUUniformAttrList *attrs = &material->graph.uniform_attrs;
-  return attrs->count > 0 ? attrs : NULL;
+  return attrs->count > 0 ? attrs : nullptr;
 }
 
 const ListBase *GPU_material_layer_attributes(const GPUMaterial *material)
 {
   const ListBase *attrs = &material->graph.layer_attrs;
-  return !BLI_listbase_is_empty(attrs) ? attrs : NULL;
+  return !BLI_listbase_is_empty(attrs) ? attrs : nullptr;
 }
 
 #if 1 /* End of life code. */
@@ -371,13 +373,13 @@ const ListBase *GPU_material_layer_attributes(const GPUMaterial *material)
 #  define SSS_SAMPLES 65
 #  define SSS_EXPONENT 2.0f /* Importance sampling exponent */
 
-typedef struct GPUSssKernelData {
+struct GPUSssKernelData {
   float kernel[SSS_SAMPLES][4];
   float param[3], max_radius;
   float avg_inv_radius;
   int samples;
   int pad[2];
-} GPUSssKernelData;
+};
 
 BLI_STATIC_ASSERT_ALIGN(GPUSssKernelData, 16)
 
@@ -515,7 +517,8 @@ static void compute_sss_translucence_kernel(const GPUSssKernelData *kd,
                                             float **output)
 {
   float(*texels)[4];
-  texels = MEM_callocN(sizeof(float[4]) * resolution, "compute_sss_translucence_kernel");
+  texels = static_cast<float(*)[4]>(
+      MEM_callocN(sizeof(float[4]) * resolution, "compute_sss_translucence_kernel"));
   *output = (float *)texels;
 
   /* Last texel should be black, hence the - 1. */
@@ -581,7 +584,7 @@ bool GPU_material_sss_profile_create(GPUMaterial *material, float radii[3])
   material->sss_enabled = true;
 
   /* Update / Create UBO */
-  if (material->sss_profile == NULL) {
+  if (material->sss_profile == nullptr) {
     material->sss_profile = GPU_uniformbuf_create(sizeof(GPUSssKernelData));
   }
   return true;
@@ -592,7 +595,7 @@ GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
                                             GPUTexture **tex_profile)
 {
   if (!material->sss_enabled) {
-    return NULL;
+    return nullptr;
   }
 
   if (material->sss_dirty || (material->sss_samples != sample_len)) {
@@ -607,7 +610,7 @@ GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
     float *translucence_profile;
     compute_sss_translucence_kernel(&kd, 64, &translucence_profile);
 
-    if (material->sss_tex_profile != NULL) {
+    if (material->sss_tex_profile != nullptr) {
       GPU_texture_free(material->sss_tex_profile);
     }
 
@@ -624,7 +627,7 @@ GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
     material->sss_dirty = false;
   }
 
-  if (tex_profile != NULL) {
+  if (tex_profile != nullptr) {
     *tex_profile = material->sss_tex_profile;
   }
   return material->sss_profile;
@@ -671,7 +674,8 @@ void GPU_material_output_thickness(GPUMaterial *material, GPUNodeLink *link)
 
 void GPU_material_add_output_link_aov(GPUMaterial *material, GPUNodeLink *link, int hash)
 {
-  GPUNodeGraphOutputLink *aov_link = MEM_callocN(sizeof(GPUNodeGraphOutputLink), __func__);
+  GPUNodeGraphOutputLink *aov_link = static_cast<GPUNodeGraphOutputLink *>(
+      MEM_callocN(sizeof(GPUNodeGraphOutputLink), __func__));
   aov_link->outlink = link;
   aov_link->hash = hash;
   BLI_addtail(&material->graph.outlink_aovs, aov_link);
@@ -679,7 +683,8 @@ void GPU_material_add_output_link_aov(GPUMaterial *material, GPUNodeLink *link, 
 
 void GPU_material_add_output_link_composite(GPUMaterial *material, GPUNodeLink *link)
 {
-  GPUNodeGraphOutputLink *compositor_link = MEM_callocN(sizeof(GPUNodeGraphOutputLink), __func__);
+  GPUNodeGraphOutputLink *compositor_link = static_cast<GPUNodeGraphOutputLink *>(
+      MEM_callocN(sizeof(GPUNodeGraphOutputLink), __func__));
   compositor_link->outlink = link;
   BLI_addtail(&material->graph.outlink_compositor, compositor_link);
 }
@@ -704,7 +709,8 @@ char *GPU_material_split_sub_function(GPUMaterial *material,
       break;
   }
 
-  GPUNodeGraphFunctionLink *func_link = MEM_callocN(sizeof(GPUNodeGraphFunctionLink), __func__);
+  GPUNodeGraphFunctionLink *func_link = static_cast<GPUNodeGraphFunctionLink *>(
+      MEM_callocN(sizeof(GPUNodeGraphFunctionLink), __func__));
   func_link->outlink = *link;
   SNPRINTF(func_link->name, "ntree_fn%d", material->generated_function_len++);
   BLI_addtail(&material->graph.material_functions, func_link);
@@ -821,13 +827,13 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
     }
   }
 
-  GPUMaterial *mat = MEM_callocN(sizeof(GPUMaterial), "GPUMaterial");
+  GPUMaterial *mat = static_cast<GPUMaterial *>(MEM_callocN(sizeof(GPUMaterial), "GPUMaterial"));
   mat->ma = ma;
   mat->scene = scene;
   mat->uuid = shader_uuid;
   mat->flag = GPU_MATFLAG_UPDATED;
   mat->status = GPU_MAT_CREATED;
-  mat->default_mat = NULL;
+  mat->default_mat = nullptr;
   mat->is_volume_shader = is_volume_shader;
   mat->graph.used_libraries = BLI_gset_new(
       BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "GPUNodeGraph.used_libraries");
@@ -848,7 +854,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
     /* Create source code and search pass cache for an already compiled version. */
     mat->pass = GPU_generate_pass(mat, &mat->graph, callback, thunk, false);
 
-    if (mat->pass == NULL) {
+    if (mat->pass == nullptr) {
       /* We had a cache hit and the shader has already failed to compile. */
       mat->status = GPU_MAT_FAILED;
       gpu_node_graph_free(&mat->graph);
@@ -861,7 +867,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
       }
 
       GPUShader *sh = GPU_pass_shader_get(mat->pass);
-      if (sh != NULL) {
+      if (sh != nullptr) {
         /* We had a cache hit and the shader is already compiled. */
         mat->status = GPU_MAT_SUCCESS;
 
@@ -873,19 +879,19 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
       /* Generate optimized pass. */
       if (mat->optimization_status == GPU_MAT_OPTIMIZATION_READY) {
 #if ASYNC_OPTIMIZED_PASS_CREATION == 1
-        mat->optimized_pass = NULL;
+        mat->optimized_pass = nullptr;
         mat->optimize_pass_info.callback = callback;
         mat->optimize_pass_info.thunk = thunk;
 #else
         mat->optimized_pass = GPU_generate_pass(mat, &mat->graph, callback, thunk, true);
-        if (mat->optimized_pass == NULL) {
+        if (mat->optimized_pass == nullptr) {
           /* Failed to create optimized pass. */
           gpu_node_graph_free_nodes(&mat->graph);
           GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_SKIP);
         }
         else {
           GPUShader *optimized_sh = GPU_pass_shader_get(mat->optimized_pass);
-          if (optimized_sh != NULL) {
+          if (optimized_sh != nullptr) {
             /* Optimized shader already available. */
             gpu_node_graph_free_nodes(&mat->graph);
             GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_SUCCESS);
@@ -904,7 +910,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   /* Note that even if building the shader fails in some way, we still keep
    * it to avoid trying to compile again and again, and simply do not use
    * the actual shader on drawing. */
-  LinkData *link = MEM_callocN(sizeof(LinkData), "GPUMaterialLink");
+  LinkData *link = static_cast<LinkData *>(MEM_callocN(sizeof(LinkData), "GPUMaterialLink"));
   link->data = mat;
   BLI_addtail(gpumaterials, link);
 
@@ -928,8 +934,8 @@ void GPU_material_compile(GPUMaterial *mat)
   BLI_assert(ELEM(mat->status, GPU_MAT_QUEUED, GPU_MAT_CREATED));
   BLI_assert(mat->pass);
 
-  /* NOTE: The shader may have already been compiled here since we are
-   * sharing GPUShader across GPUMaterials. In this case it's a no-op. */
+/* NOTE: The shader may have already been compiled here since we are
+ * sharing GPUShader across GPUMaterials. In this case it's a no-op. */
 #ifndef NDEBUG
   success = GPU_pass_compile(mat->pass, mat->name);
 #else
@@ -940,7 +946,7 @@ void GPU_material_compile(GPUMaterial *mat)
 
   if (success) {
     GPUShader *sh = GPU_pass_shader_get(mat->pass);
-    if (sh != NULL) {
+    if (sh != nullptr) {
 
       /** Perform async Render Pipeline State Object (PSO) compilation.
        *
@@ -955,8 +961,8 @@ void GPU_material_compile(GPUMaterial *mat)
        * configurations to ensure compile time remains fast, as these first
        * entries will be the most commonly used PSOs. As not all PSOs are necessarily
        * required immediately, this limit should remain low (1-3 at most). */
-      if (!ELEM(mat->default_mat, NULL, mat)) {
-        if (mat->default_mat->pass != NULL) {
+      if (!ELEM(mat->default_mat, nullptr, mat)) {
+        if (mat->default_mat->pass != nullptr) {
           GPUShader *parent_sh = GPU_pass_shader_get(mat->default_mat->pass);
           if (parent_sh) {
             /* Skip warming if cached pass is identical to the default material. */
@@ -982,7 +988,7 @@ void GPU_material_compile(GPUMaterial *mat)
   else {
     mat->status = GPU_MAT_FAILED;
     GPU_pass_release(mat->pass);
-    mat->pass = NULL;
+    mat->pass = nullptr;
     gpu_node_graph_free(&mat->graph);
   }
 }
@@ -1023,8 +1029,8 @@ void GPU_material_optimize(GPUMaterial *mat)
 #endif
 
   bool success;
-  /* NOTE: The shader may have already been compiled here since we are
-   * sharing GPUShader across GPUMaterials. In this case it's a no-op. */
+/* NOTE: The shader may have already been compiled here since we are
+ * sharing GPUShader across GPUMaterials. In this case it's a no-op. */
 #ifndef NDEBUG
   success = GPU_pass_compile(mat->optimized_pass, mat->name);
 #else
@@ -1033,7 +1039,7 @@ void GPU_material_optimize(GPUMaterial *mat)
 
   if (success) {
     GPUShader *sh = GPU_pass_shader_get(mat->optimized_pass);
-    if (sh != NULL) {
+    if (sh != nullptr) {
       /** Perform async Render Pipeline State Object (PSO) compilation.
        *
        * Warm PSO cache within async compilation thread for optimized materials.
@@ -1062,7 +1068,7 @@ void GPU_material_optimize(GPUMaterial *mat)
   else {
     /* Optimization pass generation failed. Disable future attempts to optimize. */
     GPU_pass_release(mat->optimized_pass);
-    mat->optimized_pass = NULL;
+    mat->optimized_pass = nullptr;
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_SKIP);
   }
 
@@ -1088,13 +1094,14 @@ GPUMaterial *GPU_material_from_callbacks(ConstructGPUMaterialFn construct_functi
                                          void *thunk)
 {
   /* Allocate a new material and its material graph, and initialize its reference count. */
-  GPUMaterial *material = MEM_callocN(sizeof(GPUMaterial), "GPUMaterial");
+  GPUMaterial *material = static_cast<GPUMaterial *>(
+      MEM_callocN(sizeof(GPUMaterial), "GPUMaterial"));
   material->graph.used_libraries = BLI_gset_new(
       BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "GPUNodeGraph.used_libraries");
   material->refcount = 1;
   material->optimization_status = GPU_MAT_OPTIMIZATION_SKIP;
-  material->optimized_pass = NULL;
-  material->default_mat = NULL;
+  material->optimized_pass = nullptr;
+  material->default_mat = nullptr;
 
   /* Construct the material graph by adding and linking the necessary GPU material nodes. */
   construct_function_cb(thunk, material);
@@ -1105,10 +1112,10 @@ GPUMaterial *GPU_material_from_callbacks(ConstructGPUMaterialFn construct_functi
   /* Lookup an existing pass in the cache or generate a new one. */
   material->pass = GPU_generate_pass(
       material, &material->graph, generate_code_function_cb, thunk, false);
-  material->optimized_pass = NULL;
+  material->optimized_pass = nullptr;
 
   /* The pass already exists in the pass cache but its shader already failed to compile. */
-  if (material->pass == NULL) {
+  if (material->pass == nullptr) {
     material->status = GPU_MAT_FAILED;
     gpu_node_graph_free(&material->graph);
     return material;
@@ -1116,7 +1123,7 @@ GPUMaterial *GPU_material_from_callbacks(ConstructGPUMaterialFn construct_functi
 
   /* The pass already exists in the pass cache and its shader is already compiled. */
   GPUShader *shader = GPU_pass_shader_get(material->pass);
-  if (shader != NULL) {
+  if (shader != nullptr) {
     material->status = GPU_MAT_SUCCESS;
     if (material->optimization_status == GPU_MAT_OPTIMIZATION_SKIP) {
       /* Only free node graph if not required by secondary optimization pass. */

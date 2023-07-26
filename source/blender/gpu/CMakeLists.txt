@@ -60,7 +60,7 @@ set(SRC
   intern/gpu_immediate_util.cc
   intern/gpu_index_buffer.cc
   intern/gpu_init_exit.cc
-  intern/gpu_material.c
+  intern/gpu_material.cc
   intern/gpu_matrix.cc
   intern/gpu_node_graph.cc
   intern/gpu_platform.cc
