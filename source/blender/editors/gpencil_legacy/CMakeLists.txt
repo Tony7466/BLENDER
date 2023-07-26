@@ -27,7 +27,7 @@ set(SRC
   editaction_gpencil.cc
   gpencil_add_blank.cc
   gpencil_add_lineart.cc
-  gpencil_add_monkey.c
+  gpencil_add_monkey.cc
   gpencil_add_stroke.c
   gpencil_armature.c
   gpencil_bake_animation.cc
