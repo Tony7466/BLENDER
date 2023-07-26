@@ -1087,45 +1087,43 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
 {
   BLI_assert(fd->filesdna != nullptr);
   for (BHead *bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
-    if (bhead->code == BLO_CODE_GLOB) {
-      FileGlobal *fg = static_cast<FileGlobal *>(read_struct(fd, bhead, "Global"));
-
-      if ((fg->minversion > BLENDER_FILE_VERSION) ||
-          (fg->minversion == BLENDER_FILE_VERSION && fg->minsubversion > BLENDER_FILE_SUBVERSION))
-      {
-        char writer_ver_str[16];
-        char min_reader_ver_str[16];
-        if (fd->fileversion == fg->minversion) {
-          BKE_blender_version_blendfile_string_from_values(writer_ver_str,
-                                                           sizeof(writer_ver_str),
-                                                           static_cast<short>(fd->fileversion),
-                                                           fg->subversion);
-          BKE_blender_version_blendfile_string_from_values(
-              min_reader_ver_str, sizeof(min_reader_ver_str), fg->minversion, fg->minsubversion);
-        }
-        else {
-          BKE_blender_version_blendfile_string_from_values(
-              writer_ver_str, sizeof(writer_ver_str), static_cast<short>(fd->fileversion), -1);
-          BKE_blender_version_blendfile_string_from_values(
-              min_reader_ver_str, sizeof(min_reader_ver_str), fg->minversion, -1);
-        }
-        BKE_reportf(
-            reports,
-            RPT_ERROR,
-            TIP_("The file was saved by a newer version, open it with Blender %s or later"),
-            min_reader_ver_str);
-        CLOG_WARN(&LOG,
-                  "%s: File saved by a newer version of Blender (%s), Blender %s or later is "
-                  "needed to open it.",
-                  fd->relabase,
-                  writer_ver_str,
-                  min_reader_ver_str);
-        MEM_freeN(fg);
-        return true;
-      }
-      MEM_freeN(fg);
-      return false;
+    if (bhead->code != BLO_CODE_GLOB) {
+      continue;
     }
+
+    FileGlobal *fg = static_cast<FileGlobal *>(read_struct(fd, bhead, "Global"));
+    if ((fg->minversion > BLENDER_FILE_VERSION) ||
+        (fg->minversion == BLENDER_FILE_VERSION && fg->minsubversion > BLENDER_FILE_SUBVERSION))
+    {
+      char writer_ver_str[16];
+      char min_reader_ver_str[16];
+      if (fd->fileversion == fg->minversion) {
+        BKE_blender_version_blendfile_string_from_values(
+            writer_ver_str, sizeof(writer_ver_str), short(fd->fileversion), fg->subversion);
+        BKE_blender_version_blendfile_string_from_values(
+            min_reader_ver_str, sizeof(min_reader_ver_str), fg->minversion, fg->minsubversion);
+      }
+      else {
+        BKE_blender_version_blendfile_string_from_values(
+            writer_ver_str, sizeof(writer_ver_str), short(fd->fileversion), -1);
+        BKE_blender_version_blendfile_string_from_values(
+            min_reader_ver_str, sizeof(min_reader_ver_str), fg->minversion, -1);
+      }
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  TIP_("The file was saved by a newer version, open it with Blender %s or later"),
+                  min_reader_ver_str);
+      CLOG_WARN(&LOG,
+                "%s: File saved by a newer version of Blender (%s), Blender %s or later is "
+                "needed to open it.",
+                fd->relabase,
+                writer_ver_str,
+                min_reader_ver_str);
+      MEM_freeN(fg);
+      return true;
+    }
+    MEM_freeN(fg);
+    return false;
   }
   return false;
 }

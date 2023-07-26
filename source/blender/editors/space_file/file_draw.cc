@@ -1295,9 +1295,6 @@ bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegio
   const bool is_asset_browser = ED_fileselect_is_asset_browser(sfile);
   const bool is_library_browser = !is_asset_browser &&
                                   filelist_islibrary(sfile->files, blendfile_path, nullptr);
-  if (!is_asset_browser && !is_library_browser) {
-    return false;
-  }
 
   if (is_asset_browser) {
     FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
@@ -1322,6 +1319,18 @@ bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegio
       return false;
     }
 
+    /* This could all be part of the file-list loading:
+     *   - When loading fails this could be saved in the file-list, e.g. when
+     *     `BLO_blendhandle_from_file()` returns null in `filelist_readjob_list_lib()`, a
+     *     `FL_HAS_INVALID_LIBRARY` file-list flag could be set.
+     *   - Reports from it could also be stored in `FileList` rather than being ignored
+     *     (`RPT_STORE` must be set!).
+     *   - Then we could just check for `is_library_browser` and the `FL_HAS_INVALID_LIBRARY` flag
+     *     here, and draw the hint with the reports in the file-list. (We would not draw a hint for
+     *     recursive loading, even if the file-list has the "has invalid library" flag set, which
+     *     seems like the wanted behavior.)
+     *   - The call to BKE_blendfile_is_readable() would not be needed then.
+     */
     if (!sfile->runtime->is_blendfile_status_set) {
       BKE_reports_clear(&sfile->runtime->is_blendfile_readable_reports);
       sfile->runtime->is_blendfile_readable = BKE_blendfile_is_readable(

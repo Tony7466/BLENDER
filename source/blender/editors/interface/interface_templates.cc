@@ -6538,9 +6538,9 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
   eUIEmbossType previous_emboss = UI_block_emboss_get(block);
 
   UI_fontstyle_set(&style->widgetlabel);
-  int width = static_cast<int>(
+  int width = int(
       BLF_width(style->widgetlabel.uifont_id, status_info_txt, strlen(status_info_txt)));
-  width = max_ii(width, static_cast<int>(10 * UI_SCALE_FAC));
+  width = max_ii(width, int(10 * UI_SCALE_FAC));
 
   UI_block_align_begin(block);
 
@@ -6597,7 +6597,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
                      UI_BTYPE_BUT,
                      0,
                      ICON_ERROR,
-                     static_cast<int>(3 * UI_SCALE_FAC),
+                     int(3 * UI_SCALE_FAC),
                      0,
                      UI_UNIT_X,
                      UI_UNIT_Y,
@@ -6617,7 +6617,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
                  status_info_txt,
                  UI_UNIT_X,
                  0,
-                 static_cast<short>(width + UI_UNIT_X),
+                 short(width + UI_UNIT_X),
                  UI_UNIT_Y,
                  nullptr,
                  0.0f,

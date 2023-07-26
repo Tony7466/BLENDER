@@ -49,7 +49,9 @@ bool BKE_blendfile_library_path_explode(const char *path,
                                         char **r_name);
 
 /**
- * Check whether a given path is actually a readable .blend file.
+ * Check whether a given path is actually a Blender-readable, valid .blend file.
+ *
+ * \note Currently does attempt to open and read (part of) the given file.
  */
 bool BKE_blendfile_is_readable(const char *path, struct ReportList *reports);
 

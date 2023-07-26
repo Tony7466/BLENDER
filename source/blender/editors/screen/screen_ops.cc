@@ -31,7 +31,6 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_blender_version.h"
 #include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_editmesh.h"

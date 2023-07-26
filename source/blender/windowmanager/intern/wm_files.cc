@@ -3988,6 +3988,12 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
 
   if (file_has_been_saved_before) {
     if (bmain->has_forward_compatibility_issues) {
+      /* Need to invoke to get the filebrowser and choose where to save the new file.
+       * This also makes it impossible to keep on going with current operation, which is why
+       * callback cannot be executed anymore.
+       *
+       * This is the same situation as what happens when the file has never been saved before
+       * (outer `else` statement, below). */
       WM_operator_name_call(C, "WM_OT_save_as_mainfile", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
       execute_callback = false;
     }
@@ -4043,21 +4049,23 @@ static void wm_block_file_close_save_button(uiBlock *block,
                                             wmGenericCallback *post_action,
                                             const bool has_forwardcompat_issues)
 {
-  uiBut *but = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                0,
-                                has_forwardcompat_issues ? IFACE_("Save As...") : IFACE_("Save"),
-                                0,
-                                0,
-                                0,
-                                UI_UNIT_Y,
-                                nullptr,
-                                0,
-                                0,
-                                0,
-                                0,
-                                "");
+  uiBut *but = uiDefIconTextBut(
+      block,
+      UI_BTYPE_BUT,
+      0,
+      0,
+      /* Forward compatibility issues force using 'save as' operator instead of 'save' one. */
+      has_forwardcompat_issues ? IFACE_("Save As...") : IFACE_("Save"),
+      0,
+      0,
+      0,
+      UI_UNIT_Y,
+      nullptr,
+      0,
+      0,
+      0,
+      0,
+      "");
   UI_but_func_set(but, wm_block_file_close_save, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
