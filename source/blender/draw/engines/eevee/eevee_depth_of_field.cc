@@ -153,7 +153,7 @@ int EEVEE_depth_of_field_sample_count_get(EEVEE_EffectsInfo *effects,
                                           int *r_ring_count)
 {
   if (effects->dof_jitter_radius == 0.0f) {
-    if (r_ring_count != NULL) {
+    if (r_ring_count != nullptr) {
       *r_ring_count = 0;
     }
     return 1;
@@ -172,15 +172,13 @@ int EEVEE_depth_of_field_sample_count_get(EEVEE_EffectsInfo *effects,
 
   sample_count = dof_jitter_total_sample_count(CAMERA_JITTER_RING_DENSITY, ring_count);
 
-  if (r_ring_count != NULL) {
+  if (r_ring_count != nullptr) {
     *r_ring_count = ring_count;
   }
   return sample_count;
 }
 
-int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata),
-                              EEVEE_Data *vedata,
-                              Object *camera)
+int EEVEE_depth_of_field_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata, Object *camera)
 {
   EEVEE_TextureList *txl = vedata->txl;
   EEVEE_StorageList *stl = vedata->stl;
@@ -190,7 +188,8 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata),
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-  Camera *cam = (camera != NULL && camera->type == OB_CAMERA) ? camera->data : NULL;
+  Camera *cam = static_cast<Camera *>(
+      (camera != nullptr && camera->type == OB_CAMERA) ? camera->data : nullptr);
 
   if (cam && (cam->dof.flag & CAM_DOF_ENABLED)) {
     RegionView3D *rv3d = draw_ctx->rv3d;
@@ -225,7 +224,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData *UNUSED(sldata),
     float focal_len_scaled = scale_camera * focal_len;
     float sensor_scaled = scale_camera * sensor;
 
-    if (rv3d != NULL) {
+    if (rv3d != nullptr) {
       sensor_scaled *= rv3d->viewcamtexcofac[0];
     }
 
@@ -348,9 +347,9 @@ static void dof_bokeh_pass_init(EEVEE_FramebufferList *fbl,
   if ((fx->dof_bokeh_aniso[0] == 1.0f) && (fx->dof_bokeh_aniso[1] == 1.0f) &&
       (fx->dof_bokeh_blades == 0.0))
   {
-    fx->dof_bokeh_gather_lut_tx = NULL;
-    fx->dof_bokeh_scatter_lut_tx = NULL;
-    fx->dof_bokeh_resolve_lut_tx = NULL;
+    fx->dof_bokeh_gather_lut_tx = nullptr;
+    fx->dof_bokeh_scatter_lut_tx = nullptr;
+    fx->dof_bokeh_resolve_lut_tx = nullptr;
     return;
   }
 
@@ -364,15 +363,15 @@ static void dof_bokeh_pass_init(EEVEE_FramebufferList *fbl,
   DRW_shgroup_uniform_float_copy(grp, "bokehSides", fx->dof_bokeh_blades);
   DRW_shgroup_uniform_float_copy(grp, "bokehRotation", fx->dof_bokeh_rotation);
   DRW_shgroup_uniform_vec2_copy(grp, "bokehAnisotropyInv", fx->dof_bokeh_aniso_inv);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   fx->dof_bokeh_gather_lut_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), GPU_RG16F, usage, owner);
+      UNPACK2(res), GPU_RG16F, usage, static_cast<DrawEngineType *>(owner));
   fx->dof_bokeh_scatter_lut_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), GPU_R16F, usage, owner);
+      UNPACK2(res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
   fx->dof_bokeh_resolve_lut_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), GPU_R16F, usage, owner);
+      UNPACK2(res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
 
   GPU_framebuffer_ensure_config(&fbl->dof_bokeh_fb,
                                 {
@@ -394,7 +393,7 @@ static void dof_setup_pass_init(EEVEE_FramebufferList *fbl,
 
   void *owner = (void *)&EEVEE_depth_of_field_init;
   const float *fullres = DRW_viewport_size_get();
-  int res[2] = {divide_ceil_u(fullres[0], 2), divide_ceil_u(fullres[1], 2)};
+  int res[2] = {int(divide_ceil_u(fullres[0], 2)), int(divide_ceil_u(fullres[1], 2))};
 
   DRW_PASS_CREATE(psl->dof_setup, DRW_STATE_WRITE_COLOR);
 
@@ -404,12 +403,13 @@ static void dof_setup_pass_init(EEVEE_FramebufferList *fbl,
   DRW_shgroup_uniform_texture_ref_ex(grp, "depthBuffer", &dtxl->depth, NO_FILTERING);
   DRW_shgroup_uniform_vec4_copy(grp, "cocParams", fx->dof_coc_params);
   DRW_shgroup_uniform_float_copy(grp, "bokehMaxSize", fx->dof_bokeh_max_size);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   fx->dof_half_res_color_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), COLOR_FORMAT, usage, owner);
-  fx->dof_half_res_coc_tx = DRW_texture_pool_query_2d_ex(UNPACK2(res), GPU_RG16F, usage, owner);
+      UNPACK2(res), COLOR_FORMAT, usage, static_cast<DrawEngineType *>(owner));
+  fx->dof_half_res_coc_tx = DRW_texture_pool_query_2d_ex(
+      UNPACK2(res), GPU_RG16F, usage, static_cast<DrawEngineType *>(owner));
 
   GPU_framebuffer_ensure_config(&fbl->dof_setup_fb,
                                 {
@@ -428,8 +428,8 @@ static void dof_flatten_tiles_pass_init(EEVEE_FramebufferList *fbl,
 {
   void *owner = (void *)&EEVEE_depth_of_field_init;
   const float *fullres = DRW_viewport_size_get();
-  int res[2] = {divide_ceil_u(fullres[0], DOF_TILE_DIVISOR),
-                divide_ceil_u(fullres[1], DOF_TILE_DIVISOR)};
+  int res[2] = {int(divide_ceil_u(fullres[0], DOF_TILE_DIVISOR)),
+                int(divide_ceil_u(fullres[1], DOF_TILE_DIVISOR))};
 
   DRW_PASS_CREATE(psl->dof_flatten_tiles, DRW_STATE_WRITE_COLOR);
 
@@ -437,13 +437,13 @@ static void dof_flatten_tiles_pass_init(EEVEE_FramebufferList *fbl,
   DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->dof_flatten_tiles);
   DRW_shgroup_uniform_texture_ref_ex(
       grp, "halfResCocBuffer", &fx->dof_half_res_coc_tx, NO_FILTERING);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   fx->dof_coc_tiles_fg_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), FG_TILE_FORMAT, usage, owner);
+      UNPACK2(res), FG_TILE_FORMAT, usage, static_cast<DrawEngineType *>(owner));
   fx->dof_coc_tiles_bg_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), BG_TILE_FORMAT, usage, owner);
+      UNPACK2(res), BG_TILE_FORMAT, usage, static_cast<DrawEngineType *>(owner));
 
   GPU_framebuffer_ensure_config(&fbl->dof_flatten_tiles_fb,
                                 {
@@ -464,8 +464,8 @@ static void dof_dilate_tiles_pass_init(EEVEE_FramebufferList *fbl,
 {
   void *owner = (void *)&EEVEE_depth_of_field_init;
   const float *fullres = DRW_viewport_size_get();
-  int res[2] = {divide_ceil_u(fullres[0], DOF_TILE_DIVISOR),
-                divide_ceil_u(fullres[1], DOF_TILE_DIVISOR)};
+  int res[2] = {int(divide_ceil_u(fullres[0], DOF_TILE_DIVISOR)),
+                int(divide_ceil_u(fullres[1], DOF_TILE_DIVISOR))};
 
   DRW_PASS_CREATE(psl->dof_dilate_tiles_minmax, DRW_STATE_WRITE_COLOR);
   DRW_PASS_CREATE(psl->dof_dilate_tiles_minabs, DRW_STATE_WRITE_COLOR);
@@ -479,13 +479,13 @@ static void dof_dilate_tiles_pass_init(EEVEE_FramebufferList *fbl,
     DRW_shgroup_uniform_bool(grp, "dilateSlightFocus", &fx->dof_dilate_slight_focus, 1);
     DRW_shgroup_uniform_int(grp, "ringCount", &fx->dof_dilate_ring_count, 1);
     DRW_shgroup_uniform_int(grp, "ringWidthMultiplier", &fx->dof_dilate_ring_width_multiplier, 1);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
   fx->dof_coc_dilated_tiles_fg_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), FG_TILE_FORMAT, usage, owner);
+      UNPACK2(res), FG_TILE_FORMAT, usage, static_cast<DrawEngineType *>(owner));
   fx->dof_coc_dilated_tiles_bg_tx = DRW_texture_pool_query_2d_ex(
-      UNPACK2(res), BG_TILE_FORMAT, usage, owner);
+      UNPACK2(res), BG_TILE_FORMAT, usage, static_cast<DrawEngineType *>(owner));
 
   GPU_framebuffer_ensure_config(&fbl->dof_dilate_tiles_fb,
                                 {
@@ -558,10 +558,10 @@ static void dof_reduce_pass_init(EEVEE_FramebufferList *fbl,
   /* This ensure the mipmaps are aligned for the needed 4 mip levels.
    * Starts at 2 because already at half resolution. */
   int multiple = 2 << (mip_count - 1);
-  int res[2] = {(multiple * divide_ceil_u(fullres[0], multiple)) / 2,
-                (multiple * divide_ceil_u(fullres[1], multiple)) / 2};
+  int res[2] = {(multiple * int(divide_ceil_u(fullres[0], multiple))) / 2,
+                (multiple * int(divide_ceil_u(fullres[1], multiple))) / 2};
 
-  int quater_res[2] = {divide_ceil_u(fullres[0], 4), divide_ceil_u(fullres[1], 4)};
+  int quater_res[2] = {int(divide_ceil_u(fullres[0], 4)), int(divide_ceil_u(fullres[1], 4))};
 
   /* TODO(fclem): Make this dependent of the quality of the gather pass. */
   fx->dof_scatter_coc_threshold = 4.0f;
@@ -575,13 +575,13 @@ static void dof_reduce_pass_init(EEVEE_FramebufferList *fbl,
         grp, "colorBuffer", &fx->dof_reduce_input_color_tx, NO_FILTERING);
     DRW_shgroup_uniform_texture_ref_ex(
         grp, "cocBuffer", &fx->dof_reduce_input_coc_tx, NO_FILTERING);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     void *owner = (void *)&EEVEE_depth_of_field_init;
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
                              GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
     fx->dof_downsample_tx = DRW_texture_pool_query_2d_ex(
-        UNPACK2(quater_res), COLOR_FORMAT, usage, owner);
+        UNPACK2(quater_res), COLOR_FORMAT, usage, static_cast<DrawEngineType *>(owner));
 
     GPU_framebuffer_ensure_config(&fbl->dof_downsample_fb,
                                   {
@@ -608,12 +608,12 @@ static void dof_reduce_pass_init(EEVEE_FramebufferList *fbl,
     DRW_shgroup_uniform_float_copy(grp, "scatterCocThreshold", fx->dof_scatter_coc_threshold);
     DRW_shgroup_uniform_float_copy(grp, "colorNeighborClamping", fx->dof_denoise_factor);
     DRW_shgroup_uniform_vec2_copy(grp, "bokehAnisotropy", fx->dof_bokeh_aniso);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     void *owner = (void *)&EEVEE_depth_of_field_init;
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     fx->dof_scatter_src_tx = DRW_texture_pool_query_2d_ex(
-        UNPACK2(res), GPU_R11F_G11F_B10F, usage, owner);
+        UNPACK2(res), GPU_R11F_G11F_B10F, usage, static_cast<DrawEngineType *>(owner));
   }
 
   {
@@ -626,7 +626,7 @@ static void dof_reduce_pass_init(EEVEE_FramebufferList *fbl,
         grp, "colorBuffer", &fx->dof_reduce_input_color_tx, NO_FILTERING);
     DRW_shgroup_uniform_texture_ref_ex(
         grp, "cocBuffer", &fx->dof_reduce_input_coc_tx, NO_FILTERING);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 
   if (txl->dof_reduced_color) {
@@ -640,15 +640,15 @@ static void dof_reduce_pass_init(EEVEE_FramebufferList *fbl,
     }
   }
 
-  if (txl->dof_reduced_color == NULL) {
+  if (txl->dof_reduced_color == nullptr) {
     /* Color needs to be signed format here. See note in shader for explanation. */
     /* Do not use texture pool because of needs mipmaps. */
     eGPUTextureUsage tex_flags = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
                                  GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
     txl->dof_reduced_color = GPU_texture_create_2d(
-        "dof_reduced_color", UNPACK2(res), mip_count, GPU_RGBA16F, tex_flags, NULL);
+        "dof_reduced_color", UNPACK2(res), mip_count, GPU_RGBA16F, tex_flags, nullptr);
     txl->dof_reduced_coc = GPU_texture_create_2d(
-        "dof_reduced_coc", UNPACK2(res), mip_count, GPU_R16F, tex_flags, NULL);
+        "dof_reduced_coc", UNPACK2(res), mip_count, GPU_R16F, tex_flags, nullptr);
   }
 
   GPU_framebuffer_ensure_config(&fbl->dof_reduce_fb,
@@ -678,12 +678,12 @@ static void dof_gather_pass_init(EEVEE_FramebufferList *fbl,
 {
   void *owner = (void *)&EEVEE_depth_of_field_init;
   const float *fullres = DRW_viewport_size_get();
-  int res[2] = {divide_ceil_u(fullres[0], 2), divide_ceil_u(fullres[1], 2)};
+  int res[2] = {int(divide_ceil_u(fullres[0], 2)), int(divide_ceil_u(fullres[1], 2))};
   int input_size[2];
   GPU_texture_get_mipmap_size(txl->dof_reduced_color, 0, input_size);
   float uv_correction_fac[2] = {res[0] / (float)input_size[0], res[1] / (float)input_size[1]};
   float output_texel_size[2] = {1.0f / res[0], 1.0f / res[1]};
-  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != NULL);
+  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != nullptr);
 
   {
     DRW_PASS_CREATE(psl->dof_gather_fg_holefill, DRW_STATE_WRITE_COLOR);
@@ -699,7 +699,7 @@ static void dof_gather_pass_init(EEVEE_FramebufferList *fbl,
     DRW_shgroup_uniform_texture(grp, "utilTex", EEVEE_materials_get_util_tex());
     DRW_shgroup_uniform_vec2_copy(grp, "gatherInputUvCorrection", uv_correction_fac);
     DRW_shgroup_uniform_vec2_copy(grp, "gatherOutputTexelSize", output_texel_size);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     /* Reuse textures from the setup pass. */
     /* NOTE: We could use the texture pool do that for us but it does not track usage and it might
@@ -707,7 +707,7 @@ static void dof_gather_pass_init(EEVEE_FramebufferList *fbl,
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     fx->dof_fg_holefill_color_tx = fx->dof_half_res_color_tx;
     fx->dof_fg_holefill_weight_tx = DRW_texture_pool_query_2d_ex(
-        UNPACK2(res), GPU_R16F, usage, owner);
+        UNPACK2(res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
 
     GPU_framebuffer_ensure_config(&fbl->dof_gather_fg_holefill_fb,
                                   {
@@ -738,10 +738,12 @@ static void dof_gather_pass_init(EEVEE_FramebufferList *fbl,
       /* Restore. */
       negate_v2(fx->dof_bokeh_aniso);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-    fx->dof_fg_color_tx = DRW_texture_pool_query_2d_ex(UNPACK2(res), COLOR_FORMAT, usage, owner);
-    fx->dof_fg_weight_tx = DRW_texture_pool_query_2d_ex(UNPACK2(res), GPU_R16F, usage, owner);
+    fx->dof_fg_color_tx = DRW_texture_pool_query_2d_ex(
+        UNPACK2(res), COLOR_FORMAT, usage, static_cast<DrawEngineType *>(owner));
+    fx->dof_fg_weight_tx = DRW_texture_pool_query_2d_ex(
+        UNPACK2(res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
     /* Reuse textures from the setup pass. */
     /* NOTE: We could use the texture pool do that for us but it does not track usage and it might
      * backfire (it does in practice). */
@@ -775,11 +777,13 @@ static void dof_gather_pass_init(EEVEE_FramebufferList *fbl,
       DRW_shgroup_uniform_vec2_copy(grp, "bokehAnisotropy", fx->dof_bokeh_aniso);
       DRW_shgroup_uniform_texture_ref(grp, "bokehLut", &fx->dof_bokeh_gather_lut_tx);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-    fx->dof_bg_color_tx = DRW_texture_pool_query_2d_ex(UNPACK2(res), COLOR_FORMAT, usage, owner);
-    fx->dof_bg_weight_tx = DRW_texture_pool_query_2d_ex(UNPACK2(res), GPU_R16F, usage, owner);
+    fx->dof_bg_color_tx = DRW_texture_pool_query_2d_ex(
+        UNPACK2(res), COLOR_FORMAT, usage, static_cast<DrawEngineType *>(owner));
+    fx->dof_bg_weight_tx = DRW_texture_pool_query_2d_ex(
+        UNPACK2(res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
     /* Reuse, since only used for scatter. Foreground is processed before background. */
     fx->dof_bg_occlusion_tx = fx->dof_fg_occlusion_tx;
 
@@ -812,7 +816,7 @@ static void dof_filter_pass_init(EEVEE_FramebufferList *fbl,
       grp, "colorBuffer", &fx->dof_fg_holefill_color_tx, NO_FILTERING);
   DRW_shgroup_uniform_texture_ref_ex(
       grp, "weightBuffer", &fx->dof_fg_holefill_weight_tx, NO_FILTERING);
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
   GPU_framebuffer_ensure_config(&fbl->dof_filter_fg_fb,
                                 {
@@ -844,7 +848,7 @@ static void dof_scatter_pass_init(EEVEE_FramebufferList *fbl,
   /* Draw a sprite for every four half-res pixels. */
   int sprite_count = (input_size[0] / 2) * (input_size[1] / 2);
   float target_texel_size[2] = {1.0f / target_size[0], 1.0f / target_size[1]};
-  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != NULL);
+  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != nullptr);
 
   {
     DRW_PASS_CREATE(psl->dof_scatter_fg, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
@@ -866,7 +870,7 @@ static void dof_scatter_pass_init(EEVEE_FramebufferList *fbl,
       /* Restore. */
       negate_v2(fx->dof_bokeh_aniso_inv);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, sprite_count);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, sprite_count);
 
     GPU_framebuffer_ensure_config(&fbl->dof_scatter_fg_fb,
                                   {
@@ -890,7 +894,7 @@ static void dof_scatter_pass_init(EEVEE_FramebufferList *fbl,
       DRW_shgroup_uniform_vec2_copy(grp, "bokehAnisotropyInv", fx->dof_bokeh_aniso_inv);
       DRW_shgroup_uniform_texture_ref(grp, "bokehLut", &fx->dof_bokeh_scatter_lut_tx);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, sprite_count);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, sprite_count);
 
     GPU_framebuffer_ensure_config(&fbl->dof_scatter_bg_fb,
                                   {
@@ -904,12 +908,12 @@ static void dof_scatter_pass_init(EEVEE_FramebufferList *fbl,
  * Recombine the result of the foreground and background processing. Also perform a slight out of
  * focus blur to improve geometric continuity.
  */
-static void dof_recombine_pass_init(EEVEE_FramebufferList *UNUSED(fbl),
+static void dof_recombine_pass_init(EEVEE_FramebufferList * /*fbl*/,
                                     EEVEE_PassList *psl,
                                     EEVEE_EffectsInfo *fx)
 {
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != NULL);
+  const bool use_bokeh_tx = (fx->dof_bokeh_gather_lut_tx != nullptr);
 
   DRW_PASS_CREATE(psl->dof_resolve, DRW_STATE_WRITE_COLOR);
 
@@ -932,10 +936,10 @@ static void dof_recombine_pass_init(EEVEE_FramebufferList *UNUSED(fbl),
     DRW_shgroup_uniform_vec2_copy(grp, "bokehAnisotropyInv", fx->dof_bokeh_aniso_inv);
     DRW_shgroup_uniform_texture_ref(grp, "bokehLut", &fx->dof_bokeh_resolve_lut_tx);
   }
-  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
-void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_TextureList *txl = vedata->txl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -961,7 +965,7 @@ void EEVEE_depth_of_field_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_
   }
 }
 
-static void dof_recursive_reduce(void *vedata, int UNUSED(level))
+static void dof_recursive_reduce(void *vedata, int /*level*/)
 {
   EEVEE_PassList *psl = ((EEVEE_Data *)vedata)->psl;
   EEVEE_TextureList *txl = ((EEVEE_Data *)vedata)->txl;
@@ -986,7 +990,7 @@ void EEVEE_depth_of_field_draw(EEVEE_Data *vedata)
   if ((effects->enabled_effects & EFFECT_DOF) != 0) {
     DRW_stats_group_start("Depth of Field");
 
-    if (fx->dof_bokeh_gather_lut_tx != NULL) {
+    if (fx->dof_bokeh_gather_lut_tx != nullptr) {
       GPU_framebuffer_bind(fbl->dof_bokeh_fb);
       DRW_draw_pass(psl->dof_bokeh);
     }
