@@ -539,7 +539,7 @@ static bool initWalkInfo(bContext *C, WalkInfo *walk, wmOperator *op, const int 
   }
 
   walk->jump_height = 0.0f;
-  
+
   walk->speed = 0.0f;
   walk->is_fast = false;
   walk->is_slow = false;
