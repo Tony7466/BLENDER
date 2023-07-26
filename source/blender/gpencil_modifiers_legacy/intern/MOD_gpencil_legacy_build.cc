@@ -69,7 +69,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
-static bool dependsOnTime(GpencilModifierData *UNUSED(md))
+static bool dependsOnTime(GpencilModifierData * /*md*/)
 {
   return true;
 }
@@ -101,7 +101,7 @@ static void clear_stroke(bGPDframe *gpf, bGPDstroke *gps)
 static void gpf_clear_all_strokes(bGPDframe *gpf)
 {
   bGPDstroke *gps, *gps_next;
-  for (gps = gpf->strokes.first; gps; gps = gps_next) {
+  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps_next) {
     gps_next = gps->next;
     clear_stroke(gpf, gps);
   }
@@ -118,14 +118,16 @@ static void reduce_stroke_points(bGPdata *gpd,
                                  const int points_num,
                                  const eBuildGpencil_Transition transition)
 {
-  if ((points_num == 0) || (gps->points == NULL)) {
+  if ((points_num == 0) || (gps->points == nullptr)) {
     clear_stroke(gpf, gps);
     return;
   }
-  bGPDspoint *new_points = MEM_callocN(sizeof(bGPDspoint) * points_num, __func__);
-  MDeformVert *new_dvert = NULL;
-  if ((gps->dvert != NULL) && (points_num > 0)) {
-    new_dvert = MEM_callocN(sizeof(MDeformVert) * points_num, __func__);
+  bGPDspoint *new_points = static_cast<bGPDspoint *>(
+      MEM_callocN(sizeof(bGPDspoint) * points_num, __func__));
+  MDeformVert *new_dvert = nullptr;
+  if ((gps->dvert != nullptr) && (points_num > 0)) {
+    new_dvert = static_cast<MDeformVert *>(
+        MEM_callocN(sizeof(MDeformVert) * points_num, __func__));
   }
 
   /* Which end should points be removed from. */
@@ -136,8 +138,8 @@ static void reduce_stroke_points(bGPdata *gpd,
                                       * Remove dead-points from end of stroke. */
     {
       /* copy over point data */
-      memcpy(new_points, gps->points, sizeof(bGPDspoint) * points_num);
-      if ((gps->dvert != NULL) && (points_num > 0)) {
+      blender::dna::shallow_copy_array(new_points, gps->points, points_num);
+      if ((gps->dvert != nullptr) && (points_num > 0)) {
         memcpy(new_dvert, gps->dvert, sizeof(MDeformVert) * points_num);
 
         /* free unused point weights */
@@ -157,8 +159,8 @@ static void reduce_stroke_points(bGPdata *gpd,
       const int offset = gps->totpoints - points_num;
 
       /* copy over point data */
-      memcpy(new_points, gps->points + offset, sizeof(bGPDspoint) * points_num);
-      if ((gps->dvert != NULL) && (points_num > 0)) {
+      blender::dna::shallow_copy_array(new_points, gps->points + offset, points_num);
+      if ((gps->dvert != nullptr) && (points_num > 0)) {
         memcpy(new_dvert, gps->dvert + offset, sizeof(MDeformVert) * points_num);
 
         /* free unused weights */
@@ -240,7 +242,7 @@ static void fade_stroke_points(bGPDstroke *gps,
 /* --------------------------------------------- */
 
 /* Stroke Data Table Entry - This represents one stroke being generated */
-typedef struct tStrokeBuildDetails {
+struct tStrokeBuildDetails {
   bGPDstroke *gps;
 
   /* Indices - first/last indices for the stroke's points (overall) */
@@ -251,7 +253,7 @@ typedef struct tStrokeBuildDetails {
 
   /* Distance to control object, used to sort the strokes if set. */
   float distance;
-} tStrokeBuildDetails;
+};
 
 static int cmp_stroke_build_details(const void *ps1, const void *ps2)
 {
@@ -297,7 +299,8 @@ static void build_sequential(Object *ob,
 
   /* 2) Compute proportion of time each stroke should occupy. */
   /* NOTE: This assumes that the total number of points won't overflow! */
-  tStrokeBuildDetails *table = MEM_callocN(sizeof(tStrokeBuildDetails) * tot_strokes, __func__);
+  tStrokeBuildDetails *table = static_cast<tStrokeBuildDetails *>(
+      MEM_callocN(sizeof(tStrokeBuildDetails) * tot_strokes, __func__));
   /* Pointer to cache table of times for each point. */
   float *idx_times;
   /* Running overall time sum incrementing per point. */
@@ -306,7 +309,9 @@ static void build_sequential(Object *ob,
   size_t sumpoints = 0;
 
   /* 2.1) Pass to initially tally up points. */
-  for (gps = BLI_findlink(&gpf->strokes, start_stroke), i = 0; gps; gps = gps->next, i++) {
+  for (gps = static_cast<bGPDstroke *>(BLI_findlink(&gpf->strokes, start_stroke)), i = 0; gps;
+       gps = gps->next, i++)
+  {
     tStrokeBuildDetails *cell = &table[i];
 
     cell->gps = gps;
@@ -336,7 +341,7 @@ static void build_sequential(Object *ob,
 
   /* 2.2) If GP_BUILD_TIMEMODE_DRAWSPEED: Tally up point timestamps & delays to idx_times. */
   if (mmd->time_mode == GP_BUILD_TIMEMODE_DRAWSPEED) {
-    idx_times = MEM_callocN(sizeof(float) * sumpoints, __func__);
+    idx_times = static_cast<float *>(MEM_callocN(sizeof(float) * sumpoints, __func__));
     /* Maximum time gap between strokes in seconds. */
     const float GP_BUILD_MAXGAP = mmd->speed_maxgap;
     /* Running reference to overall current point. */
@@ -347,7 +352,7 @@ static void build_sequential(Object *ob,
     for (i = 0; i < tot_strokes; i++) {
       tStrokeBuildDetails *cell = &table[i];
       /* Adding delay between strokes to sumtime. */
-      if (mmd->object == NULL) {
+      if (mmd->object == nullptr) {
         /* Normal case: Delay to last stroke. */
         if (i != 0 && 0 < cell->gps->inittime && 0 < (cell - 1)->gps->inittime) {
           float curgps_delay = fabs(cell->gps->inittime - (cell - 1)->gps->inittime) -
@@ -510,9 +515,9 @@ static void build_sequential(Object *ob,
       fade_end = last_visible;
       break;
 
-      /* Hide in forward order
-       *  - As fac increases, the early points start getting hidden
-       */
+    /* Hide in forward order
+     *  - As fac increases, the early points start getting hidden
+     */
     case GP_BUILD_TRANSITION_VANISH:
       first_visible = (size_t)(sumpoints * use_fade_fac);
       last_visible = sumpoints; /* i.e. visible until the end, unless first overlaps this */
@@ -549,7 +554,7 @@ static void build_sequential(Object *ob,
                            start_weight,
                            end_weight,
                            target_def_nr,
-                           mmd->transition,
+                           eBuildGpencil_Transition(mmd->transition),
                            mmd->fade_thickness_strength,
                            mmd->fade_opacity_strength);
         /* Calc geometry data. */
@@ -562,12 +567,14 @@ static void build_sequential(Object *ob,
       else if (first_visible > cell->start_idx) {
         /* Starts partway through this stroke */
         int points_num = cell->end_idx - first_visible;
-        reduce_stroke_points(gpd, gpf, cell->gps, points_num, mmd->transition);
+        reduce_stroke_points(
+            gpd, gpf, cell->gps, points_num, eBuildGpencil_Transition(mmd->transition));
       }
       else {
         /* Ends partway through this stroke */
         int points_num = last_visible - cell->start_idx;
-        reduce_stroke_points(gpd, gpf, cell->gps, points_num, mmd->transition);
+        reduce_stroke_points(
+            gpd, gpf, cell->gps, points_num, eBuildGpencil_Transition(mmd->transition));
       }
     }
   }
@@ -595,7 +602,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
 
   /* 1) Determine the longest stroke, to figure out when short strokes should start */
   /* Todo: A *really* long stroke here could dwarf everything else, causing bad timings */
-  for (gps = gpf->strokes.first; gps; gps = gps->next) {
+  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
     if (gps->totpoints > max_points) {
       max_points = gps->totpoints;
     }
@@ -612,7 +619,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
   int fade_points = set_fade_fac * max_points;
 
   /* 2) For each stroke, determine how it should be handled */
-  for (gps = gpf->strokes.first; gps; gps = gps_next) {
+  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps_next) {
     gps_next = gps->next;
 
     /* Relative Length of Stroke - Relative to the longest stroke,
@@ -687,12 +694,12 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
                          starting_weight,
                          ending_weight,
                          target_def_nr,
-                         mmd->transition,
+                         eBuildGpencil_Transition(mmd->transition),
                          mmd->fade_thickness_strength,
                          mmd->fade_opacity_strength);
       if (points_num < gps->totpoints) {
         /* Remove some points */
-        reduce_stroke_points(gpd, gpf, gps, points_num, mmd->transition);
+        reduce_stroke_points(gpd, gpf, gps, points_num, eBuildGpencil_Transition(mmd->transition));
       }
     }
   }
@@ -723,7 +730,7 @@ static void generate_geometry(GpencilModifierData *md,
   const float ctime = DEG_get_ctime(depsgraph);
 
   /* Early exit if it's an empty frame */
-  if (gpf->strokes.first == NULL) {
+  if (gpf->strokes.first == nullptr) {
     return;
   }
 
@@ -870,14 +877,14 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     generate_geometry(md, depsgraph, ob, gpd, gpl, gpf);
   }
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -890,9 +897,9 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   /* First: Build mode and build settings. */
-  uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_SEQUENTIAL) {
-    uiItemR(layout, ptr, "transition", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
   }
   if (mode == GP_BUILD_MODE_CONCURRENT) {
     /* Concurrent mode doesn't support GP_BUILD_TIMEMODE_DRAWSPEED, so unset it. */
@@ -900,64 +907,64 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
       RNA_enum_set(ptr, "time_mode", GP_BUILD_TIMEMODE_FRAMES);
       time_mode = GP_BUILD_TIMEMODE_FRAMES;
     }
-    uiItemR(layout, ptr, "transition", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
   }
   uiItemS(layout);
 
   /* Second: Time mode and time settings. */
 
-  uiItemR(layout, ptr, "time_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "time_mode", 0, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_CONCURRENT) {
-    uiItemR(layout, ptr, "concurrent_time_alignment", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "concurrent_time_alignment", 0, nullptr, ICON_NONE);
   }
   switch (time_mode) {
     case GP_BUILD_TIMEMODE_DRAWSPEED:
-      uiItemR(layout, ptr, "speed_factor", 0, NULL, ICON_NONE);
-      uiItemR(layout, ptr, "speed_maxgap", 0, NULL, ICON_NONE);
+      uiItemR(layout, ptr, "speed_factor", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "speed_maxgap", 0, nullptr, ICON_NONE);
       break;
     case GP_BUILD_TIMEMODE_FRAMES:
       uiItemR(layout, ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
       if (mode != GP_BUILD_MODE_ADDITIVE) {
-        uiItemR(layout, ptr, "start_delay", 0, NULL, ICON_NONE);
+        uiItemR(layout, ptr, "start_delay", 0, nullptr, ICON_NONE);
       }
       break;
     case GP_BUILD_TIMEMODE_PERCENTAGE:
-      uiItemR(layout, ptr, "percentage_factor", 0, NULL, ICON_NONE);
+      uiItemR(layout, ptr, "percentage_factor", 0, nullptr, ICON_NONE);
       break;
     default:
       break;
   }
   uiItemS(layout);
-  uiItemR(layout, ptr, "object", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
 
   /* Some housekeeping to prevent clashes between incompatible
    * options */
 
   /* Check for incompatible time modifier. */
-  Object *ob = ob_ptr.data;
-  GpencilModifierData *md = ptr->data;
-  if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != NULL) {
+  Object *ob = static_cast<Object *>(ob_ptr.data);
+  GpencilModifierData *md = static_cast<GpencilModifierData *>(ptr->data);
+  if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != nullptr) {
     BKE_gpencil_modifier_set_error(md, "Build and Time Offset modifiers are incompatible");
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void frame_range_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void frame_range_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
 }
 
-static void frame_range_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void frame_range_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -966,16 +973,16 @@ static void frame_range_panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(col, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
 }
 
-static void fading_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void fading_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_fading", 0, IFACE_("Fade"), ICON_NONE);
 }
 
-static void fading_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void fading_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
@@ -1000,7 +1007,7 @@ static void fading_panel_draw(const bContext *UNUSED(C), Panel *panel)
                  ICON_NONE);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, false, false);
 }
@@ -1014,7 +1021,7 @@ static void panelRegister(ARegionType *region_type)
   gpencil_modifier_subpanel_register(
       region_type, "fading", "", fading_header_draw, fading_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(
-      region_type, "_mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "_mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
@@ -1026,10 +1033,10 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   BuildGpencilModifierData *lmd = (BuildGpencilModifierData *)md;
-  if (lmd->object != NULL) {
+  if (lmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Build Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Build Modifier");
   }
@@ -1047,17 +1054,17 @@ GpencilModifierTypeInfo modifierType_Gpencil_Build = {
 
     /*copyData*/ copyData,
 
-    /*deformStroke*/ NULL,
+    /*deformStroke*/ nullptr,
     /*generateStrokes*/ generateStrokes,
-    /*bakeModifier*/ NULL,
-    /*remapTime*/ NULL,
+    /*bakeModifier*/ nullptr,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
     /*updateDepsgraph*/ updateDepsgraph,
     /*dependsOnTime*/ dependsOnTime,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
