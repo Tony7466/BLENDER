@@ -81,7 +81,7 @@ set(SRC
   intern/gpu_uniform_buffer.cc
   intern/gpu_vertex_buffer.cc
   intern/gpu_vertex_format.cc
-  intern/gpu_viewport.c
+  intern/gpu_viewport.cc
 
   GPU_batch.h
   GPU_batch_presets.h
