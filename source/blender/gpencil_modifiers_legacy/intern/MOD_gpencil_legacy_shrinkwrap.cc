@@ -64,13 +64,13 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 }
 
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   ShrinkwrapGpencilModifierData *mmd = (ShrinkwrapGpencilModifierData *)md;
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
 
@@ -90,12 +90,13 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  if ((mmd->cache_data == NULL) || (mmd->target == ob) || (mmd->aux_target == ob)) {
+  if ((mmd->cache_data == nullptr) || (mmd->target == ob) || (mmd->aux_target == ob)) {
     return;
   }
 
   bGPDspoint *pt = gps->points;
-  float(*vert_coords)[3] = MEM_mallocN(sizeof(float[3]) * gps->totpoints, __func__);
+  float(*vert_coords)[3] = static_cast<float(*)[3]>(
+      MEM_mallocN(sizeof(float[3]) * gps->totpoints, __func__));
   int i;
   /* Prepare array of points. */
   for (i = 0; i < gps->totpoints; i++, pt++) {
@@ -114,20 +115,20 @@ static void deformStroke(GpencilModifierData *md,
 
   /* Smooth stroke. */
   BKE_gpencil_stroke_smooth(
-      gps, mmd->smooth_factor, mmd->smooth_step, true, false, false, false, true, NULL);
+      gps, mmd->smooth_factor, mmd->smooth_step, true, false, false, false, true, nullptr);
 
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, gps);
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
 {
   ShrinkwrapGpencilModifierData *mmd = (ShrinkwrapGpencilModifierData *)md;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
   if ((mmd->target == ob) || (mmd->aux_target == ob)) {
@@ -147,7 +148,8 @@ static void bakeModifier(Main *UNUSED(bmain),
       }
       Object *ob_target = DEG_get_evaluated_object(depsgraph, mmd->target);
       Mesh *target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
-      mmd->cache_data = MEM_callocN(sizeof(ShrinkwrapTreeData), __func__);
+      mmd->cache_data = static_cast<ShrinkwrapTreeData *>(
+          MEM_callocN(sizeof(ShrinkwrapTreeData), __func__));
       if (BKE_shrinkwrap_init_tree(
               mmd->cache_data, target, mmd->shrink_type, mmd->shrink_mode, false)) {
 
@@ -178,7 +180,7 @@ static void freeData(GpencilModifierData *md)
   }
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   ShrinkwrapGpencilModifierData *mmd = (ShrinkwrapGpencilModifierData *)md;
 
@@ -198,7 +200,7 @@ static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
 
 static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
-                            const int UNUSED(mode))
+                            const int /*mode*/)
 {
   ShrinkwrapGpencilModifierData *mmd = (ShrinkwrapGpencilModifierData *)md;
   CustomData_MeshMasks mask = {0};
@@ -207,7 +209,7 @@ static void updateDepsgraph(GpencilModifierData *md,
     mask.lmask |= CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL;
   }
 
-  if (mmd->target != NULL) {
+  if (mmd->target != nullptr) {
     DEG_add_object_relation(ctx->node, mmd->target, DEG_OB_COMP_TRANSFORM, "Shrinkwrap Modifier");
     DEG_add_object_relation(ctx->node, mmd->target, DEG_OB_COMP_GEOMETRY, "Shrinkwrap Modifier");
     DEG_add_customdata_mask(ctx->node, mmd->target, &mask);
@@ -215,7 +217,7 @@ static void updateDepsgraph(GpencilModifierData *md,
       DEG_add_special_eval_flag(ctx->node, &mmd->target->id, DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY);
     }
   }
-  if (mmd->aux_target != NULL) {
+  if (mmd->aux_target != nullptr) {
     DEG_add_object_relation(
         ctx->node, mmd->aux_target, DEG_OB_COMP_TRANSFORM, "Shrinkwrap Modifier");
     DEG_add_object_relation(
@@ -238,64 +240,64 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   int wrap_method = RNA_enum_get(ptr, "wrap_method");
 
-  uiItemR(layout, ptr, "wrap_method", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "wrap_method", 0, nullptr, ICON_NONE);
 
   if (ELEM(wrap_method,
            MOD_SHRINKWRAP_PROJECT,
            MOD_SHRINKWRAP_NEAREST_SURFACE,
            MOD_SHRINKWRAP_TARGET_PROJECT))
   {
-    uiItemR(layout, ptr, "wrap_mode", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "wrap_mode", 0, nullptr, ICON_NONE);
   }
 
   if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
     uiItemR(layout, ptr, "project_limit", 0, IFACE_("Limit"), ICON_NONE);
-    uiItemR(layout, ptr, "subsurf_levels", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "subsurf_levels", 0, nullptr, ICON_NONE);
 
     col = uiLayoutColumn(layout, false);
     row = uiLayoutRowWithHeading(col, true, IFACE_("Axis"));
-    uiItemR(row, ptr, "use_project_x", toggles_flag, NULL, ICON_NONE);
-    uiItemR(row, ptr, "use_project_y", toggles_flag, NULL, ICON_NONE);
-    uiItemR(row, ptr, "use_project_z", toggles_flag, NULL, ICON_NONE);
+    uiItemR(row, ptr, "use_project_x", toggles_flag, nullptr, ICON_NONE);
+    uiItemR(row, ptr, "use_project_y", toggles_flag, nullptr, ICON_NONE);
+    uiItemR(row, ptr, "use_project_z", toggles_flag, nullptr, ICON_NONE);
 
-    uiItemR(col, ptr, "use_negative_direction", 0, NULL, ICON_NONE);
-    uiItemR(col, ptr, "use_positive_direction", 0, NULL, ICON_NONE);
+    uiItemR(col, ptr, "use_negative_direction", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "use_positive_direction", 0, nullptr, ICON_NONE);
 
-    uiItemR(layout, ptr, "cull_face", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "cull_face", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
     col = uiLayoutColumn(layout, false);
     uiLayoutSetActive(col,
                       RNA_boolean_get(ptr, "use_negative_direction") &&
                           RNA_enum_get(ptr, "cull_face") != 0);
-    uiItemR(col, ptr, "use_invert_cull", 0, NULL, ICON_NONE);
+    uiItemR(col, ptr, "use_invert_cull", 0, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, ptr, "target", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "target", 0, nullptr, ICON_NONE);
   if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
-    uiItemR(layout, ptr, "auxiliary_target", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "auxiliary_target", 0, nullptr, ICON_NONE);
   }
-  uiItemR(layout, ptr, "offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "offset", 0, nullptr, ICON_NONE);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "smooth_factor", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "smooth_factor", 0, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "smooth_step", 0, IFACE_("Repeat"), ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -305,7 +307,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Shrinkwrap, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Shrinkwrap = {
@@ -318,16 +320,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Shrinkwrap = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
     /*isDisabled*/ isDisabled,
     /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ NULL,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
