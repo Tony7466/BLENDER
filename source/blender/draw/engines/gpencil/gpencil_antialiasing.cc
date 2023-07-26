@@ -37,20 +37,20 @@ void GPENCIL_antialiasing_init(GPENCIL_Data *vedata)
     DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     return;
   }
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
 
-  if (txl->smaa_search_tx == NULL) {
+  if (txl->smaa_search_tx == nullptr) {
 
     txl->smaa_search_tx = GPU_texture_create_2d(
-        "smaa_search", SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1, GPU_R8, usage, NULL);
+        "smaa_search", SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, 1, GPU_R8, usage, nullptr);
     GPU_texture_update(txl->smaa_search_tx, GPU_DATA_UBYTE, searchTexBytes);
 
     txl->smaa_area_tx = GPU_texture_create_2d(
-        "smaa_area", AREATEX_WIDTH, AREATEX_HEIGHT, 1, GPU_RG8, usage, NULL);
+        "smaa_area", AREATEX_WIDTH, AREATEX_HEIGHT, 1, GPU_RG8, usage, nullptr);
     GPU_texture_update(txl->smaa_area_tx, GPU_DATA_UBYTE, areaTexBytes);
 
     GPU_texture_filter_mode(txl->smaa_search_tx, true);
@@ -89,7 +89,7 @@ void GPENCIL_antialiasing_init(GPENCIL_Data *vedata)
         grp, "lumaWeight", pd->scene->grease_pencil_settings.smaa_threshold);
 
     DRW_shgroup_clear_framebuffer(grp, GPU_COLOR_BIT, 0, 0, 0, 0, 0.0f, 0x0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   {
     /* Stage 2: Blend Weight/Coord. */
@@ -103,7 +103,7 @@ void GPENCIL_antialiasing_init(GPENCIL_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
     DRW_shgroup_clear_framebuffer(grp, GPU_COLOR_BIT, 0, 0, 0, 0, 0.0f, 0x0);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
   {
     /* Stage 3: Resolve. */
@@ -118,7 +118,7 @@ void GPENCIL_antialiasing_init(GPENCIL_Data *vedata)
     DRW_shgroup_uniform_bool_copy(grp, "onlyAlpha", pd->draw_wireframe);
     DRW_shgroup_uniform_vec4_copy(grp, "viewportMetrics", metrics);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
