@@ -36,7 +36,7 @@ set(SRC
   intern/MOD_gpencil_legacy_hook.cc
   intern/MOD_gpencil_legacy_lattice.cc
   intern/MOD_gpencil_legacy_length.cc
-  intern/MOD_gpencil_legacy_lineart.c
+  intern/MOD_gpencil_legacy_lineart.cc
   intern/MOD_gpencil_legacy_mirror.c
   intern/MOD_gpencil_legacy_multiply.c
   intern/MOD_gpencil_legacy_noise.c
