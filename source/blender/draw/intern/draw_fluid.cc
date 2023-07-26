@@ -172,11 +172,11 @@ static GPUTexture *create_volume_texture(const int dim[3],
                                          eGPUDataFormat data_format,
                                          const void *data)
 {
-  GPUTexture *tex = NULL;
+  GPUTexture *tex = nullptr;
   int final_dim[3] = {UNPACK3(dim)};
 
-  if (data == NULL) {
-    return NULL;
+  if (data == nullptr) {
+    return nullptr;
   }
 
   while (1) {
@@ -185,9 +185,9 @@ static GPUTexture *create_volume_texture(const int dim[3],
                                 1,
                                 texture_format,
                                 GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                NULL);
+                                nullptr);
 
-    if (tex != NULL) {
+    if (tex != nullptr) {
       break;
     }
 
@@ -200,7 +200,7 @@ static GPUTexture *create_volume_texture(const int dim[3],
     }
   }
 
-  if (tex == NULL) {
+  if (tex == nullptr) {
     printf("Error: Could not create 3D texture.\n");
     tex = GPU_texture_create_error(3, false);
   }
@@ -215,7 +215,7 @@ static GPUTexture *create_volume_texture(const int dim[3],
   else {
     /* We need to resize the input. */
     int channels = ELEM(texture_format, GPU_R8, GPU_R16F, GPU_R32F) ? 1 : 4;
-    float *rescaled_data = rescale_3d(dim, final_dim, channels, data);
+    float *rescaled_data = rescale_3d(dim, final_dim, channels, static_cast<const float *>(data));
     if (rescaled_data) {
       GPU_texture_update_sub(tex, GPU_DATA_FLOAT, rescaled_data, 0, 0, 0, UNPACK3(final_dim));
       MEM_freeN(rescaled_data);
@@ -231,7 +231,7 @@ static GPUTexture *create_volume_texture(const int dim[3],
 
 static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool single_precision)
 {
-  void *field = NULL;
+  void *field = nullptr;
   eGPUDataFormat data_format = GPU_DATA_FLOAT;
   eGPUTextureFormat texture_format = GPU_R8;
 
@@ -308,11 +308,11 @@ static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool single_pr
       texture_format = GPU_R16F;
       break;
     default:
-      return NULL;
+      return nullptr;
   }
 
-  if (field == NULL) {
-    return NULL;
+  if (field == nullptr) {
+    return nullptr;
   }
 
   GPUTexture *tex = create_volume_texture(fds->res, texture_format, data_format, field);
@@ -332,8 +332,8 @@ static GPUTexture *create_density_texture(FluidDomainSettings *fds, int highres)
     data = manta_smoke_get_density(fds->fluid);
   }
 
-  if (data == NULL) {
-    return NULL;
+  if (data == nullptr) {
+    return nullptr;
   }
 
   GPUTexture *tex = create_volume_texture(dim, GPU_R8, GPU_DATA_FLOAT, data);
@@ -347,15 +347,15 @@ static GPUTexture *create_color_texture(FluidDomainSettings *fds, int highres)
                                      manta_smoke_has_colors(fds->fluid);
 
   if (!has_color) {
-    return NULL;
+    return nullptr;
   }
 
   int cell_count = (highres) ? manta_noise_get_cells(fds->fluid) : fds->total_cells;
   int *dim = (highres) ? fds->res_noise : fds->res;
   float *data = (float *)MEM_callocN(sizeof(float) * cell_count * 4, "smokeColorTexture");
 
-  if (data == NULL) {
-    return NULL;
+  if (data == nullptr) {
+    return nullptr;
   }
 
   if (highres) {
@@ -374,13 +374,13 @@ static GPUTexture *create_color_texture(FluidDomainSettings *fds, int highres)
 
 static GPUTexture *create_flame_texture(FluidDomainSettings *fds, int highres)
 {
-  float *source = NULL;
+  float *source = nullptr;
   const bool has_fuel = (highres) ? manta_noise_has_fuel(fds->fluid) :
                                     manta_smoke_has_fuel(fds->fluid);
   int *dim = (highres) ? fds->res_noise : fds->res;
 
   if (!has_fuel) {
-    return NULL;
+    return nullptr;
   }
 
   if (highres) {
@@ -478,7 +478,7 @@ void DRW_smoke_ensure(FluidModifierData *fmd, int highres)
       BLI_addtail(&DST.vmempool->smoke_textures, BLI_genericNodeN(&fds->tex_flame));
     }
     if (!fds->tex_flame_coba && fds->tex_flame) {
-      fds->tex_flame_coba = create_transfer_function(TFUNC_FLAME_SPECTRUM, NULL);
+      fds->tex_flame_coba = create_transfer_function(TFUNC_FLAME_SPECTRUM, nullptr);
       BLI_addtail(&DST.vmempool->smoke_textures, BLI_genericNodeN(&fds->tex_flame_coba));
     }
     if (!fds->tex_shadow) {
@@ -497,14 +497,14 @@ void DRW_smoke_ensure_velocity(FluidModifierData *fmd)
 #else
   if (fmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *fds = fmd->domain;
-    float *vel_x = NULL, *vel_y = NULL, *vel_z = NULL;
+    float *vel_x = nullptr, *vel_y = nullptr, *vel_z = nullptr;
 
     if (!get_smoke_velocity_field(fds, &vel_x, &vel_y, &vel_z)) {
       fds->vector_field = FLUID_DOMAIN_VECTOR_FIELD_VELOCITY;
       get_smoke_velocity_field(fds, &vel_x, &vel_y, &vel_z);
     }
 
-    if (ELEM(NULL, vel_x, vel_y, vel_z)) {
+    if (ELEM(nullptr, vel_x, vel_y, vel_z)) {
       return;
     }
 
