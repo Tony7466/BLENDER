@@ -1125,7 +1125,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
 }
 
 /* Helper for name-based filtering - Perform "partial/fuzzy matches" (as in 80a7efd) */
-static bool name_matches_dopesheet_filter(bDopeSheet *ads, char *name)
+static bool name_matches_dopesheet_filter(bDopeSheet *ads, const char *name)
 {
   if (ads->flag & ADS_FLAG_FUZZY_NAMES) {
     /* full fuzzy, multi-word, case insensitive matches */
