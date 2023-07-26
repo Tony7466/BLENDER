@@ -34,7 +34,7 @@ static struct {
   SELECTID_Shaders sh_data[GPU_SHADER_CFG_LEN];
   SELECTID_Context context;
   uint runtime_new_objects;
-} e_data = {NULL}; /* Engine data */
+} e_data = {nullptr}; /* Engine data */
 
 /* -------------------------------------------------------------------- */
 /** \name Utils
@@ -47,28 +47,28 @@ static void select_engine_framebuffer_setup(void)
   size[0] = GPU_texture_width(dtxl->depth);
   size[1] = GPU_texture_height(dtxl->depth);
 
-  if (e_data.framebuffer_select_id == NULL) {
+  if (e_data.framebuffer_select_id == nullptr) {
     e_data.framebuffer_select_id = GPU_framebuffer_create("framebuffer_select_id");
   }
 
-  if ((e_data.texture_u32 != NULL) && ((GPU_texture_width(e_data.texture_u32) != size[0]) ||
-                                       (GPU_texture_height(e_data.texture_u32) != size[1])))
+  if ((e_data.texture_u32 != nullptr) && ((GPU_texture_width(e_data.texture_u32) != size[0]) ||
+                                          (GPU_texture_height(e_data.texture_u32) != size[1])))
   {
     GPU_texture_free(e_data.texture_u32);
-    e_data.texture_u32 = NULL;
+    e_data.texture_u32 = nullptr;
   }
 
   /* Make sure the depth texture is attached.
    * It may disappear when loading another Blender session. */
   GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, dtxl->depth, 0, 0);
 
-  if (e_data.texture_u32 == NULL) {
+  if (e_data.texture_u32 == nullptr) {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     e_data.texture_u32 = GPU_texture_create_2d(
-        "select_buf_ids", size[0], size[1], 1, GPU_R32UI, usage, NULL);
+        "select_buf_ids", size[0], size[1], 1, GPU_R32UI, usage, nullptr);
     GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, e_data.texture_u32, 0, 0);
 
-    GPU_framebuffer_check_valid(e_data.framebuffer_select_id, NULL);
+    GPU_framebuffer_check_valid(e_data.framebuffer_select_id, nullptr);
   }
 }
 
@@ -98,7 +98,7 @@ static void select_engine_init(void *vedata)
 
   if (!stl->g_data) {
     /* Alloc transient pointers */
-    stl->g_data = MEM_mallocN(sizeof(*stl->g_data), __func__);
+    stl->g_data = static_cast<SELECTID_PrivateData *>(MEM_mallocN(sizeof(*stl->g_data), __func__));
   }
 
   {
@@ -108,14 +108,15 @@ static void select_engine_init(void *vedata)
     DRW_view_viewmat_get(view_default, viewmat, false);
     DRW_view_winmat_get(view_default, winmat, false);
     projmat_from_subregion(winmat,
-                           (int[2]){draw_ctx->region->winx, draw_ctx->region->winy},
+                           blender::int2{draw_ctx->region->winx, draw_ctx->region->winy},
                            e_data.context.last_rect.xmin,
                            e_data.context.last_rect.xmax,
                            e_data.context.last_rect.ymin,
                            e_data.context.last_rect.ymax,
                            winmat_subregion);
 
-    stl->g_data->view_subregion = DRW_view_create(viewmat, winmat_subregion, NULL, NULL, NULL);
+    stl->g_data->view_subregion = DRW_view_create(
+        viewmat, winmat_subregion, nullptr, nullptr, nullptr);
 
     /* Create view with depth offset */
     stl->g_data->view_faces = (DRWView *)view_default;
@@ -140,7 +141,8 @@ static void select_cache_init(void *vedata)
   }
 
   DRWState state = DRW_STATE_DEFAULT;
-  state |= RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d) ? DRW_STATE_CLIP_PLANES : 0;
+  state |= RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d) ? DRW_STATE_CLIP_PLANES :
+                                                                  DRWState(0);
 
   bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) && !XRAY_ENABLED(draw_ctx->v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(draw_ctx->v3d);
@@ -206,7 +208,7 @@ static void select_cache_init(void *vedata)
     e_data.context.index_drawn_len = 1;
     select_engine_framebuffer_setup();
     GPU_framebuffer_bind(e_data.framebuffer_select_id);
-    GPU_framebuffer_clear_color_depth(e_data.framebuffer_select_id, (const float[4]){0.0f}, 1.0f);
+    GPU_framebuffer_clear_color_depth(e_data.framebuffer_select_id, blender::float4{0.0f}, 1.0f);
   }
   e_data.runtime_new_objects = 0;
 }
@@ -220,7 +222,7 @@ static void select_cache_populate(void *vedata, Object *ob)
                                     !XRAY_ENABLED(draw_ctx->v3d);
   if (retopology_occlusion && !DRW_object_is_in_edit_mode(ob)) {
     if (ob->dt >= OB_SOLID) {
-      GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(ob->data);
+      GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(static_cast<Mesh *>(ob->data));
       DRW_shgroup_call_obmat(stl->g_data->shgrp_occlude, geom_faces, ob->object_to_world);
     }
     return;
@@ -232,7 +234,7 @@ static void select_cache_populate(void *vedata, Object *ob)
   if (!e_data.context.is_dirty && sel_data && sel_data->is_drawn) {
     /* The object indices have already been drawn. Fill depth pass.
      * Optimization: Most of the time this depth pass is not used. */
-    struct Mesh *me = ob->data;
+    struct Mesh *me = static_cast<Mesh *>(ob->data);
     if (e_data.context.select_mode & SCE_SELECT_FACE) {
       GPUBatch *geom_faces = DRW_mesh_batch_cache_get_triangles_with_select_id(me);
       DRW_shgroup_call_obmat(stl->g_data->shgrp_depth_only, geom_faces, ob->object_to_world);
@@ -262,9 +264,9 @@ static void select_cache_populate(void *vedata, Object *ob)
   select_id_object_min_max(ob, min, max);
 
   if (DRW_culling_min_max_test(stl->g_data->view_subregion, ob->object_to_world, min, max)) {
-    if (sel_data == NULL) {
+    if (sel_data == nullptr) {
       sel_data = (SELECTID_ObjectData *)DRW_drawdata_ensure(
-          &ob->id, &draw_engine_select_type, sizeof(SELECTID_ObjectData), NULL, NULL);
+          &ob->id, &draw_engine_select_type, sizeof(SELECTID_ObjectData), nullptr, nullptr);
     }
     sel_data->dd.recalc = 0;
     sel_data->drawn_index = e_data.context.objects_drawn_len;
@@ -353,46 +355,46 @@ static void select_engine_free(void)
 static const DrawEngineDataSize select_data_size = DRW_VIEWPORT_DATA_SIZE(SELECTID_Data);
 
 DrawEngineType draw_engine_select_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ N_("Select ID"),
     /*vedata_size*/ &select_data_size,
     /*engine_init*/ &select_engine_init,
     /*engine_free*/ &select_engine_free,
-    /*instance_free*/ /*instance_free*/ NULL,
+    /*instance_free*/ /*instance_free*/ nullptr,
     /*cache_init*/ &select_cache_init,
     /*cache_populate*/ &select_cache_populate,
-    /*cache_finish*/ NULL,
+    /*cache_finish*/ nullptr,
     /*draw_scene*/ &select_draw_scene,
-    /*view_update*/ NULL,
-    /*id_update*/ NULL,
-    /*render_to_image*/ NULL,
-    /*store_metadata*/ NULL,
+    /*view_update*/ nullptr,
+    /*id_update*/ nullptr,
+    /*render_to_image*/ nullptr,
+    /*store_metadata*/ nullptr,
 };
 
 /* NOTE: currently unused, we may want to register so we can see this when debugging the view. */
 
 RenderEngineType DRW_engine_viewport_select_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ SELECT_ENGINE,
     /*name*/ N_("Select ID"),
     /*flag*/ RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
-    /*update*/ NULL,
-    /*render*/ NULL,
-    /*render_frame_finish*/ NULL,
-    /*draw*/ NULL,
-    /*bake*/ NULL,
-    /*view_update*/ NULL,
-    /*view_draw*/ NULL,
-    /*update_script_node*/ NULL,
-    /*update_render_passes*/ NULL,
+    /*update*/ nullptr,
+    /*render*/ nullptr,
+    /*render_frame_finish*/ nullptr,
+    /*draw*/ nullptr,
+    /*bake*/ nullptr,
+    /*view_update*/ nullptr,
+    /*view_draw*/ nullptr,
+    /*update_script_node*/ nullptr,
+    /*update_render_passes*/ nullptr,
     /*draw_engine*/ &draw_engine_select_type,
     /*rna_ext*/
     {
-        /*data*/ NULL,
-        /*srna*/ NULL,
-        /*call*/ NULL,
+        /*data*/ nullptr,
+        /*srna*/ nullptr,
+        /*call*/ nullptr,
     },
 };
 
