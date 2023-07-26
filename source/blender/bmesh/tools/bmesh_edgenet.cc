@@ -23,12 +23,12 @@
 #include "BLI_strict_flags.h" /* keep last */
 
 /* Struct for storing a path of verts walked over */
-typedef struct VertNetInfo {
+struct VertNetInfo {
   BMVert *prev; /* previous vertex */
   int pass;     /* path scanning pass value, for internal calculation */
   int face;     /* face index connected to the edge between this and the previous vert */
   int flag;     /* flag */
-} VertNetInfo;
+};
 
 enum {
   VNINFO_FLAG_IS_MIXFACE = (1 << 0),
@@ -39,7 +39,7 @@ enum {
  */
 static bool bm_edge_step_ok(BMEdge *e)
 {
-  return BM_elem_flag_test(e, BM_ELEM_TAG) && ELEM(e->l, NULL, e->l->radial_next);
+  return BM_elem_flag_test(e, BM_ELEM_TAG) && ELEM(e->l, nullptr, e->l->radial_next);
 }
 
 static int bm_edge_face(BMEdge *e)
@@ -58,7 +58,7 @@ static BMEdge *bm_edgenet_edge_get_next(BMesh *bm,
   BMIter iter;
 
   while (*edge_queue) {
-    e = BLI_linklist_pop_pool(edge_queue, edge_queue_pool);
+    e = static_cast<BMEdge *>(BLI_linklist_pop_pool(edge_queue, edge_queue_pool));
     if (bm_edge_step_ok(e)) {
       return e;
     }
@@ -70,7 +70,7 @@ static BMEdge *bm_edgenet_edge_get_next(BMesh *bm,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -106,7 +106,7 @@ static bool bm_edgenet_path_check_overlap(BMVert *v1, BMVert *v2, VertNetInfo *v
 {
   /* vert order doesn't matter */
   uint v_ls_tot = 0;
-  LinkNode *v_ls = NULL;
+  LinkNode *v_ls = nullptr;
   BMVert *v_pair[2] = {v1, v2};
   uint i;
 
@@ -126,7 +126,7 @@ static bool bm_edgenet_path_check_overlap(BMVert *v1, BMVert *v2, VertNetInfo *v
     BMVert **vert_arr = BLI_array_alloca(vert_arr, v_ls_tot);
     LinkNode *v_lnk;
     for (i = 0, v_lnk = v_ls; i < v_ls_tot; v_lnk = v_lnk->next, i++) {
-      vert_arr[i] = v_lnk->link;
+      vert_arr[i] = static_cast<BMVert *>(v_lnk->link);
     }
 
     return BM_face_exists_overlap_subset(vert_arr, (int)v_ls_tot);
@@ -148,21 +148,21 @@ static BMFace *bm_edgenet_face_from_path(BMesh *bm, LinkNode *path, const uint p
   BMEdge **edge_arr = BLI_array_alloca(edge_arr, path_len);
 
   for (v_lnk = path, i = 0; v_lnk; v_lnk = v_lnk->next, i++) {
-    vert_arr[i] = v_lnk->link;
+    vert_arr[i] = static_cast<BMVert *>(v_lnk->link);
   }
 
   ok = BM_edges_from_verts(edge_arr, vert_arr, i);
   BLI_assert(ok);
   UNUSED_VARS_NDEBUG(ok);
 
-  /* no need for this, we do overlap checks before allowing the path to be used */
+/* no need for this, we do overlap checks before allowing the path to be used */
 #if 0
   if (BM_face_exists_multi(vert_arr, edge_arr, path_len)) {
-    return NULL;
+    return nullptr;
   }
 #endif
 
-  f = BM_face_create(bm, vert_arr, edge_arr, (int)path_len, NULL, BM_CREATE_NOP);
+  f = BM_face_create(bm, vert_arr, edge_arr, (int)path_len, nullptr, BM_CREATE_NOP);
 
   return f;
 }
@@ -170,7 +170,7 @@ static BMFace *bm_edgenet_face_from_path(BMesh *bm, LinkNode *path, const uint p
 /**
  * Step along the path from \a v_curr to any vert not already in the path.
  *
- * \return The connecting edge if the path is found, otherwise NULL.
+ * \return The connecting edge if the path is found, otherwise nullptr.
  */
 static BMEdge *bm_edgenet_path_step(BMVert *v_curr,
                                     LinkNode **v_ls,
@@ -232,8 +232,8 @@ begin:
 
   /* trick to walk along wire-edge paths */
   if (v_ls_tot == 1 && tot == 1) {
-    v_curr = BLI_linklist_pop_pool(v_ls, path_pool);
-    /* avoid recursion, can crash on very large nets */
+    v_curr = static_cast<BMVert *>(BLI_linklist_pop_pool(v_ls, path_pool));
+/* avoid recursion, can crash on very large nets */
 #if 0
     bm_edgenet_path_step(v_curr, v_ls, vnet_info, path_pool);
 #else
@@ -241,7 +241,7 @@ begin:
 #endif
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -261,8 +261,8 @@ static LinkNode *bm_edgenet_path_calc(BMEdge *e,
   const int f_index = bm_edge_face(e);
   bool found;
 
-  LinkNode *v_ls_prev = NULL;
-  LinkNode *v_ls_next = NULL;
+  LinkNode *v_ls_prev = nullptr;
+  LinkNode *v_ls_next = nullptr;
 
   uint path_cost_accum = 0;
 
@@ -293,21 +293,21 @@ static LinkNode *bm_edgenet_path_calc(BMEdge *e,
 
     /* no point to continue, we're over budget */
     if (path_cost_accum >= path_cost_max) {
-      BLI_linklist_free_pool(v_ls_next, NULL, path_pool);
-      BLI_linklist_free_pool(v_ls_prev, NULL, path_pool);
-      return NULL;
+      BLI_linklist_free_pool(v_ls_next, nullptr, path_pool);
+      BLI_linklist_free_pool(v_ls_prev, nullptr, path_pool);
+      return nullptr;
     }
 
     while (v_ls_prev) {
       const LinkNode *v_ls_next_old = v_ls_next;
-      BMVert *v = BLI_linklist_pop_pool(&v_ls_prev, path_pool);
+      BMVert *v = static_cast<BMVert *>(BLI_linklist_pop_pool(&v_ls_prev, path_pool));
       BMEdge *e_found = bm_edgenet_path_step(v, &v_ls_next, vnet_info, path_pool);
 
       if (e_found) {
-        LinkNode *path = NULL;
+        LinkNode *path = nullptr;
         uint path_len;
-        BLI_linklist_free_pool(v_ls_next, NULL, path_pool);
-        BLI_linklist_free_pool(v_ls_prev, NULL, path_pool);
+        BLI_linklist_free_pool(v_ls_next, nullptr, path_pool);
+        BLI_linklist_free_pool(v_ls_prev, nullptr, path_pool);
 
         // BLI_assert(BLI_mempool_len(path_pool) == 0);
 
@@ -324,23 +324,23 @@ static LinkNode *bm_edgenet_path_calc(BMEdge *e,
         found = true;
       }
     }
-    BLI_assert(v_ls_prev == NULL);
+    BLI_assert(v_ls_prev == nullptr);
 
     path_cost_accum++;
 
     /* swap */
     v_ls_prev = v_ls_next;
-    v_ls_next = NULL;
+    v_ls_next = nullptr;
 
   } while (found);
 
-  BLI_assert(v_ls_prev == NULL);
-  BLI_assert(v_ls_next == NULL);
+  BLI_assert(v_ls_prev == nullptr);
+  BLI_assert(v_ls_next == nullptr);
 
   /* tag not to search again */
   BM_elem_flag_disable(e, BM_ELEM_TAG);
 
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -362,8 +362,8 @@ static LinkNode *bm_edgenet_path_calc_best(BMEdge *e,
       e, *pass_nr, path_cost_max, r_path_len, &path_cost, vnet_info, path_pool);
   (*pass_nr)++;
 
-  if (path == NULL) {
-    return NULL;
+  if (path == nullptr) {
+    return nullptr;
   }
   if (path_cost < 1) {
     /* any face that takes 1 iteration to find we consider valid */
@@ -379,7 +379,7 @@ static LinkNode *bm_edgenet_path_calc_best(BMEdge *e,
   LinkNode *v_lnk;
 
   for (v_lnk = path, i = 0; v_lnk; v_lnk = v_lnk->next, i++) {
-    vert_arr[i] = v_lnk->link;
+    vert_arr[i] = static_cast<BMVert *>(v_lnk->link);
   }
 
   i_prev = path_len - 1;
@@ -397,7 +397,7 @@ static LinkNode *bm_edgenet_path_calc_best(BMEdge *e,
       if (path_test) {
         BLI_assert(path_cost_test < path_cost);
 
-        BLI_linklist_free_pool(path, NULL, path_pool);
+        BLI_linklist_free_pool(path, nullptr, path_pool);
         path = path_test;
         *r_path_len = path_len_test;
         *r_path_cost = path_cost_test;
@@ -413,10 +413,11 @@ static LinkNode *bm_edgenet_path_calc_best(BMEdge *e,
 
 void BM_mesh_edgenet(BMesh *bm, const bool use_edge_tag, const bool use_new_face_tag)
 {
-  VertNetInfo *vnet_info = MEM_callocN(sizeof(*vnet_info) * (size_t)bm->totvert, __func__);
+  VertNetInfo *vnet_info = static_cast<VertNetInfo *>(
+      MEM_callocN(sizeof(*vnet_info) * (size_t)bm->totvert, __func__));
   BLI_mempool *edge_queue_pool = BLI_mempool_create(sizeof(LinkNode), 0, 512, BLI_MEMPOOL_NOP);
   BLI_mempool *path_pool = BLI_mempool_create(sizeof(LinkNode), 0, 512, BLI_MEMPOOL_NOP);
-  LinkNode *edge_queue = NULL;
+  LinkNode *edge_queue = nullptr;
 
   BMEdge *e;
   BMIter iter;
@@ -432,12 +433,12 @@ void BM_mesh_edgenet(BMesh *bm, const bool use_edge_tag, const bool use_new_face
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_FACE);
 
   while (true) {
-    LinkNode *path = NULL;
+    LinkNode *path = nullptr;
     uint path_len;
     uint path_cost;
 
     e = bm_edgenet_edge_get_next(bm, &edge_queue, edge_queue_pool);
-    if (e == NULL) {
+    if (e == nullptr) {
       break;
     }
 
@@ -465,7 +466,7 @@ void BM_mesh_edgenet(BMesh *bm, const bool use_edge_tag, const bool use_new_face
       BM_elem_index_set(f, bm->totface - 1); /* set_dirty */
     }
 
-    BLI_linklist_free_pool(path, NULL, path_pool);
+    BLI_linklist_free_pool(path, nullptr, path_pool);
     BLI_assert(BLI_mempool_len(path_pool) == 0);
   }
 
