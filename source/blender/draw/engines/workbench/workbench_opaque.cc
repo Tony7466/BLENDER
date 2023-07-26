@@ -69,7 +69,8 @@ void workbench_opaque_cache_init(WORKBENCH_Data *vedata)
         pass = psl->opaque_ps;
       }
 
-      for (eWORKBENCH_DataType data = 0; data < WORKBENCH_DATATYPE_MAX; data++) {
+      for (int data_i = 0; data_i < WORKBENCH_DATATYPE_MAX; data_i++) {
+        eWORKBENCH_DataType data = eWORKBENCH_DataType(data_i);
         wpd->prepass[opaque][infront][data].material_hash = BLI_ghash_ptr_new(__func__);
 
         sh = workbench_shader_opaque_get(wpd, data);
@@ -129,7 +130,7 @@ void workbench_opaque_cache_init(WORKBENCH_Data *vedata)
       DRW_shgroup_uniform_texture(grp, "matcap_diffuse_tx", diff_tx);
       DRW_shgroup_uniform_texture(grp, "matcap_specular_tx", spec_tx);
     }
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
     if (SHADOW_ENABLED(wpd)) {
       grp = DRW_shgroup_create_sub(grp);
@@ -137,7 +138,7 @@ void workbench_opaque_cache_init(WORKBENCH_Data *vedata)
       DRW_shgroup_state_disable(grp, DRW_STATE_STENCIL_EQUAL);
       DRW_shgroup_state_enable(grp, DRW_STATE_STENCIL_NEQUAL);
       DRW_shgroup_stencil_mask(grp, 0x00);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     }
   }
   {
@@ -151,6 +152,6 @@ void workbench_opaque_cache_init(WORKBENCH_Data *vedata)
     grp = DRW_shgroup_create(sh, psl->merge_infront_ps);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth_in_front);
     DRW_shgroup_stencil_mask(grp, 0x00);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }

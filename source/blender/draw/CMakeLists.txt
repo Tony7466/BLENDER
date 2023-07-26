@@ -175,7 +175,7 @@ set(SRC
   engines/workbench/workbench_materials.cc
   engines/workbench/workbench_materials_next.cc
   engines/workbench/workbench_mesh_passes.cc
-  engines/workbench/workbench_opaque.c
+  engines/workbench/workbench_opaque.cc
   engines/workbench/workbench_render.c
   engines/workbench/workbench_resources.cc
   engines/workbench/workbench_shader.cc
