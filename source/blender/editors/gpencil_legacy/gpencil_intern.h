@@ -802,7 +802,7 @@ struct GP_EditableStrokes_Iter {
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_->layers) { \
       if (BKE_gpencil_layer_is_editable(gpl)) { \
-        bGPDframe *init_gpf_ = (is_multiedit_) ? gpl->frames.first : gpl->actframe; \
+        bGPDframe *init_gpf_ = (is_multiedit_) ? (bGPDframe *)gpl->frames.first : gpl->actframe; \
         for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
           if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
             BKE_gpencil_layer_transform_matrix_get( \
