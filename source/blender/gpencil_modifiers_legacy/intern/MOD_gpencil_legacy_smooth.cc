@@ -60,9 +60,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   SmoothGpencilModifierData *gmd = (SmoothGpencilModifierData *)md;
   SmoothGpencilModifierData *tgmd = (SmoothGpencilModifierData *)target;
 
-  if (tgmd->curve_intensity != NULL) {
+  if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = NULL;
+    tgmd->curve_intensity = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -74,10 +74,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
  * Apply smooth effect based on stroke direction.
  */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   SmoothGpencilModifierData *mmd = (SmoothGpencilModifierData *)md;
@@ -104,12 +104,12 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  float *weights = NULL;
+  float *weights = nullptr;
   if (def_nr != -1 || use_curve) {
-    weights = MEM_malloc_arrayN(gps->totpoints, sizeof(*weights), __func__);
+    weights = static_cast<float *>(MEM_malloc_arrayN(gps->totpoints, sizeof(*weights), __func__));
     /* Calculate weights. */
     for (int i = 0; i < gps->totpoints; i++) {
-      MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+      MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
       /* Verify vertex group. */
       float weight = get_modifier_point_weight(
@@ -136,7 +136,7 @@ static void deformStroke(GpencilModifierData *md,
   MEM_SAFE_FREE(weights);
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -160,12 +160,12 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   row = uiLayoutRow(layout, true);
   uiItemR(row, ptr, "use_edit_position", UI_ITEM_R_TOGGLE, IFACE_("Position"), ICON_NONE);
@@ -175,17 +175,17 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "step", 0, IFACE_("Repeat"), ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_edit_position"));
-  uiItemR(col, ptr, "use_keep_shape", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "use_keep_shape", 0, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -195,7 +195,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Smooth, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
                                      "curve",
                                      "",
@@ -214,16 +214,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Smooth = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
