@@ -666,7 +666,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "read_mesh_attributes",
                   true,
                   "Mesh Attributes",
-                  "Read USD Primvars as Mesh Attributes");
+                  "Read USD Primvars as mesh attributes");
 
   RNA_def_string(ot->srna,
                  "prim_path_mask",

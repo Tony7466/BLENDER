@@ -905,10 +905,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
     }
 
     /* Read Color primvars. */
-    if (ELEM(type,
-             pxr::SdfValueTypeNames->Color3hArray,
-             pxr::SdfValueTypeNames->Color3fArray,
-             pxr::SdfValueTypeNames->Color3dArray))
+    if (convert_usd_type_to_blender(type) == CD_PROP_COLOR)
     {
       if ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0) {
         /* Set the active color name to 'displayColor', if a color primvar

@@ -144,7 +144,7 @@ static std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(
     case CD_PROP_QUATERNION:
       return pxr::SdfValueTypeNames->QuatfArray;
     default:
-      WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
+      WM_reportf(RPT_WARNING, "Unsupported type for mesh data.");
       return std::nullopt;
   }
 }
@@ -162,7 +162,7 @@ static const std::optional<pxr::TfToken> convert_blender_domain_to_usd(
 
     /* Notice: Edge types are not supported in USD! */
     default:
-      WM_reportf(RPT_WARNING, "Unsupported domain for mesh data.");
+      WM_reportf(RPT_WARNING, "Unsupported type for mesh data.");
       return std::nullopt;
   }
 }
@@ -238,7 +238,7 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
     return;
   }
 
-  if (!prim_varying || !prim_varying.has_value() || !prim_attr_type || !prim_attr_type.has_value())
+  if (!prim_varying || !prim_attr_type)
   {
     WM_reportf(RPT_WARNING,
                "Mesh %s, Attribute %s cannot be converted to USD.",
@@ -254,35 +254,28 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
     case CD_PROP_FLOAT:
       copy_blender_buffer_to_prim<float, float>(attribute.typed<float>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_INT8:
       copy_blender_buffer_to_prim<int8_t, int32_t>(
           attribute.typed<int8_t>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_INT32:
       copy_blender_buffer_to_prim<int, int32_t>(attribute.typed<int>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_FLOAT2:
       copy_blender_buffer_to_prim<float2, pxr::GfVec2f>(
           attribute.typed<float2>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_FLOAT3:
       copy_blender_buffer_to_prim<float3, pxr::GfVec3f>(
           attribute.typed<float3>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_BOOL:
       copy_blender_buffer_to_prim<bool, bool>(attribute.typed<bool>(), timecode, attribute_pv);
       break;
-
     case CD_PROP_QUATERNION:
       copy_blender_buffer_to_prim<math::Quaternion, pxr::GfQuatf>(
           attribute.typed<math::Quaternion>(), timecode, attribute_pv);
       break;
-
     default:
       BLI_assert_msg(0, "Unsupported type for mesh data.");
   }
@@ -348,7 +341,7 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
       copy_blender_buffer_to_prim<ColorGeometry4f, pxr::GfVec3f>(buffer, timecode, colors_pv);
       break;
     default:
-      BLI_assert_msg(0, "Invalid domain for mesh color data.");
+      BLI_assert_msg(0, "Invalid type for mesh color data.");
   }
 }
 
