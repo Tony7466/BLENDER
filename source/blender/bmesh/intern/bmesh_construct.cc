@@ -27,7 +27,7 @@ bool BM_verts_from_edges(BMVert **vert_arr, BMEdge **edge_arr, const int len)
   int i, i_prev = len - 1;
   for (i = 0; i < len; i++) {
     vert_arr[i] = BM_edge_share_vert(edge_arr[i_prev], edge_arr[i]);
-    if (vert_arr[i] == NULL) {
+    if (vert_arr[i] == nullptr) {
       return false;
     }
     i_prev = i;
@@ -40,7 +40,7 @@ bool BM_edges_from_verts(BMEdge **edge_arr, BMVert **vert_arr, const int len)
   int i, i_prev = len - 1;
   for (i = 0; i < len; i++) {
     edge_arr[i_prev] = BM_edge_exists(vert_arr[i_prev], vert_arr[i]);
-    if (edge_arr[i_prev] == NULL) {
+    if (edge_arr[i_prev] == nullptr) {
       return false;
     }
     i_prev = i;
@@ -53,7 +53,7 @@ void BM_edges_from_verts_ensure(BMesh *bm, BMEdge **edge_arr, BMVert **vert_arr,
   int i, i_prev = len - 1;
   for (i = 0; i < len; i++) {
     edge_arr[i_prev] = BM_edge_create(
-        bm, vert_arr[i_prev], vert_arr[i], NULL, BM_CREATE_NO_DOUBLE);
+        bm, vert_arr[i_prev], vert_arr[i], nullptr, BM_CREATE_NO_DOUBLE);
     i_prev = i;
   }
 }
@@ -110,7 +110,7 @@ void BM_face_copy_shared(BMesh *bm, BMFace *f, BMLoopFilterFunc filter_fn, void 
       for (j = 0; j < 2; j++) {
         BLI_assert(l_dst[j]->v == l_src[j]->v);
         if (BM_ELEM_API_FLAG_TEST(l_dst[j], _FLAG_OVERLAP) == 0) {
-          if ((filter_fn == NULL) || filter_fn(l_src[j], user_data)) {
+          if ((filter_fn == nullptr) || filter_fn(l_src[j], user_data)) {
             bm_loop_attrs_copy(bm, bm, l_src[j], l_dst[j], 0x0);
             BM_ELEM_API_FLAG_ENABLE(l_dst[j], _FLAG_OVERLAP);
           }
@@ -225,7 +225,7 @@ BMFace *BM_face_create_ngon(BMesh *bm,
     return BM_face_create(bm, verts_sort, edges_sort, len, f_example, create_flag);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 BMFace *BM_face_create_ngon_verts(BMesh *bm,
@@ -245,12 +245,13 @@ BMFace *BM_face_create_ngon_verts(BMesh *bm,
 
   for (i = 0; i < len; i++) {
     if (create_edges) {
-      edge_arr[i] = BM_edge_create(bm, vert_arr[i_prev], vert_arr[i], NULL, BM_CREATE_NO_DOUBLE);
+      edge_arr[i] = BM_edge_create(
+          bm, vert_arr[i_prev], vert_arr[i], nullptr, BM_CREATE_NO_DOUBLE);
     }
     else {
       edge_arr[i] = BM_edge_exists(vert_arr[i_prev], vert_arr[i]);
-      if (edge_arr[i] == NULL) {
-        return NULL;
+      if (edge_arr[i] == nullptr) {
+        return nullptr;
       }
     }
 
@@ -387,8 +388,8 @@ void BM_elem_attrs_copy_ex(BMesh *bm_src,
   /* TODO: Special handling for hide flags? */
   /* TODO: swap src/dst args, everywhere else in bmesh does other way round. */
 
-  const BMHeader *ele_src = ele_src_v;
-  BMHeader *ele_dst = ele_dst_v;
+  const BMHeader *ele_src = static_cast<const BMHeader *>(ele_src_v);
+  BMHeader *ele_dst = static_cast<BMHeader *>(ele_dst_v);
 
   BLI_assert(ele_src->htype == ele_dst->htype);
   BLI_assert(ele_src != ele_dst);
@@ -443,8 +444,8 @@ void BM_elem_attrs_copy(BMesh *bm_src, BMesh *bm_dst, const void *ele_src, void 
 
 void BM_elem_select_copy(BMesh *bm_dst, void *ele_dst_v, const void *ele_src_v)
 {
-  BMHeader *ele_dst = ele_dst_v;
-  const BMHeader *ele_src = ele_src_v;
+  BMHeader *ele_dst = static_cast<BMHeader *>(ele_dst_v);
+  const BMHeader *ele_src = static_cast<const BMHeader *>(ele_src_v);
 
   BLI_assert(ele_src->htype == ele_dst->htype);
 
@@ -474,10 +475,10 @@ static BMFace *bm_mesh_copy_new_face(
     j++;
   } while ((l_iter = l_iter->next) != l_first);
 
-  f_new = BM_face_create(bm_new, verts, edges, f->len, NULL, BM_CREATE_SKIP_CD);
+  f_new = BM_face_create(bm_new, verts, edges, f->len, nullptr, BM_CREATE_SKIP_CD);
 
-  if (UNLIKELY(f_new == NULL)) {
-    return NULL;
+  if (UNLIKELY(f_new == nullptr)) {
+    return nullptr;
   }
 
   /* use totface in case adding some faces fails */
@@ -502,7 +503,7 @@ void BM_mesh_copy_init_customdata_from_mesh_array(BMesh *bm_dst,
                                                   const BMAllocTemplate *allocsize)
 
 {
-  if (allocsize == NULL) {
+  if (allocsize == nullptr) {
     allocsize = &bm_mesh_allocsize_default;
   }
 
@@ -551,7 +552,7 @@ void BM_mesh_copy_init_customdata_from_mesh(BMesh *bm_dst,
 
 void BM_mesh_copy_init_customdata(BMesh *bm_dst, BMesh *bm_src, const BMAllocTemplate *allocsize)
 {
-  if (allocsize == NULL) {
+  if (allocsize == nullptr) {
     allocsize = &bm_mesh_allocsize_default;
   }
 
@@ -571,7 +572,7 @@ void BM_mesh_copy_init_customdata_all_layers(BMesh *bm_dst,
                                              const char htype,
                                              const BMAllocTemplate *allocsize)
 {
-  if (allocsize == NULL) {
+  if (allocsize == nullptr) {
     allocsize = &bm_mesh_allocsize_default;
   }
 
@@ -592,7 +593,8 @@ void BM_mesh_copy_init_customdata_all_layers(BMesh *bm_dst,
     const int size = *(&allocsize->totvert + i);
 
     for (int l = 0; l < src->totlayer; l++) {
-      CustomData_add_layer_named(dst, src->layers[l].type, CD_SET_DEFAULT, 0, src->layers[l].name);
+      CustomData_add_layer_named(
+          dst, eCustomDataType(src->layers[l].type), CD_SET_DEFAULT, 0, src->layers[l].name);
     }
     CustomData_bmesh_init_pool(dst, size, htypes[i]);
   }
@@ -601,9 +603,9 @@ void BM_mesh_copy_init_customdata_all_layers(BMesh *bm_dst,
 BMesh *BM_mesh_copy(BMesh *bm_old)
 {
   BMesh *bm_new;
-  BMVert *v, *v_new, **vtable = NULL;
-  BMEdge *e, *e_new, **etable = NULL;
-  BMFace *f, *f_new, **ftable = NULL;
+  BMVert *v, *v_new, **vtable = nullptr;
+  BMEdge *e, *e_new, **etable = nullptr;
+  BMFace *f, *f_new, **ftable = nullptr;
   BMElem **eletable;
   BMEditSelection *ese;
   BMIter iter;
@@ -611,20 +613,22 @@ BMesh *BM_mesh_copy(BMesh *bm_old)
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_BM(bm_old);
 
   /* allocate a bmesh */
-  bm_new = BM_mesh_create(&allocsize,
-                          &((struct BMeshCreateParams){
-                              .use_toolflags = bm_old->use_toolflags,
-                          }));
+  BMeshCreateParams params{};
+  params.use_toolflags = bm_old->use_toolflags;
+  bm_new = BM_mesh_create(&allocsize, &params);
 
   BM_mesh_copy_init_customdata(bm_new, bm_old, &allocsize);
 
-  vtable = MEM_mallocN(sizeof(BMVert *) * bm_old->totvert, "BM_mesh_copy vtable");
-  etable = MEM_mallocN(sizeof(BMEdge *) * bm_old->totedge, "BM_mesh_copy etable");
-  ftable = MEM_mallocN(sizeof(BMFace *) * bm_old->totface, "BM_mesh_copy ftable");
+  vtable = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * bm_old->totvert, "BM_mesh_copy vtable"));
+  etable = static_cast<BMEdge **>(
+      MEM_mallocN(sizeof(BMEdge *) * bm_old->totedge, "BM_mesh_copy etable"));
+  ftable = static_cast<BMFace **>(
+      MEM_mallocN(sizeof(BMFace *) * bm_old->totface, "BM_mesh_copy ftable"));
 
   BM_ITER_MESH_INDEX (v, &iter, bm_old, BM_VERTS_OF_MESH, i) {
     /* copy between meshes so can't use 'example' argument */
-    v_new = BM_vert_create(bm_new, v->co, NULL, BM_CREATE_SKIP_CD);
+    v_new = BM_vert_create(bm_new, v->co, nullptr, BM_CREATE_SKIP_CD);
     BM_elem_attrs_copy_ex(bm_old, bm_new, v, v_new, 0xff, 0x0);
     v_new->head.hflag = v->head.hflag; /* low level! don't do this for normal api use */
     vtable[i] = v_new;
@@ -679,8 +683,8 @@ BMesh *BM_mesh_copy(BMesh *bm_old)
   BLI_assert(i == bm_old->totface);
 
   /* copy over edit selection history */
-  for (ese = bm_old->selected.first; ese; ese = ese->next) {
-    BMElem *ele = NULL;
+  for (ese = static_cast<BMEditSelection *>(bm_old->selected.first); ese; ese = ese->next) {
+    BMElem *ele = nullptr;
 
     switch (ese->htype) {
       case BM_VERT:
@@ -693,7 +697,7 @@ BMesh *BM_mesh_copy(BMesh *bm_old)
         eletable = (BMElem **)ftable;
         break;
       default:
-        eletable = NULL;
+        eletable = nullptr;
         break;
     }
 

@@ -59,7 +59,7 @@ set(SRC
 
   intern/bmesh_callback_generic.cc
   intern/bmesh_callback_generic.h
-  intern/bmesh_construct.c
+  intern/bmesh_construct.cc
   intern/bmesh_construct.h
   intern/bmesh_core.c
   intern/bmesh_core.h
