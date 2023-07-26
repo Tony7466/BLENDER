@@ -916,7 +916,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 {
   CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
-  const Span<short2> clnors_data = common_data->clnors_data;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
@@ -926,6 +925,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<int2> edge_to_loops = common_data->edge_to_loops;
   const Span<int> loop_to_face = common_data->loop_to_face;
   const Span<float3> face_normals = common_data->face_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
   const int face_index = loop_to_face[ml_curr_index];
   const int ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
@@ -946,7 +946,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
 
   Vector<int, 8> processed_corners;
