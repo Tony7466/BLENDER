@@ -876,7 +876,8 @@ static bool bm_edgering_pair_order_is_flipped(BMesh * /*bm*/,
   LinkData *v_iter_b_step = v_iter_b_first;
 
   /* we _must_ have same starting edge shared */
-  BLI_assert(BM_edge_exists(v_iter_a_first->data, v_iter_b_first->data));
+  BLI_assert(BM_edge_exists(static_cast<BMVert *>(v_iter_a_first->data),
+                            static_cast<BMVert *>(v_iter_b_first->data)));
 
   /* step around any fan-faces on both sides */
   do {

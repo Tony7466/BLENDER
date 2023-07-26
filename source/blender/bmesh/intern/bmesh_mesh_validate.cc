@@ -79,7 +79,7 @@ bool BM_mesh_validate(BMesh *bm)
     /* build edgehash at the same time */
     if (BLI_edgehash_ensure_p(
             edge_hash, BM_elem_index_get(e->v1), BM_elem_index_get(e->v2), &val_p)) {
-      BMEdge *e_other = *val_p;
+      BMEdge *e_other = static_cast<BMEdge *>(*val_p);
       ERRMSG("edge %d, %d: are duplicates", i, BM_elem_index_get(e_other));
     }
     else {

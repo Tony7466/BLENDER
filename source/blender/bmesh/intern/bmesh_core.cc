@@ -489,42 +489,45 @@ BMFace *BM_face_create_verts(BMesh *bm,
 
 #ifndef NDEBUG
 
+enum BMeshElemErrorFlag {
+  IS_NULL = (1 << 0),
+  IS_WRONG_TYPE = (1 << 1),
+
+  IS_VERT_WRONG_EDGE_TYPE = (1 << 2),
+
+  IS_EDGE_NULL_DISK_LINK = (1 << 3),
+  IS_EDGE_WRONG_LOOP_TYPE = (1 << 4),
+  IS_EDGE_WRONG_FACE_TYPE = (1 << 5),
+  IS_EDGE_NULL_RADIAL_LINK = (1 << 6),
+  IS_EDGE_ZERO_FACE_LENGTH = (1 << 7),
+
+  IS_LOOP_WRONG_FACE_TYPE = (1 << 8),
+  IS_LOOP_WRONG_EDGE_TYPE = (1 << 9),
+  IS_LOOP_WRONG_VERT_TYPE = (1 << 10),
+  IS_LOOP_VERT_NOT_IN_EDGE = (1 << 11),
+  IS_LOOP_NULL_CYCLE_LINK = (1 << 12),
+  IS_LOOP_ZERO_FACE_LENGTH = (1 << 13),
+  IS_LOOP_WRONG_FACE_LENGTH = (1 << 14),
+  IS_LOOP_WRONG_RADIAL_LENGTH = (1 << 15),
+
+  IS_FACE_NULL_LOOP = (1 << 16),
+  IS_FACE_WRONG_LOOP_FACE = (1 << 17),
+  IS_FACE_NULL_EDGE = (1 << 18),
+  IS_FACE_NULL_VERT = (1 << 19),
+  IS_FACE_LOOP_VERT_NOT_IN_EDGE = (1 << 20),
+  IS_FACE_LOOP_WRONG_RADIAL_LENGTH = (1 << 21),
+  IS_FACE_LOOP_WRONG_DISK_LENGTH = (1 << 22),
+  IS_FACE_LOOP_DUPE_LOOP = (1 << 23),
+  IS_FACE_LOOP_DUPE_VERT = (1 << 24),
+  IS_FACE_LOOP_DUPE_EDGE = (1 << 25),
+  IS_FACE_WRONG_LENGTH = (1 << 26),
+};
+ENUM_OPERATORS(BMeshElemErrorFlag, IS_FACE_WRONG_LENGTH)
+
 int bmesh_elem_check(void *element, const char htype)
 {
-  BMHeader *head = element;
-  enum {
-    IS_NULL = (1 << 0),
-    IS_WRONG_TYPE = (1 << 1),
-
-    IS_VERT_WRONG_EDGE_TYPE = (1 << 2),
-
-    IS_EDGE_NULL_DISK_LINK = (1 << 3),
-    IS_EDGE_WRONG_LOOP_TYPE = (1 << 4),
-    IS_EDGE_WRONG_FACE_TYPE = (1 << 5),
-    IS_EDGE_NULL_RADIAL_LINK = (1 << 6),
-    IS_EDGE_ZERO_FACE_LENGTH = (1 << 7),
-
-    IS_LOOP_WRONG_FACE_TYPE = (1 << 8),
-    IS_LOOP_WRONG_EDGE_TYPE = (1 << 9),
-    IS_LOOP_WRONG_VERT_TYPE = (1 << 10),
-    IS_LOOP_VERT_NOT_IN_EDGE = (1 << 11),
-    IS_LOOP_NULL_CYCLE_LINK = (1 << 12),
-    IS_LOOP_ZERO_FACE_LENGTH = (1 << 13),
-    IS_LOOP_WRONG_FACE_LENGTH = (1 << 14),
-    IS_LOOP_WRONG_RADIAL_LENGTH = (1 << 15),
-
-    IS_FACE_NULL_LOOP = (1 << 16),
-    IS_FACE_WRONG_LOOP_FACE = (1 << 17),
-    IS_FACE_NULL_EDGE = (1 << 18),
-    IS_FACE_NULL_VERT = (1 << 19),
-    IS_FACE_LOOP_VERT_NOT_IN_EDGE = (1 << 20),
-    IS_FACE_LOOP_WRONG_RADIAL_LENGTH = (1 << 21),
-    IS_FACE_LOOP_WRONG_DISK_LENGTH = (1 << 22),
-    IS_FACE_LOOP_DUPE_LOOP = (1 << 23),
-    IS_FACE_LOOP_DUPE_VERT = (1 << 24),
-    IS_FACE_LOOP_DUPE_EDGE = (1 << 25),
-    IS_FACE_WRONG_LENGTH = (1 << 26),
-  } err = 0;
+  BMHeader *head = static_cast<BMHeader *>(element);
+  BMeshElemErrorFlag err = BMeshElemErrorFlag(0);
 
   if (!element) {
     return IS_NULL;
@@ -536,14 +539,14 @@ int bmesh_elem_check(void *element, const char htype)
 
   switch (htype) {
     case BM_VERT: {
-      BMVert *v = element;
+      BMVert *v = static_cast<BMVert *>(element);
       if (v->e && v->e->head.htype != BM_EDGE) {
         err |= IS_VERT_WRONG_EDGE_TYPE;
       }
       break;
     }
     case BM_EDGE: {
-      BMEdge *e = element;
+      BMEdge *e = static_cast<BMEdge *>(element);
       if (e->v1_disk_link.prev == nullptr || e->v2_disk_link.prev == nullptr ||
           e->v1_disk_link.next == nullptr || e->v2_disk_link.next == nullptr)
       {
@@ -565,7 +568,8 @@ int bmesh_elem_check(void *element, const char htype)
       break;
     }
     case BM_LOOP: {
-      BMLoop *l = element, *l2;
+      BMLoop *l = static_cast<BMLoop *>(element);
+      BMLoop *l2;
       int i;
 
       if (l->f->head.htype != BM_FACE) {
@@ -614,7 +618,7 @@ int bmesh_elem_check(void *element, const char htype)
       break;
     }
     case BM_FACE: {
-      BMFace *f = element;
+      BMFace *f = static_cast<BMFace *>(element);
       BMLoop *l_iter;
       BMLoop *l_first;
       int len = 0;
@@ -2011,7 +2015,7 @@ bool BM_vert_splice_check_double(BMVert *v_a, BMVert *v_b)
 {
   bool is_double = false;
 
-  BLI_assert(BM_edge_exists(v_a, v_b) == false);
+  BLI_assert(BM_edge_exists(v_a, v_b) == nullptr);
 
   if (v_a->e && v_b->e) {
     BMEdge *e, *e_first;
