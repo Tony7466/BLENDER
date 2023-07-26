@@ -810,7 +810,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: Non-Color
-    aliases: [Generic Data, Non-colour Data, Raw]
+    aliases: [Generic Data, Non-colour Data, Raw, Utility - Raw]
     family: Data/Generic Data
     equalitygroup: ""
     bitdepth: unknown
