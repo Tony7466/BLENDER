@@ -245,16 +245,16 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
  * \{ */
 
 /* Default implementation */
-template<typename T> static void socket_data_read_data_impl(BlendDataReader *reader, T *data)
+template<typename T> static void socket_data_read_data_impl(BlendDataReader *reader, T **data)
 {
-  BLO_read_data_address(reader, &data);
+  BLO_read_data_address(reader, data);
 }
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_read_data_impl(reader, &get_data<SocketDataType>(socket));
+    socket_data_read_data_impl(reader, reinterpret_cast<SocketDataType **>(&socket.socket_data));
   });
 }
 
