@@ -1874,23 +1874,19 @@ static int mouse_action_keys(bAnimContext *ac,
         /* Deselect all other channels first. */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
-        if (U.experimental.use_grease_pencil_version3) {
-          /* Highlight the grease pencil channel, and set the corresponding layer as active. */
-          if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER)
-          {
-            using namespace blender::bke::greasepencil;
-            blender::ed::greasepencil::select_layer_channel(
-                reinterpret_cast<GreasePencil *>(ale->id), static_cast<Layer *>(ale->data));
-          }
+        /* Highlight the grease pencil channel, and set the corresponding layer as active. */
+        if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+          using namespace blender::bke::greasepencil;
+          blender::ed::greasepencil::select_layer_channel(
+              reinterpret_cast<GreasePencil *>(ale->id), static_cast<Layer *>(ale->data));
         }
-        else {
-          /* Highlight GPencil Layer (Legacy). */
-          if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GPLAYER) {
-            bGPdata *gpd = (bGPdata *)ale->id;
-            bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 
-            ED_gpencil_set_active_channel(gpd, gpl);
-          }
+        /* Highlight GPencil Layer (Legacy). */
+        if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GPLAYER) {
+          bGPdata *gpd = (bGPdata *)ale->id;
+          bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
+
+          ED_gpencil_set_active_channel(gpd, gpl);
         }
       }
       else if (ac->datatype == ANIMCONT_MASK) {
