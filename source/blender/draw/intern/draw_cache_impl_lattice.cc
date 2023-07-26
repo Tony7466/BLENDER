@@ -88,7 +88,7 @@ static int lattice_render_edges_len_get(Lattice *lt)
 /* ---------------------------------------------------------------------- */
 /* Lattice Interface, indirect, partially cached access to complex data. */
 
-typedef struct LatticeRenderData {
+struct LatticeRenderData {
   int types;
 
   int vert_len;
@@ -105,7 +105,7 @@ typedef struct LatticeRenderData {
   int actbp;
 
   const MDeformVert *dvert;
-} LatticeRenderData;
+};
 
 enum {
   LR_DATATYPE_VERT = 1 << 0,
@@ -115,7 +115,8 @@ enum {
 
 static LatticeRenderData *lattice_render_data_create(Lattice *lt, const int types)
 {
-  LatticeRenderData *rdata = MEM_callocN(sizeof(*rdata), __func__);
+  LatticeRenderData *rdata = static_cast<LatticeRenderData *>(
+      MEM_callocN(sizeof(*rdata), __func__));
   rdata->types = types;
 
   if (lt->editlatt) {
@@ -137,7 +138,7 @@ static LatticeRenderData *lattice_render_data_create(Lattice *lt, const int type
     }
   }
   else {
-    rdata->dvert = NULL;
+    rdata->dvert = nullptr;
 
     if (types & (LR_DATATYPE_VERT)) {
       rdata->vert_len = lattice_render_verts_len_get(lt);
@@ -192,7 +193,7 @@ static const BPoint *lattice_render_data_vert_bpoint(const LatticeRenderData *rd
 /* ---------------------------------------------------------------------- */
 /* Lattice GPUBatch Cache */
 
-typedef struct LatticeBatchCache {
+struct LatticeBatchCache {
   GPUVertBuf *pos;
   GPUIndexBuf *edges;
 
@@ -210,19 +211,19 @@ typedef struct LatticeBatchCache {
   bool show_only_outside;
 
   bool is_editmode;
-} LatticeBatchCache;
+};
 
 /* GPUBatch cache management. */
 
 static bool lattice_batch_cache_valid(Lattice *lt)
 {
-  LatticeBatchCache *cache = lt->batch_cache;
+  LatticeBatchCache *cache = static_cast<LatticeBatchCache *>(lt->batch_cache);
 
-  if (cache == NULL) {
+  if (cache == nullptr) {
     return false;
   }
 
-  if (cache->is_editmode != (lt->editlatt != NULL)) {
+  if (cache->is_editmode != (lt->editlatt != nullptr)) {
     return false;
   }
 
@@ -242,10 +243,11 @@ static bool lattice_batch_cache_valid(Lattice *lt)
 
 static void lattice_batch_cache_init(Lattice *lt)
 {
-  LatticeBatchCache *cache = lt->batch_cache;
+  LatticeBatchCache *cache = static_cast<LatticeBatchCache *>(lt->batch_cache);
 
   if (!cache) {
-    cache = lt->batch_cache = MEM_callocN(sizeof(*cache), __func__);
+    cache = static_cast<LatticeBatchCache *>(
+        lt->batch_cache = MEM_callocN(sizeof(*cache), __func__));
   }
   else {
     memset(cache, 0, sizeof(*cache));
@@ -256,7 +258,7 @@ static void lattice_batch_cache_init(Lattice *lt)
   cache->dims.w_len = lt->pntsw;
   cache->show_only_outside = (lt->flag & LT_OUTSIDE) != 0;
 
-  cache->is_editmode = lt->editlatt != NULL;
+  cache->is_editmode = lt->editlatt != nullptr;
 
   cache->is_dirty = false;
 }
@@ -271,13 +273,13 @@ void DRW_lattice_batch_cache_validate(Lattice *lt)
 
 static LatticeBatchCache *lattice_batch_cache_get(Lattice *lt)
 {
-  return lt->batch_cache;
+  return static_cast<LatticeBatchCache *>(lt->batch_cache);
 }
 
 void DRW_lattice_batch_cache_dirty_tag(Lattice *lt, int mode)
 {
-  LatticeBatchCache *cache = lt->batch_cache;
-  if (cache == NULL) {
+  LatticeBatchCache *cache = static_cast<LatticeBatchCache *>(lt->batch_cache);
+  if (cache == nullptr) {
     return;
   }
   switch (mode) {
@@ -295,7 +297,7 @@ void DRW_lattice_batch_cache_dirty_tag(Lattice *lt, int mode)
 
 static void lattice_batch_cache_clear(Lattice *lt)
 {
-  LatticeBatchCache *cache = lt->batch_cache;
+  LatticeBatchCache *cache = static_cast<LatticeBatchCache *>(lt->batch_cache);
   if (!cache) {
     return;
   }
@@ -322,7 +324,7 @@ static GPUVertBuf *lattice_batch_cache_get_pos(LatticeRenderData *rdata,
 {
   BLI_assert(rdata->types & LR_DATATYPE_VERT);
 
-  if (cache->pos == NULL) {
+  if (cache->pos == nullptr) {
     GPUVertFormat format = {0};
     struct {
       uint pos, col;
@@ -358,7 +360,7 @@ static GPUIndexBuf *lattice_batch_cache_get_edges(LatticeRenderData *rdata,
 {
   BLI_assert(rdata->types & (LR_DATATYPE_VERT | LR_DATATYPE_EDGE));
 
-  if (cache->edges == NULL) {
+  if (cache->edges == nullptr) {
     const int vert_len = lattice_render_data_verts_len_get(rdata);
     const int edge_len = lattice_render_data_edges_len_get(rdata);
     int edge_len_real = 0;
@@ -418,7 +420,7 @@ static void lattice_batch_cache_create_overlay_batches(Lattice *lt)
   LatticeBatchCache *cache = lattice_batch_cache_get(lt);
   LatticeRenderData *rdata = lattice_render_data_create(lt, options);
 
-  if (cache->overlay_verts == NULL) {
+  if (cache->overlay_verts == nullptr) {
     static GPUVertFormat format = {0};
     static struct {
       uint pos, data;
@@ -450,7 +452,7 @@ static void lattice_batch_cache_create_overlay_batches(Lattice *lt)
       GPU_vertbuf_attr_set(vbo, attr_id.data, i, &vflag);
     }
 
-    cache->overlay_verts = GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+    cache->overlay_verts = GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, nullptr, GPU_BATCH_OWNS_VBO);
   }
 
   lattice_render_data_free(rdata);
@@ -460,7 +462,7 @@ GPUBatch *DRW_lattice_batch_cache_get_all_edges(Lattice *lt, bool use_weight, co
 {
   LatticeBatchCache *cache = lattice_batch_cache_get(lt);
 
-  if (cache->all_edges == NULL) {
+  if (cache->all_edges == nullptr) {
     /* create batch from Lattice */
     LatticeRenderData *rdata = lattice_render_data_create(lt, LR_DATATYPE_VERT | LR_DATATYPE_EDGE);
 
@@ -479,11 +481,11 @@ GPUBatch *DRW_lattice_batch_cache_get_all_verts(Lattice *lt)
 {
   LatticeBatchCache *cache = lattice_batch_cache_get(lt);
 
-  if (cache->all_verts == NULL) {
+  if (cache->all_verts == nullptr) {
     LatticeRenderData *rdata = lattice_render_data_create(lt, LR_DATATYPE_VERT);
 
     cache->all_verts = GPU_batch_create(
-        GPU_PRIM_POINTS, lattice_batch_cache_get_pos(rdata, cache, false, -1), NULL);
+        GPU_PRIM_POINTS, lattice_batch_cache_get_pos(rdata, cache, false, -1), nullptr);
 
     lattice_render_data_free(rdata);
   }
@@ -495,7 +497,7 @@ GPUBatch *DRW_lattice_batch_cache_get_edit_verts(Lattice *lt)
 {
   LatticeBatchCache *cache = lattice_batch_cache_get(lt);
 
-  if (cache->overlay_verts == NULL) {
+  if (cache->overlay_verts == nullptr) {
     lattice_batch_cache_create_overlay_batches(lt);
   }
 

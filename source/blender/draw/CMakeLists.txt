@@ -69,7 +69,7 @@ set(SRC
   intern/draw_cache_impl_curves.cc
   intern/draw_cache_impl_gpencil_legacy.cc
   intern/draw_cache_impl_grease_pencil.cc
-  intern/draw_cache_impl_lattice.c
+  intern/draw_cache_impl_lattice.cc
   intern/draw_cache_impl_mesh.cc
   intern/draw_cache_impl_particles.c
   intern/draw_cache_impl_pointcloud.cc
