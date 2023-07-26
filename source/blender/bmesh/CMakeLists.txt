@@ -132,7 +132,7 @@ set(SRC
   tools/bmesh_decimate.h
   tools/bmesh_decimate_collapse.cc
   tools/bmesh_decimate_dissolve.cc
-  tools/bmesh_decimate_unsubdivide.c
+  tools/bmesh_decimate_unsubdivide.cc
   tools/bmesh_edgenet.c
   tools/bmesh_edgenet.h
   tools/bmesh_edgesplit.c

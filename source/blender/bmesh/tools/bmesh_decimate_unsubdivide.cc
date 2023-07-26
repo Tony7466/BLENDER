@@ -99,7 +99,7 @@ static bool bm_vert_dissolve_fan(BMesh *bm, BMVert *v)
   if (tot_edge == 2) {
     /* check for 2 wire verts only */
     if (tot_edge_wire == 2) {
-      return (BM_vert_collapse_edge(bm, v->e, v, true, true, true) != NULL);
+      return (BM_vert_collapse_edge(bm, v->e, v, true, true, true) != nullptr);
     }
   }
   else if (tot_edge == 4) {
@@ -126,7 +126,7 @@ static bool bm_vert_dissolve_fan(BMesh *bm, BMVert *v)
     uint i;
 
     /* ensure there are exactly tot_loop loops */
-    BLI_assert(BM_iter_at_index(bm, BM_LOOPS_OF_VERT, v, tot_loop) == NULL);
+    BLI_assert(BM_iter_at_index(bm, BM_LOOPS_OF_VERT, v, tot_loop) == nullptr);
     BM_iter_as_array(bm, BM_LOOPS_OF_VERT, v, (void **)f_loop, tot_loop);
 
     for (i = 0; i < tot_loop; i++) {
@@ -134,7 +134,7 @@ static bool bm_vert_dissolve_fan(BMesh *bm, BMVert *v)
       if (l->f->len > 3) {
         BMLoop *l_new;
         BLI_assert(l->prev->v != l->next->v);
-        BM_face_split(bm, l->f, l->prev, l->next, &l_new, NULL, true);
+        BM_face_split(bm, l->f, l->prev, l->next, &l_new, nullptr, true);
         BM_elem_flag_merge_into(l_new->e, l->e, l->prev->e);
       }
     }
@@ -162,8 +162,10 @@ void BM_mesh_decimate_unsubdivide_ex(BMesh *bm, const int iterations, const bool
 #ifdef USE_WALKER
 #  define ELE_VERT_TAG 1
 #else
-  BMVert **vert_seek_a = MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__);
-  BMVert **vert_seek_b = MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__);
+  BMVert **vert_seek_a = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__));
+  BMVert **vert_seek_b = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * bm->totvert, __func__));
   uint vert_seek_a_tot = 0;
   uint vert_seek_b_tot = 0;
 #endif
@@ -209,7 +211,7 @@ void BM_mesh_decimate_unsubdivide_ex(BMesh *bm, const int iterations, const bool
       uint depth = 1;
       uint i;
 #endif
-      BMVert *v_first = NULL;
+      BMVert *v_first = nullptr;
 
       /* we could avoid iterating from the start each time */
       BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
@@ -226,7 +228,7 @@ void BM_mesh_decimate_unsubdivide_ex(BMesh *bm, const int iterations, const bool
           }
         }
       }
-      if (v_first == NULL) {
+      if (v_first == nullptr) {
         break;
       }
 
@@ -243,7 +245,7 @@ void BM_mesh_decimate_unsubdivide_ex(BMesh *bm, const int iterations, const bool
           BMW_NIL_LAY);
 
       BLI_assert(walker.order == BMW_BREADTH_FIRST);
-      for (v = BMW_begin(&walker, v_first); v != NULL; v = BMW_step(&walker)) {
+      for (v = BMW_begin(&walker, v_first); v != nullptr; v = BMW_step(&walker)) {
         /* Deselect elements that aren't at "nth" depth from active */
         if (BM_elem_index_get(v) == VERT_INDEX_INIT) {
           if ((offset + BMW_current_depth(&walker)) % nth) {
