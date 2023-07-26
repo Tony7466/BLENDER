@@ -25,21 +25,21 @@
 /** \name Structs and static variables
  * \{ */
 
-typedef struct SELECTIDDEBUG_PassList {
+struct SELECTIDDEBUG_PassList {
   struct DRWPass *debug_pass;
-} SELECTIDDEBUG_PassList;
+};
 
-typedef struct SELECTIDDEBUG_Data {
+struct SELECTIDDEBUG_Data {
   void *engine_type;
   DRWViewportEmptyList *fbl;
   DRWViewportEmptyList *txl;
   SELECTIDDEBUG_PassList *psl;
   DRWViewportEmptyList *stl;
-} SELECTIDDEBUG_Data;
+};
 
 static struct {
   struct GPUShader *select_debug_sh;
-} e_data = {{NULL}}; /* Engine data */
+} e_data = {{nullptr}}; /* Engine data */
 
 /** \} */
 
@@ -67,7 +67,7 @@ static void select_debug_engine_init(void *vedata)
         "    fragColor.b = ((px >> 4) & 0x3u) / float(0x3u);"
         "  }"
         "}\n",
-        NULL);
+        nullptr);
   }
 
   psl->debug_pass = DRW_pass_create("Debug Pass", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA);
@@ -75,7 +75,7 @@ static void select_debug_engine_init(void *vedata)
   if (texture_u32) {
     DRWShadingGroup *shgrp = DRW_shgroup_create(e_data.select_debug_sh, psl->debug_pass);
     DRW_shgroup_uniform_texture(shgrp, "image", texture_u32);
-    DRW_shgroup_call_procedural_triangles(shgrp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(shgrp, nullptr, 1);
   }
 }
 
@@ -100,21 +100,21 @@ static const DrawEngineDataSize select_debug_data_size = DRW_VIEWPORT_DATA_SIZE(
     SELECTIDDEBUG_Data);
 
 DrawEngineType draw_engine_debug_select_type = {
-    /*next*/ NULL,
-    /*prev*/ NULL,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
     /*idname*/ N_("Select ID Debug"),
     /*vedata_size*/ &select_debug_data_size,
     /*engine_init*/ &select_debug_engine_init,
     /*engine_free*/ &select_debug_engine_free,
-    /*instance_free*/ /*instance_free*/ NULL,
-    /*cache_init*/ NULL,
-    /*cache_populate*/ NULL,
-    /*cache_finish*/ NULL,
+    /*instance_free*/ /*instance_free*/ nullptr,
+    /*cache_init*/ nullptr,
+    /*cache_populate*/ nullptr,
+    /*cache_finish*/ nullptr,
     /*draw_scene*/ &select_debug_draw_scene,
-    /*view_update*/ NULL,
-    /*id_update*/ NULL,
-    /*render_to_image*/ NULL,
-    /*store_metadata*/ NULL,
+    /*view_update*/ nullptr,
+    /*id_update*/ nullptr,
+    /*render_to_image*/ nullptr,
+    /*store_metadata*/ nullptr,
 };
 
 /** \} */

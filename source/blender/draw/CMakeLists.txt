@@ -837,7 +837,7 @@ list(APPEND INC
 
 if(WITH_DRAW_DEBUG)
   list(APPEND SRC
-    engines/select/select_debug_engine.c
+    engines/select/select_debug_engine.cc
   )
   add_definitions(-DWITH_DRAW_DEBUG)
 endif()
