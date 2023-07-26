@@ -78,7 +78,7 @@ static BMLoop *bm_edge_flagged_radial_first(BMEdge *e)
       }
     } while ((l = l->radial_next) != e->l);
   }
-  return NULL;
+  return nullptr;
 }
 
 static void normalize_v2_m3_v3v3(float out[2],
@@ -265,9 +265,9 @@ static bool bm_face_split_edgenet_find_loop_walk(BMVert *v_init,
 {
   UNUSED_VARS_NDEBUG(edge_order_len);
 
-  /* fast-path for the common case (avoid push-pop).
-   * Also avoids tagging as visited since we know we
-   * can't reach these verts some other way */
+/* fast-path for the common case (avoid push-pop).
+ * Also avoids tagging as visited since we know we
+ * can't reach these verts some other way */
 #define USE_FASTPATH_NOFORK
 
   BMVert *v;
@@ -453,7 +453,7 @@ bool BM_face_split_edgenet(BMesh *bm,
   BMVert **face_verts;
   int face_verts_len;
 
-  BMFace **face_arr = NULL;
+  BMFace **face_arr = nullptr;
   BLI_array_declare(face_arr);
 
   BMVert **vert_queue;
@@ -469,7 +469,7 @@ bool BM_face_split_edgenet(BMesh *bm,
 
   if (!edge_net_len) {
     if (r_face_arr) {
-      *r_face_arr = NULL;
+      *r_face_arr = nullptr;
       *r_face_arr_len = 0;
     }
     return false;
@@ -479,12 +479,15 @@ bool BM_face_split_edgenet(BMesh *bm,
    * large for single faces with complex edge-nets, see: #65980. */
 
   /* over-alloc (probably 2-4 is only used in most cases), for the biggest-fan */
-  edge_order = MEM_mallocN(sizeof(*edge_order) * edge_order_len, __func__);
+  edge_order = static_cast<VertOrder *>(
+      MEM_mallocN(sizeof(*edge_order) * edge_order_len, __func__));
 
   /* use later */
-  face_verts = MEM_mallocN(sizeof(*face_verts) * (edge_net_len + f->len), __func__);
+  face_verts = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(*face_verts) * (edge_net_len + f->len), __func__));
 
-  vert_queue = MEM_mallocN(sizeof(vert_queue) * (edge_net_len + f->len), __func__);
+  vert_queue = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(vert_queue) * (edge_net_len + f->len), __func__));
   STACK_INIT(vert_queue, f->len + edge_net_len);
 
   BLI_assert(BM_ELEM_API_FLAG_TEST(f, FACE_NET) == 0);
@@ -608,15 +611,15 @@ bool BM_face_split_edgenet(BMesh *bm,
           BM_ELEM_API_FLAG_ENABLE(v, VERT_VISIT);
 
           /* interpolate this loop, then copy to the rest */
-          l_first = NULL;
+          l_first = nullptr;
 
           BM_ITER_ELEM (l_iter, &liter, v, BM_LOOPS_OF_VERT) {
             if (BM_ELEM_API_FLAG_TEST(l_iter->f, FACE_NET)) {
-              if (l_first == NULL) {
+              if (l_first == nullptr) {
                 mul_v2_m3v3(co, axis_mat, v->co);
                 interp_weights_poly_v2(w, cos_2d, f->len, co);
                 CustomData_bmesh_interp(
-                    &bm->ldata, (const void **)blocks, w, NULL, f->len, l_iter->head.data);
+                    &bm->ldata, (const void **)blocks, w, nullptr, f->len, l_iter->head.data);
                 l_first = l_iter;
               }
               else {
@@ -788,10 +791,10 @@ struct Edges_VertRay_BVHTreeTest {
 
 static void bvhtree_test_edges_isect_2d_vert_cb(void *user_data,
                                                 int index,
-                                                const BVHTreeRay *UNUSED(ray),
+                                                const BVHTreeRay * /*ray*/,
                                                 BVHTreeRayHit *hit)
 {
-  struct Edges_VertVert_BVHTreeTest *data = user_data;
+  struct Edges_VertVert_BVHTreeTest *data = static_cast<Edges_VertVert_BVHTreeTest *>(user_data);
   const BMEdge *e = data->edge_arr[index];
   const int v1_index = BM_elem_index_get(e->v1);
   float co_isect[2];
@@ -817,13 +820,13 @@ static void bvhtree_test_edges_isect_2d_ray_cb(void *user_data,
                                                const BVHTreeRay *ray,
                                                BVHTreeRayHit *hit)
 {
-  struct Edges_VertRay_BVHTreeTest *data = user_data;
+  struct Edges_VertRay_BVHTreeTest *data = static_cast<Edges_VertRay_BVHTreeTest *>(user_data);
   const BMEdge *e = data->edge_arr[index];
 
   /* direction is normalized, so this will be the distance */
   float dist_new;
-  if (isect_ray_seg_v2(data->v_origin->co, ray->direction, e->v1->co, e->v2->co, &dist_new, NULL))
-  {
+  if (isect_ray_seg_v2(
+          data->v_origin->co, ray->direction, e->v1->co, e->v2->co, &dist_new, nullptr)) {
     /* avoid float precision issues, possible this is greater,
      * check above zero to allow some overlap
      * (and needed for partial-connect which will overlap vertices) */
@@ -887,7 +890,7 @@ static BMEdge *test_edges_isect_2d_vert(const struct EdgeGroup_FindConnection_Ar
                                   &user_data,
                                   0);
 
-  BMEdge *e_hit = (index != -1) ? args->edge_arr[index] : NULL;
+  BMEdge *e_hit = (index != -1) ? args->edge_arr[index] : nullptr;
 
   /* check existing connections (no spatial optimization here since we're continually adding). */
   if (LIKELY(index == -1)) {
@@ -939,14 +942,14 @@ static BMEdge *test_edges_isect_2d_ray(const struct EdgeGroup_FindConnection_Arg
                                   &user_data,
                                   0);
 
-  BMEdge *e_hit = (index != -1) ? args->edge_arr[index] : NULL;
+  BMEdge *e_hit = (index != -1) ? args->edge_arr[index] : nullptr;
 
   /* check existing connections (no spatial optimization here since we're continually adding). */
   if (LIKELY(index != -1)) {
     for (uint i = 0; i < args->edge_arr_new_len; i++) {
       BMEdge *e = args->edge_arr_new[i];
       float dist_new;
-      if (isect_ray_seg_v2(v_origin->co, dir, e->v1->co, e->v2->co, &dist_new, NULL)) {
+      if (isect_ray_seg_v2(v_origin->co, dir, e->v1->co, e->v2->co, &dist_new, nullptr)) {
         if (e->v1 != v_origin && e->v2 != v_origin) {
           /* avoid float precision issues, possible this is greater */
           if (LIKELY(dist_new < hit.dist)) {
@@ -983,10 +986,10 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
 
   const float dir[3] = {[SORT_AXIS] = direction_sign ? 1.0f : -1.0f};
   BMEdge *e_hit = test_edges_isect_2d_ray(args, v_origin, dir);
-  BMVert *v_other = NULL;
+  BMVert *v_other = nullptr;
 
   if (e_hit) {
-    BMVert *v_other_fallback = NULL;
+    BMVert *v_other_fallback = nullptr;
 
     BLI_SMALLSTACK_DECLARE(vert_search, BMVert *);
 
@@ -1021,7 +1024,7 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
     } while ((v_other = BLI_SMALLSTACK_POP(vert_search)) &&
              (e_hit = test_edges_isect_2d_vert(args, v_origin, v_other)));
 
-    if (v_other == NULL) {
+    if (v_other == nullptr) {
       printf("Using fallback\n");
       v_other = v_other_fallback;
     }
@@ -1033,7 +1036,7 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
     }
   }
 
-  /* if we reach this line, v_other is either the best vertex or its NULL */
+  /* if we reach this line, v_other is either the best vertex or its nullptr */
   return v_other ? BM_elem_index_get(v_other) : -1;
 }
 
@@ -1067,7 +1070,7 @@ static BMVert *bm_face_split_edgenet_partial_connect(BMesh *bm, BMVert *v_delimi
 
   /* initial check - see if we have 3+ flagged edges attached to 'v_delimit'
    * if not, we can early exit */
-  LinkNode *e_delimit_list = NULL;
+  LinkNode *e_delimit_list = nullptr;
   uint e_delimit_list_len = 0;
 
 #  define EDGE_NOT_IN_STACK BM_ELEM_INTERNAL_TAG
@@ -1083,14 +1086,14 @@ static BMVert *bm_face_split_edgenet_partial_connect(BMesh *bm, BMVert *v_delimi
     ((void)0)
 
   /* start with face edges, since we need to split away wire-only edges */
-  BMEdge *e_face_init = NULL;
+  BMEdge *e_face_init = nullptr;
 
   FOREACH_VERT_EDGE(v_delimit, e_iter, {
     if (BM_elem_flag_test(e_iter, EDGE_NOT_IN_STACK)) {
       BLI_assert(BM_elem_flag_test(BM_edge_other_vert(e_iter, v_delimit), VERT_NOT_IN_STACK));
       BLI_linklist_prepend_alloca(&e_delimit_list, e_iter);
       e_delimit_list_len++;
-      if (e_iter->l != NULL && BM_edge_in_face(e_iter, f)) {
+      if (e_iter->l != nullptr && BM_edge_in_face(e_iter, f)) {
         e_face_init = e_iter;
       }
     }
@@ -1098,14 +1101,14 @@ static BMVert *bm_face_split_edgenet_partial_connect(BMesh *bm, BMVert *v_delimi
 
   /* skip typical edge-chain verts */
   if (LIKELY(e_delimit_list_len <= 2)) {
-    return NULL;
+    return nullptr;
   }
 
   /* -------------------------------------------------------------------- */
   /* Complicated stuff starts now! */
 
   /* Store connected vertices for restoring the flag */
-  LinkNode *vert_stack = NULL;
+  LinkNode *vert_stack = nullptr;
   BLI_linklist_prepend_alloca(&vert_stack, v_delimit);
   BM_elem_flag_disable(v_delimit, VERT_NOT_IN_STACK);
 
@@ -1153,21 +1156,21 @@ static BMVert *bm_face_split_edgenet_partial_connect(BMesh *bm, BMVert *v_delimi
 #  undef FOREACH_VERT_EDGE
 
   /* Execute the split */
-  BMVert *v_split = NULL;
+  BMVert *v_split = nullptr;
   if (is_delimit) {
-    v_split = BM_vert_create(bm, v_delimit->co, NULL, 0);
+    v_split = BM_vert_create(bm, v_delimit->co, nullptr, eBMCreateFlag(0));
     BM_vert_separate_tested_edges(bm, v_split, v_delimit, test_tagged_and_notface, f);
     BM_elem_flag_enable(v_split, VERT_NOT_IN_STACK);
 
-    BLI_assert(v_delimit->e != NULL);
+    BLI_assert(v_delimit->e != nullptr);
 
-    /* Degenerate, avoid eternal loop, see: #59074. */
+/* Degenerate, avoid eternal loop, see: #59074. */
 #  if 0
-    BLI_assert(v_split->e != NULL);
+    BLI_assert(v_split->e != nullptr);
 #  else
-    if (UNLIKELY(v_split->e == NULL)) {
+    if (UNLIKELY(v_split->e == nullptr)) {
       BM_vert_kill(bm, v_split);
-      v_split = NULL;
+      v_split = nullptr;
     }
 #  endif
   }
@@ -1226,13 +1229,14 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
    */
 
   const uint edge_arr_len = (uint)edge_net_init_len + (uint)f->len;
-  BMEdge **edge_arr = BLI_memarena_alloc(mem_arena, sizeof(*edge_arr) * edge_arr_len);
+  BMEdge **edge_arr = static_cast<BMEdge **>(
+      BLI_memarena_alloc(mem_arena, sizeof(*edge_arr) * edge_arr_len));
   bool ok = false;
   uint edge_net_new_len = (uint)edge_net_init_len;
 
   memcpy(edge_arr, edge_net_init, sizeof(*edge_arr) * (size_t)edge_net_init_len);
 
-  /* _must_ clear on exit */
+/* _must_ clear on exit */
 #define EDGE_NOT_IN_STACK BM_ELEM_INTERNAL_TAG
 #define VERT_NOT_IN_STACK BM_ELEM_INTERNAL_TAG
 
@@ -1266,7 +1270,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
     struct TempVertPair *list;
     uint len;
     int *remap; /* temp -> orig mapping */
-  } temp_vert_pairs = {NULL};
+  } temp_vert_pairs = {nullptr};
 
   if (use_partial_connect) {
     for (uint i = 0; i < edge_net_init_len; i++) {
@@ -1276,7 +1280,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 
         /* NOTE: remapping will _never_ map a vertex to an already mapped vertex. */
         while (UNLIKELY(v_other = bm_face_split_edgenet_partial_connect(bm, v_delimit, f))) {
-          struct TempVertPair *tvp = BLI_memarena_alloc(mem_arena, sizeof(*tvp));
+          struct TempVertPair *tvp = static_cast<TempVertPair *>(
+              BLI_memarena_alloc(mem_arena, sizeof(*tvp)));
           tvp->next = temp_vert_pairs.list;
           tvp->v_orig = v_delimit;
           tvp->v_temp = v_other;
@@ -1293,7 +1298,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 #endif /* USE_PARTIAL_CONNECT */
 
   uint group_arr_len = 0;
-  LinkNode *group_head = NULL;
+  LinkNode *group_head = nullptr;
   {
     /* scan 'edge_arr' backwards so the outer face boundary is handled first
      * (since its likely to be the largest) */
@@ -1303,7 +1308,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
     BLI_SMALLSTACK_DECLARE(vstack, BMVert *);
 
     while (true) {
-      LinkNode *edge_links = NULL;
+      LinkNode *edge_links = nullptr;
       uint unique_verts_in_group = 0, unique_edges_in_group = 0;
 
       /* list of groups */
@@ -1332,7 +1337,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
         } while ((e_iter = BM_DISK_EDGE_NEXT(e_iter, v_iter)) != v_iter->e);
       }
 
-      struct EdgeGroupIsland *g = BLI_memarena_alloc(mem_arena, sizeof(*g));
+      struct EdgeGroupIsland *g = static_cast<EdgeGroupIsland *>(
+          BLI_memarena_alloc(mem_arena, sizeof(*g)));
       g->vert_len = unique_verts_in_group;
       g->edge_len = unique_edges_in_group;
       edge_in_group_tot += unique_edges_in_group;
@@ -1353,6 +1359,15 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
     }
   }
 
+  /* Declare here because of `goto` below. */
+  BMEdge **edge_net_new = nullptr;
+  BVHTree *bvhtree = nullptr;
+  float(*vert_coords_backup)[3] = nullptr;
+  uint *verts_group_table = nullptr;
+  BMVert **vert_arr = nullptr;
+  uint vert_arr_len = 0;
+  EdgeGroupIsland **group_arr = nullptr;
+
   /* single group - no holes */
   if (group_arr_len == 1) {
     goto finally;
@@ -1369,18 +1384,17 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 
 #define VERT_IN_ARRAY BM_ELEM_INTERNAL_TAG
 
-  struct EdgeGroupIsland **group_arr = BLI_memarena_alloc(mem_arena,
-                                                          sizeof(*group_arr) * group_arr_len);
-  uint vert_arr_len = 0;
+  group_arr = static_cast<EdgeGroupIsland **>(
+      BLI_memarena_alloc(mem_arena, sizeof(*group_arr) * group_arr_len));
   /* sort groups by lowest value vertex */
   {
     /* fill 'groups_arr' in reverse order so the boundary face is first */
     struct EdgeGroupIsland **group_arr_p = &group_arr[group_arr_len];
 
-    for (struct EdgeGroupIsland *g = (void *)group_head; g;
+    for (struct EdgeGroupIsland *g = static_cast<EdgeGroupIsland *>((void *)group_head); g;
          g = (struct EdgeGroupIsland *)g->edge_links.next)
     {
-      LinkNode *edge_links = g->edge_links.link;
+      LinkNode *edge_links = static_cast<LinkNode *>(g->edge_links.link);
 
       /* init with *any* different verts */
       g->vert_span.min = ((BMEdge *)edge_links->link)->v1;
@@ -1389,7 +1403,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
       float max_axis[2] = {-FLT_MAX, -FLT_MAX};
 
       do {
-        BMEdge *e = edge_links->link;
+        BMEdge *e = static_cast<BMEdge *>(edge_links->link);
         BLI_assert(e->head.htype == BM_EDGE);
 
         for (int j = 0; j < 2; j++) {
@@ -1432,13 +1446,14 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
   qsort(group_arr, group_arr_len, sizeof(*group_arr), group_min_cmp_fn);
 
   /* we don't know how many unique verts there are connecting the edges, so over-alloc */
-  BMVert **vert_arr = BLI_memarena_alloc(mem_arena, sizeof(*vert_arr) * vert_arr_len);
+  vert_arr = static_cast<BMVert **>(
+      BLI_memarena_alloc(mem_arena, sizeof(*vert_arr) * vert_arr_len));
   /* map vertex -> group index */
-  uint *verts_group_table = BLI_memarena_alloc(mem_arena,
-                                               sizeof(*verts_group_table) * vert_arr_len);
+  verts_group_table = static_cast<uint *>(
+      BLI_memarena_alloc(mem_arena, sizeof(*verts_group_table) * vert_arr_len));
 
-  float(*vert_coords_backup)[3] = BLI_memarena_alloc(mem_arena,
-                                                     sizeof(*vert_coords_backup) * vert_arr_len);
+  vert_coords_backup = static_cast<float(*)[3]>(
+      BLI_memarena_alloc(mem_arena, sizeof(*vert_coords_backup) * vert_arr_len));
 
   {
     /* relative location, for higher precision calculations */
@@ -1446,9 +1461,9 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 
     int v_index = 0; /* global vert index */
     for (uint g_index = 0; g_index < group_arr_len; g_index++) {
-      LinkNode *edge_links = group_arr[g_index]->edge_links.link;
+      LinkNode *edge_links = static_cast<LinkNode *>(group_arr[g_index]->edge_links.link);
       do {
-        BMEdge *e = edge_links->link;
+        BMEdge *e = static_cast<BMEdge *>(edge_links->link);
         for (int j = 0; j < 2; j++) {
           BMVert *v_iter = (&e->v1)[j];
           if (!BM_elem_flag_test(v_iter, VERT_IN_ARRAY)) {
@@ -1485,7 +1500,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
    *
    * Note that a large epsilon is used because meshes with dimensions of around 100+ need it.
    * see #52329. */
-  BVHTree *bvhtree = BLI_bvhtree_new(edge_arr_len, 1e-4f, 8, 8);
+  bvhtree = BLI_bvhtree_new(edge_arr_len, 1e-4f, 8, 8);
   for (uint i = 0; i < edge_arr_len; i++) {
     const float e_cos[2][3] = {
         {UNPACK2(edge_arr[i]->v1->co), 0.0f},
@@ -1498,8 +1513,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 #ifdef USE_PARTIAL_CONNECT
   if (use_partial_connect) {
     /* needs to be done once the vertex indices have been written into */
-    temp_vert_pairs.remap = BLI_memarena_alloc(mem_arena,
-                                               sizeof(*temp_vert_pairs.remap) * vert_arr_len);
+    temp_vert_pairs.remap = static_cast<int *>(
+        BLI_memarena_alloc(mem_arena, sizeof(*temp_vert_pairs.remap) * vert_arr_len));
     copy_vn_i(temp_vert_pairs.remap, vert_arr_len, -1);
 
     struct TempVertPair *tvp = temp_vert_pairs.list;
@@ -1513,7 +1528,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 
   /* may be an over-alloc, but not by much */
   edge_net_new_len = (uint)edge_net_init_len + ((group_arr_len - 1) * 2);
-  BMEdge **edge_net_new = BLI_memarena_alloc(mem_arena, sizeof(*edge_net_new) * edge_net_new_len);
+  edge_net_new = static_cast<BMEdge **>(
+      BLI_memarena_alloc(mem_arena, sizeof(*edge_net_new) * edge_net_new_len));
   memcpy(edge_net_new, edge_net_init, sizeof(*edge_net_new) * (size_t)edge_net_init_len);
 
   {
@@ -1525,19 +1541,18 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
     vert_range[0] = 0;
     vert_range[1] = group_arr[0]->vert_len;
 
-    struct EdgeGroup_FindConnection_Args args = {
-        .bvhtree = bvhtree,
+    EdgeGroup_FindConnection_Args args{};
+    args.bvhtree = bvhtree;
 
-        /* use the new edge array so we can scan edges which have been added */
-        .edge_arr = edge_arr,
-        .edge_arr_len = edge_arr_len,
+    /* use the new edge array so we can scan edges which have been added */
+    args.edge_arr = edge_arr;
+    args.edge_arr_len = edge_arr_len;
 
-        /* we only want to check newly created edges */
-        .edge_arr_new = edge_net_new + edge_net_init_len,
-        .edge_arr_new_len = 0,
+    /* we only want to check newly created edges */
+    args.edge_arr_new = edge_net_new + edge_net_init_len;
+    args.edge_arr_new_len = 0;
 
-        .vert_range = vert_range,
-    };
+    args.vert_range = vert_range;
 
     for (uint g_index = 1; g_index < group_arr_len; g_index++) {
       struct EdgeGroupIsland *g = group_arr[g_index];
@@ -1562,7 +1577,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
           {
             BMVert *v_end = vert_arr[index_other];
 
-            edge_net_new[edge_net_new_index] = BM_edge_create(bm, v_origin, v_end, NULL, 0);
+            edge_net_new[edge_net_new_index] = BM_edge_create(
+                bm, v_origin, v_end, nullptr, eBMCreateFlag(0));
 #ifdef USE_PARTIAL_CONNECT
             BM_elem_index_set(edge_net_new[edge_net_new_index], edge_net_new_index);
 #endif
@@ -1587,7 +1603,8 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
 #endif
           {
             BMVert *v_end = vert_arr[index_other];
-            edge_net_new[edge_net_new_index] = BM_edge_create(bm, v_origin, v_end, NULL, 0);
+            edge_net_new[edge_net_new_index] = BM_edge_create(
+                bm, v_origin, v_end, nullptr, eBMCreateFlag(0));
 #ifdef USE_PARTIAL_CONNECT
             BM_elem_index_set(edge_net_new[edge_net_new_index], edge_net_new_index);
 #endif
@@ -1621,14 +1638,14 @@ finally:
   /* don't free 'vert_temp_pair_list', its part of the arena */
   if (use_partial_connect) {
 
-    /* Sanity check: ensure we don't have connecting edges before splicing begins. */
+/* Sanity check: ensure we don't have connecting edges before splicing begins. */
 #  ifdef DEBUG
     {
       struct TempVertPair *tvp = temp_vert_pairs.list;
       do {
         /* We must _never_ create connections here
          * (in case the islands can't have a connection at all). */
-        BLI_assert(BM_edge_exists(tvp->v_orig, tvp->v_temp) == NULL);
+        BLI_assert(BM_edge_exists(tvp->v_orig, tvp->v_temp) == nullptr);
       } while ((tvp = tvp->next));
     }
 #  endif
