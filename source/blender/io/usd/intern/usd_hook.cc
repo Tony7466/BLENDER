@@ -191,7 +191,6 @@ static void handle_python_error(USDHook *hook)
  */
 class USDHookInvoker {
  public:
-
   /* Attempt to call the function, if defined by the registered hooks. */
   void call() const
   {
@@ -252,7 +251,8 @@ class OnExportInvoker : public USDHookInvoker {
   USDSceneExportContext hook_context_;
 
  public:
-  OnExportInvoker(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph) : hook_context_(stage, depsgraph)
+  OnExportInvoker(pxr::UsdStageRefPtr stage, Depsgraph *depsgraph)
+      : hook_context_(stage, depsgraph)
   {
   }
 
