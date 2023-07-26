@@ -113,7 +113,7 @@ set(SRC
   engines/eevee/eevee_depth_of_field.cc
   engines/eevee/eevee_effects.cc
   engines/eevee/eevee_engine.cc
-  engines/eevee/eevee_lightcache.c
+  engines/eevee/eevee_lightcache.cc
   engines/eevee/eevee_lightprobes.c
   engines/eevee/eevee_lights.c
   engines/eevee/eevee_lookdev.c
