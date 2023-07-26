@@ -58,9 +58,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   ColorGpencilModifierData *gmd = (ColorGpencilModifierData *)md;
   ColorGpencilModifierData *tgmd = (ColorGpencilModifierData *)target;
 
-  if (tgmd->curve_intensity != NULL) {
+  if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = NULL;
+    tgmd->curve_intensity = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -70,10 +70,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* color correction strokes */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
 
@@ -104,8 +104,8 @@ static void deformStroke(GpencilModifierData *md,
   /* Fill */
   if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
     /* If not using Vertex Color, use the material color. */
-    if ((gp_style != NULL) && (gps->vert_color_fill[3] == 0.0f) && (gp_style->fill_rgba[3] > 0.0f))
-    {
+    if ((gp_style != nullptr) && (gps->vert_color_fill[3] == 0.0f) &&
+        (gp_style->fill_rgba[3] > 0.0f)) {
       copy_v4_v4(gps->vert_color_fill, gp_style->fill_rgba);
       gps->vert_color_fill[3] = 1.0f;
     }
@@ -123,7 +123,8 @@ static void deformStroke(GpencilModifierData *md,
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
       /* If not using Vertex Color, use the material color. */
-      if ((gp_style != NULL) && (pt->vert_color[3] == 0.0f) && (gp_style->stroke_rgba[3] > 0.0f)) {
+      if ((gp_style != nullptr) && (pt->vert_color[3] == 0.0f) &&
+          (gp_style->stroke_rgba[3] > 0.0f)) {
         copy_v4_v4(pt->vert_color, gp_style->stroke_rgba);
         pt->vert_color[3] = 1.0f;
       }
@@ -146,7 +147,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(Main *UNUSED(bmain),
+static void bakeModifier(Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -170,23 +171,23 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "modify_color", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "hue", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "saturation", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "value", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "modify_color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "hue", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "saturation", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "value", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
@@ -196,7 +197,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Color, panel_draw);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
                                      "curve",
                                      "",
@@ -215,16 +216,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Color = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
