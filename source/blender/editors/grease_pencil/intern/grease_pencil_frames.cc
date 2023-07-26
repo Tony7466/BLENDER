@@ -25,7 +25,7 @@
 
 namespace blender::ed::greasepencil {
 
-void select_frame(GreasePencilFrame *frame, const short select_mode)
+static void select_frame(GreasePencilFrame *frame, const short select_mode)
 {
   BLI_assert(frame != nullptr);
 
