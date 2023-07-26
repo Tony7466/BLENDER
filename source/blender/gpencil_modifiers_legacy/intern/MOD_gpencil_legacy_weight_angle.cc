@@ -57,10 +57,10 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 /* change stroke thickness */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   WeightAngleGpencilModifierData *mmd = (WeightAngleGpencilModifierData *)md;
@@ -107,7 +107,7 @@ static void deformStroke(GpencilModifierData *md,
 
   float weight_pt = 1.0f;
   for (int i = 0; i < gps->totpoints; i++) {
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
     /* Verify point is part of vertex group. */
     float weight = get_modifier_point_weight(
         dvert, (mmd->flag & GP_WEIGHT_INVERT_VGROUP) != 0, def_nr);
@@ -138,8 +138,8 @@ static void deformStroke(GpencilModifierData *md,
       weight_pt = 1.0f - weight_pt;
     }
     /* Assign weight. */
-    dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
-    if (dvert != NULL) {
+    dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
+    if (dvert != nullptr) {
       MDeformWeight *dw = BKE_defvert_ensure_index(dvert, target_def_nr);
       if (dw) {
         dw->weight = (mmd->flag & GP_WEIGHT_MULTIPLY_DATA) ? dw->weight * weight_pt : weight_pt;
@@ -149,7 +149,7 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -164,14 +164,14 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
+static bool isDisabled(GpencilModifierData *md, int /*userRenderParams*/)
 {
   WeightAngleGpencilModifierData *mmd = (WeightAngleGpencilModifierData *)md;
 
   return (mmd->target_vgname[0] == '\0');
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
@@ -181,24 +181,24 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
   row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, "target_vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(row, ptr, "target_vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
   sub = uiLayoutRow(row, true);
   bool has_output = RNA_string_length(ptr, "target_vertex_group") != 0;
   uiLayoutSetPropDecorate(sub, false);
   uiLayoutSetActive(sub, has_output);
   uiItemR(sub, ptr, "use_invert_output", 0, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemR(layout, ptr, "angle", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "axis", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "space", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "angle", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "axis", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "space", 0, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "minimum_weight", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "use_multiply", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "minimum_weight", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_multiply", 0, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -209,7 +209,7 @@ static void panelRegister(ARegionType *region_type)
       region_type, eGpencilModifierType_WeightAngle, panel_draw);
 
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_WeightAngle = {
@@ -217,21 +217,21 @@ GpencilModifierTypeInfo modifierType_Gpencil_WeightAngle = {
     /*structName*/ "WeightAngleGpencilModifierData",
     /*structSize*/ sizeof(WeightAngleGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
-    /*flags*/ 0,
+    /*flags*/ GpencilModifierTypeFlag(0),
 
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
+    /*freeData*/ nullptr,
     /*isDisabled*/ isDisabled,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };

@@ -52,7 +52,7 @@ set(SRC
   intern/MOD_gpencil_legacy_time.cc
   intern/MOD_gpencil_legacy_tint.cc
   intern/MOD_gpencil_legacy_util.cc
-  intern/MOD_gpencil_legacy_weight_angle.c
+  intern/MOD_gpencil_legacy_weight_angle.cc
   intern/MOD_gpencil_legacy_weight_proximity.c
 
   MOD_gpencil_legacy_lineart.h
