@@ -18,6 +18,10 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
+#include "ED_undo.h"
+
+#include "WM_api.h"
+
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -180,9 +184,11 @@ class LayerViewItem : public AbstractTreeViewItem {
     return {};
   }
 
-  void on_activate(bContext & /*C*/) override
+  void on_activate(bContext &C) override
   {
     this->grease_pencil_.set_active_layer(&layer_);
+    WM_event_add_notifier(&C, NC_GPENCIL | ND_DATA | NA_SELECTED, &(this->grease_pencil_));
+    ED_undo_push(&C, "Active Grease Pencil Layer");
   }
 
   bool supports_renaming() const override
