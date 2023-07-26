@@ -24,6 +24,12 @@ void preprocess_geometry_node_tree_for_evaluation(bNodeTree &tree_cow)
   blender::nodes::ensure_geometry_nodes_lazy_function_graph(tree_cow);
 }
 
+static void update_interface(const bNodeTree &ntree)
+{
+  bNodeTreeRuntime &tree_runtime = *ntree.runtime;
+  tree_runtime.interface_cache.rebuild(const_cast<bNodeTreeInterface &>(ntree.interface));
+}
+
 static void update_node_vector(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
@@ -530,6 +536,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.topology_cache_mutex.ensure([&]() {
+    update_interface(ntree);
     update_node_vector(ntree);
     update_link_vector(ntree);
     update_socket_vectors_and_owner_node(ntree);
