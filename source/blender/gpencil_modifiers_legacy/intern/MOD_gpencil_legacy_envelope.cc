@@ -177,7 +177,7 @@ static void apply_stroke_envelope(bGPDstroke *gps,
 
   /* Deform the stroke to match the envelope shape. */
   for (int i = 0; i < gps->totpoints; i++) {
-    MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    MDeformVert *dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
 
     /* Verify in vertex group. */
     float weight = get_modifier_point_weight(dvert, invert_vg, def_nr);
@@ -297,10 +297,10 @@ static void apply_stroke_envelope(bGPDstroke *gps,
  * Apply envelope effect to the stroke.
  */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph * /*depsgraph*/,
                          Object *ob,
                          bGPDlayer *gpl,
-                         bGPDframe *UNUSED(gpf),
+                         bGPDframe * /*gpf*/,
                          bGPDstroke *gps)
 {
   EnvelopeGpencilModifierData *mmd = (EnvelopeGpencilModifierData *)md;
@@ -351,20 +351,21 @@ static void add_stroke(Object *ob,
                        ListBase *results)
 {
   const int size = size1 + size2;
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, size, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
-  memcpy(&gps_dst->points[0], &gps->points[connection_index], size1 * sizeof(bGPDspoint));
-  memcpy(&gps_dst->points[size1], &gps->points[point_index], size2 * sizeof(bGPDspoint));
+  blender::dna::shallow_copy_array(&gps_dst->points[0], &gps->points[connection_index], size1);
+  blender::dna::shallow_copy_array(&gps_dst->points[size1], &gps->points[point_index], size2);
 
   for (int i = 0; i < size; i++) {
     gps_dst->points[i].pressure *= thickness;
     gps_dst->points[i].strength *= strength;
   }
 
-  if (gps->dvert != NULL) {
-    gps_dst->dvert = MEM_malloc_arrayN(size, sizeof(MDeformVert), __func__);
+  if (gps->dvert != nullptr) {
+    gps_dst->dvert = static_cast<MDeformVert *>(
+        MEM_malloc_arrayN(size, sizeof(MDeformVert), __func__));
     BKE_defvert_array_copy(&gps_dst->dvert[0], &gps->dvert[connection_index], size1);
     BKE_defvert_array_copy(&gps_dst->dvert[size1], &gps->dvert[point_index], size2);
   }
@@ -385,31 +386,32 @@ static void add_stroke_cyclic(Object *ob,
                               const float strength,
                               ListBase *results)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, size * 2, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
-  if (gps->dvert != NULL) {
-    gps_dst->dvert = MEM_malloc_arrayN(size * 2, sizeof(MDeformVert), __func__);
+  if (gps->dvert != nullptr) {
+    gps_dst->dvert = static_cast<MDeformVert *>(
+        MEM_malloc_arrayN(size * 2, sizeof(MDeformVert), __func__));
   }
 
   for (int i = 0; i < size; i++) {
     int a = (connection_index + i) % gps->totpoints;
     int b = (point_index + i) % gps->totpoints;
 
-    gps_dst->points[i] = gps->points[a];
+    gps_dst->points[i] = blender::dna::shallow_copy(gps->points[a]);
     bGPDspoint *pt_dst = &gps_dst->points[i];
     bGPDspoint *pt_orig = &gps->points[a];
     pt_dst->runtime.pt_orig = pt_orig->runtime.pt_orig;
     pt_dst->runtime.idx_orig = pt_orig->runtime.idx_orig;
 
-    gps_dst->points[size + i] = gps->points[b];
+    gps_dst->points[size + i] = blender::dna::shallow_copy(gps->points[b]);
     pt_dst = &gps_dst->points[size + i];
     pt_orig = &gps->points[b];
     pt_dst->runtime.pt_orig = pt_orig->runtime.pt_orig;
     pt_dst->runtime.idx_orig = pt_orig->runtime.idx_orig;
 
-    if (gps->dvert != NULL) {
+    if (gps->dvert != nullptr) {
       BKE_defvert_array_copy(&gps_dst->dvert[i], &gps->dvert[a], 1);
       BKE_defvert_array_copy(&gps_dst->dvert[size + i], &gps->dvert[b], 1);
     }
@@ -417,7 +419,7 @@ static void add_stroke_cyclic(Object *ob,
   for (int i = 0; i < size * 2; i++) {
     gps_dst->points[i].pressure *= thickness;
     gps_dst->points[i].strength *= strength;
-    memset(&gps_dst->points[i].runtime, 0, sizeof(bGPDspoint_Runtime));
+    gps_dst->points[i].runtime = blender::dna::shallow_zero_initialize();
   }
 
   BLI_addtail(results, gps_dst);
@@ -435,11 +437,11 @@ static void add_stroke_simple(Object *ob,
                               const float strength,
                               ListBase *results)
 {
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, 2, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
-  gps_dst->points[0] = gps->points[connection_index];
+  gps_dst->points[0] = blender::dna::shallow_copy(gps->points[connection_index]);
   gps_dst->points[0].pressure *= thickness;
   gps_dst->points[0].strength *= strength;
   bGPDspoint *pt_dst = &gps_dst->points[0];
@@ -447,7 +449,7 @@ static void add_stroke_simple(Object *ob,
   pt_dst->runtime.pt_orig = pt_orig->runtime.pt_orig;
   pt_dst->runtime.idx_orig = pt_orig->runtime.idx_orig;
 
-  gps_dst->points[1] = gps->points[point_index];
+  gps_dst->points[1] = blender::dna::shallow_copy(gps->points[point_index]);
   gps_dst->points[1].pressure *= thickness;
   gps_dst->points[1].strength *= strength;
   pt_dst = &gps_dst->points[1];
@@ -455,8 +457,9 @@ static void add_stroke_simple(Object *ob,
   pt_dst->runtime.pt_orig = pt_orig->runtime.pt_orig;
   pt_dst->runtime.idx_orig = pt_orig->runtime.idx_orig;
 
-  if (gps->dvert != NULL) {
-    gps_dst->dvert = MEM_malloc_arrayN(2, sizeof(MDeformVert), __func__);
+  if (gps->dvert != nullptr) {
+    gps_dst->dvert = static_cast<MDeformVert *>(
+        MEM_malloc_arrayN(2, sizeof(MDeformVert), __func__));
     BKE_defvert_array_copy(&gps_dst->dvert[0], &gps->dvert[connection_index], 1);
     BKE_defvert_array_copy(&gps_dst->dvert[1], &gps->dvert[point_index], 1);
   }
@@ -577,14 +580,14 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-    if (gpf == NULL) {
+    if (gpf == nullptr) {
       continue;
     }
     generate_geometry(md, ob, gpl, gpf);
   }
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -594,7 +597,7 @@ static void bakeModifier(struct Main *UNUSED(bmain),
     generic_bake_deform_stroke(depsgraph, md, ob, false, deformStroke);
   }
   else {
-    bGPdata *gpd = ob->data;
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
@@ -611,30 +614,30 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "spread", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "thickness", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "spread", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "thickness", 0, nullptr, ICON_NONE);
 
   const int mode = RNA_enum_get(ptr, "mode");
   if (mode != GP_ENVELOPE_DEFORM) {
-    uiItemR(layout, ptr, "strength", 0, NULL, ICON_NONE);
-    uiItemR(layout, ptr, "mat_nr", 0, NULL, ICON_NONE);
-    uiItemR(layout, ptr, "skip", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "strength", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "mat_nr", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "skip", 0, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -644,7 +647,7 @@ static void panelRegister(ARegionType *region_type)
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Envelope, panel_draw);
   gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Envelope = {
@@ -659,14 +662,14 @@ GpencilModifierTypeInfo modifierType_Gpencil_Envelope = {
     /*deformStroke*/ deformStroke,
     /*generateStrokes*/ generateStrokes,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
-    /*freeData*/ NULL,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
-    /*dependsOnTime*/ NULL,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
+    /*dependsOnTime*/ nullptr,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
