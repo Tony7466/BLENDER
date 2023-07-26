@@ -281,7 +281,7 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
         }
       }
       else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-        if (blender::ed::greasepencil::layer_has_frame_selected(
+        if (blender::ed::greasepencil::layer_has_any_frame_selected(
                 static_cast<blender::bke::greasepencil::Layer *>(ale->data)))
         {
           sel = SELECT_SUBTRACT;

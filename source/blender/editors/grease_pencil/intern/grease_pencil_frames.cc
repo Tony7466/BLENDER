@@ -60,7 +60,7 @@ void select_all_frames(bke::greasepencil::Layer *layer, const short select_mode)
   }
 }
 
-bool layer_has_frame_selected(const bke::greasepencil::Layer *layer)
+bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
 {
   for (auto item : layer->frames().items()) {
     const GreasePencilFrame &frame = item.value;
