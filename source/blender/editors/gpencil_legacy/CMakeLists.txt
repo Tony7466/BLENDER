@@ -32,7 +32,7 @@ set(SRC
   gpencil_armature.cc
   gpencil_bake_animation.cc
   gpencil_convert.cc
-  gpencil_data.c
+  gpencil_data.cc
   gpencil_edit.c
   gpencil_edit_curve.c
   gpencil_fill.c
