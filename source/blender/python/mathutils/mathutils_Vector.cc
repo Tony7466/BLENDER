@@ -2407,8 +2407,8 @@ static PySequenceMethods Vector_SeqMethods = {
     /*sq_ass_item*/ (ssizeobjargproc)Vector_ass_item,
     /*was_sq_ass_slice*/ nullptr, /* DEPRECATED. */
     /*sq_contains*/ nullptr,
-    /*sq_inplace_concat */ nullptr,
-    /*sq_inplace_repeat */ nullptr,
+    /*sq_inplace_concat*/ nullptr,
+    /*sq_inplace_repeat*/ nullptr,
 };
 
 static PyMappingMethods Vector_AsMapping = {
@@ -2425,9 +2425,9 @@ static PyNumberMethods Vector_NumMethods = {
     /*nb_divmod*/ nullptr,
     /*nb_power*/ nullptr,
     /*nb_negative*/ (unaryfunc)Vector_neg,
-    /*tp_positive*/ (unaryfunc)Vector_copy,
-    /*tp_absolute*/ nullptr,
-    /*tp_bool*/ nullptr,
+    /*nb_positive*/ (unaryfunc)Vector_copy,
+    /*nb_absolute*/ nullptr,
+    /*nb_bool*/ nullptr,
     /*nb_invert*/ nullptr,
     /*nb_lshift*/ nullptr,
     /*nb_rshift*/ nullptr,
@@ -2748,6 +2748,11 @@ static int Vector_swizzle_set(VectorObject *self, PyObject *value, void *closure
 /* -------------------------------------------------------------------- */
 /** \name Vector Type: Get/Set Item Definitions
  * \{ */
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
 
 static PyGetSetDef Vector_getseters[] = {
     {"x", (getter)Vector_axis_get, (setter)Vector_axis_set, Vector_axis_x_doc, (void *)0},
@@ -3233,11 +3238,20 @@ static PyGetSetDef Vector_getseters[] = {
     {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic pop
+#endif
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Vector Type: Method Definitions
  * \{ */
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
 
 static PyMethodDef Vector_methods[] = {
     /* Class Methods */
@@ -3289,6 +3303,10 @@ static PyMethodDef Vector_methods[] = {
     {"__deepcopy__", (PyCFunction)Vector_deepcopy, METH_VARARGS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic pop
+#endif
 
 /** \} */
 

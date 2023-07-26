@@ -10,7 +10,7 @@
  */
 
 #include <Python.h>
-#include <stddef.h>
+#include <cstddef>
 
 #include "MEM_guardedalloc.h"
 
@@ -216,9 +216,18 @@ finally:
   return ret;
 }
 
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+
 PyMethodDef BPY_library_write_method_def = {
     "write",
     (PyCFunction)bpy_lib_write,
     METH_VARARGS | METH_KEYWORDS,
     bpy_lib_write_doc,
 };
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic pop
+#endif

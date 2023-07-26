@@ -190,13 +190,13 @@ static void deformVerts(ModifierData *md,
    * instance. */
   if (had_mesh_final && (psmd->mesh_final->totvert != psmd->totdmvert ||
                          psmd->mesh_final->totedge != psmd->totdmedge ||
-                         psmd->mesh_final->totface != psmd->totdmface))
+                         psmd->mesh_final->totface_legacy != psmd->totdmface))
   {
     psys->recalc |= ID_RECALC_PSYS_RESET;
   }
   psmd->totdmvert = psmd->mesh_final->totvert;
   psmd->totdmedge = psmd->mesh_final->totedge;
-  psmd->totdmface = psmd->mesh_final->totface;
+  psmd->totdmface = psmd->mesh_final->totface_legacy;
 
   {
     Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
@@ -264,6 +264,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_ParticleSystem = {
+    /*idname*/ "ParticleSystem",
     /*name*/ N_("ParticleSystem"),
     /*structName*/ "ParticleSystemModifierData",
     /*structSize*/ sizeof(ParticleSystemModifierData),

@@ -1376,9 +1376,9 @@ static PyNumberMethods Quaternion_NumMethods = {
     /*nb_divmod*/ nullptr,
     /*nb_power*/ nullptr,
     /*nb_negative*/ (unaryfunc)Quaternion_neg,
-    /*tp_positive*/ (unaryfunc)Quaternion_copy,
-    /*tp_absolute*/ nullptr,
-    /*tp_bool*/ nullptr,
+    /*nb_positive*/ (unaryfunc)Quaternion_copy,
+    /*nb_absolute*/ nullptr,
+    /*nb_bool*/ nullptr,
     /*nb_invert*/ nullptr,
     /*nb_lshift*/ nullptr,
     /*nb_rshift*/ nullptr,
@@ -1611,6 +1611,11 @@ static PyGetSetDef Quaternion_getseters[] = {
 /** \name Quaternion Type: Method Definitions
  * \{ */
 
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+
 static PyMethodDef Quaternion_methods[] = {
     /* In place only. */
     {"identity", (PyCFunction)Quaternion_identity, METH_NOARGS, Quaternion_identity_doc},
@@ -1664,6 +1669,10 @@ static PyMethodDef Quaternion_methods[] = {
     {"__deepcopy__", (PyCFunction)Quaternion_deepcopy, METH_VARARGS, Quaternion_copy_doc},
     {nullptr, nullptr, 0, nullptr},
 };
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic pop
+#endif
 
 /** \} */
 

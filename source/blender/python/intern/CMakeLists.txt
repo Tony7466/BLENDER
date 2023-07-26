@@ -4,13 +4,16 @@
 
 set(INC
   ..
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
+  ../../depsgraph
   ../../editors/include
   ../../gpu
   ../../imbuf
   ../../imbuf/intern/oiio
   ../../makesrna
+  ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/mantaflow/extern
   ../../../../intern/opencolorio
@@ -117,9 +120,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_animation
   bf_editor_interface
@@ -129,7 +130,6 @@ set(LIB
 
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
-  PRIVATE bf::windowmanager
 )
 
 # only to check if buildinfo is available

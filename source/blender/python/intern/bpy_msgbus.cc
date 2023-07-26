@@ -314,7 +314,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
 
   WM_msg_subscribe_rna_params(mbus, &msg_key_params, &msg_val_params, __func__);
 
-  if (0) { /* For debugging. */
+  if (false) { /* For debugging. */
     WM_msg_dump(mbus, __func__);
   }
 
@@ -379,6 +379,11 @@ static PyObject *bpy_msgbus_clear_by_owner(PyObject * /*self*/, PyObject *py_own
   Py_RETURN_NONE;
 }
 
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+
 static PyMethodDef BPy_msgbus_methods[] = {
     {"subscribe_rna",
      (PyCFunction)bpy_msgbus_subscribe_rna,
@@ -394,6 +399,10 @@ static PyMethodDef BPy_msgbus_methods[] = {
      bpy_msgbus_clear_by_owner_doc},
     {nullptr, nullptr, 0, nullptr},
 };
+
+#if (defined(__GNUC__) && !defined(__clang__))
+#  pragma GCC diagnostic pop
+#endif
 
 static PyModuleDef _bpy_msgbus_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,

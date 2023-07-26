@@ -251,7 +251,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
   }
 
-  const bool has_mdef = CustomData_has_layer(&mesh->vdata, CD_MDEFORMVERT);
+  const bool has_mdef = CustomData_has_layer(&mesh->vert_data, CD_MDEFORMVERT);
   /* If no vertices were ever added to an object's vgroup, dvert might be nullptr. */
   if (!has_mdef) {
     /* If not affecting all vertices, just return. */
@@ -491,6 +491,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_WeightVGMix = {
+    /*idname*/ "VertexWeightMix",
     /*name*/ N_("VertexWeightMix"),
     /*structName*/ "WeightVGMixModifierData",
     /*structSize*/ sizeof(WeightVGMixModifierData),

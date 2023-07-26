@@ -9,11 +9,11 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -57,7 +57,7 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_movieclip.h"
 #include "BKE_object.h"
@@ -547,17 +547,16 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
     }
   }
   else if (me_eval) {
-    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me_eval);
+    const blender::Span<blender::float3> positions = me_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
-        CustomData_get_layer(&me_eval->vdata, CD_MDEFORMVERT));
-    const float(*positions)[3] = BKE_mesh_vert_positions(me_eval);
-    int numVerts = me_eval->totvert;
+        CustomData_get_layer(&me_eval->vert_data, CD_MDEFORMVERT));
 
     /* check that dvert is a valid pointers (just in case) */
     if (dvert) {
 
       /* get the average of all verts with that are in the vertex-group */
-      for (int i = 0; i < numVerts; i++) {
+      for (const int i : positions.index_range()) {
         const MDeformVert *dv = &dvert[i];
         const MDeformWeight *dw = BKE_defvert_find_index(dv, defgroup);
 
@@ -6290,7 +6289,7 @@ void BKE_constraint_target_matrix_get(Depsgraph *depsgraph,
 
     /* free targets + 'constraint-ob' */
     if (cti->flush_constraint_targets) {
-      cti->flush_constraint_targets(con, &targets, 1);
+      cti->flush_constraint_targets(con, &targets, true);
     }
     MEM_freeN(cob);
   }
@@ -6417,7 +6416,7 @@ void BKE_constraints_solve(Depsgraph *depsgraph,
      *   as constraints may have done some nasty things to it...
      */
     if (cti->flush_constraint_targets) {
-      cti->flush_constraint_targets(con, &targets, 1);
+      cti->flush_constraint_targets(con, &targets, true);
     }
 
     /* move owner back into world-space for next constraint/other business */

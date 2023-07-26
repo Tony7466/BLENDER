@@ -4,9 +4,12 @@
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blentranslation
+  ../../depsgraph
   ../../makesrna
   ../../sequencer
+  ../../windowmanager
 )
 
 set(INC_SYS
@@ -18,12 +21,10 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 

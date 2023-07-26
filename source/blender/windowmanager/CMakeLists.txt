@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  PUBLIC .
-  PUBLIC gizmo
-  PRIVATE gizmo/intern
+  .
+  gizmo
+  gizmo/intern
   ../asset_system
   ../blenfont
+  ../blenkernel
   ../blenloader
   ../blentranslation
   ../compositor
+  ../depsgraph
   ../editors/include
   ../draw
   ../gpu
@@ -95,9 +97,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc
@@ -205,7 +205,6 @@ if(WITH_XR_OPENXR)
 endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_library(bf::windowmanager ALIAS bf_windowmanager)
 
 # RNA_prototypes.h
 add_dependencies(bf_windowmanager bf_rna)
