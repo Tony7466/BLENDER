@@ -1123,6 +1123,7 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
 wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char *idname);
 
 std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_name_raw(wmOperatorType *ot, PointerRNA *properties);
 std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties);
 /**
  * Use when we want a label, preferring the description.

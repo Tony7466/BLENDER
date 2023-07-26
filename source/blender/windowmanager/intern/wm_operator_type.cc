@@ -583,6 +583,17 @@ std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
   return name.empty() ? std::string(RNA_struct_ui_name(ot->srna)) : name;
 }
 
+std::string WM_operatortype_name_raw(wmOperatorType *ot, PointerRNA *properties)
+{
+  std::string name;
+
+  if (ot->get_name && properties) {
+    name = ot->get_name(ot, properties);
+  }
+
+  return name.empty() ? std::string(RNA_struct_ui_name_raw(ot->srna)) : name;
+}
+
 std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   if (ot->get_description && properties) {

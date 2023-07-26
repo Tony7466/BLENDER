@@ -421,7 +421,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
   }
   else if ((ot = UI_but_operatortype_get_from_enum_menu(but, &prop))) {
     ED_screen_user_menu_item_add_operator(&um->items,
-                                          WM_operatortype_name(ot, nullptr).c_str(),
+                                          WM_operatortype_name_raw(ot, nullptr).c_str(),
                                           ot,
                                           nullptr,
                                           RNA_property_identifier(prop),
