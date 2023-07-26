@@ -1740,10 +1740,61 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
 }
 
 /* Helper for Grease Pencil - layers within a data-block. */
-static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
-                                                  bDopeSheet *ads,
-                                                  bGPdata *gpd,
-                                                  int filter_mode)
+static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
+                                                        bDopeSheet *ads,
+                                                        GreasePencil *grease_pencil,
+                                                        int filter_mode)
+{
+  using namespace blender::bke::greasepencil;
+  size_t items = 0;
+
+  blender::Span<Layer *> layers = grease_pencil->layers_for_write();
+
+  /* Loop on layer channels in reverse order to preserve the drawing order. */
+  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
+    Layer *layer = layers[layer_index];
+
+    /* Only if the layer is selected. */
+    if (!ANIMCHANNEL_SELOK(layer->base.flag & GP_LAYER_TREE_NODE_SELECT)) {
+      continue;
+    }
+
+    /* Only if the layer is editable. */
+    if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->is_editable()) {
+      continue;
+    }
+
+    /* Only if the layer is active. */
+    if ((filter_mode & ANIMFILTER_ACTIVE) && (grease_pencil->active_layer == layer)) {
+      continue;
+    }
+
+    /* Skip layer if the name doesn't match the filter string */
+    char layer_name[256];
+    layer->name().copy(layer_name);
+    if (ads != nullptr && ads->searchstr[0] != '\0' &&
+        name_matches_dopesheet_filter(ads, layer_name) == false)
+    {
+      continue;
+    }
+
+    /* Skip empty layers. */
+    if (layer->is_empty()) {
+      continue;
+    }
+
+    /* Add layer channel. */
+    ANIMCHANNEL_NEW_CHANNEL(
+        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+  }
+  return items;
+}
+
+/* Helper for Grease Pencil - layers within a data-block. */
+static size_t animdata_filter_gpencil_layers_data_legacy(ListBase *anim_data,
+                                                         bDopeSheet *ads,
+                                                         bGPdata *gpd,
+                                                         int filter_mode)
 {
   size_t items = 0;
 
@@ -1780,26 +1831,6 @@ static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
     ANIMCHANNEL_NEW_CHANNEL(gpl, ANIMTYPE_GPLAYER, gpd, nullptr);
   }
 
-  return items;
-}
-
-static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
-                                                        bDopeSheet * /*ads*/,
-                                                        GreasePencil *grease_pencil,
-                                                        int filter_mode)
-{
-  using namespace blender::bke::greasepencil;
-  size_t items = 0;
-
-  blender::Span<Layer *> layers = grease_pencil->layers_for_write();
-
-  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
-    Layer *layer = layers[layer_index];
-
-    /* Add layer channel. */
-    ANIMCHANNEL_NEW_CHANNEL(
-        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
-  }
   return items;
 }
 
@@ -1877,7 +1908,7 @@ static size_t animdata_filter_gpencil_legacy_data(ListBase *anim_data,
     if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
       /* add gpencil animation channels */
       BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_GPD(gpd)) {
-        tmp_items += animdata_filter_gpencil_layers_data(&tmp_data, ads, gpd, filter_mode);
+        tmp_items += animdata_filter_gpencil_layers_data_legacy(&tmp_data, ads, gpd, filter_mode);
       }
       END_ANIMFILTER_SUBCHANNELS;
     }
@@ -2047,7 +2078,7 @@ static size_t animdata_filter_ds_gpencil(
 
     /* add Grease Pencil layers */
     if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
-      tmp_items += animdata_filter_gpencil_layers_data(&tmp_data, ads, gpd, filter_mode);
+      tmp_items += animdata_filter_gpencil_layers_data_legacy(&tmp_data, ads, gpd, filter_mode);
     }
 
     /* TODO: do these need a separate expander?
