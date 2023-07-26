@@ -29,7 +29,7 @@ set(SRC
   gpencil_add_lineart.cc
   gpencil_add_monkey.cc
   gpencil_add_stroke.cc
-  gpencil_armature.c
+  gpencil_armature.cc
   gpencil_bake_animation.cc
   gpencil_convert.c
   gpencil_data.c
