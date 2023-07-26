@@ -33,7 +33,7 @@ int EEVEE_screen_raytrace_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   if (scene_eval->eevee.flag & SCE_EEVEE_SSR_ENABLED) {
     const bool use_refraction = (scene_eval->eevee.flag & SCE_EEVEE_SSR_REFRACTION) != 0;
 
-    const bool is_persp = DRW_view_is_persp_get(NULL);
+    const bool is_persp = DRW_view_is_persp_get(nullptr);
     if (effects->ssr_was_persp != is_persp) {
       effects->ssr_was_persp = is_persp;
       DRW_viewport_request_redraw();
@@ -75,15 +75,15 @@ int EEVEE_screen_raytrace_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     /* MRT for the shading pass in order to output needed data for the SSR pass. */
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     effects->ssr_specrough_input = DRW_texture_pool_query_2d_ex(
-        UNPACK2(size_fs), format, usage, owner);
+        UNPACK2(size_fs), format, usage, static_cast<DrawEngineType *>(owner));
 
     GPU_framebuffer_texture_attach(fbl->main_fb, effects->ssr_specrough_input, 2, 0);
 
     /* Ray-tracing output. */
     effects->ssr_hit_output = DRW_texture_pool_query_2d_ex(
-        UNPACK2(tracing_res), GPU_RGBA16F, usage, owner);
+        UNPACK2(tracing_res), GPU_RGBA16F, usage, static_cast<DrawEngineType *>(owner));
     effects->ssr_hit_depth = DRW_texture_pool_query_2d_ex(
-        UNPACK2(tracing_res), GPU_R16F, usage, owner);
+        UNPACK2(tracing_res), GPU_R16F, usage, static_cast<DrawEngineType *>(owner));
 
     GPU_framebuffer_ensure_config(&fbl->screen_tracing_fb,
                                   {
@@ -104,8 +104,8 @@ int EEVEE_screen_raytrace_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   /* Cleanup to release memory */
   GPU_FRAMEBUFFER_FREE_SAFE(fbl->screen_tracing_fb);
-  effects->ssr_specrough_input = NULL;
-  effects->ssr_hit_output = NULL;
+  effects->ssr_specrough_input = nullptr;
+  effects->ssr_hit_output = nullptr;
 
   return 0;
 }
@@ -151,12 +151,13 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
     DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-    DRW_shgroup_uniform_vec2_copy(grp, "targetSize", (float[2]){hitbuf_size[0], hitbuf_size[1]});
+    DRW_shgroup_uniform_vec2_copy(
+        grp, "targetSize", blender::float2{float(hitbuf_size[0]), float(hitbuf_size[1])});
     DRW_shgroup_uniform_float_copy(
         grp, "randomScale", effects->reflection_trace_full ? 0.0f : 0.5f);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 
-    GPUSamplerState no_filter = GPU_SAMPLER_DEFAULT;
+    GPUSamplerState no_filter = GPUSamplerState::default_sampler();
 
     if (effects->use_split_ssr_pass) {
       /* Prepare passes for split reflections resolve variant. */
@@ -195,7 +196,7 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
         DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
         DRW_shgroup_uniform_int(grp, "samplePoolOffset", &effects->taa_current_sample, 1);
         DRW_shgroup_uniform_texture_ref(grp, "horizonBuffer", &effects->gtao_horizons);
-        DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+        DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
       }
     }
     else {
@@ -224,12 +225,12 @@ void EEVEE_screen_raytrace_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *v
       DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
       DRW_shgroup_uniform_int(grp, "samplePoolOffset", &effects->taa_current_sample, 1);
       DRW_shgroup_uniform_texture_ref(grp, "horizonBuffer", &effects->gtao_horizons);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
     }
   }
 }
 
-void EEVEE_refraction_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_refraction_compute(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_TextureList *txl = vedata->txl;
@@ -244,7 +245,7 @@ void EEVEE_refraction_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
   }
 }
 
-void EEVEE_reflection_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_reflection_compute(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -278,7 +279,7 @@ void EEVEE_reflection_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
   }
 }
 
-void EEVEE_reflection_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
+void EEVEE_reflection_output_init(EEVEE_ViewLayerData * /*sldata*/,
                                   EEVEE_Data *vedata,
                                   uint tot_samples)
 {
@@ -287,13 +288,13 @@ void EEVEE_reflection_output_init(EEVEE_ViewLayerData *UNUSED(sldata),
 
   /* Create FrameBuffer. */
   const eGPUTextureFormat texture_format = (tot_samples > 256) ? GPU_RGBA32F : GPU_RGBA16F;
-  DRW_texture_ensure_fullscreen_2d(&txl->ssr_accum, texture_format, 0);
+  DRW_texture_ensure_fullscreen_2d(&txl->ssr_accum, texture_format, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->ssr_accum_fb,
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->ssr_accum)});
 }
 
-void EEVEE_reflection_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_reflection_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_PassList *psl = vedata->psl;
