@@ -92,7 +92,7 @@ bool is_stroke_affected_by_modifier(Object *ob,
     }
   }
   /* Omit if filter by material. */
-  if (material != NULL) {
+  if (material != nullptr) {
     /* Requires to use the original material to compare the same pointer address. */
     Material *ma_md_orig = (Material *)DEG_get_original_id(&material->id);
     Material *ma_gps_orig = (Material *)DEG_get_original_id(&ma_gps->id);
@@ -145,7 +145,7 @@ float get_modifier_point_weight(const MDeformVert *dvert, bool inverse, int def_
 {
   float weight = 1.0f;
 
-  if ((dvert != NULL) && (def_nr != -1)) {
+  if ((dvert != nullptr) && (def_nr != -1)) {
     MDeformWeight *dw = BKE_defvert_find_index(dvert, def_nr);
     weight = dw ? dw->weight : -1.0f;
     if ((weight >= 0.0f) && (inverse)) {
@@ -163,7 +163,7 @@ float get_modifier_point_weight(const MDeformVert *dvert, bool inverse, int def_
   }
 
   /* handle special empty groups */
-  if ((dvert == NULL) && (def_nr != -1)) {
+  if ((dvert == nullptr) && (def_nr != -1)) {
     if (inverse == 1) {
       return 1.0f;
     }
@@ -178,7 +178,7 @@ void generic_bake_deform_stroke(
     Depsgraph *depsgraph, GpencilModifierData *md, Object *ob, const bool retime, gpBakeCb bake_cb)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  bGPdata *gpd = ob->data;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   int oldframe = (int)DEG_get_ctime(depsgraph);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
