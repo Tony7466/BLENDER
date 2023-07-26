@@ -1769,7 +1769,7 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
       continue;
     }
 
-    /* Skip layer if the name doesn't match the filter string */
+    /* Skip layer if the name doesn't match the filter string. */
     char layer_name[256];
     layer->name().copy(layer_name);
     if (ads != nullptr && ads->searchstr[0] != '\0' &&
