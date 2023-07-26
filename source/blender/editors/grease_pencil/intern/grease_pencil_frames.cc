@@ -25,19 +25,17 @@
 
 namespace blender::ed::greasepencil {
 
-static void select_frame(GreasePencilFrame *frame, const short select_mode)
+static void select_frame(GreasePencilFrame &frame, const short select_mode)
 {
-  BLI_assert(frame != nullptr);
-
   switch (select_mode) {
     case SELECT_ADD:
-      frame->flag |= GP_FRAME_SELECTED;
+      frame.flag |= GP_FRAME_SELECTED;
       break;
     case SELECT_SUBTRACT:
-      frame->flag &= ~GP_FRAME_SELECTED;
+      frame.flag &= ~GP_FRAME_SELECTED;
       break;
     case SELECT_INVERT:
-      frame->flag ^= GP_FRAME_SELECTED;
+      frame.flag ^= GP_FRAME_SELECTED;
       break;
   }
 }
@@ -51,15 +49,14 @@ bool select_frame_at(bke::greasepencil::Layer *layer,
   if (frame == nullptr) {
     return false;
   }
-  select_frame(frame, select_mode);
+  select_frame(*frame, select_mode);
   return true;
 }
 
 void select_all_frames(bke::greasepencil::Layer *layer, const short select_mode)
 {
   for (auto item : layer->frames_for_write().items()) {
-    GreasePencilFrame &frame = item.value;
-    select_frame(&frame, select_mode);
+    select_frame(item.value, select_mode);
   }
 }
 
