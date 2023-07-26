@@ -136,7 +136,7 @@ static bool bm_face_split_edgenet_find_loop_pair(BMVert *v_init,
   if (edges_boundary_len == 0) {
     return false;
   }
-  e_pair[0] = BLI_SMALLSTACK_POP(edges_boundary);
+  e_pair[0] = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges_boundary));
 
   /* use to hold boundary OR wire edges */
   BLI_SMALLSTACK_DECLARE(edges_search, BMEdge *);
@@ -144,7 +144,7 @@ static bool bm_face_split_edgenet_find_loop_pair(BMVert *v_init,
   /* attempt one boundary and one wire, or 2 boundary */
   if (edges_wire_len == 0) {
     if (edges_boundary_len > 1) {
-      e_pair[1] = BLI_SMALLSTACK_POP(edges_boundary);
+      e_pair[1] = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges_boundary));
 
       if (edges_boundary_len > 2) {
         BLI_SMALLSTACK_SWAP(edges_search, edges_boundary);
@@ -156,7 +156,7 @@ static bool bm_face_split_edgenet_find_loop_pair(BMVert *v_init,
     }
   }
   else {
-    e_pair[1] = BLI_SMALLSTACK_POP(edges_wire);
+    e_pair[1] = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges_wire));
     if (edges_wire_len > 1) {
       BLI_SMALLSTACK_SWAP(edges_search, edges_wire);
     }
@@ -175,7 +175,7 @@ static bool bm_face_split_edgenet_find_loop_pair(BMVert *v_init,
     float angle_best_cos = dot_v2v2(dir_next, dir_prev);
 
     BMEdge *e;
-    while ((e = BLI_SMALLSTACK_POP(edges_search))) {
+    while ((e = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges_search)))) {
       v_next = BM_edge_other_vert(e, v_init);
       float dir_test[2];
 
@@ -304,7 +304,7 @@ static bool bm_face_split_edgenet_find_loop_walk(BMVert *v_init,
    * In cases where paths can't be closed,
    * alternatives are stored in the 'vert_stack'.
    */
-  while ((v = BLI_SMALLSTACK_POP_EX(vert_stack, vert_stack_next))) {
+  while ((v = static_cast<BMVert *>(BLI_SMALLSTACK_POP_EX(vert_stack, vert_stack_next)))) {
 #ifdef USE_FASTPATH_NOFORK
   walk_nofork:
 #else
@@ -399,7 +399,7 @@ static bool bm_face_split_edgenet_find_loop_walk(BMVert *v_init,
 
 finally:
   /* clear flag for next execution */
-  while ((v = BLI_SMALLSTACK_POP(vert_visit))) {
+  while ((v = static_cast<BMVert *>(BLI_SMALLSTACK_POP(vert_visit)))) {
     BM_ELEM_API_FLAG_DISABLE(v, VERT_VISIT);
   }
 
@@ -1022,7 +1022,7 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
       }
       v_other_fallback = v_other;
 
-    } while ((v_other = BLI_SMALLSTACK_POP(vert_search)) &&
+    } while ((v_other = static_cast<BMVert *>(BLI_SMALLSTACK_POP(vert_search))) &&
              (e_hit = test_edges_isect_2d_vert(args, v_origin, v_other)));
 
     if (v_other == nullptr) {
@@ -1032,7 +1032,7 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
 
     /* reset the blacklist flag, for future use */
     BMVert *v;
-    while ((v = BLI_SMALLSTACK_POP(vert_blacklist))) {
+    while ((v = static_cast<BMVert *>(BLI_SMALLSTACK_POP(vert_blacklist)))) {
       BM_elem_flag_enable(v, VERT_IS_VALID);
     }
   }
@@ -1124,7 +1124,7 @@ static BMVert *bm_face_split_edgenet_partial_connect(BMesh *bm, BMVert *v_delimi
       BLI_linklist_prepend_alloca(&vert_stack, v_other);
     }
 
-    while ((v_other = BLI_SMALLSTACK_POP(search))) {
+    while ((v_other = static_cast<BMVert *>(BLI_SMALLSTACK_POP(search)))) {
       BLI_assert(BM_elem_flag_test(v_other, VERT_NOT_IN_STACK) == false);
       BMEdge *e_iter = v_other->e;
       do {
@@ -1318,7 +1318,7 @@ bool BM_face_split_edgenet_connect_islands(BMesh *bm,
       BM_elem_flag_disable(edge_arr[edge_index]->v1, VERT_NOT_IN_STACK);
 
       BMVert *v_iter;
-      while ((v_iter = BLI_SMALLSTACK_POP(vstack))) {
+      while ((v_iter = static_cast<BMVert *>(BLI_SMALLSTACK_POP(vstack)))) {
         unique_verts_in_group++;
 
         BMEdge *e_iter = v_iter->e;

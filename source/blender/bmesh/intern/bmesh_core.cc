@@ -1782,14 +1782,14 @@ BMEdge *bmesh_kernel_join_edge_kill_vert(BMesh *bm,
 
     if (kill_degenerate_faces) {
       BMFace *f_kill;
-      while ((f_kill = BLI_SMALLSTACK_POP(faces_degenerate))) {
+      while ((f_kill = static_cast<BMFace *>(BLI_SMALLSTACK_POP(faces_degenerate)))) {
         BM_face_kill(bm, f_kill);
       }
     }
 
     if (kill_duplicate_faces) {
       BMFace *f_kill;
-      while ((f_kill = BLI_SMALLSTACK_POP(faces_duplicate_candidate))) {
+      while ((f_kill = static_cast<BMFace *>(BLI_SMALLSTACK_POP(faces_duplicate_candidate)))) {
         if (BM_face_find_double(f_kill)) {
           BM_face_kill(bm, f_kill);
         }
@@ -1875,7 +1875,7 @@ BMVert *bmesh_kernel_join_vert_kill_edge(BMesh *bm,
 
   if (kill_degenerate_faces) {
     BMFace *f_kill;
-    while ((f_kill = BLI_SMALLSTACK_POP(faces_degenerate))) {
+    while ((f_kill = static_cast<BMFace *>(BLI_SMALLSTACK_POP(faces_degenerate)))) {
       BM_face_kill(bm, f_kill);
     }
   }
@@ -2149,7 +2149,7 @@ void bmesh_kernel_vert_separate(
             }
           } while ((l_iter = l_iter->radial_next) != l_first);
         }
-      } while ((e = BLI_SMALLSTACK_POP(edges_search)));
+      } while ((e = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges_search))));
 
       /* now we have all edges connected to 'v->e' */
 
@@ -2169,7 +2169,7 @@ void bmesh_kernel_vert_separate(
         BM_elem_select_copy(bm, v_new, v);
       }
 
-      while ((e = BLI_SMALLSTACK_POP(edges))) {
+      while ((e = static_cast<BMEdge *>(BLI_SMALLSTACK_POP(edges)))) {
         bmesh_edge_vert_swap(e, v_new, v);
       }
 
