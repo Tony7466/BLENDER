@@ -1521,9 +1521,8 @@ void EEVEE_lightbake_update_world_quick(EEVEE_ViewLayerData *sldata,
   float clamp = scene->eevee.gi_glossy_clamp;
   float filter_quality = scene->eevee.gi_filter_quality;
 
-  EEVEE_LightBake lbake = {
-      .resource_only = true,
-  };
+  EEVEE_LightBake lbake{};
+  lbake.resource_only = true;
 
   /* Create resources. */
   eevee_lightbake_create_render_target(&lbake, scene->eevee.gi_cubemap_resolution);
