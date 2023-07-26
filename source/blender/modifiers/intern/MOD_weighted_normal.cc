@@ -86,7 +86,7 @@ struct WeightedNormalData {
   blender::OffsetIndices<int> faces;
   blender::Span<blender::float3> face_normals;
   blender::VArray<bool> sharp_faces;
-  const int *poly_strength;
+  const int *face_strength;
 
   const MDeformVert *dvert;
   int defgrp_index;
