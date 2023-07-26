@@ -21,11 +21,11 @@ void bmesh_disk_vert_swap(BMEdge *e, BMVert *v_dst, BMVert *v_src)
 {
   if (e->v1 == v_src) {
     e->v1 = v_dst;
-    e->v1_disk_link.next = e->v1_disk_link.prev = NULL;
+    e->v1_disk_link.next = e->v1_disk_link.prev = nullptr;
   }
   else if (e->v2 == v_src) {
     e->v2 = v_dst;
-    e->v2_disk_link.next = e->v2_disk_link.prev = NULL;
+    e->v2_disk_link.next = e->v2_disk_link.prev = nullptr;
   }
   else {
     BLI_assert(0);
@@ -147,7 +147,7 @@ void bmesh_disk_edge_append(BMEdge *e, BMVert *v)
 
     dl1 = bmesh_disk_edge_link_from_vert(e, v);
     dl2 = bmesh_disk_edge_link_from_vert(v->e, v);
-    dl3 = dl2->prev ? bmesh_disk_edge_link_from_vert(dl2->prev, v) : NULL;
+    dl3 = dl2->prev ? bmesh_disk_edge_link_from_vert(dl2->prev, v) : nullptr;
 
     dl1->next = v->e;
     dl1->prev = dl2->prev;
@@ -175,10 +175,10 @@ void bmesh_disk_edge_remove(BMEdge *e, BMVert *v)
   }
 
   if (v->e == e) {
-    v->e = (e != dl1->next) ? dl1->next : NULL;
+    v->e = (e != dl1->next) ? dl1->next : nullptr;
   }
 
-  dl1->next = dl1->prev = NULL;
+  dl1->next = dl1->prev = nullptr;
 }
 
 BMEdge *bmesh_disk_edge_exists(const BMVert *v1, const BMVert *v2)
@@ -194,7 +194,7 @@ BMEdge *bmesh_disk_edge_exists(const BMVert *v1, const BMVert *v2)
     } while ((e_iter = bmesh_disk_edge_next(e_iter, v1)) != e_first);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 int bmesh_disk_count(const BMVert *v)
@@ -290,22 +290,22 @@ BMEdge *bmesh_disk_faceedge_find_first(const BMEdge *e, const BMVert *v)
 {
   const BMEdge *e_iter = e;
   do {
-    if (e_iter->l != NULL) {
+    if (e_iter->l != nullptr) {
       return (BMEdge *)((e_iter->l->v == v) ? e_iter : e_iter->l->next->e);
     }
   } while ((e_iter = bmesh_disk_edge_next(e_iter, v)) != e);
-  return NULL;
+  return nullptr;
 }
 
 BMLoop *bmesh_disk_faceloop_find_first(const BMEdge *e, const BMVert *v)
 {
   const BMEdge *e_iter = e;
   do {
-    if (e_iter->l != NULL) {
+    if (e_iter->l != nullptr) {
       return (e_iter->l->v == v) ? e_iter->l : e_iter->l->next;
     }
   } while ((e_iter = bmesh_disk_edge_next(e_iter, v)) != e);
-  return NULL;
+  return nullptr;
 }
 
 BMLoop *bmesh_disk_faceloop_find_first_visible(const BMEdge *e, const BMVert *v)
@@ -313,7 +313,7 @@ BMLoop *bmesh_disk_faceloop_find_first_visible(const BMEdge *e, const BMVert *v)
   const BMEdge *e_iter = e;
   do {
     if (!BM_elem_flag_test(e_iter, BM_ELEM_HIDDEN)) {
-      if (e_iter->l != NULL) {
+      if (e_iter->l != nullptr) {
         BMLoop *l_iter, *l_first;
         l_iter = l_first = e_iter->l;
         do {
@@ -324,7 +324,7 @@ BMLoop *bmesh_disk_faceloop_find_first_visible(const BMEdge *e, const BMVert *v)
       }
     }
   } while ((e_iter = bmesh_disk_edge_next(e_iter, v)) != e);
-  return NULL;
+  return nullptr;
 }
 
 BMEdge *bmesh_disk_faceedge_find_next(const BMEdge *e, const BMVert *v)
@@ -374,7 +374,7 @@ bool bmesh_radial_validate(int radlen, BMLoop *l)
 
 void bmesh_radial_loop_append(BMEdge *e, BMLoop *l)
 {
-  if (e->l == NULL) {
+  if (e->l == nullptr) {
     e->l = l;
     l->radial_next = l->radial_prev = l;
   }
@@ -398,7 +398,7 @@ void bmesh_radial_loop_append(BMEdge *e, BMLoop *l)
 
 void bmesh_radial_loop_remove(BMEdge *e, BMLoop *l)
 {
-  /* if e is non-NULL, l must be in the radial cycle of e */
+  /* if e is non-nullptr, l must be in the radial cycle of e */
   if (UNLIKELY(e != l->e)) {
     BMESH_ASSERT(0);
   }
@@ -413,7 +413,7 @@ void bmesh_radial_loop_remove(BMEdge *e, BMLoop *l)
   }
   else {
     if (l == e->l) {
-      e->l = NULL;
+      e->l = nullptr;
     }
     else {
       BMESH_ASSERT(0);
@@ -422,8 +422,8 @@ void bmesh_radial_loop_remove(BMEdge *e, BMLoop *l)
 
   /* l is no longer in a radial cycle; empty the links
    * to the cycle and the link back to an edge */
-  l->radial_next = l->radial_prev = NULL;
-  l->e = NULL;
+  l->radial_next = l->radial_prev = nullptr;
+  l->e = nullptr;
 }
 
 void bmesh_radial_loop_unlink(BMLoop *l)
@@ -435,8 +435,8 @@ void bmesh_radial_loop_unlink(BMLoop *l)
 
   /* l is no longer in a radial cycle; empty the links
    * to the cycle and the link back to an edge */
-  l->radial_next = l->radial_prev = NULL;
-  l->e = NULL;
+  l->radial_next = l->radial_prev = nullptr;
+  l->e = nullptr;
 }
 
 BMLoop *bmesh_radial_faceloop_find_first(const BMLoop *l, const BMVert *v)
@@ -448,7 +448,7 @@ BMLoop *bmesh_radial_faceloop_find_first(const BMLoop *l, const BMVert *v)
       return (BMLoop *)l_iter;
     }
   } while ((l_iter = l_iter->radial_next) != l);
-  return NULL;
+  return nullptr;
 }
 
 BMLoop *bmesh_radial_faceloop_find_next(const BMLoop *l, const BMVert *v)
@@ -541,7 +541,7 @@ bool bmesh_loop_validate(BMFace *f)
 
   l_first = BM_FACE_FIRST_LOOP(f);
 
-  if (l_first == NULL) {
+  if (l_first == nullptr) {
     return false;
   }
 

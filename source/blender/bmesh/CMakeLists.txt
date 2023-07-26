@@ -110,7 +110,7 @@ set(SRC
   intern/bmesh_query_inline.h
   intern/bmesh_query_uv.cc
   intern/bmesh_query_uv.h
-  intern/bmesh_structure.c
+  intern/bmesh_structure.cc
   intern/bmesh_structure.h
   intern/bmesh_structure_inline.h
   intern/bmesh_walkers.c
