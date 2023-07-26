@@ -45,7 +45,7 @@ static struct {
 
   GPUTexture *dummy_scatter;
   GPUTexture *dummy_transmit;
-} e_data = {NULL}; /* Engine data */
+} e_data = {nullptr}; /* Engine data */
 
 void EEVEE_volumes_set_jitter(EEVEE_ViewLayerData *sldata, uint current_sample)
 {
@@ -120,7 +120,7 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 
   /* Like frostbite's paper, 5% blend of the new frame. */
-  common_data->vol_history_alpha = (txl->volume_prop_scattering == NULL) ? 0.0f : 0.95f;
+  common_data->vol_history_alpha = (txl->volume_prop_scattering == nullptr) ? 0.0f : 0.95f;
 
   /* Temporal Super sampling jitter */
   uint ht_primes[3] = {3, 7, 2};
@@ -129,9 +129,9 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   /* If TAA is in use do not use the history buffer. */
   bool do_taa = ((effects->enabled_effects & EFFECT_TAA) != 0);
 
-  if (draw_ctx->evil_C != NULL) {
+  if (draw_ctx->evil_C != nullptr) {
     struct wmWindowManager *wm = CTX_wm_manager(draw_ctx->evil_C);
-    do_taa = do_taa && (ED_screen_animation_no_scrub(wm) == NULL);
+    do_taa = do_taa && (ED_screen_animation_no_scrub(wm) == nullptr);
   }
 
   if (do_taa) {
@@ -158,11 +158,11 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     common_data->vol_shadow_steps = 0;
   }
 
-  if (DRW_view_is_persp_get(NULL)) {
+  if (DRW_view_is_persp_get(nullptr)) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * max_ff(1.0f - sample_distribution, 1e-2f);
 
-    const float clip_start = DRW_view_near_distance_get(NULL);
+    const float clip_start = DRW_view_near_distance_get(nullptr);
     /* Negate */
     float near = integration_start = min_ff(-integration_start, clip_start - 1e-4f);
     float far = integration_end = min_ff(-integration_end, near - 1e-4f);
@@ -173,8 +173,8 @@ void EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     common_data->vol_depth_param[2] = sample_distribution;
   }
   else {
-    const float clip_start = DRW_view_near_distance_get(NULL);
-    const float clip_end = DRW_view_far_distance_get(NULL);
+    const float clip_start = DRW_view_near_distance_get(nullptr);
+    const float clip_end = DRW_view_far_distance_get(nullptr);
     integration_start = min_ff(integration_end, clip_start);
     integration_end = max_ff(-integration_end, clip_end);
 
@@ -211,7 +211,7 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
 
   /* Quick breakdown of the Volumetric rendering:
    *
@@ -245,9 +245,10 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
   /* World Volumetric */
   World *wo = scene->world;
-  if (wo != NULL && wo->use_nodes && wo->nodetree && !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d))
+  if (wo != nullptr && wo->use_nodes && wo->nodetree &&
+      !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d))
   {
-    GPUMaterial *mat = EEVEE_material_get(vedata, scene, NULL, wo, VAR_MAT_VOLUME);
+    GPUMaterial *mat = EEVEE_material_get(vedata, scene, nullptr, wo, VAR_MAT_VOLUME);
 
     if (mat && GPU_material_has_volume_output(mat)) {
       grp = DRW_shgroup_material_create(mat, psl->volumetric_world_ps);
@@ -264,15 +265,15 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
       DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
       /* Fix principle volumetric not working with world materials. */
-      grp = DRW_shgroup_volume_create_sub(NULL, NULL, grp, mat);
+      grp = DRW_shgroup_volume_create_sub(nullptr, nullptr, grp, mat);
 
-      DRW_shgroup_call_procedural_triangles(grp, NULL, common_data->vol_tex_size[2]);
+      DRW_shgroup_call_procedural_triangles(grp, nullptr, common_data->vol_tex_size[2]);
 
       effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
     }
   }
 
-  if (grp == NULL) {
+  if (grp == nullptr) {
     /* If no world or volume material is present just clear the buffer with this drawcall */
     grp = DRW_shgroup_create(EEVEE_shaders_volumes_clear_sh_get(), psl->volumetric_world_ps);
     DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
@@ -283,7 +284,7 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, common_data->vol_tex_size[2]);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, common_data->vol_tex_size[2]);
   }
 }
 
@@ -294,7 +295,7 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
 {
   Material *ma = BKE_object_material_get_eval(ob, 1);
 
-  if (ma == NULL) {
+  if (ma == nullptr) {
     if (ob->type == OB_VOLUME) {
       ma = BKE_material_default_volume();
     }
@@ -312,15 +313,15 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
   }
 
   int mat_options = VAR_MAT_VOLUME | VAR_MAT_MESH;
-  GPUMaterial *mat = EEVEE_material_get(vedata, scene, ma, NULL, mat_options);
+  GPUMaterial *mat = EEVEE_material_get(vedata, scene, ma, nullptr, mat_options);
 
   /* If shader failed to compile or is currently compiling. */
-  if (mat == NULL) {
+  if (mat == nullptr) {
     return;
   }
 
   GPUShader *sh = GPU_material_get_shader(mat);
-  if (sh == NULL) {
+  if (sh == nullptr) {
     return;
   }
 
@@ -330,7 +331,7 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
 
   grp = DRW_shgroup_volume_create_sub(scene, ob, grp, mat);
 
-  if (grp == NULL) {
+  if (grp == nullptr) {
     return;
   }
 
@@ -382,7 +383,7 @@ void EEVEE_volumes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, common_data->vol_tex_size[2]);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, common_data->vol_tex_size[2]);
 
     DRW_PASS_CREATE(psl->volumetric_integration_ps, DRW_STATE_WRITE_COLOR);
     grp = DRW_shgroup_create(EEVEE_shaders_volumes_integration_sh_get(),
@@ -398,7 +399,7 @@ void EEVEE_volumes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     }
 
     DRW_shgroup_call_procedural_triangles(
-        grp, NULL, USE_VOLUME_OPTI ? 1 : common_data->vol_tex_size[2]);
+        grp, nullptr, USE_VOLUME_OPTI ? 1 : common_data->vol_tex_size[2]);
 
     DRW_PASS_CREATE(psl->volumetric_resolve_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     grp = DRW_shgroup_create(EEVEE_shaders_volumes_resolve_sh_get(false),
@@ -412,7 +413,7 @@ void EEVEE_volumes_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
     DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
 
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
   }
 }
 
@@ -426,18 +427,33 @@ void EEVEE_volumes_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   if ((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) {
     int *tex_size = common_data->vol_tex_size;
 
-    if (txl->volume_prop_scattering == NULL) {
+    if (txl->volume_prop_scattering == nullptr) {
       /* Volume properties: We evaluate all volumetric objects
        * and store their final properties into each froxel */
       eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
-      txl->volume_prop_scattering = DRW_texture_create_3d_ex(
-          tex_size[0], tex_size[1], tex_size[2], GPU_R11F_G11F_B10F, usage, DRW_TEX_FILTER, NULL);
-      txl->volume_prop_extinction = DRW_texture_create_3d_ex(
-          tex_size[0], tex_size[1], tex_size[2], GPU_R11F_G11F_B10F, usage, DRW_TEX_FILTER, NULL);
-      txl->volume_prop_emission = DRW_texture_create_3d_ex(
-          tex_size[0], tex_size[1], tex_size[2], GPU_R11F_G11F_B10F, usage, DRW_TEX_FILTER, NULL);
+      txl->volume_prop_scattering = DRW_texture_create_3d_ex(tex_size[0],
+                                                             tex_size[1],
+                                                             tex_size[2],
+                                                             GPU_R11F_G11F_B10F,
+                                                             usage,
+                                                             DRW_TEX_FILTER,
+                                                             nullptr);
+      txl->volume_prop_extinction = DRW_texture_create_3d_ex(tex_size[0],
+                                                             tex_size[1],
+                                                             tex_size[2],
+                                                             GPU_R11F_G11F_B10F,
+                                                             usage,
+                                                             DRW_TEX_FILTER,
+                                                             nullptr);
+      txl->volume_prop_emission = DRW_texture_create_3d_ex(tex_size[0],
+                                                           tex_size[1],
+                                                           tex_size[2],
+                                                           GPU_R11F_G11F_B10F,
+                                                           usage,
+                                                           DRW_TEX_FILTER,
+                                                           nullptr);
       txl->volume_prop_phase = DRW_texture_create_3d_ex(
-          tex_size[0], tex_size[1], tex_size[2], GPU_RG16F, usage, DRW_TEX_FILTER, NULL);
+          tex_size[0], tex_size[1], tex_size[2], GPU_RG16F, usage, DRW_TEX_FILTER, nullptr);
 
       /* Volume scattering: We compute for each froxel the
        * Scattered light towards the view. We also resolve temporal
@@ -450,14 +466,14 @@ void EEVEE_volumes_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
                                                      GPU_R11F_G11F_B10F,
                                                      usage_write,
                                                      DRW_TEX_FILTER,
-                                                     NULL);
+                                                     nullptr);
       txl->volume_transmit = DRW_texture_create_3d_ex(tex_size[0],
                                                       tex_size[1],
                                                       tex_size[2],
                                                       GPU_R11F_G11F_B10F,
                                                       usage_write,
                                                       DRW_TEX_FILTER,
-                                                      NULL);
+                                                      nullptr);
 
       /* Final integration: We compute for each froxel the
        * amount of scattered light and extinction coefficient at this
@@ -469,14 +485,14 @@ void EEVEE_volumes_draw_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
                                                              GPU_R11F_G11F_B10F,
                                                              usage_write,
                                                              DRW_TEX_FILTER,
-                                                             NULL);
+                                                             nullptr);
       txl->volume_transmit_history = DRW_texture_create_3d_ex(tex_size[0],
                                                               tex_size[1],
                                                               tex_size[2],
                                                               GPU_R11F_G11F_B10F,
                                                               usage_write,
                                                               DRW_TEX_FILTER,
-                                                              NULL);
+                                                              nullptr);
     }
 
     GPU_framebuffer_ensure_config(&fbl->volumetric_fb,
@@ -558,7 +574,7 @@ void EEVEE_volumes_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 }
 
-void EEVEE_volumes_resolve(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_volumes_resolve(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_FramebufferList *fbl = vedata->fbl;
@@ -608,8 +624,10 @@ void EEVEE_volumes_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, 
 
   /* Should be enough precision for many samples. */
   const eGPUTextureFormat texture_format_accum = (tot_samples > 128) ? GPU_RGBA32F : GPU_RGBA16F;
-  DRW_texture_ensure_fullscreen_2d(&txl->volume_scatter_accum, texture_format_accum, 0);
-  DRW_texture_ensure_fullscreen_2d(&txl->volume_transmittance_accum, texture_format_accum, 0);
+  DRW_texture_ensure_fullscreen_2d(
+      &txl->volume_scatter_accum, texture_format_accum, DRWTextureFlag(0));
+  DRW_texture_ensure_fullscreen_2d(
+      &txl->volume_transmittance_accum, texture_format_accum, DRWTextureFlag(0));
 
   GPU_framebuffer_ensure_config(&fbl->volumetric_accum_fb,
                                 {GPU_ATTACHMENT_NONE,
@@ -618,7 +636,7 @@ void EEVEE_volumes_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, 
 
   /* Create Pass and shgroup. */
   DRW_PASS_CREATE(psl->volumetric_accum_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
-  DRWShadingGroup *grp = NULL;
+  DRWShadingGroup *grp = nullptr;
   if ((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) {
     grp = DRW_shgroup_create(EEVEE_shaders_volumes_resolve_sh_get(true), psl->volumetric_accum_ps);
     DRW_shgroup_uniform_texture_ref(grp, "inScattering", &txl->volume_scatter);
@@ -632,16 +650,16 @@ void EEVEE_volumes_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, 
      * value. */
     grp = DRW_shgroup_create(EEVEE_shaders_volumes_accum_sh_get(), psl->volumetric_accum_ps);
   }
-  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
+  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
 }
 
-void EEVEE_volumes_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_volumes_output_accumulate(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
   EEVEE_FramebufferList *fbl = vedata->fbl;
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_EffectsInfo *effects = vedata->stl->effects;
 
-  if (fbl->volumetric_accum_fb != NULL) {
+  if (fbl->volumetric_accum_fb != nullptr) {
     /* Accumulation pass. */
     GPU_framebuffer_bind(fbl->volumetric_accum_fb);
 
