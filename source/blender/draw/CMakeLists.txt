@@ -95,7 +95,7 @@ set(SRC
   intern/draw_pointcloud.cc
   intern/draw_resource.cc
   intern/draw_sculpt.cc
-  intern/draw_select_buffer.c
+  intern/draw_select_buffer.cc
   intern/draw_shader.cc
   intern/draw_texture_pool.cc
   intern/draw_view.c

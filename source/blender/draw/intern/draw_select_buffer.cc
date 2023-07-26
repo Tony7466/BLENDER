@@ -36,16 +36,15 @@
 uint *DRW_select_buffer_read(
     Depsgraph *depsgraph, ARegion *region, View3D *v3d, const rcti *rect, uint *r_buf_len)
 {
-  uint *r_buf = NULL;
+  uint *r_buf = nullptr;
   uint buf_len = 0;
 
   /* Clamp rect. */
-  rcti r = {
-      .xmin = 0,
-      .xmax = region->winx,
-      .ymin = 0,
-      .ymax = region->winy,
-  };
+  rcti r{};
+  r.xmin = 0;
+  r.xmax = region->winx;
+  r.ymin = 0;
+  r.ymax = region->winy;
 
   /* Make sure that the rect is within the bounds of the viewport.
    * Some GPUs have problems reading pixels off limits. */
@@ -63,7 +62,7 @@ uint *DRW_select_buffer_read(
 
       /* Read the UI32 pixels. */
       buf_len = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
-      r_buf = MEM_mallocN(buf_len * sizeof(*r_buf), __func__);
+      r_buf = static_cast<uint *>(MEM_mallocN(buf_len * sizeof(*r_buf), __func__));
 
       GPUFrameBuffer *select_id_fb = DRW_engine_select_framebuffer_get();
       GPU_framebuffer_bind(select_id_fb);
@@ -115,8 +114,8 @@ uint *DRW_select_buffer_bitmap_from_rect(
 
   uint buf_len;
   uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect_px, &buf_len);
-  if (buf == NULL) {
-    return NULL;
+  if (buf == nullptr) {
+    return nullptr;
   }
 
   BLI_assert(select_ctx->index_drawn_len > 0);
@@ -149,17 +148,16 @@ uint *DRW_select_buffer_bitmap_from_circle(Depsgraph *depsgraph,
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
-  const rcti rect = {
-      .xmin = center[0] - radius,
-      .xmax = center[0] + radius + 1,
-      .ymin = center[1] - radius,
-      .ymax = center[1] + radius + 1,
-  };
+  rcti rect{};
+  rect.xmin = center[0] - radius;
+  rect.xmax = center[0] + radius + 1;
+  rect.ymin = center[1] - radius;
+  rect.ymax = center[1] + radius + 1;
 
-  const uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect, NULL);
+  const uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect, nullptr);
 
-  if (buf == NULL) {
-    return NULL;
+  if (buf == nullptr) {
+    return nullptr;
   }
 
   BLI_assert(select_ctx->index_drawn_len > 0);
@@ -195,7 +193,7 @@ struct PolyMaskData {
 
 static void drw_select_mask_px_cb(int x, int x_end, int y, void *user_data)
 {
-  struct PolyMaskData *data = user_data;
+  struct PolyMaskData *data = static_cast<PolyMaskData *>(user_data);
   BLI_bitmap *px = data->px;
   int i = (y * data->width) + x;
   do {
@@ -220,8 +218,8 @@ uint *DRW_select_buffer_bitmap_from_poly(Depsgraph *depsgraph,
 
   uint buf_len;
   uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect_px, &buf_len);
-  if (buf == NULL) {
-    return NULL;
+  if (buf == nullptr) {
+    return nullptr;
   }
 
   BLI_bitmap *buf_mask = BLI_BITMAP_NEW(buf_len, __func__);
@@ -279,12 +277,11 @@ uint DRW_select_buffer_sample_point(Depsgraph *depsgraph,
 {
   uint ret = 0;
 
-  const rcti rect = {
-      .xmin = center[0],
-      .xmax = center[0] + 1,
-      .ymin = center[1],
-      .ymax = center[1] + 1,
-  };
+  rcti rect{};
+  rect.xmin = center[0];
+  rect.xmax = center[0] + 1;
+  rect.ymin = center[1];
+  rect.ymax = center[1] + 1;
 
   uint buf_len;
   uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect, &buf_len);
@@ -306,7 +303,7 @@ struct SelectReadData {
 
 static bool select_buffer_test_fn(const void *__restrict value, void *__restrict userdata)
 {
-  struct SelectReadData *data = userdata;
+  struct SelectReadData *data = static_cast<SelectReadData *>(userdata);
   uint hit_id = *(uint *)value;
   if (hit_id && hit_id >= data->id_min && hit_id < data->id_max) {
     /* Start at 1 to confirm. */
@@ -341,13 +338,13 @@ uint DRW_select_buffer_find_nearest_to_point(Depsgraph *depsgraph,
   uint buf_len;
   const uint *buf = DRW_select_buffer_read(depsgraph, region, v3d, &rect, &buf_len);
 
-  if (buf == NULL) {
+  if (buf == nullptr) {
     return 0;
   }
 
   const int shape[2] = {height, width};
   const int center_yx[2] = {(height - 1) / 2, (width - 1) / 2};
-  struct SelectReadData data = {NULL, id_min, id_max, 0};
+  struct SelectReadData data = {nullptr, id_min, id_max, 0};
   BLI_array_iter_spiral_square(buf, shape, center_yx, select_buffer_test_fn, &data);
 
   if (data.val_ptr) {
@@ -456,14 +453,14 @@ void DRW_select_buffer_context_create(Base **bases, const uint bases_len, short 
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
-  select_ctx->objects = MEM_reallocN(select_ctx->objects,
-                                     sizeof(*select_ctx->objects) * bases_len);
+  select_ctx->objects = static_cast<Object **>(
+      MEM_reallocN(select_ctx->objects, sizeof(*select_ctx->objects) * bases_len));
 
-  select_ctx->index_offsets = MEM_reallocN(select_ctx->index_offsets,
-                                           sizeof(*select_ctx->index_offsets) * bases_len);
+  select_ctx->index_offsets = static_cast<ObjectOffsets *>(
+      MEM_reallocN(select_ctx->index_offsets, sizeof(*select_ctx->index_offsets) * bases_len));
 
-  select_ctx->objects_drawn = MEM_reallocN(select_ctx->objects_drawn,
-                                           sizeof(*select_ctx->objects_drawn) * bases_len);
+  select_ctx->objects_drawn = static_cast<Object **>(
+      MEM_reallocN(select_ctx->objects_drawn, sizeof(*select_ctx->objects_drawn) * bases_len));
 
   for (uint base_index = 0; base_index < bases_len; base_index++) {
     Object *obj = bases[base_index]->object;
