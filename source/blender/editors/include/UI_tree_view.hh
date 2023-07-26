@@ -15,8 +15,6 @@
 #include <memory>
 #include <string>
 
-#include "DNA_defs.h"
-
 #include "BLI_function_ref.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
@@ -119,7 +117,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   friend class TreeViewItemDropTarget;
 
  public:
-  virtual ~AbstractTreeView() = default;
+  /* virtual */ ~AbstractTreeView() override = default;
 
   void draw_overlays(const ARegion &region) const override;
 
@@ -186,11 +184,11 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   std::string label_{};
 
  public:
-  virtual ~AbstractTreeViewItem() = default;
+  /* virtual */ ~AbstractTreeViewItem() override = default;
 
   virtual void build_row(uiLayout &row) = 0;
 
-  virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
+  std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
   virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
 
   AbstractTreeView &get_tree_view() const;
@@ -212,19 +210,23 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
  protected:
   /**
-   * Called when the items state changes from inactive to active.
+   * Called when the tree view changes an item's state from inactive to active. Will only be called
+   * if the state change is triggered through the tree view, not through external changes. E.g. a
+   * click on an item calls it, a change in the value returned by #should_be_active() to reflect an
+   * external state change does not.
    */
   virtual void on_activate();
   /**
-   * If the result is not empty, it controls whether the item should be active or not,
-   * usually depending on the data that the view represents.
+   * If the result is not empty, it controls whether the item should be active or not, usually
+   * depending on the data that the view represents. Note that since this is meant to reflect
+   * externally managed state changes, #on_activate() will never be called if this returns true.
    */
   virtual std::optional<bool> should_be_active() const;
 
   /** See AbstractViewItem::get_rename_string(). */
-  virtual StringRef get_rename_string() const override;
+  /* virtual */ StringRef get_rename_string() const override;
   /** See AbstractViewItem::rename(). */
-  virtual bool rename(StringRefNull new_name) override;
+  /* virtual */ bool rename(StringRefNull new_name) override;
 
   /**
    * Return whether the item can be collapsed. Used to disable collapsing for items with children.
@@ -233,10 +235,10 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   virtual bool supports_collapsing() const;
 
   /** See #AbstractViewItem::matches(). */
-  virtual bool matches(const AbstractViewItem &other) const override;
+  /* virtual */ bool matches(const AbstractViewItem &other) const override;
 
   /** See #AbstractViewItem::update_from_old(). */
-  virtual void update_from_old(const AbstractViewItem &old) override;
+  /* virtual */ void update_from_old(const AbstractViewItem &old) override;
 
   /**
    * Compare this item to \a other to check if they represent the same data.
@@ -252,7 +254,10 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   /**
    * Activates this item, deactivates other items, calls the #AbstractTreeViewItem::on_activate()
-   * function and ensures this item's parents are not collapsed (so the item is visible).
+   * function and ensures this item's parents are not collapsed (so the item is visible). Should
+   * only be called when the item was activated through the tree view (e.g. through a click), not
+   * if the tree view reflects an external change (e.g. #AbstractTreeViewItem::should_be_active()
+   * changes from returning false to returning true).
    * Requires the tree to have completed reconstruction, see #is_reconstructed(). Otherwise the
    * actual item state is unknown, possibly calling state-change update functions incorrectly.
    */
@@ -275,6 +280,12 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   /** See #AbstractTreeView::change_state_delayed() */
   void change_state_delayed();
+  /**
+   * Like #activate() but does not call #on_activate(). Use it to reflect changes in the active
+   * state that happened externally.
+   * \return true of the item was activated.
+   */
+  bool set_state_active();
 
   void add_treerow_button(uiBlock &block);
   int indent_width() const;
@@ -354,7 +365,7 @@ class TreeViewItemDropTarget : public DropTargetInterface {
   TreeViewItemDropTarget(AbstractTreeView &view, DropBehavior behavior = DropBehavior::Insert);
 
   std::optional<DropLocation> choose_drop_location(const ARegion &region,
-                                                   const wmEvent &event) const;
+                                                   const wmEvent &event) const override;
 
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */

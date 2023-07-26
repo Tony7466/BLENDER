@@ -44,7 +44,7 @@ class AbstractGridViewItem : public AbstractViewItem {
   uiButViewItem *view_item_but_ = nullptr;
 
  public:
-  virtual ~AbstractGridViewItem() = default;
+  /* virtual */ ~AbstractGridViewItem() override = default;
 
   virtual void build_grid_tile(uiLayout &layout) const = 0;
 
@@ -54,31 +54,46 @@ class AbstractGridViewItem : public AbstractViewItem {
   AbstractGridViewItem(StringRef identifier);
 
   /** See AbstractViewItem::matches(). */
-  virtual bool matches(const AbstractViewItem &other) const override;
+  /* virtual */ bool matches(const AbstractViewItem &other) const override;
 
-  /** Called when the item's state changes from inactive to active. */
+  /**
+   * Called when the grid view changes an item's state from inactive to active. Will only be called
+   * if the state change is triggered through the grid view, not through external changes. E.g. a
+   * click on an item calls it, a change in the value returned by #should_be_active() to reflect an
+   * external state change does not.
+   */
   virtual void on_activate();
   /**
-   * If the result is not empty, it controls whether the item should be active or not,
-   * usually depending on the data that the view represents.
+   * If the result is not empty, it controls whether the item should be active or not, usually
+   * depending on the data that the view represents. Note that since this is meant to reflect
+   * externally managed state changes, #on_activate() will never be called if this returns true.
    */
   virtual std::optional<bool> should_be_active() const;
 
-  virtual std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
+  /* virtual */ std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
   virtual std::unique_ptr<GridViewItemDropTarget> create_drop_target();
 
   /**
    * Activates this item, deactivates other items, and calls the
-   * #AbstractGridViewItem::on_activate() function.
-   * Requires the tree to have completed reconstruction, see #is_reconstructed(). Otherwise the
+   * #AbstractGridViewItem::on_activate() function. Should only be called when the item was
+   * activated through the grid view (e.g. through a click), not if the grid view reflects an
+   * external change (e.g. #AbstractGridViewItem::should_be_active() changes from returning false
+   * to returning true).
+   * Requires the view to have completed reconstruction, see #is_reconstructed(). Otherwise the
    * actual item state is unknown, possibly calling state-change update functions incorrectly.
    */
   void activate();
   void deactivate();
 
  private:
-  /** See #AbstractTreeView::change_state_delayed() */
+  /** See #AbstractGridView::change_state_delayed() */
   void change_state_delayed();
+  /**
+   * Like #activate() but does not call #on_activate(). Use it to reflect changes in the active
+   * state that happened externally.
+   * \return true of the item was activated.
+   */
+  bool set_state_active();
   static void grid_tile_click_fn(bContext *, void *but_arg1, void *);
   void add_grid_tile_button(uiBlock &block);
 };
@@ -111,7 +126,7 @@ class AbstractGridView : public AbstractView {
 
  public:
   AbstractGridView();
-  virtual ~AbstractGridView() = default;
+  /* virtual */ ~AbstractGridView() override = default;
 
   using ItemIterFn = FunctionRef<void(AbstractGridViewItem &)>;
   void foreach_item(ItemIterFn iter_fn) const;
