@@ -195,7 +195,7 @@ static void bm_face_bisect_verts(
       l_b = BM_face_vert_share_loop(f, vert_split_arr[1]);
 
       /* Common case, just cut the face once. */
-      BM_face_split(bm, f, l_a, l_b, &l_new, NULL, true);
+      BM_face_split(bm, f, l_a, l_b, &l_new, nullptr, true);
       if (l_new) {
         if (oflag_center | oflag_new) {
           BMO_edge_flag_enable(bm, l_new->e, oflag_center | oflag_new);
@@ -364,7 +364,7 @@ static void bm_face_bisect_verts(
           if (found && !BM_loop_is_adjacent(l_a, l_b)) {
             BMLoop *l_new;
             BMFace *f_tmp;
-            f_tmp = BM_face_split(bm, face_split_arr[j], l_a, l_b, &l_new, NULL, true);
+            f_tmp = BM_face_split(bm, face_split_arr[j], l_a, l_b, &l_new, nullptr, true);
 
             if (l_new) {
               if (oflag_center | oflag_new) {
@@ -410,7 +410,8 @@ void BM_mesh_bisect_plane(BMesh *bm,
 {
   uint einput_len;
   uint i;
-  BMEdge **edges_arr = MEM_mallocN(sizeof(*edges_arr) * (size_t)bm->totedge, __func__);
+  BMEdge **edges_arr = static_cast<BMEdge **>(
+      MEM_mallocN(sizeof(*edges_arr) * (size_t)bm->totedge, __func__));
 
   BLI_LINKSTACK_DECLARE(face_stack, BMFace *);
 
