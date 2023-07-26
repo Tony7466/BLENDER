@@ -74,9 +74,9 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   NoiseGpencilModifierData *gmd = (NoiseGpencilModifierData *)md;
   NoiseGpencilModifierData *tgmd = (NoiseGpencilModifierData *)target;
 
-  if (tgmd->curve_intensity != NULL) {
+  if (tgmd->curve_intensity != nullptr) {
     BKE_curvemapping_free(tgmd->curve_intensity);
-    tgmd->curve_intensity = NULL;
+    tgmd->curve_intensity = nullptr;
   }
 
   BKE_gpencil_modifier_copydata_generic(md, target);
@@ -92,7 +92,7 @@ static bool dependsOnTime(GpencilModifierData *md)
 
 static float *noise_table(int len, int offset, int seed)
 {
-  float *table = MEM_callocN(sizeof(float) * len, __func__);
+  float *table = static_cast<float *>(MEM_callocN(sizeof(float) * len, __func__));
   for (int i = 0; i < len; i++) {
     table[i] = BLI_hash_int_01(BLI_hash_int_2d(seed, i + offset + 1));
   }
@@ -115,7 +115,7 @@ static void deformStroke(GpencilModifierData *md,
                          bGPDstroke *gps)
 {
   NoiseGpencilModifierData *mmd = (NoiseGpencilModifierData *)md;
-  MDeformVert *dvert = NULL;
+  MDeformVert *dvert = nullptr;
   /* Noise value in range [-1..1] */
   float normal[3];
   float vec1[3], vec2[3];
@@ -166,16 +166,16 @@ static void deformStroke(GpencilModifierData *md,
   int len = ceilf(gps->totpoints * noise_scale) + 2;
   float *noise_table_position = (mmd->factor > 0.0f) ?
                                     noise_table(len, (int)floor(mmd->noise_offset), seed + 2) :
-                                    NULL;
+                                    nullptr;
   float *noise_table_strength = (mmd->factor_strength > 0.0f) ?
                                     noise_table(len, (int)floor(mmd->noise_offset), seed + 3) :
-                                    NULL;
+                                    nullptr;
   float *noise_table_thickness = (mmd->factor_thickness > 0.0f) ?
                                      noise_table(len, (int)floor(mmd->noise_offset), seed) :
-                                     NULL;
+                                     nullptr;
   float *noise_table_uvs = (mmd->factor_uvs > 0.0f) ?
                                noise_table(len, (int)floor(mmd->noise_offset), seed + 4) :
-                               NULL;
+                               nullptr;
 
   /* Calculate stroke normal. */
   if (gps->totpoints > 2) {
@@ -192,7 +192,7 @@ static void deformStroke(GpencilModifierData *md,
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
     /* verify vertex group */
-    dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+    dvert = gps->dvert != nullptr ? &gps->dvert[i] : nullptr;
     float weight = get_modifier_point_weight(dvert, invert_group, def_nr);
     if (weight < 0.0f) {
       continue;
@@ -256,7 +256,7 @@ static void deformStroke(GpencilModifierData *md,
   MEM_SAFE_FREE(noise_table_uvs);
 }
 
-static void bakeModifier(struct Main *UNUSED(bmain),
+static void bakeModifier(struct Main * /*bmain*/,
                          Depsgraph *depsgraph,
                          GpencilModifierData *md,
                          Object *ob)
@@ -271,12 +271,12 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
   walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
@@ -285,41 +285,41 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(col, ptr, "factor_strength", 0, IFACE_("Strength"), ICON_NONE);
   uiItemR(col, ptr, "factor_thickness", 0, IFACE_("Thickness"), ICON_NONE);
   uiItemR(col, ptr, "factor_uvs", 0, IFACE_("UV"), ICON_NONE);
-  uiItemR(col, ptr, "noise_scale", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "noise_offset", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "seed", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "noise_scale", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "noise_offset", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "seed", 0, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void random_header_draw(const bContext *UNUSED(C), Panel *panel)
+static void random_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiItemR(layout, ptr, "use_random", 0, IFACE_("Randomize"), ICON_NONE);
 }
 
-static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void random_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
 
   uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_random"));
 
-  uiItemR(layout, ptr, "random_mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "random_mode", 0, nullptr, ICON_NONE);
 
   const int mode = RNA_enum_get(ptr, "random_mode");
   if (mode != GP_NOISE_RANDOM_KEYFRAME) {
-    uiItemR(layout, ptr, "step", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "step", 0, nullptr, ICON_NONE);
   }
 }
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
@@ -331,7 +331,7 @@ static void panelRegister(ARegionType *region_type)
   gpencil_modifier_subpanel_register(
       region_type, "randomize", "", random_header_draw, random_panel_draw, panel_type);
   PanelType *mask_panel_type = gpencil_modifier_subpanel_register(
-      region_type, "mask", "Influence", NULL, mask_panel_draw, panel_type);
+      region_type, "mask", "Influence", nullptr, mask_panel_draw, panel_type);
   gpencil_modifier_subpanel_register(region_type,
                                      "curve",
                                      "",
@@ -350,16 +350,16 @@ GpencilModifierTypeInfo modifierType_Gpencil_Noise = {
     /*copyData*/ copyData,
 
     /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ NULL,
+    /*generateStrokes*/ nullptr,
     /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ NULL,
+    /*remapTime*/ nullptr,
 
     /*initData*/ initData,
     /*freeData*/ freeData,
-    /*isDisabled*/ NULL,
-    /*updateDepsgraph*/ NULL,
+    /*isDisabled*/ nullptr,
+    /*updateDepsgraph*/ nullptr,
     /*dependsOnTime*/ dependsOnTime,
     /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ NULL,
+    /*foreachTexLink*/ nullptr,
     /*panelRegister*/ panelRegister,
 };
