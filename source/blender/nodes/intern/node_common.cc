@@ -617,13 +617,13 @@ static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *li
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
-      ntree, link->tonode, link->tosock);
+  const bNodeTreeInterfaceSocket *io_socket = node_interface::add_interface_socket_from_node(
+      *ntree, *link->tonode, *link->tosock);
   if (!io_socket) {
     return false;
   }
   update_node_declaration_and_sockets(*ntree, *node);
-  link->fromsock = node_group_input_find_socket(node, io_socket->identifier);
+  link->fromsock = node_group_input_find_socket(node, io_socket->socket_identifier().c_str());
   return true;
 }
 
@@ -638,13 +638,13 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
-      ntree, link->fromnode, link->fromsock);
+  const bNodeTreeInterfaceSocket *io_socket = node_interface::add_interface_socket_from_node(
+      *ntree, *link->fromnode, *link->fromsock);
   if (!io_socket) {
     return false;
   }
   update_node_declaration_and_sockets(*ntree, *node);
-  link->tosock = node_group_output_find_socket(node, io_socket->identifier);
+  link->tosock = node_group_output_find_socket(node, io_socket->socket_identifier().c_str());
   return true;
 }
 

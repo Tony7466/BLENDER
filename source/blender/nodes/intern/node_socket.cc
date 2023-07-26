@@ -626,31 +626,32 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
   to->flag |= (from->flag & SOCK_HIDE_VALUE);
 }
 
-static void standard_node_socket_interface_init_socket(bNodeTree * /*ntree*/,
-                                                       const bNodeSocket *interface_socket,
-                                                       bNode * /*node*/,
-                                                       bNodeSocket *sock,
-                                                       const char * /*data_path*/)
+static void standard_node_socket_interface_init_socket(
+    bNodeTree * /*ntree*/,
+    const bNodeTreeInterfaceSocket *interface_socket,
+    bNode * /*node*/,
+    bNodeSocket *sock,
+    const char * /*data_path*/)
 {
   /* initialize the type value */
   sock->type = sock->typeinfo->type;
 
-  /* XXX socket interface 'type' value is not used really,
-   * but has to match or the copy function will bail out
-   */
-  const_cast<bNodeSocket *>(interface_socket)->type = interface_socket->typeinfo->type;
-  /* copy default_value settings */
-  node_socket_copy_default_value(sock, interface_socket);
+  node_socket_init_default_value_data(
+      eNodeSocketDatatype(sock->type), sock->typeinfo->subtype, &sock->default_value);
+  node_socket_copy_default_value_data(
+      eNodeSocketDatatype(sock->type), sock->default_value, interface_socket->socket_data);
 }
 
 static void standard_node_socket_interface_from_socket(bNodeTree * /*ntree*/,
-                                                       bNodeSocket *stemp,
+                                                       bNodeTreeInterfaceSocket *iosock,
                                                        const bNode * /*node*/,
                                                        const bNodeSocket *sock)
 {
   /* initialize settings */
-  stemp->type = stemp->typeinfo->type;
-  node_socket_copy_default_value(stemp, sock);
+  iosock->socket_type = BLI_strdup(sock->idname);
+  node_socket_init_default_value_data(
+      eNodeSocketDatatype(sock->type), sock->typeinfo->subtype, &iosock->socket_data);
+  node_socket_copy_default_value_data(eNodeSocketDatatype(sock->type), iosock->socket_data, sock);
 }
 
 extern "C" void ED_init_standard_node_socket_type(bNodeSocketType *);
