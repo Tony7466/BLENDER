@@ -44,15 +44,15 @@ static void bm_face_triangulate_mapping(BMesh *bm,
 {
   int faces_array_tot = face->len - 3;
   BMFace **faces_array = BLI_array_alloca(faces_array, faces_array_tot);
-  LinkNode *faces_double = NULL;
+  LinkNode *faces_double = nullptr;
   BLI_assert(face->len > 3);
 
   BM_face_triangulate(bm,
                       face,
                       faces_array,
                       &faces_array_tot,
-                      NULL,
-                      NULL,
+                      nullptr,
+                      nullptr,
                       &faces_double,
                       quad_method,
                       ngon_method,
@@ -96,7 +96,7 @@ void BM_mesh_triangulate(BMesh *bm,
     pf_heap = BLI_heap_new_ex(BLI_POLYFILL_ALLOC_NGON_RESERVE);
   }
   else {
-    pf_heap = NULL;
+    pf_heap = nullptr;
   }
 
   if (slot_facemap_out) {
@@ -119,17 +119,17 @@ void BM_mesh_triangulate(BMesh *bm,
     }
   }
   else {
-    LinkNode *faces_double = NULL;
+    LinkNode *faces_double = nullptr;
 
     BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
       if (face->len >= min_vertices) {
         if (tag_only == false || BM_elem_flag_test(face, BM_ELEM_TAG)) {
           BM_face_triangulate(bm,
                               face,
-                              NULL,
-                              NULL,
-                              NULL,
-                              NULL,
+                              nullptr,
+                              nullptr,
+                              nullptr,
+                              nullptr,
                               &faces_double,
                               quad_method,
                               ngon_method,
@@ -142,7 +142,7 @@ void BM_mesh_triangulate(BMesh *bm,
 
     while (faces_double) {
       LinkNode *next = faces_double->next;
-      BM_face_kill(bm, faces_double->link);
+      BM_face_kill(bm, static_cast<BMFace *>(faces_double->link));
       MEM_freeN(faces_double);
       faces_double = next;
     }
@@ -151,6 +151,6 @@ void BM_mesh_triangulate(BMesh *bm,
   BLI_memarena_free(pf_arena);
 
   if (ngon_method == MOD_TRIANGULATE_NGON_BEAUTY) {
-    BLI_heap_free(pf_heap, NULL);
+    BLI_heap_free(pf_heap, nullptr);
   }
 }
