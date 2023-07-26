@@ -276,12 +276,6 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             Span<ItemDeclarationPtr> item_decls,
                                             const bool do_id_user)
 {
-  Vector<bNodeSocket *> old_inputs = node.inputs;
-  Vector<bNodeSocket *> old_outputs = node.outputs;
-  Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
-  VectorSet<bNodeSocket *> new_inputs;
-  VectorSet<bNodeSocket *> new_outputs;
-
   /* Count panels */
   int num_panels = 0;
   for (const ItemDeclarationPtr &item_decl : item_decls) {
@@ -289,42 +283,52 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
       ++num_panels;
     }
   }
-
+  /* New panel states buffer. */
   MEM_SAFE_FREE(node.panel_states_array);
   node.num_panel_states = num_panels;
   node.panel_states_array = MEM_cnew_array<bNodePanelState>(num_panels, __func__);
   bNodePanelState *new_panel = node.panel_states_array;
 
-  for (const ItemDeclarationPtr &item_decl : item_decls) {
-    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
-            item_decl.get()))
-    {
-      if (socket_decl->in_out == SOCK_IN) {
-        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
+  /* Find list of sockets to add, mixture of old and new sockets. */
+  VectorSet<bNodeSocket *> new_inputs;
+  VectorSet<bNodeSocket *> new_outputs;
+  {
+    Vector<bNodeSocket *> old_inputs = node.inputs;
+    Vector<bNodeSocket *> old_outputs = node.outputs;
+    Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
+    for (const ItemDeclarationPtr &item_decl : item_decls) {
+      if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
+              item_decl.get()))
+      {
+        if (socket_decl->in_out == SOCK_IN) {
+          refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
+        }
+        else {
+          refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
+        }
       }
-      else {
-        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
+      else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
+                   item_decl.get()))
+      {
+        refresh_node_panel(*panel_decl, old_panels, *new_panel);
+        ++new_panel;
       }
-    }
-    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
-                 item_decl.get()))
-    {
-      refresh_node_panel(*panel_decl, old_panels, *new_panel);
-      ++new_panel;
     }
   }
 
-  /* Update socket lists. */
-  for (bNodeSocket *old_socket : old_inputs) {
+  /* Destroy any remaining sockets that are no longer in the declaration. */
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, old_socket, &node.inputs) {
     if (!new_inputs.contains(old_socket)) {
       blender::bke::nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
     }
   }
-  for (bNodeSocket *old_socket : old_outputs) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, old_socket, &node.outputs) {
     if (!new_outputs.contains(old_socket)) {
       blender::bke::nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
     }
   }
+
+  /* Clear and reinsert sockets in the new order. */
   BLI_listbase_clear(&node.inputs);
   BLI_listbase_clear(&node.outputs);
   for (bNodeSocket *socket : new_inputs) {
