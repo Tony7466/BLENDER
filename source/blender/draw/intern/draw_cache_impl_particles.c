@@ -298,14 +298,14 @@ static void particle_calculate_parent_uvs(ParticleSystem *psys,
   ParticleData *particle = &psys->particles[parent_index];
   int num = particle->num_dmcache;
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < psmd->mesh_final->totface) {
+    if (particle->num < psmd->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
   if (!ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
+    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE);
     if (UNLIKELY(mfaces == NULL)) {
-      BLI_assert_msg(psmd->mesh_final->totpoly == 0,
+      BLI_assert_msg(psmd->mesh_final->faces_num == 0,
                      "A mesh with polygons should always have a generated 'CD_MFACE' layer!");
       return;
     }
@@ -333,14 +333,14 @@ static void particle_calculate_parent_mcol(ParticleSystem *psys,
   ParticleData *particle = &psys->particles[parent_index];
   int num = particle->num_dmcache;
   if (ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    if (particle->num < psmd->mesh_final->totface) {
+    if (particle->num < psmd->mesh_final->totface_legacy) {
       num = particle->num;
     }
   }
   if (!ELEM(num, DMCACHE_NOTFOUND, DMCACHE_ISCHILD)) {
-    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
+    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE);
     if (UNLIKELY(mfaces == NULL)) {
-      BLI_assert_msg(psmd->mesh_final->totpoly == 0,
+      BLI_assert_msg(psmd->mesh_final->faces_num == 0,
                      "A mesh with polygons should always have a generated 'CD_MFACE' layer!");
       return;
     }
@@ -370,7 +370,7 @@ static void particle_interpolate_children_uvs(ParticleSystem *psys,
   ChildParticle *particle = &psys->child[child_index];
   int num = particle->num;
   if (num != DMCACHE_NOTFOUND) {
-    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
+    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE);
     const MFace *mface = &mfaces[num];
     for (int j = 0; j < num_uv_layers; j++) {
       psys_interpolate_uvs(mtfaces[j] + num, mface->v4, particle->fuv, r_uv[j]);
@@ -395,7 +395,7 @@ static void particle_interpolate_children_mcol(ParticleSystem *psys,
   ChildParticle *particle = &psys->child[child_index];
   int num = particle->num;
   if (num != DMCACHE_NOTFOUND) {
-    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata, CD_MFACE);
+    const MFace *mfaces = CustomData_get_layer(&psmd->mesh_final->fdata_legacy, CD_MFACE);
     const MFace *mface = &mfaces[num];
     for (int j = 0; j < num_col_layers; j++) {
       /* CustomDataLayer CD_MCOL has 4 structs per face. */
@@ -836,21 +836,22 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
   ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
 
   if (psmd != NULL && psmd->mesh_final != NULL) {
-    if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2)) {
-      cache->num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      render_uv = CustomData_get_render_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
+    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2)) {
+      cache->num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
+                                                         CD_PROP_FLOAT2);
+      active_uv = CustomData_get_active_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
+      render_uv = CustomData_get_render_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
     }
-    if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
-      cache->num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata,
+    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
+      cache->num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
                                                           CD_PROP_BYTE_COLOR);
       if (psmd->mesh_final->active_color_attribute != NULL) {
-        active_col = CustomData_get_named_layer(&psmd->mesh_final->ldata,
+        active_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->active_color_attribute);
       }
       if (psmd->mesh_final->default_color_attribute != NULL) {
-        render_col = CustomData_get_named_layer(&psmd->mesh_final->ldata,
+        render_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->default_color_attribute);
       }
@@ -900,7 +901,7 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
     GPU_vertbuf_attr_get_raw_data(cache->proc_uv_buf[i], uv_id, &uv_step[i]);
 
     char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-    const char *name = CustomData_get_layer_name(&psmd->mesh_final->ldata, CD_PROP_FLOAT2, i);
+    const char *name = CustomData_get_layer_name(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2, i);
     GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
     int n = 0;
@@ -934,7 +935,8 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
     GPU_vertbuf_attr_get_raw_data(cache->proc_col_buf[i], col_id, &col_step[i]);
 
     char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-    const char *name = CustomData_get_layer_name(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR, i);
+    const char *name = CustomData_get_layer_name(
+        &psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR, i);
     GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
     int n = 0;
@@ -956,12 +958,13 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
     if (cache->num_uv_layers) {
       for (int j = 0; j < cache->num_uv_layers; j++) {
         mtfaces[j] = (const MTFace *)CustomData_get_layer_n(
-            &psmd->mesh_final->fdata, CD_MTFACE, j);
+            &psmd->mesh_final->fdata_legacy, CD_MTFACE, j);
       }
     }
     if (cache->num_col_layers) {
       for (int j = 0; j < cache->num_col_layers; j++) {
-        mcols[j] = (const MCol *)CustomData_get_layer_n(&psmd->mesh_final->fdata, CD_MCOL, j);
+        mcols[j] = (const MCol *)CustomData_get_layer_n(
+            &psmd->mesh_final->fdata_legacy, CD_MCOL, j);
       }
     }
   }
@@ -1179,14 +1182,15 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
   MCol **parent_mcol = NULL;
 
   if (psmd != NULL) {
-    if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2)) {
-      num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
+    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2)) {
+      num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
+      active_uv = CustomData_get_active_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
     }
-    if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
-      num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR);
+    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
+      num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
+                                                   CD_PROP_BYTE_COLOR);
       if (psmd->mesh_final->active_color_attribute != NULL) {
-        active_col = CustomData_get_named_layer(&psmd->mesh_final->ldata,
+        active_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->active_color_attribute);
       }
@@ -1207,7 +1211,8 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
     for (int i = 0; i < num_uv_layers; i++) {
 
       char uuid[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-      const char *name = CustomData_get_layer_name(&psmd->mesh_final->ldata, CD_PROP_FLOAT2, i);
+      const char *name = CustomData_get_layer_name(
+          &psmd->mesh_final->loop_data, CD_PROP_FLOAT2, i);
       GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
       SNPRINTF(uuid, "a%s", attr_safe_name);
@@ -1221,7 +1226,7 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
     for (int i = 0; i < num_col_layers; i++) {
       char uuid[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
       const char *name = CustomData_get_layer_name(
-          &psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR, i);
+          &psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR, i);
       GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
       SNPRINTF(uuid, "a%s", attr_safe_name);
@@ -1245,13 +1250,14 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
       mtfaces = MEM_mallocN(sizeof(*mtfaces) * num_uv_layers, "Faces UV layers");
       for (int i = 0; i < num_uv_layers; i++) {
         mtfaces[i] = (const MTFace *)CustomData_get_layer_n(
-            &psmd->mesh_final->fdata, CD_MTFACE, i);
+            &psmd->mesh_final->fdata_legacy, CD_MTFACE, i);
       }
     }
     if (num_col_layers) {
       mcols = MEM_mallocN(sizeof(*mcols) * num_col_layers, "Color layers");
       for (int i = 0; i < num_col_layers; i++) {
-        mcols[i] = (const MCol *)CustomData_get_layer_n(&psmd->mesh_final->fdata, CD_MCOL, i);
+        mcols[i] = (const MCol *)CustomData_get_layer_n(
+            &psmd->mesh_final->fdata_legacy, CD_MCOL, i);
       }
     }
   }

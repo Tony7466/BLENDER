@@ -301,7 +301,7 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
   }
 
   if (direction == MOD_DISP_DIR_CLNOR) {
-    CustomData *ldata = &mesh->ldata;
+    CustomData *ldata = &mesh->loop_data;
 
     if (CustomData_has_layer(ldata, CD_CUSTOMLOOPNORMAL)) {
       if (!CustomData_has_layer(ldata, CD_NORMAL)) {
@@ -446,6 +446,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Displace = {
+    /*idname*/ "Displace",
     /*name*/ N_("Displace"),
     /*structName*/ "DisplaceModifierData",
     /*structSize*/ sizeof(DisplaceModifierData),

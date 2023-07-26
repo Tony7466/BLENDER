@@ -83,7 +83,7 @@ static Mesh *mirror_apply_on_axis(MirrorModifierData *mmd,
      * users may leave this on and not realize there is nothing to merge - campbell */
 
     /* TODO(mano-wii): Polygons with all vertices merged are the ones that form duplicates.
-     * Therefore the duplicate polygon test can be skipped. */
+     * Therefore the duplicate face test can be skipped. */
     if (vert_merge_map_len) {
       Mesh *tmp = result;
       result = geometry::mesh_merge_verts(
@@ -232,6 +232,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Mirror = {
+    /*idname*/ "Mirror",
     /*name*/ N_("Mirror"),
     /*structName*/ "MirrorModifierData",
     /*structSize*/ sizeof(MirrorModifierData),
