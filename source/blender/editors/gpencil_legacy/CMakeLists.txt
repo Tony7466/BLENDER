@@ -43,7 +43,7 @@ set(SRC
   gpencil_ops_versioning.cc
   gpencil_paint.cc
   gpencil_primitive.cc
-  gpencil_sculpt_paint.c
+  gpencil_sculpt_paint.cc
   gpencil_select.c
   gpencil_undo.cc
   gpencil_utils.c
