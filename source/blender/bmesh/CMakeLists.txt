@@ -89,7 +89,7 @@ set(SRC
   intern/bmesh_mesh_normals.h
   intern/bmesh_mesh_partial_update.cc
   intern/bmesh_mesh_partial_update.h
-  intern/bmesh_mesh_tessellate.c
+  intern/bmesh_mesh_tessellate.cc
   intern/bmesh_mesh_tessellate.h
   intern/bmesh_mesh_validate.c
   intern/bmesh_mesh_validate.h
