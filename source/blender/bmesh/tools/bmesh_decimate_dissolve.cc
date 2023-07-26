@@ -127,7 +127,7 @@ static bool bm_vert_is_delimiter(const BMVert *v,
                                  const BMO_Delimit delimit,
                                  const struct DelimitData *delimit_data)
 {
-  BLI_assert(v->e != NULL);
+  BLI_assert(v->e != nullptr);
 
   if (delimit != 0) {
     const BMEdge *e, *e_first;
@@ -300,7 +300,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     }
     else {
       delimit_data.cd_loop_type = CD_PROP_FLOAT2;
-      delimit_data.cd_loop_size = CustomData_sizeof(delimit_data.cd_loop_type);
+      delimit_data.cd_loop_size = CustomData_sizeof(eCustomDataType(delimit_data.cd_loop_type));
       delimit_data.cd_loop_offset = CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, 0);
       delimit_data.cd_loop_offset_end = delimit_data.cd_loop_size * layer_len;
     }
@@ -310,7 +310,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
   if (1) {
     BMEdge **earray;
     Heap *eheap;
-    HeapNode **eheap_table = _heap_table;
+    HeapNode **eheap_table = static_cast<HeapNode **>(_heap_table);
     HeapNode *enode_top;
     int *vert_reverse_lookup;
     BMIter iter;
@@ -337,10 +337,10 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     while ((BLI_heap_is_empty(eheap) == false) &&
            (BLI_heap_node_value(enode_top = BLI_heap_top(eheap)) < angle_limit_cos_neg))
     {
-      BMFace *f_new = NULL;
+      BMFace *f_new = nullptr;
       BMEdge *e;
 
-      e = BLI_heap_node_ptr(enode_top);
+      e = static_cast<BMEdge *>(BLI_heap_node_ptr(enode_top));
       i = BM_elem_index_get(e);
 
       if (BM_edge_is_manifold(e)) {
@@ -350,7 +350,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
           BMLoop *l_first, *l_iter;
 
           BLI_heap_remove(eheap, enode_top);
-          eheap_table[i] = NULL;
+          eheap_table[i] = nullptr;
 
           /* update normal */
           BM_face_normal_update(f_new);
@@ -370,14 +370,14 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
         }
       }
 
-      if (UNLIKELY(f_new == NULL)) {
+      if (UNLIKELY(f_new == nullptr)) {
         BLI_heap_node_value_update(eheap, enode_top, COST_INVALID);
       }
     }
 
     /* prepare for cleanup */
     BM_mesh_elem_index_ensure(bm, BM_VERT);
-    vert_reverse_lookup = MEM_mallocN(sizeof(int) * bm->totvert, __func__);
+    vert_reverse_lookup = static_cast<int *>(MEM_mallocN(sizeof(int) * bm->totvert, __func__));
     copy_vn_i(vert_reverse_lookup, bm->totvert, -1);
     for (i = 0; i < vinput_len; i++) {
       BMVert *v = vinput_arr[i];
@@ -385,12 +385,12 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     }
 
     /* --- cleanup --- */
-    earray = MEM_mallocN(sizeof(BMEdge *) * bm->totedge, __func__);
+    earray = static_cast<BMEdge **>(MEM_mallocN(sizeof(BMEdge *) * bm->totedge, __func__));
     BM_ITER_MESH_INDEX (e_iter, &iter, bm, BM_EDGES_OF_MESH, i) {
       earray[i] = e_iter;
     }
     /* Remove all edges/verts left behind from dissolving,
-     * NULL'ing the vertex array so we don't re-use. */
+     * nullptr'ing the vertex array so we don't re-use. */
     for (i = bm->totedge - 1; i != -1; i--) {
       e_iter = earray[i];
 
@@ -400,17 +400,17 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
         BMVert *v1 = e_iter->v1;
         BMVert *v2 = e_iter->v2;
         BM_edge_kill(bm, e_iter);
-        if (v1->e == NULL) {
+        if (v1->e == nullptr) {
           vidx_reverse = vert_reverse_lookup[BM_elem_index_get(v1)];
           if (vidx_reverse != -1) {
-            vinput_arr[vidx_reverse] = NULL;
+            vinput_arr[vidx_reverse] = nullptr;
           }
           BM_vert_kill(bm, v1);
         }
-        if (v2->e == NULL) {
+        if (v2->e == nullptr) {
           vidx_reverse = vert_reverse_lookup[BM_elem_index_get(v2)];
           if (vidx_reverse != -1) {
-            vinput_arr[vidx_reverse] = NULL;
+            vinput_arr[vidx_reverse] = nullptr;
           }
           BM_vert_kill(bm, v2);
         }
@@ -419,7 +419,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     MEM_freeN(vert_reverse_lookup);
     MEM_freeN(earray);
 
-    BLI_heap_free(eheap, NULL);
+    BLI_heap_free(eheap, nullptr);
   }
 
   /* --- second verts --- */
@@ -427,14 +427,14 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     /* simple version of the branch below, since we will dissolve _all_ verts that use 2 edges */
     for (i = 0; i < vinput_len; i++) {
       BMVert *v = vinput_arr[i];
-      if (LIKELY(v != NULL) && BM_vert_is_edge_pair(v)) {
+      if (LIKELY(v != nullptr) && BM_vert_is_edge_pair(v)) {
         BM_vert_collapse_edge(bm, v->e, v, true, true, true); /* join edges */
       }
     }
   }
   else {
     Heap *vheap;
-    HeapNode **vheap_table = _heap_table;
+    HeapNode **vheap_table = static_cast<HeapNode **>(_heap_table);
     HeapNode *vnode_top;
 
     BMVert *v_iter;
@@ -449,7 +449,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
 
     for (i = 0; i < vinput_len; i++) {
       BMVert *v = vinput_arr[i];
-      if (LIKELY(v != NULL)) {
+      if (LIKELY(v != nullptr)) {
         const float cost = bm_vert_edge_face_angle(v, delimit, &delimit_data);
         vheap_table[i] = BLI_heap_insert(vheap, cost, v);
         BM_elem_index_set(v, i); /* set dirty */
@@ -459,10 +459,10 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
     while ((BLI_heap_is_empty(vheap) == false) &&
            (BLI_heap_node_value(vnode_top = BLI_heap_top(vheap)) < angle_limit))
     {
-      BMEdge *e_new = NULL;
+      BMEdge *e_new = nullptr;
       BMVert *v;
 
-      v = BLI_heap_node_ptr(vnode_top);
+      v = static_cast<BMVert *>(BLI_heap_node_ptr(vnode_top));
       i = BM_elem_index_get(v);
 
       if (
@@ -478,7 +478,7 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
         if (e_new) {
 
           BLI_heap_remove(vheap, vnode_top);
-          vheap_table[i] = NULL;
+          vheap_table[i] = nullptr;
 
           /* update normal */
           if (e_new->l) {
@@ -525,12 +525,12 @@ void BM_mesh_decimate_dissolve_ex(BMesh *bm,
         }
       }
 
-      if (UNLIKELY(e_new == NULL)) {
+      if (UNLIKELY(e_new == nullptr)) {
         BLI_heap_node_value_update(vheap, vnode_top, COST_INVALID);
       }
     }
 
-    BLI_heap_free(vheap, NULL);
+    BLI_heap_free(vheap, nullptr);
   }
 
   MEM_freeN(_heap_table);
@@ -544,8 +544,10 @@ void BM_mesh_decimate_dissolve(BMesh *bm,
   int vinput_len;
   int einput_len;
 
-  BMVert **vinput_arr = BM_iter_as_arrayN(bm, BM_VERTS_OF_MESH, NULL, &vinput_len, NULL, 0);
-  BMEdge **einput_arr = BM_iter_as_arrayN(bm, BM_EDGES_OF_MESH, NULL, &einput_len, NULL, 0);
+  BMVert **vinput_arr = static_cast<BMVert **>(
+      BM_iter_as_arrayN(bm, BM_VERTS_OF_MESH, nullptr, &vinput_len, nullptr, 0));
+  BMEdge **einput_arr = static_cast<BMEdge **>(
+      BM_iter_as_arrayN(bm, BM_EDGES_OF_MESH, nullptr, &einput_len, nullptr, 0));
 
   BM_mesh_decimate_dissolve_ex(bm,
                                angle_limit,

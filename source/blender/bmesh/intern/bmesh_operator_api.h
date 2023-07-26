@@ -539,6 +539,7 @@ typedef enum {
   BMO_DELIM_SHARP = 1 << 3,
   BMO_DELIM_UV = 1 << 4,
 } BMO_Delimit;
+ENUM_OPERATORS(BMO_Delimit, BMO_DELIM_UV)
 
 void BMO_op_flag_enable(BMesh *bm, BMOperator *op, int op_flag);
 void BMO_op_flag_disable(BMesh *bm, BMOperator *op, int op_flag);
