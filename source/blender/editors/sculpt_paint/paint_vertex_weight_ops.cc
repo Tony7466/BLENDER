@@ -742,13 +742,9 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   WPGradient_vertStoreBase *vert_cache = static_cast<WPGradient_vertStoreBase *>(
       gesture->user_data.data);
   Object *ob = CTX_data_active_object(C);
-  Mesh *me = static_cast<Mesh *>(ob->data);
-  bDeformGroup *dg = static_cast<bDeformGroup *>(
-      BLI_findlink(&me->vertex_group_names, me->vertex_group_active_index - 1));
-
   int ret;
 
-  if (dg->flag & DG_LOCK_WEIGHT) {
+  if (BKE_object_defgroup_active_is_locked(ob)) {
     BKE_report(op->reports, RPT_WARNING, "Active group is locked, aborting");
     ret = OPERATOR_CANCELLED;
   }
@@ -768,6 +764,7 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   if (ret & OPERATOR_CANCELLED) {
     if (vert_cache != nullptr) {
       if (vert_cache->wpp.wpaint_prev) {
+        Mesh *me = static_cast<Mesh *>(ob->data);
         MDeformVert *dvert = BKE_mesh_deform_verts_for_write(me);
         BKE_defvert_array_free_elems(dvert, me->totvert);
         BKE_defvert_array_copy(dvert, vert_cache->wpp.wpaint_prev, me->totvert);
