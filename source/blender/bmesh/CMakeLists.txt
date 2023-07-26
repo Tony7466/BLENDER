@@ -155,7 +155,7 @@ set(SRC
   tools/bmesh_separate.h
   tools/bmesh_triangulate.cc
   tools/bmesh_triangulate.h
-  tools/bmesh_wireframe.c
+  tools/bmesh_wireframe.cc
   tools/bmesh_wireframe.h
 
   bmesh_class.h

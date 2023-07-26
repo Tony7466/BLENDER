@@ -33,7 +33,7 @@ static BMLoop *bm_edge_tag_faceloop(BMEdge *e)
   } while ((l = l->radial_next) != l_first);
 
   /* in the case this is used, we know this will never happen */
-  return NULL;
+  return nullptr;
 }
 
 static void bm_vert_boundary_tangent(
@@ -42,7 +42,7 @@ static void bm_vert_boundary_tangent(
   BMIter iter;
   BMEdge *e_iter;
 
-  BMEdge *e_a = NULL, *e_b = NULL;
+  BMEdge *e_a = nullptr, *e_b = nullptr;
   BMVert *v_a, *v_b;
 
   BMLoop *l_a, *l_b;
@@ -54,7 +54,7 @@ static void bm_vert_boundary_tangent(
    * in case there are more - results won't be valid of course */
   BM_ITER_ELEM (e_iter, &iter, v, BM_EDGES_OF_VERT) {
     if (BM_elem_flag_test(e_iter, BM_ELEM_TAG)) {
-      if (e_a == NULL) {
+      if (e_a == nullptr) {
         e_a = e_iter;
       }
       else {
@@ -100,15 +100,15 @@ static void bm_vert_boundary_tangent(
 
     /* edge direction */
     v_a = BM_edge_other_vert(e_a, v);
-    v_b = NULL;
+    v_b = nullptr;
 
     sub_v3_v3v3(no_edge, v->co, v_a->co);
 
     /* check are we flipped the right way */
     BM_edge_calc_face_tangent(e_a, l_a, tvec_a);
 
-    *r_va_other = NULL;
-    *r_vb_other = NULL;
+    *r_va_other = nullptr;
+    *r_vb_other = nullptr;
   }
 
   /* find the normal */
@@ -175,17 +175,21 @@ void BM_mesh_wireframe(BMesh *bm,
   BMIter itersub;
 
   /* filled only with boundary verts */
-  BMVert **verts_src = MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__);
-  BMVert **verts_neg = MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__);
-  BMVert **verts_pos = MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__);
+  BMVert **verts_src = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__));
+  BMVert **verts_neg = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__));
+  BMVert **verts_pos = static_cast<BMVert **>(
+      MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__));
 
   /* Will over-allocate, but makes for easy lookups by index to keep aligned. */
-  BMVert **verts_boundary = use_boundary ? MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__) :
-                                           NULL;
+  BMVert **verts_boundary = static_cast<BMVert **>(
+      use_boundary ? MEM_mallocN(sizeof(BMVert *) * totvert_orig, __func__) : nullptr);
 
-  float *verts_relfac = (use_relative_offset || (cd_dvert_offset != -1)) ?
-                            MEM_mallocN(sizeof(float) * totvert_orig, __func__) :
-                            NULL;
+  float *verts_relfac = static_cast<float *>(
+      (use_relative_offset || (cd_dvert_offset != -1)) ?
+          MEM_mallocN(sizeof(float) * totvert_orig, __func__) :
+          nullptr);
 
   /* may over-alloc if not all faces have wire */
   BMVert **verts_loop;
@@ -253,7 +257,8 @@ void BM_mesh_wireframe(BMesh *bm,
         }
 
         if (cd_dvert_offset != -1) {
-          MDeformVert *dvert = BM_ELEM_CD_GET_VOID_P(v_src, cd_dvert_offset);
+          MDeformVert *dvert = static_cast<MDeformVert *>(
+              BM_ELEM_CD_GET_VOID_P(v_src, cd_dvert_offset));
           float defgrp_fac = BKE_defvert_find_weight(dvert, defgrp_index);
 
           if (defgrp_invert) {
@@ -270,8 +275,8 @@ void BM_mesh_wireframe(BMesh *bm,
         fac *= verts_relfac[i];
       }
 
-      verts_neg[i] = BM_vert_create(bm, NULL, v_src, BM_CREATE_NOP);
-      verts_pos[i] = BM_vert_create(bm, NULL, v_src, BM_CREATE_NOP);
+      verts_neg[i] = BM_vert_create(bm, nullptr, v_src, BM_CREATE_NOP);
+      verts_pos[i] = BM_vert_create(bm, nullptr, v_src, BM_CREATE_NOP);
 
       if (offset == 0.0f) {
         madd_v3_v3v3fl(verts_neg[i]->co, v_src->co, v_src->no, ofs_orig * fac);
@@ -286,8 +291,8 @@ void BM_mesh_wireframe(BMesh *bm,
     }
     else {
       /* could skip this */
-      verts_neg[i] = NULL;
-      verts_pos[i] = NULL;
+      verts_neg[i] = nullptr;
+      verts_pos[i] = nullptr;
     }
 
     /* conflicts with BM_vert_calc_median_tagged_edge_length */
@@ -300,7 +305,7 @@ void BM_mesh_wireframe(BMesh *bm,
     BM_mesh_elem_hflag_disable_all(bm, BM_VERT, BM_ELEM_TAG, false);
   }
 
-  verts_loop = MEM_mallocN(sizeof(BMVert *) * verts_loop_tot, __func__);
+  verts_loop = static_cast<BMVert **>(MEM_mallocN(sizeof(BMVert *) * verts_loop_tot, __func__));
   verts_loop_tot = 0; /* count up again */
 
   BM_ITER_MESH (f_src, &iter, bm, BM_FACES_OF_MESH) {
@@ -359,7 +364,7 @@ void BM_mesh_wireframe(BMesh *bm,
 
               fac_shell = fac;
               if (use_even_offset) {
-                if (va_other) { /* for verts with only one boundary edge - this will be NULL */
+                if (va_other) { /* for verts with only one boundary edge - this will be nullptr */
                   fac_shell *= shell_angle_to_dist(
                       ((float)M_PI - angle_on_axis_v3v3v3_v3(
                                          va_other->co, v_boundary->co, vb_other->co, no_face)) *
@@ -516,15 +521,15 @@ void BM_mesh_wireframe(BMesh *bm,
   if (use_replace) {
 
     if (use_tag) {
-      /* only remove faces which are original and used to make wire,
-       * use 'verts_pos' and 'verts_neg' to avoid a feedback loop. */
+/* only remove faces which are original and used to make wire,
+ * use 'verts_pos' and 'verts_neg' to avoid a feedback loop. */
 
-      /* vertex must be from 'verts_src' */
-#define VERT_DUPE_TEST_ORIG(v) (verts_neg[BM_elem_index_get(v)] != NULL)
-#define VERT_DUPE_TEST(v) (verts_pos[BM_elem_index_get(v)] != NULL)
+/* vertex must be from 'verts_src' */
+#define VERT_DUPE_TEST_ORIG(v) (verts_neg[BM_elem_index_get(v)] != nullptr)
+#define VERT_DUPE_TEST(v) (verts_pos[BM_elem_index_get(v)] != nullptr)
 #define VERT_DUPE_CLEAR(v) \
   { \
-    verts_pos[BM_elem_index_get(v)] = NULL; \
+    verts_pos[BM_elem_index_get(v)] = nullptr; \
   } \
   (void)0
 
