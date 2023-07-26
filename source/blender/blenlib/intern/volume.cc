@@ -122,6 +122,21 @@ bool GMutableGrid::try_copy_masked(const GGrid & /*other*/, const GridMask & /*m
   return false;
 }
 
+int64_t GMutableGrid::voxel_count() const
+{
+  return grid_ ? grid_->activeVoxelCount() : 0;
+}
+
+bool GMutableGrid::is_empty() const
+{
+  return grid_ ? grid_->empty() : true;
+}
+
+GMutableGrid::operator bool() const
+{
+  return grid_ != nullptr;
+}
+
 template<typename T>
 MutableGrid<T> MutableGrid<T>::create(ResourceScope &scope, const T &background_value)
 {
@@ -153,6 +168,21 @@ MutableGrid<T> MutableGrid<T>::create(ResourceScope &scope,
   return MutableGrid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
 }
 
+template<typename T> int64_t MutableGrid<T>::voxel_count() const
+{
+  return grid_ ? grid_->activeVoxelCount() : 0;
+}
+
+template<typename T> bool MutableGrid<T>::is_empty() const
+{
+  return grid_ ? grid_->empty() : true;
+}
+
+template<typename T> MutableGrid<T>::operator bool() const
+{
+  return grid_ != nullptr;
+}
+
 template<typename T> const CPPType *Grid<T>::value_type() const
 {
   return &CPPType::get<T>();
@@ -165,6 +195,21 @@ template<typename T> Grid<T>::operator GGrid()
 template<typename T> Grid<T>::operator GGrid const() const
 {
   return {grid_};
+}
+
+template<typename T> int64_t Grid<T>::voxel_count() const
+{
+  return grid_ ? grid_->activeVoxelCount() : 0;
+}
+
+template<typename T> bool Grid<T>::is_empty() const
+{
+  return grid_ ? grid_->empty() : true;
+}
+
+template<typename T> Grid<T>::operator bool() const
+{
+  return grid_ != nullptr;
 }
 
 #else

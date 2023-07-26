@@ -147,6 +147,8 @@ class GridMask {
   {
 #ifdef WITH_OPENVDB
     grid_ = other.grid_;
+#else
+    UNUSED_VARS(other);
 #endif
     return *this;
   }
