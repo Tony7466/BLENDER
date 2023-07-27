@@ -992,48 +992,12 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
 static void time_offset_graph_keys(bAnimContext *ac, const float factor)
 {
-  ListBase anim_data = {NULL, NULL};
-
-  ANIM_animdata_filter(
-      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase segments = find_fcurve_segments(fcu);
-
-    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      time_offset_fcurve_segment(fcu, segment, factor);
-    }
-
-    ale->update |= ANIM_UPDATE_DEFAULT;
-    BLI_freelistN(&segments);
-  }
-
-  ANIM_animdata_update(ac, &anim_data);
-  ANIM_animdata_freelist(&anim_data);
+  apply_fcu_segment_function(ac, factor, time_offset_fcurve_segment);
 }
 
 static void time_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
-  char status_str[UI_MAX_DRAW_STR];
-  char mode_str[32];
-  char slider_string[UI_MAX_DRAW_STR];
-
-  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
-
-  strcpy(mode_str, TIP_("Time Offset Keys"));
-
-  if (hasNumInput(&gso->num)) {
-    char str_ofs[NUM_STR_REP_LEN];
-
-    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
-
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
-  }
-  else {
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
-  }
-
-  ED_workspace_status_text(C, status_str);
+  common_draw_status_header(C, gso, "Time Offset Keys");
 }
 
 static void time_offset_modal_update(bContext *C, wmOperator *op)
