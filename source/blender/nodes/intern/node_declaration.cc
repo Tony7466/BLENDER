@@ -155,11 +155,13 @@ bool NodeDeclaration::matches(const bNode &node) const
           if (current_input == nullptr || !socket_decl->matches(*current_input)) {
             return false;
           }
+          current_input = current_input->next;
           break;
         case SOCK_OUT:
           if (current_output == nullptr || !socket_decl->matches(*current_output)) {
             return false;
           }
+          current_output = current_output->next;
           break;
       }
     }
@@ -170,11 +172,18 @@ bool NodeDeclaration::matches(const bNode &node) const
       {
         return false;
       }
+      ++current_panel;
     }
     else {
       /* Unknown item type. */
       BLI_assert_unreachable();
     }
+  }
+  /* If items are left over, some were removed from the declaration. */
+  if (current_input == nullptr || current_output == nullptr ||
+      !node.panel_states().contains_ptr(current_panel))
+  {
+    return false;
   }
   return true;
 }
