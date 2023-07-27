@@ -846,9 +846,7 @@ static bool rna_TextCurve_is_select_bold_get(PointerRNA *ptr)
   if (cu->editfont != nullptr) {
     return (cu->editfont->select_char_info_flag & CU_CHINFO_BOLD);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static void rna_TextCurve_is_select_bold_set(PointerRNA *ptr, const bool value)
@@ -865,9 +863,7 @@ static bool rna_TextCurve_is_select_italic_get(PointerRNA *ptr)
   if (cu->editfont != nullptr) {
     return (cu->editfont->select_char_info_flag & CU_CHINFO_ITALIC);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static void rna_TextCurve_is_select_italic_set(PointerRNA *ptr, const bool value)
@@ -884,9 +880,7 @@ static bool rna_TextCurve_is_select_underline_get(PointerRNA *ptr)
   if (cu->editfont != nullptr) {
     return (cu->editfont->select_char_info_flag & CU_CHINFO_UNDERLINE);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static void rna_TextCurve_is_select_underline_set(PointerRNA *ptr, const bool value)
@@ -903,9 +897,7 @@ static bool rna_TextCurve_is_select_smallcaps_get(PointerRNA *ptr)
   if (cu->editfont != nullptr) {
     return (cu->editfont->select_char_info_flag & CU_CHINFO_SMALLCAPS);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static void rna_TextCurve_is_select_smallcap_set(PointerRNA *ptr, const bool value)
@@ -922,9 +914,7 @@ static bool rna_TextCurve_has_selection_get(PointerRNA *ptr)
   if (cu->editfont != nullptr) {
     return (cu->editfont->selboxes != nullptr);
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 #else
