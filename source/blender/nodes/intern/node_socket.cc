@@ -248,7 +248,7 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   for (const int i : old_panels.index_range()) {
     bNodePanelState &old_panel = old_panels[i];
     if (old_panel.uid == panel_decl.uid) {
-      old_panels.remove_and_reorder(i);
+      /* Panel is removed after copying to #new_panel. */
       old_panel_with_same_identifier = &old_panel;
       break;
     }
@@ -268,6 +268,10 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
       old_panel_with_same_identifier->uid = -1;
       panel_decl.update_or_build(*old_panel_with_same_identifier, new_panel);
     }
+
+    /* Remove from old panels. */
+    const int64_t old_panel_index = old_panel_with_same_identifier - old_panels.begin();
+    old_panels.remove_and_reorder(old_panel_index);
   }
 }
 
@@ -277,21 +281,21 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             const bool do_id_user)
 {
   /* Count panels */
-  int num_panels = 0;
+  int new_num_panels = 0;
   for (const ItemDeclarationPtr &item_decl : item_decls) {
     if (dynamic_cast<const PanelDeclaration *>(item_decl.get())) {
-      ++num_panels;
+      ++new_num_panels;
     }
   }
   /* New panel states buffer. */
   MEM_SAFE_FREE(node.panel_states_array);
-  node.num_panel_states = num_panels;
-  node.panel_states_array = MEM_cnew_array<bNodePanelState>(num_panels, __func__);
-  bNodePanelState *new_panel = node.panel_states_array;
+  node.num_panel_states = new_num_panels;
+  node.panel_states_array = MEM_cnew_array<bNodePanelState>(new_num_panels, __func__);
 
   /* Find list of sockets to add, mixture of old and new sockets. */
   VectorSet<bNodeSocket *> new_inputs;
   VectorSet<bNodeSocket *> new_outputs;
+  bNodePanelState *new_panel = node.panel_states_array;
   {
     Vector<bNodeSocket *> old_inputs = node.inputs;
     Vector<bNodeSocket *> old_outputs = node.outputs;
