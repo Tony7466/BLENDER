@@ -88,11 +88,13 @@ class NodeSocketViewItem : public BasicTreeViewItem {
   NodeSocketViewItem(bNodeTree &nodetree,
                      bNodeTreeInterface &interface,
                      bNodeTreeInterfaceSocket &socket)
-      : BasicTreeViewItem(socket.name, ICON_NONE),
-        nodetree_(nodetree),
-        interface_(interface),
-        socket_(socket)
+      : BasicTreeViewItem(socket.name, ICON_NONE), nodetree_(nodetree), socket_(socket)
   {
+    set_is_active_fn([interface, socket]() { return interface.active_item() == &socket.item; });
+    set_on_activate_fn([&interface](bContext & /*C*/, BasicTreeViewItem &new_active) {
+      NodeSocketViewItem &self = static_cast<NodeSocketViewItem &>(new_active);
+      interface.active_item_set(&self.socket_.item);
+    });
   }
 
   void build_row(uiLayout &row) override
@@ -139,15 +141,6 @@ class NodeSocketViewItem : public BasicTreeViewItem {
     return &socket_ == &other_item->socket_;
   }
 
-  std::optional<bool> should_be_active() const override
-  {
-    return interface_.active_item() == &socket_.item;
-  }
-  void on_activate() override
-  {
-    interface_.active_item_set(&socket_.item);
-  }
-
   bool supports_renaming() const override
   {
     return true;
@@ -169,7 +162,6 @@ class NodeSocketViewItem : public BasicTreeViewItem {
 
  private:
   bNodeTree &nodetree_;
-  bNodeTreeInterface &interface_;
   bNodeTreeInterfaceSocket &socket_;
 };
 
@@ -178,11 +170,13 @@ class NodePanelViewItem : public BasicTreeViewItem {
   NodePanelViewItem(bNodeTree &nodetree,
                     bNodeTreeInterface &interface,
                     bNodeTreeInterfacePanel &panel)
-      : BasicTreeViewItem(panel.name, ICON_NONE),
-        nodetree_(nodetree),
-        interface_(interface),
-        panel_(panel)
+      : BasicTreeViewItem(panel.name, ICON_NONE), nodetree_(nodetree), panel_(panel)
   {
+    set_is_active_fn([interface, panel]() { return interface.active_item() == &panel.item; });
+    set_on_activate_fn([&interface](bContext & /*C*/, BasicTreeViewItem &new_active) {
+      NodePanelViewItem &self = static_cast<NodePanelViewItem &>(new_active);
+      interface.active_item_set(&self.panel_.item);
+    });
   }
 
   void build_row(uiLayout &row) override
@@ -202,15 +196,6 @@ class NodePanelViewItem : public BasicTreeViewItem {
     }
 
     return &panel_ == &other_item->panel_;
-  }
-
-  std::optional<bool> should_be_active() const override
-  {
-    return interface_.active_item() == &panel_.item;
-  }
-  void on_activate() override
-  {
-    interface_.active_item_set(&panel_.item);
   }
 
   bool supports_renaming() const override
@@ -234,7 +219,6 @@ class NodePanelViewItem : public BasicTreeViewItem {
 
  private:
   bNodeTree &nodetree_;
-  bNodeTreeInterface &interface_;
   bNodeTreeInterfacePanel &panel_;
 };
 
