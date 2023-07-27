@@ -68,7 +68,7 @@ static wmGizmo *wm_gizmo_create(const wmGizmoType *gzt, PointerRNA *properties)
   }
   RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), gzt->srna, gz->properties, gz->ptr);
 
-  WM_gizmo_properties_sanitize(gz->ptr, 0);
+  WM_gizmo_properties_sanitize(gz->ptr, false);
 
   unit_m4(gz->matrix_space);
   unit_m4(gz->matrix_basis);
@@ -522,7 +522,7 @@ int wm_gizmo_is_visible(wmGizmo *gz)
 }
 
 void WM_gizmo_calc_matrix_final_params(const wmGizmo *gz,
-                                       const struct WM_GizmoMatrixParams *params,
+                                       const WM_GizmoMatrixParams *params,
                                        float r_mat[4][4])
 {
   const float(*const matrix_space)[4] = params->matrix_space ? params->matrix_space :

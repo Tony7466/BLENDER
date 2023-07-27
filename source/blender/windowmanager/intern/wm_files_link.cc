@@ -8,12 +8,12 @@
  * Functions for dealing with append/link operators and helpers.
  */
 
-#include <ctype.h>
-#include <errno.h>
-#include <float.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cfloat>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -87,13 +87,13 @@ static bool wm_link_append_poll(bContext *C)
      * to leave from edit mode and invalid tools in toolbar might be displayed)
      * so disable link/append when in edit mode (sergey) */
     if (CTX_data_edit_object(C)) {
-      return 0;
+      return false;
     }
 
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
 }
 
 static int wm_link_append_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)

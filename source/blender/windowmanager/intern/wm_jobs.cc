@@ -8,7 +8,7 @@
  * Threaded job manager (high level job access).
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_windowmanager_types.h"
 
@@ -262,7 +262,7 @@ static void wm_jobs_update_progress_bars(wmWindowManager *wm)
 
   /* if there are running jobs, set the global progress indicator */
   if (jobs_progress > 0) {
-    float progress = total_progress / (float)jobs_progress;
+    float progress = total_progress / float(jobs_progress);
 
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       WM_progress_set(win, progress);

@@ -11,8 +11,8 @@
  * attached to modal handlers and have own keymaps.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -785,8 +785,9 @@ wmKeyMap *WM_gizmogroup_setup_keymap_generic_maybe_drag(const wmGizmoGroupType *
  * \param name: Typically #wmGizmoGroupType.name
  * \param params: Typically #wmGizmoGroupType.gzmap_params
  */
-static wmKeyMap *WM_gizmogroup_keymap_template_select_ex(
-    wmKeyConfig *kc, const char *name, const struct wmGizmoMapType_Params *params)
+static wmKeyMap *WM_gizmogroup_keymap_template_select_ex(wmKeyConfig *kc,
+                                                         const char *name,
+                                                         const wmGizmoMapType_Params *params)
 {
   /* Use area and region id since we might have multiple gizmos
    * with the same name in different areas/regions. */
