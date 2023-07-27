@@ -10,10 +10,10 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_kdtree.h"
 #include "BLI_math.h"
 #include "BLI_rand.h"
+#include "BLI_vector_set.hh"
 
 #include "BLT_translation.h"
 
@@ -206,9 +206,9 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   BLI_rng_free(rng);
 }
 
-static int edgecut_get(EdgeHash *edgehash, uint v1, uint v2)
+static int edgecut_get(const blender::VectorSet<blender::OrderedEdge> &edgehash, uint v1, uint v2)
 {
-  return POINTER_AS_INT(BLI_edgehash_lookup(edgehash, v1, v2));
+  return edgehash.index_of({int(v1), int(v2)});
 }
 
 static const short add_faces[24] = {
@@ -247,7 +247,7 @@ static void remap_faces_3_6_9_12(Mesh *mesh,
                                  int *facepa,
                                  const int *vertpa,
                                  int i,
-                                 EdgeHash *eh,
+                                 const blender::VectorSet<blender::OrderedEdge> &eh,
                                  int cur,
                                  int v1,
                                  int v2,
@@ -317,7 +317,7 @@ static void remap_faces_5_10(Mesh *mesh,
                              int *facepa,
                              const int *vertpa,
                              int i,
-                             EdgeHash *eh,
+                             const blender::VectorSet<blender::OrderedEdge> &eh,
                              int cur,
                              int v1,
                              int v2,
@@ -375,7 +375,7 @@ static void remap_faces_15(Mesh *mesh,
                            int *facepa,
                            const int *vertpa,
                            int i,
-                           EdgeHash *eh,
+                           const blender::VectorSet<blender::OrderedEdge> &eh,
                            int cur,
                            int v1,
                            int v2,
@@ -461,7 +461,7 @@ static void remap_faces_7_11_13_14(Mesh *mesh,
                                    int *facepa,
                                    const int *vertpa,
                                    int i,
-                                   EdgeHash *eh,
+                                   const blender::VectorSet<blender::OrderedEdge> &eh,
                                    int cur,
                                    int v1,
                                    int v2,
@@ -532,7 +532,7 @@ static void remap_faces_19_21_22(Mesh *mesh,
                                  int *facepa,
                                  const int *vertpa,
                                  int i,
-                                 EdgeHash *eh,
+                                 const blender::VectorSet<blender::OrderedEdge> &eh,
                                  int cur,
                                  int v1,
                                  int v2,
@@ -588,7 +588,7 @@ static void remap_faces_23(Mesh *mesh,
                            int *facepa,
                            const int *vertpa,
                            int i,
-                           EdgeHash *eh,
+                           const blender::VectorSet<blender::OrderedEdge> &eh,
                            int cur,
                            int v1,
                            int v2,
@@ -657,8 +657,6 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   MFace *mface = static_cast<MFace *>(
       CustomData_get_layer_for_write(&mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy));
   float *dupve;
-  EdgeHash *edgehash;
-  EdgeHashIterator *ehi;
   int totvert = mesh->totvert;
   int totface = mesh->totface_legacy;
 
@@ -666,12 +664,12 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   int *vertpa = static_cast<int *>(MEM_calloc_arrayN(totvert, sizeof(int), __func__));
   int *facepa = emd->facepa;
   int *fs, totesplit = 0, totfsplit = 0, curdupface = 0;
-  int i, v1, v2, v3, v4, esplit, v[4] = {0, 0, 0, 0}, /* To quite gcc barking... */
-      uv[4] = {0, 0, 0, 0};                           /* To quite gcc barking... */
+  int i, v1, v2, v3, v4, v[4] = {0, 0, 0, 0}, /* To quite gcc barking... */
+      uv[4] = {0, 0, 0, 0};                   /* To quite gcc barking... */
   int layers_num;
   int ed_v1, ed_v2;
 
-  edgehash = BLI_edgehash_new(__func__);
+  blender::VectorSet<blender::OrderedEdge> edgehash;
 
   /* recreate vertpa from facepa calculation */
   for (i = 0, mf = mface; i < totface; i++, mf++) {
@@ -690,12 +688,12 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
     v3 = vertpa[mf->v3];
 
     if (v1 != v2) {
-      BLI_edgehash_reinsert(edgehash, mf->v1, mf->v2, nullptr);
+      edgehash.add({mf->v1, mf->v2});
       (*fs) |= 1;
     }
 
     if (v2 != v3) {
-      BLI_edgehash_reinsert(edgehash, mf->v2, mf->v3, nullptr);
+      edgehash.add({mf->v2, mf->v3});
       (*fs) |= 2;
     }
 
@@ -703,38 +701,31 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
       v4 = vertpa[mf->v4];
 
       if (v3 != v4) {
-        BLI_edgehash_reinsert(edgehash, mf->v3, mf->v4, nullptr);
+        edgehash.add({mf->v3, mf->v4});
         (*fs) |= 4;
       }
 
       if (v1 != v4) {
-        BLI_edgehash_reinsert(edgehash, mf->v1, mf->v4, nullptr);
+        edgehash.add({mf->v1, mf->v4});
         (*fs) |= 8;
       }
 
       /* mark center vertex as a fake edge split */
       if (*fs == 15) {
-        BLI_edgehash_reinsert(edgehash, mf->v1, mf->v3, nullptr);
+        edgehash.add({mf->v1, mf->v3});
       }
     }
     else {
       (*fs) |= 16; /* mark face as tri */
 
       if (v1 != v3) {
-        BLI_edgehash_reinsert(edgehash, mf->v1, mf->v3, nullptr);
+        edgehash.add({mf->v1, mf->v3});
         (*fs) |= 4;
       }
     }
   }
 
   /* count splits & create indexes for new verts */
-  ehi = BLI_edgehashIterator_new(edgehash);
-  totesplit = totvert;
-  for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
-    BLI_edgehashIterator_setValue(ehi, POINTER_FROM_INT(totesplit));
-    totesplit++;
-  }
-  BLI_edgehashIterator_free(ehi);
 
   /* count new faces due to splitting */
   for (i = 0, fs = facesplit; i < totface; i++, fs++) {
@@ -742,7 +733,7 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   }
 
   split_m = BKE_mesh_new_nomain_from_template_ex(
-      mesh, totesplit, 0, totface + totfsplit, 0, 0, CD_MASK_EVERYTHING);
+      mesh, edgehash.size(), 0, totface + totfsplit, 0, 0, CD_MASK_EVERYTHING);
 
   layers_num = CustomData_number_of_layers(&split_m->fdata_legacy, CD_MTFACE);
 
@@ -777,7 +768,6 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
 
     mid_v3_v3v3(dupve, dupve, split_m_positions[ed_v1]);
   }
-  BLI_edgehashIterator_free(ehi);
 
   /* create new faces */
   curdupface = 0;  //=totface;
@@ -1116,9 +1106,6 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
     BKE_mesh_mface_index_validate(mf, &explode->fdata_legacy, u, (orig_v4 ? 4 : 3));
     u++;
   }
-
-  /* cleanup */
-  BLI_edgehash_free(vertpahash, nullptr);
 
   /* finalization */
   BKE_mesh_calc_edges_tessface(explode);

@@ -11,7 +11,8 @@
 /* debug builds only */
 #ifdef DEBUG
 
-#  include "BLI_edgehash.h"
+#  include "BLI_map.hh"
+#  include "BLI_ordered_edge.hh"
 #  include "BLI_utildefines.h"
 
 #  include "bmesh.h"
@@ -37,7 +38,8 @@
 
 bool BM_mesh_validate(BMesh *bm)
 {
-  EdgeHash *edge_hash = BLI_edgehash_new_ex(__func__, bm->totedge);
+  blender::Map<blender::OrderedEdge, BMEdge *> edge_hash;
+  edge_hash.reserve(bm->totedge);
   int errtot;
 
   BMIter iter;
@@ -77,14 +79,12 @@ bool BM_mesh_validate(BMesh *bm)
     }
 
     /* build edgehash at the same time */
-    if (BLI_edgehash_ensure_p(
-            edge_hash, BM_elem_index_get(e->v1), BM_elem_index_get(e->v2), &val_p)) {
-      BMEdge *e_other = static_cast<BMEdge *>(*val_p);
-      ERRMSG("edge %d, %d: are duplicates", i, BM_elem_index_get(e_other));
-    }
-    else {
-      *val_p = e;
-    }
+    edge_hash.add_or_modify(
+        {BM_elem_index_get(e->v1), BM_elem_index_get(e->v2)},
+        [&](BMEdge **value) { *value = e; },
+        [&](BMEdge **value) {
+          ERRMSG("edge %d, %d: are duplicates", i, BM_elem_index_get(*value));
+        });
   }
 
   /* edge radial structure */
@@ -191,8 +191,6 @@ bool BM_mesh_validate(BMesh *bm)
       BM_elem_flag_disable(l_iter->e, BM_ELEM_INTERNAL_TAG);
     } while ((l_iter = l_iter->next) != l_first);
   }
-
-  BLI_edgehash_free(edge_hash, nullptr);
 
   const bool is_valid = (errtot == 0);
   ERRMSG("Finished - errors %d", errtot);

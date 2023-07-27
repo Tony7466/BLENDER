@@ -1044,7 +1044,7 @@ SculptClothSimulation *SCULPT_cloth_brush_simulation_create(Object *ob,
   const int totverts = SCULPT_vertex_count_get(ss);
   SculptClothSimulation *cloth_sim;
 
-  cloth_sim = MEM_cnew<SculptClothSimulation>(__func__);
+  cloth_sim = MEM_new<SculptClothSimulation>(__func__);
 
   cloth_sim->length_constraints = MEM_cnew_array<SculptClothLengthConstraint>(
       CLOTH_LENGTH_CONSTRAINTS_BLOCK, __func__);

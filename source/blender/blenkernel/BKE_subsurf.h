@@ -11,8 +11,10 @@
 #include "BKE_DerivedMesh.h"
 
 /* Thread sync primitives used directly. */
+#include "BLI_ordered_edge.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,7 +26,6 @@ struct CCGFace;
 struct CCGVert;
 struct DMFlagMat;
 struct DerivedMesh;
-struct EdgeHash;
 struct Mesh;
 struct MeshElemMap;
 struct Object;
@@ -124,7 +125,7 @@ typedef struct CCGDerivedMesh {
     MultiresModifiedFlags modified_flags;
   } multires;
 
-  struct EdgeHash *ehash;
+  blender::VectorSet<blender::OrderedEdge> *ehash;
 
   ThreadMutex loops_cache_lock;
   ThreadRWMutex origindex_cache_rwlock;

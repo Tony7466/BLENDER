@@ -372,7 +372,7 @@ typedef struct SculptClothLengthConstraint {
 typedef struct SculptClothSimulation {
   SculptClothLengthConstraint *length_constraints;
   int tot_length_constraints;
-  struct EdgeSet *created_length_constraints;
+  blender::Set<blender::OrderedEdge> created_length_constraints;
   int capacity_length_constraints;
   float *length_constraint_tweak;
 

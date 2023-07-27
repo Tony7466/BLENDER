@@ -18,13 +18,13 @@
 #include "DNA_object_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_edgehash.h"
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
 #include "BLI_ordered_edge.hh"
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
@@ -1325,25 +1325,26 @@ void mesh_strip_edges(Mesh *me)
 void BKE_mesh_calc_edges_tessface(Mesh *mesh)
 {
   const int numFaces = mesh->totface_legacy;
-  EdgeSet *eh = BLI_edgeset_new_ex(__func__, BLI_EDGEHASH_SIZE_GUESS_FROM_FACES(numFaces));
+  blender::VectorSet<blender::OrderedEdge> eh;
+  eh.reserve(numFaces);
   MFace *mfaces = (MFace *)CustomData_get_layer_for_write(
       &mesh->fdata_legacy, CD_MFACE, mesh->totface_legacy);
 
   MFace *mf = mfaces;
   for (int i = 0; i < numFaces; i++, mf++) {
-    BLI_edgeset_add(eh, mf->v1, mf->v2);
-    BLI_edgeset_add(eh, mf->v2, mf->v3);
+    eh.add({mf->v1, mf->v2});
+    eh.add({mf->v2, mf->v3});
 
     if (mf->v4) {
-      BLI_edgeset_add(eh, mf->v3, mf->v4);
-      BLI_edgeset_add(eh, mf->v4, mf->v1);
+      eh.add({mf->v3, mf->v4});
+      eh.add({mf->v4, mf->v1});
     }
     else {
-      BLI_edgeset_add(eh, mf->v3, mf->v1);
+      eh.add({mf->v3, mf->v1});
     }
   }
 
-  const int numEdges = BLI_edgeset_len(eh);
+  const int numEdges = eh.size();
 
   /* write new edges into a temporary CustomData */
   CustomData edgeData;
@@ -1355,21 +1356,13 @@ void BKE_mesh_calc_edges_tessface(Mesh *mesh)
       &edgeData, CD_PROP_INT32_2D, ".edge_verts", mesh->totedge);
   int *index = (int *)CustomData_get_layer_for_write(&edgeData, CD_ORIGINDEX, mesh->totedge);
 
-  EdgeSetIterator *ehi = BLI_edgesetIterator_new(eh);
-  for (int i = 0; BLI_edgesetIterator_isDone(ehi) == false;
-       BLI_edgesetIterator_step(ehi), i++, ege++, index++)
-  {
-    BLI_edgesetIterator_getKey(ehi, &(*ege)[0], &(*ege)[1]);
-    *index = ORIGINDEX_NONE;
-  }
-  BLI_edgesetIterator_free(ehi);
+  memset(index, ORIGINDEX_NONE, sizeof(int) * numEdges);
+  MutableSpan(ege, numEdges).copy_from(eh.as_span().cast<blender::int2>());
 
   /* free old CustomData and assign new one */
   CustomData_free(&mesh->edge_data, mesh->totedge);
   mesh->edge_data = edgeData;
   mesh->totedge = numEdges;
-
-  BLI_edgeset_free(eh);
 }
 
 /** \} */
