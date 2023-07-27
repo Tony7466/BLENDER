@@ -77,13 +77,13 @@ static void append_selected_frame_to_key_edit_data(KeyframeEditData *ked,
   CfraElem *ce = MEM_cnew<CfraElem>(__func__);
   ce->cfra = float(frame_number);
   ce->sel = frame.is_selected();
-  BLI_addtail(&(ked->list), ce);
+  BLI_addtail(&ked->list, ce);
 }
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer *layer)
 {
-  BLI_assert((ked != nullptr));
+  BLI_assert(ked != nullptr);
 
   for (const auto &[frame_number, frame] : layer->frames().items()) {
     if (frame.is_selected()) {
