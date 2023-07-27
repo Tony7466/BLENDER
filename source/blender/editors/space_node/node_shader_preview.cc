@@ -464,20 +464,17 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   }
   Span<bNodeTreePath *> treepath = job_data.treepath_copy;
 
-  /* Disconnect shader, volume and displacement from the material output. */
-  bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
-  bNodeSocket *volume_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Volume");
+  /* Disconnect all input sockets of the material output node, but keep track of the displacment
+   * node. */
   bNodeSocket *disp_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Displacement");
-  if (surface_socket->link != nullptr) {
-    nodeRemLink(treepath.first()->nodetree, surface_socket->link);
-  }
-  if (volume_socket->link != nullptr) {
-    nodeRemLink(treepath.first()->nodetree, volume_socket->link);
-  }
   if (disp_socket->link != nullptr) {
     job_data.mat_displacement_copy = std::make_pair(disp_socket->link->fromnode,
                                                     disp_socket->link->fromsock);
-    nodeRemLink(treepath.first()->nodetree, disp_socket->link);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket_iter, &job_data.mat_output_copy->inputs) {
+    if (socket_iter->link != nullptr) {
+      nodeRemLink(treepath.first()->nodetree, socket_iter->link);
+    }
   }
 
   /* AOV nodes are rendered in the first RenderLayer so we route them now. */
