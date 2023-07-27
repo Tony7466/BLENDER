@@ -309,11 +309,10 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_BONE, TSE_EBONE)) {
     /* pass */
   }
-<<<<<<< HEAD
   else if (ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE)) {
-=======
+    /* pass */
+  }
   else if (type == TSE_LINKED_PSYS) {
->>>>>>> ee7ba1955c1 (Outliner: Port particle system elements to new tree-element code design)
     /* pass */
   }
   else if (type == TSE_SOME_ID) {
