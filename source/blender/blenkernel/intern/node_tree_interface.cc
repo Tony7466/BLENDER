@@ -730,16 +730,14 @@ int bNodeTreeInterfacePanel::find_item_index(const bNodeTreeInterfaceItem &item)
   bool found = false;
   /* Have to capture item address here instead of just a reference,
    * otherwise pointer comparison will not work. */
-  foreach_item(
-      [&item, &index, &found](const bNodeTreeInterfaceItem &titem) {
-        if (&titem == &item) {
-          found = true;
-          return false;
-        }
-        ++index;
-        return true;
-      },
-      true);
+  foreach_item([&item, &index, &found](const bNodeTreeInterfaceItem &titem) {
+    if (&titem == &item) {
+      found = true;
+      return false;
+    }
+    ++index;
+    return true;
+  });
   return found ? index : -1;
 }
 
