@@ -994,7 +994,8 @@ static void blend_offset_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
@@ -1037,7 +1038,7 @@ static void blend_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
 
 static void blend_offset_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   blend_offset_draw_status_header(C, gso);
 
@@ -1056,7 +1057,7 @@ static int blend_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = blend_offset_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_offset_draw_status_header(C, gso);
