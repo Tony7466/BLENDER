@@ -1081,7 +1081,7 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
 
         for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
           if (U.experimental.use_grease_pencil_version3) {
-            blender::ed::greasepencil ::make_cfralist_selected_frames(
+            blender::ed::greasepencil ::create_keyframe_edit_data_selected_frames_list(
                 &ked, static_cast<blender::bke::greasepencil::Layer *>(ale->data));
           }
           else {

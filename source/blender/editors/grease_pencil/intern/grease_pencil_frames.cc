@@ -80,7 +80,8 @@ static void append_selected_frame_to_key_edit_data(KeyframeEditData *ked,
   BLI_addtail(&(ked->list), ce);
 }
 
-void make_cfralist_selected_frames(KeyframeEditData *ked, const bke::greasepencil::Layer *layer)
+void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
+                                                    const bke::greasepencil::Layer *layer)
 {
   BLI_assert((ked != nullptr));
 

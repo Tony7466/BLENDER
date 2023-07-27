@@ -76,7 +76,8 @@ void select_all_frames(bke::greasepencil::Layer *layer, const short select_mode)
  */
 bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer);
 
-void make_cfralist_selected_frames(KeyframeEditData *ked, const bke::greasepencil::Layer *layer);
+void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
+                                                    const bke::greasepencil::Layer *layer);
 
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
