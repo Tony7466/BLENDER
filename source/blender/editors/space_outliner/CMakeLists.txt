@@ -4,6 +4,7 @@
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../depsgraph
@@ -106,7 +107,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_undo

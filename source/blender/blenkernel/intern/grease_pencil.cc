@@ -577,6 +577,16 @@ bool Layer::is_editable() const
   return !this->is_locked() && this->is_visible();
 }
 
+bool Layer::is_empty() const
+{
+  return (this->frames().size() == 0);
+}
+
+bool Layer::is_selected() const
+{
+  return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
+}
+
 GreasePencilFrame *Layer::add_frame_internal(const int frame_number, const int drawing_index)
 {
   BLI_assert(drawing_index != -1);
@@ -1034,6 +1044,12 @@ GreasePencil *BKE_grease_pencil_new_nomain()
   return grease_pencil;
 }
 
+GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src)
+{
+  return reinterpret_cast<GreasePencil *>(
+      BKE_id_copy_ex(nullptr, &grease_pencil_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
+}
+
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
 {
   using namespace blender;
@@ -1329,6 +1345,27 @@ void GreasePencil::remove_drawing(const int index_to_remove)
 
   /* Shrink drawing array. */
   shrink_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, 1);
+}
+
+blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
+    const blender::bke::greasepencil::Layer *layer, const int frame_number) const
+{
+  if (layer == nullptr || !layer->is_editable()) {
+    return nullptr;
+  }
+
+  const int drawing_index = layer->drawing_index_at(frame_number);
+  if (drawing_index == -1) {
+    /* No drawing found. */
+    return nullptr;
+  }
+  GreasePencilDrawingBase *drawing_base = this->drawings()[drawing_index];
+  if (drawing_base->type != GP_DRAWING) {
+    /* Drawing references are not editable. */
+    return nullptr;
+  }
+  GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+  return &drawing->wrap();
 }
 
 enum ForeachDrawingMode {
