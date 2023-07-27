@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -334,9 +336,9 @@
     .autokey_mode = AUTOKEY_MODE_NORMAL, \
  \
     .transform_pivot_point = V3D_AROUND_CENTER_MEDIAN, \
-    .snap_mode = SCE_SNAP_MODE_INCREMENT, \
-    .snap_node_mode = SCE_SNAP_MODE_GRID, \
-    .snap_uv_mode = SCE_SNAP_MODE_INCREMENT, \
+    .snap_mode = SCE_SNAP_TO_INCREMENT, \
+    .snap_node_mode = SCE_SNAP_TO_GRID, \
+    .snap_uv_mode = SCE_SNAP_TO_INCREMENT, \
     .snap_flag = SCE_SNAP_TO_INCLUDE_EDITED | SCE_SNAP_TO_INCLUDE_NONEDITED, \
     .snap_transform_mode_flag = SCE_SNAP_TRANSFORM_MODE_TRANSLATE, \
     .snap_face_nearest_steps = 1, \
@@ -366,8 +368,27 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
+\
+    /* Placement */ \
+    .snap_mode_tools = SCE_SNAP_TO_GEOM,\
+    .plane_axis = 2,\
   }
 
+#define _DNA_DEFAULT_Sculpt \
+  { \
+    .detail_size = 12,\
+    .detail_percent = 25,\
+    .constant_detail = 3.0f,\
+    .automasking_start_normal_limit = 0.34906585f, /* 20 / 180 * pi. */ \
+    .automasking_start_normal_falloff = 0.25f, \
+    .automasking_view_normal_limit = 1.570796, /* 0.5 * pi. */ \
+    .automasking_view_normal_falloff = 0.25f, \
+    .flags = SCULPT_DYNTOPO_SUBDIVIDE | SCULPT_DYNTOPO_COLLAPSE,\
+    .paint = {\
+      .symmetry_flags = PAINT_SYMMETRY_FEATHER,\
+      .tile_offset = {1.0f, 1.0f, 1.0f},\
+    }\
+  }
 /* clang-format off */
 
 /** \} */

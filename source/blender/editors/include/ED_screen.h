@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -212,6 +213,11 @@ void ED_area_tag_redraw_no_rebuild(ScrArea *area);
 void ED_area_tag_redraw_regiontype(ScrArea *area, int type);
 void ED_area_tag_refresh(ScrArea *area);
 /**
+ * For regions that change the region size in their #ARegionType.layout() callback: Mark the area
+ * as having a changed region size, requiring refitting of regions within the area.
+ */
+void ED_area_tag_region_size_update(ScrArea *area, ARegion *changed_region);
+/**
  * Only exported for WM.
  */
 void ED_area_do_refresh(struct bContext *C, ScrArea *area);
@@ -270,11 +276,12 @@ ScrArea *ED_screen_areas_iter_next(const bScreen *screen, const ScrArea *area);
        area_name = ED_screen_areas_iter_next(screen, area_name))
 #define ED_screen_verts_iter(win, screen, vert_name) \
   for (ScrVert *vert_name = (win)->global_areas.vertbase.first ? \
-                                (win)->global_areas.vertbase.first : \
-                                (screen)->vertbase.first; \
+                                (ScrVert *)(win)->global_areas.vertbase.first : \
+                                (ScrVert *)(screen)->vertbase.first; \
        vert_name != NULL; \
-       vert_name = (vert_name == (win)->global_areas.vertbase.last) ? (screen)->vertbase.first : \
-                                                                      vert_name->next)
+       vert_name = (vert_name == (win)->global_areas.vertbase.last) ? \
+                       (ScrVert *)(screen)->vertbase.first : \
+                       vert_name->next)
 
 /* screens */
 
@@ -292,7 +299,8 @@ void ED_screen_draw_edges(struct wmWindow *win);
  * for file read and first use, for scaling window, area moves.
  */
 void ED_screen_refresh(struct wmWindowManager *wm, struct wmWindow *win);
-void ED_screen_ensure_updated(struct wmWindowManager *wm,
+void ED_screen_ensure_updated(struct bContext *C,
+                              struct wmWindowManager *wm,
                               struct wmWindow *win,
                               struct bScreen *screen);
 void ED_screen_do_listen(struct bContext *C, const struct wmNotifier *note);
@@ -358,23 +366,17 @@ struct ScrArea *ED_screen_state_toggle(struct bContext *C,
  * as defined by \a display_type.
  *
  * \param title: Title to set for the window, if a window is spawned.
- * \param x, y: Position of the window, if a window is spawned.
- * \param sizex, sizey: Dimensions of the window, if a window is spawned.
+ * \param rect_unscaled: Position & size of the window, if a window is spawned.
  */
 ScrArea *ED_screen_temp_space_open(struct bContext *C,
                                    const char *title,
-                                   int x,
-                                   int y,
-                                   int sizex,
-                                   int sizey,
+                                   const struct rcti *rect_unscaled,
                                    eSpace_Type space_type,
                                    int display_type,
-                                   bool dialog);
+                                   bool dialog) ATTR_NONNULL(1, 2, 3);
 void ED_screens_header_tools_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
 void ED_screens_footer_tools_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
-void ED_screens_navigation_bar_tools_menu_create(struct bContext *C,
-                                                 struct uiLayout *layout,
-                                                 void *arg);
+void ED_screens_region_flip_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
 /**
  * \return true if any active area requires to see in 3D.
  */
@@ -493,9 +495,9 @@ bScreen *ED_screen_animation_playing(const struct wmWindowManager *wm);
 bScreen *ED_screen_animation_no_scrub(const struct wmWindowManager *wm);
 
 /* screen keymaps */
-/* called in spacetypes.c */
+/* called in spacetypes.cc */
 void ED_operatortypes_screen(void);
-/* called in spacetypes.c */
+/* called in spacetypes.cc */
 void ED_keymap_screen(struct wmKeyConfig *keyconf);
 /**
  * Workspace key-maps.
@@ -521,9 +523,12 @@ bool ED_operator_objectmode(struct bContext *C);
  * to be displayed to the user explaining why the operator can't be used in current context.
  */
 bool ED_operator_objectmode_poll_msg(struct bContext *C);
+bool ED_operator_objectmode_with_view3d_poll_msg(struct bContext *C);
 
 bool ED_operator_view3d_active(struct bContext *C);
 bool ED_operator_region_view3d_active(struct bContext *C);
+bool ED_operator_region_gizmo_active(struct bContext *C);
+
 /**
  * Generic for any view2d which uses anim_ops.
  */
@@ -605,9 +610,16 @@ bool ED_operator_camera_poll(struct bContext *C);
 bUserMenu **ED_screen_user_menus_find(const struct bContext *C, uint *r_len);
 struct bUserMenu *ED_screen_user_menu_ensure(struct bContext *C);
 
+/**
+ * Finds a menu item associated with an operator in user menus (aka Quick Favorites)
+ *
+ * \param op_prop_enum: name of an operator property when the operator is called with an enum (to
+ * be an empty string otherwise)
+ */
 struct bUserMenuItem_Op *ED_screen_user_menu_item_find_operator(struct ListBase *lb,
                                                                 const struct wmOperatorType *ot,
                                                                 struct IDProperty *prop,
+                                                                const char *op_prop_enum,
                                                                 wmOperatorCallContext opcontext);
 struct bUserMenuItem_Menu *ED_screen_user_menu_item_find_menu(struct ListBase *lb,
                                                               const struct MenuType *mt);
@@ -620,6 +632,7 @@ void ED_screen_user_menu_item_add_operator(struct ListBase *lb,
                                            const char *ui_name,
                                            const struct wmOperatorType *ot,
                                            const struct IDProperty *prop,
+                                           const char *op_prop_enum,
                                            wmOperatorCallContext opcontext);
 void ED_screen_user_menu_item_add_menu(struct ListBase *lb,
                                        const char *ui_name,
@@ -686,6 +699,13 @@ ARegion *ED_area_find_region_xy_visual(const ScrArea *area, int regiontype, cons
 struct ARegionType *ED_area_type_hud(int space_type);
 void ED_area_type_hud_clear(struct wmWindowManager *wm, ScrArea *area_keep);
 void ED_area_type_hud_ensure(struct bContext *C, struct ScrArea *area);
+/**
+ * Lookup the region the operation was executed in, and which should be used to redo the
+ * operation. The lookup is based on the region type, so it can return a different region when the
+ * same region type is present multiple times.
+ */
+ARegion *ED_area_type_hud_redo_region_find(const struct ScrArea *area,
+                                           const struct ARegion *hud_region);
 
 /**
  * Default key-maps, bit-flags (matches order of evaluation).

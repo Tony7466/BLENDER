@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -6,8 +8,10 @@
  */
 
 #ifdef __cplusplus
-extern "C" {
+#  include "BLI_offset_indices.hh"
 #endif
+
+#ifdef __cplusplus
 
 struct ReportList;
 
@@ -25,9 +29,15 @@ void BKE_mesh_calc_loop_tangent_single_ex(const float (*vert_positions)[3],
                                           const float (*loop_normals)[3],
                                           const float (*loopuv)[2],
                                           int numLoops,
-                                          const struct MPoly *polys,
-                                          int numPolys,
+                                          blender::OffsetIndices<int> faces,
                                           struct ReportList *reports);
+
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Wrapper around BKE_mesh_calc_loop_tangent_single_ex, which takes care of most boilerplate code.
  * \note
@@ -39,14 +49,20 @@ void BKE_mesh_calc_loop_tangent_single(struct Mesh *mesh,
                                        float (*r_looptangents)[4],
                                        struct ReportList *reports);
 
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+
 /**
  * See: #BKE_editmesh_loop_tangent_calc (matching logic).
  */
 void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
-                                   const struct MPoly *polys,
-                                   uint polys_len,
+                                   blender::OffsetIndices<int> faces,
                                    const int *corner_verts,
                                    const struct MLoopTri *looptri,
+                                   const int *looptri_faces,
                                    uint looptri_len,
                                    const bool *sharp_faces,
 
@@ -55,7 +71,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                    int tangent_names_len,
                                    const float (*vert_normals)[3],
-                                   const float (*poly_normals)[3],
+                                   const float (*face_normals)[3],
                                    const float (*loop_normals)[3],
                                    const float (*vert_orco)[3],
                                    /* result */
@@ -74,7 +90,7 @@ void BKE_mesh_add_loop_tangent_named_layer_for_uv(struct CustomData *uv_data,
                                                   int numLoopData,
                                                   const char *layer_name);
 
-#define DM_TANGENT_MASK_ORCO (1 << 9)
+#  define DM_TANGENT_MASK_ORCO (1 << 9)
 /**
  * Here we get some useful information such as active uv layer name and
  * search if it is already in tangent_names.
@@ -93,6 +109,4 @@ void BKE_mesh_calc_loop_tangent_step_0(const struct CustomData *loopData,
                                        char *rren_uv_name,
                                        short *rtangent_mask);
 
-#ifdef __cplusplus
-}
 #endif

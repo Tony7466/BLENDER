@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -213,9 +214,8 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
       }
 
       rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-      BLI_snprintf(col, sizeof(col), "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
-
-      strcpy(bt->poin, col);
+      const int col_len = SNPRINTF_RLEN(col, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+      memcpy(bt->poin, col, col_len + 1);
     }
     else if (bt->str[1] == ' ') {
       if (bt->str[0] == 'R') {
@@ -321,7 +321,8 @@ static void ui_colorpicker_hide_reveal(uiBlock *block, ePickerType colormode)
   /* tag buttons */
   LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
     if ((bt->func == ui_colorpicker_rgba_update_cb) && (bt->type == UI_BTYPE_NUM_SLIDER) &&
-        (bt->rnaindex != 3)) {
+        (bt->rnaindex != 3))
+    {
       /* RGB sliders (color circle and alpha are always shown) */
       SET_FLAG_FROM_TEST(bt->flag, (colormode != PICKER_TYPE_RGB), UI_HIDDEN);
     }
@@ -782,7 +783,7 @@ static void ui_block_colorpicker(uiBlock *block,
   }
 
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-  BLI_snprintf(hexcol, sizeof(hexcol), "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+  SNPRINTF(hexcol, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
 
   yco = -3.0f * UI_UNIT_Y;
   bt = uiDefBut(block,
@@ -891,7 +892,7 @@ uiBlock *ui_block_func_COLOR(bContext *C, uiPopupBlockHandle *handle, void *arg_
   return block;
 }
 
-ColorPicker *ui_block_colorpicker_create(struct uiBlock *block)
+ColorPicker *ui_block_colorpicker_create(uiBlock *block)
 {
   ColorPicker *cpicker = MEM_cnew<ColorPicker>(__func__);
   BLI_addhead(&block->color_pickers.list, cpicker);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edphys
@@ -14,6 +15,10 @@ struct ParticleSystem;
 struct PointCache;
 struct Scene;
 struct wmOperatorType;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* particle_edit.c */
 
@@ -159,3 +164,7 @@ void RIGIDBODY_OT_constraint_remove(struct wmOperatorType *ot);
 void RIGIDBODY_OT_world_add(struct wmOperatorType *ot);
 void RIGIDBODY_OT_world_remove(struct wmOperatorType *ot);
 void RIGIDBODY_OT_world_export(struct wmOperatorType *ot);
+
+#ifdef __cplusplus
+}
+#endif

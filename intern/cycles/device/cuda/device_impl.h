@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_CUDA
 
@@ -38,7 +39,7 @@ class CUDADevice : public GPUDevice {
 
   static bool have_precompiled_kernels();
 
-  virtual BVHLayoutMask get_bvh_layout_mask() const override;
+  virtual BVHLayoutMask get_bvh_layout_mask(uint /*kernel_features*/) const override;
 
   void set_error(const string &error) override;
 

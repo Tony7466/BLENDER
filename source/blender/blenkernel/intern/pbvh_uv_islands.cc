@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
 
@@ -160,7 +162,8 @@ static void extract_uv_neighbors(const MeshData &mesh_data,
 
       if (primitive_has_shared_uv_edge(mesh_data.uv_map,
                                        mesh_data.looptris[primitive_i],
-                                       mesh_data.looptris[other_primitive_i])) {
+                                       mesh_data.looptris[other_primitive_i]))
+      {
         prims_to_add.append(other_primitive_i);
       }
     }
@@ -541,7 +544,6 @@ struct FanSegment {
   void print_debug(const MeshData &mesh_data) const
   {
     std::stringstream ss;
-    ss << "# p:" << primitive->poly;
     ss << " v1:" << mesh_data.corner_verts[primitive->tri[vert_order[0]]];
     ss << " v2:" << mesh_data.corner_verts[primitive->tri[vert_order[1]]];
     ss << " v3:" << mesh_data.corner_verts[primitive->tri[vert_order[2]]];
@@ -1286,9 +1288,7 @@ void UVBorderCorner::print_debug() const
 /** \name UVPrimitive
  * \{ */
 
-UVPrimitive::UVPrimitive(const int primitive_i) : primitive_i(primitive_i)
-{
-}
+UVPrimitive::UVPrimitive(const int primitive_i) : primitive_i(primitive_i) {}
 
 Vector<std::pair<UVEdge *, UVEdge *>> UVPrimitive::shared_edges(UVPrimitive &other)
 {
@@ -1331,9 +1331,6 @@ bool UVPrimitive::has_shared_edge(const MeshData &mesh_data, const int primitive
   return false;
 }
 
-/**
- * Get the UVVertex in the order that the verts are ordered in the MeshPrimitive.
- */
 const UVVertex *UVPrimitive::get_uv_vertex(const MeshData &mesh_data,
                                            const uint8_t mesh_vert_index) const
 {
@@ -1350,10 +1347,6 @@ const UVVertex *UVPrimitive::get_uv_vertex(const MeshData &mesh_data,
   return nullptr;
 }
 
-/**
- * Get the UVEdge that share the given uv coordinates.
- * Will assert when no UVEdge found.
- */
 UVEdge *UVPrimitive::get_uv_edge(const float2 uv1, const float2 uv2) const
 {
   for (UVEdge *uv_edge : edges) {
@@ -1383,8 +1376,8 @@ UVEdge *UVPrimitive::get_uv_edge(const int v1, const int v2) const
 bool UVPrimitive::contains_uv_vertex(const UVVertex *uv_vertex) const
 {
   for (UVEdge *edge : edges) {
-    if (std::find(edge->vertices.begin(), edge->vertices.end(), uv_vertex) !=
-        edge->vertices.end()) {
+    if (std::find(edge->vertices.begin(), edge->vertices.end(), uv_vertex) != edge->vertices.end())
+    {
       return true;
     }
   }
@@ -1620,7 +1613,8 @@ static bool dilate_y(UVIslandsMask::Tile &islands_mask)
         changed = true;
       }
       else if (y < islands_mask.mask_resolution.y - 1 &&
-               prev_mask[offset + islands_mask.mask_resolution.x] != 0xffff) {
+               prev_mask[offset + islands_mask.mask_resolution.x] != 0xffff)
+      {
         islands_mask.mask[offset] = prev_mask[offset + islands_mask.mask_resolution.x];
         changed = true;
       }

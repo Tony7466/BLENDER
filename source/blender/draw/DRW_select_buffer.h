@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -106,7 +107,7 @@ uint *DRW_select_buffer_bitmap_from_circle(struct Depsgraph *depsgraph,
                                            uint *r_bitmap_len);
 /**
  * \param poly: The polygon coordinates.
- * \param poly_len: Length of the polygon.
+ * \param face_len: Length of the polygon.
  * \param rect: Polygon boundaries.
  * \returns a #BLI_bitmap.
  */
@@ -114,7 +115,7 @@ uint *DRW_select_buffer_bitmap_from_poly(struct Depsgraph *depsgraph,
                                          struct ARegion *region,
                                          struct View3D *v3d,
                                          const int poly[][2],
-                                         int poly_len,
+                                         int face_len,
                                          const struct rcti *rect,
                                          uint *r_bitmap_len);
 /**

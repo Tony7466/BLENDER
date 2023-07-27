@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup creator
@@ -93,10 +94,6 @@
 
 #ifdef WITH_SDL_DYNLOAD
 #  include "sdlew.h"
-#endif
-
-#ifdef WITH_USD
-#  include "usd.h"
 #endif
 
 #include "creator_intern.h" /* Own include. */
@@ -361,8 +358,8 @@ int main(int argc,
     }
     else {
       const char *unknown = "date-unknown";
-      BLI_strncpy(build_commit_date, unknown, sizeof(build_commit_date));
-      BLI_strncpy(build_commit_time, unknown, sizeof(build_commit_time));
+      STRNCPY(build_commit_date, unknown);
+      STRNCPY(build_commit_time, unknown);
     }
   }
 #endif
@@ -451,7 +448,7 @@ int main(int argc,
   /* Ensure we free on early exit. */
   app_init_data.ba = ba;
 
-  main_args_setup(C, ba);
+  main_args_setup(C, ba, false);
 
   /* Begin argument parsing, ignore leaks so arguments that call #exit
    * (such as '--version' & '--help') don't report leaks. */
@@ -474,10 +471,6 @@ int main(int argc,
 
   /* Initialize sub-systems that use `BKE_appdir.h`. */
   IMB_init();
-
-#ifdef WITH_USD
-  USD_ensure_plugin_path_registered();
-#endif
 
 #ifndef WITH_PYTHON_MODULE
   /* First test for background-mode (#Global.background) */
@@ -547,7 +540,7 @@ int main(int argc,
   /* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */
-  main_args_setup_post(C, ba);
+  BLI_args_parse(ba, ARG_PASS_FINAL, main_args_handle_load_file, C);
 #endif
 
   /* Explicitly free data allocated for argument parsing:
@@ -574,14 +567,12 @@ int main(int argc,
 #ifndef WITH_PYTHON_MODULE
   if (G.background) {
     /* Using window-manager API in background-mode is a bit odd, but works fine. */
-    WM_exit(C);
+    WM_exit(C, G.is_break ? EXIT_FAILURE : EXIT_SUCCESS);
   }
   else {
-    /* When no file is loaded, show the splash screen. */
-    const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] == '\0') {
-      WM_init_splash(C);
-    }
+    /* Shows the splash as needed. */
+    WM_init_splash_on_startup(C);
+
     WM_main(C);
   }
   /* Neither #WM_exit, #WM_main return, this quiets CLANG's `unreachable-code-return` warning. */
@@ -596,7 +587,7 @@ int main(int argc,
 #ifdef WITH_PYTHON_MODULE
 void main_python_exit(void)
 {
-  WM_exit_ex((bContext *)evil_C, true);
+  WM_exit_ex((bContext *)evil_C, true, false);
   evil_C = NULL;
 }
 #endif

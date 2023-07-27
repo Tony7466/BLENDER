@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -12,6 +13,10 @@
 #include "BLI_sys_types.h"
 
 #ifdef __cplusplus
+#  include "BLI_offset_indices.hh"
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -20,7 +25,6 @@ struct CCGFace;
 struct CCGKey;
 struct DMFlagMat;
 struct Mesh;
-struct MPoly;
 struct Subdiv;
 
 /* --------------------------------------------------------------------
@@ -67,10 +71,10 @@ void BKE_subdiv_ccg_material_flags_init_from_mesh(
  */
 
 typedef struct SubdivToCCGSettings {
-  /* Resolution at which regular ptex (created for quad polygon) are being
+  /* Resolution at which regular ptex (created for quad face) are being
    * evaluated. This defines how many vertices final mesh will have: every
    * regular ptex has resolution^2 vertices. Special (irregular, or ptex
-   * created for a corner of non-quad polygon) will have resolution of
+   * created for a corner of non-quad face) will have resolution of
    * `resolution - 1`. */
   int resolution;
   /* Denotes which extra layers to be added to CCG elements. */
@@ -123,7 +127,7 @@ typedef struct SubdivCCG {
    * resolution. It is NOT the topology refinement level. */
   int level;
   /* Resolution of grid. All grids have matching resolution, and resolution
-   * is same as ptex created for non-quad polygons. */
+   * is same as ptex created for non-quad faces. */
   int grid_size;
   /* Size of a single element of a grid (including coordinate and all the other layers).
    * Measured in bytes. */
@@ -207,7 +211,7 @@ typedef struct SubdivCCG {
 /* Create CCG representation of subdivision surface.
  *
  * NOTE: CCG stores dense vertices in a grid-like storage. There is no edges or
- * polygons information's for the high-poly surface.
+ * faces information's for the high-poly surface.
  *
  * NOTE: Subdiv is expected to be refined and ready for evaluation.
  * NOTE: CCG becomes an owner of subdiv.
@@ -242,7 +246,7 @@ void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg,
                                    struct CCGFace **effected_faces,
                                    int num_effected_faces);
 
-/* Average grid coordinates and normals along the grid boundatries. */
+/* Average grid coordinates and normals along the grid boundaries. */
 void BKE_subdiv_ccg_average_grids(SubdivCCG *subdiv_ccg);
 
 /* Similar to above, but only updates given faces. */
@@ -304,16 +308,20 @@ typedef enum SubdivCCGAdjacencyType {
   SUBDIV_CCG_ADJACENT_EDGE,
 } SubdivCCGAdjacencyType;
 
+#ifdef __cplusplus
+
 /* Returns if a grid coordinates is adjacent to a coarse mesh edge, vertex or nothing. If it is
  * adjacent to an edge, r_v1 and r_v2 will be set to the two vertices of that edge. If it is
  * adjacent to a vertex, r_v1 and r_v2 will be the index of that vertex. */
-SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(const SubdivCCG *subdiv_ccg,
-                                                                     const SubdivCCGCoord *coord,
-                                                                     const int *corner_verts,
-                                                                     int corners_num,
-                                                                     const struct MPoly *mpoly,
-                                                                     int *r_v1,
-                                                                     int *r_v2);
+SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
+    const SubdivCCG *subdiv_ccg,
+    const SubdivCCGCoord *coord,
+    blender::Span<int> corner_verts,
+    blender::OffsetIndices<int> faces,
+    int *r_v1,
+    int *r_v2);
+
+#endif
 
 /* Get array which is indexed by face index and contains index of a first grid of the face.
  *

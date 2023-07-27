@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/shader_nodes.h"
 #include "scene/colorspace.h"
@@ -64,9 +65,7 @@ CCL_NAMESPACE_BEGIN
   mapping_projection_enum.insert("sphere", TextureMapping::SPHERE); \
   SOCKET_ENUM(tex_mapping.projection, "Projection", mapping_projection_enum, TextureMapping::FLAT);
 
-TextureMapping::TextureMapping()
-{
-}
+TextureMapping::TextureMapping() {}
 
 Transform TextureMapping::compute_transform()
 {
@@ -760,12 +759,7 @@ static void sky_texture_precompute_nishita(SunSky *sunsky,
   float pixel_top[3];
   SKY_nishita_skymodel_precompute_sun(
       sun_elevation, sun_size, altitude, air_density, dust_density, pixel_bottom, pixel_top);
-  /* limit sun rotation between 0 and 360 degrees */
-  sun_rotation = fmodf(sun_rotation, M_2PI_F);
-  if (sun_rotation < 0.0f) {
-    sun_rotation += M_2PI_F;
-  }
-  sun_rotation = M_2PI_F - sun_rotation;
+
   /* send data to svm_sky */
   sunsky->nishita_data[0] = pixel_bottom[0];
   sunsky->nishita_data[1] = pixel_bottom[1];
@@ -873,8 +867,37 @@ NODE_DEFINE(SkyTextureNode)
   return type;
 }
 
-SkyTextureNode::SkyTextureNode() : TextureNode(get_node_type())
+SkyTextureNode::SkyTextureNode() : TextureNode(get_node_type()) {}
+
+void SkyTextureNode::simplify_settings(Scene * /* scene */)
 {
+  /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
+   * code simple. */
+  float new_sun_elevation = sun_elevation;
+  float new_sun_rotation = sun_rotation;
+
+  /* Wrap `new_sun_elevation` into [-2PI..2PI] range. */
+  new_sun_elevation = fmodf(new_sun_elevation, M_2PI_F);
+  /* Wrap `new_sun_elevation` into [-PI..PI] range. */
+  if (fabsf(new_sun_elevation) >= M_PI_F) {
+    new_sun_elevation -= copysignf(2.0f, new_sun_elevation) * M_PI_F;
+  }
+  /* Wrap `new_sun_elevation` into [-PI/2..PI/2] range while keeping the same absolute position. */
+  if (new_sun_elevation >= M_PI_2_F || new_sun_elevation <= -M_PI_2_F) {
+    new_sun_elevation = copysignf(M_PI_F, new_sun_elevation) - new_sun_elevation;
+    new_sun_rotation += M_PI_F;
+  }
+
+  /* Wrap `new_sun_rotation` into [-2PI..2PI] range. */
+  new_sun_rotation = fmodf(new_sun_rotation, M_2PI_F);
+  /* Wrap `new_sun_rotation` into [0..2PI] range. */
+  if (new_sun_rotation < 0.0f) {
+    new_sun_rotation += M_2PI_F;
+  }
+  new_sun_rotation = M_2PI_F - new_sun_rotation;
+
+  sun_elevation = new_sun_elevation;
+  sun_rotation = new_sun_rotation;
 }
 
 void SkyTextureNode::compile(SVMCompiler &compiler)
@@ -1055,9 +1078,7 @@ NODE_DEFINE(GradientTextureNode)
   return type;
 }
 
-GradientTextureNode::GradientTextureNode() : TextureNode(get_node_type())
-{
-}
+GradientTextureNode::GradientTextureNode() : TextureNode(get_node_type()) {}
 
 void GradientTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1112,9 +1133,7 @@ NODE_DEFINE(NoiseTextureNode)
   return type;
 }
 
-NoiseTextureNode::NoiseTextureNode() : TextureNode(get_node_type())
-{
-}
+NoiseTextureNode::NoiseTextureNode() : TextureNode(get_node_type()) {}
 
 void NoiseTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1189,9 +1208,14 @@ NODE_DEFINE(VoronoiTextureNode)
   feature_enum.insert("n_sphere_radius", NODE_VORONOI_N_SPHERE_RADIUS);
   SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_F1);
 
+  SOCKET_BOOLEAN(use_normalize, "Normalize", false);
+
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(detail, "Detail", 0.0f);
+  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(lacunarity, "Lacunarity", 2.0f);
   SOCKET_IN_FLOAT(smoothness, "Smoothness", 5.0f);
   SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
   SOCKET_IN_FLOAT(randomness, "Randomness", 1.0f);
@@ -1205,15 +1229,16 @@ NODE_DEFINE(VoronoiTextureNode)
   return type;
 }
 
-VoronoiTextureNode::VoronoiTextureNode() : TextureNode(get_node_type())
-{
-}
+VoronoiTextureNode::VoronoiTextureNode() : TextureNode(get_node_type()) {}
 
 void VoronoiTextureNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
   ShaderInput *w_in = input("W");
   ShaderInput *scale_in = input("Scale");
+  ShaderInput *detail_in = input("Detail");
+  ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *lacunarity_in = input("Lacunarity");
   ShaderInput *smoothness_in = input("Smoothness");
   ShaderInput *exponent_in = input("Exponent");
   ShaderInput *randomness_in = input("Randomness");
@@ -1227,6 +1252,9 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
   int w_in_stack_offset = compiler.stack_assign_if_linked(w_in);
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
+  int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
+  int roughness_stack_offset = compiler.stack_assign_if_linked(roughness_in);
+  int lacunarity_stack_offset = compiler.stack_assign_if_linked(lacunarity_in);
   int smoothness_stack_offset = compiler.stack_assign_if_linked(smoothness_in);
   int exponent_stack_offset = compiler.stack_assign_if_linked(exponent_in);
   int randomness_stack_offset = compiler.stack_assign_if_linked(randomness_in);
@@ -1239,19 +1267,21 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
   compiler.add_node(
       compiler.encode_uchar4(
-          vector_stack_offset, w_in_stack_offset, scale_stack_offset, smoothness_stack_offset),
-      compiler.encode_uchar4(exponent_stack_offset,
-                             randomness_stack_offset,
-                             distance_stack_offset,
-                             color_stack_offset),
-      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset),
-      __float_as_int(w));
+          vector_stack_offset, w_in_stack_offset, scale_stack_offset, detail_stack_offset),
+      compiler.encode_uchar4(roughness_stack_offset,
+                             lacunarity_stack_offset,
+                             smoothness_stack_offset,
+                             exponent_stack_offset),
+      compiler.encode_uchar4(
+          randomness_stack_offset, use_normalize, distance_stack_offset, color_stack_offset),
+      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset));
 
-  compiler.add_node(__float_as_int(scale),
+  compiler.add_node(
+      __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
+  compiler.add_node(__float_as_int(lacunarity),
                     __float_as_int(smoothness),
                     __float_as_int(exponent),
                     __float_as_int(randomness));
-
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 
@@ -1262,6 +1292,7 @@ void VoronoiTextureNode::compile(OSLCompiler &compiler)
   compiler.parameter(this, "dimensions");
   compiler.parameter(this, "feature");
   compiler.parameter(this, "metric");
+  compiler.parameter(this, "use_normalize");
   compiler.add(this, "node_voronoi_texture");
 }
 
@@ -1376,9 +1407,7 @@ NODE_DEFINE(WhiteNoiseTextureNode)
   return type;
 }
 
-WhiteNoiseTextureNode::WhiteNoiseTextureNode() : ShaderNode(get_node_type())
-{
-}
+WhiteNoiseTextureNode::WhiteNoiseTextureNode() : ShaderNode(get_node_type()) {}
 
 void WhiteNoiseTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1441,9 +1470,7 @@ NODE_DEFINE(MusgraveTextureNode)
   return type;
 }
 
-MusgraveTextureNode::MusgraveTextureNode() : TextureNode(get_node_type())
-{
-}
+MusgraveTextureNode::MusgraveTextureNode() : TextureNode(get_node_type()) {}
 
 void MusgraveTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1539,9 +1566,7 @@ NODE_DEFINE(WaveTextureNode)
   return type;
 }
 
-WaveTextureNode::WaveTextureNode() : TextureNode(get_node_type())
-{
-}
+WaveTextureNode::WaveTextureNode() : TextureNode(get_node_type()) {}
 
 void WaveTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1616,9 +1641,7 @@ NODE_DEFINE(MagicTextureNode)
   return type;
 }
 
-MagicTextureNode::MagicTextureNode() : TextureNode(get_node_type())
-{
-}
+MagicTextureNode::MagicTextureNode() : TextureNode(get_node_type()) {}
 
 void MagicTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1669,9 +1692,7 @@ NODE_DEFINE(CheckerTextureNode)
   return type;
 }
 
-CheckerTextureNode::CheckerTextureNode() : TextureNode(get_node_type())
-{
-}
+CheckerTextureNode::CheckerTextureNode() : TextureNode(get_node_type()) {}
 
 void CheckerTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1735,9 +1756,7 @@ NODE_DEFINE(BrickTextureNode)
   return type;
 }
 
-BrickTextureNode::BrickTextureNode() : TextureNode(get_node_type())
-{
-}
+BrickTextureNode::BrickTextureNode() : TextureNode(get_node_type()) {}
 
 void BrickTextureNode::compile(SVMCompiler &compiler)
 {
@@ -1828,13 +1847,9 @@ NODE_DEFINE(PointDensityTextureNode)
   return type;
 }
 
-PointDensityTextureNode::PointDensityTextureNode() : ShaderNode(get_node_type())
-{
-}
+PointDensityTextureNode::PointDensityTextureNode() : ShaderNode(get_node_type()) {}
 
-PointDensityTextureNode::~PointDensityTextureNode()
-{
-}
+PointDensityTextureNode::~PointDensityTextureNode() {}
 
 ShaderNode *PointDensityTextureNode::clone(ShaderGraph *graph) const
 {
@@ -1945,9 +1960,7 @@ NODE_DEFINE(NormalNode)
   return type;
 }
 
-NormalNode::NormalNode() : ShaderNode(get_node_type())
-{
-}
+NormalNode::NormalNode() : ShaderNode(get_node_type()) {}
 
 void NormalNode::compile(SVMCompiler &compiler)
 {
@@ -1992,9 +2005,7 @@ NODE_DEFINE(MappingNode)
   return type;
 }
 
-MappingNode::MappingNode() : ShaderNode(get_node_type())
-{
-}
+MappingNode::MappingNode() : ShaderNode(get_node_type()) {}
 
 void MappingNode::constant_fold(const ConstantFolder &folder)
 {
@@ -2047,9 +2058,7 @@ NODE_DEFINE(RGBToBWNode)
   return type;
 }
 
-RGBToBWNode::RGBToBWNode() : ShaderNode(get_node_type())
-{
-}
+RGBToBWNode::RGBToBWNode() : ShaderNode(get_node_type()) {}
 
 void RGBToBWNode::constant_fold(const ConstantFolder &folder)
 {
@@ -2188,7 +2197,8 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
       ShaderInput *prev_in = prev->inputs[0];
 
       if (SocketType::is_float3(from) && (to == SocketType::FLOAT || SocketType::is_float3(to)) &&
-          prev_in->link) {
+          prev_in->link)
+      {
         folder.bypass(prev_in->link);
       }
     }
@@ -2295,9 +2305,7 @@ bool BsdfBaseNode::has_bump()
 
 /* BSDF Closure */
 
-BsdfNode::BsdfNode(const NodeType *node_type) : BsdfBaseNode(node_type)
-{
-}
+BsdfNode::BsdfNode(const NodeType *node_type) : BsdfBaseNode(node_type) {}
 
 void BsdfNode::compile(SVMCompiler &compiler,
                        ShaderInput *param1,
@@ -2342,68 +2350,6 @@ void BsdfNode::compile(OSLCompiler & /*compiler*/)
   assert(0);
 }
 
-/* Anisotropic BSDF Closure */
-
-NODE_DEFINE(AnisotropicBsdfNode)
-{
-  NodeType *type = NodeType::add("anisotropic_bsdf", create, NodeType::SHADER);
-
-  SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
-  SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
-  SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
-
-  static NodeEnum distribution_enum;
-  distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
-  distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-  SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
-
-  SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
-
-  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
-  SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.5f);
-  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
-
-  SOCKET_OUT_CLOSURE(BSDF, "BSDF");
-
-  return type;
-}
-
-AnisotropicBsdfNode::AnisotropicBsdfNode() : BsdfNode(get_node_type())
-{
-  closure = CLOSURE_BSDF_MICROFACET_GGX_ID;
-}
-
-void AnisotropicBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
-{
-  if (shader->has_surface_link()) {
-    ShaderInput *tangent_in = input("Tangent");
-
-    if (!tangent_in->link)
-      attributes->add(ATTR_STD_GENERATED);
-  }
-
-  ShaderNode::attributes(shader, attributes);
-}
-
-void AnisotropicBsdfNode::compile(SVMCompiler &compiler)
-{
-  closure = distribution;
-
-  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID)
-    BsdfNode::compile(
-        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
-  else
-    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
-}
-
-void AnisotropicBsdfNode::compile(OSLCompiler &compiler)
-{
-  compiler.parameter(this, "distribution");
-  compiler.add(this, "node_anisotropic_bsdf");
-}
-
 /* Glossy BSDF Closure */
 
 NODE_DEFINE(GlossyBsdfNode)
@@ -2415,13 +2361,17 @@ NODE_DEFINE(GlossyBsdfNode)
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("sharp", CLOSURE_BSDF_REFLECTION_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
   distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_ID);
   distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
   SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
+
+  SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
+
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.0f);
+  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
 
   SOCKET_OUT_CLOSURE(BSDF, "BSDF");
 
@@ -2431,63 +2381,47 @@ NODE_DEFINE(GlossyBsdfNode)
 GlossyBsdfNode::GlossyBsdfNode() : BsdfNode(get_node_type())
 {
   closure = CLOSURE_BSDF_MICROFACET_GGX_ID;
-  distribution_orig = NBUILTIN_CLOSURES;
 }
 
-void GlossyBsdfNode::simplify_settings(Scene *scene)
+bool GlossyBsdfNode::is_isotropic()
 {
-  if (distribution_orig == NBUILTIN_CLOSURES) {
-    roughness_orig = roughness;
-    distribution_orig = distribution;
-  }
-  else {
-    /* By default we use original values, so we don't worry about restoring
-     * defaults later one and can only do override when needed.
-     */
-    roughness = roughness_orig;
-    distribution = distribution_orig;
-  }
-  Integrator *integrator = scene->integrator;
-  ShaderInput *roughness_input = input("Roughness");
-  if (integrator->get_filter_glossy() == 0.0f) {
-    /* Fallback to Sharp closure for Roughness close to 0.
-     * NOTE: Keep the epsilon in sync with kernel!
-     */
-    if (!roughness_input->link && roughness <= 1e-4f) {
-      VLOG_DEBUG << "Using sharp glossy BSDF.";
-      distribution = CLOSURE_BSDF_REFLECTION_ID;
-    }
-  }
-  else {
-    /* If filter glossy is used we replace Sharp glossy with GGX so we can
-     * benefit from closure blur to remove unwanted noise.
-     */
-    if (roughness_input->link == NULL && distribution == CLOSURE_BSDF_REFLECTION_ID) {
-      VLOG_DEBUG << "Using GGX glossy with filter glossy.";
-      distribution = CLOSURE_BSDF_MICROFACET_GGX_ID;
-      roughness = 0.0f;
-    }
-  }
-  closure = distribution;
+  ShaderInput *anisotropy_input = input("Anisotropy");
+  /* Keep in sync with the thresholds in OSL's node_glossy_bsdf and SVM's svm_node_closure_bsdf. */
+  return (!anisotropy_input->link && fabsf(anisotropy) <= 1e-4f);
 }
 
-bool GlossyBsdfNode::has_integrator_dependency()
+void GlossyBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
-  ShaderInput *roughness_input = input("Roughness");
-  return !roughness_input->link &&
-         (distribution == CLOSURE_BSDF_REFLECTION_ID || roughness <= 1e-4f);
+  if (shader->has_surface_link()) {
+    ShaderInput *tangent_in = input("Tangent");
+    if (!tangent_in->link && !is_isotropic())
+      attributes->add(ATTR_STD_GENERATED);
+  }
+
+  ShaderNode::attributes(shader, attributes);
+}
+
+void GlossyBsdfNode::simplify_settings(Scene * /* scene */)
+{
+  /* If the anisotropy is close enough to zero, fall back to the isotropic case. */
+  ShaderInput *tangent_input = input("Tangent");
+  if (tangent_input->link && is_isotropic()) {
+    tangent_input->disconnect();
+  }
 }
 
 void GlossyBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = distribution;
 
-  if (closure == CLOSURE_BSDF_REFLECTION_ID)
-    BsdfNode::compile(compiler, NULL, NULL);
-  else if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID)
-    BsdfNode::compile(compiler, input("Roughness"), NULL, NULL, input("Color"));
-  else
-    BsdfNode::compile(compiler, input("Roughness"), NULL);
+  /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
+  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
+    BsdfNode::compile(
+        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
+  }
+  else {
+    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
+  }
 }
 
 void GlossyBsdfNode::compile(OSLCompiler &compiler)
@@ -2507,10 +2441,9 @@ NODE_DEFINE(GlassBsdfNode)
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("sharp", CLOSURE_BSDF_SHARP_GLASS_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
   distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.0f);
@@ -2523,64 +2456,19 @@ NODE_DEFINE(GlassBsdfNode)
 
 GlassBsdfNode::GlassBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_SHARP_GLASS_ID;
-  distribution_orig = NBUILTIN_CLOSURES;
-}
-
-void GlassBsdfNode::simplify_settings(Scene *scene)
-{
-  if (distribution_orig == NBUILTIN_CLOSURES) {
-    roughness_orig = roughness;
-    distribution_orig = distribution;
-  }
-  else {
-    /* By default we use original values, so we don't worry about restoring
-     * defaults later one and can only do override when needed.
-     */
-    roughness = roughness_orig;
-    distribution = distribution_orig;
-  }
-  Integrator *integrator = scene->integrator;
-  ShaderInput *roughness_input = input("Roughness");
-  if (integrator->get_filter_glossy() == 0.0f) {
-    /* Fallback to Sharp closure for Roughness close to 0.
-     * NOTE: Keep the epsilon in sync with kernel!
-     */
-    if (!roughness_input->link && roughness <= 1e-4f) {
-      VLOG_DEBUG << "Using sharp glass BSDF.";
-      distribution = CLOSURE_BSDF_SHARP_GLASS_ID;
-    }
-  }
-  else {
-    /* If filter glossy is used we replace Sharp glossy with GGX so we can
-     * benefit from closure blur to remove unwanted noise.
-     */
-    if (roughness_input->link == NULL && distribution == CLOSURE_BSDF_SHARP_GLASS_ID) {
-      VLOG_DEBUG << "Using GGX glass with filter glossy.";
-      distribution = CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
-      roughness = 0.0f;
-    }
-  }
-  closure = distribution;
-}
-
-bool GlassBsdfNode::has_integrator_dependency()
-{
-  ShaderInput *roughness_input = input("Roughness");
-  return !roughness_input->link &&
-         (distribution == CLOSURE_BSDF_SHARP_GLASS_ID || roughness <= 1e-4f);
+  closure = CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
 }
 
 void GlassBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = distribution;
 
-  if (closure == CLOSURE_BSDF_SHARP_GLASS_ID)
-    BsdfNode::compile(compiler, NULL, input("IOR"));
-  else if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)
+  if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID) {
     BsdfNode::compile(compiler, input("Roughness"), input("IOR"), input("Color"));
-  else
+  }
+  else {
     BsdfNode::compile(compiler, input("Roughness"), input("IOR"));
+  }
 }
 
 void GlassBsdfNode::compile(OSLCompiler &compiler)
@@ -2600,7 +2488,6 @@ NODE_DEFINE(RefractionBsdfNode)
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("sharp", CLOSURE_BSDF_REFRACTION_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);
   distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
   SOCKET_ENUM(
@@ -2616,62 +2503,14 @@ NODE_DEFINE(RefractionBsdfNode)
 
 RefractionBsdfNode::RefractionBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_REFRACTION_ID;
-  distribution_orig = NBUILTIN_CLOSURES;
-}
-
-void RefractionBsdfNode::simplify_settings(Scene *scene)
-{
-  if (distribution_orig == NBUILTIN_CLOSURES) {
-    roughness_orig = roughness;
-    distribution_orig = distribution;
-  }
-  else {
-    /* By default we use original values, so we don't worry about restoring
-     * defaults later one and can only do override when needed.
-     */
-    roughness = roughness_orig;
-    distribution = distribution_orig;
-  }
-  Integrator *integrator = scene->integrator;
-  ShaderInput *roughness_input = input("Roughness");
-  if (integrator->get_filter_glossy() == 0.0f) {
-    /* Fallback to Sharp closure for Roughness close to 0.
-     * NOTE: Keep the epsilon in sync with kernel!
-     */
-    if (!roughness_input->link && roughness <= 1e-4f) {
-      VLOG_DEBUG << "Using sharp refraction BSDF.";
-      distribution = CLOSURE_BSDF_REFRACTION_ID;
-    }
-  }
-  else {
-    /* If filter glossy is used we replace Sharp glossy with GGX so we can
-     * benefit from closure blur to remove unwanted noise.
-     */
-    if (roughness_input->link == NULL && distribution == CLOSURE_BSDF_REFRACTION_ID) {
-      VLOG_DEBUG << "Using GGX refraction with filter glossy.";
-      distribution = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
-      roughness = 0.0f;
-    }
-  }
-  closure = distribution;
-}
-
-bool RefractionBsdfNode::has_integrator_dependency()
-{
-  ShaderInput *roughness_input = input("Roughness");
-  return !roughness_input->link &&
-         (distribution == CLOSURE_BSDF_REFRACTION_ID || roughness <= 1e-4f);
+  closure = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 }
 
 void RefractionBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = distribution;
 
-  if (closure == CLOSURE_BSDF_REFRACTION_ID)
-    BsdfNode::compile(compiler, NULL, input("IOR"));
-  else
-    BsdfNode::compile(compiler, input("Roughness"), input("IOR"));
+  BsdfNode::compile(compiler, input("Roughness"), input("IOR"));
 }
 
 void RefractionBsdfNode::compile(OSLCompiler &compiler)
@@ -2720,35 +2559,42 @@ void ToonBsdfNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_toon_bsdf");
 }
 
-/* Velvet BSDF Closure */
+/* Sheen BSDF Closure */
 
-NODE_DEFINE(VelvetBsdfNode)
+NODE_DEFINE(SheenBsdfNode)
 {
-  NodeType *type = NodeType::add("velvet_bsdf", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("sheen_bsdf", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
-  SOCKET_IN_FLOAT(sigma, "Sigma", 1.0f);
+  SOCKET_IN_FLOAT(roughness, "Roughness", 1.0f);
+
+  static NodeEnum distribution_enum;
+  distribution_enum.insert("ashikhmin", CLOSURE_BSDF_ASHIKHMIN_VELVET_ID);
+  distribution_enum.insert("microfiber", CLOSURE_BSDF_SHEEN_ID);
+  SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_SHEEN_ID);
 
   SOCKET_OUT_CLOSURE(BSDF, "BSDF");
 
   return type;
 }
 
-VelvetBsdfNode::VelvetBsdfNode() : BsdfNode(get_node_type())
+SheenBsdfNode::SheenBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_ASHIKHMIN_VELVET_ID;
+  closure = CLOSURE_BSDF_SHEEN_ID;
 }
 
-void VelvetBsdfNode::compile(SVMCompiler &compiler)
+void SheenBsdfNode::compile(SVMCompiler &compiler)
 {
-  BsdfNode::compile(compiler, input("Sigma"), NULL);
+  closure = distribution;
+  BsdfNode::compile(compiler, input("Roughness"), NULL);
 }
 
-void VelvetBsdfNode::compile(OSLCompiler &compiler)
+void SheenBsdfNode::compile(OSLCompiler &compiler)
 {
-  compiler.add(this, "node_velvet_bsdf");
+  compiler.parameter(this, "distribution");
+  compiler.add(this, "node_sheen_bsdf");
 }
 
 /* Diffuse BSDF Closure */
@@ -2788,8 +2634,8 @@ NODE_DEFINE(PrincipledBsdfNode)
   NodeType *type = NodeType::add("principled_bsdf", create, NodeType::SHADER);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
-  distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
+  distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
 
@@ -2815,12 +2661,12 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(specular_tint, "Specular Tint", 0.0f);
   SOCKET_IN_FLOAT(anisotropic, "Anisotropic", 0.0f);
   SOCKET_IN_FLOAT(sheen, "Sheen", 0.0f);
-  SOCKET_IN_FLOAT(sheen_tint, "Sheen Tint", 0.0f);
+  SOCKET_IN_FLOAT(sheen_roughness, "Sheen Roughness", 0.5f);
+  SOCKET_IN_COLOR(sheen_tint, "Sheen Tint", one_float3());
   SOCKET_IN_FLOAT(clearcoat, "Clearcoat", 0.0f);
   SOCKET_IN_FLOAT(clearcoat_roughness, "Clearcoat Roughness", 0.03f);
   SOCKET_IN_FLOAT(ior, "IOR", 0.0f);
   SOCKET_IN_FLOAT(transmission, "Transmission", 0.0f);
-  SOCKET_IN_FLOAT(transmission_roughness, "Transmission Roughness", 0.0f);
   SOCKET_IN_FLOAT(anisotropic_rotation, "Anisotropic Rotation", 0.0f);
   SOCKET_IN_COLOR(emission, "Emission", zero_float3());
   SOCKET_IN_FLOAT(emission_strength, "Emission Strength", 1.0f);
@@ -2839,7 +2685,6 @@ PrincipledBsdfNode::PrincipledBsdfNode() : BsdfBaseNode(get_node_type())
 {
   closure = CLOSURE_BSDF_PRINCIPLED_ID;
   distribution = CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID;
-  distribution_orig = NBUILTIN_CLOSURES;
 }
 
 void PrincipledBsdfNode::expand(ShaderGraph *graph)
@@ -2849,7 +2694,8 @@ void PrincipledBsdfNode::expand(ShaderGraph *graph)
   ShaderInput *emission_in = input("Emission");
   ShaderInput *emission_strength_in = input("Emission Strength");
   if ((emission_in->link || emission != zero_float3()) &&
-      (emission_strength_in->link || emission_strength != 0.0f)) {
+      (emission_strength_in->link || emission_strength != 0.0f))
+  {
     /* Create add closure and emission, and relink inputs. */
     AddClosureNode *add = graph->create_node<AddClosureNode>();
     EmissionNode *emission_node = graph->create_node<EmissionNode>();
@@ -2926,13 +2772,13 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                                  ShaderInput *p_specular_tint,
                                  ShaderInput *p_anisotropic,
                                  ShaderInput *p_sheen,
+                                 ShaderInput *p_sheen_roughness,
                                  ShaderInput *p_sheen_tint,
                                  ShaderInput *p_clearcoat,
                                  ShaderInput *p_clearcoat_roughness,
                                  ShaderInput *p_ior,
                                  ShaderInput *p_transmission,
-                                 ShaderInput *p_anisotropic_rotation,
-                                 ShaderInput *p_transmission_roughness)
+                                 ShaderInput *p_anisotropic_rotation)
 {
   ShaderInput *base_color_in = input("Base Color");
   ShaderInput *subsurface_color_in = input("Subsurface Color");
@@ -2952,12 +2798,12 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int specular_tint_offset = compiler.stack_assign(p_specular_tint);
   int anisotropic_offset = compiler.stack_assign(p_anisotropic);
   int sheen_offset = compiler.stack_assign(p_sheen);
+  int sheen_roughness_offset = compiler.stack_assign(p_sheen_roughness);
   int sheen_tint_offset = compiler.stack_assign(p_sheen_tint);
   int clearcoat_offset = compiler.stack_assign(p_clearcoat);
   int clearcoat_roughness_offset = compiler.stack_assign(p_clearcoat_roughness);
   int ior_offset = compiler.stack_assign(p_ior);
   int transmission_offset = compiler.stack_assign(p_transmission);
-  int transmission_roughness_offset = compiler.stack_assign(p_transmission_roughness);
   int anisotropic_rotation_offset = compiler.stack_assign(p_anisotropic_rotation);
   int subsurface_radius_offset = compiler.stack_assign(p_subsurface_radius);
   int subsurface_ior_offset = compiler.stack_assign(p_subsurface_ior);
@@ -2979,13 +2825,12 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
       compiler.encode_uchar4(
           sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset));
 
-  compiler.add_node(compiler.encode_uchar4(ior_offset,
-                                           transmission_offset,
-                                           anisotropic_rotation_offset,
-                                           transmission_roughness_offset),
-                    distribution,
-                    subsurface_method,
-                    SVM_STACK_INVALID);
+  compiler.add_node(
+      compiler.encode_uchar4(
+          ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
+      distribution,
+      subsurface_method,
+      sheen_roughness_offset);
 
   float3 bc_default = get_float3(base_color_in->socket_type);
 
@@ -3009,12 +2854,6 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                     __float_as_int(ss_default.z));
 }
 
-bool PrincipledBsdfNode::has_integrator_dependency()
-{
-  ShaderInput *roughness_input = input("Roughness");
-  return !roughness_input->link && roughness <= 1e-4f;
-}
-
 void PrincipledBsdfNode::compile(SVMCompiler &compiler)
 {
   compile(compiler,
@@ -3028,13 +2867,13 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
           input("Specular Tint"),
           input("Anisotropic"),
           input("Sheen"),
+          input("Sheen Roughness"),
           input("Sheen Tint"),
           input("Clearcoat"),
           input("Clearcoat Roughness"),
           input("IOR"),
           input("Transmission"),
-          input("Anisotropic Rotation"),
-          input("Transmission Roughness"));
+          input("Anisotropic Rotation"));
 }
 
 void PrincipledBsdfNode::compile(OSLCompiler &compiler)
@@ -3176,9 +3015,7 @@ NODE_DEFINE(EmissionNode)
   return type;
 }
 
-EmissionNode::EmissionNode() : ShaderNode(get_node_type())
-{
-}
+EmissionNode::EmissionNode() : ShaderNode(get_node_type()) {}
 
 void EmissionNode::compile(SVMCompiler &compiler)
 {
@@ -3225,9 +3062,7 @@ NODE_DEFINE(BackgroundNode)
   return type;
 }
 
-BackgroundNode::BackgroundNode() : ShaderNode(get_node_type())
-{
-}
+BackgroundNode::BackgroundNode() : ShaderNode(get_node_type()) {}
 
 void BackgroundNode::compile(SVMCompiler &compiler)
 {
@@ -3273,9 +3108,7 @@ NODE_DEFINE(HoldoutNode)
   return type;
 }
 
-HoldoutNode::HoldoutNode() : ShaderNode(get_node_type())
-{
-}
+HoldoutNode::HoldoutNode() : ShaderNode(get_node_type()) {}
 
 void HoldoutNode::compile(SVMCompiler &compiler)
 {
@@ -3311,9 +3144,7 @@ NODE_DEFINE(AmbientOcclusionNode)
   return type;
 }
 
-AmbientOcclusionNode::AmbientOcclusionNode() : ShaderNode(get_node_type())
-{
-}
+AmbientOcclusionNode::AmbientOcclusionNode() : ShaderNode(get_node_type()) {}
 
 void AmbientOcclusionNode::compile(SVMCompiler &compiler)
 {
@@ -3573,10 +3404,8 @@ NODE_DEFINE(PrincipledHairBsdfNode)
   SOCKET_IN_FLOAT(melanin, "Melanin", 0.8f);
   SOCKET_IN_FLOAT(melanin_redness, "Melanin Redness", 1.0f);
   SOCKET_IN_COLOR(tint, "Tint", make_float3(1.f, 1.f, 1.f));
-  SOCKET_IN_VECTOR(absorption_coefficient,
-                   "Absorption Coefficient",
-                   make_float3(0.245531f, 0.52f, 1.365f),
-                   SocketType::VECTOR);
+  SOCKET_IN_VECTOR(
+      absorption_coefficient, "Absorption Coefficient", make_float3(0.245531f, 0.52f, 1.365f));
 
   SOCKET_IN_FLOAT(offset, "Offset", 2.f * M_PI_F / 180.f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.3f);
@@ -3883,9 +3712,7 @@ NODE_DEFINE(TextureCoordinateNode)
   return type;
 }
 
-TextureCoordinateNode::TextureCoordinateNode() : ShaderNode(get_node_type())
-{
-}
+TextureCoordinateNode::TextureCoordinateNode() : ShaderNode(get_node_type()) {}
 
 void TextureCoordinateNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4030,9 +3857,7 @@ NODE_DEFINE(UVMapNode)
   return type;
 }
 
-UVMapNode::UVMapNode() : ShaderNode(get_node_type())
-{
-}
+UVMapNode::UVMapNode() : ShaderNode(get_node_type()) {}
 
 void UVMapNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4119,9 +3944,7 @@ NODE_DEFINE(LightPathNode)
   return type;
 }
 
-LightPathNode::LightPathNode() : ShaderNode(get_node_type())
-{
-}
+LightPathNode::LightPathNode() : ShaderNode(get_node_type()) {}
 
 void LightPathNode::compile(SVMCompiler &compiler)
 {
@@ -4219,9 +4042,7 @@ NODE_DEFINE(LightFalloffNode)
   return type;
 }
 
-LightFalloffNode::LightFalloffNode() : ShaderNode(get_node_type())
-{
-}
+LightFalloffNode::LightFalloffNode() : ShaderNode(get_node_type()) {}
 
 void LightFalloffNode::compile(SVMCompiler &compiler)
 {
@@ -4277,9 +4098,7 @@ NODE_DEFINE(ObjectInfoNode)
   return type;
 }
 
-ObjectInfoNode::ObjectInfoNode() : ShaderNode(get_node_type())
-{
-}
+ObjectInfoNode::ObjectInfoNode() : ShaderNode(get_node_type()) {}
 
 void ObjectInfoNode::compile(SVMCompiler &compiler)
 {
@@ -4340,9 +4159,7 @@ NODE_DEFINE(ParticleInfoNode)
   return type;
 }
 
-ParticleInfoNode::ParticleInfoNode() : ShaderNode(get_node_type())
-{
-}
+ParticleInfoNode::ParticleInfoNode() : ShaderNode(get_node_type()) {}
 
 void ParticleInfoNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4445,9 +4262,7 @@ NODE_DEFINE(HairInfoNode)
   return type;
 }
 
-HairInfoNode::HairInfoNode() : ShaderNode(get_node_type())
-{
-}
+HairInfoNode::HairInfoNode() : ShaderNode(get_node_type()) {}
 
 void HairInfoNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4523,9 +4338,7 @@ NODE_DEFINE(PointInfoNode)
   return type;
 }
 
-PointInfoNode::PointInfoNode() : ShaderNode(get_node_type())
-{
-}
+PointInfoNode::PointInfoNode() : ShaderNode(get_node_type()) {}
 
 void PointInfoNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4577,9 +4390,7 @@ NODE_DEFINE(VolumeInfoNode)
   return type;
 }
 
-VolumeInfoNode::VolumeInfoNode() : ShaderNode(get_node_type())
-{
-}
+VolumeInfoNode::VolumeInfoNode() : ShaderNode(get_node_type()) {}
 
 /* The requested attributes are not updated after node expansion.
  * So we explicitly request the required attributes.
@@ -4639,13 +4450,9 @@ void VolumeInfoNode::expand(ShaderGraph *graph)
   }
 }
 
-void VolumeInfoNode::compile(SVMCompiler &)
-{
-}
+void VolumeInfoNode::compile(SVMCompiler &) {}
 
-void VolumeInfoNode::compile(OSLCompiler &)
-{
-}
+void VolumeInfoNode::compile(OSLCompiler &) {}
 
 NODE_DEFINE(VertexColorNode)
 {
@@ -4658,9 +4465,7 @@ NODE_DEFINE(VertexColorNode)
   return type;
 }
 
-VertexColorNode::VertexColorNode() : ShaderNode(get_node_type())
-{
-}
+VertexColorNode::VertexColorNode() : ShaderNode(get_node_type()) {}
 
 void VertexColorNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -4739,9 +4544,7 @@ NODE_DEFINE(ValueNode)
   return type;
 }
 
-ValueNode::ValueNode() : ShaderNode(get_node_type())
-{
-}
+ValueNode::ValueNode() : ShaderNode(get_node_type()) {}
 
 void ValueNode::constant_fold(const ConstantFolder &folder)
 {
@@ -4773,9 +4576,7 @@ NODE_DEFINE(ColorNode)
   return type;
 }
 
-ColorNode::ColorNode() : ShaderNode(get_node_type())
-{
-}
+ColorNode::ColorNode() : ShaderNode(get_node_type()) {}
 
 void ColorNode::constant_fold(const ConstantFolder &folder)
 {
@@ -4910,9 +4711,7 @@ NODE_DEFINE(MixClosureWeightNode)
   return type;
 }
 
-MixClosureWeightNode::MixClosureWeightNode() : ShaderNode(get_node_type())
-{
-}
+MixClosureWeightNode::MixClosureWeightNode() : ShaderNode(get_node_type()) {}
 
 void MixClosureWeightNode::compile(SVMCompiler &compiler)
 {
@@ -4947,9 +4746,7 @@ NODE_DEFINE(InvertNode)
   return type;
 }
 
-InvertNode::InvertNode() : ShaderNode(get_node_type())
-{
-}
+InvertNode::InvertNode() : ShaderNode(get_node_type()) {}
 
 void InvertNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5024,9 +4821,7 @@ NODE_DEFINE(MixNode)
   return type;
 }
 
-MixNode::MixNode() : ShaderNode(get_node_type())
-{
-}
+MixNode::MixNode() : ShaderNode(get_node_type()) {}
 
 void MixNode::compile(SVMCompiler &compiler)
 {
@@ -5103,9 +4898,7 @@ NODE_DEFINE(MixColorNode)
   return type;
 }
 
-MixColorNode::MixColorNode() : ShaderNode(get_node_type())
-{
-}
+MixColorNode::MixColorNode() : ShaderNode(get_node_type()) {}
 
 void MixColorNode::compile(SVMCompiler &compiler)
 {
@@ -5161,9 +4954,7 @@ NODE_DEFINE(MixFloatNode)
   return type;
 }
 
-MixFloatNode::MixFloatNode() : ShaderNode(get_node_type())
-{
-}
+MixFloatNode::MixFloatNode() : ShaderNode(get_node_type()) {}
 
 void MixFloatNode::compile(SVMCompiler &compiler)
 {
@@ -5218,9 +5009,7 @@ NODE_DEFINE(MixVectorNode)
   return type;
 }
 
-MixVectorNode::MixVectorNode() : ShaderNode(get_node_type())
-{
-}
+MixVectorNode::MixVectorNode() : ShaderNode(get_node_type()) {}
 
 void MixVectorNode::compile(SVMCompiler &compiler)
 {
@@ -5274,9 +5063,7 @@ NODE_DEFINE(MixVectorNonUniformNode)
   return type;
 }
 
-MixVectorNonUniformNode::MixVectorNonUniformNode() : ShaderNode(get_node_type())
-{
-}
+MixVectorNonUniformNode::MixVectorNonUniformNode() : ShaderNode(get_node_type()) {}
 
 void MixVectorNonUniformNode::compile(SVMCompiler &compiler)
 {
@@ -5332,9 +5119,7 @@ NODE_DEFINE(CombineColorNode)
   return type;
 }
 
-CombineColorNode::CombineColorNode() : ShaderNode(get_node_type())
-{
-}
+CombineColorNode::CombineColorNode() : ShaderNode(get_node_type()) {}
 
 void CombineColorNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5383,9 +5168,7 @@ NODE_DEFINE(CombineRGBNode)
   return type;
 }
 
-CombineRGBNode::CombineRGBNode() : ShaderNode(get_node_type())
-{
-}
+CombineRGBNode::CombineRGBNode() : ShaderNode(get_node_type()) {}
 
 void CombineRGBNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5431,9 +5214,7 @@ NODE_DEFINE(CombineXYZNode)
   return type;
 }
 
-CombineXYZNode::CombineXYZNode() : ShaderNode(get_node_type())
-{
-}
+CombineXYZNode::CombineXYZNode() : ShaderNode(get_node_type()) {}
 
 void CombineXYZNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5479,9 +5260,7 @@ NODE_DEFINE(CombineHSVNode)
   return type;
 }
 
-CombineHSVNode::CombineHSVNode() : ShaderNode(get_node_type())
-{
-}
+CombineHSVNode::CombineHSVNode() : ShaderNode(get_node_type()) {}
 
 void CombineHSVNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5522,9 +5301,7 @@ NODE_DEFINE(GammaNode)
   return type;
 }
 
-GammaNode::GammaNode() : ShaderNode(get_node_type())
-{
-}
+GammaNode::GammaNode() : ShaderNode(get_node_type()) {}
 
 void GammaNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5578,9 +5355,7 @@ NODE_DEFINE(BrightContrastNode)
   return type;
 }
 
-BrightContrastNode::BrightContrastNode() : ShaderNode(get_node_type())
-{
-}
+BrightContrastNode::BrightContrastNode() : ShaderNode(get_node_type()) {}
 
 void BrightContrastNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5629,9 +5404,7 @@ NODE_DEFINE(SeparateColorNode)
   return type;
 }
 
-SeparateColorNode::SeparateColorNode() : ShaderNode(get_node_type())
-{
-}
+SeparateColorNode::SeparateColorNode() : ShaderNode(get_node_type()) {}
 
 void SeparateColorNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5687,9 +5460,7 @@ NODE_DEFINE(SeparateRGBNode)
   return type;
 }
 
-SeparateRGBNode::SeparateRGBNode() : ShaderNode(get_node_type())
-{
-}
+SeparateRGBNode::SeparateRGBNode() : ShaderNode(get_node_type()) {}
 
 void SeparateRGBNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5740,9 +5511,7 @@ NODE_DEFINE(SeparateXYZNode)
   return type;
 }
 
-SeparateXYZNode::SeparateXYZNode() : ShaderNode(get_node_type())
-{
-}
+SeparateXYZNode::SeparateXYZNode() : ShaderNode(get_node_type()) {}
 
 void SeparateXYZNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5793,9 +5562,7 @@ NODE_DEFINE(SeparateHSVNode)
   return type;
 }
 
-SeparateHSVNode::SeparateHSVNode() : ShaderNode(get_node_type())
-{
-}
+SeparateHSVNode::SeparateHSVNode() : ShaderNode(get_node_type()) {}
 
 void SeparateHSVNode::constant_fold(const ConstantFolder &folder)
 {
@@ -5830,7 +5597,7 @@ void SeparateHSVNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_separate_hsv");
 }
 
-/* Hue Saturation Value */
+/* Hue/Saturation/Value */
 
 NODE_DEFINE(HSVNode)
 {
@@ -5847,9 +5614,7 @@ NODE_DEFINE(HSVNode)
   return type;
 }
 
-HSVNode::HSVNode() : ShaderNode(get_node_type())
-{
-}
+HSVNode::HSVNode() : ShaderNode(get_node_type()) {}
 
 void HSVNode::compile(SVMCompiler &compiler)
 {
@@ -5890,9 +5655,7 @@ NODE_DEFINE(AttributeNode)
   return type;
 }
 
-AttributeNode::AttributeNode() : ShaderNode(get_node_type())
-{
-}
+AttributeNode::AttributeNode() : ShaderNode(get_node_type()) {}
 
 void AttributeNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -5902,7 +5665,8 @@ void AttributeNode::attributes(Shader *shader, AttributeRequestSet *attributes)
   ShaderOutput *alpha_out = output("Alpha");
 
   if (!color_out->links.empty() || !vector_out->links.empty() || !fac_out->links.empty() ||
-      !alpha_out->links.empty()) {
+      !alpha_out->links.empty())
+  {
     attributes->add_standard(attribute);
   }
 
@@ -5978,9 +5742,7 @@ NODE_DEFINE(CameraNode)
   return type;
 }
 
-CameraNode::CameraNode() : ShaderNode(get_node_type())
-{
-}
+CameraNode::CameraNode() : ShaderNode(get_node_type()) {}
 
 void CameraNode::compile(SVMCompiler &compiler)
 {
@@ -6014,9 +5776,7 @@ NODE_DEFINE(FresnelNode)
   return type;
 }
 
-FresnelNode::FresnelNode() : ShaderNode(get_node_type())
-{
-}
+FresnelNode::FresnelNode() : ShaderNode(get_node_type()) {}
 
 void FresnelNode::compile(SVMCompiler &compiler)
 {
@@ -6052,9 +5812,7 @@ NODE_DEFINE(LayerWeightNode)
   return type;
 }
 
-LayerWeightNode::LayerWeightNode() : ShaderNode(get_node_type())
-{
-}
+LayerWeightNode::LayerWeightNode() : ShaderNode(get_node_type()) {}
 
 void LayerWeightNode::compile(SVMCompiler &compiler)
 {
@@ -6100,9 +5858,7 @@ NODE_DEFINE(WireframeNode)
   return type;
 }
 
-WireframeNode::WireframeNode() : ShaderNode(get_node_type())
-{
-}
+WireframeNode::WireframeNode() : ShaderNode(get_node_type()) {}
 
 void WireframeNode::compile(SVMCompiler &compiler)
 {
@@ -6148,9 +5904,7 @@ NODE_DEFINE(WavelengthNode)
   return type;
 }
 
-WavelengthNode::WavelengthNode() : ShaderNode(get_node_type())
-{
-}
+WavelengthNode::WavelengthNode() : ShaderNode(get_node_type()) {}
 
 void WavelengthNode::compile(SVMCompiler &compiler)
 {
@@ -6178,9 +5932,7 @@ NODE_DEFINE(BlackbodyNode)
   return type;
 }
 
-BlackbodyNode::BlackbodyNode() : ShaderNode(get_node_type())
-{
-}
+BlackbodyNode::BlackbodyNode() : ShaderNode(get_node_type()) {}
 
 void BlackbodyNode::constant_fold(const ConstantFolder &folder)
 {
@@ -6271,9 +6023,7 @@ NODE_DEFINE(MapRangeNode)
   return type;
 }
 
-MapRangeNode::MapRangeNode() : ShaderNode(get_node_type())
-{
-}
+MapRangeNode::MapRangeNode() : ShaderNode(get_node_type()) {}
 
 void MapRangeNode::expand(ShaderGraph *graph)
 {
@@ -6365,13 +6115,9 @@ NODE_DEFINE(VectorMapRangeNode)
   return type;
 }
 
-VectorMapRangeNode::VectorMapRangeNode() : ShaderNode(get_node_type())
-{
-}
+VectorMapRangeNode::VectorMapRangeNode() : ShaderNode(get_node_type()) {}
 
-void VectorMapRangeNode::expand(ShaderGraph * /*graph*/)
-{
-}
+void VectorMapRangeNode::expand(ShaderGraph * /*graph*/) {}
 
 void VectorMapRangeNode::compile(SVMCompiler &compiler)
 {
@@ -6426,9 +6172,7 @@ NODE_DEFINE(ClampNode)
   return type;
 }
 
-ClampNode::ClampNode() : ShaderNode(get_node_type())
-{
-}
+ClampNode::ClampNode() : ShaderNode(get_node_type()) {}
 
 void ClampNode::constant_fold(const ConstantFolder &folder)
 {
@@ -6579,9 +6323,7 @@ NODE_DEFINE(MathNode)
   return type;
 }
 
-MathNode::MathNode() : ShaderNode(get_node_type())
-{
-}
+MathNode::MathNode() : ShaderNode(get_node_type()) {}
 
 void MathNode::expand(ShaderGraph *graph)
 {
@@ -6686,9 +6428,7 @@ NODE_DEFINE(VectorMathNode)
   return type;
 }
 
-VectorMathNode::VectorMathNode() : ShaderNode(get_node_type())
-{
-}
+VectorMathNode::VectorMathNode() : ShaderNode(get_node_type()) {}
 
 void VectorMathNode::constant_fold(const ConstantFolder &folder)
 {
@@ -6725,7 +6465,8 @@ void VectorMathNode::compile(SVMCompiler &compiler)
 
   /* 3 Vector Operators */
   if (math_type == NODE_VECTOR_MATH_WRAP || math_type == NODE_VECTOR_MATH_FACEFORWARD ||
-      math_type == NODE_VECTOR_MATH_MULTIPLY_ADD) {
+      math_type == NODE_VECTOR_MATH_MULTIPLY_ADD)
+  {
     ShaderInput *vector3_in = input("Vector3");
     int vector3_stack_offset = compiler.stack_assign(vector3_in);
     compiler.add_node(
@@ -6776,9 +6517,7 @@ NODE_DEFINE(VectorRotateNode)
   return type;
 }
 
-VectorRotateNode::VectorRotateNode() : ShaderNode(get_node_type())
-{
-}
+VectorRotateNode::VectorRotateNode() : ShaderNode(get_node_type()) {}
 
 void VectorRotateNode::compile(SVMCompiler &compiler)
 {
@@ -6832,9 +6571,7 @@ NODE_DEFINE(VectorTransformNode)
   return type;
 }
 
-VectorTransformNode::VectorTransformNode() : ShaderNode(get_node_type())
-{
-}
+VectorTransformNode::VectorTransformNode() : ShaderNode(get_node_type()) {}
 
 void VectorTransformNode::compile(SVMCompiler &compiler)
 {
@@ -6936,9 +6673,7 @@ void BumpNode::constant_fold(const ConstantFolder &folder)
 
 /* Curves node */
 
-CurvesNode::CurvesNode(const NodeType *node_type) : ShaderNode(node_type)
-{
-}
+CurvesNode::CurvesNode(const NodeType *node_type) : ShaderNode(node_type) {}
 
 void CurvesNode::constant_fold(const ConstantFolder &folder, ShaderInput *value_in)
 {
@@ -7030,9 +6765,7 @@ NODE_DEFINE(RGBCurvesNode)
   return type;
 }
 
-RGBCurvesNode::RGBCurvesNode() : CurvesNode(get_node_type())
-{
-}
+RGBCurvesNode::RGBCurvesNode() : CurvesNode(get_node_type()) {}
 
 void RGBCurvesNode::constant_fold(const ConstantFolder &folder)
 {
@@ -7068,9 +6801,7 @@ NODE_DEFINE(VectorCurvesNode)
   return type;
 }
 
-VectorCurvesNode::VectorCurvesNode() : CurvesNode(get_node_type())
-{
-}
+VectorCurvesNode::VectorCurvesNode() : CurvesNode(get_node_type()) {}
 
 void VectorCurvesNode::constant_fold(const ConstantFolder &folder)
 {
@@ -7106,9 +6837,7 @@ NODE_DEFINE(FloatCurveNode)
   return type;
 }
 
-FloatCurveNode::FloatCurveNode() : ShaderNode(get_node_type())
-{
-}
+FloatCurveNode::FloatCurveNode() : ShaderNode(get_node_type()) {}
 
 void FloatCurveNode::constant_fold(const ConstantFolder &folder)
 {
@@ -7185,9 +6914,7 @@ NODE_DEFINE(RGBRampNode)
   return type;
 }
 
-RGBRampNode::RGBRampNode() : ShaderNode(get_node_type())
-{
-}
+RGBRampNode::RGBRampNode() : ShaderNode(get_node_type()) {}
 
 void RGBRampNode::constant_fold(const ConstantFolder &folder)
 {
@@ -7258,9 +6985,7 @@ NODE_DEFINE(SetNormalNode)
   return type;
 }
 
-SetNormalNode::SetNormalNode() : ShaderNode(get_node_type())
-{
-}
+SetNormalNode::SetNormalNode() : ShaderNode(get_node_type()) {}
 
 void SetNormalNode::compile(SVMCompiler &compiler)
 {
@@ -7379,9 +7104,7 @@ NODE_DEFINE(NormalMapNode)
   return type;
 }
 
-NormalMapNode::NormalMapNode() : ShaderNode(get_node_type())
-{
-}
+NormalMapNode::NormalMapNode() : ShaderNode(get_node_type()) {}
 
 void NormalMapNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -7469,9 +7192,7 @@ NODE_DEFINE(TangentNode)
   return type;
 }
 
-TangentNode::TangentNode() : ShaderNode(get_node_type())
-{
-}
+TangentNode::TangentNode() : ShaderNode(get_node_type()) {}
 
 void TangentNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
@@ -7539,9 +7260,7 @@ NODE_DEFINE(BevelNode)
   return type;
 }
 
-BevelNode::BevelNode() : ShaderNode(get_node_type())
-{
-}
+BevelNode::BevelNode() : ShaderNode(get_node_type()) {}
 
 void BevelNode::compile(SVMCompiler &compiler)
 {
@@ -7584,9 +7303,7 @@ NODE_DEFINE(DisplacementNode)
   return type;
 }
 
-DisplacementNode::DisplacementNode() : ShaderNode(get_node_type())
-{
-}
+DisplacementNode::DisplacementNode() : ShaderNode(get_node_type()) {}
 
 void DisplacementNode::constant_fold(const ConstantFolder &folder)
 {
@@ -7643,9 +7360,7 @@ NODE_DEFINE(VectorDisplacementNode)
   return type;
 }
 
-VectorDisplacementNode::VectorDisplacementNode() : ShaderNode(get_node_type())
-{
-}
+VectorDisplacementNode::VectorDisplacementNode() : ShaderNode(get_node_type()) {}
 
 void VectorDisplacementNode::constant_fold(const ConstantFolder &folder)
 {

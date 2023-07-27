@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -24,7 +25,8 @@ std::map<int, MetalDevice *> MetalDevice::active_device_ids;
 
 /* Thread-safe device access for async work. Calling code must pass an appropriately scoped lock
  * to existing_devices_mutex to safeguard against destruction of the returned instance. */
-MetalDevice *MetalDevice::get_device_by_ID(int ID, thread_scoped_lock &existing_devices_mutex_lock)
+MetalDevice *MetalDevice::get_device_by_ID(int ID,
+                                           thread_scoped_lock & /*existing_devices_mutex_lock*/)
 {
   auto it = active_device_ids.find(ID);
   if (it != active_device_ids.end()) {
@@ -39,7 +41,7 @@ bool MetalDevice::is_device_cancelled(int ID)
   return get_device_by_ID(ID, lock) == nullptr;
 }
 
-BVHLayoutMask MetalDevice::get_bvh_layout_mask() const
+BVHLayoutMask MetalDevice::get_bvh_layout_mask(uint /*kernel_features*/) const
 {
   return use_metalrt ? BVH_LAYOUT_METAL : BVH_LAYOUT_BVH2;
 }
@@ -51,11 +53,11 @@ void MetalDevice::set_error(const string &error)
 
   Device::set_error(error);
 
-  if (first_error) {
+  if (!has_error) {
     fprintf(stderr, "\nRefer to the Cycles GPU rendering documentation for possible solutions:\n");
     fprintf(stderr,
             "https://docs.blender.org/manual/en/latest/render/cycles/gpu_rendering.html\n\n");
-    first_error = false;
+    has_error = true;
   }
 }
 
@@ -100,16 +102,15 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
     }
     case METAL_GPU_AMD: {
       max_threads_per_threadgroup = 128;
-      use_metalrt = info.use_metalrt;
       break;
     }
     case METAL_GPU_APPLE: {
       max_threads_per_threadgroup = 512;
-      use_metalrt = info.use_metalrt;
       break;
     }
   }
 
+  use_metalrt = info.use_hardware_raytracing;
   if (auto metalrt = getenv("CYCLES_METALRT")) {
     use_metalrt = (atoi(metalrt) != 0);
   }
@@ -119,7 +120,7 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
   }
 
   if (device_vendor == METAL_GPU_APPLE) {
-    /* Set kernel_specialization_level based on user prefs. */
+    /* Set kernel_specialization_level based on user preferences. */
     switch (info.kernel_optimization_level) {
       case KERNEL_OPTIMIZATION_LEVEL_OFF:
         kernel_specialization_level = PSO_GENERIC;
@@ -288,12 +289,12 @@ MetalDevice::~MetalDevice()
   texture_info.free();
 }
 
-bool MetalDevice::support_device(const uint kernel_features /*requested_features*/)
+bool MetalDevice::support_device(const uint /*kernel_features*/)
 {
   return true;
 }
 
-bool MetalDevice::check_peer_access(Device *peer_device)
+bool MetalDevice::check_peer_access(Device * /*peer_device*/)
 {
   assert(0);
   /* does peer access make sense? */
@@ -346,7 +347,9 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
 #  ifdef WITH_NANOVDB
-      global_defines += "#define WITH_NANOVDB\n";
+      if (DebugFlags().metal.use_nanovdb) {
+        global_defines += "#define WITH_NANOVDB\n";
+      }
 #  endif
       break;
   }
@@ -809,6 +812,7 @@ void MetalDevice::generic_free(device_memory &mem)
       mem.shared_pointer = 0;
 
       /* Free device memory. */
+      delayed_free_list.push_back(mmem.mtlBuffer);
       mmem.mtlBuffer = nil;
     }
 
@@ -910,7 +914,9 @@ void MetalDevice::mem_free(device_memory &mem)
   }
 }
 
-device_ptr MetalDevice::mem_alloc_sub_ptr(device_memory &mem, size_t offset, size_t /*size*/)
+device_ptr MetalDevice::mem_alloc_sub_ptr(device_memory & /*mem*/,
+                                          size_t /*offset*/,
+                                          size_t /*size*/)
 {
   /* METAL_WIP - revive if necessary */
   assert(0);
@@ -1032,8 +1038,7 @@ void MetalDevice::const_copy_to(const char *name, void *host, size_t size)
         offsetof(KernelParamsMetal, integrator_state), host, size, pointer_block_size);
   }
 #  define KERNEL_DATA_ARRAY(data_type, tex_name) \
-    else if (strcmp(name, #tex_name) == 0) \
-    { \
+    else if (strcmp(name, #tex_name) == 0) { \
       update_launch_pointers(offsetof(KernelParamsMetal, tex_name), host, size, size); \
     }
 #  include "kernel/data_arrays.h"
@@ -1096,9 +1101,8 @@ void MetalDevice::tex_alloc(device_texture &mem)
   }
   MTLStorageMode storage_mode = MTLStorageModeManaged;
   if (@available(macos 10.15, *)) {
-    if ([mtlDevice hasUnifiedMemory] &&
-        device_vendor !=
-            METAL_GPU_INTEL) { /* Intel GPUs don't support MTLStorageModeShared for MTLTextures */
+    /* Intel GPUs don't support MTLStorageModeShared for MTLTextures. */
+    if ([mtlDevice hasUnifiedMemory] && device_vendor != METAL_GPU_INTEL) {
       storage_mode = MTLStorageModeShared;
     }
   }

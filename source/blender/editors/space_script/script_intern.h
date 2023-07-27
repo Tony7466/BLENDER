@@ -1,11 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spscript
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* internal exports only */
 
@@ -18,3 +23,7 @@ void script_keymap(struct wmKeyConfig *keyconf);
 
 void SCRIPT_OT_reload(struct wmOperatorType *ot);
 void SCRIPT_OT_python_file_run(struct wmOperatorType *ot);
+
+#ifdef __cplusplus
+}
+#endif

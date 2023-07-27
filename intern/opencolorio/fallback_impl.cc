@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 #include <cstring>
@@ -28,7 +29,7 @@ enum TransformType {
 #define COLORSPACE_SRGB ((OCIO_ConstColorSpaceRcPtr *)2)
 #define COLORSPACE_DATA ((OCIO_ConstColorSpaceRcPtr *)3)
 
-typedef struct OCIO_PackedImageDescription {
+struct OCIO_PackedImageDescription {
   float *data;
   long width;
   long height;
@@ -36,16 +37,12 @@ typedef struct OCIO_PackedImageDescription {
   long chanStrideBytes;
   long xStrideBytes;
   long yStrideBytes;
-} OCIO_PackedImageDescription;
+};
 
 struct FallbackTransform {
-  FallbackTransform() : type(TRANSFORM_UNKNOWN), scale(1.0f), exponent(1.0f)
-  {
-  }
+  FallbackTransform() : type(TRANSFORM_UNKNOWN), scale(1.0f), exponent(1.0f) {}
 
-  virtual ~FallbackTransform()
-  {
-  }
+  virtual ~FallbackTransform() {}
 
   void applyRGB(float *pixel)
   {
@@ -90,9 +87,7 @@ struct FallbackTransform {
 };
 
 struct FallbackProcessor {
-  FallbackProcessor(const FallbackTransform &transform) : transform(transform)
-  {
-  }
+  FallbackProcessor(const FallbackTransform &transform) : transform(transform) {}
 
   void applyRGB(float *pixel)
   {
@@ -114,9 +109,7 @@ OCIO_ConstConfigRcPtr *FallbackImpl::getCurrentConfig()
   return CONFIG_DEFAULT;
 }
 
-void FallbackImpl::setCurrentConfig(const OCIO_ConstConfigRcPtr * /*config*/)
-{
-}
+void FallbackImpl::setCurrentConfig(const OCIO_ConstConfigRcPtr * /*config*/) {}
 
 OCIO_ConstConfigRcPtr *FallbackImpl::configCreateFromEnv()
 {
@@ -128,9 +121,7 @@ OCIO_ConstConfigRcPtr *FallbackImpl::configCreateFromFile(const char * /*filenam
   return CONFIG_DEFAULT;
 }
 
-void FallbackImpl::configRelease(OCIO_ConstConfigRcPtr * /*config*/)
-{
-}
+void FallbackImpl::configRelease(OCIO_ConstConfigRcPtr * /*config*/) {}
 
 int FallbackImpl::configGetNumColorSpaces(OCIO_ConstConfigRcPtr * /*config*/)
 {
@@ -277,9 +268,7 @@ const char *FallbackImpl::lookGetProcessSpace(OCIO_ConstLookRcPtr * /*look*/)
   return NULL;
 }
 
-void FallbackImpl::lookRelease(OCIO_ConstLookRcPtr * /*look*/)
-{
-}
+void FallbackImpl::lookRelease(OCIO_ConstLookRcPtr * /*look*/) {}
 
 int FallbackImpl::colorSpaceIsInvertible(OCIO_ConstColorSpaceRcPtr * /*cs*/)
 {
@@ -310,9 +299,7 @@ void FallbackImpl::colorSpaceIsBuiltin(OCIO_ConstConfigRcPtr * /*config*/,
   }
 }
 
-void FallbackImpl::colorSpaceRelease(OCIO_ConstColorSpaceRcPtr * /*cs*/)
-{
-}
+void FallbackImpl::colorSpaceRelease(OCIO_ConstColorSpaceRcPtr * /*cs*/) {}
 
 OCIO_ConstProcessorRcPtr *FallbackImpl::configGetProcessorWithNames(OCIO_ConstConfigRcPtr *config,
                                                                     const char *srcName,

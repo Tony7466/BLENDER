@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -531,14 +532,16 @@ std::string GLShader::vertex_interface_declare(const ShaderCreateInfo &info) con
   for (const ShaderCreateInfo::VertIn &attr : info.vertex_inputs_) {
     if (GLContext::explicit_location_support &&
         /* Fix issue with AMDGPU-PRO + workbench_prepass_mesh_vert.glsl being quantized. */
-        GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL) == false) {
+        GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL) == false)
+    {
       ss << "layout(location = " << attr.index << ") ";
     }
     ss << "in " << to_string(attr.type) << " " << attr.name << ";\n";
   }
   /* NOTE(D4490): Fix a bug where shader without any vertex attributes do not behave correctly. */
   if (GPU_type_matches_ex(GPU_DEVICE_APPLE, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) &&
-      info.vertex_inputs_.is_empty()) {
+      info.vertex_inputs_.is_empty())
+  {
     ss << "in float gpu_dummy_workaround;\n";
   }
   ss << "\n/* Interfaces. */\n";
@@ -891,6 +894,11 @@ static char *glsl_patch_compute_get()
   /* Version need to go first. */
   STR_CONCAT(patch, slen, "#version 430\n");
   STR_CONCAT(patch, slen, "#extension GL_ARB_compute_shader :enable\n");
+
+  if (GLContext::texture_cube_map_array_support) {
+    STR_CONCAT(patch, slen, "#extension GL_ARB_texture_cube_map_array : enable\n");
+    STR_CONCAT(patch, slen, "#define GPU_ARB_texture_cube_map_array\n");
+  }
 
   /* Array compat. */
   STR_CONCAT(patch, slen, "#define gpu_Array(_type) _type[]\n");

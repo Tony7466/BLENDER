@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "app/opengl/shader.h"
 
@@ -149,9 +150,7 @@ void OpenGLShader::bind(int width, int height)
   glUniform2f(fullscreen_location_, width, height);
 }
 
-void OpenGLShader::unbind()
-{
-}
+void OpenGLShader::unbind() {}
 
 uint OpenGLShader::get_shader_program()
 {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 
@@ -8,10 +10,10 @@ namespace blender::nodes::node_geo_set_shade_smooth_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry")).supported_type(GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Bool>(N_("Shade Smooth")).field_on_all().default_value(true);
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  b.add_input<decl::Geometry>("Geometry").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Bool>("Shade Smooth").field_on_all().default_value(true);
+  b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 /**
@@ -42,7 +44,7 @@ static void set_sharp_faces(Mesh &mesh,
                             const Field<bool> &selection_field,
                             const Field<bool> &sharp_field)
 {
-  if (mesh.totpoly == 0) {
+  if (mesh.faces_num == 0) {
     return;
   }
   if (try_removing_sharp_attribute(mesh, selection_field, sharp_field)) {
@@ -53,8 +55,8 @@ static void set_sharp_faces(Mesh &mesh,
   AttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write<bool>("sharp_face",
                                                                                ATTR_DOMAIN_FACE);
 
-  bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
-  fn::FieldEvaluator evaluator{field_context, mesh.totpoly};
+  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  fn::FieldEvaluator evaluator{field_context, mesh.faces_num};
   evaluator.set_selection(selection_field);
   evaluator.add_with_destination(sharp_field, sharp_faces.varray);
   evaluator.evaluate();

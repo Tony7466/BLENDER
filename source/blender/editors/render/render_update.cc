@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edrend
@@ -30,7 +31,7 @@
 #include "BKE_icons.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_paint.h"
 #include "BKE_scene.h"
 
@@ -71,7 +72,7 @@ void ED_render_view3d_update(Depsgraph *depsgraph,
 
     View3D *v3d = static_cast<View3D *>(area->spacedata.first);
     RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-    RenderEngine *engine = rv3d->render_engine;
+    RenderEngine *engine = rv3d->view_render ? RE_view_engine_get(rv3d->view_render) : nullptr;
 
     /* call update if the scene changed, or if the render engine
      * tagged itself for update (e.g. because it was busy at the
@@ -171,7 +172,8 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
 {
   /* on changing the render engine type, clear all running render engines */
   for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen;
-       screen = static_cast<bScreen *>(screen->id.next)) {
+       screen = static_cast<bScreen *>(screen->id.next))
+  {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       ED_render_engine_area_exit(bmain, area);
     }
@@ -181,7 +183,8 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
   DEGEditorUpdateContext update_ctx = {nullptr};
   update_ctx.bmain = bmain;
   for (Scene *scene = static_cast<Scene *>(bmain->scenes.first); scene;
-       scene = static_cast<Scene *>(scene->id.next)) {
+       scene = static_cast<Scene *>(scene->id.next))
+  {
     update_ctx.scene = scene;
     LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
       /* TDODO(sergey): Iterate over depsgraphs instead? */
@@ -248,10 +251,12 @@ static void texture_changed(Main *bmain, Tex *tex)
   BKE_icon_changed(BKE_icon_id_ensure(&tex->id));
 
   for (scene = static_cast<Scene *>(bmain->scenes.first); scene;
-       scene = static_cast<Scene *>(scene->id.next)) {
+       scene = static_cast<Scene *>(scene->id.next))
+  {
     /* paint overlays */
     for (view_layer = static_cast<ViewLayer *>(scene->view_layers.first); view_layer;
-         view_layer = view_layer->next) {
+         view_layer = view_layer->next)
+    {
       BKE_paint_invalidate_overlay_tex(scene, view_layer, tex);
     }
     /* find compositing nodes */

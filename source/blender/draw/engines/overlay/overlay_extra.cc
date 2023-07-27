@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -317,7 +318,8 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
 void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   if (((ob->base_flag & BASE_FROM_DUPLI) != 0) && ((ob->transflag & OB_DUPLICOLLECTION) != 0) &&
-      ob->instance_collection) {
+      ob->instance_collection)
+  {
     return;
   }
 
@@ -883,7 +885,7 @@ static void camera_view3d_reconstruction(
   /* Index must start in 1, to mimic BKE_tracking_track_get_for_selection_index. */
   int track_index = 1;
 
-  float bundle_color_custom[3];
+  float bundle_color_custom[4];
   float *bundle_color_solid = G_draw.block.color_bundle_solid;
   float *bundle_color_unselected = G_draw.block.color_wire;
   uchar text_color_selected[4], text_color_unselected[4];
@@ -929,6 +931,8 @@ static void camera_view3d_reconstruction(
         /* Meh, hardcoded srgb transform here. */
         /* TODO: change the actual DNA color to be linear. */
         srgb_to_linearrgb_v3_v3(bundle_color_custom, track->color);
+        bundle_color_custom[3] = 1.0;
+
         bundle_color = bundle_color_custom;
       }
       else if (is_solid_bundle) {
@@ -980,7 +984,8 @@ static void camera_view3d_reconstruction(
     }
 
     if ((v3d->flag2 & V3D_SHOW_CAMERAPATH) && (tracking_object->flag & TRACKING_OBJECT_CAMERA) &&
-        !is_select) {
+        !is_select)
+    {
       const MovieTrackingReconstruction *reconstruction = &tracking_object->reconstruction;
 
       if (reconstruction->camnr) {
@@ -1295,7 +1300,8 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
   for (GpencilModifierData *md =
            static_cast<GpencilModifierData *>(ob->greasepencil_modifiers.first);
        md;
-       md = md->next) {
+       md = md->next)
+  {
     if (md->type == eGpencilModifierType_Hook) {
       HookGpencilModifierData *hmd = (HookGpencilModifierData *)md;
       float center[3];

@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
  */
 
 #pragma once
+
+#include <functional>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_rect.h"
@@ -190,6 +193,11 @@ struct uiBut {
   uiButHandleFunc func = nullptr;
   void *func_arg1 = nullptr;
   void *func_arg2 = nullptr;
+  /**
+   * C++ version of #func above. Allows storing arbitrary data in a type safe way, no void
+   * pointer arguments.
+   */
+  std::function<void(bContext &)> apply_func;
 
   uiButHandleNFunc funcN = nullptr;
   void *func_argN = nullptr;
@@ -211,6 +219,9 @@ struct uiBut {
   uiButToolTipFunc tip_func = nullptr;
   void *tip_arg = nullptr;
   uiFreeArgFunc tip_arg_free = nullptr;
+  /** Function to get a custom tooltip label, see #UI_BUT_HAS_TOOLTIP_LABEL. Requires
+   * #UI_BUT_HAS_TOOLTIP_LABEL drawflag. */
+  std::function<std::string(const uiBut *)> tip_label_func;
 
   /** info on why button is disabled, displayed in tooltip */
   const char *disabled_info = nullptr;
@@ -249,11 +260,10 @@ struct uiBut {
 
   ListBase extra_op_icons = {nullptr, nullptr}; /** #uiButExtraOpIcon */
 
-  /* Drag-able data, type is WM_DRAG_... */
-  char dragtype = WM_DRAG_ID;
+  eWM_DragDataType dragtype = WM_DRAG_ID;
   short dragflag = 0;
   void *dragpoin = nullptr;
-  ImBuf *imb = nullptr;
+  const ImBuf *imb = nullptr;
   float imb_scale = 0;
 
   /** Active button data (set when the user is hovering or interacting with a button). */
@@ -266,8 +276,7 @@ struct uiBut {
   double *editval = nullptr;
   float *editvec = nullptr;
 
-  uiButPushedStateFunc pushed_state_func = nullptr;
-  const void *pushed_state_arg = nullptr;
+  std::function<bool(const uiBut &)> pushed_state_func;
 
   /** Little indicator (e.g., counter) displayed on top of some icons. */
   IconTextOverlay icon_overlay_text = {};
@@ -325,7 +334,8 @@ struct uiButSearch : public uiBut {
   bool results_are_suggestions = false;
 };
 
-/** Derived struct for #UI_BTYPE_DECORATOR
+/**
+ * Derived struct for #UI_BTYPE_DECORATOR
  * Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects.
  */
 struct uiButDecorator : public uiBut {
@@ -334,10 +344,12 @@ struct uiButDecorator : public uiBut {
   int decorated_rnaindex = -1;
 };
 
-/** Derived struct for #UI_BTYPE_PROGRESS_BAR. */
-struct uiButProgressbar : public uiBut {
-  /* 0..1 range */
-  float progress = 0;
+/** Derived struct for #UI_BTYPE_PROGRESS. */
+struct uiButProgress : public uiBut {
+  /** Progress in  0..1 range */
+  float progress_factor = 0.0f;
+  /** The display style (bar, pie... etc). */
+  eButProgressType progress_type = UI_BUT_PROGRESS_TYPE_BAR;
 };
 
 struct uiButViewItem : public uiBut {
@@ -593,25 +605,31 @@ struct uiSafetyRct {
 
 void ui_fontscale(float *points, float aspect);
 
-void ui_block_to_region_fl(const ARegion *region, uiBlock *block, float *r_x, float *r_y);
-void ui_block_to_window_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_block_to_window(const ARegion *region, uiBlock *block, int *x, int *y);
+/** Project button or block (but==nullptr) to pixels in region-space. */
+void ui_but_to_pixelrect(rcti *rect,
+                         const ARegion *region,
+                         const uiBlock *block,
+                         const uiBut *but);
+
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
+void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_block_to_window(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_block_to_region_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_block_to_window_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
-float ui_block_to_window_scale(const ARegion *region, uiBlock *block);
+float ui_block_to_window_scale(const ARegion *region, const uiBlock *block);
 /**
  * For mouse cursor.
  */
-void ui_window_to_block_fl(const ARegion *region, uiBlock *block, float *x, float *y);
-void ui_window_to_block(const ARegion *region, uiBlock *block, int *x, int *y);
+void ui_window_to_block_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
+void ui_window_to_block(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_window_to_block_rctf(const ARegion *region,
-                             uiBlock *block,
+                             const uiBlock *block,
                              rctf *rct_dst,
                              const rctf *rct_src);
 void ui_window_to_region(const ARegion *region, int *x, int *y);
@@ -666,14 +684,14 @@ void ui_hsvcube_pos_from_vals(
  */
 void ui_but_string_get_ex(uiBut *but,
                           char *str,
-                          size_t maxlen,
+                          size_t str_maxncpy,
                           int float_precision,
                           bool use_exp_float,
                           bool *r_use_exp_float) ATTR_NONNULL(1, 2);
-void ui_but_string_get(uiBut *but, char *str, size_t maxlen) ATTR_NONNULL();
+void ui_but_string_get(uiBut *but, char *str, size_t str_maxncpy) ATTR_NONNULL();
 /**
  * A version of #ui_but_string_get_ex for dynamic buffer sizes
- * (where #ui_but_string_get_max_length returns 0).
+ * (where #ui_but_string_get_maxncpy returns 0).
  *
  * \param r_str_size: size of the returned string (including terminator).
  */
@@ -681,11 +699,11 @@ char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size);
 /**
  * \param str: will be overwritten.
  */
-void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen) ATTR_NONNULL();
+void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t str_maxncpy) ATTR_NONNULL();
 bool ui_but_string_set(bContext *C, uiBut *but, const char *str) ATTR_NONNULL();
 bool ui_but_string_eval_number(bContext *C, const uiBut *but, const char *str, double *value)
     ATTR_NONNULL();
-int ui_but_string_get_max_length(uiBut *but);
+int ui_but_string_get_maxncpy(uiBut *but);
 /**
  * Clear & exit the active button's string..
  */
@@ -1112,6 +1130,7 @@ enum {
   ROUNDBOX_TRIA_MENU,
   ROUNDBOX_TRIA_CHECK,
   ROUNDBOX_TRIA_HOLD_ACTION_ARROW,
+  ROUNDBOX_TRIA_DASH,
 
   ROUNDBOX_TRIA_MAX, /* don't use */
 };
@@ -1280,7 +1299,7 @@ void ui_but_anim_paste_driver(bContext *C);
  * \a str can be NULL to only perform check if \a but has an expression at all.
  * \return if button has an expression.
  */
-bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen);
+bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy);
 bool ui_but_anim_expression_set(uiBut *but, const char *str);
 /**
  * Create new expression for button (i.e. a "scripted driver"), if it can be created.
@@ -1348,7 +1367,7 @@ uiBut *ui_list_find_mouse_over_ex(const ARegion *region, const int xy[2])
 
 bool ui_but_contains_password(const uiBut *but) ATTR_WARN_UNUSED_RESULT;
 
-size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxlen)
+size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxncpy)
     ATTR_NONNULL(1, 2);
 size_t ui_but_drawstr_len_without_sep_char(const uiBut *but);
 size_t ui_but_tip_len_only_first_line(const uiBut *but);
@@ -1454,11 +1473,16 @@ void ui_interface_tag_script_reload_queries();
 void ui_block_free_views(uiBlock *block);
 void ui_block_views_bounds_calc(const uiBlock *block);
 void ui_block_views_listen(const uiBlock *block, const wmRegionListenerParams *listener_params);
+void ui_block_views_draw_overlays(const ARegion *region, const uiBlock *block);
 uiViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_block,
                                                        const uiViewHandle *new_view);
 
 uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
     const uiBlock *new_block, const uiViewItemHandle *new_item_handle);
+
+/* abstract_view_item.cc */
+
+void ui_view_item_swap_button_pointers(uiViewItemHandle *a_handle, uiViewItemHandle *b_handle);
 
 /* interface_templates.cc */
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup openimageio
@@ -12,7 +13,7 @@ OIIO_NAMESPACE_USING
 
 extern "C" {
 
-int OIIO_getVersionHex(void)
+int OIIO_getVersionHex()
 {
   return openimageio_version();
 }

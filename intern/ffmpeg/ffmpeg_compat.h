@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Peter Schlaile. */
+/* SPDX-FileCopyrightText: 2011 Peter Schlaile
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ffmpeg
@@ -123,6 +124,17 @@ int64_t av_get_pts_from_frame(AVFrame *picture)
   return timestamp_from_pts_or_dts(picture->pts, picture->pkt_dts);
 }
 
+/*  Duration of the frame, in the same units as pts. 0 if unknown. */
+FFMPEG_INLINE
+int64_t av_get_frame_duration_in_pts_units(const AVFrame *picture)
+{
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 30, 100)
+  return picture->pkt_duration;
+#else
+  return picture->duration;
+#endif
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Deinterlace code block
  *
@@ -214,8 +226,8 @@ void deinterlace_line_inplace(
 }
 
 /* deinterlacing : 2 temporal taps, 3 spatial taps linear filter. The
-   top field is copied as is, but the bottom field is deinterlaced
-   against the top field. */
+ * top field is copied as is, but the bottom field is deinterlaced
+ * against the top field. */
 FFMPEG_INLINE
 void deinterlace_bottom_field(
     uint8_t *dst, int dst_wrap, const uint8_t *src1, int src_wrap, int width, int height)
@@ -282,7 +294,8 @@ int av_image_deinterlace(
   if (pix_fmt != AV_PIX_FMT_YUV420P && pix_fmt != AV_PIX_FMT_YUVJ420P &&
       pix_fmt != AV_PIX_FMT_YUV422P && pix_fmt != AV_PIX_FMT_YUVJ422P &&
       pix_fmt != AV_PIX_FMT_YUV444P && pix_fmt != AV_PIX_FMT_YUV411P &&
-      pix_fmt != AV_PIX_FMT_GRAY8) {
+      pix_fmt != AV_PIX_FMT_GRAY8)
+  {
     return -1;
   }
   if ((width & 3) != 0 || (height & 3) != 0) {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -50,7 +51,7 @@ typedef struct SubsurfRuntimeData {
   /* Cached from the draw code for stats display. */
   int stats_totvert;
   int stats_totedge;
-  int stats_totpoly;
+  int stats_faces_num;
   int stats_totloop;
 } SubsurfRuntimeData;
 

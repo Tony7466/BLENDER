@@ -1,11 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* internal exports only */
 struct wmOperatorType;
@@ -216,8 +221,7 @@ void POSELIB_OT_blend_pose_asset(struct wmOperatorType *ot);
 
 void POSE_OT_push(struct wmOperatorType *ot);
 void POSE_OT_relax(struct wmOperatorType *ot);
-void POSE_OT_push_rest(struct wmOperatorType *ot);
-void POSE_OT_relax_rest(struct wmOperatorType *ot);
+void POSE_OT_blend_with_rest(struct wmOperatorType *ot);
 void POSE_OT_breakdown(struct wmOperatorType *ot);
 void POSE_OT_blend_to_neighbors(struct wmOperatorType *ot);
 
@@ -330,3 +334,7 @@ int bone_looper(struct Object *ob,
                 int (*bone_func)(struct Object *, struct Bone *, void *));
 
 /** \} */
+
+#ifdef __cplusplus
+}
+#endif
