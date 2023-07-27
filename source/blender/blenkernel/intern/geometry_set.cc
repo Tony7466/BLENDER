@@ -28,11 +28,11 @@
 
 #include "MEM_guardedalloc.h"
 
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component
  * \{ */
-
-namespace blender::bke {
 
 GeometryComponent::GeometryComponent(Type type) : type_(type) {}
 
@@ -51,6 +51,8 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
       return new CurveComponent();
     case Type::Edit:
       return new GeometryComponentEditData();
+    case Type::GreasePencil:
+      return new GreasePencilComponent();
   }
   BLI_assert_unreachable();
   return {};
@@ -204,14 +206,14 @@ std::optional<Bounds<float3>> GeometrySet::compute_boundbox_without_instances() 
   }
   if (const Mesh *mesh = this->get_mesh_for_read()) {
     Bounds<float3> mesh_bounds{float3(std::numeric_limits<float>::max()),
-                               float3(std::numeric_limits<float>::min())};
+                               float3(std::numeric_limits<float>::lowest())};
     if (BKE_mesh_wrapper_minmax(mesh, mesh_bounds.min, mesh_bounds.max)) {
       bounds = bounds::merge(bounds, {mesh_bounds});
     }
   }
   if (const Volume *volume = this->get_volume_for_read()) {
     Bounds<float3> volume_bounds{float3(std::numeric_limits<float>::max()),
-                                 float3(std::numeric_limits<float>::min())};
+                                 float3(std::numeric_limits<float>::lowest())};
     if (BKE_volume_min_max(volume, volume_bounds.min, volume_bounds.max)) {
       bounds = bounds::merge(bounds, {volume_bounds});
     }
@@ -228,7 +230,7 @@ std::ostream &operator<<(std::ostream &stream, const GeometrySet &geometry_set)
   if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
     parts.append(std::to_string(mesh->totvert) + " verts");
     parts.append(std::to_string(mesh->totedge) + " edges");
-    parts.append(std::to_string(mesh->totpoly) + " polys");
+    parts.append(std::to_string(mesh->faces_num) + " faces");
     parts.append(std::to_string(mesh->totloop) + " corners");
   }
   if (const Curves *curves = geometry_set.get_curves_for_read()) {
@@ -344,6 +346,12 @@ const CurvesEditHints *GeometrySet::get_curve_edit_hints_for_read() const
   return (component == nullptr) ? nullptr : component->curves_edit_hints_.get();
 }
 
+const GreasePencil *GeometrySet::get_grease_pencil_for_read() const
+{
+  const GreasePencilComponent *component = this->get_component_for_read<GreasePencilComponent>();
+  return (component == nullptr) ? nullptr : component->get_for_read();
+}
+
 bool GeometrySet::has_pointcloud() const
 {
   const PointCloudComponent *component = this->get_component_for_read<PointCloudComponent>();
@@ -381,29 +389,29 @@ bool GeometrySet::has_realized_data() const
   return false;
 }
 
+bool GeometrySet::has_grease_pencil() const
+{
+  const GreasePencilComponent *component = this->get_component_for_read<GreasePencilComponent>();
+  return component != nullptr && component->has_grease_pencil();
+}
+
 bool GeometrySet::is_empty() const
 {
   return !(this->has_mesh() || this->has_curves() || this->has_pointcloud() ||
-           this->has_volume() || this->has_instances());
+           this->has_volume() || this->has_instances() || this->has_grease_pencil());
 }
 
 GeometrySet GeometrySet::create_with_mesh(Mesh *mesh, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (mesh != nullptr) {
-    MeshComponent &component = geometry_set.get_component_for_write<MeshComponent>();
-    component.replace(mesh, ownership);
-  }
+  geometry_set.replace_mesh(mesh, ownership);
   return geometry_set;
 }
 
 GeometrySet GeometrySet::create_with_volume(Volume *volume, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (volume != nullptr) {
-    VolumeComponent &component = geometry_set.get_component_for_write<VolumeComponent>();
-    component.replace(volume, ownership);
-  }
+  geometry_set.replace_volume(volume, ownership);
   return geometry_set;
 }
 
@@ -411,20 +419,14 @@ GeometrySet GeometrySet::create_with_pointcloud(PointCloud *pointcloud,
                                                 GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (pointcloud != nullptr) {
-    PointCloudComponent &component = geometry_set.get_component_for_write<PointCloudComponent>();
-    component.replace(pointcloud, ownership);
-  }
+  geometry_set.replace_pointcloud(pointcloud, ownership);
   return geometry_set;
 }
 
 GeometrySet GeometrySet::create_with_curves(Curves *curves, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  if (curves != nullptr) {
-    CurveComponent &component = geometry_set.get_component_for_write<CurveComponent>();
-    component.replace(curves, ownership);
-  }
+  geometry_set.replace_curves(curves, ownership);
   return geometry_set;
 }
 
@@ -433,6 +435,14 @@ GeometrySet GeometrySet::create_with_instances(Instances *instances,
 {
   GeometrySet geometry_set;
   geometry_set.replace_instances(instances, ownership);
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::create_with_grease_pencil(GreasePencil *grease_pencil,
+                                                   GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  geometry_set.replace_grease_pencil(grease_pencil, ownership);
   return geometry_set;
 }
 
@@ -506,6 +516,21 @@ void GeometrySet::replace_volume(Volume *volume, GeometryOwnershipType ownership
   component.replace(volume, ownership);
 }
 
+void GeometrySet::replace_grease_pencil(GreasePencil *grease_pencil,
+                                        GeometryOwnershipType ownership)
+{
+  if (grease_pencil == nullptr) {
+    this->remove<GreasePencilComponent>();
+    return;
+  }
+  if (grease_pencil == this->get_grease_pencil_for_read()) {
+    return;
+  }
+  this->remove<GreasePencilComponent>();
+  GreasePencilComponent &component = this->get_component_for_write<GreasePencilComponent>();
+  component.replace(grease_pencil, ownership);
+}
+
 Mesh *GeometrySet::get_mesh_for_write()
 {
   MeshComponent *component = this->get_component_ptr<MeshComponent>();
@@ -544,6 +569,12 @@ CurvesEditHints *GeometrySet::get_curve_edit_hints_for_write()
   GeometryComponentEditData &component =
       this->get_component_for_write<GeometryComponentEditData>();
   return component.curves_edit_hints_.get();
+}
+
+GreasePencil *GeometrySet::get_grease_pencil_for_write()
+{
+  GreasePencilComponent *component = this->get_component_ptr<GreasePencilComponent>();
+  return component == nullptr ? nullptr : component->get_for_write();
 }
 
 void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
@@ -721,6 +752,9 @@ bool object_has_geometry_set_instances(const Object &object)
         break;
       case GeometryComponent::Type::Edit:
         break;
+      case GeometryComponent::Type::GreasePencil:
+        is_instance = object.type != OB_GREASE_PENCIL;
+        break;
     }
     if (is_instance) {
       return true;
@@ -729,6 +763,6 @@ bool object_has_geometry_set_instances(const Object &object)
   return false;
 }
 
-}  // namespace blender::bke
-
 /** \} */
+
+}  // namespace blender::bke

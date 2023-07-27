@@ -393,10 +393,10 @@ enum {
   PATH_POINT_FLAG_KEYFRAME = (1 << 0),
 };
 
-typedef struct TrachPathPoint {
+struct TrackPathPoint {
   float co[2];
   uchar flag;
-} TrackPathPoint;
+};
 
 static void marker_to_path_point(SpaceClip *sc,
                                  const MovieTrackingTrack *track,
@@ -2003,6 +2003,6 @@ void clip_draw_grease_pencil(bContext *C, int onlyv2d)
     }
   }
   else {
-    ED_annotation_draw_view2d(C, 0);
+    ED_annotation_draw_view2d(C, false);
   }
 }

@@ -1020,7 +1020,7 @@ static void write_libraries(WriteData *wd, Main *main)
 }
 
 #ifdef WITH_BUILDINFO
-extern "C" unsigned long build_commit_timestamp;
+extern "C" ulong build_commit_timestamp;
 extern "C" char build_hash[];
 #endif
 
@@ -1094,11 +1094,11 @@ static void write_thumb(WriteData *wd, const BlendThumbnail *thumb)
 
 #define ID_BUFFER_STATIC_SIZE 8192
 
-typedef struct BLO_Write_IDBuffer {
+struct BLO_Write_IDBuffer {
   const IDTypeInfo *id_type;
   ID *temp_id;
   char id_buffer_static[ID_BUFFER_STATIC_SIZE];
-} BLO_Write_IDBuffer;
+};
 
 static void id_buffer_init_for_id_type(BLO_Write_IDBuffer *id_buffer, const IDTypeInfo *id_type)
 {

@@ -107,7 +107,7 @@ static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
 
 static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
                                               PointerRNA value,
-                                              struct ReportList * /*reports*/)
+                                              ReportList * /*reports*/)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   grease_pencil->set_active_layer(static_cast<blender::bke::greasepencil::Layer *>(value.data));
@@ -207,6 +207,12 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect layer from further editing and/or frame changes");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Opacity */
+  prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, "GreasePencilLayer", "opacity");
+  RNA_def_property_ui_text(prop, "Opacity", "Layer Opacity");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
