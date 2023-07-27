@@ -15,7 +15,7 @@ set(SRC
   intern/avi.c
   intern/avi_codecs.cc
   intern/avi_endian.cc
-  intern/avi_mjpeg.c
+  intern/avi_mjpeg.cc
   intern/avi_options.c
   intern/avi_rgb.c
   intern/avi_rgb32.c
