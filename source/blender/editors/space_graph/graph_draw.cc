@@ -873,8 +873,9 @@ static int calculate_bezt_draw_resolution(BezTriple *bezt,
   const float max_y = max_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
   const int resolution_y = (int)((max_y - min_y) * resolution_scale[1]);
-  /* The resolution should be the distance between the two keys, but to save the square root
-   * calculation use an approximation by the two values. */
+  /* Using a simple sum instead of calculating the diagonal. This gives a slightly higher
+   * resolution but it does compensate for the fact that bezier curves can create long arcs between
+   * keys. */
   return resolution_x + resolution_y;
 }
 
