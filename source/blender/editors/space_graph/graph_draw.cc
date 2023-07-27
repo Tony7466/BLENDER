@@ -866,14 +866,21 @@ static int calculate_bezt_draw_resolution(BezTriple *bezt,
                                           const blender::float2 resolution_scale)
 {
   const int resolution_x = (int)((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
-  const int resolution_y = (int)(fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) *
-                                 resolution_scale[1]);
+  /* Include the handles in the resolution calculation to cover the case where keys have the same
+   * y-value, but their handles are offset to create an arc. */
+  const float min_y = min_ffff(
+      bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
+  const float max_y = max_ffff(
+      bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
+  const int resolution_y = (int)((max_y - min_y) * resolution_scale[1]);
+  /* The resolution should be the distance between the two keys, but to save the square root
+   * calculation use an approximation by the two values. */
   return resolution_x + resolution_y;
 }
 
 /**
- * Draw a segment from `prevbezt` to `bezt` at the given `resolution`.
- * #immBeginAtMost is expected to be called with enough space for this function to run.
+ * Add points on the bezier between \param prevbezt and \param bezt to \param curve_vertices. The
+ * amount of points added is based on the given \param resolution.
  */
 static void add_bezt_vertices(BezTriple *bezt,
                               BezTriple *prevbezt,
