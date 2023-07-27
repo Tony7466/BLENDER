@@ -142,7 +142,7 @@ endif()
 set(SRC
   creator.c
   creator_args.cc
-  creator_signals.c
+  creator_signals.cc
 
   creator_intern.h
 )
