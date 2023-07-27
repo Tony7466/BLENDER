@@ -49,7 +49,7 @@ void main()
 
   /* Emission. */
   vec3 scattering = imageLoad(in_emission_img, froxel).rgb;
-  vec3 transmittance = imageLoad(in_extinction_img, froxel).rgb;
+  vec3 extinction = imageLoad(in_extinction_img, froxel).rgb;
   vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
   vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
@@ -82,11 +82,11 @@ void main()
 #endif
 
   /* Catch NaNs. */
-  if (any(isnan(scattering)) || any(isnan(transmittance))) {
+  if (any(isnan(scattering)) || any(isnan(extinction))) {
     scattering = vec3(0.0);
-    transmittance = vec3(1.0);
+    extinction = vec3(0.0);
   }
 
   imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
-  imageStore(out_extinction_img, froxel, vec4(transmittance, 1.0));
+  imageStore(out_extinction_img, froxel, vec4(extinction, 1.0));
 }
