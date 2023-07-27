@@ -269,12 +269,13 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
   return panel;
 }
 
-static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
-                                                               bNodeTreeInterface *interface,
-                                                               Main *bmain,
-                                                               ReportList *reports,
-                                                               bNodeTreeInterfaceItem *item,
-                                                               bNodeTreeInterfacePanel *parent)
+static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy_to_parent(
+    ID *id,
+    bNodeTreeInterface *interface,
+    Main *bmain,
+    ReportList *reports,
+    bNodeTreeInterfaceItem *item,
+    bNodeTreeInterfacePanel *parent)
 {
   if (parent != nullptr && !interface->find_item(parent->item)) {
     BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
@@ -302,6 +303,20 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
   }
 
   return item_copy;
+}
+
+static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
+                                                               bNodeTreeInterface *interface,
+                                                               Main *bmain,
+                                                               ReportList *reports,
+                                                               bNodeTreeInterfaceItem *item)
+{
+  /* Copy to same parent as the item. */
+  bNodeTreeInterfacePanel *parent;
+  if (!interface->find_item_parent(*item, parent)) {
+    return nullptr;
+  }
+  return rna_NodeTreeInterfaceItems_copy_to_parent(id, interface, bmain, reports, item, parent);
 }
 
 static void rna_NodeTreeInterfaceItems_remove(ID *id,
@@ -686,7 +701,6 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "Item to copy");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  RNA_def_pointer(func, "parent", "NodeTreeInterfacePanel", "Parent", "Panel to add the item in");
   /* return value */
   parm = RNA_def_pointer(
       func, "item_copy", "NodeTreeInterfaceItem", "Item Copy", "Copy of the item");
