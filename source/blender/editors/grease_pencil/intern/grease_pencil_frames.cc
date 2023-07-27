@@ -74,9 +74,7 @@ static void append_selected_frame_to_key_edit_data(KeyframeEditData *ked,
                                                    const int frame_number,
                                                    const GreasePencilFrame &frame)
 {
-  CfraElem *ce;
-
-  ce = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "CfraElem"));
+  CfraElem *ce = MEM_cnew<CfraElem>(__func__);
   ce->cfra = float(frame_number);
   ce->sel = frame.is_selected();
   BLI_addtail(&(ked->list), ce);
