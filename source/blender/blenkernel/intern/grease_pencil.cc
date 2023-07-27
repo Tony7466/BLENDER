@@ -1084,10 +1084,10 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
                                              blender::bke::GeometrySet &geometry_set)
 {
   /* Modifier evaluation modes. */
-  const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  int required_mode = use_render ? eModifierMode_Render : eModifierMode_Realtime;
+  const bool use_render = DEG_get_mode(depsgraph) == DAG_EVAL_RENDER;
+  ModifierMode required_mode = use_render ? eModifierMode_Render : eModifierMode_Realtime;
   if (BKE_object_is_in_editmode(object)) {
-    required_mode = (ModifierMode)(int(required_mode) | eModifierMode_Editmode);
+    required_mode |= eModifierMode_Editmode;
   }
   ModifierApplyFlag apply_flag = use_render ? MOD_APPLY_RENDER : MOD_APPLY_USECACHE;
   const ModifierEvalContext mectx = {depsgraph, object, apply_flag};
@@ -1101,14 +1101,14 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
 
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
-    const ModifierTypeInfo *mti = BKE_modifier_get_info(static_cast<ModifierType>(md->type));
+    const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
 
     if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
       continue;
     }
 
-    if (mti->modifyGeometrySet != nullptr) {
-      mti->modifyGeometrySet(md, &mectx, &geometry_set);
+    if (mti->modify_geometry_set != nullptr) {
+      mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
 }
@@ -1125,9 +1125,11 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
       grease_pencil, GeometryOwnershipType::ReadOnly);
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
-  /* Assign evaluated object. */
+  /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
+   * would potentially result in a copy when it's shared. So for now, we use a const_cast here. */
   GreasePencil *grease_pencil_eval = const_cast<GreasePencil *>(
       geometry_set.get_grease_pencil_for_read());
+  /* Assign evaluated object. */
   if (grease_pencil_eval == nullptr) {
     grease_pencil_eval = BKE_grease_pencil_new_nomain();
     BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
