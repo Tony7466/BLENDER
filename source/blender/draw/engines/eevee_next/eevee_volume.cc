@@ -84,6 +84,9 @@ void VolumeModule::init()
   const float2 viewport_size = float2(inst_.film.render_extent_get());
   const int tile_size = scene_eval->eevee.volumetric_tile_size;
 
+  data_.tile_size = tile_size;
+  data_.tile_size_lod = int(log2(tile_size));
+
   /* Find Froxel Texture resolution. */
   int3 tex_size = int3(math::ceil(math::max(float2(1.0f), viewport_size / float(tile_size))), 0);
   tex_size.z = std::max(1, scene_eval->eevee.volumetric_samples);

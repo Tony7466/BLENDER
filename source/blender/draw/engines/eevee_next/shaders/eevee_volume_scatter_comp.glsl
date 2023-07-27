@@ -26,19 +26,24 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
   float l_dist;
   light_shape_vector_get(ld, P, L, l_dist);
 
-#  if 0
-  /* TODO(Miguel Pozo): Shadows */
-  float vis = light_visibility(ld, P, l_vector);
-#  else
-  float vis = light_attenuation(ld, L, l_dist);
-#  endif
+  float visibility = light_attenuation(ld, L, l_dist);
+  LightData light = light_buf[l_idx];
+  if (light.tilemap_index != LIGHT_NO_SHADOW && (visibility > 0.0)) {
+    vec3 lL = light_world_to_local(light, -L) * l_dist;
+    /* Disable shadow bias. */
+    vec3 lNg = vec3(0);
 
-  if (vis < 1e-4) {
+    ShadowSample samp = shadow_sample(
+        light.type <= LIGHT_SUN_ORTHO, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+    visibility *= float(samp.occluder_delta + samp.bias >= 0.0);
+  }
+
+  if (visibility < 1e-4) {
     return vec3(0);
   }
 
-  vec3 Li = volume_light(ld, L, l_dist) * volume_shadow(ld, P, L, l_dist);
-  return Li * vis * volume_phase_function(-V, L, s_anisotropy);
+  vec3 Li = volume_light(ld, L, l_dist) * volume_shadow(ld, P, L, l_dist, extinction_tx);
+  return Li * visibility * volume_phase_function(-V, L, s_anisotropy);
 }
 
 #endif

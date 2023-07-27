@@ -116,6 +116,11 @@ class VolumeModule {
     ps.bind_image(VOLUME_PROP_PHASE_IMG_SLOT, &prop_phase_tx_);
   }
 
+  bool is_enabled()
+  {
+    return enabled_;
+  }
+
   int3 grid_size()
   {
     return data_.tex_size;
