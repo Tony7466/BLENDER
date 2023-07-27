@@ -39,7 +39,7 @@ set(SRC
   intern/texture_image.c
   intern/texture_margin.cc
   intern/texture_pointdensity.c
-  intern/texture_procedural.c
+  intern/texture_procedural.cc
   intern/zbuf.c
 
   RE_bake.h
