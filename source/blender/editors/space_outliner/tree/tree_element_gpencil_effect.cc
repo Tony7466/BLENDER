@@ -30,19 +30,8 @@ void TreeElementGPencilEffectBase::expand(SpaceOutliner &space_outliner) const
 {
   int index;
   LISTBASE_FOREACH_INDEX (ShaderFxData *, fx, &object_.shader_fx, index) {
-    TreeElement *ten = outliner_add_element(
+    outliner_add_element(
         &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_GPENCIL_EFFECT, index);
-    ten->name = fx->name;
-    ten->directdata = fx;
-
-    if (fx->type == eShaderFxType_Swirl) {
-      outliner_add_element(&space_outliner,
-                           &ten->subtree,
-                           ((SwirlShaderFxData *)fx)->object,
-                           ten,
-                           TSE_LINKED_OB,
-                           0);
-    }
   }
 }
 
