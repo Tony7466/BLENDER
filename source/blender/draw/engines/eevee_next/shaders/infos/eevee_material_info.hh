@@ -223,22 +223,22 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
 GPU_SHADER_CREATE_INFO(eevee_volume_object)
     .define("MAT_GEOM_VOLUME_OBJECT")
     .push_constant(Type::IVEC3, "grid_coords_min")
-    .image(VOLUME_PROP_SCATTERING_TEX_SLOT,
+    .image(VOLUME_PROP_SCATTERING_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_scattering_img")
-    .image(VOLUME_PROP_EXTINCTION_TEX_SLOT,
+    .image(VOLUME_PROP_EXTINCTION_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_extinction_img")
-    .image(VOLUME_PROP_EMISSION_TEX_SLOT,
+    .image(VOLUME_PROP_EMISSION_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_emissive_img")
-    .image(VOLUME_PROP_PHASE_TEX_SLOT,
+    .image(VOLUME_PROP_PHASE_IMG_SLOT,
            GPU_RG16F,
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
@@ -246,22 +246,22 @@ GPU_SHADER_CREATE_INFO(eevee_volume_object)
     .additional_info("eevee_volume_material_common");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_world)
-    .image(VOLUME_PROP_SCATTERING_TEX_SLOT,
+    .image(VOLUME_PROP_SCATTERING_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::WRITE,
            ImageType::FLOAT_3D,
            "out_scattering_img")
-    .image(VOLUME_PROP_EXTINCTION_TEX_SLOT,
+    .image(VOLUME_PROP_EXTINCTION_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::WRITE,
            ImageType::FLOAT_3D,
            "out_extinction_img")
-    .image(VOLUME_PROP_EMISSION_TEX_SLOT,
+    .image(VOLUME_PROP_EMISSION_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::WRITE,
            ImageType::FLOAT_3D,
            "out_emissive_img")
-    .image(VOLUME_PROP_PHASE_TEX_SLOT,
+    .image(VOLUME_PROP_PHASE_IMG_SLOT,
            GPU_RG16F,
            Qualifier::WRITE,
            ImageType::FLOAT_3D,

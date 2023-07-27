@@ -138,10 +138,10 @@
 #define GBUF_CLOSURE_SLOT 3
 #define GBUF_COLOR_SLOT 4
 /* Volume properties pass do not write to rbufs. Reuse the same bind points. */
-#define VOLUME_PROP_SCATTERING_TEX_SLOT 0
-#define VOLUME_PROP_EXTINCTION_TEX_SLOT 1
-#define VOLUME_PROP_EMISSION_TEX_SLOT 2
-#define VOLUME_PROP_PHASE_TEX_SLOT 3
+#define VOLUME_PROP_SCATTERING_IMG_SLOT 0
+#define VOLUME_PROP_EXTINCTION_IMG_SLOT 1
+#define VOLUME_PROP_EMISSION_IMG_SLOT 2
+#define VOLUME_PROP_PHASE_IMG_SLOT 3
 
 /* Uniform Buffers. */
 /* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */

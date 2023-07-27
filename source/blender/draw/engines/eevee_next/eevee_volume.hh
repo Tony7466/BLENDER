@@ -110,10 +110,10 @@ class VolumeModule {
   template<typename PassType> void bind_properties_buffers(PassType &ps)
   {
     ps.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
-    ps.bind_image(VOLUME_PROP_SCATTERING_TEX_SLOT, &prop_scattering_tx_);
-    ps.bind_image(VOLUME_PROP_EXTINCTION_TEX_SLOT, &prop_extinction_tx_);
-    ps.bind_image(VOLUME_PROP_EMISSION_TEX_SLOT, &prop_emission_tx_);
-    ps.bind_image(VOLUME_PROP_PHASE_TEX_SLOT, &prop_phase_tx_);
+    ps.bind_image(VOLUME_PROP_SCATTERING_IMG_SLOT, &prop_scattering_tx_);
+    ps.bind_image(VOLUME_PROP_EXTINCTION_IMG_SLOT, &prop_extinction_tx_);
+    ps.bind_image(VOLUME_PROP_EMISSION_IMG_SLOT, &prop_emission_tx_);
+    ps.bind_image(VOLUME_PROP_PHASE_IMG_SLOT, &prop_phase_tx_);
   }
 
   int3 grid_size()
