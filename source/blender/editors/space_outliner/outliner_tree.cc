@@ -359,7 +359,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_SEQUENCE,
                 TSE_SEQ_STRIP,
                 TSE_SEQUENCE_DUP) ||
-           type == TSE_GENERIC_LABEL)
+           ELEM(type, TSE_GENERIC_LABEL))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }
