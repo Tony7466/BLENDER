@@ -31,3 +31,4 @@ Referenced by commit bfae400ea55b75be6389c3b18179f0b30595a367, Outliner: Port ed
 Referenced by pull request #110003, Outliner: Port deform group elements to new tree-element code design
 Referenced by pull request #110245, Outliner: Port particle system elements to new tree-element code design
 Referenced by pull request #110371, Outliner: Port grease pencil effect elements to new tree-element code design
+Referenced by commit ee7ba1955c1acb5a2901c6b97b34a2b6f32c012d, Outliner: Port particle system elements to new tree-element code design
