@@ -3656,8 +3656,8 @@ static int click_select_channel_grease_pencil_layer(
     const short /* eEditKeyframes_Select or -1 */ selectmode,
     const int filter)
 {
-  GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
-  GreasePencil *grease_pencil = (GreasePencil *)ale->id;
+  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
   /* Clear previous channel selection and set active flag on current selection */
   ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);

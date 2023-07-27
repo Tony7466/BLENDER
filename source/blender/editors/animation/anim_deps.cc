@@ -292,8 +292,8 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
         animchan_sync_gplayer(ale);
         break;
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        GreasePencil *grease_pencil = (GreasePencil *)ale->id;
-        GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
+        GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
         if (grease_pencil->active_layer == layer) {
           layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
         }
