@@ -589,7 +589,9 @@ static void shader_preview_startjob(void *customdata,
     }
   }
 
-  preview_render(*job_data);
+  if (job_data->tree_previews->preview_size > 0) {
+    preview_render(*job_data);
+  }
 }
 
 static void shader_preview_free(void *customdata)
