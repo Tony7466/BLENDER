@@ -9,20 +9,20 @@
 
 #include "gpencil_engine.h"
 
-extern char datatoc_gpencil_common_lib_glsl[];
-extern char datatoc_gpencil_frag_glsl[];
-extern char datatoc_gpencil_vert_glsl[];
-extern char datatoc_gpencil_antialiasing_frag_glsl[];
-extern char datatoc_gpencil_antialiasing_vert_glsl[];
-extern char datatoc_gpencil_layer_blend_frag_glsl[];
-extern char datatoc_gpencil_mask_invert_frag_glsl[];
-extern char datatoc_gpencil_depth_merge_frag_glsl[];
-extern char datatoc_gpencil_depth_merge_vert_glsl[];
-extern char datatoc_gpencil_vfx_frag_glsl[];
+extern "C" char datatoc_gpencil_common_lib_glsl[];
+extern "C" char datatoc_gpencil_frag_glsl[];
+extern "C" char datatoc_gpencil_vert_glsl[];
+extern "C" char datatoc_gpencil_antialiasing_frag_glsl[];
+extern "C" char datatoc_gpencil_antialiasing_vert_glsl[];
+extern "C" char datatoc_gpencil_layer_blend_frag_glsl[];
+extern "C" char datatoc_gpencil_mask_invert_frag_glsl[];
+extern "C" char datatoc_gpencil_depth_merge_frag_glsl[];
+extern "C" char datatoc_gpencil_depth_merge_vert_glsl[];
+extern "C" char datatoc_gpencil_vfx_frag_glsl[];
 
-extern char datatoc_common_colormanagement_lib_glsl[];
-extern char datatoc_common_fullscreen_vert_glsl[];
-extern char datatoc_common_view_lib_glsl[];
+extern "C" char datatoc_common_colormanagement_lib_glsl[];
+extern "C" char datatoc_common_fullscreen_vert_glsl[];
+extern "C" char datatoc_common_view_lib_glsl[];
 
 static struct {
   /* SMAA antialiasing */
