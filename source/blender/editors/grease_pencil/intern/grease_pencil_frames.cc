@@ -9,6 +9,7 @@
 #include "BLI_map.hh"
 
 #include "BKE_context.h"
+#include "BKE_fcurve.h"
 #include "BKE_grease_pencil.hh"
 
 #include "DEG_depsgraph.h"
@@ -68,6 +69,28 @@ bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
     }
   }
   return false;
+}
+
+static void frame_to_cfraelem(KeyframeEditData *ked, const int frame_number)
+{
+  BLI_assert((ked != nullptr));
+  CfraElem *ce;
+
+  ce = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "CfraElem"));
+  ce->cfra = float(frame_number);
+  ce->sel = true;
+  BLI_addtail(&(ked->list), ce);
+}
+
+void make_cfralist_selected_frames(KeyframeEditData *ked, const bke::greasepencil::Layer *layer)
+{
+  BLI_assert((ked != nullptr));
+
+  for (const auto &[frame_number, frame] : layer->frames().items()) {
+    if (frame.is_selected()) {
+      frame_to_cfraelem(ked, frame_number);
+    }
+  }
 }
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)
