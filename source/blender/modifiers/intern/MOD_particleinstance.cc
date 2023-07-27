@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -43,7 +44,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
 
@@ -52,7 +53,7 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(pimd, DNA_struct_default_get(ParticleInstanceModifierData), modifier);
 }
 
-static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
 
@@ -61,7 +62,7 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
   }
 }
 
-static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParams)
+static bool is_disabled(const Scene *scene, ModifierData *md, bool use_render_params)
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
   ParticleSystem *psys;
@@ -91,7 +92,7 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
       if (psmd->psys == psys) {
         int required_mode;
 
-        if (useRenderParams) {
+        if (use_render_params) {
           required_mode = eModifierMode_Render;
         }
         else {
@@ -110,7 +111,7 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
   return false;
 }
 
-static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
   if (pimd->ob != nullptr) {
@@ -121,11 +122,11 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
 
-  walk(userData, ob, (ID **)&pimd->ob, IDWALK_CB_NOP);
+  walk(user_data, ob, (ID **)&pimd->ob, IDWALK_CB_NOP);
 }
 
 static bool particle_skip(ParticleInstanceModifierData *pimd, ParticleSystem *psys, int p)
@@ -189,7 +190,7 @@ static void store_float_in_vcol(MLoopCol *vcol, float float_value)
   vcol->a = 1.0f;
 }
 
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
@@ -197,7 +198,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   ParticleSimulationData sim;
   ParticleSystem *psys = nullptr;
   ParticleData *pa = nullptr;
-  int totvert, totpoly, totloop, totedge;
+  int totvert, faces_num, totloop, totedge;
   int maxvert, maxpoly, maxloop, maxedge, part_end = 0, part_start;
   int k, p, p_skip;
   short track = ctx->object->trackflag % 3, trackneg, axis = pimd->axis;
@@ -281,7 +282,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
 
   totvert = mesh->totvert;
-  totpoly = mesh->totpoly;
+  faces_num = mesh->faces_num;
   totloop = mesh->totloop;
   totedge = mesh->totedge;
 
@@ -297,7 +298,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
 
     maxvert += totvert;
-    maxpoly += totpoly;
+    maxpoly += faces_num;
     maxloop += totloop;
     maxedge += totedge;
   }
@@ -305,28 +306,27 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   psys_sim_data_init(&sim);
 
   if (psys->flag & (PSYS_HAIR_DONE | PSYS_KEYED) || psys->pointcache->flag & PTCACHE_BAKED) {
-    float min[3], max[3];
-    INIT_MINMAX(min, max);
-    BKE_mesh_minmax(mesh, min, max);
-    min_co = min[track];
-    max_co = max[track];
+    if (const std::optional<blender::Bounds<blender::float3>> bounds = mesh->bounds_min_max()) {
+      min_co = bounds->min[track];
+      max_co = bounds->max[track];
+    }
   }
 
   result = BKE_mesh_new_nomain_from_template(mesh, maxvert, maxedge, maxpoly, maxloop);
 
-  const blender::OffsetIndices orig_polys = mesh->polys();
+  const blender::OffsetIndices orig_faces = mesh->faces();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
   const blender::Span<int> orig_corner_edges = mesh->corner_edges();
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(result);
+  blender::MutableSpan<blender::float3> positions = result->vert_positions_for_write();
   blender::MutableSpan<blender::int2> edges = result->edges_for_write();
-  blender::MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
+  blender::MutableSpan<int> face_offsets = result->face_offsets_for_write();
   blender::MutableSpan<int> corner_verts = result->corner_verts_for_write();
   blender::MutableSpan<int> corner_edges = result->corner_edges_for_write();
 
   MLoopCol *mloopcols_index = static_cast<MLoopCol *>(CustomData_get_layer_named_for_write(
-      &result->ldata, CD_PROP_BYTE_COLOR, pimd->index_layer_name, result->totloop));
+      &result->loop_data, CD_PROP_BYTE_COLOR, pimd->index_layer_name, result->totloop));
   MLoopCol *mloopcols_value = static_cast<MLoopCol *>(CustomData_get_layer_named_for_write(
-      &result->ldata, CD_PROP_BYTE_COLOR, pimd->value_layer_name, result->totloop));
+      &result->loop_data, CD_PROP_BYTE_COLOR, pimd->value_layer_name, result->totloop));
   int *vert_part_index = nullptr;
   float *vert_part_value = nullptr;
   if (mloopcols_index != nullptr) {
@@ -351,7 +351,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       ParticleKey state;
       int vindex = p_skip * totvert + k;
 
-      CustomData_copy_data(&mesh->vdata, &result->vdata, k, vindex, 1);
+      CustomData_copy_data(&mesh->vert_data, &result->vert_data, k, vindex, 1);
 
       if (vert_part_index != nullptr) {
         vert_part_index[vindex] = p;
@@ -389,7 +389,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
           positions[vindex][axis] = 0.0;
         }
 
-        psys_get_particle_on_path(&sim, p, &state, 1);
+        psys_get_particle_on_path(&sim, p, &state, true);
 
         normalize_v3(state.vel);
 
@@ -457,7 +457,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       }
       else {
         state.time = -1.0;
-        psys_get_particle_state(&sim, p, &state, 1);
+        psys_get_particle_state(&sim, p, &state, true);
       }
 
       mul_qt_v3(state.rot, positions[vindex]);
@@ -470,27 +470,28 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
 
     /* Create edges and adjust edge vertex indices. */
-    CustomData_copy_data(&mesh->edata, &result->edata, 0, p_skip * totedge, totedge);
+    CustomData_copy_data(&mesh->edge_data, &result->edge_data, 0, p_skip * totedge, totedge);
     blender::int2 *edge = &edges[p_skip * totedge];
     for (k = 0; k < totedge; k++, edge++) {
       (*edge)[0] += p_skip * totvert;
       (*edge)[1] += p_skip * totvert;
     }
 
-    /* create polys and loops */
-    for (k = 0; k < totpoly; k++) {
-      const blender::IndexRange in_poly = orig_polys[k];
+    /* create faces and loops */
+    for (k = 0; k < faces_num; k++) {
+      const blender::IndexRange in_face = orig_faces[k];
 
-      CustomData_copy_data(&mesh->pdata, &result->pdata, k, p_skip * totpoly + k, 1);
-      const int dst_poly_start = in_poly.start() + p_skip * totloop;
-      poly_offsets[p_skip * totpoly + k] = dst_poly_start;
+      CustomData_copy_data(&mesh->face_data, &result->face_data, k, p_skip * faces_num + k, 1);
+      const int dst_face_start = in_face.start() + p_skip * totloop;
+      face_offsets[p_skip * faces_num + k] = dst_face_start;
 
       {
-        int orig_corner_i = in_poly.start();
-        int dst_corner_i = dst_poly_start;
-        int j = in_poly.size();
+        int orig_corner_i = in_face.start();
+        int dst_corner_i = dst_face_start;
+        int j = in_face.size();
 
-        CustomData_copy_data(&mesh->ldata, &result->ldata, in_poly.start(), dst_poly_start, j);
+        CustomData_copy_data(
+            &mesh->loop_data, &result->loop_data, in_face.start(), dst_face_start, j);
         for (; j; j--, orig_corner_i++, dst_corner_i++) {
           corner_verts[dst_corner_i] = orig_corner_verts[orig_corner_i] + (p_skip * totvert);
           corner_edges[dst_corner_i] = orig_corner_edges[orig_corner_i] + (p_skip * totedge);
@@ -623,7 +624,7 @@ static void layers_panel_draw(const bContext * /*C*/, Panel *panel)
       col, ptr, "value_layer_name", &obj_data_ptr, "vertex_colors", IFACE_("Value"), ICON_NONE);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(
       region_type, eModifierType_ParticleInstance, panel_draw);
@@ -634,35 +635,36 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_ParticleInstance = {
+    /*idname*/ "ParticleInstance",
     /*name*/ N_("ParticleInstance"),
-    /*structName*/ "ParticleInstanceModifierData",
-    /*structSize*/ sizeof(ParticleInstanceModifierData),
+    /*struct_name*/ "ParticleInstanceModifierData",
+    /*struct_size*/ sizeof(ParticleInstanceModifierData),
     /*srna*/ &RNA_ParticleInstanceModifier,
     /*type*/ eModifierTypeType_Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_PARTICLE_INSTANCE,
 
-    /*copyData*/ BKE_modifier_copydata_generic,
+    /*copy_data*/ BKE_modifier_copydata_generic,
 
-    /*deformVerts*/ nullptr,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ isDisabled,
-    /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ nullptr,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ is_disabled,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ nullptr,
 };

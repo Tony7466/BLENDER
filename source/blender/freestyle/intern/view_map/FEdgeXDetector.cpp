@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -168,9 +170,9 @@ void FEdgeXDetector::preProcessFace(WXFace *iFace)
 
 void FEdgeXDetector::computeCurvatures(WXVertex *vertex)
 {
-  // TODO: for some reason, the 'vertex' may have no associated edges
-  // (i.e., WVertex::_EdgeList is empty), which causes a crash due to
-  // a subsequent call of WVertex::_EdgeList.front().
+  /* TODO: for some reason, the 'vertex' may have no associated edges.
+   * (i.e., WVertex::_EdgeList is empty), which causes a crash due to
+   * a subsequent call of `WVertex::_EdgeList.front()`. */
   if (vertex->GetEdges().empty()) {
     if (G.debug & G_DEBUG_FREESTYLE) {
       printf("Warning: WVertex %d has no associated edges.\n", vertex->GetId());
@@ -497,8 +499,8 @@ void FEdgeXDetector::ProcessRidgeFace(WXFace *iFace)
         Face_Curvature_Info *second_layer_info =
             (Face_Curvature_Info *)second_ridge_layer[0]->userdata;
 
-        unsigned index1 = wxf->GetIndex(oppositeEdge->GetaVertex());
-        unsigned index2 = wxf->GetIndex(oppositeEdge->GetbVertex());
+        uint index1 = wxf->GetIndex(oppositeEdge->GetaVertex());
+        uint index2 = wxf->GetIndex(oppositeEdge->GetbVertex());
         real K1_1 = second_layer_info->vec_curvature_info[index1]->K1;
         real K1_2 = second_layer_info->vec_curvature_info[index2]->K1;
         real K1 = (1.0 - t) * K1_1 + t * K1_2;

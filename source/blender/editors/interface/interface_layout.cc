@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -791,7 +793,7 @@ static void ui_item_enum_expand_elem_exec(uiLayout *layout,
   }
 
   if (RNA_property_flag(prop) & PROP_ENUM_FLAG) {
-    /* If this is set, assert since we're clobbering someone elses callback. */
+    /* If this is set, assert since we're clobbering someone else's callback. */
     /* Buttons get their block's func by default, so we cannot assert in that case either. */
     BLI_assert(ELEM(but->func, nullptr, block->func));
     UI_but_func_set(but, ui_item_enum_expand_handle, but, POINTER_FROM_INT(value));
@@ -933,6 +935,9 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
        tab = tab->next)
   {
     UI_but_drawflag_enable(tab, ui_but_align_opposite_to_area_align_get(CTX_wm_region(C)));
+    if (icon_only) {
+      UI_but_drawflag_enable(tab, UI_BUT_HAS_TOOLTIP_LABEL);
+    }
   }
 
   const bool use_custom_highlight = (prop_highlight != nullptr);
@@ -1655,7 +1660,7 @@ void uiItemsFullEnumO(uiLayout *layout,
        */
 #if 0
       RNA_property_enum_items_gettexted_all(
-          static_cast<bContext*>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
+          static_cast<bContext *>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
 #else
       RNA_property_enum_items_gettexted(
           static_cast<bContext *>(block->evil_C), &ptr, prop, &item_array, &totitem, &free);
@@ -3471,6 +3476,51 @@ void uiItemS_ex(uiLayout *layout, float factor)
 void uiItemS(uiLayout *layout)
 {
   uiItemS_ex(layout, 1.0f);
+}
+
+void uiItemProgressIndicator(uiLayout *layout,
+                             const char *text,
+                             const float factor,
+                             const eButProgressType progress_type)
+{
+  const bool has_text = text && text[0];
+  uiBlock *block = layout->root->block;
+  short width;
+
+  if (progress_type == UI_BUT_PROGRESS_TYPE_BAR) {
+    width = UI_UNIT_X * 5;
+  }
+  else if (has_text) {
+    width = UI_UNIT_X * 8;
+  }
+  else {
+    width = UI_UNIT_X;
+  }
+
+  UI_block_layout_set_current(block, layout);
+  uiBut *but = uiDefBut(block,
+                        UI_BTYPE_PROGRESS,
+                        0,
+                        (text) ? text : "",
+                        0,
+                        0,
+                        width,
+                        short(UI_UNIT_Y),
+                        nullptr,
+                        0.0,
+                        0.0,
+                        0,
+                        0,
+                        "");
+
+  if (has_text && (progress_type == UI_BUT_PROGRESS_TYPE_RING)) {
+    /* For progress bar, centered is okay, left aligned for ring/pie. */
+    but->drawflag |= UI_BUT_TEXT_LEFT;
+  }
+
+  uiButProgress *progress_bar = static_cast<uiButProgress *>(but);
+  progress_bar->progress_type = eButProgressType(progress_type);
+  progress_bar->progress_factor = factor;
 }
 
 void uiItemSpacer(uiLayout *layout)
@@ -5634,7 +5684,7 @@ uiBlock *uiLayoutGetBlock(uiLayout *layout)
   return layout->root->block;
 }
 
-int uiLayoutGetOperatorContext(uiLayout *layout)
+wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout)
 {
   return layout->root->opcontext;
 }

@@ -1,16 +1,20 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 
 #include "NOD_socket_search_link.hh"
 
+#include <fmt/format.h>
+
 namespace blender::nodes::node_geo_remove_attribute_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_input<decl::String>(N_("Name")).is_attribute_name();
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::String>("Name").is_attribute_name();
+  b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -31,10 +35,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::atomic<bool> cannot_delete = false;
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    for (const GeometryComponentType type : {GEO_COMPONENT_TYPE_MESH,
-                                             GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                             GEO_COMPONENT_TYPE_CURVE,
-                                             GEO_COMPONENT_TYPE_INSTANCES})
+    for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
+                                               GeometryComponent::Type::PointCloud,
+                                               GeometryComponent::Type::Curve,
+                                               GeometryComponent::Type::Instance})
     {
       if (geometry_set.has(type)) {
         /* First check if the attribute exists before getting write access,
@@ -60,15 +64,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   if (!attribute_exists) {
-    char *message = BLI_sprintfN(TIP_("Attribute does not exist: \"%s\""), name.c_str());
+    const std::string message = fmt::format(TIP_("Attribute does not exist: \"{}\""), name);
     params.error_message_add(NodeWarningType::Warning, message);
-    MEM_freeN(message);
   }
   if (cannot_delete) {
-    char *message = BLI_sprintfN(TIP_("Cannot delete built-in attribute with name \"%s\""),
-                                 name.c_str());
+    const std::string message = fmt::format(TIP_("Cannot delete built-in attribute: \"{}\""),
+                                            name);
     params.error_message_add(NodeWarningType::Warning, message);
-    MEM_freeN(message);
   }
 
   params.set_output("Geometry", std::move(geometry_set));
@@ -85,7 +87,7 @@ void register_node_type_geo_remove_attribute()
   geo_node_type_base(
       &ntype, GEO_NODE_REMOVE_ATTRIBUTE, "Remove Named Attribute", NODE_CLASS_ATTRIBUTE);
   ntype.declare = file_ns::node_declare;
-  node_type_size(&ntype, 170, 100, 700);
+  blender::bke::node_type_size(&ntype, 170, 100, 700);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }

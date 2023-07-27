@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -37,8 +38,10 @@ static void extract_tan_init_common(const MeshRenderData *mr,
 {
   GPU_vertformat_deinterleave(format);
 
-  CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
-  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
+  CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata :
+                                                                  &mr->me->loop_data;
+  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata :
+                                                                  &mr->me->vert_data;
   uint32_t tan_layers = cache->cd_used.tan;
   const float(*orco)[3] = (const float(*)[3])CustomData_get_layer(cd_vdata, CD_ORCO);
   float(*orco_allocated)[3] = nullptr;
@@ -106,7 +109,7 @@ static void extract_tan_init_common(const MeshRenderData *mr,
                                      calc_active_tangent,
                                      r_tangent_names,
                                      tan_len,
-                                     reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
+                                     reinterpret_cast<const float(*)[3]>(mr->face_normals.data()),
                                      reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
                                      orco,
                                      r_loop_data,
@@ -115,10 +118,10 @@ static void extract_tan_init_common(const MeshRenderData *mr,
     }
     else {
       BKE_mesh_calc_loop_tangent_ex(reinterpret_cast<const float(*)[3]>(mr->vert_positions.data()),
-                                    mr->polys,
+                                    mr->faces,
                                     mr->corner_verts.data(),
                                     mr->looptris.data(),
-                                    mr->looptri_polys.data(),
+                                    mr->looptri_faces.data(),
                                     mr->tri_len,
                                     mr->sharp_faces,
                                     cd_ldata,
@@ -126,7 +129,7 @@ static void extract_tan_init_common(const MeshRenderData *mr,
                                     r_tangent_names,
                                     tan_len,
                                     reinterpret_cast<const float(*)[3]>(mr->vert_normals.data()),
-                                    reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
+                                    reinterpret_cast<const float(*)[3]>(mr->face_normals.data()),
                                     reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
                                     orco,
                                     r_loop_data,
@@ -139,7 +142,7 @@ static void extract_tan_init_common(const MeshRenderData *mr,
     char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
     const char *layer_name = CustomData_get_layer_name(r_loop_data, CD_TANGENT, 0);
     GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
-    BLI_snprintf(attr_name, sizeof(*attr_name), "t%s", attr_safe_name);
+    SNPRINTF(attr_name, "t%s", attr_safe_name);
     GPU_vertformat_attr_add(format, attr_name, comp_type, 4, fetch_mode);
     GPU_vertformat_alias_add(format, "t");
     GPU_vertformat_alias_add(format, "at");

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -30,7 +32,17 @@
 
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
-#define STRICT_REQUIREMENTS 1
+#define STRICT_REQUIREMENTS true
+
+/*
+ * Should we only select surfaces that are known to be compatible. Or should we in case no
+ * compatible surfaces have been found select the first one.
+ *
+ * Currently we also select incompatible surfaces as Vulkan is still experimental.  Assuming we get
+ * reports of color differences between OpenGL and Vulkan to narrow down if there are other
+ * configurations we need to support.
+ */
+#define SELECT_COMPATIBLE_SURFACES_ONLY false
 
 using namespace std;
 
@@ -205,6 +217,7 @@ class GHOST_DeviceVK {
     device_features.geometryShader = VK_TRUE;
     device_features.dualSrcBlend = VK_TRUE;
     device_features.logicOp = VK_TRUE;
+    device_features.imageCubeArray = VK_TRUE;
 #endif
 
     VkDeviceCreateInfo device_create_info = {};
@@ -299,7 +312,7 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
 
 #if STRICT_REQUIREMENTS
     if (!device_vk.features.geometryShader || !device_vk.features.dualSrcBlend ||
-        !device_vk.features.logicOp)
+        !device_vk.features.logicOp || !device_vk.features.imageCubeArray)
     {
       continue;
     }
@@ -406,7 +419,6 @@ GHOST_ContextVK::~GHOST_ContextVK()
 GHOST_TSuccess GHOST_ContextVK::destroySwapchain()
 {
   assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
-  m_in_flight_images.resize(0);
   VkDevice device = vulkan_device->device;
 
   for (auto semaphore : m_image_available_semaphores) {
@@ -442,36 +454,9 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
     return GHOST_kFailure;
   }
 
-  assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
-  VkDevice device = vulkan_device->device;
-
-  vkWaitForFences(device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, UINT64_MAX);
-
-  VkResult result = vkAcquireNextImageKHR(device,
-                                          m_swapchain,
-                                          UINT64_MAX,
-                                          m_image_available_semaphores[m_currentFrame],
-                                          VK_NULL_HANDLE,
-                                          &m_currentImage);
-
-  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-    /* Swap-chain is out of date. Recreate swap-chain and skip this frame. */
-    destroySwapchain();
-    createSwapchain();
+  if (m_lastFrame != m_currentFrame) {
     return GHOST_kSuccess;
   }
-  else if (result != VK_SUCCESS) {
-    fprintf(stderr,
-            "Error: Failed to acquire swap chain image : %s\n",
-            vulkan_error_as_string(result));
-    return GHOST_kFailure;
-  }
-
-  /* Check if a previous frame is using this image (i.e. there is its fence to wait on) */
-  if (m_in_flight_images[m_currentImage] != VK_NULL_HANDLE) {
-    vkWaitForFences(device, 1, &m_in_flight_images[m_currentImage], VK_TRUE, UINT64_MAX);
-  }
-  m_in_flight_images[m_currentImage] = m_in_flight_fences[m_currentFrame];
 
   VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
 
@@ -501,16 +486,15 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
 
   VkSubmitInfo submit_info = {};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.waitSemaphoreCount = 1;
-  submit_info.pWaitSemaphores = &m_image_available_semaphores[m_currentFrame];
   submit_info.pWaitDstStageMask = wait_stages;
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers = &m_command_buffers[m_currentImage];
   submit_info.signalSemaphoreCount = 1;
   submit_info.pSignalSemaphores = &m_render_finished_semaphores[m_currentFrame];
 
-  vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]);
+  VkDevice device = vulkan_device->device;
 
+  VkResult result;
   VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_in_flight_fences[m_currentFrame]));
   do {
     result = vkWaitForFences(device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, 10000);
@@ -543,6 +527,7 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   }
 
   m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+  vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]);
 
   return GHOST_kSuccess;
 }
@@ -553,6 +538,20 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanBackbuffer(
   if (m_swapchain == VK_NULL_HANDLE) {
     return GHOST_kFailure;
   }
+
+  if (m_currentFrame != m_lastFrame) {
+    assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
+    VkDevice device = vulkan_device->device;
+    vkAcquireNextImageKHR(device,
+                          m_swapchain,
+                          UINT64_MAX,
+                          m_image_available_semaphores[m_currentFrame],
+                          VK_NULL_HANDLE,
+                          &m_currentImage);
+
+    m_lastFrame = m_currentFrame;
+  }
+
   *((VkImage *)image) = m_swapchain_images[m_currentImage];
   *((VkFramebuffer *)framebuffer) = m_swapchain_framebuffers[m_currentImage];
   *((VkRenderPass *)render_pass) = m_render_pass;
@@ -713,8 +712,8 @@ static GHOST_TSuccess create_render_pass(VkDevice device,
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
   VkAttachmentReference colorAttachmentRef = {};
   colorAttachmentRef.attachment = 0;
@@ -741,6 +740,7 @@ static GHOST_TSuccess selectPresentMode(VkPhysicalDevice device,
                                         VkSurfaceKHR surface,
                                         VkPresentModeKHR *r_presentMode)
 {
+  // TODO cleanup: we are not going to use MAILBOX as it isn't supported by renderdoc.
   uint32_t present_count;
   vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, NULL);
   vector<VkPresentModeKHR> presents(present_count);
@@ -809,6 +809,49 @@ GHOST_TSuccess GHOST_ContextVK::createGraphicsCommandBuffers()
   return GHOST_kSuccess;
 }
 
+static bool surfaceFormatSupported(const VkSurfaceFormatKHR &surface_format)
+{
+  if (surface_format.colorSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    return false;
+  }
+
+  if (surface_format.format == VK_FORMAT_R8G8B8A8_UNORM ||
+      surface_format.format == VK_FORMAT_B8G8R8A8_UNORM)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Select the surface format that we will use.
+ *
+ * We will select any 8bit UNORM surface.
+ */
+static bool selectSurfaceFormat(const VkPhysicalDevice physical_device,
+                                const VkSurfaceKHR surface,
+                                VkSurfaceFormatKHR &r_surfaceFormat)
+{
+  uint32_t format_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, NULL);
+  vector<VkSurfaceFormatKHR> formats(format_count);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
+
+  for (VkSurfaceFormatKHR &format : formats) {
+    if (surfaceFormatSupported(format)) {
+      r_surfaceFormat = format;
+      return true;
+    }
+  }
+
+#if !SELECT_COMPATIBLE_SURFACES_ONLY
+  r_surfaceFormat = formats[0];
+#endif
+
+  return false;
+}
+
 GHOST_TSuccess GHOST_ContextVK::createSwapchain()
 {
   assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
@@ -816,13 +859,14 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
 
   VkPhysicalDevice physical_device = vulkan_device->physical_device;
 
-  uint32_t format_count;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, m_surface, &format_count, NULL);
-  vector<VkSurfaceFormatKHR> formats(format_count);
-  vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, m_surface, &format_count, formats.data());
-
-  /* TODO choose appropriate format. */
-  VkSurfaceFormatKHR format = formats[0];
+  VkSurfaceFormatKHR format = {};
+#if SELECT_COMPATIBLE_SURFACES_ONLY
+  if (!selectSurfaceFormat(physical_device, m_surface, format)) {
+    return GHOST_kFailure;
+  }
+#else
+  selectSurfaceFormat(physical_device, m_surface, format);
+#endif
 
   VkPresentModeKHR present_mode;
   if (!selectPresentMode(physical_device, m_surface, &present_mode)) {
@@ -847,7 +891,7 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   }
 
   /* Driver can stall if only using minimal image count. */
-  uint32_t image_count = capabilities.minImageCount;
+  uint32_t image_count = capabilities.minImageCount + 1;
   /* Note: maxImageCount == 0 means no limit. */
   if (image_count > capabilities.maxImageCount && capabilities.maxImageCount > 0) {
     image_count = capabilities.maxImageCount;
@@ -881,7 +925,6 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   m_swapchain_images.resize(image_count);
   vkGetSwapchainImagesKHR(device, m_swapchain, &image_count, m_swapchain_images.data());
 
-  m_in_flight_images.resize(image_count, VK_NULL_HANDLE);
   m_swapchain_image_views.resize(image_count);
   m_swapchain_framebuffers.resize(image_count);
   for (int i = 0; i < image_count; i++) {
@@ -921,17 +964,17 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   m_image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
   m_render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
   m_in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
-    VkSemaphoreCreateInfo semaphore_info = {};
-    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  VkSemaphoreCreateInfo semaphore_info = {};
+  semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  VkFenceCreateInfo fence_info = {};
+  fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
     VK_CHECK(vkCreateSemaphore(device, &semaphore_info, NULL, &m_image_available_semaphores[i]));
     VK_CHECK(vkCreateSemaphore(device, &semaphore_info, NULL, &m_render_finished_semaphores[i]));
-
-    VkFenceCreateInfo fence_info = {};
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     VK_CHECK(vkCreateFence(device, &fence_info, NULL, &m_in_flight_fences[i]));
   }
@@ -1080,9 +1123,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   /* According to the Vulkan specs, when `VK_KHR_portability_subset` is available it should be
    * enabled. See
    * https://vulkan.lunarg.com/doc/view/1.2.198.1/mac/1.2-extensions/vkspec.html#VUID-VkDeviceCreateInfo-pProperties-04451*/
-  if (device_extensions_support(vulkan_device->physical_device,
-                                {VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME}))
-  {
+  if (vulkan_device->extensions_support({VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME})) {
     extensions_device.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
   }
 #endif

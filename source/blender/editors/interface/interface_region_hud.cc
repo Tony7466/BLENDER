@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -122,9 +123,9 @@ static void hud_panel_operator_redo_draw(const bContext *C, Panel *panel)
 static void hud_panels_register(ARegionType *art, int space_type, int region_type)
 {
   PanelType *pt = MEM_cnew<PanelType>(__func__);
-  strcpy(pt->idname, "OPERATOR_PT_redo");
-  strcpy(pt->label, N_("Redo"));
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "OPERATOR_PT_redo");
+  STRNCPY(pt->label, N_("Redo"));
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw_header = hud_panel_operator_redo_draw_header;
   pt->draw = hud_panel_operator_redo_draw;
   pt->poll = hud_panel_operator_redo_poll;
@@ -324,12 +325,12 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
   /* Let 'ED_area_update_region_sizes' do the work of placing the region.
    * Otherwise we could set the 'region->winrct' & 'region->winx/winy' here. */
   if (init) {
-    area->flag |= AREA_FLAG_REGION_SIZE_UPDATE;
+    ED_area_tag_region_size_update(area, region);
   }
   else {
     if (region->flag & RGN_FLAG_HIDDEN) {
       /* Also forces recalculating HUD size in hud_region_layout(). */
-      area->flag |= AREA_FLAG_REGION_SIZE_UPDATE;
+      ED_area_tag_region_size_update(area, region);
     }
     region->flag &= ~RGN_FLAG_HIDDEN;
   }
@@ -382,6 +383,18 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
   }
 
   region->visible = !((region->flag & RGN_FLAG_HIDDEN) || (region->flag & RGN_FLAG_TOO_SMALL));
+}
+
+ARegion *ED_area_type_hud_redo_region_find(const ScrArea *area, const ARegion *hud_region)
+{
+  BLI_assert(hud_region->regiontype == RGN_TYPE_HUD);
+  HudRegionData *hrd = static_cast<HudRegionData *>(hud_region->regiondata);
+
+  if (hrd->regionid == -1) {
+    return nullptr;
+  }
+
+  return BKE_area_find_region_type(area, hrd->regionid);
 }
 
 /** \} */

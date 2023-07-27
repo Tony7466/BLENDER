@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/shader.h"
 #include "scene/background.h"
@@ -523,27 +524,6 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeHoldout)) {
     node = graph->create_node<HoldoutNode>();
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
-    BL::ShaderNodeBsdfAnisotropic b_aniso_node(b_node);
-    AnisotropicBsdfNode *aniso = graph->create_node<AnisotropicBsdfNode>();
-
-    switch (b_aniso_node.distribution()) {
-      case BL::ShaderNodeBsdfAnisotropic::distribution_BECKMANN:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_GGX:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_MULTI_GGX:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_ASHIKHMIN_SHIRLEY:
-        aniso->set_distribution(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-        break;
-    }
-
-    node = aniso;
-  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfDiffuse)) {
     node = graph->create_node<DiffuseBsdfNode>();
   }
@@ -566,24 +546,21 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfGlossy)) {
-    BL::ShaderNodeBsdfGlossy b_glossy_node(b_node);
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
+    BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
 
     switch (b_glossy_node.distribution()) {
-      case BL::ShaderNodeBsdfGlossy::distribution_SHARP:
-        glossy->set_distribution(CLOSURE_BSDF_REFLECTION_ID);
-        break;
-      case BL::ShaderNodeBsdfGlossy::distribution_BECKMANN:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_BECKMANN:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_GGX:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_GGX:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_ASHIKHMIN_SHIRLEY:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_ASHIKHMIN_SHIRLEY:
         glossy->set_distribution(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_MULTI_GGX:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_MULTI_GGX:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
         break;
     }
@@ -593,9 +570,6 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeBsdfGlass b_glass_node(b_node);
     GlassBsdfNode *glass = graph->create_node<GlassBsdfNode>();
     switch (b_glass_node.distribution()) {
-      case BL::ShaderNodeBsdfGlass::distribution_SHARP:
-        glass->set_distribution(CLOSURE_BSDF_SHARP_GLASS_ID);
-        break;
       case BL::ShaderNodeBsdfGlass::distribution_BECKMANN:
         glass->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
         break;
@@ -612,9 +586,6 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeBsdfRefraction b_refraction_node(b_node);
     RefractionBsdfNode *refraction = graph->create_node<RefractionBsdfNode>();
     switch (b_refraction_node.distribution()) {
-      case BL::ShaderNodeBsdfRefraction::distribution_SHARP:
-        refraction->set_distribution(CLOSURE_BSDF_REFRACTION_ID);
-        break;
       case BL::ShaderNodeBsdfRefraction::distribution_BECKMANN:
         refraction->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);
         break;
@@ -690,8 +661,18 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfTransparent)) {
     node = graph->create_node<TransparentBsdfNode>();
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfVelvet)) {
-    node = graph->create_node<VelvetBsdfNode>();
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfSheen)) {
+    BL::ShaderNodeBsdfSheen b_sheen_node(b_node);
+    SheenBsdfNode *sheen = graph->create_node<SheenBsdfNode>();
+    switch (b_sheen_node.distribution()) {
+      case BL::ShaderNodeBsdfSheen::distribution_ASHIKHMIN:
+        sheen->set_distribution(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID);
+        break;
+      case BL::ShaderNodeBsdfSheen::distribution_MICROFIBER:
+        sheen->set_distribution(CLOSURE_BSDF_SHEEN_ID);
+        break;
+    }
+    node = sheen;
   }
   else if (b_node.is_a(&RNA_ShaderNodeEmission)) {
     node = graph->create_node<EmissionNode>();
@@ -903,6 +884,7 @@ static ShaderNode *add_node(Scene *scene,
     voronoi->set_dimensions(b_voronoi_node.voronoi_dimensions());
     voronoi->set_feature((NodeVoronoiFeature)b_voronoi_node.feature());
     voronoi->set_metric((NodeVoronoiDistanceMetric)b_voronoi_node.distance());
+    voronoi->set_use_normalize(b_voronoi_node.normalize());
     BL::TexMapping b_texture_mapping(b_voronoi_node.texture_mapping());
     get_tex_mapping(voronoi, b_texture_mapping);
     node = voronoi;

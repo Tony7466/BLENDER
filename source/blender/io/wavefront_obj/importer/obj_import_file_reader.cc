@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -314,7 +316,7 @@ static void geom_add_polygon(Geometry *geom,
   else {
     /* Remove just-added corners for the invalid face. */
     geom->face_corners_.resize(orig_corners_size);
-    geom->has_invalid_polys_ = true;
+    geom->has_invalid_faces_ = true;
   }
 }
 

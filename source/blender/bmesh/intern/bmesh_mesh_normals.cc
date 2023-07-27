@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -48,14 +50,14 @@ static void bm_edge_tag_from_smooth(const float (*fnos)[3],
  * assuming no other tool using it would run concurrently to clnors editing. */
 #define BM_LNORSPACE_UPDATE _FLAG_MF
 
-typedef struct BMVertsCalcNormalsWithCoordsData {
+struct BMVertsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
 
   /* Write data. */
   float (*vnos)[3];
-} BMVertsCalcNormalsWithCoordsData;
+};
 
 BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
                                                 const float e1diff[3],
@@ -233,7 +235,7 @@ static void bm_face_calc_normals_cb(void * /*userdata*/,
   BM_face_calc_normal(f, f->no);
 }
 
-void BM_mesh_normals_update_ex(BMesh *bm, const struct BMeshNormalsUpdate_Params *params)
+void BM_mesh_normals_update_ex(BMesh *bm, const BMeshNormalsUpdate_Params *params)
 {
   if (params->face_normals) {
     /* Calculate all face normals. */
@@ -277,7 +279,7 @@ static void bm_partial_verts_parallel_range_calc_normal_cb(
 
 void BM_mesh_normals_update_with_partial_ex(BMesh * /*bm*/,
                                             const BMPartialUpdate *bmpinfo,
-                                            const struct BMeshNormalsUpdate_Params *params)
+                                            const BMeshNormalsUpdate_Params *params)
 {
   BLI_assert(bmpinfo->params.do_normals);
   /* While harmless, exit early if there is nothing to do. */
@@ -507,8 +509,8 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
   else if (!BM_elem_flag_test(l_curr->e, BM_ELEM_TAG) &&
            !BM_elem_flag_test(l_curr->prev->e, BM_ELEM_TAG))
   {
-    /* Simple case (both edges around that vertex are sharp in related polygon),
-     * this vertex just takes its poly normal.
+    /* Simple case (both edges around that vertex are sharp in related face),
+     * this vertex just takes its face normal.
      */
     const int l_curr_index = BM_elem_index_get(l_curr);
     const float *no = fnos ? fnos[BM_elem_index_get(l_curr->f)] : l_curr->f->no;
@@ -638,7 +640,7 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
 
       {
         /* Code similar to accumulate_vertex_normals_poly_v3. */
-        /* Calculate angle between the two poly edges incident on this vertex. */
+        /* Calculate angle between the two face edges incident on this vertex. */
         const BMFace *f = lfan_pivot->f;
         const float fac = saacos(dot_v3v3(vec_next, vec_curr));
         const float *no = fnos ? fnos[BM_elem_index_get(f)] : f->no;
@@ -848,7 +850,7 @@ static void bm_edge_tag_from_smooth_and_set_sharp(const float (*fnos)[3],
       }
       else {
         /* Note that we do not care about the other sharp-edge cases
-         * (sharp poly, non-manifold edge, etc.),
+         * (sharp face, non-manifold edge, etc.),
          * only tag edge as sharp when it is due to angle threshold. */
         BM_elem_flag_disable(e, BM_ELEM_SMOOTH);
       }
@@ -1159,7 +1161,7 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
   }
 }
 
-typedef struct BMLoopsCalcNormalsWithCoordsData {
+struct BMLoopsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
@@ -1172,15 +1174,15 @@ typedef struct BMLoopsCalcNormalsWithCoordsData {
   /* Output. */
   float (*r_lnos)[3];
   MLoopNorSpaceArray *r_lnors_spacearr;
-} BMLoopsCalcNormalsWithCoordsData;
+};
 
-typedef struct BMLoopsCalcNormalsWithCoords_TLS {
+struct BMLoopsCalcNormalsWithCoords_TLS {
   blender::Vector<blender::float3, 16> *edge_vectors;
 
   /** Copied from #BMLoopsCalcNormalsWithCoordsData.r_lnors_spacearr when it's not nullptr. */
   MLoopNorSpaceArray *lnors_spacearr;
   MLoopNorSpaceArray lnors_spacearr_buf;
-} BMLoopsCalcNormalsWithCoords_TLS;
+};
 
 static void bm_mesh_loops_calc_normals_for_vert_init_fn(const void *__restrict userdata,
                                                         void *__restrict chunk)

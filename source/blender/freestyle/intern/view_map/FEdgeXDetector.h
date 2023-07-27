@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -205,7 +207,7 @@ class FEdgeXDetector {
   real _minKr;
   real _maxK1;
   real _maxKr;
-  unsigned _nPoints;
+  uint _nPoints;
   real _meanEdgeSize;
   bool _orthographicProjection;
 

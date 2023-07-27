@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -508,6 +510,7 @@ set(ICON_NAMES
   ipo_ease_out
   ipo_ease_in_out
   normalize_fcurves
+  orientation_parent
   vertexsel
   edgesel
   facesel

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -137,6 +139,13 @@ void ui_block_views_listen(const uiBlock *block, const wmRegionListenerParams *l
     if (view_link->view->listen(*listener_params->notifier)) {
       ED_region_tag_redraw(region);
     }
+  }
+}
+
+void ui_block_views_draw_overlays(const ARegion *region, const uiBlock *block)
+{
+  LISTBASE_FOREACH (ViewLink *, view_link, &block->views) {
+    view_link->view->draw_overlays(*region);
   }
 }
 

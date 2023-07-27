@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -60,7 +61,7 @@
 #include "UI_interface_icons.h"
 #include "UI_view2d.h"
 
-#include "AS_asset_representation.h"
+#include "AS_asset_representation.hh"
 #include "AS_essentials_library.hh"
 
 #include "file_intern.h"
@@ -131,8 +132,9 @@ static void fileselect_ensure_updated_asset_params(SpaceFile *sfile)
 }
 
 /**
- * \note RNA_struct_property_is_set_ex is used here because we want
- *       the previously used settings to be used here rather than overriding them */
+ * \note #RNA_struct_property_is_set_ex is used here because we want
+ * the previously used settings to be used here rather than overriding them.
+ */
 static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
 {
   BLI_assert(sfile->browse_mode == FILE_BROWSE_MODE_FILES);
@@ -444,7 +446,7 @@ static void fileselect_refresh_asset_params(FileAssetSelectParams *asset_params)
       break;
     case ASSET_LIBRARY_CUSTOM:
       BLI_assert(user_library);
-      STRNCPY(base_params->dir, user_library->path);
+      STRNCPY(base_params->dir, user_library->dirpath);
       base_params->type = FILE_ASSET_LIBRARY;
       break;
   }
@@ -468,7 +470,7 @@ bool ED_fileselect_is_asset_browser(const SpaceFile *sfile)
   return (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS);
 }
 
-struct AssetLibrary *ED_fileselect_active_asset_library_get(const SpaceFile *sfile)
+AssetLibrary *ED_fileselect_active_asset_library_get(const SpaceFile *sfile)
 {
   if (!ED_fileselect_is_asset_browser(sfile) || !sfile->files) {
     return nullptr;
@@ -477,7 +479,7 @@ struct AssetLibrary *ED_fileselect_active_asset_library_get(const SpaceFile *sfi
   return filelist_asset_library(sfile->files);
 }
 
-struct ID *ED_fileselect_active_asset_get(const SpaceFile *sfile)
+ID *ED_fileselect_active_asset_get(const SpaceFile *sfile)
 {
   if (!ED_fileselect_is_asset_browser(sfile)) {
     return nullptr;
@@ -511,16 +513,15 @@ int ED_fileselect_asset_import_method_get(const SpaceFile *sfile, const FileDirE
   }
 
   /* First handle the case where the asset system dictates a certain import method. */
-  if (AS_asset_representation_may_override_import_method(file->asset) == false) {
-    BLI_assert(AS_asset_representation_import_method_get(file->asset).has_value());
-
-    return *AS_asset_representation_import_method_get(file->asset);
+  if (file->asset->may_override_import_method() == false) {
+    BLI_assert(file->asset->get_import_method().has_value());
+    return *file->asset->get_import_method();
   }
 
   const FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
 
   if (params->import_type == FILE_ASSET_IMPORT_FOLLOW_PREFS) {
-    std::optional import_method = AS_asset_representation_import_method_get(file->asset);
+    std::optional import_method = file->asset->get_import_method();
     return import_method ? *import_method : -1;
   }
 
@@ -565,7 +566,7 @@ void ED_fileselect_activate_by_id(SpaceFile *sfile, ID *asset_id, const bool def
   }
 
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
 
   const int file_index = filelist_file_find_id(files, asset_id);
   const FileDirEntry *file = filelist_file_ex(files, file_index, true);
@@ -591,7 +592,7 @@ void ED_fileselect_activate_by_relpath(SpaceFile *sfile, const char *relative_pa
   /* If there are filelist operations running now ("pending" true) or soon ("force reset" true),
    * there is a fair chance that the to-be-activated file at relative_path will only be present
    * after these operations have completed. Defer activation until then. */
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
   if (files == nullptr || filelist_pending(files) || filelist_needs_force_reset(files)) {
     /* Casting away the constness of `relative_path` is safe here, because eventually it just ends
      * up in another call to this function, and then it's a const char* again. */
@@ -711,15 +712,15 @@ void ED_fileselect_params_to_userdef(SpaceFile *sfile,
     sfile_udata_new->temp_win_sizey = temp_win_size[1];
   }
 
-  /* Tag prefs as dirty if something has changed. */
+  /* Tag preferences as dirty if something has changed. */
   if (memcmp(sfile_udata_new, &sfile_udata_old, sizeof(sfile_udata_old)) != 0) {
     U.runtime.is_dirty = true;
   }
 }
 
-void fileselect_file_set(struct bContext *C, SpaceFile *sfile, const int index)
+void fileselect_file_set(bContext *C, SpaceFile *sfile, const int index)
 {
-  const struct FileDirEntry *file = filelist_file(sfile->files, index);
+  const FileDirEntry *file = filelist_file(sfile->files, index);
   if (file && file->relpath && file->relpath[0] && !(file->typeflag & FILE_TYPE_DIR)) {
     FileSelectParams *params = ED_fileselect_get_active_params(sfile);
     STRNCPY(params->file, file->relpath);
@@ -955,7 +956,7 @@ float file_string_width(const char *str)
   return BLF_width(style->widget.uifont_id, str, BLF_DRAW_STR_DUMMY_MAX);
 }
 
-float file_font_pointsize(void)
+float file_font_pointsize()
 {
 #if 0
   float s;
@@ -1022,7 +1023,7 @@ static void file_attribute_columns_init(const FileSelectParams *params, FileLayo
   layout->attribute_columns[COLUMN_SIZE].text_align = UI_STYLE_TEXT_RIGHT;
 }
 
-void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *region)
+void ED_fileselect_init_layout(SpaceFile *sfile, ARegion *region)
 {
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
   /* Request a slightly more compact layout for asset browsing. */
@@ -1033,8 +1034,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *region)
   int textheight;
 
   if (sfile->layout == nullptr) {
-    sfile->layout = static_cast<struct FileLayout *>(
-        MEM_callocN(sizeof(struct FileLayout), "file_layout"));
+    sfile->layout = static_cast<FileLayout *>(MEM_callocN(sizeof(FileLayout), "file_layout"));
     sfile->layout->dirty = true;
   }
   else if (sfile->layout->dirty == false) {
@@ -1126,7 +1126,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *region)
   layout->dirty = false;
 }
 
-FileLayout *ED_fileselect_get_layout(struct SpaceFile *sfile, ARegion *region)
+FileLayout *ED_fileselect_get_layout(SpaceFile *sfile, ARegion *region)
 {
   if (!sfile->layout) {
     ED_fileselect_init_layout(sfile, region);
@@ -1182,7 +1182,7 @@ void file_select_deselect_all(SpaceFile *sfile, const eDirEntry_SelectFlag flag)
   filelist_entries_select_index_range_set(sfile->files, &sel, FILE_SEL_REMOVE, flag, CHECK_ALL);
 }
 
-int file_select_match(struct SpaceFile *sfile, const char *pattern, char *matched_file)
+int file_select_match(SpaceFile *sfile, const char *pattern, char *matched_file)
 {
   int match = 0;
 
@@ -1207,7 +1207,7 @@ int file_select_match(struct SpaceFile *sfile, const char *pattern, char *matche
   return match;
 }
 
-int autocomplete_directory(struct bContext *C, char *str, void * /*arg_v*/)
+int autocomplete_directory(bContext *C, char *str, void * /*arg_v*/)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
   int match = AUTOCOMPLETE_NO_MATCH;
@@ -1217,7 +1217,7 @@ int autocomplete_directory(struct bContext *C, char *str, void * /*arg_v*/)
     char dirname[FILE_MAX];
 
     DIR *dir;
-    struct dirent *de;
+    dirent *de;
 
     BLI_path_split_dir_part(str, dirname, sizeof(dirname));
 
@@ -1231,14 +1231,14 @@ int autocomplete_directory(struct bContext *C, char *str, void * /*arg_v*/)
           /* pass */
         }
         else {
-          char path[FILE_MAX];
+          char dirpath[FILE_MAX];
           BLI_stat_t status;
 
-          BLI_path_join(path, sizeof(path), dirname, de->d_name);
+          BLI_path_join(dirpath, sizeof(dirpath), dirname, de->d_name);
 
-          if (BLI_stat(path, &status) == 0) {
+          if (BLI_stat(dirpath, &status) == 0) {
             if (S_ISDIR(status.st_mode)) { /* is subdir */
-              UI_autocomplete_update_name(autocpl, path);
+              UI_autocomplete_update_name(autocpl, dirpath);
             }
           }
         }
@@ -1255,7 +1255,7 @@ int autocomplete_directory(struct bContext *C, char *str, void * /*arg_v*/)
   return match;
 }
 
-int autocomplete_file(struct bContext *C, char *str, void * /*arg_v*/)
+int autocomplete_file(bContext *C, char *str, void * /*arg_v*/)
 {
   SpaceFile *sfile = CTX_wm_space_file(C);
   int match = AUTOCOMPLETE_NO_MATCH;
@@ -1325,7 +1325,7 @@ void ED_fileselect_exit(wmWindowManager *wm, SpaceFile *sfile)
 
 void file_params_smoothscroll_timer_clear(wmWindowManager *wm, wmWindow *win, SpaceFile *sfile)
 {
-  WM_event_remove_timer(wm, win, sfile->smoothscroll_timer);
+  WM_event_timer_remove(wm, win, sfile->smoothscroll_timer);
   sfile->smoothscroll_timer = nullptr;
 }
 
@@ -1338,7 +1338,7 @@ void file_params_invoke_rename_postscroll(wmWindowManager *wm, wmWindow *win, Sp
   if (sfile->smoothscroll_timer != nullptr) {
     file_params_smoothscroll_timer_clear(wm, win, sfile);
   }
-  sfile->smoothscroll_timer = WM_event_add_timer(wm, win, TIMER1, 1.0 / 1000.0);
+  sfile->smoothscroll_timer = WM_event_timer_add(wm, win, TIMER1, 1.0 / 1000.0);
   sfile->scroll_offset = 0;
 }
 
@@ -1366,7 +1366,7 @@ void file_params_renamefile_clear(FileSelectParams *params)
   params->rename_flag = 0;
 }
 
-static int file_params_find_renamed(const FileSelectParams *params, struct FileList *filelist)
+static int file_params_find_renamed(const FileSelectParams *params, FileList *filelist)
 {
   /* Find the file either through the local ID/asset it represents or its relative path. */
   return (params->rename_id != nullptr) ? filelist_file_find_id(filelist, params->rename_id) :
@@ -1452,12 +1452,10 @@ ScrArea *ED_fileselect_handler_area_find_any_with_op(const wmWindow *win)
   return nullptr;
 }
 
-void ED_fileselect_ensure_default_filepath(struct bContext *C,
-                                           struct wmOperator *op,
-                                           const char *extension)
+void ED_fileselect_ensure_default_filepath(bContext *C, wmOperator *op, const char *extension)
 {
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    struct Main *bmain = CTX_data_main(C);
+    Main *bmain = CTX_data_main(C);
     char filepath[FILE_MAX];
     const char *blendfile_path = BKE_main_blendfile_path(bmain);
 

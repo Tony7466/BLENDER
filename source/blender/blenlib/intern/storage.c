@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -31,7 +32,7 @@
 #endif
 
 #include <fcntl.h>
-#include <string.h> /* `strcpy` etc. */
+#include <string.h>
 
 #ifdef WIN32
 #  include "BLI_string_utf8.h"
@@ -144,16 +145,17 @@ double BLI_dir_free_space(const char *dir)
     return -1;
   }
 
-  strcpy(dirname, dir);
+  memcpy(dirname, dir, len + 1);
 
   if (len) {
     slash = strrchr(dirname, '/');
     if (slash) {
-      slash[1] = 0;
+      slash[1] = '\0';
     }
   }
   else {
-    strcpy(dirname, "/");
+    dirname[0] = '/';
+    dirname[1] = '\0';
   }
 
 #  if defined(USE_STATFS_STATVFS)
@@ -602,30 +604,12 @@ void BLI_file_free_lines(LinkNode *lines)
 
 bool BLI_file_older(const char *file1, const char *file2)
 {
-#ifdef WIN32
-  struct _stat st1, st2;
-
-  UTF16_ENCODE(file1);
-  UTF16_ENCODE(file2);
-
-  if (_wstat(file1_16, &st1)) {
+  BLI_stat_t st1, st2;
+  if (BLI_stat(file1, &st1)) {
     return false;
   }
-  if (_wstat(file2_16, &st2)) {
+  if (BLI_stat(file2, &st2)) {
     return false;
   }
-
-  UTF16_UN_ENCODE(file2);
-  UTF16_UN_ENCODE(file1);
-#else
-  struct stat st1, st2;
-
-  if (stat(file1, &st1)) {
-    return false;
-  }
-  if (stat(file2, &st2)) {
-    return false;
-  }
-#endif
   return (st1.st_mtime < st2.st_mtime);
 }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -97,7 +99,6 @@
 #include "DNA_particle_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_simulation_types.h"
 #include "DNA_space_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
@@ -128,7 +129,6 @@
 #include "DNA_particle_defaults.h"
 #include "DNA_pointcloud_defaults.h"
 #include "DNA_scene_defaults.h"
-#include "DNA_simulation_defaults.h"
 #include "DNA_space_defaults.h"
 #include "DNA_speaker_defaults.h"
 #include "DNA_texture_defaults.h"
@@ -210,9 +210,7 @@ SDNA_DEFAULT_DECL_STRUCT(PointCloud);
 /* DNA_scene_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Scene);
 SDNA_DEFAULT_DECL_STRUCT(ToolSettings);
-
-/* DNA_simulation_defaults.h */
-SDNA_DEFAULT_DECL_STRUCT(Simulation);
+SDNA_DEFAULT_DECL_STRUCT(Sculpt);
 
 /* DNA_space_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(SpaceClip);
@@ -327,7 +325,7 @@ SDNA_DEFAULT_DECL_STRUCT(EnvelopeGpencilModifierData);
 #undef SDNA_DEFAULT_DECL_STRUCT
 
 /* Reuse existing definitions. */
-extern const struct UserDef U_default;
+extern const UserDef U_default;
 #define DNA_DEFAULT_UserDef U_default
 
 extern const bTheme U_theme_default;
@@ -449,8 +447,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL_EX(GP_Sculpt_Settings, ToolSettings.gp_sculpt),
     SDNA_DEFAULT_DECL_EX(GP_Sculpt_Guide, ToolSettings.gp_sculpt.guide),
 
-    /* DNA_simulation_defaults.h */
-    SDNA_DEFAULT_DECL(Simulation),
+    SDNA_DEFAULT_DECL(Sculpt),
 
     /* DNA_speaker_defaults.h */
     SDNA_DEFAULT_DECL(Speaker),

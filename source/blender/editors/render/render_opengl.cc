@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup render
@@ -193,17 +194,7 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
       RenderView *rv_del = rv->next;
       BLI_remlink(&rr->views, rv_del);
 
-      if (rv_del->rectf) {
-        MEM_freeN(rv_del->rectf);
-      }
-
-      if (rv_del->rectz) {
-        MEM_freeN(rv_del->rectz);
-      }
-
-      if (rv_del->rect32) {
-        MEM_freeN(rv_del->rect32);
-      }
+      IMB_freeImBuf(rv_del->ibuf);
 
       MEM_freeN(rv_del);
     }
@@ -227,17 +218,7 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
         BLI_remlink(&rr->views, rv_del);
 
-        if (rv_del->rectf) {
-          MEM_freeN(rv_del->rectf);
-        }
-
-        if (rv_del->rectz) {
-          MEM_freeN(rv_del->rectz);
-        }
-
-        if (rv_del->rect32) {
-          MEM_freeN(rv_del->rect32);
-        }
+        IMB_freeImBuf(rv_del->ibuf);
 
         MEM_freeN(rv_del);
       }
@@ -286,7 +267,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 
   if (oglrender->is_sequencer) {
     SpaceSeq *sseq = oglrender->sseq;
-    struct bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
+    bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
 
     /* use pre-calculated ImBuf (avoids deadlock), see: */
     ImBuf *ibuf = oglrender->seq_data.ibufs_arr[oglrender->view_id];
@@ -301,7 +282,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
        * TODO(sergey): In the case of output to float container (EXR)
        * it actually makes sense to keep float buffer instead.
        */
-      if (ibuf_result->rect_float != nullptr) {
+      if (ibuf_result->float_buffer.data != nullptr) {
         IMB_rect_from_float(ibuf_result);
         imb_freerectfloatImBuf(ibuf_result);
       }
@@ -315,9 +296,9 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
     if (gpd) {
       int i;
       uchar *gp_rect;
-      uchar *render_rect = (uchar *)ibuf_result->rect;
+      uchar *render_rect = ibuf_result->byte_buffer.data;
 
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
       GPU_offscreen_bind(oglrender->ofs, true);
 
       GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
@@ -339,7 +320,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
         blend_color_mix_byte(&render_rect[i], &render_rect[i], &gp_rect[i]);
       }
       GPU_offscreen_unbind(oglrender->ofs, true);
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
 
       MEM_freeN(gp_rect);
     }
@@ -404,11 +385,11 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
     if ((scene->r.stamp & R_STAMP_ALL) && (scene->r.stamp & R_STAMP_DRAW)) {
       float *rectf = nullptr;
       uchar *rect = nullptr;
-      if (ibuf_result->rect_float) {
-        rectf = ibuf_result->rect_float;
+      if (ibuf_result->float_buffer.data) {
+        rectf = ibuf_result->float_buffer.data;
       }
       else {
-        rect = (uchar *)ibuf_result->rect;
+        rect = ibuf_result->byte_buffer.data;
       }
       BKE_image_stamp_buf(scene, camera, nullptr, rect, rectf, rr->rectx, rr->recty, 4);
     }
@@ -584,11 +565,11 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
   }
   ID *id = *id_p;
 
-  ID *id_self = cb_data->id_self;
+  ID *self_id = cb_data->self_id;
   const int cb_flag = cb_data->cb_flag;
-  if (cb_flag == IDWALK_CB_LOOPBACK || id == id_self) {
+  if (cb_flag == IDWALK_CB_LOOPBACK || id == self_id) {
     /* IDs may end up referencing themselves one way or the other, and those
-     * (the id_self ones) have always already been processed. */
+     * (the self_id ones) have always already been processed. */
     return IDWALK_RET_STOP_RECURSION;
   }
 
@@ -621,7 +602,6 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
     case ID_CV:        /* Curves */
     case ID_PT:        /* PointCloud */
     case ID_VO:        /* Volume */
-    case ID_SIM:       /* Simulation */
       break;
 
       /* Blacklist: */
@@ -651,6 +631,9 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
       /* In addition to regular ID's animdata, GreasePencil uses a specific frame-based animation
        * system that requires specific handling here. */
       gather_frames_to_render_for_grease_pencil(oglrender, (bGPdata *)id);
+      break;
+    case ID_GP:
+      /* TODO: gather frames. */
       break;
   }
 
@@ -756,14 +739,14 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   BKE_render_resolution(&scene->r, false, &sizex, &sizey);
 
   /* corrects render size with actual size, not every card supports non-power-of-two dimensions */
-  DRW_opengl_context_enable(); /* Off-screen creation needs to be done in DRW context. */
+  DRW_gpu_context_enable(); /* Off-screen creation needs to be done in DRW context. */
   ofs = GPU_offscreen_create(sizex,
                              sizey,
                              true,
                              GPU_RGBA16F,
                              GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_HOST_READ,
                              err_out);
-  DRW_opengl_context_disable();
+  DRW_gpu_context_disable();
 
   if (!ofs) {
     BKE_reportf(op->reports, RPT_ERROR, "Failed to create OpenGL off-screen buffer, %s", err_out);
@@ -930,16 +913,16 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
     scene->r.cfra = oglrender->cfrao;
     BKE_scene_graph_update_for_newframe(depsgraph);
 
-    WM_event_remove_timer(oglrender->wm, oglrender->win, oglrender->timer);
+    WM_event_timer_remove(oglrender->wm, oglrender->win, oglrender->timer);
   }
 
   WM_cursor_modal_restore(oglrender->win);
 
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_RESULT, oglrender->scene);
 
-  DRW_opengl_context_enable();
+  DRW_gpu_context_enable();
   GPU_offscreen_free(oglrender->ofs);
-  DRW_opengl_context_disable();
+  DRW_gpu_context_disable();
 
   if (oglrender->is_sequencer) {
     MEM_freeN(oglrender->seq_data.ibufs_arr);
@@ -1281,7 +1264,7 @@ static int screen_opengl_render_invoke(bContext *C, wmOperator *op, const wmEven
   oglrender->win = CTX_wm_window(C);
 
   WM_event_add_modal_handler(C, op);
-  oglrender->timer = WM_event_add_timer(oglrender->wm, oglrender->win, TIMER, 0.01f);
+  oglrender->timer = WM_event_timer_add(oglrender->wm, oglrender->win, TIMER, 0.01f);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -1320,9 +1303,9 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *screen_opengl_render_description(struct bContext * /*C*/,
-                                              struct wmOperatorType * /*ot*/,
-                                              struct PointerRNA *ptr)
+static char *screen_opengl_render_description(bContext * /*C*/,
+                                              wmOperatorType * /*ot*/,
+                                              PointerRNA *ptr)
 {
   if (!RNA_boolean_get(ptr, "animation")) {
     return nullptr;

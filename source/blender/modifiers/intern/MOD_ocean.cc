@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -68,7 +69,7 @@ static void simulate_ocean_modifier(OceanModifierData *omd)
 
 /* Modifier Code */
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
 #ifdef WITH_OCEANSIM
   OceanModifierData *omd = (OceanModifierData *)md;
@@ -88,7 +89,7 @@ static void initData(ModifierData *md)
 #endif /* WITH_OCEANSIM */
 }
 
-static void freeData(ModifierData *md)
+static void free_data(ModifierData *md)
 {
 #ifdef WITH_OCEANSIM
   OceanModifierData *omd = (OceanModifierData *)md;
@@ -103,7 +104,7 @@ static void freeData(ModifierData *md)
 #endif /* WITH_OCEANSIM */
 }
 
-static void copyData(const ModifierData *md, ModifierData *target, const int flag)
+static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
 #ifdef WITH_OCEANSIM
 #  if 0
@@ -130,7 +131,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 }
 
 #ifdef WITH_OCEANSIM
-static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   OceanModifierData *omd = (OceanModifierData *)md;
 
@@ -139,10 +140,10 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
   }
 }
 #else  /* WITH_OCEANSIM */
-static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks * /*r_cddata_masks*/) {}
+static void required_data_mask(ModifierData * /*md*/, CustomData_MeshMasks * /*r_cddata_masks*/) {}
 #endif /* WITH_OCEANSIM */
 
-static bool dependsOnNormals(ModifierData *md)
+static bool depends_on_normals(ModifierData *md)
 {
   OceanModifierData *omd = (OceanModifierData *)md;
   return (omd->geometry_mode != MOD_OCEAN_GEOM_GENERATE);
@@ -151,8 +152,8 @@ static bool dependsOnNormals(ModifierData *md)
 #ifdef WITH_OCEANSIM
 
 struct GenerateOceanGeometryData {
-  float (*vert_positions)[3];
-  blender::MutableSpan<int> poly_offsets;
+  blender::MutableSpan<blender::float3> vert_positions;
+  blender::MutableSpan<int> face_offsets;
   blender::MutableSpan<int> corner_verts;
   float (*mloopuvs)[2];
 
@@ -179,7 +180,7 @@ static void generate_ocean_geometry_verts(void *__restrict userdata,
   }
 }
 
-static void generate_ocean_geometry_polys(void *__restrict userdata,
+static void generate_ocean_geometry_faces(void *__restrict userdata,
                                           const int y,
                                           const TaskParallelTLS *__restrict /*tls*/)
 {
@@ -195,7 +196,7 @@ static void generate_ocean_geometry_polys(void *__restrict userdata,
     gogd->corner_verts[fi * 4 + 2] = vi + 1 + gogd->res_x + 1;
     gogd->corner_verts[fi * 4 + 3] = vi + gogd->res_x + 1;
 
-    gogd->poly_offsets[fi] = fi * 4;
+    gogd->face_offsets[fi] = fi * 4;
   }
 }
 
@@ -235,7 +236,7 @@ static Mesh *generate_ocean_geometry(OceanModifierData *omd, Mesh *mesh_orig, co
   GenerateOceanGeometryData gogd;
 
   int verts_num;
-  int polys_num;
+  int faces_num;
 
   const bool use_threading = resolution > 4;
 
@@ -245,7 +246,7 @@ static Mesh *generate_ocean_geometry(OceanModifierData *omd, Mesh *mesh_orig, co
   gogd.res_y = gogd.ry * omd->repeat_y;
 
   verts_num = (gogd.res_x + 1) * (gogd.res_y + 1);
-  polys_num = gogd.res_x * gogd.res_y;
+  faces_num = gogd.res_x * gogd.res_y;
 
   gogd.sx = omd->size * omd->spatial_size;
   gogd.sy = omd->size * omd->spatial_size;
@@ -255,11 +256,11 @@ static Mesh *generate_ocean_geometry(OceanModifierData *omd, Mesh *mesh_orig, co
   gogd.sx /= gogd.rx;
   gogd.sy /= gogd.ry;
 
-  result = BKE_mesh_new_nomain(verts_num, 0, polys_num, polys_num * 4);
+  result = BKE_mesh_new_nomain(verts_num, 0, faces_num, faces_num * 4);
   BKE_mesh_copy_parameters_for_eval(result, mesh_orig);
 
-  gogd.vert_positions = BKE_mesh_vert_positions_for_write(result);
-  gogd.poly_offsets = result->poly_offsets_for_write();
+  gogd.vert_positions = result->vert_positions_for_write();
+  gogd.face_offsets = result->face_offsets_for_write();
   gogd.corner_verts = result->corner_verts_for_write();
 
   TaskParallelSettings settings;
@@ -270,14 +271,14 @@ static Mesh *generate_ocean_geometry(OceanModifierData *omd, Mesh *mesh_orig, co
   BLI_task_parallel_range(0, gogd.res_y + 1, &gogd, generate_ocean_geometry_verts, &settings);
 
   /* create faces */
-  BLI_task_parallel_range(0, gogd.res_y, &gogd, generate_ocean_geometry_polys, &settings);
+  BLI_task_parallel_range(0, gogd.res_y, &gogd, generate_ocean_geometry_faces, &settings);
 
   BKE_mesh_calc_edges(result, false, false);
 
   /* add uvs */
-  if (CustomData_number_of_layers(&result->ldata, CD_PROP_FLOAT2) < MAX_MTFACE) {
+  if (CustomData_number_of_layers(&result->loop_data, CD_PROP_FLOAT2) < MAX_MTFACE) {
     gogd.mloopuvs = static_cast<float(*)[2]>(CustomData_add_layer_named(
-        &result->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, polys_num * 4, "UVMap"));
+        &result->loop_data, CD_PROP_FLOAT2, CD_SET_DEFAULT, faces_num * 4, "UVMap"));
 
     if (gogd.mloopuvs) { /* unlikely to fail */
       gogd.ix = 1.0 / gogd.rx;
@@ -351,14 +352,14 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
   CLAMP(cfra_for_cache, omd->bakestart, omd->bakeend);
   cfra_for_cache -= omd->bakestart; /* shift to 0 based */
 
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(result);
-  const blender::OffsetIndices polys = result->polys();
+  blender::MutableSpan<blender::float3> positions = result->vert_positions_for_write();
+  const blender::OffsetIndices faces = result->faces();
 
   /* Add vertex-colors before displacement: allows lookup based on position. */
 
   if (omd->flag & MOD_OCEAN_GENERATE_FOAM) {
     const blender::Span<int> corner_verts = result->corner_verts();
-    MLoopCol *mloopcols = static_cast<MLoopCol *>(CustomData_add_layer_named(&result->ldata,
+    MLoopCol *mloopcols = static_cast<MLoopCol *>(CustomData_add_layer_named(&result->loop_data,
                                                                              CD_PROP_BYTE_COLOR,
                                                                              CD_SET_DEFAULT,
                                                                              corner_verts.size(),
@@ -366,7 +367,7 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
 
     MLoopCol *mloopcols_spray = nullptr;
     if (omd->flag & MOD_OCEAN_GENERATE_SPRAY) {
-      mloopcols_spray = static_cast<MLoopCol *>(CustomData_add_layer_named(&result->ldata,
+      mloopcols_spray = static_cast<MLoopCol *>(CustomData_add_layer_named(&result->loop_data,
                                                                            CD_PROP_BYTE_COLOR,
                                                                            CD_SET_DEFAULT,
                                                                            corner_verts.size(),
@@ -375,17 +376,17 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
 
     if (mloopcols) { /* unlikely to fail */
 
-      for (const int i : polys.index_range()) {
-        const blender::IndexRange poly = polys[i];
-        const int *corner_vert = &corner_verts[poly.start()];
-        MLoopCol *mlcol = &mloopcols[poly.start()];
+      for (const int i : faces.index_range()) {
+        const blender::IndexRange face = faces[i];
+        const int *corner_vert = &corner_verts[face.start()];
+        MLoopCol *mlcol = &mloopcols[face.start()];
 
         MLoopCol *mlcolspray = nullptr;
         if (omd->flag & MOD_OCEAN_GENERATE_SPRAY) {
-          mlcolspray = &mloopcols_spray[poly.start()];
+          mlcolspray = &mloopcols_spray[face.start()];
         }
 
-        for (j = poly.size(); j--; corner_vert++, mlcol++) {
+        for (j = face.size(); j--; corner_vert++, mlcol++) {
           const float *vco = positions[*corner_vert];
           const float u = OCEAN_CO(size_co_inv, vco[0]);
           const float v = OCEAN_CO(size_co_inv, vco[1]);
@@ -472,7 +473,7 @@ static Mesh *doOcean(ModifierData * /*md*/, const ModifierEvalContext * /*ctx*/,
 }
 #endif /* WITH_OCEANSIM */
 
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   return doOcean(md, ctx, mesh);
 }
@@ -661,7 +662,7 @@ static void bake_panel_draw(const bContext * /*C*/, Panel *panel)
 }
 #endif /* WITH_OCEANSIM */
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Ocean, panel_draw);
 #ifdef WITH_OCEANSIM
@@ -678,7 +679,7 @@ static void panelRegister(ARegionType *region_type)
 #endif /* WITH_OCEANSIM */
 }
 
-static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
+static void blend_read(BlendDataReader * /*reader*/, ModifierData *md)
 {
   OceanModifierData *omd = (OceanModifierData *)md;
   omd->oceancache = nullptr;
@@ -686,35 +687,36 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Ocean = {
+    /*idname*/ "Ocean",
     /*name*/ N_("Ocean"),
-    /*structName*/ "OceanModifierData",
-    /*structSize*/ sizeof(OceanModifierData),
+    /*struct_name*/ "OceanModifierData",
+    /*struct_size*/ sizeof(OceanModifierData),
     /*srna*/ &RNA_OceanModifier,
     /*type*/ eModifierTypeType_Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_OCEAN,
 
-    /*copyData*/ copyData,
-    /*deformVerts*/ nullptr,
+    /*copy_data*/ copy_data,
+    /*deform_verts*/ nullptr,
 
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ freeData,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ dependsOnNormals,
-    /*foreachIDLink*/ nullptr,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ blendRead,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ free_data,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ depends_on_normals,
+    /*foreach_ID_link*/ nullptr,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ blend_read,
 };

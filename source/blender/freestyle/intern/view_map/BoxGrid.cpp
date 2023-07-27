@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -174,7 +176,7 @@ void BoxGrid::distributePolygons(OccluderSource &source)
     ++nFaces;
   }
   if (G.debug & G_DEBUG_FREESTYLE) {
-    cout << "Distributed " << nFaces << " occluders.  Retained " << nKeptFaces << "." << endl;
+    cout << "Distributed " << nFaces << " occluders. Retained " << nKeptFaces << "." << endl;
   }
 }
 

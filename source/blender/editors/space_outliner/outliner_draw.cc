@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -39,7 +40,7 @@
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_report.h"
@@ -674,7 +675,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
@@ -1852,21 +1853,23 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
             tree_element_cast<TreeElementOverridesPropertyOperation>(te))
     {
       StringRefNull op_label = override_op_elem->getOverrideOperationLabel();
-      uiDefBut(block,
-               UI_BTYPE_LABEL,
-               0,
-               op_label.c_str(),
-               x + pad_x,
-               te->ys + pad_y,
-               item_max_width,
-               item_height,
-               nullptr,
-               0,
-               0,
-               0,
-               0,
-               "");
-      continue;
+      if (!op_label.is_empty()) {
+        uiDefBut(block,
+                 UI_BTYPE_LABEL,
+                 0,
+                 op_label.c_str(),
+                 x + pad_x,
+                 te->ys + pad_y,
+                 item_max_width,
+                 item_height,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 "");
+        continue;
+      }
     }
 
     PointerRNA *ptr = &override_elem->override_rna_ptr;
@@ -2368,6 +2371,8 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
         }
       case OB_GPENCIL_LEGACY:
         return ICON_OUTLINER_OB_GREASEPENCIL;
+      case OB_GREASE_PENCIL:
+        return ICON_OUTLINER_OB_GREASEPENCIL;
     }
 
     return ICON_NONE;
@@ -2494,9 +2499,6 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_SEQUENCE;
     case ID_PC:
       return ICON_CURVE_BEZCURVE;
-    case ID_SIM:
-      /* TODO: Use correct icon. */
-      return ICON_PHYSICS;
     default:
       return ICON_NONE;
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_SystemCocoa.hh"
 
@@ -22,7 +23,9 @@
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "GHOST_ContextCGL.hh"
+#ifdef WITH_METAL_BACKEND
+#  include "GHOST_ContextCGL.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -76,11 +79,11 @@ static GHOST_TButton convertButton(int button)
  * \param recvChar: the character ignoring modifiers (except for shift)
  * \return Ghost key code
  */
-static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
+static GHOST_TKey convertKey(int rawCode, unichar recvChar)
 {
   // printf("\nrecvchar %c 0x%x",recvChar,recvChar);
   switch (rawCode) {
-    /* Physical key-codes: (not used due to map changes in int'l keyboards). */
+    /* Physical key-codes: (not used due to map changes in international keyboards). */
 #if 0
     case kVK_ANSI_A:    return GHOST_kKeyA;
     case kVK_ANSI_B:    return GHOST_kKeyB;
@@ -109,7 +112,7 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
     case kVK_ANSI_Y:    return GHOST_kKeyY;
     case kVK_ANSI_Z:    return GHOST_kKeyZ;
 #endif
-    /* Numbers keys: mapped to handle some int'l keyboard (e.g. French). */
+    /* Numbers keys: mapped to handle some international keyboard (e.g. French). */
     case kVK_ANSI_1:
       return GHOST_kKey1;
     case kVK_ANSI_2:
@@ -237,7 +240,10 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
       return GHOST_kKeyUpPage;
     case kVK_PageDown:
       return GHOST_kKeyDownPage;
-#if 0 /* TODO: why are these commented? */
+#if 0
+    /* These constants with "ANSI" in the name are labeled according to the key position on an
+     * ANSI-standard US keyboard. Therefore they may not match the physical key label on other
+     * keyboard layouts. */
     case kVK_ANSI_Minus:        return GHOST_kKeyMinus;
     case kVK_ANSI_Equal:        return GHOST_kKeyEqual;
     case kVK_ANSI_Comma:        return GHOST_kKeyComma;
@@ -257,7 +263,7 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
       return GHOST_kKeyUnknown;
 
     default: {
-      /* Alphanumerical or punctuation key that is remappable in int'l keyboards. */
+      /* Alphanumerical or punctuation key that is remappable in international keyboards. */
       if ((recvChar >= 'A') && (recvChar <= 'Z')) {
         return (GHOST_TKey)(recvChar - 'A' + GHOST_kKeyA);
       }
@@ -274,7 +280,7 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
                                                           kTISPropertyUnicodeKeyLayoutData);
         CFRelease(kbdTISHandle);
 
-        /* Get actual character value of the "remappable" keys in int'l keyboards,
+        /* Get actual character value of the "remappable" keys in international keyboards,
          * if keyboard layout is not correctly reported (e.g. some non Apple keyboards in Tiger),
          * then fallback on using the received #charactersIgnoringModifiers. */
         if (uchrHandle) {
@@ -283,10 +289,10 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar, UInt16 keyAction)
 
           UCKeyTranslate((UCKeyboardLayout *)CFDataGetBytePtr(uchrHandle),
                          rawCode,
-                         keyAction,
+                         kUCKeyActionDown,
                          0,
                          LMGetKbdType(),
-                         kUCKeyTranslateNoDeadKeysBit,
+                         kUCKeyTranslateNoDeadKeysMask,
                          &deadKeyState,
                          1,
                          &actualStrLength,
@@ -429,8 +435,7 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 - (void)applicationWillTerminate:(NSNotification *)aNotification
 {
 #if 0
-  G.is_break = false; /* Let Cocoa perform the termination at the end. */
-  WM_exit(C);
+  WM_exit(C, EXIT_SUCCESS);
 #endif
 }
 
@@ -697,8 +702,8 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                                uint32_t width,
                                                uint32_t height,
                                                GHOST_TWindowState state,
-                                               GHOST_GLSettings glSettings,
-                                               const bool exclusive,
+                                               GHOST_GPUSettings gpuSettings,
+                                               const bool /*exclusive*/,
                                                const bool is_dialog,
                                                const GHOST_IWindow *parentWindow)
 {
@@ -726,9 +731,9 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                    width,
                                    height,
                                    state,
-                                   glSettings.context_type,
-                                   glSettings.flags & GHOST_glStereoVisual,
-                                   glSettings.flags & GHOST_glDebugContext,
+                                   gpuSettings.context_type,
+                                   gpuSettings.flags & GHOST_gpuStereoVisual,
+                                   gpuSettings.flags & GHOST_gpuDebugContext,
                                    is_dialog,
                                    (GHOST_WindowCocoa *)parentWindow);
 
@@ -756,27 +761,38 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
  * Never explicitly delete the context, use #disposeContext() instead.
  * \return The new context (or 0 if creation failed).
  */
-GHOST_IContext *GHOST_SystemCocoa::createOffscreenContext(GHOST_GLSettings glSettings)
+GHOST_IContext *GHOST_SystemCocoa::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
+  const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
+
+  switch (gpuSettings.context_type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (glSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
-    const bool debug_context = (glSettings.flags & GHOST_glDebugContext) != 0;
-    GHOST_Context *context = new GHOST_ContextVK(false, NULL, 1, 2, debug_context);
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(false, NULL, 1, 2, debug_context);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-      return NULL;
+      return nullptr;
     }
-    return context;
-  }
 #endif
 
-  GHOST_Context *context = new GHOST_ContextCGL(false, NULL, NULL, NULL, glSettings.context_type);
-  if (context->initializeDrawingContext())
-    return context;
-  else
-    delete context;
+#ifdef WITH_METAL_BACKEND
+    case GHOST_kDrawingContextTypeMetal: {
+      /* TODO(fclem): Remove OpenGL support and rename context to ContextMTL */
+      GHOST_Context *context = new GHOST_ContextCGL(false, NULL, NULL, debug_context);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
+      delete context;
+      return nullptr;
+    }
+#endif
 
-  return NULL;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 /**
@@ -914,7 +930,7 @@ GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
 /**
  * The event queue polling function
  */
-bool GHOST_SystemCocoa::processEvents(bool waitForEvent)
+bool GHOST_SystemCocoa::processEvents(bool /*waitForEvent*/)
 {
   bool anyProcessed = false;
   NSEvent *event;
@@ -1261,7 +1277,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
               ![bitmapImage isPlanar])
           {
             /* Try a fast copy if the image is a meshed RGBA 32bit bitmap. */
-            toIBuf = (uint8_t *)ibuf->rect;
+            toIBuf = ibuf->byte_buffer.data;
             rasterRGB = (uint8_t *)[bitmapImage bitmapData];
             for (y = 0; y < imgSize.height; y++) {
               to_i = (imgSize.height - y - 1) * imgSize.width;
@@ -1338,7 +1354,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
             }
 
             /* Copy the image to ibuf, flipping it vertically. */
-            toIBuf = (uint8_t *)ibuf->rect;
+            toIBuf = ibuf->byte_buffer.data;
             for (y = 0; y < imgSize.height; y++) {
               for (x = 0; x < imgSize.width; x++) {
                 to_i = (imgSize.height - y - 1) * imgSize.width + x;
@@ -1830,18 +1846,13 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
 
     case NSEventTypeKeyDown:
     case NSEventTypeKeyUp:
+      /* Returns an empty string for dead keys. */
       charsIgnoringModifiers = [event charactersIgnoringModifiers];
       if ([charsIgnoringModifiers length] > 0) {
-        keyCode = convertKey([event keyCode],
-                             [charsIgnoringModifiers characterAtIndex:0],
-                             [event type] == NSEventTypeKeyDown ? kUCKeyActionDown :
-                                                                  kUCKeyActionUp);
+        keyCode = convertKey([event keyCode], [charsIgnoringModifiers characterAtIndex:0]);
       }
       else {
-        keyCode = convertKey([event keyCode],
-                             0,
-                             [event type] == NSEventTypeKeyDown ? kUCKeyActionDown :
-                                                                  kUCKeyActionUp);
+        keyCode = convertKey([event keyCode], 0);
       }
 
       characters = [event characters];
@@ -1953,7 +1964,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
 
 #pragma mark Clipboard get/set
 
-char *GHOST_SystemCocoa::getClipboard(bool selection) const
+char *GHOST_SystemCocoa::getClipboard(bool /*selection*/) const
 {
   char *temp_buff;
   size_t pastedTextSize;

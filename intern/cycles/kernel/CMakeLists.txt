@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2011-2022 Blender Foundation
 
 remove_extra_strict_flags()
 
@@ -123,10 +124,9 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bsdf_diffuse.h
   closure/bsdf_diffuse_ramp.h
   closure/bsdf_microfacet.h
-  closure/bsdf_microfacet_multi.h
-  closure/bsdf_microfacet_multi_impl.h
   closure/bsdf_oren_nayar.h
   closure/bsdf_phong_ramp.h
+  closure/bsdf_sheen.h
   closure/bsdf_toon.h
   closure/bsdf_transparent.h
   closure/bsdf_util.h
@@ -136,7 +136,6 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/emissive.h
   closure/volume.h
   closure/bsdf_principled_diffuse.h
-  closure/bsdf_principled_sheen.h
   closure/bsdf_hair_principled.h
 )
 
@@ -267,6 +266,7 @@ set(SRC_KERNEL_INTEGRATOR_HEADERS
   integrator/displacement_shader.h
   integrator/init_from_bake.h
   integrator/init_from_camera.h
+  integrator/intersect_dedicated_light.h
   integrator/intersect_closest.h
   integrator/intersect_shadow.h
   integrator/intersect_subsurface.h
@@ -280,7 +280,9 @@ set(SRC_KERNEL_INTEGRATOR_HEADERS
   integrator/shade_shadow.h
   integrator/shade_surface.h
   integrator/shade_volume.h
+  integrator/shade_dedicated_light.h
   integrator/shadow_catcher.h
+  integrator/shadow_linking.h
   integrator/shadow_state_template.h
   integrator/state_flow.h
   integrator/state.h
@@ -540,12 +542,12 @@ if(WITH_CYCLES_CUDA_BINARIES)
     elseif(${arch} MATCHES ".*_7." AND "${CUDA_VERSION}" LESS 100)
       message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
     elseif(${arch} MATCHES ".*_8.")
-      if(DEFINED CUDA11_NVCC_EXECUTABLE)
-        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
-      elseif("${CUDA_VERSION}" GREATER_EQUAL 111) # Support for sm_86 was introduced in CUDA 11
+      if("${CUDA_VERSION}" GREATER_EQUAL 111) # Support for sm_86 was introduced in CUDA 11
         set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
         set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
+      elseif(DEFINED CUDA11_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
       else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 11.1+, skipped.")
       endif()
@@ -664,7 +666,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${SRC_UTIL_HEADERS})
   set(bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
   set(hiprt_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.hipfb)
-  set(kernel_sources ${sources})
+  set(kernel_sources ${hiprt_sources})
   set(hiprt_kernel_src "/device/hiprt/kernel.cpp")
   if(WIN32)
     set(hiprt_compile_command ${CMAKE_COMMAND})
@@ -830,6 +832,8 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   )
 
   set(SYCL_OFFLINE_COMPILER_PARALLEL_JOBS 1 CACHE STRING "Number of parallel compiler instances to use for device binaries compilation (expect ~8GB peak memory usage per instance).")
+  mark_as_advanced(SYCL_OFFLINE_COMPILER_PARALLEL_JOBS)
+
   if(WITH_CYCLES_ONEAPI_BINARIES)
     message(STATUS "${SYCL_OFFLINE_COMPILER_PARALLEL_JOBS} instance(s) of oneAPI offline compiler will be used.")
   endif()
@@ -847,6 +851,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     -DWITH_ONEAPI
     -ffast-math
     -O2
+    -D__KERNEL_LOCAL_ATOMIC_SORT__
     -o"${cycles_kernel_oneapi_lib}"
     -I"${CMAKE_CURRENT_SOURCE_DIR}/.."
     ${SYCL_CPP_FLAGS}
@@ -862,6 +867,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   endif()
   if(NOT DEFINED CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen)
     set(CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "${CYCLES_ONEAPI_SYCL_OPTIONS_spir64}" CACHE STRING "Extra build options for spir64_gen target")
+    mark_as_advanced(CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen)
   endif()
   # Enable zebin, a graphics binary format with improved compatibility.
   string(PREPEND CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "--format zebin ")

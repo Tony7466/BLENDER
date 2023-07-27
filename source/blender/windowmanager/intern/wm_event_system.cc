@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -28,7 +29,6 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_dynstr.h"
 #include "BLI_ghash.h"
 #include "BLI_math.h"
 #include "BLI_timer.h"
@@ -81,6 +81,8 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+#include "RE_pipeline.h"
 
 /**
  * When a gizmo is highlighted and uses click/drag events,
@@ -495,7 +497,7 @@ void wm_event_do_refresh_wm_and_depsgraph(bContext *C)
   CTX_wm_window_set(C, nullptr);
 }
 
-static void wm_event_execute_timers(bContext *C)
+static void wm_event_timers_execute(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   if (UNLIKELY(wm == nullptr)) {
@@ -516,7 +518,7 @@ void wm_event_do_notifiers(bContext *C)
   GPU_render_begin();
 
   /* Run the timer before assigning `wm` in the unlikely case a timer loads a file, see #80028. */
-  wm_event_execute_timers(C);
+  wm_event_timers_execute(C);
 
   wmWindowManager *wm = CTX_wm_manager(C);
   if (wm == nullptr) {
@@ -715,6 +717,8 @@ void wm_event_do_notifiers(bContext *C)
 
   wm_event_do_refresh_wm_and_depsgraph(C);
 
+  RE_FreeUnusedGPUResources();
+
   /* Status bar. */
   if (wm->winactive) {
     wmWindow *win = wm->winactive;
@@ -878,16 +882,22 @@ static void wm_event_handler_ui_cancel(bContext *C)
  * Access to #wmWindowManager.reports
  * \{ */
 
-void WM_report_banner_show(void)
+void WM_report_banner_show(wmWindowManager *wm, wmWindow *win)
 {
-  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+  if (win == nullptr) {
+    win = wm->winactive;
+    if (win == nullptr) {
+      win = static_cast<wmWindow *>(wm->windows.first);
+    }
+  }
+
   ReportList *wm_reports = &wm->reports;
 
   /* After adding reports to the global list, reset the report timer. */
-  WM_event_remove_timer(wm, nullptr, wm_reports->reporttimer);
+  WM_event_timer_remove(wm, nullptr, wm_reports->reporttimer);
 
   /* Records time since last report was added. */
-  wm_reports->reporttimer = WM_event_add_timer(wm, wm->winactive, TIMERREPORT, 0.05);
+  wm_reports->reporttimer = WM_event_timer_add(wm, win, TIMERREPORT, 0.05);
 
   ReportTimerInfo *rti = MEM_cnew<ReportTimerInfo>(__func__);
   wm_reports->reporttimer->customdata = rti;
@@ -897,7 +907,7 @@ void WM_report_banners_cancel(Main *bmain)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   BKE_reports_clear(&wm->reports);
-  WM_event_remove_timer(wm, nullptr, wm->reports.reporttimer);
+  WM_event_timer_remove(wm, nullptr, wm->reports.reporttimer);
 }
 
 #ifdef WITH_INPUT_NDOF
@@ -916,7 +926,7 @@ static void wm_add_reports(ReportList *reports)
     /* Add reports to the global list, otherwise they are not seen. */
     BLI_movelisttolist(&wm->reports.list, &reports->list);
 
-    WM_report_banner_show();
+    WM_report_banner_show(wm, nullptr);
   }
 }
 
@@ -937,17 +947,10 @@ void WM_reportf(eReportType type, const char *format, ...)
   va_list args;
 
   format = TIP_(format);
-
-  DynStr *ds = BLI_dynstr_new();
   va_start(args, format);
-  BLI_dynstr_vappendf(ds, format, args);
-  va_end(args);
-
-  char *str = BLI_dynstr_get_cstring(ds);
+  char *str = BLI_vsprintfN(format, args);
   WM_report(type, str);
   MEM_freeN(str);
-
-  BLI_dynstr_free(ds);
 }
 
 /** \} */
@@ -2205,7 +2208,7 @@ void WM_event_remove_handlers(bContext *C, ListBase *handlers)
   }
 }
 
-static bool wm_eventmatch(const wmEvent *winevent, const wmKeyMapItem *kmi)
+BLI_INLINE bool wm_eventmatch(const wmEvent *winevent, const wmKeyMapItem *kmi)
 {
   if (kmi->flag & KMI_INACTIVE) {
     return false;
@@ -2644,17 +2647,24 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
   switch (val) {
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
-      ScrArea *area;
+      const int window_center[2] = {
+          WM_window_pixels_x(win) / 2,
+          WM_window_pixels_y(win) / 2,
+      };
 
-      if ((area = ED_screen_temp_space_open(C,
-                                            IFACE_("Blender File View"),
-                                            WM_window_pixels_x(win) / 2,
-                                            WM_window_pixels_y(win) / 2,
-                                            U.file_space_data.temp_win_sizex * UI_SCALE_FAC,
-                                            U.file_space_data.temp_win_sizey * UI_SCALE_FAC,
-                                            SPACE_FILE,
-                                            U.filebrowser_display_type,
-                                            true)))
+      const rcti window_rect = {
+          /*xmin*/ window_center[0],
+          /*xmax*/ window_center[0] + int(U.file_space_data.temp_win_sizex * UI_SCALE_FAC),
+          /*ymin*/ window_center[1],
+          /*ymax*/ window_center[1] + int(U.file_space_data.temp_win_sizey * UI_SCALE_FAC),
+      };
+
+      if (ScrArea *area = ED_screen_temp_space_open(C,
+                                                    IFACE_("Blender File View"),
+                                                    &window_rect,
+                                                    SPACE_FILE,
+                                                    U.filebrowser_display_type,
+                                                    true))
       {
         ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
@@ -2814,7 +2824,7 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
           BLI_movelisttolist(&CTX_wm_reports(C)->list, &handler->op->reports->list);
 
           /* More hacks, since we meddle with reports, banner display doesn't happen automatic. */
-          WM_report_banner_show();
+          WM_report_banner_show(CTX_wm_manager(C), CTX_wm_window(C));
 
           CTX_wm_window_set(C, win_prev);
           CTX_wm_area_set(C, area_prev);
@@ -4408,11 +4418,13 @@ static void WM_event_set_handler_flag(wmEventHandler *handler, const int flag)
 }
 #endif
 
-wmEventHandler_Op *WM_event_add_modal_handler(bContext *C, wmOperator *op)
+wmEventHandler_Op *WM_event_add_modal_handler_ex(wmWindow *win,
+                                                 ScrArea *area,
+                                                 ARegion *region,
+                                                 wmOperator *op)
 {
   wmEventHandler_Op *handler = MEM_cnew<wmEventHandler_Op>(__func__);
   handler->head.type = WM_HANDLER_TYPE_OP;
-  wmWindow *win = CTX_wm_window(C);
 
   /* Operator was part of macro. */
   if (op->opm) {
@@ -4425,8 +4437,8 @@ wmEventHandler_Op *WM_event_add_modal_handler(bContext *C, wmOperator *op)
     handler->op = op;
   }
 
-  handler->context.area = CTX_wm_area(C); /* Means frozen screen context for modal handlers! */
-  handler->context.region = CTX_wm_region(C);
+  handler->context.area = area; /* Means frozen screen context for modal handlers! */
+  handler->context.region = region;
   handler->context.region_type = handler->context.region ? handler->context.region->regiontype :
                                                            -1;
 
@@ -4437,6 +4449,14 @@ wmEventHandler_Op *WM_event_add_modal_handler(bContext *C, wmOperator *op)
   }
 
   return handler;
+}
+
+wmEventHandler_Op *WM_event_add_modal_handler(bContext *C, wmOperator *op)
+{
+  wmWindow *win = CTX_wm_window(C);
+  ScrArea *area = CTX_wm_area(C);
+  ARegion *region = CTX_wm_region(C);
+  return WM_event_add_modal_handler_ex(win, area, region, op);
 }
 
 void WM_event_modal_handler_area_replace(wmWindow *win, const ScrArea *old_area, ScrArea *new_area)
@@ -4516,7 +4536,7 @@ static void wm_event_get_keymap_from_toolsystem_ex(wmWindowManager *wm,
 {
   memset(km_result, 0x0, sizeof(*km_result));
 
-  const char *keymap_id_list[ARRAY_SIZE(km_result->keymaps)];
+  const char *keymap_id_list[BOUNDED_ARRAY_TYPE_SIZE<decltype(km_result->keymaps)>()];
   int keymap_id_list_len = 0;
 
   /* NOTE(@ideasman42): If `win` is nullptr, this function may not behave as expected.
@@ -6007,6 +6027,11 @@ wmKeyMapItem *WM_event_match_keymap_item_from_handlers(
     }
   }
   return nullptr;
+}
+
+bool WM_event_match(const wmEvent *winevent, const wmKeyMapItem *kmi)
+{
+  return wm_eventmatch(winevent, kmi);
 }
 
 /** \} */

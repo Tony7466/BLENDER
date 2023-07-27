@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -87,7 +88,7 @@ static TexSnapshot primary_snap = {nullptr};
 static TexSnapshot secondary_snap = {nullptr};
 static CursorSnapshot cursor_snap = {nullptr};
 
-void paint_cursor_delete_textures(void)
+void paint_cursor_delete_textures()
 {
   if (primary_snap.overlay_texture) {
     GPU_texture_free(primary_snap.overlay_texture);
@@ -164,9 +165,9 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
   if (mtex->tex && mtex->tex->type == TEX_IMAGE && mtex->tex->ima) {
     ImBuf *tex_ibuf = BKE_image_pool_acquire_ibuf(mtex->tex->ima, &mtex->tex->iuser, pool);
     /* For consistency, sampling always returns color in linear space. */
-    if (tex_ibuf && tex_ibuf->rect_float == nullptr) {
+    if (tex_ibuf && tex_ibuf->float_buffer.data == nullptr) {
       convert_to_linear = true;
-      colorspace = tex_ibuf->rect_colorspace;
+      colorspace = tex_ibuf->byte_buffer.colorspace;
     }
     BKE_image_pool_release_ibuf(mtex->tex->ima, tex_ibuf, pool);
   }
@@ -1869,7 +1870,7 @@ static void paint_cursor_update_rake_rotation(PaintCursorContext *pcontext)
    * For line strokes, such interference is visible. */
   if (!pcontext->ups->stroke_active) {
     paint_calculate_rake_rotation(
-        pcontext->ups, pcontext->brush, pcontext->translation, pcontext->mode);
+        pcontext->ups, pcontext->brush, pcontext->translation, pcontext->mode, true);
   }
 }
 

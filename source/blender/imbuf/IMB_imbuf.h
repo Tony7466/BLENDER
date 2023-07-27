@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -42,6 +43,10 @@
 /* for bool */
 #include "../blenlib/BLI_sys_types.h"
 #include "../gpu/GPU_texture.h"
+
+#include "BLI_utildefines.h"
+
+#include "IMB_imbuf_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,18 +135,47 @@ bool IMB_initImBuf(
  * (transferring ownership to the in imbuf).
  * \attention Defined in allocimbuf.c
  */
-struct ImBuf *IMB_allocFromBufferOwn(
-    unsigned int *rect, float *rectf, unsigned int w, unsigned int h, unsigned int channels);
+struct ImBuf *IMB_allocFromBufferOwn(uint8_t *byte_buffer,
+                                     float *float_buffer,
+                                     unsigned int w,
+                                     unsigned int h,
+                                     unsigned int channels);
 
 /**
  * Create a copy of a pixel buffer and wrap it to a new ImBuf
  * \attention Defined in allocimbuf.c
  */
-struct ImBuf *IMB_allocFromBuffer(const unsigned int *rect,
-                                  const float *rectf,
+struct ImBuf *IMB_allocFromBuffer(const uint8_t *byte_buffer,
+                                  const float *float_buffer,
                                   unsigned int w,
                                   unsigned int h,
                                   unsigned int channels);
+
+/**
+ * Assign the content of the corresponding buffer with the given data and ownership.
+ * The current content of the buffer is released corresponding to its ownership configuration.
+ *
+ * \note Does not modify the topology (width, height, number of channels)
+ * or the mipmaps in any way.
+ */
+void IMB_assign_byte_buffer(struct ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
+void IMB_assign_float_buffer(struct ImBuf *ibuf, float *buffer_data, ImBufOwnership ownership);
+
+/**
+ * Make corresponding buffers available for modification.
+ * Is achieved by ensuring that the given ImBuf is the only owner of the underlying buffer data.
+ */
+void IMB_make_writable_byte_buffer(struct ImBuf *ibuf);
+void IMB_make_writable_float_buffer(struct ImBuf *ibuf);
+
+/**
+ * Steal the buffer data pointer: the ImBuf is no longer an owner of this data.
+ * \note If the ImBuf does not own the data the behavior is undefined.
+ * \note Stealing encoded buffer resets the encoded size.
+ */
+uint8_t *IMB_steal_byte_buffer(struct ImBuf *ibuf);
+float *IMB_steal_float_buffer(struct ImBuf *ibuf);
+uint8_t *IMB_steal_encoded_buffer(struct ImBuf *ibuf);
 
 /**
  * Increase reference count to imbuf
@@ -158,12 +192,6 @@ struct ImBuf *IMB_makeSingleUser(struct ImBuf *ibuf);
  * \attention Defined in allocimbuf.c
  */
 struct ImBuf *IMB_dupImBuf(const struct ImBuf *ibuf1);
-
-/**
- * \attention Defined in allocimbuf.c
- */
-bool addzbufImBuf(struct ImBuf *ibuf);
-bool addzbuffloatImBuf(struct ImBuf *ibuf);
 
 /**
  * Approximate size of ImBuf in memory
@@ -325,6 +353,7 @@ typedef enum IMB_Proxy_Size {
   IMB_PROXY_100 = 8,
   IMB_PROXY_MAX_SLOT = 4,
 } IMB_Proxy_Size;
+ENUM_OPERATORS(IMB_Proxy_Size, IMB_PROXY_100);
 
 typedef enum eIMBInterpolationFilterMode {
   IMB_FILTER_NEAREST,
@@ -724,12 +753,6 @@ void IMB_premultiply_alpha(struct ImBuf *ibuf);
 void IMB_unpremultiply_alpha(struct ImBuf *ibuf);
 
 /**
- * \attention Defined in allocimbuf.c
- */
-void IMB_freezbufImBuf(struct ImBuf *ibuf);
-void IMB_freezbuffloatImBuf(struct ImBuf *ibuf);
-
-/**
  * \attention Defined in rectop.c
  */
 /**
@@ -810,8 +833,12 @@ bool imb_addrectfloatImBuf(struct ImBuf *ibuf, const unsigned int channels);
 void imb_freerectfloatImBuf(struct ImBuf *ibuf);
 void imb_freemipmapImBuf(struct ImBuf *ibuf);
 
-/** Free all pixel data (associated with image size). */
+/** Free all CPU pixel data (associated with image size). */
 void imb_freerectImbuf_all(struct ImBuf *ibuf);
+
+/* Free the GPU textures of the given image buffer, leaving the CPU buffers unchanged.
+ * The ibuf can be nullptr, in which case the function does nothing. */
+void IMB_free_gpu_textures(struct ImBuf *ibuf);
 
 /**
  * Threaded processors.

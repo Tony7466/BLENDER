@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spinfo
@@ -25,6 +27,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
@@ -45,7 +48,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_modifier.h"
@@ -107,13 +110,13 @@ static bool stats_mesheval(const Mesh *me_eval, bool is_selected, SceneStats *st
   else if (subsurf_runtime_data && subsurf_runtime_data->resolution != 0) {
     totvert = subsurf_runtime_data->stats_totvert;
     totedge = subsurf_runtime_data->stats_totedge;
-    totface = subsurf_runtime_data->stats_totpoly;
+    totface = subsurf_runtime_data->stats_faces_num;
     totloop = subsurf_runtime_data->stats_totloop;
   }
   else {
     totvert = me_eval->totvert;
     totedge = me_eval->totedge;
-    totface = me_eval->totpoly;
+    totface = me_eval->faces_num;
     totloop = me_eval->totloop;
   }
 
@@ -185,7 +188,8 @@ static void stats_object(Object *ob,
     }
     case OB_CURVES:
     case OB_POINTCLOUD:
-    case OB_VOLUME: {
+    case OB_VOLUME:
+    case OB_GREASE_PENCIL: {
       break;
     }
   }
@@ -598,10 +602,10 @@ static void get_stats_string(char *info,
       info + *ofs, len - *ofs, TIP_(" | Objects:%s/%s"), stats_fmt->totobjsel, stats_fmt->totobj);
 }
 
-static const char *info_statusbar_string(Main *bmain,
-                                         Scene *scene,
-                                         ViewLayer *view_layer,
-                                         char statusbar_flag)
+const char *ED_info_statusbar_string_ex(Main *bmain,
+                                        Scene *scene,
+                                        ViewLayer *view_layer,
+                                        const char statusbar_flag)
 {
   char formatted_mem[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
   size_t ofs = 0;
@@ -681,7 +685,7 @@ static const char *info_statusbar_string(Main *bmain,
 
 const char *ED_info_statusbar_string(Main *bmain, Scene *scene, ViewLayer *view_layer)
 {
-  return info_statusbar_string(bmain, scene, view_layer, U.statusbar_flag);
+  return ED_info_statusbar_string_ex(bmain, scene, view_layer, U.statusbar_flag);
 }
 
 const char *ED_info_statistics_string(Main *bmain, Scene *scene, ViewLayer *view_layer)
@@ -691,7 +695,7 @@ const char *ED_info_statistics_string(Main *bmain, Scene *scene, ViewLayer *view
                                                               STATUSBAR_SHOW_VERSION |
                                                               STATUSBAR_SHOW_SCENE_DURATION;
 
-  return info_statusbar_string(bmain, scene, view_layer, statistics_status_bar_flag);
+  return ED_info_statusbar_string_ex(bmain, scene, view_layer, statistics_status_bar_flag);
 }
 
 static void stats_row(int col1,
@@ -748,18 +752,18 @@ void ED_info_draw_stats(
   };
   char labels[MAX_LABELS_COUNT][64];
 
-  STRNCPY(labels[OBJ], IFACE_("Objects"));
-  STRNCPY(labels[VERTS], IFACE_("Vertices"));
-  STRNCPY(labels[EDGES], IFACE_("Edges"));
-  STRNCPY(labels[FACES], IFACE_("Faces"));
-  STRNCPY(labels[TRIS], IFACE_("Triangles"));
-  STRNCPY(labels[JOINTS], IFACE_("Joints"));
-  STRNCPY(labels[BONES], IFACE_("Bones"));
-  STRNCPY(labels[LAYERS], IFACE_("Layers"));
-  STRNCPY(labels[FRAMES], IFACE_("Frames"));
-  STRNCPY(labels[STROKES], IFACE_("Strokes"));
-  STRNCPY(labels[POINTS], IFACE_("Points"));
-  STRNCPY(labels[LIGHTS], IFACE_("Lights"));
+  STRNCPY_UTF8(labels[OBJ], IFACE_("Objects"));
+  STRNCPY_UTF8(labels[VERTS], IFACE_("Vertices"));
+  STRNCPY_UTF8(labels[EDGES], IFACE_("Edges"));
+  STRNCPY_UTF8(labels[FACES], IFACE_("Faces"));
+  STRNCPY_UTF8(labels[TRIS], IFACE_("Triangles"));
+  STRNCPY_UTF8(labels[JOINTS], IFACE_("Joints"));
+  STRNCPY_UTF8(labels[BONES], IFACE_("Bones"));
+  STRNCPY_UTF8(labels[LAYERS], IFACE_("Layers"));
+  STRNCPY_UTF8(labels[FRAMES], IFACE_("Frames"));
+  STRNCPY_UTF8(labels[STROKES], IFACE_("Strokes"));
+  STRNCPY_UTF8(labels[POINTS], IFACE_("Points"));
+  STRNCPY_UTF8(labels[LIGHTS], IFACE_("Lights"));
 
   int longest_label = 0;
   int i;

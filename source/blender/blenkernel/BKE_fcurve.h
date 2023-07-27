@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -33,14 +34,6 @@ struct StructRNA;
 struct bAction;
 struct bContext;
 
-/* ************** Keyframe Tools ***************** */
-
-typedef struct CfraElem {
-  struct CfraElem *next, *prev;
-  float cfra;
-  int sel;
-} CfraElem;
-
 /* ************** F-Curve Modifiers *************** */
 
 /**
@@ -67,7 +60,7 @@ typedef struct FModifierTypeInfo {
   /** name of modifier in interface. */
   char name[64];
   /** name of struct for SDNA. */
-  char structName[64];
+  char struct_name[64];
   /** Size of buffer that can be reused between time and value evaluation. */
   uint storage_size;
 
@@ -480,7 +473,7 @@ bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
 /**
  * Resize the FCurve 'bezt' array to fit the given length.
  *
- * \param new_totvert new number of elements in the FCurve's `bezt` array.
+ * \param new_totvert: new number of elements in the FCurve's `bezt` array.
  * Constraint: `0 <= new_totvert <= fcu->totvert`
  */
 void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);

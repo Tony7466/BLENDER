@@ -1,14 +1,12 @@
+# SPDX-FileCopyrightText: 2013 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2013 Blender Foundation
 
 set(INC
   .
   ..
   ../..
   ../../../blenkernel
-  ../../../blenlib
-  ../../../makesdna
-  ../../../../../intern/guardedalloc
   ../../../../../intern/utfconv
 )
 
@@ -27,6 +25,9 @@ set(SRC
 set(LIB
   ${OPENIMAGEIO_LIBRARIES}
   ${PUGIXML_LIBRARIES}
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_IMAGE_OPENEXR)

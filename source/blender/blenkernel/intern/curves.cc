@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -137,9 +139,9 @@ static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
   for (int a = 0; a < curves->totcol; a++) {
-    BLO_read_id_address(reader, curves->id.lib, &curves->mat[a]);
+    BLO_read_id_address(reader, id, &curves->mat[a]);
   }
-  BLO_read_id_address(reader, curves->id.lib, &curves->surface);
+  BLO_read_id_address(reader, id, &curves->surface);
 }
 
 static void curves_blend_read_expand(BlendExpander *expander, ID *id)
@@ -190,6 +192,7 @@ void *BKE_curves_add(Main *bmain, const char *name)
 
 BoundBox *BKE_curves_boundbox_get(Object *ob)
 {
+  using namespace blender;
   BLI_assert(ob->type == OB_CURVES);
   const Curves *curves_id = static_cast<const Curves *>(ob->data);
 
@@ -199,17 +202,13 @@ BoundBox *BKE_curves_boundbox_get(Object *ob)
 
   if (ob->runtime.bb == nullptr) {
     ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
-
-    const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-
-    float3 min(FLT_MAX);
-    float3 max(-FLT_MAX);
-    if (!curves.bounds_min_max(min, max)) {
-      min = float3(-1);
-      max = float3(1);
+    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    if (const std::optional<Bounds<float3>> bounds = curves.bounds_min_max()) {
+      BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
     }
-
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+    else {
+      BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(-1), float3(1));
+    }
   }
 
   return ob->runtime.bb;
@@ -220,16 +219,16 @@ bool BKE_curves_attribute_required(const Curves * /*curves*/, const char *name)
   return STREQ(name, ATTR_POSITION);
 }
 
-Curves *BKE_curves_copy_for_eval(Curves *curves_src)
+Curves *BKE_curves_copy_for_eval(const Curves *curves_src)
 {
   return reinterpret_cast<Curves *>(
       BKE_id_copy_ex(nullptr, &curves_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
 }
 
-static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
-                                      struct Scene *scene,
+static void curves_evaluate_modifiers(Depsgraph *depsgraph,
+                                      Scene *scene,
                                       Object *object,
-                                      GeometrySet &geometry_set)
+                                      blender::bke::GeometrySet &geometry_set)
 {
   /* Modifier evaluation modes. */
   const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
@@ -244,8 +243,8 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
 
   /* Get effective list of modifiers to execute. Some effects like shape keys
    * are added as virtual modifiers before the user created modifiers. */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtual_modifier_data);
 
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
@@ -257,14 +256,16 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
 
     blender::bke::ScopedModifierTimer modifier_timer{*md};
 
-    if (mti->modifyGeometrySet != nullptr) {
-      mti->modifyGeometrySet(md, &mectx, &geometry_set);
+    if (mti->modify_geometry_set != nullptr) {
+      mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
 }
 
-void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
+void BKE_curves_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
+  using namespace blender;
+  using namespace blender::bke;
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
 
@@ -277,7 +278,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
      * on evaluated curves. */
     GeometryComponentEditData &edit_component =
         geometry_set.get_component_for_write<GeometryComponentEditData>();
-    edit_component.curves_edit_hints_ = std::make_unique<blender::bke::CurvesEditHints>(
+    edit_component.curves_edit_hints_ = std::make_unique<CurvesEditHints>(
         *static_cast<const Curves *>(DEG_get_original_object(object)->data));
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
@@ -285,7 +286,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   /* Assign evaluated object. */
   Curves *curves_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
   if (curves_eval == nullptr) {
-    curves_eval = blender::bke::curves_new_nomain(0, 0);
+    curves_eval = curves_new_nomain(0, 0);
     BKE_object_eval_assign_data(object, &curves_eval->id, true);
   }
   else {

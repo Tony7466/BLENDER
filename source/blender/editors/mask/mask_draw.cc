@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmask
@@ -578,7 +579,7 @@ static void draw_layer_splines(const bContext *C,
     }
 
     /* show undeform for testing */
-    if (0) {
+    if (false) {
       MaskSplinePoint *back = spline->points_deform;
 
       spline->points_deform = nullptr;
@@ -657,7 +658,7 @@ void ED_mask_draw_region(
     /* optional - only used when do_post_draw is set or called from clip editor */
     const bContext *C)
 {
-  struct View2D *v2d = &region->v2d;
+  View2D *v2d = &region->v2d;
   Mask *mask_eval = (Mask *)DEG_get_evaluated_id(depsgraph, &mask_->id);
 
   /* aspect always scales vertically in movie and image spaces */
@@ -704,7 +705,7 @@ void ED_mask_draw_region(
 
   if (draw_flag & MASK_DRAWFLAG_OVERLAY) {
     float buf_col[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-    float *buffer = mask_rasterize(mask_eval, width, height);
+    const float *buffer = mask_rasterize(mask_eval, width, height);
 
     if (overlay_mode != MASK_OVERLAY_ALPHACHANNEL) {
       /* More blending types could be supported in the future. */
@@ -739,7 +740,7 @@ void ED_mask_draw_region(
       GPU_blend(GPU_BLEND_NONE);
     }
 
-    MEM_freeN(buffer);
+    MEM_freeN((void *)buffer);
   }
 
   /* apply transformation so mask editing tools will assume drawing from the

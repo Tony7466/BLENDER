@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -29,10 +31,12 @@
 #include "ED_screen.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "interface_intern.hh"
 
 #include "RNA_access.h"
+#include "RNA_path.h"
 #include "RNA_prototypes.h"
 
 #ifdef WITH_PYTHON
@@ -273,15 +277,8 @@ static void menu_add_shortcut_cancel(bContext *C, void *arg1)
   WM_keymap_remove_item(km, kmi);
 }
 
-static void popup_change_shortcut_func(bContext *C, void *arg1, void * /*arg2*/)
+static void remove_shortcut_func(bContext *C, uiBut *but)
 {
-  uiBut *but = (uiBut *)arg1;
-  UI_popup_block_invoke(C, menu_change_shortcut, but, nullptr);
-}
-
-static void remove_shortcut_func(bContext *C, void *arg1, void * /*arg2*/)
-{
-  uiBut *but = (uiBut *)arg1;
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
 
@@ -300,12 +297,6 @@ static void remove_shortcut_func(bContext *C, void *arg1, void * /*arg2*/)
 
   shortcut_free_operator_property(prop);
   but_shortcut_name_func(C, but, 0);
-}
-
-static void popup_add_shortcut_func(bContext *C, void *arg1, void * /*arg2*/)
-{
-  uiBut *but = (uiBut *)arg1;
-  UI_popup_block_ex(C, menu_add_shortcut, nullptr, menu_add_shortcut_cancel, but, nullptr);
 }
 
 static bool ui_but_is_user_menu_compatible(bContext *C, uiBut *but)
@@ -342,7 +333,10 @@ static bUserMenuItem *ui_but_user_menu_find(bContext *C, uiBut *but, bUserMenu *
   }
   if (but->rnaprop) {
     char *member_id_data_path = WM_context_path_resolve_full(C, &but->rnapoin);
-    const char *prop_id = RNA_property_identifier(but->rnaprop);
+    /* Ignore the actual array index [pass -1] since the index is handled separately. */
+    const char *prop_id = RNA_property_is_idprop(but->rnaprop) ?
+                              RNA_path_property_py(&but->rnapoin, but->rnaprop, -1) :
+                              RNA_property_identifier(but->rnaprop);
     bUserMenuItem *umi = (bUserMenuItem *)ED_screen_user_menu_item_find_prop(
         &um->items, member_id_data_path, prop_id, but->rnaindex);
     MEM_freeN(member_id_data_path);
@@ -417,7 +411,10 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
   else if (but->rnaprop) {
     /* NOTE: 'member_id' may be a path. */
     char *member_id_data_path = WM_context_path_resolve_full(C, &but->rnapoin);
-    const char *prop_id = RNA_property_identifier(but->rnaprop);
+    /* Ignore the actual array index [pass -1] since the index is handled separately. */
+    const char *prop_id = RNA_property_is_idprop(but->rnaprop) ?
+                              RNA_path_property_py(&but->rnapoin, but->rnaprop, -1) :
+                              RNA_property_identifier(but->rnaprop);
     /* NOTE: ignore 'drawstr', use property idname always. */
     ED_screen_user_menu_item_add_prop(&um->items, "", member_id_data_path, prop_id, but->rnaindex);
     MEM_freeN(member_id_data_path);
@@ -433,22 +430,6 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
                                           RNA_property_identifier(prop),
                                           but->opcontext);
   }
-}
-
-static void popup_user_menu_add_or_replace_func(bContext *C, void *arg1, void * /*arg2*/)
-{
-  uiBut *but = static_cast<uiBut *>(arg1);
-  bUserMenu *um = ED_screen_user_menu_ensure(C);
-  U.runtime.is_dirty = true;
-  ui_but_user_menu_add(C, but, um);
-}
-
-static void popup_user_menu_remove_func(bContext * /*C*/, void *arg1, void *arg2)
-{
-  bUserMenu *um = static_cast<bUserMenu *>(arg1);
-  bUserMenuItem *umi = static_cast<bUserMenuItem *>(arg2);
-  U.runtime.is_dirty = true;
-  ED_screen_user_menu_item_remove(&um->items, umi);
 }
 
 static void ui_but_menu_add_path_operators(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop)
@@ -490,6 +471,15 @@ static void ui_but_menu_add_path_operators(uiLayout *layout, PointerRNA *ptr, Pr
   RNA_string_set(&props_ptr, "filepath", dir);
 }
 
+static void set_layout_context_from_button(bContext *C, uiLayout *layout, uiBut *but)
+{
+  if (!but->context) {
+    return;
+  }
+  uiLayoutContextCopy(layout, but->context);
+  CTX_store_set(C, uiLayoutGetContextStore(layout));
+}
+
 bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *event)
 {
   /* ui_but_is_interactive() may let some buttons through that should not get a context menu - it
@@ -513,10 +503,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       MEM_freeN(label.strinfo);
     }
 
-    if (but->context) {
-      uiLayoutContextCopy(layout, but->context);
-      CTX_store_set(C, uiLayoutGetContextStore(layout));
-    }
+    set_layout_context_from_button(C, layout, but);
     uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
   }
 
@@ -959,7 +946,16 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                                                                                  event->xy);
     if (view_item_but) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
-      UI_view_item_context_menu_build(C, view_item_but->view_item, uiLayoutColumn(layout, false));
+
+      bContextStore *prev_ctx = CTX_store_get(C);
+      /* Sub-layout for context override. */
+      uiLayout *sub = uiLayoutColumn(layout, false);
+      set_layout_context_from_button(C, sub, view_item_but);
+      UI_view_item_context_menu_build(C, view_item_but->view_item, sub);
+
+      /* Reset context. */
+      CTX_store_set(C, prev_ctx);
+
       uiItemS(layout);
     }
   }
@@ -1034,8 +1030,11 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             0,
             0,
             "");
-        UI_but_func_set(but2, popup_user_menu_remove_func, um, umi);
         item_found = true;
+        UI_but_func_set(but2, [um, umi](bContext &) {
+          U.runtime.is_dirty = true;
+          ED_screen_user_menu_item_remove(&um->items, umi);
+        });
       }
     }
     if (um_array) {
@@ -1059,7 +1058,11 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           0,
           0,
           "Add to a user defined context menu (stored in the user preferences)");
-      UI_but_func_set(but2, popup_user_menu_add_or_replace_func, but, nullptr);
+      UI_but_func_set(but2, [but](bContext &C) {
+        bUserMenu *um = ED_screen_user_menu_ensure(&C);
+        U.runtime.is_dirty = true;
+        ui_but_user_menu_add(&C, but, um);
+      });
     }
 
     uiItemS(layout);
@@ -1108,7 +1111,9 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             0,
             0,
             "");
-        UI_but_func_set(but2, popup_change_shortcut_func, but, nullptr);
+        UI_but_func_set(but2, [but](bContext &C) {
+          UI_popup_block_invoke(&C, menu_change_shortcut, but, nullptr);
+        });
       }
       else {
         uiBut *but2 = uiDefIconTextBut(block,
@@ -1146,7 +1151,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           0,
           0,
           "");
-      UI_but_func_set(but2, remove_shortcut_func, but, nullptr);
+      UI_but_func_set(but2, [but](bContext &C) { remove_shortcut_func(&C, but); });
     }
     /* only show 'assign' if there's a suitable key map for it to go in */
     else if (WM_keymap_guess_opname(C, idname)) {
@@ -1166,7 +1171,9 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           0,
           0,
           "");
-      UI_but_func_set(but2, popup_add_shortcut_func, but, nullptr);
+      UI_but_func_set(but2, [but](bContext &C) {
+        UI_popup_block_ex(&C, menu_add_shortcut, nullptr, menu_add_shortcut_cancel, but, nullptr);
+      });
     }
 
     shortcut_free_operator_property(prop);
@@ -1245,7 +1252,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       uiItemMenuF(layout,
                   IFACE_("Navigation Bar"),
                   ICON_NONE,
-                  ED_screens_navigation_bar_tools_menu_create,
+                  ED_screens_region_flip_menu_create,
                   nullptr);
     }
     else if (region->regiontype == RGN_TYPE_FOOTER) {

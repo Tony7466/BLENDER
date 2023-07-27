@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2010 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -23,7 +24,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subsurf.h"
 
 #include "DEG_depsgraph.h"
@@ -78,13 +79,13 @@ static void partialvis_update_mesh(Object *ob,
 
   BKE_pbvh_node_num_verts(pbvh, node, nullptr, &totvert);
   const int *vert_indices = BKE_pbvh_node_get_vert_indices(node);
-  paint_mask = static_cast<const float *>(CustomData_get_layer(&me->vdata, CD_PAINT_MASK));
+  paint_mask = static_cast<const float *>(CustomData_get_layer(&me->vert_data, CD_PAINT_MASK));
 
-  bool *hide_vert = static_cast<bool *>(
-      CustomData_get_layer_named_for_write(&me->vdata, CD_PROP_BOOL, ".hide_vert", me->totvert));
+  bool *hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
+      &me->vert_data, CD_PROP_BOOL, ".hide_vert", me->totvert));
   if (hide_vert == nullptr) {
     hide_vert = static_cast<bool *>(CustomData_add_layer_named(
-        &me->vdata, CD_PROP_BOOL, CD_SET_DEFAULT, me->totvert, ".hide_vert"));
+        &me->vert_data, CD_PROP_BOOL, CD_SET_DEFAULT, me->totvert, ".hide_vert"));
   }
 
   SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
@@ -384,6 +385,11 @@ static int hide_show_exec(bContext *C, wmOperator *op)
   if (pbvh_type == PBVH_FACES) {
     BKE_mesh_flush_hidden_from_verts(me);
     BKE_pbvh_update_hide_attributes_from_mesh(pbvh);
+  }
+
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  if (!BKE_sculptsession_use_pbvh_draw(ob, rv3d)) {
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);

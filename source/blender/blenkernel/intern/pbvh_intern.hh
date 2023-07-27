@@ -1,7 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_vector.hh"
 
 /** \file
@@ -10,7 +14,6 @@
 
 struct PBVHGPUFormat;
 struct MLoopTri;
-struct MeshElemMap;
 
 /* Axis-aligned bounding box */
 struct BB {
@@ -154,19 +157,22 @@ struct PBVH {
   Mesh *mesh;
 
   /* NOTE: Normals are not `const` because they can be updated for drawing by sculpt code. */
-  float (*vert_normals)[3];
+  blender::MutableSpan<blender::float3> vert_normals;
+  blender::MutableSpan<blender::float3> face_normals;
   bool *hide_vert;
-  float (*vert_positions)[3];
-  blender::OffsetIndices<int> polys;
+  blender::MutableSpan<blender::float3> vert_positions;
+  /** Local vertex positions owned by the PVBH when not sculpting base mesh positions directly. */
+  blender::Array<blender::float3> vert_positions_deformed;
+  blender::OffsetIndices<int> faces;
   bool *hide_poly;
   /** Only valid for polygon meshes. */
   const int *corner_verts;
   /* Owned by the #PBVH, because after deformations they have to be recomputed. */
   const MLoopTri *looptri;
-  const int *looptri_polys;
-  CustomData *vdata;
-  CustomData *ldata;
-  CustomData *pdata;
+  const int *looptri_faces;
+  CustomData *vert_data;
+  CustomData *loop_data;
+  CustomData *face_data;
 
   int face_sets_color_seed;
   int face_sets_color_default;
@@ -203,7 +209,7 @@ struct PBVH {
   BMLog *bm_log;
   SubdivCCG *subdiv_ccg;
 
-  const MeshElemMap *pmap;
+  blender::GroupedSpan<int> pmap;
 
   CustomDataLayer *color_layer;
   eAttrDomain color_domain;

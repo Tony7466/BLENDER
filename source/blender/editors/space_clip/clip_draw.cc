@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -272,7 +273,7 @@ static void draw_movieclip_notes(SpaceClip *sc, ARegion *region)
   }
   else {
     if (sc->flag & SC_LOCK_SELECTION) {
-      strcpy(str, "Locked");
+      STRNCPY(str, "Locked");
     }
   }
 
@@ -392,10 +393,10 @@ enum {
   PATH_POINT_FLAG_KEYFRAME = (1 << 0),
 };
 
-typedef struct TrachPathPoint {
+struct TrackPathPoint {
   float co[2];
   uchar flag;
-} TrackPathPoint;
+};
 
 static void marker_to_path_point(SpaceClip *sc,
                                  const MovieTrackingTrack *track,
@@ -1081,16 +1082,16 @@ static void draw_marker_texts(SpaceClip *sc,
   pos[1] = pos[1] * zoomy - fontsize;
 
   if (marker->flag & MARKER_DISABLED) {
-    strcpy(state, "disabled");
+    STRNCPY(state, "disabled");
   }
   else if (marker->framenr != ED_space_clip_get_clip_frame_number(sc)) {
-    strcpy(state, "estimated");
+    STRNCPY(state, "estimated");
   }
   else if (marker->flag & MARKER_TRACKED) {
-    strcpy(state, "tracked");
+    STRNCPY(state, "tracked");
   }
   else {
-    strcpy(state, "keyframed");
+    STRNCPY(state, "keyframed");
   }
 
   if (state[0]) {
@@ -2002,6 +2003,6 @@ void clip_draw_grease_pencil(bContext *C, int onlyv2d)
     }
   }
   else {
-    ED_annotation_draw_view2d(C, 0);
+    ED_annotation_draw_view2d(C, false);
   }
 }

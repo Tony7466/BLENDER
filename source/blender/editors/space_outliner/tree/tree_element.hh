@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -42,15 +44,6 @@ class AbstractTreeElement {
    * Check if the type is expandable in current context.
    */
   virtual bool expandPoll(const SpaceOutliner &) const
-  {
-    return true;
-  }
-
-  /**
-   * Just while transitioning to the new tree-element design: Some types are only partially ported,
-   * and the expanding isn't done yet.
-   */
-  virtual bool isExpandValid() const
   {
     return true;
   }

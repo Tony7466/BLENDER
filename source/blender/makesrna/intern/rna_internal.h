@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -156,6 +158,7 @@ void RNA_def_depsgraph(struct BlenderRNA *brna);
 void RNA_def_dynamic_paint(struct BlenderRNA *brna);
 void RNA_def_fcurve(struct BlenderRNA *brna);
 void RNA_def_gpencil(struct BlenderRNA *brna);
+void RNA_def_grease_pencil(struct BlenderRNA *brna);
 void RNA_def_greasepencil_modifier(struct BlenderRNA *brna);
 void RNA_def_shader_fx(struct BlenderRNA *brna);
 void RNA_def_curves(struct BlenderRNA *brna);
@@ -171,6 +174,7 @@ void RNA_def_meta(struct BlenderRNA *brna);
 void RNA_def_modifier(struct BlenderRNA *brna);
 void RNA_def_nla(struct BlenderRNA *brna);
 void RNA_def_nodetree(struct BlenderRNA *brna);
+void RNA_def_node_socket_subtypes(struct BlenderRNA *brna);
 void RNA_def_object(struct BlenderRNA *brna);
 void RNA_def_object_force(struct BlenderRNA *brna);
 void RNA_def_packedfile(struct BlenderRNA *brna);
@@ -326,7 +330,7 @@ void rna_def_object_type_visibility_flags_common(StructRNA *srna,
 int rna_object_type_visibility_icon_get_common(int object_type_exclude_viewport,
                                                const int *object_type_exclude_select);
 
-/* ViewLayer related functions defined in rna_scene.c but required in rna_layer.c */
+/* ViewLayer related functions defined in rna_scene.cc but required in rna_layer.cc */
 void rna_def_freestyle_settings(struct BlenderRNA *brna);
 struct PointerRNA rna_FreestyleLineSet_linestyle_get(struct PointerRNA *ptr);
 void rna_FreestyleLineSet_linestyle_set(struct PointerRNA *ptr,
@@ -501,7 +505,8 @@ void RNA_def_main_armatures(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_palettes(BlenderRNA *brna, PropertyRNA *cprop);
-void RNA_def_main_gpencil(BlenderRNA *brna, PropertyRNA *cprop);
+void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop);
+void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_movieclips(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_masks(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_linestyles(BlenderRNA *brna, PropertyRNA *cprop);
@@ -512,9 +517,6 @@ void RNA_def_main_lightprobes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_hair_curves(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_pointclouds(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_volumes(BlenderRNA *brna, PropertyRNA *cprop);
-#ifdef WITH_SIMULATION_DATABLOCK
-void RNA_def_main_simulations(BlenderRNA *brna, PropertyRNA *cprop);
-#endif
 
 /* ID Properties */
 

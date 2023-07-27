@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -8,6 +9,7 @@
 #pragma once
 
 #include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -179,6 +181,12 @@ typedef struct SpaceFile_Runtime {
    * Use file_on_reload_callback_register() to register a callback. */
   onReloadFn on_reload;
   onReloadFnData on_reload_custom_data;
+
+  /* Indicates, if the current filepath is a blendfile library one, if its status has been checked,
+   * and if it is readable. */
+  bool is_blendfile_status_set;
+  bool is_blendfile_readable;
+  ReportList is_blendfile_readable_reports;
 } SpaceFile_Runtime;
 
 /**

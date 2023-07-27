@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -53,7 +54,7 @@ BLI_INLINE void vert_set_mesh(GPUIndexBufBuilder *elb,
   }
 }
 
-static void extract_points_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_points_iter_face_bm(const MeshRenderData * /*mr*/,
                                         const BMFace *f,
                                         const int /*f_index*/,
                                         void *_userdata)
@@ -68,53 +69,53 @@ static void extract_points_iter_poly_bm(const MeshRenderData * /*mr*/,
   } while ((l_iter = l_iter->next) != l_first);
 }
 
-static void extract_points_iter_poly_mesh(const MeshRenderData *mr,
-                                          const int poly_index,
+static void extract_points_iter_face_mesh(const MeshRenderData *mr,
+                                          const int face_index,
                                           void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  for (const int ml_index : mr->polys[poly_index]) {
+  for (const int ml_index : mr->faces[face_index]) {
     vert_set_mesh(elb, mr, mr->corner_verts[ml_index], ml_index);
   }
 }
 
 static void extract_points_iter_loose_edge_bm(const MeshRenderData *mr,
                                               const BMEdge *eed,
-                                              const int ledge_index,
+                                              const int loose_edge_i,
                                               void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  vert_set_bm(elb, eed->v1, mr->loop_len + (ledge_index * 2));
-  vert_set_bm(elb, eed->v2, mr->loop_len + (ledge_index * 2) + 1);
+  vert_set_bm(elb, eed->v1, mr->loop_len + (loose_edge_i * 2));
+  vert_set_bm(elb, eed->v2, mr->loop_len + (loose_edge_i * 2) + 1);
 }
 
 static void extract_points_iter_loose_edge_mesh(const MeshRenderData *mr,
                                                 const int2 edge,
-                                                const int ledge_index,
+                                                const int loose_edge_i,
                                                 void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  vert_set_mesh(elb, mr, edge[0], mr->loop_len + (ledge_index * 2));
-  vert_set_mesh(elb, mr, edge[1], mr->loop_len + (ledge_index * 2) + 1);
+  vert_set_mesh(elb, mr, edge[0], mr->loop_len + (loose_edge_i * 2));
+  vert_set_mesh(elb, mr, edge[1], mr->loop_len + (loose_edge_i * 2) + 1);
 }
 
 static void extract_points_iter_loose_vert_bm(const MeshRenderData *mr,
                                               const BMVert *eve,
-                                              const int lvert_index,
+                                              const int loose_vert_i,
                                               void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
-  vert_set_bm(elb, eve, offset + lvert_index);
+  vert_set_bm(elb, eve, offset + loose_vert_i);
 }
 
 static void extract_points_iter_loose_vert_mesh(const MeshRenderData *mr,
-                                                const int lvert_index,
+                                                const int loose_vert_i,
                                                 void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
   const int offset = mr->loop_len + (mr->edge_loose_len * 2);
-  vert_set_mesh(elb, mr, mr->loose_verts[lvert_index], offset + lvert_index);
+  vert_set_mesh(elb, mr, mr->loose_verts[loose_vert_i], offset + loose_vert_i);
 }
 
 static void extract_points_task_reduce(void *_userdata_to, void *_userdata_from)
@@ -291,8 +292,8 @@ constexpr MeshExtract create_extractor_points()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_points_init;
-  extractor.iter_poly_bm = extract_points_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_points_iter_poly_mesh;
+  extractor.iter_face_bm = extract_points_iter_face_bm;
+  extractor.iter_face_mesh = extract_points_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_points_iter_loose_edge_bm;
   extractor.iter_loose_edge_mesh = extract_points_iter_loose_edge_mesh;
   extractor.iter_loose_vert_bm = extract_points_iter_loose_vert_bm;

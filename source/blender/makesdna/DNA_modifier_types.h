@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,11 +14,14 @@
 
 #ifdef __cplusplus
 namespace blender::bke::sim {
-class ModifierSimulationCache;
+struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+namespace blender {
+struct NodesModifierRuntime;
+}
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 #ifdef __cplusplus
@@ -141,6 +146,11 @@ typedef enum {
    * Only one modifier on an object should have this flag set.
    */
   eModifierFlag_Active = (1 << 2),
+  /**
+   * Only set on modifiers in evaluated objects. The flag indicates that the user modified inputs
+   * to the modifier which might invalidate simulation caches.
+   */
+  eModifierFlag_UserModified = (1 << 3),
 } ModifierFlag;
 
 /**
@@ -1166,8 +1176,9 @@ typedef struct ShrinkwrapModifierData {
   /** Axis to project over. */
   char projAxis;
 
-  /** If using projection over vertex normal this controls the level of subsurface that must be
-   * done before getting the vertex coordinates and normal
+  /**
+   * If using projection over vertex normal this controls the level of subsurface that must be
+   * done before getting the vertex coordinates and normal.
    */
   char subsurfLevels;
 
@@ -2319,14 +2330,11 @@ typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
   struct NodesModifierSettings settings;
-
   /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
+   * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
-  void *runtime_eval_log;
-
-  ModifierSimulationCacheHandle *simulation_cache;
+  char *simulation_bake_directory;
+  NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -28,7 +29,7 @@
 #include "BKE_context.h"
 #include "BKE_modifier.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -1317,13 +1318,13 @@ void SCULPT_cloth_plane_falloff_preview_draw(const uint gpuattr,
 
 /* Cloth Filter. */
 
-typedef enum eSculpClothFilterType {
+enum eSculptClothFilterType {
   CLOTH_FILTER_GRAVITY,
   CLOTH_FILTER_INFLATE,
   CLOTH_FILTER_EXPAND,
   CLOTH_FILTER_PINCH,
   CLOTH_FILTER_SCALE,
-} eSculptClothFilterType;
+};
 
 static EnumPropertyItem prop_cloth_filter_type[] = {
     {CLOTH_FILTER_GRAVITY, "GRAVITY", 0, "Gravity", "Applies gravity to the simulation"},
@@ -1357,11 +1358,11 @@ static EnumPropertyItem prop_cloth_filter_orientation_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-typedef enum eClothFilterForceAxis {
+enum eClothFilterForceAxis {
   CLOTH_FILTER_FORCE_X = 1 << 0,
   CLOTH_FILTER_FORCE_Y = 1 << 1,
   CLOTH_FILTER_FORCE_Z = 1 << 2,
-} eClothFilterForceAxis;
+};
 
 static EnumPropertyItem prop_cloth_filter_force_axis_items[] = {
     {CLOTH_FILTER_FORCE_X, "X", 0, "X", "Apply force in the X axis"},

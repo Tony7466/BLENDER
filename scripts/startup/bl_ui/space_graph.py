@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Header, Menu, Panel
@@ -292,11 +294,12 @@ class GRAPH_MT_key_blending(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator("graph.breakdown", text="Breakdown")
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
+        layout.operator("graph.blend_offset", text="Blend Offset")
 
 
 class GRAPH_MT_key_smoothing(Menu):
@@ -304,9 +307,10 @@ class GRAPH_MT_key_smoothing(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator("graph.gaussian_smooth", text="Smooth (Gaussian)")
         layout.operator("graph.smooth", text="Smooth (Legacy)")
+        layout.operator("graph.butterworth_smooth")
 
 
 class GRAPH_MT_key(Menu):
@@ -370,20 +374,6 @@ class GRAPH_MT_key_snap(Menu):
         layout.separator()
         layout.operator("graph.frame_jump", text="Cursor to Selection")
         layout.operator("graph.snap_cursor_value", text="Cursor Value to Selection")
-
-
-class GRAPH_MT_slider(Menu):
-    bl_label = "Slider Operators"
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.operator_context = "INVOKE_DEFAULT"
-        layout.operator("graph.breakdown", text="Breakdown")
-        layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
-        layout.operator("graph.blend_to_default", text="Blend to Default Value")
-        layout.operator("graph.blend_offset", text="Blend Offset")
-        layout.operator("graph.ease", text="Ease")
-        layout.operator("graph.gaussian_smooth", text="Smooth")
 
 
 class GRAPH_MT_view_pie(Menu):
@@ -527,7 +517,6 @@ classes = (
     GRAPH_MT_key_snap,
     GRAPH_MT_key_smoothing,
     GRAPH_MT_key_blending,
-    GRAPH_MT_slider,
     GRAPH_MT_delete,
     GRAPH_MT_context_menu,
     GRAPH_MT_channel_context_menu,

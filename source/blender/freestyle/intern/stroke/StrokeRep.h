@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -164,7 +166,7 @@ class StrokeRep {
   Stroke *_stroke;
   vector<Strip *> _strips;
   Stroke::MediumType _strokeType;
-  unsigned int _textureId;
+  uint _textureId;
   float _textureStep;
   MTex *_mtex[MAX_MTEX];
   bNodeTree *_nodeTree;
@@ -191,7 +193,7 @@ class StrokeRep {
     return _strokeType;
   }
 
-  inline unsigned getTextureId() const
+  inline uint getTextureId() const
   {
     return _textureId;
   }
@@ -221,7 +223,7 @@ class StrokeRep {
     return _strips;
   }
 
-  inline unsigned int getNumberOfStrips() const
+  inline uint getNumberOfStrips() const
   {
     return _strips.size();
   }
@@ -237,7 +239,7 @@ class StrokeRep {
     _strokeType = itype;
   }
 
-  inline void setTextureId(unsigned textureId)
+  inline void setTextureId(uint textureId)
   {
     _textureId = textureId;
   }

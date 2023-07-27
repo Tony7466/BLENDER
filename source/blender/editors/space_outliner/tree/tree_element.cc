@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -16,13 +18,16 @@
 #include "BLT_translation.h"
 
 #include "tree_element_anim_data.hh"
+#include "tree_element_bone.hh"
 #include "tree_element_collection.hh"
 #include "tree_element_driver.hh"
+#include "tree_element_edit_bone.hh"
 #include "tree_element_gpencil_layer.hh"
 #include "tree_element_id.hh"
 #include "tree_element_label.hh"
 #include "tree_element_nla.hh"
 #include "tree_element_overrides.hh"
+#include "tree_element_particle_system.hh"
 #include "tree_element_rna.hh"
 #include "tree_element_scene_objects.hh"
 #include "tree_element_seq.hh"
@@ -100,6 +105,22 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
     case TSE_SEQUENCE_DUP:
       return std::make_unique<TreeElementSequenceStripDuplicate>(legacy_te,
                                                                  *static_cast<Sequence *>(idv));
+    case TSE_BONE: {
+      BoneElementCreateData *bone_data = static_cast<BoneElementCreateData *>(idv);
+      return std::make_unique<TreeElementBone>(
+          legacy_te, *bone_data->armature_id, *bone_data->bone);
+    }
+    case TSE_EBONE: {
+      EditBoneElementCreateData *ebone_data = static_cast<EditBoneElementCreateData *>(idv);
+      return std::make_unique<TreeElementEditBone>(
+          legacy_te, *ebone_data->armature_id, *ebone_data->ebone);
+    }
+    case TSE_LINKED_PSYS: {
+      ParticleSystemElementCreateData *psys_data = static_cast<ParticleSystemElementCreateData *>(
+          idv);
+      return std::make_unique<TreeElementParticleSystem>(
+          legacy_te, *psys_data->object, *psys_data->psys);
+    }
     default:
       break;
   }

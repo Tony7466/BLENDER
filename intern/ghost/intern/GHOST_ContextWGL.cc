@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -350,7 +351,7 @@ struct DummyContextWGL {
         0,
         0,
         0,
-        0,              /* accum bits (ignored) */
+        0,              /* Accumulation bits (ignored). */
         0,              /* depth buffer */
         0,              /* stencil buffer */
         0,              /* no auxiliary buffers */

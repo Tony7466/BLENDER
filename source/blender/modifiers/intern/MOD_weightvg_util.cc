@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 by Bastien Montagne. All rights reserved. */
+/* SPDX-FileCopyrightText: 2011 by Bastien Montagne. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -25,6 +26,7 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_modifier.h"
+#include "BKE_scene.h"
 #include "BKE_texture.h" /* Texture masking. */
 
 #include "UI_interface.h"
@@ -159,11 +161,10 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
       int idx = indices ? indices[i] : i;
       TexResult texres;
       float hsv[3]; /* For HSV color space. */
-      bool do_color_manage;
+      bool do_color_manage = tex_use_channel != MOD_WVG_MASK_TEX_USE_INT &&
+                             BKE_scene_check_color_management_enabled(scene);
 
-      do_color_manage = tex_use_channel != MOD_WVG_MASK_TEX_USE_INT;
-
-      BKE_texture_get_value(scene, texture, tex_co[idx], &texres, do_color_manage);
+      BKE_texture_get_value(texture, tex_co[idx], &texres, do_color_manage);
       /* Get the good channel value... */
       switch (tex_use_channel) {
         case MOD_WVG_MASK_TEX_USE_INT:
@@ -212,9 +213,9 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
     /* Get vgroup idx from its name. */
 
     /* Proceed only if vgroup is valid, else use constant factor. */
-    /* Get actual dverts (ie vertex group data). */
+    /* Get actual deform-verts (ie vertex group data). */
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
-        CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT));
+        CustomData_get_layer(&mesh->vert_data, CD_MDEFORMVERT));
     /* Proceed only if vgroup is valid, else assume factor = O. */
     if (dvert == nullptr) {
       return;
@@ -295,7 +296,7 @@ void weightvg_update_vg(MDeformVert *dvert,
 
     /* If the vertex is in this vgroup, remove it if needed, or just update it. */
     if (dw != nullptr) {
-      if (do_rem && w < rem_thresh) {
+      if (do_rem && w <= rem_thresh) {
         BKE_defvert_remove_group(dv, dw);
       }
       else {
@@ -303,7 +304,7 @@ void weightvg_update_vg(MDeformVert *dvert,
       }
     }
     /* Else, add it if needed! */
-    else if (do_add && w > add_thresh) {
+    else if (do_add && w >= add_thresh) {
       BKE_defvert_add_index_notest(dv, defgrp_idx, w);
     }
   }

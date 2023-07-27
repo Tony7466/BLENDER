@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -74,7 +75,7 @@ void wm_homefile_read(struct bContext *C,
 void wm_homefile_read_post(struct bContext *C,
                            const struct wmFileReadPost_Params *params_file_read_post);
 
-void wm_file_read_report(bContext *C, struct Main *bmain);
+void wm_file_read_report(struct Main *bmain, struct wmWindow *win);
 
 void wm_close_file_dialog(bContext *C, struct wmGenericCallback *post_action);
 /**
@@ -83,11 +84,18 @@ void wm_close_file_dialog(bContext *C, struct wmGenericCallback *post_action);
  */
 bool wm_operator_close_file_dialog_if_needed(bContext *C,
                                              wmOperator *op,
-                                             wmGenericCallbackFn exec_fn);
+                                             wmGenericCallbackFn post_action_fn);
 /**
  * Check if there is data that would be lost when closing the current file without saving.
  */
 bool wm_file_or_session_data_has_unsaved_changes(const Main *bmain, const wmWindowManager *wm);
+/**
+ * Confirmation dialog when user is about to save the current blend file, and it was prviously
+ * created by a newer version of Blender.
+ *
+ * Important to ask confirmation, as this is a very common scenario of data loss.
+ */
+void wm_save_file_forwardcompat_dialog(bContext *C, wmOperator *op);
 
 void WM_OT_save_homefile(struct wmOperatorType *ot);
 void WM_OT_save_userpref(struct wmOperatorType *ot);

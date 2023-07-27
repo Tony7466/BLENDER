@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_WindowCocoa.hh"
 #include "GHOST_ContextNone.hh"
@@ -12,7 +13,9 @@
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "GHOST_ContextCGL.hh"
+#ifdef WITH_METAL_BACKEND
+#  include "GHOST_ContextCGL.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -815,31 +818,34 @@ GHOST_TSuccess GHOST_WindowCocoa::setOrder(GHOST_TWindowOrder order)
 
 GHOST_Context *GHOST_WindowCocoa::newDrawingContext(GHOST_TDrawingContextType type)
 {
+  switch (type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (type == GHOST_kDrawingContextTypeVulkan) {
-    GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 2, true);
-
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 2, true);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-      return NULL;
+      return nullptr;
     }
-
-    return context;
-  }
 #endif
 
-  if (type == GHOST_kDrawingContextTypeOpenGL || type == GHOST_kDrawingContextTypeMetal) {
-
-    GHOST_Context *context = new GHOST_ContextCGL(
-        m_wantStereoVisual, m_metalView, m_metalLayer, m_openGLView, type);
-
-    if (context->initializeDrawingContext())
-      return context;
-    else
+#ifdef WITH_METAL_BACKEND
+    case GHOST_kDrawingContextTypeMetal: {
+      GHOST_Context *context = new GHOST_ContextCGL(
+          m_wantStereoVisual, m_metalView, m_metalLayer, false);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-  }
+      return nullptr;
+    }
+#endif
 
-  return NULL;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 #pragma mark invalidate

@@ -1,11 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blf
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct FontBLF;
 struct GlyphBLF;
@@ -176,4 +181,8 @@ extern FT_Error FT_New_Face__win32_compat(FT_Library library,
                                           FT_Long face_index,
                                           FT_Face *aface);
 #  endif
+#endif
+
+#ifdef __cplusplus
+}
 #endif

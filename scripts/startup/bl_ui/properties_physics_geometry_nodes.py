@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
@@ -38,6 +40,11 @@ class PHYSICS_PT_geometry_nodes(Panel):
         row = layout.row(align=True)
         row.operator("object.simulation_nodes_cache_bake", text=bake_text).selected = True
         row.operator("object.simulation_nodes_cache_delete", text="", icon='TRASH').selected = True
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ob = context.object
+        layout.prop(ob, "use_simulation_cache", text="Cache")
 
 
 classes = (
