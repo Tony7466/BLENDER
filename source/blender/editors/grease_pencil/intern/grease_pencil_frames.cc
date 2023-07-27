@@ -70,14 +70,16 @@ bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
   return false;
 }
 
-static void frame_to_cfraelem(KeyframeEditData *ked, const int frame_number)
+static void frame_to_cfraelem(KeyframeEditData *ked,
+                              const int frame_number,
+                              const GreasePencilFrame &frame)
 {
   BLI_assert((ked != nullptr));
   CfraElem *ce;
 
   ce = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "CfraElem"));
   ce->cfra = float(frame_number);
-  ce->sel = true;
+  ce->sel = frame.is_selected();
   BLI_addtail(&(ked->list), ce);
 }
 
@@ -87,7 +89,7 @@ void make_cfralist_selected_frames(KeyframeEditData *ked, const bke::greasepenci
 
   for (const auto &[frame_number, frame] : layer->frames().items()) {
     if (frame.is_selected()) {
-      frame_to_cfraelem(ked, frame_number);
+      frame_to_cfraelem(ked, frame_number, frame);
     }
   }
 }
