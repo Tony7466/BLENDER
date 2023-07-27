@@ -246,7 +246,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     id = static_cast<EditBoneElementCreateData *>(idv)->armature_id;
   }
   else if (type == TSE_DEFGROUP) {
-    id = reinterpret_cast<ID *>(static_cast<DeformGroupElementCreateData *>(idv)->object);
+    id = &static_cast<DeformGroupElementCreateData *>(idv)->object->id;
   }
   else if (type == TSE_LINKED_PSYS) {
     id = &static_cast<ParticleSystemElementCreateData *>(idv)->object->id;
