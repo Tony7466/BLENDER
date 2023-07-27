@@ -9,7 +9,6 @@
 #include "BLI_map.hh"
 
 #include "BKE_context.h"
-#include "BKE_fcurve.h"
 #include "BKE_grease_pencil.hh"
 
 #include "DEG_depsgraph.h"
