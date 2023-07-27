@@ -886,25 +886,33 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int 
 void bNodeTreeInterfacePanel::foreach_item(
     blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn, bool include_self)
 {
-  std::queue<bNodeTreeInterfacePanel *> queue;
+  using ItemSpan = blender::Span<bNodeTreeInterfaceItem *>;
+  blender::Stack<ItemSpan> stack;
 
   if (include_self && fn(this->item) == false) {
     return;
   }
-  queue.push(this);
+  stack.push(items());
 
-  while (!queue.empty()) {
-    bNodeTreeInterfacePanel *parent = queue.front();
-    queue.pop();
+  while (!stack.is_empty()) {
+    const ItemSpan current_items = stack.pop();
 
-    for (bNodeTreeInterfaceItem *item : parent->items()) {
+    for (const int index : current_items.index_range()) {
+      bNodeTreeInterfaceItem *item = current_items[index];
       if (fn(*item) == false) {
         return;
       }
 
       if (item->item_type == NODE_INTERFACE_PANEL) {
         bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
-        queue.push(panel);
+        /* Reinsert remaining items. */
+        if (index < current_items.size() - 1) {
+          const ItemSpan remaining_items = current_items.drop_front(index + 1);
+          stack.push(remaining_items);
+        }
+        /* Handle child items first before continuing with current span. */
+        stack.push(panel->items());
+        break;
       }
     }
   }
@@ -913,18 +921,19 @@ void bNodeTreeInterfacePanel::foreach_item(
 void bNodeTreeInterfacePanel::foreach_item(
     blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn, bool include_self) const
 {
-  std::queue<const bNodeTreeInterfacePanel *> queue;
+  using ItemSpan = blender::Span<const bNodeTreeInterfaceItem *>;
+  blender::Stack<ItemSpan> stack;
 
   if (include_self && fn(this->item) == false) {
     return;
   }
-  queue.push(this);
+  stack.push(items());
 
-  while (!queue.empty()) {
-    const bNodeTreeInterfacePanel *parent = queue.front();
-    queue.pop();
+  while (!stack.is_empty()) {
+    const ItemSpan current_items = stack.pop();
 
-    for (const bNodeTreeInterfaceItem *item : parent->items()) {
+    for (const int index : current_items.index_range()) {
+      const bNodeTreeInterfaceItem *item = current_items[index];
       if (fn(*item) == false) {
         return;
       }
@@ -932,7 +941,14 @@ void bNodeTreeInterfacePanel::foreach_item(
       if (item->item_type == NODE_INTERFACE_PANEL) {
         const bNodeTreeInterfacePanel *panel = reinterpret_cast<const bNodeTreeInterfacePanel *>(
             item);
-        queue.push(panel);
+        /* Reinsert remaining items. */
+        if (index < current_items.size() - 1) {
+          const ItemSpan remaining_items = current_items.drop_front(index + 1);
+          stack.push(remaining_items);
+        }
+        /* Handle child items first before continuing with current span. */
+        stack.push(panel->items());
+        break;
       }
     }
   }
