@@ -1080,7 +1080,13 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
         ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
         for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
-          ED_gpencil_layer_make_cfra_list(static_cast<bGPDlayer *>(ale->data), &ked.list, true);
+          if (U.experimental.use_grease_pencil_version3) {
+            blender::ed::greasepencil ::make_cfralist_selected_frames(
+                &ked, static_cast<blender::bke::greasepencil::Layer *>(ale->data));
+          }
+          else {
+            ED_gpencil_layer_make_cfra_list(static_cast<bGPDlayer *>(ale->data), &ked.list, true);
+          }
         }
       }
       else {
@@ -1144,6 +1150,11 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
       /* select elements with frame number matching cfraelem */
       if (ale->type == ANIMTYPE_GPLAYER) {
         ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale->data), ce->cfra, SELECT_ADD);
+        ale->update |= ANIM_UPDATE_DEPS;
+      }
+      else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+        blender::ed::greasepencil::select_frame_at(
+            static_cast<blender::bke::greasepencil::Layer *>(ale->data), ce->cfra, SELECT_ADD);
         ale->update |= ANIM_UPDATE_DEPS;
       }
       else if (ale->type == ANIMTYPE_MASKLAYER) {
