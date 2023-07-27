@@ -387,6 +387,7 @@ bool NodeSocketDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
 
   /* Insert into same panel as the target. */
   interface.find_item_parent(socket_.item, parent);
+  BLI_assert(parent != nullptr);
   switch (drag_info.drop_location) {
     case DropLocation::Before:
       index = parent->items().as_span().first_index_try(&socket_.item);
@@ -478,12 +479,14 @@ bool NodePanelDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
     case DropLocation::Before: {
       /* Insert into same panel as the target. */
       interface.find_item_parent(panel_.item, parent);
+      BLI_assert(parent != nullptr);
       index = parent->items().as_span().first_index_try(&panel_.item);
       break;
     }
     case DropLocation::After: {
       /* Insert into same panel as the target. */
       interface.find_item_parent(panel_.item, parent);
+      BLI_assert(parent != nullptr);
       index = parent->items().as_span().first_index_try(&panel_.item) + 1;
       break;
     }

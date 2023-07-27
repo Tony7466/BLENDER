@@ -779,7 +779,7 @@ bool bNodeTreeInterfacePanel::find_item_parent(const bNodeTreeInterfaceItem &ite
       }
 
       bNodeTreeInterfacePanel *tpanel = get_as_ptr<bNodeTreeInterfacePanel>(titem);
-      if (tpanel->contains_item(*titem)) {
+      if (tpanel->contains_item(item)) {
         r_parent = tpanel;
         return true;
       }
