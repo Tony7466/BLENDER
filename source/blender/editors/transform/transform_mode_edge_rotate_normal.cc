@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math.h"
 
@@ -104,7 +104,7 @@ static void applyNormalRotation(TransInfo *t, const int[2] /*mval*/)
     t->values_final[0] = angle;
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }
