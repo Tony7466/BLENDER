@@ -246,7 +246,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     id = static_cast<EditBoneElementCreateData *>(idv)->armature_id;
   }
   else if (type == TSE_GPENCIL_EFFECT) {
-    id = reinterpret_cast<ID *>(static_cast<GPencilEffectElementCreateData *>(idv)->object);
+    id = &static_cast<GPencilEffectElementCreateData *>(idv)->object->id;
   }
 
   /* exceptions */
