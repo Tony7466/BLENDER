@@ -12,7 +12,7 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/avi.c
+  intern/avi.cc
   intern/avi_codecs.cc
   intern/avi_endian.cc
   intern/avi_mjpeg.cc
