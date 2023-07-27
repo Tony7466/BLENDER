@@ -144,8 +144,9 @@ static void select_cache_init(void *vedata)
   state |= RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d) ? DRW_STATE_CLIP_PLANES :
                                                                   DRWState(0);
 
-  bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) && !XRAY_ENABLED(draw_ctx->v3d);
-  float retopology_offset = RETOPOLOGY_OFFSET(draw_ctx->v3d);
+  bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) && !XRAY_ENABLED(draw_ctx->v3d) &&
+                              draw_ctx->object_edit;
+  float retopology_offset = retopology_occlusion ? RETOPOLOGY_OFFSET(draw_ctx->v3d) : 0.0f;
 
   {
     DRW_PASS_CREATE(psl->depth_only_pass, state);
@@ -219,7 +220,7 @@ static void select_cache_populate(void *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
   const bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) &&
-                                    !XRAY_ENABLED(draw_ctx->v3d);
+                                    !XRAY_ENABLED(draw_ctx->v3d) && draw_ctx->object_edit;
   if (retopology_occlusion && !DRW_object_is_in_edit_mode(ob)) {
     if (ob->dt >= OB_SOLID) {
       GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(static_cast<Mesh *>(ob->data));
