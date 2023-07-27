@@ -1125,18 +1125,17 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
       grease_pencil, GeometryOwnershipType::ReadOnly);
   grease_pencil_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
+  if (!geometry_set.has_grease_pencil()) {
+    geometry_set.replace_grease_pencil(BKE_grease_pencil_new_nomain());
+  }
+
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
-   * would potentially result in a copy when it's shared. So for now, we use a const_cast here. */
+   * would result in a copy when it's shared. So for now, we use a const_cast here. */
   GreasePencil *grease_pencil_eval = const_cast<GreasePencil *>(
       geometry_set.get_grease_pencil_for_read());
+
   /* Assign evaluated object. */
-  if (grease_pencil_eval == nullptr) {
-    grease_pencil_eval = BKE_grease_pencil_new_nomain();
-    BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
-  }
-  else {
-    BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
-  }
+  BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }
 
