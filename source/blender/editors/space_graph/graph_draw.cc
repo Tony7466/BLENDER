@@ -1072,7 +1072,7 @@ static void draw_fcurve_curve_bezts(
 
   if (bounding_indices[0] == bounding_indices[1]) {
     BezTriple *bezt = &fcu->bezt[bounding_indices[0]];
-    curve_vertices.append({bezt->vec[1][0], bezt->vec[1][0]});
+    curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
   }
 
   const blender::float2 resolution_scale = calculate_resolution_scale(v2d);
