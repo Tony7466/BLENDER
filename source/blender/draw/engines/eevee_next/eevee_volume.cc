@@ -257,12 +257,13 @@ void VolumeModule::end_sync()
   inst_.sampling.bind_resources(&scatter_ps_);
   scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
   scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
+  scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
   scatter_ps_.bind_image("in_emission_img", &prop_emission_tx_);
   scatter_ps_.bind_image("in_phase_img", &prop_phase_tx_);
   scatter_ps_.bind_image("out_scattering_img", &scatter_tx_);
   scatter_ps_.bind_image("out_extinction_img", &extinction_tx_);
   /* Sync with the property pass. */
-  scatter_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  scatter_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
   scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
 
   integration_ps_.init();
