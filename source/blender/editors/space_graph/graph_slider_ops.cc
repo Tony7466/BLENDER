@@ -997,26 +997,7 @@ static void blend_offset_graph_keys(bAnimContext *ac, const float factor)
 
 static void blend_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
-  char status_str[UI_MAX_DRAW_STR];
-  char mode_str[32];
-  char slider_string[UI_MAX_DRAW_STR];
-
-  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
-
-  strcpy(mode_str, TIP_("Blend Offset Keys"));
-
-  if (hasNumInput(&gso->num)) {
-    char str_ofs[NUM_STR_REP_LEN];
-
-    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
-
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
-  }
-  else {
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
-  }
-
-  ED_workspace_status_text(C, status_str);
+  common_draw_status_header(C, gso, "Blend Offset Keys");
 }
 
 static void blend_offset_modal_update(bContext *C, wmOperator *op)
