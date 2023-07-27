@@ -1063,13 +1063,9 @@ static void draw_fcurve_curve_bezts(
     get_extrapolation_point_left(fcu, v2d->cur.xmin, curve_vertices);
   }
 
-  /* If only one keyframe, add it now. */
-  if (fcu->totvert == 1) {
-    curve_vertices.append({fcu->bezt[0].vec[1][0], fcu->bezt[0].vec[1][1]});
-  }
-
   const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
 
+  /* This happens if there is only 1 frame in the curve. */
   if (bounding_indices[0] == bounding_indices[1]) {
     BezTriple *bezt = &fcu->bezt[bounding_indices[0]];
     curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
