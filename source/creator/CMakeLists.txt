@@ -141,7 +141,7 @@ endif()
 # Setup the EXE sources and `buildinfo`.
 set(SRC
   creator.c
-  creator_args.c
+  creator_args.cc
   creator_signals.c
 
   creator_intern.h
