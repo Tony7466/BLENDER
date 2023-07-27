@@ -5,6 +5,7 @@
 set(INC
   .
   ../common
+  ../../blenkernel
   ../../blenloader
   ../../bmesh
   ../../depsgraph
@@ -34,7 +35,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::extern::nanosvg

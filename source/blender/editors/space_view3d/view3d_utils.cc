@@ -8,10 +8,10 @@
  * 3D View checks and manipulation (no operators).
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_camera_types.h"
 #include "DNA_curve_types.h"
@@ -1165,13 +1165,13 @@ bool ED_view3d_autodist_simple(ARegion *region,
   return ED_view3d_unproject_v3(region, centx, centy, depth, mouse_worldloc);
 }
 
-static bool depth_segment_cb(int x, int y, void *userData)
+static bool depth_segment_cb(int x, int y, void *user_data)
 {
   struct UserData {
     const ViewDepths *vd;
     int margin;
     float depth;
-  } *data = static_cast<UserData *>(userData);
+  } *data = static_cast<UserData *>(user_data);
   int mval[2];
   float depth;
 
