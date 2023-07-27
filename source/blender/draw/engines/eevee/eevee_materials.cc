@@ -270,31 +270,31 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
     /* Create RenderPass UBO */
     if (sldata->renderpass_ubo.combined == nullptr) {
       EEVEE_RenderPassData data;
-      data = (EEVEE_RenderPassData){true, true, true, true, true, false, false, false, 0};
+      data = EEVEE_RenderPassData{true, true, true, true, true, false, false, false, 0};
       sldata->renderpass_ubo.combined = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.combined");
 
-      data = (EEVEE_RenderPassData){true, false, false, false, false, true, false, false, 0};
+      data = EEVEE_RenderPassData{true, false, false, false, false, true, false, false, 0};
       sldata->renderpass_ubo.diff_color = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.diff_color");
 
-      data = (EEVEE_RenderPassData){true, true, false, false, false, false, false, false, 0};
+      data = EEVEE_RenderPassData{true, true, false, false, false, false, false, false, 0};
       sldata->renderpass_ubo.diff_light = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.diff_light");
 
-      data = (EEVEE_RenderPassData){false, false, true, false, false, false, false, false, 0};
+      data = EEVEE_RenderPassData{false, false, true, false, false, false, false, false, 0};
       sldata->renderpass_ubo.spec_color = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.spec_color");
 
-      data = (EEVEE_RenderPassData){false, false, true, true, false, false, false, false, 0};
+      data = EEVEE_RenderPassData{false, false, true, true, false, false, false, false, 0};
       sldata->renderpass_ubo.spec_light = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.spec_light");
 
-      data = (EEVEE_RenderPassData){false, false, false, false, true, false, false, false, 0};
+      data = EEVEE_RenderPassData{false, false, false, false, true, false, false, false, 0};
       sldata->renderpass_ubo.emit = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.emit");
 
-      data = (EEVEE_RenderPassData){true, true, true, true, true, false, true, false, 0};
+      data = EEVEE_RenderPassData{true, true, true, true, true, false, true, false, 0};
       sldata->renderpass_ubo.environment = GPU_uniformbuf_create_ex(
           sizeof(data), &data, "renderpass_ubo.environment");
     }

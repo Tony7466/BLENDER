@@ -3261,37 +3261,37 @@ GPUBatch *DRW_cache_cursor_get(bool crosshair_lines)
 
       GPU_indexbuf_add_primitive_restart(&elb);
 
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){-f20, 0});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{-f20, 0});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){-f5, 0});
-      GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
-      GPU_indexbuf_add_generic_vert(&elb, v++);
-
-      GPU_indexbuf_add_primitive_restart(&elb);
-
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){+f5, 0});
-      GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
-      GPU_indexbuf_add_generic_vert(&elb, v++);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){+f20, 0});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{-f5, 0});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
 
       GPU_indexbuf_add_primitive_restart(&elb);
 
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){0, -f20});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{+f5, 0});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){0, -f5});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{+f20, 0});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
 
       GPU_indexbuf_add_primitive_restart(&elb);
 
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){0, +f5});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{0, -f20});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, (const float[2]){0, +f20});
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{0, -f5});
+      GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
+      GPU_indexbuf_add_generic_vert(&elb, v++);
+
+      GPU_indexbuf_add_primitive_restart(&elb);
+
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{0, +f5});
+      GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
+      GPU_indexbuf_add_generic_vert(&elb, v++);
+      GPU_vertbuf_attr_set(vbo, attr_id.pos, v, blender::float2{0, +f20});
       GPU_vertbuf_attr_set(vbo, attr_id.color, v, crosshair_color);
       GPU_indexbuf_add_generic_vert(&elb, v++);
     }
