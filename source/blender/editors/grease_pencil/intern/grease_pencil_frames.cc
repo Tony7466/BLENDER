@@ -74,7 +74,6 @@ static void append_selected_frame_to_key_edit_data(KeyframeEditData *ked,
                                                    const int frame_number,
                                                    const GreasePencilFrame &frame)
 {
-  BLI_assert((ked != nullptr));
   CfraElem *ce;
 
   ce = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "CfraElem"));
