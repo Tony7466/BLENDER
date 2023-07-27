@@ -588,6 +588,8 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
 
+  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
+
   this->radius = BKE_brush_size_get(scene, brush);
   if (brush->gpencil_settings) {
     this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
