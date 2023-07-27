@@ -39,6 +39,8 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
 
+#include "IMB_imbuf.h"
+
 #include "WM_api.h"
 
 #include "ED_datafiles.h"
@@ -287,20 +289,29 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
   }
 
   RenderResult *rr = RE_AcquireResultRead(tree_previews->previews_render);
+  ImBuf *&image_cached = tree_previews->previews_map.lookup_or_add(node, nullptr);
   if (rr == nullptr) {
-    return nullptr;
+    return image_cached;
   }
-  ImBuf *image = nullptr;
+  ImBuf *image_latest = nullptr;
   if (node_use_aov(node)) {
-    image = get_image_from_viewlayer_and_pass(rr, nullptr, node->name);
+    image_latest = get_image_from_viewlayer_and_pass(rr, nullptr, node->name);
   }
   else {
-    image = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
+    image_latest = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
   }
-  if (image == nullptr) {
+  if (image_latest == nullptr) {
     ntree->runtime->previews_refresh_state++;
+    return image_cached;
   }
-  return image;
+  if (image_cached != image_latest) {
+    if (image_cached != nullptr) {
+      IMB_freeImBuf(image_cached);
+    }
+    IMB_refImBuf(image_latest);
+    image_cached = image_latest;
+  }
+  return image_latest;
 }
 
 void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
