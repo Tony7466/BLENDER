@@ -1293,7 +1293,7 @@ class HydraRenderEngine(RenderEngine):
         for key, val in self.get_sync_settings(engine_type).items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, 0)
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, None)
 
         for key, val in self.get_render_settings('PREVIEW' if self.is_preview else 'FINAL').items():
             _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
