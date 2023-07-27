@@ -9,11 +9,15 @@
 #pragma once
 
 #include "BKE_attribute.h"
+#include "BLI_rect.h"
 
 struct bContext;
 
+struct GreasePencil;
+struct GreasePencilDrawing;
 struct Main;
 struct Object;
+struct ViewContext;
 
 struct wmKeyConfig;
 
@@ -36,6 +40,7 @@ void ED_operatortypes_grease_pencil_frames(void);
 void ED_operatortypes_grease_pencil_layers(void);
 void ED_operatortypes_grease_pencil_select(void);
 void ED_operatortypes_grease_pencil_edit(void);
+void ED_operatortypes_grease_pencil_fill(void);
 void ED_keymap_grease_pencil(struct wmKeyConfig *keyconf);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
@@ -73,6 +78,65 @@ void gaussian_blur_1D(const GSpan src,
                       GMutableSpan dst);
 
 void ramer_douglas_peucker_simplify(const Span<float3> src, float epsilon, MutableSpan<bool> dst);
+
+/**
+ * Structure for curves converted to viewport 2D space.
+ */
+struct Curves2DSpace {
+  Vector<GreasePencilDrawing *> drawings;
+  /* Curve index offset for each GP drawing. */
+  Vector<int> curve_offset;
+  /* Point index offset for each curve. */
+  Array<int> point_offset;
+  /* Number of points in each curve. */
+  Array<int> point_size;
+  /* Cyclic flag for each curve. */
+  Array<bool> is_cyclic;
+  /* Index reference to `drawings` for each curve. */
+  Array<int> drawing_index_2d;
+  /* Contiguous array with all point positions in 2D space. */
+  Array<float2> points_2d;
+  /* Bounding box of each curve in 2D space. */
+  Array<rctf> curve_bbox;
+};
+
+/**
+ * Intersecting segment in 2D space.
+ */
+struct IntersectingSegment2D {
+  /* Curve index in `Curves2DSpace` struct. */
+  int curve_index_2d;
+  /* Start point of the intersection (relative index: 0..<curve_point_size>). */
+  int point_start;
+  /* End point of the intersection (relative index: 0..<curve_point_size>). */
+  int point_end;
+  /* Distance of the intersection on the intersected segment. */
+  float distance;
+};
+
+/**
+ * Collect all editable strokes in a GP object and convert them to
+ * viewport 2D space.
+ *
+ * \return A struct with the 2D representation of all editable strokes.
+ */
+Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob);
+
+/**
+ * Get the intersections of a two point segment with all given 2D strokes.
+ *
+ * \param segment_start: Start coordinates of the segment.
+ * \param segment_end: End coordinates of the segment.
+ * \param segment_curve_index: Index of the segment curve in the `curves_2d` struct.
+ * Used to avoid a false-positive self-intersecting result.
+ * \param curves_2d: A struct with the 2D representation of all editable strokes.
+ * Obtained by #editable_strokes_in_2d_space_get.
+ * \return: Vector of all intersections.
+ */
+Vector<IntersectingSegment2D> intersections_segment_strokes_2d(const float2 segment_start,
+                                                               const float2 segment_end,
+                                                               const int segment_curve_index,
+                                                               const Curves2DSpace *curves_2d);
 
 }  // namespace blender::ed::greasepencil
 #endif

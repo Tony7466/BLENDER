@@ -5,6 +5,7 @@
 set(INC
   ../include
   ../../blentranslation
+  ../../bmesh
   ../../gpu
   ../../imbuf
   ../../makesrna
@@ -18,10 +19,12 @@ set(INC_SYS
 set(SRC
   intern/grease_pencil_add.cc
   intern/grease_pencil_edit.cc
+  intern/grease_pencil_fill_vector.cc
   intern/grease_pencil_frames.cc
   intern/grease_pencil_layers.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_select.cc
+  intern/grease_pencil_utils.cc
 )
 
 set(LIB
