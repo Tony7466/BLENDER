@@ -1065,7 +1065,8 @@ static void draw_fcurve_curve_bezts(
 
   const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
 
-  /* This happens if there is only 1 frame in the curve. */
+  /* This happens if there is only 1 frame in the curve or the view is only showing the
+   * extrapolation zone of the curve. */
   if (bounding_indices[0] == bounding_indices[1]) {
     BezTriple *bezt = &fcu->bezt[bounding_indices[0]];
     curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
