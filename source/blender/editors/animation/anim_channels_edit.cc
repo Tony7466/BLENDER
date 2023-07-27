@@ -605,12 +605,6 @@ static void anim_channels_select_set(bAnimContext *ac,
         ACHANNEL_SET_FLAG(gpl, sel, GP_LAYER_SELECT);
         break;
       }
-      case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
-
-        ACHANNEL_SET_FLAG(&layer->base, sel, GP_LAYER_TREE_NODE_SELECT);
-        break;
-      }
       case ANIMTYPE_MASKLAYER: {
         MaskLayer *masklay = (MaskLayer *)ale->data;
 
