@@ -5425,7 +5425,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Node Preview Resolution",
                            "Resolution used for Shader node previews (should be changed for "
-                           "performances and/or DPI issues)");
+                           "performance convenience)");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   /* cursor */

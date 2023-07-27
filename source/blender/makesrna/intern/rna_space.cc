@@ -7643,7 +7643,7 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Supports Previews",
-                           "Specific to a SpaceNode type to know whether nodes can have previews");
+                           "Whether the node editor's type supports displaying node previews");
 
   rna_def_space_node_overlay(brna);
   RNA_api_space_node(srna);
