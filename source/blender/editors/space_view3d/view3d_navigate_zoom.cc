@@ -493,16 +493,18 @@ int viewzoom_invoke_impl(bContext *C, ViewOpsData *vod, const wmEvent *event, Po
     return OPERATOR_FINISHED;
   }
   else {
-    eV3D_OpEvent event_code = ELEM(event->type, MOUSEZOOM, MOUSEPAN) ? VIEW_CONFIRM : VIEW_PASS;
-    if (event_code == VIEW_CONFIRM) {
+    if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
       if (U.uiflag & USER_ZOOM_HORIZ) {
         vod->init.event_xy[0] = vod->prev.event_xy[0] = xy[0];
       }
       else {
+        /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
         vod->init.event_xy[1] = vod->prev.event_xy[1] = event->type == MOUSEPAN ? xy[1] : xy[1] + xy[0] - event->prev_xy[0];
       }
 
-      viewzoom_apply(vod, event->prev_xy, USER_ZOOM_DOLLY, ((U.uiflag & USER_ZOOM_INVERT) != 0) ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
+      viewzoom_apply(vod, event->prev_xy, USER_ZOOM_DOLLY, ((U.uiflag & USER_ZOOM_INVERT) != 0)
+                     ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
+      
       ED_view3d_camera_lock_autokey(vod->v3d, vod->rv3d, C, false, true);
 
       return OPERATOR_FINISHED;
@@ -539,7 +541,7 @@ void VIEW3D_OT_zoom(wmOperatorType *ot)
   ot->cancel = view3d_navigate_cancel_fn;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_DEPENDS_ON_CURSOR;
 
   /* properties */
   view3d_operator_properties_common(
