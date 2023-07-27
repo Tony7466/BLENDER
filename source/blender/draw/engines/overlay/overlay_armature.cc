@@ -104,6 +104,13 @@ struct ArmatureDrawContext {
  * Container for either an #EditBone or a #bPoseChannel.
  */
 class UnifiedBonePtr {
+ private:
+  union {
+    EditBone *eBone_;
+    bPoseChannel *pchan_;
+  };
+  bool is_editbone_; /* Discriminator for the above union. */
+
  public:
   UnifiedBonePtr(const UnifiedBonePtr &ptr) = default;
   ~UnifiedBonePtr() {}
@@ -150,12 +157,12 @@ class UnifiedBonePtr {
     return !is_editbone();
   };
 
-  void set(const EditBone **eBone, const bPoseChannel **pchan) const
+  void get(const EditBone **eBone, const bPoseChannel **pchan) const
   {
     *eBone = eBone_;
     *pchan = pchan_;
   }
-  void set(EditBone **eBone, bPoseChannel **pchan)
+  void get(EditBone **eBone, bPoseChannel **pchan)
   {
     *eBone = eBone_;
     *pchan = pchan_;
@@ -202,14 +209,6 @@ class UnifiedBonePtr {
   {
     return is_editbone_ ? eBone_->rad_tail : pchan_->bone->rad_tail;
   }
-
- private:
-  union {
-    EditBone *eBone_;
-    bPoseChannel *pchan_;
-  };
-
-  bool is_editbone_;
 };
 
 /**
@@ -1950,7 +1949,7 @@ static void draw_bone_name(ArmatureDrawContext *ctx,
   const bool is_pose = bone.is_posebone();
   const EditBone *eBone = nullptr;
   const bPoseChannel *pchan = nullptr;
-  bone.set(&eBone, &pchan);
+  bone.get(&eBone, &pchan);
 
   /* TODO: make this look at `boneflag` only. */
   bool highlight = (is_pose && ctx->draw_mode == ARM_DRAW_MODE_POSE &&
