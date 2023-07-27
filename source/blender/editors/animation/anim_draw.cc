@@ -293,6 +293,9 @@ static short bezt_nlamapping_apply(KeyframeEditData *ked, BezTriple *bezt)
 
 void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, bool only_keys)
 {
+  if (adt == nullptr || BLI_listbase_is_empty(&adt->nla_tracks)) {
+    return;
+  }
   KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc map_cb;
 
@@ -566,7 +569,7 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
   Object *ob = CTX_data_active_object(C);
   Mask *mask = CTX_data_edit_mask(C);
   bDopeSheet ads = {nullptr};
-  struct AnimKeylist *keylist = ED_keylist_create();
+  AnimKeylist *keylist = ED_keylist_create();
   const ActKeyColumn *aknext, *akprev;
   float cfranext, cfraprev;
   bool donenext = false, doneprev = false;

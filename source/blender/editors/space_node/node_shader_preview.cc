@@ -125,11 +125,8 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
   }
   NestedTreePreviews *tree_previews = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
-    tree_previews = sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
-      tree_previews = MEM_new<NestedTreePreviews>(__func__);
-      tree_previews->preview_size = U.node_preview_res;
-      return tree_previews;
-    });
+    tree_previews = &*sn->runtime->tree_previews_per_context.lookup_or_add_cb(
+        *hash, [&]() { return std::make_unique<NestedTreePreviews>(U.node_preview_res); });
     Material *ma = reinterpret_cast<Material *>(sn->id);
 
     ensure_nodetree_previews(C, tree_previews, ma, &sn->treepath);
@@ -301,7 +298,7 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
     image = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
   }
   if (image == nullptr) {
-    ntree->preview_refresh_state++;
+    ntree->runtime->previews_refresh_state++;
   }
   return image;
 }
@@ -464,20 +461,17 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   }
   Span<bNodeTreePath *> treepath = job_data.treepath_copy;
 
-  /* Disconnect shader, volume and displacement from the material output. */
-  bNodeSocket *surface_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Surface");
-  bNodeSocket *volume_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Volume");
+  /* Disconnect all input sockets of the material output node, but keep track of the displacment
+   * node. */
   bNodeSocket *disp_socket = nodeFindSocket(job_data.mat_output_copy, SOCK_IN, "Displacement");
-  if (surface_socket->link != nullptr) {
-    nodeRemLink(treepath.first()->nodetree, surface_socket->link);
-  }
-  if (volume_socket->link != nullptr) {
-    nodeRemLink(treepath.first()->nodetree, volume_socket->link);
-  }
   if (disp_socket->link != nullptr) {
     job_data.mat_displacement_copy = std::make_pair(disp_socket->link->fromnode,
                                                     disp_socket->link->fromsock);
-    nodeRemLink(treepath.first()->nodetree, disp_socket->link);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket_iter, &job_data.mat_output_copy->inputs) {
+    if (socket_iter->link != nullptr) {
+      nodeRemLink(treepath.first()->nodetree, socket_iter->link);
+    }
   }
 
   /* AOV nodes are rendered in the first RenderLayer so we route them now. */
@@ -541,7 +535,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 
 static void update_needed_flag(const bNodeTree *nt, NestedTreePreviews *tree_previews)
 {
-  if (nt->preview_refresh_state != tree_previews->previews_refresh_state ||
+  if (nt->runtime->previews_refresh_state != tree_previews->previews_refresh_state ||
       tree_previews->preview_size != U.node_preview_res)
   {
     tree_previews->restart_needed = true;
@@ -589,7 +583,9 @@ static void shader_preview_startjob(void *customdata,
     }
   }
 
-  preview_render(*job_data);
+  if (job_data->tree_previews->preview_size > 0) {
+    preview_render(*job_data);
+  }
 }
 
 static void shader_preview_free(void *customdata)
@@ -631,7 +627,7 @@ static void ensure_nodetree_previews(const bContext *C,
   }
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
-  tree_previews->previews_refresh_state = displayed_nodetree->preview_refresh_state;
+  tree_previews->previews_refresh_state = displayed_nodetree->runtime->previews_refresh_state;
 
   ED_preview_ensure_dbase(false);
 
@@ -671,25 +667,11 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_start(CTX_wm_manager(C), wm_job);
 }
 
-static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedTreePreviews *tree_previews)
+void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
   WM_jobs_kill(wm, snode, shader_preview_startjob);
-  if (tree_previews->previews_render) {
-    RE_FreeRender(tree_previews->previews_render);
-    tree_previews->previews_render = nullptr;
-  }
-  MEM_delete(tree_previews);
-}
-
-void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
-{
-  snode->runtime->tree_previews_per_context.foreach_item(
-      [&](ComputeContextHash /*hash*/, NestedTreePreviews *tree_previews) {
-        free_previews(wm, snode, tree_previews);
-        tree_previews = nullptr;
-      });
-  snode->runtime->tree_previews_per_context.clear();
+  snode->runtime->tree_previews_per_context.clear_and_shrink();
 }
 
 /** \} */

@@ -721,7 +721,7 @@ class NodeTreeMainUpdater {
 
   void make_node_previews_dirty(bNodeTree &ntree)
   {
-    ntree.preview_refresh_state++;
+    ntree.runtime->previews_refresh_state++;
     for (bNode *node : ntree.all_nodes()) {
       if (node->type != NODE_GROUP) {
         continue;

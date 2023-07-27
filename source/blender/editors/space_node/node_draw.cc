@@ -987,6 +987,10 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         }
         break;
       }
+      case bke::GeometryComponent::Type::GreasePencil: {
+        /* TODO. Do nothing for now. */
+        break;
+      }
     }
     if (type != component_types.last()) {
       ss << ".\n";
@@ -1038,6 +1042,10 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
         break;
       }
       case bke::GeometryComponent::Type::Edit: {
+        break;
+      }
+      case bke::GeometryComponent::Type::GreasePencil: {
+        ss << TIP_("Grease Pencil");
         break;
       }
     }
@@ -2102,6 +2110,10 @@ static void node_draw_extra_info_panel(const Scene *scene,
   if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS)) {
     return;
   }
+  if (preview && !(preview->x > 0 && preview->y > 0)) {
+    /* If the preview has an non-drawable size, just dont draw it. */
+    preview = nullptr;
+  }
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
   if (extra_info_rows.size() == 0 && !preview) {
     return;
@@ -2229,31 +2241,33 @@ static void node_draw_basis(const bContext &C,
 
   /* Overlay atop the node. */
   {
-    ImBuf *preview = nullptr;
+    bool drawn_with_previews = false;
 
     if (node.flag & NODE_PREVIEW && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
       bNodeInstanceHash *previews_compo = static_cast<bNodeInstanceHash *>(
           CTX_data_pointer_get(&C, "node_previews").data);
-      if (previews_compo) {
+      NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
+
+      if (previews_shader) {
+        ImBuf *preview = ED_node_preview_acquire_ibuf(&ntree, previews_shader, &node);
+        node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
+        ED_node_release_preview_ibuf(tree_draw_ctx.nested_group_infos);
+        drawn_with_previews = true;
+      }
+      else if (previews_compo) {
         bNodePreview *preview_compositor = static_cast<bNodePreview *>(
             BKE_node_instance_hash_lookup(previews_compo, key));
         if (preview_compositor) {
-          preview = preview_compositor->ibuf;
+          node_draw_extra_info_panel(
+              CTX_data_scene(&C), tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
+          drawn_with_previews = true;
         }
-      }
-
-      NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
-      if (previews_shader) {
-        preview = ED_node_preview_acquire_ibuf(&ntree, previews_shader, &node);
-      }
-
-      if (preview && !(preview->x && preview->y)) {
-        preview = nullptr;
       }
     }
 
-    node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
-    ED_node_release_preview_ibuf(tree_draw_ctx.nested_group_infos);
+    if (drawn_with_previews == false) {
+      node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, nullptr, block);
+    }
   }
 
   /* Header. */

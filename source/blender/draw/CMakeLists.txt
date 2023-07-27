@@ -7,6 +7,7 @@ set(INC
   intern
 
   ../blenfont
+  ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
@@ -351,7 +352,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
@@ -523,6 +524,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_remap_comp.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_update_irradiance_comp.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
@@ -864,6 +866,12 @@ endif()
 if(WITH_GTESTS)
   if(WITH_OPENGL_DRAW_TESTS)
     add_definitions(-DWITH_OPENGL_DRAW_TESTS)
+    if(WITH_OPENGL_BACKEND)
+      add_definitions(-DWITH_OPENGL_BACKEND)
+    endif()
+    if(WITH_METAL_BACKEND)
+      add_definitions(-DWITH_METAL_BACKEND)
+    endif()
   endif()
 endif()
 

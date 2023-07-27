@@ -4,6 +4,7 @@
 
 set(INC
   .
+  ../../blenkernel
   ../../depsgraph
   ../../makesrna
 )
@@ -29,7 +30,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

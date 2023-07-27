@@ -662,11 +662,6 @@ typedef struct bNodeTree {
    */
   int nested_node_refs_num;
   bNestedNodeRef *nested_node_refs;
-  /* Contains a number increased for each nodetree update.
-   * The idea here to to store a state var in the preview structures to compare if it differs. */
-  uint16_t preview_refresh_state;
-
-  char _pad[6];
 
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
@@ -1877,6 +1872,10 @@ enum {
   SHD_GLOSSY_ASHIKHMIN_SHIRLEY = 3,
   SHD_GLOSSY_MULTI_GGX = 4,
 };
+
+/* sheen distributions */
+#define SHD_SHEEN_ASHIKHMIN 0
+#define SHD_SHEEN_MICROFIBER 1
 
 /* vector transform */
 enum {
