@@ -467,6 +467,13 @@ void smooth_fcurve_segment(struct FCurve *fcu,
                            int kernel_size,
                            double *kernel);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+/**
+ * Shift the FCurve segment up/down so that it aligns with the key before/after
+ * the segment.
+ *
+ * \param factor blend factor from -1.0 to 1.0. The sign determines whether the
+ * segment is aligned with the key before or after the segment.
+ */
 void blend_offset_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
 
