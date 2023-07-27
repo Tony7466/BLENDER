@@ -32,7 +32,7 @@ static void ft_ansi_stream_close(FT_Stream stream)
 {
   fclose(STREAM_FILE(stream));
 
-  stream->descriptor.pointer = NULL;
+  stream->descriptor.pointer = nullptr;
   stream->size = 0;
   stream->base = 0;
 
@@ -61,12 +61,12 @@ static FT_Error FT_Stream_Open__win32_compat(FT_Stream stream, const char *filep
 {
   BLI_assert(stream);
 
-  stream->descriptor.pointer = NULL;
+  stream->descriptor.pointer = nullptr;
   stream->pathname.pointer = (char *)filepathname;
   stream->base = 0;
   stream->pos = 0;
-  stream->read = NULL;
-  stream->close = NULL;
+  stream->read = nullptr;
+  stream->close = nullptr;
 
   FILE *file = BLI_fopen(filepathname, "rb");
   if (!file) {
