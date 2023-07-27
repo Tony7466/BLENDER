@@ -40,7 +40,7 @@ set(SRC
   intern/texture_margin.cc
   intern/texture_pointdensity.cc
   intern/texture_procedural.cc
-  intern/zbuf.c
+  intern/zbuf.cc
 
   RE_bake.h
   RE_compositor.hh
