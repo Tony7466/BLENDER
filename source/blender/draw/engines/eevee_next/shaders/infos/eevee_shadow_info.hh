@@ -116,7 +116,8 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_volume)
     .storage_buf(5, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .uniform_buf(VOLUMES_INFO_BUF_SLOT, "VolumesInfoData", "volumes_info_buf")
     .push_constant(Type::FLOAT, "tilemap_projection_ratio")
-    .additional_info("eevee_shared",
+    .additional_info("eevee_volume_properties_data",
+                     "eevee_shared",
                      "draw_view",
                      "draw_view_culling",
                      "eevee_hiz_data",

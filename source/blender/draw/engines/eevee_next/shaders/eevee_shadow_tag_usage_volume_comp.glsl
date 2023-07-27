@@ -18,6 +18,13 @@ void main()
     return;
   }
 
+  vec3 extinction = imageLoad(in_extinction_img, froxel).rgb;
+  vec3 scattering = imageLoad(in_scattering_img, froxel).rgb;
+
+  if (extinction == vec3(0.0) || scattering == vec3(0.0)) {
+    return;
+  }
+
   vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
   vec3 volume_ndc = volume_to_ndc((vec3(froxel) + jitter) * volumes_info_buf.inv_tex_size);
   vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);

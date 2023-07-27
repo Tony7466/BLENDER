@@ -293,22 +293,20 @@ void VolumeModule::end_sync()
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
-void VolumeModule::draw_compute(View &view)
+void VolumeModule::draw_prepass(View &view)
 {
   if (!enabled_) {
     return;
   }
 
-  DRW_stats_group_start("Volumes");
-
   inst_.pipelines.world_volume.render(view);
   inst_.pipelines.volume.render(view);
+}
 
+void VolumeModule::draw_compute(View &view)
+{
   inst_.manager->submit(scatter_ps_, view);
-
   inst_.manager->submit(integration_ps_, view);
-
-  DRW_stats_group_end();
 }
 
 void VolumeModule::draw_resolve(View &view)

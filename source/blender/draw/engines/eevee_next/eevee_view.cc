@@ -123,6 +123,8 @@ void ShadingView::render()
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
+  inst_.volume.draw_prepass(render_view_new_);
+
   /* TODO: cleanup. */
   View main_view_new("MainView", main_view_);
   /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
