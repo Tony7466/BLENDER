@@ -20,8 +20,6 @@
 
 #include "ED_undo.h"
 
-#include "WM_api.h"
-
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -186,8 +184,15 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   void on_activate(bContext &C) override
   {
-    this->grease_pencil_.set_active_layer(&layer_);
-    WM_event_add_notifier(&C, NC_GPENCIL | ND_DATA | NA_SELECTED, &(this->grease_pencil_));
+    PointerRNA grease_pencil_ptr, value_ptr;
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
+
+    PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
+
+    RNA_property_pointer_set(&grease_pencil_ptr, prop, value_ptr, nullptr);
+    RNA_property_update(&C, &grease_pencil_ptr, prop);
+
     ED_undo_push(&C, "Active Grease Pencil Layer");
   }
 
