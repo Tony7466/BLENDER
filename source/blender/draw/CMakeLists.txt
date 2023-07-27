@@ -7,9 +7,11 @@ set(INC
   intern
 
   ../blenfont
+  ../blenkernel
   ../blenloader
   ../blentranslation
   ../bmesh
+  ../depsgraph
   ../editors/include
   ../editors/space_view3d
   ../functions
@@ -23,6 +25,7 @@ set(INC
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/algorithms
   ../compositor/realtime_compositor/cached_resources
+  ../windowmanager
 
   ../../../intern/clog
   ../../../intern/opensubdiv
@@ -349,13 +352,12 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
-  PRIVATE bf::windowmanager
+  bf_windowmanager
   PRIVATE bf::intern::atomic
 )
 
@@ -864,6 +866,12 @@ endif()
 if(WITH_GTESTS)
   if(WITH_OPENGL_DRAW_TESTS)
     add_definitions(-DWITH_OPENGL_DRAW_TESTS)
+    if(WITH_OPENGL_BACKEND)
+      add_definitions(-DWITH_OPENGL_BACKEND)
+    endif()
+    if(WITH_METAL_BACKEND)
+      add_definitions(-DWITH_METAL_BACKEND)
+    endif()
   endif()
 endif()
 

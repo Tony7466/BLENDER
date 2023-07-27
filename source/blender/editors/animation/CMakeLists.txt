@@ -4,10 +4,13 @@
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blentranslation
+  ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../sequencer
+  ../../windowmanager
   ../../../../intern/clog
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -40,12 +43,10 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_PYTHON)

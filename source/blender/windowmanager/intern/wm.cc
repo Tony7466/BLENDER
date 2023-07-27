@@ -13,8 +13,8 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "BLI_ghash.h"
 #include "BLI_sys_types.h"
@@ -630,7 +630,7 @@ void WM_main(bContext *C)
    * This ensures we don't run operators before the depsgraph has been evaluated. */
   wm_event_do_refresh_wm_and_depsgraph(C);
 
-  while (1) {
+  while (true) {
 
     /* Get events from ghost, handle window events, add to window queues. */
     wm_window_events_process(C);

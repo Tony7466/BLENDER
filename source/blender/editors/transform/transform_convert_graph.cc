@@ -632,19 +632,19 @@ static bool fcu_test_selected(FCurve *fcu)
   uint i;
 
   if (bezt == nullptr) { /* ignore baked */
-    return 0;
+    return false;
   }
 
   for (i = 0; i < fcu->totvert; i++, bezt++) {
     if (BEZT_ISSEL_ANY(bezt)) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
-/* This function is called on recalcData to apply the transforms applied
+/* This function is called on recalc_data to apply the transforms applied
  * to the transdata on to the actual keyframe data
  */
 static void flushTransGraphData(TransInfo *t)
@@ -869,7 +869,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
   MEM_freeN(adjusted);
 }
 
-/* This function is called by recalcData during the Transform loop to recalculate
+/* This function is called by recalc_data during the Transform loop to recalculate
  * the handles of curves and sort the keyframes so that the curves draw correctly.
  * It is only called if some keyframes have moved out of order.
  *
@@ -1021,9 +1021,9 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
        */
       if ((sipo->flag & SIPO_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
         if (adt) {
-          ANIM_nla_mapping_apply_fcurve(adt, fcu, 0, 0);
+          ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
           BKE_fcurve_merge_duplicate_keys(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-          ANIM_nla_mapping_apply_fcurve(adt, fcu, 1, 0);
+          ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
         }
         else {
           BKE_fcurve_merge_duplicate_keys(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
@@ -1049,7 +1049,7 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_Graph = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransGraphEditData,
-    /*recalcData*/ recalcData_graphedit,
+    /*create_trans_data*/ createTransGraphEditData,
+    /*recalc_data*/ recalcData_graphedit,
     /*special_aftertrans_update*/ special_aftertrans_update__graph,
 };

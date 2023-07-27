@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  PUBLIC .
+  .
   ../asset_system
   ../blenfont
   ../blenloader
   ../blentranslation
   ../bmesh
+  ../depsgraph
   ../draw
   ../functions
   ../gpencil_modifiers_legacy
@@ -132,6 +133,7 @@ set(SRC
   intern/freestyle.cc
   intern/geometry_component_curves.cc
   intern/geometry_component_edit_data.cc
+  intern/geometry_component_grease_pencil.cc
   intern/geometry_component_instances.cc
   intern/geometry_component_mesh.cc
   intern/geometry_component_pointcloud.cc
@@ -530,7 +532,7 @@ set(LIB
   bf_blenloader
   bf_blentranslation
   bf_bmesh
-  PRIVATE bf::depsgraph
+  bf_depsgraph
   PRIVATE bf::dna
   bf_draw
   bf_functions
@@ -811,7 +813,6 @@ endif()
 # endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_library(bf::blenkernel ALIAS bf_blenkernel)
 
 # RNA_prototypes.h
 add_dependencies(bf_blenkernel bf_rna)

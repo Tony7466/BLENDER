@@ -8,9 +8,12 @@ set(INC
   importer
   intern
   ../common
+  ../../blenkernel
   ../../bmesh
+  ../../depsgraph
   ../../geometry
   ../../makesrna
+  ../../windowmanager
 )
 
 set(INC_SYS
@@ -49,13 +52,11 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_io_common
-  PRIVATE bf::windowmanager
   extern_fmtlib
 )
 

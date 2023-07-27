@@ -8,10 +8,10 @@
  * Window management, wrap GHOST.
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
@@ -1866,11 +1866,11 @@ void wm_test_opengl_deprecation_warning(bContext *C)
 
 eWM_CapabilitiesFlag WM_capabilities_flag()
 {
-  static eWM_CapabilitiesFlag flag = eWM_CapabilitiesFlag(-1);
-  if (flag != -1) {
+  static eWM_CapabilitiesFlag flag = eWM_CapabilitiesFlag(0);
+  if (flag != 0) {
     return flag;
   }
-  flag = eWM_CapabilitiesFlag(0);
+  flag |= WM_CAPABILITY_INITIALIZED;
 
   const GHOST_TCapabilityFlag ghost_flag = GHOST_GetCapabilities();
   if (ghost_flag & GHOST_kCapabilityCursorWarp) {

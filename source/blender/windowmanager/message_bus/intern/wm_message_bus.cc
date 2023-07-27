@@ -6,7 +6,7 @@
  * \ingroup wm
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -28,7 +28,7 @@
 
 static wmMsgTypeInfo wm_msg_types[WM_MSG_TYPE_NUM] = {{{nullptr}}};
 
-typedef void (*wmMsgTypeInitFn)(wmMsgTypeInfo *);
+using wmMsgTypeInitFn = void (*)(wmMsgTypeInfo *);
 
 static wmMsgTypeInitFn wm_msg_init_fn[WM_MSG_TYPE_NUM] = {
     WM_msgtypeinfo_init_rna,
