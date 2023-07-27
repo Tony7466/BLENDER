@@ -559,13 +559,6 @@ static void group_input_declare_dynamic(const bNodeTree &node_tree,
         }
         break;
       }
-      case NODE_INTERFACE_PANEL: {
-        const bNodeTreeInterfacePanel &panel = node_interface::get_as<bNodeTreeInterfacePanel>(
-            item);
-        PanelDeclarationPtr panel_decl = declaration_for_interface_panel(node_tree, panel);
-        r_declaration.items.append(std::move(panel_decl));
-        break;
-      }
     }
     return true;
   });
@@ -589,13 +582,6 @@ static void group_output_declare_dynamic(const bNodeTree &node_tree,
           r_declaration.inputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
-        break;
-      }
-      case NODE_INTERFACE_PANEL: {
-        const bNodeTreeInterfacePanel &panel = node_interface::get_as<bNodeTreeInterfacePanel>(
-            item);
-        PanelDeclarationPtr panel_decl = declaration_for_interface_panel(node_tree, panel);
-        r_declaration.items.append(std::move(panel_decl));
         break;
       }
     }
