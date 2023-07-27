@@ -85,7 +85,8 @@ static void draw_render_info(
 
   if (re) {
     int total_tiles;
-    const rcti *tiles = RE_engine_get_current_tiles(re, &total_tiles);
+    bool need_free_tiles;
+    rcti *tiles = RE_engine_get_current_tiles(re, &total_tiles, &need_free_tiles);
 
     if (total_tiles) {
       /* find window pixel coordinates of origin */
@@ -103,12 +104,16 @@ static void draw_render_info(
 
       GPU_line_width(1.0f);
 
-      const rcti *tile = tiles;
+      rcti *tile = tiles;
       for (int i = 0; i < total_tiles; i++, tile++) {
         immDrawBorderCorners(pos, tile, zoomx, zoomy);
       }
 
       immUnbindProgram();
+
+      if (need_free_tiles) {
+        MEM_freeN(tiles);
+      }
 
       GPU_matrix_pop();
     }

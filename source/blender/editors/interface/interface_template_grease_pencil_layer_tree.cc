@@ -18,8 +18,6 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "ED_undo.h"
-
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -182,18 +180,9 @@ class LayerViewItem : public AbstractTreeViewItem {
     return {};
   }
 
-  void on_activate(bContext &C) override
+  void on_activate(bContext & /*C*/) override
   {
-    PointerRNA grease_pencil_ptr, value_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
-
-    PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
-
-    RNA_property_pointer_set(&grease_pencil_ptr, prop, value_ptr, nullptr);
-    RNA_property_update(&C, &grease_pencil_ptr, prop);
-
-    ED_undo_push(&C, "Active Grease Pencil Layer");
+    this->grease_pencil_.set_active_layer(&layer_);
   }
 
   bool supports_renaming() const override

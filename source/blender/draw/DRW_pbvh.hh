@@ -17,10 +17,6 @@
 
 #include "BKE_ccg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct PBVHAttrReq;
 struct GPUBatch;
 struct PBVHNode;
@@ -95,7 +91,3 @@ GPUBatch *DRW_pbvh_lines_get(PBVHBatches *batches,
                              PBVH_GPU_Args *args,
                              int *r_prim_count,
                              bool do_coarse_grids);
-
-#ifdef __cplusplus
-}
-#endif

@@ -89,8 +89,6 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
 
-#include "ANIM_bone_collections.h"
-
 #include "UI_resources.h" /* for TH_KEYFRAME_SCALE lookup */
 
 /* ************************************************************ */
@@ -1040,7 +1038,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
           bArmature *arm = (bArmature *)ob->data;
 
           /* skipping - not visible on currently visible layers */
-          if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
+          if ((arm->layer & pchan->bone->layer) == 0) {
             return true;
           }
           /* skipping - is currently hidden */

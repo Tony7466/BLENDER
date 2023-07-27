@@ -16,8 +16,6 @@
 
 #include "ED_transform_snap_object_context.h"
 
-#include "ANIM_bone_collections.h"
-
 #include "transform_snap_object.hh"
 
 using blender::float4x4;
@@ -58,7 +56,7 @@ eSnapMode snapArmature(SnapObjectContext *sctx,
 
   if (arm->edbo) {
     LISTBASE_FOREACH (EditBone *, eBone, arm->edbo) {
-      if (ANIM_bonecoll_is_visible_editbone(arm, eBone)) {
+      if (eBone->layer & arm->layer) {
         if (eBone->flag & BONE_HIDDEN_A) {
           /* Skip hidden bones. */
           continue;

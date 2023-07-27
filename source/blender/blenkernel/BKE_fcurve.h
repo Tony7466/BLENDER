@@ -34,6 +34,14 @@ struct StructRNA;
 struct bAction;
 struct bContext;
 
+/* ************** Keyframe Tools ***************** */
+
+typedef struct CfraElem {
+  struct CfraElem *next, *prev;
+  float cfra;
+  int sel;
+} CfraElem;
+
 /* ************** F-Curve Modifiers *************** */
 
 /**

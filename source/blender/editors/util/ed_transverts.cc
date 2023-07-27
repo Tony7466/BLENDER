@@ -34,8 +34,6 @@
 #include "ED_armature.h"
 #include "ED_curves.hh"
 
-#include "ANIM_bone_collections.h"
-
 #include "ED_transverts.h" /* own include */
 
 void ED_transverts_update_obedit(TransVertStore *tvs, Object *obedit)
@@ -329,7 +327,7 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
         MEM_callocN(totmalloc * sizeof(TransVert), __func__));
 
     for (ebo = static_cast<EditBone *>(arm->edbo->first); ebo; ebo = ebo->next) {
-      if (ANIM_bonecoll_is_visible_editbone(arm, ebo)) {
+      if (ebo->layer & arm->layer) {
         const bool tipsel = (ebo->flag & BONE_TIPSEL) != 0;
         const bool rootsel = (ebo->flag & BONE_ROOTSEL) != 0;
         const bool rootok = !(ebo->parent && (ebo->flag & BONE_CONNECTED) &&

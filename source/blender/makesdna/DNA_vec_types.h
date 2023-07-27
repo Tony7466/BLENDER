@@ -63,17 +63,6 @@ typedef struct vec4d {
 typedef struct rcti {
   int xmin, xmax;
   int ymin, ymax;
-
-#ifdef __cplusplus
-  inline bool operator==(const rcti &other) const
-  {
-    return xmin == other.xmin && xmax == other.xmax && ymin == other.ymin && ymax == other.ymax;
-  }
-  inline bool operator!=(const rcti &other) const
-  {
-    return !(*this == other);
-  }
-#endif
 } rcti;
 
 /** float rectangle. */

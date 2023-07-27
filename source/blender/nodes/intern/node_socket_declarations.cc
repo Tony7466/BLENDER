@@ -347,7 +347,12 @@ bNodeSocket &Color::build(bNodeTree &ntree, bNode &node) const
 bool Color::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
-    return false;
+    if (socket.name != this->name) {
+      return false;
+    }
+    if (socket.identifier != this->identifier) {
+      return false;
+    }
   }
   if (socket.type != SOCK_RGBA) {
     return false;
@@ -396,7 +401,12 @@ bNodeSocket &Rotation::build(bNodeTree &ntree, bNode &node) const
 bool Rotation::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
-    return false;
+    if (socket.name != this->name) {
+      return false;
+    }
+    if (socket.identifier != this->identifier) {
+      return false;
+    }
   }
   if (socket.type != SOCK_ROTATION) {
     return false;

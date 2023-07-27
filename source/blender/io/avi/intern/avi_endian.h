@@ -10,10 +10,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define AVI_RAW 0
 #define AVI_CHUNK 1
 #define AVI_LIST 2
@@ -24,7 +20,3 @@ extern "C" {
 #define AVI_MJPEGU 7
 
 void awrite(AviMovie *movie, void *datain, int block, int size, FILE *fp, int type);
-
-#ifdef __cplusplus
-}
-#endif

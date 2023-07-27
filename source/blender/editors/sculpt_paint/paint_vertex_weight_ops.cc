@@ -731,16 +731,7 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   WPGradient_vertStoreBase *vert_cache = static_cast<WPGradient_vertStoreBase *>(
       gesture->user_data.data);
-  Object *ob = CTX_data_active_object(C);
-  int ret;
-
-  if (BKE_object_defgroup_active_is_locked(ob)) {
-    BKE_report(op->reports, RPT_WARNING, "Active group is locked, aborting");
-    ret = OPERATOR_CANCELLED;
-  }
-  else {
-    ret = WM_gesture_straightline_modal(C, op, event);
-  }
+  int ret = WM_gesture_straightline_modal(C, op, event);
 
   if (ret & OPERATOR_RUNNING_MODAL) {
     if (event->type == LEFTMOUSE && event->val == KM_RELEASE) { /* XXX, hardcoded */
@@ -752,6 +743,7 @@ static int paint_weight_gradient_modal(bContext *C, wmOperator *op, const wmEven
   }
 
   if (ret & OPERATOR_CANCELLED) {
+    Object *ob = CTX_data_active_object(C);
     if (vert_cache != nullptr) {
       Mesh *me = static_cast<Mesh *>(ob->data);
       if (vert_cache->wpp.wpaint_prev) {

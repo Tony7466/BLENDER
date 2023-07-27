@@ -36,12 +36,11 @@ set(SRC
   intern/pipeline.cc
   intern/render_result.cc
   intern/render_types.cc
-  intern/texture_image.cc
+  intern/texture_image.c
   intern/texture_margin.cc
-  intern/texture_pointdensity.cc
-  intern/texture_procedural.cc
-  intern/tile_highlight.cc
-  intern/zbuf.cc
+  intern/texture_pointdensity.c
+  intern/texture_procedural.c
+  intern/zbuf.c
 
   RE_bake.h
   RE_compositor.hh
@@ -55,7 +54,6 @@ set(SRC
   intern/render_result.h
   intern/render_types.h
   intern/texture_common.h
-  intern/tile_highlight.h
   intern/zbuf.h
 )
 

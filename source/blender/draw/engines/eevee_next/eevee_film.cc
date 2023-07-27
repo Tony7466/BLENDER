@@ -26,6 +26,8 @@
 
 namespace blender::eevee {
 
+ENUM_OPERATORS(eViewLayerEEVEEPassType, 1 << EEVEE_RENDER_PASS_MAX_BIT)
+
 /* -------------------------------------------------------------------- */
 /** \name Arbitrary Output Variables
  * \{ */

@@ -47,10 +47,6 @@ typedef enum eObjectInfoFlag eObjectInfoFlag;
 #  endif
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define DRW_SHADER_SHARED_H
 
 #define DRW_RESOURCE_CHUNK_LEN 512
@@ -384,7 +380,3 @@ BLI_STATIC_ASSERT_ALIGN(DRWDebugPrintBuffer, 16)
 #define drw_debug_draw_offset 2
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif
