@@ -302,6 +302,11 @@ struct DeformGroupElementCreateData {
   bDeformGroup *defgroup;
 };
 
+struct ParticleSystemElementCreateData {
+  Object *object;
+  ParticleSystem *psys;
+};
+
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);
 TreeTraversalAction outliner_collect_selected_objects(TreeElement *te, void *customdata);
 

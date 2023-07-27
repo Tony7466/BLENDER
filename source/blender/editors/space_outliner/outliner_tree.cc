@@ -248,6 +248,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_DEFGROUP) {
     id = reinterpret_cast<ID *>(static_cast<DeformGroupElementCreateData *>(idv)->object);
   }
+  else if (type == TSE_LINKED_PSYS) {
+    id = &static_cast<ParticleSystemElementCreateData *>(idv)->object->id;
+  }
 
   /* exceptions */
   if (ELEM(type, TSE_ID_BASE, TSE_GENERIC_LABEL)) {
@@ -306,7 +309,11 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_BONE, TSE_EBONE)) {
     /* pass */
   }
+<<<<<<< HEAD
   else if (ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE)) {
+=======
+  else if (type == TSE_LINKED_PSYS) {
+>>>>>>> ee7ba1955c1 (Outliner: Port particle system elements to new tree-element code design)
     /* pass */
   }
   else if (type == TSE_SOME_ID) {
@@ -347,6 +354,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_BONE,
                 TSE_DRIVER_BASE,
                 TSE_EBONE,
+                TSE_LINKED_PSYS,
                 TSE_NLA,
                 TSE_NLA_ACTION,
                 TSE_NLA_TRACK,
