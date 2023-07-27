@@ -246,7 +246,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     id = static_cast<EditBoneElementCreateData *>(idv)->armature_id;
   }
   else if (type == TSE_LINKED_PSYS) {
-    id = reinterpret_cast<ID *>(static_cast<ParticleSystemElementCreateData *>(idv)->object);
+    id = &static_cast<ParticleSystemElementCreateData *>(idv)->object->id;
   }
 
   /* exceptions */
@@ -347,6 +347,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_BONE,
                 TSE_DRIVER_BASE,
                 TSE_EBONE,
+                TSE_LINKED_PSYS,
                 TSE_NLA,
                 TSE_NLA_ACTION,
                 TSE_NLA_TRACK,
@@ -357,8 +358,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_SEQUENCE,
                 TSE_SEQ_STRIP,
                 TSE_SEQUENCE_DUP,
-                TSE_GENERIC_LABEL,
-                TSE_LINKED_PSYS))
+                TSE_GENERIC_LABEL))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }
