@@ -125,9 +125,8 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
   }
   NestedTreePreviews *tree_previews = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
-    tree_previews = &*sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
-      return std::make_unique<NestedTreePreviews>(U.node_preview_res);
-    });
+    tree_previews = &*sn->runtime->tree_previews_per_context.lookup_or_add_cb(
+        *hash, [&]() { return std::make_unique<NestedTreePreviews>(U.node_preview_res); });
     Material *ma = reinterpret_cast<Material *>(sn->id);
 
     ensure_nodetree_previews(C, tree_previews, ma, &sn->treepath);
@@ -299,7 +298,7 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
     image = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
   }
   if (image == nullptr) {
-    ntree->preview_refresh_state++;
+    ntree->runtime->previews_refresh_state++;
   }
   return image;
 }
@@ -536,7 +535,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 
 static void update_needed_flag(const bNodeTree *nt, NestedTreePreviews *tree_previews)
 {
-  if (nt->preview_refresh_state != tree_previews->previews_refresh_state ||
+  if (nt->runtime->previews_refresh_state != tree_previews->previews_refresh_state ||
       tree_previews->preview_size != U.node_preview_res)
   {
     tree_previews->restart_needed = true;
@@ -628,7 +627,7 @@ static void ensure_nodetree_previews(const bContext *C,
   }
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
-  tree_previews->previews_refresh_state = displayed_nodetree->preview_refresh_state;
+  tree_previews->previews_refresh_state = displayed_nodetree->runtime->previews_refresh_state;
 
   ED_preview_ensure_dbase(false);
 
