@@ -2691,20 +2691,18 @@ void WM_OT_read_homefile(wmOperatorType *ot)
 static void read_factory_warning(bContext *C, wmOperator * /*op*/, wmWarningDetails *warning)
 {
   STRNCPY(warning->title, IFACE_("Load factory default startup file and preferences."));
+  STRNCPY(warning->message,
+          IFACE_("To make changes to preferences permanent, use \"Save Preferences\""));
+  warning->icon = ALERT_ICON_BLENDER;
+  warning->confirm_default = true;
+  warning->cancel_default = false;
 
   if (wm_file_or_session_data_has_unsaved_changes(CTX_data_main(C), CTX_wm_manager(C))) {
-    STRNCPY(warning->message,
+    STRNCPY(warning->message2,
             IFACE_("WARNING: Your file is unsaved. Proceeding will abandon your changes"));
     warning->icon = ALERT_ICON_WARNING;
     warning->confirm_default = false;
     warning->cancel_default = true;
-  }
-  else {
-    STRNCPY(warning->message,
-            IFACE_("To make changes to preferences permanent, use \"Save Preferences\""));
-    warning->icon = ALERT_ICON_BLENDER;
-    warning->confirm_default = true;
-    warning->cancel_default = false;
   }
 
   STRNCPY(warning->confirm_button, IFACE_("Load"));
