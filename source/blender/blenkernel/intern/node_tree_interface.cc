@@ -1170,27 +1170,18 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
   inputs.clear();
   outputs.clear();
 
-  /* DFS over all items */
-  Stack<bNodeTreeInterfacePanel *> parent_stack;
-  parent_stack.push(&interface.root_panel);
-  while (!parent_stack.is_empty()) {
-    bNodeTreeInterfacePanel *parent = parent_stack.pop();
-    for (bNodeTreeInterfaceItem *item : parent->items()) {
-      items.append(item);
-      if (bNodeTreeInterfaceSocket *socket = get_as_ptr<bNodeTreeInterfaceSocket>(item)) {
-        if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
-          inputs.append(socket);
-        }
-        if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-          outputs.append(socket);
-        }
+  interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+    items.append(&item);
+    if (bNodeTreeInterfaceSocket *socket = get_as_ptr<bNodeTreeInterfaceSocket>(&item)) {
+      if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
+        inputs.append(socket);
       }
-
-      if (bNodeTreeInterfacePanel *panel = get_as_ptr<bNodeTreeInterfacePanel>(item)) {
-        parent_stack.push(panel);
+      if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
+        outputs.append(socket);
       }
     }
-  }
+    return true;
+  });
 }
 
 }  // namespace blender::bke
