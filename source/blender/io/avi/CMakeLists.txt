@@ -14,7 +14,7 @@ set(INC_SYS
 set(SRC
   intern/avi.c
   intern/avi_codecs.cc
-  intern/avi_endian.c
+  intern/avi_endian.cc
   intern/avi_mjpeg.c
   intern/avi_options.c
   intern/avi_rgb.c
