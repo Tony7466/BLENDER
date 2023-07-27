@@ -181,6 +181,7 @@ void normals_calc_faces(const Span<float3> positions,
                         const Span<int> corner_verts,
                         MutableSpan<float3> face_normals)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   BLI_assert(faces.size() == face_normals.size());
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
@@ -195,6 +196,7 @@ void normals_calc_verts(const Span<float3> positions,
                         const Span<float3> face_normals,
                         MutableSpan<float3> vert_normals)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   /* Zero the vertex normal array for accumulation. */
   {
     memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
@@ -272,6 +274,7 @@ blender::Span<blender::float3> Mesh::vert_normals() const
 {
   using namespace blender;
   this->runtime->vert_normals_mutex.ensure([&]() {
+    SCOPED_TIMER_AVERAGED(__func__);
     const Span<float3> positions = this->vert_positions();
     const OffsetIndices faces = this->faces();
     const Span<int> corner_verts = this->corner_verts();
