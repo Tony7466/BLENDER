@@ -584,7 +584,7 @@ static EeveeMaterialCache material_opaque(EEVEE_Data *vedata,
     int option = 0;
     SET_FLAG_FROM_TEST(option, do_cull, KEY_CULL);
     SET_FLAG_FROM_TEST(option, use_ssrefract, KEY_REFRACT);
-    DRWPass *depth_ps = (DRWPass *[]){
+    DRWPass *depth_ps = std::array{
         psl->depth_ps,
         psl->depth_cull_ps,
         psl->depth_refract_ps,
@@ -624,7 +624,7 @@ static EeveeMaterialCache material_opaque(EEVEE_Data *vedata,
 
     int ssr_id = (((effects->enabled_effects & EFFECT_SSR) != 0) && !use_ssrefract) ? 1 : 0;
     int option = (use_ssrefract ? 0 : (use_sss ? 1 : 2)) * 2 + do_cull;
-    DRWPass *shading_pass = (DRWPass *[]){
+    DRWPass *shading_pass = std::array{
         psl->material_refract_ps,
         psl->material_refract_cull_ps,
         psl->material_sss_ps,
