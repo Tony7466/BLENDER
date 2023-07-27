@@ -129,16 +129,10 @@ struct PBVHNode {
   int debug_draw_gen;
 };
 
-enum PBVHFlags {
-  PBVH_DYNTOPO_SMOOTH_SHADING = 1,
-};
-ENUM_OPERATORS(PBVHFlags, PBVH_DYNTOPO_SMOOTH_SHADING);
-
 typedef struct PBVHBMeshLog PBVHBMeshLog;
 
 struct PBVH {
   PBVHPublic header;
-  PBVHFlags flags;
 
   PBVHNode *nodes;
   int node_mem_count, totnode;
