@@ -36,7 +36,7 @@ set(SRC
   intern/pipeline.cc
   intern/render_result.cc
   intern/render_types.cc
-  intern/texture_image.c
+  intern/texture_image.cc
   intern/texture_margin.cc
   intern/texture_pointdensity.c
   intern/texture_procedural.cc
