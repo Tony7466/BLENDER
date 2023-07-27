@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -183,7 +184,8 @@ bool GeometryManager::displace(Device *device, Scene *scene, Mesh *mesh, Progres
                         num_verts,
                         3,
                         function_bind(&fill_shader_input, scene, mesh, object_index, _1),
-                        function_bind(&read_shader_output, scene, mesh, _1))) {
+                        function_bind(&read_shader_output, scene, mesh, _1)))
+  {
     return false;
   }
 

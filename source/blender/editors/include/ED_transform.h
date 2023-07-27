@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -24,7 +25,7 @@ void transform_operatortypes(void);
 /* ******************** Macros & Prototypes *********************** */
 
 /* MODE AND NUMINPUT FLAGS */
-typedef enum {
+enum eTfmMode {
   TFM_INIT = -1,
   TFM_DUMMY,
   TFM_TRANSLATION,
@@ -51,8 +52,8 @@ typedef enum {
   TFM_TIME_SLIDE,
   TFM_TIME_SCALE,
   TFM_TIME_EXTEND,
-  TFM_TIME_DUPLICATE,
-  TFM_BAKE_TIME,
+  /* TFM_TIME_DUPLICATE (deprecated). */
+  TFM_BAKE_TIME = 26,
   TFM_DEPRECATED, /* was BEVEL */
   TFM_BWEIGHT,
   TFM_ALIGN,
@@ -62,7 +63,7 @@ typedef enum {
   TFM_BONE_ENVELOPE_DIST,
   TFM_NORMAL_ROTATION,
   TFM_GPENCIL_OPACITY,
-} eTfmMode;
+};
 
 /* Standalone call to get the transformation center corresponding to the current situation
  * returns 1 if successful, 0 otherwise (usually means there's no selection)
@@ -125,8 +126,9 @@ int BIF_countTransformOrientation(const struct bContext *C);
 #define P_CURSOR_EDIT (1 << 16)
 #define P_CLNOR_INVALIDATE (1 << 17)
 #define P_VIEW2D_EDGE_PAN (1 << 18)
+#define P_VIEW3D_ALT_NAVIGATION (1 << 19)
 /* For properties performed when confirming the transformation. */
-#define P_POST_TRANSFORM (1 << 19)
+#define P_POST_TRANSFORM (1 << 20)
 
 void Transform_Properties(struct wmOperatorType *ot, int flags);
 
@@ -150,6 +152,10 @@ short ED_transform_calc_orientation_from_type_ex(const struct Scene *scene,
                                                  short orientation_index,
                                                  int pivot_point,
                                                  float r_mat[3][3]);
+
+bool ED_transform_calc_pivot_pos(const struct bContext *C,
+                                 const short pivot_type,
+                                 float r_pivot_pos[3]);
 
 /* transform gizmos */
 
@@ -201,7 +207,8 @@ struct TransformCalcParams {
  */
 int ED_transform_calc_gizmo_stats(const struct bContext *C,
                                   const struct TransformCalcParams *params,
-                                  struct TransformBounds *tbounds);
+                                  struct TransformBounds *tbounds,
+                                  struct RegionView3D *rv3d);
 
 /**
  * Iterates over all the strips and finds the closest snapping candidate of either \a frame_1 or \a

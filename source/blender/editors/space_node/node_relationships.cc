@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -18,7 +19,7 @@
 #include "BKE_curve.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
@@ -431,6 +432,7 @@ static bool socket_can_be_viewed(const bNodeSocket &socket)
               SOCK_VECTOR,
               SOCK_INT,
               SOCK_BOOLEAN,
+              SOCK_ROTATION,
               SOCK_RGBA);
 }
 
@@ -447,6 +449,8 @@ static eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype
       return CD_PROP_BOOL;
     case SOCK_RGBA:
       return CD_PROP_COLOR;
+    case SOCK_ROTATION:
+      return CD_PROP_QUATERNION;
     default:
       /* Fallback. */
       return CD_AUTO_FROM_NAME;
@@ -802,12 +806,10 @@ static bool should_create_drag_link_search_menu(const bNodeTree &node_tree,
   if (nldrag.start_socket->in_out == SOCK_IN && nldrag.start_link_count > 0) {
     return false;
   }
-  /* Don't allow a drag from the "new socket" of a group input node. Handling these
-   * properly in node callbacks increases the complexity too much for now. */
-  if (ELEM(nldrag.start_node->type, NODE_GROUP_INPUT, NODE_GROUP_OUTPUT)) {
-    if (nldrag.start_socket->type == SOCK_CUSTOM) {
-      return false;
-    }
+  /* Don't allow a drag from the "new socket" (group input node or simulation nodes currently).
+   * Handling these properly in node callbacks increases the complexity too much for now. */
+  if (nldrag.start_socket->type == SOCK_CUSTOM) {
+    return false;
   }
   return true;
 }
@@ -1589,7 +1591,7 @@ void NODE_OT_links_cut(wmOperatorType *ot)
 /** \name Mute Links Operator
  * \{ */
 
-static bool all_links_muted(const bNodeSocket &socket)
+bool all_links_muted(const bNodeSocket &socket)
 {
   for (const bNodeLink *link : socket.directly_linked_links()) {
     if (!(link->flag & NODE_LINK_MUTED)) {
@@ -1645,7 +1647,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
   bke::node_tree_runtime::AllowUsingOutdatedInfo allow_outdated_info{ntree};
 
   for (bNodeLink *link : affected_links) {
-    nodeLinkSetMute(&ntree, link, !(link->flag & NODE_LINK_MUTED));
+    bke::nodeLinkSetMute(&ntree, link, !(link->flag & NODE_LINK_MUTED));
     const bool muted = link->flag & NODE_LINK_MUTED;
 
     /* Propagate mute status downstream past reroute nodes. */
@@ -1654,7 +1656,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
       links.push_multiple(link->tonode->output_socket(0).directly_linked_links());
       while (!links.is_empty()) {
         bNodeLink *link = links.pop();
-        nodeLinkSetMute(&ntree, link, muted);
+        bke::nodeLinkSetMute(&ntree, link, muted);
         if (!link->tonode->is_reroute()) {
           continue;
         }
@@ -1668,7 +1670,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
         links.push_multiple(link->fromnode->input_socket(0).directly_linked_links());
         while (!links.is_empty()) {
           bNodeLink *link = links.pop();
-          nodeLinkSetMute(&ntree, link, muted);
+          bke::nodeLinkSetMute(&ntree, link, muted);
           if (!link->fromnode->is_reroute()) {
             continue;
           }
@@ -1724,7 +1726,7 @@ static int detach_links_exec(bContext *C, wmOperator * /*op*/)
 
   for (bNode *node : ntree.all_nodes()) {
     if (node->flag & SELECT) {
-      nodeInternalRelink(&ntree, node);
+      bke::nodeInternalRelink(&ntree, node);
     }
   }
 
@@ -2066,12 +2068,14 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   }
   if (std::any_of(selected_node->input_sockets().begin(),
                   selected_node->input_sockets().end(),
-                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); })) {
+                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
+  {
     return nullptr;
   }
   if (std::any_of(selected_node->output_sockets().begin(),
                   selected_node->output_sockets().end(),
-                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); })) {
+                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
+  {
     return nullptr;
   };
   return selected_node;
@@ -2166,12 +2170,14 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
     /* Ignore main sockets when the types don't match. */
     if (best_input != nullptr && ntree.typeinfo->validate_link != nullptr &&
         !ntree.typeinfo->validate_link(static_cast<eNodeSocketDatatype>(old_link->fromsock->type),
-                                       static_cast<eNodeSocketDatatype>(best_input->type))) {
+                                       static_cast<eNodeSocketDatatype>(best_input->type)))
+    {
       best_input = nullptr;
     }
     if (best_output != nullptr && ntree.typeinfo->validate_link != nullptr &&
         !ntree.typeinfo->validate_link(static_cast<eNodeSocketDatatype>(best_output->type),
-                                       static_cast<eNodeSocketDatatype>(old_link->tosock->type))) {
+                                       static_cast<eNodeSocketDatatype>(old_link->tosock->type)))
+    {
       best_output = nullptr;
     }
   }
@@ -2219,8 +2225,6 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 static int get_main_socket_priority(const bNodeSocket *socket)
 {
   switch ((eNodeSocketDatatype)socket->type) {
-    case __SOCK_MESH:
-      return -1;
     case SOCK_CUSTOM:
       return 0;
     case SOCK_BOOLEAN:
@@ -2237,6 +2241,7 @@ static int get_main_socket_priority(const bNodeSocket *socket)
     case SOCK_SHADER:
     case SOCK_OBJECT:
     case SOCK_IMAGE:
+    case SOCK_ROTATION:
     case SOCK_GEOMETRY:
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
@@ -2252,7 +2257,7 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
   ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
 
   /* Try to get the main socket based on the socket declaration. */
-  nodeDeclarationEnsure(&ntree, &node);
+  bke::nodeDeclarationEnsure(&ntree, &node);
   const nodes::NodeDeclaration *node_decl = node.declaration();
   if (node_decl != nullptr) {
     Span<nodes::SocketDeclarationPtr> socket_decls = (in_out == SOCK_IN) ? node_decl->inputs :
@@ -2369,7 +2374,7 @@ static void node_link_insert_offset_frame_chains(bNodeTree *ntree,
 {
   for (bNode *node : ntree->all_nodes()) {
     if (nodeIsParentAndChild(parent, node)) {
-      nodeChainIter(ntree, node, node_link_insert_offset_frame_chain_cb, data, reversed);
+      bke::nodeChainIter(ntree, node, node_link_insert_offset_frame_chain_cb, data, reversed);
     }
   }
 }
@@ -2400,7 +2405,7 @@ static bool node_link_insert_offset_chain_cb(bNode *fromnode,
     }
   }
   else if (ofs_node->parent) {
-    bNode *node = nodeFindRootParent(ofs_node);
+    bNode *node = bke::nodeFindRootParent(ofs_node);
     node_offset_apply(*node, data->offset_x);
   }
   else {
@@ -2428,7 +2433,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
   float margin = width;
 
   /* NODE_TEST will be used later, so disable for all nodes */
-  ntreeNodeFlagSet(ntree, NODE_TEST, false);
+  bke::ntreeNodeFlagSet(ntree, NODE_TEST, false);
 
   /* `insert.totr` isn't updated yet,
    * so `totr_insert` is used to get the correct world-space coords. */
@@ -2443,7 +2448,8 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
    * without actually making it a part of the frame (because mouse isn't intersecting it)
    * - logic here is similar to node_find_frame_to_attach. */
   if (!insert.parent ||
-      (prev->parent && (prev->parent == next->parent) && (prev->parent != insert.parent))) {
+      (prev->parent && (prev->parent == next->parent) && (prev->parent != insert.parent)))
+  {
     bNode *frame;
     rctf totr_frame;
 
@@ -2458,9 +2464,11 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
       node_to_updated_rect(*frame, totr_frame);
 
       if (BLI_rctf_isect_x(&totr_frame, totr_insert.xmin) &&
-          BLI_rctf_isect_x(&totr_frame, totr_insert.xmax)) {
+          BLI_rctf_isect_x(&totr_frame, totr_insert.xmax))
+      {
         if (BLI_rctf_isect_y(&totr_frame, totr_insert.ymin) ||
-            BLI_rctf_isect_y(&totr_frame, totr_insert.ymax)) {
+            BLI_rctf_isect_y(&totr_frame, totr_insert.ymax))
+        {
           /* frame isn't insert.parent actually, but this is needed to make offsetting
            * nodes work correctly for above checked cases (it is restored later) */
           insert.parent = frame;
@@ -2495,11 +2503,12 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
     if (needs_alignment) {
       bNode *offs_node = right_alignment ? next : prev;
       if (!offs_node->parent || offs_node->parent == insert.parent ||
-          nodeIsParentAndChild(offs_node->parent, &insert)) {
+          nodeIsParentAndChild(offs_node->parent, &insert))
+      {
         node_offset_apply(*offs_node, addval);
       }
       else if (!insert.parent && offs_node->parent) {
-        node_offset_apply(*nodeFindRootParent(offs_node), addval);
+        node_offset_apply(*bke::nodeFindRootParent(offs_node), addval);
       }
       margin = addval;
     }
@@ -2515,13 +2524,13 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
     iofsd->offset_x = margin;
 
     /* flag all parents of insert as offset to prevent them from being offset */
-    nodeParentsIter(&insert, node_parents_offset_flag_enable_cb, nullptr);
+    bke::nodeParentsIter(&insert, node_parents_offset_flag_enable_cb, nullptr);
     /* iterate over entire chain and apply offsets */
-    nodeChainIter(ntree,
-                  right_alignment ? next : prev,
-                  node_link_insert_offset_chain_cb,
-                  iofsd,
-                  !right_alignment);
+    bke::nodeChainIter(ntree,
+                       right_alignment ? next : prev,
+                       node_link_insert_offset_chain_cb,
+                       iofsd,
+                       !right_alignment);
   }
 
   insert.parent = init_parent;
@@ -2536,8 +2545,8 @@ static int node_insert_offset_modal(bContext *C, wmOperator *op, const wmEvent *
   NodeInsertOfsData *iofsd = static_cast<NodeInsertOfsData *>(op->customdata);
   bool redraw = false;
 
-  if (!snode || event->type != TIMER || iofsd == nullptr ||
-      iofsd->anim_timer != event->customdata) {
+  if (!snode || event->type != TIMER || iofsd == nullptr || iofsd->anim_timer != event->customdata)
+  {
     return OPERATOR_PASS_THROUGH;
   }
 
@@ -2569,7 +2578,7 @@ static int node_insert_offset_modal(bContext *C, wmOperator *op, const wmEvent *
 
   /* end timer + free insert offset data */
   if (duration > NODE_INSOFS_ANIM_DURATION) {
-    WM_event_remove_timer(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
+    WM_event_timer_remove(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
 
     for (bNode *node : snode->edittree->all_nodes()) {
       node->runtime->anim_init_locx = node->runtime->anim_ofsx = 0.0f;
@@ -2599,7 +2608,7 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
   BLI_assert((snode->flag & SNODE_SKIP_INSOFFSET) == 0);
 
   iofsd->ntree = snode->edittree;
-  iofsd->anim_timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
+  iofsd->anim_timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
 
   node_link_insert_offset_ntree(
       iofsd, CTX_wm_region(C), event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,7 +26,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.h"
 
 #include "PIL_time.h"
@@ -89,17 +91,15 @@ static void pbvh_vertex_color_get(const PBVH &pbvh, PBVHVertRef vertex, float r_
   int index = vertex.i;
 
   if (pbvh.color_domain == ATTR_DOMAIN_CORNER) {
-    const MeshElemMap &melem = pbvh.pmap[index];
-
     int count = 0;
     zero_v4(r_color);
-    for (const int i_poly : Span(melem.indices, melem.count)) {
-      const IndexRange poly = pbvh.polys[i_poly];
-      Span<T> colors{static_cast<const T *>(pbvh.color_layer->data) + poly.start(), poly.size()};
-      Span<int> poly_verts{pbvh.corner_verts + poly.start(), poly.size()};
+    for (const int i_face : pbvh.pmap[index]) {
+      const IndexRange face = pbvh.faces[i_face];
+      Span<T> colors{static_cast<const T *>(pbvh.color_layer->data) + face.start(), face.size()};
+      Span<int> face_verts{pbvh.corner_verts + face.start(), face.size()};
 
-      for (const int i : IndexRange(poly.size())) {
-        if (poly_verts[i] == index) {
+      for (const int i : IndexRange(face.size())) {
+        if (face_verts[i] == index) {
           float temp[4];
           to_float(colors[i], temp);
 
@@ -124,15 +124,13 @@ static void pbvh_vertex_color_set(PBVH &pbvh, PBVHVertRef vertex, const float co
   int index = vertex.i;
 
   if (pbvh.color_domain == ATTR_DOMAIN_CORNER) {
-    const MeshElemMap &melem = pbvh.pmap[index];
+    for (const int i_face : pbvh.pmap[index]) {
+      const IndexRange face = pbvh.faces[i_face];
+      MutableSpan<T> colors{static_cast<T *>(pbvh.color_layer->data) + face.start(), face.size()};
+      Span<int> face_verts{pbvh.corner_verts + face.start(), face.size()};
 
-    for (const int i_poly : Span(melem.indices, melem.count)) {
-      const IndexRange poly = pbvh.polys[i_poly];
-      MutableSpan<T> colors{static_cast<T *>(pbvh.color_layer->data) + poly.start(), poly.size()};
-      Span<int> poly_verts{pbvh.corner_verts + poly.start(), poly.size()};
-
-      for (const int i : IndexRange(poly.size())) {
-        if (poly_verts[i] == index) {
+      for (const int i : IndexRange(face.size())) {
+        if (face_verts[i] == index) {
           from_float(color, colors[i]);
         }
       }
@@ -145,7 +143,6 @@ static void pbvh_vertex_color_set(PBVH &pbvh, PBVHVertRef vertex, const float co
 
 }  // namespace blender::bke
 
-extern "C" {
 void BKE_pbvh_vertex_color_get(const PBVH *pbvh, PBVHVertRef vertex, float r_color[4])
 {
   blender::bke::to_static_color_type(eCustomDataType(pbvh->color_layer->type), [&](auto dummy) {
@@ -208,5 +205,4 @@ void BKE_pbvh_store_colors_vertex(PBVH *pbvh,
       }
     });
   }
-}
 }

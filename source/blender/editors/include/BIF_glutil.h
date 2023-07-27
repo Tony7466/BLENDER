@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editorui
@@ -51,7 +52,7 @@ IMMDrawPixelsTexState immDrawPixelsTexSetup(int builtin);
  *
  * If color is NULL then use white by default
  *
- * Unless <em>state->do_shader_unbind<em> is explicitly set to `false`, the shader is unbound when
+ * Unless `state->do_shader_unbind` is explicitly set to `false`, the shader is unbound when
  * finished.
  */
 void immDrawPixelsTexScaledFullSize(const IMMDrawPixelsTexState *state,
@@ -89,7 +90,7 @@ void immDrawPixelsTexTiled(IMMDrawPixelsTexState *state,
                            int img_h,
                            eGPUTextureFormat gpu_format,
                            bool use_filter,
-                           void *rect,
+                           const void *rect,
                            float xzoom,
                            float yzoom,
                            const float color[4]);
@@ -100,7 +101,7 @@ void immDrawPixelsTexTiled_clipping(IMMDrawPixelsTexState *state,
                                     int img_h,
                                     eGPUTextureFormat gpu_format,
                                     bool use_filter,
-                                    void *rect,
+                                    const void *rect,
                                     float clip_min_x,
                                     float clip_min_y,
                                     float clip_max_x,
@@ -115,7 +116,7 @@ void immDrawPixelsTexTiled_scaling(IMMDrawPixelsTexState *state,
                                    int img_h,
                                    eGPUTextureFormat gpu_format,
                                    bool use_filter,
-                                   void *rect,
+                                   const void *rect,
                                    float scaleX,
                                    float scaleY,
                                    float xzoom,
@@ -142,7 +143,7 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
                                             int img_h,
                                             eGPUTextureFormat gpu_format,
                                             bool use_filter,
-                                            void *rect,
+                                            const void *rect,
                                             float scaleX,
                                             float scaleY,
                                             float clip_min_x,
@@ -165,8 +166,8 @@ void ED_draw_imbuf(struct ImBuf *ibuf,
                    float x,
                    float y,
                    bool use_filter,
-                   struct ColorManagedViewSettings *view_settings,
-                   struct ColorManagedDisplaySettings *display_settings,
+                   const struct ColorManagedViewSettings *view_settings,
+                   const struct ColorManagedDisplaySettings *display_settings,
                    float zoom_x,
                    float zoom_y);
 /**
@@ -176,8 +177,8 @@ void ED_draw_imbuf_clipping(struct ImBuf *ibuf,
                             float x,
                             float y,
                             bool use_filter,
-                            struct ColorManagedViewSettings *view_settings,
-                            struct ColorManagedDisplaySettings *display_settings,
+                            const struct ColorManagedViewSettings *view_settings,
+                            const struct ColorManagedDisplaySettings *display_settings,
                             float clip_min_x,
                             float clip_min_y,
                             float clip_max_x,
@@ -204,7 +205,7 @@ void ED_draw_imbuf_ctx_clipping(const struct bContext *C,
                                 float zoom_x,
                                 float zoom_y);
 
-int ED_draw_imbuf_method(struct ImBuf *ibuf);
+int ED_draw_imbuf_method(const struct ImBuf *ibuf);
 
 /**
  * Don't move to `GPU_immediate_util.h` because this uses user-prefs and isn't very low level.

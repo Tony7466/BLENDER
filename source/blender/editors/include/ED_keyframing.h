@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -122,6 +123,17 @@ int insert_vert_fcurve(struct FCurve *fcu,
                        float y,
                        eBezTriple_KeyframeType keyframe_type,
                        eInsertKeyFlags flag);
+
+/**
+ * Add the given number of keyframes to the FCurve. Their coordinates are
+ * uninitialized, so the curve should not be used without further attention.
+ *
+ * The newly created keys are selected, existing keys are not touched.
+ *
+ * This can be used to allocate all the keys at once, and then update them
+ * afterwards.
+ */
+void ED_keyframes_add(struct FCurve *fcu, int num_keys_to_add);
 
 /* -------- */
 
@@ -577,8 +589,7 @@ void ANIM_copy_as_driver(struct ID *target_id, const char *target_path, const ch
 
 /* Auto-Keying macros for use by various tools. */
 
-/** Check if auto-key-framing is enabled (per scene takes precedence).
- */
+/** Check if auto-key-framing is enabled (per scene takes precedence). */
 #define IS_AUTOKEY_ON(scene) \
   ((scene) ? ((scene)->toolsettings->autokey_mode & AUTOKEY_ON) : (U.autokey_mode & AUTOKEY_ON))
 /** Check the mode for auto-keyframing (per scene takes precedence). */

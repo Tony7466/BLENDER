@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/attribute.h"
 #include "scene/hair.h"
@@ -278,9 +279,11 @@ bool Attribute::same_storage(TypeDesc a, TypeDesc b)
     return true;
 
   if (a == TypeDesc::TypeColor || a == TypeDesc::TypePoint || a == TypeDesc::TypeVector ||
-      a == TypeDesc::TypeNormal) {
+      a == TypeDesc::TypeNormal)
+  {
     if (b == TypeDesc::TypeColor || b == TypeDesc::TypePoint || b == TypeDesc::TypeVector ||
-        b == TypeDesc::TypeNormal) {
+        b == TypeDesc::TypeNormal)
+    {
       return true;
     }
   }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -547,7 +548,7 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
   }
 
   if (handle->scrolltimer) {
-    WM_event_remove_timer(wm, win, handle->scrolltimer);
+    WM_event_timer_remove(wm, win, handle->scrolltimer);
   }
 }
 
@@ -742,10 +743,10 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   /* checks which buttons are visible, sets flags to prevent draw (do after region init) */
   ui_popup_block_scrolltest(block);
 
-  /* adds subwindow */
+  /* Adds sub-window. */
   ED_region_floating_init(region);
 
-  /* get winmat now that we actually have the subwindow */
+  /* Get `winmat` now that we actually have the sub-window. */
   wmGetProjectionMatrix(block->winmat, &region->winrct);
 
   /* notify change and redraw */

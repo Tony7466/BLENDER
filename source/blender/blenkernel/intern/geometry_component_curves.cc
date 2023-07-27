@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_task.hh"
 
@@ -16,13 +18,13 @@
 
 #include "attribute_access_intern.hh"
 
-using blender::GVArray;
+namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
  * \{ */
 
-CurveComponent::CurveComponent() : GeometryComponent(GEO_COMPONENT_TYPE_CURVE) {}
+CurveComponent::CurveComponent() : GeometryComponent(Type::Curve) {}
 
 CurveComponent::~CurveComponent()
 {
@@ -33,7 +35,7 @@ GeometryComponent *CurveComponent::copy() const
 {
   CurveComponent *new_component = new CurveComponent();
   if (curves_ != nullptr) {
-    new_component->curves_ = BKE_curves_copy_for_eval(curves_, false);
+    new_component->curves_ = BKE_curves_copy_for_eval(curves_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return new_component;
@@ -41,7 +43,7 @@ GeometryComponent *CurveComponent::copy() const
 
 void CurveComponent::clear()
 {
-  BLI_assert(this->is_mutable());
+  BLI_assert(this->is_mutable() || this->is_expired());
   if (curves_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
       BKE_id_free(nullptr, curves_);
@@ -87,7 +89,7 @@ Curves *CurveComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    curves_ = BKE_curves_copy_for_eval(curves_, false);
+    curves_ = BKE_curves_copy_for_eval(curves_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return curves_;
@@ -107,7 +109,7 @@ void CurveComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    curves_ = BKE_curves_copy_for_eval(curves_, false);
+    curves_ = BKE_curves_copy_for_eval(curves_);
     ownership_ = GeometryOwnershipType::Owned;
   }
 }
@@ -132,8 +134,6 @@ const Curve *CurveComponent::get_curve_for_render() const
 }
 
 /** \} */
-
-namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
 /** \name Curve Normals Access
@@ -266,7 +266,7 @@ CurveLengthFieldInput::CurveLengthFieldInput()
 
 GVArray CurveLengthFieldInput::get_varray_for_context(const CurvesGeometry &curves,
                                                       const eAttrDomain domain,
-                                                      const IndexMask /*mask*/) const
+                                                      const IndexMask & /*mask*/) const
 {
   return construct_curve_length_gvarray(curves, domain);
 }
@@ -290,46 +290,42 @@ std::optional<eAttrDomain> CurveLengthFieldInput::preferred_domain(
 
 /** \} */
 
-}  // namespace blender::bke
-
 /* -------------------------------------------------------------------- */
 /** \name Attribute Access Helper Functions
  * \{ */
 
 static void tag_component_topology_changed(void *owner)
 {
-  blender::bke::CurvesGeometry &curves = *static_cast<blender::bke::CurvesGeometry *>(owner);
+  CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
   curves.tag_topology_changed();
 }
 
 static void tag_component_curve_types_changed(void *owner)
 {
-  blender::bke::CurvesGeometry &curves = *static_cast<blender::bke::CurvesGeometry *>(owner);
+  CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
   curves.update_curve_types();
   curves.tag_topology_changed();
 }
 
 static void tag_component_positions_changed(void *owner)
 {
-  blender::bke::CurvesGeometry &curves = *static_cast<blender::bke::CurvesGeometry *>(owner);
+  CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
   curves.tag_positions_changed();
 }
 
 static void tag_component_radii_changed(void *owner)
 {
-  blender::bke::CurvesGeometry &curves = *static_cast<blender::bke::CurvesGeometry *>(owner);
+  CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
   curves.tag_radii_changed();
 }
 
 static void tag_component_normals_changed(void *owner)
 {
-  blender::bke::CurvesGeometry &curves = *static_cast<blender::bke::CurvesGeometry *>(owner);
+  CurvesGeometry &curves = *static_cast<CurvesGeometry *>(owner);
   curves.tag_normals_changed();
 }
 
 /** \} */
-
-namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
 /** \name Attribute Provider Declaration
@@ -372,7 +368,7 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                  ATTR_DOMAIN_POINT,
                                                  CD_PROP_FLOAT3,
                                                  CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::NonCreatable,
+                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
@@ -588,7 +584,7 @@ static AttributeAccessorFunctions get_curves_accessor_functions()
     return ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE);
   };
   fn.adapt_domain = [](const void *owner,
-                       const blender::GVArray &varray,
+                       const GVArray &varray,
                        const eAttrDomain from_domain,
                        const eAttrDomain to_domain) -> GVArray {
     if (owner == nullptr) {
@@ -616,17 +612,17 @@ MutableAttributeAccessor CurvesGeometry::attributes_for_write()
   return MutableAttributeAccessor(this, get_curves_accessor_functions_ref());
 }
 
-}  // namespace blender::bke
-
-std::optional<blender::bke::AttributeAccessor> CurveComponent::attributes() const
+std::optional<AttributeAccessor> CurveComponent::attributes() const
 {
-  return blender::bke::AttributeAccessor(curves_ ? &curves_->geometry : nullptr,
-                                         blender::bke::get_curves_accessor_functions_ref());
+  return AttributeAccessor(curves_ ? &curves_->geometry : nullptr,
+                           get_curves_accessor_functions_ref());
 }
 
-std::optional<blender::bke::MutableAttributeAccessor> CurveComponent::attributes_for_write()
+std::optional<MutableAttributeAccessor> CurveComponent::attributes_for_write()
 {
   Curves *curves = this->get_for_write();
-  return blender::bke::MutableAttributeAccessor(curves ? &curves->geometry : nullptr,
-                                                blender::bke::get_curves_accessor_functions_ref());
+  return MutableAttributeAccessor(curves ? &curves->geometry : nullptr,
+                                  get_curves_accessor_functions_ref());
 }
+
+}  // namespace blender::bke

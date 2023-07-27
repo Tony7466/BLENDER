@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bgpencil
@@ -177,7 +178,7 @@ void GpencilIO::create_object_list()
 
 void GpencilIO::filepath_set(const char *filepath)
 {
-  BLI_strncpy(filepath_, filepath, FILE_MAX);
+  STRNCPY(filepath_, filepath);
   BLI_path_abs(filepath_, BKE_main_blendfile_path(bmain_));
 }
 

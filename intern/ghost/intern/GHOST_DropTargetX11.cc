@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -210,7 +211,8 @@ bool GHOST_DropTargetX11::GHOST_HandleClientMessage(XEvent *event)
                     &dropBufferSize,
                     &dropType,
                     &dropX,
-                    &dropY)) {
+                    &dropY))
+  {
     void *data = getGhostData(dropType, dropBuffer, dropBufferSize);
 
     if (data) {

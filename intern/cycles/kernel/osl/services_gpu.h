@@ -1,10 +1,9 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Adapted from Open Shading Language
- * Copyright (c) 2009-2010 Sony Pictures Imageworks Inc., et al.
- * All Rights Reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * Adapted code from Open Shading Language. */
 
 #include "kernel/tables.h"
 #include "kernel/util/differential.h"
@@ -810,16 +809,16 @@ ccl_device_inline bool set_attribute_float(ccl_private float fval[3],
   const int type_arraylen = type >> 32;
 
   if (type_basetype == 11 /* TypeDesc::FLOAT */) {
-    if ((type_aggregate == 2 /* TypeDesc::VEC2 */) ||
-        (type_aggregate == 1 && type_arraylen == 2)) {
+    if ((type_aggregate == 2 /* TypeDesc::VEC2 */) || (type_aggregate == 1 && type_arraylen == 2))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 2 + 0] = fval[i];
         static_cast<ccl_private float *>(val)[i * 2 + 1] = fval[i];
       }
       return true;
     }
-    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) ||
-        (type_aggregate == 1 && type_arraylen == 3)) {
+    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) || (type_aggregate == 1 && type_arraylen == 3))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 3 + 0] = fval[i];
         static_cast<ccl_private float *>(val)[i * 3 + 1] = fval[i];
@@ -827,8 +826,8 @@ ccl_device_inline bool set_attribute_float(ccl_private float fval[3],
       }
       return true;
     }
-    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) ||
-        (type_aggregate == 1 && type_arraylen == 4)) {
+    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) || (type_aggregate == 1 && type_arraylen == 4))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 4 + 0] = fval[i];
         static_cast<ccl_private float *>(val)[i * 4 + 1] = fval[i];
@@ -870,16 +869,16 @@ ccl_device_inline bool set_attribute_float2(ccl_private float2 fval[3],
   const int type_arraylen = type >> 32;
 
   if (type_basetype == 11 /* TypeDesc::FLOAT */) {
-    if ((type_aggregate == 2 /* TypeDesc::VEC2 */) ||
-        (type_aggregate == 1 && type_arraylen == 2)) {
+    if ((type_aggregate == 2 /* TypeDesc::VEC2 */) || (type_aggregate == 1 && type_arraylen == 2))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 2 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 2 + 1] = fval[i].y;
       }
       return true;
     }
-    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) ||
-        (type_aggregate == 1 && type_arraylen == 3)) {
+    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) || (type_aggregate == 1 && type_arraylen == 3))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 3 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 3 + 1] = fval[i].y;
@@ -887,8 +886,8 @@ ccl_device_inline bool set_attribute_float2(ccl_private float2 fval[3],
       }
       return true;
     }
-    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) ||
-        (type_aggregate == 1 && type_arraylen == 4)) {
+    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) || (type_aggregate == 1 && type_arraylen == 4))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 4 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 4 + 1] = fval[i].y;
@@ -917,8 +916,8 @@ ccl_device_inline bool set_attribute_float3(ccl_private float3 fval[3],
   const int type_arraylen = type >> 32;
 
   if (type_basetype == 11 /* TypeDesc::FLOAT */) {
-    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) ||
-        (type_aggregate == 1 && type_arraylen == 3)) {
+    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) || (type_aggregate == 1 && type_arraylen == 3))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 3 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 3 + 1] = fval[i].y;
@@ -926,8 +925,8 @@ ccl_device_inline bool set_attribute_float3(ccl_private float3 fval[3],
       }
       return true;
     }
-    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) ||
-        (type_aggregate == 1 && type_arraylen == 4)) {
+    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) || (type_aggregate == 1 && type_arraylen == 4))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 4 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 4 + 1] = fval[i].y;
@@ -969,8 +968,8 @@ ccl_device_inline bool set_attribute_float4(ccl_private float4 fval[3],
   const int type_arraylen = type >> 32;
 
   if (type_basetype == 11 /* TypeDesc::FLOAT */) {
-    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) ||
-        (type_aggregate == 1 && type_arraylen == 3)) {
+    if ((type_aggregate == 3 /* TypeDesc::VEC3 */) || (type_aggregate == 1 && type_arraylen == 3))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 3 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 3 + 1] = fval[i].y;
@@ -978,8 +977,8 @@ ccl_device_inline bool set_attribute_float4(ccl_private float4 fval[3],
       }
       return true;
     }
-    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) ||
-        (type_aggregate == 1 && type_arraylen == 4)) {
+    if ((type_aggregate == 4 /* TypeDesc::VEC4 */) || (type_aggregate == 1 && type_arraylen == 4))
+    {
       for (int i = 0; i < (derivatives ? 3 : 1); ++i) {
         static_cast<ccl_private float *>(val)[i * 4 + 0] = fval[i].x;
         static_cast<ccl_private float *>(val)[i * 4 + 1] = fval[i].y;

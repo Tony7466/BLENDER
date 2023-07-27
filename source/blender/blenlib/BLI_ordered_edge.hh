@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,6 +9,10 @@
 
 namespace blender {
 
+/**
+ * A version of `int2` used as a key for hash-maps, agnostic of the arbitrary order of the two
+ * vertices in a mesh edge.
+ */
 struct OrderedEdge {
   int v_low;
   int v_high;
@@ -28,11 +34,6 @@ struct OrderedEdge {
   uint64_t hash() const
   {
     return (this->v_low << 8) ^ this->v_high;
-  }
-
-  uint64_t hash2() const
-  {
-    return this->v_low;
   }
 
   friend bool operator==(const OrderedEdge &e1, const OrderedEdge &e2)

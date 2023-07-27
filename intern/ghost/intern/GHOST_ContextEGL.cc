@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -342,7 +343,8 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
   }
 
   if (!EGL_CHK(::eglInitialize(m_display, &egl_major, &egl_minor)) ||
-      (egl_major == 0 && egl_minor == 0)) {
+      (egl_major == 0 && egl_minor == 0))
+  {
     /* We failed to create a regular render window, retry and see if we can create a headless
      * render context. */
     ::eglTerminate(m_display);
@@ -351,7 +353,8 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
     assert(egl_extension_st != nullptr);
     assert(strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") != nullptr);
     if (egl_extension_st == nullptr ||
-        strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") == nullptr) {
+        strstr(egl_extension_st, "EGL_MESA_platform_surfaceless") == nullptr)
+    {
       goto error;
     }
 
@@ -407,7 +410,8 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
           (m_contextMajorVersion == 2 && epoxy_egl_version(m_display) >= 13) ||
           (m_contextMajorVersion == 3 &&
            epoxy_has_egl_extension(m_display, "KHR_create_context")) ||
-          (m_contextMajorVersion == 3 && epoxy_egl_version(m_display) >= 15))) {
+          (m_contextMajorVersion == 3 && epoxy_egl_version(m_display) >= 15)))
+    {
       fprintf(stderr,
               "Warning! May not be able to create a version %d.%d ES context with version %d.%d "
               "of EGL\n",

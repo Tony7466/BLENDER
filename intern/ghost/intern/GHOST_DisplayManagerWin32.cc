@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -110,7 +111,8 @@ GHOST_TSuccess GHOST_DisplayManagerWin32::setCurrentDisplaySetting(
   int i = 0;
   while (::EnumDisplaySettings(display_device.DeviceName, i++, &dm)) {
     if ((dm.dmBitsPerPel == match.bpp) && (dm.dmPelsWidth == match.xPixels) &&
-        (dm.dmPelsHeight == match.yPixels) && (dm.dmDisplayFrequency == match.frequency)) {
+        (dm.dmPelsHeight == match.yPixels) && (dm.dmDisplayFrequency == match.frequency))
+    {
       break;
     }
   }

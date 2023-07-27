@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -80,7 +81,7 @@ void CLIP_OT_create_plane_track(wmOperatorType *ot)
 
 /********************** Slide plane marker corner operator *********************/
 
-typedef struct SlidePlaneMarkerData {
+struct SlidePlaneMarkerData {
   int launch_event;
   MovieTrackingPlaneTrack *plane_track;
   MovieTrackingPlaneMarker *plane_marker;
@@ -91,7 +92,7 @@ typedef struct SlidePlaneMarkerData {
   float previous_corner[2];
   float old_corner[2];
   bool accurate;
-} SlidePlaneMarkerData;
+};
 
 static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
                                                                   const wmEvent *event,
@@ -110,7 +111,8 @@ static MovieTrackingPlaneTrack *tracking_plane_marker_check_slide(bContext *C,
   const PlaneTrackPick track_pick = ed_tracking_pick_plane_track(&options, C, co);
 
   if (ed_tracking_plane_track_pick_empty(&track_pick) ||
-      !ed_tracking_plane_track_pick_can_slide(&track_pick)) {
+      !ed_tracking_plane_track_pick_can_slide(&track_pick))
+  {
     return nullptr;
   }
 

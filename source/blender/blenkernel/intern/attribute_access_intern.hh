@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_map.hh"
 #include "BLI_span.hh"
@@ -66,7 +68,7 @@ class BuiltinAttributeProvider {
   {
   }
 
-  virtual GVArray try_get_for_read(const void *owner) const = 0;
+  virtual GAttributeReader try_get_for_read(const void *owner) const = 0;
   virtual GAttributeWriter try_get_for_write(void *owner) const = 0;
   virtual bool try_delete(void *owner) const = 0;
   virtual bool try_create(void *onwer, const AttributeInit &initializer) const = 0;
@@ -196,7 +198,7 @@ class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
   {
   }
 
-  GVArray try_get_for_read(const void *owner) const final;
+  GAttributeReader try_get_for_read(const void *owner) const final;
   GAttributeWriter try_get_for_write(void *owner) const final;
   bool try_delete(void *owner) const final;
   bool try_create(void *owner, const AttributeInit &initializer) const final;
@@ -278,8 +280,9 @@ inline GAttributeReader lookup(const void *owner, const AttributeIDRef &attribut
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
-      return {provider->try_get_for_read(owner), provider->domain()};
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
+      return provider->try_get_for_read(owner);
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
@@ -296,8 +299,8 @@ inline bool for_all(const void *owner,
                     FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn)
 {
   Set<AttributeIDRef> handled_attribute_ids;
-  for (const BuiltinAttributeProvider *provider :
-       providers.builtin_attribute_providers().values()) {
+  for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
+  {
     if (provider->exists(owner)) {
       AttributeMetaData meta_data{provider->domain(), provider->data_type()};
       if (!fn(provider->name(), meta_data)) {
@@ -375,7 +378,8 @@ inline GAttributeWriter lookup_for_write(void *owner, const AttributeIDRef &attr
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       return provider->try_get_for_write(owner);
     }
   }
@@ -394,7 +398,8 @@ inline bool remove(void *owner, const AttributeIDRef &attribute_id)
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       return provider->try_delete(owner);
     }
   }
@@ -419,7 +424,8 @@ inline bool add(void *owner,
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       if (provider->domain() != domain) {
         return false;
       }

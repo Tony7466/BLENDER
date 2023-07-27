@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spimage
@@ -14,6 +15,10 @@ struct SpaceImage;
 struct bContext;
 struct bNodeTree;
 struct wmOperatorType;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* space_image.c */
 
@@ -95,3 +100,7 @@ void IMAGE_OT_tile_fill(struct wmOperatorType *ot);
  */
 struct ImageUser *ntree_get_active_iuser(struct bNodeTree *ntree);
 void image_buttons_register(struct ARegionType *art);
+
+#ifdef __cplusplus
+}
+#endif

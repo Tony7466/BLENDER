@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -27,18 +29,20 @@
 
 #include "node_geometry_util.hh"
 
+#include <fmt/format.h>
+
 namespace blender::nodes::node_geo_deform_curves_on_surface_cc {
 
-using attribute_math::mix3;
 using bke::CurvesGeometry;
+using bke::attribute_math::mix3;
 using geometry::ReverseUVSampler;
 
 NODE_STORAGE_FUNCS(NodeGeometryCurveTrim)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curves")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_output<decl::Geometry>(N_("Curves")).propagate_all();
+  b.add_input<decl::Geometry>("Curves").supported_type(GeometryComponent::Type::Curve);
+  b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
 static void deform_curves(const CurvesGeometry &curves,
@@ -272,18 +276,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (!mesh_attributes_eval.contains(uv_map_name)) {
     pass_through_input();
-    char *message = BLI_sprintfN(TIP_("Evaluated surface missing UV map: \"%s\""),
-                                 uv_map_name.c_str());
+    const std::string message = fmt::format(TIP_("Evaluated surface missing UV map: \"{}\""),
+                                            std::string_view(uv_map_name));
     params.error_message_add(NodeWarningType::Error, message);
-    MEM_freeN(message);
     return;
   }
   if (!mesh_attributes_orig.contains(uv_map_name)) {
     pass_through_input();
-    char *message = BLI_sprintfN(TIP_("Original surface missing UV map: \"%s\""),
-                                 uv_map_name.c_str());
+    const std::string message = fmt::format(TIP_("Original surface missing UV map: \"{}\""),
+                                            std::string_view(uv_map_name));
     params.error_message_add(NodeWarningType::Error, message);
-    MEM_freeN(message);
     return;
   }
   if (!mesh_attributes_eval.contains(rest_position_name)) {
@@ -298,13 +300,13 @@ static void node_geo_exec(GeoNodeExecParams params)
                              TIP_("Curves are not attached to any UV map"));
     return;
   }
-  const VArraySpan<float2> uv_map_orig = mesh_attributes_orig.lookup<float2>(uv_map_name,
-                                                                             ATTR_DOMAIN_CORNER);
-  const VArraySpan<float2> uv_map_eval = mesh_attributes_eval.lookup<float2>(uv_map_name,
-                                                                             ATTR_DOMAIN_CORNER);
-  const VArraySpan<float3> rest_positions = mesh_attributes_eval.lookup<float3>(rest_position_name,
-                                                                                ATTR_DOMAIN_POINT);
-  const VArraySpan<float2> surface_uv_coords = curves.attributes().lookup_or_default(
+  const VArraySpan uv_map_orig = *mesh_attributes_orig.lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
+  const VArraySpan uv_map_eval = *mesh_attributes_eval.lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
+  const VArraySpan rest_positions = *mesh_attributes_eval.lookup<float3>(rest_position_name,
+                                                                         ATTR_DOMAIN_POINT);
+  const VArraySpan surface_uv_coords = *curves.attributes().lookup_or_default<float2>(
       "surface_uv_coordinate", ATTR_DOMAIN_CURVE, float2(0));
 
   const Span<MLoopTri> looptris_orig = surface_mesh_orig->looptris();
@@ -374,7 +376,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                   invalid_uv_count);
     /* Then also deform edit curve information for use in sculpt mode. */
     const CurvesGeometry &curves_orig = edit_hints->curves_id_orig.geometry.wrap();
-    const VArraySpan<float2> surface_uv_coords_orig = curves_orig.attributes().lookup_or_default(
+    const VArraySpan<float2> surface_uv_coords_orig = *curves_orig.attributes().lookup_or_default(
         "surface_uv_coordinate", ATTR_DOMAIN_CURVE, float2(0));
     if (!surface_uv_coords_orig.is_empty()) {
       deform_curves(curves_orig,
@@ -396,10 +398,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   curves.tag_positions_changed();
 
   if (invalid_uv_count) {
-    char *message = BLI_sprintfN(TIP_("Invalid surface UVs on %d curves"),
-                                 invalid_uv_count.load());
+    const std::string message = fmt::format(TIP_("Invalid surface UVs on {} curves"),
+                                            invalid_uv_count.load());
     params.error_message_add(NodeWarningType::Warning, message);
-    MEM_freeN(message);
   }
 
   params.set_output("Curves", curves_geometry);
@@ -416,6 +417,6 @@ void register_node_type_geo_deform_curves_on_surface()
       &ntype, GEO_NODE_DEFORM_CURVES_ON_SURFACE, "Deform Curves on Surface", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.declare = file_ns::node_declare;
-  node_type_size(&ntype, 170, 120, 700);
+  blender::bke::node_type_size(&ntype, 170, 120, 700);
   nodeRegisterType(&ntype);
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -10,8 +11,6 @@
 
 #include "GHOST_IContext.hh"
 #include "GHOST_Types.h"
-
-#include <epoxy/gl.h>
 
 #include <cstdlib>  // for NULL
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -9,6 +11,10 @@
 #include "CLG_log.h"
 
 #include "wm_xr.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct wmXrActionSet;
 
@@ -234,3 +240,7 @@ void wm_xr_pose_scale_to_imat(const GHOST_XrPose *pose, float scale, float r_ima
  */
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
 void wm_xr_draw_controllers(const struct bContext *C, struct ARegion *region, void *customdata);
+
+#ifdef __cplusplus
+}
+#endif

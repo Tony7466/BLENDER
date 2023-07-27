@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
  */
 
-#include <errno.h>
+#include <cerrno>
+#include <cstddef>
 #include <fcntl.h>
-#include <stddef.h>
 #include <sys/types.h>
 
 #ifndef WIN32
@@ -243,7 +244,7 @@ ImBuf *ED_space_clip_get_buffer(const SpaceClip *sc)
 
     ibuf = BKE_movieclip_get_postprocessed_ibuf(sc->clip, &sc->user, sc->postproc_flag);
 
-    if (ibuf && (ibuf->rect || ibuf->rect_float)) {
+    if (ibuf && (ibuf->byte_buffer.data || ibuf->float_buffer.data)) {
       return ibuf;
     }
 
@@ -266,7 +267,7 @@ ImBuf *ED_space_clip_get_stable_buffer(const SpaceClip *sc,
     ibuf = BKE_movieclip_get_stable_ibuf(
         sc->clip, &sc->user, loc, scale, angle, sc->postproc_flag);
 
-    if (ibuf && (ibuf->rect || ibuf->rect_float)) {
+    if (ibuf && (ibuf->byte_buffer.data || ibuf->float_buffer.data)) {
       return ibuf;
     }
 
@@ -323,15 +324,15 @@ bool ED_space_clip_color_sample(const SpaceClip *sc,
     CLAMP(x, 0, ibuf->x - 1);
     CLAMP(y, 0, ibuf->y - 1);
 
-    if (ibuf->rect_float) {
-      fp = (ibuf->rect_float + (ibuf->channels) * (y * ibuf->x + x));
+    if (ibuf->float_buffer.data) {
+      fp = (ibuf->float_buffer.data + (ibuf->channels) * (y * ibuf->x + x));
       copy_v3_v3(r_col, fp);
       ret = true;
     }
-    else if (ibuf->rect) {
-      cp = (uchar *)(ibuf->rect + y * ibuf->x + x);
+    else if (ibuf->byte_buffer.data) {
+      cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
       rgb_uchar_to_float(r_col, cp);
-      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->rect_colorspace);
+      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->byte_buffer.colorspace);
       ret = true;
     }
   }
@@ -654,7 +655,7 @@ void ED_space_clip_set_mask(bContext *C, SpaceClip *sc, Mask *mask)
 /** \name Pre-Fetching Functions
  * \{ */
 
-typedef struct PrefetchJob {
+struct PrefetchJob {
   /** Clip into which cache the frames will be pre-fetched into. */
   MovieClip *clip;
 
@@ -667,9 +668,9 @@ typedef struct PrefetchJob {
 
   int start_frame, current_frame, end_frame;
   short render_size, render_flag;
-} PrefetchJob;
+};
 
-typedef struct PrefetchQueue {
+struct PrefetchQueue {
   int initial_frame, current_frame, start_frame, end_frame;
   short render_size, render_flag;
 
@@ -683,10 +684,10 @@ typedef struct PrefetchQueue {
   bool *stop;
   bool *do_update;
   float *progress;
-} PrefetchQueue;
+};
 
 /* check whether pre-fetching is allowed */
-static bool check_prefetch_break(void)
+static bool check_prefetch_break()
 {
   return G.is_break;
 }
@@ -779,7 +780,8 @@ static uchar *prefetch_thread_next_frame(PrefetchQueue *queue,
 
   BLI_spin_lock(&queue->spin);
   if (!*queue->stop && !check_prefetch_break() &&
-      IN_RANGE_INCL(queue->current_frame, queue->start_frame, queue->end_frame)) {
+      IN_RANGE_INCL(queue->current_frame, queue->start_frame, queue->end_frame))
+  {
     int current_frame;
 
     if (queue->forward) {
@@ -900,7 +902,7 @@ static void start_prefetch_threads(MovieClip *clip,
   queue.end_frame = end_frame;
   queue.render_size = render_size;
   queue.render_flag = render_flag;
-  queue.forward = 1;
+  queue.forward = true;
 
   queue.stop = stop;
   queue.do_update = do_update;
@@ -1163,7 +1165,8 @@ void ED_clip_view_lock_state_store(const bContext *C, ClipViewLockState *state)
   }
 
   if (!clip_view_calculate_view_selection(
-          C, false, &state->offset_x, &state->offset_y, &state->zoom)) {
+          C, false, &state->offset_x, &state->offset_y, &state->zoom))
+  {
     return;
   }
 

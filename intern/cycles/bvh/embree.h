@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2018-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __BVH_EMBREE_H__
 #define __BVH_EMBREE_H__
@@ -29,7 +30,10 @@ class PointCloud;
 
 class BVHEmbree : public BVH {
  public:
-  void build(Progress &progress, Stats *stats, RTCDevice rtc_device);
+  void build(Progress &progress,
+             Stats *stats,
+             RTCDevice rtc_device,
+             const bool isSyclEmbreeDevice = false);
   void refit(Progress &progress);
 
   RTCScene scene;
@@ -55,6 +59,7 @@ class BVHEmbree : public BVH {
                                const bool update);
 
   RTCDevice rtc_device;
+  bool rtc_device_is_sycl;
   enum RTCBuildQuality build_quality;
 };
 

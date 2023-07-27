@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -518,6 +519,8 @@ void GPENCIL_OT_stroke_editcurve_set_handle_type(struct wmOperatorType *ot);
  */
 void GPENCIL_OT_sculpt_paint(struct wmOperatorType *ot);
 void GPENCIL_OT_weight_paint(struct wmOperatorType *ot);
+void GPENCIL_OT_weight_toggle_direction(struct wmOperatorType *ot);
+void GPENCIL_OT_weight_sample(struct wmOperatorType *ot);
 
 /* buttons editing --- */
 
@@ -697,7 +700,7 @@ struct GP_EditableStrokes_Iter {
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) { \
-      bGPDframe *init_gpf_ = (is_multiedit_) ? gpl->frames.first : gpl->actframe; \
+      bGPDframe *init_gpf_ = (is_multiedit_) ? (bGPDframe *)gpl->frames.first : gpl->actframe; \
       for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
         if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
           BKE_gpencil_layer_transform_matrix_get( \
@@ -705,7 +708,7 @@ struct GP_EditableStrokes_Iter {
           invert_m4_m4(gpstroke_iter.inverse_diff_mat, gpstroke_iter.diff_mat); \
           /* loop over strokes */ \
           bGPDstroke *gpsn_; \
-          for (bGPDstroke *gps = gpf_->strokes.first; gps; gps = gpsn_) { \
+          for (bGPDstroke *gps = (bGPDstroke *)gpf_->strokes.first; gps; gps = gpsn_) { \
             gpsn_ = gps->next; \
             /* skip strokes that are invalid for current view */ \
             if (ED_gpencil_stroke_can_use(C, gps) == false) { \
@@ -749,7 +752,7 @@ struct GP_EditableStrokes_Iter {
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) { \
-      bGPDframe *init_gpf_ = (is_multiedit_) ? gpl->frames.first : gpl->actframe; \
+      bGPDframe *init_gpf_ = (is_multiedit_) ? (bGPDframe *)gpl->frames.first : gpl->actframe; \
       for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
         if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
           BKE_gpencil_layer_transform_matrix_get( \
@@ -757,7 +760,7 @@ struct GP_EditableStrokes_Iter {
           invert_m4_m4(gpstroke_iter.inverse_diff_mat, gpstroke_iter.diff_mat); \
           /* loop over strokes */ \
           bGPDstroke *gpsn_; \
-          for (bGPDstroke *gps = gpf_->strokes.first; gps; gps = gpsn_) { \
+          for (bGPDstroke *gps = (bGPDstroke *)gpf_->strokes.first; gps; gps = gpsn_) { \
             gpsn_ = gps->next; \
             /* skip strokes that are invalid for current view */ \
             if (ED_gpencil_stroke_can_use(C, gps) == false) \
@@ -799,7 +802,7 @@ struct GP_EditableStrokes_Iter {
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_->layers) { \
       if (BKE_gpencil_layer_is_editable(gpl)) { \
-        bGPDframe *init_gpf_ = (is_multiedit_) ? gpl->frames.first : gpl->actframe; \
+        bGPDframe *init_gpf_ = (is_multiedit_) ? (bGPDframe *)gpl->frames.first : gpl->actframe; \
         for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
           if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
             BKE_gpencil_layer_transform_matrix_get( \

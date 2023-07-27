@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -17,6 +18,8 @@
 #  include "kernel/device/metal/bvh.h"
 #elif defined(__KERNEL_OPTIX__)
 #  include "kernel/device/optix/bvh.h"
+#elif defined(__HIPRT__)
+#  include "kernel/device/hiprt/bvh.h"
 #else
 #  define __BVH2__
 #endif
@@ -27,8 +30,8 @@
  * Instead of adding one more bool specialization constant, we reuse existing embree_features one
  * and use RTC_FEATURE_FLAG_NONE as value to test for avoiding to call Embree on GPU.
  */
-/* We set it to RTC_FEATURE_FLAG_NONE by default so AoT binaries contain MNE and raytrace kernels
- * precompiled without Embree.
+/* We set it to RTC_FEATURE_FLAG_NONE by default so AoT binaries contain MNE and ray-trace kernels
+ * pre-compiled without Embree.
  * Changing this default value would require updating the logic in oneapi_load_kernels(). */
 static constexpr sycl::specialization_id<RTCFeatureFlags> oneapi_embree_features{
     RTC_FEATURE_FLAG_NONE};
@@ -288,6 +291,15 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
   if (!intersection_ray_valid(ray)) {
     return false;
   }
+
+#    ifdef __EMBREE__
+  IF_USING_EMBREE
+  {
+    if (kernel_data.device_bvh) {
+      return kernel_embree_intersect_volume(kg, ray, isect, visibility);
+    }
+  }
+#    endif
 
   IF_NOT_USING_EMBREE
   {

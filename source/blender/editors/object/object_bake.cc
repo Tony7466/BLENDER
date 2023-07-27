@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -132,7 +133,7 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
     }
 
     me = (Mesh *)ob->data;
-    mmd = get_multires_modifier(scene, ob, 0);
+    mmd = get_multires_modifier(scene, ob, false);
 
     /* Multi-resolution should be and be last in the stack */
     if (ok && mmd) {
@@ -156,14 +157,14 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
       break;
     }
 
-    if (!CustomData_has_layer(&me->ldata, CD_PROP_FLOAT2)) {
+    if (!CustomData_has_layer(&me->loop_data, CD_PROP_FLOAT2)) {
       BKE_report(op->reports, RPT_ERROR, "Mesh should be unwrapped before multires data baking");
 
       ok = false;
     }
     else {
       const int *material_indices = BKE_mesh_material_indices(me);
-      a = me->totpoly;
+      a = me->faces_num;
       while (ok && a--) {
         Image *ima = bake_object_image_get(ob, material_indices ? material_indices[a] : 0);
 
@@ -188,11 +189,11 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
               ok = false;
             }
             else {
-              if (ibuf->rect == nullptr && ibuf->rect_float == nullptr) {
+              if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
                 ok = false;
               }
 
-              if (ibuf->rect_float && !ELEM(ibuf->channels, 0, 4)) {
+              if (ibuf->float_buffer.data && !ELEM(ibuf->channels, 0, 4)) {
                 ok = false;
               }
 
@@ -219,7 +220,7 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
 static DerivedMesh *multiresbake_create_loresdm(Scene *scene, Object *ob, int *lvl)
 {
   DerivedMesh *dm;
-  MultiresModifierData *mmd = get_multires_modifier(scene, ob, 0);
+  MultiresModifierData *mmd = get_multires_modifier(scene, ob, false);
   Mesh *me = (Mesh *)ob->data;
   MultiresModifierData tmp_mmd = blender::dna::shallow_copy(*mmd);
 
@@ -245,7 +246,7 @@ static DerivedMesh *multiresbake_create_loresdm(Scene *scene, Object *ob, int *l
 static DerivedMesh *multiresbake_create_hiresdm(Scene *scene, Object *ob, int *lvl)
 {
   Mesh *me = (Mesh *)ob->data;
-  MultiresModifierData *mmd = get_multires_modifier(scene, ob, 0);
+  MultiresModifierData *mmd = get_multires_modifier(scene, ob, false);
   MultiresModifierData tmp_mmd = blender::dna::shallow_copy(*mmd);
   DerivedMesh *cddm = CDDM_from_mesh(me);
   DerivedMesh *dm;
@@ -268,10 +269,10 @@ static DerivedMesh *multiresbake_create_hiresdm(Scene *scene, Object *ob, int *l
   return dm;
 }
 
-typedef enum ClearFlag {
+enum ClearFlag {
   CLEAR_TANGENT_NORMAL = 1,
   CLEAR_DISPLACEMENT = 2,
-} ClearFlag;
+};
 
 static void clear_single_image(Image *image, ClearFlag flag)
 {
@@ -617,7 +618,7 @@ static bool is_multires_bake(Scene *scene)
     return scene->r.bake_flag & R_BAKE_MULTIRES;
   }
 
-  return 0;
+  return false;
 }
 
 static int objects_bake_render_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)

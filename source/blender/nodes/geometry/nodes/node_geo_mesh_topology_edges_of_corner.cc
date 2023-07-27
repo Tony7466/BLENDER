@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
@@ -11,18 +13,17 @@ namespace blender::nodes::node_geo_mesh_topology_edges_of_corner_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>(N_("Corner Index"))
+  b.add_input<decl::Int>("Corner Index")
       .implicit_field(implicit_field_inputs::index)
-      .description(
-          N_("The corner to retrieve data from. Defaults to the corner from the context"));
-  b.add_output<decl::Int>(N_("Next Edge Index"))
+      .description("The corner to retrieve data from. Defaults to the corner from the context");
+  b.add_output<decl::Int>("Next Edge Index")
       .field_source_reference_all()
       .description(
-          N_("The edge after the corner in the face, in the direction of increasing indices"));
-  b.add_output<decl::Int>(N_("Previous Edge Index"))
+          "The edge after the corner in the face, in the direction of increasing indices");
+  b.add_output<decl::Int>("Previous Edge Index")
       .field_source_reference_all()
       .description(
-          N_("The edge before the corner in the face, in the direction of decreasing indices"));
+          "The edge before the corner in the face, in the direction of decreasing indices");
 }
 
 class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
@@ -34,7 +35,7 @@ class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
@@ -49,10 +50,7 @@ class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (dynamic_cast<const CornerNextEdgeFieldInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const CornerNextEdgeFieldInput *>(&other) != nullptr;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
@@ -70,18 +68,18 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
     }
-    const OffsetIndices polys = mesh.polys();
+    const OffsetIndices faces = mesh.faces();
     const Span<int> corner_edges = mesh.corner_edges();
-    Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(polys);
+    Array<int> loop_to_face_map = bke::mesh::build_loop_to_face_map(faces);
     return VArray<int>::ForFunc(
         mesh.totloop,
-        [polys, corner_edges, loop_to_poly_map = std::move(loop_to_poly_map)](const int corner_i) {
-          return corner_edges[bke::mesh::poly_corner_prev(polys[loop_to_poly_map[corner_i]],
+        [faces, corner_edges, loop_to_face_map = std::move(loop_to_face_map)](const int corner_i) {
+          return corner_edges[bke::mesh::face_corner_prev(faces[loop_to_face_map[corner_i]],
                                                           corner_i)];
         });
   }
@@ -93,10 +91,7 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (dynamic_cast<const CornerPreviousEdgeFieldInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const CornerPreviousEdgeFieldInput *>(&other) != nullptr;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
@@ -110,14 +105,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> corner_index = params.extract_input<Field<int>>("Corner Index");
   if (params.output_is_required("Next Edge Index")) {
     params.set_output("Next Edge Index",
-                      Field<int>(std::make_shared<FieldAtIndexInput>(
+                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerNextEdgeFieldInput>()),
                           ATTR_DOMAIN_CORNER)));
   }
   if (params.output_is_required("Previous Edge Index")) {
     params.set_output("Previous Edge Index",
-                      Field<int>(std::make_shared<FieldAtIndexInput>(
+                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerPreviousEdgeFieldInput>()),
                           ATTR_DOMAIN_CORNER)));

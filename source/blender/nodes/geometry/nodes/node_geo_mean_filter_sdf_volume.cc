@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DEG_depsgraph_query.h"
 #ifdef WITH_OPENVDB
@@ -7,8 +9,8 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_geometry_set.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "DNA_node_types.h"
 
@@ -22,13 +24,12 @@ namespace blender::nodes::node_geo_mean_filter_sdf_volume_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
-      .supported_type(GEO_COMPONENT_TYPE_VOLUME)
+  b.add_input<decl::Geometry>("Volume")
+      .supported_type(GeometryComponent::Type::Volume)
       .translation_context(BLT_I18NCONTEXT_ID_ID);
-  b.add_input<decl::Int>(N_("Iterations")).min(1).max(256).default_value(1);
-  b.add_input<decl::Int>(N_("Width")).min(0).default_value(1);
-  b.add_output<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
-      .translation_context(BLT_I18NCONTEXT_ID_ID);
+  b.add_input<decl::Int>("Iterations").min(1).max(256).default_value(1);
+  b.add_input<decl::Int>("Width").min(0).default_value(1);
+  b.add_output<decl::Geometry>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
@@ -100,7 +101,7 @@ void register_node_type_geo_mean_filter_sdf_volume()
 
   geo_node_type_base(
       &ntype, GEO_NODE_MEAN_FILTER_SDF_VOLUME, "Mean Filter SDF Volume", NODE_CLASS_GEOMETRY);
-  node_type_size(&ntype, 160, 120, 700);
+  blender::bke::node_type_size(&ntype, 160, 120, 700);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;

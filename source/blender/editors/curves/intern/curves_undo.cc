@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
@@ -16,7 +18,7 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_undo.h"
 
 #include "MEM_guardedalloc.h"

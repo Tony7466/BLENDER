@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -61,5 +62,5 @@ class GHOST_SystemPathsWin32 : public GHOST_SystemPaths {
   /**
    * Add the file to the operating system most recently used files
    */
-  void addToSystemRecentFiles(const char *filename) const;
+  void addToSystemRecentFiles(const char *filepath) const;
 };

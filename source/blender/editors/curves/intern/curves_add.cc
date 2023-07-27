@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
@@ -8,10 +10,12 @@
 
 #include "BKE_context.h"
 #include "BKE_curves.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
-#include "ED_curves.h"
+#include "BLT_translation.h"
+
+#include "ED_curves.hh"
 #include "ED_node.h"
 #include "ED_object.h"
 
@@ -63,9 +67,9 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
   Scene *scene = CTX_data_scene(&C);
 
   ModifierData *md = ED_object_modifier_add(
-      nullptr, bmain, scene, &curves_ob, "Surface Deform", eModifierType_Nodes);
+      nullptr, bmain, scene, &curves_ob, DATA_("Surface Deform"), eModifierType_Nodes);
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
-  nmd.node_group = ntreeAddTree(bmain, "Surface Deform", "GeometryNodeTree");
+  nmd.node_group = ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
 
   bNodeTree *ntree = nmd.node_group;
   ntreeAddSocketInterface(ntree, SOCK_IN, "NodeSocketGeometry", "Geometry");
