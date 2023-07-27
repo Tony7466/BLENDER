@@ -140,7 +140,7 @@ endif()
 
 # Setup the EXE sources and `buildinfo`.
 set(SRC
-  creator.c
+  creator.cc
   creator_args.cc
   creator_signals.cc
 

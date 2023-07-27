@@ -115,17 +115,13 @@
  * \{ */
 
 /* written to by 'creator_args.c' */
-struct ApplicationState app_state = {
-    .signal =
-        {
-            .use_crash_handler = true,
-            .use_abort_handler = true,
-        },
-    .exit_code_on_error =
-        {
-            .python = 0,
-        },
-};
+ApplicationState app_state = []() {
+  ApplicationState app_state{};
+  app_state.signal.use_crash_handler = true;
+  app_state.signal.use_abort_handler = true;
+  app_state.exit_code_on_error.python = 0;
+  return app_state;
+}();
 
 /** \} */
 
@@ -165,12 +161,12 @@ struct CreatorAtExitData {
 
 static void callback_main_atexit(void *user_data)
 {
-  struct CreatorAtExitData *app_init_data = user_data;
+  struct CreatorAtExitData *app_init_data = static_cast<CreatorAtExitData *>(user_data);
 
 #ifndef WITH_PYTHON_MODULE
   if (app_init_data->ba) {
     BLI_args_destroy(app_init_data->ba);
-    app_init_data->ba = NULL;
+    app_init_data->ba = nullptr;
   }
 #else
   UNUSED_VARS(app_init_data); /* May be unused. */
@@ -182,7 +178,7 @@ static void callback_main_atexit(void *user_data)
       free((void *)app_init_data->argv[--app_init_data->argv_num]);
     }
     free((void *)app_init_data->argv);
-    app_init_data->argv = NULL;
+    app_init_data->argv = nullptr;
   }
 #else
   UNUSED_VARS(app_init_data); /* May be unused. */
@@ -191,7 +187,7 @@ static void callback_main_atexit(void *user_data)
 
 static void callback_clg_fatal(void *fp)
 {
-  BLI_system_backtrace(fp);
+  BLI_system_backtrace(static_cast<FILE *>(fp));
 }
 
 /** \} */
@@ -211,12 +207,12 @@ void main_python_exit(void);
 
 /* Rename the 'main' function, allowing Python initialization to call it. */
 #  define main main_python_enter
-static void *evil_C = NULL;
+static void *evil_C = nullptr;
 
 #  ifdef __APPLE__
 /* Environment is not available in macOS shared libraries. */
 #    include <crt_externs.h>
-char **environ = NULL;
+char **environ = nullptr;
 #  endif /* __APPLE__ */
 
 #endif /* WITH_PYTHON_MODULE */
@@ -236,12 +232,12 @@ void *gmp_alloc(size_t size)
 {
   return scalable_malloc(size);
 }
-void *gmp_realloc(void *ptr, size_t UNUSED(old_size), size_t new_size)
+void *gmp_realloc(void *ptr, size_t /*old_size*/, size_t new_size)
 {
   return scalable_realloc(ptr, new_size);
 }
 
-void gmp_free(void *ptr, size_t UNUSED(size))
+void gmp_free(void *ptr, size_t /*size*/)
 {
   scalable_free(ptr);
 }
@@ -272,7 +268,7 @@ void gmp_blender_init_allocator()
  */
 int main(int argc,
 #ifdef USE_WIN32_UNICODE_ARGS
-         const char **UNUSED(argv_c)
+         const char ** /*argv_c*/
 #else
          const char **argv
 #endif
@@ -292,20 +288,20 @@ int main(int argc,
   /* --- end declarations --- */
 
   /* Ensure we free data on early-exit. */
-  struct CreatorAtExitData app_init_data = {NULL};
+  struct CreatorAtExitData app_init_data = {nullptr};
   BKE_blender_atexit_register(callback_main_atexit, &app_init_data);
 
-  /* Un-buffered `stdout` makes `stdout` and `stderr` better synchronized, and helps
-   * when stepping through code in a debugger (prints are immediately
-   * visible). However disabling buffering causes lock contention on windows
-   * see #76767 for details, since this is a debugging aid, we do not enable
-   * the un-buffered behavior for release builds. */
+/* Un-buffered `stdout` makes `stdout` and `stderr` better synchronized, and helps
+ * when stepping through code in a debugger (prints are immediately
+ * visible). However disabling buffering causes lock contention on windows
+ * see #76767 for details, since this is a debugging aid, we do not enable
+ * the un-buffered behavior for release builds. */
 #ifndef NDEBUG
-  setvbuf(stdout, NULL, _IONBF, 0);
+  setvbuf(stdout, nullptr, _IONBF, 0);
 #endif
 
 #ifdef WIN32
-  /* We delay loading of OPENMP so we can set the policy here. */
+/* We delay loading of OPENMP so we can set the policy here. */
 #  if defined(_MSC_VER)
   _putenv_s("OMP_WAIT_POLICY", "PASSIVE");
 #  endif
@@ -384,7 +380,7 @@ int main(int argc,
 #endif
 
 #ifdef WITH_BINRELOC
-  br_init(NULL);
+  br_init(nullptr);
 #endif
 
 #ifdef WITH_LIBMV
@@ -441,7 +437,7 @@ int main(int argc,
 
   BKE_callback_global_init();
 
-  /* First test for background-mode (#Global.background) */
+/* First test for background-mode (#Global.background) */
 #ifndef WITH_PYTHON_MODULE
   ba = BLI_args_create(argc, (const char **)argv); /* skip binary path */
 
@@ -455,7 +451,7 @@ int main(int argc,
   MEM_use_memleak_detection(false);
 
   /* Parse environment handling arguments. */
-  BLI_args_parse(ba, ARG_PASS_ENVIRONMENT, NULL, NULL);
+  BLI_args_parse(ba, ARG_PASS_ENVIRONMENT, nullptr, nullptr);
 
 #else
   /* Using preferences or user startup makes no sense for #WITH_PYTHON_MODULE. */
@@ -474,7 +470,7 @@ int main(int argc,
 
 #ifndef WITH_PYTHON_MODULE
   /* First test for background-mode (#Global.background) */
-  BLI_args_parse(ba, ARG_PASS_SETTINGS, NULL, NULL);
+  BLI_args_parse(ba, ARG_PASS_SETTINGS, nullptr, nullptr);
 
   main_signal_setup();
 #endif
@@ -512,9 +508,9 @@ int main(int argc,
 
 #ifndef WITH_PYTHON_MODULE
   if (G.background == 0) {
-    BLI_args_parse(ba, ARG_PASS_SETTINGS_GUI, NULL, NULL);
+    BLI_args_parse(ba, ARG_PASS_SETTINGS_GUI, nullptr, nullptr);
   }
-  BLI_args_parse(ba, ARG_PASS_SETTINGS_FORCE, NULL, NULL);
+  BLI_args_parse(ba, ARG_PASS_SETTINGS_FORCE, nullptr, nullptr);
 #endif
 
   WM_init(C, argc, (const char **)argv);
@@ -537,7 +533,7 @@ int main(int argc,
   FRS_set_context(C);
 #endif
 
-  /* OK we are ready for it */
+/* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */
   BLI_args_parse(ba, ARG_PASS_FINAL, main_args_handle_load_file, C);
@@ -553,14 +549,14 @@ int main(int argc,
   /* End argument parsing, allow memory leaks to be printed. */
   MEM_use_memleak_detection(true);
 
-  /* Paranoid, avoid accidental re-use. */
+/* Paranoid, avoid accidental re-use. */
 #ifndef WITH_PYTHON_MODULE
-  ba = NULL;
+  ba = nullptr;
   (void)ba;
 #endif
 
 #ifdef USE_WIN32_UNICODE_ARGS
-  argv = NULL;
+  argv = nullptr;
   (void)argv;
 #endif
 
@@ -588,7 +584,7 @@ int main(int argc,
 void main_python_exit(void)
 {
   WM_exit_ex((bContext *)evil_C, true, false);
-  evil_C = NULL;
+  evil_C = nullptr;
 }
 #endif
 
