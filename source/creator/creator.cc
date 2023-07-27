@@ -316,14 +316,14 @@ int main(int argc,
     /* NOTE: Can't use `guardedalloc` allocation here, as it's not yet initialized
      * (it depends on the arguments passed in, which is what we're getting here!) */
     wchar_t **argv_16 = CommandLineToArgvW(GetCommandLineW(), &argc);
-    argv = malloc(argc * sizeof(char *));
+    argv = static_cast<char **>(malloc(argc * sizeof(char *)));
     for (argv_num = 0; argv_num < argc; argv_num++) {
       argv[argv_num] = alloc_utf_8_from_16(argv_16[argv_num], 0);
     }
     LocalFree(argv_16);
 
     /* free on early-exit */
-    app_init_data.argv = argv;
+    app_init_data.argv = reinterpret_cast<const char **>(argv);
     app_init_data.argv_num = argv_num;
   }
 #  endif /* USE_WIN32_UNICODE_ARGS */

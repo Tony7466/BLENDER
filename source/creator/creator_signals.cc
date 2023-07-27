@@ -195,7 +195,7 @@ extern LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS *ExceptionInfo)
     LPVOID address = ExceptionInfo->ExceptionRecord->ExceptionAddress;
     fprintf(stderr, "Error   : EXCEPTION_STACK_OVERFLOW\n");
     fprintf(stderr, "Address : 0x%p\n", address);
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, address, &mod)) {
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, LPCSTR(address), &mod)) {
       if (GetModuleFileName(mod, modulename, MAX_PATH)) {
         fprintf(stderr, "Module  : %s\n", modulename);
       }
