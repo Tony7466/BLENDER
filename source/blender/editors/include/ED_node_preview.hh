@@ -17,6 +17,20 @@ struct NestedTreePreviews {
   bool rendering;
   bool restart_needed;
   uint16_t previews_refresh_state;
+  NestedTreePreviews(const int size)
+      : previews_render(nullptr),
+        preview_size(size),
+        rendering(false),
+        restart_needed(false),
+        previews_refresh_state(0)
+  {
+  }
+  ~NestedTreePreviews()
+  {
+    if (this->previews_render) {
+      RE_FreeRender(this->previews_render);
+    }
+  }
 };
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode);

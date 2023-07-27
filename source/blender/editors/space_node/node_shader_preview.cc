@@ -125,10 +125,8 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
   }
   NestedTreePreviews *tree_previews = nullptr;
   if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
-    tree_previews = sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
-      tree_previews = MEM_new<NestedTreePreviews>(__func__);
-      tree_previews->preview_size = U.node_preview_res;
-      return tree_previews;
+    tree_previews = &*sn->runtime->tree_previews_per_context.lookup_or_add_cb(*hash, [&]() {
+      return std::make_unique<NestedTreePreviews>(U.node_preview_res);
     });
     Material *ma = reinterpret_cast<Material *>(sn->id);
 
@@ -670,25 +668,11 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_start(CTX_wm_manager(C), wm_job);
 }
 
-static void free_previews(wmWindowManager *wm, SpaceNode *snode, NestedTreePreviews *tree_previews)
+void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
   WM_jobs_kill(wm, snode, shader_preview_startjob);
-  if (tree_previews->previews_render) {
-    RE_FreeRender(tree_previews->previews_render);
-    tree_previews->previews_render = nullptr;
-  }
-  MEM_delete(tree_previews);
-}
-
-void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
-{
-  snode->runtime->tree_previews_per_context.foreach_item(
-      [&](ComputeContextHash /*hash*/, NestedTreePreviews *tree_previews) {
-        free_previews(wm, snode, tree_previews);
-        tree_previews = nullptr;
-      });
-  snode->runtime->tree_previews_per_context.clear();
+  snode->runtime->tree_previews_per_context.clear_and_shrink();
 }
 
 /** \} */
