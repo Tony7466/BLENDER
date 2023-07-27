@@ -99,7 +99,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * The idea here to to store a state var in the `NestedTreePreviews` structure to compare if they
    * differ.
    */
-  uint32_t previews_refresh_state;
+  uint32_t previews_refresh_state = 0;
 
   /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
