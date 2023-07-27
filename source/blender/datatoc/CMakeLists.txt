@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Build datatoc executable
 set(SRC
-  datatoc.c
+  datatoc.cc
 )
 
 # SRC_DNA_INC is defined in the parent dir
