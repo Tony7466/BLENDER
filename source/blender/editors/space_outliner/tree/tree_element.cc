@@ -120,9 +120,9 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementDeformGroupBase>(legacy_te, *static_cast<Object *>(idv));
     case TSE_DEFGROUP: {
       DeformGroupElementCreateData *defgroup_data = static_cast<DeformGroupElementCreateData *>(
-                                                                                                idv);
+          idv);
       return std::make_unique<TreeElementDeformGroup>(
-                                                      legacy_te, *defgroup_data->object, *defgroup_data->defgroup);
+          legacy_te, *defgroup_data->object, *defgroup_data->defgroup);
     }
     case TSE_LINKED_PSYS: {
       ParticleSystemElementCreateData *psys_data = static_cast<ParticleSystemElementCreateData *>(
