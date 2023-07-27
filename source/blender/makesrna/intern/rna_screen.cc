@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stddef.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdlib>
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -25,7 +25,7 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
     {RGN_TYPE_HEADER, "HEADER", 0, "Header", ""},
     {RGN_TYPE_CHANNELS, "CHANNELS", 0, "Channels", ""},
     {RGN_TYPE_TEMPORARY, "TEMPORARY", 0, "Temporary", ""},
-    {RGN_TYPE_UI, "UI", 0, "UI", ""},
+    {RGN_TYPE_UI, "UI", 0, "Sidebar", ""},
     {RGN_TYPE_TOOLS, "TOOLS", 0, "Tools", ""},
     {RGN_TYPE_TOOL_PROPS, "TOOL_PROPS", 0, "Tool Properties", ""},
     {RGN_TYPE_PREVIEW, "PREVIEW", 0, "Preview", ""},
@@ -457,7 +457,7 @@ static void rna_def_view2d_api(StructRNA *srna)
   parm = RNA_def_float(
       func, "y", 0.0f, -FLT_MAX, FLT_MAX, "y", "2D View y coordinate", -10000.0f, 10000.0f);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_boolean(func, "clip", 1, "Clip", "Clip coordinates to the visible region");
+  RNA_def_boolean(func, "clip", true, "Clip", "Clip coordinates to the visible region");
   parm = RNA_def_int_array(func,
                            "result",
                            2,

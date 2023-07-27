@@ -8,10 +8,10 @@
  * Deform coordinates by a lattice object (used by modifier).
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -364,7 +364,7 @@ static void lattice_deform_coords_impl(const Object *ob_lattice,
       }
       else if (me_target) {
         dvert = static_cast<const MDeformVert *>(
-            CustomData_get_layer(&me_target->vdata, CD_MDEFORMVERT));
+            CustomData_get_layer(&me_target->vert_data, CD_MDEFORMVERT));
       }
       else if (ob_target->type == OB_LATTICE) {
         dvert = ((Lattice *)ob_target->data)->dvert;
