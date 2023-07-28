@@ -50,7 +50,11 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_add_cc
+
 namespace blender::ed::space_node {
+
+namespace FILE_NS {
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
@@ -61,6 +65,7 @@ static void position_node_based_on_mouse(bNode &node, const float2 &location)
   node.locx = location.x - NODE_DY * 1.5f / UI_SCALE_FAC;
   node.locy = location.y + NODE_DY * 0.5f / UI_SCALE_FAC;
 }
+}  // namespace FILE_NS
 
 bNode *add_node(const bContext &C, const StringRef idname, const float2 &location)
 {
@@ -75,7 +80,7 @@ bNode *add_node(const bContext &C, const StringRef idname, const float2 &locatio
   bNode *node = nodeAddNode(&C, &node_tree, idname_str.c_str());
   BLI_assert(node && node->typeinfo);
 
-  position_node_based_on_mouse(*node, location);
+  FILE_NS::position_node_based_on_mouse(*node, location);
 
   nodeSetSelected(node, true);
   ED_node_set_active(&bmain, &snode, &node_tree, node, nullptr);
@@ -95,7 +100,7 @@ bNode *add_static_node(const bContext &C, int type, const float2 &location)
   bNode *node = nodeAddStaticNode(&C, &node_tree, type);
   BLI_assert(node && node->typeinfo);
 
-  position_node_based_on_mouse(*node, location);
+  FILE_NS::position_node_based_on_mouse(*node, location);
 
   nodeSetSelected(node, true);
   ED_node_set_active(&bmain, &snode, &node_tree, node, nullptr);
@@ -126,6 +131,8 @@ std::optional<float2> link_path_intersection(const bNodeLink &link, const Span<f
 
   return std::nullopt;
 }
+
+namespace FILE_NS {
 
 struct RerouteCutsForSocket {
   /* The output socket's owner node. */
@@ -220,6 +227,7 @@ static int add_reroute_exec(bContext *C, wmOperator *op)
   ED_node_tree_propagate_change(C, CTX_data_main(C), &ntree);
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_add_reroute(wmOperatorType *ot)
 {
@@ -229,7 +237,7 @@ void NODE_OT_add_reroute(wmOperatorType *ot)
 
   ot->invoke = WM_gesture_lines_invoke;
   ot->modal = WM_gesture_lines_modal;
-  ot->exec = add_reroute_exec;
+  ot->exec = FILE_NS::add_reroute_exec;
   ot->cancel = WM_gesture_lines_cancel;
 
   ot->poll = ED_operator_node_editable;
@@ -250,6 +258,7 @@ void NODE_OT_add_reroute(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Node Group Operator
  * \{ */
+namespace FILE_NS {
 
 static bool node_group_add_poll(const bNodeTree &node_tree,
                                 const bNodeTree &node_group,
@@ -353,7 +362,7 @@ static int node_add_group_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
   return node_add_group_exec(C, op);
 }
-
+}  // namespace FILE_NS
 void NODE_OT_add_group(wmOperatorType *ot)
 {
   /* identifiers */
@@ -362,9 +371,9 @@ void NODE_OT_add_group(wmOperatorType *ot)
   ot->idname = "NODE_OT_add_group";
 
   /* callbacks */
-  ot->exec = node_add_group_exec;
-  ot->invoke = node_add_group_invoke;
-  ot->poll = node_add_group_poll;
+  ot->exec = FILE_NS::node_add_group_exec;
+  ot->invoke = FILE_NS::node_add_group_invoke;
+  ot->poll = FILE_NS::node_add_group_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -377,6 +386,7 @@ void NODE_OT_add_group(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Node Group Asset Operator
  * \{ */
+namespace FILE_NS {
 
 static bool add_node_group_asset(const bContext &C,
                                  const asset_system::AssetRepresentation &asset,
@@ -467,6 +477,7 @@ static char *node_add_group_asset_get_description(bContext *C,
   }
   return BLI_strdup(DATA_(asset_data.description));
 }
+}  // namespace FILE_NS
 
 void NODE_OT_add_group_asset(wmOperatorType *ot)
 {
@@ -474,9 +485,9 @@ void NODE_OT_add_group_asset(wmOperatorType *ot)
   ot->description = "Add a node group asset to the active node tree";
   ot->idname = "NODE_OT_add_group_asset";
 
-  ot->invoke = node_add_group_asset_invoke;
-  ot->poll = node_add_group_poll;
-  ot->get_description = node_add_group_asset_get_description;
+  ot->invoke = FILE_NS::node_add_group_asset_invoke;
+  ot->poll = FILE_NS::node_add_group_poll;
+  ot->get_description = FILE_NS::node_add_group_asset_get_description;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 }
@@ -486,6 +497,7 @@ void NODE_OT_add_group_asset(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Node Object Operator
  * \{ */
+namespace FILE_NS {
 
 static int node_add_object_exec(bContext *C, wmOperator *op)
 {
@@ -549,6 +561,7 @@ static bool node_add_object_poll(bContext *C)
   return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY) &&
          !UI_but_active_drop_name(C);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_add_object(wmOperatorType *ot)
 {
@@ -558,9 +571,9 @@ void NODE_OT_add_object(wmOperatorType *ot)
   ot->idname = "NODE_OT_add_object";
 
   /* callbacks */
-  ot->exec = node_add_object_exec;
-  ot->invoke = node_add_object_invoke;
-  ot->poll = node_add_object_poll;
+  ot->exec = FILE_NS::node_add_object_exec;
+  ot->invoke = FILE_NS::node_add_object_invoke;
+  ot->poll = FILE_NS::node_add_object_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -573,6 +586,8 @@ void NODE_OT_add_object(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Node Collection Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_add_collection_exec(bContext *C, wmOperator *op)
 {
@@ -636,7 +651,7 @@ static bool node_add_collection_poll(bContext *C)
   return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY) &&
          !UI_but_active_drop_name(C);
 }
-
+}  // namespace FILE_NS
 void NODE_OT_add_collection(wmOperatorType *ot)
 {
   /* identifiers */
@@ -645,9 +660,9 @@ void NODE_OT_add_collection(wmOperatorType *ot)
   ot->idname = "NODE_OT_add_collection";
 
   /* callbacks */
-  ot->exec = node_add_collection_exec;
-  ot->invoke = node_add_collection_invoke;
-  ot->poll = node_add_collection_poll;
+  ot->exec = FILE_NS::node_add_collection_exec;
+  ot->invoke = FILE_NS::node_add_collection_invoke;
+  ot->poll = FILE_NS::node_add_collection_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -660,6 +675,7 @@ void NODE_OT_add_collection(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add File Node Operator
  * \{ */
+namespace FILE_NS {
 
 static bool node_add_file_poll(bContext *C)
 {
@@ -749,7 +765,7 @@ static int node_add_file_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
   return WM_operator_filesel(C, op, event);
 }
-
+}  // namespace FILE_NS
 void NODE_OT_add_file(wmOperatorType *ot)
 {
   /* identifiers */
@@ -758,9 +774,9 @@ void NODE_OT_add_file(wmOperatorType *ot)
   ot->idname = "NODE_OT_add_file";
 
   /* callbacks */
-  ot->exec = node_add_file_exec;
-  ot->invoke = node_add_file_invoke;
-  ot->poll = node_add_file_poll;
+  ot->exec = FILE_NS::node_add_file_exec;
+  ot->invoke = FILE_NS::node_add_file_invoke;
+  ot->poll = FILE_NS::node_add_file_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -780,6 +796,8 @@ void NODE_OT_add_file(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Mask Node Operator
  * \{ */
+
+namespace FILE_NS {
 
 static bool node_add_mask_poll(bContext *C)
 {
@@ -815,6 +833,7 @@ static int node_add_mask_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_add_mask(wmOperatorType *ot)
 {
@@ -824,8 +843,8 @@ void NODE_OT_add_mask(wmOperatorType *ot)
   ot->idname = "NODE_OT_add_mask";
 
   /* callbacks */
-  ot->exec = node_add_mask_exec;
-  ot->poll = node_add_mask_poll;
+  ot->exec = FILE_NS::node_add_mask_exec;
+  ot->poll = FILE_NS::node_add_mask_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -838,6 +857,7 @@ void NODE_OT_add_mask(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name New Node Tree Operator
  * \{ */
+namespace FILE_NS {
 
 static int new_node_tree_exec(bContext *C, wmOperator *op)
 {
@@ -907,6 +927,7 @@ static const EnumPropertyItem *new_node_tree_type_itemf(bContext * /*C*/,
 {
   return rna_node_tree_type_itemf(nullptr, nullptr, r_free);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_new_node_tree(wmOperatorType *ot)
 {
@@ -918,13 +939,13 @@ void NODE_OT_new_node_tree(wmOperatorType *ot)
   ot->description = "Create a new node tree";
 
   /* api callbacks */
-  ot->exec = new_node_tree_exec;
+  ot->exec = FILE_NS::new_node_tree_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   prop = RNA_def_enum(ot->srna, "type", DummyRNA_NULL_items, 0, "Tree Type", "");
-  RNA_def_enum_funcs(prop, new_node_tree_type_itemf);
+  RNA_def_enum_funcs(prop, FILE_NS::new_node_tree_type_itemf);
   RNA_def_string(ot->srna, "name", "NodeTree", MAX_ID_NAME - 2, "Name", "");
 }
 
@@ -933,6 +954,8 @@ void NODE_OT_new_node_tree(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Node Search
  * \{ */
+
+namespace FILE_NS {
 
 static int node_add_search_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -945,14 +968,14 @@ static int node_add_search_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_add_search(wmOperatorType *ot)
 {
   ot->name = "Search and Add Node";
   ot->idname = "NODE_OT_add_search";
   ot->description = "Search for nodes and add one to the active tree";
 
-  ot->invoke = node_add_search_invoke;
+  ot->invoke = FILE_NS::node_add_search_invoke;
   ot->poll = ED_operator_node_editable;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -964,3 +987,5 @@ void NODE_OT_add_search(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
