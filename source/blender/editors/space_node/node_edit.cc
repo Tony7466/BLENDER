@@ -72,7 +72,10 @@
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_edit_cc
+
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 #define USE_ESC_COMPO
 
@@ -103,6 +106,7 @@ struct CompoJob {
   float *progress;
   bool cancelled;
 };
+}  // namespace FILE_NS
 
 float node_socket_calculate_height(const bNodeSocket &socket)
 {
@@ -123,6 +127,7 @@ float2 node_link_calculate_multi_input_position(const float2 &socket_position,
   return {socket_position.x, socket_position.y - offset + index * NODE_MULTI_INPUT_LINK_GAP};
 }
 
+namespace FILE_NS {
 static void compo_tag_output_nodes(bNodeTree *nodetree, int recalc_flags)
 {
   for (bNode *node : nodetree->all_nodes()) {
@@ -330,6 +335,7 @@ static void compo_completejob(void *cjv)
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_POST);
 }
+}  // namespace FILE_NS
 
 /** \} */
 
@@ -365,25 +371,25 @@ void ED_node_composite_job(const bContext *C, bNodeTree *nodetree, Scene *scene_
                               "Compositing",
                               WM_JOB_EXCL_RENDER | WM_JOB_PROGRESS,
                               WM_JOB_TYPE_COMPOSITE);
-  CompoJob *cj = MEM_cnew<CompoJob>("compo job");
+  FILE_NS::CompoJob *cj = MEM_cnew<FILE_NS::CompoJob>("compo job");
 
   /* Custom data for preview thread. */
   cj->bmain = bmain;
   cj->scene = scene;
   cj->view_layer = view_layer;
   cj->ntree = nodetree;
-  cj->recalc_flags = compo_get_recalc_flags(C);
+  cj->recalc_flags = FILE_NS::compo_get_recalc_flags(C);
 
   /* Set up job. */
-  WM_jobs_customdata_set(wm_job, cj, compo_freejob);
+  WM_jobs_customdata_set(wm_job, cj, FILE_NS::compo_freejob);
   WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_COMPO_RESULT, NC_SCENE | ND_COMPO_RESULT);
   WM_jobs_callbacks_ex(wm_job,
-                       compo_startjob,
-                       compo_initjob,
-                       compo_updatejob,
+                       FILE_NS::compo_startjob,
+                       FILE_NS::compo_initjob,
+                       FILE_NS::compo_updatejob,
                        nullptr,
-                       compo_completejob,
-                       compo_canceljob);
+                       FILE_NS::compo_completejob,
+                       FILE_NS::compo_canceljob);
 
   WM_jobs_start(CTX_wm_manager(C), wm_job);
 }
@@ -418,6 +424,7 @@ bool composite_node_editable(bContext *C)
   return false;
 }
 
+namespace FILE_NS {
 static void send_notifiers_after_tree_change(ID *id, bNodeTree *ntree)
 {
   WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
@@ -443,6 +450,7 @@ static void send_notifiers_after_tree_change(ID *id, bNodeTree *ntree)
     WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, id);
   }
 }
+}  // namespace FILE_NS
 
 /** \} */
 
@@ -457,13 +465,13 @@ void ED_node_tree_propagate_change(const bContext *C, Main *bmain, bNodeTree *ro
   if (C != nullptr) {
     SpaceNode *snode = CTX_wm_space_node(C);
     if (snode != nullptr && root_ntree != nullptr) {
-      blender::ed::space_node::send_notifiers_after_tree_change(snode->id, root_ntree);
+      blender::ed::space_node::FILE_NS::send_notifiers_after_tree_change(snode->id, root_ntree);
     }
   }
 
   NodeTreeUpdateExtraParams params = {nullptr};
   params.tree_changed_fn = [](ID *id, bNodeTree *ntree, void * /*user_data*/) {
-    blender::ed::space_node::send_notifiers_after_tree_change(id, ntree);
+    blender::ed::space_node::FILE_NS::send_notifiers_after_tree_change(id, ntree);
     DEG_id_tag_update(&ntree->id, ID_RECALC_COPY_ON_WRITE);
   };
   params.tree_output_changed_fn = [](ID * /*id*/, bNodeTree *ntree, void * /*user_data*/) {
@@ -843,6 +851,7 @@ void ED_node_post_apply_transform(bContext * /*C*/, bNodeTree * /*ntree*/)
 /** \} */
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 /* -------------------------------------------------------------------- */
 /** \name Node Generic
@@ -1060,6 +1069,7 @@ static void node_resize_cancel(bContext *C, wmOperator *op)
 {
   node_resize_exit(C, op, true);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_resize(wmOperatorType *ot)
 {
@@ -1069,10 +1079,10 @@ void NODE_OT_resize(wmOperatorType *ot)
   ot->description = "Resize a node";
 
   /* api callbacks */
-  ot->invoke = node_resize_invoke;
-  ot->modal = node_resize_modal;
+  ot->invoke = FILE_NS::node_resize_invoke;
+  ot->modal = FILE_NS::node_resize_modal;
   ot->poll = ED_operator_node_active;
-  ot->cancel = node_resize_cancel;
+  ot->cancel = FILE_NS::node_resize_cancel;
 
   /* flags */
   ot->flag = OPTYPE_BLOCKING;
@@ -1124,6 +1134,8 @@ void node_set_hidden_sockets(bNode *node, int set)
   }
 }
 
+namespace FILE_NS {
+
 static bool cursor_isect_multi_input_socket(const float2 &cursor, const bNodeSocket &socket)
 {
   const float node_socket_height = node_socket_calculate_height(socket);
@@ -1144,6 +1156,7 @@ static bool cursor_isect_multi_input_socket(const float2 &cursor, const bNodeSoc
   }
   return false;
 }
+}  // namespace FILE_NS
 
 bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         const float2 &cursor,
@@ -1180,14 +1193,14 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
         if (sock->is_visible()) {
           const float2 location = sock->runtime->location;
           if (sock->flag & SOCK_MULTI_INPUT && !(node.flag & NODE_HIDDEN)) {
-            if (cursor_isect_multi_input_socket(cursor, *sock)) {
-              if (!socket_is_occluded(location, node, snode)) {
+            if (FILE_NS::cursor_isect_multi_input_socket(cursor, *sock)) {
+              if (!FILE_NS::socket_is_occluded(location, node, snode)) {
                 return sock;
               }
             }
           }
           else if (BLI_rctf_isect_pt(&rect, location.x, location.y)) {
-            if (!socket_is_occluded(location, node, snode)) {
+            if (!FILE_NS::socket_is_occluded(location, node, snode)) {
               return sock;
             }
           }
@@ -1199,7 +1212,7 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
         if (sock->is_visible()) {
           const float2 location = sock->runtime->location;
           if (BLI_rctf_isect_pt(&rect, location.x, location.y)) {
-            if (!socket_is_occluded(location, node, snode)) {
+            if (!FILE_NS::socket_is_occluded(location, node, snode)) {
               return sock;
             }
           }
@@ -1248,6 +1261,8 @@ bool node_link_is_hidden_or_dimmed(const View2D &v2d, const bNodeLink &link)
 /** \name Node Duplicate Operator
  * \{ */
 
+namespace FILE_NS {
+
 static void node_duplicate_reparent_recursive(bNodeTree *ntree,
                                               const Map<bNode *, bNode *> &node_map,
                                               bNode *node)
@@ -1271,6 +1286,7 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
     nodeAttachNode(ntree, node_map.lookup(node), node_map.lookup(parent));
   }
 }
+}  // namespace FILE_NS
 
 void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &node_map)
 {
@@ -1313,6 +1329,8 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
     }
   }
 }
+
+namespace FILE_NS {
 
 static int node_duplicate_exec(bContext *C, wmOperator *op)
 {
@@ -1425,6 +1443,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_duplicate(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -1435,7 +1455,7 @@ void NODE_OT_duplicate(wmOperatorType *ot)
   ot->idname = "NODE_OT_duplicate";
 
   /* api callbacks */
-  ot->exec = node_duplicate_exec;
+  ot->exec = FILE_NS::node_duplicate_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1451,6 +1471,8 @@ void NODE_OT_duplicate(wmOperatorType *ot)
                          "Duplicate node but not node trees, linking to the original data");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
+
+namespace FILE_NS {
 
 /* Goes over all scenes, reads render layers. */
 static int node_read_viewlayers_exec(bContext *C, wmOperator * /*op*/)
@@ -1487,6 +1509,7 @@ static int node_read_viewlayers_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_read_viewlayers(wmOperatorType *ot)
 {
@@ -1494,7 +1517,7 @@ void NODE_OT_read_viewlayers(wmOperatorType *ot)
   ot->idname = "NODE_OT_read_viewlayers";
   ot->description = "Read all render layers of all used scenes";
 
-  ot->exec = node_read_viewlayers_exec;
+  ot->exec = FILE_NS::node_read_viewlayers_exec;
 
   ot->poll = composite_node_active;
 }
@@ -1556,6 +1579,8 @@ void NODE_OT_render_changed(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Hide Operator
  * \{ */
+
+namespace FILE_NS {
 
 /**
  * Toggles the flag on all selected nodes. If the flag is set on all nodes it is unset.
@@ -1622,6 +1647,7 @@ static int node_hide_toggle_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_hide_toggle(wmOperatorType *ot)
 {
@@ -1631,12 +1657,14 @@ void NODE_OT_hide_toggle(wmOperatorType *ot)
   ot->idname = "NODE_OT_hide_toggle";
 
   /* callbacks */
-  ot->exec = node_hide_toggle_exec;
+  ot->exec = FILE_NS::node_hide_toggle_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+namespace FILE_NS {
 
 static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1656,6 +1684,8 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_preview_toggle(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1664,12 +1694,13 @@ void NODE_OT_preview_toggle(wmOperatorType *ot)
   ot->idname = "NODE_OT_preview_toggle";
 
   /* callbacks */
-  ot->exec = node_preview_toggle_exec;
+  ot->exec = FILE_NS::node_preview_toggle_exec;
   ot->poll = composite_node_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+namespace FILE_NS {
 
 static int node_deactivate_viewer_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1695,6 +1726,7 @@ static int node_deactivate_viewer_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_deactivate_viewer(wmOperatorType *ot)
 {
@@ -1704,13 +1736,14 @@ void NODE_OT_deactivate_viewer(wmOperatorType *ot)
   ot->idname = __func__;
 
   /* callbacks */
-  ot->exec = node_deactivate_viewer_exec;
+  ot->exec = FILE_NS::node_deactivate_viewer_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+namespace FILE_NS {
 static int node_options_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -1726,7 +1759,7 @@ static int node_options_toggle_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_options_toggle(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1735,12 +1768,13 @@ void NODE_OT_options_toggle(wmOperatorType *ot)
   ot->idname = "NODE_OT_options_toggle";
 
   /* callbacks */
-  ot->exec = node_options_toggle_exec;
+  ot->exec = FILE_NS::node_options_toggle_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+namespace FILE_NS {
 
 static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1776,7 +1810,7 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_hide_socket_toggle(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1785,7 +1819,7 @@ void NODE_OT_hide_socket_toggle(wmOperatorType *ot)
   ot->idname = "NODE_OT_hide_socket_toggle";
 
   /* callbacks */
-  ot->exec = node_socket_toggle_exec;
+  ot->exec = FILE_NS::node_socket_toggle_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1797,7 +1831,7 @@ void NODE_OT_hide_socket_toggle(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Mute Operator
  * \{ */
-
+namespace FILE_NS {
 static int node_mute_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -1816,6 +1850,7 @@ static int node_mute_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_mute_toggle(wmOperatorType *ot)
 {
@@ -1825,7 +1860,7 @@ void NODE_OT_mute_toggle(wmOperatorType *ot)
   ot->idname = "NODE_OT_mute_toggle";
 
   /* callbacks */
-  ot->exec = node_mute_exec;
+  ot->exec = FILE_NS::node_mute_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1837,6 +1872,7 @@ void NODE_OT_mute_toggle(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Delete Operator
  * \{ */
+namespace FILE_NS {
 
 static int node_delete_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1858,7 +1894,7 @@ static int node_delete_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1867,7 +1903,7 @@ void NODE_OT_delete(wmOperatorType *ot)
   ot->idname = "NODE_OT_delete";
 
   /* api callbacks */
-  ot->exec = node_delete_exec;
+  ot->exec = FILE_NS::node_delete_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1879,6 +1915,8 @@ void NODE_OT_delete(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Switch View
  * \{ */
+
+namespace FILE_NS {
 
 static bool node_switch_view_poll(bContext *C)
 {
@@ -1906,6 +1944,7 @@ static int node_switch_view_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_switch_view_update(wmOperatorType *ot)
 {
@@ -1915,8 +1954,8 @@ void NODE_OT_switch_view_update(wmOperatorType *ot)
   ot->idname = "NODE_OT_switch_view_update";
 
   /* api callbacks */
-  ot->exec = node_switch_view_exec;
-  ot->poll = node_switch_view_poll;
+  ot->exec = FILE_NS::node_switch_view_exec;
+  ot->poll = FILE_NS::node_switch_view_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1927,6 +1966,8 @@ void NODE_OT_switch_view_update(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Delete with Reconnect Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_delete_reconnect_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1949,7 +1990,7 @@ static int node_delete_reconnect_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_delete_reconnect(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1958,7 +1999,7 @@ void NODE_OT_delete_reconnect(wmOperatorType *ot)
   ot->idname = "NODE_OT_delete_reconnect";
 
   /* api callbacks */
-  ot->exec = node_delete_reconnect_exec;
+  ot->exec = FILE_NS::node_delete_reconnect_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1970,6 +2011,7 @@ void NODE_OT_delete_reconnect(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node File Output Add Socket Operator
  * \{ */
+namespace FILE_NS {
 
 static int node_output_file_add_socket_exec(bContext *C, wmOperator *op)
 {
@@ -2000,7 +2042,7 @@ static int node_output_file_add_socket_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
-
+}  // namespace FILE_NS
 void NODE_OT_output_file_add_socket(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2009,7 +2051,7 @@ void NODE_OT_output_file_add_socket(wmOperatorType *ot)
   ot->idname = "NODE_OT_output_file_add_socket";
 
   /* callbacks */
-  ot->exec = node_output_file_add_socket_exec;
+  ot->exec = FILE_NS::node_output_file_add_socket_exec;
   ot->poll = composite_node_editable;
 
   /* flags */
@@ -2024,6 +2066,8 @@ void NODE_OT_output_file_add_socket(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Multi File Output Remove Socket Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_output_file_remove_active_socket_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -2053,6 +2097,7 @@ static int node_output_file_remove_active_socket_exec(bContext *C, wmOperator * 
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_output_file_remove_active_socket(wmOperatorType *ot)
 {
@@ -2062,7 +2107,7 @@ void NODE_OT_output_file_remove_active_socket(wmOperatorType *ot)
   ot->idname = "NODE_OT_output_file_remove_active_socket";
 
   /* callbacks */
-  ot->exec = node_output_file_remove_active_socket_exec;
+  ot->exec = FILE_NS::node_output_file_remove_active_socket_exec;
   ot->poll = composite_node_editable;
 
   /* flags */
@@ -2074,6 +2119,8 @@ void NODE_OT_output_file_remove_active_socket(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Multi File Output Move Socket Node
  * \{ */
+
+namespace FILE_NS {
 
 static int node_output_file_move_active_socket_exec(bContext *C, wmOperator *op)
 {
@@ -2125,6 +2172,7 @@ static int node_output_file_move_active_socket_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_output_file_move_active_socket(wmOperatorType *ot)
 {
@@ -2137,7 +2185,7 @@ void NODE_OT_output_file_move_active_socket(wmOperatorType *ot)
   ot->idname = "NODE_OT_output_file_move_active_socket";
 
   /* callbacks */
-  ot->exec = node_output_file_move_active_socket_exec;
+  ot->exec = FILE_NS::node_output_file_move_active_socket_exec;
   ot->poll = composite_node_editable;
 
   /* flags */
@@ -2151,6 +2199,8 @@ void NODE_OT_output_file_move_active_socket(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Copy Node Color Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_copy_color_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -2179,6 +2229,8 @@ static int node_copy_color_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_node_copy_color(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2187,7 +2239,7 @@ void NODE_OT_node_copy_color(wmOperatorType *ot)
   ot->idname = "NODE_OT_node_copy_color";
 
   /* api callbacks */
-  ot->exec = node_copy_color_exec;
+  ot->exec = FILE_NS::node_copy_color_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2199,6 +2251,8 @@ void NODE_OT_node_copy_color(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node-Tree Add Interface Socket Operator
  * \{ */
+
+namespace FILE_NS {
 
 static bNodeSocket *ntree_get_active_interface_socket(const ListBase *lb)
 {
@@ -2252,6 +2306,7 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_tree_socket_add(wmOperatorType *ot)
 {
@@ -2261,7 +2316,7 @@ void NODE_OT_tree_socket_add(wmOperatorType *ot)
   ot->idname = "NODE_OT_tree_socket_add";
 
   /* api callbacks */
-  ot->exec = ntree_socket_add_exec;
+  ot->exec = FILE_NS::ntree_socket_add_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2275,6 +2330,8 @@ void NODE_OT_tree_socket_add(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node-Tree Remove Interface Socket Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int ntree_socket_remove_exec(bContext *C, wmOperator *op)
 {
@@ -2303,6 +2360,7 @@ static int ntree_socket_remove_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_tree_socket_remove(wmOperatorType *ot)
 {
@@ -2312,7 +2370,7 @@ void NODE_OT_tree_socket_remove(wmOperatorType *ot)
   ot->idname = "NODE_OT_tree_socket_remove";
 
   /* api callbacks */
-  ot->exec = ntree_socket_remove_exec;
+  ot->exec = FILE_NS::ntree_socket_remove_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2325,6 +2383,8 @@ void NODE_OT_tree_socket_remove(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node-Tree Change Interface Socket Type Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int ntree_socket_change_type_exec(bContext *C, wmOperator *op)
 {
@@ -2403,6 +2463,7 @@ static const EnumPropertyItem *socket_change_type_itemf(bContext *C,
 
   return rna_node_socket_type_itemf(snode->edittree->typeinfo, socket_change_poll_type, r_free);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_tree_socket_change_type(wmOperatorType *ot)
 {
@@ -2415,7 +2476,7 @@ void NODE_OT_tree_socket_change_type(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = WM_menu_invoke;
-  ot->exec = ntree_socket_change_type_exec;
+  ot->exec = FILE_NS::ntree_socket_change_type_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2423,7 +2484,7 @@ void NODE_OT_tree_socket_change_type(wmOperatorType *ot)
 
   RNA_def_enum(ot->srna, "in_out", rna_enum_node_socket_in_out_items, SOCK_IN, "Socket Type", "");
   prop = RNA_def_enum(ot->srna, "socket_type", DummyRNA_DEFAULT_items, 0, "Socket Type", "");
-  RNA_def_enum_funcs(prop, socket_change_type_itemf);
+  RNA_def_enum_funcs(prop, FILE_NS::socket_change_type_itemf);
   ot->prop = prop;
 }
 
@@ -2432,6 +2493,8 @@ void NODE_OT_tree_socket_change_type(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node-Tree Change Interface Socket Subtype Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int ntree_socket_change_subtype_exec(bContext *C, wmOperator *op)
 {
@@ -2558,6 +2621,7 @@ static bool ntree_socket_change_subtype_poll(bContext *C)
   }
   return !socket_type_get_subtypes(eNodeSocketDatatype(io_socket->type)).is_empty();
 }
+}  // namespace FILE_NS
 
 void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot)
 {
@@ -2566,14 +2630,14 @@ void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot)
   ot->idname = "NODE_OT_tree_socket_change_subtype";
 
   ot->invoke = WM_menu_invoke;
-  ot->exec = ntree_socket_change_subtype_exec;
-  ot->poll = ntree_socket_change_subtype_poll;
+  ot->exec = FILE_NS::ntree_socket_change_subtype_exec;
+  ot->poll = FILE_NS::ntree_socket_change_subtype_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   ot->prop = RNA_def_enum(
       ot->srna, "socket_subtype", DummyRNA_DEFAULT_items, 0, "Socket Subtype", "");
-  RNA_def_enum_funcs(ot->prop, socket_change_subtype_itemf);
+  RNA_def_enum_funcs(ot->prop, FILE_NS::socket_change_subtype_itemf);
 }
 
 /** \} */
@@ -2581,6 +2645,8 @@ void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node-Tree Move Interface Socket Operator
  * \{ */
+
+namespace FILE_NS {
 
 static const EnumPropertyItem move_direction_items[] = {
     {1, "UP", 0, "Up", ""},
@@ -2637,6 +2703,7 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_tree_socket_move(wmOperatorType *ot)
 {
@@ -2646,13 +2713,13 @@ void NODE_OT_tree_socket_move(wmOperatorType *ot)
   ot->idname = "NODE_OT_tree_socket_move";
 
   /* api callbacks */
-  ot->exec = ntree_socket_move_exec;
+  ot->exec = FILE_NS::ntree_socket_move_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "direction", move_direction_items, 1, "Direction", "");
+  RNA_def_enum(ot->srna, "direction", FILE_NS::move_direction_items, 1, "Direction", "");
   RNA_def_enum(ot->srna, "in_out", rna_enum_node_socket_in_out_items, SOCK_IN, "Socket Type", "");
 }
 
@@ -2661,6 +2728,8 @@ void NODE_OT_tree_socket_move(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Shader Script Update
  * \{ */
+
+namespace FILE_NS {
 
 static bool node_shader_script_update_poll(bContext *C)
 {
@@ -2785,6 +2854,7 @@ static int node_shader_script_update_exec(bContext *C, wmOperator *op)
 
   return (found) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_shader_script_update(wmOperatorType *ot)
 {
@@ -2794,8 +2864,8 @@ void NODE_OT_shader_script_update(wmOperatorType *ot)
   ot->idname = "NODE_OT_shader_script_update";
 
   /* api callbacks */
-  ot->exec = node_shader_script_update_exec;
-  ot->poll = node_shader_script_update_poll;
+  ot->exec = FILE_NS::node_shader_script_update_exec;
+  ot->poll = FILE_NS::node_shader_script_update_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -2806,6 +2876,8 @@ void NODE_OT_shader_script_update(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Node Viewer Border
  * \{ */
+
+namespace FILE_NS {
 
 static void viewer_border_corner_to_backdrop(SpaceNode *snode,
                                              ARegion *region,
@@ -2878,6 +2950,7 @@ static int viewer_border_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_viewer_border(wmOperatorType *ot)
 {
@@ -2888,7 +2961,7 @@ void NODE_OT_viewer_border(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = WM_gesture_box_invoke;
-  ot->exec = viewer_border_exec;
+  ot->exec = FILE_NS::viewer_border_exec;
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
   ot->poll = composite_node_active;
@@ -2899,6 +2972,8 @@ void NODE_OT_viewer_border(wmOperatorType *ot)
   /* properties */
   WM_operator_properties_gesture_box(ot);
 }
+
+namespace FILE_NS {
 
 static int clear_viewer_border_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -2911,6 +2986,7 @@ static int clear_viewer_border_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_clear_viewer_border(wmOperatorType *ot)
 {
@@ -2920,7 +2996,7 @@ void NODE_OT_clear_viewer_border(wmOperatorType *ot)
   ot->idname = "NODE_OT_clear_viewer_border";
 
   /* api callbacks */
-  ot->exec = clear_viewer_border_exec;
+  ot->exec = FILE_NS::clear_viewer_border_exec;
   ot->poll = composite_node_active;
 
   /* flags */
@@ -2933,6 +3009,7 @@ void NODE_OT_clear_viewer_border(wmOperatorType *ot)
 /** \name Cryptomatte Add Socket
  * \{ */
 
+namespace FILE_NS {
 static int node_cryptomatte_add_socket_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -2959,6 +3036,7 @@ static int node_cryptomatte_add_socket_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_cryptomatte_layer_add(wmOperatorType *ot)
 {
@@ -2968,7 +3046,7 @@ void NODE_OT_cryptomatte_layer_add(wmOperatorType *ot)
   ot->idname = "NODE_OT_cryptomatte_layer_add";
 
   /* callbacks */
-  ot->exec = node_cryptomatte_add_socket_exec;
+  ot->exec = FILE_NS::node_cryptomatte_add_socket_exec;
   ot->poll = composite_node_editable;
 
   /* flags */
@@ -2980,6 +3058,7 @@ void NODE_OT_cryptomatte_layer_add(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Cryptomatte Remove Socket
  * \{ */
+namespace FILE_NS {
 
 static int node_cryptomatte_remove_socket_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -3009,6 +3088,7 @@ static int node_cryptomatte_remove_socket_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 {
@@ -3018,7 +3098,7 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
   ot->idname = "NODE_OT_cryptomatte_layer_remove";
 
   /* callbacks */
-  ot->exec = node_cryptomatte_remove_socket_exec;
+  ot->exec = FILE_NS::node_cryptomatte_remove_socket_exec;
   ot->poll = composite_node_editable;
 
   /* flags */
@@ -3028,3 +3108,5 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
