@@ -44,10 +44,10 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(Span<void *> s
  *   should only be used when the bake items are not needed afterwards anymore.
  * - If a socket does not have a corresponding bake item, it's initialized to its default value.
  *
- * \param make_attribute_field A function that creates a field input for any anonymous attributes
+ * \param make_attribute_field: A function that creates a field input for any anonymous attributes
  *   being created for the baked data.
- * \param r_socket_values The caller is expected to allocate (but not construct) the output values.
- *   All socket values are constructed in this function.
+ * \param r_socket_values: The caller is expected to allocate (but not construct) the output
+ *   values. All socket values are constructed in this function.
  */
 void move_bake_items_to_socket_values(
     Span<BakeItem *> bake_items,
