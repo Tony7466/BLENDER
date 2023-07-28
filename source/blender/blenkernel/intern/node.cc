@@ -221,7 +221,7 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
   //    panel_ptr->name = BLI_strdup(panel_ptr->name);
   //  }
 
-  BKE_nodetree_interface_copy(&ntree_dst->interface, &ntree_src->interface);
+  BKE_nodetree_interface_copy(&ntree_dst->interface, &ntree_src->interface, flag);
 
   /* copy preview hash */
   if (ntree_src->previews && (flag & LIB_ID_COPY_NO_PREVIEW) == 0) {

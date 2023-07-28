@@ -193,10 +193,19 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   //  nullptr; st->interface_from_socket = (have_function[3]) ? rna_NodeSocketInterface_from_socket
   //  : nullptr;
 
-  /* update while blender is running */
+  /* Cleanup local dummy type. */
+  MEM_SAFE_FREE(dummy_socket.socket_type);
+
+  /* Update while blender is running */
   WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
 
   return st->ext_interface_new.srna;
+}
+
+static IDProperty **rna_NodeTreeInterfaceSocket_idprops(PointerRNA *ptr)
+{
+  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  return &socket->prop;
 }
 
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
@@ -640,6 +649,7 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
                                 "rna_NodeTreeInterfaceSocket_register",
                                 "rna_NodeTreeInterfaceSocket_unregister",
                                 nullptr);
+  RNA_def_struct_idprops_func(srna, "rna_NodeTreeInterfaceSocket_idprops");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Socket name");

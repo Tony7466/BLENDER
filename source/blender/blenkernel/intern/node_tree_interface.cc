@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_node.h"
@@ -25,6 +26,64 @@
 namespace blender::bke::node_interface {
 
 namespace socket_types {
+
+/* -------------------------------------------------------------------- */
+/** \name ID user increment in socket data
+ * \{ */
+
+[[maybe_unused]] static void socket_data_id_user_increment(bNodeSocketValueObject &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_increment(bNodeSocketValueImage &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_increment(bNodeSocketValueCollection &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_increment(bNodeSocketValueTexture &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
+{
+  id_us_plus(reinterpret_cast<ID *>(data.value));
+}
+/* Default implementation. */
+template<typename T> static void socket_data_id_user_increment(T & /*data*/) {}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name ID user decrement in socket data
+ * \{ */
+
+[[maybe_unused]] static void socket_data_id_user_decrement(bNodeSocketValueObject &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_decrement(bNodeSocketValueImage &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_decrement(bNodeSocketValueCollection &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_decrement(bNodeSocketValueTexture &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.value));
+}
+[[maybe_unused]] static void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
+{
+  id_us_min(reinterpret_cast<ID *>(data.value));
+}
+/* Default implementation. */
+template<typename T> static void socket_data_id_user_decrement(T & /*data*/) {}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Initialize socket data
@@ -108,40 +167,20 @@ static void *make_socket_data(const char *socket_type)
 /** \name Copy allocated socket data
  * \{ */
 
-[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueObject &dst,
-                                                   const bNodeSocketValueObject & /*src*/)
-{
-  id_us_plus(reinterpret_cast<ID *>(dst.value));
-}
-[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueImage &dst,
-                                                   const bNodeSocketValueImage & /*src*/)
-{
-  id_us_plus(reinterpret_cast<ID *>(dst.value));
-}
-[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueCollection &dst,
-                                                   const bNodeSocketValueCollection & /*src*/)
-{
-  id_us_plus(reinterpret_cast<ID *>(dst.value));
-}
-[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueTexture &dst,
-                                                   const bNodeSocketValueTexture & /*src*/)
-{
-  id_us_plus(reinterpret_cast<ID *>(dst.value));
-}
-[[maybe_unused]] static void socket_data_copy_impl(bNodeSocketValueMaterial &dst,
-                                                   const bNodeSocketValueMaterial & /*src*/)
-{
-  id_us_plus(reinterpret_cast<ID *>(dst.value));
-}
 /* Default implementation */
 template<typename T> static void socket_data_copy_impl(T & /*dst*/, const T & /*src*/) {}
 
-static void socket_data_copy(bNodeTreeInterfaceSocket &dst, const bNodeTreeInterfaceSocket &src)
+static void socket_data_copy(bNodeTreeInterfaceSocket &dst,
+                             const bNodeTreeInterfaceSocket &src,
+                             int flag)
 {
   socket_data_to_static_type_tag(dst.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     dst.socket_data = MEM_dupallocN(src.socket_data);
     socket_data_copy_impl(get_data<SocketDataType>(dst), get_data<SocketDataType>(src));
+    if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+      socket_data_id_user_increment(get_data<SocketDataType>(dst));
+    }
   });
 }
 
@@ -152,13 +191,16 @@ static void socket_data_copy(bNodeTreeInterfaceSocket &dst, const bNodeTreeInter
  * \{ */
 
 /* Default implementation */
-template<typename T> static void socket_data_free_impl(T & /*data*/) {}
+template<typename T> static void socket_data_free_impl(T & /*data*/, const bool /*do_id_user*/) {}
 
-static void socket_data_free(bNodeTreeInterfaceSocket &socket)
+static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_user)
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_free_impl(get_data<SocketDataType>(socket));
+    if (do_id_user) {
+      socket_data_id_user_decrement(get_data<SocketDataType>(socket));
+    }
+    socket_data_free_impl(get_data<SocketDataType>(socket), do_id_user);
   });
 }
 
@@ -400,32 +442,13 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Return ID properties if used by socket type
- * \{ */
-
-template<typename T> static IDProperty *socket_data_get_id_props_impl(T & /*data*/)
-{
-  return nullptr;
-}
-
-static IDProperty *socket_data_get_id_props(bNodeTreeInterfaceSocket &socket)
-{
-  IDProperty *result = nullptr;
-  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
-    using SocketDataType = typename decltype(type_tag)::type;
-    result = socket_data_get_id_props_impl(get_data<SocketDataType>(socket));
-  });
-  return result;
-}
-
-/** \} */
-
 }  // namespace socket_types
 
 namespace item_types {
 
-static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem &src)
+static void item_copy(bNodeTreeInterfaceItem &dst,
+                      const bNodeTreeInterfaceItem &src,
+                      const int flag)
 {
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
@@ -443,9 +466,12 @@ static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem 
                                               BLI_strdup(src_socket.default_attribute_name) :
                                               nullptr;
       dst_socket.uid_compat = src_socket.uid_compat ? BLI_strdup(src_socket.uid_compat) : nullptr;
+      if (src_socket.prop) {
+        dst_socket.prop = IDP_CopyProperty_ex(src_socket.prop, flag);
+      }
 
       if (src_socket.socket_data != nullptr) {
-        socket_types::socket_data_copy(dst_socket, src_socket);
+        socket_types::socket_data_copy(dst_socket, src_socket, flag);
       }
       break;
     }
@@ -456,20 +482,20 @@ static void item_copy(bNodeTreeInterfaceItem &dst, const bNodeTreeInterfaceItem 
       BLI_assert(src_panel.name != nullptr);
 
       dst_panel.name = BLI_strdup(src_panel.name);
-      dst_panel.copy_items(src_panel.items());
+      dst_panel.copy_items(src_panel.items(), flag);
       break;
     }
   }
 }
 
-static void item_free(bNodeTreeInterfaceItem &item)
+static void item_free(bNodeTreeInterfaceItem &item, const bool do_id_user)
 {
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
 
       if (socket.socket_data != nullptr) {
-        socket_types::socket_data_free(socket);
+        socket_types::socket_data_free(socket, do_id_user);
         MEM_SAFE_FREE(socket.socket_data);
       }
 
@@ -478,6 +504,10 @@ static void item_free(bNodeTreeInterfaceItem &item)
       MEM_SAFE_FREE(socket.socket_type);
       MEM_SAFE_FREE(socket.default_attribute_name);
       MEM_SAFE_FREE(socket.uid_compat);
+      if (socket.prop) {
+        IDP_FreePropertyContent_ex(socket.prop, do_id_user);
+        MEM_freeN(socket.prop);
+      }
       break;
     }
     case NODE_INTERFACE_PANEL: {
@@ -503,6 +533,9 @@ static void item_write_data(BlendWriter *writer, bNodeTreeInterfaceItem &item)
       BLO_write_string(writer, socket.description);
       BLO_write_string(writer, socket.socket_type);
       BLO_write_string(writer, socket.default_attribute_name);
+      if (socket.prop) {
+        IDP_BlendWrite(writer, socket.prop);
+      }
 
       socket_types::socket_data_write(writer, socket);
       break;
@@ -546,6 +579,8 @@ static void item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem &item
       BLO_read_data_address(reader, &socket.default_attribute_name);
       /* Only used for backwards compatibility. */
       socket.uid_compat = nullptr;
+      BLO_read_data_address(reader, &socket.prop);
+      IDP_BlendDataRead(reader, &socket.prop);
 
       socket_types::socket_data_read_data(reader, socket);
       break;
@@ -568,6 +603,7 @@ static void item_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterfaceItem
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+      IDP_BlendReadLib(reader, id, socket.prop);
       socket_types::socket_data_read_lib(reader, id, socket);
       break;
     }
@@ -586,6 +622,7 @@ static void item_read_expand(BlendExpander *expander, bNodeTreeInterfaceItem &it
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+      IDP_BlendReadExpand(expander, socket.prop);
       socket_types::socket_data_expand(expander, socket);
       break;
     }
@@ -604,6 +641,14 @@ static void item_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceItem &
   switch (item.item_type) {
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+
+      BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
+          data,
+          IDP_foreach_property(socket.prop,
+                               IDP_TYPE_FILTER_ID,
+                               BKE_lib_query_idpropertiesForeachIDLink_callback,
+                               data));
+
       socket_types::socket_data_foreach_id(data, socket);
       break;
     }
@@ -663,15 +708,10 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
   return blender::ColorGeometry4f(color);
 }
 
-IDProperty *bNodeTreeInterfaceSocket::socket_id_props()
-{
-  return socket_types::socket_data_get_id_props(*this);
-}
-
 bool bNodeTreeInterfaceSocket::set_socket_type(const char *new_socket_type)
 {
   if (socket_data != nullptr) {
-    socket_types::socket_data_free(*this);
+    socket_types::socket_data_free(*this, true);
     MEM_SAFE_FREE(socket_data);
   }
   MEM_SAFE_FREE(socket_type);
@@ -835,7 +875,7 @@ bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool fre
   MEM_freeN(old_items.data());
 
   if (free) {
-    item_types::item_free(item);
+    item_types::item_free(item, true);
   }
 
   return true;
@@ -844,7 +884,7 @@ bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool fre
 void bNodeTreeInterfacePanel::clear_items()
 {
   for (bNodeTreeInterfaceItem *item : items()) {
-    item_types::item_free(*item);
+    item_types::item_free(*item, true);
   }
   MEM_SAFE_FREE(items_array);
   items_array = nullptr;
@@ -989,7 +1029,7 @@ static bNodeTreeInterfacePanel *make_panel(const int uid, blender::StringRef nam
 }
 
 void bNodeTreeInterfacePanel::copy_items(
-    const blender::Span<const bNodeTreeInterfaceItem *> items_src)
+    const blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag)
 {
   items_num = items_src.size();
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
@@ -998,13 +1038,13 @@ void bNodeTreeInterfacePanel::copy_items(
   for (const int i : items_src.index_range()) {
     const bNodeTreeInterfaceItem *item_src = items_src[i];
     items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
-    item_types::item_copy(*items_array[i], *item_src);
+    item_types::item_copy(*items_array[i], *item_src, flag);
   }
 }
 
-void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src)
+void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
-  root_panel.copy_items(src.root_panel.items());
+  root_panel.copy_items(src.root_panel.items(), flag);
   this->active_index = src.active_index;
 }
 
@@ -1090,7 +1130,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item);
+  item_types::item_copy(*citem, item, 0);
   parent->add_item(*citem);
 
   return citem;
@@ -1107,7 +1147,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   BLI_assert(find_item(parent->item));
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item);
+  item_types::item_copy(*citem, item, 0);
   parent->insert_item(*citem, index);
 
   return citem;
@@ -1187,9 +1227,10 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
 void BKE_nodetree_interface_init(bNodeTreeInterface * /*interface*/) {}
 
 void BKE_nodetree_interface_copy(bNodeTreeInterface *interface_dst,
-                                 const bNodeTreeInterface *interface_src)
+                                 const bNodeTreeInterface *interface_src,
+                                 int flag)
 {
-  interface_dst->copy_data(*interface_src);
+  interface_dst->copy_data(*interface_src, flag);
 }
 
 void BKE_nodetree_interface_free(bNodeTreeInterface *interface)

@@ -319,7 +319,8 @@ extern "C" {
 
 void BKE_nodetree_interface_init(struct bNodeTreeInterface *interface);
 void BKE_nodetree_interface_copy(struct bNodeTreeInterface *interface_dst,
-                                 const struct bNodeTreeInterface *interface_src);
+                                 const struct bNodeTreeInterface *interface_src,
+                                 int flag);
 void BKE_nodetree_interface_free(struct bNodeTreeInterface *interface);
 
 /* .blend file I/O */

@@ -84,13 +84,14 @@ typedef struct bNodeTreeInterfaceSocket {
 
   void *socket_data;
 
+  IDProperty *prop;
+
 #ifdef __cplusplus
   std::string socket_identifier() const;
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
   /* XXX eNodeSocketDatatype is defined in BKE, can't use it in DNA. */
   //  eNodeSocketDatatype socket_static_type() const;
-  IDProperty *socket_id_props();
 
   // template<typename T> T &get_data();
   // template<typename T> const T &get_data() const;
@@ -139,7 +140,7 @@ typedef struct bNodeTreeInterfacePanel {
    */
   bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent);
 
-  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src);
+  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
   void clear_items();
 
   void add_item(bNodeTreeInterfaceItem &item);
@@ -175,7 +176,7 @@ typedef struct bNodeTreeInterface {
   int next_uid;
 
 #ifdef __cplusplus
-  void copy_data(const bNodeTreeInterface &src);
+  void copy_data(const bNodeTreeInterface &src, int flag);
   void free_data();
 
   bNodeTreeInterfaceItem *active_item();

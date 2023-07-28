@@ -2926,10 +2926,10 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
   }
 
   for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
-    build_idproperties(socket->socket_id_props());
+    build_idproperties(socket->prop);
   }
   for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().outputs) {
-    build_idproperties(socket->socket_id_props());
+    build_idproperties(socket->prop);
   }
 
   if (check_id_has_anim_component(&ntree->id)) {
