@@ -5390,7 +5390,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         if (ale->type == ANIMTYPE_FCURVE) {
           FCurve *fcu = static_cast<FCurve *>(ale->data);
           /* Don't draw lock icon when curve is baked.
-           * Still using the offset so icons is aligned. */
+           * Still using the offset so icons are aligned. */
           if (fcu->bezt) {
             draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
           }
