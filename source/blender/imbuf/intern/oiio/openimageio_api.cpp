@@ -23,8 +23,8 @@ void OIIO_init()
 {
   /* Make OIIO thread pool follow Blender number of threads override. */
   const int threads_override = BLI_system_num_threads_override_get();
-  if (threads_override && !BLI_getenv("OPENIMAGEIO_THREADS")) {
-    BLI_setenv("OPENIMAGEIO_THREADS", std::to_string(threads_override).c_str());
+  if (threads_override) {
+    OIIO::attribute("threads", threads_override);
   }
 }
 
