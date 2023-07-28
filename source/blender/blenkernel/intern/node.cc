@@ -1735,7 +1735,7 @@ GHashIterator *nodeTypeGetIterator()
 
 bNodeSocketType *nodeSocketTypeFind(const char *idname)
 {
-  if (idname[0]) {
+  if (idname && idname[0]) {
     bNodeSocketType *st = static_cast<bNodeSocketType *>(
         BLI_ghash_lookup(blender::bke::nodesockettypes_hash, idname));
     if (st) {
