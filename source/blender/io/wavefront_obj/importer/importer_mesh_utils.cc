@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -78,7 +80,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
          * we won't quite know what to do with it (how to create normal/UV
          * for it, for example). Such vertices are often due to
          * self-intersecting polygons. Just skip them from the output
-         * polygon. */
+         * face. */
       }
       else {
         /* Vertex corresponds to one or more of the input vertices, use it. */

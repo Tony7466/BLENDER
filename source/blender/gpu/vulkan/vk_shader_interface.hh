@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -38,7 +39,7 @@ class VKShaderInterface : public ShaderInterface {
 
   const VKDescriptorSet::Location descriptor_set_location(
       const shader::ShaderCreateInfo::Resource &resource) const;
-  const VKDescriptorSet::Location descriptor_set_location(
+  const std::optional<VKDescriptorSet::Location> descriptor_set_location(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
 
   /** Get the Layout of the shader. */

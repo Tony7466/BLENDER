@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import enchant
@@ -47,6 +49,7 @@ class SpellChecker:
         "mplayer",
         "ons",  # add-ons
         "pong",  # ping pong
+        "procedurals",  # Used as noun
         "resumable",
         "runtimes",
         "scalable",
@@ -108,6 +111,7 @@ class SpellChecker:
         "dataset", "datasets",
         "de",
         "deadzone",
+        "decomposable",
         "deconstruct",
         "defocus",
         "denoise", "denoised", "denoising", "denoiser",
@@ -192,11 +196,12 @@ class SpellChecker:
         "remesh",
         "reprojection", "reproject", "reprojecting",
         "resample",
+        "rescale",
         "resize",
         "restpose",
         "resync", "resynced",
         "retarget", "retargets", "retargeting", "retargeted",
-        "retiming",
+        "retime", "retimed", "retiming",
         "rigidbody",
         "ringnoise",
         "rolloff",
@@ -243,6 +248,7 @@ class SpellChecker:
         "undeformed",
         "undistort", "undistorted", "undistortion",
         "ungroup", "ungrouped",
+        "unhandled",
         "unhide",
         "unindent",
         "unitless",
@@ -255,7 +261,7 @@ class SpellChecker:
         "unprotect",
         "unreacted",
         "unreferenced",
-        "unregister",
+        "unregister", "unregistration",
         "unselect", "unselected", "unselectable",
         "unsets",
         "unshadowed",
@@ -299,6 +305,7 @@ class SpellChecker:
         "shaper",
         "smoothen", "smoothening",
         "spherize", "spherized",
+        "statting",  # Running `stat` command, yuck!
         "stitchable",
         "symmetrize",
         "trackability",
@@ -316,6 +323,7 @@ class SpellChecker:
         "anim",
         "aov",
         "app",
+        "args",  # Arguments
         "bbox", "bboxes",
         "bksp",  # Backspace
         "bool",
@@ -348,6 +356,7 @@ class SpellChecker:
         "luma",
         "mbs",  # mouse button 'select'.
         "mem",
+        "mul",  # Multiplicative etc.
         "multicam",
         "num",
         "ok",
@@ -444,6 +453,7 @@ class SpellChecker:
         "quaternion", "quaternions",
         "quintic",
         "samplerate",
+        "sandboxed",
         "sawtooth",
         "scrollback",
         "scrollbar",
@@ -455,6 +465,8 @@ class SpellChecker:
         "thumbstick",
         "tooltip", "tooltips",
         "touchpad", "trackpad",
+        "trilinear",
+        "triquadratic",
         "tuple",
         "unicode",
         "viewport", "viewports",
@@ -481,6 +493,7 @@ class SpellChecker:
         "clearcoat",
         "codec", "codecs",
         "collada",
+        "colorspace",
         "compositing",
         "crossfade",
         "cubemap", "cubemaps",
@@ -525,6 +538,7 @@ class SpellChecker:
         "refractions",
         "remesher", "remeshing", "remesh",
         "renderfarm",
+        "retopology",
         "scanfill",
         "shader", "shaders",
         "shadowmap", "shadowmaps",
@@ -533,6 +547,7 @@ class SpellChecker:
         "spillmap",
         "sobel",
         "stereoscopy",
+        "surfel", "surfels",  # Surface Element
         "texel",
         "timecode",
         "tonemap",
@@ -616,6 +631,7 @@ class SpellChecker:
         "tessface", "tessfaces",
         "texface",
         "timeline", "timelines",
+        "tmpact",  # sigh...
         "tosphere",
         "uilist",
         "userpref",
@@ -651,6 +667,7 @@ class SpellChecker:
         "gmp",
         "hosek",
         "kutta",
+        "kuwahara",
         "lennard",
         "marsen",  # Texel-Marsen-Arsloe
         "mikktspace",
@@ -746,8 +763,10 @@ class SpellChecker:
         "rdna",
         "rdp",
         "rgb", "rgba",
+        "ris",
         "rhs",
         "rv",
+        "sdf",
         "sdl",
         "sdls",
         "sl",
@@ -764,6 +783,7 @@ class SpellChecker:
         "vmm",
         "vr",
         "wxyz",
+        "xform",
         "xr",
         "ycc", "ycca",
         "yrgb",
@@ -805,10 +825,12 @@ class SpellChecker:
         "ffmpeg",
         "flac",
         "gltf",
+        "gprim",  # From USD.
         "gzip",
         "ico",
         "jpg", "jpeg", "jpegs",
         "json",
+        "lightwave",
         "lzw",
         "matroska",
         "mdd",
@@ -832,6 +854,7 @@ class SpellChecker:
         "tiff",
         "theora",
         "usdz",
+        "vdb",
         "vorbis",
         "vp9",
         "wav",

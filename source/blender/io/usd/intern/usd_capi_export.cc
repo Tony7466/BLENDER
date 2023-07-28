@@ -1,8 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd.h"
-#include "usd_common.h"
 #include "usd_hierarchy_iterator.h"
 
 #include <pxr/base/plug/registry.h>
@@ -11,6 +11,7 @@
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/tokens.h>
+#include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdUtils/dependencies.h>
 
 #include "MEM_guardedalloc.h"
@@ -64,6 +65,74 @@ struct ExportJobData {
   }
 };
 
+/* Returns true if the given prim path is valid, per
+ * the requirements of the prim path manipulation logic
+ * of the exporter. Also returns true if the path is
+ * the empty string. Returns false otherwise. */
+static bool prim_path_valid(const char *path)
+{
+  BLI_assert(path);
+
+  if (path[0] == '\0') {
+    /* Empty paths are ignored in the code,
+     * so they can be passed through. */
+    return true;
+  }
+
+  /* Check path syntax. */
+  std::string errMsg;
+  if (!pxr::SdfPath::IsValidPathString(path, &errMsg)) {
+    WM_reportf(RPT_ERROR, "USD Export: invalid path string '%s': %s", path, errMsg.c_str());
+    return false;
+  }
+
+  /* Verify that an absolute prim path can be constructed
+   * from this path string. */
+
+  pxr::SdfPath sdf_path(path);
+  if (!sdf_path.IsAbsolutePath()) {
+    WM_reportf(RPT_ERROR, "USD Export: path '%s' is not an absolute path", path);
+    return false;
+  }
+
+  if (!sdf_path.IsPrimPath()) {
+    WM_reportf(RPT_ERROR, "USD Export: path string '%s' is not a prim path", path);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Perform validation of export parameter settings.
+ * \return true if the parameters are valid; returns false otherwise.
+ */
+static bool export_params_valid(const USDExportParams &params)
+{
+  bool valid = true;
+
+  if (!prim_path_valid(params.root_prim_path)) {
+    valid = false;
+  }
+
+  return valid;
+}
+
+/**
+ * Create the root Xform primitive, if the Root Prim path has been set
+ * in the export options. In the future, this function can be extended
+ * to author transforms and additional schema data (e.g., model Kind)
+ * on the root prim.
+ */
+static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &params)
+{
+  if (params.root_prim_path[0] == '\0') {
+    return;
+  }
+
+  pxr::UsdGeomXform::Define(stage, pxr::SdfPath(params.root_prim_path));
+}
+
 static void report_job_duration(const ExportJobData *data)
 {
   timeit::Nanoseconds duration = timeit::Clock::now() - data->start_time;
@@ -84,10 +153,14 @@ static void report_job_duration(const ExportJobData *data)
 static bool perform_usdz_conversion(const ExportJobData *data)
 {
   char usdc_temp_dir[FILE_MAX], usdc_file[FILE_MAX];
-  BLI_split_dirfile(data->unarchived_filepath, usdc_temp_dir, usdc_file, FILE_MAX, FILE_MAX);
+  BLI_path_split_dir_file(data->unarchived_filepath,
+                          usdc_temp_dir,
+                          sizeof(usdc_temp_dir),
+                          usdc_file,
+                          sizeof(usdc_file));
 
   char usdz_file[FILE_MAX];
-  BLI_split_file_part(data->usdz_filepath, usdz_file, FILE_MAX);
+  BLI_path_split_file_part(data->usdz_filepath, usdz_file, FILE_MAX);
 
   char original_working_dir_buff[FILE_MAX];
   char *original_working_dir = BLI_current_working_dir(original_working_dir_buff,
@@ -181,6 +254,8 @@ static void export_startjob(void *customdata,
     usd_stage->SetEndTimeCode(scene->r.efra);
   }
 
+  ensure_root_prim(usd_stage, data->params);
+
   USDHierarchyIterator iter(data->bmain, data->depsgraph, usd_stage, data->params);
 
   if (data->params.export_animation) {
@@ -251,7 +326,7 @@ static void export_endjob_usdz_cleanup(const ExportJobData *data)
   }
 
   char dir[FILE_MAX];
-  BLI_split_dir_part(data->unarchived_filepath, dir, FILE_MAX);
+  BLI_path_split_dir_part(data->unarchived_filepath, dir, FILE_MAX);
 
   char usdc_temp_dir[FILE_MAX];
   BLI_path_join(usdc_temp_dir, FILE_MAX, BKE_tempdir_session(), "USDZ", SEP_STR);
@@ -291,27 +366,28 @@ static void export_endjob(void *customdata)
 static void create_temp_path_for_usdz_export(const char *filepath,
                                              blender::io::usd::ExportJobData *job)
 {
-  char file[FILE_MAX];
-  BLI_split_file_part(filepath, file, FILE_MAX);
-  char *usdc_file = BLI_str_replaceN(file, ".usdz", ".usdc");
+  char usdc_file[FILE_MAX];
+  STRNCPY(usdc_file, BLI_path_basename(filepath));
+
+  if (BLI_path_extension_check(usdc_file, ".usdz")) {
+    BLI_path_extension_replace(usdc_file, sizeof(usdc_file), ".usdc");
+  }
 
   char usdc_temp_filepath[FILE_MAX];
   BLI_path_join(usdc_temp_filepath, FILE_MAX, BKE_tempdir_session(), "USDZ", usdc_file);
 
-  BLI_strncpy(job->unarchived_filepath, usdc_temp_filepath, strlen(usdc_temp_filepath) + 1);
-  BLI_strncpy(job->usdz_filepath, filepath, strlen(filepath) + 1);
-
-  MEM_freeN(usdc_file);
+  STRNCPY(job->unarchived_filepath, usdc_temp_filepath);
+  STRNCPY(job->usdz_filepath, filepath);
 }
 
 static void set_job_filepath(blender::io::usd::ExportJobData *job, const char *filepath)
 {
-  if (BLI_path_extension_check_n(filepath, ".usdz", NULL)) {
+  if (BLI_path_extension_check_n(filepath, ".usdz", nullptr)) {
     create_temp_path_for_usdz_export(filepath, job);
     return;
   }
 
-  BLI_strncpy(job->unarchived_filepath, filepath, sizeof(job->unarchived_filepath));
+  STRNCPY(job->unarchived_filepath, filepath);
   job->usdz_filepath[0] = '\0';
 }
 
@@ -320,6 +396,10 @@ bool USD_export(bContext *C,
                 const USDExportParams *params,
                 bool as_background_job)
 {
+  if (!blender::io::usd::export_params_valid(*params)) {
+    return false;
+  }
+
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
 
@@ -351,7 +431,7 @@ bool USD_export(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need NULL pointer checks while exporting. */
+    /* Fake a job context, so that we don't need null pointer checks while exporting. */
     bool stop = false, do_update = false;
     float progress = 0.0f;
 

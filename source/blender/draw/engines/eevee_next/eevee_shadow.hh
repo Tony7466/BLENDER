@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -257,7 +257,8 @@ class ShadowModule {
   /** Tile to physical page mapping. This is an array texture with one layer per view. */
   Texture render_map_tx_ = {"ShadowRenderMap",
                             GPU_R32UI,
-                            GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
+                            GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
                             int2(SHADOW_TILEMAP_RES),
                             64,
                             nullptr,

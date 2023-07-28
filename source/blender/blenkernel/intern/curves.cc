@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -62,44 +64,17 @@ static void curves_init_data(ID *id)
   new (&curves->geometry) blender::bke::CurvesGeometry();
 }
 
-static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
-  using namespace blender;
-
   Curves *curves_dst = (Curves *)id_dst;
   const Curves *curves_src = (const Curves *)id_src;
   curves_dst->mat = static_cast<Material **>(MEM_dupallocN(curves_src->mat));
 
-  const bke::CurvesGeometry &src = curves_src->geometry.wrap();
-  bke::CurvesGeometry &dst = curves_dst->geometry.wrap();
-
-  /* We need special handling here because the generic ID management code has already done a
-   * shallow copy from the source to the destination, and because the copy-on-write functionality
-   * isn't supported more generically yet. */
-
-  dst.point_num = src.point_num;
-  dst.curve_num = src.curve_num;
-
-  const eCDAllocType alloc_type = (flag & LIB_ID_COPY_CD_REFERENCE) ? CD_REFERENCE : CD_DUPLICATE;
-  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, alloc_type, dst.point_num);
-  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, alloc_type, dst.curve_num);
-
-  dst.curve_offsets = static_cast<int *>(MEM_dupallocN(src.curve_offsets));
+  new (&curves_dst->geometry) blender::bke::CurvesGeometry(curves_src->geometry.wrap());
 
   if (curves_src->surface_uv_map != nullptr) {
     curves_dst->surface_uv_map = BLI_strdup(curves_src->surface_uv_map);
   }
-
-  dst.runtime = MEM_new<bke::CurvesGeometryRuntime>(__func__);
-
-  dst.runtime->type_counts = src.runtime->type_counts;
-  dst.runtime->evaluated_offsets_cache = src.runtime->evaluated_offsets_cache;
-  dst.runtime->nurbs_basis_cache = src.runtime->nurbs_basis_cache;
-  dst.runtime->evaluated_position_cache = src.runtime->evaluated_position_cache;
-  dst.runtime->bounds_cache = src.runtime->bounds_cache;
-  dst.runtime->evaluated_length_cache = src.runtime->evaluated_length_cache;
-  dst.runtime->evaluated_tangent_cache = src.runtime->evaluated_tangent_cache;
-  dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
 
   curves_dst->batch_cache = nullptr;
 }
@@ -156,11 +131,6 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 
   BLO_read_data_address(reader, &curves->surface_uv_map);
 
-  curves->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
-
-  /* Recalculate curve type count cache that isn't saved in files. */
-  curves->geometry.wrap().update_curve_types();
-
   /* Materials */
   BLO_read_pointer_array(reader, (void **)&curves->mat);
 }
@@ -169,9 +139,9 @@ static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
   for (int a = 0; a < curves->totcol; a++) {
-    BLO_read_id_address(reader, curves->id.lib, &curves->mat[a]);
+    BLO_read_id_address(reader, id, &curves->mat[a]);
   }
-  BLO_read_id_address(reader, curves->id.lib, &curves->surface);
+  BLO_read_id_address(reader, id, &curves->surface);
 }
 
 static void curves_blend_read_expand(BlendExpander *expander, ID *id)
@@ -222,6 +192,7 @@ void *BKE_curves_add(Main *bmain, const char *name)
 
 BoundBox *BKE_curves_boundbox_get(Object *ob)
 {
+  using namespace blender;
   BLI_assert(ob->type == OB_CURVES);
   const Curves *curves_id = static_cast<const Curves *>(ob->data);
 
@@ -231,17 +202,13 @@ BoundBox *BKE_curves_boundbox_get(Object *ob)
 
   if (ob->runtime.bb == nullptr) {
     ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
-
-    const blender::bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-
-    float3 min(FLT_MAX);
-    float3 max(-FLT_MAX);
-    if (!curves.bounds_min_max(min, max)) {
-      min = float3(-1);
-      max = float3(1);
+    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    if (const std::optional<Bounds<float3>> bounds = curves.bounds_min_max()) {
+      BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
     }
-
-    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+    else {
+      BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(-1), float3(1));
+    }
   }
 
   return ob->runtime.bb;
@@ -252,22 +219,16 @@ bool BKE_curves_attribute_required(const Curves * /*curves*/, const char *name)
   return STREQ(name, ATTR_POSITION);
 }
 
-Curves *BKE_curves_copy_for_eval(Curves *curves_src, bool reference)
+Curves *BKE_curves_copy_for_eval(const Curves *curves_src)
 {
-  int flags = LIB_ID_COPY_LOCALIZE;
-
-  if (reference) {
-    flags |= LIB_ID_COPY_CD_REFERENCE;
-  }
-
-  Curves *result = (Curves *)BKE_id_copy_ex(nullptr, &curves_src->id, nullptr, flags);
-  return result;
+  return reinterpret_cast<Curves *>(
+      BKE_id_copy_ex(nullptr, &curves_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
 }
 
-static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
-                                      struct Scene *scene,
+static void curves_evaluate_modifiers(Depsgraph *depsgraph,
+                                      Scene *scene,
                                       Object *object,
-                                      GeometrySet &geometry_set)
+                                      blender::bke::GeometrySet &geometry_set)
 {
   /* Modifier evaluation modes. */
   const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
@@ -282,8 +243,8 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
 
   /* Get effective list of modifiers to execute. Some effects like shape keys
    * are added as virtual modifiers before the user created modifiers. */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtual_modifier_data);
 
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
@@ -295,14 +256,16 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
 
     blender::bke::ScopedModifierTimer modifier_timer{*md};
 
-    if (mti->modifyGeometrySet != nullptr) {
-      mti->modifyGeometrySet(md, &mectx, &geometry_set);
+    if (mti->modify_geometry_set != nullptr) {
+      mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
 }
 
-void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
+void BKE_curves_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
+  using namespace blender;
+  using namespace blender::bke;
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
 
@@ -315,7 +278,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
      * on evaluated curves. */
     GeometryComponentEditData &edit_component =
         geometry_set.get_component_for_write<GeometryComponentEditData>();
-    edit_component.curves_edit_hints_ = std::make_unique<blender::bke::CurvesEditHints>(
+    edit_component.curves_edit_hints_ = std::make_unique<CurvesEditHints>(
         *static_cast<const Curves *>(DEG_get_original_object(object)->data));
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
@@ -323,7 +286,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   /* Assign evaluated object. */
   Curves *curves_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
   if (curves_eval == nullptr) {
-    curves_eval = blender::bke::curves_new_nomain(0, 0);
+    curves_eval = curves_new_nomain(0, 0);
     BKE_object_eval_assign_data(object, &curves_eval->id, true);
   }
   else {

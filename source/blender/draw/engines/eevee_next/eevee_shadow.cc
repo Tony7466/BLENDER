@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -69,7 +69,8 @@ void ShadowTileMap::sync_cubeface(
     const float4x4 &object_mat_, float near_, float far_, eCubeFace face, float lod_bias_)
 {
   if (projection_type != SHADOW_PROJECTION_CUBEFACE || (cubeface != face) || (near != near_) ||
-      (far != far_)) {
+      (far != far_))
+  {
     set_dirty();
   }
   projection_type = SHADOW_PROJECTION_CUBEFACE;
@@ -146,7 +147,8 @@ ShadowTileMapPool::ShadowTileMapPool()
   extent.x = min_ii(SHADOW_MAX_TILEMAP, maps_per_row) * ShadowTileMap::tile_map_resolution;
   extent.y = (SHADOW_MAX_TILEMAP / maps_per_row) * ShadowTileMap::tile_map_resolution;
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                           GPU_TEXTURE_USAGE_ATTACHMENT;
   tilemap_tx.ensure_2d(GPU_R32UI, extent, usage);
   tilemap_tx.clear(uint4(0));
 }
@@ -706,6 +708,32 @@ void ShadowModule::begin_sync()
     PassMain &pass = tilemap_usage_ps_;
     pass.init();
 
+    if (inst_.is_baking()) {
+      SurfelBuf &surfels_buf = inst_.irradiance_cache.bake.surfels_buf_;
+      CaptureInfoBuf &capture_info_buf = inst_.irradiance_cache.bake.capture_info_buf_;
+      float surfel_coverage_area = inst_.irradiance_cache.bake.surfel_density_;
+
+      /* Directional shadows. */
+      float texel_size = ShadowDirectional::tile_size_get(0) / float(SHADOW_PAGE_RES);
+      int directional_level = std::max(0, int(std::ceil(log2(surfel_coverage_area / texel_size))));
+      /* Punctual shadows. */
+      float projection_ratio = tilemap_pixel_radius() / (surfel_coverage_area / 2.0);
+
+      PassMain::Sub &sub = pass.sub("Surfels");
+      sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_USAGE_SURFELS));
+      sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
+      sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
+      sub.bind_ssbo("surfel_buf", &surfels_buf);
+      sub.bind_ssbo("capture_info_buf", &capture_info_buf);
+      sub.push_constant("directional_level", directional_level);
+      sub.push_constant("tilemap_projection_ratio", projection_ratio);
+      inst_.lights.bind_resources(&sub);
+      sub.dispatch(&inst_.irradiance_cache.bake.dispatch_per_surfel_);
+
+      /* Skip opaque and transparent tagging for light baking. */
+      return;
+    }
+
     {
       /** Use depth buffer to tag needed shadow pages for opaque geometry. */
       PassMain::Sub &sub = pass.sub("Opaque");
@@ -766,7 +794,7 @@ void ShadowModule::sync_object(const ObjectHandle &handle,
     curr_casters_.append(resource_handle.raw);
   }
 
-  if (is_alpha_blend) {
+  if (is_alpha_blend && !inst_.is_baking()) {
     tilemap_usage_transparent_ps_->draw(box_batch_, resource_handle);
   }
 }
@@ -1018,7 +1046,8 @@ void ShadowModule::debug_end_sync()
             eDebugMode::DEBUG_SHADOW_TILEMAPS,
             eDebugMode::DEBUG_SHADOW_VALUES,
             eDebugMode::DEBUG_SHADOW_TILE_RANDOM_COLOR,
-            eDebugMode::DEBUG_SHADOW_TILEMAP_RANDOM_COLOR)) {
+            eDebugMode::DEBUG_SHADOW_TILEMAP_RANDOM_COLOR))
+  {
     return;
   }
 
@@ -1156,7 +1185,8 @@ void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
             eDebugMode::DEBUG_SHADOW_TILEMAPS,
             eDebugMode::DEBUG_SHADOW_VALUES,
             eDebugMode::DEBUG_SHADOW_TILE_RANDOM_COLOR,
-            eDebugMode::DEBUG_SHADOW_TILEMAP_RANDOM_COLOR)) {
+            eDebugMode::DEBUG_SHADOW_TILEMAP_RANDOM_COLOR))
+  {
     return;
   }
 

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # turn everything OFF except for python which defaults to ON
@@ -27,11 +29,8 @@ set(WITH_HARU                OFF CACHE BOOL "" FORCE)
 set(WITH_IK_ITASC            OFF CACHE BOOL "" FORCE)
 set(WITH_IK_SOLVER           OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_CINEON        OFF CACHE BOOL "" FORCE)
-set(WITH_IMAGE_DDS           OFF CACHE BOOL "" FORCE)
-set(WITH_IMAGE_HDR           OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_OPENEXR       OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_OPENJPEG      OFF CACHE BOOL "" FORCE)
-set(WITH_IMAGE_TIFF          OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_WEBP          OFF CACHE BOOL "" FORCE)
 set(WITH_INPUT_IME           OFF CACHE BOOL "" FORCE)
 set(WITH_INPUT_NDOF          OFF CACHE BOOL "" FORCE)

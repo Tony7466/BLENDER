@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -143,6 +144,7 @@ void kernel_gpu_##name::run(thread MetalKernelContext& context, \
 
 #define ccl_gpu_kernel_postfix
 #define ccl_gpu_kernel_call(x) context.x
+#define ccl_gpu_kernel_within_bounds(i,n) true
 
 /* define a function object where "func" is the lambda body, and additional parameters are used to specify captured state  */
 #define ccl_gpu_kernel_lambda(func, ...) \

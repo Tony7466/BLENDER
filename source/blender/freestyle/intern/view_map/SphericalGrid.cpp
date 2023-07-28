@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -122,8 +124,8 @@ void SphericalGrid::assignCells(OccluderSource & /*source*/,
 
   // Identify cells that will be used, and set the dimensions for each
   ViewMap::fedges_container &fedges = viewMap->FEdges();
-  for (ViewMap::fedges_container::iterator f = fedges.begin(), fend = fedges.end(); f != fend;
-       ++f) {
+  for (ViewMap::fedges_container::iterator f = fedges.begin(), fend = fedges.end(); f != fend; ++f)
+  {
     if ((*f)->isInImage()) {
       Vec3r point = SphericalGrid::Transform::sphericalProjection((*f)->center3d());
       uint i, j;
@@ -170,7 +172,7 @@ void SphericalGrid::distributePolygons(OccluderSource &source)
     ++nFaces;
   }
   if (G.debug & G_DEBUG_FREESTYLE) {
-    cout << "Distributed " << nFaces << " occluders.  Retained " << nKeptFaces << "." << endl;
+    cout << "Distributed " << nFaces << " occluders. Retained " << nKeptFaces << "." << endl;
   }
 }
 

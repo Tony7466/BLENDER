@@ -1,9 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "IO_types.h"
 #include "usd.h"
-#include "usd_common.h"
 #include "usd_hierarchy_iterator.h"
 #include "usd_reader_geom.h"
 #include "usd_reader_prim.h"
@@ -19,7 +19,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 #include "BKE_world.h"
@@ -31,6 +31,8 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
+
+#include "BLT_translation.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -80,7 +82,7 @@ static bool gather_objects_paths(const pxr::UsdPrim &object, ListBase *object_pa
   void *usd_path_void = MEM_callocN(sizeof(CacheObjectPath), "CacheObjectPath");
   CacheObjectPath *usd_path = static_cast<CacheObjectPath *>(usd_path_void);
 
-  BLI_strncpy(usd_path->path, object.GetPrimPath().GetString().c_str(), sizeof(usd_path->path));
+  STRNCPY(usd_path->path, object.GetPrimPath().GetString().c_str());
   BLI_addtail(object_paths, usd_path);
 
   return true;
@@ -159,9 +161,9 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
   G.is_break = false;
 
   if (data->params.create_collection) {
-    char display_name[1024];
+    char display_name[MAX_ID_NAME - 2];
     BLI_path_to_display_name(
-        display_name, strlen(data->filepath), BLI_path_basename(data->filepath));
+        display_name, sizeof(display_name), BLI_path_basename(data->filepath));
     Collection *import_collection = BKE_collection_add(
         data->bmain, data->scene->master_collection, display_name);
     id_fake_user_set(&import_collection->id);
@@ -202,7 +204,21 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
   *data->do_update = true;
   *data->progress = 0.1f;
 
-  pxr::UsdStageRefPtr stage = pxr::UsdStage::Open(data->filepath);
+  std::string prim_path_mask(data->params.prim_path_mask);
+  pxr::UsdStagePopulationMask pop_mask;
+  if (!prim_path_mask.empty()) {
+    const std::vector<std::string> mask_tokens = pxr::TfStringTokenize(prim_path_mask, ",;");
+    for (const std::string &tok : mask_tokens) {
+      pxr::SdfPath prim_path(tok);
+      if (!prim_path.IsEmpty()) {
+        pop_mask.Add(prim_path);
+      }
+    }
+  }
+
+  pxr::UsdStageRefPtr stage = pop_mask.IsEmpty() ?
+                                  pxr::UsdStage::Open(data->filepath) :
+                                  pxr::UsdStage::OpenMasked(data->filepath, pop_mask);
 
   if (!stage) {
     WM_reportf(RPT_ERROR, "USD Import: unable to open stage to read %s", data->filepath);
@@ -372,9 +388,11 @@ static void import_endjob(void *customdata)
       data->import_ok = !data->was_canceled;
       break;
     case USD_ARCHIVE_FAIL:
-      WM_report(RPT_ERROR, "Could not open USD archive for reading! See console for detail.");
+      WM_report(RPT_ERROR, "Could not open USD archive for reading, see console for detail");
       break;
   }
+
+  MEM_SAFE_FREE(data->params.prim_path_mask);
 
   WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
   report_job_duration(data);
@@ -392,12 +410,7 @@ static void import_freejob(void *user_data)
 
 using namespace blender::io::usd;
 
-void USD_ensure_plugin_path_registered()
-{
-  blender::io::usd::ensure_usd_plugin_path_registered();
-}
-
-bool USD_import(struct bContext *C,
+bool USD_import(bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
                 bool as_background_job)
@@ -409,7 +422,7 @@ bool USD_import(struct bContext *C,
   job->view_layer = CTX_data_view_layer(C);
   job->wm = CTX_wm_manager(C);
   job->import_ok = false;
-  BLI_strncpy(job->filepath, filepath, 1024);
+  STRNCPY(job->filepath, filepath);
 
   job->settings.scale = params->scale;
   job->settings.sequence_offset = params->offset;
@@ -442,7 +455,7 @@ bool USD_import(struct bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need NULL pointer checks while importing. */
+    /* Fake a job context, so that we don't need null pointer checks while importing. */
     bool stop = false, do_update = false;
     float progress = 0.0f;
 
@@ -468,7 +481,7 @@ static USDPrimReader *get_usd_reader(CacheReader *reader,
   pxr::UsdPrim iobject = usd_reader->prim();
 
   if (!iobject.IsValid()) {
-    *err_str = "Invalid object: verify object path";
+    *err_str = TIP_("Invalid object: verify object path");
     return nullptr;
   }
 
@@ -483,11 +496,11 @@ USDMeshReadParams create_mesh_read_params(const double motion_sample_time, const
   return params;
 }
 
-struct Mesh *USD_read_mesh(struct CacheReader *reader,
-                           struct Object *ob,
-                           struct Mesh *existing_mesh,
-                           const USDMeshReadParams params,
-                           const char **err_str)
+Mesh *USD_read_mesh(CacheReader *reader,
+                    Object *ob,
+                    Mesh *existing_mesh,
+                    const USDMeshReadParams params,
+                    const char **err_str)
 {
   USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));
 
@@ -563,7 +576,7 @@ void USD_CacheReader_free(CacheReader *reader)
   }
 }
 
-CacheArchiveHandle *USD_create_handle(struct Main * /*bmain*/,
+CacheArchiveHandle *USD_create_handle(Main * /*bmain*/,
                                       const char *filepath,
                                       ListBase *object_paths)
 {
@@ -593,10 +606,7 @@ void USD_free_handle(CacheArchiveHandle *handle)
   delete stage_reader;
 }
 
-void USD_get_transform(struct CacheReader *reader,
-                       float r_mat_world[4][4],
-                       float time,
-                       float scale)
+void USD_get_transform(CacheReader *reader, float r_mat_world[4][4], float time, float scale)
 {
   if (!reader) {
     return;

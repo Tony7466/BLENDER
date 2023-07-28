@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -21,13 +22,17 @@
 #include "DNA_anim_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_action.h"
 #include "BKE_context.h"
+#include "BKE_node_runtime.hh"
 #include "BKE_pointcache.h"
+#include "BKE_simulation_state.hh"
 
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
@@ -41,6 +46,8 @@
 
 #include "ED_anim_api.h"
 #include "ED_keyframes_draw.h"
+
+#include "MOD_nodes.hh"
 
 #include "action_intern.hh"
 
@@ -75,7 +82,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
     for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-         ale = ale->next, ymax -= channel_step, channel_index++) {
+         ale = ale->next, ymax -= channel_step, channel_index++)
+    {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
@@ -92,7 +100,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
     for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-         ale = ale->next, ymax -= channel_step, channel_index++) {
+         ale = ale->next, ymax -= channel_step, channel_index++)
+    {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
@@ -136,7 +145,8 @@ static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
   float ymin = ymax - ystep;
 
   for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data->first); ale;
-       ale = ale->next, ymax = ymin, ymin -= ystep) {
+       ale = ale->next, ymax = ymin, ymin -= ystep)
+  {
     bAction *action = nullptr;
     AnimData *adt = nullptr;
 
@@ -226,7 +236,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   float ymax = ANIM_UI_get_first_channel_top(v2d);
   const float channel_step = ANIM_UI_get_channel_step();
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= channel_step) {
+       ale = ale->next, ymax -= channel_step)
+  {
     const float ymin = ymax - ANIM_UI_get_channel_height();
 
     /* check if visible */
@@ -386,7 +397,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   const float scale_factor = ANIM_UI_get_keyframe_scale_factor();
 
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= channel_step) {
+       ale = ale->next, ymax -= channel_step)
+  {
     const float ymin = ymax - ANIM_UI_get_channel_height();
     float ycenter = (ymin + ymax) / 2.0f;
 
@@ -446,6 +458,14 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
                                 scale_factor,
                                 action_flag);
             break;
+          case ALE_GREASE_PENCIL_CELS:
+            draw_grease_pencil_cels_channel(draw_list,
+                                            ads,
+                                            static_cast<GreasePencilLayer *>(ale->data),
+                                            ycenter,
+                                            scale_factor,
+                                            action_flag);
+            break;
           case ALE_GPFRAME:
             draw_gpl_channel(draw_list,
                              ads,
@@ -489,7 +509,6 @@ static bool timeline_cache_is_hidden_by_setting(const SpaceAction *saction, cons
       }
       break;
     case PTCACHE_TYPE_PARTICLES:
-    case PTCACHE_TYPE_SIM_PARTICLES:
       if ((saction->cache_display & TIME_CACHE_PARTICLES) == 0) {
         return true;
       }
@@ -529,7 +548,6 @@ static void timeline_cache_color_get(PTCacheID *pid, float color[4])
       color[3] = 0.1;
       break;
     case PTCACHE_TYPE_PARTICLES:
-    case PTCACHE_TYPE_SIM_PARTICLES:
       color[0] = 1.0;
       color[1] = 0.1;
       color[2] = 0.02;
@@ -674,6 +692,52 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   GPU_matrix_pop();
 }
 
+static void timeline_cache_draw_simulation_nodes(
+    const Scene &scene,
+    const blender::bke::sim::ModifierSimulationCache &cache,
+    const float y_offset,
+    const float height,
+    const uint pos_id)
+{
+  GPU_matrix_push();
+  GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
+  GPU_matrix_scale_2f(1.0, height);
+
+  float color[4];
+  UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
+  switch (cache.cache_state) {
+    case blender::bke::sim::CacheState::Invalid: {
+      color[3] = 0.4f;
+      break;
+    }
+    case blender::bke::sim::CacheState::Valid: {
+      color[3] = 0.7f;
+      break;
+    }
+    case blender::bke::sim::CacheState::Baked: {
+      color[3] = 1.0f;
+      break;
+    }
+  }
+
+  immUniformColor4fv(color);
+
+  const int start_frame = scene.r.sfra;
+  const int end_frame = scene.r.efra;
+  const int frames_num = end_frame - start_frame + 1;
+  const blender::IndexRange frames_range(start_frame, frames_num);
+
+  immBeginAtMost(GPU_PRIM_TRIS, frames_num * 6);
+  for (const int frame : frames_range) {
+    if (cache.has_state_at_frame(frame)) {
+      immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
+    }
+  }
+  immEnd();
+
+  GPU_matrix_pop();
+}
+
 void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Scene *scene)
 {
   if ((saction->cache_display & TIME_CACHE_DISPLAY) == 0 || ob == nullptr) {
@@ -704,6 +768,26 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
     timeline_cache_draw_single(pid, y_offset, cache_draw_height, pos_id);
 
     y_offset += cache_draw_height;
+  }
+  if (saction->cache_display & TIME_CACHE_SIMULATION_NODES) {
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      if (nmd->node_group == nullptr) {
+        continue;
+      }
+      if (!nmd->runtime->simulation_cache) {
+        continue;
+      }
+      if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
+        continue;
+      }
+      timeline_cache_draw_simulation_nodes(
+          *scene, *nmd->runtime->simulation_cache, y_offset, cache_draw_height, pos_id);
+      y_offset += cache_draw_height;
+    }
   }
 
   GPU_blend(GPU_BLEND_NONE);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bgpencil
@@ -17,14 +18,10 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 
 #include "gpencil_io.h"
 #include "gpencil_io_import_svg.hh"
-
-/* Custom flags for NanoSVG. */
-#define NANOSVG_ALL_COLOR_KEYWORDS
-#define NANOSVG_IMPLEMENTATION
 
 #include "nanosvg.h"
 
@@ -77,7 +74,7 @@ bool GpencilImporterSVG::read()
       MEM_freeN(layer_id);
       layer_id = (shape->id_parent[0] == '\0') ? BLI_sprintfN("Layer_%03d", prefix) :
                                                  BLI_sprintfN("%s", shape->id_parent);
-      strcpy(prv_id, layer_id);
+      STRNCPY(prv_id, layer_id);
     }
 
     /* Check if the layer exist and create if needed. */

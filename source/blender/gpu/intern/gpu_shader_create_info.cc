@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -197,38 +198,49 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
       }
     };
 
-    auto print_error_msg = [&](const Resource &res) {
-      std::cout << name_ << ": Validation failed : Overlapping ";
+    auto print_error_msg = [&](const Resource &res, Vector<Resource> &resources) {
+      auto print_resource_name = [&](const Resource &res) {
+        switch (res.bind_type) {
+          case Resource::BindType::UNIFORM_BUFFER:
+            std::cout << "Uniform Buffer " << res.uniformbuf.name;
+            break;
+          case Resource::BindType::STORAGE_BUFFER:
+            std::cout << "Storage Buffer " << res.storagebuf.name;
+            break;
+          case Resource::BindType::SAMPLER:
+            std::cout << "Sampler " << res.sampler.name;
+            break;
+          case Resource::BindType::IMAGE:
+            std::cout << "Image " << res.image.name;
+            break;
+          default:
+            std::cout << "Unknown Type";
+            break;
+        }
+      };
 
-      switch (res.bind_type) {
-        case Resource::BindType::UNIFORM_BUFFER:
-          std::cout << "Uniform Buffer " << res.uniformbuf.name;
-          break;
-        case Resource::BindType::STORAGE_BUFFER:
-          std::cout << "Storage Buffer " << res.storagebuf.name;
-          break;
-        case Resource::BindType::SAMPLER:
-          std::cout << "Sampler " << res.sampler.name;
-          break;
-        case Resource::BindType::IMAGE:
-          std::cout << "Image " << res.image.name;
-          break;
-        default:
-          std::cout << "Unknown Type";
-          break;
+      for (const Resource &_res : resources) {
+        if (&res != &_res && res.bind_type == _res.bind_type && res.slot == _res.slot) {
+          std::cout << name_ << ": Validation failed : Overlapping ";
+          print_resource_name(res);
+          std::cout << " and ";
+          print_resource_name(_res);
+          std::cout << " at (" << res.slot << ") while merging " << other_info.name_ << std::endl;
+        }
       }
-      std::cout << " (" << res.slot << ") while merging " << other_info.name_ << std::endl;
     };
 
     for (auto &res : batch_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res);
+        print_error_msg(res, batch_resources_);
+        print_error_msg(res, pass_resources_);
       }
     }
 
     for (auto &res : pass_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res);
+        print_error_msg(res, batch_resources_);
+        print_error_msg(res, pass_resources_);
       }
     }
   }
@@ -310,7 +322,8 @@ void gpu_shader_create_info_init()
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
       GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
-      GPU_crappy_amd_driver()) {
+      GPU_crappy_amd_driver())
+  {
     draw_modelmat = draw_modelmat_legacy;
   }
 
@@ -433,7 +446,8 @@ bool gpu_shader_create_info_compile_all()
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
           (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
-          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage())) {
+          (GPU_shader_storage_buffer_objects_support() == false && info->has_resource_storage()))
+      {
         skipped++;
         continue;
       }
@@ -500,7 +514,6 @@ bool gpu_shader_create_info_compile_all()
   return success == total;
 }
 
-/* Runtime create infos are not registered in the dictionary and cannot be searched. */
 const GPUShaderCreateInfo *gpu_shader_create_info_get(const char *info_name)
 {
   if (g_create_infos->contains(info_name) == false) {

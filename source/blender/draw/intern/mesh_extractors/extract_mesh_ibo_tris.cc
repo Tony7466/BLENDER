@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -30,15 +31,15 @@ static void extract_tris_init(const MeshRenderData *mr,
                               void *tls_data)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(tls_data);
-  GPU_indexbuf_init(elb, GPU_PRIM_TRIS, mr->poly_sorted->visible_tri_len, mr->loop_len);
+  GPU_indexbuf_init(elb, GPU_PRIM_TRIS, mr->face_sorted->visible_tri_len, mr->loop_len);
 }
 
-static void extract_tris_iter_poly_bm(const MeshRenderData *mr,
+static void extract_tris_iter_face_bm(const MeshRenderData *mr,
                                       const BMFace *f,
                                       const int f_index,
                                       void *_data)
 {
-  int tri_first_index = mr->poly_sorted->tri_first_index[f_index];
+  int tri_first_index = mr->face_sorted->tri_first_index[f_index];
   if (tri_first_index == -1) {
     return;
   }
@@ -46,7 +47,7 @@ static void extract_tris_iter_poly_bm(const MeshRenderData *mr,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
   int tri_first_index_real = poly_to_tri_count(f_index, BM_elem_index_get(f->l_first));
 
-  struct BMLoop *(*looptris)[3] = mr->edit_bmesh->looptris;
+  BMLoop *(*looptris)[3] = mr->edit_bmesh->looptris;
   int tri_len = f->len - 2;
   for (int offs = 0; offs < tri_len; offs++) {
     BMLoop **elt = looptris[tri_first_index_real + offs];
@@ -59,20 +60,21 @@ static void extract_tris_iter_poly_bm(const MeshRenderData *mr,
   }
 }
 
-static void extract_tris_iter_poly_mesh(const MeshRenderData *mr,
-                                        const MPoly *poly,
-                                        const int poly_index,
+static void extract_tris_iter_face_mesh(const MeshRenderData *mr,
+                                        const int face_index,
                                         void *_data)
 {
-  int tri_first_index = mr->poly_sorted->tri_first_index[poly_index];
+  int tri_first_index = mr->face_sorted->tri_first_index[face_index];
   if (tri_first_index == -1) {
     return;
   }
 
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
-  int tri_first_index_real = poly_to_tri_count(poly_index, poly->loopstart);
+  const IndexRange face = mr->faces[face_index];
 
-  int tri_len = poly->totloop - 2;
+  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
+  int tri_first_index_real = poly_to_tri_count(face_index, face.start());
+
+  int tri_len = face.size() - 2;
   for (int offs = 0; offs < tri_len; offs++) {
     const MLoopTri *mlt = &mr->looptris[tri_first_index_real + offs];
     int tri_index = tri_first_index + offs;
@@ -99,7 +101,7 @@ static void extract_tris_finish(const MeshRenderData *mr,
       if (cache->tris_per_mat[i] == nullptr) {
         cache->tris_per_mat[i] = GPU_indexbuf_calloc();
       }
-      const int mat_tri_len = mr->poly_sorted->mat_tri_len[i];
+      const int mat_tri_len = mr->face_sorted->mat_tri_len[i];
       /* Multiply by 3 because these are triangle indices. */
       const int start = mat_start * 3;
       const int len = mat_tri_len * 3;
@@ -140,8 +142,8 @@ constexpr MeshExtract create_extractor_tris()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_tris_init;
   extractor.init_subdiv = extract_tris_init_subdiv;
-  extractor.iter_poly_bm = extract_tris_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_tris_iter_poly_mesh;
+  extractor.iter_face_bm = extract_tris_iter_face_bm;
+  extractor.iter_face_mesh = extract_tris_iter_face_mesh;
   extractor.task_reduce = extract_tris_mat_task_reduce;
   extractor.finish = extract_tris_finish;
   extractor.data_type = MR_DATA_LOOPTRI | MR_DATA_POLYS_SORTED;
@@ -189,7 +191,8 @@ static void extract_tris_single_mat_iter_looptri_mesh(const MeshRenderData *mr,
                                                       void *_data)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_data);
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mlt->poly];
+  const int face_i = mr->looptri_faces[mlt_index];
+  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[face_i];
   if (hidden) {
     GPU_indexbuf_set_tri_restart(elb, mlt_index);
   }

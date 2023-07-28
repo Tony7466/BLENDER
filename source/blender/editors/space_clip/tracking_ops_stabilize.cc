@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -32,7 +33,7 @@ static bool stabilize_2d_poll(bContext *C)
     MovieTrackingObject *tracking_object = BKE_tracking_object_get_active(&clip->tracking);
     return (tracking_object->flag & TRACKING_OBJECT_CAMERA) != 0;
   }
-  return 0;
+  return false;
 }
 
 static int stabilize_2d_add_exec(bContext *C, wmOperator * /*op*/)
