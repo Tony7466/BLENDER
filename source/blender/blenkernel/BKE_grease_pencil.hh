@@ -66,7 +66,9 @@ class DrawingRuntime {
   mutable SharedCache<Vector<uint3>> triangles_cache;
 
   /**
-   * Number of users for this drawing.
+   * Number of users for this drawing. The users are the frames in the Grease Pencil layers.
+   * Different frames can refer to the same drawing, so we need to make sure we count these users
+   * and remove a drawing if it has zero users.
    */
   mutable std::atomic<int> user_count = 1;
 };
