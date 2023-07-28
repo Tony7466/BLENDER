@@ -33,9 +33,13 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS link_drag_search_cc
+
 using blender::nodes::SocketLinkOperation;
 
 namespace blender::ed::space_node {
+
+namespace FILE_NS {
 
 struct LinkDragSearchStorage {
   bNode &from_node;
@@ -470,15 +474,19 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
   UI_block_bounds_set_popup(block, 0.3f * U.widget_unit, offset);
   return block;
 }
+}  // namespace FILE_NS
 
 void invoke_node_link_drag_add_menu(bContext &C,
                                     bNode &node,
                                     bNodeSocket &socket,
                                     const float2 &cursor)
 {
-  LinkDragSearchStorage *storage = new LinkDragSearchStorage{node, socket, cursor};
+  FILE_NS::LinkDragSearchStorage *storage = new FILE_NS::LinkDragSearchStorage{
+      node, socket, cursor};
   /* Use the "_ex" variant with `can_refresh` false to avoid a double free when closing Blender. */
-  UI_popup_block_invoke_ex(&C, create_search_popup_block, storage, nullptr, false);
+  UI_popup_block_invoke_ex(&C, FILE_NS::create_search_popup_block, storage, nullptr, false);
 }
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
