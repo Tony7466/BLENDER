@@ -1091,7 +1091,7 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
               break;
             default:
               /* Invalid channel type. */
-              BLI_assert(0);
+              BLI_assert_unreachable();
           }
         }
       }
