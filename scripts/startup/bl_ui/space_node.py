@@ -205,6 +205,14 @@ class NODE_HT_header(Header):
         sub.popover(panel="NODE_PT_overlay", text="")
 
 
+class NODE_AST_node_groups(bpy.types.AssetShelf):
+    bl_space_type = 'NODE_EDITOR'
+
+    @classmethod
+    def asset_poll_temp_api(cls, asset):
+        return asset.file_data.id_type == 'NODETREE'
+
+
 class NODE_MT_editor_menus(Menu):
     bl_idname = "NODE_MT_editor_menus"
     bl_label = ""
@@ -1225,6 +1233,7 @@ def node_panel(cls):
 
 classes = (
     NODE_HT_header,
+    NODE_AST_node_groups,
     NODE_MT_editor_menus,
     NODE_MT_add,
     NODE_MT_view,
