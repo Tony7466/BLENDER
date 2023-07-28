@@ -25,6 +25,7 @@
 
 #include "DNA_genfile.h"
 
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
 #include "BLI_task.h"
@@ -328,6 +329,19 @@ int main(int argc,
   }
 #  endif /* USE_WIN32_UNICODE_ARGS */
 #endif   /* WIN32 */
+
+/* Here we check for Windows ARM64 or WSL, and override the Mesa reported OpenGL version */
+#if defined(WIN32) || defined(__linux__)
+#  if defined(WIN32)
+  if(strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0)
+#  else /* Must be linux, so check if we're in WSL */
+  if(access("/proc/sys/fs/binfmt_misc/WSLInterop", F_OK) == 0)
+#  endif
+  {
+    BLI_setenv("MESA_GLSL_VERSION_OVERRIDE", "430");
+    BLI_setenv("MESA_GL_VERSION_OVERRIDE", "4.3");
+  }
+#endif
 
   /* NOTE: Special exception for guarded allocator type switch:
    *       we need to perform switch from lock-free to fully
