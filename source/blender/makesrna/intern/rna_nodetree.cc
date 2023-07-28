@@ -12051,6 +12051,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
        ICON_QUESTION,
        "Undefined",
        "Undefined type of nodes (can happen e.g. when a linked node tree goes missing)"},
+      {NTREE_CUSTOM, "CUSTOM", ICON_NONE, "Custom", "Custom nodes"},
       {NTREE_SHADER, "SHADER", ICON_MATERIAL, "Shader", "Shader nodes"},
       {NTREE_TEXTURE, "TEXTURE", ICON_TEXTURE, "Texture", "Texture nodes"},
       {NTREE_COMPOSIT, "COMPOSITING", ICON_RENDERLAYERS, "Compositing", "Compositing nodes"},
