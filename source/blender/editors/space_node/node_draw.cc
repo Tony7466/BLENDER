@@ -96,6 +96,8 @@
 
 #include <fmt/format.h>
 
+#define FILE_NS node_draw_cc
+
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::bNodeTreeZone;
 using blender::bke::bNodeTreeZones;
@@ -140,6 +142,8 @@ void ED_node_tree_update(const bContext *C)
   }
 }
 
+namespace FILE_NS {
+
 /* id is supposed to contain a node tree */
 static bNodeTree *node_tree_from_ID(ID *id)
 {
@@ -152,10 +156,11 @@ static bNodeTree *node_tree_from_ID(ID *id)
 
   return nullptr;
 }
+}  // namespace FILE_NS
 
 void ED_node_tag_update_id(ID *id)
 {
-  bNodeTree *ntree = node_tree_from_ID(id);
+  bNodeTree *ntree = FILE_NS::node_tree_from_ID(id);
   if (id == nullptr || ntree == nullptr) {
     return;
   }
@@ -194,6 +199,7 @@ void ED_node_tag_update_id(ID *id)
 }
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 static const char *node_socket_get_translation_context(const bNodeSocket &socket)
 {
@@ -278,11 +284,12 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
 
   return false;
 }
+}  // namespace FILE_NS
 
 void node_sort(bNodeTree &ntree)
 {
   Array<bNode *> sort_nodes = ntree.all_nodes();
-  std::stable_sort(sort_nodes.begin(), sort_nodes.end(), compare_node_depth);
+  std::stable_sort(sort_nodes.begin(), sort_nodes.end(), FILE_NS::compare_node_depth);
 
   /* If nothing was changed, exit early. Otherwise the node tree's runtime
    * node vector needs to be rebuilt, since it cannot be reordered in place. */
@@ -301,6 +308,8 @@ void node_sort(bNodeTree &ntree)
   }
 }
 
+namespace FILE_NS {
+
 static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *> nodes)
 {
   Array<uiBlock *> blocks(nodes.size());
@@ -314,6 +323,7 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
   return blocks;
 }
+}  // namespace FILE_NS
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
@@ -338,6 +348,8 @@ float2 node_from_view(const bNode &node, const float2 &co)
   return bke::nodeFromView(&node, node_location);
   ;
 }
+
+namespace FILE_NS {
 
 /**
  * Based on settings and sockets in node, set drawing rect info.
@@ -774,6 +786,7 @@ static void node_socket_outline_color_get(const bool selected,
     r_outline_color[3] = 1.0f;
   }
 }
+}  // namespace FILE_NS
 
 void node_socket_color_get(const bContext &C,
                            const bNodeTree &ntree,
@@ -788,6 +801,8 @@ void node_socket_color_get(const bContext &C,
 
   sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
 }
+
+namespace FILE_NS {
 
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
                                                        const GPointer value,
@@ -1183,10 +1198,11 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
       nullptr,
       nullptr);
 }
+}  // namespace FILE_NS
 
 void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
+  if (!FILE_NS::node_socket_has_tooltip(ntree, sock)) {
     return;
   }
 
@@ -1204,12 +1220,14 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
       [](bContext *C, void *argN, const char * /*tip*/) {
         SocketTooltipData *data = static_cast<SocketTooltipData *>(argN);
         const SpaceNode *snode = CTX_wm_space_node(C);
-        return node_socket_get_tooltip(snode, *data->ntree, *data->socket);
+        return FILE_NS::node_socket_get_tooltip(snode, *data->ntree, *data->socket);
       },
       data,
       MEM_dupallocN,
       MEM_freeN);
 }
+
+namespace FILE_NS {
 
 static void node_socket_draw_nested(const bContext &C,
                                     const bNodeTree &ntree,
@@ -1282,13 +1300,14 @@ static void node_socket_draw_nested(const bContext &C,
   UI_block_emboss_set(&block, old_emboss);
 }
 
+}  // namespace FILE_NS
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale)
 {
   const float size = NODE_SOCKSIZE_DRAW_MULIPLIER * NODE_SOCKSIZE * scale;
   rcti draw_rect = *rect;
   float outline_color[4] = {0};
 
-  node_socket_outline_color_get(sock->flag & SELECT, sock->type, outline_color);
+  FILE_NS::node_socket_outline_color_get(sock->flag & SELECT, sock->type, outline_color);
 
   BLI_rcti_resize(&draw_rect, size, size);
 
@@ -1310,17 +1329,17 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
 
   /* Single point. */
   immBegin(GPU_PRIM_POINTS, 1);
-  node_socket_draw(*sock,
-                   color,
-                   outline_color,
-                   BLI_rcti_size_y(&draw_rect),
-                   BLI_rcti_cent_x(&draw_rect),
-                   BLI_rcti_cent_y(&draw_rect),
-                   pos_id,
-                   col_id,
-                   shape_id,
-                   size_id,
-                   outline_col_id);
+  FILE_NS::node_socket_draw(*sock,
+                            color,
+                            outline_color,
+                            BLI_rcti_size_y(&draw_rect),
+                            BLI_rcti_cent_x(&draw_rect),
+                            BLI_rcti_cent_y(&draw_rect),
+                            pos_id,
+                            col_id,
+                            shape_id,
+                            size_id,
+                            outline_col_id);
   immEnd();
 
   immUnbindProgram();
@@ -1329,6 +1348,7 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
   /* Restore. */
   GPU_blend(state);
 }
+namespace FILE_NS {
 
 static void node_draw_preview_background(rctf *rect)
 {
@@ -2720,6 +2740,7 @@ static void node_draw_hidden(const bContext &C,
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
 }
+}  // namespace FILE_NS
 
 int node_get_resize_cursor(NodeResizeDirection directions)
 {
@@ -2735,6 +2756,8 @@ int node_get_resize_cursor(NodeResizeDirection directions)
   return WM_CURSOR_EDIT;
 }
 
+namespace FILE_NS {
+
 static const bNode *find_node_under_cursor(SpaceNode &snode, const float2 &cursor)
 {
   const Span<bNode *> nodes = snode.edittree->all_nodes();
@@ -2748,6 +2771,7 @@ static const bNode *find_node_under_cursor(SpaceNode &snode, const float2 &curso
   }
   return nullptr;
 }
+}  // namespace FILE_NS
 
 void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
 {
@@ -2760,7 +2784,7 @@ void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
   }
-  const bNode *node = find_node_under_cursor(snode, cursor);
+  const bNode *node = FILE_NS::find_node_under_cursor(snode, cursor);
   if (!node) {
     WM_cursor_set(&win, WM_CURSOR_DEFAULT);
     return;
@@ -2779,6 +2803,8 @@ void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor)
 
   WM_cursor_set(&win, node_get_resize_cursor(dir));
 }
+
+namespace FILE_NS {
 
 static void count_multi_input_socket_links(bNodeTree &ntree, SpaceNode &snode)
 {
@@ -3509,6 +3535,7 @@ static void draw_background_color(const SpaceNode &snode)
   mul_v3_fl(color, 1.0f + bright_factor * depth);
   GPU_clear_color(color[0], color[1], color[2], 1.0);
 }
+}  // namespace FILE_NS
 
 void node_draw_space(const bContext &C, ARegion &region)
 {
@@ -3523,7 +3550,7 @@ void node_draw_space(const bContext &C, ARegion &region)
   GPU_framebuffer_bind_no_srgb(framebuffer_overlay);
 
   UI_view2d_view_ortho(&v2d);
-  draw_background_color(snode);
+  FILE_NS::draw_background_color(snode);
   GPU_depth_test(GPU_DEPTH_NONE);
   GPU_scissor_test(true);
 
@@ -3573,7 +3600,7 @@ void node_draw_space(const bContext &C, ARegion &region)
     /* Top-level edit tree. */
     bNodeTree *ntree = path->nodetree;
     if (ntree) {
-      snode_setup_v2d(snode, region, center);
+      FILE_NS::snode_setup_v2d(snode, region, center);
 
       /* Backdrop. */
       draw_nodespace_back_pix(C, region, snode, path->parent_key);
@@ -3593,7 +3620,7 @@ void node_draw_space(const bContext &C, ARegion &region)
         GPU_matrix_projection_set(original_proj);
       }
 
-      draw_nodetree(C, region, *ntree, path->parent_key);
+      FILE_NS::draw_nodetree(C, region, *ntree, path->parent_key);
     }
 
     /* Temporary links. */
@@ -3631,7 +3658,7 @@ void node_draw_space(const bContext &C, ARegion &region)
 
     /* Draw context path. */
     if (snode.overlay.flag & SN_OVERLAY_SHOW_PATH && snode.edittree) {
-      draw_tree_path(C, region);
+      FILE_NS::draw_tree_path(C, region);
     }
   }
 
@@ -3640,3 +3667,5 @@ void node_draw_space(const bContext &C, ARegion &region)
 }
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
