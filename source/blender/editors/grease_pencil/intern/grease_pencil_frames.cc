@@ -70,6 +70,39 @@ bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
   return false;
 }
 
+void select_frames_region(struct KeyframeEditData *ked,
+                          bke::greasepencil::Layer *layer,
+                          const short tool,
+                          const short select_mode)
+{
+  if (layer == nullptr) {
+    return;
+  }
+  for (auto item : layer->frames_for_write().items()) {
+    /* construct a dummy point coordinate to do this testing with */
+    float pt[2] = {0};
+
+    // frame number
+    pt[0] = item.key;
+    pt[1] = ked->channel_y;
+
+    /* check the necessary regions */
+    if (tool == BEZT_OK_CHANNEL_LASSO) {
+      /* Lasso */
+      if (keyframe_region_lasso_test(static_cast<const KeyframeEdit_LassoData *>(ked->data), pt)) {
+        select_frame(item.value, select_mode);
+      }
+    }
+    else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
+      /* Circle */
+      if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data), pt))
+      {
+        select_frame(item.value, select_mode);
+      }
+    }
+  }
+}
+
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
