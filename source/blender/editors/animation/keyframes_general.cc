@@ -679,7 +679,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float frame_offset)
 {
   /* Two bookend keys of the fcurve are needed to be able to cycle the values. */
   const BezTriple *last_key = &fcu->bezt[fcu->totvert - 1];
@@ -697,7 +697,7 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
 
   for (int i = 0; i < segment->length; i++) {
     /* This simulates the fcu curve moving in time. */
-    const float time = fcu->bezt[segment->start_index + i].vec[1][0] + fcu_x_range * factor;
+    const float time = fcu->bezt[segment->start_index + i].vec[1][0] + frame_offset;
     /* Need to normalize time to first_key to specify that as the wrapping point. */
     const float wrapped_time = mod_f_positive(time - first_key_x, fcu_x_range) + first_key_x;
     const float delta_y = floorf(fcu_y_range * (int)((time - first_key_x) / fcu_x_range));

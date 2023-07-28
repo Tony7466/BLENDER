@@ -1023,10 +1023,12 @@ static int time_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = time_offset_modal_update;
-  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "frame_offset");
   time_offset_draw_status_header(C, gso);
-  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_bounds_set(gso->slider, -10, 10);
   ED_slider_factor_set(gso->slider, 0.0f);
+  ED_slider_mode_set(gso->slider, SLIDER_MODE_FLOAT);
+  ED_slider_unit_set(gso->slider, "Frames");
 
   return invoke_result;
 }
@@ -1040,7 +1042,7 @@ static int time_offset_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const float factor = RNA_float_get(op->ptr, "factor");
+  const float factor = RNA_float_get(op->ptr, "frame_offset");
 
   time_offset_graph_keys(&ac, factor);
 
@@ -1064,17 +1066,17 @@ void GRAPH_OT_time_offset(wmOperatorType *ot)
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_X;
 
   RNA_def_float_factor(ot->srna,
-                       "factor",
+                       "frame_offset",
                        0.0f,
                        -FLT_MAX,
                        FLT_MAX,
-                       "Curve Bend",
-                       "Control the bend of the curve",
-                       -1.0f,
-                       1.0f);
+                       "Frame Offset",
+                       "How far in frames to offset the animation",
+                       -10.0f,
+                       10.0f);
 }
 
 /** \} */
