@@ -274,6 +274,7 @@ class Layer : public ::GreasePencilLayer {
    * \returns a pointer to the active frame at \a frame_number or nullptr if there is no frame.
    */
   const GreasePencilFrame *frame_at(const int frame_number) const;
+  GreasePencilFrame *frame_at(const int frame_number);
 
   void tag_frames_map_changed();
 
