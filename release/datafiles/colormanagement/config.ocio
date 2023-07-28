@@ -55,7 +55,7 @@ displays:
     - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: Filmic Log, colorspace: Filmic Log}
     - !<View> {name: False Color, colorspace: False Color}
-    - !<View> {name: None, colorspace: Non-Color}
+    - !<View> {name: Raw, colorspace: Non-Color}
 
 active_displays: [sRGB]
 active_views: [Standard, Filmic, Filmic Log, False Color, None]
