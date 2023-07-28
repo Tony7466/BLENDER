@@ -270,6 +270,8 @@ class Layer : public ::GreasePencilLayer {
    */
   int drawing_index_at(const int frame) const;
 
+  const GreasePencilFrame *frame_at(const int time) const;
+
   void tag_frames_map_changed();
 
   /**
