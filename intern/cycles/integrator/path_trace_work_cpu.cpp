@@ -118,8 +118,12 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
       kernel_globals.start_profiling();
     }
   }
-
-  int tile_size = 32;
+  
+    int max_dim = std::max(image_width, image_height);
+    int items = sqrt(pow2roundup(max_dim/device_->info.cpu_threads));
+  int tile_size = max_dim/items;
+  tile_size = pow2rounddown(tile_size);
+  //int tile_size = 32;
   int slices_x = image_width/tile_size;
   slices_x += (image_width > slices_x*tile_size) ? 1 : 0;
   
