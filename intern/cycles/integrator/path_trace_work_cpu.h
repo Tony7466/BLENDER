@@ -72,7 +72,8 @@ class PathTraceWorkCPU : public PathTraceWork {
   /* Core path tracing routine. Renders given work time on the given queue. */
   void render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
                                     const KernelWorkTile &work_tile,
-                                    const int samples_num);
+                                    const int samples_num,
+				    const int image_width);
 
   /* CPU kernels. */
   const CPUKernels &kernels_;

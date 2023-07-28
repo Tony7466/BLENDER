@@ -20,6 +20,9 @@
 #include "util/log.h"
 #include "util/tbb.h"
 
+#include <os/log.h>
+#include <os/signpost.h>
+
 CCL_NAMESPACE_BEGIN
 
 /* Create TBB arena for execution of path tracing and rendering tasks. */
@@ -58,48 +61,117 @@ void PathTraceWorkCPU::init_execution()
   device_->get_cpu_kernel_thread_globals(kernel_thread_globals_);
 }
 
+void hilbert(long l, int &x, int &y) {
+    long t, i, p, s = 0;
+    long tr = 0x3E6B94C1;
+    long out = 0x874B78B4;
+    long xx = 0, yy = 0;
+
+    for(i = 31;i >= 0;i--) {
+        t = (l >> (i << 1))&3;
+        p = (s << 3) | (t << 1);
+        s = (tr >> p) & 3;
+        xx = (xx << 1) | ((out >> p & 3) >> 1);
+        yy = (yy << 1) | ((out >> p) & 1);
+    }
+    x = (int)xx;
+    y = (int)yy;
+}
+
+void rot(int n, int &x, int &y, int rx, int ry) {
+    if(ry == 0) {
+        if(rx == 1) {
+            x = n - 1 - x;
+            y = n - 1 - y;
+        }
+        // Swap x and y
+        int t = x;
+        x = y;
+        y = t;
+    }
+}
+void hilbert2D(int n, int d, int &x, int &y) {
+    long rx, ry, s, t = d;
+    x = 0; y = 0;
+    for(s = 1; s < n;s *=2 ) {
+        rx = 1 & (t/2);
+        ry = 1 & (t ^ rx);
+        rot(s, x, y, rx, ry);
+        x += s*rx;
+        y += s*ry;
+        t /= 4;
+    }
+}
+
 void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
                                       int sample_offset)
 {
-  const int64_t image_width = effective_buffer_params_.width;
-  const int64_t image_height = effective_buffer_params_.height;
-  const int64_t total_pixels_num = image_width * image_height;
+  const int image_width = effective_buffer_params_.width;
+  const int image_height = effective_buffer_params_.height;
+  //const int64_t total_pixels_num = image_width * image_height;
 
+  os_log_t log_handle = os_log_create("com.illumination.will", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {
       kernel_globals.start_profiling();
     }
   }
 
+  int tile_size = 32;
+  int slices_x = image_width/tile_size;
+  slices_x += (image_width > slices_x*tile_size) ? 1 : 0;
+  
+  int slices_y = image_height/tile_size;
+  slices_y += (image_height > slices_y*tile_size) ? 1 : 0;
+
+  int tiles = std::max(slices_x, slices_y);
+    tiles = pow2roundup(tiles);
+  const int64_t total_tiles = tiles*tiles;
+  VLOG_INFO << " slices (" << slices_x << "," << slices_y << ")" << " work items:" << total_tiles;
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
   local_arena.execute([&]() {
-    parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
-      if (is_cancel_requested()) {
-        return;
-      }
-
-      const int y = work_index / image_width;
-      const int x = work_index - y * image_width;
-
-      KernelWorkTile work_tile;
-      work_tile.x = effective_buffer_params_.full_x + x;
-      work_tile.y = effective_buffer_params_.full_y + y;
-      work_tile.w = 1;
-      work_tile.h = 1;
-      work_tile.start_sample = start_sample;
-      work_tile.sample_offset = sample_offset;
-      work_tile.num_samples = 1;
-      work_tile.offset = effective_buffer_params_.offset;
-      work_tile.stride = effective_buffer_params_.stride;
-      work_tile.slice_start_y = effective_buffer_params_.full_y;
-      work_tile.slice_height = effective_buffer_params_.slice_height;
-      work_tile.slice_stride = effective_buffer_params_.slice_stride;
-
+      //for(int work_index = 0;work_index < total_tiles;work_index++) {
+    parallel_for(int64_t(0), total_tiles /*total_pixels_num*/, [&](int64_t work_index) {
+        os_signpost_id_t signpost_id = os_signpost_id_generate(log_handle);
+        os_signpost_interval_begin(log_handle, signpost_id, "PathTraceWorkCPU", "Begin metadata: %s", "Foo");
+      // if (is_cancel_requested()) {
+      //   return;
+      // }
+      int slice_x, slice_y;
+          hilbert(work_index, slice_x, slice_y);
+      //VLOG_INFO << "hilbert<" << slice_x << "," << slice_y << ">";
+      if((slice_x < slices_x) && (slice_y < slices_y)) {
+      //const int slice_y = work_index/slices_x;
+      //const int slice_x = work_index - slice_y * slices_x;
+      int tile_x = slice_x*tile_size;
+      int tile_y = slice_y*tile_size;
+      int tile_h = std::min(tile_size, image_height - tile_y);
+      int tile_w = std::min(tile_size, image_width  - tile_x);
+          
+          //if(tile_x < image_width && tile_y < image_height) {
+      //VLOG_INFO << "(" << work_index << ") slice(" << slice_x << "," << slice_y << ") x:" << tile_x << " y:" << tile_y << " w:" << tile_w << " h:" << tile_h;
       CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
-
-      render_samples_full_pipeline(kernel_globals, work_tile, samples_num);
+            //for(int y = 0;y < tile_h;y++) {
+                KernelWorkTile work_tile;
+                work_tile.x = effective_buffer_params_.full_x + tile_x;
+                work_tile.y = effective_buffer_params_.full_y + tile_y;
+                work_tile.w = tile_w;
+                work_tile.h = tile_h;
+                work_tile.start_sample = start_sample;
+                work_tile.sample_offset = sample_offset;
+                work_tile.num_samples = 1;
+                work_tile.offset = effective_buffer_params_.offset;
+                work_tile.stride = effective_buffer_params_.stride;
+                work_tile.slice_start_y = effective_buffer_params_.full_y;
+                work_tile.slice_height = effective_buffer_params_.slice_height;
+                work_tile.slice_stride = effective_buffer_params_.slice_stride;
+                
+                render_samples_full_pipeline(kernel_globals, work_tile, samples_num, tile_size);
+            //}
+      }
+        os_signpost_interval_end(log_handle, signpost_id, "PathTraceWorkCPU", "End metadata: %s", "Foo");
     });
   });
   if (device_->profiler.active()) {
@@ -113,7 +185,7 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 
 void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
                                                     const KernelWorkTile &work_tile,
-                                                    const int samples_num)
+                                                    const int samples_num, const int tile_size)
 {
   const bool has_bake = device_scene_->data.bake.use;
 
@@ -130,39 +202,56 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   KernelWorkTile sample_work_tile = work_tile;
   float *render_buffer = buffers_->buffer.data();
 
-  for (int sample = 0; sample < samples_num; ++sample) {
-    if (is_cancel_requested()) {
-      break;
-    }
-
-    if (has_bake) {
-      if (!kernels_.integrator_init_from_bake(
-              kernel_globals, state, &sample_work_tile, render_buffer)) {
-        break;
-      }
-    }
-    else {
-      if (!kernels_.integrator_init_from_camera(
-              kernel_globals, state, &sample_work_tile, render_buffer)) {
-        break;
-      }
-    }
-
-    kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
-
+    sample_work_tile.w = 1;
+    sample_work_tile.h = 1;
+    int work_items = work_tile.w*work_tile.h;
+    bool use_hilbert = (tile_size == work_tile.w && tile_size == work_tile.h);
+    for(int item = 0;item < work_items;item++) {
+        int x, y;
+        if(use_hilbert) {
+            hilbert(item, x, y);
+        } else {
+            y = item/work_tile.w;
+            x = item - y*work_tile.w;
+        }
+        sample_work_tile.y = work_tile.y + y;
+        //for(int x = 0;x < work_tile.w;x++) {
+            sample_work_tile.x = work_tile.x + x;
+            for (int sample = 0; sample < samples_num; ++sample) {
+                // if (is_cancel_requested()) {
+                //   break;
+                // }
+                
+                if (has_bake) {
+                    if (!kernels_.integrator_init_from_bake(
+                                                            kernel_globals, state, &sample_work_tile, render_buffer)) {
+                                                                break;
+                                                            }
+                }
+                else {
+                    if (!kernels_.integrator_init_from_camera(
+                                                              kernel_globals, state, &sample_work_tile, render_buffer)) {
+                                                                  break;
+                                                              }
+                }
+                
+                kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
+                
 #ifdef WITH_PATH_GUIDING
-    if (kernel_globals->data.integrator.train_guiding) {
-      /* Push the generated sample data to the global sample data storage. */
-      guiding_push_sample_data_to_global_storage(kernel_globals, state, render_buffer);
-    }
+                if (kernel_globals->data.integrator.train_guiding) {
+                    /* Push the generated sample data to the global sample data storage. */
+                    guiding_push_sample_data_to_global_storage(kernel_globals, state, render_buffer);
+                }
 #endif
-
-    if (shadow_catcher_state) {
-      kernels_.integrator_megakernel(kernel_globals, shadow_catcher_state, render_buffer);
+                
+                if (shadow_catcher_state) {
+                    kernels_.integrator_megakernel(kernel_globals, shadow_catcher_state, render_buffer);
+                }
+                
+                ++sample_work_tile.start_sample;
+            }
+        //}
     }
-
-    ++sample_work_tile.start_sample;
-  }
 }
 
 void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
