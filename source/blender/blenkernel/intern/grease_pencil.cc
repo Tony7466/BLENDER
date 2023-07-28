@@ -1414,7 +1414,7 @@ void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer, int
     if (base->type == GP_DRAWING) {
       Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
       drawing.remove_user();
-      if (drawing.has_no_user()) {
+      if (drawing.has_no_users()) {
         this->remove_drawing(frame_to_remove.drawing_index);
       }
     }
