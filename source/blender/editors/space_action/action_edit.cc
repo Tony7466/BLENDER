@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
@@ -769,15 +770,37 @@ static void insert_gpencil_key(bAnimContext *ac,
   }
 }
 
-static void insert_grease_pencil_key(bAnimContext *ac, bAnimListElem *ale)
+static void insert_grease_pencil_key(bAnimContext *ac,
+                                     bAnimListElem *ale,
+                                     const bool hold_previous)
 {
   using namespace blender::bke::greasepencil;
   Layer *layer = static_cast<Layer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
   const int frame_number = ac->scene->r.cfra;
 
-  const bool changed = grease_pencil->insert_blank_frame(
-      *layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  const GreasePencilFrame *current_frame = layer->frames().lookup_ptr(frame_number);
+  if (current_frame != nullptr) {
+    /* A frame already exists at the current frame number. */
+    return;
+  }
+
+  bool changed = false;
+  if (!hold_previous) {
+    const GreasePencilFrame *active_frame = layer->frame_at(frame_number);
+    if ((active_frame == nullptr) || (active_frame->is_null())) {
+      /* There is no active frame to hold to, or it's a null frame. */
+      changed = grease_pencil->insert_blank_frame(*layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
+    else {
+      /* Duplicate the active frame. */
+      changed = grease_pencil->insert_duplicate_frame(*layer, *active_frame, frame_number, false);
+    }
+  }
+  else {
+    /* Insert a blank frame. */
+    changed = grease_pencil->insert_blank_frame(*layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  }
 
   if (changed) {
     layer->tag_frames_map_keys_changed();
@@ -873,6 +896,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   else {
     add_frame_mode = GP_GETFRAME_ADD_NEW;
   }
+  const bool grease_pencil_hold_previous = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
 
   /* insert keyframes */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -884,7 +908,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
         break;
 
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        insert_grease_pencil_key(ac, ale);
+        insert_grease_pencil_key(ac, ale, grease_pencil_hold_previous);
         break;
 
       case ANIMTYPE_FCURVE:
