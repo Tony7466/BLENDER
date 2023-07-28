@@ -461,7 +461,7 @@ void PathTrace::path_trace(RenderWork &render_work)
     work_balance_infos_[i].time_spent += work_time;
     work_balance_infos_[i].occupancy = statistics.occupancy;
 
-    VLOG_INFO << "Rendered " << num_samples << " samples in " << work_time << " seconds ("
+    VLOG_INFO << "(" << i << ") Rendered " << num_samples << " samples in " << work_time << " seconds ("
               << work_time / num_samples
               << " seconds per sample), occupancy: " << statistics.occupancy;
   });
@@ -760,7 +760,7 @@ void PathTrace::rebalance(const RenderWork &render_work)
     VLOG_WORK << "Perform rebalance work.";
     VLOG_WORK << "Per-device path tracing time (seconds):";
     for (int i = 0; i < num_works; ++i) {
-      VLOG_WORK << path_trace_works_[i]->get_device()->info.description << ": "
+      VLOG_WORK << "(" << i << ")" /*<< path_trace_works_[i]->get_device()->info.description << */ " time: "
                 << work_balance_infos_[i].time_spent;
     }
   }
@@ -770,7 +770,7 @@ void PathTrace::rebalance(const RenderWork &render_work)
   if (VLOG_IS_ON(3)) {
     VLOG_WORK << "Calculated per-device weights for works:";
     for (int i = 0; i < num_works; ++i) {
-      VLOG_WORK << path_trace_works_[i]->get_device()->info.description << ": "
+      VLOG_WORK << "(" << i << ")" /* path_trace_works_[i]->get_device()->info.description << */ " weight: "
                 << work_balance_infos_[i].weight;
     }
   }
