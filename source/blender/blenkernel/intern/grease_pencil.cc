@@ -1400,7 +1400,8 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   return true;
 }
 
-void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number)
+void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer,
+                                   const int frame_number)
 {
   using namespace blender::bke::greasepencil;
   if (!layer.frames().contains(frame_number)) {
