@@ -70,9 +70,9 @@ bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
   return false;
 }
 
-static void append_selected_frame_to_key_edit_data(KeyframeEditData *ked,
-                                                   const int frame_number,
-                                                   const GreasePencilFrame &frame)
+static void append_frame_to_key_edit_data(KeyframeEditData *ked,
+                                          const int frame_number,
+                                          const GreasePencilFrame &frame)
 {
   CfraElem *ce = MEM_cnew<CfraElem>(__func__);
   ce->cfra = float(frame_number);
@@ -87,7 +87,7 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
 
   for (const auto &[frame_number, frame] : layer->frames().items()) {
     if (frame.is_selected()) {
-      append_selected_frame_to_key_edit_data(ked, frame_number, frame);
+      append_frame_to_key_edit_data(ked, frame_number, frame);
     }
   }
 }
