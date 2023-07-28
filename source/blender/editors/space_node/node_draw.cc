@@ -136,7 +136,9 @@ void ED_node_tree_update(const bContext *C)
   if (snode) {
     snode_set_context(*C);
 
-    id_us_ensure_real(&snode->nodetree->id);
+    if (snode->nodetree) {
+      id_us_ensure_real(&snode->nodetree->id);
+    }
   }
 }
 
