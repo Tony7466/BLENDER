@@ -82,7 +82,7 @@ void select_frames_region(struct KeyframeEditData *ked,
     /* construct a dummy point coordinate to do this testing with */
     float pt[2] = {0};
 
-    // frame number
+    /* frame number */
     pt[0] = item.key;
     pt[1] = ked->channel_y;
 
