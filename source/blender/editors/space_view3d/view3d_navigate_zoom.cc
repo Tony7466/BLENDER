@@ -541,7 +541,7 @@ void VIEW3D_OT_zoom(wmOperatorType *ot)
   ot->cancel = view3d_navigate_cancel_fn;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 
   /* properties */
   view3d_operator_properties_common(

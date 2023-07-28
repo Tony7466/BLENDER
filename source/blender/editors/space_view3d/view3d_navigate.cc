@@ -794,8 +794,16 @@ static void viewops_data_init_navigation(bContext *C,
     }
   }
 
-  /* For dolly */
-  const float mval[2] = {float(event->mval[0]), float(event->mval[1])};
+  /* For dolly (based on region local coordinates) */
+  float mval[2];
+  if (viewops_flag & VIEWOPS_FLAG_USE_MOUSE_INIT) {
+    copy_v2fl_v2i(mval, event->mval);
+  }
+  else {
+    copy_v2_fl2(mval, (float)region->winx / 2.0f, (float)region->winy / 2.0f);
+  }
+  //printf("MX: %f, MY: %f\n", mval[0], mval[1]);
+  //printf("RECTX: %d", vod->init.event_xy_offset[0]);
   ED_view3d_win_to_vector(region, mval, vod->init.mousevec);
 
   {
