@@ -36,9 +36,12 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS add_node_search_cc
+
 struct bContext;
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 struct AddNodeSearchStorage {
   float2 cursor;
@@ -307,12 +310,16 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
   UI_block_bounds_set_popup(block, 0.3f * U.widget_unit, offset);
   return block;
 }
+}  // namespace FILE_NS
 
 void invoke_add_node_search_menu(bContext &C, const float2 &cursor, const bool use_transform)
 {
-  AddNodeSearchStorage *storage = new AddNodeSearchStorage{cursor, use_transform};
+  FILE_NS::AddNodeSearchStorage *storage = new FILE_NS::AddNodeSearchStorage{cursor,
+                                                                             use_transform};
   /* Use the "_ex" variant with `can_refresh` false to avoid a double free when closing Blender. */
-  UI_popup_block_invoke_ex(&C, create_search_popup_block, storage, nullptr, false);
+  UI_popup_block_invoke_ex(&C, FILE_NS::create_search_popup_block, storage, nullptr, false);
 }
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
