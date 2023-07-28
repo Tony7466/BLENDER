@@ -481,10 +481,17 @@ typedef struct GreasePencil {
   void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   void add_empty_drawings(int add_num);
+  void add_duplicate_drawings(int add_num,
+                              const blender::bke::greasepencil::Drawing &duplicated_drawing);
   bool insert_blank_frame(blender::bke::greasepencil::Layer &layer,
                           int frame_number,
                           int duration,
                           eBezTriple_KeyframeType keytype);
+  bool insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
+                              const GreasePencilFrame &duplicated_frame,
+                              int frame_number,
+                              bool do_instance);
+
   void remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number);
 
   void remove_drawing(int index);
