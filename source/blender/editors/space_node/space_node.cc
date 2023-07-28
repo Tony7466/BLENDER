@@ -45,6 +45,8 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS space_node_cc
+
 using blender::float2;
 
 /* ******************** tree path ********************* */
@@ -235,6 +237,7 @@ float2 space_node_group_offset(const SpaceNode &snode)
 
 /* ******************** default callbacks for node space ***************** */
 
+namespace FILE_NS {
 static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
   SpaceNode *snode = MEM_cnew<SpaceNode>("initnode");
@@ -853,6 +856,7 @@ static void node_region_listener(const wmRegionListenerParams *params)
   }
 }
 
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 /* Outside of blender namespace to avoid Python documentation build error with `ctypes`. */
@@ -862,6 +866,7 @@ const char *node_context_dir[] = {
 };
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 static int /*eContextResult*/ node_context(const bContext *C,
                                            const char *member,
@@ -1116,11 +1121,13 @@ static void node_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   }
 }
 
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 void ED_spacetype_node()
 {
   using namespace blender::ed::space_node;
+  using namespace blender::ed::space_node::FILE_NS;
 
   SpaceType *st = MEM_cnew<SpaceType>("spacetype node");
   ARegionType *art;
@@ -1202,3 +1209,5 @@ void ED_spacetype_node()
 
   BKE_spacetype_register(st);
 }
+
+#undef FILE_NS
