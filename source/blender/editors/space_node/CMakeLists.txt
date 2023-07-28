@@ -89,5 +89,10 @@ endif()
 
 blender_add_lib(bf_editor_space_node "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
+if(WITH_UNITY_BUILD)
+  set_target_properties(bf_editor_space_node PROPERTIES UNITY_BUILD ON)
+  set_target_properties(bf_editor_space_node PROPERTIES UNITY_BUILD_BATCH_SIZE 100)
+endif()
+
 # RNA_prototypes.h dna_type_offsets.h
 add_dependencies(bf_editor_space_node bf_rna)
