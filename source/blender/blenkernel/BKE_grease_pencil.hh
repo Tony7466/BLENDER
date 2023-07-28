@@ -268,9 +268,9 @@ class Layer : public ::GreasePencilLayer {
   /**
    * \returns the index of the drawing at frame \a frame or -1 if there is no drawing.
    */
-  int drawing_index_at(const int time) const;
+  int drawing_index_at(const int frame_number) const;
 
-  const GreasePencilFrame *frame_at(const int time) const;
+  const GreasePencilFrame *frame_at(const int frame_number) const;
 
   void tag_frames_map_changed();
 
