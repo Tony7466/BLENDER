@@ -35,6 +35,8 @@
 #include "ED_armature.h"
 #include "ED_view3d.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "UI_resources.h"
 
 #include "draw_common.h"
@@ -2560,7 +2562,7 @@ static void draw_armature_edit(const ArmatureDrawContext *ctx)
        eBone;
        eBone = eBone->next, index += 0x10000)
   {
-    if ((eBone->layer & arm->layer) == 0) {
+    if (!ANIM_bonecoll_is_visible_editbone(arm, eBone)) {
       continue;
     }
     if (eBone->flag & BONE_HIDDEN_A) {
@@ -2757,6 +2759,7 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
                                    const eArmatureDrawMode draw_mode,
                                    const float *const_color)
 {
+  BLI_assert(BLI_memory_is_zero(ctx, sizeof(*ctx)));
   const bool is_edit_or_pose_mode = draw_mode != ARM_DRAW_MODE_OBJECT;
   const bool is_xray = (ob->dtx & OB_DRAW_IN_FRONT) != 0 ||
                        (pd->armature.do_pose_xray && draw_mode == ARM_DRAW_MODE_POSE);
@@ -2800,7 +2803,7 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
 void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  ArmatureDrawContext arm_ctx;
+  ArmatureDrawContext arm_ctx = {nullptr};
   armature_context_setup(&arm_ctx, pd, ob, ARM_DRAW_MODE_EDIT, nullptr);
   draw_armature_edit(&arm_ctx);
 }
@@ -2808,7 +2811,7 @@ void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  ArmatureDrawContext arm_ctx;
+  ArmatureDrawContext arm_ctx = {nullptr};
   armature_context_setup(&arm_ctx, pd, ob, ARM_DRAW_MODE_POSE, nullptr);
   draw_armature_pose(&arm_ctx);
 }
@@ -2817,7 +2820,7 @@ void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  ArmatureDrawContext arm_ctx;
+  ArmatureDrawContext arm_ctx = {nullptr};
   float *color;
 
   if (ob->dt == OB_BOUNDBOX) {

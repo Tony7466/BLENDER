@@ -42,8 +42,8 @@ void *avi_converter_from_avi_rgb(AviMovie *movie, int stream, uchar *buffer, con
     uchar *pxla;
 #endif
 
-    buf = imb_alloc_pixels(
-        movie->header->Height, movie->header->Width, 3, sizeof(uchar), "fromavirgbbuf");
+    buf = static_cast<uchar *>(imb_alloc_pixels(
+        movie->header->Height, movie->header->Width, 3, sizeof(uchar), "fromavirgbbuf"));
 
     if (buf) {
       size_t y = movie->header->Height;
@@ -79,8 +79,8 @@ void *avi_converter_from_avi_rgb(AviMovie *movie, int stream, uchar *buffer, con
     return buf;
   }
 
-  buf = imb_alloc_pixels(
-      movie->header->Height, movie->header->Width, 3, sizeof(uchar), "fromavirgbbuf");
+  buf = static_cast<uchar *>(imb_alloc_pixels(
+      movie->header->Height, movie->header->Width, 3, sizeof(uchar), "fromavirgbbuf"));
 
   if (buf) {
     size_t rowstride = movie->header->Width * 3;
@@ -95,7 +95,7 @@ void *avi_converter_from_avi_rgb(AviMovie *movie, int stream, uchar *buffer, con
              movie->header->Width * 3);
     }
 
-    for (size_t y = 0; y < (size_t)movie->header->Height * (size_t)movie->header->Width * 3;
+    for (size_t y = 0; y < size_t(movie->header->Height) * size_t(movie->header->Width) * 3;
          y += 3) {
       int i = buf[y];
       buf[y] = buf[y + 2];
@@ -119,7 +119,7 @@ void *avi_converter_to_avi_rgb(AviMovie *movie, int stream, uchar *buffer, size_
   rowstride = (rowstride + 3) & ~3;
 
   *size = movie->header->Height * rowstride;
-  buf = MEM_mallocN(*size, "toavirgbbuf");
+  buf = static_cast<uchar *>(MEM_mallocN(*size, "toavirgbbuf"));
 
   for (size_t y = 0; y < movie->header->Height; y++) {
     memcpy(&buf[y * rowstride],
