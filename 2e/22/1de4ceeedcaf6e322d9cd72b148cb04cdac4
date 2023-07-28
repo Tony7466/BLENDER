@@ -35,3 +35,4 @@ Referenced by commit 82141097789bb4956614d226f806cdd16778533f, Outliner: Port de
 Referenced by commit 790cbeda2ce920bcd4d5e1a4967783f351bfbf5e, Outliner: Port grease pencil effect elements to new tree-element code design
 Referenced by pull request #110551, Outliner: Port grease pencil effect elements to new tree-element code design
 Referenced by commit 1f722a6d0194567714fc761e49174349a59b7a21, Outliner: Port grease pencil effect elements to new tree-element code design
+Referenced by pull request #110587, Outliner: Port pose group elements to new tree-element code design
