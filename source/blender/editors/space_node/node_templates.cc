@@ -43,9 +43,12 @@
 
 #include "ED_undo.h"
 
+#define FILE_NS node_templates_cc
+
 using blender::nodes::NodeDeclaration;
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 /************************* Node Socket Manipulation **************************/
 
@@ -714,12 +717,14 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
   ui_node_menu_column(arg, NODE_CLASS_GROUP, N_("Group"));
 }
 
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 void uiTemplateNodeLink(
     uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input)
 {
   using namespace blender::ed::space_node;
+  using namespace blender::ed::space_node::FILE_NS;
 
   uiBlock *block = uiLayoutGetBlock(layout);
   NodeLinkArg *arg;
@@ -763,6 +768,7 @@ void uiTemplateNodeLink(
 }
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 /**************************** Node Tree Layout *******************************/
 
@@ -917,12 +923,14 @@ static void ui_node_draw_input(
   node.flag &= ~NODE_TEST;
 }
 
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 void uiTemplateNodeView(
     uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input)
 {
   using namespace blender::ed::space_node;
+  using namespace blender::ed::space_node::FILE_NS;
 
   bNode *tnode;
 
@@ -942,3 +950,5 @@ void uiTemplateNodeView(
     ui_node_draw_node(*layout, *C, *ntree, *node, 0);
   }
 }
+
+#undef FILE_NS
