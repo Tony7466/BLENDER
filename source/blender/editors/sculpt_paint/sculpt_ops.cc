@@ -671,7 +671,7 @@ static void SCULPT_OT_sample_color(wmOperatorType *ot)
   ot->invoke = sculpt_sample_color_invoke;
   ot->poll = SCULPT_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 }
 
 /**
@@ -1324,7 +1324,7 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
     /* As an optimization, free the hide attribute when making all geometry visible. This allows
      * reduced memory usage without manually clearing it later, and allows sculpt operations to
      * avoid checking element's hide status. */
-    CustomData_free_layer_named(&mesh->pdata, ".hide_poly", mesh->faces_num);
+    CustomData_free_layer_named(&mesh->face_data, ".hide_poly", mesh->faces_num);
     ss->hide_poly = nullptr;
   }
   else {
