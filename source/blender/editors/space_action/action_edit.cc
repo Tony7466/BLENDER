@@ -17,6 +17,8 @@
 
 #include "BLT_translation.h"
 
+#include "DEG_depsgraph.h"
+
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
@@ -34,6 +36,8 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
@@ -765,6 +769,22 @@ static void insert_gpencil_key(bAnimContext *ac,
   }
 }
 
+static void insert_grease_pencil_key(bAnimContext *ac, bAnimListElem *ale)
+{
+  using namespace blender::bke::greasepencil;
+  Layer *layer = static_cast<Layer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+  const int frame_number = ac->scene->r.cfra;
+
+  const bool changed = grease_pencil->insert_blank_frame(
+      *layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+
+  if (changed) {
+    layer->tag_frames_map_keys_changed();
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+  }
+}
+
 static void insert_fcurve_key(bAnimContext *ac,
                               bAnimListElem *ale,
                               const AnimationEvalContext anim_eval_context,
@@ -864,7 +884,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
         break;
 
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        /* GPv3: To be implemented. */
+        insert_grease_pencil_key(ac, ale);
         break;
 
       case ANIMTYPE_FCURVE:
