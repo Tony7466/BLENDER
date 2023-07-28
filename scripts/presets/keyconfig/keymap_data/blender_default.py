@@ -3990,7 +3990,13 @@ def km_grease_pencil_stroke_sculpt_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params, use_select_mouse=not params.use_fallback_tool_select_mouse),
-
+        # Selection mode
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_point')]}),
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_stroke')]}),
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_segment')]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.strength')]}),
@@ -4341,6 +4347,13 @@ def km_grease_pencil_stroke_vertex_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params, use_select_mouse=not params.use_fallback_tool_select_mouse),
+        # Selection mode
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_point')]}),
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_stroke')]}),
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_segment')]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [
@@ -4887,6 +4900,23 @@ def _template_view3d_select(*, type, value, legacy, select_passthrough, exclude_
     return items
 
 
+def _template_view3d_paint_mask_select_loop(params):
+    # NOTE: loop select is isolate so it can optionally be in the tool-select map,
+    # so that with LMB select, Alt-LMB can be used for selection picking.
+    # While the selection tool can still use Alt-LMB for loop selection.
+    return [
+        ("paint.face_select_loop",
+         {"type": params.select_mouse, "value": 'PRESS', "alt": True},
+         {"properties": [('extend', False), ('select', True)]}),
+        ("paint.face_select_loop",
+         {"type": params.select_mouse, "value": 'PRESS', "alt": True, "shift": True},
+         {"properties": [('extend', True), ('select', True)]}),
+        ("paint.face_select_loop",
+         {"type": params.select_mouse, "value": 'PRESS', "alt": True, "shift": True, "ctrl": True},
+         {"properties": [('extend', True), ('select', False)]}),
+    ]
+
+
 def _template_view3d_gpencil_select(*, type, value, legacy, use_select_mouse=True):
     return [
         *([] if not use_select_mouse else [
@@ -5038,7 +5068,7 @@ def km_image_paint(params):
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
         ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
-        ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'image_paint_object.data.use_paint_mask')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.use_smooth_stroke')]}),
@@ -5087,7 +5117,7 @@ def km_vertex_paint(params):
          {"properties": [("mode", 'SCALE'), ("texmode", 'SECONDARY')]}),
         ("brush.stencil_control", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True, "alt": True},
          {"properties": [("mode", 'ROTATION'), ("texmode", 'SECONDARY')]}),
-        ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.use_smooth_stroke')]}),
@@ -5101,7 +5131,7 @@ def km_vertex_paint(params):
         items.extend(_template_items_legacy_tools_from_numbers())
     else:
         items.append(
-            ("wm.context_toggle", {"type": 'V', "value": 'PRESS'},
+            ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
              {"properties": [("data_path", 'vertex_paint_object.data.use_paint_mask_vertex')]})
         )
 
@@ -5141,9 +5171,9 @@ def km_weight_paint(params):
          radial_control_properties("weight_paint", 'weight', 'use_unified_weight')),
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', "alt": True},
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
-        ("wm.context_toggle", {"type": 'M', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask')]}),
-        ("wm.context_toggle", {"type": 'V', "value": 'PRESS'},
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
          {"properties": [("data_path", 'weight_paint_object.data.use_paint_mask_vertex')]}),
         ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.weight_paint.brush.use_smooth_stroke')]}),
@@ -5153,9 +5183,11 @@ def km_weight_paint(params):
     ])
 
     if params.select_mouse == 'LEFTMOUSE':
-        # Bone selection for combined weight paint + pose mode.
+        # Bone selection for combined weight paint + pose mode (Alt).
         items.extend([
-            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}, None),
+            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
+            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
+             {"properties": [("toggle", True)]}),
         ])
 
     if params.legacy:
@@ -5183,13 +5215,11 @@ def km_paint_face_mask(params):
          {"properties": [("deselect", True)]}),
         ("paint.face_select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
         ("paint.face_select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
-        ("paint.face_select_loop", {"type": params.select_mouse, "value": 'PRESS', "alt": True},
-         {"properties": [('extend', False), ('select', True)]}),
-        ("paint.face_select_loop", {"type": params.select_mouse, "value": 'PRESS', "alt": True, "shift": True},
-         {"properties": [('extend', True), ('select', True)]}),
-        ("paint.face_select_loop", {"type": params.select_mouse, "value": 'PRESS', "alt": True, "shift": True, "ctrl": True},
-         {"properties": [('extend', True), ('select', False)]}),
     ])
+
+    # For left mouse the tool key-maps are used because this interferes with Alt-LMB for regular selection.
+    if params.select_mouse == 'RIGHTMOUSE':
+        items.extend(_template_view3d_paint_mask_select_loop(params))
 
     return keymap
 
@@ -5220,6 +5250,9 @@ def km_paint_vertex_mask(params):
         ("paint.vert_select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
         ("paint.vert_select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
     ])
+
+    # TODO: use `_template_view3d_paint_mask_select_loop` if loop-select is supported.
+    # See: `km_paint_face_mask`.
 
     return keymap
 
@@ -6406,6 +6439,8 @@ def km_view3d_walk_modal(_params):
         ("ACCELERATE", {"type": 'WHEELUPMOUSE', "value": 'PRESS', "any": True}, None),
         ("DECELERATE", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS', "any": True}, None),
         ("AXIS_LOCK_Z", {"type": 'Z', "value": 'PRESS'}, None),
+        ("INCREASE_JUMP", {"type": 'PERIOD', "value": 'PRESS', "any": True}, None),
+        ("DECREASE_JUMP", {"type": 'COMMA', "value": 'PRESS', "any": True}, None),
     ])
 
     return keymap
@@ -7007,6 +7042,8 @@ def km_3d_view_tool_select(params, *, fallback):
                   select_passthrough=params.use_tweak_select_passthrough,
                   exclude_mod="ctrl",
             )),
+            # Instance weight/vertex selection actions here, see code-comment for details.
+            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_view3d_paint_mask_select_loop(params)),
         ]},
     )
 
@@ -7021,6 +7058,8 @@ def km_3d_view_tool_select_box(params, *, fallback):
                 # Don't use `tool_maybe_tweak_event`, see comment for this slot.
                 **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
                    params.tool_tweak_event))),
+            # Instance weight/vertex selection actions here, see code-comment for details.
+            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_view3d_paint_mask_select_loop(params)),
         ]},
     )
 
@@ -7037,6 +7076,8 @@ def km_3d_view_tool_select_circle(params, *, fallback):
                 type=params.select_mouse if (fallback and params.use_fallback_tool_select_mouse) else params.tool_mouse,
                 value='CLICK_DRAG' if (fallback and params.use_fallback_tool_select_mouse) else 'PRESS',
                 properties=[("wait_for_input", False)])),
+            # Instance weight/vertex selection actions here, see code-comment for details.
+            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_view3d_paint_mask_select_loop(params)),
         ]},
     )
 
@@ -7050,6 +7091,8 @@ def km_3d_view_tool_select_lasso(params, *, fallback):
                 "view3d.select_lasso",
                 **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
                    params.tool_tweak_event))),
+            # Instance weight/vertex selection actions here, see code-comment for details.
+            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_view3d_paint_mask_select_loop(params)),
         ]}
     )
 
