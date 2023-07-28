@@ -553,7 +553,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
         return;
       }
 
-      Vector<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
+      Array<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
           input_values, bake_socket_config_);
       for (const int i : IndexRange(storage.items_num)) {
         const NodeGeometryBakeItem &item = storage.items[i];
