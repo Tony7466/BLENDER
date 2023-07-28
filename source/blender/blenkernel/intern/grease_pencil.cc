@@ -109,7 +109,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         break;
       }
     }
-    /* TODO: Update drawing user counts. */
   }
 
   /* Duplicate layer tree. */
@@ -1384,8 +1383,6 @@ void GreasePencil::add_empty_drawings(const int add_num)
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<blender::bke::greasepencil::Drawing>(__func__));
   }
-
-  /* TODO: Update drawing user counts. */
 }
 
 bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
@@ -1401,6 +1398,29 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   frame->type = int8_t(keytype);
   this->add_empty_drawings(1);
   return true;
+}
+
+void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  if (!layer.frames().contains(frame_number)) {
+    return;
+  }
+  GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
+  if (frame_to_remove.drawing_index != -1) {
+    GreasePencilDrawingBase *drawing_base = this->drawings()[frame_to_remove.drawing_index];
+    /* If the drawing is not referenced from another object, decrement the user count and remove it
+     * if it has no users. */
+    if (base->type == GP_DRAWING) {
+      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      drawing.remove_user();
+      if (drawing.has_no_user()) {
+        this->remove_drawing(frame_to_remove.drawing_index);
+      }
+    }
+  }
+  layer.frames_for_write().remove(frame_number);
+  layer.tag_frames_map_keys_changed();
 }
 
 void GreasePencil::remove_drawing(const int index_to_remove)
