@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#pragma once
+
 #ifndef USE_GPU_SHADER_CREATE_INFO
 #  include "GPU_shader_shared_utils.h"
 
