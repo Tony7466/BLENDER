@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import NodeTree, Node, NodeSocket
+from bpy.types import NodeTree, Node, NodeSocket, NodeTreeInterfaceSocket
 
 # Implementation of custom nodes from Python
 
@@ -50,6 +50,15 @@ class MyCustomSocket(NodeSocket):
     # Socket color
     def draw_color(self, context, node):
         return (1.0, 0.4, 0.216, 0.5)
+
+
+# Customizable interface properties to generate a socket from.
+class MyCustomInterfaceSocket(NodeTreeInterfaceSocket):
+    # The type of socket that is generated.
+    bl_socket_idname = 'CustomSocketType'
+    
+    def draw_socket_properties(self, context, layout):
+        layout.label(text="Here we can display properties of the socket")
 
 
 # Mix-in class for all custom nodes in this tree type.
@@ -163,6 +172,7 @@ node_categories = [
 classes = (
     MyCustomTree,
     MyCustomSocket,
+    MyCustomInterfaceSocket,
     MyCustomNode,
 )
 
