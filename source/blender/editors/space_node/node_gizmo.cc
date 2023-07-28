@@ -32,11 +32,15 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS node_gizmo_cc
+
 namespace blender::ed::space_node {
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
  * \{ */
+
+namespace FILE_NS {
 
 static void node_gizmo_calc_matrix_space(const SpaceNode *snode,
                                          const ARegion *region,
@@ -169,6 +173,8 @@ static void WIDGETGROUP_node_transform_refresh(const bContext *C, wmGizmoGroup *
   BKE_image_release_ibuf(ima, ibuf, lock);
 }
 
+}  // namespace FILE_NS
+
 void NODE_GGT_backdrop_transform(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "Backdrop Transform Widget";
@@ -176,10 +182,10 @@ void NODE_GGT_backdrop_transform(wmGizmoGroupType *gzgt)
 
   gzgt->flag |= WM_GIZMOGROUPTYPE_PERSISTENT;
 
-  gzgt->poll = WIDGETGROUP_node_transform_poll;
-  gzgt->setup = WIDGETGROUP_node_transform_setup;
+  gzgt->poll = FILE_NS::WIDGETGROUP_node_transform_poll;
+  gzgt->setup = FILE_NS::WIDGETGROUP_node_transform_setup;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
-  gzgt->refresh = WIDGETGROUP_node_transform_refresh;
+  gzgt->refresh = FILE_NS::WIDGETGROUP_node_transform_refresh;
 }
 
 /** \} */
@@ -187,6 +193,8 @@ void NODE_GGT_backdrop_transform(wmGizmoGroupType *gzgt)
 /* -------------------------------------------------------------------- */
 /** \name Crop Gizmo
  * \{ */
+
+namespace FILE_NS {
 
 struct NodeCropWidgetGroup {
   wmGizmo *border;
@@ -380,6 +388,8 @@ static void WIDGETGROUP_node_crop_refresh(const bContext *C, wmGizmoGroup *gzgro
   BKE_image_release_ibuf(ima, ibuf, lock);
 }
 
+}  // namespace FILE_NS
+
 void NODE_GGT_backdrop_crop(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "Backdrop Crop Widget";
@@ -387,11 +397,11 @@ void NODE_GGT_backdrop_crop(wmGizmoGroupType *gzgt)
 
   gzgt->flag |= WM_GIZMOGROUPTYPE_PERSISTENT;
 
-  gzgt->poll = WIDGETGROUP_node_crop_poll;
-  gzgt->setup = WIDGETGROUP_node_crop_setup;
+  gzgt->poll = FILE_NS::WIDGETGROUP_node_crop_poll;
+  gzgt->setup = FILE_NS::WIDGETGROUP_node_crop_setup;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
-  gzgt->draw_prepare = WIDGETGROUP_node_crop_draw_prepare;
-  gzgt->refresh = WIDGETGROUP_node_crop_refresh;
+  gzgt->draw_prepare = FILE_NS::WIDGETGROUP_node_crop_draw_prepare;
+  gzgt->refresh = FILE_NS::WIDGETGROUP_node_crop_refresh;
 }
 
 /** \} */
@@ -399,6 +409,8 @@ void NODE_GGT_backdrop_crop(wmGizmoGroupType *gzgt)
 /* -------------------------------------------------------------------- */
 /** \name Sun Beams
  * \{ */
+
+namespace FILE_NS {
 
 struct NodeSunBeamsWidgetGroup {
   wmGizmo *gizmo;
@@ -485,6 +497,8 @@ static void WIDGETGROUP_node_sbeam_refresh(const bContext *C, wmGizmoGroup *gzgr
   BKE_image_release_ibuf(ima, ibuf, lock);
 }
 
+}  // namespace FILE_NS
+
 void NODE_GGT_backdrop_sun_beams(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "Sun Beams Widget";
@@ -492,11 +506,11 @@ void NODE_GGT_backdrop_sun_beams(wmGizmoGroupType *gzgt)
 
   gzgt->flag |= WM_GIZMOGROUPTYPE_PERSISTENT;
 
-  gzgt->poll = WIDGETGROUP_node_sbeam_poll;
-  gzgt->setup = WIDGETGROUP_node_sbeam_setup;
+  gzgt->poll = FILE_NS::WIDGETGROUP_node_sbeam_poll;
+  gzgt->setup = FILE_NS::WIDGETGROUP_node_sbeam_setup;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
-  gzgt->draw_prepare = WIDGETGROUP_node_sbeam_draw_prepare;
-  gzgt->refresh = WIDGETGROUP_node_sbeam_refresh;
+  gzgt->draw_prepare = FILE_NS::WIDGETGROUP_node_sbeam_draw_prepare;
+  gzgt->refresh = FILE_NS::WIDGETGROUP_node_sbeam_refresh;
 }
 
 /** \} */
@@ -504,6 +518,8 @@ void NODE_GGT_backdrop_sun_beams(wmGizmoGroupType *gzgt)
 /* -------------------------------------------------------------------- */
 /** \name Corner Pin
  * \{ */
+
+namespace FILE_NS {
 
 struct NodeCornerPinWidgetGroup {
   wmGizmo *gizmos[4];
@@ -607,6 +623,8 @@ static void WIDGETGROUP_node_corner_pin_refresh(const bContext *C, wmGizmoGroup 
   BKE_image_release_ibuf(ima, ibuf, lock);
 }
 
+}  // namespace FILE_NS
+
 void NODE_GGT_backdrop_corner_pin(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "Corner Pin Widget";
@@ -614,11 +632,11 @@ void NODE_GGT_backdrop_corner_pin(wmGizmoGroupType *gzgt)
 
   gzgt->flag |= WM_GIZMOGROUPTYPE_PERSISTENT;
 
-  gzgt->poll = WIDGETGROUP_node_corner_pin_poll;
-  gzgt->setup = WIDGETGROUP_node_corner_pin_setup;
+  gzgt->poll = FILE_NS::WIDGETGROUP_node_corner_pin_poll;
+  gzgt->setup = FILE_NS::WIDGETGROUP_node_corner_pin_setup;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
-  gzgt->draw_prepare = WIDGETGROUP_node_corner_pin_draw_prepare;
-  gzgt->refresh = WIDGETGROUP_node_corner_pin_refresh;
+  gzgt->draw_prepare = FILE_NS::WIDGETGROUP_node_corner_pin_draw_prepare;
+  gzgt->refresh = FILE_NS::WIDGETGROUP_node_corner_pin_refresh;
 }
 
 /** \} */
