@@ -1027,7 +1027,7 @@ static bool acf_fcurve_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, Property
 
 /* check if some setting exists for this channel */
 static bool acf_fcurve_setting_valid(bAnimContext *ac,
-                                     bAnimListElem *UNUSED(ale),
+                                     bAnimListElem * /*ale*/,
                                      eAnimChannel_Settings setting)
 {
   switch (setting) {
@@ -1036,9 +1036,6 @@ static bool acf_fcurve_setting_valid(bAnimContext *ac,
     case ACHANNEL_SETTING_EXPAND: /* F-Curves are not containers */
     case ACHANNEL_SETTING_PINNED: /* This is only for NLA Actions */
       return false;
-
-    case ACHANNEL_SETTING_PROTECT:
-      return true;
 
     case ACHANNEL_SETTING_VISIBLE: /* Only available in Graph Editor */
       return (ac->spacetype == SPACE_GRAPH);
@@ -5390,7 +5387,17 @@ void ANIM_channel_draw_widgets(const bContext *C,
       /* protect... */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_PROTECT)) {
         offset -= ICON_WIDTH;
-        draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+        if (ale->type == ANIMTYPE_FCURVE) {
+          FCurve *fcu = static_cast<FCurve *>(ale->data);
+          /* Don't draw lock icon when curve is baked.
+           * Still using the offset so icons is aligned. */
+          if (fcu->bezt) {
+            draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+          }
+        }
+        else {
+          draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_PROTECT);
+        }
       }
       /* mute... */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_MUTE)) {
