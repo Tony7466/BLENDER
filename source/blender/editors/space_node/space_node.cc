@@ -1189,7 +1189,7 @@ void ED_spacetype_node()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: asset shelf */
-  art = MEM_cnew<ARegionType>("spacetype view3d asset shelf region");
+  art = MEM_cnew<ARegionType>("spacetype node asset shelf region");
   art->regionid = RGN_TYPE_ASSET_SHELF;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_ASSET_SHELF | ED_KEYMAP_FRAMES;
   art->duplicate = ED_asset_shelf_region_duplicate;
@@ -1204,7 +1204,7 @@ void ED_spacetype_node()
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: asset shelf header */
-  art = MEM_cnew<ARegionType>("spacetype view3d asset shelf header region");
+  art = MEM_cnew<ARegionType>("spacetype node asset shelf header region");
   art->regionid = RGN_TYPE_ASSET_SHELF_HEADER;
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_ASSET_SHELF | ED_KEYMAP_VIEW2D | ED_KEYMAP_FOOTER;
   art->init = ED_asset_shelf_header_region_init;
