@@ -35,8 +35,8 @@ struct BakeSocketConfig {
  * Create new bake items from the socket values. The socket values are not destructed, but they may
  * be in a moved-from state afterwards.
  */
-Vector<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(Span<void *> socket_values,
-                                                                   const BakeSocketConfig &config);
+Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(Span<void *> socket_values,
+                                                                  const BakeSocketConfig &config);
 
 /**
  * Create socket values from bake items.
