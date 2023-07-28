@@ -61,7 +61,10 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_group_cc
+
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -109,6 +112,7 @@ static const char *group_ntree_idname(bContext *C)
   SpaceNode *snode = CTX_wm_space_node(C);
   return snode->tree_idname;
 }
+}  // namespace FILE_NS
 
 const char *node_group_idname(bContext *C)
 {
@@ -130,6 +134,7 @@ const char *node_group_idname(bContext *C)
   return "";
 }
 
+namespace FILE_NS {
 static bNode *node_group_get_active(bContext *C, const char *node_idname)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -208,6 +213,7 @@ static int node_group_edit_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_group_edit(wmOperatorType *ot)
 {
@@ -217,8 +223,8 @@ void NODE_OT_group_edit(wmOperatorType *ot)
   ot->idname = "NODE_OT_group_edit";
 
   /* api callbacks */
-  ot->exec = node_group_edit_exec;
-  ot->poll = node_group_operator_active_poll;
+  ot->exec = FILE_NS::node_group_edit_exec;
+  ot->poll = FILE_NS::node_group_operator_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -231,6 +237,8 @@ void NODE_OT_group_edit(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Ungroup Operator
  * \{ */
+
+namespace FILE_NS {
 
 /**
  * The given paths will be owned by the returned instance.
@@ -491,6 +499,7 @@ static int node_group_ungroup_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_group_ungroup(wmOperatorType *ot)
 {
@@ -500,8 +509,8 @@ void NODE_OT_group_ungroup(wmOperatorType *ot)
   ot->idname = "NODE_OT_group_ungroup";
 
   /* api callbacks */
-  ot->exec = node_group_ungroup_exec;
-  ot->poll = node_group_operator_editable;
+  ot->exec = FILE_NS::node_group_ungroup_exec;
+  ot->poll = FILE_NS::node_group_operator_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -512,6 +521,8 @@ void NODE_OT_group_ungroup(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Separate Operator
  * \{ */
+
+namespace FILE_NS {
 
 /**
  * \return True if successful.
@@ -698,6 +709,8 @@ static int node_group_separate_invoke(bContext *C, wmOperator * /*op*/, const wm
   return OPERATOR_INTERFACE;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_group_separate(wmOperatorType *ot)
 {
   /* identifiers */
@@ -706,14 +719,15 @@ void NODE_OT_group_separate(wmOperatorType *ot)
   ot->idname = "NODE_OT_group_separate";
 
   /* api callbacks */
-  ot->invoke = node_group_separate_invoke;
-  ot->exec = node_group_separate_exec;
-  ot->poll = node_group_operator_editable;
+  ot->invoke = FILE_NS::node_group_separate_invoke;
+  ot->exec = FILE_NS::node_group_separate_exec;
+  ot->poll = FILE_NS::node_group_operator_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "type", node_group_separate_types, NODE_GS_COPY, "Type", "");
+  RNA_def_enum(
+      ot->srna, "type", FILE_NS::node_group_separate_types, FILE_NS::NODE_GS_COPY, "Type", "");
 }
 
 /** \} */
@@ -721,6 +735,8 @@ void NODE_OT_group_separate(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Make Group Operator
  * \{ */
+
+namespace FILE_NS {
 
 static VectorSet<bNode *> get_nodes_to_group(bNodeTree &node_tree, bNode *group_node)
 {
@@ -1286,6 +1302,8 @@ static int node_group_make_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_group_make(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1294,8 +1312,8 @@ void NODE_OT_group_make(wmOperatorType *ot)
   ot->idname = "NODE_OT_group_make";
 
   /* api callbacks */
-  ot->exec = node_group_make_exec;
-  ot->poll = node_group_operator_editable;
+  ot->exec = FILE_NS::node_group_make_exec;
+  ot->poll = FILE_NS::node_group_operator_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1306,6 +1324,8 @@ void NODE_OT_group_make(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Group Insert Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_group_insert_exec(bContext *C, wmOperator *op)
 {
@@ -1346,6 +1366,7 @@ static int node_group_insert_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_group_insert(wmOperatorType *ot)
 {
@@ -1355,8 +1376,8 @@ void NODE_OT_group_insert(wmOperatorType *ot)
   ot->idname = "NODE_OT_group_insert";
 
   /* api callbacks */
-  ot->exec = node_group_insert_exec;
-  ot->poll = node_group_operator_editable;
+  ot->exec = FILE_NS::node_group_insert_exec;
+  ot->poll = FILE_NS::node_group_operator_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1365,3 +1386,5 @@ void NODE_OT_group_insert(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
