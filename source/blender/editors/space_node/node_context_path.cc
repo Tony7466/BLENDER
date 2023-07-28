@@ -29,9 +29,12 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS node_context_path_cc
+
 struct Material;
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 static void context_path_add_object_data(Vector<ui::ContextPathItem> &path, Object &object)
 {
@@ -139,6 +142,7 @@ static void get_context_path_node_geometry(const bContext &C,
     context_path_add_node_tree_and_node_groups(snode, path);
   }
 }
+}  // namespace FILE_NS
 
 Vector<ui::ContextPathItem> context_path_for_space_node(const bContext &C)
 {
@@ -150,16 +154,18 @@ Vector<ui::ContextPathItem> context_path_for_space_node(const bContext &C)
   Vector<ui::ContextPathItem> context_path;
 
   if (snode->edittree->type == NTREE_GEOMETRY) {
-    get_context_path_node_geometry(C, *snode, context_path);
+    FILE_NS::get_context_path_node_geometry(C, *snode, context_path);
   }
   else if (snode->edittree->type == NTREE_SHADER) {
-    get_context_path_node_shader(C, *snode, context_path);
+    FILE_NS::get_context_path_node_shader(C, *snode, context_path);
   }
   else if (snode->edittree->type == NTREE_COMPOSIT) {
-    get_context_path_node_compositor(C, *snode, context_path);
+    FILE_NS::get_context_path_node_compositor(C, *snode, context_path);
   }
 
   return context_path;
 }
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
