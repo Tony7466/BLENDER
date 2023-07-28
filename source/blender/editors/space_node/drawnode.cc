@@ -67,12 +67,16 @@
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS drawnode_cc
+
 namespace blender::ed::space_node {
 
 /* Default flags for uiItemR(). Name is kept short since this is used a lot in this file. */
 #define DEFAULT_FLAGS UI_ITEM_R_SPLIT_EMPTY_NAME
 
 /* ****************** SOCKET BUTTON DRAW FUNCTIONS ***************** */
+
+namespace FILE_NS {
 
 static void node_socket_button_label(bContext * /*C*/,
                                      uiLayout *layout,
@@ -147,7 +151,7 @@ static void node_buts_curvefloat(uiLayout *layout, bContext * /*C*/, PointerRNA 
 {
   uiTemplateCurveMapping(layout, ptr, "mapping", 0, false, false, false, false);
 }
-
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 #define SAMPLE_FLT_ISNONE FLT_MAX
@@ -165,6 +169,7 @@ void ED_node_sample_set(const float col[4])
 
 namespace blender::ed::space_node {
 
+namespace FILE_NS {
 static void node_buts_curvecol(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
@@ -220,6 +225,7 @@ static void node_buts_combsep_color(uiLayout *layout, bContext * /*C*/, PointerR
 {
   uiItemR(layout, ptr, "mode", DEFAULT_FLAGS, "", ICON_NONE);
 }
+}  // namespace FILE_NS
 
 NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
                                               const bNode *node,
@@ -281,6 +287,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
 
 /* ****************** BUTTON CALLBACKS FOR COMMON NODES ***************** */
 
+namespace FILE_NS {
 static void node_draw_buttons_group(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   uiTemplateIDBrowse(
@@ -1140,6 +1147,7 @@ static void node_socket_undefined_interface_draw_color(bContext * /*C*/,
   r_color[2] = 0.0f;
   r_color[3] = 1.0f;
 }
+}  // namespace FILE_NS
 
 /** \} */
 
@@ -1159,21 +1167,22 @@ void ED_node_init_butfuncs()
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 
-  NodeSocketTypeUndefined.draw = node_socket_undefined_draw;
-  NodeSocketTypeUndefined.draw_color = node_socket_undefined_draw_color;
-  NodeSocketTypeUndefined.interface_draw = node_socket_undefined_interface_draw;
-  NodeSocketTypeUndefined.interface_draw_color = node_socket_undefined_interface_draw_color;
+  NodeSocketTypeUndefined.draw = FILE_NS::node_socket_undefined_draw;
+  NodeSocketTypeUndefined.draw_color = FILE_NS::node_socket_undefined_draw_color;
+  NodeSocketTypeUndefined.interface_draw = FILE_NS::node_socket_undefined_interface_draw;
+  NodeSocketTypeUndefined.interface_draw_color =
+      FILE_NS::node_socket_undefined_interface_draw_color;
 
   /* node type ui functions */
   NODE_TYPES_BEGIN (ntype) {
-    node_common_set_butfunc(ntype);
+    FILE_NS::node_common_set_butfunc(ntype);
 
-    node_composit_set_butfunc(ntype);
-    node_shader_set_butfunc(ntype);
-    node_texture_set_butfunc(ntype);
+    FILE_NS::node_composit_set_butfunc(ntype);
+    FILE_NS::node_shader_set_butfunc(ntype);
+    FILE_NS::node_texture_set_butfunc(ntype);
 
     /* define update callbacks for socket properties */
-    node_template_properties_update(ntype);
+    FILE_NS::node_template_properties_update(ntype);
   }
   NODE_TYPES_END;
 }
@@ -1182,10 +1191,12 @@ void ED_init_custom_node_type(bNodeType * /*ntype*/) {}
 
 void ED_init_custom_node_socket_type(bNodeSocketType *stype)
 {
-  stype->draw = blender::ed::space_node::node_socket_button_label;
+  stype->draw = blender::ed::space_node::FILE_NS::node_socket_button_label;
 }
 
 namespace blender::ed::space_node {
+
+namespace FILE_NS {
 
 static const float virtual_node_socket_color[4] = {0.2, 0.2, 0.2, 1.0};
 
@@ -1500,23 +1511,23 @@ static void node_socket_virtual_draw_color(bContext * /*C*/,
 {
   copy_v4_v4(r_color, virtual_node_socket_color);
 }
-
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 void ED_init_standard_node_socket_type(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
-  stype->draw = std_node_socket_draw;
-  stype->draw_color = std_node_socket_draw_color;
-  stype->interface_draw = std_node_socket_interface_draw;
-  stype->interface_draw_color = std_node_socket_interface_draw_color;
+  stype->draw = FILE_NS::std_node_socket_draw;
+  stype->draw_color = FILE_NS::std_node_socket_draw_color;
+  stype->interface_draw = FILE_NS::std_node_socket_interface_draw;
+  stype->interface_draw_color = FILE_NS::std_node_socket_interface_draw_color;
 }
 
 void ED_init_node_socket_type_virtual(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
-  stype->draw = node_socket_button_label;
-  stype->draw_color = node_socket_virtual_draw_color;
+  stype->draw = FILE_NS::node_socket_button_label;
+  stype->draw_color = FILE_NS::node_socket_virtual_draw_color;
 }
 
 void ED_node_type_draw_color(const char *idname, float *r_color)
@@ -1532,8 +1543,8 @@ void ED_node_type_draw_color(const char *idname, float *r_color)
     return;
   }
 
-  BLI_assert(typeinfo->type < ARRAY_SIZE(std_node_socket_colors));
-  copy_v4_v4(r_color, std_node_socket_colors[typeinfo->type]);
+  BLI_assert(typeinfo->type < ARRAY_SIZE(FILE_NS::std_node_socket_colors));
+  copy_v4_v4(r_color, FILE_NS::std_node_socket_colors[typeinfo->type]);
 }
 
 namespace blender::ed::space_node {
@@ -1629,6 +1640,7 @@ void draw_nodespace_back_pix(const bContext &C,
   GPU_matrix_pop();
 }
 
+namespace FILE_NS {
 static float2 socket_link_connection_location(const bNode &node,
                                               const bNodeSocket &socket,
                                               const bNodeLink &link)
@@ -1686,11 +1698,12 @@ static bool node_link_draw_is_visible(const View2D &v2d, const std::array<float2
   }
   return true;
 }
+}  // namespace FILE_NS
 
 void node_link_bezier_points_evaluated(const bNodeLink &link,
                                        std::array<float2, NODE_LINK_RESOL + 1> &coords)
 {
-  const std::array<float2, 4> points = node_link_bezier_points(link);
+  const std::array<float2, 4> points = FILE_NS::node_link_bezier_points(link);
 
   /* The extra +1 in size is required by these functions and would be removed ideally. */
   BKE_curve_forward_diff_bezier(points[0].x,
@@ -1713,6 +1726,8 @@ void node_link_bezier_points_evaluated(const bNodeLink &link,
 #define LINK_RESOL 24
 #define LINK_WIDTH (2.5f * UI_SCALE_FAC)
 #define ARROW_SIZE (7 * UI_SCALE_FAC)
+
+namespace FILE_NS {
 
 /* Reroute arrow shape and mute bar. These are expanded here and shrunk in the glsl code.
  * See: gpu_shader_2D_nodelink_vert.glsl */
@@ -1953,17 +1968,19 @@ static void nodelink_batch_draw(const SpaceNode &snode)
 
   GPU_blend(GPU_BLEND_NONE);
 }
-
+}  // namespace FILE_NS
 void nodelink_batch_start(SpaceNode & /*snode*/)
 {
-  g_batch_link.enabled = true;
+  FILE_NS::g_batch_link.enabled = true;
 }
 
 void nodelink_batch_end(SpaceNode &snode)
 {
-  nodelink_batch_draw(snode);
-  g_batch_link.enabled = false;
+  FILE_NS::nodelink_batch_draw(snode);
+  FILE_NS::g_batch_link.enabled = false;
 }
+
+namespace FILE_NS {
 
 struct NodeLinkDrawConfig {
   int th_col1;
@@ -2191,7 +2208,7 @@ static void node_draw_link_bezier_ex(const SpaceNode &snode,
     GPU_uniformbuf_free(ubo);
   }
 }
-
+}  // namespace FILE_NS
 void node_draw_link_bezier(const bContext &C,
                            const View2D &v2d,
                            const SpaceNode &snode,
@@ -2201,14 +2218,14 @@ void node_draw_link_bezier(const bContext &C,
                            const int th_col3,
                            const bool selected)
 {
-  const std::array<float2, 4> points = node_link_bezier_points(link);
-  if (!node_link_draw_is_visible(v2d, points)) {
+  const std::array<float2, 4> points = FILE_NS::node_link_bezier_points(link);
+  if (!FILE_NS::node_link_draw_is_visible(v2d, points)) {
     return;
   }
-  const NodeLinkDrawConfig draw_config = nodelink_get_draw_config(
+  const FILE_NS::NodeLinkDrawConfig draw_config = FILE_NS::nodelink_get_draw_config(
       C, v2d, snode, link, th_col1, th_col2, th_col3, selected);
 
-  node_draw_link_bezier_ex(snode, draw_config, points);
+  FILE_NS::node_draw_link_bezier_ex(snode, draw_config, points);
 }
 
 void node_draw_link(const bContext &C,
@@ -2264,11 +2281,12 @@ std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
   const float2 cursor = snode.runtime->cursor * UI_SCALE_FAC;
   std::array<float2, 4> points;
   points[0] = link.fromsock ?
-                  socket_link_connection_location(*link.fromnode, *link.fromsock, link) :
+                  FILE_NS::socket_link_connection_location(*link.fromnode, *link.fromsock, link) :
                   cursor;
-  points[3] = link.tosock ? socket_link_connection_location(*link.tonode, *link.tosock, link) :
-                            cursor;
-  calculate_inner_link_bezier_points(points);
+  points[3] = link.tosock ?
+                  FILE_NS::socket_link_connection_location(*link.tonode, *link.tosock, link) :
+                  cursor;
+  FILE_NS::calculate_inner_link_bezier_points(points);
   return points;
 }
 
@@ -2283,7 +2301,7 @@ void node_draw_link_dragged(const bContext &C,
 
   const std::array<float2, 4> points = node_link_bezier_points_dragged(snode, link);
 
-  const NodeLinkDrawConfig draw_config = nodelink_get_draw_config(
+  const FILE_NS::NodeLinkDrawConfig draw_config = FILE_NS::nodelink_get_draw_config(
       C, v2d, snode, link, TH_ACTIVE, TH_ACTIVE, TH_WIRE, true);
   /* End marker outline. */
   node_draw_link_end_markers(link, draw_config, points, true);
@@ -2319,3 +2337,5 @@ void ED_node_draw_snap(View2D *v2d, const float cent[2], float size, NodeBorder 
 
   immEnd();
 }
+
+#undef FILE_NS
