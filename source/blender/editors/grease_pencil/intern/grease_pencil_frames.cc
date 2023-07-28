@@ -7,6 +7,7 @@
  */
 
 #include "BLI_map.hh"
+#include "BLI_math_vector_types.hh"
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
@@ -80,10 +81,7 @@ void select_frames_region(struct KeyframeEditData *ked,
   }
   for (auto [frame_number, frame] : layer->frames_for_write().items()) {
     /* construct a dummy point coordinate to do this testing with */
-    float pt[2] = {0};
-
-    pt[0] = frame_number;
-    pt[1] = ked->channel_y;
+    const float2 pt(float(frame_number), ked->channel_y);
 
     /* check the necessary regions */
     if (tool == BEZT_OK_CHANNEL_LASSO) {
