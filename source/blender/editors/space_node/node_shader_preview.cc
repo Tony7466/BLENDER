@@ -459,8 +459,10 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
 
   if (depsgraph != nullptr) {
     /* Used to refresh the dependency graph so that the material can be updated. */
-    DEG_graph_id_tag_update(
-        G.pr_main, depsgraph, &job_data->mat_copy->nodetree->id, ID_RECALC_NTREE_OUTPUT);
+    for (bNodeTreePath *path_iter : job_data->treepath_copy) {
+      DEG_graph_id_tag_update(
+          G.pr_main, depsgraph, &path_iter->nodetree->id, ID_RECALC_NTREE_OUTPUT);
+    }
   }
   return true;
 }
