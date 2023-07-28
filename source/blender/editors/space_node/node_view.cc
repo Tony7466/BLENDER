@@ -41,6 +41,8 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_view_cc
+
 namespace blender::ed::space_node {
 
 /* -------------------------------------------------------------------- */
@@ -108,6 +110,7 @@ bool space_node_view_flag(
   return true;
 }
 
+namespace FILE_NS {
 static int node_view_all_exec(bContext *C, wmOperator *op)
 {
   ARegion *region = CTX_wm_region(C);
@@ -123,6 +126,7 @@ static int node_view_all_exec(bContext *C, wmOperator *op)
   }
   return OPERATOR_CANCELLED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_view_all(wmOperatorType *ot)
 {
@@ -132,7 +136,7 @@ void NODE_OT_view_all(wmOperatorType *ot)
   ot->description = "Resize view so you can see all nodes";
 
   /* api callbacks */
-  ot->exec = node_view_all_exec;
+  ot->exec = FILE_NS::node_view_all_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -145,6 +149,7 @@ void NODE_OT_view_all(wmOperatorType *ot)
 /** \name View Selected Operator
  * \{ */
 
+namespace FILE_NS {
 static int node_view_selected_exec(bContext *C, wmOperator *op)
 {
   ARegion *region = CTX_wm_region(C);
@@ -156,6 +161,7 @@ static int node_view_selected_exec(bContext *C, wmOperator *op)
   }
   return OPERATOR_CANCELLED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_view_selected(wmOperatorType *ot)
 {
@@ -165,7 +171,7 @@ void NODE_OT_view_selected(wmOperatorType *ot)
   ot->description = "Resize view so you can see selected nodes";
 
   /* api callbacks */
-  ot->exec = node_view_selected_exec;
+  ot->exec = FILE_NS::node_view_selected_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -178,6 +184,7 @@ void NODE_OT_view_selected(wmOperatorType *ot)
 /** \name Background Image Operators
  * \{ */
 
+namespace FILE_NS {
 struct NodeViewMove {
   int2 mvalo;
   int xmin, ymin, xmax, ymax;
@@ -280,6 +287,7 @@ static void snode_bg_viewmove_cancel(bContext * /*C*/, wmOperator *op)
   MEM_freeN(op->customdata);
   op->customdata = nullptr;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_backimage_move(wmOperatorType *ot)
 {
@@ -289,10 +297,10 @@ void NODE_OT_backimage_move(wmOperatorType *ot)
   ot->idname = "NODE_OT_backimage_move";
 
   /* api callbacks */
-  ot->invoke = snode_bg_viewmove_invoke;
-  ot->modal = snode_bg_viewmove_modal;
+  ot->invoke = FILE_NS::snode_bg_viewmove_invoke;
+  ot->modal = FILE_NS::snode_bg_viewmove_modal;
   ot->poll = composite_node_active;
-  ot->cancel = snode_bg_viewmove_cancel;
+  ot->cancel = FILE_NS::snode_bg_viewmove_cancel;
 
   /* flags */
   ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
@@ -304,6 +312,7 @@ void NODE_OT_backimage_move(wmOperatorType *ot)
 /** \name Background Image Zoom
  * \{ */
 
+namespace FILE_NS {
 static int backimage_zoom_exec(bContext *C, wmOperator *op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -317,6 +326,7 @@ static int backimage_zoom_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_backimage_zoom(wmOperatorType *ot)
 {
@@ -327,7 +337,7 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
   ot->description = "Zoom in/out the background image";
 
   /* api callbacks */
-  ot->exec = backimage_zoom_exec;
+  ot->exec = FILE_NS::backimage_zoom_exec;
   ot->poll = composite_node_active;
 
   /* flags */
@@ -343,6 +353,7 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
 /** \name Background Image Fit
  * \{ */
 
+namespace FILE_NS {
 static int backimage_fit_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -382,6 +393,7 @@ static int backimage_fit_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_backimage_fit(wmOperatorType *ot)
 {
@@ -392,7 +404,7 @@ void NODE_OT_backimage_fit(wmOperatorType *ot)
   ot->description = "Fit the background image to the view";
 
   /* api callbacks */
-  ot->exec = backimage_fit_exec;
+  ot->exec = FILE_NS::backimage_fit_exec;
   ot->poll = composite_node_active;
 
   /* flags */
@@ -405,6 +417,7 @@ void NODE_OT_backimage_fit(wmOperatorType *ot)
 /** \name Sample Backdrop Operator
  * \{ */
 
+namespace FILE_NS {
 struct ImageSampleInfo {
   ARegionType *art;
   void *draw_handle;
@@ -438,6 +451,7 @@ static void sample_draw(const bContext *C, ARegion *region, void *arg_info)
   }
 }
 
+}  // namespace FILE_NS
 }  // namespace blender::ed::space_node
 
 bool ED_space_node_get_position(
@@ -523,6 +537,7 @@ bool ED_space_node_color_sample(
 }
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -670,6 +685,7 @@ static void sample_cancel(bContext *C, wmOperator *op)
 {
   sample_exit(C, op);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_backimage_sample(wmOperatorType *ot)
 {
@@ -679,9 +695,9 @@ void NODE_OT_backimage_sample(wmOperatorType *ot)
   ot->description = "Use mouse to sample background image";
 
   /* api callbacks */
-  ot->invoke = sample_invoke;
-  ot->modal = sample_modal;
-  ot->cancel = sample_cancel;
+  ot->invoke = FILE_NS::sample_invoke;
+  ot->modal = FILE_NS::sample_modal;
+  ot->cancel = FILE_NS::sample_cancel;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -691,3 +707,5 @@ void NODE_OT_backimage_sample(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
