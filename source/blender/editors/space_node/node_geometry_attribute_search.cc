@@ -38,9 +38,12 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS node_geometry_attribute_search_cc
+
 using blender::nodes::geo_eval_log::GeometryAttributeInfo;
 
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 struct AttributeSearchData {
   int32_t node_id;
@@ -235,6 +238,7 @@ static void attribute_search_exec_fn(bContext *C, void *data_v, void *item_v)
 
   ED_undo_push(C, "Assign Attribute Name");
 }
+}  // namespace FILE_NS
 
 void node_geometry_add_attribute_search_button(const bContext & /*C*/,
                                                const bNode &node,
@@ -261,7 +265,7 @@ void node_geometry_add_attribute_search_button(const bContext & /*C*/,
                                  "");
 
   const bNodeSocket &socket = *static_cast<const bNodeSocket *>(socket_ptr.data);
-  AttributeSearchData *data = MEM_new<AttributeSearchData>(__func__);
+  FILE_NS::AttributeSearchData *data = MEM_new<FILE_NS::AttributeSearchData>(__func__);
   data->node_id = node.identifier;
   STRNCPY(data->socket_identifier, socket.identifier);
 
@@ -269,12 +273,14 @@ void node_geometry_add_attribute_search_button(const bContext & /*C*/,
   UI_but_func_search_set_sep_string(but, UI_MENU_ARROW_SEP);
   UI_but_func_search_set(but,
                          nullptr,
-                         attribute_search_update_fn,
+                         FILE_NS::attribute_search_update_fn,
                          static_cast<void *>(data),
                          true,
                          nullptr,
-                         attribute_search_exec_fn,
+                         FILE_NS::attribute_search_exec_fn,
                          nullptr);
 }
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS

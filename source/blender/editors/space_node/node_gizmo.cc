@@ -642,3 +642,5 @@ void NODE_GGT_backdrop_corner_pin(wmGizmoGroupType *gzgt)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
