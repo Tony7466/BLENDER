@@ -678,6 +678,11 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_start(CTX_wm_manager(C), wm_job);
 }
 
+void ED_spacenode_stop_preview_job(wmWindowManager *wm)
+{
+  WM_jobs_stop(wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
+}
+
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */

@@ -45,6 +45,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.h"
+#include "BKE_scene.h"
 #include "BKE_type_conversions.hh"
 
 #include "IMB_imbuf.h"
@@ -3504,7 +3505,7 @@ static void draw_nodetree(const bContext &C,
   else if (ntree.type == NTREE_COMPOSIT) {
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
-  else if (ntree.type == NTREE_SHADER) {
+  else if (ntree.type == NTREE_SHADER && BKE_scene_uses_shader_previews(CTX_data_scene(&C))) {
     tree_draw_ctx.nested_group_infos = ED_spacenode_get_nested_previews(&C, snode);
   }
 
