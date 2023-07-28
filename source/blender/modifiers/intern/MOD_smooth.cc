@@ -202,9 +202,8 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(row, ptr, "use_y", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_z", toggles_flag, nullptr, ICON_NONE);
 
-  col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "factor", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "iterations", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "iterations", 0, nullptr, ICON_NONE);
 
   modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 

@@ -520,6 +520,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
+  uiLayout *col;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ob_ptr;
@@ -527,15 +528,16 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "iterations", 0, nullptr, ICON_NONE);
-
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
   uiItemR(row, ptr, "use_x", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_y", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_z", toggles_flag, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "lambda_factor", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "lambda_border", 0, nullptr, ICON_NONE);
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, ptr, "lambda_factor", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "lambda_border", 0, "Border", ICON_NONE);
+
+  uiItemR(layout, ptr, "iterations", 0, nullptr, ICON_NONE);
 
   uiItemR(layout, ptr, "use_volume_preserve", 0, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "use_normalized", 0, nullptr, ICON_NONE);
