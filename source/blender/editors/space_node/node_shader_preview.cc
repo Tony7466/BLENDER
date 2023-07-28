@@ -359,18 +359,20 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
                                                                            nested_node_orig->name);
 
     nodeAddLink(nested_nt, nested_node, nested_socket, output_node, out_socket);
-
-    nodeSetActive(nested_nt, output_node);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
-    BKE_ntree_update_main_tree(G.pr_main, path_prev->nodetree, nullptr);
 
     /* Change the `nested_node` pointer to the nested nodegroup instance node. The tree path
      * contains the name of the instance node but not its ID. */
     nested_node = nodeFindNodebyName(path_prev->nodetree, path->node_name);
 
+    /* Update the sockets of the node because we added a new interface. */
+    BKE_ntree_update_tag_node_property(path_prev->nodetree, nested_node);
+    BKE_ntree_update_main_tree(G.pr_main, path_prev->nodetree, nullptr);
+
     /* Now use the newly created socket of the nodegroup as previewing socket of the nodegroup
      * instance node. */
-    nested_socket = (bNodeSocket *)nested_node->outputs.last;
+    nested_socket = blender::bke::node_find_enabled_output_socket(*nested_node,
+                                                                  nested_node_orig->name);
   }
 
   nodeAddLink(treepath.first()->nodetree, nested_node, nested_socket, final_node, final_socket);
@@ -391,7 +393,7 @@ static void connect_node_to_surface_output(const Span<bNodeTreePath *> treepath,
   /* Ensure output is usable. */
   out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
   if (out_surface_socket->link) {
-    /* make sure no node is already wired to the output before wiring */
+    /* Make sure no node is already wired to the output before wiring. */
     nodeRemLink(main_nt, out_surface_socket->link);
   }
 
