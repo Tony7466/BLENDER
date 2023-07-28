@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_delaunay_2d.h"
@@ -23,8 +25,8 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveFill)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curve")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_output<decl::Geometry>(N_("Mesh"));
+  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_output<decl::Geometry>("Mesh");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -73,29 +75,24 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 {
   const int vert_len = result.vert.size();
   const int edge_len = result.edge.size();
-  const int poly_len = result.face.size();
+  const int face_len = result.face.size();
   int loop_len = 0;
   for (const Vector<int> &face : result.face) {
     loop_len += face.size();
   }
 
-  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, loop_len, poly_len);
+  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  MutableSpan<MEdge> edges = mesh->edges_for_write();
-  MutableSpan<MPoly> polys = mesh->polys_for_write();
+  mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   for (const int i : IndexRange(result.vert.size())) {
     positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
   }
-  for (const int i : IndexRange(result.edge.size())) {
-    edges[i].v1 = result.edge[i].first;
-    edges[i].v2 = result.edge[i].second;
-  }
   int i_loop = 0;
   for (const int i : IndexRange(result.face.size())) {
-    polys[i].loopstart = i_loop;
-    polys[i].totloop = result.face[i].size();
+    face_offsets[i] = i_loop;
     for (const int j : result.face[i].index_range()) {
       corner_verts[i_loop] = result.face[i][j];
       i_loop++;

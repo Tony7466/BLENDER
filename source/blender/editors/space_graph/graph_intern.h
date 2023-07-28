@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spgraph
@@ -13,6 +14,10 @@ struct SpaceGraph;
 struct bAnimContext;
 struct bAnimListElem;
 struct bContext;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* internal exports only */
 
@@ -117,6 +122,7 @@ void GRAPH_OT_ease(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_ease(struct wmOperatorType *ot);
 void GRAPH_OT_decimate(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_default(struct wmOperatorType *ot);
+void GRAPH_OT_butterworth_smooth(struct wmOperatorType *ot);
 void GRAPH_OT_gaussian_smooth(struct wmOperatorType *ot);
 void GRAPH_OT_sample(struct wmOperatorType *ot);
 void GRAPH_OT_bake(struct wmOperatorType *ot);
@@ -131,6 +137,7 @@ void GRAPH_OT_extrapolation_type(struct wmOperatorType *ot);
 void GRAPH_OT_easing_type(struct wmOperatorType *ot);
 
 void GRAPH_OT_frame_jump(struct wmOperatorType *ot);
+void GRAPH_OT_keyframe_jump(struct wmOperatorType *ot);
 void GRAPH_OT_snap_cursor_value(struct wmOperatorType *ot);
 void GRAPH_OT_snap(struct wmOperatorType *ot);
 void GRAPH_OT_equalize_handles(struct wmOperatorType *ot);
@@ -230,3 +237,7 @@ bool graphop_selected_fcurve_poll(struct bContext *C);
 
 void graphedit_keymap(struct wmKeyConfig *keyconf);
 void graphedit_operatortypes(void);
+
+#ifdef __cplusplus
+}
+#endif

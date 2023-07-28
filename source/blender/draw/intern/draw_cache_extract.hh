@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -111,7 +112,7 @@ struct MeshBufferList {
     /* Selection */
     GPUVertBuf *vert_idx; /* extend */
     GPUVertBuf *edge_idx; /* extend */
-    GPUVertBuf *poly_idx;
+    GPUVertBuf *face_idx;
     GPUVertBuf *fdot_idx;
     GPUVertBuf *attr[GPU_MAX_ATTR];
     GPUVertBuf *attr_viewer;
@@ -228,7 +229,7 @@ struct MeshExtractLooseGeom {
   blender::Array<int> edges;
 };
 
-struct SortedPolyData {
+struct SortedFaceData {
   /** The first triangle index for each polygon, sorted into slices by material. */
   blender::Array<int> tri_first_index;
   /** The number of visible triangles assigned to each material. */
@@ -247,7 +248,7 @@ struct MeshBufferCache {
 
   MeshExtractLooseGeom loose_geom;
 
-  SortedPolyData poly_sorted;
+  SortedFaceData face_sorted;
 };
 
 #define FOREACH_MESH_BUFFER_CACHE(batch_cache, mbc) \
@@ -262,7 +263,7 @@ struct MeshBatchCache {
 
   MeshBatchList batch;
 
-  /* Index buffer per material. These are subranges of `ibo.tris` */
+  /* Index buffer per material. These are sub-ranges of `ibo.tris`. */
   GPUIndexBuf **tris_per_mat;
 
   GPUBatch **surface_per_mat;
@@ -275,7 +276,7 @@ struct MeshBatchCache {
   /* Settings to determine if cache is invalid. */
   int edge_len;
   int tri_len;
-  int poly_len;
+  int face_len;
   int vert_len;
   int mat_len;
   /* Instantly invalidates cache, skipping mesh check */

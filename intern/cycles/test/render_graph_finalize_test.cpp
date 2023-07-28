@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/mock_log.h"
 #include "testing/testing.h"
@@ -160,9 +161,7 @@ class RenderGraph : public testing::Test {
   ShaderGraph graph;
   ShaderGraphBuilder builder;
 
-  RenderGraph() : testing::Test(), builder(&graph)
-  {
-  }
+  RenderGraph() : testing::Test(), builder(&graph) {}
 
   virtual void SetUp()
   {
@@ -1293,7 +1292,7 @@ template<class T> void init_test_curve(array<T> &buffer, T start, T end, int ste
   buffer.resize(steps);
 
   for (int i = 0; i < steps; i++) {
-    buffer[i] = lerp(start, end, float(i) / (steps - 1));
+    buffer[i] = mix(start, end, float(i) / (steps - 1));
   }
 }
 

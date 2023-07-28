@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -14,6 +15,7 @@ extern "C" {
 #endif
 
 struct BezTriple;
+struct ButterworthCoefficients;
 struct FCurve;
 struct Scene;
 struct bAnimContext;
@@ -58,6 +60,7 @@ typedef enum eEditKeyframes_Select {
   SELECT_SUBTRACT = (1 << 2),
   /* flip ok status of keyframes based on key status */
   SELECT_INVERT = (1 << 3),
+  SELECT_EXTEND_RANGE = (1 << 4),
 } eEditKeyframes_Select;
 
 /* "selection map" building modes */
@@ -111,7 +114,7 @@ typedef struct KeyframeEdit_CircleData {
 } KeyframeEdit_CircleData;
 
 /* ************************************************ */
-/* Non-Destructive Editing API (keyframes_edit.c) */
+/* Non-Destructive Editing API (keyframes_edit.cc) */
 
 /* -------------------------------------------------------------------- */
 /** \name Defines for 'OK' polls + KeyframeEditData Flags
@@ -119,6 +122,7 @@ typedef struct KeyframeEdit_CircleData {
 
 /* which verts of a keyframe is active (after polling) */
 typedef enum eKeyframeVertOk {
+  KEYFRAME_NONE = 0,
   /* 'key' itself is ok */
   KEYFRAME_OK_KEY = (1 << 0),
   /* 'handle 1' is ok */
@@ -155,6 +159,16 @@ ENUM_OPERATORS(eKeyframeIterFlags, KEYFRAME_ITER_HANDLES_DEFAULT_INVISIBLE)
 /* -------------------------------------------------------------------- */
 /** \name Generic Properties for Keyframe Edit Tools
  * \{ */
+
+/**
+ * Temporary struct used to store frame time and selection status.
+ * Used for example by `columnselect_action_keys` to select all keyframes in a column.
+ */
+typedef struct CfraElem {
+  struct CfraElem *next, *prev;
+  float cfra;
+  int sel;
+} CfraElem;
 
 typedef struct KeyframeEditData {
   /* generic properties/data access */
@@ -425,11 +439,27 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       struct FCurveSegment *segment,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
-/** Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
- * \param sigma The shape of the gauss distribution.
- * \param kernel_size How long the kernel array is.
+
+/**
+ * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
+ * \param sigma: The shape of the gauss distribution.
+ * \param kernel_size: How long the kernel array is.
  */
 void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
+
+struct ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order);
+void ED_anim_free_butterworth_coefficients(struct ButterworthCoefficients *bw_coeff);
+void ED_anim_calculate_butterworth_coefficients(float cutoff,
+                                                float sampling_frequency,
+                                                struct ButterworthCoefficients *bw_coeff);
+void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
+                                       struct FCurveSegment *segment,
+                                       float *samples,
+                                       int sample_count,
+                                       float factor,
+                                       int blend_in_out,
+                                       int sample_rate,
+                                       struct ButterworthCoefficients *bw_coeff);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
                            float *samples,
@@ -439,16 +469,21 @@ void smooth_fcurve_segment(struct FCurve *fcu,
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void blend_to_ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
+
+/**
+ * Blends the selected keyframes to the default value of the property the F-curve drives.
+ */
 void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, float factor);
 /**
  * Use a weighted moving-means method to reduce intensity of fluctuations.
  */
 void smooth_fcurve(struct FCurve *fcu);
 void sample_fcurve(struct FCurve *fcu);
-void sample_fcurve_segment(struct FCurve *fcu,
-                           float start_frame,
-                           float *r_samples,
-                           int sample_count);
+/**
+ * \param sample_rate: indicates how many samples per frame should be generated.
+ */
+void sample_fcurve_segment(
+    struct FCurve *fcu, float start_frame, int sample_rate, float *r_samples, int sample_count);
 
 /* ----------- */
 

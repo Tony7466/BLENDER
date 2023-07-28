@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -18,7 +19,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_mesh.h"
 
 #include "draw_cache_extract.hh"
@@ -39,7 +40,7 @@ enum eMRExtractType {
 struct MeshRenderData {
   eMRExtractType extract_type;
 
-  int poly_len, edge_len, vert_len, loop_len;
+  int face_len, edge_len, vert_len, loop_len;
   int edge_loose_len;
   int vert_loose_len;
   int loop_loose_len;
@@ -58,14 +59,14 @@ struct MeshRenderData {
   /** Edit Mesh */
   BMEditMesh *edit_bmesh;
   BMesh *bm;
-  EditMeshData *edit_data;
+  blender::bke::EditMeshData *edit_data;
 
   /* For deformed edit-mesh data. */
   /* Use for #ME_WRAPPER_TYPE_BMESH. */
-  const float (*bm_vert_coords)[3];
-  const float (*bm_vert_normals)[3];
-  const float (*bm_poly_normals)[3];
-  const float (*bm_poly_centers)[3];
+  blender::Span<blender::float3> bm_vert_coords;
+  blender::Span<blender::float3> bm_vert_normals;
+  blender::Span<blender::float3> bm_face_normals;
+  blender::Span<blender::float3> bm_face_centers;
 
   const int *v_origindex, *e_origindex, *p_origindex;
   int edge_crease_ofs;
@@ -76,19 +77,20 @@ struct MeshRenderData {
   /** Mesh */
   Mesh *me;
   blender::Span<blender::float3> vert_positions;
-  blender::Span<MEdge> edges;
-  blender::Span<MPoly> polys;
+  blender::Span<blender::int2> edges;
+  blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
   BMFace *efa_act_uv;
-  /* The triangulation of #Mesh polygons, owned by the mesh. */
+  /* The triangulation of #Mesh faces, owned by the mesh. */
   blender::Span<MLoopTri> looptris;
+  blender::Span<int> looptri_faces;
   const int *material_indices;
   blender::Span<blender::float3> vert_normals;
-  blender::Span<blender::float3> poly_normals;
+  blender::Span<blender::float3> face_normals;
   const bool *hide_vert;
   const bool *hide_edge;
   const bool *hide_poly;
@@ -100,7 +102,7 @@ struct MeshRenderData {
 
   blender::Span<int> loose_verts;
   blender::Span<int> loose_edges;
-  const SortedPolyData *poly_sorted;
+  const SortedFaceData *face_sorted;
 
   const char *active_color_name;
   const char *default_color_name;
@@ -123,7 +125,7 @@ BLI_INLINE const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *me)
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &me->ldata;
+      return &me->loop_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &me->edit_mesh->bm->ldata;
@@ -131,7 +133,7 @@ BLI_INLINE const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *me)
   }
 
   BLI_assert(0);
-  return &me->ldata;
+  return &me->loop_data;
 }
 
 BLI_INLINE const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *me)
@@ -139,7 +141,7 @@ BLI_INLINE const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *me)
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &me->pdata;
+      return &me->face_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &me->edit_mesh->bm->pdata;
@@ -147,7 +149,7 @@ BLI_INLINE const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *me)
   }
 
   BLI_assert(0);
-  return &me->pdata;
+  return &me->face_data;
 }
 
 BLI_INLINE const CustomData *mesh_cd_edata_get_from_mesh(const Mesh *me)
@@ -155,7 +157,7 @@ BLI_INLINE const CustomData *mesh_cd_edata_get_from_mesh(const Mesh *me)
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &me->edata;
+      return &me->edge_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &me->edit_mesh->bm->edata;
@@ -163,7 +165,7 @@ BLI_INLINE const CustomData *mesh_cd_edata_get_from_mesh(const Mesh *me)
   }
 
   BLI_assert(0);
-  return &me->edata;
+  return &me->edge_data;
 }
 
 BLI_INLINE const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *me)
@@ -171,7 +173,7 @@ BLI_INLINE const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *me)
   switch (me->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      return &me->vdata;
+      return &me->vert_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
       return &me->edit_mesh->bm->vdata;
@@ -179,60 +181,51 @@ BLI_INLINE const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *me)
   }
 
   BLI_assert(0);
-  return &me->vdata;
+  return &me->vert_data;
 }
 
 BLI_INLINE BMFace *bm_original_face_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->p_origindex != NULL) && (mr->p_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->p_origindex != nullptr) && (mr->p_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_face_at_index(mr->bm, mr->p_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE BMEdge *bm_original_edge_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->e_origindex != NULL) && (mr->e_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->e_origindex != nullptr) && (mr->e_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_edge_at_index(mr->bm, mr->e_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE BMVert *bm_original_vert_get(const MeshRenderData *mr, int idx)
 {
-  return ((mr->v_origindex != NULL) && (mr->v_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
+  return ((mr->v_origindex != nullptr) && (mr->v_origindex[idx] != ORIGINDEX_NONE) && mr->bm) ?
              BM_vert_at_index(mr->bm, mr->v_origindex[idx]) :
-             NULL;
+             nullptr;
 }
 
 BLI_INLINE const float *bm_vert_co_get(const MeshRenderData *mr, const BMVert *eve)
 {
-  const float(*vert_coords)[3] = mr->bm_vert_coords;
-  if (vert_coords != NULL) {
-    return vert_coords[BM_elem_index_get(eve)];
+  if (!mr->bm_vert_coords.is_empty()) {
+    return mr->bm_vert_coords[BM_elem_index_get(eve)];
   }
-
-  UNUSED_VARS(mr);
   return eve->co;
 }
 
 BLI_INLINE const float *bm_vert_no_get(const MeshRenderData *mr, const BMVert *eve)
 {
-  const float(*vert_normals)[3] = mr->bm_vert_normals;
-  if (vert_normals != NULL) {
-    return vert_normals[BM_elem_index_get(eve)];
+  if (!mr->bm_vert_normals.is_empty()) {
+    return mr->bm_vert_normals[BM_elem_index_get(eve)];
   }
-
-  UNUSED_VARS(mr);
   return eve->no;
 }
 
 BLI_INLINE const float *bm_face_no_get(const MeshRenderData *mr, const BMFace *efa)
 {
-  const float(*poly_normals)[3] = mr->bm_poly_normals;
-  if (poly_normals != NULL) {
-    return poly_normals[BM_elem_index_get(efa)];
+  if (!mr->bm_face_normals.is_empty()) {
+    return mr->bm_face_normals[BM_elem_index_get(efa)];
   }
-
-  UNUSED_VARS(mr);
   return efa->no;
 }
 
@@ -249,27 +242,24 @@ using ExtractTriMeshFn = void(const MeshRenderData *mr,
                               const MLoopTri *mlt,
                               int elt_index,
                               void *data);
-using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
+using ExtractFaceBMeshFn = void(const MeshRenderData *mr,
                                 const BMFace *f,
                                 int f_index,
                                 void *data);
-using ExtractPolyMeshFn = void(const MeshRenderData *mr,
-                               const MPoly *poly,
-                               int poly_index,
-                               void *data);
+using ExtractFaceMeshFn = void(const MeshRenderData *mr, int face_index, void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
-                                 int ledge_index,
+                                 int loose_edge_i,
                                  void *data);
 using ExtractLEdgeMeshFn = void(const MeshRenderData *mr,
-                                const MEdge *edge,
-                                int ledge_index,
+                                blender::int2 edge,
+                                int loose_edge_i,
                                 void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData *mr,
                                  const BMVert *eve,
-                                 int lvert_index,
+                                 int loose_vert_i,
                                  void *data);
-using ExtractLVertMeshFn = void(const MeshRenderData *mr, int lvert_index, void *data);
+using ExtractLVertMeshFn = void(const MeshRenderData *mr, int loose_vert_i, void *data);
 using ExtractLooseGeomSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                       const MeshRenderData *mr,
                                       void *buffer,
@@ -298,7 +288,7 @@ using ExtractIterSubdivMeshFn = void(const DRWSubdivCache *subdiv_cache,
                                      const MeshRenderData *mr,
                                      void *data,
                                      uint subdiv_quad_index,
-                                     const MPoly *coarse_quad);
+                                     int coarse_quad_index);
 using ExtractFinishSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                    const MeshRenderData *mr,
                                    MeshBatchCache *cache,
@@ -311,8 +301,8 @@ struct MeshExtract {
   /** Executed on one (or more if use_threading) worker thread(s). */
   ExtractTriBMeshFn *iter_looptri_bm;
   ExtractTriMeshFn *iter_looptri_mesh;
-  ExtractPolyBMeshFn *iter_poly_bm;
-  ExtractPolyMeshFn *iter_poly_mesh;
+  ExtractFaceBMeshFn *iter_face_bm;
+  ExtractFaceMeshFn *iter_face_mesh;
   ExtractLEdgeBMeshFn *iter_loose_edge_bm;
   ExtractLEdgeMeshFn *iter_loose_edge_mesh;
   ExtractLVertBMeshFn *iter_loose_vert_bm;
@@ -361,7 +351,7 @@ void mesh_render_data_update_loose_geom(MeshRenderData *mr,
                                         MeshBufferCache *cache,
                                         eMRIterType iter_type,
                                         eMRDataType data_flag);
-void mesh_render_data_update_polys_sorted(MeshRenderData *mr,
+void mesh_render_data_update_faces_sorted(MeshRenderData *mr,
                                           MeshBufferCache *cache,
                                           eMRDataType data_flag);
 /**
@@ -436,7 +426,7 @@ extern const MeshExtract extract_fdots_nor_hq;
 extern const MeshExtract extract_fdots_uv;
 extern const MeshExtract extract_fdots_edituv_data;
 extern const MeshExtract extract_skin_roots;
-extern const MeshExtract extract_poly_idx;
+extern const MeshExtract extract_face_idx;
 extern const MeshExtract extract_edge_idx;
 extern const MeshExtract extract_vert_idx;
 extern const MeshExtract extract_fdot_idx;

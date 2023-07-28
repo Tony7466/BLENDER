@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -53,7 +54,7 @@ template<
      *
      * Useful during development to switch between drawing implementations.
      */
-    typename DrawingMode = ScreenSpaceDrawingMode<ScreenTileTextures<1>>>
+    typename DrawingMode = ScreenSpaceDrawingMode<OneTexture>>
 class ImageEngine {
  private:
   const DRWContextState *draw_ctx;

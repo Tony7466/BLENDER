@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # ------------------------------------------------------------------------------
@@ -188,6 +190,9 @@ def km_window(params):
         ("wm.open_mainfile", {"type": 'O', "value": 'PRESS', "ctrl": True}, None),
         ("wm.save_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True}, None),
         ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+        ("wm.save_mainfile",
+         {"type": 'S', "value": 'PRESS', "ctrl": True, "alt": True},
+         {"properties": [("incremental", True)]}),
         ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "ctrl": True}, None),
 
         # Quick menu and toolbar
@@ -2212,7 +2217,9 @@ def km_animation_channels(params):
     items.extend([
         # Click select.
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
+         {"properties": [("extend_range", True)]}),
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
          {"properties": [("extend", True)]}),
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("children_only", True)]}),
@@ -2773,6 +2780,56 @@ def km_grease_pencil_stroke_weight_draw(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight (Draw)",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("gpencil.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("wait_for_input", False)]}),
+        ("gpencil.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("wait_for_input", False)]}),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_stroke_weight_blur(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Stroke Weight (Blur)",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("gpencil.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("wait_for_input", False)]}),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_stroke_weight_average(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Stroke Weight (Average)",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("gpencil.weight_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("wait_for_input", False)]}),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_stroke_weight_smear(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Stroke Weight (Smear)",
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
@@ -3775,6 +3832,10 @@ def km_font(params):
          {"properties": [("type", 'PREVIOUS_PAGE')]}),
         ("font.move", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True},
          {"properties": [("type", 'NEXT_PAGE')]}),
+        ("font.move", {"type": 'HOME', "value": 'PRESS', "ctrl": True, "repeat": True},
+         {"properties": [("type", 'TEXT_BEGIN')]}),
+        ("font.move", {"type": 'END', "value": 'PRESS', "ctrl": True, "repeat": True},
+         {"properties": [("type", 'TEXT_END')]}),
         ("font.move_select", {"type": 'HOME', "value": 'PRESS', "shift": True},
          {"properties": [("type", 'LINE_BEGIN')]}),
         ("font.move_select", {"type": 'END', "value": 'PRESS', "shift": True},
@@ -3795,10 +3856,14 @@ def km_font(params):
          {"properties": [("type", 'PREVIOUS_PAGE')]}),
         ("font.move_select", {"type": 'PAGE_DOWN', "value": 'PRESS', "shift": True, "repeat": True},
          {"properties": [("type", 'NEXT_PAGE')]}),
+        ("font.move_select", {"type": 'HOME', "value": 'PRESS', "shift": True, "ctrl": True, "repeat": True},
+         {"properties": [("type", 'TEXT_BEGIN')]}),
+        ("font.move_select", {"type": 'END', "value": 'PRESS', "shift": True, "ctrl": True, "repeat": True},
+         {"properties": [("type", 'TEXT_END')]}),
         ("font.change_spacing", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", -1)]}),
+         {"properties": [("delta", -1.0)]}),
         ("font.change_spacing", {"type": 'RIGHT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", 1)]}),
+         {"properties": [("delta", 1.0)]}),
         ("font.change_character", {"type": 'UP_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("delta", 1)]}),
         ("font.change_character", {"type": 'DOWN_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
@@ -3976,6 +4041,8 @@ def km_transform_modal_map(_params):
         ("TRACKBALL", {"type": 'R', "value": 'PRESS'}, None),
         ("RESIZE", {"type": 'S', "value": 'PRESS'}, None),
         ("ROTATE_NORMALS", {"type": 'N', "value": 'PRESS'}, None),
+        ("EDIT_SNAP_SOURCE_ON", {"type": 'B', "value": 'PRESS'}, None),
+        ("EDIT_SNAP_SOURCE_OFF", {"type": 'B', "value": 'PRESS'}, None),
         ("SNAP_TOGGLE", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
         ("SNAP_INV_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
         ("SNAP_INV_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
@@ -4187,6 +4254,9 @@ def generate_keymaps_impl(params=None):
         km_grease_pencil_stroke_sculpt_clone(params),
         km_grease_pencil_stroke_weight_mode(params),
         km_grease_pencil_stroke_weight_draw(params),
+        km_grease_pencil_stroke_weight_blur(params),
+        km_grease_pencil_stroke_weight_average(params),
+        km_grease_pencil_stroke_weight_smear(params),
         km_grease_pencil_stroke_vertex_mode(params),
         km_grease_pencil_stroke_vertex_draw(params),
         km_grease_pencil_stroke_vertex_blur(params),

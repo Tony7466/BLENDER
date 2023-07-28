@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -38,7 +39,7 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -56,7 +57,7 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -293,7 +294,7 @@ static void sculpt_init_session(Main *bmain, Depsgraph *depsgraph, Scene *scene,
      * SCULPT_FACE_SET_NONE assigned, so we can create a new Face Set for it. */
     /* In sculpt mode all geometry that is assigned to SCULPT_FACE_SET_NONE is considered as not
      * initialized, which is used is some operators that modify the mesh topology to perform
-     * certain actions in the new polys. After these operations are finished, all polys should have
+     * certain actions in the new faces. After these operations are finished, all faces should have
      * a valid face set ID assigned (different from SCULPT_FACE_SET_NONE) to manage their
      * visibility correctly. */
     /* TODO(pablodp606): Based on this we can improve the UX in future tools for creating new
@@ -312,6 +313,11 @@ void SCULPT_ensure_valid_pivot(const Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
   const SculptSession *ss = ob->sculpt;
+
+  /* Account for the case where no objects are evaluated. */
+  if (!ss->pbvh) {
+    return;
+  }
 
   /* No valid pivot? Use bounding box center. */
   if (ups->average_stroke_counter == 0 || !ups->last_stroke_valid) {
@@ -344,8 +350,8 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
 
   sculpt_init_session(bmain, depsgraph, scene, ob);
 
-  if (!(fabsf(ob->scale[0] - ob->scale[1]) < 1e-4f &&
-        fabsf(ob->scale[1] - ob->scale[2]) < 1e-4f)) {
+  if (!(fabsf(ob->scale[0] - ob->scale[1]) < 1e-4f && fabsf(ob->scale[1] - ob->scale[2]) < 1e-4f))
+  {
     BKE_report(
         reports, RPT_WARNING, "Object has non-uniform scale, sculpting may be unpredictable");
   }
@@ -364,7 +370,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
 
     const char *message_unsupported = nullptr;
-    if (me->totloop != me->totpoly * 3) {
+    if (me->totloop != me->faces_num * 3) {
       message_unsupported = TIP_("non-triangle face");
     }
     else if (mmd != nullptr) {
@@ -572,10 +578,6 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
 
-  if (!ss->pmap) {
-    return;
-  }
-
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
 
@@ -669,7 +671,7 @@ static void SCULPT_OT_sample_color(wmOperatorType *ot)
   ot->invoke = sculpt_sample_color_invoke;
   ot->poll = SCULPT_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 }
 
 /**
@@ -817,9 +819,7 @@ static void sculpt_mask_by_color_contiguous(Object *object,
   SCULPT_floodfill_execute(ss, &flood, sculpt_mask_by_color_contiguous_floodfill_cb, &ffd);
   SCULPT_floodfill_free(&flood);
 
-  int totnode;
-  PBVHNode **nodes;
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
   SculptThreadedTaskData data{};
   data.ob = object;
@@ -831,11 +831,9 @@ static void sculpt_mask_by_color_contiguous(Object *object,
   data.mask_by_color_preserve_mask = preserve_mask;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
   BLI_task_parallel_range(
-      0, totnode, &data, do_mask_by_color_contiguous_update_nodes_cb, &settings);
-
-  MEM_SAFE_FREE(nodes);
+      0, nodes.size(), &data, do_mask_by_color_contiguous_update_nodes_cb, &settings);
 
   MEM_freeN(new_mask);
 }
@@ -885,9 +883,7 @@ static void sculpt_mask_by_color_full_mesh(Object *object,
 {
   SculptSession *ss = object->sculpt;
 
-  int totnode;
-  PBVHNode **nodes;
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
   SculptThreadedTaskData data{};
   data.ob = object;
@@ -898,10 +894,8 @@ static void sculpt_mask_by_color_full_mesh(Object *object,
   data.mask_by_color_preserve_mask = preserve_mask;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BLI_task_parallel_range(0, totnode, &data, do_mask_by_color_task_cb, &settings);
-
-  MEM_SAFE_FREE(nodes);
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
+  BLI_task_parallel_range(0, nodes.size(), &data, do_mask_by_color_task_cb, &settings);
 }
 
 static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -909,9 +903,12 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  View3D *v3d = CTX_wm_view3d(C);
-  if (v3d->shading.type == OB_SOLID) {
-    v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+
+  {
+    View3D *v3d = CTX_wm_view3d(C);
+    if (v3d && v3d->shading.type == OB_SOLID) {
+      v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+    }
   }
 
   /* Color data is not available in multi-resolution or dynamic topology. */
@@ -1011,7 +1008,7 @@ enum CavityBakeSettingsSource {
 struct AutomaskBakeTaskData {
   SculptSession *ss;
   AutomaskingCache *automasking;
-  PBVHNode **nodes;
+  Span<PBVHNode *> nodes;
   CavityBakeMixMode mode;
   float factor;
   Object *ob;
@@ -1089,10 +1086,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   CavityBakeMixMode mode = CavityBakeMixMode(RNA_enum_get(op->ptr, "mix_mode"));
   float factor = RNA_float_get(op->ptr, "mix_factor");
 
-  PBVHNode **nodes;
-  int totnode;
-
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
   AutomaskBakeTaskData tdata;
 
@@ -1165,10 +1159,9 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   tdata.automasking = SCULPT_automasking_cache_init(&sd2, &brush2, ob);
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BLI_task_parallel_range(0, totnode, &tdata, sculpt_bake_cavity_exec_task_cb, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
+  BLI_task_parallel_range(0, nodes.size(), &tdata, sculpt_bake_cavity_exec_task_cb, &settings);
 
-  MEM_SAFE_FREE(nodes);
   SCULPT_automasking_cache_free(tdata.automasking);
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateMask);
@@ -1304,13 +1297,11 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  PBVHNode **nodes;
-  int totnode;
   bool with_bmesh = BKE_pbvh_type(ss->pbvh) == PBVH_BMESH;
 
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
-  if (!totnode) {
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1319,11 +1310,11 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
 
   SCULPT_undo_push_begin(ob, op);
 
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_visibility(node);
 
     if (!with_bmesh) {
-      SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_HIDDEN);
+      SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
     }
   }
 
@@ -1333,7 +1324,7 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
     /* As an optimization, free the hide attribute when making all geometry visible. This allows
      * reduced memory usage without manually clearing it later, and allows sculpt operations to
      * avoid checking element's hide status. */
-    CustomData_free_layer_named(&mesh->pdata, ".hide_poly", mesh->totpoly);
+    CustomData_free_layer_named(&mesh->face_data, ".hide_poly", mesh->faces_num);
     ss->hide_poly = nullptr;
   }
   else {
@@ -1367,7 +1358,6 @@ static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
   BKE_pbvh_update_visibility(ss->pbvh);
 
   SCULPT_undo_push_end(ob);
-  MEM_SAFE_FREE(nodes);
 
   SCULPT_tag_update_overlays(C);
   DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
@@ -1390,7 +1380,7 @@ static void SCULPT_OT_reveal_all(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-void ED_operatortypes_sculpt(void)
+void ED_operatortypes_sculpt()
 {
   WM_operatortype_append(SCULPT_OT_brush_stroke);
   WM_operatortype_append(SCULPT_OT_sculptmode_toggle);
@@ -1407,6 +1397,7 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
   WM_operatortype_append(SCULPT_OT_face_sets_create);
   WM_operatortype_append(SCULPT_OT_face_sets_change_visibility);
+  WM_operatortype_append(SCULPT_OT_face_sets_invert_visibility);
   WM_operatortype_append(SCULPT_OT_face_sets_randomize_colors);
   WM_operatortype_append(SCULPT_OT_face_sets_init);
   WM_operatortype_append(SCULPT_OT_cloth_filter);

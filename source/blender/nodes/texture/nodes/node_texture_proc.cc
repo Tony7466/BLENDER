@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup texnodes
@@ -50,7 +51,7 @@ static void do_proc(float *result,
   }
 }
 
-typedef void (*MapFn)(Tex *tex, bNodeStack **in, TexParams *p, const short thread);
+using MapFn = void (*)(Tex *tex, bNodeStack **in, TexParams *p, const short thread);
 
 static void texfn(
     float *result, TexParams *p, bNode *node, bNodeStack **in, MapFn map_inputs, short thread)
@@ -252,8 +253,8 @@ static void init(bNodeTree * /*ntree*/, bNode *node)
     static bNodeType ntype; \
 \
     tex_node_type_base(&ntype, TEX_NODE_PROC + TEXTYPE, Name, NODE_CLASS_TEXTURE); \
-    node_type_socket_templates(&ntype, name##_inputs, outputs); \
-    node_type_size_preset(&ntype, NODE_SIZE_MIDDLE); \
+    blender::bke::node_type_socket_templates(&ntype, name##_inputs, outputs); \
+    blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE); \
     ntype.initfunc = init; \
     node_type_storage(&ntype, "Tex", node_free_standard_storage, node_copy_standard_storage); \
     ntype.exec_fn = name##_exec; \

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spfile
@@ -8,6 +9,7 @@
 #pragma once
 
 #include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,6 +68,10 @@ void FILE_OT_bookmark_move(struct wmOperatorType *ot);
 void FILE_OT_reset_recent(wmOperatorType *ot);
 void FILE_OT_hidedot(struct wmOperatorType *ot);
 void FILE_OT_execute(struct wmOperatorType *ot);
+
+void FILE_OT_external_operation(struct wmOperatorType *ot);
+void file_external_operations_menu_register(void);
+
 /**
  * Variation of #FILE_OT_execute that accounts for some mouse specific handling.
  * Otherwise calls the same logic.
@@ -175,6 +181,12 @@ typedef struct SpaceFile_Runtime {
    * Use file_on_reload_callback_register() to register a callback. */
   onReloadFn on_reload;
   onReloadFnData on_reload_custom_data;
+
+  /* Indicates, if the current filepath is a blendfile library one, if its status has been checked,
+   * and if it is readable. */
+  bool is_blendfile_status_set;
+  bool is_blendfile_readable;
+  ReportList is_blendfile_readable_reports;
 } SpaceFile_Runtime;
 
 /**

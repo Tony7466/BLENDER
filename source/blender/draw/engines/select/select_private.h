@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -10,6 +11,10 @@
 #define USE_CAGE_OCCLUSION
 
 #include "DRW_render.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* GPUViewport.storage
  * Is freed every time the viewport engine changes. */
@@ -40,6 +45,7 @@ typedef struct SELECTID_Shaders {
 
 typedef struct SELECTID_PrivateData {
   DRWShadingGroup *shgrp_depth_only;
+  DRWShadingGroup *shgrp_occlude;
   DRWShadingGroup *shgrp_face_unif;
   DRWShadingGroup *shgrp_face_flat;
   DRWShadingGroup *shgrp_edge;
@@ -63,3 +69,7 @@ void select_id_draw_object(void *vedata,
                            uint *r_vert_offset,
                            uint *r_edge_offset,
                            uint *r_face_offset);
+
+#ifdef __cplusplus
+}
+#endif

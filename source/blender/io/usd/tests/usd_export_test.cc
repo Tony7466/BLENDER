@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "testing/testing.h"
 #include "tests/blendfile_loading_base_test.h"
@@ -22,7 +24,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BLI_fileops.h"
 #include "BLI_math.h"
 #include "BLI_math_vector_types.hh"
@@ -36,7 +38,6 @@
 #include "WM_api.h"
 
 #include "usd.h"
-#include "usd_tests_common.h"
 #include "usd_writer_material.h"
 
 namespace blender::io::usd {
@@ -71,10 +72,6 @@ class UsdExportTest : public BlendfileLoadingBaseTest {
   virtual void SetUp() override
   {
     BlendfileLoadingBaseTest::SetUp();
-    std::string usd_plugin_path = register_usd_plugins_for_tests();
-    if (usd_plugin_path.empty()) {
-      FAIL() << "Unable to find the USD Plugins path.";
-    }
   }
 
   virtual void TearDown() override
@@ -196,7 +193,7 @@ class UsdExportTest : public BlendfileLoadingBaseTest {
     mesh_prim.GetNormalsAttr().Get(&normals, 0.0);
 
     EXPECT_EQ(mesh->totvert, positions.size());
-    EXPECT_EQ(mesh->totpoly, face_counts.size());
+    EXPECT_EQ(mesh->faces_num, face_counts.size());
     EXPECT_EQ(mesh->totloop, face_indices.size());
     EXPECT_EQ(mesh->totloop, normals.size());
   }

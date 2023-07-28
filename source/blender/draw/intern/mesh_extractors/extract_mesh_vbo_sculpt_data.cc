@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -39,8 +40,10 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPUVertFormat *format = get_sculpt_data_format();
 
-  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
-  CustomData *cd_pdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->pdata : &mr->me->pdata;
+  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata :
+                                                                  &mr->me->vert_data;
+  CustomData *cd_pdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->pdata :
+                                                                  &mr->me->face_data;
 
   const float *cd_mask = (const float *)CustomData_get_layer(cd_vdata, CD_PAINT_MASK);
   const int *cd_face_set = (const int *)CustomData_get_layer_named(
@@ -84,19 +87,17 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
     }
   }
   else {
-    int mp_loop = 0;
-    for (int poly_index = 0; poly_index < mr->poly_len; poly_index++) {
-      const MPoly &poly = mr->polys[poly_index];
-      for (int l = 0; l < poly.totloop; l++) {
+    for (int face_index = 0; face_index < mr->face_len; face_index++) {
+      for (const int corner : mr->faces[face_index]) {
         float v_mask = 0.0f;
         if (cd_mask) {
-          v_mask = cd_mask[mr->corner_verts[mp_loop]];
+          v_mask = cd_mask[mr->corner_verts[corner]];
         }
         vbo_data->mask = v_mask;
 
         uchar face_set_color[4] = {UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX};
         if (cd_face_set) {
-          const int face_set_id = cd_face_set[poly_index];
+          const int face_set_id = cd_face_set[face_index];
           /* Skip for the default color Face Set to render it white. */
           if (face_set_id != mr->me->face_sets_color_default) {
             BKE_paint_face_set_overlay_color_get(
@@ -104,7 +105,6 @@ static void extract_sculpt_data_init(const MeshRenderData *mr,
           }
         }
         copy_v3_v3_uchar(vbo_data->face_set_color, face_set_color);
-        mp_loop++;
         vbo_data++;
       }
     }
@@ -120,15 +120,15 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
 
   Mesh *coarse_mesh = mr->me;
-  CustomData *cd_vdata = &coarse_mesh->vdata;
-  CustomData *cd_pdata = &coarse_mesh->pdata;
+  CustomData *cd_vdata = &coarse_mesh->vert_data;
+  CustomData *cd_pdata = &coarse_mesh->face_data;
 
   /* First, interpolate mask if available. */
   GPUVertBuf *mask_vbo = nullptr;
   GPUVertBuf *subdiv_mask_vbo = nullptr;
   const float *cd_mask = (const float *)CustomData_get_layer(cd_vdata, CD_PAINT_MASK);
 
-  const Span<MPoly> coarse_polys = coarse_mesh->polys();
+  const OffsetIndices coarse_faces = coarse_mesh->faces();
   const Span<int> coarse_corner_verts = coarse_mesh->corner_verts();
 
   if (cd_mask) {
@@ -140,12 +140,9 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
     GPU_vertbuf_data_alloc(mask_vbo, coarse_mesh->totloop);
     float *v_mask = static_cast<float *>(GPU_vertbuf_get_data(mask_vbo));
 
-    for (int i = 0; i < coarse_mesh->totpoly; i++) {
-      const MPoly &poly = coarse_polys[i];
-
-      for (int loop_index = poly.loopstart; loop_index < poly.loopstart + poly.totloop;
-           loop_index++) {
-        *v_mask++ = cd_mask[coarse_corner_verts[loop_index]];
+    for (int i = 0; i < coarse_mesh->faces_num; i++) {
+      for (const int vert : coarse_corner_verts.slice(coarse_faces[i])) {
+        *v_mask++ = cd_mask[vert];
       }
     }
 
@@ -174,14 +171,14 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
 
   GPUVertFormat *format = get_sculpt_data_format();
   GPU_vertbuf_init_build_on_device(vbo, format, subdiv_cache->num_subdiv_loops);
-  int *subdiv_loop_poly_index = subdiv_cache->subdiv_loop_poly_index;
+  int *subdiv_loop_face_index = subdiv_cache->subdiv_loop_face_index;
 
   for (uint i = 0; i < subdiv_cache->num_subdiv_loops; i++) {
-    const int poly_index = subdiv_loop_poly_index[i];
+    const int face_index = subdiv_loop_face_index[i];
 
     uchar face_set_color[4] = {UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX};
     if (cd_face_set) {
-      const int face_set_id = cd_face_set[poly_index];
+      const int face_set_id = cd_face_set[face_index];
       /* Skip for the default color Face Set to render it white. */
       if (face_set_id != coarse_mesh->face_sets_color_default) {
         BKE_paint_face_set_overlay_color_get(

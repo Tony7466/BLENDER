@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -80,12 +81,12 @@ void wm_window_ghostwindows_ensure(wmWindowManager *wm);
  * (after loading a new file) in the unlikely event a window couldn't be created.
  */
 void wm_window_ghostwindows_remove_invalid(bContext *C, wmWindowManager *wm);
-void wm_window_process_events(const bContext *C);
+void wm_window_events_process(const bContext *C);
 
 void wm_window_clear_drawable(wmWindowManager *wm);
 void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win);
 /**
- * Reset active the current window opengl drawing context.
+ * Reset active the current window gpu drawing context.
  */
 void wm_window_reset_drawable(void);
 
@@ -114,7 +115,7 @@ void wm_window_IME_end(wmWindow *win);
 
 /** Effectively remove timers from the list and delete them. Calling this should only be done by
  * internal WM management code, from specific, safe places. */
-void wm_window_delete_removed_timers(wmWindowManager *wm);
+void wm_window_timers_delete_removed(wmWindowManager *wm);
 
 /* *************** window operators ************** */
 

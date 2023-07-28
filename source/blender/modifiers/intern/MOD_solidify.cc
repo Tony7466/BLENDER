@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -26,12 +27,12 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include "MOD_solidify_util.hh"
 
-static bool dependsOnNormals(ModifierData *md)
+static bool depends_on_normals(ModifierData *md)
 {
   const SolidifyModifierData *smd = (SolidifyModifierData *)md;
   /* even when we calculate our own normals,
@@ -40,7 +41,7 @@ static bool dependsOnNormals(ModifierData *md)
   return smd->mode == MOD_SOLIDIFY_MODE_EXTRUDE;
 }
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   SolidifyModifierData *smd = (SolidifyModifierData *)md;
 
@@ -53,18 +54,19 @@ static void initData(ModifierData *md)
 #  pragma GCC diagnostic error "-Wsign-conversion"
 #endif
 
-static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   SolidifyModifierData *smd = (SolidifyModifierData *)md;
 
-  /* ask for vertexgroups if we need them */
+  /* Ask for vertex-groups if we need them. */
   if (smd->defgrp_name[0] != '\0' || smd->shell_defgrp_name[0] != '\0' ||
-      smd->rim_defgrp_name[0] != '\0') {
+      smd->rim_defgrp_name[0] != '\0')
+  {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
 }
 
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   const SolidifyModifierData *smd = (SolidifyModifierData *)md;
   switch (smd->mode) {
@@ -226,7 +228,7 @@ static void vertex_group_panel_draw(const bContext * /*C*/, Panel *panel)
                  ICON_NONE);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Solidify, panel_draw);
   modifier_subpanel_register(
@@ -246,9 +248,10 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Solidify = {
+    /*idname*/ "Solidify",
     /*name*/ N_("Solidify"),
-    /*structName*/ "SolidifyModifierData",
-    /*structSize*/ sizeof(SolidifyModifierData),
+    /*struct_name*/ "SolidifyModifierData",
+    /*struct_size*/ sizeof(SolidifyModifierData),
     /*srna*/ &RNA_SolidifyModifier,
     /*type*/ eModifierTypeType_Constructive,
 
@@ -257,26 +260,26 @@ ModifierTypeInfo modifierType_Solidify = {
         eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_SOLIDIFY,
 
-    /*copyData*/ BKE_modifier_copydata_generic,
+    /*copy_data*/ BKE_modifier_copydata_generic,
 
-    /*deformVerts*/ nullptr,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ dependsOnNormals,
-    /*foreachIDLink*/ nullptr,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ nullptr,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ depends_on_normals,
+    /*foreach_ID_link*/ nullptr,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ nullptr,
 };

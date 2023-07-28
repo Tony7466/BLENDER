@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -143,7 +144,7 @@ void CLIP_OT_dopesheet_select_channel(wmOperatorType *ot)
                        100.0f);
   RNA_def_boolean(ot->srna,
                   "extend",
-                  0,
+                  false,
                   "Extend",
                   "Extend selection rather than clearing the existing selection");
 }
