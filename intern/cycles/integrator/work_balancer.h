@@ -21,7 +21,7 @@ struct WorkBalanceInfo {
 };
 
 /* Balance work for an initial render integration, before any statistics is known. */
-void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos);
+void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos, int cpu_index);
 
 /* Rebalance work after statistics has been accumulated.
  * Returns true if the balancing did change. */

@@ -10,7 +10,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos)
+void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos, int cpu_index)
 {
   const int num_infos = work_balance_infos.size();
 
@@ -23,9 +23,13 @@ void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos)
   }
 
   /* There is no statistics available, so start with an equal distribution. */
-  const double weight = 1.0 / num_infos;
-  for (WorkBalanceInfo &balance_info : work_balance_infos) {
-    balance_info.weight = weight;
+  /* initially assume the CPU is much slower (100x) than the GPU */
+  int cpu_used = ((cpu_index == -1) ? 0 : 1);
+  const double GPU_WEIGHT = 100.0;
+  const double total_weigth = GPU_WEIGHT*(num_infos - cpu_used) + cpu_used;
+  //const double weight = 1.0 / num_infos;
+  for (int device_index = 0;device_index < num_infos; device_index++) {
+      work_balance_infos[device_index].weight = ((cpu_index == device_index) ? 1 : GPU_WEIGHT)/total_weigth;
   }
 }
 
