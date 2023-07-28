@@ -27,7 +27,10 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS clipboard_cc
+
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 struct NodeClipboardItem {
   bNode *node;
@@ -167,6 +170,7 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_clipboard_copy(wmOperatorType *ot)
 {
@@ -174,7 +178,7 @@ void NODE_OT_clipboard_copy(wmOperatorType *ot)
   ot->description = "Copy the selected nodes to the internal clipboard";
   ot->idname = "NODE_OT_clipboard_copy";
 
-  ot->exec = node_clipboard_copy_exec;
+  ot->exec = FILE_NS::node_clipboard_copy_exec;
   ot->poll = ED_operator_node_active;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -185,6 +189,7 @@ void NODE_OT_clipboard_copy(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Paste
  * \{ */
+namespace FILE_NS {
 
 static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 {
@@ -326,6 +331,7 @@ static int node_clipboard_paste_invoke(bContext *C, wmOperator *op, const wmEven
   RNA_float_set_array(op->ptr, "offset", cursor);
   return node_clipboard_paste_exec(C, op);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_clipboard_paste(wmOperatorType *ot)
 {
@@ -333,8 +339,8 @@ void NODE_OT_clipboard_paste(wmOperatorType *ot)
   ot->description = "Paste nodes from the internal clipboard to the active node tree";
   ot->idname = "NODE_OT_clipboard_paste";
 
-  ot->invoke = node_clipboard_paste_invoke;
-  ot->exec = node_clipboard_paste_exec;
+  ot->invoke = FILE_NS::node_clipboard_paste_invoke;
+  ot->exec = FILE_NS::node_clipboard_paste_exec;
   ot->poll = ED_operator_node_editable;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -361,7 +367,9 @@ void NODE_OT_clipboard_paste(wmOperatorType *ot)
 void ED_node_clipboard_free()
 {
   using namespace blender::ed::space_node;
-  NodeClipboard &clipboard = get_node_clipboard();
+  FILE_NS::NodeClipboard &clipboard = FILE_NS::get_node_clipboard();
   clipboard.validate();
   clipboard.clear();
 }
+
+#undef FILE_NS
