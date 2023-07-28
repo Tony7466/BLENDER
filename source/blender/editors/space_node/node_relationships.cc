@@ -54,6 +54,8 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_relationships_cc
+
 struct NodeInsertOfsData {
   bNodeTree *ntree;
   bNode *insert;      /* Inserted node. */
@@ -68,6 +70,8 @@ struct NodeInsertOfsData {
 namespace blender::ed::space_node {
 
 bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out);
+
+namespace FILE_NS {
 
 static void clear_picking_highlight(ListBase *links)
 {
@@ -313,6 +317,7 @@ static void sort_multi_input_socket_links_with_drag(bNodeSocket &socket,
     links[i].link->multi_input_socket_index = i;
   }
 }
+}  // namespace FILE_NS
 
 void update_multi_input_indices_for_removed_links(bNode &node)
 {
@@ -330,6 +335,8 @@ void update_multi_input_indices_for_removed_links(bNode &node)
     }
   }
 }
+
+namespace FILE_NS {
 
 static void snode_autoconnect(SpaceNode &snode, const bool allow_multiple, const bool replace)
 {
@@ -743,6 +750,7 @@ static bool node_active_link_viewer_poll(bContext *C)
   SpaceNode *snode = CTX_wm_space_node(C);
   return ED_node_is_compositor(snode) || ED_node_is_geometry(snode);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_link_viewer(wmOperatorType *ot)
 {
@@ -752,8 +760,8 @@ void NODE_OT_link_viewer(wmOperatorType *ot)
   ot->idname = "NODE_OT_link_viewer";
 
   /* api callbacks */
-  ot->exec = node_active_link_viewer_exec;
-  ot->poll = node_active_link_viewer_poll;
+  ot->exec = FILE_NS::node_active_link_viewer_exec;
+  ot->poll = FILE_NS::node_active_link_viewer_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -764,6 +772,8 @@ void NODE_OT_link_viewer(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Add Link Operator
  * \{ */
+
+namespace FILE_NS {
 
 /**
  * Check if any of the dragged links are connected to a socket on the side that they are dragged
@@ -1201,13 +1211,15 @@ enum class NodeLinkAction : int {
   Confirm,
 };
 
+}  // namespace FILE_NS
+
 wmKeyMap *node_link_modal_keymap(wmKeyConfig *keyconf)
 {
   static const EnumPropertyItem modal_items[] = {
-      {int(NodeLinkAction::Begin), "BEGIN", 0, "Drag Node-link", ""},
-      {int(NodeLinkAction::Confirm), "CONFIRM", 0, "Confirm Link", ""},
-      {int(NodeLinkAction::Cancel), "CANCEL", 0, "Cancel", ""},
-      {int(NodeLinkAction::Swap), "SWAP", 0, "Swap Links", ""},
+      {int(FILE_NS::NodeLinkAction::Begin), "BEGIN", 0, "Drag Node-link", ""},
+      {int(FILE_NS::NodeLinkAction::Confirm), "CONFIRM", 0, "Confirm Link", ""},
+      {int(FILE_NS::NodeLinkAction::Cancel), "CANCEL", 0, "Cancel", ""},
+      {int(FILE_NS::NodeLinkAction::Swap), "SWAP", 0, "Swap Links", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1224,6 +1236,8 @@ wmKeyMap *node_link_modal_keymap(wmKeyConfig *keyconf)
 
   return keymap;
 }
+
+namespace FILE_NS {
 
 static int node_link_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1404,6 +1418,8 @@ static int node_link_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_link(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1412,10 +1428,10 @@ void NODE_OT_link(wmOperatorType *ot)
   ot->description = "Use the mouse to create a link between two nodes";
 
   /* api callbacks */
-  ot->invoke = node_link_invoke;
-  ot->modal = node_link_modal;
+  ot->invoke = FILE_NS::node_link_invoke;
+  ot->modal = FILE_NS::node_link_modal;
   ot->poll = ED_operator_node_editable;
-  ot->cancel = node_link_cancel;
+  ot->cancel = FILE_NS::node_link_cancel;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
@@ -1447,6 +1463,8 @@ void NODE_OT_link(wmOperatorType *ot)
 /** \name Make Link Operator
  * \{ */
 
+namespace FILE_NS {
+
 /* Makes a link between selected output and input sockets. */
 static int node_make_link_exec(bContext *C, wmOperator *op)
 {
@@ -1468,6 +1486,8 @@ static int node_make_link_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_link_make(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1476,7 +1496,7 @@ void NODE_OT_link_make(wmOperatorType *ot)
   ot->idname = "NODE_OT_link_make";
 
   /* callbacks */
-  ot->exec = node_make_link_exec;
+  ot->exec = FILE_NS::node_make_link_exec;
   /* XXX we need a special poll which checks that there are selected input/output sockets. */
   ot->poll = ED_operator_node_editable;
 
@@ -1492,6 +1512,8 @@ void NODE_OT_link_make(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Cut Link Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int cut_links_exec(bContext *C, wmOperator *op)
 {
@@ -1560,6 +1582,8 @@ static int cut_links_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_links_cut(wmOperatorType *ot)
 {
   ot->name = "Cut Links";
@@ -1568,7 +1592,7 @@ void NODE_OT_links_cut(wmOperatorType *ot)
 
   ot->invoke = WM_gesture_lines_invoke;
   ot->modal = WM_gesture_lines_modal;
-  ot->exec = cut_links_exec;
+  ot->exec = FILE_NS::cut_links_exec;
   ot->cancel = WM_gesture_lines_cancel;
 
   ot->poll = ED_operator_node_editable;
@@ -1600,6 +1624,8 @@ bool all_links_muted(const bNodeSocket &socket)
   }
   return true;
 }
+
+namespace FILE_NS {
 
 static int mute_links_exec(bContext *C, wmOperator *op)
 {
@@ -1686,6 +1712,8 @@ static int mute_links_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_links_mute(wmOperatorType *ot)
 {
   ot->name = "Mute Links";
@@ -1694,7 +1722,7 @@ void NODE_OT_links_mute(wmOperatorType *ot)
 
   ot->invoke = WM_gesture_lines_invoke;
   ot->modal = WM_gesture_lines_modal;
-  ot->exec = mute_links_exec;
+  ot->exec = FILE_NS::mute_links_exec;
   ot->cancel = WM_gesture_lines_cancel;
 
   ot->poll = ED_operator_node_editable;
@@ -1717,6 +1745,8 @@ void NODE_OT_links_mute(wmOperatorType *ot)
 /** \name Detach Links Operator
  * \{ */
 
+namespace FILE_NS {
+
 static int detach_links_exec(bContext *C, wmOperator * /*op*/)
 {
   SpaceNode &snode = *CTX_wm_space_node(C);
@@ -1734,6 +1764,8 @@ static int detach_links_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_links_detach(wmOperatorType *ot)
 {
   ot->name = "Detach Links";
@@ -1741,7 +1773,7 @@ void NODE_OT_links_detach(wmOperatorType *ot)
   ot->description =
       "Remove all links to selected nodes, and try to connect neighbor nodes together";
 
-  ot->exec = detach_links_exec;
+  ot->exec = FILE_NS::detach_links_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1753,6 +1785,8 @@ void NODE_OT_links_detach(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Set Parent Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_parent_set_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1779,6 +1813,8 @@ static int node_parent_set_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_parent_set(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1787,7 +1823,7 @@ void NODE_OT_parent_set(wmOperatorType *ot)
   ot->idname = "NODE_OT_parent_set";
 
   /* api callbacks */
-  ot->exec = node_parent_set_exec;
+  ot->exec = FILE_NS::node_parent_set_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1799,6 +1835,8 @@ void NODE_OT_parent_set(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Join Nodes Operator
  * \{ */
+
+namespace FILE_NS {
 
 struct NodeJoinState {
   bool done;
@@ -1867,6 +1905,8 @@ static int node_join_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_join(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1875,7 +1915,7 @@ void NODE_OT_join(wmOperatorType *ot)
   ot->idname = "NODE_OT_join";
 
   /* api callbacks */
-  ot->exec = node_join_exec;
+  ot->exec = FILE_NS::node_join_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1887,6 +1927,8 @@ void NODE_OT_join(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Attach Operator
  * \{ */
+
+namespace FILE_NS {
 
 static bNode *node_find_frame_to_attach(ARegion &region,
                                         const bNodeTree &ntree,
@@ -1951,6 +1993,8 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_attach(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1960,7 +2004,7 @@ void NODE_OT_attach(wmOperatorType *ot)
 
   /* api callbacks */
 
-  ot->invoke = node_attach_invoke;
+  ot->invoke = FILE_NS::node_attach_invoke;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -1972,6 +2016,8 @@ void NODE_OT_attach(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Detach Operator
  * \{ */
+
+namespace FILE_NS {
 
 struct NodeDetachstate {
   bool done;
@@ -2026,6 +2072,8 @@ static int node_detach_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_detach(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2034,7 +2082,7 @@ void NODE_OT_detach(wmOperatorType *ot)
   ot->idname = "NODE_OT_detach";
 
   /* api callbacks */
-  ot->exec = node_detach_exec;
+  ot->exec = FILE_NS::node_detach_exec;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2046,6 +2094,8 @@ void NODE_OT_detach(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Automatic Node Insert on Dragging
  * \{ */
+
+namespace FILE_NS {
 
 static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
 {
@@ -2081,6 +2131,8 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   return selected_node;
 }
 
+}  // namespace FILE_NS
+
 void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
 {
   bNodeTree &node_tree = *snode.edittree;
@@ -2088,7 +2140,7 @@ void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
 
   node_insert_on_link_flags_clear(node_tree);
 
-  bNode *node_to_insert = get_selected_node_for_insertion(node_tree);
+  bNode *node_to_insert = FILE_NS::get_selected_node_for_insertion(node_tree);
   if (!node_to_insert) {
     return;
   }
@@ -2143,7 +2195,7 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 {
   bNodeTree &node_tree = *snode.edittree;
   node_tree.ensure_topology_cache();
-  bNode *node_to_insert = get_selected_node_for_insertion(node_tree);
+  bNode *node_to_insert = FILE_NS::get_selected_node_for_insertion(node_tree);
   if (!node_to_insert) {
     return;
   }
@@ -2222,6 +2274,8 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 /** \name Node Insert Offset Operator
  * \{ */
 
+namespace FILE_NS {
+
 static int get_main_socket_priority(const bNodeSocket *socket)
 {
   switch ((eNodeSocketDatatype)socket->type) {
@@ -2250,6 +2304,7 @@ static int get_main_socket_priority(const bNodeSocket *socket)
   }
   return -1;
 }
+}  // namespace FILE_NS
 
 /** Get the "main" socket based on the node declaration or an heuristic. */
 bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out)
@@ -2280,13 +2335,13 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
     if (sock->flag & SOCK_UNAVAIL) {
       continue;
     }
-    maxpriority = max_ii(get_main_socket_priority(sock), maxpriority);
+    maxpriority = max_ii(FILE_NS::get_main_socket_priority(sock), maxpriority);
   }
 
   /* Try all priorities, starting from 'highest'. */
   for (int priority = maxpriority; priority >= 0; priority--) {
     LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-      if (!!sock->is_visible() && priority == get_main_socket_priority(sock)) {
+      if (!!sock->is_visible() && priority == FILE_NS::get_main_socket_priority(sock)) {
         return sock;
       }
     }
@@ -2298,7 +2353,7 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
       if (sock->flag & SOCK_UNAVAIL) {
         continue;
       }
-      if (priority == get_main_socket_priority(sock)) {
+      if (priority == FILE_NS::get_main_socket_priority(sock)) {
         sock->flag &= ~SOCK_HIDDEN;
         return sock;
       }
@@ -2307,6 +2362,8 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
 
   return nullptr;
 }
+
+namespace FILE_NS {
 
 static bool node_parents_offset_flag_enable_cb(bNode *parent, void * /*userdata*/)
 {
@@ -2619,6 +2676,8 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
   return OPERATOR_RUNNING_MODAL;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_insert_offset(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2627,8 +2686,8 @@ void NODE_OT_insert_offset(wmOperatorType *ot)
   ot->idname = "NODE_OT_insert_offset";
 
   /* callbacks */
-  ot->invoke = node_insert_offset_invoke;
-  ot->modal = node_insert_offset_modal;
+  ot->invoke = FILE_NS::node_insert_offset_invoke;
+  ot->modal = FILE_NS::node_insert_offset_modal;
   ot->poll = ED_operator_node_editable;
 
   /* flags */
@@ -2638,3 +2697,5 @@ void NODE_OT_insert_offset(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
