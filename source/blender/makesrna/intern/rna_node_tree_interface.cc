@@ -102,9 +102,20 @@ static bool rna_NodeTreeInterfaceSocket_unregister(Main * /*bmain*/, StructRNA *
   return true;
 }
 
-static void rna_NodeTreeInterfaceSocket_draw_socket_properties(bContext *C,
-                                                               uiLayout *layout,
-                                                               PointerRNA *ptr)
+static void rna_NodeTreeInterfaceSocket_draw_socket_properties_builtin(
+    ID *id, bNodeTreeInterfaceSocket *socket, bContext *C, uiLayout *layout)
+{
+  PointerRNA ptr;
+  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, socket, &ptr);
+  bNodeSocketType *typeinfo = socket->socket_typeinfo();
+  if (typeinfo && typeinfo->interface_draw) {
+    typeinfo->interface_draw(C, layout, &ptr);
+  }
+}
+
+static void rna_NodeTreeInterfaceSocket_draw_socket_properties_custom(bContext *C,
+                                                                      uiLayout *layout,
+                                                                      PointerRNA *ptr)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
   bNodeSocketType *typeinfo = nodeSocketTypeFind(socket->socket_type);
@@ -133,6 +144,9 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
 {
   bNodeTreeInterfaceSocket dummy_socket;
   memset(&dummy_socket, 0, sizeof(bNodeTreeInterfaceSocket));
+  /* Set #item_type so that refining the type ends up with RNA_NodeTreeInterfaceSocket. */
+  dummy_socket.item.item_type = NODE_INTERFACE_SOCKET;
+
   PointerRNA dummy_socket_ptr;
   RNA_pointer_create(nullptr, &RNA_NodeTreeInterfaceSocket, &dummy_socket, &dummy_socket_ptr);
 
@@ -170,8 +184,9 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   st->ext_interface_new.free = free;
   RNA_struct_blender_type_set(st->ext_interface_new.srna, st);
 
-  st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_socket_properties :
-                                            nullptr;
+  st->interface_draw = (have_function[0]) ?
+                           rna_NodeTreeInterfaceSocket_draw_socket_properties_custom :
+                           nullptr;
   // TODO declare these in RNA
   //  st->interface_draw_color = (have_function[1]) ? rna_NodeSocketInterface_draw_color : nullptr;
   //  st->interface_init_socket = (have_function[2]) ? rna_NodeSocketInterface_init_socket :

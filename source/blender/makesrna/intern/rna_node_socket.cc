@@ -1061,6 +1061,28 @@ static void rna_def_node_socket_standard(BlenderRNA *brna)
   //  RNA_def_function_output(func, parm);
 }
 
+/* Common functions for all builtin socket interface types. */
+static void rna_def_node_tree_interface_socket_builtin(StructRNA *srna)
+{
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  /* Override for drawing functions, invoking the typeinfo callback directly
+   * instead of expecting an existing RNA registered function implementation.
+   */
+  func = RNA_def_function(srna,
+                          "draw_socket_properties",
+                          "rna_NodeTreeInterfaceSocket_draw_socket_properties_builtin");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(func, "Draw interface socket settings");
+  parm = RNA_def_pointer(func, "context", "Context", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(parm, "UILayout");
+  RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+}
+
 static void rna_def_node_socket_float(BlenderRNA *brna,
                                       const char *identifier,
                                       PropertySubType subtype)
@@ -1185,6 +1207,8 @@ static void rna_def_node_socket_interface_new_float(BlenderRNA *brna,
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_int(BlenderRNA *brna,
@@ -1294,6 +1318,8 @@ static void rna_def_node_socket_interface_new_int(BlenderRNA *brna,
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_bool(BlenderRNA *brna, const char *identifier)
@@ -1354,6 +1380,8 @@ static void rna_def_node_socket_interface_new_bool(BlenderRNA *brna, const char 
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_rotation(BlenderRNA *brna, const char *identifier)
@@ -1417,6 +1445,8 @@ static void rna_def_node_socket_interface_new_rotation(BlenderRNA *brna, const c
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_vector(BlenderRNA *brna,
@@ -1527,6 +1557,8 @@ static void rna_def_node_socket_interface_new_vector(BlenderRNA *brna,
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_color(BlenderRNA *brna, const char *identifier)
@@ -1587,6 +1619,8 @@ static void rna_def_node_socket_interface_new_color(BlenderRNA *brna, const char
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_string(BlenderRNA *brna, const char *identifier)
@@ -1647,6 +1681,8 @@ static void rna_def_node_socket_interface_new_string(BlenderRNA *brna, const cha
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
   RNA_def_struct_sdna_from(srna, "bNodeTreeInterfaceSocket", nullptr);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_shader(BlenderRNA *brna, const char *identifier)
@@ -1674,6 +1710,8 @@ static void rna_def_node_socket_interface_new_shader(BlenderRNA *brna, const cha
   srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
   RNA_def_struct_ui_text(srna, "Shader Node Socket Interface", "Shader socket of a node");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_object(BlenderRNA *brna, const char *identifier)
@@ -1735,6 +1773,8 @@ static void rna_def_node_socket_interface_new_object(BlenderRNA *brna, const cha
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_image(BlenderRNA *brna, const char *identifier)
@@ -1796,6 +1836,8 @@ static void rna_def_node_socket_interface_new_image(BlenderRNA *brna, const char
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_geometry(BlenderRNA *brna, const char *identifier)
@@ -1823,6 +1865,8 @@ static void rna_def_node_socket_interface_new_geometry(BlenderRNA *brna, const c
   srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
   RNA_def_struct_ui_text(srna, "Geometry Node Socket Interface", "Geometry socket of a node");
   RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_collection(BlenderRNA *brna, const char *identifier)
@@ -1884,6 +1928,8 @@ static void rna_def_node_socket_interface_new_collection(BlenderRNA *brna, const
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_texture(BlenderRNA *brna, const char *identifier)
@@ -1945,6 +1991,8 @@ static void rna_def_node_socket_interface_new_texture(BlenderRNA *brna, const ch
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_material(BlenderRNA *brna, const char *identifier)
@@ -2012,6 +2060,8 @@ static void rna_def_node_socket_interface_new_material(BlenderRNA *brna, const c
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
 }
 
 static void rna_def_node_socket_virtual(BlenderRNA *brna, const char *identifier)
