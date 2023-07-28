@@ -408,7 +408,7 @@ void RE_draw_lock_cb(struct Render *re, void *handle, void (*f)(void *handle, bo
 void RE_test_break_cb(struct Render *re, void *handle, bool (*f)(void *handle));
 void RE_prepare_viewlayer_cb(struct Render *re,
                              void *handle,
-                             bool (*f)(void *handle, ViewLayer *vl));
+                             bool (*f)(void *handle, ViewLayer *vl, struct Depsgraph *depsgraph));
 void RE_current_scene_update_cb(struct Render *re,
                                 void *handle,
                                 void (*f)(void *handle, struct Scene *scene));

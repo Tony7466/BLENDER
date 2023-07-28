@@ -39,6 +39,8 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
 
+#include "DEG_depsgraph.h"
+
 #include "IMB_imbuf.h"
 
 #include "WM_api.h"
@@ -181,6 +183,7 @@ static Scene *preview_prepare_scene(const Main *bmain,
 
   /* This flag tells render to not execute depsgraph or F-Curves etc. */
   scene_preview->r.scemode |= R_BUTS_PREVIEW;
+  scene_preview->r.mode |= R_PERSISTENT_DATA;
   STRNCPY(scene_preview->r.engine, scene_orig->r.engine);
 
   scene_preview->r.color_mgt_flag = scene_orig->r.color_mgt_flag;
@@ -428,7 +431,7 @@ static bool nodetree_previews_break(void *spv)
   return *(job_data->stop);
 }
 
-static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
+static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *depsgraph)
 {
   bNode *node = nullptr;
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(pvl_data);
@@ -453,6 +456,12 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
                 displacement_socket);
   }
   connect_node_to_surface_output(job_data->treepath_copy, node, job_data->mat_output_copy);
+
+  if (depsgraph != nullptr) {
+    /* Used to refresh the dependency graph so that the material can be updated. */
+    DEG_graph_id_tag_update(
+        G.pr_main, depsgraph, &job_data->mat_copy->nodetree->id, ID_RECALC_NTREE_OUTPUT);
+  }
   return true;
 }
 

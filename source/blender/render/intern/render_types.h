@@ -140,7 +140,7 @@ struct Render : public BaseRender {
   bool (*test_break)(void *handle) = nullptr;
   void *tbh = nullptr;
 
-  bool (*prepare_viewlayer)(void *handle, struct ViewLayer *vl);
+  bool (*prepare_viewlayer)(void *handle, struct ViewLayer *vl, struct Depsgraph *depsgraph);
   void *pvh;
 
   RenderStats i = {};

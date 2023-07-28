@@ -850,7 +850,7 @@ static void engine_render_view_layer(Render *re,
   ViewLayer *view_layer = static_cast<ViewLayer *>(
       BLI_findstring(&re->scene->view_layers, view_layer_iter->name, offsetof(ViewLayer, name)));
   if (re->prepare_viewlayer) {
-    if (!re->prepare_viewlayer(re->pvh, view_layer)) {
+    if (!re->prepare_viewlayer(re->pvh, view_layer, engine->depsgraph)) {
       if (re->draw_lock) {
         re->draw_lock(re->dlh, false);
       }
