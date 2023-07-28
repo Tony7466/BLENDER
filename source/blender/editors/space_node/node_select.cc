@@ -50,7 +50,10 @@
 
 #include "node_intern.hh" /* own include */
 
+#define FILE_NS node_select_cc
+
 namespace blender::ed::space_node {
+namespace FILE_NS {
 
 static bool is_event_over_node_or_socket(const bContext &C, const wmEvent &event);
 
@@ -84,6 +87,7 @@ static bool has_workbench_in_texture_color(const wmWindowManager *wm,
   }
   return false;
 }
+}  // namespace FILE_NS
 
 /* -------------------------------------------------------------------- */
 /** \name Public Node Selection API
@@ -106,9 +110,10 @@ rctf node_frame_rect_inside(const SpaceNode &snode, const bNode &node)
 
 bool node_or_socket_isect_event(const bContext &C, const wmEvent &event)
 {
-  return is_event_over_node_or_socket(C, event);
+  return FILE_NS::is_event_over_node_or_socket(C, event);
 }
 
+namespace FILE_NS {
 static bool node_frame_select_isect_mouse(const SpaceNode &snode,
                                           const bNode &node,
                                           const float2 &mouse)
@@ -199,6 +204,7 @@ static bool is_event_over_node_or_socket(const bContext &C, const wmEvent &event
   UI_view2d_region_to_view(&region.v2d, mval.x, mval.y, &mouse.x, &mouse.y);
   return is_position_over_node_or_socket(snode, mouse);
 }
+}  // namespace FILE_NS
 
 void node_socket_select(bNode *node, bNodeSocket &sock)
 {
@@ -237,6 +243,7 @@ void node_socket_deselect(bNode *node, bNodeSocket &sock, const bool deselect_no
   }
 }
 
+namespace FILE_NS {
 static void node_socket_toggle(bNode *node, bNodeSocket &sock, bool deselect_node)
 {
   if (sock.flag & SELECT) {
@@ -246,6 +253,7 @@ static void node_socket_toggle(bNode *node, bNodeSocket &sock, bool deselect_nod
     node_socket_select(node, sock);
   }
 }
+}  // namespace FILE_NS
 
 void node_deselect_all(bNodeTree &node_tree)
 {
@@ -356,6 +364,8 @@ VectorSet<bNode *> get_selected_nodes(bNodeTree &node_tree)
 /* -------------------------------------------------------------------- */
 /** \name Select Grouped Operator
  * \{ */
+
+namespace FILE_NS {
 
 /* Return true if we need redraw, otherwise false. */
 
@@ -479,15 +489,16 @@ static int node_select_grouped_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_CANCELLED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_grouped(wmOperatorType *ot)
 {
   PropertyRNA *prop;
   static const EnumPropertyItem prop_select_grouped_types[] = {
-      {NODE_SELECT_GROUPED_TYPE, "TYPE", 0, "Type", ""},
-      {NODE_SELECT_GROUPED_COLOR, "COLOR", 0, "Color", ""},
-      {NODE_SELECT_GROUPED_PREFIX, "PREFIX", 0, "Prefix", ""},
-      {NODE_SELECT_GROUPED_SUFIX, "SUFFIX", 0, "Suffix", ""},
+      {FILE_NS::NODE_SELECT_GROUPED_TYPE, "TYPE", 0, "Type", ""},
+      {FILE_NS::NODE_SELECT_GROUPED_COLOR, "COLOR", 0, "Color", ""},
+      {FILE_NS::NODE_SELECT_GROUPED_PREFIX, "PREFIX", 0, "Prefix", ""},
+      {FILE_NS::NODE_SELECT_GROUPED_SUFIX, "SUFFIX", 0, "Suffix", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -498,7 +509,7 @@ void NODE_OT_select_grouped(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = WM_menu_invoke;
-  ot->exec = node_select_grouped_exec;
+  ot->exec = FILE_NS::node_select_grouped_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -541,13 +552,14 @@ void node_select_single(bContext &C, bNode &node)
   ED_node_set_active_viewer_key(&snode);
 
   node_sort(node_tree);
-  if (active_texture_changed && has_workbench_in_texture_color(wm, scene, ob)) {
+  if (active_texture_changed && FILE_NS::has_workbench_in_texture_color(wm, scene, ob)) {
     DEG_id_tag_update(&node_tree.id, ID_RECALC_COPY_ON_WRITE);
   }
 
   WM_event_add_notifier(&C, NC_NODE | NA_SELECTED, nullptr);
 }
 
+namespace FILE_NS {
 static bool node_mouse_select(bContext *C,
                               wmOperator *op,
                               const int2 mval,
@@ -737,6 +749,7 @@ static int node_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select(wmOperatorType *ot)
 {
@@ -748,8 +761,8 @@ void NODE_OT_select(wmOperatorType *ot)
   ot->description = "Select the node under the cursor";
 
   /* api callbacks */
-  ot->exec = node_select_exec;
-  ot->invoke = node_select_invoke;
+  ot->exec = FILE_NS::node_select_exec;
+  ot->invoke = FILE_NS::node_select_invoke;
   ot->poll = ED_operator_node_active;
   ot->get_name = ED_select_pick_get_name;
 
@@ -786,6 +799,7 @@ void NODE_OT_select(wmOperatorType *ot)
 /** \name Box Select Operator
  * \{ */
 
+namespace FILE_NS {
 static int node_box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceNode &snode = *CTX_wm_space_node(C);
@@ -846,6 +860,7 @@ static int node_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   return WM_gesture_box_invoke(C, op, event);
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_box(wmOperatorType *ot)
 {
@@ -855,8 +870,8 @@ void NODE_OT_select_box(wmOperatorType *ot)
   ot->description = "Use box selection to select nodes";
 
   /* api callbacks */
-  ot->invoke = node_box_select_invoke;
-  ot->exec = node_box_select_exec;
+  ot->invoke = FILE_NS::node_box_select_invoke;
+  ot->exec = FILE_NS::node_box_select_exec;
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
@@ -882,6 +897,7 @@ void NODE_OT_select_box(wmOperatorType *ot)
 /** \name Circle Select Operator
  * \{ */
 
+namespace FILE_NS {
 static int node_circleselect_exec(bContext *C, wmOperator *op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -936,6 +952,7 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_circle(wmOperatorType *ot)
 {
@@ -946,7 +963,7 @@ void NODE_OT_select_circle(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = WM_gesture_circle_invoke;
-  ot->exec = node_circleselect_exec;
+  ot->exec = FILE_NS::node_circleselect_exec;
   ot->modal = WM_gesture_circle_modal;
   ot->poll = ED_operator_node_active;
   ot->get_name = ED_select_circle_get_name;
@@ -964,6 +981,8 @@ void NODE_OT_select_circle(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Lasso Select Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_lasso_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1061,6 +1080,7 @@ static int node_lasso_select_exec(bContext *C, wmOperator *op)
   }
   return OPERATOR_PASS_THROUGH;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_lasso(wmOperatorType *ot)
 {
@@ -1070,9 +1090,9 @@ void NODE_OT_select_lasso(wmOperatorType *ot)
   ot->idname = "NODE_OT_select_lasso";
 
   /* api callbacks */
-  ot->invoke = node_lasso_select_invoke;
+  ot->invoke = FILE_NS::node_lasso_select_invoke;
   ot->modal = WM_gesture_lasso_modal;
-  ot->exec = node_lasso_select_exec;
+  ot->exec = FILE_NS::node_lasso_select_exec;
   ot->poll = ED_operator_node_active;
   ot->cancel = WM_gesture_lasso_cancel;
 
@@ -1095,6 +1115,8 @@ void NODE_OT_select_lasso(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name (De)select All Operator
  * \{ */
+
+namespace FILE_NS {
 
 static bool any_node_selected(const bNodeTree &node_tree)
 {
@@ -1144,6 +1166,7 @@ static int node_select_all_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_all(wmOperatorType *ot)
 {
@@ -1153,7 +1176,7 @@ void NODE_OT_select_all(wmOperatorType *ot)
   ot->idname = "NODE_OT_select_all";
 
   /* api callbacks */
-  ot->exec = node_select_all_exec;
+  ot->exec = FILE_NS::node_select_all_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1167,6 +1190,8 @@ void NODE_OT_select_all(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Select Linked To Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_select_linked_to_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1196,6 +1221,7 @@ static int node_select_linked_to_exec(bContext *C, wmOperator * /*op*/)
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_linked_to(wmOperatorType *ot)
 {
@@ -1205,7 +1231,7 @@ void NODE_OT_select_linked_to(wmOperatorType *ot)
   ot->idname = "NODE_OT_select_linked_to";
 
   /* api callbacks */
-  ot->exec = node_select_linked_to_exec;
+  ot->exec = FILE_NS::node_select_linked_to_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1217,6 +1243,8 @@ void NODE_OT_select_linked_to(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Select Linked From Operator
  * \{ */
+
+namespace FILE_NS {
 
 static int node_select_linked_from_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1246,6 +1274,7 @@ static int node_select_linked_from_exec(bContext *C, wmOperator * /*op*/)
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_linked_from(wmOperatorType *ot)
 {
@@ -1255,7 +1284,7 @@ void NODE_OT_select_linked_from(wmOperatorType *ot)
   ot->idname = "NODE_OT_select_linked_from";
 
   /* api callbacks */
-  ot->exec = node_select_linked_from_exec;
+  ot->exec = FILE_NS::node_select_linked_from_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1267,6 +1296,8 @@ void NODE_OT_select_linked_from(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Select Same Type Step Operator
  * \{ */
+
+namespace FILE_NS {
 
 static bool nodes_are_same_type_for_select(const bNode &a, const bNode &b)
 {
@@ -1314,6 +1345,7 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+}  // namespace FILE_NS
 
 void NODE_OT_select_same_type_step(wmOperatorType *ot)
 {
@@ -1323,7 +1355,7 @@ void NODE_OT_select_same_type_step(wmOperatorType *ot)
   ot->idname = "NODE_OT_select_same_type_step";
 
   /* api callbacks */
-  ot->exec = node_select_same_type_step_exec;
+  ot->exec = FILE_NS::node_select_same_type_step_exec;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1337,6 +1369,8 @@ void NODE_OT_select_same_type_step(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Find Node by Name Operator
  * \{ */
+
+namespace FILE_NS {
 
 static void node_find_create_label(const bNode *node, char *str, int str_maxncpy)
 {
@@ -1452,6 +1486,8 @@ static int node_find_node_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   return OPERATOR_CANCELLED;
 }
 
+}  // namespace FILE_NS
+
 void NODE_OT_find_node(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1460,7 +1496,7 @@ void NODE_OT_find_node(wmOperatorType *ot)
   ot->idname = "NODE_OT_find_node";
 
   /* api callbacks */
-  ot->invoke = node_find_node_invoke;
+  ot->invoke = FILE_NS::node_find_node_invoke;
   ot->poll = ED_operator_node_active;
 
   /* flags */
@@ -1470,3 +1506,5 @@ void NODE_OT_find_node(wmOperatorType *ot)
 /** \} */
 
 }  // namespace blender::ed::space_node
+
+#undef FILE_NS
