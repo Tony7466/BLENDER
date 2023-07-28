@@ -726,7 +726,7 @@ double RenderScheduler::guess_display_update_interval_in_seconds_for_num_samples
   /* TODO(sergey): Need a decision on whether this should be using number of samples rendered
    * within the current render session, or use absolute number of samples with the start sample
    * taken into account. It will depend on whether the start sample offset clears the render
-   * buffer. */
+   * buffer. 
 
   if (state_.need_rebalance_at_next_work) {
     return 0.1;
@@ -734,7 +734,7 @@ double RenderScheduler::guess_display_update_interval_in_seconds_for_num_samples
   if (state_.last_rebalance_changed) {
     return 0.2;
   }
-
+*/
   if (headless_) {
     /* In headless mode do rare updates, so that the device occupancy is high, but there are still
      * progress messages printed to the logs. */
@@ -835,6 +835,7 @@ int RenderScheduler::get_num_samples_to_path_trace() const
   }
 
   int num_samples_per_update = calculate_num_samples_per_update();
+    num_samples_per_update = std::max(2, num_samples_per_update);
   const int path_trace_start_sample = get_start_sample_to_path_trace();
 
   /* Round number of samples to a power of two, so that division of path states into tiles goes in
