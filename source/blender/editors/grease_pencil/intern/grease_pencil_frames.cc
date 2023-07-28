@@ -80,18 +80,16 @@ void select_frames_region(struct KeyframeEditData *ked,
     return;
   }
   for (auto [frame_number, frame] : layer->frames_for_write().items()) {
-    /* construct a dummy point coordinate to do this testing with */
+    /* Construct a dummy point coordinate to do this testing with. */
     const float2 pt(float(frame_number), ked->channel_y);
 
-    /* check the necessary regions */
+    /* Check the necessary regions. */
     if (tool == BEZT_OK_CHANNEL_LASSO) {
-      /* Lasso */
       if (keyframe_region_lasso_test(static_cast<const KeyframeEdit_LassoData *>(ked->data), pt)) {
         select_frame(frame, select_mode);
       }
     }
     else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
-      /* Circle */
       if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data), pt))
       {
         select_frame(frame, select_mode);
