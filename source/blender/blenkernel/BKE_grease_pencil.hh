@@ -267,8 +267,7 @@ class Layer : public ::GreasePencilLayer {
 
   /**
    * \returns the index of the active drawing at frame \a frame_number or -1 if there is no
-   * drawing.
-   */
+   * drawing. */
   int drawing_index_at(const int frame_number) const;
 
   /**
