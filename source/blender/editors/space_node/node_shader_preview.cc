@@ -585,7 +585,6 @@ static void shader_preview_startjob(void *customdata,
     if (!(node->flag & NODE_PREVIEW)) {
       continue;
     }
-
     if (node_use_aov(node)) {
       job_data->AOV_nodes.append(node);
     }
