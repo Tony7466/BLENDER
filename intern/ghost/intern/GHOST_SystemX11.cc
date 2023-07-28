@@ -35,8 +35,10 @@
 
 #include "GHOST_Debug.hh"
 
-#include "GHOST_ContextEGL.hh"
-#include "GHOST_ContextGLX.hh"
+#ifdef WITH_OPENGL_BACKEND
+#  include "GHOST_ContextEGL.hh"
+#  include "GHOST_ContextGLX.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -350,112 +352,48 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
   return window;
 }
 
-#ifdef USE_EGL
-static GHOST_Context *create_egl_context(
-    GHOST_SystemX11 *system, Display *display, bool debug_context, int ver_major, int ver_minor)
-{
-  GHOST_Context *context;
-  context = new GHOST_ContextEGL(system,
-                                 false,
-                                 EGLNativeWindowType(nullptr),
-                                 EGLNativeDisplayType(display),
-                                 EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                                 ver_major,
-                                 ver_minor,
-                                 GHOST_OPENGL_EGL_CONTEXT_FLAGS |
-                                     (debug_context ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
-                                 GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
-                                 EGL_OPENGL_API);
-
-  if (context->initializeDrawingContext()) {
-    return context;
-  }
-  delete context;
-
-  return nullptr;
-}
-#endif
-
-static GHOST_Context *create_glx_context(Display *display,
-                                         bool debug_context,
-                                         int ver_major,
-                                         int ver_minor)
-{
-  GHOST_Context *context;
-  context = new GHOST_ContextGLX(false,
-                                 (Window) nullptr,
-                                 display,
-                                 (GLXFBConfig) nullptr,
-                                 GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                 ver_major,
-                                 ver_minor,
-                                 GHOST_OPENGL_GLX_CONTEXT_FLAGS |
-                                     (debug_context ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
-                                 GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
-
-  if (context->initializeDrawingContext()) {
-    return context;
-  }
-  delete context;
-
-  return nullptr;
-}
-
 GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
-  /* During development:
-   *   try 4.x compatibility profile
-   *   try 3.3 compatibility profile
-   *   fall back to 3.0 if needed
-   *
-   * Final Blender 2.8:
-   *   try 4.x core profile
-   *   try 3.3 core profile
-   *   no fall-backs. */
-
   const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
-  GHOST_Context *context = nullptr;
-
+  switch (gpuSettings.context_type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (gpuSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
-    context = new GHOST_ContextVK(
-        false, GHOST_kVulkanPlatformX11, 0, m_display, NULL, NULL, 1, 2, debug_context);
-
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(
+          false, GHOST_kVulkanPlatformX11, 0, m_display, NULL, NULL, 1, 2, debug_context);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
       return nullptr;
     }
-    return context;
-  }
 #endif
 
-#ifdef USE_EGL
-  /* Try to initialize an EGL context. */
-  for (int minor = 5; minor >= 0; --minor) {
-    context = create_egl_context(this, m_display, debug_context, 4, minor);
-    if (context != nullptr) {
-      return context;
+#ifdef WITH_OPENGL_BACKEND
+    case GHOST_kDrawingContextTypeOpenGL: {
+      for (int minor = 6; minor >= 3; --minor) {
+        GHOST_Context *context = new GHOST_ContextGLX(
+            false,
+            (Window) nullptr,
+            m_display,
+            (GLXFBConfig) nullptr,
+            GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+            4,
+            minor,
+            GHOST_OPENGL_GLX_CONTEXT_FLAGS | (debug_context ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
+            GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
+        if (context->initializeDrawingContext()) {
+          return context;
+        }
+        delete context;
+      }
+      return nullptr;
     }
-  }
-  context = create_egl_context(this, m_display, debug_context, 3, 3);
-  if (context != nullptr) {
-    return context;
-  }
-
-  /* EGL initialization failed, try to fallback to a GLX context. */
 #endif
-  for (int minor = 5; minor >= 0; --minor) {
-    context = create_glx_context(m_display, debug_context, 4, minor);
-    if (context != nullptr) {
-      return context;
-    }
-  }
-  context = create_glx_context(m_display, debug_context, 3, 3);
-  if (context != nullptr) {
-    return context;
-  }
 
-  return nullptr;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 GHOST_TSuccess GHOST_SystemX11::disposeContext(GHOST_IContext *context)
@@ -2190,12 +2128,14 @@ char *GHOST_SystemX11::getClipboard(bool selection) const
   owner = XGetSelectionOwner(m_display, sseln);
   if (owner == win) {
     if (sseln == m_atom.CLIPBOARD) {
-      sel_buf = (char *)malloc(strlen(txt_cut_buffer) + 1);
-      strcpy(sel_buf, txt_cut_buffer);
+      size_t sel_buf_size = strlen(txt_cut_buffer) + 1;
+      sel_buf = (char *)malloc(sel_buf_size);
+      memcpy(sel_buf, txt_cut_buffer, sel_buf_size);
       return sel_buf;
     }
-    sel_buf = (char *)malloc(strlen(txt_select_buffer) + 1);
-    strcpy(sel_buf, txt_select_buffer);
+    size_t sel_buf_size = strlen(txt_select_buffer) + 1;
+    sel_buf = (char *)malloc(sel_buf_size);
+    memcpy(sel_buf, txt_select_buffer, sel_buf_size);
     return sel_buf;
   }
   if (owner == None) {
@@ -2289,8 +2229,9 @@ void GHOST_SystemX11::putClipboard(const char *buffer, bool selection) const
         free((void *)txt_cut_buffer);
       }
 
-      txt_cut_buffer = (char *)malloc(strlen(buffer) + 1);
-      strcpy(txt_cut_buffer, buffer);
+      size_t buffer_size = strlen(buffer) + 1;
+      txt_cut_buffer = (char *)malloc(buffer_size);
+      memcpy(txt_cut_buffer, buffer, buffer_size);
     }
     else {
       XSetSelectionOwner(m_display, m_atom.PRIMARY, m_window, CurrentTime);
@@ -2299,8 +2240,9 @@ void GHOST_SystemX11::putClipboard(const char *buffer, bool selection) const
         free((void *)txt_select_buffer);
       }
 
-      txt_select_buffer = (char *)malloc(strlen(buffer) + 1);
-      strcpy(txt_select_buffer, buffer);
+      size_t buffer_size = strlen(buffer) + 1;
+      txt_select_buffer = (char *)malloc(buffer_size);
+      memcpy(txt_select_buffer, buffer, buffer_size);
     }
 
     if (owner != m_window) {

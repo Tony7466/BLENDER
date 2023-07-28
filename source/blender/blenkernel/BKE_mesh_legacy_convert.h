@@ -13,10 +13,6 @@
 #ifdef __cplusplus
 #  include "BLI_resource_scope.hh"
 #  include "BLI_span.hh"
-#  include "BLI_vector.hh"
-
-#  include "DNA_customdata_types.h"
-#  include "DNA_meshdata_types.h"
 #endif
 
 struct CustomData;
@@ -25,10 +21,6 @@ struct MFace;
 
 #ifdef __cplusplus
 
-void BKE_mesh_legacy_convert_uvs_to_struct(
-    Mesh *mesh,
-    blender::ResourceScope &temp_mloopuv_for_convert,
-    blender::Vector<CustomDataLayer, 16> &loop_layers_to_write);
 void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh);
 
 /**
@@ -95,11 +87,7 @@ extern "C" {
 
 /**
  * Recreate #MFace Tessellation.
- *
- * \note This doesn't use multi-threading like #BKE_mesh_recalc_looptri since
- * it's not used in many places and #MFace should be phased out.
  */
-
 void BKE_mesh_tessface_calc(struct Mesh *mesh);
 
 void BKE_mesh_tessface_ensure(struct Mesh *mesh);
@@ -120,10 +108,10 @@ void BKE_mesh_convert_mfaces_to_mpolys(struct Mesh *mesh);
  * but oriented to be used in #do_versions from `readfile.c`
  * the difference is how active/render/clone/stencil indices are handled here.
  *
- * normally they're being set from `pdata` which totally makes sense for meshes which are already
- * converted to #BMesh structures, but when loading older files indices shall be updated in other
- * way around, so newly added `pdata` and `ldata` would have this indices set
- * based on `fdata`  layer.
+ * normally they're being set from `pdata` which totally makes sense for meshes which are
+ * already converted to #BMesh structures, but when loading older files indices shall be updated in
+ * other way around, so newly added `pdata` and `ldata` would have this indices set based on
+ * `pdata`  layer.
  *
  * this is normally only needed when reading older files,
  * in all other cases #BKE_mesh_convert_mfaces_to_mpolys shall be always used.

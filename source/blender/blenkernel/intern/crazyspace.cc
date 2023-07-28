@@ -192,16 +192,16 @@ void BKE_crazyspace_set_quats_mesh(Mesh *me,
 
   /* first store two sets of tangent vectors in vertices, we derive it just from the face-edges */
   const Span<float3> positions = me->vert_positions();
-  const OffsetIndices polys = me->polys();
+  const OffsetIndices faces = me->faces();
   const Span<int> corner_verts = me->corner_verts();
 
-  for (int i = 0; i < me->totpoly; i++) {
-    const IndexRange poly = polys[i];
-    const int *corner_vert_next = &corner_verts[poly.start()];
-    const int *corner_vert_curr = &corner_vert_next[poly.size() - 1];
-    const int *corner_vert_prev = &corner_vert_next[poly.size() - 2];
+  for (int i = 0; i < me->faces_num; i++) {
+    const IndexRange face = faces[i];
+    const int *corner_vert_next = &corner_verts[face.start()];
+    const int *corner_vert_curr = &corner_vert_next[face.size() - 1];
+    const int *corner_vert_prev = &corner_vert_next[face.size() - 2];
 
-    for (int j = 0; j < poly.size(); j++) {
+    for (int j = 0; j < face.size(); j++) {
       if (!BLI_BITMAP_TEST(vert_tag, *corner_vert_curr)) {
         const float *co_prev, *co_curr, *co_next; /* orig */
         const float *vd_prev, *vd_curr, *vd_next; /* deform */
@@ -247,15 +247,16 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
   ModifierData *md;
   Mesh *me_input = static_cast<Mesh *>(ob->data);
   Mesh *me = nullptr;
-  int i, a, modifiers_left_num = 0, verts_num = 0;
+  int i, a, modifiers_left_num = 0;
+  const int verts_num = em->bm->totvert;
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
   float(*defmats)[3][3] = nullptr, (*deformedVerts)[3] = nullptr;
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
   ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
 
   BKE_modifiers_clear_errors(ob);
 
-  md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
 
   /* compute the deformation matrices and coordinates for the first
    * modifiers with on cage editing that are enabled and support computing
@@ -267,7 +268,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
       continue;
     }
 
-    if (mti->type == eModifierTypeType_OnlyDeform && mti->deformMatricesEM) {
+    if (mti->type == eModifierTypeType_OnlyDeform && mti->deform_matrices_EM) {
       if (!defmats) {
         const int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
         CustomData_MeshMasks cd_mask_extra = CD_MASK_BAREMESH;
@@ -276,8 +277,10 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
         cd_mask_extra = datamasks->mask;
         BLI_linklist_free((LinkNode *)datamasks, nullptr);
 
-        me = BKE_mesh_wrapper_from_editmesh_with_coords(em, &cd_mask_extra, nullptr, me_input);
-        deformedVerts = editbmesh_vert_coords_alloc(em, &verts_num);
+        me = BKE_mesh_wrapper_from_editmesh(em, &cd_mask_extra, me_input);
+        deformedVerts = static_cast<float(*)[3]>(
+            MEM_mallocN(sizeof(*deformedVerts) * verts_num, __func__));
+        BKE_mesh_wrapper_vert_coords_copy(me, deformedVerts, verts_num);
         defmats = static_cast<float(*)[3][3]>(
             MEM_mallocN(sizeof(*defmats) * verts_num, "defmats"));
 
@@ -285,7 +288,7 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(Depsgraph *depsgraph,
           unit_m3(defmats[a]);
         }
       }
-      mti->deformMatricesEM(md, &mectx, em, me, deformedVerts, defmats, verts_num);
+      mti->deform_matrices_EM(md, &mectx, em, me, deformedVerts, defmats, verts_num);
     }
     else {
       break;
@@ -367,7 +370,7 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
   Mesh *me_eval = nullptr;
   float(*defmats)[3][3] = nullptr, (*deformedVerts)[3] = nullptr;
   int modifiers_left_num = 0;
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
   Object object_eval;
   crazyspace_init_object_for_eval(depsgraph, object, &object_eval);
   MultiresModifierData *mmd = get_multires_modifier(scene, &object_eval, false);
@@ -381,7 +384,7 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
     return modifiers_left_num;
   }
 
-  md = BKE_modifiers_get_virtual_modifierlist(&object_eval, &virtualModifierData);
+  md = BKE_modifiers_get_virtual_modifierlist(&object_eval, &virtual_modifier_data);
 
   for (; md; md = md->next) {
     if (!BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime)) {
@@ -397,8 +400,8 @@ int BKE_sculpt_get_first_deform_matrices(Depsgraph *depsgraph,
         crazyspace_init_verts_and_matrices(me_eval, &defmats, &deformedVerts);
       }
 
-      if (mti->deformMatrices) {
-        mti->deformMatrices(md, &mectx, me_eval, deformedVerts, defmats, me_eval->totvert);
+      if (mti->deform_matrices) {
+        mti->deform_matrices(md, &mectx, me_eval, deformedVerts, defmats, me_eval->totvert);
       }
       else {
         /* More complex handling will continue in BKE_crazyspace_build_sculpt.
@@ -453,10 +456,11 @@ void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
     float(*origVerts)[3] = static_cast<float(*)[3]>(MEM_dupallocN(deformedVerts));
     float(*quats)[4];
     int i, deformed = 0;
-    VirtualModifierData virtualModifierData;
+    VirtualModifierData virtual_modifier_data;
     Object object_eval;
     crazyspace_init_object_for_eval(depsgraph, object, &object_eval);
-    ModifierData *md = BKE_modifiers_get_virtual_modifierlist(&object_eval, &virtualModifierData);
+    ModifierData *md = BKE_modifiers_get_virtual_modifierlist(&object_eval,
+                                                              &virtual_modifier_data);
     const ModifierEvalContext mectx = {depsgraph, &object_eval, ModifierApplyFlag(0)};
 
     for (; md; md = md->next) {
@@ -469,7 +473,7 @@ void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
 
         /* skip leading modifiers which have been already
          * handled in sculpt_get_first_deform_matrices */
-        if (mti->deformMatrices && !deformed) {
+        if (mti->deform_matrices && !deformed) {
           continue;
         }
 
@@ -477,7 +481,7 @@ void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
           mesh_eval = BKE_mesh_copy_for_eval(mesh);
         }
 
-        mti->deformVerts(md, &mectx, mesh_eval, deformedVerts, mesh_eval->totvert);
+        mti->deform_verts(md, &mectx, mesh_eval, deformedVerts, mesh_eval->totvert);
         deformed = 1;
       }
     }

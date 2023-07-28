@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
@@ -426,6 +428,7 @@ class IMAGE_MT_uvs(Menu):
 
         layout.operator("uv.pin").clear = False
         layout.operator("uv.pin", text="Unpin").clear = True
+        layout.operator("uv.pin", text="Invert Pins").invert = True
 
         layout.separator()
 

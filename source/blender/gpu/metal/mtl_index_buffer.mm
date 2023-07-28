@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -65,7 +67,7 @@ void MTLIndexBuf::read(uint32_t *data) const
     MTLContext *ctx = MTLContext::get();
     BLI_assert(ctx);
 
-    /* Ensure data is flushed for host caches.  */
+    /* Ensure data is flushed for host caches. */
     id<MTLBuffer> source_buffer = ibo_->get_metal_buffer();
     if (source_buffer.storageMode == MTLStorageModeManaged) {
       id<MTLBlitCommandEncoder> enc = ctx->main_command_buffer.ensure_begin_blit_encoder();

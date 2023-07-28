@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
@@ -106,9 +106,7 @@ static void rna_Mask_update_parent(Main *bmain, Scene *scene, PointerRNA *ptr)
 }
 
 /* NOTE: this function exists only to avoid id reference-counting. */
-static void rna_MaskParent_id_set(PointerRNA *ptr,
-                                  PointerRNA value,
-                                  struct ReportList * /*reports*/)
+static void rna_MaskParent_id_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   MaskParent *mpar = (MaskParent *)ptr->data;
 
@@ -131,7 +129,7 @@ static void rna_MaskParent_id_type_set(PointerRNA *ptr, int value)
 
   /* clear the id-block if the type is invalid */
   if ((mpar->id) && (GS(mpar->id->name) != mpar->id_type)) {
-    mpar->id = NULL;
+    mpar->id = nullptr;
   }
 }
 
@@ -139,7 +137,7 @@ static void rna_Mask_layers_begin(CollectionPropertyIterator *iter, PointerRNA *
 {
   Mask *mask = (Mask *)ptr->owner_id;
 
-  rna_iterator_listbase_begin(iter, &mask->masklayers, NULL);
+  rna_iterator_listbase_begin(iter, &mask->masklayers, nullptr);
 }
 
 static int rna_Mask_layer_active_index_get(PointerRNA *ptr)
@@ -184,9 +182,7 @@ static PointerRNA rna_Mask_layer_active_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_MaskLayer, masklay);
 }
 
-static void rna_Mask_layer_active_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Mask_layer_active_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Mask *mask = (Mask *)ptr->owner_id;
   MaskLayer *masklay = (MaskLayer *)value.data;
@@ -198,7 +194,7 @@ static void rna_MaskLayer_splines_begin(CollectionPropertyIterator *iter, Pointe
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
 
-  rna_iterator_listbase_begin(iter, &masklay->splines, NULL);
+  rna_iterator_listbase_begin(iter, &masklay->splines, nullptr);
 }
 
 static void rna_MaskLayer_name_set(PointerRNA *ptr, const char *value)
@@ -223,7 +219,7 @@ static PointerRNA rna_MaskLayer_active_spline_get(PointerRNA *ptr)
 
 static void rna_MaskLayer_active_spline_set(PointerRNA *ptr,
                                             PointerRNA value,
-                                            struct ReportList * /*reports*/)
+                                            ReportList * /*reports*/)
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
   MaskSpline *spline = (MaskSpline *)value.data;
@@ -233,7 +229,7 @@ static void rna_MaskLayer_active_spline_set(PointerRNA *ptr,
     masklay->act_spline = spline;
   }
   else {
-    masklay->act_spline = NULL;
+    masklay->act_spline = nullptr;
   }
 }
 
@@ -246,13 +242,13 @@ static PointerRNA rna_MaskLayer_active_spline_point_get(PointerRNA *ptr)
 
 static void rna_MaskLayer_active_spline_point_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList * /*reports*/)
+                                                  ReportList * /*reports*/)
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
   MaskSpline *spline;
   MaskSplinePoint *point = (MaskSplinePoint *)value.data;
 
-  masklay->act_point = NULL;
+  masklay->act_point = nullptr;
 
   for (spline = static_cast<MaskSpline *>(masklay->splines.first); spline; spline = spline->next) {
     if (point >= spline->points && point < spline->points + spline->tot_point) {
@@ -327,7 +323,7 @@ static MaskSpline *mask_spline_from_point(Mask *mask, MaskSplinePoint *point)
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static void mask_point_check_stick(MaskSplinePoint *point)
@@ -580,7 +576,7 @@ static void rna_MaskSpline_point_remove(ID *id,
 
   if (active_point_index >= 0) {
     if (active_point_index == point_index) {
-      layer->act_point = NULL;
+      layer->act_point = nullptr;
     }
     else if (active_point_index < point_index) {
       layer->act_point = spline->points + active_point_index;
@@ -1009,7 +1005,7 @@ static void rna_def_mask_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", MASK_LAYERFLAG_SELECT);
   RNA_def_property_ui_text(prop, "Select", "Layer is selected for editing in the Dope Sheet");
-  //  RNA_def_property_update(prop, NC_SCREEN | ND_MASK, NULL);
+  //  RNA_def_property_update(prop, NC_SCREEN | ND_MASK, nullptr);
 
   /* render settings */
   prop = RNA_def_property(srna, "alpha", PROP_FLOAT, PROP_NONE);

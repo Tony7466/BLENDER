@@ -9,8 +9,8 @@
  * and functions for writing *partial* files (only selected data-blocks).
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -142,6 +142,18 @@ bool BKE_blendfile_library_path_explode(const char *path,
   return true;
 }
 
+bool BKE_blendfile_is_readable(const char *path, ReportList *reports)
+{
+  BlendFileReadReport readfile_reports;
+  readfile_reports.reports = reports;
+  BlendHandle *bh = BLO_blendhandle_from_file(path, &readfile_reports);
+  if (bh != nullptr) {
+    BLO_blendhandle_close(bh);
+    return true;
+  }
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -152,12 +164,12 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
                                                     const short versionfile,
                                                     const short subversionfile)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, versionfile, subversionfile)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, versionfile, subversionfile)) {
     return false;
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_ATLEAST(library, versionfile, subversionfile)) {
+    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
       return false;
     }
   }
@@ -167,9 +179,10 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
 
 static bool foreach_path_clean_cb(BPathForeachPathData * /*bpath_data*/,
                                   char *path_dst,
+                                  size_t path_dst_maxncpy,
                                   const char *path_src)
 {
-  strcpy(path_dst, path_src);
+  BLI_strncpy(path_dst, path_src, path_dst_maxncpy);
   BLI_path_slash_native(path_dst);
   return !STREQ(path_dst, path_src);
 }
@@ -219,12 +232,14 @@ static void setup_app_userdef(BlendFileData *bfd)
   }
 }
 
-/** Helper struct to manage IDs that are re-used across blendfile loading (i.e. moved from the old
- * Main the the new one).
+/**
+ * Helper struct to manage IDs that are re-used across blend-file loading (i.e. moved from the old
+ * Main the new one).
  *
- * NOTE: this is only used when actually loading a real .blend file, loading of memfile undo steps
- * does not need it. */
-typedef struct ReuseOldBMainData {
+ * NOTE: this is only used when actually loading a real `.blend` file,
+ * loading of memfile undo steps does not need it.
+ */
+struct ReuseOldBMainData {
   Main *new_bmain;
   Main *old_bmain;
 
@@ -242,9 +257,10 @@ typedef struct ReuseOldBMainData {
   /** Used to find matching IDs by name/lib in new main, to remap ID usages of data ported over
    * from old main. */
   IDNameLib_Map *id_map;
-} ReuseOldBMainData;
+};
 
-/** Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
+/**
+ * Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
  * IDs having the same absolute filepath), and create a remapping rule for these.
  *
  * NOTE: The case where the `old_bmain` would be a library in the newly read one is not handled
@@ -333,15 +349,10 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
 
   SWAP(ListBase, *new_lb, *old_lb);
 
-  /* Since all IDs here are supposed to be local, no need to call #BKE_main_namemap_clear. */
   /* TODO: Could add per-IDType control over namemaps clearing, if this becomes a performances
    * concern. */
-  if (old_bmain->name_map != nullptr) {
-    BKE_main_namemap_destroy(&old_bmain->name_map);
-  }
-  if (new_bmain->name_map != nullptr) {
-    BKE_main_namemap_destroy(&new_bmain->name_map);
-  }
+  BKE_main_namemap_clear(old_bmain);
+  BKE_main_namemap_clear(new_bmain);
 
   /* Original 'new' IDs have been moved into the old listbase and will be discarded (deleted).
    * Original 'old' IDs have been moved into the new listbase and are being reused (kept).
@@ -444,6 +455,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
   else {
     swap_old_bmain_data_for_blendfile(reuse_data, ID_WM);
     old_wm->init_flag &= ~WM_INIT_FLAG_WINDOW;
+    reuse_data->wm_setup_data->old_wm = old_wm;
   }
 }
 
@@ -1171,7 +1183,7 @@ UserDef *BKE_blendfile_userdef_read_from_memory(const void *filebuf,
   return userdef;
 }
 
-UserDef *BKE_blendfile_userdef_from_defaults(void)
+UserDef *BKE_blendfile_userdef_from_defaults()
 {
   UserDef *userdef = static_cast<UserDef *>(MEM_callocN(sizeof(UserDef), __func__));
   *userdef = blender::dna::shallow_copy(U_default);
@@ -1212,8 +1224,13 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
   userdef->flag &= ~USER_SCRIPT_AUTOEXEC_DISABLE;
 #endif
 
-  /* System-specific fonts directory. */
-  BKE_appdir_font_folder_default(userdef->fontdir);
+  /* System-specific fonts directory.
+   * NOTE: when not found, leaves as-is (`//` for the blend-file directory). */
+  if (BKE_appdir_font_folder_default(userdef->fontdir, sizeof(userdef->fontdir))) {
+    /* Not actually needed, just a convention that directory selection
+     * adds a trailing slash. */
+    BLI_path_slash_ensure(userdef->fontdir, sizeof(userdef->fontdir));
+  }
 
   userdef->memcachelimit = min_ii(BLI_system_memory_max_in_megabytes_int() / 2,
                                   userdef->memcachelimit);
@@ -1302,7 +1319,7 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
 
   if (use_template_userpref) {
     if ((cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, U.app_template))) {
-      /* Also save app-template prefs */
+      /* Also save app-template preferences. */
       BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE);
 
       printf("Writing userprefs app-template: \"%s\" ", filepath);

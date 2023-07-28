@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -139,6 +138,25 @@ class MainView {
   }
 
 #undef shading_views_
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Capture View
+ *
+ * View for capturing cube-map renders outside a ShadingView.
+ * \{ */
+
+class CaptureView {
+ private:
+  Instance &inst_;
+  Framebuffer capture_fb_ = {"World.Capture"};
+
+ public:
+  CaptureView(Instance &inst) : inst_(inst) {}
+  void render_world();
+  void render_probes();
 };
 
 /** \} */

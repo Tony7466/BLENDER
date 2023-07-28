@@ -57,7 +57,8 @@ void ED_mesh_mirror_spatial_table_begin(Object *ob, BMEditMesh *em, Mesh *me_eva
     }
   }
   else {
-    const float(*positions)[3] = BKE_mesh_vert_positions(me_eval ? me_eval : me);
+    const blender::Span<blender::float3> positions = me_eval ? me_eval->vert_positions() :
+                                                               me->vert_positions();
     for (int i = 0; i < totvert; i++) {
       BLI_kdtree_3d_insert(MirrKdStore.tree, i, positions[i]);
     }
@@ -216,7 +217,7 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
 
   tot_unique_prev = -1;
   tot_unique_edges_prev = -1;
-  while (1) {
+  while (true) {
     /* use the number of edges per vert to give verts unique topology IDs */
 
     tot_unique_edges = 0;

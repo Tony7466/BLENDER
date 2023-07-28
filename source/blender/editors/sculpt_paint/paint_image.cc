@@ -15,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
+#include "BLI_math_vector.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -76,7 +77,7 @@
  */
 static ImagePaintPartialRedraw imapaintpartial = {{0}};
 
-ImagePaintPartialRedraw *get_imapaintpartial(void)
+ImagePaintPartialRedraw *get_imapaintpartial()
 {
   return &imapaintpartial;
 }
@@ -88,7 +89,7 @@ void set_imapaintpartial(ImagePaintPartialRedraw *ippr)
 
 /* Image paint Partial Redraw & Dirty Region. */
 
-void ED_imapaint_clear_partial_redraw(void)
+void ED_imapaint_clear_partial_redraw()
 {
   BLI_rcti_init_minmax(&imapaintpartial.dirty_region);
 }
@@ -773,7 +774,7 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
   ot->poll = sample_color_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 
   /* properties */
   PropertyRNA *prop;
@@ -792,21 +793,20 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
 /** \name Texture Paint Toggle Operator
  * \{ */
 
-static void paint_init_pivot_mesh(Object *ob, float location[3])
+static blender::float3 paint_init_pivot_mesh(Object *ob)
 {
+  using namespace blender;
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
   if (!me_eval) {
     me_eval = (const Mesh *)ob->data;
   }
 
-  float min[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, max[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
-
-  if (!BKE_mesh_minmax(me_eval, min, max)) {
-    zero_v3(location);
-    zero_v3(max);
+  const std::optional<Bounds<float3>> bounds = me_eval->bounds_min_max();
+  if (!bounds) {
+    return float3(0.0f);
   }
 
-  interp_v3_v3v3(location, min, max, 0.5f);
+  return math::midpoint(bounds->min, bounds->max);
 }
 
 static void paint_init_pivot_curves(Object *ob, float location[3])
@@ -824,11 +824,11 @@ static void paint_init_pivot_grease_pencil(Object *ob, float location[3])
 void paint_init_pivot(Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
-  float location[3];
 
+  blender::float3 location;
   switch (ob->type) {
     case OB_MESH:
-      paint_init_pivot_mesh(ob, location);
+      location = paint_init_pivot_mesh(ob);
       break;
     case OB_CURVES:
       paint_init_pivot_curves(ob, location);

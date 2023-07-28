@@ -123,7 +123,7 @@ typedef enum PropertyScaleType {
 #define RNA_STACK_ARRAY 32
 
 /**
- * \note Also update enums in bpy_props.c and rna_rna.c when adding items here.
+ * \note Also update enums in bpy_props.c and rna_rna.cc when adding items here.
  * Watch it: these values are written to files as part of node socket button sub-types!
  */
 typedef enum PropertySubType {
@@ -574,6 +574,7 @@ typedef enum eStringPropertySearchFlag {
    */
   PROP_STRING_SEARCH_SUGGESTION = (1 << 2),
 } eStringPropertySearchFlag;
+ENUM_OPERATORS(eStringPropertySearchFlag, PROP_STRING_SEARCH_SUGGESTION)
 
 /**
  * Visit string search candidates, `text` may be freed once this callback has finished,

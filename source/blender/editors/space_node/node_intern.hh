@@ -35,9 +35,11 @@ extern "C" {
 extern const char *node_context_dir[];
 };
 
-namespace blender::ed::space_node {
-
+namespace blender::ed::asset {
 struct AssetItemTree;
+}
+
+namespace blender::ed::space_node {
 
 /** Temporary data used in node link drag modal operator. */
 struct bNodeLinkDrag {
@@ -112,7 +114,7 @@ struct SpaceNode_Runtime {
    *
    * Stored with a shared pointer so that it can be forward declared.
    */
-  std::shared_ptr<AssetItemTree> assets_for_menu;
+  std::shared_ptr<asset::AssetItemTree> assets_for_menu;
 };
 
 enum NodeResizeDirection {
@@ -335,6 +337,8 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         eNodeSocketInOut in_out);
 float node_link_dim_factor(const View2D &v2d, const bNodeLink &link);
 bool node_link_is_hidden_or_dimmed(const View2D &v2d, const bNodeLink &link);
+
+void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &node_map);
 
 void NODE_OT_duplicate(wmOperatorType *ot);
 void NODE_OT_delete(wmOperatorType *ot);

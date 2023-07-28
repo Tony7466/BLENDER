@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,14 +29,13 @@
 #include "ED_asset.h"
 #include "ED_clip.h"
 #include "ED_curve.h"
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_curves_sculpt.h"
 #include "ED_fileselect.h"
 #include "ED_geometry.h"
 #include "ED_gizmo_library.h"
 #include "ED_gpencil_legacy.h"
 #include "ED_grease_pencil.h"
-#include "ED_grease_pencil_draw.h"
 #include "ED_lattice.h"
 #include "ED_markers.h"
 #include "ED_mask.h"
@@ -95,7 +94,6 @@ void ED_spacetypes_init()
   ED_operatortypes_animchannels();
   ED_operatortypes_asset();
   ED_operatortypes_gpencil_legacy();
-  ED_operatortypes_grease_pencil_draw();
   ED_operatortypes_grease_pencil();
   ED_operatortypes_object();
   ED_operatortypes_lattice();
@@ -222,7 +220,7 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 /* ********************** Custom Draw Call API ***************** */
 
 struct RegionDrawCB {
-  struct RegionDrawCB *next, *prev;
+  RegionDrawCB *next, *prev;
 
   void (*draw)(const bContext *, ARegion *, void *);
   void *customdata;

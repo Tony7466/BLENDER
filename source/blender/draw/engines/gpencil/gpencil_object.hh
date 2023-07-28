@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation.
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -171,6 +171,8 @@ class ObjectModule {
       //    }
 
       /* TODO(fclem): Only draw subrange of geometry for this layer. */
+      object_subpass.bind_texture("gp_pos_tx", position_tx);
+      object_subpass.bind_texture("gp_col_tx", color_tx);
       object_subpass.draw(geom, handle);
 
       /* TODO: Do layer blending. */

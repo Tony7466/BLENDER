@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation.
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -684,6 +684,7 @@ typedef enum EEVEE_EffectsFlag {
   EFFECT_TAA_REPROJECT = (1 << 13),       /* should be mutually exclusive with EFFECT_TAA */
   EFFECT_DEPTH_DOUBLE_BUFFER = (1 << 14), /* Not really an effect but a feature */
 } EEVEE_EffectsFlag;
+ENUM_OPERATORS(EEVEE_EffectsFlag, EFFECT_DEPTH_DOUBLE_BUFFER)
 
 typedef struct EEVEE_EffectsInfo {
   EEVEE_EffectsFlag enabled_effects;

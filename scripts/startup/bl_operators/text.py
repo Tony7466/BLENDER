@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -45,7 +47,7 @@ class TEXT_OT_jump_to_file_at_point(Operator):
             self.report(
                 {'ERROR_INVALID_INPUT'},
                 "Provide text editor argument format in File Paths/Applications Preferences, "
-                "see input field tool-tip for more information.",
+                "see input field tool-tip for more information",
             )
             return {'CANCELLED'}
 

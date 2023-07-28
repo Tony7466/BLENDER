@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,10 @@
 #define USE_CAGE_OCCLUSION
 
 #include "DRW_render.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* GPUViewport.storage
  * Is freed every time the viewport engine changes. */
@@ -65,3 +69,7 @@ void select_id_draw_object(void *vedata,
                            uint *r_vert_offset,
                            uint *r_edge_offset,
                            uint *r_face_offset);
+
+#ifdef __cplusplus
+}
+#endif

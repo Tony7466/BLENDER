@@ -6,8 +6,8 @@
  * \ingroup spclip
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -73,10 +73,10 @@ void ED_clip_buttons_register(ARegionType *art)
   PanelType *pt;
 
   pt = MEM_cnew<PanelType>("spacetype clip panel metadata");
-  strcpy(pt->idname, "CLIP_PT_metadata");
-  strcpy(pt->label, N_("Metadata"));
-  strcpy(pt->category, "Footage");
-  strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(pt->idname, "CLIP_PT_metadata");
+  STRNCPY(pt->label, N_("Metadata"));
+  STRNCPY(pt->category, "Footage");
+  STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->poll = metadata_panel_context_poll;
   pt->draw = metadata_panel_context_draw;
   pt->flag |= PANEL_TYPE_DEFAULT_CLOSED;
@@ -220,7 +220,7 @@ void uiTemplateTrack(uiLayout *layout, PointerRNA *ptr, const char *propname)
 #define B_MARKER_SEARCH_DIM 7
 #define B_MARKER_FLAG 8
 
-typedef struct {
+struct MarkerUpdateCb {
   /** compact mode */
   int compact;
 
@@ -242,7 +242,7 @@ typedef struct {
   float marker_search_pos[2], marker_search[2];
   /** marker's flags */
   int marker_flag;
-} MarkerUpdateCb;
+};
 
 static void to_pixel_space(float r[2], const float a[2], int width, int height)
 {
