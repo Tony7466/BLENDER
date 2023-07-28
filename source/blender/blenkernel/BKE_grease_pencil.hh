@@ -116,7 +116,7 @@ class Drawing : public ::GreasePencilDrawing {
    * Returns true for when this drawing has more than one user.
    */
   bool is_instanced() const;
-  bool has_no_users() const;
+  bool has_users() const;
 };
 
 class LayerGroup;
@@ -542,9 +542,9 @@ inline bool blender::bke::greasepencil::Drawing::is_instanced() const
   return this->runtime->user_count.load(std::memory_order_relaxed) > 1;
 }
 
-inline bool blender::bke::greasepencil::Drawing::has_no_users() const
+inline bool blender::bke::greasepencil::Drawing::has_users() const
 {
-  return this->runtime->user_count.load(std::memory_order_relaxed) < 1;
+  return this->runtime->user_count.load(std::memory_order_relaxed) > 0;
 }
 
 inline blender::bke::greasepencil::Drawing &GreasePencilDrawing::wrap()
