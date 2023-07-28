@@ -3,3 +3,4 @@ Referenced by issue #109583, Regression: Crash on COW delete of shared custom da
 Referenced by issue #109460, Vertex weight slider not functional in a smooth way (weightpaint mode, editmode is fine)
 Referenced by pull request #109671, Fix #109583: Const version of mesh_calc_normals to only eval normals in geometry nodes
 Referenced by issue #109670, Regression: Attributes shared between meshes after modification
+Referenced by issue #110471, Regression: Normal Edit modifier screws up UVs
