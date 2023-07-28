@@ -698,27 +698,10 @@ const GreasePencilFrame *Layer::frame_at(const int time) const
   return this->frames().lookup_ptr(*std::prev(it));
 }
 
-int Layer::drawing_index_at(const int frame) const
+int Layer::drawing_index_at(const int time) const
 {
-  Span<int> sorted_keys = this->sorted_keys();
-  /* No keyframes, return no drawing. */
-  if (sorted_keys.size() == 0) {
-    return -1;
-  }
-  /* Before the first drawing, return no drawing. */
-  if (frame < sorted_keys.first()) {
-    return -1;
-  }
-  /* After or at the last drawing, return the last drawing. */
-  if (frame >= sorted_keys.last()) {
-    return this->frames().lookup(sorted_keys.last()).drawing_index;
-  }
-  /* Search for the drawing. upper_bound will get the drawing just after. */
-  auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame);
-  if (it == sorted_keys.end() || it == sorted_keys.begin()) {
-    return -1;
-  }
-  return this->frames().lookup(*std::prev(it)).drawing_index;
+  const GreasePencilFrame *frame = frame_at(time);
+  return (frame != nullptr) ? frame->drawing_index : -1;
 }
 
 void Layer::tag_frames_map_changed()
