@@ -25,7 +25,11 @@
 
 #include "node_intern.hh"
 
+#define FILE_NS add_menu_assets_cc
+
 namespace blender::ed::space_node {
+
+namespace FILE_NS {
 
 static bool node_add_menu_poll(const bContext *C, MenuType * /*mt*/)
 {
@@ -191,13 +195,14 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
     uiItemM(col, "NODE_MT_node_add_catalog_assets", IFACE_(item.get_name().c_str()), ICON_NONE);
   });
 }
+}  // namespace FILE_NS
 
 MenuType add_catalog_assets_menu_type()
 {
   MenuType type{};
   STRNCPY(type.idname, "NODE_MT_node_add_catalog_assets");
-  type.poll = node_add_menu_poll;
-  type.draw = node_add_catalog_assets_draw;
+  type.poll = FILE_NS::node_add_menu_poll;
+  type.draw = FILE_NS::node_add_catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   return type;
 }
@@ -206,8 +211,8 @@ MenuType add_root_catalogs_menu_type()
 {
   MenuType type{};
   STRNCPY(type.idname, "NODE_MT_node_add_root_catalogs");
-  type.poll = node_add_menu_poll;
-  type.draw = add_root_catalogs_draw;
+  type.poll = FILE_NS::node_add_menu_poll;
+  type.draw = FILE_NS::add_root_catalogs_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   return type;
 }
@@ -243,3 +248,5 @@ void uiTemplateNodeAssetMenuItems(uiLayout *layout, bContext *C, const char *cat
   uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
   uiItemMContents(col, "NODE_MT_node_add_catalog_assets");
 }
+
+#undef FILE_NS
