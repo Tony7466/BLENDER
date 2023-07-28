@@ -994,7 +994,8 @@ static void blend_to_ease_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
@@ -1037,7 +1038,7 @@ static void blend_to_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
 
 static void blend_to_ease_modal_update(bContext *C, wmOperator *op)
 {
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
   blend_to_ease_draw_status_header(C, gso);
 
@@ -1056,12 +1057,12 @@ static int blend_to_ease_invoke(bContext *C, wmOperator *op, const wmEvent *even
     return invoke_result;
   }
 
-  tGraphSliderOp *gso = op->customdata;
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = blend_to_ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_to_ease_draw_status_header(C, gso);
-  ED_slider_allow_overshoot_set(gso->slider, false);
-  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_allow_overshoot_set(gso->slider, false, false);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;

@@ -742,7 +742,7 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     }
 
     const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * factor;
-    move_key(&fcu->bezt[i], key_y_value);
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }
 
