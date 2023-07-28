@@ -21,13 +21,13 @@ static const CPPType &get_socket_cpp_type(const eNodeSocketDatatype socket_type)
   return *typeinfo->geometry_nodes_cpp_type;
 }
 
-Vector<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(
-    const Span<void *> socket_values, const BakeSocketConfig &config)
+Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<void *> socket_values,
+                                                                  const BakeSocketConfig &config)
 {
   BLI_assert(socket_values.size() == config.types.size());
   BLI_assert(socket_values.size() == config.geometries_by_attribute.size());
 
-  Vector<std::unique_ptr<BakeItem>> bake_items(socket_values.size());
+  Array<std::unique_ptr<BakeItem>> bake_items(socket_values.size());
 
   /* Create geometry bake items first because they are used for field evaluation. */
   for (const int i : socket_values.index_range()) {

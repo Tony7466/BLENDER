@@ -229,7 +229,7 @@ void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulat
 {
   const bke::BakeSocketConfig config = make_bake_socket_config(node_simulation_items);
 
-  Vector<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
+  Array<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
       input_values, config);
 
   for (const int i : node_simulation_items.index_range()) {

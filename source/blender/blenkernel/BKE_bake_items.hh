@@ -8,6 +8,12 @@
 
 namespace blender::bke {
 
+/**
+ * A "bake item" contains the baked data of e.g. one node socket at one frame. Typically, multiple
+ * bake items form the entire baked state for one frame.
+ *
+ * Bake items can be serialized. Also see `BKE_bake_items_serialize.hh`.
+ */
 class BakeItem {
  public:
   virtual ~BakeItem() = default;
@@ -15,8 +21,9 @@ class BakeItem {
 
 class GeometryBakeItem : public BakeItem {
  public:
-  GeometryBakeItem(GeometrySet geometry);
   GeometrySet geometry;
+
+  GeometryBakeItem(GeometrySet geometry);
 
   /**
    * Removes parts of the geometry that can't be stored in the simulation state:
