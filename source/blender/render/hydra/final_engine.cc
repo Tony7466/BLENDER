@@ -57,8 +57,6 @@ void FinalEngine::render(Depsgraph *depsgraph)
   render_task_delegate_->add_aov(pxr::HdAovTokens->color);
   render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
 
-  render_task_delegate_->bind();
-
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
     if (scene->r.alphamode != R_ALPHAPREMUL) {
@@ -67,6 +65,9 @@ void FinalEngine::render(Depsgraph *depsgraph)
     tasks.push_back(light_tasks_delegate_->simple_task());
   }
   tasks.push_back(render_task_delegate_->task());
+
+  render_task_delegate_->bind();
+
   engine_->Execute(render_index_.get(), &tasks);
 
   char elapsed_time[32];

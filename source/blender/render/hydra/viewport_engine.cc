@@ -183,18 +183,16 @@ void DrawTexture::write_data(int width, int height, const void *data)
                                    width,
                                    height,
                                    1,
-                                   GPU_RGBA16F,
+                                   GPU_RGBA32F,
                                    GPU_TEXTURE_USAGE_GENERAL,
                                    (float *)data);
 }
 
-void DrawTexture::draw(GPUShader *shader, const pxr::GfVec4d &viewport)
+void DrawTexture::draw(GPUShader *shader, const pxr::GfVec4d &viewport, GPUTexture *tex)
 {
-  draw(shader, texture_, viewport);
-}
-
-void DrawTexture::draw(GPUShader *shader, GPUTexture *tex, const pxr::GfVec4d &viewport)
-{
+  if (!tex) {
+    tex = texture_;
+  }
   int slot = GPU_shader_get_sampler_binding(shader, "image");
   GPU_texture_bind(tex, slot);
   GPU_shader_uniform_1i(shader, "image", slot);
@@ -237,20 +235,8 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
     light_tasks_delegate_->set_viewport(viewport);
   }
 
-  if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-    render_task_delegate_->add_aov(pxr::HdAovTokens->color);
-  }
-
-  /* Workaround missing/buggy VAOs in hgiGL and hdSt. For OpenGL compatibility
-   * profile this is not a problem, but for core profile it is. */
-  GLuint VAO;
-  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-  }
-
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
-  GPU_shader_bind(shader);
+  render_task_delegate_->add_aov(pxr::HdAovTokens->color);
+  render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
 
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
@@ -260,19 +246,30 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
     tasks.push_back(light_tasks_delegate_->simple_task());
   }
   tasks.push_back(render_task_delegate_->task());
+
+  GPUFrameBuffer *view_framebuffer = GPU_framebuffer_active_get();
+  render_task_delegate_->bind();
+
   engine_->Execute(render_index_.get(), &tasks);
 
-  if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
+  render_task_delegate_->unbind();
+
+  GPU_framebuffer_bind(view_framebuffer);
+  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
+  GPU_shader_bind(shader);
+
+  GPURenderTaskDelegate *gpu_task = dynamic_cast<GPURenderTaskDelegate *>(
+      render_task_delegate_.get());
+  if (gpu_task) {
+    draw_texture_.draw(shader, viewport, gpu_task->aov_texture(pxr::HdAovTokens->color));
+  }
+  else {
     draw_texture_.write_data(view_settings.width(), view_settings.height(), nullptr);
     render_task_delegate_->read_aov(pxr::HdAovTokens->color, draw_texture_.texture());
     draw_texture_.draw(shader, viewport);
   }
 
   GPU_shader_unbind();
-
-  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
-    glDeleteVertexArrays(1, &VAO);
-  }
 
   if (renderer_percent_done() == 0.0f) {
     time_begin_ = PIL_check_seconds_timer();

@@ -23,8 +23,7 @@ class DrawTexture {
   ~DrawTexture();
 
   void write_data(int width, int height, const void *data);
-  void draw(GPUShader *shader, const pxr::GfVec4d &viewport);
-  void draw(GPUShader *shader, GPUTexture *tex, const pxr::GfVec4d &viewport);
+  void draw(GPUShader *shader, const pxr::GfVec4d &viewport, GPUTexture *tex = nullptr);
   GPUTexture *texture() const;
 
  private:

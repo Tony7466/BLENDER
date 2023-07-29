@@ -105,6 +105,7 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
   binding.aovName = aov_key;
   binding.renderBufferId = buf_id;
   binding.aovSettings = aov_desc.aovSettings;
+  binding.clearValue = pxr::VtValue(pxr::GfVec4f(0));
   task_params_.aovBindings.push_back(binding);
   render_index.GetChangeTracker().MarkTaskDirty(task_id_, pxr::HdChangeTracker::DirtyParams);
 }
@@ -130,8 +131,11 @@ void RenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, GPUTexture *textu
   if (!buffer) {
     return;
   }
+  eGPUDataFormat format = buffer->GetFormat() == pxr::HdFormat::HdFormatFloat16Vec4 ?
+                              GPU_DATA_HALF_FLOAT :
+                              GPU_DATA_FLOAT;
   void *buf_data = buffer->Map();
-  GPU_texture_update(texture, GPU_DATA_FLOAT, buf_data);
+  GPU_texture_update(texture, format, buf_data);
   buffer->Unmap();
 }
 
@@ -142,6 +146,17 @@ void RenderTaskDelegate::unbind() {}
 pxr::SdfPath RenderTaskDelegate::buffer_id(pxr::TfToken const &aov_key) const
 {
   return GetDelegateID().AppendElementString("aov_" + aov_key.GetString());
+}
+
+GPURenderTaskDelegate::~GPURenderTaskDelegate()
+{
+  unbind();
+  if (tex_color_) {
+    GPU_texture_free(tex_color_);
+  }
+  if (tex_depth_) {
+    GPU_texture_free(tex_depth_);
+  }
 }
 
 void GPURenderTaskDelegate::set_viewport(pxr::GfVec4d const &viewport)
@@ -251,22 +266,33 @@ void GPURenderTaskDelegate::bind()
 
   /* Workaround missing/buggy VAOs in hgiGL and hdSt. For OpenGL compatibility
    * profile this is not a problem, but for core profile it is. */
-  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
-    if (VAO_ == 0) {
-      glGenVertexArrays(1, &VAO_);
-    }
+  if (VAO_ == 0 && GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+    glGenVertexArrays(1, &VAO_);
     glBindVertexArray(VAO_);
   }
 }
 
 void GPURenderTaskDelegate::unbind()
 {
-  if (GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
+  if (VAO_) {
     glDeleteVertexArrays(1, &VAO_);
+    VAO_ = 0;
   }
-  GPU_framebuffer_free(framebuffer_);
-  GPU_texture_free(tex_color_);
-  GPU_texture_free(tex_depth_);
+  if (framebuffer_) {
+    GPU_framebuffer_free(framebuffer_);
+    framebuffer_ = nullptr;
+  }
+}
+
+GPUTexture *GPURenderTaskDelegate::aov_texture(pxr::TfToken const &aov_key)
+{
+  if (aov_key == pxr::HdAovTokens->color) {
+    return tex_color_;
+  }
+  if (aov_key == pxr::HdAovTokens->depth) {
+    return tex_depth_;
+  }
+  return nullptr;
 }
 
 }  // namespace blender::render::hydra

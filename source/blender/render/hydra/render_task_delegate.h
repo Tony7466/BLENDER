@@ -52,6 +52,7 @@ class GPURenderTaskDelegate : public RenderTaskDelegate {
 
  public:
   using RenderTaskDelegate::RenderTaskDelegate;
+  ~GPURenderTaskDelegate() override;
 
   void set_viewport(pxr::GfVec4d const &viewport) override;
   void add_aov(pxr::TfToken const &aov_key) override;
@@ -59,6 +60,7 @@ class GPURenderTaskDelegate : public RenderTaskDelegate {
   void read_aov(pxr::TfToken const &aov_key, GPUTexture *texture) override;
   void bind() override;
   void unbind() override;
+  GPUTexture *aov_texture(pxr::TfToken const &aov_key);
 };
 
 }  // namespace blender::render::hydra
