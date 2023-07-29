@@ -13,6 +13,9 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "engine.h"
+#include "render_task_delegate.h"
+
 namespace blender::render::hydra {
 
 RenderTaskDelegate::RenderTaskDelegate(pxr::HdRenderIndex *parent_index,
@@ -24,10 +27,14 @@ RenderTaskDelegate::RenderTaskDelegate(pxr::HdRenderIndex *parent_index,
 
   task_params_.enableLighting = true;
   task_params_.alphaThreshold = 0.1f;
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "%s", task_id_.GetText());
 }
 
-pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const & /*id*/, pxr::TfToken const &key)
+pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "%s, %s", id.GetText(), key.GetText());
+
   if (key == pxr::HdTokens->params) {
     return pxr::VtValue(task_params_);
   }
@@ -38,13 +45,17 @@ pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const & /*id*/, pxr::TfToken c
   return pxr::VtValue();
 }
 
-pxr::TfTokenVector RenderTaskDelegate::GetTaskRenderTags(pxr::SdfPath const & /*id*/)
+pxr::TfTokenVector RenderTaskDelegate::GetTaskRenderTags(pxr::SdfPath const &id)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "%s", id.GetText());
+
   return {pxr::HdRenderTagTokens->geometry};
 }
 
 pxr::HdRenderBufferDescriptor RenderTaskDelegate::GetRenderBufferDescriptor(pxr::SdfPath const &id)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "%s", id.GetText());
+
   return buffer_descriptors_[id];
 }
 
@@ -95,6 +106,10 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
   pxr::HdAovDescriptor aov_desc = render_index.GetRenderDelegate()->GetDefaultAovDescriptor(
       aov_key);
 
+  if (aov_desc.format == pxr::HdFormatInvalid) {
+    return;
+  }
+
   int w = task_params_.viewport[2] - task_params_.viewport[0];
   int h = task_params_.viewport[3] - task_params_.viewport[1];
   render_index.InsertBprim(pxr::HdPrimTypeTokens->renderBuffer, this, buf_id);
@@ -108,6 +123,8 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
   binding.clearValue = pxr::VtValue(pxr::GfVec4f(0));
   task_params_.aovBindings.push_back(binding);
   render_index.GetChangeTracker().MarkTaskDirty(task_id_, pxr::HdChangeTracker::DirtyParams);
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "%s", aov_key.GetText());
 }
 
 void RenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, void *data)
@@ -189,7 +206,7 @@ void GPURenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
     tex = &tex_color_;
   }
   else if (aov_key == pxr::HdAovTokens->depth) {
-    format = GPU_DEPTH32F_STENCIL8;
+    format = GPU_DEPTH_COMPONENT32F;
     tex = &tex_depth_;
   }
   else {
@@ -207,6 +224,8 @@ void GPURenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
                                format,
                                GPU_TEXTURE_USAGE_GENERAL,
                                nullptr);
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "%s", aov_key.GetText());
 }
 
 void GPURenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, void *data)

@@ -1283,6 +1283,7 @@ class HydraRenderEngine(RenderEngine):
     # Final render.
     def update(self, data, depsgraph):
         import _bpy_hydra
+        import bpy
 
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
         if not self.engine_ptr:
@@ -1293,7 +1294,7 @@ class HydraRenderEngine(RenderEngine):
         for key, val in self.get_sync_settings(engine_type).items():
             _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
-        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, None)
+        _bpy_hydra.engine_update(self.engine_ptr, depsgraph, bpy.context)
 
         for key, val in self.get_render_settings('PREVIEW' if self.is_preview else 'FINAL').items():
             _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)

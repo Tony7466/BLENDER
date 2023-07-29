@@ -29,6 +29,10 @@ namespace blender::render::hydra {
 
 extern struct CLG_LogRef *LOG_RENDER_HYDRA;
 
+struct RenderDelegateSettings {
+  Map<std::string, pxr::TfToken> aovs;
+};
+
 class Engine {
  protected:
   std::string render_delegate_name_;
@@ -44,6 +48,7 @@ class Engine {
   std::unique_ptr<io::hydra::HydraSceneDelegate> hydra_scene_delegate_;
   std::unique_ptr<io::hydra::USDSceneDelegate> usd_scene_delegate_;
 
+  RenderDelegateSettings render_delegate_settings_;
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<LightTasksDelegate> light_tasks_delegate_;

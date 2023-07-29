@@ -23,8 +23,6 @@
 
 namespace blender::render::hydra {
 
-/* FinalEngine implementation */
-
 void FinalEngine::render(Depsgraph *depsgraph)
 {
   const Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -55,7 +53,18 @@ void FinalEngine::render(Depsgraph *depsgraph)
   }
 
   render_task_delegate_->add_aov(pxr::HdAovTokens->color);
-  render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
+  if (bl_engine_->type->flag & RE_USE_GPU_CONTEXT) {
+    render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
+  }
+
+  RenderResult *result = RE_engine_get_result(bl_engine_);
+  RenderLayer *layer = (RenderLayer *)result->layers.first;
+  for (RenderPass *pass = (RenderPass *)layer->passes.first; pass != nullptr; pass = pass->next) {
+    pxr::TfToken *aov_token = render_delegate_settings_.aovs.lookup_ptr(pass->name);
+    if (aov_token) {
+      render_task_delegate_->add_aov(*aov_token);
+    }
+  }
 
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
@@ -114,14 +123,10 @@ void FinalEngine::update_render_result()
 
   if (rlayer) {
     LISTBASE_FOREACH (RenderPass *, rpass, &rlayer->passes) {
-      pxr::TfToken aov_key;
-      if (STREQ(rpass->name, "Combined")) {
-        aov_key = pxr::HdAovTokens->color;
+      pxr::TfToken *aov_token = render_delegate_settings_.aovs.lookup_ptr(rpass->name);
+      if (aov_token) {
+        render_task_delegate_->read_aov(*aov_token, rpass->ibuf->float_buffer.data);
       }
-      else if (STREQ(rpass->name, "Depth")) {
-        aov_key = pxr::HdAovTokens->depth;
-      }
-      render_task_delegate_->read_aov(aov_key, rpass->ibuf->float_buffer.data);
     }
   }
 

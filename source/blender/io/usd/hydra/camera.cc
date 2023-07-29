@@ -245,7 +245,7 @@ pxr::GfCamera CameraData::gf_camera(pxr::GfVec4f tile)
   switch (mode_) {
     case CAM_PERSP:
     case CAM_PANO: {
-      /*  TODO: store panoramic camera settings */
+      /* TODO: store panoramic camera settings */
       gf_camera.SetProjection(pxr::GfCamera::Projection::Perspective);
       gf_camera.SetFocalLength(focal_length_);
 

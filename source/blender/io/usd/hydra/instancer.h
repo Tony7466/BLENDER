@@ -45,11 +45,11 @@ class InstancerData : public IdData {
   void update_double_sided(MaterialData *mat_data);
 
   /* Following update functions are working together:
-       pre_update()
-         update_instance()
-         update_instance()
-         ...
-       post_update() */
+   *   pre_update()
+   *     update_instance()
+   *     update_instance()
+   *     ...
+   *   post_update() */
   void pre_update();
   void update_instance(Object *parent_ob, DupliObject *dupli);
   void post_update();

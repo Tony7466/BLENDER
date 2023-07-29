@@ -2,6 +2,7 @@
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
 
 #include "light_tasks_delegate.h"
+#include "engine.h"
 
 namespace blender::render::hydra {
 
@@ -13,10 +14,15 @@ LightTasksDelegate::LightTasksDelegate(pxr::HdRenderIndex *parent_index,
   GetRenderIndex().InsertTask<pxr::HdxSimpleLightTask>(this, simple_task_id_);
   skydome_task_id_ = GetDelegateID().AppendElementString("skydomeTask");
   GetRenderIndex().InsertTask<pxr::HdxSkydomeTask>(this, skydome_task_id_);
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "%s", simple_task_id_.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "%s", skydome_task_id_.GetText());
 }
 
 pxr::VtValue LightTasksDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "%s, %s", id.GetText(), key.GetText());
+
   if (key == pxr::HdTokens->params) {
     if (id == simple_task_id_) {
       return pxr::VtValue(simple_task_params_);
@@ -36,8 +42,8 @@ pxr::HdTaskSharedPtr LightTasksDelegate::simple_task()
 pxr::HdTaskSharedPtr LightTasksDelegate::skydome_task()
 {
   /* Note that this task is intended to be the first "Render Task",
-     so that the AOV's are properly cleared, however it
-     does not spawn a HdRenderPass. */
+   * so that the AOV's are properly cleared, however it
+   * does not spawn a HdRenderPass. */
   return GetRenderIndex().GetTask(skydome_task_id_);
 }
 
