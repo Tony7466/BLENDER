@@ -1590,7 +1590,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
   PointerRNA bake_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBake, &bake, &bake_ptr);
 
-  uiItemR(layout, &bake_ptr, "directory", 0, "Directory", ICON_NONE);
+  uiItemR(layout, &bake_ptr, "directory", UI_ITEM_NONE, "Directory", ICON_NONE);
 
   {
     uiLayout *row = uiLayoutRow(layout, true);
@@ -1602,7 +1602,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &op_ptr);
       WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
       RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
@@ -1616,7 +1616,7 @@ static void bake_panel_draw(const bContext *C, Panel *panel)
                   ICON_TRASH,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &op_ptr);
       WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
       RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);

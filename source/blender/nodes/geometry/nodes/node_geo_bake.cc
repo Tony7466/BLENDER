@@ -277,11 +277,11 @@ static void draw_bake_ui(uiLayout *layout,
   }
   if (bake.bake_type == NODES_MODIFIER_BAKE_TYPE_ANIMATED) {
     uiLayout *subcol = uiLayoutColumn(settings_col, true);
-    uiItemR(subcol, &bake_ptr, "frame_start", 0, "Start", ICON_NONE);
-    uiItemR(subcol, &bake_ptr, "frame_end", 0, "End", ICON_NONE);
+    uiItemR(subcol, &bake_ptr, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
+    uiItemR(subcol, &bake_ptr, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
   }
 
-  uiItemR(settings_col, &bake_ptr, "directory", 0, "", ICON_NONE);
+  uiItemR(settings_col, &bake_ptr, "directory", UI_ITEM_NONE, "", ICON_NONE);
 
   uiLayout *row = uiLayoutRow(layout, true);
   {
@@ -292,7 +292,7 @@ static void draw_bake_ui(uiLayout *layout,
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
-                0,
+                UI_ITEM_NONE,
                 &op_ptr);
     WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object.id);
     RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
@@ -306,7 +306,7 @@ static void draw_bake_ui(uiLayout *layout,
                 ICON_TRASH,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
-                0,
+                UI_ITEM_NONE,
                 &op_ptr);
     WM_operator_properties_id_lookup_set_from_id(&op_ptr, &object.id);
     RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
@@ -387,7 +387,7 @@ static void bake_items_list_draw_item(uiList * /*ui_list*/,
   uiLayout *row = uiLayoutRow(layout, true);
   uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
   uiLayoutSetEmboss(layout, UI_EMBOSS_NONE);
-  uiItemR(layout, itemptr, "name", 0, "", ICON_NONE);
+  uiItemR(layout, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static uiListType *create_items_ui_list()
@@ -446,7 +446,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   PointerRNA active_item_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_NodeGeometryBakeItem, &active_item, &active_item_ptr);
 
-  uiItemR(layout, &active_item_ptr, "socket_type", 0, nullptr, ICON_NONE);
+  uiItemR(layout, &active_item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (ELEM(active_item.socket_type,
            SOCK_BOOLEAN,
            SOCK_INT,
@@ -455,7 +455,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
            SOCK_RGBA,
            SOCK_ROTATION))
   {
-    uiItemR(layout, &active_item_ptr, "attribute_domain", 0, nullptr, ICON_NONE);
+    uiItemR(layout, &active_item_ptr, "attribute_domain", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
