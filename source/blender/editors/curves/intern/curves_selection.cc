@@ -310,6 +310,77 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends)
   selection.finish();
 }
 
+// *********************************************************** start
+
+void select_similar_create_set(bke::CurvesGeometry &curves,
+                               blender::Set<float> &rs,
+                               int type,
+                               float threshoold)
+{
+  VArray<float> radii = *curves.attributes().lookup_or_default<float>(
+      "radius", ATTR_DOMAIN_POINT, 0.01f);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
+      for (const int index : points.index_range()) {
+        if(selection_typed[points[index]]) {
+          rs.add(radii[points[index]]);
+        }
+      }
+    }
+  });
+
+  selection.finish();
+}
+
+void select_similar_update_active(bke::CurvesGeometry &curves,
+                               blender::Set<float> &rs,
+                               int type,
+                               float threshold)
+{
+  VArray<float> radii = *curves.attributes().lookup_or_default<float>(
+      "radius", ATTR_DOMAIN_POINT, 0.01f);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
+      for (const int index : points.index_range()) {
+        for (auto s : rs) {
+          if (radii[points[index]] <= s + threshold && radii[points[index]] >= s - threshold) {
+            selection_typed[points[index]] = true;
+          }
+          else {
+            std::cout << "Not sel: " << radii[points[index]] << "\n";
+          }
+        }
+      }
+    }
+  });
+
+  selection.finish();
+}
+
+// ************************************************************************************** end
+
 void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();

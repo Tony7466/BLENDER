@@ -8,13 +8,19 @@
 
 #pragma once
 
+#include "DNA_grease_pencil_types.h"
+
+#include "BKE_grease_pencil.hh"
 #include "BKE_attribute.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 
+#include "BLI_math_color.h"
+
 #include "BLI_index_mask.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
+
 
 #include "ED_select_utils.h"
 
@@ -171,7 +177,168 @@ void select_linked(bke::CurvesGeometry &curves);
  */
 void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends);
 
-/**
+void select_similar_create_set(bke::CurvesGeometry &curves,
+                               blender::Set<float> &rs,
+                               int type,
+                               float threshoold);
+
+template<typename T>
+void select_similar_cs(bke::CurvesGeometry &curves,
+                       blender::Set<T> &rs,
+                       int type,
+                       std::string attribute_id,
+                       const T default_for_lookup)
+{
+  VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
+      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
+      for (const int index : points.index_range()) {
+        if (selection_typed[points[index]]) {
+          // careful: problems with concurrency?
+          rs.add(attributes[points[index]]);
+        }
+      }
+    }
+  });
+
+  selection.finish();
+}
+
+template<typename T>
+float distance(T first, T second) {
+  if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
+    return std::abs(first - second);
+  }
+  else if constexpr (std::is_same<T, ColorGeometry4f>::value) {
+    // might be better to normalize and then dot product
+    return std::abs(int(rgb_to_grayscale(first)) - int(rgb_to_grayscale(second)));
+  }
+  throw std::invalid_argument(
+      "Undefined behavior for distance function for the used type");
+}
+
+template<typename T>
+void select_similar_ua(bke::CurvesGeometry &curves,
+                                  blender::Set<T> &rs,
+                                  float threshold,
+                                  int type,
+                                  std::string attribute_id,
+                                  T default_attribute)
+{
+  VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
+      attribute_id, ATTR_DOMAIN_POINT, default_attribute);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      if (!has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
+      for (const int index : points.index_range()) {
+        for (auto s : rs) {
+          if (distance<T>(attributes[points[index]], s) <= threshold) {
+            selection_typed[points[index]] = true;
+          }
+        }
+      }
+    }
+  });
+
+  selection.finish();
+}
+
+template<typename T>
+void select_similar_main(GreasePencil &grease_pencil,
+                         Scene *scene,
+                         eAttrDomain selection_domain,
+                         int type,
+                         float threshold,
+                         std::string attribute_id,
+                         T default_value)
+{
+  blender::Vector<blender::Set<T>> v(grease_pencil.drawings().size());
+
+  v.fill(blender::Set<T>{});
+
+  // if it's layer we need to do slightly different things
+  // fixme: this type here should be LAYER... Do we move the enum here?
+  if (type == 0) {
+    grease_pencil.foreach_editable_drawing_in_layer_ex(
+        scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing, const blender::bke::greasepencil::Layer * layer) {
+          if (!has_anything_selected(drawing.strokes_for_write())) {
+            return;
+          }
+          if constexpr (std::is_same<T, std::string>::value) {
+            v[drawing_index].add(T{layer->name().c_str()});
+          }
+        });
+  }
+  else {
+    grease_pencil.foreach_editable_drawing(
+        scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
+          blender::ed::curves::select_similar_cs<T>(
+              drawing.strokes_for_write(), v[drawing_index], type, attribute_id, default_value);
+        });
+  }
+  
+
+  Set<T> s{};
+  for (auto set : v) {
+    for (auto n : set) {
+      s.add(n);
+      std::cout << "added: " << n << "\n";
+    }
+  }
+
+  // fixme: this type here should be LAYER... Do we move the enum here?
+  if (type == 0) {
+    grease_pencil.foreach_editable_drawing_in_layer_ex(
+        scene->r.cfra,
+        [&](int drawing_index,
+            blender::bke::greasepencil::Drawing &drawing,
+            const blender::bke::greasepencil::Layer *layer) {
+          if constexpr (std::is_same<T, std::string>::value) {
+
+            if (!s.contains(T{layer->name().c_str()})) {
+              return;
+            }
+            select_all(drawing.strokes_for_write(), selection_domain, SEL_SELECT);
+          }
+        });
+
+  }
+  else {
+    grease_pencil.foreach_editable_drawing(
+        scene->r.cfra, [&](int /* drawing_index */, blender::bke::greasepencil::Drawing &drawing) {
+          blender::ed::curves::select_similar_ua<T>(
+              drawing.strokes_for_write(), s, threshold, type, attribute_id, default_value);
+        });
+  }
+}
+
+void select_similar_update_active(bke::CurvesGeometry &curves,
+                                  blender::Set<float> &rs,
+                                  int type,
+                                  float threshold);
+    /**
  * (De)select all the adjacent points of the current selected points.
  */
 void select_adjacent(bke::CurvesGeometry &curves, bool deselect);

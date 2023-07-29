@@ -27,6 +27,24 @@
 #include "WM_api.h"
 
 namespace blender::ed::greasepencil {
+/* WARNING: don't change existing ones without modifying rearrange func accordingly */
+typedef enum eSelectSimilar {
+  LAYER = 0,
+  MATERIAL = 1,
+  VERTEX_COLOR = 2,
+  RADIUS = 3,
+  OPACITY = 4,
+
+} eSelectSimilar_Mode;
+
+static const EnumPropertyItem prop_select_similar_types[] = {
+    {LAYER, "LAYER", 0, "Layer", ""},
+    {MATERIAL, "MATERIAL", 0, "Material", ""},
+    {VERTEX_COLOR, "VERTEX_COLOR", 0, "Vertex Color", ""},
+    {RADIUS, "RADIUS", 0, "Radius", ""},
+    {OPACITY, "OPACITY", 0, "Opacity", ""},
+    {0, NULL, 0, NULL, NULL},
+};
 
 static int select_all_exec(bContext *C, wmOperator *op)
 {
@@ -249,6 +267,82 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
                   "(De)select the first and last point of each stroke");
 }
 
+// **************** start
+
+
+static int select_similar_exec(bContext *C, wmOperator *op)
+{
+  // todo: select enum
+  const int type = RNA_enum_get(op->ptr, "type");
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(C);
+
+  switch (type) {
+    case LAYER:
+      std::cout << "select similar for layer not implemented\n";
+      ed::curves::select_similar_main<std::string>(
+          grease_pencil, scene, selection_domain, type, threshold, "", "asadf");
+      break;
+    case MATERIAL:
+      ed::curves::select_similar_main<int>(
+          grease_pencil, scene, selection_domain, type, threshold, "material_index", 0);
+      break;
+    case VERTEX_COLOR:
+      // fixme: is vertex_color defined? It seems that the default value is always used....
+      ed::curves::select_similar_main<ColorGeometry4f>(grease_pencil,
+                                                       scene,
+                                                       selection_domain,
+                                                       type,
+                                                       threshold,
+                                                       "vertex_color",
+                                                       ColorGeometry4f{3.0f, 3.0f, 3.0f, 3.0f});
+      break;
+    case RADIUS:
+      ed::curves::select_similar_main<float>(
+          grease_pencil, scene, selection_domain, type, threshold, "radius", 0.0f);
+      break;
+    case OPACITY:
+      ed::curves::select_similar_main<float>(
+          grease_pencil, scene, selection_domain, type, threshold, "opacity", 0.0f);
+      break;
+    default:
+      throw std::invalid_argument("Undefined behavior for eSelectSimilar_Mode " + type);
+  }
+
+  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
+   * attribute for now. */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
+{
+  ot->name = "Select Similar";
+  ot->idname = "GREASE_PENCIL_OT_select_similar";
+  ot->description = "Select all strokes with similar characteristics";
+
+  ot->exec = select_similar_exec;
+  ot->poll = editable_grease_pencil_point_selection_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_enum(ot->srna,
+               "type",
+               prop_select_similar_types,
+               LAYER,
+               "Type",
+               "");
+
+  RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+}
+
+// ***********************************************************************
+
 static int select_ends_exec(bContext *C, wmOperator *op)
 {
   const int amount_start = RNA_int_get(op->ptr, "amount_start");
@@ -444,6 +538,7 @@ void ED_operatortypes_grease_pencil_select()
   WM_operatortype_append(GREASE_PENCIL_OT_select_linked);
   WM_operatortype_append(GREASE_PENCIL_OT_select_random);
   WM_operatortype_append(GREASE_PENCIL_OT_select_alternate);
+  WM_operatortype_append(GREASE_PENCIL_OT_select_similar);
   WM_operatortype_append(GREASE_PENCIL_OT_select_ends);
   WM_operatortype_append(GREASE_PENCIL_OT_set_selection_mode);
 }

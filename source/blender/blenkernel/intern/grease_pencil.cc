@@ -1334,6 +1334,29 @@ enum ForeachDrawingMode {
   EDITABLE,
 };
 
+void GreasePencil::foreach_editable_drawing_in_layer_ex(
+    int frame,
+    blender::FunctionRef<void(
+        int, blender::bke::greasepencil::Drawing &, const blender::bke::greasepencil::Layer *)> function)
+{
+  using namespace blender::bke::greasepencil;
+  blender::Span<GreasePencilDrawingBase *> drawings = this->drawings();
+  for (const Layer *layer : this->layers()) {
+    int index = layer->drawing_index_at(frame);
+    if (index == -1) {
+      continue;
+    }
+    GreasePencilDrawingBase *drawing_base = drawings[index];
+    if (drawing_base->type == GP_DRAWING) {
+      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+      function(index, drawing->wrap(), layer);
+    }
+    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
+      /* TODO */
+    }
+  }
+}
+
 static void foreach_drawing_ex(
     GreasePencil &grease_pencil,
     int frame,

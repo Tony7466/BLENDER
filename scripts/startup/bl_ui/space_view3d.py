@@ -2006,6 +2006,7 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
         layout.operator("grease_pencil.select_linked", text="Linked")
         layout.operator("grease_pencil.select_alternate", text="Alternated")
         layout.operator("grease_pencil.select_random", text="Random")
+        layout.operator_menu_enum("grease_pencil.select_similar", "type", text="Similar")
 
         layout.separator()
 

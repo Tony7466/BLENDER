@@ -498,6 +498,11 @@ typedef struct GreasePencil {
       int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
   void foreach_editable_drawing(
       int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+  void foreach_editable_drawing_in_layer_ex(
+      int frame,
+      blender::FunctionRef<void(int,
+                                blender::bke::greasepencil::Drawing &,
+                                const blender::bke::greasepencil::Layer *)> function);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
