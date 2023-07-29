@@ -72,21 +72,20 @@ static void view_dolly_to_vector_3d(ARegion *region,
                                     float dfac)
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-  //printf("OX: %f, OY: %f, OZ: %f\n", rv3d->ofs[0], rv3d->ofs[1], rv3d->ofs[2]);
   madd_v3_v3v3fl(rv3d->ofs, orig_ofs, dvec, -dfac);
 }
 
-static void viewdolly_apply(ViewOpsData *vod, const int xy[2], const bool delta_invert)
+static void viewdolly_apply(ViewOpsData *vod, const int move_xy[2], const bool delta_invert)
 {
   float delta;
   const int sgn = 1 - 2 * delta_invert;
 
-  /* the factor 1.4 adjusts the input sensitivity */
+  /* the factor 1.2 adjusts the input sensitivity */
   if (U.uiflag & USER_ZOOM_HORIZ) {
-    delta = 1.4f * (float)(sgn * (xy[0] - vod->init.event_xy[0])) / vod->region->winrct.xmax * vod->rv3d->dist;
+    delta = 1.2f * (float)(sgn * move_xy[0]) / vod->region->winx * vod->rv3d->dist;
   }
   else {
-    delta = 1.4f * (float)(sgn * (xy[1] - vod->init.event_xy[1])) / vod->region->winrct.ymax * vod->rv3d->dist;
+    delta = 1.2f * (float)(sgn * move_xy[1]) / vod->region->winy * vod->rv3d->dist;
   }
 
   view_dolly_to_vector_3d(vod->region, vod->init.ofs, vod->init.mousevec, delta);
@@ -107,10 +106,14 @@ static int viewdolly_modal(bContext *C, wmOperator *op, const wmEvent *event)
   short event_code = VIEW_PASS;
   bool use_autokey = false;
   int ret = OPERATOR_RUNNING_MODAL;
+  int move_xy[2];
 
   /* Execute the events. */
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
+      case VIEW_MODAL_CANCEL:
+        event_code = VIEW_CANCEL;
+        break;
       case VIEW_MODAL_CONFIRM:
         event_code = VIEW_CONFIRM;
         break;
@@ -142,7 +145,9 @@ static int viewdolly_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   switch (event_code) {
     case VIEW_APPLY: {
-      viewdolly_apply(vod, event->xy, (U.uiflag & USER_ZOOM_INVERT) != 0);
+      sub_v2_v2v2_int(move_xy, event->xy, vod->init.event_xy);
+      viewdolly_apply(vod, move_xy, (U.uiflag & USER_ZOOM_INVERT) != 0);
+      
       if (ED_screen_animation_playing(CTX_wm_manager(C))) {
         use_autokey = true;
       }
@@ -196,18 +201,22 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   else {
     area = CTX_wm_area(C);
     region = CTX_wm_region(C);
-    negate_v3_v3(mousevec, static_cast<RegionView3D *>(region->regiondata)->viewinv[2]);
-    normalize_v3(mousevec);
+    float xy[2];
+    
+    /* recompute direction vector for given zoom direction */
+    if (use_cursor_init) {
+      xy[0] = (float)RNA_int_get(op->ptr, "mx");
+      xy[1] = (float)RNA_int_get(op->ptr, "my");
+    }
+    else {
+      xy[0] = (float)region->winx / 2.0f;
+      xy[1] = (float)region->winy / 2.0f;
+    }
+    ED_view3d_win_to_vector(region, xy, mousevec);
   }
 
   v3d = static_cast<View3D *>(area->spacedata.first);
   rv3d = static_cast<RegionView3D *>(region->regiondata);
-
-  /* overwrite the mouse vector with the view direction (zoom into the center) */
-  if (!use_cursor_init) {
-    normalize_v3_v3(mousevec, rv3d->viewinv[2]);
-    negate_v3(mousevec);
-  }
 
   view_dolly_to_vector_3d(region, rv3d->ofs, mousevec, delta);
 
@@ -249,23 +258,35 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       ED_view3d_persp_switch_from_camera(depsgraph, vod->v3d, vod->rv3d, RV3D_PERSP);
     }
-    /*else {
+    else {
       vod->rv3d->persp = RV3D_PERSP;
-    }*/
+    }
+    
     ED_region_tag_redraw(vod->region);
   }
-
-  /* if one or the other zoom position is not set */
+  
+  /* if one or the other zoom direction is not set */
   if (!RNA_struct_property_is_set(op->ptr, "mx") || !RNA_struct_property_is_set(op->ptr, "my")) {
+    /* set xy to region local coordinates */
+    int xy[2];
+    
     if (use_cursor_init) {
-      /* set to region local coordinates */
-      RNA_int_set(op->ptr, "mx", event->mval[0]);
-      RNA_int_set(op->ptr, "my", event->mval[1]);
+      xy[0] = event->mval[0];
+      xy[1] = event->mval[1];
     }
     else {
-      RNA_int_set(op->ptr, "mx", vod->region->winx / 2);
-      RNA_int_set(op->ptr, "my", vod->region->winy / 2);
+      xy[0] = vod->region->winx / 2;
+      xy[1] = vod->region->winy / 2;
     }
+    
+    RNA_int_set(op->ptr, "mx", (int)xy[0]);
+    RNA_int_set(op->ptr, "my", (int)xy[1]);
+  }
+  else {
+    /* recompute direction vector for given zoom direction */
+    const float xy[2] = {(float)RNA_int_get(op->ptr, "mx"),
+                         (float)RNA_int_get(op->ptr, "my")};
+    ED_view3d_win_to_vector(vod->region, xy, vod->init.mousevec);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "delta")) {
@@ -275,16 +296,14 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     /* we do not set the delta property. It is an int, so usually would be
      * 0 if rounded from a float */
     if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
-      int prev_xy[2];
-      float delta[3];
-      //printf("EX:%d, EY:%d, PEX:%d, PEY:%d\n", event->xy[0], event->xy[1], event->prev_xy[0], event->prev_xy[1]);
-      copy_v2_v2_int(prev_xy, event->prev_xy);
+      int move_xy[2];
+      sub_v2_v2v2_int(move_xy, event->prev_xy, event->xy);
       if (event->type == MOUSEZOOM) {
         /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
-        prev_xy[1] = event->xy[1] - (event->xy[0] - event->prev_xy[0]);
+        move_xy[1] = move_xy[0];
       }
       
-      viewdolly_apply(vod, prev_xy, ((U.uiflag & USER_ZOOM_INVERT) != 0)
+      viewdolly_apply(vod, move_xy, ((U.uiflag & USER_ZOOM_INVERT) != 0)
                       ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
       
       viewops_data_free(C, static_cast<ViewOpsData *>(op->customdata));
