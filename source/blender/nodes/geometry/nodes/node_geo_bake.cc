@@ -196,49 +196,6 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return false;
 }
 
-static const bNode *group_node_by_name(const bNodeTree &ntree, StringRef name)
-{
-  for (const bNode *node : ntree.group_nodes()) {
-    if (node->name == name) {
-      return node;
-    }
-  }
-  return nullptr;
-}
-
-static int32_t find_nested_node_id_in_root(SpaceNode *snode, const bNode *node)
-{
-  int32_t id_in_node = -1;
-  const char *group_node_name = nullptr;
-  LISTBASE_FOREACH_BACKWARD (const bNodeTreePath *, path, &snode->treepath) {
-    const bNodeTree *ntree = path->nodetree;
-    if (group_node_name) {
-      node = group_node_by_name(*ntree, group_node_name);
-    }
-    bool found = false;
-    for (const bNestedNodeRef &ref : ntree->nested_node_refs_span()) {
-      if (node->is_group()) {
-        if (ref.path.node_id == node->identifier && ref.path.id_in_node == id_in_node) {
-          group_node_name = path->node_name;
-          id_in_node = ref.id;
-          found = true;
-          break;
-        }
-      }
-      else if (ref.path.node_id == node->identifier) {
-        group_node_name = path->node_name;
-        id_in_node = ref.id;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      return -1;
-    }
-  }
-  return id_in_node;
-}
-
 static const bke::BakeNodeStorage *get_bake_storage(const NodesModifierData &nmd,
                                                     const int32_t bake_id)
 {
@@ -354,12 +311,13 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   if (nmd.node_group != snode->nodetree) {
     return;
   }
-  const int32_t nested_node_id = find_nested_node_id_in_root(snode, node);
-  if (nested_node_id == -1) {
+  const std::optional<int32_t> nested_node_id = ed::space_node::find_nested_node_id_in_root(*snode,
+                                                                                            *node);
+  if (!nested_node_id.has_value()) {
     return;
   }
-  const bke::BakeNodeStorage *bake_storage = get_bake_storage(nmd, nested_node_id);
-  NodesModifierBake *bake = get_bake(nmd, nested_node_id);
+  const bke::BakeNodeStorage *bake_storage = get_bake_storage(nmd, *nested_node_id);
+  NodesModifierBake *bake = get_bake(nmd, *nested_node_id);
   if (bake == nullptr) {
     return;
   }
