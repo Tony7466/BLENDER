@@ -34,6 +34,7 @@
 
 struct Object;
 struct Depsgraph;
+struct NodesModifierData;
 
 namespace blender::nodes {
 
@@ -44,6 +45,7 @@ using mf::MultiFunction;
  * Data that is passed into geometry nodes evaluation from the modifier.
  */
 struct GeoNodesModifierData {
+  const NodesModifierData *nmd = nullptr;
   /** Object that is currently evaluated. */
   const Object *self_object = nullptr;
   /** Depsgraph that is evaluating the modifier. */

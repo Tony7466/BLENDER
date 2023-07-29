@@ -73,6 +73,7 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
+  intern/bake_geometry_nodes_serialize.cc
   intern/bake_items.cc
   intern/bake_items_serialize.cc
   intern/bake_items_socket.cc
@@ -332,6 +333,7 @@ set(SRC
   BKE_attribute_math.hh
   BKE_autoexec.h
   BKE_bake_geometry_nodes.hh
+  BKE_bake_geometry_nodes_serialize.hh
   BKE_bake_items.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh

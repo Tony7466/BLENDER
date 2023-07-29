@@ -689,10 +689,13 @@ static void find_side_effect_nodes(
     MultiValueMap<ComputeContextHash, const lf::FunctionNode *> &r_side_effect_nodes)
 {
   if (nmd.runtime->bakes) {
-    for (const int32_t bake_id : nmd.runtime->bakes->requested_bake_ids) {
-      const bNestedNodeRef *node_ref = nmd.node_group->find_nested_node_ref(bake_id);
-      BLI_assert(node_ref != nullptr);
-      find_side_effect_nodes_for_nested_node_ref(*node_ref, nmd, r_side_effect_nodes);
+    std::lock_guard lock{nmd.runtime->bakes->mutex};
+    for (const auto item : nmd.runtime->bakes->storage_by_id.items()) {
+      if (item.value->current_bake_state) {
+        const bNestedNodeRef *node_ref = nmd.node_group->find_nested_node_ref(item.key);
+        BLI_assert(node_ref != nullptr);
+        find_side_effect_nodes_for_nested_node_ref(*node_ref, nmd, r_side_effect_nodes);
+      }
     }
   }
 
@@ -988,6 +991,7 @@ static void modifyGeometry(ModifierData *md,
   }
 
   nodes::GeoNodesModifierData modifier_eval_data{};
+  modifier_eval_data.nmd = nmd;
   modifier_eval_data.depsgraph = ctx->depsgraph;
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
@@ -1753,6 +1757,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 
   nmd->runtime = MEM_new<NodesModifierRuntime>(__func__);
   nmd->runtime->simulation_cache = std::make_shared<bke::sim::ModifierSimulationCache>();
+  nmd->runtime->bakes = std::make_shared<bke::GeometryNodesModifierBakes>();
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)

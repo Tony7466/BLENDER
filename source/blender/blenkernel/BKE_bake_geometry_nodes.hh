@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "BLI_compute_context.hh"
 #include "BLI_map.hh"
 #include "BLI_sub_frame.hh"
@@ -31,16 +33,23 @@ class BakeNodeStorage {
 
 class GeometryNodesModifierBakes {
  public:
+  std::mutex mutex;
   Map<int32_t, std::unique_ptr<BakeNodeStorage>> storage_by_id;
-  Set<int32_t> requested_bake_ids;
 
-  BakeNodeStorage *get_storage(const int32_t nested_node_id)
+  const BakeNodeStorage *get_storage(const int32_t bake_id) const
   {
-    std::unique_ptr<BakeNodeStorage> *storage = this->storage_by_id.lookup_ptr(nested_node_id);
+    const std::unique_ptr<BakeNodeStorage> *storage = this->storage_by_id.lookup_ptr(bake_id);
     if (storage) {
       return storage->get();
     }
     return nullptr;
+  }
+
+  BakeNodeStorage &get_storage_for_write(const int32_t bake_id)
+  {
+    std::lock_guard lock{this->mutex};
+    return *this->storage_by_id.lookup_or_add_cb(
+        bake_id, []() { return std::make_unique<BakeNodeStorage>(); });
   }
 };
 

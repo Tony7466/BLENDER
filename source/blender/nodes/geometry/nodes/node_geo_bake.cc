@@ -481,16 +481,19 @@ class LazyFunctionForBakeNode : public LazyFunction {
       return;
     }
 
-    bke::BakeNodeStorage *bake_storage = user_data.modifier_data->bakes->get_storage(
-        nested_node_id);
-    if (bake_storage == nullptr) {
+    const NodesModifierBake *bake = get_bake(
+        const_cast<NodesModifierData &>(*user_data.modifier_data->nmd), nested_node_id);
+    if (bake == nullptr) {
       this->pass_through(params);
       return;
     }
 
+    bke::BakeNodeStorage &bake_storage = user_data.modifier_data->bakes->get_storage_for_write(
+        nested_node_id);
+
     bke::BakeNodeState *state_to_read_from = nullptr;
 
-    if (bake_storage->current_bake_state) {
+    if (bake_storage.current_bake_state) {
       bool has_missing_inputs = false;
       Array<void *> input_values(storage.items_num);
       for (const int i : IndexRange(storage.items_num)) {
@@ -517,24 +520,26 @@ class LazyFunctionForBakeNode : public LazyFunction {
         const NodeGeometryBakeItem &item = storage.items[i];
         std::unique_ptr<bke::BakeItem> &bake_item = bake_items[i];
         if (bake_item) {
-          bake_storage->current_bake_state->item_by_identifier.add_new(item.identifier,
-                                                                       std::move(bake_item));
+          bake_storage.current_bake_state->item_by_identifier.add_new(item.identifier,
+                                                                      std::move(bake_item));
         }
       }
 
-      state_to_read_from = bake_storage->current_bake_state.get();
+      state_to_read_from = bake_storage.current_bake_state.get();
     }
-    else if (!bake_storage->states.is_empty()) {
-      int state_index = binary_search::find_predicate_begin(
-          bake_storage->states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
-            return state_at_frame.frame > frame;
-          });
-      /* Use the first state at the same or previous frame. When the current frame is before any
-       * baked frame, use the first baked frame.*/
-      if (state_index > 0) {
-        state_index--;
+    else {
+      if (!bake_storage.states.is_empty()) {
+        int state_index = binary_search::find_predicate_begin(
+            bake_storage.states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
+              return state_at_frame.frame > frame;
+            });
+        /* Use the first state at the same or previous frame. When the current frame is before any
+         * baked frame, use the first baked frame.*/
+        if (state_index > 0) {
+          state_index--;
+        }
+        state_to_read_from = bake_storage.states[state_index].state.get();
       }
-      state_to_read_from = bake_storage->states[state_index].state.get();
     }
 
     if (state_to_read_from == nullptr) {
@@ -631,7 +636,8 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
     if (nested_node_id == -1) {
       return true;
     }
-    bke::BakeNodeStorage *storage = user_data.modifier_data->bakes->get_storage(nested_node_id);
+    const bke::BakeNodeStorage *storage = user_data.modifier_data->bakes->get_storage(
+        nested_node_id);
     if (storage == nullptr) {
       return true;
     }

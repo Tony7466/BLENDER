@@ -107,12 +107,10 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   switch (NodesModifierBakeType(bake->bake_type)) {
     case NODES_MODIFIER_BAKE_TYPE_STILL: {
       bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
-      bakes.requested_bake_ids.add(bake->id);
 
       DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
       BKE_scene_graph_update_tagged(depsgraph, bmain);
 
-      bakes.requested_bake_ids.clear();
       bake_storage.states.append({0, std::move(bake_storage.current_bake_state)});
       break;
     }
@@ -120,7 +118,6 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
       for (int frame_i = bake->frame_start; frame_i <= bake->frame_end; frame_i++) {
         const SubFrame frame{frame_i};
         bake_storage.current_bake_state = std::make_unique<bke::BakeNodeState>();
-        bakes.requested_bake_ids.add(bake->id);
         DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
 
         scene->r.cfra = frame.frame();
@@ -128,7 +125,6 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
 
         BKE_scene_graph_update_for_newframe(depsgraph);
 
-        bakes.requested_bake_ids.clear();
         bake_storage.states.append({frame, std::move(bake_storage.current_bake_state)});
       }
       break;
