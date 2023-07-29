@@ -1969,6 +1969,12 @@ static bool nlastrip_validate_transition_start_end(ListBase *strips, NlaStrip *s
   if (!(strip->type == NLASTRIP_TYPE_TRANSITION)) {
     return true;
   }
+   if (strip->prev) {
+    strip->start = strip->prev->end;
+  }
+  if (strip->next) {
+    strip->end = strip->next->start;
+  }
   if (strip->start >= strip->end) {
     BKE_nlastrip_remove_and_free(strips, strip, true);
     return false;
