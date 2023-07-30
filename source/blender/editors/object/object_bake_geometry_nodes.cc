@@ -172,6 +172,15 @@ static int geometry_node_bake_delete_exec(bContext *C, wmOperator *op)
 
   nmd.runtime->bakes->storage_by_id.remove(bake->id);
 
+  if (!StringRef(bake->directory).is_empty()) {
+    const char *base_path = ID_BLEND_PATH(bmain, &object->id);
+    char absolute_bake_dir[FILE_MAX];
+    STRNCPY(absolute_bake_dir, bake->directory);
+    BLI_path_abs(absolute_bake_dir, base_path);
+
+    BLI_delete(absolute_bake_dir, true, true);
+  }
+
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
   return OPERATOR_FINISHED;
