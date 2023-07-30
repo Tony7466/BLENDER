@@ -11263,6 +11263,47 @@ static void def_geo_scale_elements(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 
+static void def_geo_closest_neighbors(StructRNA *srna)
+{
+  static const EnumPropertyItem target_element_items[] = {
+      {GEO_NODE_CLOSEST_NEIGHBOR_TARGET_POINTS,
+       "POINTS",
+       ICON_NONE,
+       "Points",
+       "Find closest target points"},
+      {GEO_NODE_CLOSEST_NEIGHBOR_TARGET_EDGES,
+       "EDGES",
+       ICON_NONE,
+       "Edges",
+       "Find closest target edges"},
+      {GEO_NODE_CLOSEST_NEIGHBOR_TARGET_FACES,
+       "FACES",
+       ICON_NONE,
+       "Faces",
+       "Find closest target faces"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
+  RNA_def_property_ui_text(prop, "Domain", "Which domain to read the data from");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "target_element", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, target_element_items);
+  RNA_def_property_enum_default(prop, GEO_NODE_PROX_TARGET_FACES);
+  RNA_def_property_ui_text(
+      prop, "Target Geometry", "Element of the target geometry to calculate the distance from");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryVolumeToMesh", "storage");
+}
+
 /* -------------------------------------------------------------------------- */
 
 static void rna_def_shader_node(BlenderRNA *brna)

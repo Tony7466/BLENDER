@@ -19,6 +19,7 @@ void register_geometry_nodes()
   register_node_type_geo_blur_attribute();
   register_node_type_geo_boolean();
   register_node_type_geo_bounding_box();
+  register_node_type_geo_closest_neighbors();
   register_node_type_geo_collection_info();
   register_node_type_geo_convex_hull();
   register_node_type_geo_curve_endpoint_selection();

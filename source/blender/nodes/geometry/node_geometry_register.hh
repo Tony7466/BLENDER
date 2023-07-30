@@ -16,6 +16,7 @@ void register_node_type_geo_attribute_statistic();
 void register_node_type_geo_blur_attribute();
 void register_node_type_geo_boolean();
 void register_node_type_geo_bounding_box();
+void register_node_type_geo_closest_neighbors();
 void register_node_type_geo_collection_info();
 void register_node_type_geo_convex_hull();
 void register_node_type_geo_curve_endpoint_selection();

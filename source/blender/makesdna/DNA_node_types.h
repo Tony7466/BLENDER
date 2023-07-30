@@ -1822,6 +1822,10 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+typedef struct NodeGeometryClosestNeighbors {
+  int dummy;
+} NodeGeometryClosestNeighbors;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
@@ -2683,3 +2687,9 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum GeometryNodeClosestNeighborsTargetType {
+  GEO_NODE_CLOSEST_NEIGHBOR_TARGET_POINTS = 0,
+  GEO_NODE_CLOSEST_NEIGHBOR_TARGET_EDGES = 1,
+  GEO_NODE_CLOSEST_NEIGHBOR_TARGET_FACES = 2,
+} GeometryNodeClosestNeighborsTargetType;

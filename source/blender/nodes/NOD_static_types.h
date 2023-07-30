@@ -445,6 +445,7 @@ DefNode(GeometryNode, GEO_NODE_UV_UNWRAP, def_geo_uv_unwrap, "UV_UNWRAP", UVUnwr
 DefNode(GeometryNode, GEO_NODE_VIEWER, def_geo_viewer, "VIEWER", Viewer, "Viewer", "Display the input data in the Spreadsheet Editor")
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, def_geo_volume_to_mesh, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
+DefNode(GeometryNode, GEO_NODE_CLOSEST_NEIGHBORS, def_geo_closest_neighbors, "CLOSEST_NEIGHBORS", ClosestNeighbors, "Closest Neighbors", "Find sets of closest primitives in a radius")
 
 DefNode(GeometryNode, GEO_NODE_INTERPOLATE_CURVES, 0, "INTERPOLATE_CURVES", InterpolateCurves, "Interpolate Curves", "Generate new curves on points by interpolating between existing curves")
 
