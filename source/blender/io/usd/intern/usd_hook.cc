@@ -159,8 +159,8 @@ static void handle_python_error(USDHook *hook)
   PyErr_Print();
 
   WM_reportf(RPT_ERROR,
-             "An exception occurred invoking USD hook '%s'.  Please see the console for additional "
-             "details",
+             "An exception occurred invoking USD hook '%s'.  Please see the console for "
+             "additional details",
              hook->name);
 }
 
