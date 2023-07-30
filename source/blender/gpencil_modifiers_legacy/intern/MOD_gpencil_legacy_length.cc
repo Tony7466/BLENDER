@@ -6,8 +6,8 @@
  * \ingroup modifiers
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "BLI_hash.h"
 #include "BLI_listbase.h"
@@ -46,7 +46,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-static void initData(GpencilModifierData *md)
+static void init_data(GpencilModifierData *md)
 {
   LengthGpencilModifierData *gpmd = (LengthGpencilModifierData *)md;
 
@@ -55,7 +55,7 @@ static void initData(GpencilModifierData *md)
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(LengthGpencilModifierData), modifier);
 }
 
-static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
+static void copy_data(const GpencilModifierData *md, GpencilModifierData *target)
 {
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
@@ -71,7 +71,7 @@ static float *noise_table(int len, int offset, int seed)
 
 BLI_INLINE float table_sample(float *table, float x)
 {
-  return interpf(table[(int)ceilf(x)], table[(int)floor(x)], fractf(x));
+  return interpf(table[int(ceilf(x))], table[int(floor(x))], fractf(x));
 }
 
 static bool gpencil_modify_stroke(bGPDstroke *gps,
@@ -139,7 +139,7 @@ static void applyLength(GpencilModifierData *md,
     seed += BLI_hash_string(md->name);
 
     if (lmd->flag & GP_LENGTH_USE_RANDOM) {
-      seed += (int)DEG_get_ctime(depsgraph) / lmd->step;
+      seed += int(DEG_get_ctime(depsgraph)) / lmd->step;
     }
 
     float rand_offset = BLI_hash_int_01(seed);
@@ -150,7 +150,7 @@ static void applyLength(GpencilModifierData *md,
     double offset[2] = {0.0f, 0.0f};
     double r[2];
 
-    float *noise_table_length = noise_table(4, (int)floor(lmd->rand_offset), seed + 2);
+    float *noise_table_length = noise_table(4, int(floor(lmd->rand_offset)), seed + 2);
 
     /* To ensure a nice distribution, we use halton sequence and offset using the seed. */
     BLI_halton_2d(primes, offset, rnd_index, r);
@@ -189,7 +189,7 @@ static void applyLength(GpencilModifierData *md,
    * `ceil(overshoot_fac*(gps->totpoints - 2))` is used in stretch and never
    * produce a result higher than `totpoints - 2`. */
   const float second_overshoot_fac = lmd->overshoot_fac * (totpoints - 2) /
-                                     ((float)gps->totpoints - 2) *
+                                     (float(gps->totpoints) - 2) *
                                      (1.0f - 0.1f / (totpoints - 1.0f));
   changed |= gpencil_modify_stroke(gps,
                                    len * second_fac,
@@ -206,12 +206,12 @@ static void applyLength(GpencilModifierData *md,
   }
 }
 
-static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *depsgraph,
-                         Object *ob,
-                         bGPDlayer *gpl,
-                         bGPDframe *gpf,
-                         bGPDstroke *gps)
+static void deform_stroke(GpencilModifierData *md,
+                          Depsgraph *depsgraph,
+                          Object *ob,
+                          bGPDlayer *gpl,
+                          bGPDframe *gpf,
+                          bGPDstroke *gps)
 {
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
@@ -237,19 +237,19 @@ static void deformStroke(GpencilModifierData *md,
   applyLength(md, depsgraph, gpd, gpf, gps, ob);
 }
 
-static void bakeModifier(Main * /*bmain*/,
-                         Depsgraph *depsgraph,
-                         GpencilModifierData *md,
-                         Object *ob)
+static void bake_modifier(Main * /*bmain*/,
+                          Depsgraph *depsgraph,
+                          GpencilModifierData *md,
+                          Object *ob)
 {
-  generic_bake_deform_stroke(depsgraph, md, ob, false, deformStroke);
+  generic_bake_deform_stroke(depsgraph, md, ob, false, deform_stroke);
 }
 
-static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   LengthGpencilModifierData *mmd = (LengthGpencilModifierData *)md;
 
-  walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
 static void random_header_draw(const bContext * /*C*/, Panel *panel)
@@ -258,7 +258,7 @@ static void random_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_random", 0, IFACE_("Randomize"), ICON_NONE);
+  uiItemR(layout, ptr, "use_random", UI_ITEM_NONE, IFACE_("Randomize"), ICON_NONE);
 }
 
 static void random_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -271,7 +271,7 @@ static void random_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_random"));
 
-  uiItemR(layout, ptr, "step", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void offset_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -279,10 +279,11 @@ static void offset_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *layout = panel->layout;
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   uiLayoutSetPropSep(layout, true);
-  uiItemR(layout, ptr, "random_start_factor", 0, IFACE_("Random Offset Start"), ICON_NONE);
-  uiItemR(layout, ptr, "random_end_factor", 0, IFACE_("Random Offset End"), ICON_NONE);
-  uiItemR(layout, ptr, "random_offset", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "seed", 0, nullptr, ICON_NONE);
+  uiItemR(
+      layout, ptr, "random_start_factor", UI_ITEM_NONE, IFACE_("Random Offset Start"), ICON_NONE);
+  uiItemR(layout, ptr, "random_end_factor", UI_ITEM_NONE, IFACE_("Random Offset End"), ICON_NONE);
+  uiItemR(layout, ptr, "random_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -292,17 +293,17 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
   uiLayoutSetPropSep(layout, true);
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *col = uiLayoutColumn(layout, true);
 
   if (RNA_enum_get(ptr, "mode") == GP_LENGTH_RELATIVE) {
-    uiItemR(col, ptr, "start_factor", 0, IFACE_("Start"), ICON_NONE);
-    uiItemR(col, ptr, "end_factor", 0, IFACE_("End"), ICON_NONE);
+    uiItemR(col, ptr, "start_factor", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
+    uiItemR(col, ptr, "end_factor", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
   }
   else {
-    uiItemR(col, ptr, "start_length", 0, IFACE_("Start"), ICON_NONE);
-    uiItemR(col, ptr, "end_length", 0, IFACE_("End"), ICON_NONE);
+    uiItemR(col, ptr, "start_length", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
+    uiItemR(col, ptr, "end_length", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
   }
 
   uiItemR(layout, ptr, "overshoot_factor", UI_ITEM_R_SLIDER, IFACE_("Used Length"), ICON_NONE);
@@ -321,7 +322,7 @@ static void curvature_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_curvature", 0, IFACE_("Curvature"), ICON_NONE);
+  uiItemR(layout, ptr, "use_curvature", UI_ITEM_NONE, IFACE_("Curvature"), ICON_NONE);
 }
 
 static void curvature_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -336,13 +337,13 @@ static void curvature_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_curvature"));
 
-  uiItemR(col, ptr, "point_density", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "segment_influence", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "max_angle", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "invert_curvature", 0, IFACE_("Invert"), ICON_NONE);
+  uiItemR(col, ptr, "point_density", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "segment_influence", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "max_angle", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "invert_curvature", UI_ITEM_NONE, IFACE_("Invert"), ICON_NONE);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Length, panel_draw);
@@ -358,24 +359,24 @@ static void panelRegister(ARegionType *region_type)
 
 GpencilModifierTypeInfo modifierType_Gpencil_Length = {
     /*name*/ N_("Length"),
-    /*structName*/ "LengthGpencilModifierData",
-    /*structSize*/ sizeof(LengthGpencilModifierData),
+    /*struct_name*/ "LengthGpencilModifierData",
+    /*struct_size*/ sizeof(LengthGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
     /*flags*/ eGpencilModifierTypeFlag_SupportsEditmode,
 
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ nullptr,
-    /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ nullptr,
+    /*deform_stroke*/ deform_stroke,
+    /*generate_strokes*/ nullptr,
+    /*bake_modifier*/ bake_modifier,
+    /*remap_time*/ nullptr,
 
-    /*initData*/ initData,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*panelRegister*/ panelRegister,
+    /*init_data*/ init_data,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*panel_register*/ panel_register,
 };

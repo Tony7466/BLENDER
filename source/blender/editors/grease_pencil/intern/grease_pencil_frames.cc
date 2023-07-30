@@ -62,13 +62,34 @@ void select_all_frames(bke::greasepencil::Layer *layer, const short select_mode)
 
 bool layer_has_any_frame_selected(const bke::greasepencil::Layer *layer)
 {
-  for (auto item : layer->frames().items()) {
-    const GreasePencilFrame &frame = item.value;
+  for (const auto &[frame_number, frame] : layer->frames().items()) {
     if (frame.is_selected()) {
       return true;
     }
   }
   return false;
+}
+
+static void append_frame_to_key_edit_data(KeyframeEditData *ked,
+                                          const int frame_number,
+                                          const GreasePencilFrame &frame)
+{
+  CfraElem *ce = MEM_cnew<CfraElem>(__func__);
+  ce->cfra = float(frame_number);
+  ce->sel = frame.is_selected();
+  BLI_addtail(&ked->list, ce);
+}
+
+void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
+                                                    const bke::greasepencil::Layer *layer)
+{
+  BLI_assert(ked != nullptr);
+
+  for (const auto &[frame_number, frame] : layer->frames().items()) {
+    if (frame.is_selected()) {
+      append_frame_to_key_edit_data(ked, frame_number, frame);
+    }
+  }
 }
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)

@@ -6,9 +6,9 @@
  * \ingroup modifiers
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -55,7 +55,7 @@
 /* The time for geometric strokes */
 #define GP_BUILD_TIME_GEOSTROKES 1.0
 
-static void initData(GpencilModifierData *md)
+static void init_data(GpencilModifierData *md)
 {
   BuildGpencilModifierData *gpmd = (BuildGpencilModifierData *)md;
 
@@ -64,12 +64,12 @@ static void initData(GpencilModifierData *md)
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(BuildGpencilModifierData), modifier);
 }
 
-static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
+static void copy_data(const GpencilModifierData *md, GpencilModifierData *target)
 {
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
-static bool dependsOnTime(GpencilModifierData * /*md*/)
+static bool depends_on_time(GpencilModifierData * /*md*/)
 {
   return true;
 }
@@ -173,7 +173,7 @@ static void reduce_stroke_points(bGPdata *gpd,
     }
 
     default:
-      printf("ERROR: Unknown transition %d in %s()\n", (int)transition, __func__);
+      printf("ERROR: Unknown transition %d in %s()\n", int(transition), __func__);
       break;
   }
 
@@ -213,8 +213,7 @@ static void fade_stroke_points(bGPDstroke *gps,
     case GP_BUILD_TRANSITION_SHRINK:
     case GP_BUILD_TRANSITION_VANISH: {
       for (int i = starting_index; i <= ending_index; i++) {
-        float weight = interpf(
-            ending_weight, starting_weight, (float)(i - starting_index) / range);
+        float weight = interpf(ending_weight, starting_weight, float(i - starting_index) / range);
         if (target_def_nr >= 0) {
           dvert = &gps->dvert[i];
           MDeformWeight *dw = BKE_defvert_ensure_index(dvert, target_def_nr);
@@ -234,7 +233,7 @@ static void fade_stroke_points(bGPDstroke *gps,
     }
 
     default:
-      printf("ERROR: Unknown transition %d in %s()\n", (int)transition, __func__);
+      printf("ERROR: Unknown transition %d in %s()\n", int(transition), __func__);
       break;
   }
 }
@@ -282,7 +281,7 @@ static void build_sequential(Object *ob,
   size_t i;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   /* Frame-rate of scene. */
-  const float fps = (((float)scene->r.frs_sec) / scene->r.frs_sec_base);
+  const float fps = (float(scene->r.frs_sec) / scene->r.frs_sec_base);
 
   /* 1) Determine which strokes to start with (& adapt total number of strokes to build). */
   if (mmd->mode == GP_BUILD_MODE_ADDITIVE) {
@@ -390,7 +389,7 @@ static void build_sequential(Object *ob,
                 /* Cycling backwards through zero-points to fix them. */
                 for (int k = 0; k < zeropoints; k++) {
                   float linear_fill = interpf(
-                      0, deltatime, ((float)k + 1) / (zeropoints + 1)); /* Factor = Proportion. */
+                      0, deltatime, (float(k) + 1) / (zeropoints + 1)); /* Factor = Proportion. */
                   idx_times[curpoint - k - 1] = sumtime + linear_fill;
                 }
               }
@@ -412,9 +411,9 @@ static void build_sequential(Object *ob,
       /* If stroke had no time data at all, use mmd->time_geostrokes. */
       if (zeropoints + 1 == cell->totpoints) {
         for (int j = 0; j < cell->totpoints; j++) {
-          idx_times[(int)curpoint - j - 1] = (float)(cell->totpoints - j) *
+          idx_times[int(curpoint) - j - 1] = float(cell->totpoints - j) *
                                                  GP_BUILD_TIME_GEOSTROKES /
-                                                 (float)cell->totpoints +
+                                                 float(cell->totpoints) +
                                              sumtime;
         }
         last_pointtime = GP_BUILD_TIME_GEOSTROKES;
@@ -463,7 +462,7 @@ static void build_sequential(Object *ob,
 
   if (mmd->time_mode == GP_BUILD_TIMEMODE_DRAWSPEED) {
     /* Recalculate equivalent of "fac" using timestamps. */
-    float targettime = (*ctime - (float)gpf->framenum) / fps;
+    float targettime = (*ctime - float(gpf->framenum)) / fps;
     fac = 0;
     /* If ctime is in current frame, find last point. */
     if (0 < targettime && targettime < sumtime) {
@@ -471,7 +470,7 @@ static void build_sequential(Object *ob,
       if (mmd->transition != GP_BUILD_TRANSITION_SHRINK) {
         for (i = 0; i < sumpoints; i++) {
           if (targettime < idx_times[i]) {
-            fac = (float)i / sumpoints;
+            fac = float(i) / sumpoints;
             break;
           }
         }
@@ -479,7 +478,7 @@ static void build_sequential(Object *ob,
       else {
         for (i = 0; i < sumpoints; i++) {
           if (targettime < sumtime - idx_times[sumpoints - i - 1]) {
-            fac = (float)i / sumpoints;
+            fac = float(i) / sumpoints;
             break;
           }
         }
@@ -500,8 +499,8 @@ static void build_sequential(Object *ob,
      */
     case GP_BUILD_TRANSITION_GROW:
       first_visible = 0; /* always visible */
-      last_visible = (size_t)roundf(sumpoints * use_fac);
-      fade_start = (int)roundf(sumpoints * use_fade_fac);
+      last_visible = size_t(roundf(sumpoints * use_fac));
+      fade_start = int(roundf(sumpoints * use_fade_fac));
       fade_end = last_visible;
       break;
 
@@ -510,8 +509,8 @@ static void build_sequential(Object *ob,
      */
     case GP_BUILD_TRANSITION_SHRINK:
       first_visible = 0; /* always visible (until last point removed) */
-      last_visible = (size_t)(sumpoints * (1.0f + set_fade_fac - use_fac));
-      fade_start = (int)roundf(sumpoints * (1.0f - use_fade_fac - set_fade_fac));
+      last_visible = size_t(sumpoints * (1.0f + set_fade_fac - use_fac));
+      fade_start = int(roundf(sumpoints * (1.0f - use_fade_fac - set_fade_fac)));
       fade_end = last_visible;
       break;
 
@@ -519,10 +518,10 @@ static void build_sequential(Object *ob,
      *  - As fac increases, the early points start getting hidden
      */
     case GP_BUILD_TRANSITION_VANISH:
-      first_visible = (size_t)(sumpoints * use_fade_fac);
+      first_visible = size_t(sumpoints * use_fade_fac);
       last_visible = sumpoints; /* i.e. visible until the end, unless first overlaps this */
       fade_start = first_visible;
-      fade_end = (int)roundf(sumpoints * use_fac);
+      fade_end = int(roundf(sumpoints * use_fac));
       break;
   }
 
@@ -536,8 +535,8 @@ static void build_sequential(Object *ob,
       clear_stroke(gpf, cell->gps);
     }
     else {
-      if (fade_start != fade_end && (int)cell->start_idx < fade_end &&
-          (int)cell->end_idx > fade_start) {
+      if (fade_start != fade_end && int(cell->start_idx) < fade_end &&
+          int(cell->end_idx) > fade_start) {
         int start_index = fade_start - cell->start_idx;
         int end_index = cell->totpoints + fade_end - cell->end_idx - 1;
         CLAMP(start_index, 0, cell->totpoints - 1);
@@ -625,7 +624,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
     /* Relative Length of Stroke - Relative to the longest stroke,
      * what proportion of the available time should this stroke use
      */
-    const float relative_len = (float)gps->totpoints / (float)max_points;
+    const float relative_len = float(gps->totpoints) / float(max_points);
 
     /* Determine how many points should be left in the stroke */
     int points_num = 0;
@@ -637,10 +636,10 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
         const float scaled_fac = use_fac / MAX2(relative_len, PSEUDOINVERSE_EPSILON);
 
         if (reverse) {
-          points_num = (int)roundf((1.0f - scaled_fac) * gps->totpoints);
+          points_num = int(roundf((1.0f - scaled_fac) * gps->totpoints));
         }
         else {
-          points_num = (int)roundf(scaled_fac * gps->totpoints);
+          points_num = int(roundf(scaled_fac * gps->totpoints));
         }
 
         break;
@@ -654,10 +653,10 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
         const float scaled_fac = (use_fac - start_fac) / MAX2(relative_len, PSEUDOINVERSE_EPSILON);
 
         if (reverse) {
-          points_num = (int)roundf((1.0f - scaled_fac) * gps->totpoints);
+          points_num = int(roundf((1.0f - scaled_fac) * gps->totpoints));
         }
         else {
-          points_num = (int)roundf(scaled_fac * gps->totpoints);
+          points_num = int(roundf(scaled_fac * gps->totpoints));
         }
 
         break;
@@ -672,7 +671,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
     else {
       int more_points = points_num - gps->totpoints;
       CLAMP(more_points, 0, fade_points + 1);
-      float max_weight = (float)(points_num + more_points) / fade_points;
+      float max_weight = float(points_num + more_points) / fade_points;
       CLAMP(max_weight, 0.0f, 1.0f);
       int starting_index = mmd->transition == GP_BUILD_TRANSITION_VANISH ?
                                gps->totpoints - points_num - more_points :
@@ -681,11 +680,11 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
                              gps->totpoints - points_num + fade_points - more_points :
                              points_num - 1 + more_points;
       float starting_weight = mmd->transition == GP_BUILD_TRANSITION_VANISH ?
-                                  ((float)more_points / fade_points) :
+                                  (float(more_points) / fade_points) :
                                   max_weight;
       float ending_weight = mmd->transition == GP_BUILD_TRANSITION_VANISH ?
                                 max_weight :
-                                ((float)more_points / fade_points);
+                                (float(more_points) / fade_points);
       CLAMP(starting_index, 0, gps->totpoints - 1);
       CLAMP(ending_index, 0, gps->totpoints - 1);
       fade_stroke_points(gps,
@@ -870,7 +869,7 @@ static void generate_geometry(GpencilModifierData *md,
 }
 
 /* Entry-point for Build Modifier */
-static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
+static void generate_strokes(GpencilModifierData *md, Depsgraph *depsgraph, Object *ob)
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -897,9 +896,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   /* First: Build mode and build settings. */
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_SEQUENTIAL) {
-    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "transition", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   if (mode == GP_BUILD_MODE_CONCURRENT) {
     /* Concurrent mode doesn't support GP_BUILD_TIMEMODE_DRAWSPEED, so unset it. */
@@ -907,35 +906,35 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
       RNA_enum_set(ptr, "time_mode", GP_BUILD_TIMEMODE_FRAMES);
       time_mode = GP_BUILD_TIMEMODE_FRAMES;
     }
-    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "transition", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   uiItemS(layout);
 
   /* Second: Time mode and time settings. */
 
-  uiItemR(layout, ptr, "time_mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "time_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_CONCURRENT) {
-    uiItemR(layout, ptr, "concurrent_time_alignment", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "concurrent_time_alignment", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   switch (time_mode) {
     case GP_BUILD_TIMEMODE_DRAWSPEED:
-      uiItemR(layout, ptr, "speed_factor", 0, nullptr, ICON_NONE);
-      uiItemR(layout, ptr, "speed_maxgap", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "speed_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "speed_maxgap", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     case GP_BUILD_TIMEMODE_FRAMES:
-      uiItemR(layout, ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
+      uiItemR(layout, ptr, "length", UI_ITEM_NONE, IFACE_("Frames"), ICON_NONE);
       if (mode != GP_BUILD_MODE_ADDITIVE) {
-        uiItemR(layout, ptr, "start_delay", 0, nullptr, ICON_NONE);
+        uiItemR(layout, ptr, "start_delay", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
       break;
     case GP_BUILD_TIMEMODE_PERCENTAGE:
-      uiItemR(layout, ptr, "percentage_factor", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "percentage_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     default:
       break;
   }
   uiItemS(layout);
-  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "object", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   /* Some housekeeping to prevent clashes between incompatible
    * options */
@@ -956,7 +955,8 @@ static void frame_range_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
+  uiItemR(
+      layout, ptr, "use_restrict_frame_range", UI_ITEM_NONE, IFACE_("Custom Range"), ICON_NONE);
 }
 
 static void frame_range_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -969,8 +969,8 @@ static void frame_range_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
-  uiItemR(col, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "frame_start", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
+  uiItemR(col, ptr, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
 static void fading_header_draw(const bContext * /*C*/, Panel *panel)
@@ -979,7 +979,7 @@ static void fading_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_fading", 0, IFACE_("Fade"), ICON_NONE);
+  uiItemR(layout, ptr, "use_fading", UI_ITEM_NONE, IFACE_("Fade"), ICON_NONE);
 }
 
 static void fading_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -992,11 +992,11 @@ static void fading_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "fade_factor", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(layout, ptr, "fade_factor", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, ptr, "fade_thickness_strength", 0, IFACE_("Thickness"), ICON_NONE);
-  uiItemR(col, ptr, "fade_opacity_strength", 0, IFACE_("Opacity"), ICON_NONE);
+  uiItemR(col, ptr, "fade_thickness_strength", UI_ITEM_NONE, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(col, ptr, "fade_opacity_strength", UI_ITEM_NONE, IFACE_("Opacity"), ICON_NONE);
 
   uiItemPointerR(layout,
                  ptr,
@@ -1012,7 +1012,7 @@ static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
   gpencil_modifier_masking_panel_draw(panel, false, false);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Build, panel_draw);
@@ -1024,16 +1024,16 @@ static void panelRegister(ARegionType *region_type)
       region_type, "_mask", "Influence", nullptr, mask_panel_draw, panel_type);
 }
 
-static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
 
-  walk(userData, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
+  walk(user_data, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
-static void updateDepsgraph(GpencilModifierData *md,
-                            const ModifierUpdateDepsgraphContext *ctx,
-                            const int /*mode*/)
+static void update_depsgraph(GpencilModifierData *md,
+                             const ModifierUpdateDepsgraphContext *ctx,
+                             const int /*mode*/)
 {
   BuildGpencilModifierData *lmd = (BuildGpencilModifierData *)md;
   if (lmd->object != nullptr) {
@@ -1047,24 +1047,24 @@ static void updateDepsgraph(GpencilModifierData *md,
 
 GpencilModifierTypeInfo modifierType_Gpencil_Build = {
     /*name*/ N_("Build"),
-    /*structName*/ "BuildGpencilModifierData",
-    /*structSize*/ sizeof(BuildGpencilModifierData),
+    /*struct_name*/ "BuildGpencilModifierData",
+    /*struct_size*/ sizeof(BuildGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
     /*flags*/ eGpencilModifierTypeFlag_NoApply,
 
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformStroke*/ nullptr,
-    /*generateStrokes*/ generateStrokes,
-    /*bakeModifier*/ nullptr,
-    /*remapTime*/ nullptr,
+    /*deform_stroke*/ nullptr,
+    /*generate_strokes*/ generate_strokes,
+    /*bake_modifier*/ nullptr,
+    /*remap_time*/ nullptr,
 
-    /*initData*/ initData,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ dependsOnTime,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*panelRegister*/ panelRegister,
+    /*init_data*/ init_data,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ depends_on_time,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*panel_register*/ panel_register,
 };

@@ -261,7 +261,14 @@ struct ProjPaintState {
   float dither;
 
   Brush *brush;
-  short tool, blend, mode;
+
+  /**
+   * Based on #Brush::imagepaint_tool but may be overridden by mode (#BrushStrokeMode).
+   * So check this value instead of `brush->imagepaint_tool`.
+   */
+  short tool;
+  short blend;
+  BrushStrokeMode mode;
 
   float brush_size;
   Object *ob;
@@ -5869,15 +5876,18 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
   ToolSettings *settings = scene->toolsettings;
 
   /* brush */
-  ps->mode = mode;
+  ps->mode = BrushStrokeMode(mode);
   ps->brush = BKE_paint_brush(&settings->imapaint.paint);
   if (ps->brush) {
     Brush *brush = ps->brush;
     ps->tool = brush->imagepaint_tool;
     ps->blend = brush->blend;
+    if (mode == BRUSH_STROKE_SMOOTH) {
+      ps->tool = PAINT_TOOL_SOFTEN;
+    }
     /* only check for inversion for the soften tool, elsewhere,
      * a resident brush inversion flag can cause issues */
-    if (brush->imagepaint_tool == PAINT_TOOL_SOFTEN) {
+    if (ps->tool == PAINT_TOOL_SOFTEN) {
       ps->mode = (((ps->mode == BRUSH_STROKE_INVERT) ^ ((brush->flag & BRUSH_DIR_IN) != 0)) ?
                       BRUSH_STROKE_INVERT :
                       BRUSH_STROKE_NORMAL);
@@ -5887,8 +5897,7 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
 
     /* disable for 3d mapping also because painting on mirrored mesh can create "stripes" */
     ps->do_masking = paint_use_opacity_masking(brush);
-    ps->is_texbrush = (brush->mtex.tex && brush->imagepaint_tool == PAINT_TOOL_DRAW) ? true :
-                                                                                       false;
+    ps->is_texbrush = (brush->mtex.tex && ps->tool == PAINT_TOOL_DRAW) ? true : false;
     ps->is_maskbrush = (brush->mask_mtex.tex) ? true : false;
   }
   else {
@@ -5934,7 +5943,7 @@ static void project_state_init(bContext *C, Object *ob, ProjPaintState *ps, int 
     ps->do_layer_clone = (settings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_CLONE);
   }
 
-  ps->do_stencil_brush = (ps->brush && ps->brush->imagepaint_tool == PAINT_TOOL_MASK);
+  ps->do_stencil_brush = (ps->tool == PAINT_TOOL_MASK);
   /* deactivate stenciling for the stencil brush :) */
   ps->do_layer_stencil = ((settings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_STENCIL) &&
                           !(ps->do_stencil_brush) && ps->stencil_ima);
@@ -5983,11 +5992,13 @@ void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int m
   ps_handle->scene = scene;
   ps_handle->brush = BKE_paint_brush(&settings->imapaint.paint);
 
-  /* bypass regular stroke logic */
-  if ((ps_handle->brush->imagepaint_tool == PAINT_TOOL_CLONE) && (mode == BRUSH_STROKE_INVERT)) {
-    view3d_operator_needs_opengl(C);
-    ps_handle->is_clone_cursor_pick = true;
-    return ps_handle;
+  if (mode == BRUSH_STROKE_INVERT) {
+    /* Bypass regular stroke logic. */
+    if (ps_handle->brush->imagepaint_tool == PAINT_TOOL_CLONE) {
+      view3d_operator_needs_opengl(C);
+      ps_handle->is_clone_cursor_pick = true;
+      return ps_handle;
+    }
   }
 
   ps_handle->orig_brush_size = BKE_brush_size_get(scene, ps_handle->brush);
@@ -6888,17 +6899,17 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
     uiItemR(layout, op->ptr, "slot_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, op->ptr, "name", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "name", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   switch (slot_type) {
     case PAINT_CANVAS_SOURCE_IMAGE: {
       uiLayout *col = uiLayoutColumn(layout, true);
-      uiItemR(col, op->ptr, "width", 0, nullptr, ICON_NONE);
-      uiItemR(col, op->ptr, "height", 0, nullptr, ICON_NONE);
+      uiItemR(col, op->ptr, "width", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, op->ptr, "height", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-      uiItemR(layout, op->ptr, "alpha", 0, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "generated_type", 0, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "float", 0, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "alpha", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "generated_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "float", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     }
     case PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE:
@@ -6910,7 +6921,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
       break;
   }
 
-  uiItemR(layout, op->ptr, "color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "color", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 #define IMA_DEF_NAME N_("Untitled")
