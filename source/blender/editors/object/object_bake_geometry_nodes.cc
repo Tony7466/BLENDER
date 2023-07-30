@@ -133,7 +133,6 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   }
 
   if (!StringRef(bake->directory).is_empty()) {
-
     const char *base_path = ID_BLEND_PATH(bmain, &object->id);
     char absolute_bake_dir[FILE_MAX];
     STRNCPY(absolute_bake_dir, bake->directory);

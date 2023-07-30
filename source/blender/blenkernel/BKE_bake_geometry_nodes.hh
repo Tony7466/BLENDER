@@ -11,12 +11,15 @@
 #include "BLI_sub_frame.hh"
 
 #include "BKE_bake_items.hh"
+#include "BKE_bake_items_serialize.hh"
 
 namespace blender::bke {
 
 class BakeNodeState {
  public:
   Map<int, std::unique_ptr<BakeItem>> item_by_identifier;
+  std::mutex mutex;
+  std::optional<std::string> meta_path;
 };
 
 class BakeNodeStateAtFrame {
@@ -27,8 +30,12 @@ class BakeNodeStateAtFrame {
 
 class BakeNodeStorage {
  public:
+  std::mutex mutex;
   Vector<BakeNodeStateAtFrame> states;
   std::unique_ptr<BakeNodeState> current_bake_state;
+
+  std::unique_ptr<BDataSharing> bdata_sharing;
+  std::optional<std::string> bdata_dir;
 };
 
 class GeometryNodesModifierBakes {

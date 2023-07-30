@@ -7,14 +7,17 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BKE_bake_geometry_nodes_serialize.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.h"
+#include "BKE_main.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 
 #include "BLI_binary_search.hh"
+#include "BLI_path_util.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_modifier_types.h"
@@ -528,6 +531,30 @@ class LazyFunctionForBakeNode : public LazyFunction {
       state_to_read_from = bake_storage.current_bake_state.get();
     }
     else {
+      {
+        /* TODO: Make locking more sound. */
+        std::lock_guard lock{bake_storage.mutex};
+        if (bake_storage.states.is_empty() && !StringRef(bake->directory).is_empty()) {
+          Main *bmain = DEG_get_bmain(user_data.modifier_data->depsgraph);
+          char absolute_bake_dir[FILE_MAX];
+          const char *base_path = ID_BLEND_PATH(bmain, &user_data.modifier_data->self_object->id);
+          STRNCPY(absolute_bake_dir, bake->directory);
+          BLI_path_abs(absolute_bake_dir, base_path);
+          const bke::bake::BakePath bake_path = bke::bake::BakePath::from_single_root(
+              absolute_bake_dir);
+          const Vector<bke::bake::MetaFile> meta_files = bke::bake::find_sorted_meta_files(
+              bake_path.meta_dir);
+
+          Vector<bke::BakeNodeStateAtFrame> new_states;
+          for (const bke::bake::MetaFile &meta_file : meta_files) {
+            auto new_bake_state = std::make_unique<bke::BakeNodeState>();
+            new_bake_state->meta_path.emplace(meta_file.path);
+            bake_storage.states.append({meta_file.frame, std::move(new_bake_state)});
+          }
+          bake_storage.bdata_dir = bake_path.bdata_dir;
+          bake_storage.bdata_sharing = std::make_unique<bke::BDataSharing>();
+        }
+      }
       if (!bake_storage.states.is_empty()) {
         int state_index = binary_search::find_predicate_begin(
             bake_storage.states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
@@ -546,6 +573,17 @@ class LazyFunctionForBakeNode : public LazyFunction {
       this->pass_through(params);
     }
     else {
+      {
+        std::lock_guard lock{state_to_read_from->mutex};
+        if (state_to_read_from->item_by_identifier.is_empty() &&
+            state_to_read_from->meta_path.has_value()) {
+          bke::bake::deserialize_bake_node_state_from_disk(*state_to_read_from->meta_path,
+                                                           *bake_storage.bdata_dir,
+                                                           *bake_storage.bdata_sharing,
+                                                           *state_to_read_from);
+        }
+      }
+
       Vector<void *> output_values(storage.items_num);
       Vector<const bke::BakeItem *> bake_items(storage.items_num);
       for (const int i : IndexRange(storage.items_num)) {
