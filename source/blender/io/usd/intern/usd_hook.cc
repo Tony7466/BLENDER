@@ -152,36 +152,16 @@ void register_export_hook_converters()
 /* Retrieve and report the current Python error. */
 static void handle_python_error(USDHook *hook)
 {
-  PyObject *ptype = nullptr;
-  PyObject *pvalue = nullptr;
-  PyObject *ptraceback = nullptr;
-
-  PyErr_Fetch(&ptype, &pvalue, &ptraceback);
-  if (ptype == nullptr) {
-    /* There was no error, which is unexpected. */
-    WM_reportf(RPT_ERROR,
-               "A Python exception occurred invoking USD hook '%s' but couldn't fetch the error",
-               hook->name);
+  if (!PyErr_Occurred()) {
     return;
   }
 
-  PyErr_NormalizeException(&ptype, &pvalue, &ptraceback);
-  if (ptraceback != nullptr) {
-    PyException_SetTraceback(pvalue, ptraceback);
-  }
+  PyErr_Print();
 
-  python::handle<> htype(ptype);
-  python::handle<> hvalue(python::allow_null(pvalue));
-  python::handle<> htraceback(python::allow_null(ptraceback));
-
-  python::object traceback = python::import("traceback");
-  python::object format_exception = traceback.attr("format_exception");
-  python::object formatted_list = format_exception(htype, hvalue, htraceback);
-  python::object formatted = python::str("\n").join(formatted_list);
-  std::string err_msg = python::extract<std::string>(formatted);
-
-  WM_reportf(
-      RPT_ERROR, "An exception occurred invoking USD hook '%s':\n%s", hook->name, err_msg.c_str());
+  WM_reportf(RPT_ERROR,
+             "An exception occurred invoking USD hook '%s'.  Please see the console for additional "
+             "details",
+             hook->name);
 }
 
 /* Abstract base class to facilitate calling a function with a given
