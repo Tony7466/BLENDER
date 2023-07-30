@@ -16,6 +16,7 @@
 #include "MOD_nodes.hh"
 
 #include "BKE_bake_geometry_nodes.hh"
+#include "BKE_bake_geometry_nodes_serialize.hh"
 #include "BKE_bake_items_serialize.hh"
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -132,48 +133,20 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
   }
 
   if (!StringRef(bake->directory).is_empty()) {
-    bke::BDataSharing bdata_sharing;
 
     const char *base_path = ID_BLEND_PATH(bmain, &object->id);
     char absolute_bake_dir[FILE_MAX];
     STRNCPY(absolute_bake_dir, bake->directory);
     BLI_path_abs(absolute_bake_dir, base_path);
 
+    bke::BDataSharing bdata_sharing;
+    const bke::bake::BakePath bake_path = bke::bake::BakePath::from_single_root(absolute_bake_dir);
+
     for (const bke::BakeNodeStateAtFrame &state_at_frame : bake_storage.states) {
       const SubFrame frame = state_at_frame.frame;
 
-      char frame_file_c_str[64];
-      SNPRINTF(frame_file_c_str, "%011.5f", double(frame));
-      BLI_string_replace_char(frame_file_c_str, '.', '_');
-      const StringRefNull frame_file_str = frame_file_c_str;
-
-      const std::string bdata_file_name = frame_file_str + ".bdata";
-      const std::string meta_file_name = frame_file_str + ".json";
-
-      char bdata_path[FILE_MAX];
-      BLI_path_join(
-          bdata_path, sizeof(bdata_path), absolute_bake_dir, "bdata", bdata_file_name.c_str());
-      char meta_path[FILE_MAX];
-      BLI_path_join(
-          meta_path, sizeof(meta_path), absolute_bake_dir, "meta", meta_file_name.c_str());
-
-      BLI_file_ensure_parent_dir_exists(bdata_path);
-      fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-      bke::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
-
-      io::serialize::DictionaryValue io_root;
-      io_root.append_int("version", 1);
-      std::shared_ptr<io::serialize::ArrayValue> io_bake_items = io_root.append_array(
-          "bake_items");
-      for (const auto item : state_at_frame.state->item_by_identifier.items()) {
-        const int id = item.key;
-        auto io_bake_item = io_bake_items->append_dict();
-        io_bake_item->append_int("id", id);
-        bke::serialize_bake_item(*item.value, bdata_writer, bdata_sharing, *io_bake_item);
-      }
-
-      BLI_file_ensure_parent_dir_exists(meta_path);
-      io::serialize::write_json_file(meta_path, io_root);
+      bke::bake::serialize_bake_node_state_to_disk(
+          frame, *state_at_frame.state, bake_path, bdata_sharing);
     }
   }
 
