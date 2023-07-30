@@ -145,6 +145,10 @@ static void wm_test_autorun_revert_action_exec(bContext *C);
 
 static CLG_LogRef LOG = {"wm.files"};
 
+/** For adding numbers to the filename to keep multiple autosaves around.
+*   Incremented once with every call to wm_autosave_write. */
+int auto_saves_done = 0;
+
 /* -------------------------------------------------------------------- */
 /** \name Misc Utility Functions
  * \{ */
@@ -2033,7 +2037,9 @@ static bool wm_file_write(bContext *C,
 /** \name Auto-Save API
  * \{ */
 
-static void wm_autosave_location(char filepath[FILE_MAX])
+/** Negative savenumbers will not be included in the filepath.
+* The savenumber will be padded with zeroes to be at least 4 characters. */
+static void wm_autosave_location(char filepath[FILE_MAX], int savenumber = -1)
 {
   const int pid = abs(getpid());
   char filename[1024];
@@ -2046,10 +2052,20 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   if (blendfile_path && (blendfile_path[0] != '\0')) {
     const char *basename = BLI_path_basename(blendfile_path);
     int len = strlen(basename) - 6;
-    SNPRINTF(filename, "%.*s_%d_autosave.blend", len, basename, pid);
+    if (savenumber >= 0) {
+      SNPRINTF(filename, "%.*s_%d_%04d_autosave.blend", len, basename, pid, savenumber);
+    }
+    else {
+      SNPRINTF(filename, "%.*s_%d_autosave.blend", len, basename, pid);
+    }
   }
   else {
-    SNPRINTF(filename, "%d_autosave.blend", pid);
+    if (savenumber >= 0) {
+      SNPRINTF(filename, "%d_%04d_autosave.blend", pid, savenumber);
+    }
+    else {
+      SNPRINTF(filename, "%d_autosave.blend", pid);
+    }
   }
 
   const char *tempdir_base = BKE_tempdir_base();
@@ -2073,7 +2089,20 @@ static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
 {
   char filepath[FILE_MAX];
 
-  wm_autosave_location(filepath);
+  /* Do not include a save number if only 1 autosave is to be kept around. */
+  int savenumber = -1;
+  if (U.auto_save_count != 1) {
+    if (U.auto_save_count == 0) {
+      savenumber = auto_saves_done;
+    }
+    else {
+      savenumber = auto_saves_done % U.auto_save_count;
+    }
+  }
+
+  wm_autosave_location(filepath, savenumber);
+
+  auto_saves_done++;
 
   /* Fast save of last undo-buffer, now with UI. */
   const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;

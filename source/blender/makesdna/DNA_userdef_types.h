@@ -716,8 +716,8 @@ typedef struct UserDef {
   /** #eUserPref_PrefFlag preferences for the preferences. */
   char pref_flag;
   char savetime;
+  char auto_save_count;
   char mouse_emulate_3_button_modifier;
-  char _pad4[1];
   /** FILE_MAXDIR length. */
   char tempdir[768];
   char fontdir[768];

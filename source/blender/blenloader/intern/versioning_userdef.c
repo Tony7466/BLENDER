@@ -832,6 +832,8 @@ void blo_do_versions_userdef(UserDef *userdef)
     /* obj and ply python addons were removed. */
     BKE_addon_remove_safe(&userdef->addons, "io_mesh_ply");
     BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
+
+    userdef->auto_save_count = 1;
   }
 
   /**

@@ -31,6 +31,7 @@ const UserDef U_default = {
                USER_DUP_POINTCLOUD,
     .pref_flag = USER_PREF_FLAG_SAVE,
     .savetime = 2,
+    .auto_save_count = 1,
     .tempdir = "",
     /* Overwritten by #BKE_appdir_font_folder_default(..)
      * unless the system font's cannot be found. */

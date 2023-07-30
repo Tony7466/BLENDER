@@ -6561,6 +6561,19 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
                            "Warning: Sculpt and edit mode data won't be saved");
   RNA_def_property_update(prop, 0, "rna_userdef_autosave_update");
 
+  prop = RNA_def_property(srna, "auto_save_count", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "auto_save_count");
+  RNA_def_property_int_default(prop, 1);
+  RNA_def_property_range(prop, 0, 100);
+  RNA_def_property_ui_range(prop, 1, 10, 1, 0);
+  RNA_def_property_ui_text(prop,
+                           "Auto Save Count",
+                           "Number of automatic saves to keep for a file, per Blender instance.\n"
+                           "Type in 0 to keep saving indefinitely.\n"
+                           "A large number of autosaves can eat up a lot of space.\n"
+                           "On Windows, make sure to clean your temp directory if this value is high");
+  RNA_def_property_update(prop, 0, "rna_userdef_autosave_update");
+
   prop = RNA_def_property(srna, "auto_save_time", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "savetime");
   RNA_def_property_range(prop, 1, 60);
