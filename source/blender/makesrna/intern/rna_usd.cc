@@ -29,7 +29,7 @@ static StructRNA *rna_USDHook_refine(PointerRNA *ptr)
 
 static bool rna_USDHook_unregister(Main *bmain, StructRNA *type)
 {
-  USDHook *hook = RNA_struct_blender_type_get(type);
+  USDHook *hook = static_cast<USDHook*>(RNA_struct_blender_type_get(type));
 
   if (hook == NULL) {
     return false;
@@ -97,7 +97,7 @@ static StructRNA *rna_USDHook_register(Main *bmain,
   }
 
   /* create a new KeyingSetInfo type */
-  hook = MEM_mallocN(sizeof(USDHook), "python USD hook");
+  hook = static_cast<USDHook*>(MEM_mallocN(sizeof(USDHook), "python USD hook"));
   memcpy(hook, &dummy_hook, sizeof(USDHook));
 
   /* set RNA-extensions info */

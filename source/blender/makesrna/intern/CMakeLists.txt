@@ -92,7 +92,7 @@ set(DEFSRC
 
 if(WITH_USD)
   list(APPEND DEFSRC
-    rna_usd.c
+    rna_usd.cc
   )
   add_definitions(-DWITH_USD)
 endif()
