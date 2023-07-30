@@ -4530,5 +4530,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        version_node_socket_name(ntree, CMP_NODE_ROTATE, "Degr", "Angle");
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 }
