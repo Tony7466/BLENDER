@@ -427,8 +427,7 @@ struct PBVHBatches {
       }
       if (sharp_faces && sharp_faces[face_i]) {
         if (face_i != last_face) {
-          face_no = convert_value<float3, short4>(blender::bke::mesh::face_normal_calc(
-              args.vert_positions, args.corner_verts.slice(args.faces[face_i])));
+          face_no = convert_value<float3, short4>(args.face_normals[face_i]);
           last_face = face_i;
         }
 
