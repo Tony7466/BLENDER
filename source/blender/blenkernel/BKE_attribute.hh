@@ -94,6 +94,12 @@ struct AttributeInit {
     MoveArray,
     /** #AttributeInitShared. */
     Shared,
+    /** #AttributeInitGrid. */
+    Grid,
+    /** #AttributeInitMoveGrid. */
+    MoveGrid,
+    /** #AttributeInitSharedGrid. */
+    SharedGrid,
   };
   Type type;
   AttributeInit(const Type type) : type(type) {}
@@ -148,6 +154,41 @@ struct AttributeInitShared : public AttributeInit {
 
   AttributeInitShared(const void *data, const ImplicitSharingInfo &sharing_info)
       : AttributeInit(Type::Shared), data(data), sharing_info(&sharing_info)
+  {
+  }
+};
+
+/**
+ * Create an attribute by copying data from an existing grid. The grid must have the same type as
+ * the newly created attribute.
+ */
+struct AttributeInitGrid : public AttributeInit {
+  volume::GGrid grid;
+
+  AttributeInitGrid(GVArray varray) : AttributeInit(Type::Grid), grid(std::move(grid)) {}
+};
+
+/**
+ * Create an attribute by passing ownership of an existing grid.
+ * Sometimes data is created before a geometry component is available. In that case, it's
+ * preferable to move data directly to the created attribute to avoid a new allocation and a copy.
+ */
+struct AttributeInitMoveGrid : public AttributeInit {
+  void *data = nullptr;
+
+  AttributeInitMoveGrid(void *data) : AttributeInit(Type::MoveGrid), data(data) {}
+};
+
+/**
+ * Create a shared attribute by adding a user to a shared data array.
+ * The sharing info has ownership of the provided contiguous array.
+ */
+struct AttributeInitSharedGrid : public AttributeInit {
+  const void *data = nullptr;
+  const ImplicitSharingInfo *sharing_info = nullptr;
+
+  AttributeInitSharedGrid(const void *data, const ImplicitSharingInfo &sharing_info)
+      : AttributeInit(Type::SharedGrid), data(data), sharing_info(&sharing_info)
   {
   }
 };

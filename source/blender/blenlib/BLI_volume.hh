@@ -19,7 +19,6 @@
 
 namespace blender {
 
-class ResourceScope;
 namespace volume {
 template<typename T> class Grid;
 template<typename T> class MutableGrid;
@@ -213,14 +212,11 @@ class GMutableGrid {
   }
 
   /* Create an empty grid with a background value. */
-  static GMutableGrid create(ResourceScope &scope,
-                             const CPPType &type,
-                             const void *background_value);
+  static GMutableGrid create(const CPPType &type, const void *background_value);
   /* Create an empty grid with the type default as background value. */
-  static GMutableGrid create(ResourceScope &scope, const CPPType &type);
+  static GMutableGrid create(const CPPType &type);
   /* Create a grid with the active volume mask voxels. */
-  static GMutableGrid create(ResourceScope &scope,
-                             const CPPType &type,
+  static GMutableGrid create(const CPPType &type,
                              const GridMask &mask,
                              const void *inactive_value,
                              const void *active_value);
@@ -272,12 +268,11 @@ template<typename T> class MutableGrid {
 #endif
 
   /* Create an empty grid with a background value. */
-  static MutableGrid<T> create(ResourceScope &scope, const T &background_value);
+  static MutableGrid<T> create(const T &background_value);
   /* Create an empty grid with the type default as background value. */
-  static MutableGrid<T> create(ResourceScope &scope);
+  static MutableGrid<T> create();
   /* Create a grid with the active volume mask voxels. */
-  static MutableGrid<T> create(ResourceScope &scope,
-                               const GridMask &mask,
+  static MutableGrid<T> create(const GridMask &mask,
                                const T &inactive_value,
                                const T &active_value);
 

@@ -12,10 +12,6 @@
 #include "BKE_attribute.h"
 #include "BKE_volume.h"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
-
 namespace blender::bke {
 
 /**

@@ -522,13 +522,29 @@ static bool try_add_shared_field_attribute(MutableAttributeAccessor attributes,
     /* Avoid costly domain and type interpolation, which would make sharing impossible. */
     return false;
   }
-  const GAttributeReader attribute = attributes.lookup(*field_id, domain, data_type);
-  if (!attribute.sharing_info || !attribute.varray.is_span()) {
-    return false;
+  if (const GAttributeReader attribute = attributes.lookup(*field_id, domain, data_type)) {
+    if (!attribute.sharing_info || !attribute.varray.is_span()) {
+      return false;
+    }
+    const AttributeInitShared init(attribute.varray.get_internal_span().data(),
+                                   *attribute.sharing_info);
+    return attributes.add(id_to_create, domain, data_type, init);
   }
-  const AttributeInitShared init(attribute.varray.get_internal_span().data(),
-                                 *attribute.sharing_info);
-  return attributes.add(id_to_create, domain, data_type, init);
+  if (const GAttributeGridReader attribute = attributes.lookup_grid(*field_id, domain, data_type))
+  {
+    if (!attribute.sharing_info) {
+      return false;
+    }
+    // XXX what does sharing look like for grids?
+    // They are already shared_ptrs, should be straightforward.
+    // How does sharing_info get "ownership"?
+    // Double user counting: shared info user count + Grid::Ptr (shared_ptr)
+    // What exactly happens when users reach zero?
+    // const AttributeInitShared init(attribute.grid.grid_.get_internal_span().data(),
+    //                               *attribute.sharing_info);
+    const AttributeInitConstruct init;
+    return attributes.add(id_to_create, domain, data_type, init);
+  }
 }
 
 bool try_capture_field_on_geometry(GeometryComponent &component,
@@ -594,38 +610,67 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
   }
 
-  /* Could avoid allocating a new buffer if:
-   * - The field does not depend on that attribute (we can't easily check for that yet). */
-  void *buffer = MEM_mallocN_aligned(type.size() * domain_size, type.alignment(), __func__);
-  if (!selection_is_full) {
-    type.value_initialize_n(buffer, domain_size);
-  }
-  fn::FieldEvaluator evaluator{field_context, domain_size};
-  evaluator.add_with_destination(validator.validate_field_if_necessary(field),
-                                 GMutableSpan{type, buffer, domain_size});
-  evaluator.set_selection(selection);
-  evaluator.evaluate();
+  if (component.attribute_type() == GeometryComponent::AttributeType::Array) {
+    /* Could avoid allocating a new buffer if:
+     * - The field does not depend on that attribute (we can't easily check for that yet). */
+    void *buffer = MEM_mallocN_aligned(type.size() * domain_size, type.alignment(), __func__);
+    if (!selection_is_full) {
+      type.value_initialize_n(buffer, domain_size);
+    }
+    fn::FieldEvaluator evaluator{field_context, domain_size};
+    evaluator.add_with_destination(validator.validate_field_if_necessary(field),
+                                   GMutableSpan{type, buffer, domain_size});
+    evaluator.set_selection(selection);
+    evaluator.evaluate();
 
-  if (attribute_matches) {
-    if (GAttributeWriter attribute = attributes.lookup_for_write(attribute_id)) {
-      attribute.varray.set_all(buffer);
-      attribute.finish();
-      type.destruct_n(buffer, domain_size);
-      MEM_freeN(buffer);
+    if (attribute_matches) {
+      if (GAttributeWriter attribute = attributes.lookup_for_write(attribute_id)) {
+        attribute.varray.set_all(buffer);
+        attribute.finish();
+        type.destruct_n(buffer, domain_size);
+        MEM_freeN(buffer);
+        return true;
+      }
+    }
+
+    attributes.remove(attribute_id);
+    if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveArray(buffer))) {
       return true;
     }
-  }
 
-  attributes.remove(attribute_id);
-  if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveArray(buffer))) {
-    return true;
+    /* If the name corresponds to a builtin attribute, removing the attribute might fail if
+     * it's required, and adding the attribute might fail if the domain or type is incorrect. */
+    type.destruct_n(buffer, domain_size);
+    MEM_freeN(buffer);
+    return false;
   }
+  if (component.attribute_type() == GeometryComponent::AttributeType::Grid) {
+    volume::GridMask mask = {};
+    fn::VolumeFieldEvaluator evaluator{field_context, &mask};
+    volume::GMutableGrid grid = volume::GMutableGrid::create(type);
+    evaluator.add_with_destination(validator.validate_field_if_necessary(field), grid);
+    evaluator.set_selection(selection);
+    evaluator.evaluate();
 
-  /* If the name corresponds to a builtin attribute, removing the attribute might fail if
-   * it's required, and adding the attribute might fail if the domain or type is incorrect. */
-  type.destruct_n(buffer, domain_size);
-  MEM_freeN(buffer);
-  return false;
+    if (attribute_matches) {
+      if (GAttributeGridWriter attribute = attributes.lookup_grid_for_write(attribute_id)) {
+        attribute.grid.try_assign(grid);
+        attribute.finish();
+        return true;
+      }
+    }
+
+    attributes.remove(attribute_id);
+    if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveGrid(grid))) {
+      return true;
+    }
+
+    /* If the name corresponds to a builtin attribute, removing the attribute might fail if
+     * it's required, and adding the attribute might fail if the domain or type is incorrect. */
+    type.destruct_n(buffer, domain_size);
+    MEM_freeN(buffer);
+    return false;
+  }
 }
 
 bool try_capture_field_on_geometry(GeometryComponent &component,

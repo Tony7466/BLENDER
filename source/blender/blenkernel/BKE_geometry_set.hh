@@ -65,6 +65,13 @@ class GeometryComponent : public ImplicitSharingMixin {
     Edit = 5,
   };
 
+  enum class AttributeType {
+    /* Component uses #VArray for attributes. */
+    Array,
+    /* Component uses volume #Grid for attributes. */
+    Grid,
+  };
+
  private:
   Type type_;
 
@@ -97,6 +104,11 @@ class GeometryComponent : public ImplicitSharingMixin {
   Type type() const;
 
   virtual bool is_empty() const;
+
+  virtual AttributeType attribute_type() const
+  {
+    return AttributeType::Array;
+  }
 
  private:
   void delete_self() override;
@@ -618,6 +630,11 @@ class VolumeComponent : public GeometryComponent {
 
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
+
+  AttributeType attribute_type() const override
+  {
+    return AttributeType::Grid;
+  }
 
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 

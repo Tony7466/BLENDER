@@ -8,7 +8,6 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
-#include "BLI_resource_scope.hh"
 #include "BLI_volume.hh"
 
 namespace blender::volume {
@@ -57,9 +56,7 @@ const CPPType *GGrid::value_type() const
   return type;
 }
 
-GMutableGrid GMutableGrid::create(ResourceScope &scope,
-                                  const CPPType &type,
-                                  const void *background_value)
+GMutableGrid GMutableGrid::create(const CPPType &type, const void *background_value)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid, background_value](auto type_tag) {
@@ -68,10 +65,10 @@ GMutableGrid GMutableGrid::create(ResourceScope &scope,
     grid = grid_types::GridCommon<ValueType>::create(value);
   });
 
-  return GMutableGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return GMutableGrid{std::move(grid)};
 }
 
-GMutableGrid GMutableGrid::create(ResourceScope &scope, const CPPType &type)
+GMutableGrid GMutableGrid::create(const CPPType &type)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid](auto type_tag) {
@@ -81,11 +78,10 @@ GMutableGrid GMutableGrid::create(ResourceScope &scope, const CPPType &type)
     grid = grid_types::GridCommon<ValueType>::create(value);
   });
 
-  return GMutableGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return GMutableGrid{std::move(grid)};
 }
 
-GMutableGrid GMutableGrid::create(ResourceScope &scope,
-                                  const CPPType &type,
+GMutableGrid GMutableGrid::create(const CPPType &type,
                                   const GridMask &mask,
                                   const void *inactive_value,
                                   const void *active_value)
@@ -107,7 +103,7 @@ GMutableGrid GMutableGrid::create(ResourceScope &scope,
     grid = typename GridType::Ptr(new GridType(tree));
   });
 
-  return GMutableGrid{scope.add_value<openvdb::GridBase::Ptr>(std::move(grid))};
+  return GMutableGrid{std::move(grid)};
 }
 
 bool GMutableGrid::try_assign(const GGrid & /*other*/)
@@ -135,35 +131,33 @@ GMutableGrid::operator bool() const
   return grid_ != nullptr;
 }
 
-template<typename T>
-MutableGrid<T> MutableGrid<T>::create(ResourceScope &scope, const T &background_value)
+template<typename T> MutableGrid<T> MutableGrid<T>::create(const T &background_value)
 {
   typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(background_value);
-  return MutableGrid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
+  return MutableGrid<T>{std::move(grid)};
 }
 
-template<typename T> MutableGrid<T> MutableGrid<T>::create(ResourceScope &scope)
+template<typename T> MutableGrid<T> MutableGrid<T>::create()
 {
   ValueType value = *static_cast<const ValueType *>(CPPType::get<T>().default_value_);
   typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(value);
-  return MutableGrid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
+  return MutableGrid<T>{std::move(grid)};
 }
 
 template<typename T>
-MutableGrid<T> MutableGrid<T>::create(ResourceScope &scope,
-                                      const GridMask &mask,
+MutableGrid<T> MutableGrid<T>::create(const GridMask &mask,
                                       const T &inactive_value,
                                       const T &active_value)
 {
   if (mask.is_empty()) {
     typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create();
-    return MutableGrid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
+    return MutableGrid<T>{std::move(grid)};
   }
 
   const typename TreeType::Ptr tree = TreeType::Ptr(
       new TreeType(mask.grid()->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
   typename GridType::Ptr grid(new GridType(tree));
-  return MutableGrid<T>{scope.add_value<typename GridType::Ptr>(std::move(grid))};
+  return MutableGrid<T>{std::move(grid)};
 }
 
 template<typename T> int64_t MutableGrid<T>::voxel_count() const
