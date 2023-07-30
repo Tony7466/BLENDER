@@ -49,6 +49,9 @@
  * \{ */
 
 static const PyC_StringEnumItems pygpu_framebuffer_color_texture_formats[] = {
+    {GPU_R8, "R8"},
+    {GPU_RG8, "RG8"},
+    {GPU_RGB8, "RGB8"},
     {GPU_RGBA8, "RGBA8"},
     {GPU_RGBA16, "RGBA16"},
     {GPU_RGBA16F, "RGBA16F"},
@@ -566,6 +569,9 @@ PyDoc_STRVAR(pygpu_offscreen__tp_doc,
              "   :type height: int\n"
              "   :arg format: Internal data format inside GPU memory for color attachment "
              "texture. Possible values are:\n"
+             "      `R8`,\n"
+             "      `RG8`,\n"
+             "      `RGB8`,\n"
              "      `RGBA8`,\n"
              "      `RGBA16`,\n"
              "      `RGBA16F`,\n"
