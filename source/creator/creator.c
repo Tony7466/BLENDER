@@ -14,6 +14,10 @@
 #  include <windows.h>
 #endif
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 #if defined(WITH_TBB_MALLOC) && defined(_MSC_VER) && defined(NDEBUG)
 #  pragma comment(lib, "tbbmalloc_proxy.lib")
 #  pragma comment(linker, "/include:__TBB_malloc_proxy")
@@ -338,8 +342,8 @@ int main(int argc,
   if(access("/proc/sys/fs/binfmt_misc/WSLInterop", F_OK) == 0)
 #  endif
   {
-    BLI_setenv("MESA_GLSL_VERSION_OVERRIDE", "430");
-    BLI_setenv("MESA_GL_VERSION_OVERRIDE", "4.3");
+    BLI_setenv_if_new("MESA_GLSL_VERSION_OVERRIDE", "430");
+    BLI_setenv_if_new("MESA_GL_VERSION_OVERRIDE", "4.3");
   }
 #endif
 
