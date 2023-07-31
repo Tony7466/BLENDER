@@ -34,7 +34,9 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 
 /* Internal RNA function declarations, used to invoke registered callbacks. */
 extern "C" {
-extern FunctionRNA rna_NodeTreeInterfaceSocket_draw_socket_properties_func;
+extern FunctionRNA rna_NodeTreeInterfaceSocket_draw_func;
+extern FunctionRNA rna_NodeTreeInterfaceSocket_init_socket_func;
+extern FunctionRNA rna_NodeTreeInterfaceSocket_from_socket_func;
 }
 
 namespace node_interface = blender::bke::node_interface;
@@ -102,34 +104,118 @@ static bool rna_NodeTreeInterfaceSocket_unregister(Main * /*bmain*/, StructRNA *
   return true;
 }
 
-static void rna_NodeTreeInterfaceSocket_draw_socket_properties_builtin(
-    ID *id, bNodeTreeInterfaceSocket *socket, bContext *C, uiLayout *layout)
+static void rna_NodeTreeInterfaceSocket_draw_builtin(ID *id,
+                                                     bNodeTreeInterfaceSocket *interface_socket,
+                                                     bContext *C,
+                                                     uiLayout *layout)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, socket, &ptr);
-  bNodeSocketType *typeinfo = socket->socket_typeinfo();
+  bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    typeinfo->interface_draw(C, layout, &ptr);
+    typeinfo->interface_draw(id, interface_socket, C, layout);
   }
 }
 
-static void rna_NodeTreeInterfaceSocket_draw_socket_properties_custom(bContext *C,
-                                                                      uiLayout *layout,
-                                                                      PointerRNA *ptr)
+static void rna_NodeTreeInterfaceSocket_draw_custom(ID *id,
+                                                    bNodeTreeInterfaceSocket *interface_socket,
+                                                    bContext *C,
+                                                    uiLayout *layout)
 {
-  bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket->socket_type);
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
     return;
   }
 
-  FunctionRNA *func = &rna_NodeTreeInterfaceSocket_draw_socket_properties_func;
+  PointerRNA ptr;
+  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket, &ptr);
+
+  FunctionRNA *func = &rna_NodeTreeInterfaceSocket_draw_func;
 
   ParameterList list;
-  RNA_parameter_list_create(&list, ptr, func);
+  RNA_parameter_list_create(&list, &ptr, func);
   RNA_parameter_set_lookup(&list, "context", &C);
   RNA_parameter_set_lookup(&list, "layout", &layout);
-  typeinfo->ext_interface_new.call(C, ptr, func, &list);
+  typeinfo->ext_interface_new.call(C, &ptr, func, &list);
+
+  RNA_parameter_list_free(&list);
+}
+
+static void rna_NodeTreeInterfaceSocket_init_socket_builtin(
+    ID *id,
+    bNodeTreeInterfaceSocket *interface_socket,
+    bNode *node,
+    bNodeSocket *socket,
+    const char *data_path)
+{
+  bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
+  if (typeinfo && typeinfo->interface_draw) {
+    typeinfo->interface_init_socket(id, interface_socket, node, socket, data_path);
+  }
+}
+
+static void rna_NodeTreeInterfaceSocket_init_socket_custom(
+    ID *id,
+    const bNodeTreeInterfaceSocket *interface_socket,
+    bNode *node,
+    bNodeSocket *socket,
+    const char *data_path)
+{
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
+  if (typeinfo == nullptr) {
+    return;
+  }
+
+  PointerRNA ptr, node_ptr, socket_ptr;
+  RNA_pointer_create(id,
+                     &RNA_NodeTreeInterfaceSocket,
+                     const_cast<bNodeTreeInterfaceSocket *>(interface_socket),
+                     &ptr);
+  RNA_pointer_create(id, &RNA_Node, node, &node_ptr);
+  RNA_pointer_create(id, &RNA_NodeSocket, socket, &socket_ptr);
+
+  FunctionRNA *func = &rna_NodeTreeInterfaceSocket_init_socket_func;
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "node", &node_ptr);
+  RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
+  RNA_parameter_set_lookup(&list, "data_path", &data_path);
+  typeinfo->ext_interface_new.call(nullptr, &ptr, func, &list);
+
+  RNA_parameter_list_free(&list);
+}
+
+static void rna_NodeTreeInterfaceSocket_from_socket_builtin(
+    ID *id, bNodeTreeInterfaceSocket *interface_socket, bNode *node, bNodeSocket *socket)
+{
+  bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
+  if (typeinfo && typeinfo->interface_draw) {
+    typeinfo->interface_from_socket(id, interface_socket, node, socket);
+  }
+}
+
+static void rna_NodeTreeInterfaceSocket_from_socket_custom(
+    ID *id,
+    bNodeTreeInterfaceSocket *interface_socket,
+    const bNode *node,
+    const bNodeSocket *socket)
+{
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
+  if (typeinfo == nullptr) {
+    return;
+  }
+
+  PointerRNA ptr, node_ptr, socket_ptr;
+  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket, &ptr);
+  RNA_pointer_create(id, &RNA_Node, const_cast<bNode *>(node), &node_ptr);
+  RNA_pointer_create(id, &RNA_NodeSocket, const_cast<bNodeSocket *>(socket), &socket_ptr);
+
+  FunctionRNA *func = &rna_NodeTreeInterfaceSocket_from_socket_func;
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "node", &node_ptr);
+  RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
+  typeinfo->ext_interface_new.call(nullptr, &ptr, func, &list);
 
   RNA_parameter_list_free(&list);
 }
@@ -151,7 +237,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   RNA_pointer_create(nullptr, &RNA_NodeTreeInterfaceSocket, &dummy_socket, &dummy_socket_ptr);
 
   /* Validate the python class. */
-  bool have_function[4];
+  bool have_function[3];
   if (validate(&dummy_socket_ptr, data, have_function) != 0) {
     return nullptr;
   }
@@ -184,14 +270,11 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   st->ext_interface_new.free = free;
   RNA_struct_blender_type_set(st->ext_interface_new.srna, st);
 
-  st->interface_draw = (have_function[0]) ?
-                           rna_NodeTreeInterfaceSocket_draw_socket_properties_custom :
-                           nullptr;
-  // TODO declare these in RNA
-  //  st->interface_draw_color = (have_function[1]) ? rna_NodeSocketInterface_draw_color : nullptr;
-  //  st->interface_init_socket = (have_function[2]) ? rna_NodeSocketInterface_init_socket :
-  //  nullptr; st->interface_from_socket = (have_function[3]) ? rna_NodeSocketInterface_from_socket
-  //  : nullptr;
+  st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
+  st->interface_init_socket = (have_function[2]) ? rna_NodeTreeInterfaceSocket_init_socket_custom :
+                                                   nullptr;
+  st->interface_from_socket = (have_function[3]) ? rna_NodeTreeInterfaceSocket_from_socket_custom :
+                                                   nullptr;
 
   /* Cleanup local dummy type. */
   MEM_SAFE_FREE(dummy_socket.socket_type);
@@ -728,14 +811,33 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_property_ui_text(prop, "Socket Type Name", "Name of the socket type");
 
-  func = RNA_def_function(srna, "draw_socket_properties", nullptr);
-  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
-  RNA_def_function_ui_description(func, "Draw template settings");
+  func = RNA_def_function(srna, "draw", nullptr);
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(func, "Draw properties of the socket interface");
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(parm, "UILayout");
   RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "init_socket", nullptr);
+  RNA_def_function_ui_description(func, "Initialize a node socket instance");
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the socket to initialize");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Socket to initialize");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "data_path", nullptr, 0, "Data Path", "Path to specialized socket data");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "from_socket", nullptr);
+  RNA_def_function_ui_description(func, "Setup template parameters from an existing socket");
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the original socket");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Original socket");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }
 

@@ -1124,21 +1124,12 @@ static void node_socket_undefined_draw_color(bContext * /*C*/,
   r_color[3] = 1.0f;
 }
 
-static void node_socket_undefined_interface_draw(bContext * /*C*/,
-                                                 uiLayout *layout,
-                                                 PointerRNA * /*ptr*/)
+static void node_socket_undefined_interface_draw(ID * /*id*/,
+                                                 bNodeTreeInterfaceSocket * /*interface_socket*/,
+                                                 bContext * /*C*/,
+                                                 uiLayout *layout)
 {
   uiItemL(layout, IFACE_("Undefined Socket Type"), ICON_ERROR);
-}
-
-static void node_socket_undefined_interface_draw_color(bContext * /*C*/,
-                                                       PointerRNA * /*ptr*/,
-                                                       float *r_color)
-{
-  r_color[0] = 1.0f;
-  r_color[1] = 0.0f;
-  r_color[2] = 0.0f;
-  r_color[3] = 1.0f;
 }
 
 /** \} */
@@ -1162,7 +1153,6 @@ void ED_node_init_butfuncs()
   NodeSocketTypeUndefined.draw = node_socket_undefined_draw;
   NodeSocketTypeUndefined.draw_color = node_socket_undefined_draw_color;
   NodeSocketTypeUndefined.interface_draw = node_socket_undefined_interface_draw;
-  NodeSocketTypeUndefined.interface_draw_color = node_socket_undefined_interface_draw_color;
 
   /* node type ui functions */
   NODE_TYPES_BEGIN (ntype) {
@@ -1216,13 +1206,6 @@ static void std_node_socket_draw_color(bContext * /*C*/,
 {
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
-static void std_node_socket_interface_draw_color(bContext * /*C*/, PointerRNA *ptr, float *r_color)
-{
-  bNodeTreeInterfaceSocket *sock = (bNodeTreeInterfaceSocket *)ptr->data;
-  const bNodeSocketType *typeinfo = sock->socket_typeinfo();
-  eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
   copy_v4_v4(r_color, std_node_socket_colors[type]);
 }
 
@@ -1435,38 +1418,41 @@ static void std_node_socket_draw(
   }
 }
 
-static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, PointerRNA *ptr)
+static void std_node_socket_interface_draw(ID *id,
+                                           bNodeTreeInterfaceSocket *interface_socket,
+                                           bContext * /*C*/,
+                                           uiLayout *layout)
 {
-  bNodeTreeInterfaceSocket *sock = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  const bNodeSocketType *typeinfo = sock->socket_typeinfo();
+  PointerRNA ptr, tree_ptr;
+  RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket, &ptr);
+  RNA_id_pointer_create(id, &tree_ptr);
+
+  const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   BLI_assert(typeinfo != nullptr);
   eNodeSocketDatatype type = eNodeSocketDatatype(typeinfo->type);
-
-  PointerRNA tree_ptr;
-  RNA_id_pointer_create(ptr->owner_id, &tree_ptr);
 
   uiLayout *col = uiLayoutColumn(layout, false);
 
   switch (type) {
     case SOCK_FLOAT: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_INT: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_VECTOR: {
-      uiItemR(col, ptr, "default_value", UI_ITEM_R_EXPAND, IFACE_("Default"), ICON_NONE);
+      uiItemR(col, &ptr, "default_value", UI_ITEM_R_EXPAND, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
-      uiItemR(sub, ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
-      uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
+      uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
+      uiItemR(sub, &ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
     case SOCK_BOOLEAN:
@@ -1478,7 +1464,7 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
     case SOCK_IMAGE:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL: {
-      uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), 0);
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), 0);
       break;
     }
     case SOCK_SHADER:
@@ -1491,11 +1477,11 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   }
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "hide_value", DEFAULT_FLAGS, nullptr, 0);
+  uiItemR(col, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, 0);
 
-  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
-  if (sock->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
-    uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
+  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
+  if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
+    uiItemR(col, &ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
   }
 }
 
@@ -1515,7 +1501,6 @@ void ED_init_standard_node_socket_type(bNodeSocketType *stype)
   stype->draw = std_node_socket_draw;
   stype->draw_color = std_node_socket_draw_color;
   stype->interface_draw = std_node_socket_interface_draw;
-  stype->interface_draw_color = std_node_socket_interface_draw_color;
 }
 
 void ED_init_node_socket_type_virtual(bNodeSocketType *stype)

@@ -288,7 +288,7 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
   }
   const bNodeSocketType *typeinfo = iosock->socket_typeinfo();
   if (typeinfo->interface_from_socket) {
-    typeinfo->interface_from_socket(&ntree, iosock, &from_node, &from_sock);
+    typeinfo->interface_from_socket(&ntree.id, iosock, &from_node, &from_sock);
   }
   return iosock;
 }

@@ -636,7 +636,7 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
 }
 
 static void standard_node_socket_interface_init_socket(
-    bNodeTree * /*ntree*/,
+    ID * /*id*/,
     const bNodeTreeInterfaceSocket *interface_socket,
     bNode * /*node*/,
     bNodeSocket *sock,
@@ -651,7 +651,7 @@ static void standard_node_socket_interface_init_socket(
       eNodeSocketDatatype(sock->type), sock->default_value, interface_socket->socket_data);
 }
 
-static void standard_node_socket_interface_from_socket(bNodeTree * /*ntree*/,
+static void standard_node_socket_interface_from_socket(ID * /*id*/,
                                                        bNodeTreeInterfaceSocket *iosock,
                                                        const bNode * /*node*/,
                                                        const bNodeSocket *sock)

@@ -172,17 +172,19 @@ typedef struct bNodeSocketType {
                      struct PointerRNA *node_ptr,
                      float *r_color);
 
-  void (*interface_draw)(struct bContext *C, struct uiLayout *layout, struct PointerRNA *ptr);
-  void (*interface_draw_color)(struct bContext *C, struct PointerRNA *ptr, float *r_color);
-  void (*interface_init_socket)(struct bNodeTree *ntree,
+  void (*interface_draw)(struct ID *id,
+                         struct bNodeTreeInterfaceSocket *socket,
+                         struct bContext *C,
+                         struct uiLayout *layout);
+  void (*interface_init_socket)(struct ID *id,
                                 const struct bNodeTreeInterfaceSocket *interface_socket,
                                 struct bNode *node,
-                                struct bNodeSocket *sock,
+                                struct bNodeSocket *socket,
                                 const char *data_path);
-  void (*interface_from_socket)(struct bNodeTree *ntree,
+  void (*interface_from_socket)(struct ID *id,
                                 struct bNodeTreeInterfaceSocket *interface_socket,
                                 const struct bNode *node,
-                                const struct bNodeSocket *sock);
+                                const struct bNodeSocket *socket);
 
   /* RNA integration */
   ExtensionRNA ext_socket;

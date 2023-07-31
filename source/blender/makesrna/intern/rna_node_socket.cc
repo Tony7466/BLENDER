@@ -53,10 +53,6 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 extern "C" {
 extern FunctionRNA rna_NodeSocket_draw_func;
 extern FunctionRNA rna_NodeSocket_draw_color_func;
-extern FunctionRNA rna_NodeSocketInterface_draw_func;
-extern FunctionRNA rna_NodeSocketInterface_draw_color_func;
-extern FunctionRNA rna_NodeSocketInterface_init_socket_func;
-extern FunctionRNA rna_NodeSocketInterface_from_socket_func;
 }
 
 /* ******** Node Socket ******** */
@@ -1067,12 +1063,11 @@ static void rna_def_node_tree_interface_socket_builtin(StructRNA *srna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  /* Override for drawing functions, invoking the typeinfo callback directly
+  /* Override for functions, invoking the typeinfo callback directly
    * instead of expecting an existing RNA registered function implementation.
    */
-  func = RNA_def_function(srna,
-                          "draw_socket_properties",
-                          "rna_NodeTreeInterfaceSocket_draw_socket_properties_builtin");
+
+  func = RNA_def_function(srna, "draw", "rna_NodeTreeInterfaceSocket_draw_builtin");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func, "Draw interface socket settings");
   parm = RNA_def_pointer(func, "context", "Context", "", "");
@@ -1080,6 +1075,25 @@ static void rna_def_node_tree_interface_socket_builtin(StructRNA *srna)
   parm = RNA_def_property(func, "layout", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(parm, "UILayout");
   RNA_def_property_ui_text(parm, "Layout", "Layout in the UI");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "init_socket", "rna_NodeTreeInterfaceSocket_init_socket_builtin");
+  RNA_def_function_ui_description(func, "Initialize a node socket instance");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the socket to initialize");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Socket to initialize");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "data_path", nullptr, 0, "Data Path", "Path to specialized socket data");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "from_socket", "rna_NodeTreeInterfaceSocket_from_socket_builtin");
+  RNA_def_function_ui_description(func, "Setup template parameters from an existing socket");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the original socket");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Original socket");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 }
 
