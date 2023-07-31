@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include <stdarg.h>
-#include <stddef.h>
+#include <cstdarg>
+#include <cstddef>
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
@@ -44,7 +44,7 @@
 #include "BKE_fluid.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
@@ -459,7 +459,7 @@ void pd_point_from_soft(Scene *scene, float *loc, float *vel, int index, Effecte
 /************************************************/
 
 // triangle - ray callback function
-static void eff_tri_ray_hit(void * /*userData*/,
+static void eff_tri_ray_hit(void * /*user_data*/,
                             int /*index*/,
                             const BVHTreeRay * /*ray*/,
                             BVHTreeRayHit *hit)
@@ -709,8 +709,8 @@ bool get_effector_data(EffectorCache *eff,
   else if (eff->pd && eff->pd->shape == PFIELD_SHAPE_POINTS) {
     /* TODO: hair and points object support */
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(eff->ob);
-    const float(*positions)[3] = BKE_mesh_vert_positions(me_eval);
-    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me_eval);
+    const blender::Span<blender::float3> positions = me_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
     if (me_eval != nullptr) {
       copy_v3_v3(efd->loc, positions[*efd->index]);
       copy_v3_v3(efd->nor, vert_normals[*efd->index]);
@@ -742,7 +742,7 @@ bool get_effector_data(EffectorCache *eff,
 
       /* TODO: time from actual previous calculated frame (step might not be 1) */
       state.time = cfra - 1.0f;
-      ret = psys_get_particle_state(&sim, *efd->index, &state, 0);
+      ret = psys_get_particle_state(&sim, *efd->index, &state, false);
 
       /* TODO */
       // if (eff->pd->forcefiled == PFIELD_HARMONIC && ret==0) {
@@ -1090,11 +1090,11 @@ static void do_physical_effector(EffectorCache *eff,
         add_v3_v3v3(temp, efd->vec_to_point2, efd->nor2);
       }
       force[0] = -1.0f + 2.0f * BLI_noise_generic_turbulence(
-                                    pd->f_size, temp[0], temp[1], temp[2], 2, 0, 2);
+                                    pd->f_size, temp[0], temp[1], temp[2], 2, false, 2);
       force[1] = -1.0f + 2.0f * BLI_noise_generic_turbulence(
-                                    pd->f_size, temp[1], temp[2], temp[0], 2, 0, 2);
+                                    pd->f_size, temp[1], temp[2], temp[0], 2, false, 2);
       force[2] = -1.0f + 2.0f * BLI_noise_generic_turbulence(
-                                    pd->f_size, temp[2], temp[0], temp[1], 2, 0, 2);
+                                    pd->f_size, temp[2], temp[0], temp[1], 2, false, 2);
       mul_v3_fl(force, strength * efd->falloff);
       break;
     case PFIELD_DRAG:

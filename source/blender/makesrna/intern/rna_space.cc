@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -4116,12 +4116,12 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "selected_studio_light", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "StudioLight");
-  RNA_define_verify_sdna(0);
+  RNA_define_verify_sdna(false);
   RNA_def_property_ui_text(prop, "Studio Light", "Selected StudioLight");
   RNA_def_property_pointer_funcs(
       prop, "rna_View3DShading_selected_studio_light_get", nullptr, nullptr, nullptr);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-  RNA_define_verify_sdna(1);
+  RNA_define_verify_sdna(true);
 
   prop = RNA_def_property(srna, "studiolight_rotate_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "studiolight_rot_z");
@@ -6177,7 +6177,8 @@ static void rna_def_space_dopesheet(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceAction");
   RNA_def_struct_ui_text(srna, "Space Dope Sheet Editor", "Dope Sheet space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* data */
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
@@ -6353,7 +6354,8 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceGraph");
   RNA_def_struct_ui_text(srna, "Space Graph Editor", "Graph Editor space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* mode */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
@@ -6486,7 +6488,8 @@ static void rna_def_space_nla(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceNla");
   RNA_def_struct_ui_text(srna, "Space Nla Editor", "NLA editor space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* display */
   prop = RNA_def_property(srna, "show_seconds", PROP_BOOLEAN, PROP_NONE);
@@ -8235,8 +8238,9 @@ static void rna_def_space_spreadsheet(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceSpreadsheet", "Space");
   RNA_def_struct_ui_text(srna, "Space Spreadsheet", "Spreadsheet space data");
 
-  rna_def_space_generic_show_region_toggles(
-      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_CHANNELS) | (1 << RGN_TYPE_FOOTER));
+  rna_def_space_generic_show_region_toggles(srna,
+                                            (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI) |
+                                                (1 << RGN_TYPE_CHANNELS) | (1 << RGN_TYPE_FOOTER));
 
   prop = RNA_def_property(srna, "is_pinned", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SPREADSHEET_FLAG_PINNED);

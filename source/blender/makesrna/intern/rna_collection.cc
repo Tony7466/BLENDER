@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_collection_types.h"
 
@@ -584,7 +584,7 @@ void RNA_def_collections(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "Collection", "ID");
   RNA_def_struct_ui_text(srna, "Collection", "Collection of Object data-blocks");
   RNA_def_struct_ui_icon(srna, ICON_OUTLINER_COLLECTION);
-  /* This is done on save/load in readfile.c,
+  /* This is done on save/load in `readfile.cc`,
    * removed if no objects are in the collection and not in a scene. */
   RNA_def_struct_clear_flag(srna, STRUCT_ID_REFCOUNT);
 
@@ -744,7 +744,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "use_lineart_intersection_priority", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_default(prop, false);
   RNA_def_property_boolean_sdna(
       prop, nullptr, "lineart_flags", COLLECTION_LRT_USE_INTERSECTION_PRIORITY);
   RNA_def_property_ui_text(

@@ -6,6 +6,7 @@ set(INC
   ../include
   ../../asset_system
   ../../blenfont
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../bmesh
@@ -15,6 +16,7 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../render
+  ../../windowmanager
   ../../../../intern/mantaflow/extern
 
   # RNA_prototypes.h
@@ -46,15 +48,22 @@ set(SRC
   view3d_header.cc
   view3d_iterators.cc
   view3d_navigate.cc
-  view3d_navigate_dolly.cc
   view3d_navigate_fly.cc
-  view3d_navigate_move.cc
-  view3d_navigate_ndof.cc
-  view3d_navigate_roll.cc
-  view3d_navigate_rotate.cc
   view3d_navigate_smoothview.cc
+  view3d_navigate_view_all.cc
+  view3d_navigate_view_axis.cc
+  view3d_navigate_view_camera.cc
+  view3d_navigate_view_center_cursor.cc
+  view3d_navigate_view_center_pick.cc
+  view3d_navigate_view_dolly.cc
+  view3d_navigate_view_move.cc
+  view3d_navigate_view_ndof.cc
+  view3d_navigate_view_orbit.cc
+  view3d_navigate_view_roll.cc
+  view3d_navigate_view_rotate.cc
+  view3d_navigate_view_pan.cc
+  view3d_navigate_view_zoom.cc
   view3d_navigate_walk.cc
-  view3d_navigate_zoom.cc
   view3d_navigate_zoom_border.cc
   view3d_ops.cc
   view3d_placement.cc
@@ -69,14 +78,13 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_curves
   bf_editor_lattice
   bf_editor_mesh
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_PYTHON)

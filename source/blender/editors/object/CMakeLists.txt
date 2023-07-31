@@ -5,6 +5,7 @@
 set(INC
   ../include
   ../../blenfont
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
@@ -18,6 +19,7 @@ set(INC
   ../../python
   ../../render
   ../../shader_fx
+  ../../windowmanager
   ../../../../intern/clog
 
   # RNA_prototypes.h
@@ -59,14 +61,15 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_mesh
   bf_editor_grease_pencil
   PRIVATE bf::intern::guardedalloc
   bf_render
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 

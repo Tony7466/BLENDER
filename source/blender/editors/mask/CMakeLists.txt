@@ -4,9 +4,11 @@
 
 set(INC
   ../include
+  ../../blenkernel
   ../../depsgraph
   ../../gpu
   ../../makesrna
+  ../../windowmanager
 )
 
 set(INC_SYS
@@ -27,11 +29,9 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 

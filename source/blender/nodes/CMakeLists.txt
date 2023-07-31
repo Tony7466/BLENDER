@@ -17,6 +17,7 @@ set(INC
   shader
   texture
   ../editors/include
+  ../blenkernel
   ../blentranslation
   ../bmesh
   ../depsgraph
@@ -27,6 +28,7 @@ set(INC
   ../makesrna
   ../modifiers
   ../render
+  ../windowmanager
   ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
@@ -78,7 +80,6 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
   PRIVATE bf::dna
@@ -89,7 +90,6 @@ set(LIB
   bf_nodes_geometry
   bf_nodes_shader
   bf_nodes_texture
-  PRIVATE bf::windowmanager
   extern_fmtlib
 )
 

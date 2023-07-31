@@ -4,6 +4,7 @@
 
 set(INC
   ../../intern/clog
+  ../blender/blenkernel
   ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
@@ -12,14 +13,14 @@ set(INC
   ../blender/bmesh
   ../blender/makesrna
   ../blender/render
+  ../blender/windowmanager
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 if(HAVE_FEENABLEEXCEPT)

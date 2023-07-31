@@ -6,9 +6,9 @@
  * \ingroup edobj
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -928,7 +928,8 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 #if 0
   uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_OBJECT);
 #else
-  uiItemFullO_ptr(layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, 0, &opptr);
+  uiItemFullO_ptr(
+      layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", false);
 
@@ -938,7 +939,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
                   ICON_NONE,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", true);
@@ -960,7 +961,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   struct {
     bool mesh, gpencil, curves;
-  } has_children_of_type = {0};
+  } has_children_of_type = {false};
 
   CTX_DATA_BEGIN (C, Object *, child, selected_editable_objects) {
     if (child == parent) {
@@ -2846,17 +2847,18 @@ void OBJECT_OT_make_single_user(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", type_items, MAKE_SINGLE_USER_SELECTED, "Type", "");
 
-  RNA_def_boolean(ot->srna, "object", 0, "Object", "Make single user objects");
-  RNA_def_boolean(ot->srna, "obdata", 0, "Object Data", "Make single user object data");
-  RNA_def_boolean(ot->srna, "material", 0, "Materials", "Make materials local to each data-block");
+  RNA_def_boolean(ot->srna, "object", false, "Object", "Make single user objects");
+  RNA_def_boolean(ot->srna, "obdata", false, "Object Data", "Make single user object data");
+  RNA_def_boolean(
+      ot->srna, "material", false, "Materials", "Make materials local to each data-block");
   RNA_def_boolean(ot->srna,
                   "animation",
-                  0,
+                  false,
                   "Object Animation",
                   "Make object animation data local to each object");
   RNA_def_boolean(ot->srna,
                   "obdata_animation",
-                  0,
+                  false,
                   "Object Data Animation",
                   "Make object data (mesh, curve etc.) animation data local to each object");
 }

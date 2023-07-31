@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -1012,43 +1012,6 @@ bool BKE_fcurve_is_keyframable(const FCurve *fcu)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Keyframe Column Tools
- * \{ */
-
-static void UNUSED_FUNCTION(bezt_add_to_cfra_elem)(ListBase *lb, BezTriple *bezt)
-{
-  CfraElem *ce, *cen;
-
-  for (ce = static_cast<CfraElem *>(lb->first); ce; ce = ce->next) {
-    /* Double key? */
-    if (IS_EQT(ce->cfra, bezt->vec[1][0], BEZT_BINARYSEARCH_THRESH)) {
-      if (bezt->f2 & SELECT) {
-        ce->sel = bezt->f2;
-      }
-      return;
-    }
-    /* Should key be inserted before this column? */
-    if (ce->cfra > bezt->vec[1][0]) {
-      break;
-    }
-  }
-
-  /* Create a new column */
-  cen = static_cast<CfraElem *>(MEM_callocN(sizeof(CfraElem), "add_to_cfra_elem"));
-  if (ce) {
-    BLI_insertlinkbefore(lb, ce, cen);
-  }
-  else {
-    BLI_addtail(lb, cen);
-  }
-
-  cen->cfra = bezt->vec[1][0];
-  cen->sel = bezt->f2;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Samples Utilities
  * \{ */
 
@@ -1365,17 +1328,17 @@ void sort_time_fcurve(FCurve *fcu)
 
   bool ok = true;
   while (ok) {
-    ok = 0;
+    ok = false;
     /* Currently, will only be needed when there are beztriples. */
 
     /* Loop over ALL points to adjust position in array and recalculate handles. */
     for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-      /* Check if thee's a next beztriple which we could try to swap with current. */
+      /* Check if there's a next beztriple which we could try to swap with current. */
       if (a < (fcu->totvert - 1)) {
         /* Swap if one is after the other (and indicate that order has changed). */
         if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
           SWAP(BezTriple, *bezt, *(bezt + 1));
-          ok = 1;
+          ok = true;
         }
       }
     }
@@ -2471,7 +2434,7 @@ void BKE_fmodifiers_blend_write(BlendWriter *writer, ListBase *fmodifiers)
     /* Write the specific data */
     if (fmi && fcm->data) {
       /* firstly, just write the plain fmi->data struct */
-      BLO_write_struct_by_name(writer, fmi->structName, fcm->data);
+      BLO_write_struct_by_name(writer, fmi->struct_name, fcm->data);
 
       /* do any modifier specific stuff */
       switch (fcm->type) {

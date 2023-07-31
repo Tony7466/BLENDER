@@ -5,6 +5,7 @@
 set(INC
   ../include
   ../../blenfont
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../bmesh
@@ -14,6 +15,7 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../render
+  ../../windowmanager
   ../../../../intern/clog
 
   # RNA_prototypes.h
@@ -36,12 +38,11 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_uvedit
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_IMAGE_OPENJPEG)

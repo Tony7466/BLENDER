@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_anim_types.h"
 
@@ -89,7 +89,7 @@ static void applyTimeScale(TransInfo *t, const int[2] /*mval*/)
 
   applyTimeScaleValue(t, t->values_final[0]);
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

@@ -6,9 +6,9 @@
  * \ingroup bke
  */
 
+#include <cstddef>
+#include <ctime>
 #include <memory.h>
-#include <stddef.h>
-#include <time.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -183,7 +183,7 @@ static void seq_cache_unlock(Scene *scene)
 
 static size_t seq_cache_get_mem_total()
 {
-  return (size_t(U.memcachelimit)) * 1024 * 1024;
+  return size_t(U.memcachelimit) * 1024 * 1024;
 }
 
 static void seq_cache_keyfree(void *val)
