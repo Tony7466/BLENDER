@@ -61,37 +61,6 @@ void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree);
 
 void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree);
 
-/* -------------------------------------------------------------------- */
-/** \name Node Tree Interface
- * \{ */
-
-// bNodeSocket *ntreeFindSocketInterface(bNodeTree *ntree,
-//                                      eNodeSocketInOut in_out,
-//                                      const char *identifier);
-
-// bNodeSocket *ntreeInsertSocketInterface(bNodeTree *ntree,
-//                                        eNodeSocketInOut in_out,
-//                                        const char *idname,
-//                                        bNodeSocket *next_sock,
-//                                        const char *name);
-
-// bNodeSocket *ntreeAddSocketInterfaceFromSocket(bNodeTree *ntree,
-//                                               const bNode *from_node,
-//                                               const bNodeSocket *from_sock);
-
-// bNodeSocket *ntreeAddSocketInterfaceFromSocketWithName(bNodeTree *ntree,
-//                                                       const bNode *from_node,
-//                                                       const bNodeSocket *from_sock,
-//                                                       const char *idname,
-//                                                       const char *name);
-
-// bNodeSocket *ntreeInsertSocketInterfaceFromSocket(bNodeTree *ntree,
-//                                                  bNodeSocket *next_sock,
-//                                                  const bNode *from_node,
-//                                                  const bNodeSocket *from_sock);
-
-/** \} */
-
 bool node_type_is_undefined(const bNode *node);
 
 bool nodeIsStaticSocketType(const bNodeSocketType *stype);

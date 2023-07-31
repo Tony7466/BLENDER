@@ -96,35 +96,6 @@ template<typename T> static bool item_is_type(const bNodeTreeInterfaceItem &item
 
 }  // namespace blender::bke::node_interface::detail
 
-// template<typename T> T &bNodeTreeInterfaceItem::get_as()
-//{
-//   BLI_assert(blender::bke::node_interface::detail::item_is_type<T>(*this));
-//   return reinterpret_cast<T &>(*this);
-// }
-//
-// template<typename T> const T &bNodeTreeInterfaceItem::get_as() const
-//{
-//   BLI_assert(blender::bke::node_interface::detail::item_is_type<T>(*this));
-//   return reinterpret_cast<const T &>(*this);
-// }
-//
-// template<typename T> T *bNodeTreeInterfaceItem::get_as_ptr()
-//{
-//   if (blender::bke::node_interface::detail::item_is_type<T>(*this)) {
-//     return reinterpret_cast<T *>(this);
-//   }
-//   return nullptr;
-// }
-//
-// template<typename T> const T *bNodeTreeInterfaceItem::get_as_ptr() const
-//{
-//   //  return const_cast<bNodeTreeInterfaceItem *>(this)->get_as_ptr<T>();
-//   if (blender::bke::node_interface::detail::item_is_type<T>(*this)) {
-//     return reinterpret_cast<const T *>(this);
-//   }
-//   return nullptr;
-// }
-
 namespace blender::bke::node_interface {
 
 template<typename T> T &get_item_as(bNodeTreeInterfaceItem &item)
@@ -256,18 +227,6 @@ template<typename T> const T &get_socket_data_as(const bNodeTreeInterfaceSocket 
 }
 
 }  // namespace blender::bke::node_interface
-
-// template<typename T> T &bNodeTreeInterfaceSocket::get_data()
-//{
-//   BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
-//   return *static_cast<T *>(socket_data);
-// }
-//
-// template<typename T> const T &bNodeTreeInterfaceSocket::get_data() const
-//{
-//   BLI_assert(blender::bke::node_interface::socket_data_is_type<T>(socket_type));
-//   return *static_cast<const T *>(socket_data);
-// }
 
 namespace blender::bke::node_interface {
 
