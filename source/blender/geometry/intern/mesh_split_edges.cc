@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <variant>
-
 #include "BLI_array_utils.hh"
 #include "BLI_disjoint_set.hh"
 #include "BLI_index_mask.hh"
@@ -47,7 +45,6 @@ static void propagate_vert_attributes(Mesh &mesh, const Span<int> new_to_old_ver
   if (float3 *orco = static_cast<float3 *>(
           CustomData_get_layer_for_write(&mesh.vert_data, CD_ORCO, mesh.totvert)))
   {
-
     array_utils::gather(Span(orco, mesh.totvert),
                         new_to_old_verts_map,
                         MutableSpan(orco, mesh.totvert).take_back(new_to_old_verts_map.size()));
