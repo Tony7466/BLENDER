@@ -294,7 +294,7 @@ static void calc_updated_corner_verts(const int orig_verts_num,
 }
 
 /**
- * When each of an edge's vertices only have a single grouped edge fan, the vertices will not be
+ * When each of an edge's vertices only have a single grouped corner fan, the vertices will not be
  * split, meaning all output edges will reuse the same vertices.
  */
 static BitVector<> calc_deduplicated_new_edges(const int orig_verts_num,
@@ -321,10 +321,9 @@ static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
                                   const Span<int> orig_corner_edges,
                                   const BitSpan selection,
                                   const Span<int> new_corner_verts,
-                                  const int new_edge_start,
                                   const BitSpan output_single_edge,
                                   MutableSpan<int2> edges,
-                                  MutableSpan<int> new_corner_edges,
+                                  MutableSpan<int> corner_edges,
                                   Vector<int2> &new_edges,
                                   Vector<int> &new_edge_orig_indices)
 {
@@ -332,23 +331,22 @@ static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
     for (const int corner : face) {
+      const int corner_next = bke::mesh::face_corner_next(face, corner);
       const int edge = orig_corner_edges[corner];
-      if (!selection[edge]) {
-        continue;
-      }
-      const int vert_1 = new_corner_verts[corner];
-      const int vert_2 = new_corner_verts[bke::mesh::face_corner_next(face, corner)];
-      if (output_single_edge[edge]) {
-        BLI_assert(OrderedEdge(edges[edge]) == OrderedEdge(vert_1, vert_2));
+      const int2 new_edge(new_corner_verts[corner], new_corner_verts[corner_next]);
+      if (!selection[edge] || output_single_edge[edge]) {
+        /* Even if an edge wasn't selected, its vertex indices can be updated when neighboring
+         * edges are selected and new vertices are created for the corner fans of its vertices. */
+        edges[edge] = new_edge;
         continue;
       }
       if (edge_used[edge]) {
-        new_corner_edges[corner] = new_edge_start + new_edges.size();
-        new_edges.append(int2(vert_1, vert_2));
+        corner_edges[corner] = edges.size() + new_edges.size();
+        new_edges.append(new_edge);
         new_edge_orig_indices.append(edge);
       }
       else {
-        edges[edge] = int2(vert_1, vert_2);
+        edges[edge] = new_edge;
         edge_used[edge].set();
       }
     }
@@ -423,7 +421,7 @@ static Array<int> calc_new_to_old_vert_map(const IndexMask &affected_verts,
 
 void split_edges(Mesh &mesh,
                  const IndexMask &selected_edges,
-                 const bke::AnonymousAttributePropagationInfo &propagation_info)
+                 const bke::AnonymousAttributePropagationInfo & /*propagation_info*/)
 {
   const int orig_verts_num = mesh.totvert;
   const Span<int2> orig_edges = mesh.edges();
@@ -431,16 +429,10 @@ void split_edges(Mesh &mesh,
   const Array<int> orig_corner_edges = mesh.corner_edges();
 
   IndexMaskMemory memory;
-  const IndexMask unselected_edges = selected_edges.complement(orig_edges.index_range(), memory);
   const IndexMask affected_verts = vert_selection_from_edge(
       orig_edges, selected_edges, orig_verts_num, memory);
   const BitVector<> selection_bits = selection_to_bit_vector(selected_edges, orig_edges.size());
   const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
-  const IndexMask selected_loose_edges = loose_edges.count > 0 ?
-                                             IndexMask::from_bits(selected_edges,
-                                                                  loose_edges.is_loose_bits,
-                                                                  memory) :
-                                             IndexMask();
 
   Array<int> vert_to_corner_offsets;
   Array<int> vert_to_corner_indices;
@@ -495,7 +487,6 @@ void split_edges(Mesh &mesh,
                 orig_corner_edges,
                 selection_bits,
                 new_corner_verts,
-                orig_edges.size(),
                 single_edges,
                 mesh.edges_for_write(),
                 mesh.corner_edges_for_write(),
