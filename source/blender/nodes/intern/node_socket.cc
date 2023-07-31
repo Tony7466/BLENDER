@@ -668,8 +668,7 @@ extern "C" void ED_init_standard_node_socket_type(bNodeSocketType *);
 static bNodeSocketType *make_standard_socket_type(int type, int subtype)
 {
   const char *socket_idname = nodeStaticSocketType(type, subtype);
-  //  const char *interface_idname = nodeStaticSocketInterfaceType(type, subtype);
-  const char *interface_idname_new = nodeStaticSocketInterfaceTypeNew(type, subtype);
+  const char *interface_idname = nodeStaticSocketInterfaceTypeNew(type, subtype);
   const char *socket_label = nodeStaticSocketLabel(type, subtype);
   const char *socket_subtype_label = blender::bke::nodeSocketSubTypeLabel(subtype);
   bNodeSocketType *stype;
@@ -688,14 +687,8 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   /* associate the RNA type with the socket type */
   RNA_struct_blender_type_set(srna, stype);
 
-  //  /* set the interface RNA type */
-  //  srna = stype->ext_interface.srna = RNA_struct_find(interface_idname);
-  //  BLI_assert(srna != nullptr);
-  //  /* associate the RNA type with the socket type */
-  //  RNA_struct_blender_type_set(srna, stype);
-
-  /* set the new interface RNA type */
-  srna = stype->ext_interface_new.srna = RNA_struct_find(interface_idname_new);
+  /* set the interface RNA type */
+  srna = stype->ext_interface_new.srna = RNA_struct_find(interface_idname);
   BLI_assert(srna != nullptr);
   /* associate the RNA type with the socket type */
   RNA_struct_blender_type_set(srna, stype);
