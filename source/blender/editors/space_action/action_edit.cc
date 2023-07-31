@@ -786,7 +786,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   }
 
   bool changed = false;
-  if (!hold_previous) {
+  if (hold_previous) {
     const GreasePencilFrame *active_frame = layer->frame_at(frame_number);
     if ((active_frame == nullptr) || (active_frame->is_null())) {
       /* There is no active frame to hold to, or it's a null frame. */
