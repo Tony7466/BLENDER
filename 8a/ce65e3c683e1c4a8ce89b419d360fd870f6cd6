@@ -1,1 +1,2 @@
 Referenced by issue #110626, Regression: UV Unwrap node produce NaN vectors
+Referenced by commit a35ad5899fca168e9457af98b7ff11a7c4000ac9, Fix #110626: restore abf uv unwrap logic
