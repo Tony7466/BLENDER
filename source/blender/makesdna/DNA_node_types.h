@@ -183,7 +183,7 @@ typedef struct bNodeSocket {
   bNodeStack ns DNA_DEPRECATED;
 
   /* UI panel of the socket. */
-  struct bNodePanel *panel;
+  //  struct bNodePanel *panel;
 
   bNodeSocketRuntimeHandle *runtime;
 
@@ -595,10 +595,10 @@ enum {
 };
 
 /** Panel in node tree for grouping sockets. */
-typedef struct bNodePanel {
-  /** UI name of the panel (not unique). */
-  char *name;
-} bNodePanel;
+// typedef struct bNodePanel {
+//  /** UI name of the panel (not unique). */
+//  char *name;
+//} bNodePanel;
 
 typedef struct bNestedNodePath {
   /** ID of the node that is or contains the nested node. */
@@ -698,9 +698,9 @@ typedef struct bNodeTree {
   struct PreviewImage *preview;
 
   /* UI panels */
-  struct bNodePanel **panels_array DNA_DEPRECATED;
-  int panels_num DNA_DEPRECATED;
-  int active_panel DNA_DEPRECATED;
+  //  struct bNodePanel **panels_array DNA_DEPRECATED;
+  //  int panels_num DNA_DEPRECATED;
+  //  int active_panel DNA_DEPRECATED;
 
   bNodeTreeRuntimeHandle *runtime;
 

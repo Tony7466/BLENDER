@@ -872,7 +872,7 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->storage);
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_data_address(reader, &sock->default_attribute_name);
-  BLO_read_data_address(reader, &sock->panel);
+  //  BLO_read_data_address(reader, &sock->panel);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
 }
 
@@ -1077,11 +1077,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &link->tosock);
   }
 
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&ntree->panels_array));
-  for (const int i : IndexRange(ntree->panels_num)) {
-    BLO_read_data_address(reader, &ntree->panels_array[i]);
-    BLO_read_data_address(reader, &ntree->panels_array[i]->name);
-  }
+  //  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&ntree->panels_array));
+  //  for (const int i : IndexRange(ntree->panels_num)) {
+  //    BLO_read_data_address(reader, &ntree->panels_array[i]);
+  //    BLO_read_data_address(reader, &ntree->panels_array[i]->name);
+  //  }
 
   BLO_read_data_address(reader, &ntree->nested_node_refs);
 
