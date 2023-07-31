@@ -56,7 +56,7 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
     case NODE_INTERFACE_SOCKET: {
       bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(*item);
       bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
-      if (socket_typeinfo) {
+      if (socket_typeinfo && socket_typeinfo->ext_interface_new.srna) {
         return socket_typeinfo->ext_interface_new.srna;
       }
       else {
@@ -271,9 +271,9 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   RNA_struct_blender_type_set(st->ext_interface_new.srna, st);
 
   st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
-  st->interface_init_socket = (have_function[2]) ? rna_NodeTreeInterfaceSocket_init_socket_custom :
+  st->interface_init_socket = (have_function[1]) ? rna_NodeTreeInterfaceSocket_init_socket_custom :
                                                    nullptr;
-  st->interface_from_socket = (have_function[3]) ? rna_NodeTreeInterfaceSocket_from_socket_custom :
+  st->interface_from_socket = (have_function[2]) ? rna_NodeTreeInterfaceSocket_from_socket_custom :
                                                    nullptr;
 
   /* Cleanup local dummy type. */

@@ -159,6 +159,35 @@ static std::function<ID *(const bNode &node)> get_default_id_getter(
   };
 }
 
+static std::function<void(bNode &node, bNodeSocket &socket, const char *data_path)>
+get_init_socket_fn(const bNodeTreeInterface &interface, const bNodeTreeInterfaceSocket &io_socket)
+{
+  const int item_index = interface.find_item_index(io_socket.item);
+  BLI_assert(item_index >= 0);
+
+  /* Avoid capturing pointers that can become dangling. */
+  return [item_index](bNode &node, bNodeSocket &socket, const char *data_path) {
+    if (node.id == nullptr) {
+      return;
+    }
+    if (GS(node.id->name) != ID_NT) {
+      return;
+    }
+    bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(node.id);
+    const bNodeTreeInterfaceItem *io_item = ntree.interface.get_item_at_index(item_index);
+    if (io_item == nullptr || io_item->item_type != NODE_INTERFACE_SOCKET) {
+      return;
+    }
+    const bNodeTreeInterfaceSocket &io_socket = node_interface::get_as<bNodeTreeInterfaceSocket>(
+        *io_item);
+    bNodeSocketType *typeinfo = io_socket.socket_typeinfo();
+    if (typeinfo && typeinfo->interface_init_socket) {
+      //    return *static_cast<ID **>(io_socket.socket_data);
+      typeinfo->interface_init_socket(&ntree.id, &io_socket, &node, &socket, data_path);
+    }
+  };
+}
+
 /* in_out overrides the socket declaration in/out type (bNodeTreeInterfaceSocket::flag)
  * because a node group input is turned into an output socket for group input nodes. */
 static SocketDeclarationPtr declaration_for_interface_socket(
@@ -273,10 +302,9 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       break;
     }
     case SOCK_CUSTOM:
-      /* TODO */
-      //      std::unique_ptr<decl::Custom> decl = std::make_unique<decl::Custom>();
-      //      decl->idname_ = io_socket.idname;
-      //      dst = std::move(decl);
+      auto value = std::make_unique<decl::Custom>();
+      value->init_socket_fn = get_init_socket_fn(ntree.interface, io_socket);
+      dst = std::move(value);
       break;
   }
   dst->name = io_socket.name;

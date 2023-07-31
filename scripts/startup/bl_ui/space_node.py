@@ -1002,7 +1002,7 @@ class NODE_PT_node_tree_declaration(Panel):
                 layout.prop(active_item, "is_output", toggle=True)
                 layout.prop(active_item, "socket_type")
 
-                active_item.draw_socket_properties(context, layout)
+                active_item.draw(context, layout)
 
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':
