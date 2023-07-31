@@ -41,7 +41,6 @@ struct PaintOperationExecutor {
   {
     using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    Scene *scene = CTX_data_scene(&C);
     ARegion *region = CTX_wm_region(&C);
     Scene *scene = CTX_data_scene(&C);
     Object *obact = CTX_data_active_object(&C);
@@ -53,15 +52,11 @@ struct PaintOperationExecutor {
      * original object.
      */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
+
     if (!grease_pencil.has_active_layer()) {
       bke::greasepencil::Layer &new_layer = grease_pencil.add_layer("GP_Layer");
       grease_pencil.set_active_layer(&new_layer);
-
-      grease_pencil.add_empty_drawings(1);
-
-      GreasePencilFrame frame{
-          int(grease_pencil.drawings().index_range().last()), 0, BEZT_KEYTYPE_KEYFRAME};
-      new_layer.insert_frame(scene->r.cfra, frame);
+      grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
     }
 
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
@@ -100,12 +95,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   if (!grease_pencil_orig.has_active_layer()) {
     bke::greasepencil::Layer &new_layer = grease_pencil_orig.add_layer("GP_Layer");
     grease_pencil_orig.set_active_layer(&new_layer);
-
-    grease_pencil_orig.add_empty_drawings(1);
-
-    GreasePencilFrame frame{
-        int(grease_pencil_orig.drawings().index_range().last()), 0, BEZT_KEYTYPE_KEYFRAME};
-    new_layer.insert_frame(scene->r.cfra, frame);
+    grease_pencil_orig.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
   BLI_assert(grease_pencil_orig.has_active_layer() && grease_pencil_eval.has_active_layer());
   const bke::greasepencil::Layer &active_layer_orig = *grease_pencil_orig.get_active_layer();
