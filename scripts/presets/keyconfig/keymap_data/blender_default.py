@@ -4514,6 +4514,21 @@ def km_grease_pencil_paint(_params):
     return keymap
 
 
+def km_grease_pencil_fill(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Paint Mode (Fill)",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("grease_pencil.vector_based_fill", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
 def km_grease_pencil_edit(params):
     items = []
     keymap = (
@@ -8300,6 +8315,7 @@ def generate_keymaps(params=None):
         km_grease_pencil_stroke_vertex_smear(params),
         km_grease_pencil_stroke_vertex_replace(params),
         km_grease_pencil_paint(params),
+        km_grease_pencil_fill(params),
         km_grease_pencil_edit(params),
         # Object mode.
         km_object_mode(params),

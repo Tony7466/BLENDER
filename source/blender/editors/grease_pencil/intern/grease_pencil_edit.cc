@@ -80,6 +80,17 @@ bool grease_pencil_painting_poll(bContext *C)
   return true;
 }
 
+bool grease_pencil_painting_fill_poll(bContext *C)
+{
+  if (!grease_pencil_painting_poll(C)) {
+    return false;
+  }
+
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  return (ts->gp_paint->paint.brush->gpencil_tool == GPAINT_TOOL_FILL);
+}
+
 static void keymap_grease_pencil_editing(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Edit Mode", 0, 0);
@@ -90,6 +101,12 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Paint Mode", 0, 0);
   keymap->poll = grease_pencil_painting_poll;
+}
+
+static void keymap_grease_pencil_painting_fill(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Paint Mode (Fill)", 0, 0);
+  keymap->poll = grease_pencil_painting_fill_poll;
 }
 
 /* -------------------------------------------------------------------- */
@@ -570,5 +587,6 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
 {
   using namespace blender::ed::greasepencil;
   keymap_grease_pencil_editing(keyconf);
+  keymap_grease_pencil_painting_fill(keyconf);
   keymap_grease_pencil_painting(keyconf);
 }
