@@ -170,10 +170,6 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
                                   MutableSpan<float3> target_normals,
                                   MutableSpan<float> target_distances)
 {
-  // r_source_indices.reserve(r_source_indices.size() + total_pairs);
-  // r_target_indices.reserve(r_target_indices.size() + total_pairs);
-  // r_target_positions.reserve(r_target_positions.size() + total_pairs);
-  // r_target_dist_sq.reserve(r_target_dist_sq.size() + total_pairs);
   IndexRange current_range = {};
   for (LocalData &local_data : thread_storage) {
     const int64_t local_size = local_data.source_indices.size();
@@ -253,11 +249,10 @@ static void find_closest_neighbors_on_component(GeoNodeExecParams params,
   const VArray<float3> source_position_input = evaluator.get_evaluated<float3>(0);
   const VArray<float> max_distance_input = evaluator.get_evaluated<float>(1);
 
+  /* XXX appending to thread_storage will result in multiple segments for the same source point at
+   * different places. Only the last segment is considered (first_neighbor gets updated every time
+   * we append data). These segments should be joined. */
   ThreadLocalData thread_storage;
-  // Vector<int> out_source_indices;
-  // Vector<int> out_target_indices;
-  // Vector<int> out_target_positions;
-  // Vector<int> out_target_dist_sq;
   if (target.has_mesh()) {
     BVHCacheType cache_type = BVHTREE_FROM_VERTS;
     switch (target_element) {
@@ -281,6 +276,34 @@ static void find_closest_neighbors_on_component(GeoNodeExecParams params,
     find_closest_neighbors(selection,
                            tree_data.tree,
                            tree_data.nearest_callback,
+                           &tree_data,
+                           source_position_input,
+                           max_distance_input,
+                           max_neighbors,
+                           out_neighbor_count.span,
+                           out_first_neighbor.span,
+                           thread_storage);
+  }
+  if (target.has_pointcloud()) {
+    BVHTreeFromPointCloud tree_data;
+    BVHTree *tree = BKE_bvhtree_from_pointcloud_get(
+        &tree_data, target.get_pointcloud_for_read(), 4);
+    BLI_SCOPED_DEFER([&]() { free_bvhtree_from_pointcloud(&tree_data); });
+    if (tree == nullptr) {
+      return;
+    }
+    /* Pointcloud BVH tree has no nearest callback, lets roll our own. */
+    auto nearest_cb = [](void *userdata, int index, const float co[3], BVHTreeNearest *nearest) {
+      const BVHTreeFromPointCloud *data = static_cast<BVHTreeFromPointCloud *>(userdata);
+      nearest->index = index;
+      const float3 pos = data->coords[index];
+      copy_v3_v3(nearest->co, pos);
+      nearest->dist_sq = math::distance_squared(float3(co), pos);
+      zero_v3(nearest->no);
+    };
+    find_closest_neighbors(selection,
+                           tree,
+                           nearest_cb,
                            &tree_data,
                            source_position_input,
                            max_distance_input,
