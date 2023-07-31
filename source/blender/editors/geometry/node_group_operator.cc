@@ -40,6 +40,7 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+#include "RNA_enum_types.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -96,20 +97,17 @@ static const asset_system::AssetRepresentation *get_asset_at_full_path(
   return matching_asset;
 }
 
-static std::string rna_get_string(PointerRNA &ptr, const StringRefNull name)
-{
-  char *value = RNA_string_get_alloc(&ptr, name.c_str(), nullptr, 0, nullptr);
-  std::string result = value ? value : "";
-  MEM_SAFE_FREE(value);
-  return result;
-}
-
 /** \note Does not check asset type or meta data. */
 static const asset_system::AssetRepresentation *get_asset(const bContext &C,
                                                           PointerRNA &ptr,
                                                           ReportList *reports)
 {
-  const std::string path = rna_get_string(ptr, "asset_full_path");
+  AssetWeakReference weak_ref{};
+  weak_ref.asset_library_type = RNA_enum_get(&ptr, "asset_library_type");
+  weak_ref.asset_library_identifier = RNA_string_get_alloc(
+      &ptr, "asset_library_identifier", nullptr, 0, nullptr);
+  weak_ref.relative_asset_identifier = RNA_string_get_alloc(
+      &ptr, "relative_asset_identifier", nullptr, 0, nullptr);
   return get_asset_at_full_path(C, path, reports);
 }
 
@@ -353,7 +351,18 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   PropertyRNA *prop;
-  prop = RNA_def_string(ot->srna, "asset_full_path", nullptr, 0, "Asset Path", "");
+  prop = RNA_def_enum(ot->srna,
+                      "asset_library_type",
+                      rna_enum_aset_library_type_items,
+                      ASSET_LIBRARY_LOCAL,
+                      "Asset Library Type",
+                      "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_string(
+      ot->srna, "asset_library_identifier", nullptr, 0, "Asset Library Identifier", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_string(
+      ot->srna, "relative_asset_identifier", nullptr, 0, "Relative Asset Identifier", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
@@ -464,6 +473,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
     wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
+    const std::unique_ptr<AssetWeakReference> weak_ref = asset->make_weak_reference();
     PointerRNA props_ptr;
     uiItemFullO_ptr(col,
                     ot,
@@ -473,7 +483,9 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
                     WM_OP_INVOKE_DEFAULT,
                     eUI_Item_Flag(0),
                     &props_ptr);
-    RNA_string_set(&props_ptr, "asset_full_path", asset->get_identifier().full_path().c_str());
+    RNA_enum_set(&props_ptr, "asset_library_type", weak_ref->asset_library_type);
+    RNA_string_set(&props_ptr, "asset_library_identifier", weak_ref->asset_library_identifier);
+    RNA_string_set(&props_ptr, "relative_asset_identifier", weak_ref->relative_asset_identifier);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
