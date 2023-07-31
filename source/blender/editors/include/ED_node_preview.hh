@@ -6,6 +6,8 @@
 
 #include "RE_pipeline.h"
 
+#include "IMB_imbuf.h"
+
 struct bContext;
 struct bNodeTree;
 struct ImBuf;
@@ -13,6 +15,8 @@ struct Render;
 
 struct NestedTreePreviews {
   Render *previews_render;
+  /* Use this map to keep track of the latest ImBuf used (after freeing the renderresult). */
+  blender::Map<const bNode *, ImBuf *> previews_map;
   int preview_size;
   bool rendering;
   bool restart_needed;
@@ -30,6 +34,7 @@ struct NestedTreePreviews {
     if (this->previews_render) {
       RE_FreeRender(this->previews_render);
     }
+    this->previews_map.foreach_item([&](const bNode *, ImBuf *ibuf) { IMB_freeImBuf(ibuf); });
   }
 };
 
@@ -39,3 +44,4 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
                                     const bNode *node);
 void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews);
 NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
+void ED_spacenode_stop_preview_job(wmWindowManager *wm);

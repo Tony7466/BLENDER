@@ -1450,7 +1450,7 @@ static int gpencil_weightpaint_brush_modal(bContext *C, wmOperator *op, const wm
         return OPERATOR_PASS_THROUGH;
 
       /* Camera/View Gizmo's - Allowed. */
-      /* (See rationale in gpencil_paint.c -> gpencil_draw_modal()) */
+      /* See rationale in `gpencil_paint.cc`, #gpencil_draw_modal(). */
       case EVT_PAD0:
       case EVT_PAD1:
       case EVT_PAD2:
@@ -1679,5 +1679,5 @@ void GPENCIL_OT_weight_sample(wmOperatorType *ot)
   ot->poll = gpencil_weightpaint_brush_poll;
 
   /* flags */
-  ot->flag = OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 }

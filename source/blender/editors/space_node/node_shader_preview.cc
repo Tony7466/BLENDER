@@ -39,6 +39,10 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_scene.h"
 
+#include "DEG_depsgraph.h"
+
+#include "IMB_imbuf.h"
+
 #include "WM_api.h"
 
 #include "ED_datafiles.h"
@@ -179,6 +183,7 @@ static Scene *preview_prepare_scene(const Main *bmain,
 
   /* This flag tells render to not execute depsgraph or F-Curves etc. */
   scene_preview->r.scemode |= R_BUTS_PREVIEW;
+  scene_preview->r.mode |= R_PERSISTENT_DATA;
   STRNCPY(scene_preview->r.engine, scene_orig->r.engine);
 
   scene_preview->r.color_mgt_flag = scene_orig->r.color_mgt_flag;
@@ -287,20 +292,29 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
   }
 
   RenderResult *rr = RE_AcquireResultRead(tree_previews->previews_render);
+  ImBuf *&image_cached = tree_previews->previews_map.lookup_or_add(node, nullptr);
   if (rr == nullptr) {
-    return nullptr;
+    return image_cached;
   }
-  ImBuf *image = nullptr;
+  ImBuf *image_latest = nullptr;
   if (node_use_aov(node)) {
-    image = get_image_from_viewlayer_and_pass(rr, nullptr, node->name);
+    image_latest = get_image_from_viewlayer_and_pass(rr, nullptr, node->name);
   }
   else {
-    image = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
+    image_latest = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
   }
-  if (image == nullptr) {
+  if (image_latest == nullptr) {
     ntree->runtime->previews_refresh_state++;
+    return image_cached;
   }
-  return image;
+  if (image_cached != image_latest) {
+    if (image_cached != nullptr) {
+      IMB_freeImBuf(image_cached);
+    }
+    IMB_refImBuf(image_latest);
+    image_cached = image_latest;
+  }
+  return image_latest;
 }
 
 void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
@@ -345,18 +359,20 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
                                                                            nested_node_orig->name);
 
     nodeAddLink(nested_nt, nested_node, nested_socket, output_node, out_socket);
-
-    nodeSetActive(nested_nt, output_node);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
-    BKE_ntree_update_main_tree(G.pr_main, path_prev->nodetree, nullptr);
 
     /* Change the `nested_node` pointer to the nested nodegroup instance node. The tree path
      * contains the name of the instance node but not its ID. */
     nested_node = nodeFindNodebyName(path_prev->nodetree, path->node_name);
 
+    /* Update the sockets of the node because we added a new interface. */
+    BKE_ntree_update_tag_node_property(path_prev->nodetree, nested_node);
+    BKE_ntree_update_main_tree(G.pr_main, path_prev->nodetree, nullptr);
+
     /* Now use the newly created socket of the nodegroup as previewing socket of the nodegroup
      * instance node. */
-    nested_socket = (bNodeSocket *)nested_node->outputs.last;
+    nested_socket = blender::bke::node_find_enabled_output_socket(*nested_node,
+                                                                  nested_node_orig->name);
   }
 
   nodeAddLink(treepath.first()->nodetree, nested_node, nested_socket, final_node, final_socket);
@@ -377,7 +393,7 @@ static void connect_node_to_surface_output(const Span<bNodeTreePath *> treepath,
   /* Ensure output is usable. */
   out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
   if (out_surface_socket->link) {
-    /* make sure no node is already wired to the output before wiring */
+    /* Make sure no node is already wired to the output before wiring. */
     nodeRemLink(main_nt, out_surface_socket->link);
   }
 
@@ -417,7 +433,7 @@ static bool nodetree_previews_break(void *spv)
   return *(job_data->stop);
 }
 
-static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
+static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *depsgraph)
 {
   bNode *node = nullptr;
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(pvl_data);
@@ -442,6 +458,14 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl)
                 displacement_socket);
   }
   connect_node_to_surface_output(job_data->treepath_copy, node, job_data->mat_output_copy);
+
+  if (depsgraph != nullptr) {
+    /* Used to refresh the dependency graph so that the material can be updated. */
+    for (bNodeTreePath *path_iter : job_data->treepath_copy) {
+      DEG_graph_id_tag_update(
+          G.pr_main, depsgraph, &path_iter->nodetree->id, ID_RECALC_NTREE_OUTPUT);
+    }
+  }
   return true;
 }
 
@@ -574,7 +598,6 @@ static void shader_preview_startjob(void *customdata,
     if (!(node->flag & NODE_PREVIEW)) {
       continue;
     }
-
     if (node_use_aov(node)) {
       job_data->AOV_nodes.append(node);
     }
@@ -665,6 +688,11 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_callbacks(wm_job, shader_preview_startjob, nullptr, nullptr, nullptr);
 
   WM_jobs_start(CTX_wm_manager(C), wm_job);
+}
+
+void ED_spacenode_stop_preview_job(wmWindowManager *wm)
+{
+  WM_jobs_stop(wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
 }
 
 void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)

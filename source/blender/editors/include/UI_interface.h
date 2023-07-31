@@ -653,7 +653,7 @@ typedef bool (*uiMenuStepFunc)(struct bContext *C, int direction, void *arg1);
 typedef void *(*uiCopyArgFunc)(const void *arg);
 typedef void (*uiFreeArgFunc)(void *arg);
 
-/* interface_query.c */
+/* `interface_query.cc` */
 
 bool UI_but_has_tooltip_label(const uiBut *but);
 bool UI_but_is_tool(const uiBut *but);
@@ -667,7 +667,7 @@ bool UI_block_can_add_separator(const uiBlock *block);
 
 struct uiList *UI_list_find_mouse_over(const struct ARegion *region, const struct wmEvent *event);
 
-/* interface_region_menu_popup.c */
+/* `interface_region_menu_popup.cc` */
 
 /**
  * Popup Menus
@@ -711,7 +711,7 @@ void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
  */
 void UI_popup_menu_but_set(uiPopupMenu *pup, struct ARegion *butregion, uiBut *but);
 
-/* interface_region_popover.c */
+/* `interface_region_popover.cc` */
 
 typedef struct uiPopover uiPopover;
 
@@ -735,7 +735,7 @@ void UI_popover_end(struct bContext *C, struct uiPopover *pup, struct wmKeyMap *
 struct uiLayout *UI_popover_layout(uiPopover *pup);
 void UI_popover_once_clear(uiPopover *pup);
 
-/* interface_region_menu_pie.c */
+/* `interface_region_menu_pie.cc` */
 
 /* Pie menus */
 typedef struct uiPieMenu uiPieMenu;
@@ -758,7 +758,7 @@ struct uiPieMenu *UI_pie_menu_begin(struct bContext *C,
 void UI_pie_menu_end(struct bContext *C, uiPieMenu *pie);
 struct uiLayout *UI_pie_menu_layout(struct uiPieMenu *pie);
 
-/* interface_region_menu_popup.c */
+/* `interface_region_menu_popup.cc` */
 
 /* Popup Blocks
  *
@@ -2065,7 +2065,7 @@ enum {
   UI_LAYOUT_ALIGN_RIGHT = 3,
 };
 
-enum {
+typedef enum eUI_Item_Flag {
   /* UI_ITEM_O_RETURN_PROPS = 1 << 0, */ /* UNUSED */
   UI_ITEM_R_EXPAND = 1 << 1,
   UI_ITEM_R_SLIDER = 1 << 2,
@@ -2095,7 +2095,9 @@ enum {
   UI_ITEM_R_FORCE_BLANK_DECORATE = 1 << 13,
   /* Even create the property split layout if there's no name to show there. */
   UI_ITEM_R_SPLIT_EMPTY_NAME = 1 << 14,
-};
+} eUI_Item_Flag;
+ENUM_OPERATORS(eUI_Item_Flag, UI_ITEM_R_SPLIT_EMPTY_NAME)
+#define UI_ITEM_NONE eUI_Item_Flag(0)
 
 #define UI_HEADER_OFFSET ((void)0, 0.4f * UI_UNIT_X)
 
@@ -2496,6 +2498,7 @@ void uiTemplateHeader3D_mode(uiLayout *layout, struct bContext *C);
 void uiTemplateEditModeSelection(uiLayout *layout, struct bContext *C);
 void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
 void uiTemplateInputStatus(uiLayout *layout, struct bContext *C);
+void uiTemplateStatusInfo(uiLayout *layout, struct bContext *C);
 void uiTemplateKeymapItemProperties(uiLayout *layout, struct PointerRNA *ptr);
 
 bool uiTemplateEventFromKeymapItem(struct uiLayout *layout,
@@ -2750,7 +2753,7 @@ void uiItemFullO_ptr(uiLayout *layout,
                      int icon,
                      struct IDProperty *properties,
                      wmOperatorCallContext context,
-                     int flag,
+                     eUI_Item_Flag flag,
                      struct PointerRNA *r_opptr);
 void uiItemFullO(uiLayout *layout,
                  const char *opname,
@@ -2758,7 +2761,7 @@ void uiItemFullO(uiLayout *layout,
                  int icon,
                  struct IDProperty *properties,
                  wmOperatorCallContext context,
-                 int flag,
+                 eUI_Item_Flag flag,
                  struct PointerRNA *r_opptr);
 void uiItemFullOMenuHold_ptr(uiLayout *layout,
                              struct wmOperatorType *ot,
@@ -2766,14 +2769,14 @@ void uiItemFullOMenuHold_ptr(uiLayout *layout,
                              int icon,
                              struct IDProperty *properties,
                              wmOperatorCallContext context,
-                             int flag,
+                             eUI_Item_Flag flag,
                              const char *menu_id, /* extra menu arg. */
                              struct PointerRNA *r_opptr);
 
 void uiItemR(uiLayout *layout,
              struct PointerRNA *ptr,
              const char *propname,
-             int flag,
+             eUI_Item_Flag flag,
              const char *name,
              int icon);
 void uiItemFullR(uiLayout *layout,
@@ -2781,7 +2784,7 @@ void uiItemFullR(uiLayout *layout,
                  struct PropertyRNA *prop,
                  int index,
                  int value,
-                 int flag,
+                 eUI_Item_Flag flag,
                  const char *name,
                  int icon);
 /**
@@ -2792,7 +2795,7 @@ void uiItemFullR_with_popover(uiLayout *layout,
                               struct PropertyRNA *prop,
                               int index,
                               int value,
-                              int flag,
+                              eUI_Item_Flag flag,
                               const char *name,
                               int icon,
                               const char *panel_type);
@@ -2801,7 +2804,7 @@ void uiItemFullR_with_menu(uiLayout *layout,
                            struct PropertyRNA *prop,
                            int index,
                            int value,
-                           int flag,
+                           eUI_Item_Flag flag,
                            const char *name,
                            int icon,
                            const char *menu_type);
@@ -2850,7 +2853,7 @@ void uiItemsFullEnumO(uiLayout *layout,
                       const char *propname,
                       struct IDProperty *properties,
                       wmOperatorCallContext context,
-                      int flag);
+                      eUI_Item_Flag flag);
 /**
  * Create UI items for enum items in \a item_array.
  *
@@ -2862,7 +2865,7 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                             struct PropertyRNA *prop,
                             struct IDProperty *properties,
                             wmOperatorCallContext context,
-                            int flag,
+                            eUI_Item_Flag flag,
                             const struct EnumPropertyItem *item_array,
                             int totitem);
 

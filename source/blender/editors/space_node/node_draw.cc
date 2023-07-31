@@ -45,6 +45,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.h"
+#include "BKE_scene.h"
 #include "BKE_type_conversions.hh"
 
 #include "IMB_imbuf.h"
@@ -3435,7 +3436,7 @@ static void snode_setup_v2d(SpaceNode &snode, ARegion &region, const float2 &cen
   snode.runtime->aspect = BLI_rctf_size_x(&v2d.cur) / float(region.winx);
 }
 
-/* Similar to is_compositor_enabled() in draw_manager.c but checks all 3D views. */
+/* Similar to is_compositor_enabled() in `draw_manager.cc` but checks all 3D views. */
 static bool realtime_compositor_is_in_use(const bContext &context)
 {
   const Scene *scene = CTX_data_scene(&context);
@@ -3504,7 +3505,7 @@ static void draw_nodetree(const bContext &C,
   else if (ntree.type == NTREE_COMPOSIT) {
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
-  else if (ntree.type == NTREE_SHADER) {
+  else if (ntree.type == NTREE_SHADER && BKE_scene_uses_shader_previews(CTX_data_scene(&C))) {
     tree_draw_ctx.nested_group_infos = ED_spacenode_get_nested_previews(&C, snode);
   }
 

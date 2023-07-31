@@ -594,6 +594,8 @@ ePaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PAINT_MODE_SCULPT_UV;
         case OB_MODE_SCULPT_CURVES:
           return PAINT_MODE_SCULPT_CURVES;
+        case OB_MODE_PAINT_GREASE_PENCIL:
+          return PAINT_MODE_GPENCIL;
         default:
           return PAINT_MODE_TEXTURE_2D;
       }
@@ -1446,11 +1448,6 @@ static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 
   if (ss->bm) {
     if (ob->data) {
-      BMIter iter;
-      BMFace *efa;
-      BM_ITER_MESH (efa, &iter, ss->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_set(efa, BM_ELEM_SMOOTH, ss->bm_smooth_shading);
-      }
       if (reorder) {
         BM_log_mesh_elems_reorder(ss->bm, ss->bm_log);
       }
@@ -2225,7 +2222,6 @@ static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
 
   BKE_pbvh_build_bmesh(pbvh,
                        ob->sculpt->bm,
-                       ob->sculpt->bm_smooth_shading,
                        ob->sculpt->bm_log,
                        ob->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
                        ob->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
@@ -2273,7 +2269,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
 
 PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 {
-  if (ob == nullptr || ob->sculpt == nullptr) {
+  if (ob->sculpt == nullptr) {
     return nullptr;
   }
 
@@ -2343,11 +2339,6 @@ PBVH *BKE_object_sculpt_pbvh_get(Object *object)
 bool BKE_object_sculpt_use_dyntopo(const Object *object)
 {
   return object->sculpt && object->sculpt->bm;
-}
-
-void BKE_object_sculpt_dyntopo_smooth_shading_set(Object *object, const bool value)
-{
-  object->sculpt->bm_smooth_shading = value;
 }
 
 void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)

@@ -34,14 +34,6 @@ struct StructRNA;
 struct bAction;
 struct bContext;
 
-/* ************** Keyframe Tools ***************** */
-
-typedef struct CfraElem {
-  struct CfraElem *next, *prev;
-  float cfra;
-  int sel;
-} CfraElem;
-
 /* ************** F-Curve Modifiers *************** */
 
 /**
@@ -349,7 +341,7 @@ int BKE_fcurve_bezt_binarysearch_index(const struct BezTriple array[],
                                        int arraylen,
                                        bool *r_replace);
 
-/* fcurve_cache.c */
+/* `fcurve_cache.cc` */
 
 /**
  * Cached f-curve look-ups, use when this needs to be done many times.
