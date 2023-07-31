@@ -663,7 +663,7 @@ typedef struct bNodeTree {
    * Warning! Don't make links to these sockets, input/output nodes are used for that.
    * These sockets are used only for generating external interfaces.
    */
-  ListBase inputs DNA_DEPRECATED, outputs DNA_DEPRECATED;
+  ListBase inputs_legacy DNA_DEPRECATED, outputs_legacy DNA_DEPRECATED;
 
   bNodeTreeInterface interface;
 

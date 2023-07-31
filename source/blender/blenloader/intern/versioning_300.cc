@@ -316,10 +316,10 @@ static void do_versions_idproperty_ui_data(Main *bmain)
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       version_idproperty_ui_data(node->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
-    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs_legacy) {
       version_idproperty_ui_data(socket->prop);
     }
   }

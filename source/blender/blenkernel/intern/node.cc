@@ -381,13 +381,6 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     }
   }
 
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
-    BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
-  }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
-    BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
-  }
-
   ntree->interface.foreach_id(data);
 }
 
@@ -509,16 +502,16 @@ static bNodeSocket *make_socket(bNodeTree *ntree,
 static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
 {
   /* Discard old data. */
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
     node_socket_interface_free(ntree, socket, false);
     MEM_freeN(socket);
   }
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs_legacy) {
     node_socket_interface_free(ntree, socket, false);
     MEM_freeN(socket);
   }
-  BLI_listbase_clear(&ntree->inputs);
-  BLI_listbase_clear(&ntree->outputs);
+  BLI_listbase_clear(&ntree->inputs_legacy);
+  BLI_listbase_clear(&ntree->outputs_legacy);
 
   /* Construct inputs/outputs socket lists in the node tree. */
   ntree->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
@@ -531,7 +524,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
         node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
                                             iosock->default_value,
                                             socket->socket_data);
-        BLI_addtail(&ntree->inputs, iosock);
+        BLI_addtail(&ntree->inputs_legacy, iosock);
       }
       if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
         bNodeSocket *iosock = make_socket(
@@ -539,31 +532,31 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
         node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
                                             iosock->default_value,
                                             socket->socket_data);
-        BLI_addtail(&ntree->outputs, iosock);
+        BLI_addtail(&ntree->outputs_legacy, iosock);
       }
     }
     return true;
   });
 
   /* Write inputs/outputs */
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs_legacy) {
     write_node_socket_interface(writer, sock);
   }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs_legacy) {
     write_node_socket_interface(writer, sock);
   }
 
   /* Clean up temporary inputs/outputs. */
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
     node_socket_interface_free(ntree, socket, false);
     MEM_freeN(socket);
   }
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs_legacy) {
     node_socket_interface_free(ntree, socket, false);
     MEM_freeN(socket);
   }
-  BLI_listbase_clear(&ntree->inputs);
-  BLI_listbase_clear(&ntree->outputs);
+  BLI_listbase_clear(&ntree->inputs_legacy);
+  BLI_listbase_clear(&ntree->outputs_legacy);
 }
 
 }  // namespace blender::bke::forward_compat
@@ -988,13 +981,13 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     }
   }
 
-  /* interface socket lists */
-  BLO_read_list(reader, &ntree->inputs);
-  BLO_read_list(reader, &ntree->outputs);
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
+  /* Read legacy interface socket lists for versioning. */
+  BLO_read_list(reader, &ntree->inputs_legacy);
+  BLO_read_list(reader, &ntree->outputs_legacy);
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs_legacy) {
     direct_link_node_socket(reader, sock);
   }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs_legacy) {
     direct_link_node_socket(reader, sock);
   }
 
@@ -1097,9 +1090,6 @@ void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
     lib_link_node_sockets(reader, &ntree->id, &node->outputs);
   }
 
-  lib_link_node_sockets(reader, &ntree->id, &ntree->inputs);
-  lib_link_node_sockets(reader, &ntree->id, &ntree->outputs);
-
   BKE_nodetree_interface_read_lib(reader, &ntree->id, &ntree->interface);
 
   /* Set `node->typeinfo` pointers. This is done in lib linking, after the
@@ -1196,9 +1186,6 @@ void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree)
     expand_node_sockets(expander, &node->outputs);
   }
 
-  expand_node_sockets(expander, &ntree->inputs);
-  expand_node_sockets(expander, &ntree->outputs);
-
   BKE_nodetree_interface_read_expand(expander, &ntree->interface);
 }
 
@@ -1215,12 +1202,13 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
   BKE_asset_metadata_idprop_ensure(asset_data, idprop::create("type", node_tree.type).release());
   auto inputs = idprop::create_group("inputs");
   auto outputs = idprop::create_group("outputs");
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &node_tree.inputs) {
-    auto property = idprop::create(socket->name, socket->typeinfo->idname);
+  node_tree.ensure_topology_cache();
+  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_cache().inputs) {
+    auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
   }
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &node_tree.outputs) {
-    auto property = idprop::create(socket->name, socket->typeinfo->idname);
+  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_cache().outputs) {
+    auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(outputs.get(), property.release());
   }
   BKE_asset_metadata_idprop_ensure(asset_data, inputs.release());
@@ -1456,18 +1444,6 @@ static void update_typeinfo(Main *bmain,
         }
       }
     }
-
-    /* initialize tree sockets */
-    LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
-      if (socktype && STREQ(sock->idname, socktype->idname)) {
-        node_socket_set_typeinfo(ntree, sock, unregister ? nullptr : socktype);
-      }
-    }
-    LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
-      if (socktype && STREQ(sock->idname, socktype->idname)) {
-        node_socket_set_typeinfo(ntree, sock, unregister ? nullptr : socktype);
-      }
-    }
   }
   FOREACH_NODETREE_END;
 }
@@ -1487,13 +1463,6 @@ void ntreeSetTypes(const bContext *C, bNodeTree *ntree)
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
       blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
     }
-  }
-
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
-    blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
-  }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
-    blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
   }
 }
 
