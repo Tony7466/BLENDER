@@ -19,6 +19,7 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_mask.h"
@@ -101,6 +102,15 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
     return count_all;
   }
   return count;
+}
+
+static int count_grease_pencil_frames(blender::bke::greasepencil::Layer * /*layer*/,
+                                      char /*side*/,
+                                      float /*cfra*/,
+                                      bool /*is_prop_edit*/)
+{
+  /* GPv3 : To be implemented. */
+  return 0;
 }
 
 /* fully select selected beztriples, but only include if it's on the right side of cfra */
@@ -256,6 +266,18 @@ static int GPLayerToTransData(TransData *td,
   return count;
 }
 
+static int GreasePencilLayerToTransData(TransData * /*td*/,
+                                        tGPFtransdata * /*tfd*/,
+                                        blender::bke::greasepencil::Layer * /*layer*/,
+                                        char /*side*/,
+                                        float /*cfra*/,
+                                        bool /*is_prop_edit*/,
+                                        float /*ypos*/)
+{
+  /* GPv3 : To be implemented. */
+  return 0;
+}
+
 /* refer to comment above #GPLayerToTransData, this is the same but for masks */
 static int MaskLayerToTransData(TransData *td,
                                 tGPFtransdata *tfd,
@@ -358,7 +380,9 @@ static void createTransActionData(bContext *C, TransInfo *t)
           static_cast<bGPDlayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      using namespace blender::bke::greasepencil;
+      adt_count = count_grease_pencil_frames(
+          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit);
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       adt_count = count_masklayer_frames(
@@ -369,7 +393,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
 
     if (adt_count > 0) {
-      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_MASKLAYER)) {
+      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER, ANIMTYPE_MASKLAYER)) {
         gpf_count += adt_count;
       }
       count += adt_count;
@@ -425,6 +449,15 @@ static void createTransActionData(bContext *C, TransInfo *t)
       int i;
 
       i = GPLayerToTransData(td, tfd, gpl, t->frame_side, cfra, is_prop_edit, ypos);
+      td += i;
+      tfd += i;
+    }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      using namespace blender::bke::greasepencil;
+      Layer *layer = static_cast<Layer *>(ale->data);
+      int i;
+
+      i = GreasePencilLayerToTransData(td, tfd, layer, t->frame_side, cfra, is_prop_edit, ypos);
       td += i;
       tfd += i;
     }
@@ -487,6 +520,9 @@ static void createTransActionData(bContext *C, TransInfo *t)
           }
           td++;
         }
+      }
+      else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+        /* GPv3 : To be implemented. */
       }
       else if (ale->type == ANIMTYPE_MASKLAYER) {
         MaskLayer *masklay = (MaskLayer *)ale->data;
