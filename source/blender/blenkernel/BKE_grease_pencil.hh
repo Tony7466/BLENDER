@@ -286,6 +286,7 @@ class Layer : public ::GreasePencilLayer {
 
  private:
   GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
+  int frame_index_at(int frame_number) const;
 };
 
 class LayerGroupRuntime {

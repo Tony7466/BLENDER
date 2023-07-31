@@ -675,50 +675,39 @@ Span<int> Layer::sorted_keys() const
   return this->runtime->sorted_keys_cache_.data();
 }
 
-const GreasePencilFrame *Layer::frame_at(const int frame_number) const
+int Layer::frame_index_at(const int frame_number) const
 {
   Span<int> sorted_keys = this->sorted_keys();
   /* No keyframes, return no drawing. */
   if (sorted_keys.size() == 0) {
-    return nullptr;
+    return -1;
   }
   /* Before the first drawing, return no drawing. */
   if (frame_number < sorted_keys.first()) {
-    return nullptr;
+    return -1;
   }
   /* After or at the last drawing, return the last drawing. */
   if (frame_number >= sorted_keys.last()) {
-    return this->frames().lookup_ptr(sorted_keys.last());
+    return sorted_keys.last();
   }
   /* Search for the drawing. upper_bound will get the drawing just after. */
   auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame_number);
   if (it == sorted_keys.end() || it == sorted_keys.begin()) {
-    return nullptr;
+    return -1;
   }
-  return this->frames().lookup_ptr(*std::prev(it));
+  return *std::prev(it);
+}
+
+const GreasePencilFrame *Layer::frame_at(const int frame_number) const
+{
+  const int frame_index = this->frame_index_at(frame_number);
+  return (frame_index == -1) ? nullptr : this->frames().lookup_ptr(frame_index);
 }
 
 GreasePencilFrame *Layer::frame_at(const int frame_number)
 {
-  Span<int> sorted_keys = this->sorted_keys();
-  /* No keyframes, return no drawing. */
-  if (sorted_keys.size() == 0) {
-    return nullptr;
-  }
-  /* Before the first drawing, return no drawing. */
-  if (frame_number < sorted_keys.first()) {
-    return nullptr;
-  }
-  /* After or at the last drawing, return the last drawing. */
-  if (frame_number >= sorted_keys.last()) {
-    return this->frames_for_write().lookup_ptr(sorted_keys.last());
-  }
-  /* Search for the drawing. upper_bound will get the drawing just after. */
-  auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (it == sorted_keys.end() || it == sorted_keys.begin()) {
-    return nullptr;
-  }
-  return this->frames_for_write().lookup_ptr(*std::prev(it));
+  const int frame_index = this->frame_index_at(frame_number);
+  return (frame_index == -1) ? nullptr : this->frames_for_write().lookup_ptr(frame_index);
 }
 
 int Layer::drawing_index_at(const int frame_number) const
