@@ -5107,7 +5107,7 @@ static void draw_setting_widget(bAnimContext *ac,
         tooltip = TIP_(
             "Temporarily disable NLA stack evaluation (i.e. only the active action is evaluated)");
       }
-      else if (ale->type == ANIMTYPE_GPLAYER) {
+      else if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
         tooltip = TIP_(
             "Show all keyframes during animation playback and enable all frames for editing "
             "(uncheck to use only the current keyframe during animation playback and editing)");
