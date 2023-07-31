@@ -151,10 +151,10 @@ struct SculptUndoNodeGeometry {
    * geometry pushes happened in the undo stack. */
   bool is_initialized;
 
-  CustomData vdata;
-  CustomData edata;
-  CustomData ldata;
-  CustomData pdata;
+  CustomData vert_data;
+  CustomData edge_data;
+  CustomData loop_data;
+  CustomData face_data;
   int *face_offset_indices;
   const blender::ImplicitSharingInfo *face_offsets_sharing_info;
   int totvert;
@@ -1302,7 +1302,7 @@ void SCULPT_brush_strength_color(SculptSession *ss,
 void SCULPT_calc_vertex_displacement(SculptSession *ss,
                                      const Brush *brush,
                                      float rgba[3],
-                                     float out_offset[3]);
+                                     float r_offset[3]);
 
 /**
  * Tilts a normal by the x and y tilt values using the view axis.
@@ -1356,10 +1356,7 @@ enum eDynTopoWarnFlag {
 ENUM_OPERATORS(eDynTopoWarnFlag, DYNTOPO_WARN_MODIFIER);
 
 /** Enable dynamic topology; mesh will be triangulated */
-void SCULPT_dynamic_topology_enable_ex(Main *bmain,
-                                       Depsgraph *depsgraph,
-                                       Scene *scene,
-                                       Object *ob);
+void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob);
 void SCULPT_dynamic_topology_disable(bContext *C, SculptUndoNode *unode);
 void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
                                                Depsgraph *depsgraph,
