@@ -56,9 +56,17 @@ class MyCustomSocket(NodeSocket):
 class MyCustomInterfaceSocket(NodeTreeInterfaceSocket):
     # The type of socket that is generated.
     bl_socket_idname = 'CustomSocketType'
+
+    mean_value: bpy.props.FloatProperty(default=10.0)
+    randomize: bpy.props.BoolProperty(default=False)
     
-    def draw_socket_properties(self, context, layout):
+    def draw(self, context, layout):
         layout.label(text="Here we can display properties of the socket")
+        layout.prop(self, "mean_value")
+        layout.prop(self, "randomize")
+
+    def init_socket(self, node, socket, data_path):
+        print("I am doing the socket thing")
 
 
 # Mix-in class for all custom nodes in this tree type.
