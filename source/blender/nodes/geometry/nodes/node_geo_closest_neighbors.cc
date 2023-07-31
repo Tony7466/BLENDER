@@ -115,8 +115,10 @@ static void find_closest_neighbors(const IndexMask &mask,
         *target_tree,
         source_position,
         max_distance,
-        [&](int target_i, const float3 &co, float dist_sq) {
+        [&](int target_i, const float3 &co, float /*dist_sq*/) {
           BVHTreeNearest nearest;
+          nearest.index = -1;
+          nearest.dist_sq = max_distance; /* #nearest_cb has an internal distance check. */
           nearest_cb(nearest_userdata, target_i, co, &nearest);
 
           const int64_t neighbor_count = data.source_indices.size() - first_neighbor;
@@ -345,7 +347,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet source = params.extract_input<GeometrySet>("Geometry");
   GeometrySet target = params.extract_input<GeometrySet>("Target Geometry");
-  const NodeGeometryClosestNeighbors &storage = node_storage(params.node());
+  //  const NodeGeometryClosestNeighbors &storage = node_storage(params.node());
   const eAttrDomain domain = eAttrDomain(params.node().custom1);
   const TargetElement target_element = TargetElement(params.node().custom2);
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
