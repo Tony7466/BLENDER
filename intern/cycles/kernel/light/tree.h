@@ -174,10 +174,18 @@ ccl_device void light_tree_importance(const float3 N_or_D,
     cos_max_incidence_angle = fmaxf(cos_theta_i * cos_theta_u - sin_theta_i * sin_theta_u, 0.0f);
   }
 
-  /* We add a small value to cos_theta to cover up floating point precision losses in the dot()
-   * function used to calculate cos_theta when bcone.axis == -point_to_centroid. */
-  const float cos_theta = min(dot(bcone.axis, -point_to_centroid) + 5e-4f, 1.0f);
-  const float sin_theta = sin_from_cos(cos_theta);
+  float cos_theta, sin_theta;
+  if (isequal(bcone.axis, -point_to_centroid)) {
+    /* When `bcone.axis == -point_to_centroid`, dot(bcone.axis, -point_to_centroid) doesn't always
+     * return 1 due to floating point precision issues. We account for that case here. */
+    cos_theta = 1.0f;
+    sin_theta = 0.0f;
+  }
+  else {
+    cos_theta = dot(bcone.axis, -point_to_centroid);
+    sin_theta = sin_from_cos(cos_theta);
+  }
+
   /* cos(theta - theta_u) */
   const float cos_theta_minus_theta_u = cos_theta * cos_theta_u + sin_theta * sin_theta_u;
 
