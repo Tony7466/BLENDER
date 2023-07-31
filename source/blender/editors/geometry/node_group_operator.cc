@@ -70,16 +70,21 @@ namespace blender::ed::geometry {
 /** \name Operator
  * \{ */
 
-static const asset_system::AssetRepresentation *get_asset_at_full_path(
-    const bContext &C, const StringRefNull asset_full_path, ReportList *reports)
+/**
+ * #AssetLibrary::resolve_asset_weak_reference_to_full_path() currently does not support local
+ * assets.
+ */
+static const asset_system::AssetRepresentation *get_local_asset_from_relative_identifier(
+    const bContext &C, const StringRefNull relative_identifier, ReportList *reports)
 {
-  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  AssetLibraryReference library_ref{};
+  library_ref.type = ASSET_LIBRARY_LOCAL;
   ED_assetlist_storage_fetch(&library_ref, &C);
   ED_assetlist_ensure_previews_job(&library_ref, &C);
 
   const asset_system::AssetRepresentation *matching_asset = nullptr;
   ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
-    if (asset.get_identifier().full_path() == asset_full_path) {
+    if (asset.get_identifier().library_relative_identifier() == relative_identifier) {
       matching_asset = &asset;
       return false;
     }
@@ -88,10 +93,47 @@ static const asset_system::AssetRepresentation *get_asset_at_full_path(
 
   if (reports && !matching_asset) {
     if (ED_assetlist_is_loaded(&library_ref)) {
-      BKE_reportf(reports, RPT_ERROR, "No asset found at path \"%s\"", asset_full_path.c_str());
+      BKE_reportf(
+          reports, RPT_ERROR, "No asset found at path \"%s\"", relative_identifier.c_str());
     }
     else {
       BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+    }
+  }
+  return matching_asset;
+}
+
+static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
+    const bContext &C, const AssetWeakReference &weak_ref, ReportList *reports)
+{
+  if (weak_ref.asset_library_type == ASSET_LIBRARY_LOCAL) {
+    return get_local_asset_from_relative_identifier(
+        C, weak_ref.relative_asset_identifier, reports);
+  }
+
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  ED_assetlist_storage_fetch(&library_ref, &C);
+  ED_assetlist_ensure_previews_job(&library_ref, &C);
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
+  if (!all_library) {
+    BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+  }
+
+  const std::string full_path = all_library->resolve_asset_weak_reference_to_full_path(weak_ref);
+
+  const asset_system::AssetRepresentation *matching_asset = nullptr;
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (asset.get_identifier().full_path() == full_path) {
+      matching_asset = &asset;
+      return false;
+    }
+    return true;
+  });
+
+  if (reports && !matching_asset) {
+    if (ED_assetlist_is_loaded(&library_ref)) {
+      BKE_reportf(reports, RPT_ERROR, "No asset found at path \"%s\"", full_path.c_str());
     }
   }
   return matching_asset;
@@ -108,7 +150,7 @@ static const asset_system::AssetRepresentation *get_asset(const bContext &C,
       &ptr, "asset_library_identifier", nullptr, 0, nullptr);
   weak_ref.relative_asset_identifier = RNA_string_get_alloc(
       &ptr, "relative_asset_identifier", nullptr, 0, nullptr);
-  return get_asset_at_full_path(C, path, reports);
+  return find_asset_from_weak_ref(C, weak_ref, reports);
 }
 
 static const bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
