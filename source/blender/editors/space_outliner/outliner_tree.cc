@@ -110,7 +110,7 @@ static void check_persistent(
     SpaceOutliner *space_outliner, TreeElement *te, ID *id, short type, short nr)
 {
   if (space_outliner->treestore == nullptr) {
-    /* if treestore was not created in readfile.c, create it here */
+    /* If treestore was not created in `readfile.cc`, create it here. */
     space_outliner->treestore = BLI_mempool_create(
         sizeof(TreeStoreElem), 1, 512, BLI_MEMPOOL_ALLOW_ITER);
   }
@@ -245,6 +245,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_EBONE) {
     id = static_cast<EditBoneElementCreateData *>(idv)->armature_id;
   }
+  else if (type == TSE_GPENCIL_EFFECT) {
+    id = &static_cast<GPencilEffectElementCreateData *>(idv)->object->id;
+  }
   else if (type == TSE_DEFGROUP) {
     id = &static_cast<DeformGroupElementCreateData *>(idv)->object->id;
   }
@@ -309,6 +312,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_BONE, TSE_EBONE)) {
     /* pass */
   }
+  else if (ELEM(type, TSE_GPENCIL_EFFECT_BASE, TSE_GPENCIL_EFFECT)) {
+    /* pass */
+  }
   else if (ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE)) {
     /* pass */
   }
@@ -365,7 +371,8 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_SEQ_STRIP,
                 TSE_SEQUENCE_DUP,
                 TSE_GENERIC_LABEL) ||
-           ELEM(type, TSE_DEFGROUP, TSE_DEFGROUP_BASE))
+           ELEM(
+               type, TSE_DEFGROUP, TSE_DEFGROUP_BASE, TSE_GPENCIL_EFFECT, TSE_GPENCIL_EFFECT_BASE))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }
