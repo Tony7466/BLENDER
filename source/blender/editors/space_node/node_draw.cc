@@ -467,7 +467,6 @@ static void node_update_basis_from_declaration(
   namespace nodes = blender::nodes;
 
   BLI_assert(node.declaration() != nullptr);
-  //  BLI_assert(node.num_panel_states == node.declaration().num_panels);
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
   const nodes::NodeDeclaration &decl = *node.declaration();
