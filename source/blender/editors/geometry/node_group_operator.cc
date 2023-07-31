@@ -471,7 +471,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
                     ICON_NONE,
                     nullptr,
                     WM_OP_INVOKE_DEFAULT,
-                    0,
+                    eUI_Item_Flag(0),
                     &props_ptr);
     RNA_string_set(&props_ptr, "asset_full_path", asset->get_identifier().full_path().c_str());
   }
