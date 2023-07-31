@@ -41,6 +41,7 @@ struct PaintOperationExecutor {
   {
     using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+    Scene *scene = CTX_data_scene(&C);
     ARegion *region = CTX_wm_region(&C);
     Scene *scene = CTX_data_scene(&C);
     Object *obact = CTX_data_active_object(&C);
