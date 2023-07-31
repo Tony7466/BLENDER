@@ -50,7 +50,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
 
@@ -58,13 +58,13 @@ static void initData(ModifierData *md)
 
   MEMCPY_STRUCT_AFTER(emd, DNA_struct_default_get(ExplodeModifierData), modifier);
 }
-static void freeData(ModifierData *md)
+static void free_data(ModifierData *md)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
 
   MEM_SAFE_FREE(emd->facepa);
 }
-static void copyData(const ModifierData *md, ModifierData *target, const int flag)
+static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
 #if 0
   const ExplodeModifierData *emd = (const ExplodeModifierData *)md;
@@ -75,11 +75,11 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   temd->facepa = nullptr;
 }
-static bool dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/)
+static bool depends_on_time(Scene * /*scene*/, ModifierData * /*md*/)
 {
   return true;
 }
-static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
 
@@ -746,7 +746,7 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
 
   layers_num = CustomData_number_of_layers(&split_m->fdata_legacy, CD_MTFACE);
 
-  float(*split_m_positions)[3] = BKE_mesh_vert_positions_for_write(split_m);
+  blender::MutableSpan<blender::float3> split_m_positions = split_m->vert_positions_for_write();
 
   /* copy new faces & verts (is it really this painful with custom data??) */
   for (i = 0; i < totvert; i++) {
@@ -1004,7 +1004,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   psys_sim_data_init(&sim);
 
   const blender::Span<blender::float3> positions = mesh->vert_positions();
-  float(*explode_positions)[3] = BKE_mesh_vert_positions_for_write(explode);
+  blender::MutableSpan<blender::float3> explode_positions = explode->vert_positions_for_write();
 
   /* duplicate & displace vertices */
   ehi = BLI_edgehashIterator_new(vertpahash);
@@ -1142,7 +1142,7 @@ static ParticleSystemModifierData *findPrecedingParticlesystem(Object *ob, Modif
   }
   return psmd;
 }
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
   ParticleSystemModifierData *psmd = findPrecedingParticlesystem(ctx->object, md);
@@ -1197,7 +1197,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
-  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
+  const eUI_Item_Flag toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
@@ -1217,26 +1217,26 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "use_edge_cut", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_size", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_edge_cut", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_size", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, has_vertex_group);
-  uiItemR(row, ptr, "protect", 0, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "protect", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemO(layout, IFACE_("Refresh"), ICON_NONE, "OBJECT_OT_explode_refresh");
 
   modifier_panel_end(layout, ptr);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   modifier_panel_register(region_type, eModifierType_Explode, panel_draw);
 }
 
-static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
+static void blend_read(BlendDataReader * /*reader*/, ModifierData *md)
 {
   ExplodeModifierData *psmd = (ExplodeModifierData *)md;
 
@@ -1244,33 +1244,34 @@ static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Explode = {
+    /*idname*/ "Explode",
     /*name*/ N_("Explode"),
-    /*structName*/ "ExplodeModifierData",
-    /*structSize*/ sizeof(ExplodeModifierData),
+    /*struct_name*/ "ExplodeModifierData",
+    /*struct_size*/ sizeof(ExplodeModifierData),
     /*srna*/ &RNA_ExplodeModifier,
     /*type*/ eModifierTypeType_Constructive,
     /*flags*/ eModifierTypeFlag_AcceptsMesh,
     /*icon*/ ICON_MOD_EXPLODE,
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformVerts*/ nullptr,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ freeData,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ dependsOnTime,
-    /*dependsOnNormals*/ nullptr,
-    /*foreachIDLink*/ nullptr,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ blendRead,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ free_data,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ depends_on_time,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ nullptr,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ blend_read,
 };
