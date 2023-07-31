@@ -75,14 +75,14 @@ static void node_update(bNodeTree * /*ntree*/, bNode * /*node*/)
   // const NodeGeometryClosestNeighbors &storage = node_storage(*node);
 }
 
-struct LocalData {
+struct NeighborPointData {
   Vector<int> source_indices;
   Vector<int> target_indices;
   Vector<float3> target_positions;
   Vector<float3> target_normals;
   Vector<float> target_distances;
 };
-using ThreadLocalData = threading::EnumerableThreadSpecific<LocalData>;
+using ThreadLocalData = threading::EnumerableThreadSpecific<NeighborPointData>;
 
 static void find_closest_neighbors(const IndexMask &mask,
                                    BVHTree *target_tree,
@@ -100,7 +100,7 @@ static void find_closest_neighbors(const IndexMask &mask,
    * without additional sorting after the overlap search. */
 
   mask.foreach_index(GrainSize(128), [&](const int64_t source_i) {
-    LocalData &data = thread_storage.local();
+    NeighborPointData &data = thread_storage.local();
     const float max_distance = max_distances[source_i];
     const float3 source_position = source_positions[source_i];
 
@@ -163,44 +163,44 @@ static void find_closest_neighbors(const IndexMask &mask,
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage,
-                                  MutableSpan<int> first_neighbors,
-                                  MutableSpan<int> source_indices,
-                                  MutableSpan<int> target_indices,
-                                  MutableSpan<float3> target_positions,
-                                  MutableSpan<float3> target_normals,
-                                  MutableSpan<float> target_distances)
+                                  NeighborPointData &r_neighbors,
+                                  MutableSpan<int> r_first_neighbors)
 {
+
+  int64_t total_neighbors = 0;
+  for (const NeighborPointData &local_data : thread_storage) {
+    const int64_t local_size = local_data.source_indices.size();
+    BLI_assert(local_data.target_indices.size() == local_size);
+    BLI_assert(local_data.target_positions.size() == local_size);
+    BLI_assert(local_data.target_normals.size() == local_size);
+    BLI_assert(local_data.target_distances.size() == local_size);
+    total_neighbors += local_size;
+  }
+  const int64_t start_index = r_neighbors.source_indices.size();
+  const int64_t new_size = start_index + total_neighbors;
+  r_neighbors.source_indices.reserve(new_size);
+  r_neighbors.target_indices.reserve(new_size);
+  r_neighbors.target_positions.reserve(new_size);
+  r_neighbors.target_normals.reserve(new_size);
+  r_neighbors.target_distances.reserve(new_size);
+
   IndexRange current_range = {};
-  for (LocalData &local_data : thread_storage) {
+  for (NeighborPointData &local_data : thread_storage) {
     const int64_t local_size = local_data.source_indices.size();
     current_range = IndexRange(current_range.size(), local_size);
 
-    BLI_assert(local_data.target_indices.size() == local_size);
-    BLI_assert(local_data.target_positions.size() == local_size);
-    BLI_assert(local_data.target_distances.size() == local_size);
-
-    if (!source_indices.is_empty()) {
-      source_indices.slice(current_range).copy_from(local_data.source_indices);
-    }
-    if (!target_indices.is_empty()) {
-      target_indices.slice(current_range).copy_from(local_data.target_indices);
-    }
-    if (!target_positions.is_empty()) {
-      target_positions.slice(current_range).copy_from(local_data.target_positions);
-    }
-    if (!target_normals.is_empty()) {
-      target_normals.slice(current_range).copy_from(local_data.target_normals);
-    }
-    if (!target_distances.is_empty()) {
-      target_distances.slice(current_range).copy_from(local_data.target_distances);
-    }
+    r_neighbors.source_indices.extend(local_data.source_indices);
+    r_neighbors.target_indices.extend(local_data.target_indices);
+    r_neighbors.target_positions.extend(local_data.target_positions);
+    r_neighbors.target_normals.extend(local_data.target_normals);
+    r_neighbors.target_distances.extend(local_data.target_distances);
 
     /* Update the neighbor start indices. */
-    if (!first_neighbors.is_empty()) {
+    if (!r_first_neighbors.is_empty()) {
       int prev_source_i = -1;
       for (const int source_i : local_data.source_indices) {
         if (source_i != prev_source_i) {
-          first_neighbors[source_i] += (int)current_range.start();
+          r_first_neighbors[source_i] += (int)current_range.start();
           prev_source_i = source_i;
         }
       }
@@ -208,8 +208,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
   }
 }
 
-static void find_closest_neighbors_on_component(GeoNodeExecParams params,
-                                                GeometryComponent &component,
+static void find_closest_neighbors_on_component(GeometryComponent &component,
                                                 eAttrDomain domain,
                                                 const Field<bool> &selection_field,
                                                 const Field<float3> &source_position_field,
@@ -217,22 +216,14 @@ static void find_closest_neighbors_on_component(GeoNodeExecParams params,
                                                 const int max_neighbors,
                                                 const GeometrySet &target,
                                                 const TargetElement target_element,
-                                                GeometrySet &r_neighbors)
+                                                const AttributeIDRef first_neighbor_id,
+                                                const AttributeIDRef neighbor_count_id,
+                                                NeighborPointData &r_neighbors)
 {
   const int domain_size = component.attribute_domain_size(domain);
   if (domain_size == 0) {
     return;
   }
-
-  MutableAttributeAccessor attributes = *component.attributes_for_write();
-  AnonymousAttributeIDPtr neighbor_count_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Neighbor Count");
-  AnonymousAttributeIDPtr first_neighbor_id = params.get_output_anonymous_attribute_id_if_needed(
-      "First Neighbor");
-  SpanAttributeWriter<int> out_neighbor_count = attributes.lookup_or_add_for_write_only_span<int>(
-      neighbor_count_id.get(), domain);
-  SpanAttributeWriter<int> out_first_neighbor = attributes.lookup_or_add_for_write_only_span<int>(
-      first_neighbor_id.get(), domain);
 
   bke::GeometryFieldContext field_context{component, domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
@@ -245,125 +236,91 @@ static void find_closest_neighbors_on_component(GeoNodeExecParams params,
   if (selection.is_empty()) {
     return;
   }
-
   const VArray<float3> source_position_input = evaluator.get_evaluated<float3>(0);
   const VArray<float> max_distance_input = evaluator.get_evaluated<float>(1);
 
-  /* XXX appending to thread_storage will result in multiple segments for the same source point at
-   * different places. Only the last segment is considered (first_neighbor gets updated every time
-   * we append data). These segments should be joined. */
+  MutableAttributeAccessor attributes = *component.attributes_for_write();
+  SpanAttributeWriter<int> out_neighbor_count = attributes.lookup_or_add_for_write_only_span<int>(
+      neighbor_count_id, domain);
+  SpanAttributeWriter<int> out_first_neighbor = attributes.lookup_or_add_for_write_only_span<int>(
+      first_neighbor_id, domain);
+
   ThreadLocalData thread_storage;
-  if (target.has_mesh()) {
-    BVHCacheType cache_type = BVHTREE_FROM_VERTS;
-    switch (target_element) {
-      case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_POINTS:
-        cache_type = BVHTREE_FROM_VERTS;
+
+  switch (component.type()) {
+    case GeometryComponent::Type::Mesh: {
+      if (!target.has_mesh()) {
         break;
-      case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_EDGES:
-        cache_type = BVHTREE_FROM_EDGES;
+      }
+      BVHCacheType cache_type = BVHTREE_FROM_VERTS;
+      switch (target_element) {
+        case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_POINTS:
+          cache_type = BVHTREE_FROM_VERTS;
+          break;
+        case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_EDGES:
+          cache_type = BVHTREE_FROM_EDGES;
+          break;
+        case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_FACES:
+          cache_type = BVHTREE_FROM_LOOPTRI;
+          break;
+      }
+      BVHTreeFromMesh tree_data;
+      BKE_bvhtree_from_mesh_get(&tree_data, target.get_mesh_for_read(), cache_type, 4);
+      BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&tree_data); });
+      if (tree_data.tree == nullptr) {
+        return;
+      }
+
+      find_closest_neighbors(selection,
+                             tree_data.tree,
+                             tree_data.nearest_callback,
+                             &tree_data,
+                             source_position_input,
+                             max_distance_input,
+                             max_neighbors,
+                             out_neighbor_count.span,
+                             out_first_neighbor.span,
+                             thread_storage);
+      break;
+    }
+    case GeometryComponent::Type::PointCloud: {
+      if (!target.has_pointcloud()) {
         break;
-      case GEO_NODE_CLOSEST_NEIGHBOR_TARGET_FACES:
-        cache_type = BVHTREE_FROM_LOOPTRI;
-        break;
+      }
+      BVHTreeFromPointCloud tree_data;
+      BVHTree *tree = BKE_bvhtree_from_pointcloud_get(
+          &tree_data, target.get_pointcloud_for_read(), 4);
+      BLI_SCOPED_DEFER([&]() { free_bvhtree_from_pointcloud(&tree_data); });
+      if (tree == nullptr) {
+        return;
+      }
+      /* Pointcloud BVH tree has no nearest callback, lets roll our own. */
+      auto nearest_cb = [](void *userdata, int index, const float co[3], BVHTreeNearest *nearest) {
+        const BVHTreeFromPointCloud *data = static_cast<BVHTreeFromPointCloud *>(userdata);
+        nearest->index = index;
+        const float3 pos = data->coords[index];
+        copy_v3_v3(nearest->co, pos);
+        nearest->dist_sq = math::distance_squared(float3(co), pos);
+        zero_v3(nearest->no);
+      };
+      find_closest_neighbors(selection,
+                             tree,
+                             nearest_cb,
+                             &tree_data,
+                             source_position_input,
+                             max_distance_input,
+                             max_neighbors,
+                             out_neighbor_count.span,
+                             out_first_neighbor.span,
+                             thread_storage);
+      break;
     }
-    BVHTreeFromMesh tree_data;
-    BKE_bvhtree_from_mesh_get(&tree_data, target.get_mesh_for_read(), cache_type, 4);
-    BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&tree_data); });
-    if (tree_data.tree == nullptr) {
-      return;
-    }
-
-    find_closest_neighbors(selection,
-                           tree_data.tree,
-                           tree_data.nearest_callback,
-                           &tree_data,
-                           source_position_input,
-                           max_distance_input,
-                           max_neighbors,
-                           out_neighbor_count.span,
-                           out_first_neighbor.span,
-                           thread_storage);
-  }
-  if (target.has_pointcloud()) {
-    BVHTreeFromPointCloud tree_data;
-    BVHTree *tree = BKE_bvhtree_from_pointcloud_get(
-        &tree_data, target.get_pointcloud_for_read(), 4);
-    BLI_SCOPED_DEFER([&]() { free_bvhtree_from_pointcloud(&tree_data); });
-    if (tree == nullptr) {
-      return;
-    }
-    /* Pointcloud BVH tree has no nearest callback, lets roll our own. */
-    auto nearest_cb = [](void *userdata, int index, const float co[3], BVHTreeNearest *nearest) {
-      const BVHTreeFromPointCloud *data = static_cast<BVHTreeFromPointCloud *>(userdata);
-      nearest->index = index;
-      const float3 pos = data->coords[index];
-      copy_v3_v3(nearest->co, pos);
-      nearest->dist_sq = math::distance_squared(float3(co), pos);
-      zero_v3(nearest->no);
-    };
-    find_closest_neighbors(selection,
-                           tree,
-                           nearest_cb,
-                           &tree_data,
-                           source_position_input,
-                           max_distance_input,
-                           max_neighbors,
-                           out_neighbor_count.span,
-                           out_first_neighbor.span,
-                           thread_storage);
   }
 
-  int64_t total_neighbors = 0;
-  for (const LocalData &local_data : thread_storage) {
-    total_neighbors += local_data.source_indices.size();
-  }
-
-  PointCloud *neighbors = BKE_pointcloud_new_nomain(total_neighbors);
-  MutableAttributeAccessor neighbors_attributes = neighbors->attributes_for_write();
-  AnonymousAttributeIDPtr source_index_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Source Index");
-  AnonymousAttributeIDPtr target_index_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Target Index");
-  AnonymousAttributeIDPtr target_position_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Target Position");
-  AnonymousAttributeIDPtr target_normal_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Target Normal");
-  AnonymousAttributeIDPtr target_distance_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Target Distance");
-
-  SpanAttributeWriter<int> source_index_writer =
-      neighbors_attributes.lookup_or_add_for_write_only_span<int>(source_index_id.get(),
-                                                                  ATTR_DOMAIN_POINT);
-  SpanAttributeWriter<int> target_index_writer =
-      neighbors_attributes.lookup_or_add_for_write_only_span<int>(target_index_id.get(),
-                                                                  ATTR_DOMAIN_POINT);
-  SpanAttributeWriter<float3> target_position_writer =
-      neighbors_attributes.lookup_or_add_for_write_only_span<float3>(target_position_id.get(),
-                                                                     ATTR_DOMAIN_POINT);
-  SpanAttributeWriter<float3> target_normal_writer =
-      neighbors_attributes.lookup_or_add_for_write_only_span<float3>(target_normal_id.get(),
-                                                                     ATTR_DOMAIN_POINT);
-  SpanAttributeWriter<float> target_distance_writer =
-      neighbors_attributes.lookup_or_add_for_write_only_span<float>(target_distance_id.get(),
-                                                                    ATTR_DOMAIN_POINT);
-
-  gather_thread_storage(thread_storage,
-                        out_first_neighbor.span,
-                        source_index_writer.span,
-                        target_index_writer.span,
-                        target_position_writer.span,
-                        target_normal_writer.span,
-                        target_distance_writer.span);
+  gather_thread_storage(thread_storage, r_neighbors, out_first_neighbor.span);
 
   out_neighbor_count.finish();
   out_first_neighbor.finish();
-  source_index_writer.finish();
-  target_index_writer.finish();
-  target_position_writer.finish();
-  target_normal_writer.finish();
-  target_distance_writer.finish();
-
-  r_neighbors = GeometrySet::create_with_pointcloud(neighbors);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -383,31 +340,103 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
+  AnonymousAttributeIDPtr first_neighbor_id = params.get_output_anonymous_attribute_id_if_needed(
+      "First Neighbor");
+  AnonymousAttributeIDPtr neighbor_count_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Neighbor Count");
+
+  NeighborPointData neighbors;
+
   static const Array<GeometryComponent::Type> types = {GeometryComponent::Type::Mesh,
                                                        GeometryComponent::Type::PointCloud,
                                                        GeometryComponent::Type::Curve};
 
-  source.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    for (const GeometryComponent::Type type : types) {
-      if (geometry_set.has(type)) {
-        GeometryComponent &component = geometry_set.get_component_for_write(type);
-        GeometrySet out_neighbors;
-        find_closest_neighbors_on_component(params,
-                                            component,
-                                            domain,
-                                            selection_field,
-                                            source_position_field,
-                                            max_distance_field,
-                                            max_neighbors,
-                                            target,
-                                            target_element,
-                                            out_neighbors);
-        params.set_output("Neighbors", out_neighbors);
-      }
+  for (const GeometryComponent::Type type : types) {
+    if (source.has(type)) {
+      GeometryComponent &component = source.get_component_for_write(type);
+      find_closest_neighbors_on_component(component,
+                                          domain,
+                                          selection_field,
+                                          source_position_field,
+                                          max_distance_field,
+                                          max_neighbors,
+                                          target,
+                                          target_element,
+                                          first_neighbor_id.get(),
+                                          neighbor_count_id.get(),
+                                          neighbors);
     }
-  });
+  }
+
+  PointCloud *points = BKE_pointcloud_new_nomain(neighbors.source_indices.size());
+  MutableAttributeAccessor neighbors_attributes = points->attributes_for_write();
+  AnonymousAttributeIDPtr source_index_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Source Index");
+  AnonymousAttributeIDPtr target_index_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Target Index");
+  AnonymousAttributeIDPtr target_position_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Target Position");
+  AnonymousAttributeIDPtr target_normal_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Target Normal");
+  AnonymousAttributeIDPtr target_distance_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Target Distance");
+
+  neighbors_attributes.add<int>(
+      source_index_id.get(),
+      ATTR_DOMAIN_POINT,
+      bke::AttributeInitVArray(VArray<int>::ForSpan(neighbors.source_indices)));
+  neighbors_attributes.add<int>(
+      target_index_id.get(),
+      ATTR_DOMAIN_POINT,
+      bke::AttributeInitVArray(VArray<int>::ForSpan(neighbors.target_indices)));
+  neighbors_attributes.add<float3>(
+      target_position_id.get(),
+      ATTR_DOMAIN_POINT,
+      bke::AttributeInitVArray(VArray<float3>::ForSpan(neighbors.target_positions)));
+  neighbors_attributes.add<float3>(
+      target_normal_id.get(),
+      ATTR_DOMAIN_POINT,
+      bke::AttributeInitVArray(VArray<float3>::ForSpan(neighbors.target_normals)));
+  neighbors_attributes.add<float>(
+      target_distance_id.get(),
+      ATTR_DOMAIN_POINT,
+      bke::AttributeInitVArray(VArray<float>::ForSpan(neighbors.target_distances)));
+
+  GeometrySet out_neighbors = GeometrySet::create_with_pointcloud(points);
 
   params.set_output("Geometry", source);
+  // if (neighbor_count_id) {
+  //   params.set_output("Neighbor Count",
+  //                     AnonymousAttributeFieldInput::Create<int>(neighbor_count_id, __func__));
+  // }
+  // if (first_neighbor_id) {
+  //   params.set_output("First Neighbor",
+  //                     AnonymousAttributeFieldInput::Create<int>(first_neighbor_id, __func__));
+  // }
+  params.set_output("Neighbors", std::move(out_neighbors));
+  // if (source_index_id) {
+  //   params.set_output("Source Index",
+  //                     AnonymousAttributeFieldInput::Create<int>(source_index_id, __func__));
+  // }
+  // if (target_index_id) {
+  //   params.set_output("Target Index",
+  //                     AnonymousAttributeFieldInput::Create<int>(target_index_id, __func__));
+  // }
+  // if (target_position_id) {
+  //   params.set_output("Target Position",
+  //                     AnonymousAttributeFieldInput::Create<float3>(target_position_id,
+  //                     __func__));
+  // }
+  // if (target_normal_id) {
+  //   params.set_output("Target Normal",
+  //                     AnonymousAttributeFieldInput::Create<float3>(target_normal_id, __func__));
+  // }
+  // if (target_distance_id) {
+  //   params.set_output("Target Distance",
+  //                     AnonymousAttributeFieldInput::Create<float>(target_distance_id,
+  //                     __func__));
+  // }
+
   params.set_default_remaining_outputs();
 }
 
