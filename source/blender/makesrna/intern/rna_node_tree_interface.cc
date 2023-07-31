@@ -54,7 +54,8 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
 
   switch (item->item_type) {
     case NODE_INTERFACE_SOCKET: {
-      bNodeTreeInterfaceSocket &socket = node_interface::get_as<bNodeTreeInterfaceSocket>(*item);
+      bNodeTreeInterfaceSocket &socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(
+          *item);
       bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
       if (socket_typeinfo && socket_typeinfo->ext_interface_new.srna) {
         return socket_typeinfo->ext_interface_new.srna;

@@ -252,7 +252,7 @@ class NodeTreeInterfaceView : public AbstractTreeView {
     for (bNodeTreeInterfaceItem *item : parent.items()) {
       switch (item->item_type) {
         case NODE_INTERFACE_SOCKET: {
-          bNodeTreeInterfaceSocket *socket = node_interface::get_as_ptr<bNodeTreeInterfaceSocket>(
+          bNodeTreeInterfaceSocket *socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(
               item);
           NodeSocketViewItem &socket_item = parent_item.add_tree_item<NodeSocketViewItem>(
               nodetree_, interface_, *socket);
@@ -260,7 +260,7 @@ class NodeTreeInterfaceView : public AbstractTreeView {
           break;
         }
         case NODE_INTERFACE_PANEL: {
-          bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+          bNodeTreeInterfacePanel *panel = node_interface::get_item_as<bNodeTreeInterfacePanel>(
               item);
           NodePanelViewItem &panel_item = parent_item.add_tree_item<NodePanelViewItem>(
               nodetree_, interface_, *panel);
@@ -333,7 +333,7 @@ bool NodeSocketDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disabl
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (const bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+  if (const bNodeTreeInterfacePanel *panel = node_interface::get_item_as<bNodeTreeInterfacePanel>(
           drag_data->item))
   {
     if (panel->contains_item(socket_.item)) {
@@ -417,7 +417,7 @@ bool NodePanelDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disable
   wmDragNodeTreeInterface *drag_data = get_drag_node_tree_declaration(drag);
 
   /* Can't drop an item onto its children. */
-  if (const bNodeTreeInterfacePanel *panel = node_interface::get_as_ptr<bNodeTreeInterfacePanel>(
+  if (const bNodeTreeInterfacePanel *panel = node_interface::get_item_as<bNodeTreeInterfacePanel>(
           drag_data->item))
   {
     if (panel->contains_item(panel_.item)) {

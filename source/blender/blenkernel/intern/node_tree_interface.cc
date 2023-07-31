@@ -177,9 +177,10 @@ static void socket_data_copy(bNodeTreeInterfaceSocket &dst,
   socket_data_to_static_type_tag(dst.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     dst.socket_data = MEM_dupallocN(src.socket_data);
-    socket_data_copy_impl(get_data<SocketDataType>(dst), get_data<SocketDataType>(src));
+    socket_data_copy_impl(get_socket_data_as<SocketDataType>(dst),
+                          get_socket_data_as<SocketDataType>(src));
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-      socket_data_id_user_increment(get_data<SocketDataType>(dst));
+      socket_data_id_user_increment(get_socket_data_as<SocketDataType>(dst));
     }
   });
 }
@@ -198,9 +199,9 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     if (do_id_user) {
-      socket_data_id_user_decrement(get_data<SocketDataType>(socket));
+      socket_data_id_user_decrement(get_socket_data_as<SocketDataType>(socket));
     }
-    socket_data_free_impl(get_data<SocketDataType>(socket), do_id_user);
+    socket_data_free_impl(get_socket_data_as<SocketDataType>(socket), do_id_user);
   });
 }
 
@@ -276,7 +277,7 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_write_impl(writer, get_data<SocketDataType>(socket));
+    socket_data_write_impl(writer, get_socket_data_as<SocketDataType>(socket));
   });
 }
 
@@ -346,7 +347,7 @@ static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterf
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_read_lib_impl(reader, id, get_data<SocketDataType>(socket));
+    socket_data_read_lib_impl(reader, id, get_socket_data_as<SocketDataType>(socket));
   });
 }
 
@@ -391,7 +392,7 @@ static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_expand_impl(expander, get_data<SocketDataType>(socket));
+    socket_data_expand_impl(expander, get_socket_data_as<SocketDataType>(socket));
   });
 }
 
@@ -436,7 +437,7 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 {
   socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    socket_data_foreach_id_impl(data, get_data<SocketDataType>(socket));
+    socket_data_foreach_id_impl(data, get_socket_data_as<SocketDataType>(socket));
   });
 }
 
@@ -816,7 +817,7 @@ bool bNodeTreeInterfacePanel::find_item_parent(const bNodeTreeInterfaceItem &ite
         continue;
       }
 
-      bNodeTreeInterfacePanel *tpanel = get_as_ptr<bNodeTreeInterfacePanel>(titem);
+      bNodeTreeInterfacePanel *tpanel = get_item_as<bNodeTreeInterfacePanel>(titem);
       if (tpanel->contains_item(item)) {
         r_parent = tpanel;
         return true;
@@ -1210,7 +1211,7 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
 
   interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
     items.append(&item);
-    if (bNodeTreeInterfaceSocket *socket = get_as_ptr<bNodeTreeInterfaceSocket>(&item)) {
+    if (bNodeTreeInterfaceSocket *socket = get_item_as<bNodeTreeInterfaceSocket>(&item)) {
       if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
         inputs.append(socket);
       }

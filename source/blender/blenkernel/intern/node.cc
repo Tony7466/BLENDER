@@ -564,7 +564,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
   /* Construct inputs/outputs socket lists in the node tree. */
   ntree->interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     if (const bNodeTreeInterfaceSocket *socket =
-            node_interface::get_as_ptr<bNodeTreeInterfaceSocket>(&item))
+            node_interface::get_item_as<bNodeTreeInterfaceSocket>(&item))
     {
       if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
         bNodeSocket *iosock = make_socket(
