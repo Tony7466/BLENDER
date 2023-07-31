@@ -1808,6 +1808,9 @@ void BKE_brush_sculpt_reset(Brush *br)
 
   /* Brush settings */
   switch (br->sculpt_tool) {
+    case SCULPT_TOOL_DRAW:
+      br->flag2 |= BRUSH_USE_COLOR_AS_DISPLACEMENT;
+      break;
     case SCULPT_TOOL_DRAW_SHARP:
       br->flag |= BRUSH_DIR_IN;
       br->curve_preset = BRUSH_CURVE_POW4;

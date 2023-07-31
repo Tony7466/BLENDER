@@ -790,4 +790,13 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       }
     }
   }
+
+  {
+    /* Change the default of the draw brush */
+    Brush *brush = static_cast<Brush *>(
+        BLI_findstring(&bmain->brushes, "Draw", offsetof(ID, name) + 2));
+    if (brush) {
+      brush->flag2 |= BRUSH_USE_COLOR_AS_DISPLACEMENT;
+    }
+  }
 }
