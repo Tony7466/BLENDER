@@ -46,6 +46,8 @@
 #include "ED_screen.h"
 #include "ED_util.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -474,7 +476,7 @@ static void apply_armature_pose2bones_ui(bContext *C, wmOperator *op)
 
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
 
-  uiItemR(layout, &ptr, "selected", 0, nullptr, ICON_NONE);
+  uiItemR(layout, &ptr, "selected", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void POSE_OT_armature_apply(wmOperatorType *ot)
@@ -605,7 +607,7 @@ static void set_pose_keys(Object *ob)
   if (ob->pose) {
     for (chan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); chan; chan = chan->next) {
       Bone *bone = chan->bone;
-      if ((bone) && (bone->flag & BONE_SELECTED) && (arm->layer & bone->layer)) {
+      if ((bone) && (bone->flag & BONE_SELECTED) && ANIM_bonecoll_is_visible(arm, bone)) {
         chan->flag |= POSE_KEY;
       }
       else {
@@ -1379,7 +1381,7 @@ static int pose_clear_user_transforms_exec(bContext *C, wmOperator *op)
       bPoseChannel *pchan;
 
       /* execute animation step for current frame using a dummy copy of the pose */
-      BKE_pose_copy_data(&dummyPose, ob->pose, 0);
+      BKE_pose_copy_data(&dummyPose, ob->pose, false);
 
       STRNCPY(workob.id.name, "OB<ClearTfmWorkOb>");
       workob.type = OB_ARMATURE;
@@ -1393,7 +1395,7 @@ static int pose_clear_user_transforms_exec(bContext *C, wmOperator *op)
       /* Copy back values, but on selected bones only. */
       for (pchan = static_cast<bPoseChannel *>(dummyPose->chanbase.first); pchan;
            pchan = pchan->next) {
-        pose_bone_do_paste(ob, pchan, only_select, 0);
+        pose_bone_do_paste(ob, pchan, only_select, false);
       }
 
       /* free temp data - free manually as was copied without constraints */

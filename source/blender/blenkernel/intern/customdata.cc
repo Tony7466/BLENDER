@@ -4285,11 +4285,10 @@ void CustomData_blend_write_prepare(CustomData &data,
   data.totlayer = layers_to_write.size();
   data.maxlayer = data.totlayer;
 
-  /* Note: data->layers may be null, this happens when adding
-   * a legacy MPoly struct to a mesh with no other face attributes.
+  /* NOTE: `data->layers` may be null, this happens when adding
+   * a legacy #MPoly struct to a mesh with no other face attributes.
    * This leaves us with no unique ID for DNA to identify the old
-   * data with when loading the file.
-   */
+   * data with when loading the file. */
   if (!data.layers && layers_to_write.size() > 0) {
     /* We just need an address that's unique. */
     data.layers = reinterpret_cast<CustomDataLayer *>(&data.layers);
@@ -5214,14 +5213,14 @@ static void blend_read_mdisps(BlendDataReader *reader,
         /* this calculation is only correct for loop mdisps;
          * if loading pre-BMesh face mdisps this will be
          * overwritten with the correct value in
-         * bm_corners_to_loops() */
+         * #bm_corners_to_loops() */
         float gridsize = sqrtf(mdisps[i].totdisp);
         mdisps[i].level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
       }
 
       if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* DNA_struct_switch_endian doesn't do endian swap for (*disps)[] */
-        /* this does swap for data written at write_mdisps() - readfile.c */
+        /* #DNA_struct_switch_endian doesn't do endian swap for `(*disps)[]` */
+        /* this does swap for data written at #write_mdisps() - `readfile.cc`. */
         BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
       }
       if (!external && !mdisps[i].disps) {

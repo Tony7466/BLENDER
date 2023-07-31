@@ -6,8 +6,8 @@
  * \ingroup spbuttons
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -562,7 +562,7 @@ static void buttons_header_region_draw(const bContext *C, ARegion *region)
 
 static void buttons_header_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   ScrArea *area = params->area;
   ARegion *region = params->region;
   SpaceProperties *sbuts = static_cast<SpaceProperties *>(area->spacedata.first);
@@ -593,7 +593,7 @@ static void buttons_header_region_message_subscribe(const wmRegionMessageSubscri
 
 static void buttons_navigation_bar_region_init(wmWindowManager *wm, ARegion *region)
 {
-  region->flag |= RGN_FLAG_PREFSIZE_OR_HIDDEN;
+  region->flag |= RGN_FLAG_NO_USER_RESIZE;
 
   ED_region_panels_init(wm, region);
   region->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
@@ -614,7 +614,7 @@ static void buttons_navigation_bar_region_draw(const bContext *C, ARegion *regio
 static void buttons_navigation_bar_region_message_subscribe(
     const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   ARegion *region = params->region;
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
@@ -853,9 +853,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void buttons_id_remap(ScrArea * /*area*/,
-                             SpaceLink *slink,
-                             const struct IDRemapper *mappings)
+static void buttons_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceProperties *sbuts = (SpaceProperties *)slink;
 
@@ -975,14 +973,14 @@ void ED_spacetype_buttons()
    * than per modifier type. */
   for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(i));
-    if (mti != nullptr && mti->panelRegister != nullptr) {
-      mti->panelRegister(art);
+    if (mti != nullptr && mti->panel_register != nullptr) {
+      mti->panel_register(art);
     }
   }
   for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
     const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(GpencilModifierType(i));
-    if (mti != nullptr && mti->panelRegister != nullptr) {
-      mti->panelRegister(art);
+    if (mti != nullptr && mti->panel_register != nullptr) {
+      mti->panel_register(art);
     }
   }
   for (int i = 0; i < NUM_SHADER_FX_TYPES; i++) {
@@ -990,8 +988,8 @@ void ED_spacetype_buttons()
       continue;
     }
     const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(ShaderFxType(i));
-    if (fxti != nullptr && fxti->panelRegister != nullptr) {
-      fxti->panelRegister(art);
+    if (fxti != nullptr && fxti->panel_register != nullptr) {
+      fxti->panel_register(art);
     }
   }
 
