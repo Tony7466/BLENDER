@@ -177,8 +177,9 @@ static Vector<CornerFan> calc_corner_fans_for_vertex(const OffsetIndices<int> fa
         }
       }
     }
-
-    fans.append(std::move(fan));
+    if (!fan.is_empty()) {
+      fans.append(std::move(fan));
+    }
   }
 
   return fans;
