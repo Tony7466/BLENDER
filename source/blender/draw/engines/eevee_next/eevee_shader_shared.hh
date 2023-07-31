@@ -900,8 +900,8 @@ struct CaptureInfoData {
   int scene_bound_y_max;
   int scene_bound_z_max;
   int _pad0;
-  int _pad1;
-  int _pad2;
+  bool capture_world_direct;
+  bool capture_world_indirect;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 

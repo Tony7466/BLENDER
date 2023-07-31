@@ -15,17 +15,18 @@
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
-void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
+void irradiance_capture(vec3 L, vec3 irradiance, float visibility, inout SphericalHarmonicL1 sh)
 {
   vec3 lL = transform_direction(capture_info_buf.irradiance_grid_world_to_local_rotation, L);
 
   /* Spherical harmonics need to be weighted by sphere area. */
   irradiance *= 4.0 * M_PI;
+  visibility *= 4.0 * M_PI;
 
-  spherical_harmonics_encode_signal_sample(lL, vec4(irradiance, 1.0), sh);
+  spherical_harmonics_encode_signal_sample(lL, vec4(irradiance, visibility), sh);
 }
 
-void irradiance_capture(Surfel surfel, vec3 P, inout SphericalHarmonicL1 sh)
+void irradiance_capture_surfel(Surfel surfel, vec3 P, inout SphericalHarmonicL1 sh)
 {
   vec3 L = safe_normalize(surfel.position - P);
   bool facing = dot(-L, surfel.normal) > 0.0;
@@ -38,12 +39,18 @@ void irradiance_capture(Surfel surfel, vec3 P, inout SphericalHarmonicL1 sh)
    * otherwise. */
   irradiance += facing ? surfel_radiance_indirect.front.rgb : surfel_radiance_indirect.back.rgb;
 
-  irradiance_capture(L, irradiance, sh);
+  irradiance_capture(L, irradiance, 0.0, sh);
 }
 
-vec3 irradiance_sky_sample(vec3 R)
+void irradiance_capture_world(vec3 L, inout SphericalHarmonicL1 sh)
 {
-  return reflection_probes_world_sample(R, 0.0).rgb;
+  vec3 radiance = vec3(0.0);
+  float visibility = 1.0;
+  if (capture_info_buf.capture_world_direct) {
+    radiance = reflection_probes_world_sample(L, 0.0).rgb;
+    visibility = 0.0;
+  }
+  irradiance_capture(L, radiance, visibility, sh);
 }
 
 void main()
@@ -91,20 +98,18 @@ void main()
 
   if (surfel_next > -1) {
     Surfel surfel = surfel_buf[surfel_next];
-    irradiance_capture(surfel, P, sh);
+    irradiance_capture_surfel(surfel, P, sh);
   }
   else {
-    vec3 world_radiance = irradiance_sky_sample(-sky_L);
-    irradiance_capture(-sky_L, world_radiance, sh);
+    irradiance_capture_world(-sky_L, sh);
   }
 
   if (surfel_prev > -1) {
     Surfel surfel = surfel_buf[surfel_prev];
-    irradiance_capture(surfel, P, sh);
+    irradiance_capture_surfel(surfel, P, sh);
   }
   else {
-    vec3 world_radiance = irradiance_sky_sample(sky_L);
-    irradiance_capture(sky_L, world_radiance, sh);
+    irradiance_capture_world(sky_L, sh);
   }
 
   /* Normalize for storage. We accumulated 2 samples. */

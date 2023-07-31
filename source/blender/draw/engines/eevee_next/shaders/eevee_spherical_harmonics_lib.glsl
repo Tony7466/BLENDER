@@ -194,13 +194,14 @@ vec4 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
 /** \name Rotation
  * \{ */
 
-void spherical_harmonics_L0_rotate(mat3x3 rotation, inout SphericalHarmonicBandL0 L0)
+SphericalHarmonicBandL0 spherical_harmonics_L0_rotate(mat3x3 rotation, SphericalHarmonicBandL0 L0)
 {
   /* L0 band being a constant function (i.e: there is no directionallity) there is nothing to
    * rotate. This is a no-op. */
+  return L0;
 }
 
-void spherical_harmonics_L1_rotate(mat3x3 rotation, inout SphericalHarmonicBandL1 L1)
+SphericalHarmonicBandL1 spherical_harmonics_L1_rotate(mat3x3 rotation, SphericalHarmonicBandL1 L1)
 {
   /* Convert L1 coefficients to per channel column.
    * Note the component shuffle to match blender coordinate system. */
@@ -209,17 +210,21 @@ void spherical_harmonics_L1_rotate(mat3x3 rotation, inout SphericalHarmonicBandL
   per_channel[0] = rotation * per_channel[0];
   per_channel[1] = rotation * per_channel[1];
   per_channel[2] = rotation * per_channel[2];
-  /* Convert back to L1 coefficients to per channel column.
+  per_channel[3] = rotation * per_channel[3];
+  /* Convert back from L1 coefficients to per channel column.
    * Note the component shuffle to match blender coordinate system. */
   mat3x4 per_coef = transpose(per_channel);
   L1.Mn1 = per_coef[1];
   L1.M0 = -per_coef[2];
   L1.Mp1 = per_coef[0];
+  return L1;
 }
 
-void spherical_harmonics_L2_rotate(mat3x3 rotation, inout SphericalHarmonicBandL2 L2)
+SphericalHarmonicL1 spherical_harmonics_rotate(mat3x3 rotation, SphericalHarmonicL1 sh)
 {
-  /* TODO */
+  sh.L0 = spherical_harmonics_L0_rotate(rotation, sh.L0);
+  sh.L1 = spherical_harmonics_L1_rotate(rotation, sh.L1);
+  return sh;
 }
 
 /** \} */
@@ -325,6 +330,47 @@ void spherical_harmonics_pack(SphericalHarmonicL1 sh,
   L0_L1_b.w = sh.L1.Mp1.y;
   L0_L1_c.w = sh.L1.Mp1.z;
   L0_L1_vis = vec4(sh.L0.M0.w, sh.L1.Mn1.w, sh.L1.M0.w, sh.L1.Mp1.w);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Operations
+ * \{ */
+
+SphericalHarmonicL1 spherical_harmonics_add(SphericalHarmonicL1 a, SphericalHarmonicL1 b)
+{
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = a.L0.M0 + b.L0.M0;
+  sh.L1.Mn1 = a.L1.Mn1 + b.L1.Mn1;
+  sh.L1.M0 = a.L1.M0 + b.L1.M0;
+  sh.L1.Mp1 = a.L1.Mp1 + b.L1.Mp1;
+  return sh;
+}
+
+SphericalHarmonicL1 spherical_harmonics_triple_product(SphericalHarmonicL1 a,
+                                                       SphericalHarmonicL1 b)
+{
+  /**
+   * Addapted from :
+   * "Code Generation and Factoring for Fast Evaluation of Low-order Spherical Harmonic Products
+   * and Squares" Function "SH_product_3"
+   */
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = 0.282094792 * a.L0.M0 * b.L0.M0;
+
+  vec4 ta = 0.282094791 * a.L0.M0;
+  vec4 tb = 0.282094791 * b.L0.M0;
+
+  sh.L1.Mn1 = ta * b.L1.Mn1 + tb * a.L1.Mn1;
+  sh.L0.M0 += 0.282094791 * (a.L1.Mn1 * b.L1.Mn1);
+
+  sh.L1.M0 += ta * b.L1.M0 + tb * a.L1.M0;
+  sh.L0.M0 += 0.282094795 * (a.L1.M0 * b.L1.M0);
+
+  sh.L1.Mp1 += ta * b.L1.Mp1 + tb * a.L1.Mp1;
+  sh.L0.M0 += 0.282094791 * (a.L1.Mp1 * b.L1.Mp1);
+  return sh;
 }
 
 /** \} */

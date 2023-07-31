@@ -63,15 +63,13 @@ void radiance_transfer_surfel(inout Surfel receiver, Surfel sender)
   radiance_transfer(receiver, radiance, L);
 }
 
-vec3 radiance_sky_sample(vec3 R)
+void radiance_transfer_world(inout Surfel receiver, vec3 L)
 {
-  return reflection_probes_world_sample(R, 0.0).rgb;
-}
-
-void radiance_transfer_world(inout Surfel receiver, vec3 sky_L)
-{
-  vec3 radiance = radiance_sky_sample(-sky_L);
-  radiance_transfer(receiver, radiance, -sky_L);
+  vec3 radiance = vec3(0.0);
+  if (capture_info_buf.capture_world_indirect) {
+    radiance = reflection_probes_world_sample(L, 0.0).rgb;
+  }
+  radiance_transfer(receiver, radiance, L);
 }
 
 void main()
@@ -90,7 +88,7 @@ void main()
     radiance_transfer_surfel(surfel, surfel_next);
   }
   else {
-    radiance_transfer_world(surfel, sky_L);
+    radiance_transfer_world(surfel, -sky_L);
   }
 
   if (surfel.prev > -1) {
@@ -98,7 +96,7 @@ void main()
     radiance_transfer_surfel(surfel, surfel_prev);
   }
   else {
-    radiance_transfer_world(surfel, -sky_L);
+    radiance_transfer_world(surfel, sky_L);
   }
 
   surfel_buf[surfel_index] = surfel;

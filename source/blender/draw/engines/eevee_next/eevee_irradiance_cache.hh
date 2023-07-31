@@ -134,6 +134,10 @@ class IrradianceCache {
  public:
   IrradianceBake bake;
 
+  /** True if world irradiance need to be updated. */
+  /* TODO(fclem): move to private once world irradiance extraction is moved to irradiance cache. */
+  bool do_update_world_ = true;
+
  private:
   Instance &inst_;
 
