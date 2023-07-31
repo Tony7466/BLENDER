@@ -1690,6 +1690,8 @@ GHOST_TCapabilityFlag GHOST_SystemX11::getCapabilities() const
 {
   return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
                                ~(
+                                   /* No support yet for desktop sampling. */
+                                   GHOST_kCapabilityDesktopSample |
                                    /* No support yet for image copy/paste. */
                                    GHOST_kCapabilityClipboardImages));
 }
