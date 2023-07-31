@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
-#include "BLI_disjoint_set.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_ordered_edge.hh"
 #include "BLI_vector_set.hh"
@@ -150,33 +149,35 @@ static Vector<CornerFan> calc_corner_fans_for_vertex(const OffsetIndices<int> fa
   Vector<CornerFan> fans;
   BitVector<> used_corners(connected_corners.size());
 
-  for (const int corner : connected_corners) {
-    const int i = connected_corners.first_index(corner);
-    if (used_corners[i]) {
-      continue;
-    }
+  for (const int start_corner : connected_corners) {
     CornerFan fan;
-    used_corners[i].set();
-    fan.append(corner);
-
-    const IndexRange face = faces[corner_to_face_map[corner]];
-    const int prev_corner = bke::mesh::face_corner_prev(face, corner);
-    for (const int edge : {corner_edges[corner], corner_edges[prev_corner]}) {
-      if (split_edges[edge]) {
+    Vector<int> corner_stack({start_corner});
+    while (!corner_stack.is_empty()) {
+      const int corner = corner_stack.pop_last();
+      const int i = connected_corners.first_index(corner);
+      if (used_corners[i]) {
         continue;
       }
-      for (const int other_corner : edge_to_corner_map[edge]) {
-        if (other_corner == corner) {
+      used_corners[i].set();
+      fan.append(corner);
+      const int face = corner_to_face_map[corner];
+      const int prev_corner = bke::mesh::face_corner_prev(faces[face], corner);
+      for (const int edge : {corner_edges[corner], corner_edges[prev_corner]}) {
+        if (split_edges[edge]) {
           continue;
         }
-        const IndexRange other_face = faces[corner_to_face_map[other_corner]];
-        const int neighbor_corner = corner_on_edge_connected_to_vert(
-            corner_verts, other_corner, other_face, vert);
-
-        fan.append(neighbor_corner);
-        used_corners[connected_corners.first_index(neighbor_corner)].set();
+        for (const int other_corner : edge_to_corner_map[edge]) {
+          const int other_face = corner_to_face_map[other_corner];
+          if (other_face == face) {
+            continue;
+          }
+          const int neighbor_corner = corner_on_edge_connected_to_vert(
+              corner_verts, other_corner, faces[other_face], vert);
+          corner_stack.append(neighbor_corner);
+        }
       }
     }
+
     fans.append(std::move(fan));
   }
 
