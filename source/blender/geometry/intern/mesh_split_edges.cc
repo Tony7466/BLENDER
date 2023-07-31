@@ -296,46 +296,67 @@ static void calc_updated_corner_verts(const int orig_verts_num,
   });
 }
 
-struct NewEdgeInfo {
-  Vector<std::pair<int, int2>> reused_edges;
-  VectorSet<OrderedEdge> new_edges;
-};
-
 /**
  * When each of an edge's vertices only have a single grouped edge fan, the vertices will not be
- * split, meaning all output edges will reuse the same vertices. Because edges must be unique, they
- * must be deduplicated. Though smarter heuristics may be possible given the available information,
- * using a #VectorSet is a foolproof way to do this deduplication.
+ * split, meaning all output edges will reuse the same vertices.
  */
-static NewEdgeInfo calc_deduplicated_new_edges(const OffsetIndices<int> faces,
-                                               const Span<int> orig_corner_edges,
-                                               const BitSpan selection,
-                                               const Span<int> new_corner_verts,
-                                               const int new_edge_start,
-                                               MutableSpan<int> new_corner_edges)
+static BitVector<> calc_deduplicated_new_edges(const int orig_verts_num,
+                                               const Span<int2> orig_edges,
+                                               const IndexMask &affected_verts,
+                                               const Span<Vector<CornerFan>> corner_fans)
 {
-  BitVector<> edge_is_reused;
-  NewEdgeInfo result;
+  Array<int> fan_counts(orig_verts_num, 0);
+  affected_verts.foreach_index(GrainSize(4096), [&](const int vert, const int mask) {
+    fan_counts[vert] = corner_fans[mask].size();
+  });
+  BitVector<> output_single_edge(orig_edges.size());
+  threading::parallel_for_aligned(
+      orig_edges.index_range(), 4096, bits::BitsPerInt, [&](const IndexRange range) {
+        for (const int edge : range) {
+          output_single_edge[edge].set(fan_counts[orig_edges[edge][0]] == 1 &&
+                                       fan_counts[orig_edges[edge][1]] == 1);
+        }
+      });
+  return output_single_edge;
+}
+
+static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
+                                  const Span<int> orig_corner_edges,
+                                  const BitSpan selection,
+                                  const Span<int> new_corner_verts,
+                                  const int new_edge_start,
+                                  const BitSpan output_single_edge,
+                                  MutableSpan<int2> edges,
+                                  MutableSpan<int> new_corner_edges,
+                                  Vector<int2> &new_edges,
+                                  Vector<int> &new_edge_orig_indices)
+{
+  BitVector<> edge_used(edges.size());
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
     for (const int corner : face) {
       const int edge = orig_corner_edges[corner];
-      if (selection[edge]) {
-        const int vert_1 = new_corner_verts[corner];
-        const int vert_2 = new_corner_verts[bke::mesh::face_corner_next(face, corner)];
-        if (edge_is_reused[edge]) {
-          // TODO: Wrong because this isn't deduplicated with the reused edge
-          const int new_i = result.new_edges.index_of_or_add_as(OrderedEdge(vert_1, vert_2));
-          new_corner_edges[corner] = new_edge_start + new_i;
-        }
-        else {
-          result.reused_edges.append({edge, int2(vert_1, vert_2)});
-          edge_is_reused[edge].set();
-        }
+      if (!selection[edge]) {
+        continue;
+      }
+      const int vert_1 = new_corner_verts[corner];
+      const int vert_2 = new_corner_verts[bke::mesh::face_corner_next(face, corner)];
+      if (output_single_edge[edge]) {
+        BLI_assert(OrderedEdge(edges[edge]) == OrderedEdge(vert_1, vert_2));
+        continue;
+      }
+      if (edge_used[edge]) {
+        new_corner_edges[corner] = new_edge_start + new_edges.size();
+        new_edges.append(int2(vert_1, vert_2));
+        new_edge_orig_indices.append(edge);
+      }
+      else {
+        edges[edge] = int2(vert_1, vert_2);
+        edge_used[edge].set();
       }
     }
   }
-  return result;
+  return new_edges;
 }
 
 static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
@@ -387,32 +408,6 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
       swap_edge_vert(edges[orig_edge], vert, new_vert);
     }
   });
-}
-
-/**
- * Using the original corner edge array and the updated one, calculate the mapping from new
- * edges to original edges.
- */
-static Array<int> calc_new_to_old_edge_map(const OffsetIndices<int> faces,
-                                           const Span<int> orig_corner_edges,
-                                           const BitSpan selection,
-                                           const Span<int> new_corner_edges,
-                                           const IndexRange duplicates)
-{
-  // TODO: Reuse original edge too
-  Array<int> duplicate_to_old_edge_map(duplicates.size());
-  for (const int i : faces.index_range()) {
-    const IndexRange face = faces[i];
-    for (const int corner : face) {
-      const int old_edge = orig_corner_edges[corner];
-      if (selection[old_edge]) {
-        const int new_edge = new_corner_edges[corner];
-        const int duplicate = new_edge - duplicates.start();
-        duplicate_to_old_edge_map[duplicate] = old_edge;
-      }
-    }
-  }
-  return duplicate_to_old_edge_map;
 }
 
 /**
@@ -492,22 +487,23 @@ void split_edges(Mesh &mesh,
   calc_updated_corner_verts(
       orig_verts_num, corner_fans, new_verts_by_affected_vert, new_corner_verts);
 
-  MutableSpan<int> new_corner_edges = mesh.corner_edges_for_write();
-  VectorSet<OrderedEdge> new_edges = calc_deduplicated_new_edges(faces,
-                                                                 orig_corner_edges,
-                                                                 selection_bits,
-                                                                 new_corner_verts,
-                                                                 orig_edges.size(),
-                                                                 new_corner_edges);
+  const BitVector<> single_edges = calc_deduplicated_new_edges(
+      orig_verts_num, orig_edges, affected_verts, corner_fans);
 
-  const Array<int> new_edge_indices = calc_new_to_old_edge_map(
-      faces, orig_corner_edges, selection_bits, new_corner_edges, orig_edges.size());
-
-  Array<int2> result_edges(orig_edges.size() + new_edges.size());
-  result_edges.as_mutable_span().take_front(orig_edges.size()).copy_from(orig_edges);
-  result_edges.as_mutable_span()
-      .take_back(new_edges.size())
-      .copy_from(new_edges.as_span().cast<int2>());
+  Vector<int2> new_edges;
+  Vector<int> new_edge_orig_indices;
+  new_edges.reserve(selected_edges.size());
+  new_edges.reserve(new_edge_orig_indices.size());
+  add_new_edges(faces,
+                orig_corner_edges,
+                selection_bits,
+                new_corner_verts,
+                orig_edges.size(),
+                single_edges,
+                mesh.edges_for_write(),
+                mesh.corner_edges_for_write(),
+                new_edges,
+                new_edge_orig_indices);
 
   if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
@@ -516,11 +512,11 @@ void split_edges(Mesh &mesh,
                               selection_bits,
                               corner_fans,
                               new_verts_by_affected_vert,
-                              result_edges);
+                              mesh.edges_for_write());
   }
 
-  propagate_edge_attributes(mesh, new_edge_indices);
-  mesh.edges_for_write().copy_from(result_edges);
+  propagate_edge_attributes(mesh, new_edge_orig_indices);
+  mesh.edges_for_write().take_back(new_edges.size()).copy_from(new_edges);
 
   const Array<int> vert_map = calc_new_to_old_vert_map(affected_verts, new_verts_by_affected_vert);
   propagate_vert_attributes(mesh, vert_map);
