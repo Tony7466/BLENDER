@@ -19,7 +19,6 @@ struct OrderedEdge {
 
   OrderedEdge(const int v1, const int v2)
   {
-    BLI_assert(v1 != v2);
     if (v1 < v2) {
       v_low = v1;
       v_high = v2;
