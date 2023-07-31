@@ -1359,16 +1359,13 @@ GPUBatch *DRW_pbvh_lines_get(PBVHBatches *batches,
                              int *r_prim_count,
                              bool do_coarse_grids)
 {
-  // SCOPED_TIMER(__func__);
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
 
   PBVHBatch &batch = batches->ensure_batch(attrs, attrs_num, args, do_coarse_grids);
 
   *r_prim_count = batch.lines_count;
-  *r_prim_count = 0;
 
   return batch.lines;
-  return nullptr;
 }
 
 void DRW_pbvh_update_pre(PBVHBatches *batches, const PBVH_GPU_Args &args)
