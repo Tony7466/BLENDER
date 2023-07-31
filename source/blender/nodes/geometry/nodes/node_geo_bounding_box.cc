@@ -2,7 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_matrix.hh"
+
 #include "GEO_mesh_primitive_cuboid.hh"
+#include "GEO_transformation.hh"
 
 #include "node_geometry_util.hh"
 
@@ -53,8 +56,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       else {
         const float3 scale = sub_bounds->max - sub_bounds->min;
         const float3 center = sub_bounds->min + scale / 2.0f;
+        const float4x4 transform = math::from_location<float4x4>(center);
         Mesh *mesh = geometry::create_cuboid_mesh(scale, 2, 2, 2, "uv_map");
-        transform_mesh(*mesh, center, float3(0), float3(1));
+        geometry::transform(transform, mesh->vert_positions_for_write());
         sub_geometry.replace_mesh(mesh);
         sub_geometry.keep_only_during_modify({GeometryComponent::Type::Mesh});
       }

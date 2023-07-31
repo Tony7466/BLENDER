@@ -40,11 +40,6 @@ bool geo_node_poll_default(const struct bNodeType *ntype,
 
 namespace blender::nodes {
 
-void transform_mesh(Mesh &mesh,
-                    const float3 translation,
-                    const float3 rotation,
-                    const float3 scale);
-
 void transform_geometry_set(GeoNodeExecParams &params,
                             GeometrySet &geometry,
                             const float4x4 &transform,

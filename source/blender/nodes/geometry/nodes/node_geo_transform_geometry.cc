@@ -23,22 +23,11 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "GEO_transformation.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
-
-static bool use_translate(const float3 rotation, const float3 scale)
-{
-  if (compare_ff(math::length_squared(rotation), 0.0f, 1e-9f) != 1) {
-    return false;
-  }
-  if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
-      compare_ff(scale.z, 1.0f, 1e-9f) != 1)
-  {
-    return false;
-  }
-  return true;
-}
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
 {
@@ -49,67 +38,50 @@ static void translate_positions(MutableSpan<float3> positions, const float3 &tra
   });
 }
 
-static void transform_positions(MutableSpan<float3> positions, const float4x4 &matrix)
-{
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (float3 &position : positions.slice(range)) {
-      position = math::transform_point(matrix, position);
-    }
-  });
-}
-
 static void transform_mesh(Mesh &mesh, const float4x4 &transform)
 {
-  transform_positions(mesh.vert_positions_for_write(), transform);
+  geometry::transform(transform, mesh.vert_positions_for_write());
   BKE_mesh_tag_positions_changed(&mesh);
 }
 
-static void translate_pointcloud(PointCloud &pointcloud, const float3 translation)
+static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transform)
 {
-  if (math::is_zero(translation)) {
-    return;
-  }
+  float3 translation;
+  math::EulerXYZ rotation;
+  float3 scale;
+  math::to_loc_rot_scale(transform, translation, rotation, scale);
+  const bool translation_only = geometry::zero_rotation(rotation) && geometry::unit_scale(scale);
 
   std::optional<Bounds<float3>> bounds;
   if (pointcloud.runtime->bounds_cache.is_cached()) {
     bounds = pointcloud.runtime->bounds_cache.data();
   }
 
-  MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
-  SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
-  translate_positions(position.span, translation);
-  position.finish();
+  geometry::transform(transform, pointcloud.positions_for_write());
 
-  if (bounds) {
+  if (bounds && translation_only) {
     bounds->min += translation;
     bounds->max += translation;
     pointcloud.runtime->bounds_cache.ensure([&](Bounds<float3> &r_data) { r_data = *bounds; });
   }
 }
 
-static void transform_pointcloud(PointCloud &pointcloud, const float4x4 &transform)
-{
-  MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
-  SpanAttributeWriter position = attributes.lookup_or_add_for_write_span<float3>(
-      "position", ATTR_DOMAIN_POINT);
-  transform_positions(position.span, transform);
-  position.finish();
-}
-
-static void translate_instances(bke::Instances &instances, const float3 translation)
-{
-  MutableSpan<float4x4> transforms = instances.transforms();
-  threading::parallel_for(transforms.index_range(), 1024, [&](const IndexRange range) {
-    for (float4x4 &instance_transform : transforms.slice(range)) {
-      add_v3_v3(instance_transform.ptr()[3], translation);
-    }
-  });
-}
-
 static void transform_instances(bke::Instances &instances, const float4x4 &transform)
 {
   MutableSpan<float4x4> transforms = instances.transforms();
+
+  float3 translation;
+  math::EulerXYZ rotation;
+  float3 scale;
+  math::to_loc_rot_scale(transform, translation, rotation, scale);
+  if (geometry::zero_rotation(rotation) && geometry::unit_scale(scale)) {
+    threading::parallel_for(transforms.index_range(), 1024, [&](const IndexRange range) {
+      for (float4x4 &instance_transform : transforms.slice(range)) {
+        add_v3_v3(instance_transform.ptr()[3], translation);
+      }
+    });
+    return;
+  }
   threading::parallel_for(transforms.index_range(), 1024, [&](const IndexRange range) {
     for (float4x4 &instance_transform : transforms.slice(range)) {
       instance_transform = transform * instance_transform;
@@ -177,8 +149,16 @@ static void translate_volume(GeoNodeExecParams &params,
 static void transform_curve_edit_hints(bke::CurvesEditHints &edit_hints, const float4x4 &transform)
 {
   if (edit_hints.positions.has_value()) {
-    transform_positions(*edit_hints.positions, transform);
+    geometry::transform(transform, *edit_hints.positions);
   }
+
+  math::EulerXYZ rotation;
+  float3 scale;
+  math::to_rot_scale<true>(float3x3(transform), rotation, scale);
+  if (geometry::zero_rotation(rotation) && geometry::unit_scale(scale)) {
+    return;
+  }
+
   float3x3 deform_mat;
   copy_m3_m4(deform_mat.ptr(), transform.ptr());
   if (edit_hints.deform_mats.has_value()) {
@@ -194,16 +174,10 @@ static void transform_curve_edit_hints(bke::CurvesEditHints &edit_hints, const f
   }
 }
 
-static void translate_curve_edit_hints(bke::CurvesEditHints &edit_hints, const float3 &translation)
-{
-  if (edit_hints.positions.has_value()) {
-    translate_positions(*edit_hints.positions, translation);
-  }
-}
-
 static void translate_geometry_set(GeoNodeExecParams &params,
                                    GeometrySet &geometry,
                                    const float3 translation,
+                                   const float4x4 &transform,
                                    const Depsgraph &depsgraph)
 {
   if (Curves *curves = geometry.get_curves_for_write()) {
@@ -213,16 +187,16 @@ static void translate_geometry_set(GeoNodeExecParams &params,
     BKE_mesh_translate(mesh, translation, false);
   }
   if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
-    translate_pointcloud(*pointcloud, translation);
+    transform_pointcloud(*pointcloud, transform);
   }
   if (Volume *volume = geometry.get_volume_for_write()) {
     translate_volume(params, *volume, translation, depsgraph);
   }
   if (bke::Instances *instances = geometry.get_instances_for_write()) {
-    translate_instances(*instances, translation);
+    transform_instances(*instances, transform);
   }
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
-    translate_curve_edit_hints(*curve_edit_hints, translation);
+    transform_curve_edit_hints(*curve_edit_hints, transform);
   }
 }
 
@@ -231,6 +205,15 @@ void transform_geometry_set(GeoNodeExecParams &params,
                             const float4x4 &transform,
                             const Depsgraph &depsgraph)
 {
+  float3 translation;
+  math::EulerXYZ rotation;
+  float3 scale;
+  math::to_loc_rot_scale(transform, translation, rotation, scale);
+  if (geometry::zero_rotation(rotation) && geometry::unit_scale(scale)) {
+    translate_geometry_set(params, geometry, translation, transform, depsgraph);
+    return;
+  }
+
   if (Curves *curves = geometry.get_curves_for_write()) {
     curves->geometry.wrap().transform(transform);
   }
@@ -249,15 +232,6 @@ void transform_geometry_set(GeoNodeExecParams &params,
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     transform_curve_edit_hints(*curve_edit_hints, transform);
   }
-}
-
-void transform_mesh(Mesh &mesh,
-                    const float3 translation,
-                    const float3 rotation,
-                    const float3 scale)
-{
-  const float4x4 matrix = math::from_loc_rot_scale<float4x4>(translation, rotation, scale);
-  transform_mesh(mesh, matrix);
 }
 
 }  // namespace blender::nodes
@@ -280,16 +254,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const float3 rotation = params.extract_input<float3>("Rotation");
   const float3 scale = params.extract_input<float3>("Scale");
 
-  /* Use only translation if rotation and scale don't apply. */
-  if (use_translate(rotation, scale)) {
-    translate_geometry_set(params, geometry_set, translation, *params.depsgraph());
-  }
-  else {
-    transform_geometry_set(params,
-                           geometry_set,
-                           math::from_loc_rot_scale<float4x4>(translation, rotation, scale),
-                           *params.depsgraph());
-  }
+  const float4x4 transform = math::from_loc_rot_scale<float4x4>(translation, rotation, scale);
+  transform_geometry_set(params, geometry_set, transform, *params.depsgraph());
 
   params.set_output("Geometry", std::move(geometry_set));
 }

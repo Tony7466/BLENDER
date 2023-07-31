@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_realize_instances.hh"
+#include "GEO_transformation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
@@ -282,17 +283,6 @@ struct InstanceContext {
   {
   }
 };
-
-static void copy_transformed_positions(const Span<float3> src,
-                                       const float4x4 &transform,
-                                       MutableSpan<float3> dst)
-{
-  threading::parallel_for(src.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst[i] = math::transform_point(transform, src[i]);
-    }
-  });
-}
 
 static void threaded_copy(const GSpan src, GMutableSpan dst)
 {
@@ -740,7 +730,7 @@ static void execute_realize_pointcloud_task(
   const PointCloud &pointcloud = *pointcloud_info.pointcloud;
   const IndexRange point_slice{task.start_index, pointcloud.totpoint};
 
-  copy_transformed_positions(
+  geometry::copy_transformed(
       pointcloud_info.positions, task.transform, all_dst_positions.slice(point_slice));
 
   /* Create point ids. */
@@ -1306,7 +1296,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
   const IndexRange dst_point_range{task.start_indices.point, curves.points_num()};
   const IndexRange dst_curve_range{task.start_indices.curve, curves.curves_num()};
 
-  copy_transformed_positions(
+  geometry::copy_transformed(
       curves.positions(), task.transform, dst_curves.positions_for_write().slice(dst_point_range));
 
   /* Copy and transform handle positions if necessary. */
@@ -1315,14 +1305,14 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
       all_handle_left.slice(dst_point_range).fill(float3(0));
     }
     else {
-      copy_transformed_positions(
+      geometry::copy_transformed(
           curves_info.handle_left, task.transform, all_handle_left.slice(dst_point_range));
     }
     if (curves_info.handle_right.is_empty()) {
       all_handle_right.slice(dst_point_range).fill(float3(0));
     }
     else {
-      copy_transformed_positions(
+      geometry::copy_transformed(
           curves_info.handle_right, task.transform, all_handle_right.slice(dst_point_range));
     }
   }
