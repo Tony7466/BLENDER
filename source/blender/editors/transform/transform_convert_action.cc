@@ -104,13 +104,33 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
   return count;
 }
 
-static int count_grease_pencil_frames(blender::bke::greasepencil::Layer * /*layer*/,
-                                      char /*side*/,
-                                      float /*cfra*/,
-                                      bool /*is_prop_edit*/)
+static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *layer,
+                                      char side,
+                                      float cfra,
+                                      bool is_prop_edit)
 {
-  /* GPv3 : To be implemented. */
-  return 0;
+  if (layer == nullptr) {
+    return 0;
+  }
+
+  int count_selected = 0;
+  int count_all = 0;
+
+  /* Only include points that occur on the right side of cfra. */
+  for (const auto &[frame_number, frame] : layer->frames().items()) {
+    if (!FrameOnMouseSide(side, float(frame_number), cfra)) {
+      continue;
+    }
+    if (frame.is_selected()) {
+      count_selected++;
+    }
+    count_all++;
+  }
+
+  if (is_prop_edit && count_selected > 0) {
+    return count_all;
+  }
+  return count_selected;
 }
 
 /* fully select selected beztriples, but only include if it's on the right side of cfra */
@@ -266,16 +286,42 @@ static int GPLayerToTransData(TransData *td,
   return count;
 }
 
-static int GreasePencilLayerToTransData(TransData * /*td*/,
-                                        tGPFtransdata * /*tfd*/,
-                                        blender::bke::greasepencil::Layer * /*layer*/,
-                                        char /*side*/,
-                                        float /*cfra*/,
-                                        bool /*is_prop_edit*/,
-                                        float /*ypos*/)
+static int GreasePencilLayerToTransData(TransData *td,
+                                        tGPFtransdata *tfd,
+                                        blender::bke::greasepencil::Layer *layer,
+                                        char side,
+                                        float cfra,
+                                        bool is_prop_edit,
+                                        float ypos)
 {
-  /* GPv3 : To be implemented. */
-  return 0;
+  int count = 0;
+
+  /* Check for select frames on right side of current frame. */
+  for (auto [frame_number, frame] : layer->frames_for_write().items()) {
+    if ((!is_prop_edit && !frame.is_selected()) || !FrameOnMouseSide(side, frame_number, cfra)) {
+      continue;
+    }
+
+    tfd->val = float(frame_number);
+    // tfd->sdata = &frame_number;
+
+    td->val = td->loc = &tfd->val;
+    td->ival = td->iloc[0] = tfd->val;
+
+    td->center[0] = td->ival;
+    td->center[1] = ypos;
+
+    if (frame.is_selected()) {
+      td->flag = TD_SELECTED;
+    }
+
+    /* Advance `td` now. */
+    td++;
+    tfd++;
+    count++;
+  }
+
+  return count;
 }
 
 /* refer to comment above #GPLayerToTransData, this is the same but for masks */
@@ -522,7 +568,30 @@ static void createTransActionData(bContext *C, TransInfo *t)
         }
       }
       else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-        /* GPv3 : To be implemented. */
+        using namespace blender::bke::greasepencil;
+        Layer *layer = static_cast<Layer *>(ale->data);
+
+        for (auto [frame_number, frame] : layer->frames_for_write().items()) {
+          if (frame.is_selected()) {
+            td->dist = td->rdist = 0.0f;
+            ++td;
+            continue;
+          }
+
+          int closest_selected = INT_MAX;
+          for (auto [neighbor_frame_number, neighbor_frame] : layer->frames_for_write().items()) {
+            if (!neighbor_frame.is_selected() ||
+                !FrameOnMouseSide(t->frame_side, float(neighbor_frame_number), cfra))
+            {
+              continue;
+            }
+            const int distance = abs(neighbor_frame_number - frame_number);
+            closest_selected = std::min(closest_selected, distance);
+          }
+
+          td->dist = td->rdist = closest_selected;
+          ++td;
+        }
       }
       else if (ale->type == ANIMTYPE_MASKLAYER) {
         MaskLayer *masklay = (MaskLayer *)ale->data;
