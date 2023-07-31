@@ -143,6 +143,25 @@ bool BLF_has_glyph(int fontid, uint unicode)
   return false;
 }
 
+void *BLF_get_glyphslot(int fontid, unsigned int unicode)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return blf_glyphslot_ensure_outline(font, unicode);
+  }
+  return NULL;
+}
+
+void *BLF_get_face(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    blf_ensure_face(font);
+    return font->face;
+  }
+  return NULL;
+}
+
 bool BLF_is_loaded(const char *filepath)
 {
   return blf_search_by_filepath(filepath) >= 0;

@@ -14,11 +14,6 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
-/* not needed yet */
-// #include FT_GLYPH_H
-// #include FT_BBOX_H
-// #include FT_SIZES_H
-// #include <freetype/ttnameid.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -27,14 +22,19 @@
 #include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-#include "BLI_utildefines.h"
+
+#include "BLF_api.h"
 
 #include "BKE_curve.h"
+#include "BKE_vfont.h"
 #include "BKE_vfontdata.h"
 
 #include "DNA_curve_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_vfont_types.h"
+
+extern const void *builtin_font_data;
+extern int builtin_font_size;
 
 static void freetype_outline_to_curves(FT_Outline ftoutline,
                                        ListBase *nurbsbase,
@@ -205,72 +205,16 @@ static void freetype_outline_to_curves(FT_Outline ftoutline,
   MEM_freeN(onpoints);
 }
 
-static VChar *freetypechar_to_vchar(FT_Face face, FT_ULong charcode, const VFontData *vfd)
-{
-  FT_UInt glyph_index = FT_Get_Char_Index(face, charcode);
-  if (FT_Load_Glyph(face, glyph_index, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) != FT_Err_Ok) {
-    return nullptr;
-  }
-
-  VChar *che = (VChar *)MEM_callocN(sizeof(VChar), "objfnt_char");
-  freetype_outline_to_curves(face->glyph->outline, &che->nurbsbase, vfd->scale);
-  che->index = charcode;
-  che->width = face->glyph->advance.x * vfd->scale;
-  BLI_ghash_insert(vfd->characters, POINTER_FROM_UINT(che->index), che);
-
-  return che;
-}
-
-static FT_Face vfont_face_load_from_packed_file(FT_Library library, PackedFile *pf)
-{
-  FT_Face face = nullptr;
-  FT_New_Memory_Face(library, static_cast<const FT_Byte *>(pf->data), pf->size, 0, &face);
-  if (!face) {
-    return nullptr;
-  }
-
-  /* Font must contain vectors, not bitmaps. */
-  if (!(face->face_flags & FT_FACE_FLAG_SCALABLE)) {
-    FT_Done_Face(face);
-    return nullptr;
-  }
-
-  /* Select a character map. */
-  FT_Error err = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
-  if (err) {
-    err = FT_Select_Charmap(face, FT_ENCODING_APPLE_ROMAN);
-  }
-  if (err && face->num_charmaps > 0) {
-    err = FT_Select_Charmap(face, face->charmaps[0]->encoding);
-  }
-  if (err) {
-    FT_Done_Face(face);
-    return nullptr;
-  }
-
-  /* Test that we can load glyphs from this font. */
-  FT_UInt glyph_index = 0;
-  FT_Get_First_Char(face, &glyph_index);
-  if (!glyph_index ||
-      FT_Load_Glyph(face, glyph_index, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) != FT_Err_Ok)
-  {
-    FT_Done_Face(face);
-    return nullptr;
-  }
-
-  return face;
-}
-
 VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 {
-  FT_Library library = nullptr;
-  if (FT_Init_FreeType(&library) != FT_Err_Ok) {
+  int font_id = BLF_load_mem("FTVFont", static_cast<const unsigned char *>(pf->data), pf->size);
+  if (font_id == -1) {
     return nullptr;
   }
 
-  FT_Face face = vfont_face_load_from_packed_file(library, pf);
+  FT_Face face = static_cast<FT_Face>(BLF_get_face(font_id));
   if (!face) {
-    FT_Done_FreeType(library);
+    BLF_unload_id(font_id);
     return nullptr;
   }
 
@@ -310,22 +254,9 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
     vfd->scale = 1.0f / 1000.0f;
   }
 
-  /* Load the first 256 glyphs. */
+  vfd->characters = BLI_ghash_int_new_ex(__func__, 255);
 
-  const FT_ULong preload_count = 256;
-  vfd->characters = BLI_ghash_int_new_ex(__func__, preload_count);
-
-  FT_ULong charcode = 0;
-  FT_UInt glyph_index;
-  for (int i = 0; i < preload_count; i++) {
-    charcode = FT_Get_Next_Char(face, charcode, &glyph_index);
-    if (!charcode || !glyph_index) {
-      break;
-    }
-    freetypechar_to_vchar(face, charcode, vfd);
-  }
-
-  FT_Done_FreeType(library);
+  BLF_unload_id(font_id);
 
   return vfd;
 }
@@ -353,27 +284,31 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
     return nullptr;
   }
 
-  /* Init Freetype */
-  FT_Library library = nullptr;
-  FT_Error err = FT_Init_FreeType(&library);
-  if (err) {
-    /* XXX error("Failed to load the Freetype font library"); */
+  int font_id;
+
+  if (BKE_vfont_is_builtin(vfont)) {
+    font_id = BLF_load_mem(vfont->data->name,
+                           static_cast<const unsigned char *>(builtin_font_data),
+                           builtin_font_size);
+  }
+  else {
+    font_id = BLF_load_mem(vfont->data->name,
+                           static_cast<const unsigned char *>(vfont->temp_pf->data),
+                           vfont->temp_pf->size);
+  }
+
+  if (font_id == -1) {
     return nullptr;
   }
 
-  FT_Face face = vfont_face_load_from_packed_file(library, vfont->temp_pf);
-  if (!face) {
-    FT_Done_FreeType(library);
-    return nullptr;
-  }
+  FT_GlyphSlot glyph = static_cast<FT_GlyphSlot>(BLF_get_glyphslot(font_id, character));
 
-  /* Load the character */
-  VChar *che = freetypechar_to_vchar(face, character, vfont->data);
-
-  /* Free Freetype */
-  FT_Done_Face(face);
-  FT_Done_FreeType(library);
-
+  VChar *che = (VChar *)MEM_callocN(sizeof(VChar), "objfnt_char");
+  che->index = character;
+  che->width = glyph->advance.x * vfont->data->scale;
+  freetype_outline_to_curves(glyph->outline, &che->nurbsbase, vfont->data->scale);
+  BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->index), che);
+  BLF_unload_id(font_id);
   return che;
 }
 

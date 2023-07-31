@@ -715,11 +715,14 @@ static FT_UInt blf_glyph_index_from_charcode(FontBLF **font, const uint charcode
 /**
  * Load a glyph into the glyph slot of a font's face object.
  */
-static FT_GlyphSlot blf_glyph_load(FontBLF *font, FT_UInt glyph_index)
+static FT_GlyphSlot blf_glyph_load(FontBLF *font, FT_UInt glyph_index, bool outline_only)
 {
   int load_flags;
 
-  if (font->flags & BLF_MONOCHROME) {
+  if (outline_only) {
+    load_flags = FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP;
+  }
+  else if (font->flags & BLF_MONOCHROME) {
     load_flags = FT_LOAD_TARGET_MONO;
   }
   else {
@@ -1000,7 +1003,8 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
                                      FontBLF *glyph_font,
                                      FT_UInt glyph_index,
                                      uint charcode,
-                                     int fixed_width)
+                                     int fixed_width,
+                                     bool outline_only)
 {
   if (glyph_font != settings_font) {
     blf_font_size(glyph_font, settings_font->size);
@@ -1050,7 +1054,7 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     FT_Set_Var_Design_Coordinates(glyph_font->face, BLF_VARIATIONS_MAX, &coords[0]);
   }
 
-  FT_GlyphSlot glyph = blf_glyph_load(glyph_font, glyph_index);
+  FT_GlyphSlot glyph = blf_glyph_load(glyph_font, glyph_index, outline_only);
   if (!glyph) {
     return nullptr;
   }
@@ -1074,6 +1078,9 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     blf_glyph_transform_spacing(glyph, spacing);
   }
 
+  if (outline_only) {
+    return glyph;
+  }
   if (blf_glyph_render_bitmap(glyph_font, glyph)) {
     return glyph;
   }
@@ -1096,7 +1103,7 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   }
 
   FT_GlyphSlot glyph = blf_glyph_render(
-      font, font_with_glyph, glyph_index, charcode, gc->fixed_width);
+      font, font_with_glyph, glyph_index, charcode, gc->fixed_width, false);
 
   if (glyph) {
     /* Save this glyph in the initial font's cache. */
@@ -1104,6 +1111,33 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   }
 
   return g;
+}
+
+void *blf_glyphslot_ensure_outline(FontBLF *font, const uint charcode)
+{
+  /* Glyph might not come from the initial font. */
+  FontBLF *font_with_glyph = font;
+  FT_UInt glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
+
+  if (!blf_ensure_face(font_with_glyph)) {
+    return NULL;
+  }
+
+  FT_GlyphSlot glyph = blf_glyph_render(font, font_with_glyph, glyph_index, charcode, 0, true);
+
+  if (font != font_with_glyph)
+  {
+    if (!blf_ensure_face(font)) {
+      return NULL;
+    }
+    double ratio = float(font->face->units_per_EM) / float(font_with_glyph->face->units_per_EM);
+    FT_Matrix transform = {to_16dot16(ratio), 0, 0, to_16dot16(ratio)};
+    FT_Outline_Transform(&glyph->outline, &transform);
+    glyph->advance.x = int(float(glyph->advance.x) * ratio);
+    glyph->metrics.horiAdvance = int(float(glyph->metrics.horiAdvance) * ratio);
+  }
+
+  return glyph;
 }
 
 void blf_glyph_free(GlyphBLF *g)
