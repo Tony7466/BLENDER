@@ -261,9 +261,8 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data.scaling_factor = 1;
     data.render_extent = math::divide_ceil(extent, int2(data.scaling_factor));
 
-    if (inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) {
-      int2 overscan = int2((inst_.scene->eevee.overscan / 100.0f) *
-                           math::max(UNPACK2(data.render_extent)));
+    if (inst_.camera.overscan() != 0.0f) {
+      int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data.render_extent)));
       data.render_extent += overscan * 2;
       data.offset += overscan;
     }

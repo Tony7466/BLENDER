@@ -72,6 +72,11 @@ void Camera::init()
     /* Light-probe baking. */
     data.type = CAMERA_PERSP;
   }
+
+  overscan_ = 0.0f;
+  if ((inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) && (inst_.drw_view || inst_.render)) {
+    overscan_ = inst_.scene->eevee.overscan / 100.0f;
+  }
 }
 
 void Camera::sync()
@@ -132,9 +137,7 @@ void Camera::sync()
     data.uv_bias = float2(0.0f);
   }
 
-  if ((inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) && (inst_.drw_view || inst_.render)) {
-    float overscan = inst_.scene->eevee.overscan / 100.0f;
-
+  if (overscan_ != 0.0f) {
     /* Similar to RE_GetCameraWindowWithOverscan, but support Viewport too. */
     CameraParams params;
     if (inst_.render) {
@@ -154,12 +157,12 @@ void Camera::sync()
                                                 nullptr);
     }
 
-    overscan *= math::max(BLI_rctf_size_x(&params.viewplane), BLI_rctf_size_y(&params.viewplane));
+    overscan_ *= math::max(BLI_rctf_size_x(&params.viewplane), BLI_rctf_size_y(&params.viewplane));
 
-    params.viewplane.xmin -= overscan;
-    params.viewplane.xmax += overscan;
-    params.viewplane.ymin -= overscan;
-    params.viewplane.ymax += overscan;
+    params.viewplane.xmin -= overscan_;
+    params.viewplane.xmax += overscan_;
+    params.viewplane.ymin -= overscan_;
+    params.viewplane.ymax += overscan_;
     BKE_camera_params_compute_matrix(&params);
 
     data.winmat = float4x4(params.winmat);
