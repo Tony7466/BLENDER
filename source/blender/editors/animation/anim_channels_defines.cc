@@ -5303,7 +5303,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
     if (ELEM(ac->spacetype, SPACE_ACTION, SPACE_GRAPH) &&
         (acf->has_setting(ac, ale, ACHANNEL_SETTING_VISIBLE) ||
          acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) &&
-        (ale->type != ANIMTYPE_GPLAYER))
+        !ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER))
     {
       /* Pin toggle. */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) {
@@ -5418,7 +5418,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         offset -= ICON_WIDTH;
         draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_MUTE);
       }
-      if (ale->type == ANIMTYPE_GPLAYER) {
+      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
         /* Not technically "mute"
          * (in terms of anim channels, but this sets layer visibility instead). */
         offset -= ICON_WIDTH;
@@ -5483,7 +5483,8 @@ void ANIM_channel_draw_widgets(const bContext *C,
                                 ANIMTYPE_FCURVE,
                                 ANIMTYPE_NLACURVE,
                                 ANIMTYPE_SHAPEKEY,
-                                ANIMTYPE_GPLAYER)) ||
+                                ANIMTYPE_GPLAYER,
+                                ANIMTYPE_GREASE_PENCIL_LAYER)) ||
         ale->type == ANIMTYPE_SHAPEKEY)
     {
       /* adjust offset */
@@ -5623,6 +5624,43 @@ void ANIM_channel_draw_widgets(const bContext *C,
                             offset,
                             rect->ymin,
                             width,
+                            channel_height);
+            }
+            MEM_freeN(gp_rna_path);
+          }
+        }
+        else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+          GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+          if (grease_pencil != nullptr) {
+            using namespace blender::bke::greasepencil;
+            Layer *layer = static_cast<Layer *>(ale->data);
+
+            /* Reset slider offset, in order to add special gp icons. */
+            offset += SLIDER_WIDTH;
+            char *gp_rna_path = nullptr;
+
+            /* Create the RNA pointers. */
+            RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, &ptr);
+            RNA_id_pointer_create(ale->id, &id_ptr);
+            int icon;
+
+            /* Layer onion skinning switch. */
+            offset -= ICON_WIDTH;
+            UI_block_emboss_set(block, UI_EMBOSS_NONE);
+            prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
+            gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
+            if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
+              icon = (layer->onion_flag & GP_LAYER_ONIONSKIN) ? ICON_ONIONSKIN_ON :
+                                                                ICON_ONIONSKIN_OFF;
+              uiDefAutoButR(block,
+                            &ptr,
+                            prop,
+                            array_index,
+                            "",
+                            icon,
+                            offset,
+                            rect->ymin,
+                            ICON_WIDTH,
                             channel_height);
             }
             MEM_freeN(gp_rna_path);
