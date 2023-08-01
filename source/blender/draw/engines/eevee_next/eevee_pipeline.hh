@@ -21,7 +21,7 @@
 namespace blender::eevee {
 
 class Instance;
-class RayTraceBuffer;
+struct RayTraceBuffer;
 
 /* -------------------------------------------------------------------- */
 /** \name World Background Pipeline
