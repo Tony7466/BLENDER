@@ -315,6 +315,9 @@ static void find_closest_neighbors_on_component(GeometryComponent &component,
                              thread_storage);
       break;
     }
+
+    default:
+      break;
   }
 
   gather_thread_storage(thread_storage, r_neighbors, out_first_neighbor.span);
