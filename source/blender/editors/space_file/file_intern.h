@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +26,7 @@ struct SpaceFile;
 struct View2D;
 struct uiLayout;
 
-/* file_draw.c */
+/* `file_draw.cc` */
 
 #define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
@@ -112,11 +113,11 @@ void file_sfile_to_operator(struct bContext *C,
 
 void file_operator_to_sfile(struct Main *bmain, struct SpaceFile *sfile, struct wmOperator *op);
 
-/* space_file.c */
+/* `space_file.cc` */
 
 extern const char *file_context_dir[]; /* doc access */
 
-/* filesel.c */
+/* `filesel.cc` */
 
 void fileselect_refresh_params(struct SpaceFile *sfile);
 /**
@@ -180,6 +181,12 @@ typedef struct SpaceFile_Runtime {
    * Use file_on_reload_callback_register() to register a callback. */
   onReloadFn on_reload;
   onReloadFnData on_reload_custom_data;
+
+  /* Indicates, if the current filepath is a blendfile library one, if its status has been checked,
+   * and if it is readable. */
+  bool is_blendfile_status_set;
+  bool is_blendfile_readable;
+  ReportList is_blendfile_readable_reports;
 } SpaceFile_Runtime;
 
 /**
@@ -203,13 +210,13 @@ void folder_history_list_ensure_for_active_browse_mode(struct SpaceFile *sfile);
 void folder_history_list_free(struct SpaceFile *sfile);
 struct ListBase folder_history_list_duplicate(struct ListBase *listbase);
 
-/* file_panels.c */
+/* `file_panels.cc` */
 
 void file_tool_props_region_panels_register(struct ARegionType *art);
 void file_execute_region_panels_register(struct ARegionType *art);
 void file_tools_region_panels_register(struct ARegionType *art);
 
-/* file_utils.c */
+/* `file_utils.cc` */
 
 void file_tile_boundbox(const ARegion *region, FileLayout *layout, int file, rcti *r_bounds);
 
