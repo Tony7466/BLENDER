@@ -1329,7 +1329,7 @@ static bool view3d_panel_vgroup_poll(const bContext *C, PanelType * /*pt*/)
  */
 static float active_vertex_weight = 0.0f;
 
-static void update_active_vertex_weight(struct bContext *C, void *arg1, void *UNUSED(arg2))
+static void update_active_vertex_weight(struct bContext *C, void *arg1, void * /*arg2*/)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
