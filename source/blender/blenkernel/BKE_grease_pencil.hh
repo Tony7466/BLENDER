@@ -233,6 +233,9 @@ class LayerRuntime {
    * A layer can have zero or more layer masks.
    */
   Vector<LayerMask> masks_;
+
+  Map<int, int> trans_frame_data_;
+  Map<int, GreasePencilFrame> trans_frames_copy_;
 };
 
 /**

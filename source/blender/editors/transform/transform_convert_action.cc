@@ -13,6 +13,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 #include "BLI_rect.h"
 
@@ -44,6 +45,7 @@ struct tGPFtransdata {
     float loc[3]; /* #td->val and #td->loc share the same pointer. */
   };
   int *sdata; /* pointer to gpf->framenum */
+  void *extra{};
 };
 
 /* -------------------------------------------------------------------- */
@@ -294,16 +296,29 @@ static int GreasePencilLayerToTransData(TransData *td,
                                         bool is_prop_edit,
                                         float ypos)
 {
-  int count = 0;
+  using namespace blender;
+
+  /* Store temporary transform frame map in the layer. */
+  Map<int, int> &transf_frame_data = layer->runtime->trans_frame_data_;
+  transf_frame_data.clear();
+
+  /* Copy the map of frames, so that we can return to the initial state if the operator is
+   * cancelled. */
+  Map<int, GreasePencilFrame> &trans_frames_copy = layer->runtime->trans_frames_copy_;
+  trans_frames_copy.clear();
 
   /* Check for select frames on right side of current frame. */
-  for (auto [frame_number, frame] : layer->frames_for_write().items()) {
+  int count = 0;
+  for (auto [frame_number, frame] : layer->frames().items()) {
+    trans_frames_copy.add(frame_number, frame);
+
     if ((!is_prop_edit && !frame.is_selected()) || !FrameOnMouseSide(side, frame_number, cfra)) {
       continue;
     }
 
+    transf_frame_data.add(frame_number, frame_number);
     tfd->val = float(frame_number);
-    // tfd->sdata = &frame_number;
+    tfd->sdata = transf_frame_data.lookup_ptr(frame_number);
 
     td->val = td->loc = &tfd->val;
     td->ival = td->iloc[0] = tfd->val;
@@ -311,8 +326,10 @@ static int GreasePencilLayerToTransData(TransData *td,
     td->center[0] = td->ival;
     td->center[1] = ypos;
 
+    tfd->extra = layer;
+
     if (frame.is_selected()) {
-      td->flag = TD_SELECTED;
+      td->flag |= TD_SELECTED;
     }
 
     /* Advance `td` now. */
@@ -672,6 +689,21 @@ static void flushTransIntFrameActionData(TransInfo *t)
    * Expects data_gpf_len to be set in the data container. */
   for (int i = 0; i < tc->data_gpf_len; i++, tfd++) {
     *(tfd->sdata) = round_fl_to_int(tfd->val);
+
+    if (tfd->extra == nullptr) {
+      /* Grease Pencil legacy. */
+      continue;
+    }
+
+    using namespace blender::bke::greasepencil;
+    Layer *layer = reinterpret_cast<Layer *>(tfd->extra);
+
+    /* TODO : Move frames */
+    std::cout << "Moving frames of layer " << layer->name() << std::endl;
+    for (auto [old_frame_nb, new_frame_nb] : layer->runtime->trans_frame_data_.items()) {
+      std::cout << old_frame_nb << " -> " << new_frame_nb << std::endl;
+    }
+    layer->runtime->trans_frame_data_.clear();
   }
 }
 
@@ -970,20 +1002,35 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
      * 3) canceled + duplicate -> user canceled the transform,
      *                            but we made duplicates, so get rid of these
      */
-    if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
-      ListBase anim_data = {nullptr, nullptr};
-      const int filter = ANIMFILTER_DATA_VISIBLE;
-      ANIM_animdata_filter(
-          &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
+    ListBase anim_data = {nullptr, nullptr};
+    const int filter = ANIMFILTER_DATA_VISIBLE;
+    ANIM_animdata_filter(
+        &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-        if (ale->datatype == ALE_GPFRAME) {
+    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+      if (ale->datatype == ALE_GPFRAME) {
+        /* Grease Pencil legacy. */
+        if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
           ale->id->tag &= ~LIB_TAG_DOIT;
           posttrans_gpd_clean((bGPdata *)ale->id);
         }
       }
-      ANIM_animdata_freelist(&anim_data);
+      else if (ale->datatype == ALE_GREASE_PENCIL_CELS) {
+
+        using namespace blender::bke::greasepencil;
+        Layer *layer = static_cast<Layer *>(ale->data);
+
+        if (canceled & !layer->runtime->trans_frames_copy_.is_empty()) {
+          /* The operation was cancelled, reset the frames to their initial state. */
+          std::cout << "Operation cancelled (layer " << layer->name() << ")" << std::endl;
+          layer->runtime->frames_ = std::move(layer->runtime->trans_frames_copy_);
+        }
+
+        /* Clear the frames copy. */
+        layer->runtime->trans_frames_copy_.clear();
+      }
     }
+    ANIM_animdata_freelist(&anim_data);
   }
   else if (ac.datatype == ANIMCONT_MASK) {
     /* remove duplicate frames and also make sure points are in order! */
