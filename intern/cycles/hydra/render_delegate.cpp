@@ -466,6 +466,13 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
         session->params.sample_offset);
     ++_settingsVersion;
   }
+  else if (key == HdCyclesRenderSettingsTokens->device) {
+    vector<DeviceInfo> devices = Device::available_devices(
+        DEVICE_MASK(Device::type_from_string(VtValue::Cast<std::string>(value).Get<std::string>().c_str())));
+    session->params.device = Device::get_multi_device(
+        devices, session->params.threads, session->params.background);
+    _renderParam = std::make_unique<HdCyclesSession>(session->params);
+  }
   else {
     const std::string &keyString = key.GetString();
     if (keyString.rfind("cycles:integrator:", 0) == 0) {
