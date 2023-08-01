@@ -85,17 +85,15 @@ void Camera::sync()
 
   CameraData &data = data_;
 
+  data.uv_scale = float2(1.0f);
+  data.uv_bias = float2(0.0f);
+
   if (inst_.is_baking()) {
     /* Any view so that shadows and light culling works during irradiance bake. */
     draw::View &view = inst_.irradiance_cache.bake.view_z_;
     data.viewmat = view.viewmat();
     data.viewinv = view.viewinv();
     data.winmat = view.winmat();
-    data.wininv = view.wininv();
-    data.persmat = data.winmat * data.viewmat;
-    data.persinv = math::invert(data.persmat);
-    data.uv_scale = float2(1.0f);
-    data.uv_bias = float2(0.0f);
     data.type = CAMERA_ORTHO;
 
     /* \note: Follow camera parameters where distances are positive in front of the camera. */
@@ -108,68 +106,46 @@ void Camera::sync()
   else if (inst_.drw_view) {
     DRW_view_viewmat_get(inst_.drw_view, data.viewmat.ptr(), false);
     DRW_view_viewmat_get(inst_.drw_view, data.viewinv.ptr(), true);
-    DRW_view_winmat_get(inst_.drw_view, data.winmat.ptr(), false);
-    DRW_view_winmat_get(inst_.drw_view, data.wininv.ptr(), true);
-    DRW_view_persmat_get(inst_.drw_view, data.persmat.ptr(), false);
-    DRW_view_persmat_get(inst_.drw_view, data.persinv.ptr(), true);
+    if (overscan_ == 0.0f) {
+      DRW_view_winmat_get(inst_.drw_view, data.winmat.ptr(), false);
+    }
+    else {
+      rctf viewplane;
+      float clip_start;
+      float clip_end;
+      bool is_ortho = ED_view3d_viewplane_get(inst_.depsgraph,
+                                              inst_.v3d,
+                                              inst_.rv3d,
+                                              UNPACK2(inst_.film.display_extent_get()),
+                                              &viewplane,
+                                              &clip_start,
+                                              &clip_end,
+                                              nullptr);
+
+      RE_GetWindowMatrixWithOverscan(
+          is_ortho, clip_start, clip_end, viewplane, overscan_, data.winmat.ptr());
+    }
     /* TODO(fclem): Derive from rv3d instead. */
     data.uv_scale = float2(1.0f);
     data.uv_bias = float2(0.0f);
   }
   else if (inst_.render) {
-    RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
     RE_GetCameraModelMatrix(inst_.render->re, camera_eval, data.viewinv.ptr());
-    invert_m4_m4(data.viewmat.ptr(), data.viewinv.ptr());
-    invert_m4_m4(data.wininv.ptr(), data.winmat.ptr());
-    mul_m4_m4m4(data.persmat.ptr(), data.winmat.ptr(), data.viewmat.ptr());
-    invert_m4_m4(data.persinv.ptr(), data.persmat.ptr());
-    data.uv_scale = float2(1.0f);
-    data.uv_bias = float2(0.0f);
+    data.viewmat = math::invert(data.viewinv);
+    RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
+    if (overscan_ != 0.0f) {
+      RE_GetCameraWindowWithOverscan(inst_.render->re, overscan_, data.winmat.ptr());
+    }
   }
   else {
     data.viewmat = float4x4::identity();
     data.viewinv = float4x4::identity();
     data.winmat = math::projection::perspective(-0.1f, 0.1f, -0.1f, 0.1f, 0.1f, 1.0f);
-    data.wininv = math::invert(data.winmat);
-    data.persmat = data.winmat * data.viewmat;
-    data.persinv = math::invert(data.persmat);
-    data.uv_scale = float2(1.0f);
-    data.uv_bias = float2(0.0f);
   }
 
-  if (overscan_ != 0.0f) {
-    /* Similar to RE_GetCameraWindowWithOverscan, but support Viewport too. */
-    CameraParams params;
-    if (inst_.render) {
-      params.is_ortho = inst_.render->re->winmat[3][3] != 0.0f;
-      params.clip_start = inst_.render->re->clip_start;
-      params.clip_end = inst_.render->re->clip_end;
-      params.viewplane = inst_.render->re->viewplane;
-    }
-    else {
-      params.is_ortho = ED_view3d_viewplane_get(inst_.depsgraph,
-                                                inst_.v3d,
-                                                inst_.rv3d,
-                                                UNPACK2(inst_.film.display_extent_get()),
-                                                &params.viewplane,
-                                                &params.clip_start,
-                                                &params.clip_end,
-                                                nullptr);
-    }
-
-    overscan_ *= math::max(BLI_rctf_size_x(&params.viewplane), BLI_rctf_size_y(&params.viewplane));
-
-    params.viewplane.xmin -= overscan_;
-    params.viewplane.xmax += overscan_;
-    params.viewplane.ymin -= overscan_;
-    params.viewplane.ymax += overscan_;
-    BKE_camera_params_compute_matrix(&params);
-
-    data.winmat = float4x4(params.winmat);
-    data.wininv = math::invert(data.winmat);
-    data.persmat = data.winmat * data.viewmat;
-    data.persinv = math::invert(data.persmat);
-  }
+  data.wininv = math::invert(data.winmat);
+  data.persmat = data.winmat * data.viewmat;
+  data.persinv = math::invert(data.persmat);
 
   if (camera_eval && camera_eval->type == OB_CAMERA) {
     const ::Camera *cam = reinterpret_cast<const ::Camera *>(camera_eval->data);
