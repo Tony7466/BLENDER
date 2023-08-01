@@ -80,9 +80,9 @@
 
 #include "atomic_ops.h"
 
-#include "file_indexer.h"
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_indexer.hh"
+#include "file_intern.hh"
+#include "filelist.hh"
 
 using namespace blender;
 
@@ -1504,7 +1504,7 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   //  printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
   BLI_assert(preview->flags &
              (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
-              FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
+              FILE_TYPE_OBJECT_IO | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
 
   if (preview->flags & FILE_TYPE_IMAGE) {
     source = THB_SOURCE_IMAGE;
@@ -1518,6 +1518,9 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   }
   else if (preview->flags & FILE_TYPE_FTFONT) {
     source = THB_SOURCE_FONT;
+  }
+  else if (preview->flags & FILE_TYPE_OBJECT_IO) {
+    source = THB_SOURCE_OBJECT_IO;
   }
 
   IMB_thumb_path_lock(preview->filepath);
@@ -1620,8 +1623,9 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     return;
   }
 
-  if (!(entry->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT |
-                           FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
+  if (!(entry->typeflag &
+        (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_OBJECT_IO |
+         FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
   {
     return;
   }
@@ -1955,6 +1959,11 @@ void filelist_freelib(FileList *filelist)
 BlendHandle *filelist_lib(FileList *filelist)
 {
   return filelist->libfiledata;
+}
+
+int filelist_files_num_entries(FileList *filelist)
+{
+  return filelist->filelist.entries_num;
 }
 
 static const char *fileentry_uiname(const char *root, FileListInternEntry *entry, char *buff)

@@ -7,6 +7,7 @@ set(INC
   ../space_sequencer
   ../../asset_system
   ../../blenfont
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
@@ -42,7 +43,7 @@ set(SRC
   ../include/ED_buttons.h
   ../include/ED_clip.h
   ../include/ED_curve.h
-  ../include/ED_curves.h
+  ../include/ED_curves.hh
   ../include/ED_curves_sculpt.h
   ../include/ED_datafiles.h
   ../include/ED_file_indexer.h
@@ -106,7 +107,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
