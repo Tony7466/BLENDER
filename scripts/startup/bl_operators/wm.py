@@ -546,12 +546,16 @@ class WM_OT_context_toggle_enum(Operator):
         # failing silently is not ideal, but we don't want errors for shortcut
         # keys that some values that are only available in a particular context
         try:
-            exec("context.%s = ('%s', '%s')[context.%s != '%s']" %
-                 (data_path, self.value_1,
-                  self.value_2, data_path,
-                  self.value_2,
-                  ))
-        except:
+            exec(
+                "context.%s = %r if (context.%s != %r) else %r" % (
+                    data_path,
+                    self.value_2,
+                    data_path,
+                    self.value_2,
+                    self.value_1,
+                )
+            )
+        except BaseException:
             return {'PASS_THROUGH'}
 
         return operator_path_undo_return(context, data_path)
@@ -868,7 +872,7 @@ class WM_OT_context_collection_boolean_set(Operator):
         for item in items:
             try:
                 value_orig = eval("item." + data_path_item)
-            except:
+            except BaseException:
                 continue
 
             if value_orig is True:
@@ -934,13 +938,13 @@ class WM_OT_context_modal_mouse(Operator):
         for item in getattr(context, data_path_iter):
             try:
                 value_orig = eval("item." + data_path_item)
-            except:
+            except BaseException:
                 continue
 
             # check this can be set, maybe this is library data.
             try:
                 exec("item.%s = %s" % (data_path_item, value_orig))
-            except:
+            except BaseException:
                 continue
 
             values[item] = value_orig
@@ -1178,7 +1182,7 @@ class WM_OT_path_open(Operator):
         else:
             try:
                 subprocess.check_call(["xdg-open", filepath])
-            except:
+            except BaseException:
                 # xdg-open *should* be supported by recent Gnome, KDE, Xfce
                 import traceback
                 traceback.print_exc()
@@ -1823,12 +1827,12 @@ class WM_OT_properties_edit(Operator):
         if prop_type_new == 'PYTHON':
             try:
                 new_value = eval(self.eval_string)
-            except Exception as ex:
+            except BaseException as ex:
                 self.report({'WARNING'}, "Python evaluation failed: " + str(ex))
                 return {'CANCELLED'}
             try:
                 item[name] = new_value
-            except Exception as ex:
+            except BaseException as ex:
                 self.report({'ERROR'}, "Failed to assign value: " + str(ex))
                 return {'CANCELLED'}
             if name_old != name:
@@ -2021,7 +2025,7 @@ class WM_OT_properties_edit_value(Operator):
             rna_item = eval("context.%s" % self.data_path)
             try:
                 new_value = eval(self.eval_string)
-            except Exception as ex:
+            except BaseException as ex:
                 self.report({'WARNING'}, "Python evaluation failed: " + str(ex))
                 return {'CANCELLED'}
             rna_item[self.property_name] = new_value
@@ -2990,7 +2994,7 @@ class WM_OT_batch_rename(Operator):
                 if action.use_replace_regex_src:
                     try:
                         re.compile(action.replace_src)
-                    except Exception as ex:
+                    except BaseException as ex:
                         re_error_src = str(ex)
                         row.alert = True
 
@@ -3016,7 +3020,7 @@ class WM_OT_batch_rename(Operator):
                         if re_error_src is None:
                             try:
                                 re.sub(action.replace_src, action.replace_dst, "")
-                            except Exception as ex:
+                            except BaseException as ex:
                                 re_error_dst = str(ex)
                                 row.alert = True
 
@@ -3092,14 +3096,14 @@ class WM_OT_batch_rename(Operator):
             if action.use_replace_regex_src:
                 try:
                     re.compile(action.replace_src)
-                except Exception as ex:
+                except BaseException as ex:
                     self.report({'ERROR'}, "Invalid regular expression (find): " + str(ex))
                     return {'CANCELLED'}
 
                 if action.use_replace_regex_dst:
                     try:
                         re.sub(action.replace_src, action.replace_dst, "")
-                    except Exception as ex:
+                    except BaseException as ex:
                         self.report({'ERROR'}, "Invalid regular expression (replace): " + str(ex))
                         return {'CANCELLED'}
 
@@ -3301,8 +3305,8 @@ class WM_MT_splash_about(Menu):
         col.operator("wm.url_open_preset", text="Development Fund", icon='FUND').type = 'FUND'
 
 
-class WM_MT_toolbar_toggle_pie(Menu):
-    bl_label = "Toggle Toolbars"
+class WM_MT_region_toggle_pie(Menu):
+    bl_label = "Region Toggle"
 
     # Map the `region.type` to the `space_data` attribute & text label.
     # The order of items defines priority, so in the sequencer for e.g.
@@ -3324,7 +3328,7 @@ class WM_MT_toolbar_toggle_pie(Menu):
         'BOTTOM': 2,
         'TOP': 3,
     }
-    # Map the axis-aligned pie position to it's opposite side, see `ui_radial_dir_order` in C++ source.
+    # Map the axis-aligned pie to alternative directions, see `ui_radial_dir_order` in C++ source.
     # The value is the preferred direction in order of priority, two diagonals, then the flipped direction.
     _region_dir_pie_alternatives = {
         0: (4, 6, 1),
@@ -3345,16 +3349,14 @@ class WM_MT_toolbar_toggle_pie(Menu):
 
         for region in context.area.regions:
             region_type = region.type
-            attr = cls._region_info.get(region_type, (None, None))
+            attr = cls._region_info.get(region_type, None)
             if attr is None:
                 continue
             # In some cases channels exists but can't be toggled.
-            if region_type == 'CHANNELS':
-                if not hasattr(space_data, attr):
-                    continue
+            assert hasattr(space_data, attr)
             # Technically possible these double-up, in practice this should never happen.
             if region_type in region_by_type:
-                print("%s: Unexpected double-up of region types %r" % (type(self).__name__, region_type))
+                print("%s: Unexpected double-up of region types %r" % (cls.__name__, region_type))
             region_by_type[region_type] = region
 
         # Axis aligned pie menu items to populate.
@@ -3491,5 +3493,5 @@ classes = (
     WM_MT_splash_quick_setup,
     WM_MT_splash,
     WM_MT_splash_about,
-    WM_MT_toolbar_toggle_pie
+    WM_MT_region_toggle_pie
 )

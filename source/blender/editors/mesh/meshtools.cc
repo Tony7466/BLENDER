@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edmesh
  *
- * meshtools.c: no editmode (violated already :), mirror & join),
+ * `meshtools.cc`: no editmode (violated already :), mirror & join),
  * tools operating on meshes
  */
 
@@ -1312,12 +1312,12 @@ struct VertPickData {
   int v_idx_best;
 };
 
-static void ed_mesh_pick_vert__mapFunc(void *userData,
+static void ed_mesh_pick_vert__mapFunc(void *user_data,
                                        int index,
                                        const float co[3],
                                        const float /*no*/[3])
 {
-  VertPickData *data = static_cast<VertPickData *>(userData);
+  VertPickData *data = static_cast<VertPickData *>(user_data);
   if (data->hide_vert && data->hide_vert[index]) {
     return;
   }
