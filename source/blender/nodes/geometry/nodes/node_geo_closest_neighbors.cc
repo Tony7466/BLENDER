@@ -343,6 +343,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   int max_neighbors = params.extract_input<int>("Max Neighbors");
 
   if (source.is_empty() || target.is_empty()) {
+    params.set_output("Geometry", std::move(source));
     params.set_default_remaining_outputs();
     return;
   }
@@ -411,38 +412,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometrySet out_neighbors = GeometrySet::create_with_pointcloud(points);
 
-  params.set_output("Geometry", source);
-  // if (neighbor_count_id) {
-  //   params.set_output("Neighbor Count",
-  //                     AnonymousAttributeFieldInput::Create<int>(neighbor_count_id, __func__));
-  // }
-  // if (first_neighbor_id) {
-  //   params.set_output("First Neighbor",
-  //                     AnonymousAttributeFieldInput::Create<int>(first_neighbor_id, __func__));
-  // }
+  params.set_output("Geometry", std::move(source));
   params.set_output("Neighbors", std::move(out_neighbors));
-  // if (source_index_id) {
-  //   params.set_output("Source Index",
-  //                     AnonymousAttributeFieldInput::Create<int>(source_index_id, __func__));
-  // }
-  // if (target_index_id) {
-  //   params.set_output("Target Index",
-  //                     AnonymousAttributeFieldInput::Create<int>(target_index_id, __func__));
-  // }
-  // if (target_position_id) {
-  //   params.set_output("Target Position",
-  //                     AnonymousAttributeFieldInput::Create<float3>(target_position_id,
-  //                     __func__));
-  // }
-  // if (target_normal_id) {
-  //   params.set_output("Target Normal",
-  //                     AnonymousAttributeFieldInput::Create<float3>(target_normal_id, __func__));
-  // }
-  // if (target_distance_id) {
-  //   params.set_output("Target Distance",
-  //                     AnonymousAttributeFieldInput::Create<float>(target_distance_id,
-  //                     __func__));
-  // }
 
   params.set_default_remaining_outputs();
 }
