@@ -289,7 +289,7 @@ static int GPLayerToTransData(TransData *td,
 }
 
 static int GreasePencilLayerToTransData(TransData *td,
-                                        tGPFtransdata *tfd,
+                                        TransData2D *td2d,
                                         blender::bke::greasepencil::Layer *layer,
                                         char side,
                                         float cfra,
@@ -299,7 +299,7 @@ static int GreasePencilLayerToTransData(TransData *td,
   using namespace blender;
 
   /* Store temporary transform frame map in the layer. */
-  Map<int, int> &transf_frame_data = layer->runtime->trans_frame_data_;
+  Map<int, float> &transf_frame_data = layer->runtime->trans_frame_data_;
   transf_frame_data.clear();
 
   /* Copy the map of frames, so that we can return to the initial state if the operator is
@@ -317,24 +317,25 @@ static int GreasePencilLayerToTransData(TransData *td,
     }
 
     transf_frame_data.add(frame_number, frame_number);
-    tfd->val = float(frame_number);
-    tfd->sdata = transf_frame_data.lookup_ptr(frame_number);
+    td2d->loc[0] = float(frame_number);
+    td2d->loc2d = transf_frame_data.lookup_ptr(frame_number);
 
-    td->val = td->loc = &tfd->val;
-    td->ival = td->iloc[0] = tfd->val;
+    td->val = td->loc = &td2d->loc[0];
+    td->ival = td->iloc[0] = td2d->loc[0];
 
     td->center[0] = td->ival;
     td->center[1] = ypos;
 
-    tfd->extra = layer;
+    td->extra = layer;
 
     if (frame.is_selected()) {
       td->flag |= TD_SELECTED;
     }
+    td->flag |= TD_GREASE_PENCIL_FRAME;
 
     /* Advance `td` now. */
     td++;
-    tfd++;
+    td2d++;
     count++;
   }
 
@@ -456,7 +457,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
 
     if (adt_count > 0) {
-      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER, ANIMTYPE_MASKLAYER)) {
+      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_MASKLAYER)) {
         gpf_count += adt_count;
       }
       count += adt_count;
@@ -520,7 +521,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
       Layer *layer = static_cast<Layer *>(ale->data);
       int i;
 
-      i = GreasePencilLayerToTransData(td, tfd, layer, t->frame_side, cfra, is_prop_edit, ypos);
+      i = GreasePencilLayerToTransData(td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos);
       td += i;
       tfd += i;
     }
@@ -689,25 +690,22 @@ static void flushTransIntFrameActionData(TransInfo *t)
    * Expects data_gpf_len to be set in the data container. */
   for (int i = 0; i < tc->data_gpf_len; i++, tfd++) {
     *(tfd->sdata) = round_fl_to_int(tfd->val);
-
-    if (tfd->extra == nullptr) {
-      /* Grease Pencil legacy. */
-      continue;
-    }
-
-    using namespace blender::bke::greasepencil;
-    Layer *layer = reinterpret_cast<Layer *>(tfd->extra);
-
-    /* TODO : Move frames */
-    std::cout << "Moving frames of layer " << layer->name() << std::endl;
-    for (auto [old_frame_nb, new_frame_nb] : layer->runtime->trans_frame_data_.items()) {
-      GreasePencilFrame &frame = layer->runtime->trans_frames_copy_.lookup(old_frame_nb);
-
-      layer->add_frame(new_frame_nb, frame.drawing_index, 0);
-      layer->remove_frame(old_frame_nb);
-    }
-    layer->runtime->trans_frame_data_.clear();
   }
+}
+
+static void transform_convert_greasepencil_data(TransData *td, TransData2D *td2d)
+{
+  const int src_frame_nb = int(*td2d->loc2d);
+  const int dst_frame_nb = td2d->loc[0];
+
+  using namespace blender;
+  bke::greasepencil::Layer *layer = reinterpret_cast<bke::greasepencil::Layer *>(td->extra);
+
+  layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
+  const GreasePencilFrame frame = layer->runtime->frames_.pop(src_frame_nb);
+  layer->runtime->frames_.add_overwrite(dst_frame_nb, frame);
+
+  layer->tag_frames_map_keys_changed();
 }
 
 static void recalcData_actedit(TransInfo *t)
@@ -756,6 +754,10 @@ static void recalcData_actedit(TransInfo *t)
     td->loc[1] = td->iloc[1];
 
     transform_convert_flush_handle2D(td, td2d, 0.0f);
+
+    if ((td->flag & TD_GREASE_PENCIL_FRAME) != 0) {
+      transform_convert_greasepencil_data(td, td2d);
+    }
   }
 
   if (ac.datatype != ANIMCONT_MASK) {
