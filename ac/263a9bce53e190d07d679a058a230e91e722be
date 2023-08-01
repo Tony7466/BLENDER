@@ -1,1 +1,1 @@
-Referenced by issue #106105, operator object.duplicate wrong object naming when object has parent and using context.copy
+Referenced by issue #106105, Wrong object naming when using context.copy
