@@ -805,7 +805,6 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   }
 
   if (changed) {
-    layer->tag_frames_map_keys_changed();
     DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
   }
 }
