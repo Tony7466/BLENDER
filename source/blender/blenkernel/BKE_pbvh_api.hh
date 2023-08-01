@@ -9,6 +9,8 @@
  * \brief A BVH for high poly meshes.
  */
 
+#include <string>
+
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
@@ -87,7 +89,7 @@ struct PBVHPixelsNode {
 };
 
 struct PBVHAttrReq {
-  char name[MAX_CUSTOMDATA_LAYER_NAME];
+  std::string name;
   eAttrDomain domain;
   eCustomDataType type;
 };
@@ -216,12 +218,8 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
 /**
  * Build a PBVH from a BMesh.
  */
-void BKE_pbvh_build_bmesh(PBVH *pbvh,
-                          BMesh *bm,
-                          bool smooth_shading,
-                          BMLog *log,
-                          int cd_vert_node_offset,
-                          int cd_face_node_offset);
+void BKE_pbvh_build_bmesh(
+    PBVH *pbvh, BMesh *bm, BMLog *log, int cd_vert_node_offset, int cd_face_node_offset);
 
 void BKE_pbvh_update_bmesh_offsets(PBVH *pbvh, int cd_vert_node_offset, int cd_face_node_offset);
 
