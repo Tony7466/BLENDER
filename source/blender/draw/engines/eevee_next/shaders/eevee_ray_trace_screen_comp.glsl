@@ -86,7 +86,6 @@ void main()
     ReflectionProbeData world_probe = reflection_probe_buf[0];
     radiance = reflection_probes_sample(ray.direction, 0.0, world_probe).rgb;
     hit_time = length(ray_view.direction);
-    radiance *= vec3(1.0, 0.0, 0.0);
   }
   else {
     /* Fallback to nearest lightprobe. */
