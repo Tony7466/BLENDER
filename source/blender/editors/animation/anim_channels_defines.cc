@@ -5637,33 +5637,30 @@ void ANIM_channel_draw_widgets(const bContext *C,
 
             /* Reset slider offset, in order to add special gp icons. */
             offset += SLIDER_WIDTH;
-            char *gp_rna_path = nullptr;
 
             /* Create the RNA pointers. */
             RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, &ptr);
             RNA_id_pointer_create(ale->id, &id_ptr);
-            int icon;
 
-            /* Layer onion skinning switch. */
-            offset -= ICON_WIDTH;
-            UI_block_emboss_set(block, UI_EMBOSS_NONE);
-            prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
-            gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
-            if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
-              icon = (layer->onion_flag & GP_LAYER_ONIONSKIN) ? ICON_ONIONSKIN_ON :
-                                                                ICON_ONIONSKIN_OFF;
+            /* Layer opacity. */
+            const short width = SLIDER_WIDTH * 0.6;
+            offset -= width;
+            UI_block_emboss_set(block, UI_EMBOSS);
+            prop = RNA_struct_find_property(&ptr, "opacity");
+            char *opacity_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
+            if (RNA_path_resolve_property(&id_ptr, opacity_rna_path, &ptr, &prop)) {
               uiDefAutoButR(block,
                             &ptr,
                             prop,
                             array_index,
                             "",
-                            icon,
+                            ICON_NONE,
                             offset,
                             rect->ymin,
-                            ICON_WIDTH,
+                            width,
                             channel_height);
             }
-            MEM_freeN(gp_rna_path);
+            MEM_freeN(opacity_rna_path);
           }
         }
 
