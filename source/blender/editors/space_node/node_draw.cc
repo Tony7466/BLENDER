@@ -3503,12 +3503,10 @@ static void draw_nodetree(const bContext &C,
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
   node_update_region(nodes, region);
-  node_draw_nodes(
-      C, background_nodes.as_span(), tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
+  node_draw_nodes(C, background_nodes, tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
   node_draw_zones(tree_draw_ctx, region, *snode, ntree);
   node_draw_links(C, ntree.all_links(), region, *snode);
-  node_draw_nodes(
-      C, front_nodes.as_span(), tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
+  node_draw_nodes(C, front_nodes, tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
 }
 
 /**
