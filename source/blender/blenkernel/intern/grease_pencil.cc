@@ -1430,16 +1430,22 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
   duplicate_frame->type = frame.type;
 
   const GreasePencilDrawingBase *drawing_base = this->drawings(frame.drawing_index);
-  BLI_assert_msg((drawing_base->type == GP_DRAWING),
-                 "Drawing references cannot be duplicated yet.");
-  const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
-  if (do_instance) {
-    /* TODO : add user to the drawing. */
+  switch (drawing_base->type) {
+    case GP_DRAWING: {
+      const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
+          drawing_base);
+      if (do_instance) {
+        /* TODO : add user to the drawing. */
+      }
+      else {
+        this->add_duplicate_drawings(1, drawing->wrap());
+      }
+      break;
+    }
+    case GP_DRAWING_REFERENCE:
+      /* TODO: Duplicate drawing references. */
+      return false;
   }
-  else {
-    this->add_duplicate_drawings(1, drawing->wrap());
-  }
-
   return true;
 }
 
