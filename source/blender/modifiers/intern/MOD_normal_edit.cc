@@ -182,43 +182,36 @@ static void mix_normals(const float mix_factor,
 
 /* Check face normals and new loop normals are compatible, otherwise flip faces
  * (and invert matching face normals). */
-static bool faces_check_flip(blender::MutableSpan<int> corner_verts,
-                             blender::MutableSpan<int> corner_edges,
+static bool faces_check_flip(Mesh &mesh,
                              blender::float3 *nos,
-                             CustomData *ldata,
-                             const blender::OffsetIndices<int> faces,
                              const blender::Span<blender::float3> face_normals)
 {
-  MDisps *mdisp = static_cast<MDisps *>(
-      CustomData_get_layer_for_write(ldata, CD_MDISPS, corner_verts.size()));
-  bool flipped = false;
+  using namespace blender;
+  const OffsetIndices faces = mesh.faces();
+  IndexMaskMemory memory;
+  const IndexMask faces_to_flip = IndexMask::from_predicate(
+      faces.index_range(), GrainSize(1024), memory, [&](const int i) {
+        const blender::IndexRange face = faces[i];
+        float norsum[3] = {0.0f};
 
-  for (const int i : faces.index_range()) {
-    const blender::IndexRange face = faces[i];
-    float norsum[3] = {0.0f};
+        for (const int64_t j : face) {
+          add_v3_v3(norsum, nos[j]);
+        }
+        if (!normalize_v3(norsum)) {
+          return false;
+        }
 
-    for (const int64_t j : face) {
-      add_v3_v3(norsum, nos[j]);
-    }
-    if (!normalize_v3(norsum)) {
-      continue;
-    }
+        /* If average of new loop normals is opposed to face normal, flip face. */
+        if (dot_v3v3(face_normals[i], norsum) < 0.0f) {
+          std::reverse(&nos[face.first()], &nos[face.last()]);
+          return true;
+        }
+        return false;
+      });
 
-    /* If average of new loop normals is opposed to face normal, flip face. */
-    if (dot_v3v3(face_normals[i], norsum) < 0.0f) {
-      BKE_mesh_face_flip_ex(face.start(),
-                            face.size(),
-                            corner_verts.data(),
-                            corner_edges.data(),
-                            ldata,
-                            reinterpret_cast<float(*)[3]>(nos),
-                            mdisp,
-                            true);
-      flipped = true;
-    }
-  }
+  bke::mesh_flip_faces(mesh, faces_to_flip);
 
-  return flipped;
+  return !faces_to_flip.is_empty();
 }
 
 static void normalEditModifier_do_radial(NormalEditModifierData *enmd,

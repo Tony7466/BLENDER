@@ -34,6 +34,49 @@ void flip_faces(Mesh &mesh, const IndexMask &selection)
     }
   });
 
+  CustomData old_custom_data = mesh.loop_data;
+  CustomData_reset(&mesh.loop_data);
+
+  CustomData custom_data_api_data;
+  CustomData_reset(&custom_data_api_data);
+
+  if (MDisps *mdisp = static_cast<MDisps *>(
+          CustomData_get_layer_for_write(&custom_data_api_data, CD_MDISPS, mesh.totloop)))
+  {
+    selection.foreach_index(GrainSize(512), [&](const int i) {
+      for (const int corner : faces[i]) {
+        BKE_mesh_mdisp_flip(&mdisp[corner], true);
+      }
+    });
+  }
+
+  for (const CustomDataLayer &layer : Span(old_custom_data.layers, old_custom_data.totlayer)) {
+    CustomData &dst_data = (CD_TYPE_AS_MASK(layer.type) & CD_MASK_PROP_ALL) ? mesh.loop_data :
+                                                                              custom_data_api_data;
+    if (layer.anonymous_id) {
+      CustomData_add_layer_anonymous_with_data(&dst_data,
+                                               eCustomDataType(layer.type),
+                                               layer.anonymous_id,
+                                               mesh.totloop,
+                                               layer.data,
+                                               layer.sharing_info);
+    }
+    else {
+      CustomData_add_layer_with_data(
+          &dst_data, eCustomDataType(layer.type), layer.data, mesh.totloop, layer.sharing_info);
+    }
+  }
+  CustomData_free(&old_custom_data, mesh.totloop);
+
+  selection.foreach_index(GrainSize(1024), [&](const int i) {
+    const IndexRange face = faces[i];
+    for (const int j : IndexRange(face.size() / 2)) {
+      const int a = face[j + 1];
+      const int b = face.last(j);
+      CustomData_swap(&custom_data_api_data, a, b);
+    }
+  });
+
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
