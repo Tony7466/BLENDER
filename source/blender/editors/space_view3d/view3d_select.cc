@@ -4062,7 +4062,6 @@ static void do_mesh_box_select__doSelectEdge_pass1(
     data->is_changed = true;
   }
 }
-
 static void do_mesh_box_select__doSelectFace(void *userData,
                                              BMFace *efa,
                                              const float screen_co[2],
