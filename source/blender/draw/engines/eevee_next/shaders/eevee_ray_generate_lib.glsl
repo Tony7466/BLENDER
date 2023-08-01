@@ -12,8 +12,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
 /* Returns viewspace ray. */
-vec3 ray_generate_direction(
-    SamplingData data, vec2 noise, ClosureReflection reflection, vec3 V, out float pdf)
+vec3 ray_generate_direction(vec2 noise, ClosureReflection reflection, vec3 V, out float pdf)
 {
   vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
   vec3 Xi = sample_cylinder(fract(noise_offset + noise));
@@ -30,8 +29,7 @@ vec3 ray_generate_direction(
 }
 
 /* Returns viewspace ray. */
-vec3 ray_generate_direction(
-    SamplingData data, vec2 noise, ClosureRefraction refraction, vec3 V, out float pdf)
+vec3 ray_generate_direction(vec2 noise, ClosureRefraction refraction, vec3 V, out float pdf)
 {
   vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
   vec3 Xi = sample_cylinder(fract(noise_offset + noise));
@@ -48,8 +46,7 @@ vec3 ray_generate_direction(
 }
 
 /* Returns viewspace ray. */
-vec3 ray_generate_direction(
-    SamplingData data, vec2 noise, ClosureDiffuse diffuse, vec3 V, out float pdf)
+vec3 ray_generate_direction(vec2 noise, ClosureDiffuse diffuse, vec3 V, out float pdf)
 {
   vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
   vec3 Xi = sample_cylinder(fract(noise_offset + noise));

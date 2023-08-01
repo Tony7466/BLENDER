@@ -60,7 +60,7 @@ void main()
 #endif
 
   float pdf;
-  vec3 ray_direction = ray_generate_direction(sampling_buf, noise.xy, closure, V, pdf);
+  vec3 ray_direction = ray_generate_direction(noise.xy, closure, V, pdf);
 
 #if defined(RAYTRACE_REFRACT)
   if (gbuffer_is_refraction(gbuffer_packed) && closure_active != CLOSURE_REFRACTION) {
