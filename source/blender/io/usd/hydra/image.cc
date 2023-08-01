@@ -56,10 +56,10 @@ static std::string cache_image_file(
     opts.save_copy = true;
     STRNCPY(opts.filepath, file_path.c_str());
     if (BKE_image_save(nullptr, bmain, image, iuser, &opts)) {
-      CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
+      CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
     }
     else {
-      CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Can't save %s", file_path.c_str());
+      CLOG_ERROR(LOG_HYDRA_SCENE, "Can't save %s", file_path.c_str());
       file_path = "";
     }
   }
@@ -86,7 +86,7 @@ std::string cache_or_get_image_file(Main *bmain, Scene *scene, Image *image, Ima
     }
   }
 
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
+  CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
   return file_path;
 }
 
@@ -109,10 +109,10 @@ std::string cache_image_color(float color[4])
   ibuf->ftype = IMB_FTYPE_RADHDR;
 
   if (IMB_saveiff(ibuf, file_path.c_str(), IB_rectfloat)) {
-    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", file_path.c_str());
+    CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s", file_path.c_str());
   }
   else {
-    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Can't save %s", file_path.c_str());
+    CLOG_ERROR(LOG_HYDRA_SCENE, "Can't save %s", file_path.c_str());
     file_path = "";
   }
   IMB_freeImBuf(ibuf);

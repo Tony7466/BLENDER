@@ -29,7 +29,7 @@ struct View3D;
 
 namespace blender::io::hydra {
 
-extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE;
+extern struct CLG_LogRef *LOG_HYDRA_SCENE;
 
 class Engine;
 

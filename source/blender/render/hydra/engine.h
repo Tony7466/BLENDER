@@ -27,16 +27,15 @@ struct CLG_LogRef;
 
 namespace blender::render::hydra {
 
-extern struct CLG_LogRef *LOG_RENDER_HYDRA;
-
-struct RenderDelegateSettings {
-  Map<std::string, pxr::TfToken> aovs;
-};
+extern struct CLG_LogRef *LOG_HYDRA_RENDER;
 
 class Engine {
  protected:
   std::string render_delegate_name_;
   RenderEngine *bl_engine_ = nullptr;
+  Depsgraph *depsgraph_ = nullptr;
+  bContext *context_ = nullptr;
+  Scene *scene_ = nullptr;
 
   /* The order is important due to deletion order */
   pxr::HgiUniquePtr hgi_;
@@ -48,7 +47,6 @@ class Engine {
   std::unique_ptr<io::hydra::HydraSceneDelegate> hydra_scene_delegate_;
   std::unique_ptr<io::hydra::USDSceneDelegate> usd_scene_delegate_;
 
-  RenderDelegateSettings render_delegate_settings_;
   std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<LightTasksDelegate> light_tasks_delegate_;
@@ -59,13 +57,14 @@ class Engine {
   virtual ~Engine() = default;
 
   void sync(Depsgraph *depsgraph, bContext *context);
-  virtual void render(Depsgraph *depsgraph) = 0;
+  virtual void render() = 0;
 
   void set_sync_setting(const std::string &key, const pxr::VtValue &val);
-  void set_render_setting(const std::string &key, const pxr::VtValue &val);
+  virtual void set_render_setting(const std::string &key, const pxr::VtValue &val);
 
  protected:
   float renderer_percent_done();
+  virtual void notify_status(float progress, const std::string &title, const std::string &info) = 0;
 };
 
 }  // namespace blender::render::hydra

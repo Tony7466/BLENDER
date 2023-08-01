@@ -37,11 +37,11 @@ class ViewportEngine : public Engine {
  public:
   using Engine::Engine;
 
-  void render(Depsgraph *depsgraph) override;
-  void render(Depsgraph *depsgraph, bContext *context);
+  void render() override;
+  void render(bContext *context);
 
- private:
-  void notify_status(const std::string &title, const std::string &info);
+ protected:
+  void notify_status(float progress, const std::string &title, const std::string &info) override;
 };
 
 }  // namespace blender::render::hydra

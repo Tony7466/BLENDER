@@ -31,7 +31,7 @@ class RenderTaskDelegate : public pxr::HdSceneDelegate {
 
   pxr::HdTaskSharedPtr task();
   void set_camera(pxr::SdfPath const &camera_id);
-  virtual bool is_converged();
+  bool is_converged();
   virtual void set_viewport(pxr::GfVec4d const &viewport);
   virtual void add_aov(pxr::TfToken const &aov_key);
   virtual void read_aov(pxr::TfToken const &aov_key, void *data);

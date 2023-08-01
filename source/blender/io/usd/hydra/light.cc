@@ -155,28 +155,28 @@ pxr::TfToken LightData::prim_type(Light *light)
       switch (light->area_shape) {
         case LA_AREA_SQUARE:
         case LA_AREA_RECT:
-          return pxr::TfToken(pxr::HdPrimTypeTokens->rectLight);
+          return pxr::HdPrimTypeTokens->rectLight;
 
         case LA_AREA_DISK:
         case LA_AREA_ELLIPSE:
-          return pxr::TfToken(pxr::HdPrimTypeTokens->diskLight);
+          return pxr::HdPrimTypeTokens->diskLight;
 
         default:
-          return pxr::TfToken(pxr::HdPrimTypeTokens->rectLight);
+          return pxr::HdPrimTypeTokens->rectLight;
       }
       break;
 
     case LA_LOCAL:
     case LA_SPOT:
-      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
+      return pxr::HdPrimTypeTokens->sphereLight;
 
     case LA_SUN:
-      return pxr::TfToken(pxr::HdPrimTypeTokens->distantLight);
+      return pxr::HdPrimTypeTokens->distantLight;
 
     default:
       BLI_assert_unreachable();
-      return pxr::TfToken(pxr::HdPrimTypeTokens->sphereLight);
   }
+  return pxr::TfToken();
 }
 
 }  // namespace blender::io::hydra

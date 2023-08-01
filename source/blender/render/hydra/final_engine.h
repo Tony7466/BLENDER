@@ -8,19 +8,20 @@
 namespace blender::render::hydra {
 
 class FinalEngine : public Engine {
- protected:
-  std::string scene_name_;
-  std::string layer_name_;
-  pxr::GfVec2i resolution_;
+ private:
+  Map<std::string, pxr::TfToken> aov_tokens_;
 
  public:
   using Engine::Engine;
 
-  void render(Depsgraph *depsgraph) override;
+  void render() override;
+  void set_render_setting(const std::string &key, const pxr::VtValue &val) override;
 
  protected:
-  virtual void notify_status(float progress, const std::string &title, const std::string &info);
-  void update_render_result();
+  void notify_status(float progress, const std::string &title, const std::string &info) override;
+
+ private:
+  void update_render_result(int width, int height, const char *layer_name);
 };
 
 }  // namespace blender::render::hydra

@@ -50,7 +50,7 @@ void VolumeModifierData::init()
       scene_delegate_->depsgraph, object, md);
 
   if ((modifier_->domain->cache_data_format & FLUID_DOMAIN_FILE_OPENVDB) == 0) {
-    CLOG_WARN(LOG_RENDER_HYDRA_SCENE,
+    CLOG_WARN(LOG_HYDRA_SCENE,
               "Volume %s is't exported: only OpenVDB file format supported",
               prim_id.GetText());
     return;

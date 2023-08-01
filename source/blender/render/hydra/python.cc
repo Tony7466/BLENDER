@@ -50,11 +50,11 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     }
   }
   catch (std::runtime_error &e) {
-    CLOG_ERROR(LOG_RENDER_HYDRA, "%s", e.what());
+    CLOG_ERROR(LOG_HYDRA_RENDER, "%s", e.what());
   }
 
   if (engine) {
-    CLOG_INFO(LOG_RENDER_HYDRA, 1, "Engine %p %s", engine, engine_type);
+    CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p %s", engine, engine_type);
   }
   return PyLong_FromVoidPtr(engine);
 }
@@ -69,7 +69,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
   delete engine;
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 1, "Engine %p", engine);
+  CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p", engine);
   Py_RETURN_NONE;
 }
 
@@ -84,7 +84,7 @@ static PyObject *engine_update_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
   bContext *context = pyrna_to_pointer<bContext>(pycontext, &RNA_Context);
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
+  CLOG_INFO(LOG_HYDRA_RENDER, 2, "Engine %p", engine);
   engine->sync(depsgraph, context);
 
   Py_RETURN_NONE;
@@ -92,20 +92,18 @@ static PyObject *engine_update_func(PyObject * /*self*/, PyObject *args)
 
 static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
 {
-  PyObject *pyengine, *pydepsgraph;
-
-  if (!PyArg_ParseTuple(args, "OO", &pyengine, &pydepsgraph)) {
+  PyObject *pyengine;
+  if (!PyArg_ParseTuple(args, "O", &pyengine)) {
     Py_RETURN_NONE;
   }
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
-  Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %p", engine);
+  CLOG_INFO(LOG_HYDRA_RENDER, 2, "Engine %p", engine);
 
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS;
-  engine->render(depsgraph);
+  engine->render();
   Py_END_ALLOW_THREADS;
 
   Py_RETURN_NONE;
@@ -113,20 +111,19 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
 
 static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
 {
-  PyObject *pyengine, *pydepsgraph, *pycontext;
-  if (!PyArg_ParseTuple(args, "OOO", &pyengine, &pydepsgraph, &pycontext)) {
+  PyObject *pyengine, *pycontext;
+  if (!PyArg_ParseTuple(args, "OO", &pyengine, &pycontext)) {
     Py_RETURN_NONE;
   }
 
   ViewportEngine *engine = static_cast<ViewportEngine *>(PyLong_AsVoidPtr(pyengine));
-  Depsgraph *depsgraph = pyrna_to_pointer<Depsgraph>(pydepsgraph, &RNA_Depsgraph);
   bContext *context = pyrna_to_pointer<bContext>(pycontext, &RNA_Context);
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p", engine);
+  CLOG_INFO(LOG_HYDRA_RENDER, 3, "Engine %p", engine);
 
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS;
-  engine->render(depsgraph, context);
+  engine->render(context);
   Py_END_ALLOW_THREADS;
 
   Py_RETURN_NONE;
@@ -160,7 +157,7 @@ static PyObject *engine_set_sync_setting_func(PyObject * /*self*/, PyObject *arg
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p: %s", engine, key);
+  CLOG_INFO(LOG_HYDRA_RENDER, 3, "Engine %p: %s", engine, key);
   engine->set_sync_setting(key, get_setting_val(pyval));
 
   Py_RETURN_NONE;
@@ -176,7 +173,7 @@ static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *a
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
 
-  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %p: %s", engine, key);
+  CLOG_INFO(LOG_HYDRA_RENDER, 3, "Engine %p: %s", engine, key);
   engine->set_render_setting(key, get_setting_val(pyval));
 
   Py_RETURN_NONE;

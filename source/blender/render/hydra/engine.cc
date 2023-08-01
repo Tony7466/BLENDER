@@ -24,7 +24,7 @@
 
 namespace blender::render::hydra {
 
-CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA, "render.hydra");
+CLG_LOGREF_DECLARE_GLOBAL(LOG_HYDRA_RENDER, "hydra.render");
 
 Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
     : render_delegate_name_(render_delegate_name), bl_engine_(bl_engine)
@@ -76,9 +76,11 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
 
 void Engine::sync(Depsgraph *depsgraph, bContext *context)
 {
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  depsgraph_ = depsgraph;
+  context_ = context;
+  scene_ = DEG_get_evaluated_scene(depsgraph);
 
-  if (scene->hydra.export_method == SCE_HYDRA_EXPORT_HYDRA) {
+  if (scene_->hydra.export_method == SCE_HYDRA_EXPORT_HYDRA) {
     /* Fast path. */
     usd_scene_delegate_.reset();
 
@@ -118,13 +120,7 @@ void Engine::set_sync_setting(const std::string &key, const pxr::VtValue &val)
 
 void Engine::set_render_setting(const std::string &key, const pxr::VtValue &val)
 {
-  if (STRPREFIX(key.c_str(), "aovToken:")) {
-    render_delegate_settings_.aovs.add_new(key.substr(key.find(":") + 1),
-                                           pxr::TfToken(val.UncheckedGet<std::string>()));
-  }
-  else {
-    render_delegate_->SetRenderSetting(pxr::TfToken(key), val);
-  }
+  render_delegate_->SetRenderSetting(pxr::TfToken(key), val);
 }
 
 float Engine::renderer_percent_done()
@@ -132,7 +128,7 @@ float Engine::renderer_percent_done()
   pxr::VtDictionary render_stats = render_delegate_->GetRenderStats();
   auto it = render_stats.find("percentDone");
   if (it == render_stats.end()) {
-    return 0.0;
+    return 0.0f;
   }
   return (float)it->second.UncheckedGet<double>();
 }

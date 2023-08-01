@@ -51,7 +51,7 @@ class InstancerData : public IdData {
    *     ...
    *   post_update() */
   void pre_update();
-  void update_instance(Object *parent_ob, DupliObject *dupli);
+  void update_instance(DupliObject *dupli);
   void post_update();
 
  private:

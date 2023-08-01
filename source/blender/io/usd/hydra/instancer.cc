@@ -23,7 +23,7 @@ void InstancerData::insert() {}
 
 void InstancerData::remove()
 {
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 1, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s", prim_id.GetText());
   for (auto &m_inst : mesh_instances_.values()) {
     m_inst.data->remove();
   }
@@ -129,7 +129,7 @@ void InstancerData::pre_update()
   }
 }
 
-void InstancerData::update_instance(Object * /* parent_ob */, DupliObject *dupli)
+void InstancerData::update_instance(DupliObject *dupli)
 {
   Object *object = dupli->ob;
   pxr::SdfPath p_id = object_prim_id(object);

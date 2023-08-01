@@ -210,15 +210,9 @@ GPUTexture *DrawTexture::texture() const
   return texture_;
 }
 
-void ViewportEngine::render(Depsgraph * /* depsgraph */)
+void ViewportEngine::render()
 {
-  /* Empty function */
-}
-
-void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
-{
-  ViewSettings view_settings(context);
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  ViewSettings view_settings(context_);
   if (view_settings.width() * view_settings.height() == 0) {
     return;
   };
@@ -240,7 +234,7 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 
   pxr::HdTaskSharedPtrVector tasks;
   if (light_tasks_delegate_) {
-    if (scene->r.alphamode != R_ALPHAPREMUL) {
+    if (scene_->r.alphamode != R_ALPHAPREMUL) {
       tasks.push_back(light_tasks_delegate_->skydome_task());
     }
     tasks.push_back(light_tasks_delegate_->simple_task());
@@ -280,18 +274,27 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
   BLI_timecode_string_from_time_simple(
       elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin_);
 
+  float percent_done = renderer_percent_done();
   if (!render_task_delegate_->is_converged()) {
-    notify_status(std::string("Time: ") + elapsed_time +
-                      " | Done: " + std::to_string(int(renderer_percent_done())) + "%",
+    notify_status(percent_done / 100.0,
+                  std ::string("Time: ") + elapsed_time +
+                      " | Done: " + std::to_string(int(percent_done)) + "%",
                   "Render");
     bl_engine_->flag |= RE_ENGINE_DO_DRAW;
   }
   else {
-    notify_status((std::string("Time: ") + elapsed_time).c_str(), "Rendering Done");
+    notify_status(percent_done / 100.0, std::string("Time: ") + elapsed_time, "Rendering Done");
   }
 }
 
-void ViewportEngine::notify_status(const std::string &info, const std::string &status)
+void ViewportEngine::render(bContext *context)
+{
+  context_ = context;
+  render();
+}
+
+void ViewportEngine::notify_status(float /*progress*/, const std::string &info,
+                                   const std::string &status)
 {
   RE_engine_update_stats(bl_engine_, status.c_str(), info.c_str());
 }

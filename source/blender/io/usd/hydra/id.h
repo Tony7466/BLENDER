@@ -50,10 +50,10 @@ class IdData {
 };
 
 #define ID_LOG(level, msg, ...) \
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, level, "%s: " msg, prim_id.GetText(), ##__VA_ARGS__);
+  CLOG_INFO(LOG_HYDRA_SCENE, level, "%s: " msg, prim_id.GetText(), ##__VA_ARGS__);
 
 #define ID_LOGN(level, msg, ...) \
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, \
+  CLOG_INFO(LOG_HYDRA_SCENE, \
             level, \
             "%s (%s): " msg, \
             prim_id.GetText(), \

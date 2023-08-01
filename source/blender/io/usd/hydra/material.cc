@@ -151,7 +151,7 @@ void MaterialData::export_mtlx()
       err_str += PyUnicode_AsUTF8(pstr);
       Py_DECREF(pstr);
     }
-    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE,
+    CLOG_ERROR(LOG_HYDRA_SCENE,
                "Export error for %s (%s): %s",
                prim_id.GetText(),
                id->name,
