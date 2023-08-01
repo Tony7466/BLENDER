@@ -182,6 +182,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_lightprobe_irradiance_load";
     case REFLECTION_PROBE_REMAP:
       return "eevee_reflection_probe_remap";
+    case REFLECTION_PROBE_UPDATE_IRRADIANCE:
+      return "eevee_reflection_probe_update_irradiance";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
@@ -271,6 +273,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   /* WORKAROUND: Add new ob attr buffer. */
   if (GPU_material_uniform_attributes(gpumat) != nullptr) {
     info.additional_info("draw_object_attribute_new");
+
+    /* Search and remove the old object attribute UBO which would creating bind point collision. */
+    for (auto &resource_info : info.batch_resources_) {
+      if (resource_info.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER &&
+          resource_info.uniformbuf.name == GPU_ATTRIBUTE_UBO_BLOCK_NAME "[512]")
+      {
+        info.batch_resources_.remove_first_occurrence_and_reorder(resource_info);
+        break;
+      }
+    }
+    /* Remove references to the UBO. */
+    info.define("UNI_ATTR(a)", "vec4(0.0)");
   }
 
   /* First indices are reserved by the engine.

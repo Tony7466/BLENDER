@@ -885,6 +885,7 @@ typedef enum {
    * deleted in a safe context. */
   WM_TIMER_TAGGED_FOR_REMOVAL = 1 << 16,
 } wmTimerFlags;
+ENUM_OPERATORS(wmTimerFlags, WM_TIMER_TAGGED_FOR_REMOVAL)
 
 typedef struct wmTimer {
   struct wmTimer *next, *prev;
@@ -1108,13 +1109,6 @@ typedef struct wmDragID {
 typedef struct wmDragAsset {
   int import_method; /* eAssetImportType */
   const AssetRepresentationHandle *asset;
-
-  /* FIXME: This is temporary evil solution to get scene/view-layer/etc in the copy callback of the
-   * #wmDropBox.
-   * TODO: Handle link/append in operator called at the end of the drop process, and NOT in its
-   * copy callback.
-   * */
-  struct bContext *evil_C;
 } wmDragAsset;
 
 typedef struct wmDragAssetCatalog {

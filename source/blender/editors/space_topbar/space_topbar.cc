@@ -6,8 +6,8 @@
  * \ingroup sptopbar
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -95,7 +95,7 @@ static void topbar_main_region_init(wmWindowManager *wm, ARegion *region)
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
-static void topbar_operatortypes(void) {}
+static void topbar_operatortypes() {}
 
 static void topbar_keymap(wmKeyConfig * /*keyconf*/) {}
 
@@ -173,7 +173,7 @@ static void topbar_header_listener(const wmRegionListenerParams *params)
 
 static void topbar_header_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   WorkSpace *workspace = params->workspace;
   ARegion *region = params->region;
 
@@ -197,8 +197,14 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
       const char *file = BLI_path_basename(recent->filepath);
       const int icon = BKE_blendfile_extension_check(file) ? ICON_FILE_BLEND : ICON_FILE_BACKUP;
       PointerRNA ptr;
-      uiItemFullO(
-          layout, "WM_OT_open_mainfile", file, icon, nullptr, WM_OP_INVOKE_DEFAULT, 0, &ptr);
+      uiItemFullO(layout,
+                  "WM_OT_open_mainfile",
+                  file,
+                  icon,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
       RNA_string_set(&ptr, "filepath", recent->filepath);
       RNA_boolean_set(&ptr, "display_file_selector", false);
     }

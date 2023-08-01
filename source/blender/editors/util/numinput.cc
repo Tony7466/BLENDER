@@ -162,7 +162,7 @@ void outputNumInput(NumInput *n, char *str, UnitSettings *unit_settings)
       BLI_snprintf(&str[j * ln], ln, "%sNONE%s", cur, cur);
     }
     /* We might have cut some multi-bytes utf8 chars
-     * (e.g. trailing '°' of degrees values can become only 'A')... */
+     * (e.g. trailing degrees symbol values can become only 'A'). */
     BLI_str_utf8_invalid_strip(&str[j * ln], strlen(&str[j * ln]));
   }
 }
@@ -508,7 +508,7 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
     case EVT_CKEY:
       if (event->modifier & KM_CTRL) {
         /* Copy current `str` to the copy/paste buffer. */
-        WM_clipboard_text_set(n->str, 0);
+        WM_clipboard_text_set(n->str, false);
         updated = true;
       }
       break;

@@ -480,7 +480,7 @@ static void createTransGPencil_strokes(bContext *C,
   unit_m3(smtx);
   unit_m3(mtx);
 
-  /* Second Pass: Build transdata array. */
+  /* Second Pass: Build transform-data array. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
@@ -491,7 +491,7 @@ static void createTransGPencil_strokes(bContext *C,
 
       bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
                                                                       gpl->actframe);
-      /* Init multiframe falloff options. */
+      /* Initialize multi-frame falloff options. */
       int f_init = 0;
       int f_end = 0;
 
@@ -695,7 +695,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 
   const int cfra_scene = scene->r.cfra;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const bool use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) !=
                                       0;
 
@@ -704,7 +704,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
   const bool is_scale_thickness = ((t->mode == TFM_GPENCIL_SHRINKFATTEN) ||
                                    (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_SCALE_THICKNESS));
 
-  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
+  const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
 
   /* initialize falloff curve */
   if (is_multiedit) {
@@ -752,7 +752,7 @@ static void recalcData_gpencil_strokes(TransInfo *t)
 
   TransData *td = tc->data;
   bGPdata *gpd = static_cast<bGPdata *>(td->ob->data);
-  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
+  const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
   for (int i = 0; i < tc->data_len; i++, td++) {
     bGPDstroke *gps = static_cast<bGPDstroke *>(td->extra);
 
@@ -773,7 +773,7 @@ static void recalcData_gpencil_strokes(TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_GPencil = {
     /*flags*/ (T_EDIT | T_POINTS),
-    /*createTransData*/ createTransGPencil,
-    /*recalcData*/ recalcData_gpencil_strokes,
+    /*create_trans_data*/ createTransGPencil,
+    /*recalc_data*/ recalcData_gpencil_strokes,
     /*special_aftertrans_update*/ nullptr,
 };

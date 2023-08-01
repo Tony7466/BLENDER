@@ -55,6 +55,7 @@ struct AnimData;
 struct Collection;
 struct ID;
 struct Image;
+struct ImBuf;
 struct ListBase;
 struct Material;
 struct PreviewImage;
@@ -514,8 +515,7 @@ typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;
 
-  unsigned char *rect;
-  short xsize, ysize;
+  struct ImBuf *ibuf;
 } bNodePreview;
 
 typedef struct bNodeLink {
@@ -1872,6 +1872,10 @@ enum {
   SHD_GLOSSY_ASHIKHMIN_SHIRLEY = 3,
   SHD_GLOSSY_MULTI_GGX = 4,
 };
+
+/* sheen distributions */
+#define SHD_SHEEN_ASHIKHMIN 0
+#define SHD_SHEEN_MICROFIBER 1
 
 /* vector transform */
 enum {

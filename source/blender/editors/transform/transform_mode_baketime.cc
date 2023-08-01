@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math.h"
 #include "BLI_string.h"
@@ -42,7 +42,7 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
  * this isn't even accessible by the user */
 #if 0
   if (t->mouse.precision) {
-    /* calculate ratio for shiftkey pos, and for total, and blend these for precision */
+    /* Calculate ratio for shift-key position, and for total, and blend these for precision. */
     time = float(t->center2d[0] - t->mouse.precision_mval[0]) * fac;
     time += 0.1f * (float(t->center2d[0] * fac - mval[0]) - time);
   }
@@ -98,7 +98,7 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

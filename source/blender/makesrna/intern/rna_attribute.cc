@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -360,7 +360,7 @@ static void rna_ByteIntAttributeValue_set(PointerRNA *ptr, const int new_value)
     *value = INT8_MIN;
   }
   else {
-    *value = (int8_t)new_value;
+    *value = int8_t(new_value);
   }
 }
 

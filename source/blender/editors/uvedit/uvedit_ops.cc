@@ -88,7 +88,7 @@ static int UNUSED_FUNCTION(ED_operator_uvmap_mesh)(bContext *C)
   if (ob && ob->type == OB_MESH) {
     Mesh *me = static_cast<Mesh *>(ob->data);
 
-    if (CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2) != nullptr) {
+    if (CustomData_get_layer(&me->loop_data, CD_PROP_FLOAT2) != nullptr) {
       return 1;
     }
   }
@@ -1394,6 +1394,8 @@ static int uv_pin_exec(bContext *C, wmOperator *op)
 
 static void UV_OT_pin(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   /* identifiers */
   ot->name = "Pin";
   ot->description =
@@ -1406,13 +1408,15 @@ static void UV_OT_pin(wmOperatorType *ot)
   ot->poll = ED_operator_uvedit;
 
   /* properties */
-  RNA_def_boolean(
+  prop = RNA_def_boolean(
       ot->srna, "clear", false, "Clear", "Clear pinning for the selection instead of setting it");
-  RNA_def_boolean(ot->srna,
-                  "invert",
-                  false,
-                  "Invert",
-                  "Invert pinning for the selection instead of setting it");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna,
+                         "invert",
+                         false,
+                         "Invert",
+                         "Invert pinning for the selection instead of setting it");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -2047,7 +2051,7 @@ static void UV_OT_mark_seam(wmOperatorType *ot)
 
 void ED_operatortypes_uvedit()
 {
-  /* uvedit_select.c */
+  /* `uvedit_select.cc` */
   WM_operatortype_append(UV_OT_select_all);
   WM_operatortype_append(UV_OT_select);
   WM_operatortype_append(UV_OT_select_loop);

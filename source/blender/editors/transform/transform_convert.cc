@@ -119,10 +119,10 @@ static void sort_trans_data_dist_container(const TransInfo *t, TransDataContaine
 
   if (i < tc->data_len) {
     if (t->flag & T_PROP_CONNECTED) {
-      qsort(start, (size_t)tc->data_len - i, sizeof(TransData), trans_data_compare_dist);
+      qsort(start, size_t(tc->data_len) - i, sizeof(TransData), trans_data_compare_dist);
     }
     else {
-      qsort(start, (size_t)tc->data_len - i, sizeof(TransData), trans_data_compare_rdist);
+      qsort(start, size_t(tc->data_len) - i, sizeof(TransData), trans_data_compare_rdist);
     }
   }
 }
@@ -218,7 +218,7 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
     TransData *td = tc->data;
     for (a = 0; a < tc->data_len; a++, td++) {
       if (td->flag & TD_SELECTED) {
-        /* Initialize, it was mallocced. */
+        /* Initialize, it was malloced. */
         float vec[3];
         td->rdist = 0.0f;
 
@@ -421,7 +421,7 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
     }
   }
 
-  while ((td = static_cast<TransData *>(BLI_LINKSTACK_POP(queue)))) {
+  while ((td = BLI_LINKSTACK_POP(queue))) {
     float dist;
     float vec[3];
 
@@ -890,7 +890,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
 
-  /* if tests must match recalcData for correct updates */
+  /* if tests must match recalc_data for correct updates */
   if (t->options & CTX_CURSOR) {
     if (t->spacetype == SPACE_IMAGE) {
       return &TransConvertType_CursorImage;
@@ -1016,7 +1016,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
   return &TransConvertType_Object;
 }
 
-void createTransData(bContext *C, TransInfo *t)
+void create_trans_data(bContext *C, TransInfo *t)
 {
   t->data_len_all = -1;
 
@@ -1052,7 +1052,7 @@ void createTransData(bContext *C, TransInfo *t)
     if ((t->settings->transform_flag & SCE_XFORM_SKIP_CHILDREN) != 0) {
       t->options |= CTX_OBMODE_XFORM_SKIP_CHILDREN;
     }
-    TransConvertType_Object.createTransData(C, t);
+    TransConvertType_Object.create_trans_data(C, t);
     /* Check if we're transforming the camera from the camera */
     if ((t->spacetype == SPACE_VIEW3D) && (t->region->regiontype == RGN_TYPE_WINDOW)) {
       View3D *v3d = static_cast<View3D *>(t->view);
@@ -1079,7 +1079,7 @@ void createTransData(bContext *C, TransInfo *t)
     else if (t->data_type == &TransConvertType_SequencerImage) {
       t->obedit_type = -1;
     }
-    t->data_type->createTransData(C, t);
+    t->data_type->create_trans_data(C, t);
   }
 
   countAndCleanTransDataContainer(t);
@@ -1271,12 +1271,12 @@ void transform_convert_flush_handle2D(TransData *td, TransData2D *td2d, const fl
   }
 }
 
-void recalcData(TransInfo *t)
+void recalc_data(TransInfo *t)
 {
-  if (!t->data_type || !t->data_type->recalcData) {
+  if (!t->data_type || !t->data_type->recalc_data) {
     return;
   }
-  t->data_type->recalcData(t);
+  t->data_type->recalc_data(t);
 }
 
 /** \} */

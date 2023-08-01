@@ -132,7 +132,7 @@ static void SeqTransInfo(TransInfo *t, Sequence *seq, int *r_count, int *r_flag)
 
     /* Count */
 
-    /* Non nested strips (resect selection and handles) */
+    /* Non nested strips (reset selection and handles). */
     if ((seq->flag & SELECT) == 0 || SEQ_transform_is_locked(channels, seq)) {
       *r_count = 0;
       *r_flag = 0;
@@ -739,7 +739,7 @@ void transform_convert_sequencer_channel_clamp(TransInfo *t, float r_val[2])
 
 TransConvertTypeInfo TransConvertType_Sequencer = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransSeqData,
-    /*recalcData*/ recalcData_sequencer,
+    /*create_trans_data*/ createTransSeqData,
+    /*recalc_data*/ recalcData_sequencer,
     /*special_aftertrans_update*/ special_aftertrans_update__sequencer,
 };
