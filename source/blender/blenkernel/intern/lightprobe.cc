@@ -150,8 +150,7 @@ static void lightprobe_grid_cache_frame_blend_write(BlendWriter *writer,
   BLO_write_float_array(writer, sample_count, cache->visibility.L1_b);
   BLO_write_float_array(writer, sample_count, cache->visibility.L1_c);
 
-  BLO_write_struct_array(
-      writer, LightProbeGridCacheFrame, sample_count, cache->connectivity.validity);
+  BLO_write_int8_array(writer, sample_count, (int8_t *)cache->connectivity.validity);
 }
 
 static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
