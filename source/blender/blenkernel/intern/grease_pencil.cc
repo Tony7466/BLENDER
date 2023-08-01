@@ -601,9 +601,10 @@ bool Layer::is_selected() const
   return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
 }
 
-const int *Layer::remove_leading_null_frames_in_range(const int *begin, const int *end)
+Layer::SortedKeysIterator Layer::remove_leading_null_frames_in_range(
+    Layer::SortedKeysIterator begin, Layer::SortedKeysIterator end)
 {
-  auto next_it = begin;
+  Layer::SortedKeysIterator next_it = begin;
   while (next_it != end && this->frames().lookup(*next_it).is_null()) {
     this->frames_for_write().remove(*next_it);
     this->tag_frames_map_keys_changed();
@@ -645,7 +646,7 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
   Span<int> sorted_keys = this->sorted_keys();
   const int end_frame_number = frame_number + duration;
   /* Finds the next greater frame_number that is stored in the map. */
-  auto next_frame_number_it = std::upper_bound(
+  SortedKeysIterator next_frame_number_it = std::upper_bound(
       sorted_keys.begin(), sorted_keys.end(), frame_number);
   /* If the next frame we found is at the end of the frame we're inserting, then we are done. */
   if (next_frame_number_it != sorted_keys.end() && *next_frame_number_it == end_frame_number) {
@@ -680,16 +681,16 @@ bool Layer::remove_frame(const int start_frame_number)
   }
   Span<int> sorted_keys = this->sorted_keys();
   /* Find the index of the frame to remove in the `sorted_keys` array. */
-  auto remove_frame_number_it = std::lower_bound(
+  SortedKeysIterator remove_frame_number_it = std::lower_bound(
       sorted_keys.begin(), sorted_keys.end(), start_frame_number);
   /* If there is a next frame: */
   if (std::next(remove_frame_number_it) != sorted_keys.end()) {
-    auto next_frame_number_it = std::next(remove_frame_number_it);
+    SortedKeysIterator next_frame_number_it = std::next(remove_frame_number_it);
     this->remove_leading_null_frames_in_range(next_frame_number_it, sorted_keys.end());
   }
   /* If there is a previous frame: */
   if (remove_frame_number_it != sorted_keys.begin()) {
-    auto prev_frame_number_it = std::prev(remove_frame_number_it);
+    SortedKeysIterator prev_frame_number_it = std::prev(remove_frame_number_it);
     const GreasePencilFrame &prev_frame = this->frames().lookup(*prev_frame_number_it);
     /* If the previous frame is not an implicit hold (e.g. it has a fixed duration) and it's not a
      * null frame, we cannot just delete the frame. We need to replace it with a null frame. */
@@ -733,7 +734,7 @@ int Layer::frame_index_at(const int frame_number) const
     return sorted_keys.last();
   }
   /* Search for the drawing. upper_bound will get the drawing just after. */
-  auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame_number);
+  SortedKeysIterator it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame_number);
   if (it == sorted_keys.end() || it == sorted_keys.begin()) {
     return -1;
   }

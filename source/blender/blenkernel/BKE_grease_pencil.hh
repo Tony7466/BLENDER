@@ -297,6 +297,8 @@ class Layer : public ::GreasePencilLayer {
   void tag_frames_map_keys_changed();
 
  private:
+  using SortedKeysIterator = const int *;
+ private:
   GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
   int frame_index_at(int frame_number) const;
   /**
@@ -304,7 +306,7 @@ class Layer : public ::GreasePencilLayer {
    * \param begin, end: Iterators into the `sorted_keys` span.
    * \returns an iterator to the element after the last null-frame that was removed.
    */
-  const int *remove_leading_null_frames_in_range(const int *begin, const int *end);
+  SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin, SortedKeysIterator end);
 };
 
 class LayerGroupRuntime {
