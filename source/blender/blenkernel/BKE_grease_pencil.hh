@@ -300,7 +300,7 @@ class Layer : public ::GreasePencilLayer {
   GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
   int frame_index_at(int frame_number) const;
   /**
-   * Removes null frames starting from \a begin until \a end or a non-null frame is reached.
+   * Removes null frames starting from \a begin until \a end (excluded) or until a non-null frame is reached.
    * \param begin, end: Iterators into the `sorted_keys` span.
    * \returns an iterator to the element after the last null-frame that was removed.
    */
