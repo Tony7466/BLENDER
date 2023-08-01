@@ -3270,7 +3270,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     /* Draw zones with smaller bounding box on top to make them visible. */
     return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
   });
-
+GPU_blend(GPU_BLEND_ALPHA);
   /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
   for (const int zone_i : zone_draw_order) {
     float zone_color[4];
