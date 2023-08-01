@@ -453,8 +453,8 @@ struct VolumesInfoData {
   float light_clamp;
   packed_float3 inv_tex_size;
   float shadow_steps;
-  int use_lights;
-  int use_soft_shadows;
+  bool1 use_lights;
+  bool1 use_soft_shadows;
   float depth_near;
   float depth_far;
   float depth_distribution;

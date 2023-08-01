@@ -205,8 +205,7 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
     }
   }
 
-  float3x3 world_matrix = float3x3(float4x4(ob->object_to_world));
-  float3 size = math::to_scale(world_matrix);
+  float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
   const float epsilon = 1e-8f;
   if (size.x < epsilon || size.y < epsilon || size.z < epsilon) {

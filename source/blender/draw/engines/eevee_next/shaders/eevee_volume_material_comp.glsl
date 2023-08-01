@@ -64,9 +64,7 @@ void main()
 #endif
 
   g_data = init_globals(wP);
-#ifndef NO_ATTRIB_LOAD
   attrib_load();
-#endif
   nodetree_volume();
 
   vec3 scattering = g_volume_scatter_data.scattering;
