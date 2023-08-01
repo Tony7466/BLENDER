@@ -50,11 +50,11 @@ static bool view3d_camera_user_poll(bContext *C)
   if (ED_view3d_context_user_region(C, &v3d, &region)) {
     RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
     if ((rv3d->persp == RV3D_CAMOB) && !(RV3D_LOCK_FLAGS(rv3d) & RV3D_LOCK_ANY_TRANSFORM)) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
 static bool view3d_lock_poll(bContext *C)
@@ -187,8 +187,8 @@ static int view3d_center_camera_exec(bContext *C, wmOperator * /*op*/)
   ED_view3d_calc_camera_border_size(scene, depsgraph, region, v3d, rv3d, size);
 
   /* 4px is just a little room from the edge of the area */
-  xfac = (float)region->winx / (float)(size[0] + 4);
-  yfac = (float)region->winy / (float)(size[1] + 4);
+  xfac = float(region->winx) / float(size[0] + 4);
+  yfac = float(region->winy) / float(size[1] + 4);
 
   rv3d->camzoom = BKE_screen_view3d_zoom_from_fac(min_ff(xfac, yfac));
   CLAMP(rv3d->camzoom, RV3D_CAMZOOM_MIN, RV3D_CAMZOOM_MAX);
@@ -278,10 +278,10 @@ static int render_border_exec(bContext *C, wmOperator *op)
     vb.ymax = region->winy;
   }
 
-  border.xmin = ((float)rect.xmin - vb.xmin) / BLI_rctf_size_x(&vb);
-  border.ymin = ((float)rect.ymin - vb.ymin) / BLI_rctf_size_y(&vb);
-  border.xmax = ((float)rect.xmax - vb.xmin) / BLI_rctf_size_x(&vb);
-  border.ymax = ((float)rect.ymax - vb.ymin) / BLI_rctf_size_y(&vb);
+  border.xmin = (float(rect.xmin) - vb.xmin) / BLI_rctf_size_x(&vb);
+  border.ymin = (float(rect.ymin) - vb.ymin) / BLI_rctf_size_y(&vb);
+  border.xmax = (float(rect.xmax) - vb.xmin) / BLI_rctf_size_x(&vb);
+  border.ymax = (float(rect.ymax) - vb.ymin) / BLI_rctf_size_y(&vb);
 
   /* actually set border */
   CLAMP(border.xmin, 0.0f, 1.0f);
@@ -1048,7 +1048,7 @@ void ED_view3d_cursor3d_update(bContext *C,
   }
 
   {
-    struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+    wmMsgBus *mbus = CTX_wm_message_bus(C);
     wmMsgParams_RNA msg_key_params = {{0}};
     RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
     WM_msg_publish_rna_params(mbus, &msg_key_params);

@@ -6,8 +6,8 @@
  * \ingroup spclip
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_defaults.h"
 
@@ -347,7 +347,7 @@ static void clip_listener(const wmSpaceTypeListenerParams *params)
 
 static void clip_operatortypes()
 {
-  /* ** clip_ops.c ** */
+  /* `clip_ops.cc` */
   WM_operatortype_append(CLIP_OT_open);
   WM_operatortype_append(CLIP_OT_reload);
   WM_operatortype_append(CLIP_OT_view_pan);
@@ -369,7 +369,7 @@ static void clip_operatortypes()
   WM_operatortype_append(CLIP_OT_cursor_set);
   WM_operatortype_append(CLIP_OT_lock_selection_toggle);
 
-  /* ** tracking_ops.c ** */
+  /* `tracking_ops.cc` */
 
   /* navigation */
   WM_operatortype_append(CLIP_OT_frame_jump);
@@ -449,7 +449,7 @@ static void clip_operatortypes()
   WM_operatortype_append(CLIP_OT_new_image_from_plane_marker);
   WM_operatortype_append(CLIP_OT_update_image_from_plane_marker);
 
-  /* ** clip_graph_ops.c  ** */
+  /* `clip_graph_ops.cc` */
 
   /* graph editing */
 
@@ -465,7 +465,7 @@ static void clip_operatortypes()
 
   WM_operatortype_append(CLIP_OT_graph_disable_markers);
 
-  /* ** clip_dopesheet_ops.c  ** */
+  /* `clip_dopesheet_ops.cc` */
 
   WM_operatortype_append(CLIP_OT_dopesheet_select_channel);
   WM_operatortype_append(CLIP_OT_dopesheet_view_all);
@@ -695,7 +695,7 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
       tmpibuf = ED_space_clip_get_stable_buffer(sc, nullptr, nullptr, nullptr);
     }
 
-    if (ED_clip_view_selection(C, region, 0)) {
+    if (ED_clip_view_selection(C, region, false)) {
       sc->xof += sc->xlockof;
       sc->yof += sc->ylockof;
     }

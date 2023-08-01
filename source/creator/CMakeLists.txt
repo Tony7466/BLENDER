@@ -4,6 +4,7 @@
 
 set(INC
   ../../intern/clog
+  ../blender/blenkernel
   ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
@@ -16,7 +17,6 @@ set(INC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

@@ -990,7 +990,6 @@ typedef struct ccl_align(16) ShaderData
   /* Closure data, we store a fixed array of closures */
   int num_closure;
   int num_closure_left;
-  Spectrum svm_closure_weight;
 
   /* Closure weights summed directly, so we can evaluate
    * emission and shadow transparency with MAX_CLOSURE 0. */
@@ -1233,7 +1232,7 @@ typedef struct KernelTables {
   int ggx_glass_Eavg;
   int ggx_glass_inv_E;
   int ggx_glass_inv_Eavg;
-  int pad1;
+  int sheen_ltc;
 } KernelTables;
 static_assert_align(KernelTables, 16);
 
@@ -1706,7 +1705,7 @@ enum KernelFeatureFlag : uint32_t {
   KERNEL_FEATURE_TRANSPARENT = (1U << 19U),
 
   /* Use shadow catcher. */
-  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 29U),
+  KERNEL_FEATURE_SHADOW_CATCHER = (1U << 20U),
 
   /* Light render passes. */
   KERNEL_FEATURE_LIGHT_PASSES = (1U << 21U),

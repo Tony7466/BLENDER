@@ -1332,7 +1332,7 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
       /* Small offset to simulate a kind of volume for edges and vertices. */
       new_clipplane[3] += 0.01f;
 
-      /* Try to snap only to the polygon. */
+      /* Try to snap only to the face. */
       elem_test = snap_polygon(sctx, sctx->runtime.snap_to_flag);
       if (elem_test) {
         elem = elem_test;
@@ -1437,7 +1437,7 @@ bool ED_transform_snap_object_project_all_view3d_ex(SnapObjectContext *sctx,
 }
 
 #ifdef DEBUG_SNAP_TIME
-void ED_transform_snap_object_time_average_print(void)
+void ED_transform_snap_object_time_average_print()
 {
   std::cout << "Average snapping time: ";
   std::cout << std::fixed << duration_.count() / 1.0e6 << " ms";

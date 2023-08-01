@@ -7,7 +7,7 @@
  */
 
 #include "atomic_ops.h"
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
@@ -284,8 +284,7 @@ static MovieTrackingMarker libmv_marker_to_dna_marker(const libmv_Marker &libmv_
 /* -------------------------------------------------------------------- */
 /** \name General helpers.
  *
- * TODO(sergey): Should be moved to tracking_util.c
- *
+ * TODO(sergey): Should be moved to `tracking_util.cc`.
  * \{ */
 
 static PatternBounds libmv_marker_patch_minmax(const libmv_Marker &libmv_marker)

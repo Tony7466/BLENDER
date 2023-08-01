@@ -118,6 +118,7 @@ set(SRC_DNA_DEFAULTS_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_particle_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_pointcloud_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_scene_defaults.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_simulation_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_space_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_speaker_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_texture_defaults.h
@@ -131,6 +132,7 @@ set(SRC_DNA_DEFAULTS_INC
 add_subdirectory(datatoc)
 add_subdirectory(editors)
 add_subdirectory(windowmanager)
+add_subdirectory(animrig)
 add_subdirectory(asset_system)
 add_subdirectory(blenkernel)
 add_subdirectory(blenlib)

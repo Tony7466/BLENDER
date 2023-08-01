@@ -45,7 +45,7 @@
   (SnapStateIntern *)((char *)state - offsetof(SnapStateIntern, snap_state))
 
 struct SnapStateIntern {
-  struct SnapStateIntern *next, *prev;
+  SnapStateIntern *next, *prev;
   V3DSnapCursorState snap_state;
 };
 
@@ -74,7 +74,7 @@ struct SnapCursorDataIntern {
   int snap_on;
 #endif
 
-  struct wmPaintCursor *handle;
+  wmPaintCursor *handle;
 
   bool is_initiated;
 };
@@ -236,7 +236,7 @@ static void v3d_cursor_plane_draw_grid(const int resolution,
       i += 1;
     }
   }
-  BLI_assert(i == (int)coords_len);
+  BLI_assert(i == int(coords_len));
   immBeginAtMost(GPU_PRIM_LINES, coords_len * 4);
   i = 0;
   for (int x = 0; x < resolution_min; x++) {
@@ -959,7 +959,7 @@ static void v3d_cursor_snap_activate()
       data_intern->is_initiated = true;
     }
 
-    struct wmPaintCursor *pc = WM_paint_cursor_activate(
+    wmPaintCursor *pc = WM_paint_cursor_activate(
         SPACE_VIEW3D, RGN_TYPE_WINDOW, v3d_cursor_snap_poll_fn, v3d_cursor_snap_draw_fn, nullptr);
     data_intern->handle = pc;
   }
