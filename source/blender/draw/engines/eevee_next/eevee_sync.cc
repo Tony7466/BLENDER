@@ -13,6 +13,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_pbvh_api.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_curves_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -173,6 +174,14 @@ bool SyncModule::sync_sculpt(Object *ob,
   if (!pbvh_draw) {
     return false;
   }
+
+  /* Use a valid bounding box. The PBVH module already does its own culling,
+   * but a valid bounding box is still needed for directional shadow tilemap bounds computation. */
+  float3 min, max;
+  BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
+  float3 center = (min + max) * 0.5;
+  float3 half_extent = max - center;
+  res_handle = inst_.manager->resource_handle(ob_ref, nullptr, &center, &half_extent);
 
   bool has_motion = false;
   MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
