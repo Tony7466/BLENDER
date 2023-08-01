@@ -2060,7 +2060,9 @@ void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent)
 }
 
 template<eMoveToCollectionType move_type>
-void move_to_collection_menu_item(uiLayout *layout, Collection *collection, bool master_collection)
+void move_to_collection_menu_item(uiLayout *layout,
+                                  Collection *collection,
+                                  const bool master_collection)
 {
   const char *opname = MOVE_TO_COLLECTION_DEFAULT == move_type ? "OBJECT_OT_move_to_collection" :
                                                                  "OBJECT_OT_link_to_collection";
@@ -2075,11 +2077,11 @@ template<eMoveToCollectionType move_type>
 void move_to_collection_menu_items(bContext *C, uiLayout *layout, void *arg)
 {
   Collection *collection = static_cast<Collection *>(arg);
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   bool master_collection = scene->master_collection == collection;
 
   move_to_collection_menu_item<move_type>(layout, collection, master_collection);
-  
+
   uiItemS(layout);
 
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
@@ -2166,7 +2168,12 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_string(ot->srna, "collection_name", nullptr, MAX_NAME, "Collection name", "Name of the collection to move to");
+  prop = RNA_def_string(ot->srna,
+                        "collection_name",
+                        nullptr,
+                        MAX_NAME,
+                        "Collection name",
+                        "Name of the collection to move to");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
   prop = RNA_def_boolean(ot->srna, "is_new", false, "New", "Move objects to a new collection");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
