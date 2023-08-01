@@ -9,8 +9,6 @@
  * eg: faces connected to verts, UVs connected to verts.
  */
 
-#include "BLI_timeit.hh"
-
 #include "MEM_guardedalloc.h"
 
 #include "DNA_meshdata_types.h"
