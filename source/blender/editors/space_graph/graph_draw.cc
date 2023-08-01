@@ -952,7 +952,7 @@ static blender::int2 get_bounding_bezt_indices(FCurve *fcu, const float min, con
   return {first, last};
 }
 
-static void get_extrapolation_point_left(FCurve *fcu,
+static void add_extrapolation_point_left(FCurve *fcu,
                                          const float v2d_xmin,
                                          blender::Vector<blender::float2> &curve_vertices)
 {
@@ -989,7 +989,7 @@ static void get_extrapolation_point_left(FCurve *fcu,
   curve_vertices.append(vertex_position);
 }
 
-static void get_extrapolation_point_right(FCurve *fcu,
+static void add_extrapolation_point_right(FCurve *fcu,
                                           const float v2d_xmax,
                                           blender::Vector<blender::float2> &curve_vertices)
 {
@@ -1061,7 +1061,7 @@ static void draw_fcurve_curve_bezts(
 
   /* Extrapolate to the left? */
   if (draw_extrapolation && fcu->bezt[0].vec[1][0] > v2d->cur.xmin) {
-    get_extrapolation_point_left(fcu, v2d->cur.xmin, curve_vertices);
+    add_extrapolation_point_left(fcu, v2d->cur.xmin, curve_vertices);
   }
 
   const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
@@ -1102,7 +1102,7 @@ static void draw_fcurve_curve_bezts(
 
   /* Extrapolate to the right? (see code for left-extrapolation above too) */
   if (draw_extrapolation && fcu->bezt[fcu->totvert - 1].vec[1][0] < v2d->cur.xmax) {
-    get_extrapolation_point_right(fcu, v2d->cur.xmax, curve_vertices);
+    add_extrapolation_point_right(fcu, v2d->cur.xmax, curve_vertices);
   }
 
   if (curve_vertices.size() < 2) {
