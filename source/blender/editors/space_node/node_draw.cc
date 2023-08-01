@@ -3271,6 +3271,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
   });
 
+  GPU_blend(GPU_BLEND_ALPHA);
+
   /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
   for (const int zone_i : zone_draw_order) {
     float zone_color[4];
@@ -3311,6 +3313,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
     immUnbindProgram();
   }
+
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 #define USE_DRAW_TOT_UPDATE
