@@ -55,7 +55,7 @@ class SocketSearchOp {
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const int weight = ELEM(params.other_socket().type, SOCK_IMAGE, SOCK_RGBA) ? 0 : -1;
+  const int weight = ELEM(params.other_socket().type, SOCK_RGBA) ? 0 : -1;
 
   for (const EnumPropertyItem *item = rna_enum_ramp_blend_items; item->identifier != nullptr;
        item++) {
