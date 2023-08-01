@@ -237,6 +237,7 @@ void Instance::object_sync(Object *ob)
         break;
       case OB_POINTCLOUD:
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
+        break;
       case OB_VOLUME:
         volume.sync_object(ob, ob_handle, res_handle);
         break;
