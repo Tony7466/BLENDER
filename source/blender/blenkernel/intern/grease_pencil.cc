@@ -1408,20 +1408,22 @@ void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer,
     return;
   }
   GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
-  if (frame_to_remove.drawing_index != -1) {
-    GreasePencilDrawingBase *drawing_base = this->drawings()[frame_to_remove.drawing_index];
-    /* If the drawing is not referenced from another object, decrement the user count and remove it
-     * if it has no users. */
-    if (base->type == GP_DRAWING) {
-      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-      drawing.remove_user();
-      if (!drawing.has_users()) {
-        this->remove_drawing(frame_to_remove.drawing_index);
-      }
-    }
+  const int drawing_index_to_remove = frame_to_remove.drawing_index;
+  if (!layer.remove_frame(frame_number)) {
+    /* If removing the frame was not successful, return early. */
+    return;
   }
-  layer.frames_for_write().remove(frame_number);
-  layer.tag_frames_map_keys_changed();
+  GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
+  if (base->type != GP_DRAWING) {
+    /* If the drawing is referenced from another object, we don't track it's users because we
+     * cannot delete drawings from another object. Return early. */
+    return;
+  }
+  Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+  drawing.remove_user();
+  if (!drawing.has_users()) {
+    this->remove_drawing(drawing_index_to_remove);
+  }
 }
 
 void GreasePencil::remove_drawing(const int index_to_remove)
