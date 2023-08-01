@@ -601,6 +601,17 @@ bool Layer::is_selected() const
   return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
 }
 
+const int *Layer::remove_all_null_frames_in_range(const int *begin, const int *end)
+{
+  auto next_it = begin;
+  while (next_it != end && this->frames().lookup(*next_it).is_null()) {
+    this->frames_for_write().remove(*next_it);
+    this->tag_frames_map_keys_changed();
+    next_it = std::next(next_it);
+  }
+  return next_it;
+}
+
 GreasePencilFrame *Layer::add_frame_internal(const int frame_number, const int drawing_index)
 {
   BLI_assert(drawing_index != -1);
@@ -641,13 +652,8 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
     return frame;
   }
   /* While the next frame is a null frame, remove it. */
-  while (next_frame_number_it != sorted_keys.end() &&
-         this->frames().lookup(*next_frame_number_it).is_null())
-  {
-    this->frames_for_write().remove(*next_frame_number_it);
-    this->tag_frames_map_keys_changed();
-    next_frame_number_it = std::next(next_frame_number_it);
-  }
+  next_frame_number_it = this->remove_all_null_frames_in_range(next_frame_number_it,
+                                                               sorted_keys.end());
   /* If the duration is set to 0, the frame is marked as an implicit hold.*/
   if (duration == 0) {
     frame->flag |= GP_FRAME_IMPLICIT_HOLD;
@@ -660,6 +666,44 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
     this->tag_frames_map_keys_changed();
   }
   return frame;
+}
+
+bool Layer::remove_frame(const int frame_number)
+{
+  /* If the frame number is not in the frames map, do nothing. */
+  if (!this->frames().contains(frame_number)) {
+    return false;
+  }
+  if (this->frames().size() == 1) {
+    this->frames_for_write().remove(frame_number);
+    this->tag_frames_map_keys_changed();
+    return true;
+  }
+  Span<int> sorted_keys = this->sorted_keys();
+  /* Find the index of the frame to remove in the `sorted_keys` array. */
+  auto remove_frame_number_it = std::lower_bound(
+      sorted_keys.begin(), sorted_keys.end(), frame_number);
+  /* If there is a next frame: */
+  if (std::next(remove_frame_number_it) != sorted_keys.end()) {
+    auto next_frame_number_it = std::next(remove_frame_number_it);
+    /* While the next frame is a null frame, remove it. */
+    this->remove_all_null_frames_in_range(next_frame_number_it, sorted_keys.end());
+  }
+  /* If there is a previous frame: */
+  if (remove_frame_number_it != sorted_keys.begin()) {
+    auto prev_frame_number_it = std::prev(remove_frame_number_it);
+    const GreasePencilFrame &prev_frame = this->frames().lookup(*prev_frame_number_it);
+    /* If the previous frame is not an implicit hold (e.g. it has a fixed duration) and it's not a
+     * null frame, we cannot just delete the frame. We need to replace it with a null frame. */
+    if (!prev_frame.is_implicit_hold() && !prev_frame.is_null()) {
+      this->frames_for_write().lookup(frame_number) = GreasePencilFrame::null();
+      return false;
+    }
+  }
+  /* Finally, remove the actual frame. */
+  this->frames_for_write().remove(frame_number);
+  this->tag_frames_map_keys_changed();
+  return true;
 }
 
 Span<int> Layer::sorted_keys() const
