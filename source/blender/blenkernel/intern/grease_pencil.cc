@@ -1413,12 +1413,14 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
 }
 
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
-                                          const GreasePencilFrame &frame,
                                           const int frame_number,
+                                          const int duplicate_frame_number,
                                           const bool do_instance)
 {
   using namespace blender;
 
+  BLI_assert(layer.frames().contains(frame_number));
+  const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
   const int drawing_index = do_instance ? frame.drawing_index : int(this->drawings().size());
   const int duration = 0;
 
