@@ -701,7 +701,10 @@ static void flushTransIntFrameActionData(TransInfo *t)
     /* TODO : Move frames */
     std::cout << "Moving frames of layer " << layer->name() << std::endl;
     for (auto [old_frame_nb, new_frame_nb] : layer->runtime->trans_frame_data_.items()) {
-      std::cout << old_frame_nb << " -> " << new_frame_nb << std::endl;
+      GreasePencilFrame &frame = layer->runtime->trans_frames_copy_.lookup(old_frame_nb);
+
+      layer->add_frame(new_frame_nb, frame.drawing_index, 0);
+      layer->remove_frame(old_frame_nb);
     }
     layer->runtime->trans_frame_data_.clear();
   }
