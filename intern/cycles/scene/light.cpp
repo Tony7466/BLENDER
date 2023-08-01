@@ -1152,12 +1152,15 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       float3 axis_v = normalize_len(extentv, &len_v);
       float area = len_u * len_v;
       if (light->ellipse) {
-        area *= -M_PI_4_F;
+        area *= M_PI_4_F;
       }
       float invarea = (area != 0.0f) ? 1.0f / area : 1.0f;
-      float3 dir = light->dir;
+      if (light->ellipse) {
+        /* Negative inverse area indicates ellipse. */
+        invarea = -invarea;
+      }
 
-      dir = safe_normalize(dir);
+      float3 dir = safe_normalize(light->dir);
 
       klights[portal_index].co = light->co;
       klights[portal_index].area.axis_u = axis_u;
@@ -1177,10 +1180,8 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       continue;
     }
 
-    float3 co = light->co;
     Shader *shader = (light->shader) ? light->shader : scene->default_light;
     int shader_id = scene->shader_manager->get_shader_id(shader);
-    int max_bounces = light->max_bounces;
     float random = (float)light->random_id * (1.0f / (float)0xFFFFFFFF);
 
     if (!light->cast_shadow)
@@ -1210,42 +1211,47 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
     klights[light_index].strength[1] = light->strength.y;
     klights[light_index].strength[2] = light->strength.z;
 
-    if (light->light_type == LIGHT_POINT) {
+    if (light->light_type == LIGHT_POINT || light->light_type == LIGHT_SPOT) {
       shader_id &= ~SHADER_AREA_LIGHT;
 
       float radius = light->size;
-      /* TODO: `invarea` was used for disk sampling, with the current solid angle sampling this
-       * becomes unnecessary. We could store `eval_fac` instead, but currently it shares the same
-       * #KernelSpotLight type with #LIGHT_SPOT, so keep it know until refactor for spot light. */
-      float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
-                                                            1.0f;
+      float invarea = (radius == 0.0f)   ? 1.0f / 4.0f :
+                      (light->normalize) ? 1.0f / (4.0f * M_PI_F * radius * radius) :
+                                           1.0f;
+
+      /* Convert radiant flux to radiance or radiant intensity. */
+      float eval_fac = invarea * M_1_PI_F;
 
       if (light->use_mis && radius > 0.0f)
         shader_id |= SHADER_USE_MIS;
 
-      klights[light_index].co = co;
+      klights[light_index].co = light->co;
       klights[light_index].spot.radius = radius;
-      klights[light_index].spot.invarea = invarea;
+      klights[light_index].spot.eval_fac = eval_fac;
     }
     else if (light->light_type == LIGHT_DISTANT) {
       shader_id &= ~SHADER_AREA_LIGHT;
 
+      float3 dir = safe_normalize(light->dir);
       float angle = light->angle / 2.0f;
-      float radius = tanf(angle);
-      float cosangle = cosf(angle);
-      float area = M_PI_F * radius * radius;
-      float invarea = (light->normalize && area > 0.0f) ? 1.0f / area : 1.0f;
-      float3 dir = light->dir;
 
-      dir = safe_normalize(dir);
-
-      if (light->use_mis && area > 0.0f)
+      if (light->use_mis && angle > 0.0f) {
         shader_id |= SHADER_USE_MIS;
+      }
+
+      const float one_minus_cosangle = 2.0f * sqr(sinf(0.5f * angle));
+      const float pdf = (angle > 0.0f) ? (M_1_2PI_F / one_minus_cosangle) : 1.0f;
 
       klights[light_index].co = dir;
-      klights[light_index].distant.invarea = invarea;
-      klights[light_index].distant.radius = radius;
-      klights[light_index].distant.cosangle = cosangle;
+      klights[light_index].distant.angle = angle;
+      klights[light_index].distant.one_minus_cosangle = one_minus_cosangle;
+      klights[light_index].distant.pdf = pdf;
+      klights[light_index].distant.eval_fac = (light->normalize && angle > 0) ?
+                                                  M_1_PI_F / sqr(sinf(angle)) :
+                                                  1.0f;
+      klights[light_index].distant.half_inv_sin_half_angle = (angle == 0.0f) ?
+                                                                 0.0f :
+                                                                 0.5f / sinf(0.5f * angle);
     }
     else if (light->light_type == LIGHT_BACKGROUND) {
       uint visibility = scene->background->get_visibility();
@@ -1269,18 +1275,22 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       }
     }
     else if (light->light_type == LIGHT_AREA) {
-      float3 extentu = light->axisu * (light->sizeu * light->size);
-      float3 extentv = light->axisv * (light->sizev * light->size);
+      float light_size = light->size;
+      float3 extentu = light->axisu * (light->sizeu * light_size);
+      float3 extentv = light->axisv * (light->sizev * light_size);
 
       float len_u, len_v;
       float3 axis_u = normalize_len(extentu, &len_u);
       float3 axis_v = normalize_len(extentv, &len_v);
       float area = len_u * len_v;
       if (light->ellipse) {
-        area *= -M_PI_4_F;
+        area *= M_PI_4_F;
       }
       float invarea = (light->normalize && area != 0.0f) ? 1.0f / area : 1.0f;
-      float3 dir = light->dir;
+      if (light->ellipse) {
+        /* Negative inverse area indicates ellipse. */
+        invarea = -invarea;
+      }
 
       const float half_spread = 0.5f * light->spread;
       const float tan_half_spread = light->spread == M_PI_F ? FLT_MAX : tanf(half_spread);
@@ -1291,12 +1301,12 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       const float normalize_spread = half_spread > 0.05f ? 1.0f / (tan_half_spread - half_spread) :
                                                            3.0f / powf(half_spread, 3.0f);
 
-      dir = safe_normalize(dir);
+      float3 dir = safe_normalize(light->dir);
 
       if (light->use_mis && area != 0.0f)
         shader_id |= SHADER_USE_MIS;
 
-      klights[light_index].co = co;
+      klights[light_index].co = light->co;
       klights[light_index].area.axis_u = axis_u;
       klights[light_index].area.len_u = len_u;
       klights[light_index].area.axis_v = axis_v;
@@ -1306,9 +1316,7 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       klights[light_index].area.tan_half_spread = tan_half_spread;
       klights[light_index].area.normalize_spread = normalize_spread;
     }
-    else if (light->light_type == LIGHT_SPOT) {
-      shader_id &= ~SHADER_AREA_LIGHT;
-
+    if (light->light_type == LIGHT_SPOT) {
       /* Scale axes to accommodate non-uniform scaling. */
       float3 scaled_axis_u = light->axisu / len_squared(light->axisu);
       float3 scaled_axis_v = light->axisv / len_squared(light->axisv);
@@ -1316,29 +1324,21 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       /* Keep direction normalized. */
       float3 dir = safe_normalize_len(light->dir, &len_z);
 
-      float radius = light->size;
-      float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
-                                                            1.0f;
       float cos_half_spot_angle = cosf(light->spot_angle * 0.5f);
       float spot_smooth = 1.0f / ((1.0f - cos_half_spot_angle) * light->spot_smooth);
 
-      if (light->use_mis && radius > 0.0f)
-        shader_id |= SHADER_USE_MIS;
-
-      klights[light_index].co = co;
       klights[light_index].spot.scaled_axis_u = scaled_axis_u;
-      klights[light_index].spot.radius = radius;
       klights[light_index].spot.scaled_axis_v = scaled_axis_v;
-      klights[light_index].spot.invarea = invarea;
       klights[light_index].spot.dir = dir;
       klights[light_index].spot.cos_half_spot_angle = cos_half_spot_angle;
+      klights[light_index].spot.half_cot_half_spot_angle = 0.5f / tanf(light->spot_angle * 0.5f);
       klights[light_index].spot.inv_len_z = 1.0f / len_z;
       klights[light_index].spot.spot_smooth = spot_smooth;
     }
 
     klights[light_index].shader_id = shader_id;
 
-    klights[light_index].max_bounces = max_bounces;
+    klights[light_index].max_bounces = light->max_bounces;
     klights[light_index].random = random;
     klights[light_index].use_caustics = light->use_caustics;
 

@@ -80,10 +80,6 @@
 using blender::Vector;
 
 /* prototypes. */
-static void ui_but_to_pixelrect(rcti *rect,
-                                const ARegion *region,
-                                uiBlock *block,
-                                const uiBut *but);
 static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p);
 static void ui_def_but_rna__panel_type(bContext * /*C*/, uiLayout *layout, void *but_p);
 static void ui_def_but_rna__menu_type(bContext * /*C*/, uiLayout *layout, void *but_p);
@@ -860,7 +856,7 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
 
   /* flags from the buttons we want to refresh, may want to add more here... */
   const int flag_copy = UI_BUT_REDALERT | UI_HAS_ICON | UI_SELECT_DRAW;
-  const int drawflag_copy = 0; /* None currently. */
+  const int drawflag_copy = UI_BUT_HAS_TOOLTIP_LABEL;
 
   /* still stuff needs to be copied */
   oldbut->rect = but->rect;
@@ -882,6 +878,7 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
   std::swap(oldbut->tip_func, but->tip_func);
   std::swap(oldbut->tip_arg, but->tip_arg);
   std::swap(oldbut->tip_arg_free, but->tip_arg_free);
+  std::swap(oldbut->tip_label_func, but->tip_label_func);
 
   oldbut->flag = (oldbut->flag & ~flag_copy) | (but->flag & flag_copy);
   oldbut->drawflag = (oldbut->drawflag & ~drawflag_copy) | (but->drawflag & drawflag_copy);
@@ -903,15 +900,16 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
   }
 
   switch (oldbut->type) {
-    case UI_BTYPE_PROGRESS_BAR: {
-      uiButProgressbar *progress_oldbut = (uiButProgressbar *)oldbut;
-      uiButProgressbar *progress_but = (uiButProgressbar *)but;
-      progress_oldbut->progress = progress_but->progress;
+    case UI_BTYPE_PROGRESS: {
+      uiButProgress *progress_oldbut = (uiButProgress *)oldbut;
+      uiButProgress *progress_but = (uiButProgress *)but;
+      progress_oldbut->progress_factor = progress_but->progress_factor;
       break;
     }
     case UI_BTYPE_VIEW_ITEM: {
       uiButViewItem *view_item_oldbut = (uiButViewItem *)oldbut;
       uiButViewItem *view_item_newbut = (uiButViewItem *)but;
+      ui_view_item_swap_button_pointers(view_item_newbut->view_item, view_item_oldbut->view_item);
       std::swap(view_item_newbut->view_item, view_item_oldbut->view_item);
       break;
     }
@@ -2069,11 +2067,7 @@ void ui_fontscale(float *points, float aspect)
   *points /= aspect;
 }
 
-/* Project button or block (but==nullptr) to pixels in region-space. */
-static void ui_but_to_pixelrect(rcti *rect,
-                                const ARegion *region,
-                                uiBlock *block,
-                                const uiBut *but)
+void ui_but_to_pixelrect(rcti *rect, const ARegion *region, const uiBlock *block, const uiBut *but)
 {
   rctf rectf;
 
@@ -2168,6 +2162,8 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   UI_widgetbase_draw_cache_end();
   UI_icon_draw_cache_end();
   BLF_batch_draw_end();
+
+  ui_block_views_draw_overlays(region, block);
 
   /* restore matrix */
   GPU_matrix_pop_projection();
@@ -3262,7 +3258,7 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
     double value;
 
     if (ui_but_string_eval_number(C, but, str, &value) == false) {
-      WM_report_banner_show();
+      WM_report_banner_show(CTX_wm_manager(C), CTX_wm_window(C));
       return false;
     }
 
@@ -4023,8 +4019,8 @@ static uiBut *ui_but_new(const eButType type)
     case UI_BTYPE_SEARCH_MENU:
       but = MEM_new<uiButSearch>("uiButSearch");
       break;
-    case UI_BTYPE_PROGRESS_BAR:
-      but = MEM_new<uiButProgressbar>("uiButProgressbar");
+    case UI_BTYPE_PROGRESS:
+      but = MEM_new<uiButProgress>("uiButProgress");
       break;
     case UI_BTYPE_HSVCUBE:
       but = MEM_new<uiButHSVCube>("uiButHSVCube");
@@ -4836,6 +4832,12 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
   but->optype = ot;
   but->opcontext = opcontext;
   but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+
+  const bool has_label = str && str[0];
+  /* Enable quick tooltip label if this is a tool button without a label. */
+  if (!has_label && !ui_block_is_popover(block) && UI_but_is_tool(but)) {
+    UI_but_drawflag_enable(but, UI_BUT_HAS_TOOLTIP_LABEL);
+  }
 
   if (!ot) {
     UI_but_disable(but, "");
@@ -6081,6 +6083,12 @@ void UI_but_func_menu_step_set(uiBut *but, uiMenuStepFunc func)
   but->menu_step_func = func;
 }
 
+void UI_but_func_tooltip_label_set(uiBut *but, std::function<std::string(const uiBut *but)> func)
+{
+  but->tip_label_func = std::move(func);
+  UI_but_drawflag_enable(but, UI_BUT_HAS_TOOLTIP_LABEL);
+}
+
 void UI_but_func_tooltip_set(uiBut *but, uiButToolTipFunc func, void *arg, uiFreeArgFunc free_arg)
 {
   but->tip_func = func;
@@ -6463,7 +6471,7 @@ static void operator_enum_search_exec_fn(bContext * /*C*/, void *but, void *arg2
     if (ot->prop) {
       RNA_property_enum_set(opptr, ot->prop, POINTER_AS_INT(arg2));
       /* We do not call op from here, will be called by button code.
-       * ui_apply_but_funcs_after() (in interface_handlers.c)
+       * ui_apply_but_funcs_after() (in `interface_handlers.cc`)
        * called this func before checking operators,
        * because one of its parameters is the button itself! */
     }
@@ -6581,6 +6589,17 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
   while ((si = (uiStringInfo *)va_arg(args, void *))) {
     uiStringInfoType type = si->type;
     char *tmp = nullptr;
+
+    if (type == BUT_GET_TIP_LABEL) {
+      if (but->tip_label_func) {
+        const std::string tooltip_label = but->tip_label_func(but);
+        tmp = BLI_strdupn(tooltip_label.c_str(), tooltip_label.size());
+      }
+      /* Fallback to the regular label. */
+      else {
+        type = BUT_GET_LABEL;
+      }
+    }
 
     if (type == BUT_GET_LABEL) {
       if (but->str && but->str[0]) {

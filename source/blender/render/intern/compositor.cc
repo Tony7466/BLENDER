@@ -61,11 +61,12 @@ class TexturePool : public realtime_compositor::TexturePool {
   }
 };
 
-/* Render Context Data
+/**
+ * Render Context Data
  *
  * Stored separately from the context so we can update it without losing any cached
- * data from the context. */
-
+ * data from the context.
+ */
 class ContextInputData {
  public:
   const Scene *scene;
@@ -192,8 +193,20 @@ class Context : public realtime_compositor::Context {
     /* TODO: support outputting previews.
      * TODO: just a temporary hack, needs to get stored in RenderResult,
      * once that supports GPU buffers. */
+    const int2 size = get_render_size();
+
+    /* Re-create texture if the viewer size changes. */
+    if (viewer_output_texture_) {
+      const int current_width = GPU_texture_width(viewer_output_texture_);
+      const int current_height = GPU_texture_height(viewer_output_texture_);
+
+      if (current_width != size.x || current_height != size.y) {
+        GPU_TEXTURE_FREE_SAFE(viewer_output_texture_);
+        viewer_output_texture_ = nullptr;
+      }
+    }
+
     if (viewer_output_texture_ == nullptr) {
-      const int2 size = get_render_size();
       viewer_output_texture_ = GPU_texture_create_2d("compositor_viewer_output_texture",
                                                      size.x,
                                                      size.y,
@@ -226,7 +239,7 @@ class Context : public realtime_compositor::Context {
           RenderPass *rpass = (RenderPass *)BLI_findstring(
               &rl->passes, pass_name, offsetof(RenderPass, name));
 
-          if (rpass && rpass->buffer.data) {
+          if (rpass && rpass->ibuf && rpass->ibuf->float_buffer.data) {
             input_texture = RE_pass_ensure_gpu_texture_cache(re, rpass);
 
             if (input_texture) {
@@ -283,7 +296,8 @@ class Context : public realtime_compositor::Context {
       float *output_buffer = (float *)GPU_texture_read(output_texture_, GPU_DATA_FLOAT, 0);
 
       if (output_buffer) {
-        RE_RenderBuffer_assign_data(&rv->combined_buffer, output_buffer);
+        ImBuf *ibuf = RE_RenderViewEnsureImBuf(rr, rv);
+        IMB_assign_float_buffer(ibuf, output_buffer, IB_TAKE_OWNERSHIP);
       }
 
       /* TODO: z-buffer output. */
@@ -330,7 +344,6 @@ class Context : public realtime_compositor::Context {
     if (image_buffer->x != render_size.x || image_buffer->y != render_size.y) {
       imb_freerectImBuf(image_buffer);
       imb_freerectfloatImBuf(image_buffer);
-      IMB_freezbuffloatImBuf(image_buffer);
       image_buffer->x = render_size.x;
       image_buffer->y = render_size.y;
       imb_addrectfloatImBuf(image_buffer, 4);

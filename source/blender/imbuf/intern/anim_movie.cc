@@ -26,11 +26,11 @@
 
 #endif
 
-#include <ctype.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cctype>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/types.h>
 #ifndef _WIN32
 #  include <dirent.h>
@@ -93,61 +93,6 @@ static ImBuf *movie_fetchibuf(anim * /*anim*/, int /*position*/)
 static void free_anim_movie(anim * /*anim*/)
 {
   /* pass */
-}
-
-static int an_stringdec(const char *filepath,
-                        char *head,
-                        size_t head_maxncpy,
-                        char *tail,
-                        size_t tail_maxncpy,
-                        ushort *r_numlen)
-{
-  const ushort len = strlen(filepath);
-  bool found = false;
-
-  ushort num_beg = 0;
-  ushort num_end = len;
-
-  for (short i = short(len) - 1; i >= 0; i--) {
-    if (filepath[i] == SEP) {
-      break;
-    }
-    if (isdigit(filepath[i])) {
-      if (found) {
-        num_beg = i;
-      }
-      else {
-        num_end = i;
-        num_beg = i;
-        found = true;
-      }
-    }
-    else {
-      if (found) {
-        break;
-      }
-    }
-  }
-  if (found) {
-    BLI_strncpy(tail, &filepath[num_end + 1], MIN2(num_beg + 1, tail_maxncpy));
-    BLI_strncpy(head, filepath, head_maxncpy);
-    *r_numlen = num_end - num_beg + 1;
-    return int(atoi(&(filepath)[num_beg]));
-  }
-  tail[0] = '\0';
-  BLI_strncpy(head, filepath, head_maxncpy);
-  *r_numlen = 0;
-  return true;
-}
-
-static void an_stringenc(char *filepath,
-                         const size_t string_maxncpy,
-                         const char *head,
-                         const char *tail,
-                         ushort numlen,
-                         int pic)
-{
-  BLI_path_sequence_encode(filepath, string_maxncpy, head, tail, numlen, pic);
 }
 
 #ifdef WITH_AVI
@@ -1113,12 +1058,12 @@ static int ffmpeg_seek_by_byte(AVFormatContext *pFormatCtx)
 
 static int64_t ffmpeg_get_seek_pts(anim *anim, int64_t pts_to_search)
 {
-  /* FFmpeg seeks internally using DTS values instead of PTS. In some files DTS and PTS values are
-   * offset and sometimes ffmpeg fails to take this into account when seeking.
+  /* FFMPEG seeks internally using DTS values instead of PTS. In some files DTS and PTS values are
+   * offset and sometimes FFMPEG fails to take this into account when seeking.
    * Therefore we need to seek backwards a certain offset to make sure the frame we want is in
-   * front of us. It is not possible to determine the exact needed offset, this value is determined
-   * experimentally. Note: Too big offset can impact performance. Current 3 frame offset has no
-   * measurable impact.
+   * front of us. It is not possible to determine the exact needed offset,
+   * this value is determined experimentally.
+   * NOTE: Too big offset can impact performance. Current 3 frame offset has no measurable impact.
    */
   int64_t seek_pts = pts_to_search - (ffmpeg_steps_per_frame_get(anim) * 3);
 
@@ -1633,10 +1578,10 @@ ImBuf *IMB_anim_absolute(anim *anim,
       constexpr size_t filepath_size = BOUNDED_ARRAY_TYPE_SIZE<decltype(anim->filepath_first)>();
       char head[filepath_size], tail[filepath_size];
       ushort digits;
-      const int pic = an_stringdec(
+      const int pic = BLI_path_sequence_decode(
                           anim->filepath_first, head, sizeof(head), tail, sizeof(tail), &digits) +
                       position;
-      an_stringenc(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
+      BLI_path_sequence_encode(anim->filepath, sizeof(anim->filepath), head, tail, digits, pic);
       ibuf = IMB_loadiffname(anim->filepath, IB_rect, anim->colorspace);
       if (ibuf) {
         anim->cur_position = position;

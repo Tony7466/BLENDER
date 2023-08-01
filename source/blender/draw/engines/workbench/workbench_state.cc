@@ -10,7 +10,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_fluid_types.h"
 #include "ED_paint.h"
@@ -173,7 +173,6 @@ void SceneState::init(Object *camera_ob /*= nullptr*/)
   draw_dof = camera && camera->dof.flag & CAM_DOF_ENABLED &&
              shading.flag & V3D_SHADING_DEPTH_OF_FIELD;
 
-  draw_transparent_depth = draw_outline || draw_dof;
   draw_object_id = draw_outline || draw_curvature;
 };
 
@@ -184,7 +183,7 @@ static const CustomData *get_loop_custom_data(const Mesh *mesh)
     BLI_assert(mesh->edit_mesh->bm != nullptr);
     return &mesh->edit_mesh->bm->ldata;
   }
-  return &mesh->ldata;
+  return &mesh->loop_data;
 }
 
 static const CustomData *get_vert_custom_data(const Mesh *mesh)
@@ -194,7 +193,7 @@ static const CustomData *get_vert_custom_data(const Mesh *mesh)
     BLI_assert(mesh->edit_mesh->bm != nullptr);
     return &mesh->edit_mesh->bm->vdata;
   }
-  return &mesh->vdata;
+  return &mesh->vert_data;
 }
 
 ObjectState::ObjectState(const SceneState &scene_state, Object *ob)

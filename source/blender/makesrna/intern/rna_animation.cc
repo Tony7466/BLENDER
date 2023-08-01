@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -168,27 +168,20 @@ static void rna_AnimData_tweakmode_set(PointerRNA *ptr, const bool value)
   }
 }
 
-/* This is used to avoid the check for NLA tracks when enabling tweak
- * mode while loading overrides.  This is necessary because the normal
+/**
+ * This is used to avoid the check for NLA tracks when enabling tweak
+ * mode while loading overrides. This is necessary because the normal
  * RNA tweak-mode setter refuses to enable tweak mode if there are no
  * NLA tracks since that's normally an invalid state... but the
- * overriden NLA tracks are only added *after* setting the tweak mode
- * override. */
+ * overridden NLA tracks are only added *after* setting the tweak mode
+ * override.
+ */
 bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
-                                           PointerRNA *ptr_dst,
-                                           PointerRNA *ptr_src,
-                                           PointerRNA * /*ptr_storage*/,
-                                           PropertyRNA * /*prop_dst*/,
-                                           PropertyRNA * /*prop_src*/,
-                                           PropertyRNA * /*prop_storage*/,
-                                           const int /*len_dst*/,
-                                           const int /*len_src*/,
-                                           const int /*len_storage*/,
-                                           PointerRNA * /*ptr_item_dst*/,
-                                           PointerRNA * /*ptr_item_src*/,
-                                           PointerRNA * /*ptr_item_storage*/,
-                                           IDOverrideLibraryPropertyOperation * /*opop*/)
+                                           RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PointerRNA *ptr_src = &rnaapply_ctx.ptr_src;
+
   AnimData *anim_data_dst = (AnimData *)ptr_dst->data;
   AnimData *anim_data_src = (AnimData *)ptr_src->data;
 
@@ -341,7 +334,7 @@ static StructRNA *rna_KeyingSetInfo_register(Main *bmain,
                 "%s '%s' is too long, maximum length is %d",
                 error_prefix,
                 identifier,
-                (int)sizeof(dummy_ksi.idname));
+                int(sizeof(dummy_ksi.idname)));
     return nullptr;
   }
 
@@ -738,21 +731,18 @@ static FCurve *rna_Driver_find(AnimData *adt,
   return BKE_fcurve_find(&adt->drivers, data_path, index);
 }
 
-bool rna_AnimaData_override_apply(Main *bmain,
-                                  PointerRNA *ptr_dst,
-                                  PointerRNA *ptr_src,
-                                  PointerRNA *ptr_storage,
-                                  PropertyRNA *prop_dst,
-                                  PropertyRNA *prop_src,
-                                  PropertyRNA * /*prop_storage*/,
-                                  const int len_dst,
-                                  const int len_src,
-                                  const int len_storage,
-                                  PointerRNA * /*ptr_item_dst*/,
-                                  PointerRNA * /*ptr_item_src*/,
-                                  PointerRNA * /*ptr_item_storage*/,
-                                  IDOverrideLibraryPropertyOperation *opop)
+bool rna_AnimaData_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PointerRNA *ptr_src = &rnaapply_ctx.ptr_src;
+  PointerRNA *ptr_storage = &rnaapply_ctx.ptr_storage;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  PropertyRNA *prop_src = rnaapply_ctx.prop_src;
+  const int len_dst = rnaapply_ctx.len_src;
+  const int len_src = rnaapply_ctx.len_src;
+  const int len_storage = rnaapply_ctx.len_storage;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(len_dst == len_src && (!ptr_storage || len_dst == len_storage) && len_dst == 0);
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
              "Unsupported RNA override operation on animdata pointer");
@@ -778,21 +768,13 @@ bool rna_AnimaData_override_apply(Main *bmain,
   return false;
 }
 
-bool rna_NLA_tracks_override_apply(Main *bmain,
-                                   PointerRNA *ptr_dst,
-                                   PointerRNA *ptr_src,
-                                   PointerRNA * /*ptr_storage*/,
-                                   PropertyRNA *prop_dst,
-                                   PropertyRNA * /*prop_src*/,
-                                   PropertyRNA * /*prop_storage*/,
-                                   const int /*len_dst*/,
-                                   const int /*len_src*/,
-                                   const int /*len_storage*/,
-                                   PointerRNA * /*ptr_item_dst*/,
-                                   PointerRNA * /*ptr_item_src*/,
-                                   PointerRNA * /*ptr_item_storage*/,
-                                   IDOverrideLibraryPropertyOperation *opop)
+bool rna_NLA_tracks_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PointerRNA *ptr_src = &rnaapply_ctx.ptr_src;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
              "Unsupported RNA override operation on constraints collection");
 
@@ -934,7 +916,7 @@ static void rna_def_keyingset_info(BlenderRNA *brna)
 
   /* Properties --------------------- */
 
-  RNA_define_verify_sdna(0); /* not in sdna */
+  RNA_define_verify_sdna(false); /* not in sdna */
 
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "idname");
@@ -968,14 +950,14 @@ static void rna_def_keyingset_info(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL | PROP_ENUM_FLAG);
   RNA_def_property_ui_text(prop, "Options", "Keying Set options to use when inserting keyframes");
 
-  RNA_define_verify_sdna(1);
+  RNA_define_verify_sdna(true);
 
   /* Function Callbacks ------------- */
   /* poll */
   func = RNA_def_function(srna, "poll", nullptr);
   RNA_def_function_ui_description(func, "Test if Keying Set can be used or not");
   RNA_def_function_flag(func, FUNC_REGISTER);
-  RNA_def_function_return(func, RNA_def_boolean(func, "ok", 1, "", ""));
+  RNA_def_function_return(func, RNA_def_boolean(func, "ok", true, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 

@@ -70,7 +70,6 @@ set(SRC_DNA_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_sequence_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_session_uuid_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_shader_fx_types.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_simulation_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_sound_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_space_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_speaker_types.h
@@ -133,6 +132,7 @@ set(SRC_DNA_DEFAULTS_INC
 add_subdirectory(datatoc)
 add_subdirectory(editors)
 add_subdirectory(windowmanager)
+add_subdirectory(animrig)
 add_subdirectory(asset_system)
 add_subdirectory(blenkernel)
 add_subdirectory(blenlib)

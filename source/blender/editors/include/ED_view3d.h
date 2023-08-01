@@ -220,10 +220,11 @@ bool ED_view3d_depth_unproject_v3(const struct ARegion *region,
  *
  * \note modal map events can also be used in `ED_view3d_navigation_do`.
  */
-struct ViewOpsData *ED_view3d_navigation_init(struct bContext *C);
+struct ViewOpsData *ED_view3d_navigation_init(struct bContext *C, const bool use_alt_navigation);
 bool ED_view3d_navigation_do(struct bContext *C,
                              struct ViewOpsData *vod,
-                             const struct wmEvent *event);
+                             const struct wmEvent *event,
+                             const float depth_loc_override[3]);
 void ED_view3d_navigation_free(struct bContext *C, struct ViewOpsData *vod);
 
 /* Projection */
@@ -289,13 +290,13 @@ ENUM_OPERATORS(eV3DProjTest, V3D_PROJ_TEST_CLIP_CONTENT);
   (V3D_PROJ_TEST_CLIP_CONTENT | V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_FAR | \
    V3D_PROJ_TEST_CLIP_WIN)
 
-/* view3d_snap.c */
+/* `view3d_snap.cc` */
 
 bool ED_view3d_snap_selected_to_location(struct bContext *C,
                                          const float snap_target_global[3],
                                          int pivot_point);
 
-/* view3d_cursor_snap.c */
+/* `view3d_cursor_snap.cc` */
 
 #define USE_SNAP_DETECT_FROM_KEYMAP_HACK
 typedef enum {
@@ -305,6 +306,7 @@ typedef enum {
   V3D_SNAPCURSOR_SNAP_EDIT_GEOM_FINAL = 1 << 3,
   V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE = 1 << 4,
 } eV3DSnapCursor;
+ENUM_OPERATORS(eV3DSnapCursor, V3D_SNAPCURSOR_SNAP_EDIT_GEOM_CAGE)
 
 typedef struct V3DSnapCursorData {
   eSnapMode snap_elem;
@@ -361,23 +363,23 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
 /* foreach iterators */
 
 void meshobject_foreachScreenVert(struct ViewContext *vc,
-                                  void (*func)(void *userData,
+                                  void (*func)(void *user_data,
                                                const float screen_co[2],
                                                int index),
-                                  void *userData,
+                                  void *user_data,
                                   eV3DProjTest clip_flag);
 void mesh_foreachScreenVert(
     struct ViewContext *vc,
-    void (*func)(void *userData, struct BMVert *eve, const float screen_co[2], int index),
-    void *userData,
+    void (*func)(void *user_data, struct BMVert *eve, const float screen_co[2], int index),
+    void *user_data,
     eV3DProjTest clip_flag);
 void mesh_foreachScreenEdge(struct ViewContext *vc,
-                            void (*func)(void *userData,
+                            void (*func)(void *user_data,
                                          struct BMEdge *eed,
                                          const float screen_co_a[2],
                                          const float screen_co_b[2],
                                          int index),
-                            void *userData,
+                            void *user_data,
                             eV3DProjTest clip_flag);
 
 /**
@@ -385,68 +387,68 @@ void mesh_foreachScreenEdge(struct ViewContext *vc,
  * there is a clipping bounding box.
  */
 void mesh_foreachScreenEdge_clip_bb_segment(struct ViewContext *vc,
-                                            void (*func)(void *userData,
+                                            void (*func)(void *user_data,
                                                          struct BMEdge *eed,
                                                          const float screen_co_a[2],
                                                          const float screen_co_b[2],
                                                          int index),
-                                            void *userData,
+                                            void *user_data,
                                             eV3DProjTest clip_flag);
 
 void mesh_foreachScreenFace(
     struct ViewContext *vc,
-    void (*func)(void *userData, struct BMFace *efa, const float screen_co[2], int index),
-    void *userData,
+    void (*func)(void *user_data, struct BMFace *efa, const float screen_co[2], int index),
+    void *user_data,
     eV3DProjTest clip_flag);
 void nurbs_foreachScreenVert(struct ViewContext *vc,
-                             void (*func)(void *userData,
+                             void (*func)(void *user_data,
                                           struct Nurb *nu,
                                           struct BPoint *bp,
                                           struct BezTriple *bezt,
                                           int beztindex,
                                           bool handle_visible,
                                           const float screen_co[2]),
-                             void *userData,
+                             void *user_data,
                              eV3DProjTest clip_flag);
 /**
  * #ED_view3d_init_mats_rv3d must be called first.
  */
 void mball_foreachScreenElem(struct ViewContext *vc,
-                             void (*func)(void *userData,
+                             void (*func)(void *user_data,
                                           struct MetaElem *ml,
                                           const float screen_co[2]),
-                             void *userData,
+                             void *user_data,
                              eV3DProjTest clip_flag);
 void lattice_foreachScreenVert(struct ViewContext *vc,
-                               void (*func)(void *userData,
+                               void (*func)(void *user_data,
                                             struct BPoint *bp,
                                             const float screen_co[2]),
-                               void *userData,
+                               void *user_data,
                                eV3DProjTest clip_flag);
 /**
  * #ED_view3d_init_mats_rv3d must be called first.
  */
 void armature_foreachScreenBone(struct ViewContext *vc,
-                                void (*func)(void *userData,
+                                void (*func)(void *user_data,
                                              struct EditBone *ebone,
                                              const float screen_co_a[2],
                                              const float screen_co_b[2]),
-                                void *userData,
+                                void *user_data,
                                 eV3DProjTest clip_flag);
 
 /**
  * ED_view3d_init_mats_rv3d must be called first.
  */
 void pose_foreachScreenBone(struct ViewContext *vc,
-                            void (*func)(void *userData,
+                            void (*func)(void *user_data,
                                          struct bPoseChannel *pchan,
                                          const float screen_co_a[2],
                                          const float screen_co_b[2]),
-                            void *userData,
+                            void *user_data,
                             eV3DProjTest clip_flag);
 /* *** end iterators *** */
 
-/* view3d_project.c */
+/* `view3d_project.cc` */
 
 /**
  * \note use #ED_view3d_ob_project_mat_get to get the projection matrix
@@ -1329,17 +1331,15 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__
 /* Apple silicon tile depth test requires a higher value to reduce drawing artifacts. */
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0015f
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0015f
+#  define OVERLAY_RETOPOLOGY_MIN_OFFSET 0.0015f
 #else
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED FLT_EPSILON
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0f
+#  define OVERLAY_RETOPOLOGY_MIN_OFFSET FLT_EPSILON
 #endif
 
 #define OVERLAY_RETOPOLOGY_OFFSET(overlay) \
   (OVERLAY_RETOPOLOGY_ENABLED(overlay) ? \
-       max_ff((overlay).retopology_offset, OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED) : \
-       OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED)
+       max_ff((overlay).retopology_offset, OVERLAY_RETOPOLOGY_MIN_OFFSET) : \
+       0.0f)
 
 #define RETOPOLOGY_ENABLED(v3d) (OVERLAY_RETOPOLOGY_ENABLED((v3d)->overlay))
 #define RETOPOLOGY_OFFSET(v3d) (OVERLAY_RETOPOLOGY_OFFSET((v3d)->overlay))
@@ -1370,7 +1370,7 @@ void ED_view3d_buttons_region_layout_ex(const struct bContext *C,
                                         struct ARegion *region,
                                         const char *category_override);
 
-/* view3d_view.c */
+/* `view3d_view.cc` */
 
 /**
  * See if current UUID is valid, otherwise set a valid UUID to v3d,

@@ -505,7 +505,7 @@ enum {
 
 /** #ImageFormatData::flag */
 enum {
-  R_IMF_FLAG_ZBUF = 1 << 0,
+  // R_IMF_FLAG_ZBUF = 1 << 0, /* DEPRECATED, and cleared. */
   R_IMF_FLAG_PREVIEW_JPG = 1 << 1,
 };
 
@@ -1872,7 +1872,8 @@ typedef struct SceneEEVEE {
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
-  char light_cache_info[64];
+  /* Need a 128 byte string for some translations of some messages. */
+  char light_cache_info[128];
 
   float overscan;
   float light_threshold;
@@ -2307,11 +2308,8 @@ typedef enum eSnapFlag {
   SCE_SNAP_TO_INCLUDE_NONEDITED = (1 << 9),
   SCE_SNAP_TO_ONLY_SELECTABLE = (1 << 10),
 } eSnapFlag;
-/* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
-/* TODO: move this macro to a more general place. */
-#ifdef ENUM_OPERATORS
-ENUM_OPERATORS(eSnapFlag, SCE_SNAP_BACKFACE_CULLING)
-#endif
+
+ENUM_OPERATORS(eSnapFlag, SCE_SNAP_TO_ONLY_SELECTABLE)
 
 /** See #ToolSettings::snap_target (to be renamed `snap_source`) and #TransSnap.source_operation */
 typedef enum eSnapSourceOP {
@@ -2543,7 +2541,7 @@ typedef enum eSculptFlags {
   // SCULPT_SHOW_DIFFUSE = (1 << 9), /* deprecated */
 
   /** If set, the mesh will be drawn with smooth-shading in dynamic-topology mode. */
-  SCULPT_DYNTOPO_SMOOTH_SHADING = (1 << 10),
+  SCULPT_FLAG_UNUSED_8 = (1 << 10), /* deprecated */
 
   /** If set, dynamic-topology brushes will subdivide short edges. */
   SCULPT_DYNTOPO_SUBDIVIDE = (1 << 12),

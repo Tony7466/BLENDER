@@ -12,7 +12,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "AS_asset_representation.h"
+#include "AS_asset_representation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
@@ -88,7 +88,7 @@
 #include "DEG_depsgraph_build.h"
 
 #include "view3d_intern.h" /* own include */
-#include "view3d_navigate.h"
+#include "view3d_navigate.hh"
 
 /* ******************** manage regions ********************* */
 
@@ -216,7 +216,7 @@ void ED_view3d_stop_render_preview(wmWindowManager *wm, ARegion *region)
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
-  if (rv3d->render_engine) {
+  if (rv3d->view_render) {
 #ifdef WITH_PYTHON
     BPy_BEGIN_ALLOW_THREADS;
 #endif
@@ -227,8 +227,8 @@ void ED_view3d_stop_render_preview(wmWindowManager *wm, ARegion *region)
     BPy_END_ALLOW_THREADS;
 #endif
 
-    RE_engine_free(rv3d->render_engine);
-    rv3d->render_engine = nullptr;
+    RE_FreeViewRender(rv3d->view_render);
+    rv3d->view_render = nullptr;
   }
 
   /* A bit overkill but this make sure the viewport is reset completely. (fclem) */
@@ -502,7 +502,7 @@ static ID_Type view3d_drop_id_in_main_region_poll_get_id_type(bContext *C,
 
   wmDragAsset *asset_drag = WM_drag_get_asset_data(drag, 0);
   if (asset_drag) {
-    return AS_asset_representation_id_type_get(asset_drag->asset);
+    return asset_drag->asset->get_id_type();
   }
 
   return ID_Type(0);
@@ -737,7 +737,7 @@ static bool view3d_geometry_nodes_drop_poll(bContext *C, wmDrag *drag, const wmE
     if (!asset_data) {
       return false;
     }
-    const AssetMetaData *metadata = AS_asset_representation_metadata_get(asset_data->asset);
+    const AssetMetaData *metadata = &asset_data->asset->get_metadata();
     const IDProperty *tree_type = BKE_asset_metadata_idprop_find(metadata, "type");
     if (!tree_type || IDP_Int(tree_type) != NTREE_GEOMETRY) {
       return false;
@@ -806,7 +806,7 @@ static void view3d_ob_drop_copy_local_id(bContext * /*C*/, wmDrag *drag, wmDropB
 
 /* Mostly the same logic as #view3d_collection_drop_copy_external_asset(), just different enough to
  * make sharing code a bit difficult. */
-static void view3d_ob_drop_copy_external_asset(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void view3d_ob_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
   /* NOTE(@ideasman42): Selection is handled here, de-selecting objects before append,
    * using auto-select to ensure the new objects are selected.
@@ -815,13 +815,12 @@ static void view3d_ob_drop_copy_external_asset(bContext * /*C*/, wmDrag *drag, w
   BLI_assert(drag->type == WM_DRAG_ASSET);
 
   wmDragAsset *asset_drag = WM_drag_get_asset_data(drag, 0);
-  bContext *C = asset_drag->evil_C;
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
-  ID *id = WM_drag_asset_id_import(asset_drag, FILE_AUTOSELECT);
+  ID *id = WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT);
 
   /* TODO(sergey): Only update relations for the current scene. */
   DEG_relations_tag_update(CTX_data_main(C));
@@ -856,20 +855,17 @@ static void view3d_collection_drop_copy_local_id(bContext * /*C*/, wmDrag *drag,
 
 /* Mostly the same logic as #view3d_ob_drop_copy_external_asset(), just different enough to make
  * sharing code a bit difficult. */
-static void view3d_collection_drop_copy_external_asset(bContext * /*C*/,
-                                                       wmDrag *drag,
-                                                       wmDropBox *drop)
+static void view3d_collection_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
   BLI_assert(drag->type == WM_DRAG_ASSET);
 
   wmDragAsset *asset_drag = WM_drag_get_asset_data(drag, 0);
-  bContext *C = asset_drag->evil_C;
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
-  ID *id = WM_drag_asset_id_import(asset_drag, FILE_AUTOSELECT);
+  ID *id = WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT);
   Collection *collection = (Collection *)id;
 
   /* TODO(sergey): Only update relations for the current scene. */
@@ -895,24 +891,24 @@ static void view3d_collection_drop_copy_external_asset(bContext * /*C*/,
   ED_undo_push(C, "Collection_Drop");
 }
 
-static void view3d_id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void view3d_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
 }
 
-static void view3d_id_drop_copy_with_type(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void view3d_id_drop_copy_with_type(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   RNA_enum_set(drop->ptr, "type", GS(id->name));
   WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
 }
 
-static void view3d_id_path_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void view3d_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   if (id) {
     WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
@@ -1082,8 +1078,8 @@ static void view3d_main_region_free(ARegion *region)
       MEM_freeN(rv3d->clipbb);
     }
 
-    if (rv3d->render_engine) {
-      RE_engine_free(rv3d->render_engine);
+    if (rv3d->view_render) {
+      RE_FreeViewRender(rv3d->view_render);
     }
 
     if (rv3d->sms) {
@@ -1110,7 +1106,7 @@ static void *view3d_main_region_duplicate(void *poin)
       new_rv3d->clipbb = static_cast<BoundBox *>(MEM_dupallocN(rv3d->clipbb));
     }
 
-    new_rv3d->render_engine = nullptr;
+    new_rv3d->view_render = nullptr;
     new_rv3d->sms = nullptr;
     new_rv3d->smooth_timer = nullptr;
 
@@ -1179,7 +1175,7 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
           break;
         case ND_OB_ACTIVE:
         case ND_OB_SELECT:
-          ATTR_FALLTHROUGH;
+          [[fallthrough]];
         case ND_FRAME:
         case ND_TRANSFORM:
         case ND_OB_VISIBLE:

@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -278,7 +278,7 @@ static void rna_PoseChannel_rotation_mode_set(PointerRNA *ptr, int value)
 
   /* use API Method for conversions... */
   BKE_rotMode_change_values(
-      pchan->quat, pchan->eul, pchan->rotAxis, &pchan->rotAngle, pchan->rotmode, (short)value);
+      pchan->quat, pchan->eul, pchan->rotAxis, &pchan->rotAngle, pchan->rotmode, short(value));
 
   /* finally, set the new rotation type */
   pchan->rotmode = value;
@@ -651,20 +651,13 @@ static bConstraint *rna_PoseChannel_constraints_copy(ID *id,
 }
 
 bool rna_PoseChannel_constraints_override_apply(Main *bmain,
-                                                PointerRNA *ptr_dst,
-                                                PointerRNA *ptr_src,
-                                                PointerRNA * /*ptr_storage*/,
-                                                PropertyRNA *prop_dst,
-                                                PropertyRNA * /*prop_src*/,
-                                                PropertyRNA * /*prop_storage*/,
-                                                const int /*len_dst*/,
-                                                const int /*len_src*/,
-                                                const int /*len_storage*/,
-                                                PointerRNA * /*ptr_item_dst*/,
-                                                PointerRNA * /*ptr_item_src*/,
-                                                PointerRNA * /*ptr_item_storage*/,
-                                                IDOverrideLibraryPropertyOperation *opop)
+                                                RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PointerRNA *ptr_src = &rnaapply_ctx.ptr_src;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
              "Unsupported RNA override operation on constraints collection");
 
@@ -1117,7 +1110,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Rotation Mode", "");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
 
-  /* Curved bones settings - Applied on top of restpose values */
+  /* Curved bones settings - Applied on top of rest-pose values. */
   rna_def_bone_curved_common(srna, true, false);
 
   /* Custom BBone next/prev sources */

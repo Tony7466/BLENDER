@@ -12,6 +12,7 @@
 #include "BLI_compiler_compat.h"
 #ifdef __cplusplus
 #  include "BLI_array.hh"
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
 #endif
 #include "BLI_utildefines.h"
@@ -21,6 +22,8 @@
 
 #include "BKE_attribute.h"
 #include "BKE_pbvh.h"
+
+#include "bmesh.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -223,7 +226,7 @@ bool BKE_paint_always_hide_test(struct Object *ob);
 /**
  * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
  */
-bool paint_is_face_hidden(const int *looptri_polys, const bool *hide_poly, int tri_index);
+bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, int tri_index);
 /**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
@@ -245,7 +248,8 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 bool paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups,
                                    struct Brush *brush,
                                    const float mouse_pos[2],
-                                   ePaintMode paint_mode);
+                                   ePaintMode paint_mode,
+                                   bool stroke_has_started);
 void paint_update_brush_rake_rotation(struct UnifiedPaintSettings *ups,
                                       struct Brush *brush,
                                       float rotation);
@@ -284,9 +288,9 @@ struct SculptVertexPaintGeomMap {
   blender::Array<int> vert_to_loop_indices;
   blender::GroupedSpan<int> vert_to_loop;
 
-  blender::Array<int> vert_to_poly_offsets;
-  blender::Array<int> vert_to_poly_indices;
-  blender::GroupedSpan<int> vert_to_poly;
+  blender::Array<int> vert_to_face_offsets;
+  blender::Array<int> vert_to_face_indices;
+  blender::GroupedSpan<int> vert_to_face;
 };
 #endif
 
@@ -591,12 +595,12 @@ typedef struct SculptSession {
   struct Depsgraph *depsgraph;
 
   /* These are always assigned to base mesh data when using PBVH_FACES and PBVH_GRIDS. */
-  float (*vert_positions)[3];
-  blender::OffsetIndices<int> polys;
+  blender::MutableSpan<blender::float3> vert_positions;
+  blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
 
   /* These contain the vertex and poly counts of the final mesh. */
-  int totvert, totpoly;
+  int totvert, faces_num;
 
   struct KeyBlock *shapekey_active;
   struct MPropCol *vcol;
@@ -608,14 +612,14 @@ typedef struct SculptSession {
   float *vmask;
 
   /* Mesh connectivity maps. */
-  /* Vertices to adjacent polys. */
-  blender::Array<int> vert_to_poly_offsets;
-  blender::Array<int> vert_to_poly_indices;
+  /* Vertices to adjacent faces. */
+  blender::Array<int> vert_to_face_offsets;
+  blender::Array<int> vert_to_face_indices;
   blender::GroupedSpan<int> pmap;
 
-  /* Edges to adjacent polys. */
-  blender::Array<int> edge_to_poly_offsets;
-  blender::Array<int> edge_to_poly_indices;
+  /* Edges to adjacent faces. */
+  blender::Array<int> edge_to_face_offsets;
+  blender::Array<int> edge_to_face_indices;
   blender::GroupedSpan<int> epmap;
 
   /* Vertices to adjacent edges. */
@@ -624,7 +628,7 @@ typedef struct SculptSession {
   blender::GroupedSpan<int> vemap;
 
   /* Mesh Face Sets */
-  /* Total number of polys of the base mesh. */
+  /* Total number of faces of the base mesh. */
   int totfaces;
 
   /* The 0 ID is not used by the tools or the visibility system, it is just used when creating new
@@ -633,14 +637,13 @@ typedef struct SculptSession {
    * to 0. */
   int *face_sets;
   /**
-   * A reference to the ".hide_poly" attribute, to store whether (base) polygons are hidden.
+   * A reference to the ".hide_poly" attribute, to store whether (base) faces are hidden.
    * May be null.
    */
   bool *hide_poly;
 
   /* BMesh for dynamic topology sculpting */
   struct BMesh *bm;
-  bool bm_smooth_shading;
   /* Undo/redo log for dynamic topology sculpting */
   struct BMLog *bm_log;
 
@@ -935,7 +938,6 @@ bool BKE_object_attributes_active_color_fill(struct Object *ob,
 /** C accessor for #Object::sculpt::pbvh. */
 struct PBVH *BKE_object_sculpt_pbvh_get(struct Object *object);
 bool BKE_object_sculpt_use_dyntopo(const struct Object *object);
-void BKE_object_sculpt_dyntopo_smooth_shading_set(struct Object *object, bool value);
 
 /* paint_canvas.cc */
 

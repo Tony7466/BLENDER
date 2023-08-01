@@ -101,6 +101,7 @@ enum eSamplingDimension : uint32_t {
   SAMPLING_RAYTRACE_X = 18u,
   SAMPLING_AO_U = 19u,
   SAMPLING_AO_V = 20u,
+  SAMPLING_CURVES_U = 21u,
 };
 
 /**
@@ -326,8 +327,8 @@ struct AOVsInfoData {
   uint4 hash_value[AOV_MAX];
   uint4 hash_color[AOV_MAX];
   /* Length of used data. */
-  uint color_len;
-  uint value_len;
+  int color_len;
+  int value_len;
   /** Id of the AOV to be displayed (from the start of the AOV array). -1 for combined. */
   int display_id;
   /** True if the AOV to be displayed is from the value accumulation buffer. */
@@ -921,6 +922,11 @@ struct IrradianceGridData {
   packed_int3 grid_size;
   /** Index in brick descriptor list of the first brick of this grid. */
   int brick_offset;
+  /** Biases to apply to the shading point in order to sample a valid probe. */
+  float normal_bias;
+  float view_bias;
+  float facing_bias;
+  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(IrradianceGridData, 16)
 
@@ -966,6 +972,7 @@ BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
  * \{ */
 
 enum eClosureBits : uint32_t {
+  CLOSURE_NONE = 0u,
   /** NOTE: These are used as stencil bits. So we are limited to 8bits. */
   CLOSURE_DIFFUSE = (1u << 0u),
   CLOSURE_SSS = (1u << 1u),
@@ -982,7 +989,7 @@ enum eClosureBits : uint32_t {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Ambient Occlussion
+/** \name Ambient Occlusion
  * \{ */
 
 struct AOData {
@@ -1023,6 +1030,45 @@ BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Reflection Probes
+ * \{ */
+
+/** Mapping data to locate a reflection probe in texture. */
+struct ReflectionProbeData {
+  /**
+   * Position of the light probe in world space.
+   * World probe uses origin.
+   *
+   * 4th component is not used.
+   */
+  float4 pos;
+
+  /** On which layer of the texture array is this reflection probe stored. */
+  int layer;
+
+  /**
+   * Subdivision of the layer. 0 = no subdivision and resolution would be
+   * ReflectionProbeModule::MAX_RESOLUTION.
+   */
+  int layer_subdivision;
+
+  /**
+   * Which area of the subdivided layer is the reflection probe located.
+   *
+   * A layer has (2^layer_subdivision)^2 areas.
+   */
+  int area_index;
+
+  /**
+   * LOD factor for mipmap selection.
+   */
+  float lod_factor;
+};
+BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility Texture
  * \{ */
 
@@ -1054,6 +1100,14 @@ float4 utility_tx_sample(sampler2DArray util_tx, float2 uv, float layer)
 {
   return textureLod(util_tx, float3(uv, layer), 0.0);
 }
+
+/* Sample at uv position but with scale and bias so that uv space bounds lie on texel centers. */
+float4 utility_tx_sample_lut(sampler2DArray util_tx, float2 uv, float layer)
+{
+  /* Scale and bias coordinates, for correct filtered lookup. */
+  uv = uv * ((UTIL_TEX_SIZE - 1.0) / UTIL_TEX_SIZE) + (0.5 / UTIL_TEX_SIZE);
+  return textureLod(util_tx, float3(uv, layer), 0.0);
+}
 #endif
 
 /** \} */
@@ -1078,6 +1132,8 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
+using ReflectionProbeDataBuf =
+    draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

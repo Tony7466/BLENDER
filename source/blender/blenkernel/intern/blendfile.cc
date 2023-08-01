@@ -9,8 +9,8 @@
  * and functions for writing *partial* files (only selected data-blocks).
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -142,6 +142,18 @@ bool BKE_blendfile_library_path_explode(const char *path,
   return true;
 }
 
+bool BKE_blendfile_is_readable(const char *path, ReportList *reports)
+{
+  BlendFileReadReport readfile_reports;
+  readfile_reports.reports = reports;
+  BlendHandle *bh = BLO_blendhandle_from_file(path, &readfile_reports);
+  if (bh != nullptr) {
+    BLO_blendhandle_close(bh);
+    return true;
+  }
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -152,12 +164,12 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
                                                     const short versionfile,
                                                     const short subversionfile)
 {
-  if (!MAIN_VERSION_ATLEAST(bmain, versionfile, subversionfile)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, versionfile, subversionfile)) {
     return false;
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_ATLEAST(library, versionfile, subversionfile)) {
+    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
       return false;
     }
   }
@@ -247,7 +259,8 @@ struct ReuseOldBMainData {
   IDNameLib_Map *id_map;
 };
 
-/** Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
+/**
+ * Search for all libraries in `old_bmain` that are also in `new_bmain` (i.e. different Library
  * IDs having the same absolute filepath), and create a remapping rule for these.
  *
  * NOTE: The case where the `old_bmain` would be a library in the newly read one is not handled
@@ -336,15 +349,10 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
 
   SWAP(ListBase, *new_lb, *old_lb);
 
-  /* Since all IDs here are supposed to be local, no need to call #BKE_main_namemap_clear. */
   /* TODO: Could add per-IDType control over namemaps clearing, if this becomes a performances
    * concern. */
-  if (old_bmain->name_map != nullptr) {
-    BKE_main_namemap_destroy(&old_bmain->name_map);
-  }
-  if (new_bmain->name_map != nullptr) {
-    BKE_main_namemap_destroy(&new_bmain->name_map);
-  }
+  BKE_main_namemap_clear(old_bmain);
+  BKE_main_namemap_clear(new_bmain);
 
   /* Original 'new' IDs have been moved into the old listbase and will be discarded (deleted).
    * Original 'old' IDs have been moved into the new listbase and are being reused (kept).
@@ -540,7 +548,8 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
   return IDWALK_RET_NOP;
 }
 
-/** Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
+/**
+ * Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
  */
 static void reuse_bmain_data_invalid_local_usages_fix(ReuseOldBMainData *reuse_data)
 {
@@ -1311,7 +1320,7 @@ bool BKE_blendfile_userdef_write_all(ReportList *reports)
 
   if (use_template_userpref) {
     if ((cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, U.app_template))) {
-      /* Also save app-template prefs */
+      /* Also save app-template preferences. */
       BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_USERPREF_FILE);
 
       printf("Writing userprefs app-template: \"%s\" ", filepath);

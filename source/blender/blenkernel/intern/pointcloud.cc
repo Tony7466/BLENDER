@@ -64,11 +64,8 @@ static void pointcloud_init_data(ID *id)
   MEMCPY_STRUCT_AFTER(pointcloud, DNA_struct_default_get(PointCloud), id);
 
   CustomData_reset(&pointcloud->pdata);
-  CustomData_add_layer_named(&pointcloud->pdata,
-                             CD_PROP_FLOAT3,
-                             CD_CONSTRUCT,
-                             pointcloud->totpoint,
-                             POINTCLOUD_ATTR_POSITION);
+  pointcloud->attributes_for_write().add<float3>(
+      "position", ATTR_DOMAIN_POINT, blender::bke::AttributeInitConstruct());
 
   pointcloud->runtime = new blender::bke::PointCloudRuntime();
 }
@@ -342,8 +339,8 @@ static void pointcloud_evaluate_modifiers(Depsgraph *depsgraph,
 
   /* Get effective list of modifiers to execute. Some effects like shape keys
    * are added as virtual modifiers before the user created modifiers. */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtual_modifier_data);
 
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
@@ -355,8 +352,8 @@ static void pointcloud_evaluate_modifiers(Depsgraph *depsgraph,
 
     blender::bke::ScopedModifierTimer modifier_timer{*md};
 
-    if (mti->modifyGeometrySet) {
-      mti->modifyGeometrySet(md, &mectx, &geometry_set);
+    if (mti->modify_geometry_set) {
+      mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
   }
 }

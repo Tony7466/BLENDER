@@ -168,7 +168,7 @@ void ShaderCache::wait_for_all()
   }
 }
 
-void ShaderCache::compile_thread_func(int thread_index)
+void ShaderCache::compile_thread_func(int /*thread_index*/)
 {
   while (running) {
 
@@ -293,15 +293,13 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
        * limit. */
       int max_mtlcompiler_threads = 2;
 
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wobjc-method-access"
-      /* Note: Disable warning for missing method when building on older OS's. Compiled code will
-       * still work correctly when run on a system with the API available. */
+#  if defined(MAC_OS_VERSION_13_3)
       if (@available(macOS 13.3, *)) {
         /* Subtract one to avoid contention with the real-time GPU module. */
-        max_mtlcompiler_threads = max(2, [mtlDevice maximumConcurrentCompilationTaskCount] - 1);
+        max_mtlcompiler_threads = max(2,
+                                      int([mtlDevice maximumConcurrentCompilationTaskCount]) - 1);
       }
-#  pragma clang diagnostic pop
+#  endif
 
       metal_printf("Spawning %d Cycles kernel compilation threads\n", max_mtlcompiler_threads);
       for (int i = 0; i < max_mtlcompiler_threads; i++) {
@@ -713,7 +711,7 @@ void MetalKernelPipeline::compile()
           newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
                                         options:pipelineOptions
                               completionHandler:^(id<MTLComputePipelineState> computePipelineState,
-                                                  MTLComputePipelineReflection *reflection,
+                                                  MTLComputePipelineReflection * /*reflection*/,
                                                   NSError *error) {
                                 pipeline = computePipelineState;
 

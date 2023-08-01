@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "BKE_dynamicpaint.h"
 #include "BKE_modifier.h"
@@ -308,7 +308,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 
   /*  Surface format */
   static const EnumPropertyItem prop_dynamicpaint_surface_format[] = {
-      /*{MOD_DPAINT_SURFACE_F_PTEX, "PTEX", ICON_TEXTURE_SHADED, "Ptex", ""}, */
+      // {MOD_DPAINT_SURFACE_F_PTEX, "PTEX", ICON_TEXTURE_SHADED, "Ptex", ""},
       {MOD_DPAINT_SURFACE_F_VERTEX, "VERTEX", ICON_OUTLINER_DATA_MESH, "Vertex", ""},
       {MOD_DPAINT_SURFACE_F_IMAGESEQ, "IMAGE", ICON_FILE_IMAGE, "Image Sequence", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -633,7 +633,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
   parm = RNA_def_int(func, "index", 0, 0, 1, "Index", "", 0, 1);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
-  parm = RNA_def_boolean(func, "exists", 0, "", "");
+  parm = RNA_def_boolean(func, "exists", false, "", "");
   RNA_def_function_return(func, parm);
 
   prop = RNA_def_property(srna, "depth_clamp", PROP_FLOAT, PROP_NONE);
