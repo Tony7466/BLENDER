@@ -981,7 +981,7 @@ static void do_lasso_select_mesh__doSelectEdge_pass1(void *user_data,
   }
 }
 
-static void do_lasso_select_mesh__doSelectFaceCenter(void *userData,
+static void do_lasso_select_mesh__doSelectFace(void *userData,
                                                BMFace *efa,
                                                const float screen_co[2],
                                                int /*index*/)
@@ -4065,58 +4065,6 @@ static void do_mesh_box_select__doSelectEdge_pass1(
 
 static void do_mesh_box_select__doSelectFace(void *userData,
                                              BMFace *efa,
-                                             const float screen_co[][2],
-                                             int total_count,
-                                             rctf *screen_rect,
-                                             bool *face_hit)
-{
-  BoxSelectUserData *data = static_cast<BoxSelectUserData *>(userData);
-  int style = data->face_style;
-
-  if (!BLI_rctf_isect(data->rect_fl, screen_rect, NULL))
-    return;
-
-  bool inside = false;
-  for (int i = 0; i < total_count; i++) {
-
-    int a = i;
-    int b = (i + 1) % total_count;
-
-    /* enclose */
-    if (style == 4) {
-      inside = edge_fully_inside_rect(data->rect_fl, screen_co[a], screen_co[b]);
-      if (!inside) {
-        break;
-      }
-    }
-    /* touch */
-    else {
-      inside = edge_inside_rect(data->rect_fl, screen_co[a], screen_co[b]);
-      if (inside) {
-        break;
-      }
-    }
-  }
-
-  /* touch interior of face */
-  if (style == 2 && !inside) {
-    float point[2] = {data->rect_fl->xmax, data->rect_fl->ymax};
-    inside = isect_point_poly_v2(point, screen_co, total_count, true);
-  }
-
-  *face_hit = inside;
-
-  const bool is_select = BM_elem_flag_test(efa, BM_ELEM_SELECT);
-  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, inside);
-
-  if (sel_op_result != -1) {
-    BM_face_select_set(data->vc->em->bm, efa, sel_op_result);
-    data->is_changed = true;
-  }
-}
-
-static void do_mesh_box_select__doSelectFaceCenter(void *userData,
-                                             BMFace *efa,
                                              const float screen_co[2],
                                              int /*index*/)
 {
@@ -4782,62 +4730,14 @@ static void mesh_circle_doSelectEdge(void *userData,
                                      int /*index*/)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
-  bool enclose_edge = true;
 
   if (edge_inside_circle(data->mval_fl, data->radius, screen_co_a, screen_co_b)) {
-    if (data->edge_style == 4) {
-      enclose_edge = edbm_circle_enclose_mesh(eed, NULL, data);
-    }
-
-    if (enclose_edge) {
-      BM_edge_select_set(data->vc->em->bm, eed, data->select);
-      data->is_changed = true;
-    }
-  }
-}
-
-static void mesh_circle_doSelectFace(void *userData,
-                                     BMFace *efa,
-                                     const float screen_co[][2],
-                                     int total_count,
-                                     rctf *screen_rect,
-                                     bool *face_hit)
-{
-  CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
-  bool enclose_face = true;
-
-  if (!BLI_rctf_isect_circle(screen_rect, data->mval_fl, data->radius)) {
-    return;
-  }
-
-  bool inside = false;
-  for (int i = 0; i < total_count; i++) {
-
-    int a = i;
-    int b = (i + 1) % total_count;
-
-    inside = edge_inside_circle(data->mval_fl, data->radius, screen_co[a], screen_co[b]);
-    if (inside)
-      break;
-  }
-
-  if (!inside) {
-    inside = isect_point_poly_v2(data->mval_fl, screen_co, total_count, true);
-  }
-
-  *face_hit = inside;
-  
-  if (data->face_style == 4 && inside) {
-    enclose_face = edbm_circle_enclose_mesh(NULL, efa, data);
-  }
-
-  if (inside && enclose_face) {
-    BM_face_select_set(data->vc->em->bm, efa, data->select);
+    BM_edge_select_set(data->vc->em->bm, eed, data->select);
     data->is_changed = true;
   }
 }
 
-static void mesh_circle_doSelectFaceCenter(void *userData,
+static void mesh_circle_doSelectFace(void *userData,
                                      BMFace *efa,
                                      const float screen_co[2],
                                      int /*index*/)
