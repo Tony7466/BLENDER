@@ -779,8 +779,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
   const int frame_number = ac->scene->r.cfra;
 
-  const GreasePencilFrame *current_frame = layer->frames().lookup_ptr(frame_number);
-  if (current_frame != nullptr) {
+  if (layer->frames().contains(frame_number)) {
     /* A frame already exists at the current frame number. */
     return;
   }
