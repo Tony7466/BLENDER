@@ -109,7 +109,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         break;
       }
     }
-    /* TODO: Update drawing user counts. */
   }
 
   /* Duplicate layer tree. */
@@ -606,7 +605,7 @@ Layer::SortedKeysIterator Layer::remove_leading_null_frames_in_range(
 {
   Layer::SortedKeysIterator next_it = begin;
   while (next_it != end && this->frames().lookup(*next_it).is_null()) {
-    this->frames_for_write().remove(*next_it);
+    this->frames_for_write().remove_contained(*next_it);
     this->tag_frames_map_keys_changed();
     next_it = std::next(next_it);
   }
@@ -619,7 +618,7 @@ GreasePencilFrame *Layer::add_frame_internal(const int frame_number, const int d
   if (!this->frames().contains(frame_number)) {
     GreasePencilFrame frame{};
     frame.drawing_index = drawing_index;
-    this->frames_for_write().add(frame_number, frame);
+    this->frames_for_write().add_new(frame_number, frame);
     this->tag_frames_map_keys_changed();
     return this->frames_for_write().lookup_ptr(frame_number);
   }
@@ -662,7 +661,7 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
   /* If the next frame comes after the end of the frame we're inserting (or if there are no more
    * frames), add a null-frame. */
   if (next_frame_number_it == sorted_keys.end() || *next_frame_number_it > end_frame_number) {
-    this->frames_for_write().add(end_frame_number, GreasePencilFrame::null());
+    this->frames_for_write().add_new(end_frame_number, GreasePencilFrame::null());
     this->tag_frames_map_keys_changed();
   }
   return frame;
@@ -675,7 +674,7 @@ bool Layer::remove_frame(const int start_frame_number)
     return false;
   }
   if (this->frames().size() == 1) {
-    this->frames_for_write().remove(start_frame_number);
+    this->frames_for_write().remove_contained(start_frame_number);
     this->tag_frames_map_keys_changed();
     return true;
   }
@@ -702,7 +701,7 @@ bool Layer::remove_frame(const int start_frame_number)
     }
   }
   /* Finally, remove the actual frame. */
-  this->frames_for_write().remove(start_frame_number);
+  this->frames_for_write().remove_contained(start_frame_number);
   this->tag_frames_map_keys_changed();
   return true;
 }
@@ -1384,8 +1383,6 @@ void GreasePencil::add_empty_drawings(const int add_num)
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<blender::bke::greasepencil::Drawing>(__func__));
   }
-
-  /* TODO: Update drawing user counts. */
 }
 
 bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
@@ -1401,6 +1398,32 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   frame->type = int8_t(keytype);
   this->add_empty_drawings(1);
   return true;
+}
+
+void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer,
+                                   const int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  if (!layer.frames().contains(frame_number)) {
+    return;
+  }
+  const GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
+  const int drawing_index_to_remove = frame_to_remove.drawing_index;
+  if (!layer.remove_frame(frame_number)) {
+    /* If removing the frame was not successful, return early. */
+    return;
+  }
+  GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
+  if (drawing_base->type != GP_DRAWING) {
+    /* If the drawing is referenced from another object, we don't track it's users because we
+     * cannot delete drawings from another object. Return early. */
+    return;
+  }
+  Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+  drawing.remove_user();
+  if (!drawing.has_users()) {
+    this->remove_drawing(drawing_index_to_remove);
+  }
 }
 
 void GreasePencil::remove_drawing(const int index_to_remove)
@@ -1894,8 +1917,8 @@ static void read_layer(BlendDataReader *reader,
   /* Re-create frames data in runtime map. */
   node->wrap().runtime = MEM_new<blender::bke::greasepencil::LayerRuntime>(__func__);
   for (int i = 0; i < node->frames_storage.num; i++) {
-    node->wrap().frames_for_write().add(node->frames_storage.keys[i],
-                                        node->frames_storage.values[i]);
+    node->wrap().frames_for_write().add_new(node->frames_storage.keys[i],
+                                            node->frames_storage.values[i]);
   }
 
   /* Read layer masks. */

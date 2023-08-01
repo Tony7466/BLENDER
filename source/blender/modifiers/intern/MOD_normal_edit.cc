@@ -319,10 +319,7 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix &&
-      faces_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->loop_data, faces, mesh->face_normals()))
-  {
+  if (do_facenors_fix && faces_check_flip(*mesh, nos.data(), mesh->face_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
   const bool *sharp_faces = static_cast<const bool *>(
@@ -427,10 +424,7 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix &&
-      faces_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->loop_data, faces, mesh->face_normals()))
-  {
+  if (do_facenors_fix && faces_check_flip(*mesh, nos.data(), mesh->face_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
   const bool *sharp_faces = static_cast<const bool *>(
