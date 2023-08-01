@@ -1429,7 +1429,7 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
 
   duplicate_frame->type = frame.type;
 
-  const GreasePencilDrawingBase *drawing_base = this->drawings()[frame.drawing_index];
+  const GreasePencilDrawingBase *drawing_base = this->drawings(frame.drawing_index);
   BLI_assert_msg((drawing_base->type == GP_DRAWING),
                  "Drawing references cannot be duplicated yet.");
   const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
