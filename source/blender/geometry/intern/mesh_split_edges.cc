@@ -202,16 +202,17 @@ static Array<Vector<CornerFan>> calc_all_corner_fans(const OffsetIndices<int> fa
                                                      const BitSpan split_edges,
                                                      const IndexMask &affected_verts)
 {
-  Array<Vector<Vector<int>>> corner_fans(affected_verts.size()); /* TODO: Use NoInitialization() */
+  Array<Vector<CornerFan>> corner_fans(affected_verts.size(), NoInitialization());
   affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
-    corner_fans[mask] = calc_corner_fans_for_vertex(faces,
-                                                    corner_verts,
-                                                    corner_edges,
-                                                    edge_to_corner_map,
-                                                    corner_to_face_map,
-                                                    split_edges,
-                                                    vert_to_corner_map[vert],
-                                                    vert);
+    new (&corner_fans[mask])
+        Vector<CornerFan>(calc_corner_fans_for_vertex(faces,
+                                                      corner_verts,
+                                                      corner_edges,
+                                                      edge_to_corner_map,
+                                                      corner_to_face_map,
+                                                      split_edges,
+                                                      vert_to_corner_map[vert],
+                                                      vert));
   });
   return corner_fans;
 }
