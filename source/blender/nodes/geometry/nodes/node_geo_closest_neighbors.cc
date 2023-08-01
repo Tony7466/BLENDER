@@ -138,11 +138,12 @@ static void find_closest_neighbors(const IndexMask &mask,
             data.target_normals.pop_last();
             data.target_distances.pop_last();
           }
-          data.source_indices.insert(index, (int)source_i);
-          data.target_indices.insert(index, target_i);
-          data.target_positions.insert(index, nearest.co);
-          data.target_normals.insert(index, nearest.no);
-          data.target_distances.insert(index, nearest.dist_sq);
+          const int64_t global_index = first_neighbor + index; 
+          data.source_indices.insert(global_index, (int)source_i);
+          data.target_indices.insert(global_index, target_i);
+          data.target_positions.insert(global_index, nearest.co);
+          data.target_normals.insert(global_index, nearest.no);
+          data.target_distances.insert(global_index, nearest.dist_sq);
         });
 
     /* Compute distances. */
@@ -154,10 +155,10 @@ static void find_closest_neighbors(const IndexMask &mask,
     /* Note: this is relative to the thread-local array,
      * final start index is computed when concatenating. */
     if (!r_first_neighbors.is_empty()) {
-      r_first_neighbors[source_i] = first_neighbor;
+      r_first_neighbors[source_i] = (int)full_range.start();
     }
     if (!r_neighbor_counts.is_empty()) {
-      r_neighbor_counts[source_i] = thread_storage.local().source_indices.size() - first_neighbor;
+      r_neighbor_counts[source_i] = (int)full_range.size();
     }
   });
 }
