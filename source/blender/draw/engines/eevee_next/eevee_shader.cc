@@ -402,28 +402,19 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
 
   std::stringstream vert_gen, frag_gen, comp_gen;
 
+  bool is_compute = pipeline_type == MAT_PIPE_VOLUME;
+
   if (do_vertex_attrib_load) {
     vert_gen << global_vars.str() << attr_load.str();
   }
-  else if (pipeline_type != MAT_PIPE_VOLUME) {
+  else if (!is_compute) {
     frag_gen << global_vars.str() << attr_load.str();
   }
   else {
     comp_gen << global_vars.str() << attr_load.str();
   }
 
-  if (pipeline_type == MAT_PIPE_VOLUME) {
-    comp_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
-
-    comp_gen << "Closure nodetree_volume()\n";
-    comp_gen << "{\n";
-    comp_gen << "  closure_weights_reset();\n";
-    comp_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
-    comp_gen << "}\n\n";
-
-    info.compute_source_generated = comp_gen.str();
-  }
-  else {
+  if (!is_compute) {
     if (!ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT)) {
       vert_gen << "vec3 nodetree_displacement()\n";
       vert_gen << "{\n";
@@ -432,8 +423,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     }
 
     info.vertex_source_generated = vert_gen.str();
+  }
 
-    /* Frag Gen. */
+  if (!is_compute) {
     frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
 
     if (codegen.displacement) {
@@ -459,6 +451,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << "}\n\n";
 
     info.fragment_source_generated = frag_gen.str();
+  }
+
+  if (is_compute) {
+    comp_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
+
+    comp_gen << "Closure nodetree_volume()\n";
+    comp_gen << "{\n";
+    comp_gen << "  closure_weights_reset();\n";
+    comp_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
+    comp_gen << "}\n\n";
+
+    info.compute_source_generated = comp_gen.str();
   }
 
   /* Geometry Info. */
