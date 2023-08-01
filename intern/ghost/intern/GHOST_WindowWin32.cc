@@ -289,7 +289,7 @@ GHOST_WindowWin32::~GHOST_WindowWin32()
     for (GHOST_IWindow *iter_win : m_system->getWindowManager()->getWindows()) {
       GHOST_WindowWin32 *iter_winwin = (GHOST_WindowWin32 *)iter_win;
       if (iter_winwin->m_parentWindowHwnd == m_hWnd) {
-        ::SetWindowLongPtr(iter_winwin->m_hWnd, GWLP_HWNDPARENT, nullptr);
+        ::SetWindowLongPtr(iter_winwin->m_hWnd, GWLP_HWNDPARENT, (void *)nullptr);
         iter_winwin->m_parentWindowHwnd = 0;
       }
     }
@@ -301,7 +301,7 @@ GHOST_WindowWin32::~GHOST_WindowWin32()
       m_dropTarget->Release();
       m_dropTarget = nullptr;
     }
-    ::SetWindowLongPtr(m_hWnd, GWLP_USERDATA, nullptr);
+    ::SetWindowLongPtr(m_hWnd, GWLP_USERDATA, (void *)nullptr);
     ::DestroyWindow(m_hWnd);
     m_hWnd = 0;
   }
