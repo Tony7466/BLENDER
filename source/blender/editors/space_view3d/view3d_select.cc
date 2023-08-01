@@ -4735,7 +4735,6 @@ static void mesh_circle_doSelectEdge(void *userData,
     data->is_changed = true;
   }
 }
-
 static void mesh_circle_doSelectFace(void *userData,
                                      BMFace *efa,
                                      const float screen_co[2],
