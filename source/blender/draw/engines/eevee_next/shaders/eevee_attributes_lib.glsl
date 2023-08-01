@@ -236,10 +236,6 @@ float attr_load_float(samplerBuffer cd_buf)
  * Per grid transform order is following loading order.
  * \{ */
 
-#  ifndef OBINFO_LIB
-#    error draw_object_infos is mandatory for volume objects
-#  endif
-
 vec3 g_lP = vec3(0.0);
 vec3 g_orco = vec3(0.0);
 int g_attr_id = 0;

@@ -119,6 +119,7 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
   inst_.volume.bind_properties_buffers(world_ps_);
+  inst_.sampling.bind_resources(&world_ps_);
 
   world_ps_.material_set(*inst_.manager, gpumat);
   volume_sub_pass(world_ps_, nullptr, nullptr, gpumat);
