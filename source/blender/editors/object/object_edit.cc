@@ -1944,7 +1944,7 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
   }
 
   char collection_name[MAX_NAME];
-  RNA_string_get(op->ptr, "collection_name", collection_name);
+  RNA_property_string_get(op->ptr, prop, collection_name);
 
   Collection *collection = find_colection_by_ui_name(scene->master_collection, collection_name);
 
@@ -2030,15 +2030,9 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
-enum eMoveToCollectionType { MOVE_TO_COLLECTION_DEFAULT, MOVE_TO_COLLECTION_LINKED };
 
-template<eMoveToCollectionType move_type>
-void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent)
+void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent, const char *opname)
 {
-
-  const char *opname = MOVE_TO_COLLECTION_DEFAULT == move_type ? "OBJECT_OT_move_to_collection" :
-                                                                 "OBJECT_OT_link_to_collection";
-
   wmOperatorType *ot = WM_operatortype_find(opname, false);
 
   PointerRNA ptr;
@@ -2059,28 +2053,37 @@ void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent)
                   nullptr);
 }
 
-template<eMoveToCollectionType move_type>
 void move_to_collection_menu_item(uiLayout *layout,
                                   Collection *collection,
+                                  const char *opname,
                                   const bool master_collection)
 {
-  const char *opname = MOVE_TO_COLLECTION_DEFAULT == move_type ? "OBJECT_OT_move_to_collection" :
-                                                                 "OBJECT_OT_link_to_collection";
-
   const int icon = master_collection ? ICON_SCENE_DATA : UI_icon_color_from_collection(collection);
-
   const char *name = BKE_collection_ui_name_get(collection);
   uiItemStringO(layout, name, icon, opname, "collection_name", name);
 }
+/**
+ * Enum used to specify the move operator that calls the recursive function
+ * #move_to_collection_menu_items which builds the menu and submenbus with #uiItemMenuF,
+ * used as template argument since we can't have additional parameters in
+ *#move_to_collection_menu_items
+ **/
+enum eMoveToCollectionType {
+  MTC_MOVE,
+  MTC_LINK,
+};
 
 template<eMoveToCollectionType move_type>
 void move_to_collection_menu_items(bContext *C, uiLayout *layout, void *arg)
 {
+  const char *opname = move_type == MTC_MOVE ? "OBJECT_OT_move_to_collection" :
+                                               "OBJECT_OT_link_to_collection";
+
   Collection *collection = static_cast<Collection *>(arg);
   const Scene *scene = CTX_data_scene(C);
   bool master_collection = scene->master_collection == collection;
 
-  move_to_collection_menu_item<move_type>(layout, collection, master_collection);
+  move_to_collection_menu_item(layout, collection, opname, master_collection);
 
   uiItemS(layout);
 
@@ -2093,10 +2096,9 @@ void move_to_collection_menu_items(bContext *C, uiLayout *layout, void *arg)
   if (collection->children.first) {
     uiItemS(layout);
   }
-  move_to_collection_menu_new_item<move_type>(layout, collection);
+  move_to_collection_menu_new_item(layout, collection, opname);
 }
 
-template<eMoveToCollectionType move_type>
 static int move_to_collection_menu(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -2110,13 +2112,18 @@ static int move_to_collection_menu(bContext *C, wmOperator *op)
 
   layout = UI_popup_menu_layout(pup);
   uiItemS(layout);
-  move_to_collection_menu_items<move_type>(C, layout, static_cast<void *>(master_collection));
+
+  if (STREQ(op->idname, "OBJECT_OT_move_to_collection")) {
+    move_to_collection_menu_items<MTC_MOVE>(C, layout, static_cast<void *>(master_collection));
+  }
+  else {
+    move_to_collection_menu_items<MTC_LINK>(C, layout, static_cast<void *>(master_collection));
+  }
 
   UI_popup_menu_end(C, pup);
   return OPERATOR_INTERFACE;
 }
 
-template<eMoveToCollectionType move_type>
 static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Scene *scene = CTX_data_scene(C);
@@ -2131,7 +2138,8 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
   PropertyRNA *prop;
   prop = RNA_struct_find_property(op->ptr, "collection_name");
   if (RNA_property_is_set(op->ptr, prop)) {
-    int collection_index = RNA_property_int_get(op->ptr, prop);
+    char collection_name[MAX_NAME];
+    RNA_property_string_get(op->ptr, prop, collection_name);
 
     if (RNA_boolean_get(op->ptr, "is_new")) {
       prop = RNA_struct_find_property(op->ptr, "new_collection_name");
@@ -2139,7 +2147,7 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
         char name[MAX_NAME];
         Collection *collection;
 
-        collection = BKE_collection_from_index(scene, collection_index);
+        collection = find_colection_by_ui_name(scene->master_collection, collection_name);
         BKE_collection_new_name_get(collection, name);
 
         RNA_property_string_set(op->ptr, prop, name);
@@ -2148,7 +2156,7 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
     }
     return move_to_collection_exec(C, op);
   }
-  return move_to_collection_menu<move_type>(C, op);
+  return move_to_collection_menu(C, op);
 }
 
 void OBJECT_OT_move_to_collection(wmOperatorType *ot)
@@ -2162,7 +2170,7 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = move_to_collection_exec;
-  ot->invoke = move_to_collection_invoke<MOVE_TO_COLLECTION_DEFAULT>;
+  ot->invoke = move_to_collection_invoke;
   ot->poll = move_to_collection_poll;
 
   /* flags */
@@ -2194,8 +2202,6 @@ void OBJECT_OT_link_to_collection(wmOperatorType *ot)
   ot->name = "Link to Collection";
   ot->description = "Link objects to a collection";
   ot->idname = "OBJECT_OT_link_to_collection";
-
-  ot->invoke = move_to_collection_invoke<MOVE_TO_COLLECTION_LINKED>;
 }
 
 /** \} */
