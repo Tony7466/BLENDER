@@ -259,18 +259,17 @@ class Layer : public ::GreasePencilLayer {
    */
   GreasePencilFrame *add_frame(int frame_number, int drawing_index, int duration = 0);
   /**
-   * Removes a frame with \a frame_number from the frames map. The \a frame_number is expected to
-   * be the first frame number of the frame.
+   * Removes a frame with \a start_frame_number from the frames map.
    *
    * Fails if the map does not contain a frame with \a frame_number or in the specific case where
    * the previous frame has a fixed duration (is not marked as an implicit hold) and the frame to
    * remove is a null frame.
    *
    * Will remove null frames after the frame to remove.
-   *
+   * \param start_frame_number: the first frame number of the frame to be removed.
    * \return true on success.
    */
-  bool remove_frame(int frame_number);
+  bool remove_frame(int start_frame_number);
 
   /**
    * Returns the sorted (start) frame numbers of the frames of this layer.

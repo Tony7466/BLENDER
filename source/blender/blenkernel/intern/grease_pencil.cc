@@ -667,21 +667,21 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
   return frame;
 }
 
-bool Layer::remove_frame(const int frame_number)
+bool Layer::remove_frame(const int start_frame_number)
 {
   /* If the frame number is not in the frames map, do nothing. */
-  if (!this->frames().contains(frame_number)) {
+  if (!this->frames().contains(start_frame_number)) {
     return false;
   }
   if (this->frames().size() == 1) {
-    this->frames_for_write().remove(frame_number);
+    this->frames_for_write().remove(start_frame_number);
     this->tag_frames_map_keys_changed();
     return true;
   }
   Span<int> sorted_keys = this->sorted_keys();
   /* Find the index of the frame to remove in the `sorted_keys` array. */
   auto remove_frame_number_it = std::lower_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
+      sorted_keys.begin(), sorted_keys.end(), start_frame_number);
   /* If there is a next frame: */
   if (std::next(remove_frame_number_it) != sorted_keys.end()) {
     auto next_frame_number_it = std::next(remove_frame_number_it);
@@ -694,12 +694,12 @@ bool Layer::remove_frame(const int frame_number)
     /* If the previous frame is not an implicit hold (e.g. it has a fixed duration) and it's not a
      * null frame, we cannot just delete the frame. We need to replace it with a null frame. */
     if (!prev_frame.is_implicit_hold() && !prev_frame.is_null()) {
-      this->frames_for_write().lookup(frame_number) = GreasePencilFrame::null();
+      this->frames_for_write().lookup(start_frame_number) = GreasePencilFrame::null();
       return false;
     }
   }
   /* Finally, remove the actual frame. */
-  this->frames_for_write().remove(frame_number);
+  this->frames_for_write().remove(start_frame_number);
   this->tag_frames_map_keys_changed();
   return true;
 }
