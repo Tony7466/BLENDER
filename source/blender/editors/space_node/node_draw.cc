@@ -3315,47 +3315,53 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
 #define USE_DRAW_TOT_UPDATE
 
-static void node_draw_nodetree(const bContext &C,
-                               TreeDrawContext &tree_draw_ctx,
-                               ARegion &region,
-                               SpaceNode &snode,
-                               bNodeTree &ntree,
-                               Span<bNode *> nodes,
-                               Span<uiBlock *> blocks,
-                               bNodeInstanceKey parent_key)
-{
 #ifdef USE_DRAW_TOT_UPDATE
+static void node_update_region(const Span<bNode *> nodes, ARegion &region)
+{
   BLI_rctf_init_minmax(&region.v2d.tot);
-#endif
-
   /* Draw background nodes, last nodes in front. */
   for (const int i : nodes.index_range()) {
-#ifdef USE_DRAW_TOT_UPDATE
     /* Unrelated to background nodes, update the v2d->tot,
      * can be anywhere before we draw the scroll bars. */
     BLI_rctf_union(&region.v2d.tot, &nodes[i]->runtime->totr);
+  }
+}
+#else
+static void node_update_region(const Span<bNode *> /*nodes*/, ARegion & /*region*/) {}
 #endif
 
-    if (!(nodes[i]->flag & NODE_BACKGROUND)) {
-      continue;
-    }
-
-    const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[i]);
-    node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
+static void node_draw_nodes(const bContext &C,
+                            const Span<int> nodes_to_draw,
+                            TreeDrawContext &tree_draw_ctx,
+                            ARegion &region,
+                            SpaceNode &snode,
+                            bNodeTree &ntree,
+                            Span<uiBlock *> blocks,
+                            bNodeInstanceKey parent_key)
+{
+  const Span<bNode *> nodes = ntree.all_nodes();
+  for (const int index : nodes_to_draw) {
+    const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[index]);
+    node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[index], *blocks[index], key);
   }
+}
 
-  /* Node lines. */
+static void node_draw_links(const bContext &C,
+                            const Span<bNodeLink *> links,
+                            ARegion &region,
+                            SpaceNode &snode)
+{
   GPU_blend(GPU_BLEND_ALPHA);
   nodelink_batch_start(snode);
 
-  for (const bNodeLink *link : ntree.all_links()) {
+  for (const bNodeLink *link : links) {
     if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
-  for (const bNodeLink *link : ntree.all_links()) {
+  for (const bNodeLink *link : links) {
     if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }
@@ -3363,16 +3369,6 @@ static void node_draw_nodetree(const bContext &C,
 
   nodelink_batch_end(snode);
   GPU_blend(GPU_BLEND_NONE);
-
-  /* Draw foreground nodes, last nodes in front. */
-  for (const int i : nodes.index_range()) {
-    if (nodes[i]->flag & NODE_BACKGROUND) {
-      continue;
-    }
-
-    const bNodeInstanceKey key = BKE_node_instance_key(parent_key, &ntree, nodes[i]);
-    node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
-  }
 }
 
 /* Draw the breadcrumb on the top of the editor. */
@@ -3456,6 +3452,23 @@ static bool realtime_compositor_is_in_use(const bContext &context)
   return false;
 }
 
+static void split_nodes_for_flag(const Span<bNode *> nodes,
+                                 const int flag,
+                                 Vector<int> &r_true,
+                                 Vector<int> &r_false)
+{
+  r_true.reserve(nodes.size() / 2);
+  r_false.reserve(nodes.size() / 2);
+  for (const bNode *node : nodes) {
+    if (node->flag & flag) {
+      r_true.append(node->index());
+    }
+    else {
+      r_false.append(node->index());
+    }
+  }
+}
+
 static void draw_nodetree(const bContext &C,
                           ARegion &region,
                           bNodeTree &ntree,
@@ -3484,9 +3497,18 @@ static void draw_nodetree(const bContext &C,
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
 
+  Vector<int> background_nodes;
+  Vector<int> front_nodes;
+  split_nodes_for_flag(nodes, NODE_BACKGROUND, background_nodes, front_nodes);
+
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
+  node_update_region(nodes, region);
+  node_draw_nodes(
+      C, background_nodes.as_span(), tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
   node_draw_zones(tree_draw_ctx, region, *snode, ntree);
-  node_draw_nodetree(C, tree_draw_ctx, region, *snode, ntree, nodes, blocks, parent_key);
+  node_draw_links(C, ntree.all_links(), region, *snode);
+  node_draw_nodes(
+      C, front_nodes.as_span(), tree_draw_ctx, region, *snode, ntree, blocks, parent_key);
 }
 
 /**
