@@ -1382,17 +1382,18 @@ void GreasePencil::add_empty_drawings(const int add_num)
   }
 }
 
-void GreasePencil::add_duplicate_drawings(
-    const int add_num, const blender::bke::greasepencil::Drawing &duplicated_drawing)
+void GreasePencil::add_duplicate_drawings(const int duplicate_num,
+                                          const blender::bke::greasepencil::Drawing &drawing)
 {
   using namespace blender;
-  BLI_assert(add_num > 0);
+  BLI_assert(duplicate_num > 0);
   const int prev_num = this->drawings().size();
-  grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, add_num);
+  grow_array<GreasePencilDrawingBase *>(
+      &this->drawing_array, &this->drawing_array_num, duplicate_num);
   MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings().drop_front(prev_num);
   for (const int i : new_drawings.index_range()) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-        MEM_new<bke::greasepencil::Drawing>(__func__, duplicated_drawing));
+        MEM_new<bke::greasepencil::Drawing>(__func__, drawing));
   }
 }
 
@@ -1412,24 +1413,23 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
 }
 
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
-                                          const GreasePencilFrame &duplicated_frame,
+                                          const GreasePencilFrame &frame,
                                           const int frame_number,
                                           const bool do_instance)
 {
   using namespace blender;
 
-  const int drawing_index = do_instance ? duplicated_frame.drawing_index :
-                                          int(this->drawings().size());
+  const int drawing_index = do_instance ? frame.drawing_index : int(this->drawings().size());
   const int duration = 0;
 
-  GreasePencilFrame *frame = layer.add_frame(frame_number, drawing_index, duration);
-  if (frame == nullptr) {
+  GreasePencilFrame *duplicate_frame = layer.add_frame(frame_number, drawing_index, duration);
+  if (duplicate_frame == nullptr) {
     return false;
   }
 
-  frame->type = duplicated_frame.type;
+  duplicate_frame->type = frame.type;
 
-  const GreasePencilDrawingBase *drawing_base = this->drawings()[duplicated_frame.drawing_index];
+  const GreasePencilDrawingBase *drawing_base = this->drawings()[frame.drawing_index];
   BLI_assert_msg((drawing_base->type == GP_DRAWING),
                  "Drawing references cannot be duplicated yet.");
   const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);

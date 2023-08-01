@@ -777,28 +777,31 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   using namespace blender::bke::greasepencil;
   Layer *layer = static_cast<Layer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-  const int frame_number = ac->scene->r.cfra;
+  const int current_frame_number = ac->scene->r.cfra;
 
-  if (layer->frames().contains(frame_number)) {
-    /* A frame already exists at the current frame number. */
+  if (layer->frames().contains(current_frame_number)) {
     return;
   }
 
   bool changed = false;
   if (hold_previous) {
-    const GreasePencilFrame *active_frame = layer->frame_at(frame_number);
+    const GreasePencilFrame *active_frame = layer->frame_at(current_frame_number);
     if ((active_frame == nullptr) || (active_frame->is_null())) {
-      /* There is no active frame to hold to, or it's a null frame. */
-      changed = grease_pencil->insert_blank_frame(*layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+      /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
+       * frame. */
+      changed = grease_pencil->insert_blank_frame(
+          *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
     }
     else {
       /* Duplicate the active frame. */
-      changed = grease_pencil->insert_duplicate_frame(*layer, *active_frame, frame_number, false);
+      changed = grease_pencil->insert_duplicate_frame(
+          *layer, *active_frame, current_frame_number, false);
     }
   }
   else {
     /* Insert a blank frame. */
-    changed = grease_pencil->insert_blank_frame(*layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    changed = grease_pencil->insert_blank_frame(
+        *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
   }
 
   if (changed) {
