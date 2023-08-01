@@ -226,7 +226,6 @@ bool VelocityModule::step_object_sync(Object *ob,
 
 void VelocityModule::geometry_steps_fill()
 {
-  /* Perform offset computation and copy into the geometry step buffer. */
   uint dst_ofs = 0;
   for (VelocityGeometryData &geom : geometry_map.values()) {
     uint src_len = GPU_vertbuf_get_vertex_len(geom.pos_buf);

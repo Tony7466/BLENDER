@@ -140,6 +140,8 @@ class VelocityModule {
   /* Returns frame time difference between two steps. */
   float step_time_delta_get(eVelocityStep start, eVelocityStep end) const;
 
+  /* Perform VelocityGeometryData offset computation and copy into the geometry step buffer.
+   * Should be called after all the vertex buffers have been updated by batch cache extraction. */
   void geometry_steps_fill();
 
  private:
