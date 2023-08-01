@@ -35,6 +35,7 @@
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_scene.h"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
@@ -62,8 +63,8 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_400 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -505,13 +506,28 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 13)) {
+    /* For the scenes configured to use the "None" display disable the color management
+     * again. This will handle situation when the "None" display is removed and is replaced with
+     * a "Raw" view instead.
+     *
+     * Note that this versioning will do nothing if the "None" display exists in the OCIO
+     * configuration. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      const ColorManagedDisplaySettings &display_settings = scene->display_settings;
+      if (STREQ(display_settings.display_device, "None")) {
+        BKE_scene_disable_color_management(scene);
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_400 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

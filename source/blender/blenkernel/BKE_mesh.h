@@ -66,7 +66,7 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh);
  */
 void BKE_mesh_tag_face_winding_changed(struct Mesh *mesh);
 
-/* *** mesh.c *** */
+/* `mesh.cc` */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(const struct Mesh *me,
                                    const struct BMeshCreateParams *create_params,
@@ -550,6 +550,7 @@ void BKE_mesh_face_flip_ex(int face_offset,
                            int *corner_verts,
                            int *corner_edges,
                            struct CustomData *loop_data,
+                           int tot_loop,
                            float (*lnors)[3],
                            struct MDisps *mdisp,
                            bool use_loop_mdisp_flip);
@@ -569,6 +570,7 @@ void BKE_mesh_faces_flip(const int *face_offsets,
                          int *corner_verts,
                          int *corner_edges,
                          struct CustomData *loop_data,
+                         int loops_num,
                          int faces_num);
 
 /**
@@ -712,7 +714,7 @@ void BKE_mesh_batch_cache_free(void *batch_cache);
 extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, eMeshBatchDirtyMode mode);
 extern void (*BKE_mesh_batch_cache_free_cb)(void *batch_cache);
 
-/* mesh_debug.c */
+/* `mesh_debug.cc` */
 
 #ifndef NDEBUG
 char *BKE_mesh_debug_info(const struct Mesh *me)
