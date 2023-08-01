@@ -1412,6 +1412,19 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   return true;
 }
 
+static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
+                              const int frame_number)
+{
+  Span<int> sorted_keys = layer.sorted_keys();
+  const int *frame_number_it = std::lower_bound(
+      sorted_keys.begin(), sorted_keys.end(), frame_number);
+  if (std::next(frame_number_it) == sorted_keys.end()) {
+    return 0;
+  }
+  const int next_frame_number = *(std::next(frame_number_it));
+  return next_frame_number - frame_number;
+}
+
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
                                           const int frame_number,
                                           const int duplicate_frame_number,
@@ -1421,10 +1434,11 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
 
   BLI_assert(layer.frames().contains(frame_number));
   const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
+  const int duration = frame.is_implicit_hold() ? 0 : get_frame_duration(layer, frame_number);
   const int drawing_index = do_instance ? frame.drawing_index : int(this->drawings().size());
-  const int duration = 0;
 
-  GreasePencilFrame *duplicate_frame = layer.add_frame(frame_number, drawing_index, duration);
+  GreasePencilFrame *duplicate_frame = layer.add_frame(
+      duplicate_frame_number, drawing_index, duration);
   if (duplicate_frame == nullptr) {
     return false;
   }
