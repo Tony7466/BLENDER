@@ -101,7 +101,7 @@ struct TransformProperties {
   float ob_dims_orig[3];
   float ob_scale_orig[3];
   float ob_dims[3];
-  float vertex_weight;
+  float active_vertex_weight;
   /* Floats only (treated as an array). */
   TransformMedian ve_median, median;
   bool tag_for_update;
@@ -1332,7 +1332,7 @@ static void update_active_vertex_weight(struct bContext *C, void *arg1, void * /
   MDeformVert *dv = ED_mesh_active_dvert_get_only(ob);
   const int vertex_group_index = POINTER_AS_INT(arg1);
   MDeformWeight *dw = BKE_defvert_find_index(dv, vertex_group_index);
-  dw->weight = tfp->vertex_weight;
+  dw->weight = tfp->active_vertex_weight;
 }
 
 static void view3d_panel_vgroup(const bContext *C, Panel *panel)
@@ -1417,7 +1417,7 @@ static void view3d_panel_vgroup(const bContext *C, Panel *panel)
 
           /* The weight group value */
           /* To be reworked still */
-          tfp->vertex_weight = dw->weight;
+          tfp->active_vertex_weight = dw->weight;
           but = uiDefButF(block,
                           UI_BTYPE_NUM,
                           B_VGRP_PNL_EDIT_SINGLE + i,
@@ -1426,7 +1426,7 @@ static void view3d_panel_vgroup(const bContext *C, Panel *panel)
                           yco,
                           (x = UI_UNIT_X * 4),
                           UI_UNIT_Y,
-                          &tfp->vertex_weight,
+                          &tfp->active_vertex_weight,
                           0.0,
                           1.0,
                           0,
