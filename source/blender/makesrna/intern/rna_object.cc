@@ -2065,8 +2065,8 @@ static void rna_Object_vgroup_clear(Object *ob, Main *bmain, ReportList *reports
 static void rna_VertexGroup_vertex_add(ID *id,
                                        bDeformGroup *def,
                                        ReportList *reports,
+                                       const int *index,
                                        int index_len,
-                                       int *index,
                                        float weight,
                                        int assignmode)
 {
@@ -2088,7 +2088,7 @@ static void rna_VertexGroup_vertex_add(ID *id,
 }
 
 static void rna_VertexGroup_vertex_remove(
-    ID *id, bDeformGroup *dg, ReportList *reports, int index_len, int *index)
+    ID *id, bDeformGroup *dg, ReportList *reports, const int *index, int index_len)
 {
   Object *ob = reinterpret_cast<Object *>(id);
 

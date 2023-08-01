@@ -973,8 +973,8 @@ static void rna_HookModifier_vertex_indices_get(PointerRNA *ptr, int *values)
 
 static void rna_HookModifier_vertex_indices_set(HookModifierData *hmd,
                                                 ReportList *reports,
-                                                int indices_len,
-                                                int *indices)
+                                                const int *indices,
+                                                int indices_len)
 {
   if (indices_len == 0) {
     MEM_SAFE_FREE(hmd->indexar);

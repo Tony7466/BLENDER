@@ -205,8 +205,8 @@ static int rna_KeyBlock_normals_vert_len(const PointerRNA *ptr,
 
 static void rna_KeyBlock_normals_vert_calc(ID *id,
                                            KeyBlock *data,
-                                           int *normals_len,
-                                           float **normals)
+                                           float **normals,
+                                           int *normals_len)
 {
   Mesh *me = rna_KeyBlock_normals_get_mesh(nullptr, id);
 
@@ -236,8 +236,8 @@ static int rna_KeyBlock_normals_poly_len(const PointerRNA *ptr,
 
 static void rna_KeyBlock_normals_poly_calc(ID *id,
                                            KeyBlock *data,
-                                           int *normals_len,
-                                           float **normals)
+                                           float **normals,
+                                           int *normals_len)
 {
   Mesh *me = rna_KeyBlock_normals_get_mesh(nullptr, id);
 
@@ -267,8 +267,8 @@ static int rna_KeyBlock_normals_loop_len(const PointerRNA *ptr,
 
 static void rna_KeyBlock_normals_loop_calc(ID *id,
                                            KeyBlock *data,
-                                           int *normals_len,
-                                           float **normals)
+                                           float **normals,
+                                           int *normals_len)
 {
   Mesh *me = rna_KeyBlock_normals_get_mesh(nullptr, id);
 

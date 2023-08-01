@@ -3062,7 +3062,7 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
     WRITE_COMMA;
 
     if (dparm->prop->flag & PROP_DYNAMIC) {
-      fprintf(f, "%s_len, %s", dparm->prop->identifier, dparm->prop->identifier);
+      fprintf(f, "%s, %s_len", dparm->prop->identifier, dparm->prop->identifier);
     }
     else {
       fprintf(f, "%s", rna_safe_id(dparm->prop->identifier));
@@ -3164,8 +3164,10 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
       fprintf(f, "\tint %s%s_len;\n", pout ? "*" : "", dparm->prop->identifier);
     }
 
+    const bool is_const = (pout == 0 && (ptrstr[0] != '\0') && dparm->prop->arraydimension);
     fprintf(f,
-            "\t%s%s %s%s;\n",
+            "\t%s%s%s %s%s;\n",
+            is_const ? "const " : "",
             rna_type_struct(dparm->prop),
             rna_parameter_type_name(dparm->prop),
             ptrstr,
@@ -3263,8 +3265,10 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
         fprintf(f, "%s", valstr);
       }
 
+      const bool is_const = (pout == 0 && (ptrstr[0] != '\0') && dparm->prop->arraydimension);
       fprintf(f,
-              "((%s%s %s)%s);\n",
+              "((%s%s%s %s)%s);\n",
+              is_const ? "const " : "",
               rna_type_struct(dparm->prop),
               rna_parameter_type_name(dparm->prop),
               ptrstr,
@@ -3343,7 +3347,7 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
 
       if (dparm->prop->flag & PROP_DYNAMIC) {
         fprintf(f,
-                "%s_len, %s",
+                "%s, %s_len",
                 rna_safe_id(dparm->prop->identifier),
                 rna_safe_id(dparm->prop->identifier));
       }
