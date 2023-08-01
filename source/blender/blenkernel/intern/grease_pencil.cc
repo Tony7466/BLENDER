@@ -1407,14 +1407,14 @@ void GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer,
   if (!layer.frames().contains(frame_number)) {
     return;
   }
-  GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
+  const GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
   const int drawing_index_to_remove = frame_to_remove.drawing_index;
   if (!layer.remove_frame(frame_number)) {
     /* If removing the frame was not successful, return early. */
     return;
   }
   GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
-  if (base->type != GP_DRAWING) {
+  if (drawing_base->type != GP_DRAWING) {
     /* If the drawing is referenced from another object, we don't track it's users because we
      * cannot delete drawings from another object. Return early. */
     return;
