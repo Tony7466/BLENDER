@@ -234,15 +234,15 @@ void MotionBlurModule::render(View &view, GPUTexture **input_tx, GPUTexture **ou
 
   tile_indirection_buf_.clear_to_zero();
 
-  const bool swizzle_vector_tx = inst_.render_buffers.vector_tx_format() == GPU_RG16F;
-  if (swizzle_vector_tx) {
+  const bool do_motion_vectors_swizzle = inst_.render_buffers.vector_tx_format() == GPU_RG16F;
+  if (do_motion_vectors_swizzle) {
     /* Change texture swizzling to avoid complexity in gather pass shader. */
     GPU_texture_swizzle_set(inst_.render_buffers.vector_tx, "rgrg");
   }
 
   inst_.manager->submit(motion_blur_ps_, view);
 
-  if (swizzle_vector_tx) {
+  if (do_motion_vectors_swizzle) {
     /* Reset swizzle since this texture might be reused in other places. */
     GPU_texture_swizzle_set(inst_.render_buffers.vector_tx, "rgba");
   }

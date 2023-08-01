@@ -180,30 +180,8 @@ class SyncModule {
   void sync_light_probe(Object *ob, ObjectHandle &ob_handle);
 };
 
-template<typename F>
-void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, F callback)
-{
-  int sub_key = 1;
-
-  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-    if (md->type == eModifierType_ParticleSystem) {
-      ParticleSystem *particle_sys = reinterpret_cast<ParticleSystemModifierData *>(md)->psys;
-      ParticleSettings *part_settings = particle_sys->part;
-      const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
-                                                                       part_settings->draw_as;
-      if (draw_as != PART_DRAW_PATH ||
-          !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
-        continue;
-      }
-
-      ObjectHandle particle_sys_handle = {0};
-      particle_sys_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
-      particle_sys_handle.recalc = particle_sys->recalc;
-
-      callback(particle_sys_handle, *md, *particle_sys);
-    }
-  }
-}
+using HairHandleCallback = FunctionRef<void(ObjectHandle, ModifierData &, ParticleSystem &)>;
+void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, HairHandleCallback callback);
 
 /** \} */
 
