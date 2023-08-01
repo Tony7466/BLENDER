@@ -120,6 +120,9 @@ static void find_closest_neighbors(const IndexMask &mask,
           nearest.index = -1;
           nearest.dist_sq = max_distance; /* #nearest_cb has an internal distance check. */
           nearest_cb(nearest_userdata, target_i, co, &nearest);
+          if (nearest.index < 0) {
+            return;
+          }
 
           const int64_t neighbor_count = data.source_indices.size() - first_neighbor;
           const Span<float> dist_sq_span = data.target_distances.as_span().slice(first_neighbor,
