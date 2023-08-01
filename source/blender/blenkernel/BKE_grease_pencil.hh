@@ -258,6 +258,18 @@ class Layer : public ::GreasePencilLayer {
    * \returns a pointer to the added frame on success, otherwise nullptr.
    */
   GreasePencilFrame *add_frame(int frame_number, int drawing_index, int duration = 0);
+  /**
+   * Removes a frame with \a start_frame_number from the frames map.
+   *
+   * Fails if the map does not contain a frame with \a frame_number or in the specific case where
+   * the previous frame has a fixed duration (is not marked as an implicit hold) and the frame to
+   * remove is a null frame.
+   *
+   * Will remove null frames after the frame to remove.
+   * \param start_frame_number: the first frame number of the frame to be removed.
+   * \return true on success.
+   */
+  bool remove_frame(int start_frame_number);
 
   /**
    * Returns the sorted (start) frame numbers of the frames of this layer.
@@ -266,9 +278,15 @@ class Layer : public ::GreasePencilLayer {
   Span<int> sorted_keys() const;
 
   /**
-   * \returns the index of the drawing at frame \a frame or -1 if there is no drawing.
+   * \returns the index of the active drawing at frame \a frame_number or -1 if there is no
+   * drawing. */
+  int drawing_index_at(const int frame_number) const;
+
+  /**
+   * \returns a pointer to the active frame at \a frame_number or nullptr if there is no frame.
    */
-  int drawing_index_at(const int frame) const;
+  const GreasePencilFrame *frame_at(const int frame_number) const;
+  GreasePencilFrame *frame_at(const int frame_number);
 
   void tag_frames_map_changed();
 
@@ -279,7 +297,16 @@ class Layer : public ::GreasePencilLayer {
   void tag_frames_map_keys_changed();
 
  private:
+  using SortedKeysIterator = const int *;
+ private:
   GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
+  int frame_index_at(int frame_number) const;
+  /**
+   * Removes null frames starting from \a begin until \a end (excluded) or until a non-null frame is reached.
+   * \param begin, end: Iterators into the `sorted_keys` span.
+   * \returns an iterator to the element after the last null-frame that was removed.
+   */
+  SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin, SortedKeysIterator end);
 };
 
 class LayerGroupRuntime {
@@ -529,6 +556,15 @@ inline blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap(
 inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap() const
 {
   return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
+}
+
+inline GreasePencilDrawingBase *GreasePencil::drawings(int64_t index) const
+{
+  return this->drawings()[index];
+}
+inline GreasePencilDrawingBase *GreasePencil::drawings(int64_t index)
+{
+  return this->drawings()[index];
 }
 
 inline const blender::bke::greasepencil::LayerGroup &GreasePencil::root_group() const

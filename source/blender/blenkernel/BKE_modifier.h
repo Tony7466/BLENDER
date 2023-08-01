@@ -111,6 +111,9 @@ typedef enum {
 
   /** Accepts #BMesh input (without conversion). */
   eModifierTypeFlag_AcceptsBMesh = (1 << 11),
+
+  /** Accepts #GreasePencil data input. */
+  eModifierTypeFlag_AcceptsGreasePencil = (1 << 12),
 } ModifierTypeFlag;
 ENUM_OPERATORS(ModifierTypeFlag, eModifierTypeFlag_AcceptsBMesh)
 
@@ -216,7 +219,7 @@ typedef struct ModifierTypeInfo {
    */
   void (*deform_verts_EM)(struct ModifierData *md,
                           const struct ModifierEvalContext *ctx,
-                          struct BMEditMesh *editData,
+                          struct BMEditMesh *em,
                           struct Mesh *mesh,
                           float (*vertexCos)[3],
                           int numVerts);
@@ -224,7 +227,7 @@ typedef struct ModifierTypeInfo {
   /* Set deform matrix per vertex for crazy-space correction */
   void (*deform_matrices_EM)(struct ModifierData *md,
                              const struct ModifierEvalContext *ctx,
-                             struct BMEditMesh *editData,
+                             struct BMEditMesh *em,
                              struct Mesh *mesh,
                              float (*vertexCos)[3],
                              float (*defMats)[3][3],
