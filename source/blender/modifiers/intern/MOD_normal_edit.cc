@@ -182,8 +182,8 @@ static void mix_normals(const float mix_factor,
 
 /* Check face normals and new loop normals are compatible, otherwise flip faces
  * (and invert matching face normals). */
-static bool faces_check_flip(Mesh &mesh,
-                             blender::float3 *nos,
+static void faces_check_flip(Mesh &mesh,
+                             blender::MutableSpan<blender::float3> nos,
                              const blender::Span<blender::float3> face_normals)
 {
   using namespace blender;
@@ -203,15 +203,13 @@ static bool faces_check_flip(Mesh &mesh,
 
         /* If average of new loop normals is opposed to face normal, flip face. */
         if (dot_v3v3(face_normals[i], norsum) < 0.0f) {
-          std::reverse(&nos[face.first()], &nos[face.last()]);
+          nos.slice(faces[i].drop_front(1)).reverse();
           return true;
         }
         return false;
       });
 
   bke::mesh_flip_faces(mesh, faces_to_flip);
-
-  return !faces_to_flip.is_empty();
 }
 
 static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
@@ -319,8 +317,8 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix && faces_check_flip(*mesh, nos.data(), mesh->face_normals())) {
-    BKE_mesh_tag_face_winding_changed(mesh);
+  if (do_facenors_fix) {
+    faces_check_flip(*mesh, nos, mesh->face_normals());
   }
   const bool *sharp_faces = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
@@ -424,8 +422,8 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix && faces_check_flip(*mesh, nos.data(), mesh->face_normals())) {
-    BKE_mesh_tag_face_winding_changed(mesh);
+  if (do_facenors_fix) {
+    faces_check_flip(*mesh, nos, mesh->face_normals());
   }
   const bool *sharp_faces = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
