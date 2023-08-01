@@ -601,7 +601,7 @@ bool Layer::is_selected() const
   return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
 }
 
-const int *Layer::remove_all_null_frames_in_range(const int *begin, const int *end)
+const int *Layer::remove_leading_null_frames_in_range(const int *begin, const int *end)
 {
   auto next_it = begin;
   while (next_it != end && this->frames().lookup(*next_it).is_null()) {
@@ -651,9 +651,8 @@ GreasePencilFrame *Layer::add_frame(const int frame_number,
   if (next_frame_number_it != sorted_keys.end() && *next_frame_number_it == end_frame_number) {
     return frame;
   }
-  /* While the next frame is a null frame, remove it. */
-  next_frame_number_it = this->remove_all_null_frames_in_range(next_frame_number_it,
-                                                               sorted_keys.end());
+  next_frame_number_it = this->remove_leading_null_frames_in_range(next_frame_number_it,
+                                                                   sorted_keys.end());
   /* If the duration is set to 0, the frame is marked as an implicit hold.*/
   if (duration == 0) {
     frame->flag |= GP_FRAME_IMPLICIT_HOLD;
@@ -686,8 +685,7 @@ bool Layer::remove_frame(const int frame_number)
   /* If there is a next frame: */
   if (std::next(remove_frame_number_it) != sorted_keys.end()) {
     auto next_frame_number_it = std::next(remove_frame_number_it);
-    /* While the next frame is a null frame, remove it. */
-    this->remove_all_null_frames_in_range(next_frame_number_it, sorted_keys.end());
+    this->remove_leading_null_frames_in_range(next_frame_number_it, sorted_keys.end());
   }
   /* If there is a previous frame: */
   if (remove_frame_number_it != sorted_keys.begin()) {

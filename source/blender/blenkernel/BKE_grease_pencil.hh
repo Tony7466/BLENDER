@@ -300,7 +300,12 @@ class Layer : public ::GreasePencilLayer {
  private:
   GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
   int frame_index_at(int frame_number) const;
-  const int *remove_all_null_frames_in_range(const int *begin, const int *end);
+  /**
+   * Removes null frames starting from \a begin until \a end or a non-null frame is reached.
+   * \param begin, end: Iterators into the `sorted_keys` span.
+   * \returns an iterator to the element after the last null-frame that was removed.
+   */
+  const int *remove_leading_null_frames_in_range(const int *begin, const int *end);
 };
 
 class LayerGroupRuntime {
