@@ -245,7 +245,7 @@ struct foreachScreenEdge_userData {
   int content_planes_len;
 };
 
-struct foreachScreenFace_userData {
+struct foreachScreenFaceCenter_userData {
   void (*func)(void *user_data, BMFace *efa, const float screen_co_b[2], int index);
   void *user_data;
   ViewContext vc;
@@ -544,12 +544,12 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
 /** \name Edit-Mesh: For Each Screen Face Center
  * \{ */
 
-static void mesh_foreachScreenFace__mapFunc(void *user_data,
+static void mesh_foreachScreenFaceCenter__mapFunc(void *user_data,
                                             int index,
                                             const float cent[3],
                                             const float /*no*/[3])
 {
-  foreachScreenFace_userData *data = static_cast<foreachScreenFace_userData *>(user_data);
+  foreachScreenFaceCenter_userData *data = static_cast<foreachScreenFaceCenter_userData *>(user_data);
   BMFace *efa = BM_face_at_index(data->vc.em->bm, index);
   if (UNLIKELY(BM_elem_flag_test(efa, BM_ELEM_HIDDEN))) {
     return;
@@ -565,14 +565,14 @@ static void mesh_foreachScreenFace__mapFunc(void *user_data,
   data->func(data->user_data, efa, screen_co, index);
 }
 
-void mesh_foreachScreenFace(
+void mesh_foreachScreenFaceCenter(
     ViewContext *vc,
     void (*func)(void *user_data, BMFace *efa, const float screen_co_b[2], int index),
     void *user_data,
     const eV3DProjTest clip_flag)
 {
   BLI_assert((clip_flag & V3D_PROJ_TEST_CLIP_CONTENT) == 0);
-  foreachScreenFace_userData data;
+  foreachScreenFaceCenter_userData data;
 
   Mesh *me = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
