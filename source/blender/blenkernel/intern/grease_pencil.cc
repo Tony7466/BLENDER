@@ -696,7 +696,9 @@ bool Layer::remove_frame(const int start_frame_number)
      * null frame, we cannot just delete the frame. We need to replace it with a null frame. */
     if (!prev_frame.is_implicit_hold() && !prev_frame.is_null()) {
       this->frames_for_write().lookup(start_frame_number) = GreasePencilFrame::null();
-      return false;
+      /* Since the original frame was replaced with a null frame, we consider the frame to be
+       * successfully removed here. */
+      return true;
     }
   }
   /* Finally, remove the actual frame. */
