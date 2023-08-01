@@ -44,21 +44,6 @@ index 8c2e77b..211b8a7 100644
  #include <clang/Basic/TargetInfo.h>
  #include <clang/Frontend/CompilerInstance.h>
  #include <clang/Frontend/TextDiagnosticPrinter.h>
-diff --git a/src/liboslexec/llvm_instance.cpp b/src/liboslexec/llvm_instance.cpp
-index 8f52546..8c2d0c7 100644
---- a/src/liboslexec/llvm_instance.cpp
-+++ b/src/liboslexec/llvm_instance.cpp
-@@ -1363,6 +1363,10 @@ BackendLLVM::run()
- #ifdef OSL_LLVM_NO_BITCODE
-         OSL_ASSERT(!use_rs_bitcode());
-         ll.module(ll.new_module("llvm_ops"));
-+        if (use_optix()) {
-+            ll.module()->setDataLayout("e-i64:64-i128:128-v16:16-v32:32-n16:32:64");
-+            ll.module()->setTargetTriple("nvptx64-nvidia-cuda");
-+        }
- #else
-         if (!use_optix()) {
-             if (use_rs_bitcode()) {
 diff --git a/src/liboslexec/shadingsys.cpp b/src/liboslexec/shadingsys.cpp
 index 46e4529..8e86486 100644
 --- a/src/liboslexec/shadingsys.cpp
