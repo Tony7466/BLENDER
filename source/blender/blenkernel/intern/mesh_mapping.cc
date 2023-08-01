@@ -9,6 +9,8 @@
  * eg: faces connected to verts, UVs connected to verts.
  */
 
+#include "BLI_timeit.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_meshdata_types.h"
@@ -19,6 +21,7 @@
 #include "BLI_buffer.h"
 #include "BLI_function_ref.hh"
 #include "BLI_math.h"
+#include "BLI_sort.hh"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
@@ -366,20 +369,28 @@ GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
+static Array<int> gather_reverse(const Span<int> indices)
+{
+  Array<int> results(indices.size());
+  std::iota(results.begin(), results.end(), 0);
+  parallel_sort(results.begin(), results.end(), [indices](const int a, const int b) -> bool {
+    if (UNLIKELY(indices[a] == indices[b])) {
+      return a < b;
+    }
+    return indices[a] < indices[b];
+  });
+  return results;
+}
+
 GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
                                         const int edges_num,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  r_offsets = create_reverse_offsets(corner_edges, edges_num);
-  r_indices.reinitialize(r_offsets.last());
-  Array<int> counts(edges_num, 0);
+  threading::parallel_invoke(
+      [&]() { r_offsets = create_reverse_offsets(corner_edges, edges_num); },
+      [&]() { r_indices = gather_reverse(corner_edges); });
 
-  for (const int64_t corner : corner_edges.index_range()) {
-    const int edge = corner_edges[corner];
-    r_indices[r_offsets[edge] + counts[edge]] = int(corner);
-    counts[edge]++;
-  }
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
