@@ -838,7 +838,7 @@ void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
   items().drop_back(1).copy_from(old_items);
   items().last() = &item;
 
-  if (!old_items.is_empty()) {
+  if (old_items.data()) {
     MEM_freeN(old_items.data());
   }
 }
@@ -854,7 +854,7 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int inde
   items().drop_front(index + 1).copy_from(old_items.drop_front(index));
   items()[index] = &item;
 
-  if (!old_items.is_empty()) {
+  if (old_items.data()) {
     MEM_freeN(old_items.data());
   }
 }
