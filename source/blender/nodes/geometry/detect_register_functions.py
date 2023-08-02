@@ -14,11 +14,11 @@ output_cc_lines.append("{")
 for path in directory.glob("*.cc"):
     with open(path) as f:
         code = f.read()
-    index = code.find("  register_node_type_geo_")
+    index = code.find("register_node_type_geo_")
     if index == -1:
         continue
     function_name = code[index:code.find("(", index)]
-    output_cc_lines.append(f"{function_name}();")
+    output_cc_lines.append(f"  {function_name}();")
 
 output_cc_lines.append("}")
 

@@ -266,6 +266,7 @@ add_custom_command(
     ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
   DEPENDS
     ${SRC}
+    ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py
 )
 
 list(APPEND SRC
