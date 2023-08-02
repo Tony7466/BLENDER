@@ -224,16 +224,17 @@ void MeshData::write_submeshes(Mesh *mesh)
 
   /* Fill submeshes data */
   const int *material_indices = BKE_mesh_material_indices(mesh);
-  const int *looptri_polys = BKE_mesh_runtime_looptri_polys_ensure(mesh);
+
+  blender::Span<int> looptri_faces = mesh->looptri_faces();
   blender::Span<int> corner_verts = mesh->corner_verts();
   blender::Span<MLoopTri> looptris = mesh->looptris();
 
   BKE_mesh_calc_normals_split(mesh);
-  const float(*lnors)[3] = (float(*)[3])CustomData_get_layer(&mesh->ldata, CD_NORMAL);
-  const float(*luvs)[2] = (float(*)[2])CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2);
+  const float(*lnors)[3] = (float(*)[3])CustomData_get_layer(&mesh->loop_data, CD_NORMAL);
+  const float(*luvs)[2] = (float(*)[2])CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2);
 
   for (size_t i = 0; i < looptris.size(); ++i) {
-    int mat_ind = material_indices ? material_indices[looptri_polys[i]] : 0;
+    int mat_ind = material_indices ? material_indices[looptri_faces[i]] : 0;
     const MLoopTri &lt = looptris[i];
     SubMesh &sm = submeshes_[mat_ind];
 
