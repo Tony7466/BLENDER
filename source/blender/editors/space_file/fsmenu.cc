@@ -51,27 +51,27 @@
 
 /* FSMENU HANDLING */
 
-typedef struct FSMenu {
+struct FSMenu {
   FSMenuEntry *fsmenu_system;
   FSMenuEntry *fsmenu_system_bookmarks;
   FSMenuEntry *fsmenu_bookmarks;
   FSMenuEntry *fsmenu_recent;
   FSMenuEntry *fsmenu_other;
-} FSMenu;
+};
 
-static FSMenu *g_fsmenu = NULL;
+static FSMenu *g_fsmenu = nullptr;
 
 FSMenu *ED_fsmenu_get(void)
 {
   if (!g_fsmenu) {
-    g_fsmenu = MEM_callocN(sizeof(FSMenu), "fsmenu");
+    g_fsmenu = static_cast<FSMenu *>(MEM_callocN(sizeof(FSMenu), "fsmenu"));
   }
   return g_fsmenu;
 }
 
 FSMenuEntry *ED_fsmenu_get_category(FSMenu *fsmenu, FSMenuCategory category)
 {
-  FSMenuEntry *fsm_head = NULL;
+  FSMenuEntry *fsm_head = nullptr;
 
   switch (category) {
     case FS_CATEGORY_SYSTEM:
@@ -113,7 +113,7 @@ static GHash *fsmenu_xdg_user_dirs_parse(const char *home)
   {
     char filepath[FILE_MAX];
     const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
-    if (xdg_config_home != NULL) {
+    if (xdg_config_home != nullptr) {
       BLI_path_join(filepath, sizeof(filepath), xdg_config_home, "user-dirs.dirs");
     }
     else {
@@ -121,17 +121,17 @@ static GHash *fsmenu_xdg_user_dirs_parse(const char *home)
     }
     fp = BLI_fopen(filepath, "r");
     if (!fp) {
-      return NULL;
+      return nullptr;
     }
   }
   /* By default there are 8 paths. */
   GHash *xdg_map = BLI_ghash_str_new_ex(__func__, 8);
-  while (fgets(l, sizeof(l), fp) != NULL) { /* read a line */
+  while (fgets(l, sizeof(l), fp) != nullptr) { /* read a line */
 
     /* Avoid inserting invalid values. */
     if (STRPREFIX(l, "XDG_")) {
       char *l_value = strchr(l, '=');
-      if (l_value != NULL) {
+      if (l_value != nullptr) {
         *l_value = '\0';
         l_value++;
 
@@ -164,7 +164,7 @@ static GHash *fsmenu_xdg_user_dirs_parse(const char *home)
 
 static void fsmenu_xdg_user_dirs_free(GHash *xdg_map)
 {
-  if (xdg_map != NULL) {
+  if (xdg_map != nullptr) {
     BLI_ghash_free(xdg_map, MEM_freeN, MEM_freeN);
   }
 }
@@ -185,8 +185,9 @@ static void fsmenu_xdg_insert_entry(GHash *xdg_map,
                                     const char *home)
 {
   char xdg_path_buf[FILE_MAXDIR];
-  const char *xdg_path = xdg_map ? BLI_ghash_lookup(xdg_map, key) : NULL;
-  if (xdg_path == NULL) {
+  const char *xdg_path = static_cast<const char *>(xdg_map ? BLI_ghash_lookup(xdg_map, key) :
+                                                             nullptr);
+  if (xdg_path == nullptr) {
     BLI_path_join(xdg_path_buf, sizeof(xdg_path_buf), home, default_path);
     xdg_path = xdg_path_buf;
   }
@@ -254,11 +255,11 @@ void ED_fsmenu_entry_set_path(FSMenuEntry *fsentry, const char *path)
 
     MEM_SAFE_FREE(fsentry->path);
 
-    fsentry->path = (path && path[0]) ? BLI_strdup(path) : NULL;
+    fsentry->path = (path && path[0]) ? BLI_strdup(path) : nullptr;
 
     BLI_path_join(tmp_name,
                   sizeof(tmp_name),
-                  BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, NULL),
+                  BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr),
                   BLENDER_BOOKMARK_FILE);
     fsmenu_write_file(ED_fsmenu_get(), tmp_name);
   }
@@ -297,7 +298,7 @@ char *ED_fsmenu_entry_get_name(FSMenuEntry *fsentry)
     return fsentry->name;
   }
 
-  /* Here we abuse fsm_iter->name, keeping first char NULL. */
+  /* Here we abuse fsm_iter->name, keeping first char nullptr. */
   char *name = fsentry->name + 1;
   size_t name_size = sizeof(fsentry->name) - 1;
 
@@ -322,7 +323,7 @@ void ED_fsmenu_entry_set_name(FSMenuEntry *fsentry, const char *name)
 
     BLI_path_join(tmp_name,
                   sizeof(tmp_name),
-                  BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, NULL),
+                  BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr),
                   BLENDER_BOOKMARK_FILE);
     fsmenu_write_file(ED_fsmenu_get(), tmp_name);
   }
@@ -335,7 +336,7 @@ void fsmenu_entry_refresh_valid(FSMenuEntry *fsentry)
     /* XXX Special case, always consider those as valid.
      * Thanks to Windows, which can spend five seconds to perform a mere stat() call on those paths
      * See #43684. */
-    const char *exceptions[] = {"A:\\", "B:\\", NULL};
+    const char *exceptions[] = {"A:\\", "B:\\", nullptr};
     const size_t exceptions_len[] = {strlen(exceptions[0]), strlen(exceptions[1]), 0};
     int i;
 
@@ -414,7 +415,7 @@ void fsmenu_insert_entry(FSMenu *fsmenu,
     }
   }
 
-  fsm_iter = MEM_mallocN(sizeof(*fsm_iter), "fsme");
+  fsm_iter = static_cast<FSMenuEntry *>(MEM_mallocN(sizeof(*fsm_iter), "fsme"));
   if (has_trailing_slash) {
     fsm_iter->path = BLI_strdup(path);
   }
@@ -491,7 +492,7 @@ void fsmenu_insert_entry(FSMenu *fsmenu,
 
 void fsmenu_remove_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
 {
-  FSMenuEntry *fsm_prev = NULL;
+  FSMenuEntry *fsm_prev = nullptr;
   FSMenuEntry *fsm_iter;
   FSMenuEntry *fsm_head;
 
@@ -504,7 +505,7 @@ void fsmenu_remove_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
   if (fsm_iter) {
     /* you should only be able to remove entries that were
      * not added by default, like windows drives.
-     * also separators (where path == NULL) shouldn't be removed */
+     * also separators (where path == nullptr) shouldn't be removed */
     if (fsm_iter->save && fsm_iter->path) {
 
       /* remove fsme from list */
@@ -524,7 +525,7 @@ void fsmenu_remove_entry(FSMenu *fsmenu, FSMenuCategory category, int idx)
 
 bool fsmenu_write_file(FSMenu *fsmenu, const char *filepath)
 {
-  FSMenuEntry *fsm_iter = NULL;
+  FSMenuEntry *fsm_iter = nullptr;
   char fsm_name[FILE_MAX];
   int nwritten = 0;
 
@@ -578,7 +579,7 @@ void fsmenu_read_bookmarks(FSMenu *fsmenu, const char *filepath)
 
   name[0] = '\0';
 
-  while (fgets(line, sizeof(line), fp) != NULL) { /* read a line */
+  while (fgets(line, sizeof(line), fp) != nullptr) { /* read a line */
     if (STRPREFIX(line, "[Bookmarks]")) {
       category = FS_CATEGORY_BOOKMARKS;
     }
@@ -600,9 +601,9 @@ void fsmenu_read_bookmarks(FSMenu *fsmenu, const char *filepath)
         if (line[len - 1] == '\n') {
           line[len - 1] = '\0';
         }
-        /* don't do this because it can be slow on network drives,
-         * having a bookmark from a drive that's ejected or so isn't
-         * all _that_ bad */
+/* don't do this because it can be slow on network drives,
+ * having a bookmark from a drive that's ejected or so isn't
+ * all _that_ bad */
 #if 0
         if (BLI_exists(line))
 #endif
@@ -628,7 +629,7 @@ static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
 {
   LPWSTR pPath;
   char line[FILE_MAXDIR];
-  if (SHGetKnownFolderPath(rfid, 0, NULL, &pPath) == S_OK) {
+  if (SHGetKnownFolderPath(rfid, 0, nullptr, &pPath) == S_OK) {
     BLI_strncpy_wchar_as_utf8(line, pPath, FILE_MAXDIR);
     CoTaskMemFree(pPath);
     fsmenu_insert_entry(fsmenu, category, line, name, icon, flag);
@@ -654,7 +655,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
         tmps[1] = ':';
         tmps[2] = '\\';
         tmps[3] = '\0';
-        name = NULL;
+        name = nullptr;
 
         /* Skip over floppy disks A & B. */
         if (i > 1) {
@@ -664,7 +665,8 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
           if (SHGetDesktopFolder(&desktop) == S_OK) {
             PIDLIST_RELATIVE volume;
             if (desktop->lpVtbl->ParseDisplayName(
-                    desktop, NULL, NULL, wline, NULL, &volume, NULL) == S_OK) {
+                    desktop, nullptr, nullptr, wline, nullptr, &volume, nullptr) == S_OK)
+            {
               STRRET volume_name;
               volume_name.uType = STRRET_WSTR;
               if (desktop->lpVtbl->GetDisplayNameOf(
@@ -681,7 +683,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
             desktop->lpVtbl->Release(desktop);
           }
         }
-        if (name == NULL) {
+        if (name == nullptr) {
           name = tmps;
         }
 
@@ -772,8 +774,12 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 
       /* These items are just put in path cache for thumbnail views and if bookmarked. */
 
-      fsmenu_add_windows_folder(
-          fsmenu, FS_CATEGORY_OTHER, &FOLDERID_UserProfiles, NULL, ICON_COMMUNITY, FS_INSERT_LAST);
+      fsmenu_add_windows_folder(fsmenu,
+                                FS_CATEGORY_OTHER,
+                                &FOLDERID_UserProfiles,
+                                nullptr,
+                                ICON_COMMUNITY,
+                                FS_INSERT_LAST);
     }
   }
 #elif defined(__APPLE__)
@@ -792,10 +798,12 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
     const char *home = BLI_getenv("HOME");
     if (home) {
 #  define FS_MACOS_PATH(path, name, icon) \
+\
     SNPRINTF(line, path, home); \
+\
     fsmenu_insert_entry(fsmenu, FS_CATEGORY_OTHER, line, name, icon, FS_INSERT_LAST);
 
-      FS_MACOS_PATH("%s/", NULL, ICON_HOME)
+      FS_MACOS_PATH("%s/", nullptr, ICON_HOME)
       FS_MACOS_PATH("%s/Desktop/", N_("Desktop"), ICON_DESKTOP)
       FS_MACOS_PATH("%s/Documents/", N_("Documents"), ICON_DOCUMENTS)
       FS_MACOS_PATH("%s/Downloads/", N_("Downloads"), ICON_IMPORT)
@@ -814,15 +822,15 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
     /* We get all volumes sorted including network and do not relay
      * on user-defined finder visibility, less confusing. */
 
-    CFURLRef cfURL = NULL;
+    CFURLRef cfURL = nullptr;
     CFURLEnumeratorResult result = kCFURLEnumeratorSuccess;
     CFURLEnumeratorRef volEnum = CFURLEnumeratorCreateForMountedVolumes(
-        NULL, kCFURLEnumeratorSkipInvisibles, NULL);
+        nullptr, kCFURLEnumeratorSkipInvisibles, nullptr);
 
     while (result != kCFURLEnumeratorEnd) {
       char defPath[FILE_MAX];
 
-      result = CFURLEnumeratorGetNextURL(volEnum, &cfURL, NULL);
+      result = CFURLEnumeratorGetNextURL(volEnum, &cfURL, nullptr);
       if (result != kCFURLEnumeratorSuccess) {
         continue;
       }
@@ -831,25 +839,26 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 
       /* Get name of the volume. */
       char display_name[FILE_MAXFILE] = "";
-      CFStringRef nameString = NULL;
-      CFURLCopyResourcePropertyForKey(cfURL, kCFURLVolumeLocalizedNameKey, &nameString, NULL);
-      if (nameString != NULL) {
+      CFStringRef nameString = nullptr;
+      CFURLCopyResourcePropertyForKey(cfURL, kCFURLVolumeLocalizedNameKey, &nameString, nullptr);
+      if (nameString != nullptr) {
         CFStringGetCString(nameString, display_name, sizeof(display_name), kCFStringEncodingUTF8);
         CFRelease(nameString);
       }
 
       /* Set icon for regular, removable or network drive. */
       int icon = ICON_DISK_DRIVE;
-      CFBooleanRef localKey = NULL;
-      CFURLCopyResourcePropertyForKey(cfURL, kCFURLVolumeIsLocalKey, &localKey, NULL);
-      if (localKey != NULL) {
+      CFBooleanRef localKey = nullptr;
+      CFURLCopyResourcePropertyForKey(cfURL, kCFURLVolumeIsLocalKey, &localKey, nullptr);
+      if (localKey != nullptr) {
         if (!CFBooleanGetValue(localKey)) {
           icon = ICON_NETWORK_DRIVE;
         }
         else {
-          CFBooleanRef ejectableKey = NULL;
-          CFURLCopyResourcePropertyForKey(cfURL, kCFURLVolumeIsEjectableKey, &ejectableKey, NULL);
-          if (ejectableKey != NULL) {
+          CFBooleanRef ejectableKey = nullptr;
+          CFURLCopyResourcePropertyForKey(
+              cfURL, kCFURLVolumeIsEjectableKey, &ejectableKey, nullptr);
+          if (ejectableKey != nullptr) {
             if (CFBooleanGetValue(ejectableKey)) {
               icon = ICON_EXTERNAL_DRIVE;
             }
@@ -862,22 +871,22 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
       fsmenu_insert_entry(fsmenu,
                           FS_CATEGORY_SYSTEM,
                           defPath,
-                          display_name[0] ? display_name : NULL,
+                          display_name[0] ? display_name : nullptr,
                           icon,
                           FS_INSERT_SORTED);
     }
 
     CFRelease(volEnum);
 
-    /* kLSSharedFileListFavoriteItems is deprecated, but available till macOS 10.15.
-     * Will have to find a new method to sync the Finder Favorites with File Browser. */
+/* kLSSharedFileListFavoriteItems is deprecated, but available till macOS 10.15.
+ * Will have to find a new method to sync the Finder Favorites with File Browser. */
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     /* Finally get user favorite places */
     if (read_bookmarks) {
       UInt32 seed;
       LSSharedFileListRef list = LSSharedFileListCreate(
-          NULL, kLSSharedFileListFavoriteItems, NULL);
+          nullptr, kLSSharedFileListFavoriteItems, nullptr);
       CFArrayRef pathesArray = LSSharedFileListCopySnapshot(list, &seed);
       CFIndex pathesCount = CFArrayGetCount(pathesArray);
 
@@ -885,19 +894,19 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
         LSSharedFileListItemRef itemRef = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(
             pathesArray, i);
 
-        CFURLRef cfURL = NULL;
+        CFURLRef cfURL = nullptr;
         OSErr err = LSSharedFileListItemResolve(itemRef,
                                                 kLSSharedFileListNoUserInteraction |
                                                     kLSSharedFileListDoNotMountVolumes,
                                                 &cfURL,
-                                                NULL);
+                                                nullptr);
         if (err != noErr || !cfURL) {
           continue;
         }
 
         CFStringRef pathString = CFURLCopyFileSystemPath(cfURL, kCFURLPOSIXPathStyle);
 
-        if (pathString == NULL ||
+        if (pathString == nullptr ||
             !CFStringGetCString(pathString, line, sizeof(line), kCFStringEncodingUTF8))
         {
           continue;
@@ -906,8 +915,12 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
         /* Exclude "all my files" as it makes no sense in blender file-selector. */
         /* Exclude "airdrop" if wlan not active as it would show "" ) */
         if (!strstr(line, "myDocuments.cannedSearch") && (*line != '\0')) {
-          fsmenu_insert_entry(
-              fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, line, NULL, ICON_FILE_FOLDER, FS_INSERT_LAST);
+          fsmenu_insert_entry(fsmenu,
+                              FS_CATEGORY_SYSTEM_BOOKMARKS,
+                              line,
+                              nullptr,
+                              ICON_FILE_FOLDER,
+                              FS_INSERT_LAST);
         }
 
         CFRelease(pathString);
@@ -961,7 +974,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
       FILE *fp;
 
       fp = setmntent(MOUNTED, "r");
-      if (fp == NULL) {
+      if (fp == nullptr) {
         fprintf(stderr, "could not get a list of mounted file-systems\n");
       }
       else {
@@ -979,8 +992,12 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
             continue;
           }
 
-          fsmenu_insert_entry(
-              fsmenu, FS_CATEGORY_SYSTEM, mnt->mnt_dir, NULL, ICON_DISK_DRIVE, FS_INSERT_SORTED);
+          fsmenu_insert_entry(fsmenu,
+                              FS_CATEGORY_SYSTEM,
+                              mnt->mnt_dir,
+                              nullptr,
+                              ICON_DISK_DRIVE,
+                              FS_INSERT_SORTED);
 
           found = 1;
         }
@@ -990,7 +1007,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
       }
       /* Check `gvfs` shares. */
       const char *const xdg_runtime_dir = BLI_getenv("XDG_RUNTIME_DIR");
-      if (xdg_runtime_dir != NULL) {
+      if (xdg_runtime_dir != nullptr) {
         struct direntry *dirs;
         char filepath[FILE_MAX];
         BLI_path_join(filepath, sizeof(filepath), xdg_runtime_dir, "gvfs/");
@@ -1009,7 +1026,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
             /* Directory names contain a lot of unwanted text.
              * Assuming every entry ends with the share name. */
             const char *label = strstr(dirname, "share=");
-            if (label != NULL) {
+            if (label != nullptr) {
               /* Move pointer so `share=` is trimmed off or use full `dirname` as label. */
               const char *label_test = label + 6;
               label = *label_test ? label_test : dirname;
@@ -1027,7 +1044,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
       /* fallback */
       if (!found) {
         fsmenu_insert_entry(
-            fsmenu, FS_CATEGORY_SYSTEM, "/", NULL, ICON_DISK_DRIVE, FS_INSERT_SORTED);
+            fsmenu, FS_CATEGORY_SYSTEM, "/", nullptr, ICON_DISK_DRIVE, FS_INSERT_SORTED);
       }
     }
   }
@@ -1038,12 +1055,14 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
   UNUSED_VARS(fsmenu_xdg_insert_entry, fsmenu_xdg_user_dirs_parse, fsmenu_xdg_user_dirs_free);
 #endif
 
-  /* For all platforms, we add some directories from User Preferences to
-   * the FS_CATEGORY_OTHER category so that these directories
-   * have the appropriate icons when they are added to the Bookmarks. */
+/* For all platforms, we add some directories from User Preferences to
+ * the FS_CATEGORY_OTHER category so that these directories
+ * have the appropriate icons when they are added to the Bookmarks. */
 #define FS_UDIR_PATH(dir, icon) \
+\
   if (BLI_strnlen(dir, 3) > 2) { \
-    fsmenu_insert_entry(fsmenu, FS_CATEGORY_OTHER, dir, NULL, icon, FS_INSERT_LAST); \
+\
+    fsmenu_insert_entry(fsmenu, FS_CATEGORY_OTHER, dir, nullptr, icon, FS_INSERT_LAST); \
   }
 
   FS_UDIR_PATH(U.fontdir, ICON_FILE_FONT)
@@ -1084,10 +1103,10 @@ static void fsmenu_free_category(FSMenu *fsmenu, FSMenuCategory category)
 void fsmenu_refresh_system_category(FSMenu *fsmenu)
 {
   fsmenu_free_category(fsmenu, FS_CATEGORY_SYSTEM);
-  ED_fsmenu_set_category(fsmenu, FS_CATEGORY_SYSTEM, NULL);
+  ED_fsmenu_set_category(fsmenu, FS_CATEGORY_SYSTEM, nullptr);
 
   fsmenu_free_category(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS);
-  ED_fsmenu_set_category(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, NULL);
+  ED_fsmenu_set_category(fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS, nullptr);
 
   /* Add all entries to system category */
   fsmenu_read_system(fsmenu, true);
@@ -1095,7 +1114,7 @@ void fsmenu_refresh_system_category(FSMenu *fsmenu)
 
 static void fsmenu_free_ex(FSMenu **fsmenu)
 {
-  if (*fsmenu != NULL) {
+  if (*fsmenu != nullptr) {
     fsmenu_free_category(*fsmenu, FS_CATEGORY_SYSTEM);
     fsmenu_free_category(*fsmenu, FS_CATEGORY_SYSTEM_BOOKMARKS);
     fsmenu_free_category(*fsmenu, FS_CATEGORY_BOOKMARKS);
@@ -1104,7 +1123,7 @@ static void fsmenu_free_ex(FSMenu **fsmenu)
     MEM_freeN(*fsmenu);
   }
 
-  *fsmenu = NULL;
+  *fsmenu = nullptr;
 }
 
 void fsmenu_free(void)
@@ -1116,16 +1135,16 @@ static void fsmenu_copy_category(FSMenu *fsmenu_dst,
                                  FSMenu *fsmenu_src,
                                  const FSMenuCategory category)
 {
-  FSMenuEntry *fsm_dst_prev = NULL, *fsm_dst_head = NULL;
+  FSMenuEntry *fsm_dst_prev = nullptr, *fsm_dst_head = nullptr;
   FSMenuEntry *fsm_src_iter = ED_fsmenu_get_category(fsmenu_src, category);
 
-  for (; fsm_src_iter != NULL; fsm_src_iter = fsm_src_iter->next) {
-    FSMenuEntry *fsm_dst = MEM_dupallocN(fsm_src_iter);
-    if (fsm_dst->path != NULL) {
-      fsm_dst->path = MEM_dupallocN(fsm_dst->path);
+  for (; fsm_src_iter != nullptr; fsm_src_iter = fsm_src_iter->next) {
+    FSMenuEntry *fsm_dst = static_cast<FSMenuEntry *>(MEM_dupallocN(fsm_src_iter));
+    if (fsm_dst->path != nullptr) {
+      fsm_dst->path = static_cast<char *>(MEM_dupallocN(fsm_dst->path));
     }
 
-    if (fsm_dst_prev != NULL) {
+    if (fsm_dst_prev != nullptr) {
       fsm_dst_prev->next = fsm_dst;
     }
     else {
@@ -1139,7 +1158,7 @@ static void fsmenu_copy_category(FSMenu *fsmenu_dst,
 
 static FSMenu *fsmenu_copy(FSMenu *fsmenu)
 {
-  FSMenu *fsmenu_copy = MEM_dupallocN(fsmenu);
+  FSMenu *fsmenu_copy = static_cast<FSMenu *>(MEM_dupallocN(fsmenu));
 
   fsmenu_copy_category(fsmenu_copy, fsmenu_copy, FS_CATEGORY_SYSTEM);
   fsmenu_copy_category(fsmenu_copy, fsmenu_copy, FS_CATEGORY_SYSTEM_BOOKMARKS);
@@ -1169,20 +1188,19 @@ int fsmenu_get_active_indices(FSMenu *fsmenu, enum FSMenuCategory category, cons
  * job...
  */
 static void fsmenu_bookmark_validate_job_startjob(
-    void *fsmenuv,
-    /* Cannot be const, this function implements wm_jobs_start_callback.
-     * NOLINTNEXTLINE: readability-non-const-parameter. */
+    void *fsmenuv, /* Cannot be const, this function implements wm_jobs_start_callback.
+                    * NOLINTNEXTLINE: readability-non-const-parameter. */
     bool *stop,
     bool *do_update,
-    float *UNUSED(progress))
+    float * /*progress*/)
 {
-  FSMenu *fsmenu = fsmenuv;
+  FSMenu *fsmenu = static_cast<FSMenu *>(fsmenuv);
 
   int categories[] = {
       FS_CATEGORY_SYSTEM, FS_CATEGORY_SYSTEM_BOOKMARKS, FS_CATEGORY_BOOKMARKS, FS_CATEGORY_RECENT};
 
   for (size_t i = ARRAY_SIZE(categories); i--;) {
-    FSMenuEntry *fsm_iter = ED_fsmenu_get_category(fsmenu, categories[i]);
+    FSMenuEntry *fsm_iter = ED_fsmenu_get_category(fsmenu, FSMenuCategory(categories[i]));
     for (; fsm_iter; fsm_iter = fsm_iter->next) {
       if (*stop) {
         return;
@@ -1197,19 +1215,20 @@ static void fsmenu_bookmark_validate_job_startjob(
 
 static void fsmenu_bookmark_validate_job_update(void *fsmenuv)
 {
-  FSMenu *fsmenu_job = fsmenuv;
+  FSMenu *fsmenu_job = static_cast<FSMenu *>(fsmenuv);
 
   int categories[] = {
       FS_CATEGORY_SYSTEM, FS_CATEGORY_SYSTEM_BOOKMARKS, FS_CATEGORY_BOOKMARKS, FS_CATEGORY_RECENT};
 
   for (size_t i = ARRAY_SIZE(categories); i--;) {
-    FSMenuEntry *fsm_iter_src = ED_fsmenu_get_category(fsmenu_job, categories[i]);
-    FSMenuEntry *fsm_iter_dst = ED_fsmenu_get_category(ED_fsmenu_get(), categories[i]);
-    for (; fsm_iter_dst != NULL; fsm_iter_dst = fsm_iter_dst->next) {
-      while (fsm_iter_src != NULL && !STREQ(fsm_iter_dst->path, fsm_iter_src->path)) {
+    FSMenuEntry *fsm_iter_src = ED_fsmenu_get_category(fsmenu_job, FSMenuCategory(categories[i]));
+    FSMenuEntry *fsm_iter_dst = ED_fsmenu_get_category(ED_fsmenu_get(),
+                                                       FSMenuCategory(categories[i]));
+    for (; fsm_iter_dst != nullptr; fsm_iter_dst = fsm_iter_dst->next) {
+      while (fsm_iter_src != nullptr && !STREQ(fsm_iter_dst->path, fsm_iter_src->path)) {
         fsm_iter_src = fsm_iter_src->next;
       }
-      if (fsm_iter_src == NULL) {
+      if (fsm_iter_src == nullptr) {
         return;
       }
       fsm_iter_dst->valid = fsm_iter_src->valid;
@@ -1225,7 +1244,7 @@ static void fsmenu_bookmark_validate_job_end(void *fsmenuv)
 
 static void fsmenu_bookmark_validate_job_free(void *fsmenuv)
 {
-  FSMenu *fsmenu = fsmenuv;
+  FSMenu *fsmenu = static_cast<FSMenu *>(fsmenuv);
   fsmenu_free_ex(&fsmenu);
 }
 
@@ -1235,13 +1254,17 @@ static void fsmenu_bookmark_validate_job_start(wmWindowManager *wm)
   FSMenu *fsmenu_job = fsmenu_copy(g_fsmenu);
 
   /* setup job */
-  wm_job = WM_jobs_get(
-      wm, wm->winactive, wm, "Validating Bookmarks...", 0, WM_JOB_TYPE_FSMENU_BOOKMARK_VALIDATE);
+  wm_job = WM_jobs_get(wm,
+                       wm->winactive,
+                       wm,
+                       "Validating Bookmarks...",
+                       eWM_JobFlag(0),
+                       WM_JOB_TYPE_FSMENU_BOOKMARK_VALIDATE);
   WM_jobs_customdata_set(wm_job, fsmenu_job, fsmenu_bookmark_validate_job_free);
   WM_jobs_timer(wm_job, 0.01, NC_SPACE | ND_SPACE_FILE_LIST, NC_SPACE | ND_SPACE_FILE_LIST);
   WM_jobs_callbacks(wm_job,
                     fsmenu_bookmark_validate_job_startjob,
-                    NULL,
+                    nullptr,
                     fsmenu_bookmark_validate_job_update,
                     fsmenu_bookmark_validate_job_end);
 

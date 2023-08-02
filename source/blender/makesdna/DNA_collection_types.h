@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_collection_enums.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
@@ -178,21 +179,6 @@ enum {
    */
   COLLECTION_TAG_COLLECTION_OBJECT_DIRTY = (1 << 1),
 };
-
-/** #Collection.color_tag */
-typedef enum CollectionColorTag {
-  COLLECTION_COLOR_NONE = -1,
-  COLLECTION_COLOR_01,
-  COLLECTION_COLOR_02,
-  COLLECTION_COLOR_03,
-  COLLECTION_COLOR_04,
-  COLLECTION_COLOR_05,
-  COLLECTION_COLOR_06,
-  COLLECTION_COLOR_07,
-  COLLECTION_COLOR_08,
-
-  COLLECTION_COLOR_TOT,
-} CollectionColorTag;
 
 #ifdef __cplusplus
 }

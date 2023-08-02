@@ -27,6 +27,7 @@
 #include "DNA_ID.h"
 #include "DNA_armature_types.h"
 #include "DNA_brush_types.h"
+#include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -4089,7 +4090,8 @@ static const EnumPropertyItem *rna_id_itemf(bool *r_free,
 
         /* Show collection color tag icons in menus. */
         if (id_type == ID_GR) {
-          item_tmp.icon = UI_icon_color_from_collection((Collection *)id);
+          item_tmp.icon = UI_icon_color_from_collection(
+              CollectionColorTag(((Collection *)id)->color_tag));
         }
 
         RNA_enum_item_add(&item, &totitem, &item_tmp);

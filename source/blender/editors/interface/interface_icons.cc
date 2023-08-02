@@ -2294,7 +2294,7 @@ int ui_id_icon_get(const bContext *C, ID *id, const bool big)
       iconid = ui_id_screen_get_icon(C, id);
       break;
     case ID_GR:
-      iconid = UI_icon_color_from_collection((Collection *)id);
+      iconid = UI_icon_color_from_collection(CollectionColorTag(((Collection *)id)->color_tag));
       break;
     default:
       break;
@@ -2502,12 +2502,12 @@ int UI_icon_from_object_mode(const int mode)
   return ICON_NONE;
 }
 
-int UI_icon_color_from_collection(const Collection *collection)
+int UI_icon_color_from_collection(const CollectionColorTag color_tag)
 {
   int icon = ICON_OUTLINER_COLLECTION;
 
-  if (collection->color_tag != COLLECTION_COLOR_NONE) {
-    icon = ICON_COLLECTION_COLOR_01 + collection->color_tag;
+  if (color_tag != COLLECTION_COLOR_NONE) {
+    icon = ICON_COLLECTION_COLOR_01 + color_tag;
   }
 
   return icon;

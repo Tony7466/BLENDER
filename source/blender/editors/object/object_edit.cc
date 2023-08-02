@@ -2082,7 +2082,8 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
   Scene *scene = CTX_data_scene(C);
   const int icon = (menu->collection == scene->master_collection) ?
                        ICON_SCENE_DATA :
-                       UI_icon_color_from_collection(menu->collection);
+                       UI_icon_color_from_collection(
+                           CollectionColorTag(menu->collection->color_tag));
   uiItemIntO(layout, name, icon, menu->ot->idname, "collection_index", menu->index);
 
   LISTBASE_FOREACH (MoveToCollectionData *, submenu, &menu->submenus) {
@@ -2092,7 +2093,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
 
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)
 {
-  const int icon = UI_icon_color_from_collection(menu->collection);
+  const int icon = UI_icon_color_from_collection(CollectionColorTag(menu->collection->color_tag));
 
   if (BLI_listbase_is_empty(&menu->submenus)) {
     uiItemIntO(layout,

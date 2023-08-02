@@ -10,12 +10,12 @@
 
 /* Required for #eIconSizes which can't be forward declared if this file is included in C++. */
 #include "DNA_ID_enums.h"
+#include "DNA_collection_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct Collection;
 struct ID;
 struct PointerRNA;
 struct PreviewImage;
@@ -130,7 +130,7 @@ int UI_icon_from_rnaptr(const struct bContext *C, struct PointerRNA *ptr, int rn
 int UI_icon_from_idcode(int idcode);
 int UI_icon_from_library(const struct ID *id);
 int UI_icon_from_object_mode(int mode);
-int UI_icon_color_from_collection(const struct Collection *collection);
+int UI_icon_color_from_collection(CollectionColorTag color_tag);
 
 void UI_icon_text_overlay_init_from_count(struct IconTextOverlay *text_overlay,
                                           const int icon_indicator_number);
