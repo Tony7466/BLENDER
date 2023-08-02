@@ -82,9 +82,6 @@ void MeshData::update()
 
 pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
 {
-  if (key == pxr::HdTokens->points) {
-    return pxr::VtValue(vertices_);
-  }
   return pxr::VtValue();
 }
 
@@ -93,9 +90,13 @@ pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key)
   if (key == pxr::HdTokens->normals) {
     return pxr::VtValue(submesh(id).normals);
   }
-  else if (key == pxr::tokens_->st) {
+  if (key == pxr::tokens_->st) {
     return pxr::VtValue(submesh(id).uvs);
   }
+  if (key == pxr::HdTokens->points) {
+    return pxr::VtValue(submesh(id).vertices);
+  }
+
   return get_data(key);
 }
 
@@ -131,9 +132,7 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
 {
   pxr::HdPrimvarDescriptorVector primvars;
   if (interpolation == pxr::HdInterpolationVertex) {
-    if (!vertices_.empty()) {
-      primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
-    }
+    primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
   }
   else if (interpolation == pxr::HdInterpolationFaceVarying) {
     if (!submeshes_[0].normals.empty()) {
@@ -214,7 +213,6 @@ const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
 void MeshData::write_submeshes(Mesh *mesh)
 {
   submeshes_.clear();
-  vertices_.clear();
 
   /* Insert base submeshes */
   int mat_count = BKE_object_material_count_eval((Object *)id);
@@ -267,12 +265,33 @@ void MeshData::write_submeshes(Mesh *mesh)
     }
   }
 
-  if (!submeshes_.empty()) {
-    /* vertices */
-    vertices_.reserve(mesh->totvert);
-    blender::Span<blender::float3> verts = mesh->vert_positions();
-    for (blender::float3 v : verts) {
-      vertices_.push_back(pxr::GfVec3f(v.x, v.y, v.z));
+  if (submeshes_.empty()) {
+    return;
+  }
+
+  /* vertices */
+  blender::Span<blender::float3> verts = mesh->vert_positions();
+  pxr::VtVec3fArray vertices(mesh->totvert);
+  int i = 0;
+  for (blender::float3 v : verts) {
+    vertices[i++] = pxr::GfVec3f(v.x, v.y, v.z);
+  }
+
+  if (submeshes_.size() == 1) {
+    submeshes_[0].vertices = std::move(vertices);
+  }
+  else {
+    /* Optimizing submeshes: getting only used vertices, rearranged indices */
+    for (SubMesh &sm : submeshes_) {
+      Vector<int> index_map(vertices.size(), 0);
+      for (int &face_vertex_index : sm.face_vertex_indices) {
+        const int v = face_vertex_index;
+        if (index_map[v] == 0) {
+          sm.vertices.push_back(vertices[v]);
+          index_map[v] = sm.vertices.size();
+        }
+        face_vertex_index = index_map[v] - 1;
+      }
     }
   }
 }
