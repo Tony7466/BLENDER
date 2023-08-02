@@ -1,1 +1,2 @@
 Referenced by issue #110722, Wrong value when starting a transform (before moving the mouse)
+Referenced by commit c59ba19c0ba79d40f86bdfb40cc845140e39d839, Fix #110722: Wrong value when starting a transformation
