@@ -319,14 +319,17 @@ static void sort_small_groups(const OffsetIndices<int> groups,
   });
 }
 
-static Array<int> reverse_indices_for_offsets(const Span<int> indices,
-                                              const OffsetIndices<int> offsets)
+static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
+                                            const OffsetIndices<int> offsets)
 {
+  BLI_assert(!group_indices.is_empty());
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
   Array<int> counts(offsets.size(), -1);
-  Array<int> results(indices.size());
-  threading::parallel_for(indices.index_range(), 1024, [&](const IndexRange range) {
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
-      const int group = indices[i];
+      const int group = group_indices[i];
       const int index = atomic_add_and_fetch_int32(&counts[group], 1);
       const IndexRange range = offsets[group];
       results[range[index]] = int(i);
@@ -334,6 +337,21 @@ static Array<int> reverse_indices_for_offsets(const Span<int> indices,
   });
   sort_small_groups(offsets, results);
   return results;
+}
+
+static GroupedSpan<int> gather_groups(const Span<int> group_indices,
+                                      const int groups_num,
+                                      Array<int> &r_offsets,
+                                      Array<int> &r_indices)
+{
+  if (group_indices.is_empty()) {
+    r_offsets.reinitialize(groups_num + 1);
+    r_offsets.as_mutable_span().fill(0);
+    return {OffsetIndices<int>(r_offsets), {}};
+  }
+  r_offsets = create_reverse_offsets(group_indices, groups_num);
+  r_indices = reverse_indices_in_groups(group_indices, r_offsets.as_span());
+  return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
 Array<int> build_loop_to_face_map(const OffsetIndices<int> faces)
@@ -380,26 +398,12 @@ GroupedSpan<int> build_vert_to_face_map(const OffsetIndices<int> faces,
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
-template<typename T> static bool operator==(const OffsetIndices<T> a, const OffsetIndices<T> b)
-{
-  return Span(a.data(), a.size()) == Span(b.data(), b.size());
-}
-
-template<typename T> static bool operator==(const GroupedSpan<T> a, const GroupedSpan<T> b)
-{
-  return a.data == b.data && a.offsets == b.offsets;
-}
-
-namespace new_ {
-
 GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
                                         const int verts_num,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  r_offsets = create_reverse_offsets(corner_verts, verts_num);
-  r_indices = reverse_indices_for_offsets(corner_verts, r_offsets.as_span());
-  return {OffsetIndices<int>(r_offsets), r_indices};
+  return gather_groups(corner_verts, verts_num, r_offsets, r_indices);
 }
 
 GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
@@ -407,75 +411,7 @@ GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  r_offsets = create_reverse_offsets(corner_edges, edges_num);
-  r_indices = reverse_indices_for_offsets(corner_edges, r_offsets.as_span());
-  return {OffsetIndices<int>(r_offsets), r_indices};
-}
-
-}  // namespace new_
-
-namespace old_ {
-
-GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
-                                        const int verts_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices)
-{
-  r_offsets = create_reverse_offsets(corner_verts, verts_num);
-  r_indices.reinitialize(r_offsets.last());
-  Array<int> counts(verts_num, 0);
-
-  for (const int64_t corner : corner_verts.index_range()) {
-    const int vert = corner_verts[corner];
-    r_indices[r_offsets[vert] + counts[vert]] = int(corner);
-    counts[vert]++;
-  }
-  return {OffsetIndices<int>(r_offsets), r_indices};
-}
-
-GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
-                                        const int edges_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices)
-{
-  r_offsets = create_reverse_offsets(corner_edges, edges_num);
-  r_indices.reinitialize(r_offsets.last());
-  Array<int> counts(edges_num, 0);
-
-  for (const int64_t corner : corner_edges.index_range()) {
-    const int edge = corner_edges[corner];
-    r_indices[r_offsets[edge] + counts[edge]] = int(corner);
-    counts[edge]++;
-  }
-  return {OffsetIndices<int>(r_offsets), r_indices};
-}
-
-}  // namespace old_
-
-GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
-                                        const int verts_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices)
-{
-  Array<int> offsets;
-  Array<int> indices;
-  const auto aaa = new_::build_vert_to_loop_map(corner_verts, verts_num, r_offsets, r_indices);
-  const auto bbb = old_::build_vert_to_loop_map(corner_verts, verts_num, offsets, indices);
-  std::cout << __func__ << ": " << std::boolalpha << (aaa == bbb) << std::endl;
-  return aaa;
-}
-
-GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
-                                        const int edges_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices)
-{
-  Array<int> offsets;
-  Array<int> indices;
-  const auto aaa = new_::build_edge_to_loop_map(corner_edges, edges_num, r_offsets, r_indices);
-  const auto bbb = old_::build_edge_to_loop_map(corner_edges, edges_num, offsets, indices);
-  std::cout << __func__ << ": " << std::boolalpha << (aaa == bbb) << std::endl;
-  return aaa;
+  return gather_groups(corner_edges, edges_num, r_offsets, r_indices);
 }
 
 GroupedSpan<int> build_edge_to_face_map(const OffsetIndices<int> faces,
