@@ -346,6 +346,8 @@ typedef struct ThemeSpace {
   unsigned char nodeclass_geometry[4], nodeclass_attribute[4];
 
   unsigned char node_zone_simulation[4];
+  unsigned char node_zone_repeat[4];
+  unsigned char _pad9[4];
   unsigned char simulated_frames[4];
 
   /** For sequence editor. */
@@ -680,7 +682,10 @@ typedef struct UserDef_Experimental {
   char enable_overlay_next;
   char enable_workbench_next;
   char use_new_volume_nodes;
-  char _pad[4];
+  char use_node_panels;
+  char use_rotation_socket;
+  char use_node_group_operators;
+  char _pad[1];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -728,6 +733,9 @@ typedef struct UserDef {
   char i18ndir[768];
   /** 1024 = FILE_MAX. */
   char image_editor[1024];
+  /** 1024 = FILE_MAX. */
+  char text_editor[1024];
+  char text_editor_args[256];
   /** 1024 = FILE_MAX. */
   char anim_player[1024];
   int anim_player_preset;
@@ -995,7 +1003,7 @@ typedef struct UserDef {
   UserDef_Runtime runtime;
 } UserDef;
 
-/** From blenkernel `blender.c`. */
+/** From blenkernel `blender.cc`. */
 extern UserDef U;
 
 /* ***************** USERDEF ****************** */

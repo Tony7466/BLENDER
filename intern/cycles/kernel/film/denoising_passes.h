@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -69,9 +70,10 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
       }
     }
 
-    Spectrum closure_albedo = bsdf_albedo(sd, sc);
+    Spectrum closure_albedo = bsdf_albedo(sd, sc, true, true);
     if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f) ||
-        sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
+        sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID)
+    {
       /* Hair far field models "count" as diffuse. */
       diffuse_albedo += closure_albedo;
       sum_nonspecular_weight += sc->sample_weight;

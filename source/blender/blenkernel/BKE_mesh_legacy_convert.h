@@ -13,10 +13,6 @@
 #ifdef __cplusplus
 #  include "BLI_resource_scope.hh"
 #  include "BLI_span.hh"
-#  include "BLI_vector.hh"
-
-#  include "DNA_customdata_types.h"
-#  include "DNA_meshdata_types.h"
 #endif
 
 struct CustomData;
@@ -25,10 +21,6 @@ struct MFace;
 
 #ifdef __cplusplus
 
-void BKE_mesh_legacy_convert_uvs_to_struct(
-    Mesh *mesh,
-    blender::ResourceScope &temp_mloopuv_for_convert,
-    blender::Vector<CustomDataLayer, 16> &loop_layers_to_write);
 void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh);
 
 /**
@@ -40,6 +32,7 @@ void BKE_mesh_legacy_face_set_to_generic(struct Mesh *mesh);
  * Copy edge creases from edges to a separate layer.
  */
 void BKE_mesh_legacy_edge_crease_to_layers(struct Mesh *mesh);
+void BKE_mesh_legacy_crease_to_generic(struct Mesh *mesh);
 
 /**
  * Copy bevel weights from vertices and edges to separate layers.
@@ -84,6 +77,8 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh);
 
 void BKE_mesh_legacy_convert_loops_to_corners(struct Mesh *mesh);
 
+void BKE_mesh_legacy_face_map_to_generic(struct Mesh *mesh);
+
 #endif
 
 #ifdef __cplusplus
@@ -92,11 +87,7 @@ extern "C" {
 
 /**
  * Recreate #MFace Tessellation.
- *
- * \note This doesn't use multi-threading like #BKE_mesh_recalc_looptri since
- * it's not used in many places and #MFace should be phased out.
  */
-
 void BKE_mesh_tessface_calc(struct Mesh *mesh);
 
 void BKE_mesh_tessface_ensure(struct Mesh *mesh);
@@ -114,13 +105,13 @@ void BKE_mesh_convert_mfaces_to_mpolys(struct Mesh *mesh);
 
 /**
  * The same as #BKE_mesh_convert_mfaces_to_mpolys
- * but oriented to be used in #do_versions from `readfile.c`
+ * but oriented to be used in #do_versions from `readfile.cc`
  * the difference is how active/render/clone/stencil indices are handled here.
  *
- * normally they're being set from `pdata` which totally makes sense for meshes which are already
- * converted to #BMesh structures, but when loading older files indices shall be updated in other
- * way around, so newly added `pdata` and `ldata` would have this indices set
- * based on `fdata`  layer.
+ * normally they're being set from `pdata` which totally makes sense for meshes which are
+ * already converted to #BMesh structures, but when loading older files indices shall be updated in
+ * other way around, so newly added `pdata` and `ldata` would have this indices set based on
+ * `pdata`  layer.
  *
  * this is normally only needed when reading older files,
  * in all other cases #BKE_mesh_convert_mfaces_to_mpolys shall be always used.

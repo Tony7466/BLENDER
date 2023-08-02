@@ -198,7 +198,7 @@ enum {
   SLIDE_ACTION_SPLINE = 4,
 };
 
-typedef struct SlidePointData {
+struct SlidePointData {
   /* Generic fields. */
   short event_invoke_type;
   int action;
@@ -235,7 +235,7 @@ typedef struct SlidePointData {
   /* Feather sliding. */
   float prev_feather_coord[2];
   float weight, weight_scalar;
-} SlidePointData;
+};
 
 static void mask_point_undistort_pos(SpaceClip *sc, float r_co[2], const float co[2])
 {
@@ -926,18 +926,18 @@ void MASK_OT_slide_point(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "slide_feather",
-                  0,
+                  false,
                   "Slide Feather",
                   "First try to slide feather instead of vertex");
 
   prop = RNA_def_boolean(
-      ot->srna, "is_new_point", 0, "Slide New Point", "Newly created vertex is being slid");
+      ot->srna, "is_new_point", false, "Slide New Point", "Newly created vertex is being slid");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /******************** slide spline curvature *********************/
 
-typedef struct SlideSplineCurvatureData {
+struct SlideSplineCurvatureData {
   short event_invoke_type;
 
   Mask *mask;
@@ -954,7 +954,7 @@ typedef struct SlideSplineCurvatureData {
   float prev_spline_coord[2];
 
   float P0[2], P1[2], P2[2], P3[3];
-} SlideSplineCurvatureData;
+};
 
 static void cancel_slide_spline_curvature(SlideSplineCurvatureData *slide_data)
 {
@@ -1819,7 +1819,7 @@ void MASK_OT_hide_view_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected layers");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected layers");
 }
 
 static int mask_feather_weight_clear_exec(bContext *C, wmOperator * /*op*/)
@@ -2105,7 +2105,7 @@ static bool paste_splines_poll(bContext *C)
     return BKE_mask_clipboard_is_empty() == false;
   }
 
-  return 0;
+  return false;
 }
 
 static int paste_splines_exec(bContext *C, wmOperator * /*op*/)

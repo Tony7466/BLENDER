@@ -444,7 +444,8 @@ eAutoPropButsReturn uiDefAutoButsRNA(uiLayout *layout,
       uiLayoutSetActivateInit(col, true);
     }
 
-    uiItemFullR(col, ptr, prop, -1, 0, compact ? UI_ITEM_R_COMPACT : 0, name, ICON_NONE);
+    uiItemFullR(
+        col, ptr, prop, -1, 0, compact ? UI_ITEM_R_COMPACT : UI_ITEM_NONE, name, ICON_NONE);
     return_info &= ~UI_PROP_BUTS_NONE_ADDED;
 
     if (use_activate_init) {
@@ -490,8 +491,9 @@ static bool add_collection_search_item(CollItemSearch *cis,
      * removed). */
     BKE_id_full_name_ui_prefix_get(
         name_buf, static_cast<const ID *>(cis->data), false, UI_SEP_CHAR, &name_prefix_offset);
-    BLI_assert(strlen(name_buf) <= MEM_allocN_len(cis->name));
-    strcpy(cis->name, name_buf);
+    const int name_buf_len = strlen(name_buf);
+    BLI_assert(name_buf_len <= strlen(cis->name));
+    memcpy(cis->name, name_buf, name_buf_len + 1);
   }
 
   return UI_search_item_add(items,
@@ -827,11 +829,11 @@ int UI_calc_float_precision(int prec, double value)
   return prec;
 }
 
-bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t maxlength)
+bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t str_maxncpy)
 {
   if (but->rnapoin.owner_id && but->rnapoin.data && but->rnaprop) {
     BLI_snprintf(r_str,
-                 maxlength,
+                 str_maxncpy,
                  "%s.%s",
                  RNA_struct_identifier(but->rnapoin.type),
                  RNA_property_identifier(but->rnaprop));
@@ -846,12 +848,12 @@ bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t maxlength)
   return false;
 }
 
-bool UI_but_online_manual_id_from_active(const bContext *C, char *r_str, size_t maxlength)
+bool UI_but_online_manual_id_from_active(const bContext *C, char *r_str, size_t str_maxncpy)
 {
   uiBut *but = UI_context_active_but_get(C);
 
   if (but) {
-    return UI_but_online_manual_id(but, r_str, maxlength);
+    return UI_but_online_manual_id(but, r_str, str_maxncpy);
   }
 
   *r_str = '\0';

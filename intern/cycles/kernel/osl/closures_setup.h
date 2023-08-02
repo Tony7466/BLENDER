@@ -1,10 +1,9 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Adapted from Open Shading Language
- * Copyright (c) 2009-2010 Sony Pictures Imageworks Inc., et al.
- * All Rights Reserved.
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * Adapted code from Open Shading Language. */
 
 #pragma once
 
@@ -15,6 +14,7 @@
 #include "kernel/closure/bsdf_diffuse.h"
 #include "kernel/closure/bsdf_microfacet.h"
 #include "kernel/closure/bsdf_oren_nayar.h"
+#include "kernel/closure/bsdf_sheen.h"
 #include "kernel/closure/bsdf_transparent.h"
 #include "kernel/closure/bsdf_ashikhmin_shirley.h"
 #include "kernel/closure/bsdf_toon.h"
@@ -22,7 +22,6 @@
 #include "kernel/closure/bsdf_hair_principled.h"
 #include "kernel/closure/bsdf_hair_microfacet.h"
 #include "kernel/closure/bsdf_principled_diffuse.h"
-#include "kernel/closure/bsdf_principled_sheen.h"
 #include "kernel/closure/volume.h"
 #include "kernel/closure/bsdf_diffuse_ramp.h"
 #include "kernel/closure/bsdf_phong_ramp.h"
@@ -144,8 +143,9 @@ ccl_device void osl_closure_reflection_setup(KernelGlobals kg,
   }
 
   bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->alpha_x = bsdf->alpha_y = 0.0f;
 
-  sd->flag |= bsdf_reflection_setup(bsdf);
+  sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
 }
 
 ccl_device void osl_closure_refraction_setup(KernelGlobals kg,
@@ -166,8 +166,9 @@ ccl_device void osl_closure_refraction_setup(KernelGlobals kg,
 
   bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->ior = closure->ior;
+  bsdf->alpha_x = bsdf->alpha_y = 0.0f;
 
-  sd->flag |= bsdf_refraction_setup(bsdf);
+  sd->flag |= bsdf_microfacet_ggx_refraction_setup(bsdf);
 }
 
 ccl_device void osl_closure_transparent_setup(KernelGlobals kg,
@@ -225,7 +226,7 @@ ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
       sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
     }
   }
-  /* GGX (either single- or multiscattering) */
+  /* GGX (either single- or multi-scattering). */
   else {
     if (has_reflection && has_transmission) {
       sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
@@ -279,7 +280,7 @@ ccl_device void osl_closure_conductor_bsdf_setup(KernelGlobals kg,
   if (closure->distribution == make_string("beckmann", 14712237670914973463ull)) {
     sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
   }
-  /* GGX (either single- or multiscattering) */
+  /* GGX (either single- or multi-scattering) */
   else {
     sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
     preserve_energy = (closure->distribution == make_string("multi_ggx", 16842698693386468366ull));
@@ -339,7 +340,7 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
       sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
     }
   }
-  /* GGX (either single- or multiscattering) */
+  /* GGX (either single- or multi-scattering) */
   else {
     if (has_reflection && has_transmission) {
       sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
@@ -399,23 +400,15 @@ ccl_device void osl_closure_microfacet_setup(KernelGlobals kg,
       sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
     }
   }
-  /* Sharp */
-  else if (closure->distribution == make_string("sharp", 1870681295563127462ull)) {
-    if (closure->refract == 1) {
-      sd->flag |= bsdf_refraction_setup(bsdf);
-    }
-    else if (closure->refract == 2) {
-      sd->flag |= bsdf_sharp_glass_setup(bsdf);
-    }
-    else {
-      sd->flag |= bsdf_reflection_setup(bsdf);
-    }
-  }
   /* Ashikhmin-Shirley */
   else if (closure->distribution == make_string("ashikhmin_shirley", 11318482998918370922ull)) {
     sd->flag |= bsdf_ashikhmin_shirley_setup(bsdf);
   }
-  /* GGX (either single- or multiscattering) */
+  /* Clearcoat */
+  else if (closure->distribution == make_string("clearcoat", 3490136178980547276ull)) {
+    sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
+  }
+  /* GGX (either single- or multi-scattering) */
   else {
     if (closure->refract == 1) {
       sd->flag |= bsdf_microfacet_ggx_refraction_setup(bsdf);
@@ -524,7 +517,7 @@ ccl_device void osl_closure_microfacet_aniso_fresnel_setup(
   bsdf->ior = closure->ior;
   bsdf->T = closure->T;
 
-  /* Only GGX (either single- or multiscattering) supported here */
+  /* Only GGX (either single- or multi-scattering) supported here */
   sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
 
   const bool preserve_energy = (closure->distribution ==
@@ -561,6 +554,30 @@ ccl_device void osl_closure_ashikhmin_velvet_setup(
   bsdf->sigma = closure->sigma;
 
   sd->flag |= bsdf_ashikhmin_velvet_setup(bsdf);
+}
+
+/* Sheen */
+
+ccl_device void osl_closure_sheen_setup(KernelGlobals kg,
+                                        ccl_private ShaderData *sd,
+                                        uint32_t path_flag,
+                                        float3 weight,
+                                        ccl_private const SheenClosure *closure)
+{
+  if (osl_closure_skip(kg, sd, path_flag, LABEL_DIFFUSE)) {
+    return;
+  }
+
+  ccl_private SheenBsdf *bsdf = (ccl_private SheenBsdf *)bsdf_alloc(
+      sd, sizeof(SheenBsdf), rgb_to_spectrum(weight));
+  if (!bsdf) {
+    return;
+  }
+
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->roughness = closure->roughness;
+
+  sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
 }
 
 ccl_device void osl_closure_diffuse_toon_setup(KernelGlobals kg,
@@ -632,53 +649,6 @@ ccl_device void osl_closure_principled_diffuse_setup(
   bsdf->roughness = closure->roughness;
 
   sd->flag |= bsdf_principled_diffuse_setup(bsdf);
-}
-
-ccl_device void osl_closure_principled_sheen_setup(
-    KernelGlobals kg,
-    ccl_private ShaderData *sd,
-    uint32_t path_flag,
-    float3 weight,
-    ccl_private const PrincipledSheenClosure *closure)
-{
-  if (osl_closure_skip(kg, sd, path_flag, LABEL_DIFFUSE)) {
-    return;
-  }
-
-  ccl_private PrincipledSheenBsdf *bsdf = (ccl_private PrincipledSheenBsdf *)bsdf_alloc(
-      sd, sizeof(PrincipledSheenBsdf), rgb_to_spectrum(weight));
-  if (!bsdf) {
-    return;
-  }
-
-  bsdf->N = closure->N;
-  bsdf->avg_value = 0.0f;
-
-  sd->flag |= bsdf_principled_sheen_setup(sd, bsdf);
-}
-
-ccl_device void osl_closure_principled_clearcoat_setup(
-    KernelGlobals kg,
-    ccl_private ShaderData *sd,
-    uint32_t path_flag,
-    float3 weight,
-    ccl_private const PrincipledClearcoatClosure *closure)
-{
-  weight *= 0.25f * closure->clearcoat;
-  ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-      sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(weight));
-  if (!bsdf) {
-    return;
-  }
-
-  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
-  bsdf->alpha_x = closure->clearcoat_roughness;
-  bsdf->alpha_y = closure->clearcoat_roughness;
-  bsdf->ior = 1.5f;
-
-  bsdf->T = zero_float3();
-
-  sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
 }
 
 /* Variable cone emissive closure

@@ -1,7 +1,6 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
- *  */
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -79,9 +78,9 @@ World::~World()
 
 void World::sync()
 {
-  // if (inst_.lookdev.sync_world()) {
-  //   return;
-  // }
+  if (inst_.lookdev.sync_world()) {
+    return;
+  }
 
   ::World *bl_world = inst_.scene->world;
   if (bl_world == nullptr) {
@@ -89,9 +88,9 @@ void World::sync()
   }
 
   WorldHandle &wo_handle = inst_.sync.sync_world(bl_world);
-
+  inst_.reflection_probes.sync_world(bl_world, wo_handle);
   if (wo_handle.recalc != 0) {
-    // inst_.lightprobes.set_world_dirty();
+    inst_.reflection_probes.do_world_update_set(true);
   }
   wo_handle.reset_recalc_flag();
 
@@ -109,6 +108,7 @@ void World::sync()
 
   inst_.manager->register_layer_attributes(gpumat);
 
+  inst_.pipelines.background.sync(gpumat, inst_.film.background_opacity_get());
   inst_.pipelines.world.sync(gpumat);
 }
 

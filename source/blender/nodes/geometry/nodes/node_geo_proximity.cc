@@ -23,7 +23,7 @@ NODE_STORAGE_FUNCS(NodeGeometryProximity)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Target").only_realized_data().supported_type(
-      {GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD});
+      {GeometryComponent::Type::Mesh, GeometryComponent::Type::PointCloud});
   b.add_input<decl::Vector>("Source Position").implicit_field(implicit_field_inputs::position);
   b.add_output<decl::Vector>("Position").dependent_field().reference_pass_all();
   b.add_output<decl::Float>("Distance").dependent_field().reference_pass_all();
@@ -31,7 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "target_element", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "target_element", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void geo_proximity_init(bNodeTree * /*tree*/, bNode *node)
@@ -65,24 +65,21 @@ static bool calculate_mesh_proximity(const VArray<float3> &positions,
     return false;
   }
 
-  threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
+  mask.foreach_index(GrainSize(512), [&](const int index) {
     BVHTreeNearest nearest;
     copy_v3_fl(nearest.co, FLT_MAX);
     nearest.index = -1;
 
-    for (int i : range) {
-      const int index = mask[i];
-      /* Use the distance to the last found point as upper bound to speedup the bvh lookup. */
-      nearest.dist_sq = math::distance_squared(float3(nearest.co), positions[index]);
+    /* Use the distance to the last found point as upper bound to speedup the bvh lookup. */
+    nearest.dist_sq = math::distance_squared(float3(nearest.co), positions[index]);
 
-      BLI_bvhtree_find_nearest(
-          bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
+    BLI_bvhtree_find_nearest(
+        bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
 
-      if (nearest.dist_sq < r_distances[index]) {
-        r_distances[index] = nearest.dist_sq;
-        if (!r_locations.is_empty()) {
-          r_locations[index] = nearest.co;
-        }
+    if (nearest.dist_sq < r_distances[index]) {
+      r_distances[index] = nearest.dist_sq;
+      if (!r_locations.is_empty()) {
+        r_locations[index] = nearest.co;
       }
     }
   });
@@ -98,31 +95,28 @@ static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
                                            MutableSpan<float3> r_locations)
 {
   BVHTreeFromPointCloud bvh_data;
-  BKE_bvhtree_from_pointcloud_get(&bvh_data, &pointcloud, 2);
-  if (bvh_data.tree == nullptr) {
+  const BVHTree *tree = BKE_bvhtree_from_pointcloud_get(&bvh_data, &pointcloud, 2);
+  if (tree == nullptr) {
     return false;
   }
 
-  threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
+  mask.foreach_index(GrainSize(512), [&](const int index) {
     BVHTreeNearest nearest;
     copy_v3_fl(nearest.co, FLT_MAX);
     nearest.index = -1;
 
-    for (int i : range) {
-      const int index = mask[i];
-      /* Use the distance to the closest point in the mesh to speedup the pointcloud bvh lookup.
-       * This is ok because we only need to find the closest point in the pointcloud if it's
-       * closer than the mesh. */
-      nearest.dist_sq = r_distances[index];
+    /* Use the distance to the closest point in the mesh to speedup the pointcloud bvh lookup.
+     * This is ok because we only need to find the closest point in the pointcloud if it's
+     * closer than the mesh. */
+    nearest.dist_sq = r_distances[index];
 
-      BLI_bvhtree_find_nearest(
-          bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
+    BLI_bvhtree_find_nearest(
+        bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
 
-      if (nearest.dist_sq < r_distances[index]) {
-        r_distances[index] = nearest.dist_sq;
-        if (!r_locations.is_empty()) {
-          r_locations[index] = nearest.co;
-        }
+    if (nearest.dist_sq < r_distances[index]) {
+      r_distances[index] = nearest.dist_sq;
+      if (!r_locations.is_empty()) {
+        r_locations[index] = nearest.co;
       }
     }
   });
@@ -187,12 +181,8 @@ class ProximityFunction : public mf::MultiFunction {
     }
 
     if (params.single_output_is_required(2, "Distance")) {
-      threading::parallel_for(mask.index_range(), 2048, [&](IndexRange range) {
-        for (const int i : range) {
-          const int j = mask[i];
-          distances[j] = std::sqrt(distances[j]);
-        }
-      });
+      mask.foreach_index_optimized<int>(
+          GrainSize(2048), [&](const int j) { distances[j] = std::sqrt(distances[j]); });
     }
   }
 };

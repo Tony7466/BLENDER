@@ -328,7 +328,8 @@ static void do_item_rename(ARegion *region,
                 TSE_R_LAYER_BASE,
                 TSE_SCENE_COLLECTION_BASE,
                 TSE_VIEW_COLLECTION_BASE,
-                TSE_LIBRARY_OVERRIDE_BASE))
+                TSE_LIBRARY_OVERRIDE_BASE,
+                TSE_GENERIC_LABEL))
   {
     BKE_report(reports, RPT_WARNING, "Cannot edit builtin name");
   }
@@ -2152,7 +2153,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   }
 
   DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, "Purging %d unused data-blocks (", num_tagged[INDEX_ID_NULL]);
+  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {

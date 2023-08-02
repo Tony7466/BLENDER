@@ -6,6 +6,7 @@
 
 #include "AS_asset_catalog.hh"
 #include "AS_asset_library.hh"
+#include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string_search.h"
@@ -62,27 +63,26 @@ static void add_node_search_listen_fn(const wmRegionListenerParams *params, void
 }
 
 static void search_items_for_asset_metadata(const bNodeTree &node_tree,
-                                            const AssetHandle asset_handle,
+                                            const asset_system::AssetRepresentation &asset,
                                             nodes::GatherAddNodeSearchParams &params)
 {
-  const AssetMetaData &asset_data = *ED_asset_handle_get_metadata(&asset_handle);
+  const AssetMetaData &asset_data = asset.get_metadata();
   const IDProperty *tree_type = BKE_asset_metadata_idprop_find(&asset_data, "type");
   if (tree_type == nullptr || IDP_Int(tree_type) != node_tree.type) {
     return;
   }
 
-  const AssetRepresentation *asset = ED_asset_handle_get_representation(&asset_handle);
-  params.add_single_node_item(
-      IFACE_(ED_asset_handle_get_name(&asset_handle)),
-      asset_data.description == nullptr ? "" : IFACE_(asset_data.description),
-      [asset](const bContext &C, bNodeTree &node_tree, bNode &node) {
-        Main &bmain = *CTX_data_main(&C);
-        node.flag &= ~NODE_OPTIONS;
-        node.id = ED_asset_get_local_id_from_asset_or_append_and_reuse(&bmain, asset, ID_NT);
-        id_us_plus(node.id);
-        BKE_ntree_update_tag_node_property(&node_tree, &node);
-        DEG_relations_tag_update(&bmain);
-      });
+  params.add_single_node_item(IFACE_(asset.get_name().c_str()),
+                              asset_data.description == nullptr ? "" :
+                                                                  IFACE_(asset_data.description),
+                              [&asset](const bContext &C, bNodeTree &node_tree, bNode &node) {
+                                Main &bmain = *CTX_data_main(&C);
+                                node.flag &= ~NODE_OPTIONS;
+                                node.id = asset::asset_local_id_ensure_imported(bmain, asset);
+                                id_us_plus(node.id);
+                                BKE_ntree_update_tag_node_property(&node_tree, &node);
+                                DEG_relations_tag_update(&bmain);
+                              });
 }
 
 static void gather_search_items_for_all_assets(const bContext &C,
@@ -93,20 +93,18 @@ static void gather_search_items_for_all_assets(const bContext &C,
   const bNodeType &group_node_type = *nodeTypeFind(node_tree.typeinfo->group_idname);
   nodes::GatherAddNodeSearchParams params(C, group_node_type, node_tree, search_items);
 
-  AssetLibraryReference library_ref{};
-  library_ref.custom_library_index = -1;
-  library_ref.type = ASSET_LIBRARY_ALL;
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
 
   AssetFilterSettings filter_settings{};
   filter_settings.id_types = FILTER_ID_NT;
 
   ED_assetlist_storage_fetch(&library_ref, &C);
   ED_assetlist_ensure_previews_job(&library_ref, &C);
-  ED_assetlist_iterate(library_ref, [&](AssetHandle asset) {
-    if (!ED_asset_filter_matches_asset(&filter_settings, &asset)) {
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
       return true;
     }
-    if (!r_added_assets.add(ED_asset_handle_get_name(&asset))) {
+    if (!r_added_assets.add(asset.get_name())) {
       /* If an asset with the same name has already been added, skip this. */
       return true;
     }
@@ -170,7 +168,7 @@ static void gather_add_node_operations(const bContext &C,
 
   /* Use a set to avoid adding items for node groups that are also assets. Using data-block
    * names is a crutch, since different assets may have the same name. However, an alternative
-   * using #ED_asset_handle_get_local_id didn't work in this case. */
+   * using #AssetRepresentation::local_id() didn't work in this case. */
   Set<std::string> added_assets;
   gather_search_items_for_all_assets(C, node_tree, added_assets, r_search_items);
   gather_search_items_for_node_groups(C, node_tree, added_assets, r_search_items);
@@ -222,7 +220,7 @@ static void add_node_search_exec_fn(bContext *C, void *arg1, void *arg2)
   }
 
   node_deselect_all(node_tree);
-  Vector<bNode *> new_nodes = item->add_fn(*C, node_tree, storage.cursor);
+  item->add_fn(*C, node_tree, storage.cursor);
 
   /* Ideally it would be possible to tag the node tree in some way so it updates only after the
    * translate operation is finished, but normally moving nodes around doesn't cause updates. */

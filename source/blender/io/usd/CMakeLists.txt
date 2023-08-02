@@ -40,24 +40,21 @@ if(WIN32)
   # Some USD library headers trigger the "unreferenced formal parameter"
   # warning alert.
   # Silence them by restore warn C4100 back to w4
-  remove_cc_flag(/w34100)
+  remove_cc_flag("/w34100")
 endif()
 
 set(INC
   .
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
   ../../editors/include
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../intern/utfconv
 )
 
@@ -72,7 +69,6 @@ set(SRC
   intern/usd_asset_utils.cc
   intern/usd_capi_export.cc
   intern/usd_capi_import.cc
-  intern/usd_common.cc
   intern/usd_hierarchy_iterator.cc
   intern/usd_writer_abstract.cc
   intern/usd_writer_camera.cc
@@ -101,7 +97,6 @@ set(SRC
   usd.h
 
   intern/usd_asset_utils.h
-  intern/usd_common.h
   intern/usd_exporter_context.h
   intern/usd_hierarchy_iterator.h
   intern/usd_writer_abstract.h
@@ -131,8 +126,10 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_imbuf
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
 )
 
@@ -156,13 +153,15 @@ endif()
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
+if(COMMAND target_precompile_headers)
+  target_precompile_headers(bf_usd PRIVATE intern/usd_precomp.h)
+endif()
+
 if(WITH_GTESTS)
   set(TEST_SRC
     tests/usd_curves_test.cc
     tests/usd_export_test.cc
     tests/usd_stage_creation_test.cc
-    tests/usd_tests_common.cc
-    tests/usd_tests_common.h
     tests/usd_usdz_export_test.cc
     intern/usd_writer_material.h
   )

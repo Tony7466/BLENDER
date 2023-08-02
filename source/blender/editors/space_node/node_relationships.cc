@@ -432,6 +432,7 @@ static bool socket_can_be_viewed(const bNodeSocket &socket)
               SOCK_VECTOR,
               SOCK_INT,
               SOCK_BOOLEAN,
+              SOCK_ROTATION,
               SOCK_RGBA);
 }
 
@@ -448,6 +449,8 @@ static eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype
       return CD_PROP_BOOL;
     case SOCK_RGBA:
       return CD_PROP_COLOR;
+    case SOCK_ROTATION:
+      return CD_PROP_QUATERNION;
     default:
       /* Fallback. */
       return CD_AUTO_FROM_NAME;
@@ -1588,7 +1591,7 @@ void NODE_OT_links_cut(wmOperatorType *ot)
 /** \name Mute Links Operator
  * \{ */
 
-static bool all_links_muted(const bNodeSocket &socket)
+bool all_links_muted(const bNodeSocket &socket)
 {
   for (const bNodeLink *link : socket.directly_linked_links()) {
     if (!(link->flag & NODE_LINK_MUTED)) {
@@ -2222,8 +2225,6 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 static int get_main_socket_priority(const bNodeSocket *socket)
 {
   switch ((eNodeSocketDatatype)socket->type) {
-    case __SOCK_MESH:
-      return -1;
     case SOCK_CUSTOM:
       return 0;
     case SOCK_BOOLEAN:
@@ -2240,6 +2241,7 @@ static int get_main_socket_priority(const bNodeSocket *socket)
     case SOCK_SHADER:
     case SOCK_OBJECT:
     case SOCK_IMAGE:
+    case SOCK_ROTATION:
     case SOCK_GEOMETRY:
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
@@ -2576,7 +2578,7 @@ static int node_insert_offset_modal(bContext *C, wmOperator *op, const wmEvent *
 
   /* end timer + free insert offset data */
   if (duration > NODE_INSOFS_ANIM_DURATION) {
-    WM_event_remove_timer(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
+    WM_event_timer_remove(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
 
     for (bNode *node : snode->edittree->all_nodes()) {
       node->runtime->anim_init_locx = node->runtime->anim_ofsx = 0.0f;
@@ -2606,7 +2608,7 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
   BLI_assert((snode->flag & SNODE_SKIP_INSOFFSET) == 0);
 
   iofsd->ntree = snode->edittree;
-  iofsd->anim_timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
+  iofsd->anim_timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
 
   node_link_insert_offset_ntree(
       iofsd, CTX_wm_region(C), event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));

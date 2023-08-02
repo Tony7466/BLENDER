@@ -8,8 +8,8 @@
  * Used by ED_undo.h, internal implementation.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -249,7 +249,7 @@ static void undosys_stack_validate(UndoStack *ustack, bool expect_non_empty)
 static void undosys_stack_validate(UndoStack * /*ustack*/, bool /*expect_non_empty*/) {}
 #endif
 
-UndoStack *BKE_undosys_stack_create(void)
+UndoStack *BKE_undosys_stack_create()
 {
   UndoStack *ustack = MEM_cnew<UndoStack>(__func__);
   return ustack;
@@ -386,7 +386,7 @@ UndoStep *BKE_undosys_stack_init_or_active_with_type(UndoStack *ustack, const Un
 void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size_t memory_limit)
 {
   UNDO_NESTED_ASSERT(false);
-  if ((steps == -1) && (memory_limit != 0)) {
+  if ((steps == -1) && (memory_limit == 0)) {
     return;
   }
 
@@ -400,6 +400,12 @@ void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size
     if (memory_limit) {
       data_size_all += us->data_size;
       if (data_size_all > memory_limit) {
+        CLOG_INFO(&LOG,
+                  1,
+                  "At step %zu: data_size_all=%zu >= memory_limit=%zu",
+                  us_count,
+                  data_size_all,
+                  memory_limit);
         break;
       }
     }
@@ -412,6 +418,8 @@ void BKE_undosys_stack_limit_steps_and_memory(UndoStack *ustack, int steps, size
       }
     }
   }
+
+  CLOG_INFO(&LOG, 1, "Total steps %zu: data_size_all=%zu", us_count, data_size_all);
 
   if (us) {
 #ifdef WITH_GLOBAL_UNDO_KEEP_ONE
@@ -885,7 +893,7 @@ UndoType *BKE_undosys_type_append(void (*undosys_fn)(UndoType *))
   return ut;
 }
 
-void BKE_undosys_type_free_all(void)
+void BKE_undosys_type_free_all()
 {
   UndoType *ut;
   while ((ut = static_cast<UndoType *>(BLI_pophead(&g_undo_types)))) {

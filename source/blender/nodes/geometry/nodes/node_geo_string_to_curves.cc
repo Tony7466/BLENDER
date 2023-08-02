@@ -63,10 +63,10 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
                UI_TEMPLATE_ID_FILTER_ALL,
                false,
                nullptr);
-  uiItemR(layout, ptr, "overflow", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "align_x", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "align_y", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "pivot_mode", 0, IFACE_("Pivot Point"), ICON_NONE);
+  uiItemR(layout, ptr, "overflow", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "align_x", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "align_y", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "pivot_mode", UI_ITEM_NONE, IFACE_("Pivot Point"), ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -210,7 +210,7 @@ static std::optional<TextLayout> get_text_layout(GeoNodeExecParams &params)
   /* The reason for the additional character here is unknown, but reflects other code elsewhere. */
   cu.str = static_cast<char *>(MEM_mallocN(len_bytes + sizeof(char32_t), __func__));
   cu.strinfo = static_cast<CharInfo *>(MEM_callocN((len_chars + 1) * sizeof(CharInfo), __func__));
-  BLI_strncpy(cu.str, layout.text.c_str(), len_bytes + 1);
+  memcpy(cu.str, layout.text.c_str(), len_bytes + 1);
 
   CharTrans *chartransdata = nullptr;
   int text_len;

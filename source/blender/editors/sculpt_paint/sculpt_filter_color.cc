@@ -12,12 +12,14 @@
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -437,10 +439,10 @@ static void sculpt_color_filter_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
 
-  uiItemR(layout, op->ptr, "strength", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_enum_get(op->ptr, "type") == COLOR_FILTER_FILL) {
-    uiItemR(layout, op->ptr, "fill_color", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "fill_color", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -476,5 +478,6 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
                                           "",
                                           0.0f,
                                           1.0f);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
 }

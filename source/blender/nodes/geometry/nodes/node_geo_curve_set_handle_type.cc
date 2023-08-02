@@ -17,7 +17,7 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveSetHandles)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curve").supported_type(GEO_COMPONENT_TYPE_CURVE);
+  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_output<decl::Geometry>("Curve").propagate_all();
 }
@@ -25,7 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "handle_type", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "handle_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

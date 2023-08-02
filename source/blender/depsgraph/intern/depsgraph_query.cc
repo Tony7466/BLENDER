@@ -10,7 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <cstring> /* XXX: memcpy */
+#include <cstring> /* XXX: `memcpy`. */
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
@@ -211,6 +211,9 @@ ViewLayer *DEG_get_evaluated_view_layer(const Depsgraph *graph)
 
 Object *DEG_get_evaluated_object(const Depsgraph *depsgraph, Object *object)
 {
+  if (object == nullptr) {
+    return nullptr;
+  }
   return (Object *)DEG_get_evaluated_id(depsgraph, &object->id);
 }
 

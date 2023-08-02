@@ -35,9 +35,11 @@ extern "C" {
 extern const char *node_context_dir[];
 };
 
-namespace blender::ed::space_node {
-
+namespace blender::ed::asset {
 struct AssetItemTree;
+}
+
+namespace blender::ed::space_node {
 
 /** Temporary data used in node link drag modal operator. */
 struct bNodeLinkDrag {
@@ -112,7 +114,7 @@ struct SpaceNode_Runtime {
    *
    * Stored with a shared pointer so that it can be forward declared.
    */
-  std::shared_ptr<AssetItemTree> assets_for_menu;
+  std::shared_ptr<asset::AssetItemTree> assets_for_menu;
 };
 
 enum NodeResizeDirection {
@@ -294,6 +296,7 @@ void NODE_OT_group_edit(wmOperatorType *ot);
 /* node_relationships.cc */
 
 void update_multi_input_indices_for_removed_links(bNode &node);
+bool all_links_muted(const bNodeSocket &socket);
 
 void NODE_OT_link(wmOperatorType *ot);
 void NODE_OT_link_make(wmOperatorType *ot);
@@ -334,6 +337,8 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         eNodeSocketInOut in_out);
 float node_link_dim_factor(const View2D &v2d, const bNodeLink &link);
 bool node_link_is_hidden_or_dimmed(const View2D &v2d, const bNodeLink &link);
+
+void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &node_map);
 
 void NODE_OT_duplicate(wmOperatorType *ot);
 void NODE_OT_delete(wmOperatorType *ot);
@@ -391,7 +396,7 @@ void node_geometry_add_attribute_search_button(const bContext &C,
                                                PointerRNA &socket_ptr,
                                                uiLayout &layout);
 
-/* node_context_path.c */
+/* `node_context_path.cc` */
 
 Vector<ui::ContextPathItem> context_path_for_space_node(const bContext &C);
 

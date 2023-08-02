@@ -115,6 +115,8 @@ DEF_ENUM(rna_enum_brush_gpencil_weight_types_items)
 DEF_ENUM(rna_enum_brush_curves_sculpt_tool_items)
 DEF_ENUM(rna_enum_brush_image_tool_items)
 
+DEF_ENUM(rna_enum_grease_pencil_selectmode_items)
+
 DEF_ENUM(rna_enum_axis_xy_items)
 DEF_ENUM(rna_enum_axis_xyz_items)
 
@@ -170,6 +172,7 @@ DEF_ENUM(rna_enum_shading_type_items)
 DEF_ENUM(rna_enum_navigation_mode_items)
 
 DEF_ENUM(rna_enum_node_socket_in_out_items)
+DEF_ENUM(rna_enum_node_socket_type_items)
 
 DEF_ENUM(rna_enum_node_math_items)
 DEF_ENUM(rna_enum_mapping_type_items)
@@ -254,6 +257,8 @@ DEF_ENUM(rna_enum_transform_mode_types)
 DEF_ENUM(rna_enum_nla_mode_extend_items)
 DEF_ENUM(rna_enum_nla_mode_blend_items)
 DEF_ENUM(rna_enum_keyblock_type_items)
+
+DEF_ENUM(rna_enum_aset_library_type_items)
 
 #endif
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __LIGHT_H__
 #define __LIGHT_H__
@@ -75,6 +76,7 @@ class Light : public Node {
   NODE_SOCKET_API(uint64_t, light_set_membership);
   NODE_SOCKET_API(uint64_t, shadow_set_membership);
 
+  /* Normalize power by the surface area of the light. */
   NODE_SOCKET_API(bool, normalize)
 
   void tag_update(Scene *scene);

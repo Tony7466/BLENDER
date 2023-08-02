@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef OSL_CLOSURE_STRUCT_BEGIN
 #  define OSL_CLOSURE_STRUCT_BEGIN(Upper, lower)
@@ -114,6 +115,11 @@ OSL_CLOSURE_STRUCT_BEGIN(AshikhminVelvet, ashikhmin_velvet)
   OSL_CLOSURE_STRUCT_MEMBER(AshikhminVelvet, FLOAT, float, sigma, NULL)
 OSL_CLOSURE_STRUCT_END(AshikhminVelvet, ashikhmin_velvet)
 
+OSL_CLOSURE_STRUCT_BEGIN(Sheen, sheen)
+  OSL_CLOSURE_STRUCT_MEMBER(Sheen, VECTOR, packed_float3, N, NULL)
+  OSL_CLOSURE_STRUCT_MEMBER(Sheen, FLOAT, float, roughness, NULL)
+OSL_CLOSURE_STRUCT_END(Sheen, sheen)
+
 OSL_CLOSURE_STRUCT_BEGIN(DiffuseToon, diffuse_toon)
   OSL_CLOSURE_STRUCT_MEMBER(DiffuseToon, VECTOR, packed_float3, N, NULL)
   OSL_CLOSURE_STRUCT_MEMBER(DiffuseToon, FLOAT, float, size, NULL)
@@ -130,16 +136,6 @@ OSL_CLOSURE_STRUCT_BEGIN(PrincipledDiffuse, principled_diffuse)
   OSL_CLOSURE_STRUCT_MEMBER(PrincipledDiffuse, VECTOR, packed_float3, N, NULL)
   OSL_CLOSURE_STRUCT_MEMBER(PrincipledDiffuse, FLOAT, float, roughness, NULL)
 OSL_CLOSURE_STRUCT_END(PrincipledDiffuse, principled_diffuse)
-
-OSL_CLOSURE_STRUCT_BEGIN(PrincipledSheen, principled_sheen)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledSheen, VECTOR, packed_float3, N, NULL)
-OSL_CLOSURE_STRUCT_END(PrincipledSheen, principled_sheen)
-
-OSL_CLOSURE_STRUCT_BEGIN(PrincipledClearcoat, principled_clearcoat)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledClearcoat, VECTOR, packed_float3, N, NULL)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledClearcoat, FLOAT, float, clearcoat, NULL)
-  OSL_CLOSURE_STRUCT_MEMBER(PrincipledClearcoat, FLOAT, float, clearcoat_roughness, NULL)
-OSL_CLOSURE_STRUCT_END(PrincipledClearcoat, principled_clearcoat)
 
 OSL_CLOSURE_STRUCT_BEGIN(GenericEmissive, emission)
 OSL_CLOSURE_STRUCT_END(GenericEmissive, emission)

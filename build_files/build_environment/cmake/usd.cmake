@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 if(WIN32)
@@ -93,9 +95,9 @@ set(USD_EXTRA_ARGS
 )
 
 # Ray: I'm not sure if the other platforms relied on this or not but this is no longer
-# needed for windows. If mac/lin confirm, this can be removed. 
+# needed for windows. If mac/lin confirm, this can be removed.
 if(NOT WIN32)
-  LIST(append USD_EXTRA_ARGS
+  list(APPEND USD_EXTRA_ARGS
     # USD wants the tbb debug lib set even when you are doing a release build
     # Otherwise it will error out during the cmake configure phase.
     -DTBB_LIBRARIES_DEBUG=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}

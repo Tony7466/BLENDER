@@ -71,14 +71,14 @@ static void get_domains(const ID *id, DomainInfo info[ATTR_DOMAIN_NUM])
         info[ATTR_DOMAIN_FACE].length = bm->totface;
       }
       else {
-        info[ATTR_DOMAIN_POINT].customdata = &mesh->vdata;
+        info[ATTR_DOMAIN_POINT].customdata = &mesh->vert_data;
         info[ATTR_DOMAIN_POINT].length = mesh->totvert;
-        info[ATTR_DOMAIN_EDGE].customdata = &mesh->edata;
+        info[ATTR_DOMAIN_EDGE].customdata = &mesh->edge_data;
         info[ATTR_DOMAIN_EDGE].length = mesh->totedge;
-        info[ATTR_DOMAIN_CORNER].customdata = &mesh->ldata;
+        info[ATTR_DOMAIN_CORNER].customdata = &mesh->loop_data;
         info[ATTR_DOMAIN_CORNER].length = mesh->totloop;
-        info[ATTR_DOMAIN_FACE].customdata = &mesh->pdata;
-        info[ATTR_DOMAIN_FACE].length = mesh->totpoly;
+        info[ATTR_DOMAIN_FACE].customdata = &mesh->face_data;
+        info[ATTR_DOMAIN_FACE].length = mesh->faces_num;
       }
       break;
     }
@@ -174,7 +174,7 @@ bool BKE_id_attribute_rename(ID *id,
    * is clamped to it's maximum length, otherwise assigning an over-long name multiple times
    * will add `.001` suffix unnecessarily. */
   {
-    const int new_name_maxncpy = CustomData_name_max_length_calc(new_name);
+    const int new_name_maxncpy = CustomData_name_maxncpy_calc(new_name);
     /* NOTE: A function that performs a clamped comparison without copying would be handy here. */
     char new_name_clamped[MAX_CUSTOMDATA_LAYER_NAME];
     BLI_strncpy_utf8(new_name_clamped, new_name, new_name_maxncpy);
@@ -255,7 +255,7 @@ static bool unique_name_cb(void *arg, const char *name)
 bool BKE_id_attribute_calc_unique_name(ID *id, const char *name, char *outname)
 {
   AttrUniqueData data{id};
-  const int name_maxncpy = CustomData_name_max_length_calc(name);
+  const int name_maxncpy = CustomData_name_maxncpy_calc(name);
 
   /* Set default name if none specified.
    * NOTE: We only call IFACE_() if needed to avoid locale lookup overhead. */
@@ -868,26 +868,10 @@ void BKE_id_attributes_default_color_set(ID *id, const char *name)
   }
 }
 
-CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
+const CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
 {
-  if (CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_POINT)) {
-    return layer;
-  }
-  if (CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_CORNER))
-  {
-    return layer;
-  }
-  if (CustomDataLayer *layer = BKE_id_attribute_find(
-          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_POINT))
-  {
-    return layer;
-  }
-  if (CustomDataLayer *layer = BKE_id_attribute_find(
-          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER))
-  {
-    return layer;
-  }
-  return nullptr;
+  return BKE_id_attribute_search(
+      const_cast<ID *>(id), name, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
 }
 
 const char *BKE_uv_map_vert_select_name_get(const char *uv_map_name, char *buffer)

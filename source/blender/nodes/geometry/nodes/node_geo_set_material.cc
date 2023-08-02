@@ -21,10 +21,10 @@ namespace blender::nodes::node_geo_set_material_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry")
-      .supported_type({GEO_COMPONENT_TYPE_MESH,
-                       GEO_COMPONENT_TYPE_VOLUME,
-                       GEO_COMPONENT_TYPE_POINT_CLOUD,
-                       GEO_COMPONENT_TYPE_CURVE});
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::Volume,
+                       GeometryComponent::Type::PointCloud,
+                       GeometryComponent::Type::Curve});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Material>("Material").hide_label();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
@@ -32,7 +32,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void assign_material_to_faces(Mesh &mesh, const IndexMask &selection, Material *material)
 {
-  if (selection.size() != mesh.totpoly) {
+  if (selection.size() != mesh.faces_num) {
     /* If the entire mesh isn't selected, and there is no material slot yet, add an empty
      * slot so that the faces that aren't selected can still refer to the default material. */
     BKE_id_material_eval_ensure_default_slot(&mesh.id);
@@ -74,14 +74,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
-      if (mesh->totpoly == 0) {
+      if (mesh->faces_num == 0) {
         if (mesh->totvert > 0) {
           no_faces_warning = true;
         }
       }
       else {
         const bke::MeshFieldContext field_context{*mesh, ATTR_DOMAIN_FACE};
-        fn::FieldEvaluator selection_evaluator{field_context, mesh->totpoly};
+        fn::FieldEvaluator selection_evaluator{field_context, mesh->faces_num};
         selection_evaluator.add(selection_field);
         selection_evaluator.evaluate();
         const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);

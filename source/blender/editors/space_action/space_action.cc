@@ -127,7 +127,7 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   return (SpaceLink *)saction;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void action_free(SpaceLink * /*sl*/)
 {
   //  SpaceAction *saction = (SpaceAction *) sl;
@@ -203,7 +203,7 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
   }
 
   /* markers */
-  UI_view2d_view_orthoSpecial(region, v2d, 1);
+  UI_view2d_view_orthoSpecial(region, v2d, true);
 
   marker_flag = ((ac.markers && (ac.markers != &ac.scene->markers)) ? DRAW_MARKERS_LOCAL : 0) |
                 DRAW_MARKERS_MARGIN;
@@ -241,7 +241,7 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   /* caches */
   if (saction->mode == SACTCONT_TIMELINE) {
     GPU_matrix_push_projection();
-    UI_view2d_view_orthoSpecial(region, v2d, 1);
+    UI_view2d_view_orthoSpecial(region, v2d, true);
     timeline_draw_cache(saction, obact, scene);
     GPU_matrix_pop_projection();
   }
@@ -402,21 +402,6 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
       WM_msg_subscribe_rna_params(
           mbus, &msg_key_params, &msg_sub_value_region_tag_redraw, __func__);
     }
-  }
-}
-
-static void action_clamp_scroll(ARegion *region)
-{
-  View2D *v2d = &region->v2d;
-  const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
-
-  if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
-    v2d->cur.ymin = -cur_height_y;
-    v2d->cur.ymax = 0;
-  }
-  else if (v2d->cur.ymin < v2d->tot.ymin) {
-    v2d->cur.ymin = v2d->tot.ymin;
-    v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
   }
 }
 
@@ -795,7 +780,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
 
     /* Perform syncing of channel state incl. selection
      * Active action setting also occurs here
-     * (as part of anim channel filtering in anim_filter.c). */
+     * (as part of anim channel filtering in `anim_filter.cc`). */
     ANIM_sync_animchannels_to_data(C);
     saction->runtime.flag &= ~SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
@@ -880,12 +865,11 @@ static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 static void action_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
 {
-  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
-   * because it also clamps the x-axis to 0. */
-  action_clamp_scroll(region);
+  View2D *v2d = &region->v2d;
+  UI_view2d_curRect_clamp_y(v2d);
 }
 
-void ED_spacetype_action(void)
+void ED_spacetype_action()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype action");
   ARegionType *art;

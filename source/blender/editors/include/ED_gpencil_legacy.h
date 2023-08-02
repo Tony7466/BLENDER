@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -196,9 +196,9 @@ bool ED_gpencil_stroke_material_visible(struct Object *ob, const struct bGPDstro
 
 /* ----------- Grease Pencil Operators ----------------- */
 
-void ED_keymap_gpencil(struct wmKeyConfig *keyconf);
+void ED_keymap_gpencil_legacy(struct wmKeyConfig *keyconf);
 
-void ED_operatortypes_gpencil(void);
+void ED_operatortypes_gpencil_legacy(void);
 void ED_operatormacros_gpencil(void);
 
 /* ------------- Copy-Paste Buffers -------------------- */
@@ -211,7 +211,7 @@ void ED_operatormacros_gpencil(void);
 void ED_gpencil_strokes_copybuf_free(void);
 
 /* ------------ Grease-Pencil Drawing API ------------------ */
-/* drawgpencil.c */
+/* `drawgpencil.cc` */
 
 /**
  * Draw grease-pencil sketches to specified 2d-view that uses `ibuf` corrections.

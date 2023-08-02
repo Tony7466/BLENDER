@@ -6,10 +6,11 @@
  * \ingroup bke
  */
 
-#include <limits.h>
-#include <math.h>
+#include <climits>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <memory.h>
-#include <stddef.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -23,9 +24,12 @@
 
 #include "BLI_bitmap_draw_2d.h"
 #include "BLI_ghash.h"
+#include "BLI_hash.hh"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_math_base.h"
+#include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
@@ -50,13 +54,13 @@
 #include "libmv-capi.h"
 #include "tracking_private.h"
 
-typedef struct MovieDistortion {
+struct MovieDistortion {
   libmv_CameraIntrinsics *intrinsics;
   /* Parameters needed for coordinates normalization. */
   float principal_px[2];
   float pixel_aspect;
   float focal;
-} MovieDistortion;
+};
 
 static struct {
   ListBase tracks;
@@ -160,13 +164,13 @@ void BKE_tracking_free(MovieTracking *tracking)
   tracking_dopesheet_free(&tracking->dopesheet);
 }
 
-typedef struct TrackingCopyContext {
+struct TrackingCopyContext {
   /* Map from point and plane track pointer from the source object to the destination object. */
   GHash *old_to_new_track_map;
   GHash *old_to_new_plane_track_map;
-} TrackingCopyContext;
+};
 
-static TrackingCopyContext tracking_copy_context_new(void)
+static TrackingCopyContext tracking_copy_context_new()
 {
   TrackingCopyContext ctx = {};
   ctx.old_to_new_track_map = BLI_ghash_ptr_new(__func__);
@@ -432,7 +436,7 @@ void BKE_tracking_get_projection_matrix(MovieTracking *tracking,
  * Clipboard.
  */
 
-void BKE_tracking_clipboard_free(void)
+void BKE_tracking_clipboard_free()
 {
   MovieTrackingTrack *track = static_cast<MovieTrackingTrack *>(tracking_clipboard.tracks.first),
                      *next_track;
@@ -465,7 +469,7 @@ void BKE_tracking_clipboard_copy_tracks(MovieTracking * /*tracking*/,
   }
 }
 
-bool BKE_tracking_clipboard_has_tracks(void)
+bool BKE_tracking_clipboard_has_tracks()
 {
   return (BLI_listbase_is_empty(&tracking_clipboard.tracks) == false);
 }
@@ -495,7 +499,7 @@ MovieTrackingTrack *BKE_tracking_track_add_empty(MovieTracking *tracking, ListBa
   const MovieTrackingSettings *settings = &tracking->settings;
 
   MovieTrackingTrack *track = MEM_cnew<MovieTrackingTrack>("add_marker_exec track");
-  strcpy(track->name, "Track");
+  STRNCPY(track->name, "Track");
 
   /* Fill track's settings from default settings. */
   track->motion_model = settings->default_motion_model;
@@ -1073,11 +1077,11 @@ static bGPDlayer *track_mask_gpencil_layer_get(const MovieTrackingTrack *track)
   return nullptr;
 }
 
-typedef struct TrackMaskSetPixelData {
+struct TrackMaskSetPixelData {
   float *mask;
   int mask_width;
   int mask_height;
-} TrackMaskSetPixelData;
+};
 
 static void track_mask_set_pixel_cb(int x, int x_end, int y, void *user_data)
 {
@@ -1575,7 +1579,7 @@ MovieTrackingPlaneTrack *BKE_tracking_plane_track_add(MovieTracking *tracking,
   plane_track = MEM_cnew<MovieTrackingPlaneTrack>("new plane track");
 
   /* Use some default name. */
-  strcpy(plane_track->name, "Plane Track");
+  STRNCPY(plane_track->name, "Plane Track");
 
   plane_track->image_opacity = 1.0f;
 
@@ -2197,6 +2201,66 @@ void BKE_tracking_camera_principal_point_pixel_set(MovieClip *clip,
       principal_point_pixel, frame_width, frame_height, camera->principal_point);
 }
 
+bool BKE_tracking_camera_distortion_equal(const MovieTrackingCamera *a,
+                                          const MovieTrackingCamera *b)
+{
+  if (a->pixel_aspect != b->pixel_aspect || a->focal != b->focal ||
+      !equals_v2v2(a->principal_point, b->principal_point))
+  {
+    return false;
+  }
+
+  if (a->distortion_model != b->distortion_model) {
+    return false;
+  }
+
+  switch (a->distortion_model) {
+    case TRACKING_DISTORTION_MODEL_POLYNOMIAL:
+      return a->k1 == b->k1 && a->k2 == b->k2 && a->k3 == b->k3;
+    case TRACKING_DISTORTION_MODEL_DIVISION:
+      return a->division_k1 == b->division_k1 && a->division_k2 == b->division_k2;
+    case TRACKING_DISTORTION_MODEL_NUKE:
+      return a->nuke_k1 == b->nuke_k1 && a->nuke_k2 == b->nuke_k2;
+    case TRACKING_DISTORTION_MODEL_BROWN:
+      return a->brown_k1 == b->brown_k1 && a->brown_k2 == b->brown_k2 &&
+             a->brown_k3 == b->brown_k3 && a->brown_k4 == b->brown_k4 &&
+             a->brown_p1 == b->brown_p1 && a->brown_p2 == b->brown_p2;
+  }
+
+  BLI_assert_unreachable();
+  return false;
+}
+
+uint64_t BKE_tracking_camera_distortion_hash(const MovieTrackingCamera *camera)
+{
+  using namespace blender;
+  switch (camera->distortion_model) {
+    case TRACKING_DISTORTION_MODEL_POLYNOMIAL:
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
+                                float2(camera->principal_point),
+                                float3(camera->k1, camera->k2, camera->k3));
+    case TRACKING_DISTORTION_MODEL_DIVISION:
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
+                                float2(camera->principal_point),
+                                float2(camera->division_k1, camera->division_k2));
+    case TRACKING_DISTORTION_MODEL_NUKE:
+      return get_default_hash_4(camera->distortion_model,
+                                float2(camera->pixel_aspect, camera->focal),
+                                float2(camera->principal_point),
+                                float2(camera->nuke_k1, camera->nuke_k2));
+    case TRACKING_DISTORTION_MODEL_BROWN:
+      return get_default_hash_4(
+          float2(camera->pixel_aspect, camera->focal),
+          float2(camera->principal_point),
+          float4(camera->brown_k1, camera->brown_k2, camera->brown_k3, camera->brown_k4),
+          float2(camera->brown_p1, camera->brown_p2));
+  }
+
+  BLI_assert_unreachable();
+  return 0;
+}
 /* --------------------------------------------------------------------
  * (Un)distortion.
  */
@@ -2808,8 +2872,8 @@ ImBuf *BKE_tracking_get_plane_imbuf(const ImBuf *frame_ibuf,
                                 &warped_position_y);
   }
 
-  plane_ibuf->rect_colorspace = frame_ibuf->rect_colorspace;
-  plane_ibuf->float_colorspace = frame_ibuf->float_colorspace;
+  plane_ibuf->byte_buffer.colorspace = frame_ibuf->byte_buffer.colorspace;
+  plane_ibuf->float_buffer.colorspace = frame_ibuf->float_buffer.colorspace;
 
   return plane_ibuf;
 }

@@ -2,10 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_mesh_types.h"
-
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_mesh_boolean_convert.hh"
+
+#include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -17,8 +18,9 @@ namespace blender::nodes::node_geo_boolean_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh 1").only_realized_data().supported_type(
-      GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Geometry>("Mesh 2").multi_input().supported_type(GEO_COMPONENT_TYPE_MESH);
+      GeometryComponent::Type::Mesh);
+  b.add_input<decl::Geometry>("Mesh 2").multi_input().supported_type(
+      GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Self Intersection");
   b.add_input<decl::Bool>("Hole Tolerant");
   b.add_output<decl::Geometry>("Mesh").propagate_all();
@@ -27,7 +29,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "operation", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 struct AttributeOutputs {

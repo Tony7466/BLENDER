@@ -23,9 +23,9 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
 #include "BKE_layer.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_report.h"
 
 #include "WM_api.h"
@@ -224,12 +224,12 @@ struct NearestVertUserData {
   NearestVertUserData_Hit hit_cycle;
 };
 
-static void findnearestvert__doClosest(void *userData,
+static void findnearestvert__doClosest(void *user_data,
                                        BMVert *eve,
                                        const float screen_co[2],
                                        int index)
 {
-  NearestVertUserData *data = static_cast<NearestVertUserData *>(userData);
+  NearestVertUserData *data = static_cast<NearestVertUserData *>(user_data);
   float dist_test, dist_test_bias;
 
   dist_test = dist_test_bias = len_manhattan_v2v2(data->mval_fl, screen_co);
@@ -374,13 +374,13 @@ struct NearestEdgeUserData_ZBuf {
   const BMEdge *edge_test;
 };
 
-static void find_nearest_edge_center__doZBuf(void *userData,
+static void find_nearest_edge_center__doZBuf(void *user_data,
                                              BMEdge *eed,
                                              const float screen_co_a[2],
                                              const float screen_co_b[2],
                                              int /*index*/)
 {
-  NearestEdgeUserData_ZBuf *data = static_cast<NearestEdgeUserData_ZBuf *>(userData);
+  NearestEdgeUserData_ZBuf *data = static_cast<NearestEdgeUserData_ZBuf *>(user_data);
 
   if (eed == data->edge_test) {
     float dist_test;
@@ -418,10 +418,13 @@ struct NearestEdgeUserData {
 };
 
 /* NOTE: uses v3d, so needs active 3d window. */
-static void find_nearest_edge__doClosest(
-    void *userData, BMEdge *eed, const float screen_co_a[2], const float screen_co_b[2], int index)
+static void find_nearest_edge__doClosest(void *user_data,
+                                         BMEdge *eed,
+                                         const float screen_co_a[2],
+                                         const float screen_co_b[2],
+                                         int index)
 {
-  NearestEdgeUserData *data = static_cast<NearestEdgeUserData *>(userData);
+  NearestEdgeUserData *data = static_cast<NearestEdgeUserData *>(user_data);
   float dist_test, dist_test_bias;
 
   float fac = line_point_factor_v2(data->mval_fl, screen_co_a, screen_co_b);
@@ -632,12 +635,12 @@ struct NearestFaceUserData_ZBuf {
   const BMFace *face_test;
 };
 
-static void find_nearest_face_center__doZBuf(void *userData,
+static void find_nearest_face_center__doZBuf(void *user_data,
                                              BMFace *efa,
                                              const float screen_co[2],
                                              int /*index*/)
 {
-  NearestFaceUserData_ZBuf *data = static_cast<NearestFaceUserData_ZBuf *>(userData);
+  NearestFaceUserData_ZBuf *data = static_cast<NearestFaceUserData_ZBuf *>(user_data);
 
   if (efa == data->face_test) {
     const float dist_test = len_manhattan_v2v2(data->mval_fl, screen_co);
@@ -665,12 +668,12 @@ struct NearestFaceUserData {
   NearestFaceUserData_Hit hit_cycle;
 };
 
-static void findnearestface__doClosest(void *userData,
+static void findnearestface__doClosest(void *user_data,
                                        BMFace *efa,
                                        const float screen_co[2],
                                        int index)
 {
-  NearestFaceUserData *data = static_cast<NearestFaceUserData *>(userData);
+  NearestFaceUserData *data = static_cast<NearestFaceUserData *>(user_data);
   float dist_test, dist_test_bias;
 
   dist_test = dist_test_bias = len_manhattan_v2v2(data->mval_fl, screen_co);
@@ -1075,8 +1078,8 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
       {
         Mesh *me_eval = (Mesh *)DEG_get_evaluated_id(vc->depsgraph,
                                                      static_cast<ID *>(obedit->data));
-        if (me_eval->runtime->edit_data) {
-          coords = me_eval->runtime->edit_data->vertexCos;
+        if (BKE_mesh_wrapper_vert_len(me_eval) == bm->totvert) {
+          coords = BKE_mesh_wrapper_vert_coords(me_eval);
         }
       }
 
@@ -1916,7 +1919,7 @@ void MESH_OT_edgering_select(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna, "toggle", false, "Toggle Select", "Toggle the selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  prop = RNA_def_boolean(ot->srna, "ring", 1, "Select Ring", "Select ring");
+  prop = RNA_def_boolean(ot->srna, "ring", true, "Select Ring", "Select ring");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -2220,23 +2223,6 @@ bool EDBM_select_pick(bContext *C, const int mval[2], const SelectPick_Params *p
         vc.obedit->actcol = efa->mat_nr + 1;
         vc.em->mat_nr = efa->mat_nr;
         WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, nullptr);
-      }
-
-      /* Change active face-map on object. */
-      if (!BLI_listbase_is_empty(&vc.obedit->fmaps)) {
-        const int cd_fmap_offset = CustomData_get_offset(&vc.em->bm->pdata, CD_FACEMAP);
-        if (cd_fmap_offset != -1) {
-          int map = *((int *)BM_ELEM_CD_GET_VOID_P(efa, cd_fmap_offset));
-          if ((map < -1) || (map > BLI_listbase_count_at_most(&vc.obedit->fmaps, map))) {
-            map = -1;
-          }
-          map += 1;
-          if (map != vc.obedit->actfmap) {
-            /* We may want to add notifiers later,
-             * currently select update handles redraw. */
-            vc.obedit->actfmap = map;
-          }
-        }
       }
     }
 
@@ -3859,7 +3845,7 @@ void MESH_OT_select_face_by_sides(wmOperatorType *ot)
 
   /* identifiers */
   ot->name = "Select Faces by Sides";
-  ot->description = "Select vertices or faces by the number of polygon sides";
+  ot->description = "Select vertices or faces by the number of face sides";
   ot->idname = "MESH_OT_select_face_by_sides";
 
   /* api callbacks */
