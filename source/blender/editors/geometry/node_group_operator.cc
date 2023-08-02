@@ -419,47 +419,23 @@ static bool asset_menu_poll(const bContext *C, MenuType * /*mt*/)
   return CTX_wm_view3d(C);
 }
 
-static std::unique_ptr<AssetTag> create_asset_tag(const StringRefNull name)
+static GeometryNodeAssetTraitFlag asset_flag_for_context(const eContextObjectMode ctx_mode)
 {
-  std::unique_ptr<AssetTag> tag = std::make_unique<AssetTag>();
-  STRNCPY(tag->name, name.c_str());
-  return tag;
-}
-
-static AssetFilterSettings asset_filter_for_context(const eContextObjectMode ctx_mode,
-                                                    Vector<std::unique_ptr<AssetTag>> &tags)
-{
-  AssetFilterSettings filter{};
-  filter.id_types = FILTER_ID_NT;
-  tags.append(create_asset_tag("Operator"));
   switch (ctx_mode) {
     case CTX_MODE_EDIT_MESH:
-      tags.append(create_asset_tag("Edit"));
-      tags.append(create_asset_tag("Mesh"));
-      break;
+      return (GEO_NODE_ASSET_OPERATOR | GEO_NODE_ASSET_EDIT | GEO_NODE_ASSET_MESH);
     case CTX_MODE_EDIT_CURVES:
-      tags.append(create_asset_tag("Edit"));
-      tags.append(create_asset_tag("Curve"));
-      break;
+      return (GEO_NODE_ASSET_OPERATOR | GEO_NODE_ASSET_EDIT | GEO_NODE_ASSET_CURVE);
     case CTX_MODE_EDIT_POINT_CLOUD:
-      tags.append(create_asset_tag("Edit"));
-      tags.append(create_asset_tag("Point Cloud"));
-      break;
+      return (GEO_NODE_ASSET_OPERATOR | GEO_NODE_ASSET_EDIT | GEO_NODE_ASSET_POINT_CLOUD);
     case CTX_MODE_SCULPT:
-      tags.append(create_asset_tag("Sculpt"));
-      tags.append(create_asset_tag("Mesh"));
-      break;
+      return (GEO_NODE_ASSET_OPERATOR | GEO_NODE_ASSET_SCULPT | GEO_NODE_ASSET_MESH);
     case CTX_MODE_SCULPT_CURVES:
-      tags.append(create_asset_tag("Sculpt"));
-      tags.append(create_asset_tag("Curve"));
-      break;
+      return (GEO_NODE_ASSET_OPERATOR | GEO_NODE_ASSET_SCULPT | GEO_NODE_ASSET_CURVE);
     default:
-      break;
+      BLI_assert_unreachable();
+      return GeometryNodeAssetTraitFlag(0);
   }
-  for (const std::unique_ptr<AssetTag> &tag : tags) {
-    BLI_addtail(&filter.tags, tag.get());
-  }
-  return filter;
 }
 
 static asset::AssetItemTree *get_static_item_tree(const bContext &C)
@@ -494,17 +470,24 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
 
-  Vector<std::unique_ptr<AssetTag>> tags;
-  const AssetFilterSettings filter = asset_filter_for_context(ctx_mode, tags);
+  AssetFilterSettings type_filter{};
+  type_filter.id_types = FILTER_ID_NT;
+
+  const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(ctx_mode);
   auto meta_data_filter = [&](const AssetMetaData &meta_data) {
     const IDProperty *tree_type = BKE_asset_metadata_idprop_find(&meta_data, "type");
     if (tree_type == nullptr || IDP_Int(tree_type) != NTREE_GEOMETRY) {
       return false;
     }
+    const IDProperty *traits_flag = BKE_asset_metadata_idprop_find(
+        &meta_data, "geometry_node_asset_traits_flag");
+    if (traits_flag == nullptr || (IDP_Int(traits_flag) & flag) != flag) {
+      return false;
+    }
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
-  return asset::build_filtered_all_catalog_tree(library, C, filter, meta_data_filter);
+  return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
 /**

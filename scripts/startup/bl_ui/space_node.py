@@ -443,20 +443,20 @@ class NODE_PT_geometry_node_asset_traits(Panel):
         layout.use_property_decorate = False
 
         snode = context.space_data
-        traits = snode.node_tree.asset_traits
+        group = snode.node_tree
 
         col = layout.column(heading="Type")
-        col.prop(traits, "is_operator")
+        col.prop(group, "is_operator")
         col = layout.column(heading="Mode")
-        col.active = traits.is_operator
-        col.prop(traits, "is_mode_edit")
-        col.prop(traits, "is_mode_sculpt")
+        col.active = group.is_operator
+        col.prop(group, "is_mode_edit")
+        col.prop(group, "is_mode_sculpt")
         col = layout.column(heading="Geometry")
-        col.active = traits.is_operator
-        col.prop(traits, "is_type_mesh")
-        col.prop(traits, "is_type_curve")
+        col.active = group.is_operator
+        col.prop(group, "is_type_mesh")
+        col.prop(group, "is_type_curve")
         if context.preferences.experimental.use_new_point_cloud_type:
-            col.prop(traits, "is_type_point_cloud")
+            col.prop(group, "is_type_point_cloud")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):

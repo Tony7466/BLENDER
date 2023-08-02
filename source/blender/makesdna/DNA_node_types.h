@@ -874,13 +874,14 @@ typedef struct GeometryNodeAssetTraits {
 } GeometryNodeAssetTraits;
 
 typedef enum GeometryNodeAssetTraitFlag {
-  GEO_NODE_ASSET_TRAIT_OPERATOR = (1 << 0),
-  GEO_NODE_ASSET_TRAIT_EDIT = (1 << 1),
-  GEO_NODE_ASSET_TRAIT_SCULPT = (1 << 2),
-  GEO_NODE_ASSET_TRAIT_MESH = (1 << 3),
-  GEO_NODE_ASSET_TRAIT_CURVE = (1 << 4),
-  GEO_NODE_ASSET_TRAIT_POINT_CLOUD = (1 << 5),
+  GEO_NODE_ASSET_OPERATOR = (1 << 0),
+  GEO_NODE_ASSET_EDIT = (1 << 1),
+  GEO_NODE_ASSET_SCULPT = (1 << 2),
+  GEO_NODE_ASSET_MESH = (1 << 3),
+  GEO_NODE_ASSET_CURVE = (1 << 4),
+  GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
 } GeometryNodeAssetTraitFlag;
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
 
 /* Data structs, for `node->storage`. */
 

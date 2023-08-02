@@ -1167,6 +1167,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
   }
   BKE_asset_metadata_idprop_ensure(asset_data, inputs.release());
   BKE_asset_metadata_idprop_ensure(asset_data, outputs.release());
+  if (node_tree.geometry_node_asset_traits) {
+    auto property = idprop::create("geometry_node_asset_traits_flag",
+                                   node_tree.geometry_node_asset_traits->flag);
+    BKE_asset_metadata_idprop_ensure(asset_data, property.release());
+  }
 }
 
 }  // namespace blender::bke
