@@ -119,8 +119,8 @@ GPUBatch *point_cloud_sub_pass_setup_implementation(PassT &sub_ps,
   sub_ps.bind_texture("c", g_dummy_vbo);
   sub_ps.bind_texture("ac", g_dummy_vbo);
 
-  GPUVertBuf *pos_rad_buf = pointcloud_position_and_radius_get(&pointcloud);
-  sub_ps.bind_texture("ptcloud_pos_rad_tx", pos_rad_buf);
+  sub_ps.bind_texture("pointcloud_position_tx", pointcloud_position_get(&pointcloud));
+  sub_ps.bind_texture("pointcloud_radius_tx", pointcloud_radius_get(&pointcloud));
 
   if (gpu_material != nullptr) {
     ListBase gpu_attrs = GPU_material_attributes(gpu_material);

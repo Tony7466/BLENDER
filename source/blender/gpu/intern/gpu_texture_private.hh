@@ -1128,7 +1128,24 @@ static inline eGPUTextureFormat to_texture_format(const GPUVertFormat *format)
       }
       break;
     case 3:
-      /* Not supported until GL 4.0 */
+      switch (format->attrs[0].comp_type) {
+        case GPU_COMP_I8:
+          return GPU_RG8I;
+        case GPU_COMP_U8:
+          return GPU_RG8UI;
+        case GPU_COMP_I16:
+          return GPU_RG16I;
+        case GPU_COMP_U16:
+          return GPU_RG16UI;
+        case GPU_COMP_I32:
+          return GPU_RG32I;
+        case GPU_COMP_U32:
+          return GPU_RG32UI;
+        case GPU_COMP_F32:
+          return GPU_RG32F;
+        default:
+          break;
+      }
       break;
     case 4:
       switch (format->attrs[0].comp_type) {

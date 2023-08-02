@@ -102,7 +102,13 @@ void GLVertBuf::bind()
     memory_usage += vbo_size_;
 
     if (usage_ == GPU_USAGE_STATIC) {
-      MEM_SAFE_FREE(data);
+      if (this->sharing_info) {
+        this->sharing_info->remove_user_and_delete_if_last();
+        data = nullptr;
+      }
+      else {
+        MEM_SAFE_FREE(data);
+      }
     }
     flag &= ~GPU_VERTBUF_DATA_DIRTY;
     flag |= GPU_VERTBUF_DATA_UPLOADED;

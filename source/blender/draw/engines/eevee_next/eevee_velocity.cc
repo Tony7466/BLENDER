@@ -139,7 +139,7 @@ bool VelocityModule::step_object_sync(Object *ob,
           data.pos_buf = DRW_curves_pos_buffer_get(ob);
           break;
         case OB_POINTCLOUD:
-          data.pos_buf = DRW_pointcloud_position_and_radius_buffer_get(ob);
+          data.pos_buf = DRW_pointcloud_position_buffer_get(ob);
           break;
         default:
           data.pos_buf = DRW_cache_object_pos_vertbuf_get(ob);

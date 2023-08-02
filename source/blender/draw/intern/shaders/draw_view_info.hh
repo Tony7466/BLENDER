@@ -136,13 +136,14 @@ GPU_SHADER_CREATE_INFO(draw_hair_new)
 
 GPU_SHADER_CREATE_INFO(draw_pointcloud)
     .sampler(0, ImageType::FLOAT_BUFFER, "pointcloud_position_tx", Frequency::BATCH)
-    .sampler(0, ImageType::FLOAT_BUFFER, "pointcloud_radius_tx", Frequency::BATCH)
+    .sampler(1, ImageType::FLOAT_BUFFER, "pointcloud_radius_tx", Frequency::BATCH)
     .define("POINTCLOUD_SHADER")
     .define("DRW_POINTCLOUD_INFO")
     .additional_info("draw_modelmat_instanced_attr", "draw_resource_id_uniform");
 
 GPU_SHADER_CREATE_INFO(draw_pointcloud_new)
-    .sampler(0, ImageType::FLOAT_BUFFER, "ptcloud_pos_rad_tx", Frequency::BATCH)
+    .sampler(0, ImageType::FLOAT_BUFFER, "pointcloud_position_tx", Frequency::BATCH)
+    .sampler(1, ImageType::FLOAT_BUFFER, "pointcloud_radius_tx", Frequency::BATCH)
     .define("POINTCLOUD_SHADER")
     .define("DRW_POINTCLOUD_INFO");
 

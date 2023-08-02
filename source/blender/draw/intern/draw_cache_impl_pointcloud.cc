@@ -391,10 +391,10 @@ GPUBatch *DRW_pointcloud_batch_cache_get_dots(Object *ob)
   return DRW_batch_request(&cache->eval_cache.dots);
 }
 
-GPUVertBuf *DRW_pointcloud_position_and_radius_buffer_get(Object *ob)
+GPUVertBuf *DRW_pointcloud_position_buffer_get(Object *ob)
 {
   PointCloud &pointcloud = *static_cast<PointCloud *>(ob->data);
-  return pointcloud_position_and_radius_get(&pointcloud);
+  return pointcloud_position_get(&pointcloud);
 }
 
 GPUVertBuf **DRW_pointcloud_evaluated_attribute(PointCloud *pointcloud, const char *name)
