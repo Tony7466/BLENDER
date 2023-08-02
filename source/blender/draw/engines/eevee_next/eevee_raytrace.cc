@@ -292,7 +292,9 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     denoise_buf->variance_history_tx.ensure_2d(RAYTRACE_VARIANCE_FORMAT,
                                                use_bilateral_denoise_ ? extent : dummy_extent);
     denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT, tile_mask_extent);
-    if (denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent)) {
+    if (denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent) ||
+        denoise_buf->valid_history == false)
+    {
       /* If viewport resolution changes, do not try to use history. */
       denoise_buf->tilemask_history_tx.clear(uint4(0u));
     }
@@ -315,6 +317,9 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     /* Not referenced by result anymore. */
     denoise_buf->denoised_spatial_tx.release();
   }
+
+  /* Only use history buffer for the next frame if temporal denoise was used by the current one. */
+  denoise_buf->valid_history = use_temporal_denoise_;
 
   hit_variance_tx_.release();
   hit_depth_tx_.release();

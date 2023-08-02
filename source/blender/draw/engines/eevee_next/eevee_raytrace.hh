@@ -38,6 +38,8 @@ struct RayTraceBuffer {
     Texture tilemask_history_tx = {"tilemask_tx"};
     /** Perspective matrix for which the history buffers were recorded. */
     float4x4 history_persmat;
+    /** True if history buffer was used last frame and can be re-projected. */
+    bool valid_history = false;
     /**
      * Textures containing the ray hit radiance denoised (full-res). One of them is result_tx.
      * One might become result buffer so it need instantiation by closure type to avoid reuse.
