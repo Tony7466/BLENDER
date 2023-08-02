@@ -164,3 +164,10 @@ void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
                                           NodeDeclaration &r_declaration);
 
 }  // namespace blender::nodes
+
+#define NOD_REGISTER_NODE(REGISTER_FUNC) \
+  void REGISTER_FUNC##_auto_run(); \
+  void REGISTER_FUNC##_auto_run() \
+  { \
+    REGISTER_FUNC(); \
+  }
