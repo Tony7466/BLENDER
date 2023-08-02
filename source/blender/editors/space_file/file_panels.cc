@@ -120,7 +120,7 @@ static void file_panel_execution_execute_button(uiLayout *layout, const char *ti
   uiLayoutSetFixedSize(row, true);
   /* Just a display hint. */
   uiLayoutSetActiveDefault(row, true);
-  uiItemO(row, title, ICON_NONE, "FILE_OT_execute");
+  uiItemO(row, IFACE_(title), ICON_NONE, "FILE_OT_execute");
 }
 
 static void file_panel_execution_buttons_draw(const bContext *C, Panel *panel)
