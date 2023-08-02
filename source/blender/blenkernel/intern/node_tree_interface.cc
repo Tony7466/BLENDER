@@ -311,30 +311,35 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
                                                        ID *id,
                                                        bNodeSocketValueObject &data)
 {
+  BLI_assert(id != nullptr);
   BLO_read_id_address(reader, id, &data.value);
 }
 [[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
                                                        ID *id,
                                                        bNodeSocketValueImage &data)
 {
+  BLI_assert(id != nullptr);
   BLO_read_id_address(reader, id, &data.value);
 }
 [[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
                                                        ID *id,
                                                        bNodeSocketValueCollection &data)
 {
+  BLI_assert(id != nullptr);
   BLO_read_id_address(reader, id, &data.value);
 }
 [[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
                                                        ID *id,
                                                        bNodeSocketValueTexture &data)
 {
+  BLI_assert(id != nullptr);
   BLO_read_id_address(reader, id, &data.value);
 }
 [[maybe_unused]] static void socket_data_read_lib_impl(BlendLibReader *reader,
                                                        ID *id,
                                                        bNodeSocketValueMaterial &data)
 {
+  BLI_assert(id != nullptr);
   BLO_read_id_address(reader, id, &data.value);
 }
 /* Default implementation */
