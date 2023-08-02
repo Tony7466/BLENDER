@@ -83,7 +83,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_spline_type_cc
 
-void register_node_type_geo_curve_spline_type()
+static void register_node_type_geo_curve_spline_type()
 {
   namespace file_ns = blender::nodes::node_geo_curve_spline_type_cc;
 
@@ -100,3 +100,4 @@ void register_node_type_geo_curve_spline_type()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_spline_type)

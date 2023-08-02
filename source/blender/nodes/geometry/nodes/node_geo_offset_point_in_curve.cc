@@ -173,7 +173,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_offset_point_in_curve_cc
 
-void register_node_type_geo_offset_point_in_curve()
+static void register_node_type_geo_offset_point_in_curve()
 {
   namespace file_ns = blender::nodes::node_geo_offset_point_in_curve_cc;
   static bNodeType ntype;
@@ -183,3 +183,4 @@ void register_node_type_geo_offset_point_in_curve()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_offset_point_in_curve)

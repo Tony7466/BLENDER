@@ -137,7 +137,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 }  // namespace blender::nodes::node_geo_viewer_cc
 
-void register_node_type_geo_viewer()
+static void register_node_type_geo_viewer()
 {
   namespace file_ns = blender::nodes::node_geo_viewer_cc;
 
@@ -155,3 +155,4 @@ void register_node_type_geo_viewer()
   ntype.no_muting = true;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_viewer)

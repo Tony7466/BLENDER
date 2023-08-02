@@ -243,7 +243,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_index_of_nearest_cc
 
-void register_node_type_geo_index_of_nearest()
+static void register_node_type_geo_index_of_nearest()
 {
   namespace file_ns = blender::nodes::node_geo_index_of_nearest_cc;
 
@@ -254,3 +254,4 @@ void register_node_type_geo_index_of_nearest()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_index_of_nearest)

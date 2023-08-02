@@ -206,7 +206,7 @@ Mesh *create_line_mesh(const float3 start, const float3 delta, const int count)
 
 }  // namespace blender::nodes
 
-void register_node_type_geo_mesh_primitive_line()
+static void register_node_type_geo_mesh_primitive_line()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_primitive_line_cc;
 
@@ -223,3 +223,4 @@ void register_node_type_geo_mesh_primitive_line()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_primitive_line)

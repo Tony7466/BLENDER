@@ -93,7 +93,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mean_filter_sdf_volume_cc
 
-void register_node_type_geo_mean_filter_sdf_volume()
+static void register_node_type_geo_mean_filter_sdf_volume()
 {
   namespace file_ns = blender::nodes::node_geo_mean_filter_sdf_volume_cc;
 
@@ -108,3 +108,4 @@ void register_node_type_geo_mean_filter_sdf_volume()
   ntype.gather_link_search_ops = file_ns::search_link_ops;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mean_filter_sdf_volume)

@@ -54,7 +54,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_curve_radius_cc
 
-void register_node_type_geo_set_curve_radius()
+static void register_node_type_geo_set_curve_radius()
 {
   namespace file_ns = blender::nodes::node_geo_set_curve_radius_cc;
 
@@ -65,3 +65,4 @@ void register_node_type_geo_set_curve_radius()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_curve_radius)

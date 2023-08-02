@@ -155,7 +155,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_mesh_edge_vertices_cc
 
-void register_node_type_geo_input_mesh_edge_vertices()
+static void register_node_type_geo_input_mesh_edge_vertices()
 {
   namespace file_ns = blender::nodes::node_geo_input_mesh_edge_vertices_cc;
 
@@ -165,3 +165,4 @@ void register_node_type_geo_input_mesh_edge_vertices()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_mesh_edge_vertices)

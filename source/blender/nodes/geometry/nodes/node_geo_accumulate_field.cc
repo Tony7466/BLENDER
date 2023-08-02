@@ -441,7 +441,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 }
 }  // namespace blender::nodes::node_geo_accumulate_field_cc
 
-void register_node_type_geo_accumulate_field()
+static void register_node_type_geo_accumulate_field()
 {
   namespace file_ns = blender::nodes::node_geo_accumulate_field_cc;
 
@@ -458,3 +458,4 @@ void register_node_type_geo_accumulate_field()
       &ntype, "NodeAccumulateField", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_accumulate_field)

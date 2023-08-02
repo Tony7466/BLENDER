@@ -201,7 +201,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mesh_to_points_cc
 
-void register_node_type_geo_mesh_to_points()
+static void register_node_type_geo_mesh_to_points()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_to_points_cc;
 
@@ -216,3 +216,4 @@ void register_node_type_geo_mesh_to_points()
       &ntype, "NodeGeometryMeshToPoints", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_to_points)

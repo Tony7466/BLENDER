@@ -109,7 +109,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_instances_to_points_cc
 
-void register_node_type_geo_instances_to_points()
+static void register_node_type_geo_instances_to_points()
 {
   namespace file_ns = blender::nodes::node_geo_instances_to_points_cc;
 
@@ -121,3 +121,4 @@ void register_node_type_geo_instances_to_points()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_instances_to_points)

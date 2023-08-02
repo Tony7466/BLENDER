@@ -115,7 +115,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_fillet_cc
 
-void register_node_type_geo_curve_fillet()
+static void register_node_type_geo_curve_fillet()
 {
   namespace file_ns = blender::nodes::node_geo_curve_fillet_cc;
 
@@ -131,3 +131,4 @@ void register_node_type_geo_curve_fillet()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_fillet)

@@ -36,7 +36,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_signed_distance_cc
 
-void register_node_type_geo_input_signed_distance()
+static void register_node_type_geo_input_signed_distance()
 {
   namespace file_ns = blender::nodes::node_geo_input_signed_distance_cc;
 
@@ -49,3 +49,4 @@ void register_node_type_geo_input_signed_distance()
   ntype.gather_link_search_ops = file_ns::search_link_ops;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_signed_distance)

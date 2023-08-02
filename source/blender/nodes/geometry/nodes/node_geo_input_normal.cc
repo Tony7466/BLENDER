@@ -19,7 +19,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_normal_cc
 
-void register_node_type_geo_input_normal()
+static void register_node_type_geo_input_normal()
 {
   namespace file_ns = blender::nodes::node_geo_input_normal_cc;
 
@@ -30,3 +30,4 @@ void register_node_type_geo_input_normal()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_normal)

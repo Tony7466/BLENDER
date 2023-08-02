@@ -164,7 +164,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_named_attribute_cc
 
-void register_node_type_geo_input_named_attribute()
+static void register_node_type_geo_input_named_attribute()
 {
   namespace file_ns = blender::nodes::node_geo_input_named_attribute_cc;
 
@@ -183,3 +183,4 @@ void register_node_type_geo_input_named_attribute()
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_named_attribute)

@@ -132,7 +132,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_handle_type_selection_cc
 
-void register_node_type_geo_curve_handle_type_selection()
+static void register_node_type_geo_curve_handle_type_selection()
 {
   namespace file_ns = blender::nodes::node_geo_curve_handle_type_selection_cc;
 
@@ -151,3 +151,4 @@ void register_node_type_geo_curve_handle_type_selection()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_handle_type_selection)

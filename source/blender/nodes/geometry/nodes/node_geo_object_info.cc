@@ -105,7 +105,7 @@ static void node_node_init(bNodeTree * /*tree*/, bNode *node)
 
 }  // namespace blender::nodes::node_geo_object_info_cc
 
-void register_node_type_geo_object_info()
+static void register_node_type_geo_object_info()
 {
   namespace file_ns = blender::nodes::node_geo_object_info_cc;
 
@@ -120,3 +120,4 @@ void register_node_type_geo_object_info()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_object_info)

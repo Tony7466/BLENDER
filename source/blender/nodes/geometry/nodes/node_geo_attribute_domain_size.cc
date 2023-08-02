@@ -131,7 +131,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_attribute_domain_size_cc
 
-void register_node_type_geo_attribute_domain_size()
+static void register_node_type_geo_attribute_domain_size()
 {
   namespace file_ns = blender::nodes::node_geo_attribute_domain_size_cc;
 
@@ -145,3 +145,4 @@ void register_node_type_geo_attribute_domain_size()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_attribute_domain_size)

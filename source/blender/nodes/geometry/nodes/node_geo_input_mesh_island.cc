@@ -125,7 +125,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_mesh_island_cc
 
-void register_node_type_geo_input_mesh_island()
+static void register_node_type_geo_input_mesh_island()
 {
   namespace file_ns = blender::nodes::node_geo_input_mesh_island_cc;
 
@@ -135,3 +135,4 @@ void register_node_type_geo_input_mesh_island()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_mesh_island)

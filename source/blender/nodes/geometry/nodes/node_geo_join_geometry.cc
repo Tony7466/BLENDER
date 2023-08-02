@@ -211,7 +211,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 }
 }  // namespace blender::nodes::node_geo_join_geometry_cc
 
-void register_node_type_geo_join_geometry()
+static void register_node_type_geo_join_geometry()
 {
   namespace file_ns = blender::nodes::node_geo_join_geometry_cc;
 
@@ -222,3 +222,4 @@ void register_node_type_geo_join_geometry()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_join_geometry)

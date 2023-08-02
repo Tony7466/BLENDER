@@ -37,7 +37,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_image_cc
 
-void register_node_type_geo_image()
+static void register_node_type_geo_image()
 {
   namespace file_ns = blender::nodes::node_geo_image_cc;
 
@@ -50,3 +50,4 @@ void register_node_type_geo_image()
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_image)

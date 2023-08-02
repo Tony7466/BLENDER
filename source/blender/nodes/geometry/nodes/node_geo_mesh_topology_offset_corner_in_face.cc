@@ -107,7 +107,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mesh_topology_offset_corner_in_face_cc
 
-void register_node_type_geo_mesh_topology_offset_corner_in_face()
+static void register_node_type_geo_mesh_topology_offset_corner_in_face()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_topology_offset_corner_in_face_cc;
 
@@ -120,3 +120,4 @@ void register_node_type_geo_mesh_topology_offset_corner_in_face()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_topology_offset_corner_in_face)

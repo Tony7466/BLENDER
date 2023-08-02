@@ -586,7 +586,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_distribute_points_on_faces_cc
 
-void register_node_type_geo_distribute_points_on_faces()
+static void register_node_type_geo_distribute_points_on_faces()
 {
   namespace file_ns = blender::nodes::node_geo_distribute_points_on_faces_cc;
 
@@ -604,3 +604,4 @@ void register_node_type_geo_distribute_points_on_faces()
   ntype.draw_buttons_ex = file_ns::node_layout_ex;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_distribute_points_on_faces)

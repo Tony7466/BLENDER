@@ -452,7 +452,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_scale_elements_cc
 
-void register_node_type_geo_scale_elements()
+static void register_node_type_geo_scale_elements()
 {
   namespace file_ns = blender::nodes::node_geo_scale_elements_cc;
 
@@ -466,3 +466,4 @@ void register_node_type_geo_scale_elements()
   ntype.updatefunc = file_ns::node_update;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_scale_elements)

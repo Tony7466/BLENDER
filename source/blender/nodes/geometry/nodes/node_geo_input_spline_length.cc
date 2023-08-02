@@ -77,7 +77,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_spline_length_cc
 
-void register_node_type_geo_input_spline_length()
+static void register_node_type_geo_input_spline_length()
 {
   namespace file_ns = blender::nodes::node_geo_input_spline_length_cc;
 
@@ -87,3 +87,4 @@ void register_node_type_geo_input_spline_length()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_spline_length)

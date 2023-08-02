@@ -163,7 +163,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_position_cc
 
-void register_node_type_geo_set_position()
+static void register_node_type_geo_set_position()
 {
   namespace file_ns = blender::nodes::node_geo_set_position_cc;
 
@@ -174,3 +174,4 @@ void register_node_type_geo_set_position()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_position)

@@ -4,23 +4,27 @@ from pathlib import Path
 directory = Path(__file__).parent / "nodes"
 output_cc_file = Path(sys.argv[1])
 
-output_cc_lines = []
+include_lines = []
+include_lines.append("#include \"NOD_register.hh\"")
+include_lines.append("#include \"node_geometry_register.hh\"")
 
-output_cc_lines.append("#include \"NOD_register.hh\"")
-output_cc_lines.append("#include \"node_geometry_register.hh\"")
-output_cc_lines.append("void register_geometry_nodes()")
-output_cc_lines.append("{")
+decl_lines = []
+
+func_lines = []
+func_lines.append("void register_geometry_nodes()")
+func_lines.append("{")
 
 for path in directory.glob("*.cc"):
     with open(path) as f:
         code = f.read()
-    index = code.find("register_node_type_geo_")
+    index = code.find("NOD_REGISTER_NODE(")
     if index == -1:
         continue
-    function_name = code[index:code.find("(", index)]
-    output_cc_lines.append(f"  {function_name}();")
+    function_name = code[index+len("NOD_REGISTER_NODE("):code.find(")", index)] + "_auto_run"
+    func_lines.append(f"  {function_name}();")
+    decl_lines.append(f"void {function_name}();")
 
-output_cc_lines.append("}")
+func_lines.append("}")
 
 with open(output_cc_file, "w") as f:
-    f.write("\n".join(output_cc_lines))
+    f.write("\n".join(include_lines + decl_lines + func_lines))

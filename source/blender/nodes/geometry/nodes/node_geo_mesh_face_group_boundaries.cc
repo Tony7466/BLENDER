@@ -87,7 +87,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mesh_face_group_boundaries_cc
 
-void register_node_type_geo_mesh_face_group_boundaries()
+static void register_node_type_geo_mesh_face_group_boundaries()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_face_group_boundaries_cc;
 
@@ -99,3 +99,4 @@ void register_node_type_geo_mesh_face_group_boundaries()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_face_group_boundaries)

@@ -53,7 +53,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_spline_cyclic_cc
 
-void register_node_type_geo_set_spline_cyclic()
+static void register_node_type_geo_set_spline_cyclic()
 {
   namespace file_ns = blender::nodes::node_geo_set_spline_cyclic_cc;
 
@@ -64,3 +64,4 @@ void register_node_type_geo_set_spline_cyclic()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_spline_cyclic)

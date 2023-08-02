@@ -90,7 +90,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_sdf_volume_sphere_cc
 
-void register_node_type_geo_sdf_volume_sphere()
+static void register_node_type_geo_sdf_volume_sphere()
 {
   namespace file_ns = blender::nodes::node_geo_sdf_volume_sphere_cc;
   static bNodeType ntype;
@@ -102,3 +102,4 @@ void register_node_type_geo_sdf_volume_sphere()
   ntype.gather_link_search_ops = file_ns::search_link_ops;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_sdf_volume_sphere)

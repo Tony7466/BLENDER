@@ -129,7 +129,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_tangent_cc
 
-void register_node_type_geo_input_tangent()
+static void register_node_type_geo_input_tangent()
 {
   namespace file_ns = blender::nodes::node_geo_input_tangent_cc;
 
@@ -140,3 +140,4 @@ void register_node_type_geo_input_tangent()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_tangent)

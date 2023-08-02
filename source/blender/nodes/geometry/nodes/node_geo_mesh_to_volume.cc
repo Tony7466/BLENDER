@@ -151,7 +151,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mesh_to_volume_cc
 
-void register_node_type_geo_mesh_to_volume()
+static void register_node_type_geo_mesh_to_volume()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_to_volume_cc;
 
@@ -168,3 +168,4 @@ void register_node_type_geo_mesh_to_volume()
       &ntype, "NodeGeometryMeshToVolume", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_to_volume)

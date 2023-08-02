@@ -73,7 +73,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_id_cc
 
-void register_node_type_geo_set_id()
+static void register_node_type_geo_set_id()
 {
   namespace file_ns = blender::nodes::node_geo_set_id_cc;
 
@@ -84,3 +84,4 @@ void register_node_type_geo_set_id()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_id)

@@ -111,7 +111,7 @@ static void geo_node_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_mesh_face_is_planar_cc
 
-void register_node_type_geo_input_mesh_face_is_planar()
+static void register_node_type_geo_input_mesh_face_is_planar()
 {
   namespace file_ns = blender::nodes::node_geo_input_mesh_face_is_planar_cc;
 
@@ -123,3 +123,4 @@ void register_node_type_geo_input_mesh_face_is_planar()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_mesh_face_is_planar)

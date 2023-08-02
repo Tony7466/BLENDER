@@ -212,7 +212,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_primitive_circle_cc
 
-void register_node_type_geo_curve_primitive_circle()
+static void register_node_type_geo_curve_primitive_circle()
 {
   namespace file_ns = blender::nodes::node_geo_curve_primitive_circle_cc;
 
@@ -230,3 +230,4 @@ void register_node_type_geo_curve_primitive_circle()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_primitive_circle)

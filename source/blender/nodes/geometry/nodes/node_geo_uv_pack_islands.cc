@@ -142,7 +142,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_uv_pack_islands_cc
 
-void register_node_type_geo_uv_pack_islands()
+static void register_node_type_geo_uv_pack_islands()
 {
   namespace file_ns = blender::nodes::node_geo_uv_pack_islands_cc;
 
@@ -153,3 +153,4 @@ void register_node_type_geo_uv_pack_islands()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_uv_pack_islands)

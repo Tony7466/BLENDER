@@ -166,7 +166,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_curve_handles_cc
 
-void register_node_type_geo_set_curve_handles()
+static void register_node_type_geo_set_curve_handles()
 {
   namespace file_ns = blender::nodes::node_geo_set_curve_handles_cc;
 
@@ -185,3 +185,4 @@ void register_node_type_geo_set_curve_handles()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_curve_handles)

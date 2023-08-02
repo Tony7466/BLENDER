@@ -63,7 +63,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_primitive_quadratic_bezier_cc
 
-void register_node_type_geo_curve_primitive_quadratic_bezier()
+static void register_node_type_geo_curve_primitive_quadratic_bezier()
 {
   namespace file_ns = blender::nodes::node_geo_curve_primitive_quadratic_bezier_cc;
 
@@ -74,3 +74,4 @@ void register_node_type_geo_curve_primitive_quadratic_bezier()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_primitive_quadratic_bezier)

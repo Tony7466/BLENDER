@@ -319,7 +319,7 @@ void NodeGeometryRepeatOutput::set_item_name(NodeRepeatItem &item, const char *n
   item.name = BLI_strdup(unique_name);
 }
 
-void register_node_type_geo_repeat_output()
+static void register_node_type_geo_repeat_output()
 {
   namespace file_ns = blender::nodes::node_geo_repeat_output_cc;
 
@@ -333,3 +333,4 @@ void register_node_type_geo_repeat_output()
       &ntype, "NodeGeometryRepeatOutput", file_ns::node_free_storage, file_ns::node_copy_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_repeat_output)

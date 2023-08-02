@@ -242,7 +242,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
 }  // namespace blender::nodes::node_geo_simulation_input_cc
 
-void register_node_type_geo_simulation_input()
+static void register_node_type_geo_simulation_input()
 {
   namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
 
@@ -259,6 +259,7 @@ void register_node_type_geo_simulation_input()
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_simulation_input)
 
 bNode *NOD_geometry_simulation_input_get_paired_output(bNodeTree *node_tree,
                                                        const bNode *simulation_input_node)

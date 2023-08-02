@@ -189,7 +189,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_uv_unwrap_cc
 
-void register_node_type_geo_uv_unwrap()
+static void register_node_type_geo_uv_unwrap()
 {
   namespace file_ns = blender::nodes::node_geo_uv_unwrap_cc;
 
@@ -204,3 +204,4 @@ void register_node_type_geo_uv_unwrap()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_uv_unwrap)

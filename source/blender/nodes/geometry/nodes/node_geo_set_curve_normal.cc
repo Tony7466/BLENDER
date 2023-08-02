@@ -60,7 +60,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_curve_normal_cc
 
-void register_node_type_geo_set_curve_normal()
+static void register_node_type_geo_set_curve_normal()
 {
   namespace file_ns = blender::nodes::node_geo_set_curve_normal_cc;
 
@@ -73,3 +73,4 @@ void register_node_type_geo_set_curve_normal()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_set_curve_normal)

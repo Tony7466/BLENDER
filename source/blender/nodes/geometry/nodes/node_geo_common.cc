@@ -40,7 +40,7 @@ static void node_declare(const bNodeTree &node_tree,
 
 }  // namespace blender::nodes
 
-void register_node_type_geo_group()
+static void register_node_type_geo_group()
 {
   static bNodeType ntype;
 
@@ -59,6 +59,7 @@ void register_node_type_geo_group()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_group)
 
 void register_node_type_geo_custom_group(bNodeType *ntype)
 {

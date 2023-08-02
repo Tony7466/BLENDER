@@ -27,7 +27,7 @@ static void node_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_scene_time_cc
 
-void register_node_type_geo_input_scene_time()
+static void register_node_type_geo_input_scene_time()
 {
   static bNodeType ntype;
   namespace file_ns = blender::nodes::node_geo_input_scene_time_cc;
@@ -36,3 +36,4 @@ void register_node_type_geo_input_scene_time()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_scene_time)

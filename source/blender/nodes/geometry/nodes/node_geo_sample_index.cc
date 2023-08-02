@@ -371,7 +371,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_sample_index_cc
 
-void register_node_type_geo_sample_index()
+static void register_node_type_geo_sample_index()
 {
   namespace file_ns = blender::nodes::node_geo_sample_index_cc;
 
@@ -388,3 +388,4 @@ void register_node_type_geo_sample_index()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_sample_index)

@@ -170,7 +170,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_evaluate_on_domain_cc
 
-void register_node_type_geo_evaluate_on_domain()
+static void register_node_type_geo_evaluate_on_domain()
 {
   namespace file_ns = blender::nodes::node_geo_evaluate_on_domain_cc;
 
@@ -186,3 +186,4 @@ void register_node_type_geo_evaluate_on_domain()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_evaluate_on_domain)

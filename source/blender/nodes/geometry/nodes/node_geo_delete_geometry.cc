@@ -248,7 +248,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_delete_geometry_cc
 
-void register_node_type_geo_delete_geometry()
+static void register_node_type_geo_delete_geometry()
 {
   namespace file_ns = blender::nodes::node_geo_delete_geometry_cc;
 
@@ -268,3 +268,4 @@ void register_node_type_geo_delete_geometry()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_delete_geometry)

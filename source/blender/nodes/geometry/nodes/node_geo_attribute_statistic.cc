@@ -382,7 +382,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_attribute_statistic_cc
 
-void register_node_type_geo_attribute_statistic()
+static void register_node_type_geo_attribute_statistic()
 {
   namespace file_ns = blender::nodes::node_geo_attribute_statistic_cc;
 
@@ -399,3 +399,4 @@ void register_node_type_geo_attribute_statistic()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_attribute_statistic)

@@ -858,7 +858,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_mesh_primitive_cone_cc
 
-void register_node_type_geo_mesh_primitive_cone()
+static void register_node_type_geo_mesh_primitive_cone()
 {
   namespace file_ns = blender::nodes::node_geo_mesh_primitive_cone_cc;
 
@@ -874,3 +874,4 @@ void register_node_type_geo_mesh_primitive_cone()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_mesh_primitive_cone)

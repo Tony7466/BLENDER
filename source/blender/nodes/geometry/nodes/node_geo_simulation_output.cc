@@ -839,7 +839,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
 }  // namespace blender::nodes::node_geo_simulation_output_cc
 
-void register_node_type_geo_simulation_output()
+static void register_node_type_geo_simulation_output()
 {
   namespace file_ns = blender::nodes::node_geo_simulation_output_cc;
 
@@ -858,6 +858,7 @@ void register_node_type_geo_simulation_output()
                     file_ns::node_copy_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_simulation_output)
 
 blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() const
 {

@@ -105,7 +105,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_mesh_vertex_neighbors_cc
 
-void register_node_type_geo_input_mesh_vertex_neighbors()
+static void register_node_type_geo_input_mesh_vertex_neighbors()
 {
   namespace file_ns = blender::nodes::node_geo_input_mesh_vertex_neighbors_cc;
 
@@ -116,3 +116,4 @@ void register_node_type_geo_input_mesh_vertex_neighbors()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_mesh_vertex_neighbors)

@@ -88,7 +88,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_points_cc
 
-void register_node_type_geo_points()
+static void register_node_type_geo_points()
 {
   namespace file_ns = blender::nodes::node_geo_points_cc;
   static bNodeType ntype;
@@ -97,3 +97,4 @@ void register_node_type_geo_points()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_points)

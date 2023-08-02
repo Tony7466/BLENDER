@@ -267,7 +267,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_primitive_quadrilateral_cc
 
-void register_node_type_geo_curve_primitive_quadrilateral()
+static void register_node_type_geo_curve_primitive_quadrilateral()
 {
   namespace file_ns = blender::nodes::node_geo_curve_primitive_quadrilateral_cc;
 
@@ -286,3 +286,4 @@ void register_node_type_geo_curve_primitive_quadrilateral()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_primitive_quadrilateral)

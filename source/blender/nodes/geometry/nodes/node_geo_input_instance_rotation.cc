@@ -48,7 +48,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_input_instance_rotation_cc
 
-void register_node_type_geo_input_instance_rotation()
+static void register_node_type_geo_input_instance_rotation()
 {
   namespace file_ns = blender::nodes::node_geo_input_instance_rotation_cc;
 
@@ -59,3 +59,4 @@ void register_node_type_geo_input_instance_rotation()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_input_instance_rotation)

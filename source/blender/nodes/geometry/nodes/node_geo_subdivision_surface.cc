@@ -192,7 +192,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_subdivision_surface_cc
 
-void register_node_type_geo_subdivision_surface()
+static void register_node_type_geo_subdivision_surface()
 {
   namespace file_ns = blender::nodes::node_geo_subdivision_surface_cc;
 
@@ -211,3 +211,4 @@ void register_node_type_geo_subdivision_surface()
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_subdivision_surface)

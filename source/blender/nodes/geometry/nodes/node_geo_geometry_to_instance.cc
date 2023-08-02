@@ -28,7 +28,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_geometry_to_instance_cc
 
-void register_node_type_geo_geometry_to_instance()
+static void register_node_type_geo_geometry_to_instance()
 {
   namespace file_ns = blender::nodes::node_geo_geometry_to_instance_cc;
 
@@ -41,3 +41,4 @@ void register_node_type_geo_geometry_to_instance()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_geometry_to_instance)

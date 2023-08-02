@@ -379,7 +379,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_sample_volume_cc
 
-void register_node_type_geo_sample_volume()
+static void register_node_type_geo_sample_volume()
 {
   namespace file_ns = blender::nodes::node_geo_sample_volume_cc;
 
@@ -398,3 +398,4 @@ void register_node_type_geo_sample_volume()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_sample_volume)

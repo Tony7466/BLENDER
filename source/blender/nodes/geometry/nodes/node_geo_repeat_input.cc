@@ -83,7 +83,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
 }  // namespace blender::nodes::node_geo_repeat_input_cc
 
-void register_node_type_geo_repeat_input()
+static void register_node_type_geo_repeat_input()
 {
   namespace file_ns = blender::nodes::node_geo_repeat_input_cc;
 
@@ -98,6 +98,7 @@ void register_node_type_geo_repeat_input()
       &ntype, "NodeGeometryRepeatInput", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_repeat_input)
 
 bool NOD_geometry_repeat_input_pair_with_output(const bNodeTree *node_tree,
                                                 bNode *repeat_input_node,

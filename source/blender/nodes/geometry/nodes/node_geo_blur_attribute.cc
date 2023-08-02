@@ -519,7 +519,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_blur_attribute_cc
 
-void register_node_type_geo_blur_attribute()
+static void register_node_type_geo_blur_attribute()
 {
   namespace file_ns = blender::nodes::node_geo_blur_attribute_cc;
 
@@ -533,3 +533,4 @@ void register_node_type_geo_blur_attribute()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_blur_attribute)

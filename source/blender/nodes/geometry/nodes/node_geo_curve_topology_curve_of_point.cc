@@ -114,7 +114,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_topology_curve_of_point_cc
 
-void register_node_type_geo_curve_topology_curve_of_point()
+static void register_node_type_geo_curve_topology_curve_of_point()
 {
   namespace file_ns = blender::nodes::node_geo_curve_topology_curve_of_point_cc;
 
@@ -125,3 +125,4 @@ void register_node_type_geo_curve_topology_curve_of_point()
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_topology_curve_of_point)

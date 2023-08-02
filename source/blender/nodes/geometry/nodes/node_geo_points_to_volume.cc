@@ -215,7 +215,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_points_to_volume_cc
 
-void register_node_type_geo_points_to_volume()
+static void register_node_type_geo_points_to_volume()
 {
   namespace file_ns = blender::nodes::node_geo_points_to_volume_cc;
 
@@ -234,3 +234,4 @@ void register_node_type_geo_points_to_volume()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_points_to_volume)

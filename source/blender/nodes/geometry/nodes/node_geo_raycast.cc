@@ -374,7 +374,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_raycast_cc
 
-void register_node_type_geo_raycast()
+static void register_node_type_geo_raycast()
 {
   namespace file_ns = blender::nodes::node_geo_raycast_cc;
 
@@ -392,3 +392,4 @@ void register_node_type_geo_raycast()
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_raycast)

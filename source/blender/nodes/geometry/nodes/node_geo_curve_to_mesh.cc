@@ -65,7 +65,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_curve_to_mesh_cc
 
-void register_node_type_geo_curve_to_mesh()
+static void register_node_type_geo_curve_to_mesh()
 {
   namespace file_ns = blender::nodes::node_geo_curve_to_mesh_cc;
 
@@ -76,3 +76,4 @@ void register_node_type_geo_curve_to_mesh()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_curve_to_mesh)

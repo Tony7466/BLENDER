@@ -284,7 +284,7 @@ std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node)
 
 }  // namespace blender::nodes
 
-void register_node_type_geo_switch()
+static void register_node_type_geo_switch()
 {
   namespace file_ns = blender::nodes::node_geo_switch_cc;
 
@@ -299,3 +299,4 @@ void register_node_type_geo_switch()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_geo_switch)
