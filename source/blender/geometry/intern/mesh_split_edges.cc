@@ -314,10 +314,10 @@ static void calc_updated_corner_verts(const int orig_verts_num,
  * indices. Using this fact we can avoid the need to use a more expensive data structure to
  * deduplicate the result edges.
  */
-static BitVector<> calc_merged_new_edges(const int orig_verts_num,
-                                         const Span<int2> orig_edges,
-                                         const IndexMask &affected_verts,
-                                         const Span<Vector<CornerFan>> corner_fans)
+static BitVector<> calc_no_split_selected_edges(const int orig_verts_num,
+                                                const Span<int2> orig_edges,
+                                                const IndexMask &affected_verts,
+                                                const Span<Vector<CornerFan>> corner_fans)
 {
   Array<int> fan_counts(orig_verts_num, 0);
   affected_verts.foreach_index(GrainSize(4096), [&](const int vert, const int mask) {
@@ -338,7 +338,7 @@ static BitVector<> calc_merged_new_edges(const int orig_verts_num,
  * Based on updated corner vertex indices, update the edges in each face. This includes updating
  * corner edge indices, adding new edges, and reusing original edges for the first "split" edge.
  *
- * \param output_single_edge: As described in #calc_merged_new_edges, some edges will only
+ * \param output_single_edge: As described in #calc_no_split_selected_edges, some edges will only
  * result in a single output edge, regardless of how many faces used the edge originally. Those
  * edges are marked by this bit map.
  */
@@ -501,7 +501,7 @@ void split_edges(Mesh &mesh,
   calc_updated_corner_verts(
       orig_verts_num, corner_fans, new_verts_by_affected_vert, new_corner_verts);
 
-  const BitVector<> single_edges = calc_merged_new_edges(
+  const BitVector<> single_edges = calc_no_split_selected_edges(
       orig_verts_num, orig_edges, affected_verts, corner_fans);
 
   Vector<int2> new_edges;
