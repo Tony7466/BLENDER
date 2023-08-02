@@ -21,28 +21,6 @@
 
 namespace blender::bke::sim {
 
-GeometrySimulationStateItem::GeometrySimulationStateItem(GeometrySet geometry)
-    : geometry(std::move(geometry))
-{
-}
-
-PrimitiveSimulationStateItem::PrimitiveSimulationStateItem(const CPPType &type, const void *value)
-    : type_(type)
-{
-  value_ = MEM_mallocN_aligned(type.size(), type.alignment(), __func__);
-  type.copy_construct(value, value_);
-}
-
-PrimitiveSimulationStateItem::~PrimitiveSimulationStateItem()
-{
-  type_.destruct(value_);
-  MEM_freeN(value_);
-}
-
-StringSimulationStateItem::StringSimulationStateItem(std::string value) : value_(std::move(value))
-{
-}
-
 void ModifierSimulationCache::try_discover_bake(const StringRefNull absolute_bake_dir)
 {
   if (failed_finding_bake_) {
@@ -261,7 +239,7 @@ void scene_simulation_states_reset(Scene &scene)
         continue;
       }
       NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      nmd->runtime->simulation_cache.reset();
+      nmd->runtime->simulation_cache->reset();
     }
   }
   FOREACH_SCENE_OBJECT_END;

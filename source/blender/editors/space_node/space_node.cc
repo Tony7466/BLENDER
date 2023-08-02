@@ -242,7 +242,7 @@ static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 
   snode->flag = SNODE_SHOW_GPENCIL | SNODE_USE_ALPHA;
   snode->overlay.flag = (SN_OVERLAY_SHOW_OVERLAYS | SN_OVERLAY_SHOW_WIRE_COLORS |
-                         SN_OVERLAY_SHOW_PATH);
+                         SN_OVERLAY_SHOW_PATH | SN_OVERLAY_SHOW_PREVIEWS);
 
   /* backdrop */
   snode->zoom = 1.0f;
@@ -691,23 +691,23 @@ static bool node_mask_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * 
   return WM_drag_is_ID_type(drag, ID_MSK);
 }
 
-static void node_group_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void node_group_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
 }
 
-static void node_id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void node_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
 }
 
-static void node_id_path_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void node_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, 0);
+  ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   if (id) {
     RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));

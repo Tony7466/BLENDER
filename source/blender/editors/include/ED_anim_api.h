@@ -46,7 +46,7 @@ struct PropertyRNA;
 
 /* ************************************************ */
 /* ANIMATION CHANNEL FILTERING */
-/* anim_filter.c */
+/* `anim_filter.cc` */
 
 /* -------------------------------------------------------------------- */
 /** \name Context
@@ -224,12 +224,14 @@ typedef enum eAnim_ChannelType {
   ANIMTYPE_DSHAIR,
   ANIMTYPE_DSPOINTCLOUD,
   ANIMTYPE_DSVOLUME,
-  ANIMTYPE_DSSIMULATION,
 
   ANIMTYPE_SHAPEKEY,
 
   ANIMTYPE_GPDATABLOCK,
   ANIMTYPE_GPLAYER,
+
+  ANIMTYPE_GREASE_PENCIL_DATABLOCK,
+  ANIMTYPE_GREASE_PENCIL_LAYER,
 
   ANIMTYPE_MASKDATABLOCK,
   ANIMTYPE_MASKLAYER,
@@ -245,11 +247,12 @@ typedef enum eAnim_ChannelType {
 
 /* types of keyframe data in bAnimListElem */
 typedef enum eAnim_KeyType {
-  ALE_NONE = 0, /* no keyframe data */
-  ALE_FCURVE,   /* F-Curve */
-  ALE_GPFRAME,  /* Grease Pencil Frames */
-  ALE_MASKLAY,  /* Mask */
-  ALE_NLASTRIP, /* NLA Strips */
+  ALE_NONE = 0,           /* no keyframe data */
+  ALE_FCURVE,             /* F-Curve */
+  ALE_GPFRAME,            /* Grease Pencil Frames (Legacy) */
+  ALE_GREASE_PENCIL_CELS, /* Grease Pencil Cels */
+  ALE_MASKLAY,            /* Mask */
+  ALE_NLASTRIP,           /* NLA Strips */
 
   ALE_ALL,   /* All channels summary */
   ALE_SCE,   /* Scene summary */
@@ -720,7 +723,7 @@ bool ANIM_remove_empty_action_from_animdata(struct AnimData *adt);
 
 /* ************************************************ */
 /* DRAWING API */
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /** \} */
 
@@ -849,7 +852,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, struct FC
 /** \name Animation F-Curves <-> Icons/Names Mapping
  * \{ */
 
-/* anim_ipo_utils.c */
+/* `anim_ipo_utils.cc` */
 
 /**
  * Get icon + name for channel-list displays for F-Curve.
@@ -889,7 +892,7 @@ void nla_action_get_color(struct AnimData *adt, struct bAction *act, float color
 /** \name NLA-Mapping
  * \{ */
 
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /**
  * Obtain the AnimData block providing NLA-mapping for the given channel (if applicable).
@@ -912,7 +915,7 @@ void ANIM_nla_mapping_apply_fcurve(struct AnimData *adt,
 
 /**
  * Perform validation & auto-blending/extend refreshes after some operations
- * \note defined in space_nla/nla_edit.c, not in animation/
+ * \note defined in `space_nla/nla_edit.cc`, not in `animation/`.
  */
 void ED_nla_postop_refresh(bAnimContext *ac);
 
@@ -922,7 +925,7 @@ void ED_nla_postop_refresh(bAnimContext *ac);
 /** \name Unit Conversion Mappings
  * \{ */
 
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /** Flags for conversion mapping. */
 typedef enum eAnimUnitConv_Flags {
@@ -1008,7 +1011,7 @@ float ANIM_unit_mapping_get_factor(
 
 /** \} */
 
-/* anim_deps.c */
+/* `anim_deps.cc` */
 
 /* -------------------------------------------------------------------- */
 /** \name Animation Updates

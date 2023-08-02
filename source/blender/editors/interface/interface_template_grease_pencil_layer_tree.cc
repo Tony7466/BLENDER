@@ -18,6 +18,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
+#include "ED_undo.h"
+
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -73,7 +75,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     return "";
   }
 
-  bool on_drop(struct bContext * /*C*/, const DragInfo &drag_info) const override
+  bool on_drop(bContext * /*C*/, const DragInfo &drag_info) const override
   {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
@@ -85,6 +87,10 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
        */
       BLI_assert_unreachable();
+      return false;
+    }
+
+    if (&drop_tree_node_ == &drag_layer.as_node()) {
       return false;
     }
 
@@ -176,9 +182,18 @@ class LayerViewItem : public AbstractTreeViewItem {
     return {};
   }
 
-  void on_activate() override
+  void on_activate(bContext &C) override
   {
-    this->grease_pencil_.set_active_layer(&layer_);
+    PointerRNA grease_pencil_ptr, value_ptr;
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
+
+    PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
+
+    RNA_property_pointer_set(&grease_pencil_ptr, prop, value_ptr, nullptr);
+    RNA_property_update(&C, &grease_pencil_ptr, prop);
+
+    ED_undo_push(&C, "Active Grease Pencil Layer");
   }
 
   bool supports_renaming() const override
@@ -318,7 +333,7 @@ void LayerTreeView::build_tree()
 {
   using namespace blender::bke::greasepencil;
   LISTBASE_FOREACH_BACKWARD (
-      GreasePencilLayerTreeNode *, node, &this->grease_pencil_.root_group.children)
+      GreasePencilLayerTreeNode *, node, &this->grease_pencil_.root_group_ptr->children)
   {
     this->build_tree_node_recursive(*this, node->wrap());
   }

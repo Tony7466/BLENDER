@@ -303,45 +303,6 @@ static void render_result_to_bake(RenderEngine *engine, RenderResult *rr)
 
 /* Render Results */
 
-static HighlightedTile highlighted_tile_from_result_get(Render * /*re*/, RenderResult *result)
-{
-  HighlightedTile tile;
-  tile.rect = result->tilerect;
-
-  return tile;
-}
-
-static void engine_tile_highlight_set(RenderEngine *engine,
-                                      const HighlightedTile *tile,
-                                      bool highlight)
-{
-  if ((engine->flag & RE_ENGINE_HIGHLIGHT_TILES) == 0) {
-    return;
-  }
-
-  Render *re = engine->re;
-
-  BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-  if (re->highlighted_tiles == nullptr) {
-    re->highlighted_tiles = BLI_gset_new(
-        BLI_ghashutil_inthash_v4_p, BLI_ghashutil_inthash_v4_cmp, "highlighted tiles");
-  }
-
-  if (highlight) {
-    HighlightedTile **tile_in_set;
-    if (!BLI_gset_ensure_p_ex(re->highlighted_tiles, tile, (void ***)&tile_in_set)) {
-      *tile_in_set = MEM_cnew<HighlightedTile>(__func__);
-      **tile_in_set = *tile;
-    }
-  }
-  else {
-    BLI_gset_remove(re->highlighted_tiles, tile, MEM_freeN);
-  }
-
-  BLI_mutex_unlock(&re->highlighted_tiles_mutex);
-}
-
 RenderResult *RE_engine_begin_result(
     RenderEngine *engine, int x, int y, int w, int h, const char *layername, const char *viewname)
 {
@@ -457,9 +418,16 @@ void RE_engine_end_result(
   }
 
   if (re->engine && (re->engine->flag & RE_ENGINE_HIGHLIGHT_TILES)) {
-    const HighlightedTile tile = highlighted_tile_from_result_get(re, result);
+    blender::render::TilesHighlight *tile_highlight = re->get_tile_highlight();
 
-    engine_tile_highlight_set(engine, &tile, highlight);
+    if (tile_highlight) {
+      if (highlight) {
+        tile_highlight->highlight_tile_for_result(result);
+      }
+      else {
+        tile_highlight->unhighlight_tile_for_result(result);
+      }
+    }
   }
 
   if (!cancel || merge_results) {
@@ -642,52 +610,18 @@ bool RE_engine_get_spherical_stereo(RenderEngine *engine, Object *camera)
   return BKE_camera_multiview_spherical_stereo(re ? &re->r : nullptr, camera) ? true : false;
 }
 
-rcti *RE_engine_get_current_tiles(Render *re, int *r_total_tiles, bool *r_needs_free)
+const rcti *RE_engine_get_current_tiles(Render *re, int *r_total_tiles)
 {
-  static rcti tiles_static[BLENDER_MAX_THREADS];
-  const int allocation_step = BLENDER_MAX_THREADS;
-  int total_tiles = 0;
-  rcti *tiles = tiles_static;
-  int allocation_size = BLENDER_MAX_THREADS;
-
-  BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-  *r_needs_free = false;
-
-  if (re->highlighted_tiles == nullptr) {
+  blender::render::TilesHighlight *tiles_highlight = re->get_tile_highlight();
+  if (!tiles_highlight) {
     *r_total_tiles = 0;
-    BLI_mutex_unlock(&re->highlighted_tiles_mutex);
     return nullptr;
-  }
+  };
 
-  GSET_FOREACH_BEGIN (HighlightedTile *, tile, re->highlighted_tiles) {
-    if (total_tiles >= allocation_size) {
-      /* Just in case we're using crazy network rendering with more
-       * workers than BLENDER_MAX_THREADS.
-       */
-      allocation_size += allocation_step;
-      if (tiles == tiles_static) {
-        /* Can not realloc yet, tiles are pointing to a
-         * stack memory.
-         */
-        tiles = MEM_cnew_array<rcti>(allocation_size, "current engine tiles");
-      }
-      else {
-        tiles = static_cast<rcti *>(MEM_reallocN(tiles, allocation_size * sizeof(rcti)));
-      }
-      *r_needs_free = true;
-    }
-    tiles[total_tiles] = tile->rect;
+  blender::Span<rcti> highlighted_tiles = tiles_highlight->get_all_highlighted_tiles();
 
-    total_tiles++;
-  }
-  GSET_FOREACH_END();
-
-  BLI_mutex_unlock(&re->highlighted_tiles_mutex);
-
-  *r_total_tiles = total_tiles;
-
-  return tiles;
+  *r_total_tiles = highlighted_tiles.size();
+  return highlighted_tiles.data();
 }
 
 RenderData *RE_engine_get_render_data(Render *re)
@@ -1219,14 +1153,34 @@ RenderEngine *RE_engine_get(const Render *re)
   return re->engine;
 }
 
+RenderEngine *RE_view_engine_get(const ViewRender *view_render)
+{
+  return view_render->engine;
+}
+
 bool RE_engine_draw_acquire(Render *re)
 {
-  BLI_mutex_lock(&re->engine_draw_mutex);
-
   RenderEngine *engine = re->engine;
 
-  if (engine == nullptr || engine->type->draw == nullptr ||
-      (engine->flag & RE_ENGINE_CAN_DRAW) == 0) {
+  if (!engine) {
+    /* No engine-side drawing if the engine does not exist. */
+    return false;
+  }
+
+  if (!engine->type->draw) {
+    /* Required callbacks are not implemented on the engine side. */
+    return false;
+  }
+
+  /* Lock before checking the flag, to avoid possible conflicts with the render thread. */
+  BLI_mutex_lock(&re->engine_draw_mutex);
+
+  if ((engine->flag & RE_ENGINE_CAN_DRAW) == 0) {
+    /* The rendering is not started yet, or has finished.
+     *
+     * In the former case there will nothing to be drawn, so can simply use RenderResult drawing
+     * pipeline. In the latter case the engine has destroyed its display-only resources (textures,
+     * graphics interops, etc..) so need to use use the RenderResult drawing pipeline. */
     BLI_mutex_unlock(&re->engine_draw_mutex);
     return false;
   }
@@ -1242,27 +1196,51 @@ void RE_engine_draw_release(Render *re)
 void RE_engine_tile_highlight_set(
     RenderEngine *engine, int x, int y, int width, int height, bool highlight)
 {
-  HighlightedTile tile;
-  BLI_rcti_init(&tile.rect, x, x + width, y, y + height);
+  if (!engine->re) {
+    /* No render on the engine, so nowhere to store the highlighted tiles information. */
+    return;
+  }
+  if ((engine->flag & RE_ENGINE_HIGHLIGHT_TILES) == 0) {
+    /* Engine reported it does not support tiles highlight, but attempted to set the highlight.
+     * Technically it is a logic error, but there is no good way to inform an external engine about
+     * it. */
+    return;
+  }
 
-  engine_tile_highlight_set(engine, &tile, highlight);
+  blender::render::TilesHighlight *tile_highlight = engine->re->get_tile_highlight();
+  if (!tile_highlight) {
+    /* The renderer itself does not support tiles highlight. */
+    return;
+  }
+
+  if (highlight) {
+    tile_highlight->highlight_tile(x, y, width, height);
+  }
+  else {
+    tile_highlight->unhighlight_tile(x, y, width, height);
+  }
 }
 
 void RE_engine_tile_highlight_clear_all(RenderEngine *engine)
 {
+  if (!engine->re) {
+    /* No render on the engine, so nowhere to store the highlighted tiles information. */
+    return;
+  }
   if ((engine->flag & RE_ENGINE_HIGHLIGHT_TILES) == 0) {
+    /* Engine reported it does not support tiles highlight, but attempted to set the highlight.
+     * Technically it is a logic error, but there is no good way to inform an external engine about
+     * it. */
     return;
   }
 
-  Render *re = engine->re;
-
-  BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-  if (re->highlighted_tiles != nullptr) {
-    BLI_gset_clear(re->highlighted_tiles, MEM_freeN);
+  blender::render::TilesHighlight *tile_highlight = engine->re->get_tile_highlight();
+  if (!tile_highlight) {
+    /* The renderer itself does not support tiles highlight. */
+    return;
   }
 
-  BLI_mutex_unlock(&re->highlighted_tiles_mutex);
+  tile_highlight->clear();
 }
 
 /* -------------------------------------------------------------------- */
@@ -1287,17 +1265,17 @@ bool RE_engine_gpu_context_create(RenderEngine *engine)
   BLI_assert(BLI_thread_is_main());
 
   const bool drw_state = DRW_gpu_context_release();
-  engine->wm_blender_gpu_context = WM_system_gpu_context_create();
+  engine->system_gpu_context = WM_system_gpu_context_create();
 
-  if (engine->wm_blender_gpu_context) {
+  if (engine->system_gpu_context) {
     /* Activate new GPU Context for GPUContext creation. */
-    WM_system_gpu_context_activate(engine->wm_blender_gpu_context);
+    WM_system_gpu_context_activate(engine->system_gpu_context);
     /* Requires GPUContext for usage of GPU Module for displaying results. */
-    engine->blender_gpu_context = GPU_context_create(nullptr, engine->wm_blender_gpu_context);
+    engine->blender_gpu_context = GPU_context_create(nullptr, engine->system_gpu_context);
     GPU_context_active_set(nullptr);
     /* Deactivate newly created GPU Context, as it is not needed until
      * `RE_engine_gpu_context_enable` is called. */
-    WM_system_gpu_context_release(engine->wm_blender_gpu_context);
+    WM_system_gpu_context_release(engine->system_gpu_context);
   }
   else {
     engine->blender_gpu_context = nullptr;
@@ -1305,18 +1283,18 @@ bool RE_engine_gpu_context_create(RenderEngine *engine)
 
   DRW_gpu_context_activate(drw_state);
 
-  return engine->wm_blender_gpu_context != nullptr;
+  return engine->system_gpu_context != nullptr;
 }
 
 void RE_engine_gpu_context_destroy(RenderEngine *engine)
 {
-  if (!engine->wm_blender_gpu_context) {
+  if (!engine->system_gpu_context) {
     return;
   }
 
   const bool drw_state = DRW_gpu_context_release();
 
-  WM_system_gpu_context_activate(engine->wm_blender_gpu_context);
+  WM_system_gpu_context_activate(engine->system_gpu_context);
   if (engine->blender_gpu_context) {
     GPUContext *restore_context = GPU_context_active_get();
     GPU_context_active_set(engine->blender_gpu_context);
@@ -1326,7 +1304,8 @@ void RE_engine_gpu_context_destroy(RenderEngine *engine)
     }
     engine->blender_gpu_context = nullptr;
   }
-  WM_system_gpu_context_dispose(engine->wm_blender_gpu_context);
+  WM_system_gpu_context_dispose(engine->system_gpu_context);
+  engine->system_gpu_context = nullptr;
 
   DRW_gpu_context_activate(drw_state);
 }
@@ -1338,14 +1317,14 @@ bool RE_engine_gpu_context_enable(RenderEngine *engine)
     DRW_render_context_enable(engine->re);
     return true;
   }
-  if (engine->wm_blender_gpu_context) {
+  if (engine->system_gpu_context) {
     BLI_mutex_lock(&engine->blender_gpu_context_mutex);
     /* If a previous GPU/GPUContext was active (DST.blender_gpu_context), we should later
      * restore this when disabling the RenderEngine context. */
     engine->gpu_restore_context = DRW_gpu_context_release();
 
     /* Activate RenderEngine System and Blender GPU Context. */
-    WM_system_gpu_context_activate(engine->wm_blender_gpu_context);
+    WM_system_gpu_context_activate(engine->system_gpu_context);
     if (engine->blender_gpu_context) {
       GPU_context_active_set(engine->blender_gpu_context);
       GPU_render_begin();
@@ -1361,12 +1340,12 @@ void RE_engine_gpu_context_disable(RenderEngine *engine)
     DRW_render_context_disable(engine->re);
   }
   else {
-    if (engine->wm_blender_gpu_context) {
+    if (engine->system_gpu_context) {
       if (engine->blender_gpu_context) {
         GPU_render_end();
         GPU_context_active_set(nullptr);
       }
-      WM_system_gpu_context_release(engine->wm_blender_gpu_context);
+      WM_system_gpu_context_release(engine->system_gpu_context);
       /* Restore DRW state context if previously active. */
       DRW_gpu_context_activate(engine->gpu_restore_context);
       BLI_mutex_unlock(&engine->blender_gpu_context_mutex);
@@ -1380,7 +1359,7 @@ void RE_engine_gpu_context_lock(RenderEngine *engine)
     /* Locking already handled by the draw manager. */
   }
   else {
-    if (engine->wm_blender_gpu_context) {
+    if (engine->system_gpu_context) {
       BLI_mutex_lock(&engine->blender_gpu_context_mutex);
     }
   }
@@ -1392,7 +1371,7 @@ void RE_engine_gpu_context_unlock(RenderEngine *engine)
     /* Locking already handled by the draw manager. */
   }
   else {
-    if (engine->wm_blender_gpu_context) {
+    if (engine->system_gpu_context) {
       BLI_mutex_unlock(&engine->blender_gpu_context_mutex);
     }
   }

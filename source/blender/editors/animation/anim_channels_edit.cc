@@ -6,9 +6,9 @@
  * \ingroup edanimation
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -32,6 +32,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_mask.h"
@@ -226,8 +227,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
       case ANIMTYPE_DSHAIR:
       case ANIMTYPE_DSPOINTCLOUD:
       case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
+      case ANIMTYPE_NLAACTION: {
         /* need to verify that this data is valid for now */
         if (ale->adt) {
           ACHANNEL_SET_FLAG(ale->adt, ACHANNEL_SETFLAG_CLEAR, ADT_UI_ACTIVE);
@@ -284,8 +284,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
       case ANIMTYPE_DSHAIR:
       case ANIMTYPE_DSPOINTCLOUD:
       case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
+      case ANIMTYPE_NLAACTION: {
         /* need to verify that this data is valid for now */
         if (ale && ale->adt) {
           ale->adt->flag |= ADT_UI_ACTIVE;
@@ -298,7 +297,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
         gpl->flag |= GP_LAYER_ACTIVE;
         break;
       }
-
       /* unhandled currently, but may be interesting */
       case ANIMTYPE_MASKLAYER:
       case ANIMTYPE_SHAPEKEY:
@@ -339,8 +337,7 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     case ANIMTYPE_DSHAIR:
     case ANIMTYPE_DSPOINTCLOUD:
     case ANIMTYPE_DSVOLUME:
-    case ANIMTYPE_NLAACTION:
-    case ANIMTYPE_DSSIMULATION: {
+    case ANIMTYPE_NLAACTION: {
       return ale->adt && (ale->adt->flag & ADT_UI_ACTIVE);
     }
     case ANIMTYPE_GROUP: {
@@ -422,9 +419,9 @@ static eAnimChannels_SetFlag anim_channels_selection_flag_for_toggle(const ListB
         break;
       case ANIMTYPE_OBJECT:
 #if 0 /* for now, do not take object selection into account, since it gets too annoying */
-if (ale->flag & SELECT) {
-return ACHANNEL_SETFLAG_CLEAR;
-}
+        if (ale->flag & SELECT) {
+          return ACHANNEL_SETFLAG_CLEAR;
+        }
 #endif
         break;
       case ANIMTYPE_GROUP:
@@ -471,8 +468,7 @@ return ACHANNEL_SETFLAG_CLEAR;
       case ANIMTYPE_DSHAIR:
       case ANIMTYPE_DSPOINTCLOUD:
       case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
+      case ANIMTYPE_NLAACTION: {
         if ((ale->adt) && (ale->adt->flag & ADT_UI_SELECTED)) {
           return ACHANNEL_SETFLAG_CLEAR;
         }
@@ -519,15 +515,15 @@ static void anim_channels_select_set(bAnimContext *ac,
       }
       case ANIMTYPE_OBJECT: {
 #if 0 /* for now, do not take object selection into account, since it gets too annoying */
-Base *base = (Base *)ale->data;
-Object *ob = base->object;
+        Base *base = (Base *)ale->data;
+        Object *ob = base->object;
 
-ACHANNEL_SET_FLAG(base, sel, SELECT);
-ACHANNEL_SET_FLAG(ob, sel, SELECT);
+        ACHANNEL_SET_FLAG(base, sel, SELECT);
+        ACHANNEL_SET_FLAG(ob, sel, SELECT);
 
-if (ob->adt) {
-ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
-}
+        if (ob->adt) {
+          ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
+        }
 #endif
         break;
       }
@@ -587,8 +583,7 @@ ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
       case ANIMTYPE_DSHAIR:
       case ANIMTYPE_DSPOINTCLOUD:
       case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
+      case ANIMTYPE_NLAACTION: {
         /* need to verify that this data is valid for now */
         if (ale->adt) {
           ACHANNEL_SET_FLAG(ale->adt, sel, ADT_UI_SELECTED);
@@ -596,6 +591,12 @@ ACHANNEL_SET_FLAG(ob, sel, ADT_UI_SELECTED);
             ale->adt->flag &= ~ADT_UI_ACTIVE;
           }
         }
+        break;
+      }
+      case ANIMTYPE_GREASE_PENCIL_LAYER: {
+        using namespace blender::bke::greasepencil;
+        Layer *layer = static_cast<Layer *>(ale->data);
+        ACHANNEL_SET_FLAG(&(layer->base), sel, GP_LAYER_TREE_NODE_SELECT);
         break;
       }
       case ANIMTYPE_GPLAYER: {
@@ -979,12 +980,12 @@ static bool animedit_poll_channels_nla_tweakmode_off(bContext *C)
 
 /* constants for channel rearranging */
 /* WARNING: don't change existing ones without modifying rearrange func accordingly */
-typedef enum eRearrangeAnimChan_Mode {
+enum eRearrangeAnimChan_Mode {
   REARRANGE_ANIMCHAN_TOP = -2,
   REARRANGE_ANIMCHAN_UP = -1,
   REARRANGE_ANIMCHAN_DOWN = 1,
   REARRANGE_ANIMCHAN_BOTTOM = 2,
-} eRearrangeAnimChan_Mode;
+};
 
 /* defines for rearranging channels */
 static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
@@ -999,19 +1000,19 @@ static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
 
 /* Island definition - just a listbase container */
 struct tReorderChannelIsland {
-  struct tReorderChannelIsland *next, *prev;
+  tReorderChannelIsland *next, *prev;
 
   ListBase channels; /* channels within this region with the same state */
   int flag;          /* eReorderIslandFlag */
 };
 
 /* flags for channel reordering islands */
-typedef enum eReorderIslandFlag {
+enum eReorderIslandFlag {
   REORDER_ISLAND_SELECTED = (1 << 0),    /* island is selected */
   REORDER_ISLAND_UNTOUCHABLE = (1 << 1), /* island should be ignored */
   REORDER_ISLAND_MOVED = (1 << 2),       /* island has already been moved */
   REORDER_ISLAND_HIDDEN = (1 << 3),      /* island is not visible */
-} eReorderIslandFlag;
+};
 
 /* Rearrange Methods --------------------------------------------- */
 
@@ -1130,7 +1131,7 @@ static bool rearrange_island_bottom(ListBase *list, tReorderChannelIsland *islan
  * \param island: Island to be moved
  * \return Whether operation was a success
  */
-typedef bool (*AnimChanRearrangeFp)(ListBase *list, tReorderChannelIsland *island);
+using AnimChanRearrangeFp = bool (*)(ListBase *list, tReorderChannelIsland *island);
 
 /* get rearranging function, given 'rearrange' mode */
 static AnimChanRearrangeFp rearrange_get_mode_func(eRearrangeAnimChan_Mode mode)
@@ -2537,7 +2538,7 @@ static void ANIM_OT_channels_expand(wmOperatorType *ot)
 
   /* props */
   ot->prop = RNA_def_boolean(
-      ot->srna, "all", 1, "All", "Expand all channels (not just selected ones)");
+      ot->srna, "all", true, "All", "Expand all channels (not just selected ones)");
 }
 
 /** \} */
@@ -2644,7 +2645,7 @@ static int animchannels_clean_empty_exec(bContext *C, wmOperator * /*op*/)
       action_empty = true;
     }
     else {
-      /* TODO: check for keyframe + fmodifier data on these too */
+      /* TODO: check for keyframe + F-modifier data on these too. */
     }
 
     /* 2) No NLA Tracks and/or NLA Strips */
@@ -3224,7 +3225,7 @@ static int animchannels_rename_invoke(bContext *C, wmOperator * /*op*/, const wm
 static void ANIM_OT_channels_rename(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Rename Channels";
+  ot->name = "Rename Channel";
   ot->idname = "ANIM_OT_channels_rename";
   ot->description = "Rename animation channel under mouse";
 
@@ -3648,6 +3649,26 @@ static int click_select_channel_gplayer(bContext *C,
   return (ND_ANIMCHAN | NA_EDITED); /* Animation Editors updates */
 }
 
+static int click_select_channel_grease_pencil_layer(bContext *C,
+                                                    bAnimContext *ac,
+                                                    bAnimListElem *ale,
+                                                    const short /*selectmode*/,
+                                                    const int /*filter*/)
+{
+  /* TODO: Implement other selection modes. */
+  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+
+  /* Clear previous channel selection and set active flag on current selection */
+  ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
+
+  layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
+  grease_pencil->active_layer = layer;
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+  return (ND_ANIMCHAN | NA_EDITED);
+}
+
 static int click_select_channel_maskdatablock(bAnimListElem *ale)
 {
   Mask *mask = (Mask *)ale->data;
@@ -3731,7 +3752,7 @@ static int mouse_anim_channels(bContext *C,
   }
 
   /* action to take depends on what channel we've got */
-  /* WARNING: must keep this in sync with the equivalent function in nla_channels.c */
+  /* WARNING: must keep this in sync with the equivalent function in `nla_channels.cc`. */
   switch (ale->type) {
     case ANIMTYPE_SCENE:
       notifierFlags |= click_select_channel_scene(ale, selectmode);
@@ -3761,7 +3782,6 @@ static int mouse_anim_channels(bContext *C,
     case ANIMTYPE_DSHAIR:
     case ANIMTYPE_DSPOINTCLOUD:
     case ANIMTYPE_DSVOLUME:
-    case ANIMTYPE_DSSIMULATION:
       notifierFlags |= click_select_channel_dummy(ac, ale, selectmode);
       break;
     case ANIMTYPE_GROUP:
@@ -3782,6 +3802,13 @@ static int mouse_anim_channels(bContext *C,
       break;
     case ANIMTYPE_GPLAYER:
       notifierFlags |= click_select_channel_gplayer(C, ac, ale, selectmode, filter);
+      break;
+    case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+      /*todo*/
+      break;
+    case ANIMTYPE_GREASE_PENCIL_LAYER:
+      notifierFlags |= click_select_channel_grease_pencil_layer(
+          C, ac, ale, SELECT_REPLACE, filter);
       break;
     case ANIMTYPE_MASKDATABLOCK:
       notifierFlags |= click_select_channel_maskdatablock(ale);

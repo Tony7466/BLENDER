@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'2f5245b4340a')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-10 12:34:48\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2021-12-25 23:57-0800\n"
 "Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -1627,10 +1627,6 @@ msgstr "Kunci Bentuk"
 
 msgid "Shape Key data-blocks"
 msgstr "Kunci Bentuk data-blok"
-
-
-msgid "Simulations"
-msgstr "Simulasi"
 
 
 msgid "Sounds"
@@ -3353,6 +3349,10 @@ msgid "Show Lasso"
 msgstr "Tampilkan Lasso"
 
 
+msgid "Active Layer"
+msgstr "Layer Aktif"
+
+
 msgid "Default Eraser"
 msgstr "Penghapus Default"
 
@@ -3443,10 +3443,6 @@ msgstr "Tipe Mode"
 
 msgid "Byte Color Attribute Value"
 msgstr "Nilai Atribut Warna Byte"
-
-
-msgid "Active Layer"
-msgstr "Layer Aktif"
 
 
 msgid "Object Path"
@@ -6550,11 +6546,6 @@ msgstr "Adegan"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulasi"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Suara"
 
@@ -7364,10 +7355,6 @@ msgstr "Tampilkan/sembunyikan Awan Titik data-blok"
 
 msgid "Show Scene data-blocks"
 msgstr "Tampilkan Adegan data-blok"
-
-
-msgid "Show Simulation data-blocks"
-msgstr "Tampilkan Simulasi data-blok"
 
 
 msgid "Show Sound data-blocks"
@@ -15874,6 +15861,11 @@ msgstr "Gantikan kuas ke mode halus untuk durasi garis luar"
 
 
 msgctxt "Operator"
+msgid "Select Mode"
+msgstr "Seleksi"
+
+
+msgctxt "Operator"
 msgid "Set Curves Point"
 msgstr "Tekstur"
 
@@ -16579,11 +16571,6 @@ msgstr "Seleksi"
 
 msgid "Number of Vertices"
 msgstr "Partikel"
-
-
-msgctxt "Operator"
-msgid "Select Mode"
-msgstr "Seleksi"
 
 
 msgid "Change selection mode"
@@ -25258,11 +25245,6 @@ msgstr "Baru"
 
 
 msgctxt "Volume"
-msgid "New"
-msgstr "Baru"
-
-
-msgctxt "Simulation"
 msgid "New"
 msgstr "Baru"
 

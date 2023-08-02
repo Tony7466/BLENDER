@@ -16,6 +16,7 @@
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
 #  include <BLI_vector.hh>
+#  include <string>
 
 namespace blender {
 template<typename T> class Span;
@@ -55,6 +56,7 @@ struct Collection;
 struct GeometryNodeAssetTraits;
 struct ID;
 struct Image;
+struct ImBuf;
 struct ListBase;
 struct Material;
 struct PreviewImage;
@@ -514,8 +516,7 @@ typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;
 
-  unsigned char *rect;
-  short xsize, ysize;
+  struct ImBuf *ibuf;
 } bNodePreview;
 
 typedef struct bNodeLink {
@@ -1761,6 +1762,44 @@ typedef struct NodeGeometrySimulationOutput {
 #endif
 } NodeGeometrySimulationOutput;
 
+typedef struct NodeRepeatItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+
+#ifdef __cplusplus
+  static bool supports_type(eNodeSocketDatatype type);
+  std::string identifier_str() const;
+#endif
+} NodeRepeatItem;
+
+typedef struct NodeGeometryRepeatInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometryRepeatInput;
+
+typedef struct NodeGeometryRepeatOutput {
+  NodeRepeatItem *items;
+  int items_num;
+  int active_index;
+  /** Identifier to give to the next repeat item. */
+  int next_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  blender::Span<NodeRepeatItem> items_span() const;
+  blender::MutableSpan<NodeRepeatItem> items_span();
+  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
+  void set_item_name(NodeRepeatItem &item, const char *name);
+#endif
+} NodeGeometryRepeatOutput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
@@ -1849,6 +1888,10 @@ enum {
   SHD_GLOSSY_ASHIKHMIN_SHIRLEY = 3,
   SHD_GLOSSY_MULTI_GGX = 4,
 };
+
+/* sheen distributions */
+#define SHD_SHEEN_ASHIKHMIN 0
+#define SHD_SHEEN_MICROFIBER 1
 
 /* vector transform */
 enum {

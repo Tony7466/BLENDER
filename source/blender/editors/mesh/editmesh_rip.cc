@@ -76,14 +76,15 @@ static float edbm_rip_edgedist_squared(ARegion *region,
 }
 
 #if 0
-static float edbm_rip_linedist( ARegion *region, float mat[4][4], const float co1[3], const float co2[3], const float mvalf[2])
+static float edbm_rip_linedist(
+    ARegion *region, float mat[4][4], const float co1[3], const float co2[3], const float mvalf[2])
 {
-float vec1[2], vec2[2];
+  float vec1[2], vec2[2];
 
-ED_view3d_project_float_v2_m4(region, co1, vec1, mat);
-ED_view3d_project_float_v2_m4(region, co2, vec2, mat);
+  ED_view3d_project_float_v2_m4(region, co1, vec1, mat);
+  ED_view3d_project_float_v2_m4(region, co2, vec2, mat);
 
-return dist_to_line_v2(mvalf, vec1, vec2);
+  return dist_to_line_v2(mvalf, vec1, vec2);
 }
 #endif
 
@@ -214,10 +215,10 @@ static BMEdge *edbm_ripsel_edge_mark_step(BMVert *v, const int uid)
   return nullptr;
 }
 
-typedef struct EdgeLoopPair {
+struct EdgeLoopPair {
   BMLoop *l_a;
   BMLoop *l_b;
-} EdgeLoopPair;
+};
 
 static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
 {
@@ -305,7 +306,7 @@ static EdgeLoopPair *edbm_ripsel_looptag_helper(BMesh *bm)
     UNUSED_VARS_NDEBUG(tot);
 
 #if 0
-printf("%s: found contiguous edge loop of (%d)\n", __func__, uid_end - uid_start);
+    printf("%s: found contiguous edge loop of (%d)\n", __func__, uid_end - uid_start);
 #endif
   }
 
@@ -395,10 +396,10 @@ static void edbm_ripsel_deselect_helper(BMesh *bm,
  *       So for now this is a known limitation of current rip-fill option.
  */
 
-typedef struct UnorderedLoopPair {
+struct UnorderedLoopPair {
   BMLoop *l_pair[2];
   char flag;
-} UnorderedLoopPair;
+};
 enum {
   ULP_FLIP_0 = (1 << 0),
   ULP_FLIP_1 = (1 << 1),
