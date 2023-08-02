@@ -647,6 +647,10 @@ def km_view3d(params):
     items.extend([
         op_panel("TOPBAR_PT_name", {"type": 'RET', "value": 'PRESS'}, [("keep_open", False)]),
         ("wm.search_menu", {"type": 'TAB', "value": 'PRESS'}, None),
+        # 3D Cursor
+        ("view3d.cursor3d", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True}, None),
+        ("transform.translate", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "shift": True},
+         {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         # Visibility.
         ("view3d.localview", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         ("view3d.localview", {"type": 'MOUSESMARTZOOM', "value": 'ANY'}, None),
