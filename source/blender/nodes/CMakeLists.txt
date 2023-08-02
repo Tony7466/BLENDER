@@ -21,6 +21,8 @@ function(add_node_discovery
         ${output_file}
         ${output_function}
     DEPENDS
+      # TODO: pass this in as parameter and figure out how to pass these
+      # files to discover_nodes.py instead of the root directory
       ${SRC}
       ${DISCOVER_NODES_PATH}
   )
