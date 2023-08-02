@@ -309,6 +309,14 @@ class Layer : public ::GreasePencilLayer {
   bool remove_frame(FramesMapKey key);
 
   /**
+   * Moves the frame with \a src_key in the frames map to the \a dst_key.
+   *
+   * Fails if the map does not contain a frame with \a src_key, or if it already exists a frame at
+   * \a dst_key that is not a null frame (no overwrites).
+   */
+  bool move_frame(FramesMapKey src_key, FramesMapKey dst_key);
+
+  /**
    * Returns the sorted keys (start frame numbers) of the frames of this layer.
    * \note This will cache the keys lazily.
    */

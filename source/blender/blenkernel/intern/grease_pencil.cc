@@ -717,6 +717,31 @@ static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
   return next_frame_number - frame_number;
 }
 
+bool Layer::move_frame(const FramesMapKey src_key, const FramesMapKey dst_key)
+{
+  if (!this->frames().contains(src_key)) {
+    return false;
+  }
+
+  if (src_key == dst_key) {
+    return false;
+  }
+
+  const GreasePencilFrame src_frame = this->frames().lookup(src_key);
+  const int duration = src_frame.is_implicit_hold() ? 0 : get_frame_duration(*this, src_key);
+
+  if (!this->remove_frame(src_key)) {
+    return false;
+  }
+
+  GreasePencilFrame *dst_frame = this->add_frame(dst_key, src_frame.drawing_index, duration);
+  if (dst_frame == nullptr) {
+    return false;
+  }
+  dst_frame->type = src_frame.type;
+  return true;
+}
+
 Span<FramesMapKey> Layer::sorted_keys() const
 {
   this->runtime->sorted_keys_cache_.ensure([&](Vector<FramesMapKey> &r_data) {
