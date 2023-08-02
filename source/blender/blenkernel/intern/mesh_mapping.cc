@@ -11,8 +11,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_timeit.hh"
-
 #include "atomic_ops.h"
 
 #include "DNA_meshdata_types.h"
@@ -23,7 +21,6 @@
 #include "BLI_buffer.h"
 #include "BLI_function_ref.hh"
 #include "BLI_math.h"
-#include "BLI_sort.hh"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
@@ -378,7 +375,7 @@ static void sort_groups(const OffsetIndices<int> groups, MutableSpan<int> indice
   threading::parallel_for(groups.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t index : range) {
       MutableSpan<int> group = indices.slice(groups[index]);
-      parallel_sort(group.begin(), group.end(), comparator);
+      std::sort(group.begin(), group.end(), comparator);
     }
   });
 }
