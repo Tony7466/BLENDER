@@ -37,36 +37,41 @@ namespace greasepencil {
 /**
  * Stroke cache for a stroke that is currently being drawn.
  */
-struct StrokeCache {
+class StrokeCache {
+ public:
+  void clear();
+  void resize(int64_t new_size);
+
+  int64_t size() const;
+
+  Span<float3> positions() const;
+  MutableSpan<float3> positions_for_write();
+
+  Span<float> radii() const;
+  MutableSpan<float> radii_for_write();
+
+  Span<float> opacities() const;
+  MutableSpan<float> opacities_for_write();
+
+  Span<ColorGeometry4f> vertex_colors() const;
+  MutableSpan<ColorGeometry4f> vertex_colors_for_write();
+
+  int64_t triangles_num() const;
+  Span<uint3> triangles() const;
+
+  int material_index() const;
+  void set_material_index(int new_material_index);
+
+ private:
   /* Stroke cache attributes. */
-  Vector<float3> positions;
-  Vector<float> radii;
-  Vector<float> opacities;
-  Vector<ColorGeometry4f> vertex_colors;
-  int64_t size = 0;
+  Vector<float3> positions_;
+  Vector<float> radii_;
+  Vector<float> opacities_;
+  Vector<ColorGeometry4f> vertex_colors_;
+  int64_t size_ = 0;
 
-  Vector<uint3> triangles;
-  int mat = 0;
-
-  void append(float3 position, float radius, float opacity, ColorGeometry4f vertex_color)
-  {
-    this->positions.append(position);
-    this->radii.append(radius);
-    this->opacities.append(opacity);
-    this->vertex_colors.append(vertex_color);
-    this->size++;
-  }
-
-  void clear()
-  {
-    this->positions.clear_and_shrink();
-    this->radii.clear_and_shrink();
-    this->opacities.clear_and_shrink();
-    this->vertex_colors.clear_and_shrink();
-    this->triangles.clear_and_shrink();
-    this->mat = 0;
-    this->size = 0;
-  }
+  Vector<uint3> triangles_;
+  int material_index_ = 0;
 };
 
 class DrawingRuntime {

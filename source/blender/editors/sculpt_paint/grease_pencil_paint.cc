@@ -104,7 +104,9 @@ struct PaintOperationExecutor {
                               float4(0.0f);
     const float active_smooth_factor = brush->gpencil_settings->active_smooth;
 
-    self.stroke_cache_->append(proj_pos, radius, opacity, ColorGeometry4f(vertex_color));
+    self.stroke_cache_->resize(self.stroke_cache_->size() + 1);
+    self.stroke_cache_->opacities_for_write().last() = opacity;
+    self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(vertex_color);
 
     self.sampled_positions_.append(proj_pos);
     self.sampled_radii_.append(radius);
@@ -114,12 +116,12 @@ struct PaintOperationExecutor {
 
     const int64_t smooth_window_size = 16;
     const int64_t inverted_copy_window_size = math::max(
-        self.stroke_cache_->size - smooth_window_size, int64_t(0));
+        self.stroke_cache_->size() - smooth_window_size, int64_t(0));
 
     const int64_t smooth_radius = 16;
 
     const int64_t inverted_smooth_window_size = math::max(
-        self.stroke_cache_->size - smooth_window_size - smooth_radius, int64_t(0));
+        self.stroke_cache_->size() - smooth_window_size - smooth_radius, int64_t(0));
 
     Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
         inverted_smooth_window_size);
@@ -135,10 +137,10 @@ struct PaintOperationExecutor {
     ed::greasepencil::gaussian_blur_1D(
         src_radii, smooth_radius, active_smooth_factor, false, false, false, dst_radii);
 
-    self.stroke_cache_->positions.as_mutable_span()
+    self.stroke_cache_->positions_for_write()
         .drop_front(inverted_copy_window_size)
         .copy_from(self.smoothed_positions_.as_span().drop_front(inverted_copy_window_size));
-    self.stroke_cache_->radii.as_mutable_span()
+    self.stroke_cache_->radii_for_write()
         .drop_front(inverted_copy_window_size)
         .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
 
@@ -183,7 +185,7 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);
-  stroke_cache_->mat = BKE_grease_pencil_object_material_index_get(object, material);
+  stroke_cache_->set_material_index(BKE_grease_pencil_object_material_index_get(object, material));
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -207,10 +209,10 @@ static float dist_to_interpolated(
 
 void PaintOperation::simplify_stroke_cache(const float epsilon)
 {
-  const Span<float3> positions = stroke_cache_->positions.as_span();
-  const Span<float> radii = stroke_cache_->radii.as_span();
-  const Span<float> opacities = stroke_cache_->opacities.as_span();
-  const Span<ColorGeometry4f> vertex_colors = stroke_cache_->vertex_colors.as_span();
+  const Span<float3> positions = stroke_cache_->positions();
+  const Span<float> radii = stroke_cache_->radii();
+  const Span<float> opacities = stroke_cache_->opacities();
+  const Span<ColorGeometry4f> vertex_colors = stroke_cache_->vertex_colors();
 
   /* Distance function for `ramer_douglas_peucker_simplify`. */
   const auto dist_function = [positions,
@@ -230,11 +232,14 @@ void PaintOperation::simplify_stroke_cache(const float epsilon)
     return math::max(dist_position, dist_radii);
   };
 
-  Array<bool> points_to_delete(stroke_cache_->size, false);
+  Array<bool> points_to_delete(stroke_cache_->size(), false);
   int64_t total_points_to_remove = ed::greasepencil::ramer_douglas_peucker_simplify(
-      IndexRange(stroke_cache_->size), epsilon, dist_function, points_to_delete.as_mutable_span());
+      IndexRange(stroke_cache_->size()),
+      epsilon,
+      dist_function,
+      points_to_delete.as_mutable_span());
 
-  int64_t new_size = stroke_cache_->size - total_points_to_remove;
+  int64_t new_size = stroke_cache_->size() - total_points_to_remove;
 
   Array<int64_t> old_indices(new_size);
   int64_t i = 0;
@@ -245,24 +250,24 @@ void PaintOperation::simplify_stroke_cache(const float epsilon)
     }
   }
 
-  Vector<float3> new_positions(new_size);
-  Vector<float> new_radii(new_size);
-  Vector<float> new_opcaities(new_size);
-  Vector<ColorGeometry4f> new_vertex_colors(new_size);
+  Array<float3> new_positions(new_size);
+  Array<float> new_radii(new_size);
+  Array<float> new_opacities(new_size);
+  Array<ColorGeometry4f> new_vertex_colors(new_size);
   for (const int64_t index : IndexRange(new_size)) {
     new_positions[index] = positions[old_indices[index]];
     new_radii[index] = radii[old_indices[index]];
-    new_opcaities[index] = opacities[old_indices[index]];
+    new_opacities[index] = opacities[old_indices[index]];
     new_vertex_colors[index] = vertex_colors[old_indices[index]];
   }
+  stroke_cache_->resize(new_size);
 
-  stroke_cache_->positions = new_positions;
-  stroke_cache_->radii = new_radii;
-  stroke_cache_->opacities = new_opcaities;
-  stroke_cache_->vertex_colors = new_vertex_colors;
-  stroke_cache_->size = new_size;
+  stroke_cache_->positions_for_write().copy_from(new_positions);
+  stroke_cache_->radii_for_write().copy_from(new_radii);
+  stroke_cache_->opacities_for_write().copy_from(new_opacities);
+  stroke_cache_->vertex_colors_for_write().copy_from(new_vertex_colors);
 
-  stroke_cache_->triangles.clear_and_shrink();
+  // stroke_cache_->triangles.clear_and_shrink();
 }
 
 void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig)
@@ -273,10 +278,10 @@ void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing 
 
   const int num_old_curves = curves.curves_num();
   const int num_old_points = curves.points_num();
-  curves.resize(num_old_points + stroke_cache_->size, num_old_curves + 1);
+  curves.resize(num_old_points + stroke_cache_->size(), num_old_curves + 1);
 
   curves.offsets_for_write()[num_old_curves] = num_old_points;
-  curves.offsets_for_write()[num_old_curves + 1] = num_old_points + stroke_cache_->size;
+  curves.offsets_for_write()[num_old_curves + 1] = num_old_points + stroke_cache_->size();
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const IndexRange new_points_range = points_by_curve[curves.curves_num() - 1];
@@ -294,17 +299,14 @@ void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing 
           AttributeInitVArray(
               VArray<ColorGeometry4f>::ForSingle(ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f),
                                                  attributes.domain_size(ATTR_DOMAIN_POINT))));
-  positions.slice(new_points_range).copy_from(stroke_cache_->positions);
-  radii.slice(new_points_range).copy_from(stroke_cache_->radii);
-  opacities.slice(new_points_range).copy_from(stroke_cache_->opacities);
-  vertex_colors.span.slice(new_points_range).copy_from(stroke_cache_->vertex_colors);
+  positions.slice(new_points_range).copy_from(stroke_cache_->positions());
+  radii.slice(new_points_range).copy_from(stroke_cache_->radii());
+  opacities.slice(new_points_range).copy_from(stroke_cache_->opacities());
+  vertex_colors.span.slice(new_points_range).copy_from(stroke_cache_->vertex_colors());
 
-  /* TODO: Set material index attribute. */
-  int material_index = stroke_cache_->mat;
   SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
-
-  materials.span.slice(new_curves_range).fill(material_index);
+  materials.span.slice(new_curves_range).fill(stroke_cache_->material_index());
 
   /* Set curve_type attribute. */
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_POLY);
@@ -341,7 +343,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   /* No stroke to create, return. */
-  if (stroke_cache_->size == 0) {
+  if (stroke_cache_->size() == 0) {
     return;
   }
 
