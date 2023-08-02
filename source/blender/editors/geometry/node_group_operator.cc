@@ -469,10 +469,8 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
-
   AssetFilterSettings type_filter{};
   type_filter.id_types = FILTER_ID_NT;
-
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(ctx_mode);
   auto meta_data_filter = [&](const AssetMetaData &meta_data) {
     const IDProperty *tree_type = BKE_asset_metadata_idprop_find(&meta_data, "type");
