@@ -54,58 +54,57 @@ class PaintOperation : public GreasePencilStrokeOperation {
  * because it avoids passing a very large number of parameters between functions.
  */
 struct PaintOperationExecutor {
-  PaintOperationExecutor(const bContext & /*C*/) {}
+  ARegion *region_;
 
-  void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
+  Brush *brush_;
+  int brush_size_;
+  float brush_alpha_;
+
+  BrushGpencilSettings *settings_;
+  bool use_vertex_color_stroke_;
+
+  PaintOperationExecutor(const bContext &C)
   {
-    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
     Scene *scene = CTX_data_scene(&C);
-    Object *object = CTX_data_active_object(&C);
-    Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
-    ARegion *region = CTX_wm_region(&C);
+    region_ = CTX_wm_region(&C);
 
     Paint *paint = &scene->toolsettings->gp_paint->paint;
-    Brush *brush = BKE_paint_brush(paint);
-    int brush_size = BKE_brush_size_get(scene, brush);
-    float brush_alpha = BKE_brush_alpha_get(scene, brush);
+    brush_ = BKE_paint_brush(paint);
+    settings_ = brush_->gpencil_settings;
+    brush_size_ = BKE_brush_size_get(scene, brush_);
+    brush_alpha_ = BKE_brush_alpha_get(scene, brush_);
 
     const bool use_vertex_color = (scene->toolsettings->gp_paint->mode ==
                                    GPPAINT_FLAG_USE_VERTEXCOLOR);
-    const bool use_vertex_color_stroke = use_vertex_color &&
-                                         ELEM(brush->gpencil_settings->vertex_mode,
-                                              GPPAINT_MODE_STROKE,
-                                              GPPAINT_MODE_BOTH);
+    use_vertex_color_stroke_ = use_vertex_color && ELEM(settings_->vertex_mode,
+                                                        GPPAINT_MODE_STROKE,
+                                                        GPPAINT_MODE_BOTH);
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
+  }
 
-    /**
-     * Note: We write to the evaluated object here, so that the additional copy from orig ->
-     * eval is not needed for every update. After the stroke is done, the result is written to
-     * the original object.
-     */
-    GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
-
+  void process_new_sample(PaintOperation &self, const InputSample &extension_sample)
+  {
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     float3 proj_pos;
-    ED_view3d_win_to_3d_on_plane(region, plane, extension_sample.mouse_position, false, proj_pos);
+    ED_view3d_win_to_3d_on_plane(region_, plane, extension_sample.mouse_position, false, proj_pos);
 
-    float radius = brush_size / 2.0f;
-    if (BKE_brush_use_size_pressure(brush)) {
+    float radius = brush_size_ / 2.0f;
+    if (BKE_brush_use_size_pressure(brush_)) {
       radius *= BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_sensitivity, 0, extension_sample.pressure);
+          settings_->curve_sensitivity, 0, extension_sample.pressure);
     }
-    float opacity = brush_alpha;
-    if (BKE_brush_use_alpha_pressure(brush)) {
+    float opacity = brush_alpha_;
+    if (BKE_brush_use_alpha_pressure(brush_)) {
       opacity *= BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
+          settings_->curve_strength, 0, extension_sample.pressure);
     }
-    float4 vertex_color = use_vertex_color_stroke ?
-                              float4(brush->rgb[0],
-                                     brush->rgb[1],
-                                     brush->rgb[2],
-                                     brush->gpencil_settings->vertex_factor) :
-                              float4(0.0f);
-    const float active_smooth_factor = brush->gpencil_settings->active_smooth;
+    float4 vertex_color = use_vertex_color_stroke_ ? float4(brush_->rgb[0],
+                                                            brush_->rgb[1],
+                                                            brush_->rgb[2],
+                                                            settings_->vertex_factor) :
+                                                     float4(0.0f);
+    const float active_smooth_factor = settings_->active_smooth;
 
     self.stroke_cache_->resize(self.stroke_cache_->size() + 1);
     self.stroke_cache_->opacities_for_write().last() = opacity;
@@ -154,6 +153,16 @@ struct PaintOperationExecutor {
     //     .drop_front(inverted_active_window_size)
     //     .fill(ColorGeometry4f(float4(1.0f, 0.1f, 0.1f, 1.0f)));
 #endif
+  }
+
+  void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
+  {
+    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+    Object *object = CTX_data_active_object(&C);
+    Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
+
+    this->process_new_sample(self, extension_sample);
 
     BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
