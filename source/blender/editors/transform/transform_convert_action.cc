@@ -721,11 +721,15 @@ static void transform_convert_greasepencil_data(TransData2D *td2d,
   if (layer == nullptr) {
     return;
   }
-  using namespace blender::bke::greasepencil;
 
   const int src_frame_nb = int(*td2d->loc2d);
   const int dst_frame_nb = round_fl_to_int(td2d->loc[0]);
 
+  if (src_frame_nb == dst_frame_nb) {
+    return;
+  }
+
+  using namespace blender::bke::greasepencil;
   LayerRuntime::FrameTransformationStatus &layer_trans_status = layer->runtime->trans_frame_status;
   if (layer_trans_status == LayerRuntime::FrameTransformationInitialized) {
     /* The transdata was only initialized. No transformation was applied yet.
