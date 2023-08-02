@@ -1,6 +1,6 @@
+import re
 import sys
 from pathlib import Path
-import re
 
 source_files_dir = Path(sys.argv[1])
 output_cc_file = Path(sys.argv[2])
@@ -8,39 +8,56 @@ macro_name = sys.argv[3]
 function_to_generate = sys.argv[4]
 
 include_lines = []
-
 decl_lines = []
-
 func_lines = []
+
+# Add forward declaration to avoid warning.
 func_lines.append(f"void {function_to_generate}();")
 func_lines.append(f"void {function_to_generate}()")
 func_lines.append("{")
 
-expression = r"(^namespace ([\w:]+) \{)|(^\}  // namespace ([\w:]+))|(MACRO\((\w+)\))"
-expression = expression.replace("MACRO", macro_name)
+# Use a single regular expression to search for opening namespaces, closing namespaces
+# and macro invocations. This makes it easy to iterate over the matches in order.
+re_namespace_begin = r"^namespace ([\w:]+) \{"
+re_namespace_end = r"^\}  // namespace ([\w:]+)"
+re_macro = r"MACRO\((\w+)\)".replace("MACRO", macro_name)
+re_all = f"({re_namespace_begin})|({re_namespace_end})|({re_macro})"
 
 for path in source_files_dir.glob("*.cc"):
+    # Read the source code.
     with open(path) as f:
         code = f.read()
 
+    # Keeps track of the current namespace we're in.
     namespace_parts = []
 
-    for match in re.finditer(expression, code, flags=re.MULTILINE):
+    for match in re.finditer(re_all, code, flags=re.MULTILINE):
         if entered_namespace := match.group(2):
+            # Enter a (nested) namespace.
             namespace_parts += entered_namespace.split("::")
         elif exited_namespace := match.group(4):
+            # Exit a (nested) namespace.
             del namespace_parts[-len(exited_namespace.split("::")):]
         elif function_name := match.group(6):
+            # Macro invocation in the current namespace.
             namespace_str = "::".join(namespace_parts)
+            # Add suffix so that this refers to the function created by the macro.
             auto_run_name = function_name + "_auto_run"
-            func_lines.append(f"  {namespace_str}::{auto_run_name}();")
+
+            # Declare either outside of any named namespace or in a (nested) namespace.
+            # Can't declare it in an anonymous namespace because that would make the
+            # declared function static.
             if namespace_str:
                 decl_lines.append(f"namespace {namespace_str} {{")
             decl_lines.append(f"void {auto_run_name}();")
             if namespace_str:
                 decl_lines.append(f"}}")
 
+            # Call the function.
+            func_lines.append(f"  {namespace_str}::{auto_run_name}();")
+
 func_lines.append("}")
 
+# Write the generated code.
 with open(output_cc_file, "w") as f:
     f.write("\n".join(include_lines + decl_lines + [""] + func_lines))

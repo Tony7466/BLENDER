@@ -273,13 +273,11 @@ add_custom_command(
     ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py
 )
 
-list(APPEND SRC
-  ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
-)
+add_library(bf_nodes_geometry_generated ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc)
 
-set_source_files_properties(
-  ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
-  PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+list(APPEND LIB
+  bf_nodes_geometry_generated
+)
 
 blender_add_lib(bf_nodes_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
