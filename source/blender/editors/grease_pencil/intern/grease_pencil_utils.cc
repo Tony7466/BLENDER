@@ -6,7 +6,7 @@
  * \ingroup edgreasepencil
  */
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 

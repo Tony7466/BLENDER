@@ -336,9 +336,6 @@ class LayerRuntime {
  */
 class Layer : public ::GreasePencilLayer {
  public:
-  using FrameKey = int;
-
- public:
   Layer();
   explicit Layer(StringRefNull name);
   Layer(const Layer &other);

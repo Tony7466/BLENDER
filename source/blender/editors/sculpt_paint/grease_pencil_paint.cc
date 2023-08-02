@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
@@ -27,9 +27,17 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
+struct StrokePoint {
+  float3 position;
+  float radius;
+  float opacity;
+  float4 vertex_color;
+};
+
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
   bke::greasepencil::StrokeCache *stroke_cache_;
+  int64_t active_index_ = 0;
 
   Vector<float3> sampled_positions_;
   Vector<float> sampled_radii_;
@@ -83,68 +91,122 @@ struct PaintOperationExecutor {
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
   }
 
+  StrokePoint stroke_point_from_input_sample(const InputSample &sample)
+  {
+    StrokePoint point;
+    /* TODO: Use correct plane/projection. */
+    float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
+    ED_view3d_win_to_3d_on_plane(region_, plane, sample.mouse_position, false, point.position);
+
+    point.radius = brush_size_ / 2.0f;
+    if (BKE_brush_use_size_pressure(brush_)) {
+      point.radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
+    }
+    point.opacity = brush_alpha_;
+    if (BKE_brush_use_alpha_pressure(brush_)) {
+      point.opacity *= BKE_curvemapping_evaluateF(settings_->curve_strength, 0, sample.pressure);
+    }
+    point.vertex_color = use_vertex_color_stroke_ ? float4(brush_->rgb[0],
+                                                           brush_->rgb[1],
+                                                           brush_->rgb[2],
+                                                           settings_->vertex_factor) :
+                                                    float4(0.0f);
+    /* TODO: Get fill vertex color. */
+    return point;
+  }
+
+  void process_start_sample(PaintOperation &self, const InputSample &start_sample)
+  {
+    StrokePoint start_point = this->stroke_point_from_input_sample(start_sample);
+
+    self.stroke_cache_->resize(1);
+    self.stroke_cache_->positions_for_write().last() = start_point.position;
+    self.stroke_cache_->radii_for_write().last() = start_point.radius;
+    self.stroke_cache_->opacities_for_write().last() = start_point.opacity;
+    self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(
+        start_point.vertex_color);
+  }
+
   void process_extension_sample(PaintOperation &self, const InputSample &extension_sample)
   {
-    float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
-    float3 proj_pos;
-    ED_view3d_win_to_3d_on_plane(region_, plane, extension_sample.mouse_position, false, proj_pos);
+    StrokePoint point = this->stroke_point_from_input_sample(extension_sample);
 
-    float radius = brush_size_ / 2.0f;
-    if (BKE_brush_use_size_pressure(brush_)) {
-      radius *= BKE_curvemapping_evaluateF(
-          settings_->curve_sensitivity, 0, extension_sample.pressure);
+    float3 prev_position = self.stroke_cache_->positions().last();
+    float prev_radius = self.stroke_cache_->radii().last();
+    float prev_opacity = self.stroke_cache_->opacities().last();
+    ColorGeometry4f prev_vertex_color = self.stroke_cache_->vertex_colors().last();
+
+    int new_points_num = 1;
+    /* Calculate if we need to add more than one point based on distance. */
+    const float min_distance = 0.05f;
+    if (self.stroke_cache_->size() > 1) {
+      const float distance = math::distance(point.position, prev_position);
+      if (distance > min_distance) {
+        new_points_num += static_cast<int>(math::floor(distance / min_distance)) - 1;
+      }
     }
-    float opacity = brush_alpha_;
-    if (BKE_brush_use_alpha_pressure(brush_)) {
-      opacity *= BKE_curvemapping_evaluateF(
-          settings_->curve_strength, 0, extension_sample.pressure);
+
+    Array<float3> new_positions(new_points_num);
+    Array<float> new_radii(new_points_num);
+    Array<float> new_opacities(new_points_num);
+    Array<ColorGeometry4f> new_vertex_colors(new_points_num);
+    const float step = 1.0f / static_cast<float>(new_points_num);
+    float factor = step;
+    for (const int i : IndexRange(new_points_num)) {
+      new_positions[i] = bke::attribute_math::mix2<float3>(factor, prev_position, point.position);
+      new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, point.radius);
+      new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, point.opacity);
+      new_vertex_colors[i] = bke::attribute_math::mix2<ColorGeometry4f>(
+          factor, prev_vertex_color, ColorGeometry4f(point.vertex_color));
+      factor += step;
     }
-    float4 vertex_color = use_vertex_color_stroke_ ? float4(brush_->rgb[0],
-                                                            brush_->rgb[1],
-                                                            brush_->rgb[2],
-                                                            settings_->vertex_factor) :
-                                                     float4(0.0f);
-    const float active_smooth_factor = settings_->active_smooth;
+    const int64_t old_size = self.stroke_cache_->size();
+    self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
 
-    self.stroke_cache_->resize(self.stroke_cache_->size() + 1);
-    self.stroke_cache_->opacities_for_write().last() = opacity;
-    self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(vertex_color);
+    IndexRange new_range(old_size, new_points_num);
+    self.stroke_cache_->positions_for_write().slice(new_range).copy_from(new_positions);
+    self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
+    self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
+    self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
 
-    self.sampled_positions_.append(proj_pos);
-    self.sampled_radii_.append(radius);
+    // const float active_smooth_factor = settings_->active_smooth;
 
-    self.smoothed_positions_.append(proj_pos);
-    self.smoothed_radii_.append(radius);
+    // self.sampled_positions_.append(proj_pos);
+    // self.sampled_radii_.append(radius);
 
-    const int64_t smooth_window_size = 16;
-    const int64_t inverted_copy_window_size = math::max(
-        self.stroke_cache_->size() - smooth_window_size, int64_t(0));
+    // self.smoothed_positions_.append(proj_pos);
+    // self.smoothed_radii_.append(radius);
 
-    const int64_t smooth_radius = 16;
+    // const int64_t smooth_window_size = 16;
+    // const int64_t inverted_copy_window_size = math::max(
+    //     self.stroke_cache_->size() - smooth_window_size, int64_t(0));
 
-    const int64_t inverted_smooth_window_size = math::max(
-        self.stroke_cache_->size() - smooth_window_size - smooth_radius, int64_t(0));
+    // const int64_t smooth_radius = 16;
 
-    Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
-        inverted_smooth_window_size);
-    MutableSpan<float3> dst_positions = self.smoothed_positions_.as_mutable_span().drop_front(
-        inverted_smooth_window_size);
+    // const int64_t inverted_smooth_window_size = math::max(
+    //     self.stroke_cache_->size() - smooth_window_size - smooth_radius, int64_t(0));
 
-    Span<float> src_radii = self.sampled_radii_.as_span().drop_front(inverted_smooth_window_size);
-    MutableSpan<float> dst_radii = self.smoothed_radii_.as_mutable_span().drop_front(
-        inverted_smooth_window_size);
+    // Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
+    //     inverted_smooth_window_size);
+    // MutableSpan<float3> dst_positions = self.smoothed_positions_.as_mutable_span().drop_front(
+    //     inverted_smooth_window_size);
 
-    ed::greasepencil::gaussian_blur_1D(
-        src_positions, smooth_radius, active_smooth_factor, false, true, false, dst_positions);
-    ed::greasepencil::gaussian_blur_1D(
-        src_radii, smooth_radius, active_smooth_factor, false, false, false, dst_radii);
+    // Span<float> src_radii =
+    // self.sampled_radii_.as_span().drop_front(inverted_smooth_window_size); MutableSpan<float>
+    // dst_radii = self.smoothed_radii_.as_mutable_span().drop_front(
+    //     inverted_smooth_window_size);
 
-    self.stroke_cache_->positions_for_write()
-        .drop_front(inverted_copy_window_size)
-        .copy_from(self.smoothed_positions_.as_span().drop_front(inverted_copy_window_size));
-    self.stroke_cache_->radii_for_write()
-        .drop_front(inverted_copy_window_size)
-        .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
+    // ed::greasepencil::gaussian_blur_1D(
+    //     src_positions, smooth_radius, active_smooth_factor, false, true, false, dst_positions);
+    // ed::greasepencil::gaussian_blur_1D(
+    //     src_radii, smooth_radius, active_smooth_factor, false, false, false, dst_radii);
+
+    // self.stroke_cache_->positions_for_write()
+    //     .drop_front(inverted_copy_window_size)
+    //     .copy_from(self.smoothed_positions_.as_span().drop_front(inverted_copy_window_size));
+    // self.stroke_cache_->radii_for_write()
+    //     .drop_front(inverted_copy_window_size)
+    //     .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
 
 #ifdef DEBUG
     // /* Visualize active window. */
@@ -168,7 +230,7 @@ struct PaintOperationExecutor {
   }
 };
 
-void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
+void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   Scene *scene = CTX_data_scene(&C);
@@ -200,6 +262,9 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   stroke_cache_->set_material_index(BKE_grease_pencil_object_material_index_get(object, material));
 
   stroke_cache_->reserve(STOKE_CACHE_ALLOCATION_CHUNK_SIZE);
+
+  PaintOperationExecutor executor{C};
+  executor.process_start_sample(*this, start_sample);
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
