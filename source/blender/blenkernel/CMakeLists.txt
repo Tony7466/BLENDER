@@ -202,6 +202,7 @@ set(SRC
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
+  intern/mesh_flip_faces.cc
   intern/mesh_iterators.cc
   intern/mesh_legacy_convert.cc
   intern/mesh_mapping.cc
@@ -415,7 +416,7 @@ set(SRC
   BKE_lattice.h
   BKE_layer.h
   BKE_lib_id.h
-  BKE_lib_override.h
+  BKE_lib_override.hh
   BKE_lib_query.h
   BKE_lib_remap.h
   BKE_library.h
