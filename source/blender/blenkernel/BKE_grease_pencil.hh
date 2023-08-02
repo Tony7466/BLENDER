@@ -234,12 +234,13 @@ class LayerRuntime {
    */
   Vector<LayerMask> masks_;
 
+  /* Runtime data used for frame transformations.*/
   enum FrameTransformationStatus {
     FrameTransformationUntouched,
     FrameTransformationInitialized,
     FrameTransformationOngoing
   };
-  Map<int, float> trans_frame_data_;
+  Map<int, int> trans_frame_data_;
   Map<int, GreasePencilFrame> trans_frames_copy_;
   FrameTransformationStatus trans_frame_status{FrameTransformationUntouched};
 };

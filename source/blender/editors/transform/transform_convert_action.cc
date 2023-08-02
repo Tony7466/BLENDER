@@ -305,15 +305,6 @@ static int GreasePencilLayerToTransData(TransData *td,
   using namespace blender;
   using namespace bke::greasepencil;
 
-  Map<int, float> &trans_frame_data = layer->runtime->trans_frame_data_;
-  Map<int, GreasePencilFrame> &trans_frames_copy = layer->runtime->trans_frames_copy_;
-
-  /* Clear the runtime trans data if it was not yet initialized. */
-  if (layer->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
-    trans_frame_data.clear();
-    trans_frames_copy = layer->frames();
-  }
-
   int total_trans_frames = 0;
   for (auto [frame_number, frame] : layer->frames().items()) {
     /* We only add transform data for selected frames that are on the right side of current frame.
@@ -350,9 +341,12 @@ static int GreasePencilLayerToTransData(TransData *td,
     return total_trans_frames;
   }
 
-  /* Update the transform status on the layer only if some frames of the layer are actually
-   * concerned by the transform. */
-  layer->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  /* If it was not previously done, initialize the transform data in the layer, and if some frames
+   * are actually concerned by the transform. */
+  if (layer->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+    layer->runtime->trans_frames_copy_ = layer->frames();
+    layer->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  }
 
   return total_trans_frames;
 }
@@ -1095,9 +1089,8 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
 
         if (!canceled) {
           /* Apply the frame transformation. */
-          Map<int, float> &trans_data = layer->runtime->trans_frame_data_;
-          for (const auto [src_frame_number, dst_frame_number_f] : trans_data.items()) {
-            const int dst_frame_number = round_fl_to_int(dst_frame_number_f);
+          for (const auto [src_frame_number, dst_frame_number] :
+               layer->runtime->trans_frame_data_.items()) {
             if (src_frame_number == dst_frame_number) {
               /* The transformation does not change this frame number, so continue. */
               continue;
