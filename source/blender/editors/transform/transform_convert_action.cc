@@ -27,6 +27,7 @@
 #include "BKE_nla.h"
 
 #include "ED_anim_api.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_markers.hh"
 
@@ -299,13 +300,16 @@ static int GreasePencilLayerToTransData(TransData *td,
   using namespace blender;
 
   /* Store temporary transform frame map in the layer. */
-  Map<int, float> &transf_frame_data = layer->runtime->trans_frame_data_;
-  transf_frame_data.clear();
+  Map<int, float> &trans_frame_data = layer->runtime->trans_frame_data_;
 
   /* Copy the map of frames, so that we can return to the initial state if the operator is
    * cancelled. */
   Map<int, GreasePencilFrame> &trans_frames_copy = layer->runtime->trans_frames_copy_;
-  trans_frames_copy.clear();
+
+  if (layer->runtime->trans_frame_status != 1) {
+    trans_frame_data.clear();
+    trans_frames_copy.clear();
+  }
 
   /* Check for select frames on right side of current frame. */
   int count = 0;
@@ -316,9 +320,9 @@ static int GreasePencilLayerToTransData(TransData *td,
       continue;
     }
 
-    transf_frame_data.add(frame_number, frame_number);
+    trans_frame_data.add(frame_number, frame_number);
     td2d->loc[0] = float(frame_number);
-    td2d->loc2d = transf_frame_data.lookup_ptr(frame_number);
+    td2d->loc2d = trans_frame_data.lookup_ptr(frame_number);
 
     td->val = td->loc = &td2d->loc[0];
     td->ival = td->iloc[0] = td2d->loc[0];
@@ -338,6 +342,12 @@ static int GreasePencilLayerToTransData(TransData *td,
     td2d++;
     count++;
   }
+
+  if (count == 0) {
+    return count;
+  }
+
+  layer->runtime->trans_frame_status = 1;
 
   return count;
 }
@@ -696,12 +706,17 @@ static void flushTransIntFrameActionData(TransInfo *t)
 static void transform_convert_greasepencil_data(TransData *td, TransData2D *td2d)
 {
   const int src_frame_nb = int(*td2d->loc2d);
-  const int dst_frame_nb = td2d->loc[0];
+  const int dst_frame_nb = round_fl_to_int(td2d->loc[0]);
 
   using namespace blender;
   bke::greasepencil::Layer *layer = reinterpret_cast<bke::greasepencil::Layer *>(td->extra);
 
-  layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
+  int &layer_trans_status = layer->runtime->trans_frame_status;
+  if (layer_trans_status == 1) {
+    /* The transdata was only initialized, but not yet copied. */
+    layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
+    layer_trans_status = 2;
+  }
   const GreasePencilFrame frame = layer->runtime->frames_.pop(src_frame_nb);
   layer->runtime->frames_.add_overwrite(dst_frame_nb, frame);
 
@@ -755,7 +770,7 @@ static void recalcData_actedit(TransInfo *t)
 
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
-    if ((td->flag & TD_GREASE_PENCIL_FRAME) != 0) {
+    if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
       transform_convert_greasepencil_data(td, td2d);
     }
   }
@@ -775,10 +790,29 @@ static void recalcData_actedit(TransInfo *t)
         /* set refresh tags for objects using this animation */
         ANIM_list_elem_update(CTX_data_main(t->context), t->scene, ale);
       }
+
+      /* now free temp channels */
+      ANIM_animdata_freelist(&anim_data);
     }
 
-    /* now free temp channels */
-    ANIM_animdata_freelist(&anim_data);
+    if (ac.datatype == ANIMCONT_GPENCIL) {
+      filter = ANIMFILTER_DATA_VISIBLE;
+      ANIM_animdata_filter(
+          &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
+
+      using namespace blender::bke::greasepencil;
+      for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+        if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
+          continue;
+        }
+        Layer *layer = static_cast<Layer *>(ale->data);
+        if (layer->runtime->trans_frame_status == 2) {
+          layer->runtime->trans_frame_status = 1;
+        }
+      }
+      /* now free temp channels */
+      ANIM_animdata_freelist(&anim_data);
+    }
   }
 }
 
@@ -1021,11 +1055,23 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
         }
       }
       else if (ale->datatype == ALE_GREASE_PENCIL_CELS) {
-
         using namespace blender::bke::greasepencil;
         Layer *layer = static_cast<Layer *>(ale->data);
 
-        if (canceled & !layer->runtime->trans_frames_copy_.is_empty()) {
+        if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
+          /* Apply the transformation. */
+          for (const auto [src_frame_number, dst_frame_number] :
+               layer->runtime->trans_frame_data_.items()) {
+            if (src_frame_number == dst_frame_number) {
+              continue;
+            }
+            /* TODO : Use API insert duplicate here. */
+            const GreasePencilFrame frame = layer->runtime->frames_.pop(src_frame_number);
+            layer->runtime->frames_.add_overwrite(dst_frame_number, frame);
+          }
+        }
+
+        if (canceled & (layer->runtime->trans_frame_status == 2)) {
           /* The operation was cancelled, reset the frames to their initial state. */
           std::cout << "Operation cancelled (layer " << layer->name() << ")" << std::endl;
           layer->runtime->frames_ = std::move(layer->runtime->trans_frames_copy_);
@@ -1033,6 +1079,8 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
 
         /* Clear the frames copy. */
         layer->runtime->trans_frames_copy_.clear();
+        layer->runtime->trans_frame_data_.clear();
+        layer->runtime->trans_frame_status = 0;
       }
     }
     ANIM_animdata_freelist(&anim_data);
