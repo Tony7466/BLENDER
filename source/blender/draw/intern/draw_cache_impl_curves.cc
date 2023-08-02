@@ -441,8 +441,8 @@ static void curves_batch_cache_fill_segments_indices(GPUPrimType prim_type,
       uint curr_point = 0;
       for ([[maybe_unused]] const int i : IndexRange(curves.curves_num())) {
         for (int k = 0; k < res / 2; k++) {
-          GPU_indexbuf_add_generic_vert(&elb, curr_point);
-          GPU_indexbuf_add_generic_vert(&elb, ++curr_point);
+          GPU_indexbuf_add_line_verts(&elb, curr_point, curr_point + 1);
+          curr_point++;
         }
         /* Skip to next primitive base index. */
         curr_point++;
@@ -454,12 +454,8 @@ static void curves_batch_cache_fill_segments_indices(GPUPrimType prim_type,
       uint curr_point = 0;
       for ([[maybe_unused]] const int i : IndexRange(curves.curves_num())) {
         for (int k = 0; k < res / 6; k++) {
-          GPU_indexbuf_add_generic_vert(&elb, curr_point);
-          GPU_indexbuf_add_generic_vert(&elb, curr_point + 1);
-          GPU_indexbuf_add_generic_vert(&elb, curr_point + 2);
-          GPU_indexbuf_add_generic_vert(&elb, curr_point + 1);
-          GPU_indexbuf_add_generic_vert(&elb, curr_point + 3);
-          GPU_indexbuf_add_generic_vert(&elb, curr_point + 2);
+          GPU_indexbuf_add_tri_verts(&elb, curr_point, curr_point + 1, curr_point + 2);
+          GPU_indexbuf_add_tri_verts(&elb, curr_point + 1, curr_point + 3, curr_point + 2);
           curr_point += 2;
         }
         /* Skip to next primitive base index. */
@@ -504,12 +500,6 @@ static void curves_batch_cache_ensure_procedural_indices(const bke::CurvesGeomet
     verts_per_curve = (cache.final[subdiv].strands_res - 1) * verts_per_segment;
     element_count = verts_per_curve * cache.strands_len;
   }
-
-  printf("StrandsRes: %d, Verts per Curve: %d, Element Count: %d, Thickness Res: %d\n",
-         cache.final[subdiv].strands_res,
-         verts_per_curve,
-         element_count,
-         thickness_res);
 
   static GPUVertFormat format = {0};
   GPU_vertformat_clear(&format);
