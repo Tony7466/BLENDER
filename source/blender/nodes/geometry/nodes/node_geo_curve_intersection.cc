@@ -136,14 +136,6 @@ struct IntersectingLineInfo {
   bool intersects;
 };
 
-struct CurveInfo {
-  Span<float3> positions;
-  Span<float> lengths;
-  float length;
-  bool cyclic;
-  bool process;
-};
-
 struct Segment {
   float3 start;
   float3 end;
@@ -196,41 +188,26 @@ static BVHTree *create_curve_segment_bvhtree(const bke::CurvesGeometry &src_curv
   const VArray<bool> cyclic = src_curves.cyclic();
   const OffsetIndices evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
 
-  /* Preprocess individual curves. */
-  Array<CurveInfo> curve_data(src_curves.curves_num());
-  threading::parallel_for(src_curves.curves_range(), 512, [&](IndexRange curve_range) {
-    for (const int64_t curve_i : curve_range) {
-      const IndexRange points = evaluated_points_by_curve[curve_i];
-      CurveInfo &curveinfo = curve_data[curve_i];
-      curveinfo.positions = src_curves.evaluated_positions().slice(points);
-      if (curveinfo.positions.size() == 1) {
-        curveinfo.process = false;
-      }
-      else {
-        curveinfo.cyclic = cyclic[curve_i];
-        curveinfo.lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
-        curveinfo.length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
-        curveinfo.process = true;
-      }
-    }
-  });
-
   /* Preprocess curve segments. */
   for (const int64_t curve_i : src_curves.curves_range()) {
-    const CurveInfo &curveinfo = curve_data[curve_i];
-    const int totpoints = curveinfo.positions.size() - 1;
-    const int loopcount = curveinfo.cyclic ? totpoints + 1 : totpoints;
+    const IndexRange points = evaluated_points_by_curve[curve_i];
+    const Span<float3> positions = src_curves.evaluated_positions().slice(points);
+    const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
+    const float curve_length = src_curves.evaluated_length_total_for_curve(curve_i,
+                                                                           cyclic[curve_i]);
+    const int totpoints = positions.size() - 1;
+    const int loopcount = cyclic[curve_i] ? totpoints + 1 : totpoints;
     for (const int index : IndexRange(loopcount)) {
-      const bool cyclic_segment = (curveinfo.cyclic && index == totpoints);
+      const bool cyclic_segment = (cyclic[curve_i] && index == totpoints);
       Segment segment;
       segment.is_end_segment = (index == 0) || cyclic_segment;
       segment.pos_index = index;
       segment.curve_index = curve_i;
-      segment.curve_length = curveinfo.length;
-      segment.start = cyclic_segment ? curveinfo.positions.last() : curveinfo.positions[index];
-      segment.end = cyclic_segment ? curveinfo.positions.first() : curveinfo.positions[1 + index];
-      segment.len_start = (index == 0) ? 0.0f : curveinfo.lengths[index - 1];
-      segment.len_end = cyclic_segment ? 1.0f : curveinfo.lengths[index];
+      segment.curve_length = curve_length;
+      segment.start = cyclic_segment ? positions.last() : positions[index];
+      segment.end = cyclic_segment ? positions.first() : positions[1 + index];
+      segment.len_start = (index == 0) ? 0.0f : lengths[index - 1];
+      segment.len_end = cyclic_segment ? 1.0f : lengths[index];
       const int bvh_index = r_curve_segments->append_and_get_index(segment);
       BLI_bvhtree_insert(bvhtree, bvh_index, reinterpret_cast<float *>(&segment), 2);
     }
@@ -269,50 +246,6 @@ static bool isect_line_plane_crossing(const float3 point_1,
   return false;
 }
 
-static void curve_plane_intersections_to_points(const CurveInfo curveinfo,
-                                                const float3 direction,
-                                                const float3 plane_offset,
-                                                const float offset,
-                                                const int curve_id,
-                                                IntersectionData &r_data)
-{
-  /* Loop segments from start until we have an intersection. */
-  auto new_closest = [&](const float3 a,
-                         const float3 b,
-                         const float len_start,
-                         const float len_end,
-                         const float curve_length) {
-    float3 closest = float3(0.0f);
-    float lambda = 0.0f;
-    if (isect_line_plane_crossing(a, b, plane_offset, direction, closest, lambda)) {
-      const float len_at_isect = math::interpolate(len_start, len_end, lambda);
-      if (offset != 0.0f) {
-        const float3 dir = math::normalize(b - a) * offset;
-        add_intersection_data(r_data, closest + dir, curve_id, len_at_isect, curve_length);
-        add_intersection_data(r_data, closest - dir, curve_id, len_at_isect, curve_length);
-      }
-      else {
-        add_intersection_data(r_data, closest, curve_id, len_at_isect, curve_length);
-      }
-    }
-  };
-
-  for (const int index : IndexRange(curveinfo.positions.size()).drop_back(1)) {
-    const float3 a = curveinfo.positions[index];
-    const float3 b = curveinfo.positions[1 + index];
-    const float len_start = (index == 0) ? 0.0f : curveinfo.lengths[index - 1];
-    const float len_end = curveinfo.lengths[index];
-    new_closest(a, b, len_start, len_end, curveinfo.length);
-  }
-  if (curveinfo.cyclic) {
-    const float3 a = curveinfo.positions.last();
-    const float3 b = curveinfo.positions.first();
-    const float len_start = curveinfo.lengths.last();
-    const float len_end = 1.0f;
-    new_closest(a, b, len_start, len_end, curveinfo.length);
-  }
-}
-
 static void offset_intersections(const Segment seg,
                                  const float offset,
                                  const float lambda,
@@ -346,17 +279,48 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
   threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
     for (const int64_t curve_i : curve_range) {
       const IndexRange points = evaluated_points_by_curve[curve_i];
-      CurveInfo curveinfo;
-      curveinfo.positions = src_curves.evaluated_positions().slice(points);
-      if (curveinfo.positions.size() <= 1) {
+      const Span<float3> positions = src_curves.evaluated_positions().slice(points);
+      if (positions.size() <= 1) {
         continue;
       }
-      curveinfo.cyclic = cyclic[curve_i];
-      curveinfo.lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
-      curveinfo.length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
+      const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
+      const float length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
 
-      curve_plane_intersections_to_points(
-          curveinfo, direction, plane_offset, offset, curve_i, r_data);
+      auto new_closest = [&](const float3 a,
+                             const float3 b,
+                             const float len_start,
+                             const float len_end,
+                             const float curve_length) {
+        float3 closest = float3(0.0f);
+        float lambda = 0.0f;
+        if (isect_line_plane_crossing(a, b, plane_offset, direction, closest, lambda)) {
+          const float len_at_isect = math::interpolate(len_start, len_end, lambda);
+          if (offset != 0.0f) {
+            const float3 dir = math::normalize(b - a) * offset;
+            add_intersection_data(r_data, closest + dir, curve_i, len_at_isect, curve_length);
+            add_intersection_data(r_data, closest - dir, curve_i, len_at_isect, curve_length);
+          }
+          else {
+            add_intersection_data(r_data, closest, curve_i, len_at_isect, curve_length);
+          }
+        }
+      };
+
+      /* Loop segments from start until we have an intersection. */
+      for (const int index : IndexRange(positions.size()).drop_back(1)) {
+        const float3 a = positions[index];
+        const float3 b = positions[1 + index];
+        const float len_start = (index == 0) ? 0.0f : lengths[index - 1];
+        const float len_end = lengths[index];
+        new_closest(a, b, len_start, len_end, length);
+      }
+      if (cyclic[curve_i]) {
+        const float3 a = positions.last();
+        const float3 b = positions.first();
+        const float len_start = lengths.last();
+        const float len_end = 1.0f;
+        new_closest(a, b, len_start, len_end, length);
+      }
     }
   });
 }
