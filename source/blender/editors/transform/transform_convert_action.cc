@@ -1108,9 +1108,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
             }
 
             /* Move the frame in the layer. */
-            /* TODO : Use API insert duplicate here. */
-            const GreasePencilFrame frame = layer->runtime->frames_.pop(src_frame_number);
-            layer->runtime->frames_.add_overwrite(dst_frame_number, frame);
+            layer->move_frame(src_frame_number, dst_frame_number);
           }
         }
         layer->tag_frames_map_keys_changed();
