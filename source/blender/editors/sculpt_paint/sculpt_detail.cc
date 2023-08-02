@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -16,7 +17,7 @@
 
 #include "BKE_context.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_screen.h"
 
 #include "DEG_depsgraph.h"
@@ -108,7 +109,8 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   SCULPT_undo_push_node(ob, nullptr, SCULPT_UNDO_COORDS);
 
   while (BKE_pbvh_bmesh_update_topology(
-      ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false)) {
+      ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
+  {
     for (PBVHNode *node : nodes) {
       BKE_pbvh_node_mark_topology_update(node);
     }
@@ -144,10 +146,10 @@ void SCULPT_OT_detail_flood_fill(wmOperatorType *ot)
 /** \name Sample Detail Size
  * \{ */
 
-typedef enum eSculptSampleDetailModeTypes {
+enum eSculptSampleDetailModeTypes {
   SAMPLE_DETAIL_DYNTOPO = 0,
   SAMPLE_DETAIL_VOXEL = 1,
-} eSculptSampleDetailModeTypes;
+};
 
 static EnumPropertyItem prop_sculpt_sample_detail_mode_types[] = {
     {SAMPLE_DETAIL_DYNTOPO, "DYNTOPO", 0, "Dyntopo", "Sample dyntopo detail"},
@@ -191,7 +193,8 @@ static void sculpt_raycast_detail_cb(PBVHNode *node, void *data_v, float *tmin)
   if (BKE_pbvh_node_get_tmin(node) < *tmin) {
     SculptDetailRaycastData *srd = static_cast<SculptDetailRaycastData *>(data_v);
     if (BKE_pbvh_bmesh_node_raycast_detail(
-            node, srd->ray_start, &srd->isect_precalc, &srd->depth, &srd->edge_length)) {
+            node, srd->ray_start, &srd->isect_precalc, &srd->depth, &srd->edge_length))
+    {
       srd->hit = true;
       *tmin = srd->depth;
     }
@@ -211,7 +214,7 @@ static void sample_detail_dyntopo(bContext *C, ViewContext *vc, const int mval[2
   float depth = SCULPT_raycast_init(vc, mval_fl, ray_start, ray_end, ray_normal, false);
 
   SculptDetailRaycastData srd;
-  srd.hit = 0;
+  srd.hit = false;
   srd.ray_start = ray_start;
   srd.depth = depth;
   srd.edge_length = 0.0f;
@@ -635,7 +638,8 @@ static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmE
 
   /* Cancel modal operator */
   if ((event->type == EVT_ESCKEY && event->val == KM_PRESS) ||
-      (event->type == RIGHTMOUSE && event->val == KM_PRESS)) {
+      (event->type == RIGHTMOUSE && event->val == KM_PRESS))
+  {
     dyntopo_detail_size_edit_cancel(C, op);
     ED_region_tag_redraw(region);
     return OPERATOR_FINISHED;
@@ -644,7 +648,8 @@ static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmE
   /* Finish modal operator */
   if ((event->type == LEFTMOUSE && event->val == KM_RELEASE) ||
       (event->type == EVT_RETKEY && event->val == KM_PRESS) ||
-      (event->type == EVT_PADENTER && event->val == KM_PRESS)) {
+      (event->type == EVT_PADENTER && event->val == KM_PRESS))
+  {
     ED_region_draw_cb_exit(region->type, cd->draw_handle);
     sd->constant_detail = cd->detail_size;
     ss->draw_faded_cursor = false;

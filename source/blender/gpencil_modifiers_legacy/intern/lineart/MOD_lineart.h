@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -169,7 +170,8 @@ typedef struct LineartEdge {
   uint16_t flags;
   uint8_t intersection_mask;
 
-  /** Matches the shadow result, used to determine whether a line is in the shadow or not.
+  /**
+   * Matches the shadow result, used to determine whether a line is in the shadow or not.
    * #edge_identifier usages:
    * - Intersection lines:
    *    ((e->t1->target_reference << 32) | e->t2->target_reference);
@@ -178,8 +180,10 @@ typedef struct LineartEdge {
    */
   uint64_t edge_identifier;
 
-  /** - Light contour: original_e->t1->target_reference | original_e->t2->target_reference.
-   *  - Cast shadow: triangle_projected_onto->target_reference. */
+  /**
+   * - Light contour: original_e->t1->target_reference | original_e->t2->target_reference.
+   * - Cast shadow: triangle_projected_onto->target_reference.
+   */
   uint64_t target_reference;
 
   /**
@@ -681,12 +685,14 @@ BLI_INLINE int lineart_intersect_seg_seg(const double a1[2],
     if (LRT_DOUBLE_CLOSE_ENOUGH(x_diff2, 0)) {
       /* This means two segments are both vertical. */
       if ((LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b1[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b1[1])) ||
-          (LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b2[1]))) {
+          (LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b2[1])))
+      {
         *r_aligned = true;
         *r_ratio = 1;
       }
       else if ((LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b1[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b1[1])) ||
-               (LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b2[1]))) {
+               (LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b2[1])))
+      {
         *r_aligned = true;
         *r_ratio = 0;
       }
@@ -712,14 +718,15 @@ BLI_INLINE int lineart_intersect_seg_seg(const double a1[2],
         /* This means two segments are parallel. This also handles k==0 (both completely
          * horizontal) cases. */
         if ((LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b1[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b1[1])) ||
-            (LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b2[1]))) {
+            (LRT_DOUBLE_CLOSE_ENOUGH(a2[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a2[1], b2[1])))
+        {
           *r_aligned = true;
           *r_ratio = 1;
         }
         else if ((LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b1[0]) &&
                   LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b1[1])) ||
-                 (LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b2[0]) &&
-                  LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b2[1]))) {
+                 (LRT_DOUBLE_CLOSE_ENOUGH(a1[0], b2[0]) && LRT_DOUBLE_CLOSE_ENOUGH(a1[1], b2[1])))
+        {
           *r_aligned = true;
           *r_ratio = 0;
         }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -7,7 +8,7 @@
 
 #include "BKE_subdiv_deform.h"
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -101,8 +102,8 @@ static bool subdiv_mesh_topology_info(const SubdivForeachContext *foreach_contex
                                       const int /*num_vertices*/,
                                       const int /*num_edges*/,
                                       const int /*num_loops*/,
-                                      const int /*num_polygons*/,
-                                      const int * /*subdiv_polygon_offset*/)
+                                      const int /*num_faces*/,
+                                      const int * /*subdiv_face_offset*/)
 {
   SubdivDeformContext *subdiv_context = static_cast<SubdivDeformContext *>(
       foreach_context->user_data);
@@ -116,7 +117,7 @@ static void subdiv_mesh_vertex_every_corner(const SubdivForeachContext *foreach_
                                             const float u,
                                             const float v,
                                             const int coarse_vertex_index,
-                                            const int /*coarse_poly_index*/,
+                                            const int /*coarse_face_index*/,
                                             const int /*coarse_corner*/,
                                             const int /*subdiv_vertex_index*/)
 {
@@ -130,7 +131,7 @@ static void subdiv_mesh_vertex_corner(const SubdivForeachContext *foreach_contex
                                       const float u,
                                       const float v,
                                       const int coarse_vertex_index,
-                                      const int /*coarse_poly_index*/,
+                                      const int /*coarse_face_index*/,
                                       const int /*coarse_corner*/,
                                       const int /*subdiv_vertex_index*/)
 {
@@ -189,13 +190,14 @@ void BKE_subdiv_deform_coarse_vertices(Subdiv *subdiv,
   /* Make sure evaluator is up to date with possible new topology, and that
    * is refined for the new positions of coarse vertices. */
   if (!BKE_subdiv_eval_begin_from_mesh(
-          subdiv, coarse_mesh, vertex_cos, SUBDIV_EVALUATOR_TYPE_CPU, nullptr)) {
+          subdiv, coarse_mesh, vertex_cos, SUBDIV_EVALUATOR_TYPE_CPU, nullptr))
+  {
     /* This could happen in two situations:
      * - OpenSubdiv is disabled.
      * - Something totally bad happened, and OpenSubdiv rejected our
      *   topology.
      * In either way, we can't safely continue. */
-    if (coarse_mesh->totpoly) {
+    if (coarse_mesh->faces_num) {
       BKE_subdiv_stats_end(&subdiv->stats, SUBDIV_STATS_SUBDIV_TO_MESH);
       return;
     }

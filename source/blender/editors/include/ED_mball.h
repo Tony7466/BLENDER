@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -64,7 +65,7 @@ void ED_mball_editmball_make(struct Object *obedit);
  */
 void ED_mball_editmball_load(struct Object *obedit);
 
-/* editmball_undo.c */
+/* `editmball_undo.cc` */
 
 /** Export for ED_undo_sys. */
 void ED_mball_undosys_type(struct UndoType *ut);

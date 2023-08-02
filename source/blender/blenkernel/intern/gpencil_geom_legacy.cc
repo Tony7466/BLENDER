@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -24,6 +25,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
+#include "BLI_string_utils.h"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -315,7 +317,8 @@ static int stroke_march_next_point_no_interp(const bGPDstroke *gps,
     if (next_point_index < gps->totpoints - 1 &&
         angle_v3v3v3(&gps->points[next_point_index - 1].x,
                      &gps->points[next_point_index].x,
-                     &gps->points[next_point_index + 1].x) < sharp_threshold) {
+                     &gps->points[next_point_index + 1].x) < sharp_threshold)
+    {
       copy_v3_v3(result, &pt->x);
       pt->flag |= GP_SPOINT_TEMP_TAG;
       next_point_index++;
@@ -367,7 +370,8 @@ static int stroke_march_count(const bGPDstroke *gps, const float dist, const flo
   }
 
   while ((next_point_index = stroke_march_next_point_no_interp(
-              gps, next_point_index, point, dist, sharp_threshold, point)) > -1) {
+              gps, next_point_index, point, dist, sharp_threshold, point)) > -1)
+  {
     point_count++;
     if (next_point_index == 0) {
       break; /* last point finished */
@@ -523,7 +527,8 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
                                                      &uv_rot,
                                                      &ratio_result,
                                                      &index_from,
-                                                     &index_to)) > -1) {
+                                                     &index_to)) > -1)
+  {
     if (is_cyclic && next_point_index == 0) {
       break; /* last point finished */
     }
@@ -649,7 +654,7 @@ bool BKE_gpencil_stroke_stretch(bGPDstroke *gps,
   if (!isfinite(used_percent_length)) {
     /* #used_percent_length must always be finite, otherwise a segfault occurs.
      * Since this function should never segfault, set #used_percent_length to a safe fallback. */
-    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencil_legacy_length.c */
+    /* NOTE: This fallback is used if `gps->totpoints == 2`, see `MOD_gpencil_legacy_length.cc`. */
     used_percent_length = 0.1f;
   }
 
@@ -1246,11 +1251,8 @@ bool BKE_gpencil_stroke_smooth_thickness(
 /** \name Stroke Smooth UV
  * \{ */
 
-bool BKE_gpencil_stroke_smooth_uv(struct bGPDstroke *gps,
-                                  int point_index,
-                                  float influence,
-                                  int iterations,
-                                  struct bGPDstroke *r_gps)
+bool BKE_gpencil_stroke_smooth_uv(
+    bGPDstroke *gps, int point_index, float influence, int iterations, bGPDstroke *r_gps)
 {
   /* If nothing to do, return early */
   if (gps->totpoints <= 2 || iterations <= 0) {
@@ -1704,7 +1706,7 @@ float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
   return total_length;
 }
 
-float BKE_gpencil_stroke_segment_length(const struct bGPDstroke *gps,
+float BKE_gpencil_stroke_segment_length(const bGPDstroke *gps,
                                         const int start_index,
                                         const int end_index,
                                         bool use_3d)
@@ -2306,7 +2308,8 @@ void BKE_gpencil_stroke_subdivide(bGPdata *gpd, bGPDstroke *gps, int level, int 
       float mid[3];
       /* extreme points are not changed */
       for (int i = cyclic ? 0 : 2, j = cyclic ? gps->totpoints - 2 : 0; i < gps->totpoints - 2;
-           j = i, i += 2) {
+           j = i, i += 2)
+      {
         bGPDspoint *prev = &gps->points[j + 1];
         bGPDspoint *pt = &gps->points[i];
         bGPDspoint *next = &gps->points[i + 1];
@@ -2655,7 +2658,8 @@ static Material *gpencil_add_material(Main *bmain,
 
   /* Check at least one is enabled. */
   if (((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0) &&
-      ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0)) {
+      ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0))
+  {
     gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
   }
 
@@ -2683,7 +2687,7 @@ static void make_element_name(const char *obname, const char *name, const int ma
   SNPRINTF(str, "%s_%s", obname, name);
 
   /* Replace any point by underscore. */
-  BLI_str_replace_char(str, '.', '_');
+  BLI_string_replace_char(str, '.', '_');
 
   BLI_strncpy_utf8(r_name, str, maxlen);
 }
@@ -2705,7 +2709,8 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   using namespace blender;
   using namespace blender::bke;
   if (ELEM(nullptr, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
-      (ob_gp->data == nullptr)) {
+      (ob_gp->data == nullptr))
+  {
     return false;
   }
 
@@ -2715,9 +2720,9 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
   const Span<float3> positions = me_eval->vert_positions();
-  const OffsetIndices polys = me_eval->polys();
+  const OffsetIndices faces = me_eval->faces();
   const Span<int> corner_verts = me_eval->corner_verts();
-  int polys_len = me_eval->totpoly;
+  int faces_len = me_eval->faces_num;
   char element_name[200];
 
   /* Need at least an edge. */
@@ -2741,7 +2746,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   }
 
   /* Export faces as filled strokes. */
-  if (use_faces && polys_len > 0) {
+  if (use_faces && faces_len > 0) {
     /* Read all polygons and create fill for each. */
     make_element_name(ob_mesh->id.name + 2, "Fills", 128, element_name);
     /* Create Layer and Frame. */
@@ -2755,8 +2760,8 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
 
     const VArray<int> mesh_material_indices = *me_eval->attributes().lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_FACE, 0);
-    for (i = 0; i < polys_len; i++) {
-      const IndexRange poly = polys[i];
+    for (i = 0; i < faces_len; i++) {
+      const IndexRange face = faces[i];
 
       /* Find material. */
       int mat_idx = 0;
@@ -2776,19 +2781,19 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         gpencil_add_material(bmain, ob_gp, element_name, color, false, true, &mat_idx);
       }
 
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.size(), 10, false);
+      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, face.size(), 10, false);
       gps_fill->flag |= GP_STROKE_CYCLIC;
 
       /* Create dvert data. */
       const Span<MDeformVert> dverts = me_eval->deform_verts();
       if (use_vgroups && !dverts.is_empty()) {
-        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.size(),
+        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * face.size(),
                                                      "gp_fill_dverts");
       }
 
       /* Add points to strokes. */
-      for (int j = 0; j < poly.size(); j++) {
-        const int vert = corner_verts[poly[j]];
+      for (int j = 0; j < face.size(); j++) {
+        const int vert = corner_verts[face[j]];
 
         bGPDspoint *pt = &gps_fill->points[j];
         copy_v3_v3(&pt->x, positions[vert]);
@@ -2810,7 +2815,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         }
       }
       /* If has only 3 points subdivide. */
-      if (poly.size() == 3) {
+      if (face.size() == 3) {
         BKE_gpencil_stroke_subdivide(gpd, gps_fill, 1, GP_SUBDIV_SIMPLE);
       }
 
@@ -3650,11 +3655,11 @@ void BKE_gpencil_stroke_copy_to_keyframes(
  * \{ */
 
 struct tSamplePoint {
-  struct tSamplePoint *next, *prev;
+  tSamplePoint *next, *prev;
   float x, y, z;
   float pressure, strength, time;
   float vertex_color[4];
-  struct MDeformWeight *dw;
+  MDeformWeight *dw;
   int totweight;
 };
 
@@ -3866,7 +3871,7 @@ void BKE_gpencil_stroke_from_view_space(bGPDstroke *gps,
  * \{ */
 
 struct tPerimeterPoint {
-  struct tPerimeterPoint *next, *prev;
+  tPerimeterPoint *next, *prev;
   float x, y, z;
 };
 

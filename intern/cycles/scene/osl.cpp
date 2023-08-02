@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -894,10 +895,6 @@ void OSLCompiler::add(ShaderNode *node, const char *name, bool isfilepath)
     if (node->has_attribute_dependency())
       current_shader->has_volume_attribute_dependency = true;
   }
-
-  if (node->has_integrator_dependency()) {
-    current_shader->has_integrator_dependency = true;
-  }
 }
 
 static TypeDesc array_typedesc(TypeDesc typedesc, int arraylength)
@@ -1051,8 +1048,10 @@ void OSLCompiler::parameter(ShaderNode *node, const char *name)
     case SocketType::CLOSURE:
     case SocketType::NODE:
     case SocketType::NODE_ARRAY:
+    case SocketType::UINT:
+    case SocketType::UINT64:
     case SocketType::UNDEFINED:
-    case SocketType::UINT: {
+    case SocketType::NUM_TYPES: {
       assert(0);
       break;
     }
@@ -1256,10 +1255,7 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
                     output->input("Surface")->link && output->input("Displacement")->link;
 
     /* finalize */
-    shader->graph->finalize(scene,
-                            has_bump,
-                            shader->has_integrator_dependency,
-                            shader->get_displacement_method() == DISPLACE_BOTH);
+    shader->graph->finalize(scene, has_bump, shader->get_displacement_method() == DISPLACE_BOTH);
 
     current_shader = shader;
 
@@ -1274,7 +1270,6 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
     shader->has_surface_spatial_varying = false;
     shader->has_volume_spatial_varying = false;
     shader->has_volume_attribute_dependency = false;
-    shader->has_integrator_dependency = false;
 
     /* generate surface shader */
     if (shader->reference_count() && graph && output->input("Surface")->link) {

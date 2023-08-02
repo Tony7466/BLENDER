@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -11,10 +12,13 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "DEG_depsgraph.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -33,6 +37,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
@@ -70,20 +75,20 @@ static bool act_markers_make_local_poll(bContext *C)
 
   /* 1) */
   if (sact == nullptr) {
-    return 0;
+    return false;
   }
 
   /* 2) */
   if (ELEM(sact->mode, SACTCONT_ACTION, SACTCONT_SHAPEKEY) == 0) {
-    return 0;
+    return false;
   }
   if (sact->action == nullptr) {
-    return 0;
+    return false;
   }
 
   /* 3) */
   if (sact->flag & SACTION_POSEMARKERS_SHOW) {
-    return 0;
+    return false;
   }
 
   /* 4) */
@@ -192,7 +197,8 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
         /* Find mask layer which is less than or equal to current-frame. */
         for (masklay_shape = static_cast<MaskLayerShape *>(masklay->splines_shapes.first);
              masklay_shape;
-             masklay_shape = masklay_shape->next) {
+             masklay_shape = masklay_shape->next)
+        {
           const float framenum = float(masklay_shape->frame);
           *min = min_ff(*min, framenum);
           *max = max_ff(*max, framenum);
@@ -327,12 +333,14 @@ static bool actkeys_channels_get_selected_extents(bAnimContext *ac, float *r_min
   float ymax = ANIM_UI_get_first_channel_top(&ac->region->v2d);
   const float channel_step = ANIM_UI_get_channel_step();
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
-       ale = ale->next, ymax -= channel_step) {
+       ale = ale->next, ymax -= channel_step)
+  {
     const bAnimChannelType *acf = ANIM_channel_get_typeinfo(ale);
 
     /* must be selected... */
     if (acf && acf->has_setting(ac, ale, ACHANNEL_SETTING_SELECT) &&
-        ANIM_channel_setting_get(ac, ale, ACHANNEL_SETTING_SELECT)) {
+        ANIM_channel_setting_get(ac, ale, ACHANNEL_SETTING_SELECT))
+    {
       /* update best estimate */
       *r_min = ymax - ANIM_UI_get_channel_height();
       *r_max = ymax;
@@ -547,7 +555,8 @@ static eKeyPasteError paste_action_keys(bAnimContext *ac,
             ANIMFILTER_FCURVESONLY | ANIMFILTER_NODUPLIS);
 
   if (ANIM_animdata_filter(
-          ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, eAnimCont_Types(ac->datatype)) == 0) {
+          ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, eAnimCont_Types(ac->datatype)) == 0)
+  {
     ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
   }
 
@@ -760,6 +769,45 @@ static void insert_gpencil_key(bAnimContext *ac,
   }
 }
 
+static void insert_grease_pencil_key(bAnimContext *ac,
+                                     bAnimListElem *ale,
+                                     const bool hold_previous)
+{
+  using namespace blender::bke::greasepencil;
+  Layer *layer = static_cast<Layer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+  const int current_frame_number = ac->scene->r.cfra;
+
+  if (layer->frames().contains(current_frame_number)) {
+    return;
+  }
+
+  bool changed = false;
+  if (hold_previous) {
+    const FramesMapKey active_frame_number = layer->frame_key_at(current_frame_number);
+    if ((active_frame_number == -1) || (layer->frames().lookup(active_frame_number).is_null())) {
+      /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
+       * frame. */
+      changed = grease_pencil->insert_blank_frame(
+          *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
+    else {
+      /* Duplicate the active frame. */
+      changed = grease_pencil->insert_duplicate_frame(
+          *layer, active_frame_number, current_frame_number, false);
+    }
+  }
+  else {
+    /* Insert a blank frame. */
+    changed = grease_pencil->insert_blank_frame(
+        *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+  }
+}
+
 static void insert_fcurve_key(bAnimContext *ac,
                               bAnimListElem *ale,
                               const AnimationEvalContext anim_eval_context,
@@ -848,6 +896,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   else {
     add_frame_mode = GP_GETFRAME_ADD_NEW;
   }
+  const bool grease_pencil_hold_previous = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
 
   /* insert keyframes */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -856,6 +905,10 @@ static void insert_action_keys(bAnimContext *ac, short mode)
     switch (ale->type) {
       case ANIMTYPE_GPLAYER:
         insert_gpencil_key(ac, ale, add_frame_mode, &gpd_old);
+        break;
+
+      case ANIMTYPE_GREASE_PENCIL_LAYER:
+        insert_grease_pencil_key(ac, ale, grease_pencil_hold_previous);
         break;
 
       case ANIMTYPE_FCURVE:
@@ -951,6 +1004,9 @@ static bool duplicate_action_keys(bAnimContext *ac)
       ED_gpencil_layer_frames_duplicate((bGPDlayer *)ale->data);
       changed |= ED_gpencil_layer_frame_select_check((bGPDlayer *)ale->data);
     }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      /* GPv3: To be implemented. */
+    }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_masklayer_frames_duplicate((MaskLayer *)ale->data);
     }
@@ -1028,6 +1084,9 @@ static bool delete_action_keys(bAnimContext *ac)
 
     if (ale->type == ANIMTYPE_GPLAYER) {
       changed = ED_gpencil_layer_frames_delete((bGPDlayer *)ale->data);
+    }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      /* GPv3: To be implemented. */
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       changed = ED_masklayer_frames_delete((MaskLayer *)ale->data);
@@ -1613,6 +1672,10 @@ static void setkeytype_action_keys(bAnimContext *ac, short mode)
         ale->update |= ANIM_UPDATE_DEPS;
         break;
 
+      case ANIMTYPE_GREASE_PENCIL_LAYER:
+        /* GPv3: To be implemented. */
+        break;
+
       case ANIMTYPE_FCURVE:
         ANIM_fcurve_keyframes_loop(
             nullptr, static_cast<FCurve *>(ale->key_data), nullptr, set_cb, nullptr);
@@ -1686,7 +1749,7 @@ static bool actkeys_framejump_poll(bContext *C)
 {
   /* prevent changes during render */
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
 
   return ED_operator_action_active(C);
@@ -1735,9 +1798,9 @@ static int actkeys_framejump_exec(bContext *C, wmOperator * /*op*/)
         AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
         FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
         if (adt) {
-          ANIM_nla_mapping_apply_fcurve(adt, fcurve, 0, 1);
+          ANIM_nla_mapping_apply_fcurve(adt, fcurve, false, true);
           ANIM_fcurve_keyframes_loop(&ked, fcurve, nullptr, bezt_calc_average, nullptr);
-          ANIM_nla_mapping_apply_fcurve(adt, fcurve, 1, 1);
+          ANIM_nla_mapping_apply_fcurve(adt, fcurve, true, true);
         }
         else {
           ANIM_fcurve_keyframes_loop(&ked, fcurve, nullptr, bezt_calc_average, nullptr);
@@ -1848,16 +1911,19 @@ static void snap_action_keys(bAnimContext *ac, short mode)
     if (ale->type == ANIMTYPE_GPLAYER) {
       ED_gpencil_layer_snap_frames(static_cast<bGPDlayer *>(ale->data), ac->scene, mode);
     }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      /* GPv3: To be implemented. */
+    }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       ED_masklayer_snap_frames(static_cast<MaskLayer *>(ale->data), ac->scene, mode);
     }
     else if (adt) {
       FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
-      ANIM_nla_mapping_apply_fcurve(adt, fcurve, 0, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, fcurve, false, false);
       ANIM_fcurve_keyframes_loop(&ked, fcurve, nullptr, edit_cb, BKE_fcurve_handles_recalc);
       BKE_fcurve_merge_duplicate_keys(
           fcurve, SELECT, false); /* only use handles in graph editor */
-      ANIM_nla_mapping_apply_fcurve(adt, fcurve, 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, fcurve, true, false);
     }
     else {
       FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
@@ -1982,14 +2048,17 @@ static void mirror_action_keys(bAnimContext *ac, short mode)
     if (ale->type == ANIMTYPE_GPLAYER) {
       ED_gpencil_layer_mirror_frames(static_cast<bGPDlayer *>(ale->data), ac->scene, mode);
     }
+    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+      /* GPv3: To be implemented. */
+    }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       /* TODO */
     }
     else if (adt) {
       FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
-      ANIM_nla_mapping_apply_fcurve(adt, fcurve, 0, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, fcurve, false, false);
       ANIM_fcurve_keyframes_loop(&ked, fcurve, nullptr, edit_cb, BKE_fcurve_handles_recalc);
-      ANIM_nla_mapping_apply_fcurve(adt, fcurve, 1, 0);
+      ANIM_nla_mapping_apply_fcurve(adt, fcurve, true, false);
     }
     else {
       ANIM_fcurve_keyframes_loop(

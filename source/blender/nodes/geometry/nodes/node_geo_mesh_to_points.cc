@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 #include "BLI_task.hh"
@@ -7,6 +9,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 
 #include "UI_interface.h"
@@ -14,28 +17,26 @@
 
 #include "node_geometry_util.hh"
 
-using blender::Array;
-
 namespace blender::nodes::node_geo_mesh_to_points_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometryMeshToPoints)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).field_on_all().hide_value();
-  b.add_input<decl::Vector>(N_("Position")).implicit_field_on_all(implicit_field_inputs::position);
-  b.add_input<decl::Float>(N_("Radius"))
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
+  b.add_input<decl::Vector>("Position").implicit_field_on_all(implicit_field_inputs::position);
+  b.add_input<decl::Float>("Radius")
       .default_value(0.05f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
       .field_on_all();
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -46,9 +47,9 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 }
 
 static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
-                                        Field<float3> &position_field,
-                                        Field<float> &radius_field,
-                                        Field<bool> &selection_field,
+                                        const Field<float3> &position_field,
+                                        const Field<float> &radius_field,
+                                        const Field<bool> &selection_field,
                                         const eAttrDomain domain,
                                         const AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -63,7 +64,11 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
     return;
   }
   const AttributeAccessor src_attributes = mesh->attributes();
+<<<<<<< HEAD
   bke::MeshFieldContext field_context{*mesh, domain};
+=======
+  const bke::MeshFieldContext field_context{*mesh, domain};
+>>>>>>> main
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   /* Evaluating directly into the point cloud doesn't work because we are not using the full
@@ -103,15 +108,19 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   radius.finish();
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_MESH},
-                                                 GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  propagation_info,
                                                  attributes);
   attributes.remove("radius");
   attributes.remove("position");
 
+<<<<<<< HEAD
   for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
+=======
+  for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
+>>>>>>> main
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType data_type = entry.value.data_type;
     const bke::GAttributeReader src = src_attributes.lookup(attribute_id, domain, data_type);
@@ -120,7 +129,11 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
       continue;
     }
 
+<<<<<<< HEAD
     if (share_arrays && src.domain == domain && src.sharing_info) {
+=======
+    if (share_arrays && src.domain == domain && src.sharing_info && src.varray.is_span()) {
+>>>>>>> main
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
       dst_attributes.add(attribute_id, ATTR_DOMAIN_POINT, data_type, init);
@@ -134,7 +147,11 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   }
 
   geometry_set.replace_pointcloud(pointcloud);
+<<<<<<< HEAD
   geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
+=======
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
+>>>>>>> main
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -150,9 +167,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       __func__,
       [](float value) { return std::max(0.0f, value); },
       mf::build::exec_presets::AllSpanOrSingle());
-  auto max_zero_op = std::make_shared<FieldOperation>(
-      FieldOperation(max_zero_fn, {std::move(radius)}));
-  Field<float> positive_radius(std::move(max_zero_op), 0);
+  const Field<float> positive_radius(FieldOperation::Create(max_zero_fn, {std::move(radius)}), 0);
 
   const NodeGeometryMeshToPoints &storage = node_storage(params.node());
   const GeometryNodeMeshToPointsMode mode = (GeometryNodeMeshToPointsMode)storage.mode;

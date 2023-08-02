@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,6 +10,11 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
+#ifdef __cplusplus
+#  include "BLI_array.hh"
+#  include "BLI_math_vector_types.hh"
+#  include "BLI_offset_indices.hh"
+#endif
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_enums.h"
@@ -16,6 +22,8 @@
 
 #include "BKE_attribute.h"
 #include "BKE_pbvh.h"
+
+#include "bmesh.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +48,6 @@ struct ListBase;
 struct MLoopTri;
 struct Main;
 struct Mesh;
-struct MeshElemMap;
 struct Object;
 struct PBVH;
 struct Paint;
@@ -180,6 +187,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(ePaintMode mode);
 bool BKE_paint_ensure_from_paintmode(struct Scene *sce, ePaintMode mode);
 struct Paint *BKE_paint_get_active_from_paintmode(struct Scene *sce, ePaintMode mode);
 const struct EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(ePaintMode mode);
+const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(ePaintMode mode);
 const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode);
 uint BKE_paint_get_brush_tool_offset_from_paintmode(ePaintMode mode);
 struct Paint *BKE_paint_get_active(struct Scene *sce, struct ViewLayer *view_layer);
@@ -218,7 +226,7 @@ bool BKE_paint_always_hide_test(struct Object *ob);
 /**
  * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
  */
-bool paint_is_face_hidden(const struct MLoopTri *lt, const bool *hide_poly);
+bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, int tri_index);
 /**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
@@ -240,7 +248,8 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 bool paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups,
                                    struct Brush *brush,
                                    const float mouse_pos[2],
-                                   ePaintMode paint_mode);
+                                   ePaintMode paint_mode,
+                                   bool stroke_has_started);
 void paint_update_brush_rake_rotation(struct UnifiedPaintSettings *ups,
                                       struct Brush *brush,
                                       float rotation);
@@ -273,12 +282,17 @@ void BKE_paint_blend_read_lib(struct BlendLibReader *reader,
 #define SCULPT_FACE_SET_NONE 0
 
 /** Used for both vertex color and weight paint. */
+#ifdef __cplusplus
 struct SculptVertexPaintGeomMap {
-  int *vert_map_mem;
-  struct MeshElemMap *vert_to_loop;
-  int *poly_map_mem;
-  struct MeshElemMap *vert_to_poly;
+  blender::Array<int> vert_to_loop_offsets;
+  blender::Array<int> vert_to_loop_indices;
+  blender::GroupedSpan<int> vert_to_loop;
+
+  blender::Array<int> vert_to_face_offsets;
+  blender::Array<int> vert_to_face_indices;
+  blender::GroupedSpan<int> vert_to_face;
 };
+#endif
 
 /** Pose Brush IK Chain. */
 typedef struct SculptPoseIKChainSegment {
@@ -581,12 +595,12 @@ typedef struct SculptSession {
   struct Depsgraph *depsgraph;
 
   /* These are always assigned to base mesh data when using PBVH_FACES and PBVH_GRIDS. */
-  float (*vert_positions)[3];
-  blender::OffsetIndices<int> polys;
+  blender::MutableSpan<blender::float3> vert_positions;
+  blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
 
   /* These contain the vertex and poly counts of the final mesh. */
-  int totvert, totpoly;
+  int totvert, faces_num;
 
   struct KeyBlock *shapekey_active;
   struct MPropCol *vcol;
@@ -598,20 +612,23 @@ typedef struct SculptSession {
   float *vmask;
 
   /* Mesh connectivity maps. */
-  /* Vertices to adjacent polys. */
-  struct MeshElemMap *pmap;
-  int *pmap_mem;
+  /* Vertices to adjacent faces. */
+  blender::Array<int> vert_to_face_offsets;
+  blender::Array<int> vert_to_face_indices;
+  blender::GroupedSpan<int> pmap;
 
-  /* Edges to adjacent polys. */
-  struct MeshElemMap *epmap;
-  int *epmap_mem;
+  /* Edges to adjacent faces. */
+  blender::Array<int> edge_to_face_offsets;
+  blender::Array<int> edge_to_face_indices;
+  blender::GroupedSpan<int> epmap;
 
   /* Vertices to adjacent edges. */
-  struct MeshElemMap *vemap;
-  int *vemap_mem;
+  blender::Array<int> vert_to_edge_offsets;
+  blender::Array<int> vert_to_edge_indices;
+  blender::GroupedSpan<int> vemap;
 
   /* Mesh Face Sets */
-  /* Total number of polys of the base mesh. */
+  /* Total number of faces of the base mesh. */
   int totfaces;
 
   /* The 0 ID is not used by the tools or the visibility system, it is just used when creating new
@@ -620,14 +637,13 @@ typedef struct SculptSession {
    * to 0. */
   int *face_sets;
   /**
-   * A reference to the ".hide_poly" attribute, to store whether (base) polygons are hidden.
+   * A reference to the ".hide_poly" attribute, to store whether (base) faces are hidden.
    * May be null.
    */
   bool *hide_poly;
 
   /* BMesh for dynamic topology sculpting */
   struct BMesh *bm;
-  bool bm_smooth_shading;
   /* Undo/redo log for dynamic topology sculpting */
   struct BMLog *bm_log;
 
@@ -706,7 +722,7 @@ typedef struct SculptSession {
   float prev_pivot_rot[4];
   float prev_pivot_scale[3];
 
-  union {
+  struct {
     struct {
       struct SculptVertexPaintGeomMap gmap;
     } vpaint;
@@ -864,7 +880,7 @@ void BKE_sculpt_update_object_after_eval(struct Depsgraph *depsgraph, struct Obj
  */
 struct MultiresModifierData *BKE_sculpt_multires_active(const struct Scene *scene,
                                                         struct Object *ob);
-int *BKE_sculpt_face_sets_ensure(struct Mesh *mesh);
+int *BKE_sculpt_face_sets_ensure(struct Object *ob);
 /**
  * Create the attribute used to store face visibility and retrieve its data.
  * Note that changes to the face visibility have to be propagated to other domains
@@ -922,7 +938,6 @@ bool BKE_object_attributes_active_color_fill(struct Object *ob,
 /** C accessor for #Object::sculpt::pbvh. */
 struct PBVH *BKE_object_sculpt_pbvh_get(struct Object *object);
 bool BKE_object_sculpt_use_dyntopo(const struct Object *object);
-void BKE_object_sculpt_dyntopo_smooth_shading_set(struct Object *object, bool value);
 
 /* paint_canvas.cc */
 

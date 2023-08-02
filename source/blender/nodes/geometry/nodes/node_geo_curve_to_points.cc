@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_math_matrix.hh"
@@ -22,29 +24,29 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveToPoints)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Curve")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_input<decl::Int>(N_("Count"))
+  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Int>("Count")
       .default_value(10)
       .min(2)
       .field_on_all()
       .max(100000)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_COUNT; });
-  b.add_input<decl::Float>(N_("Length"))
+  b.add_input<decl::Float>("Length")
       .default_value(0.1f)
       .min(0.001f)
       .subtype(PROP_DISTANCE)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_LENGTH; });
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
-  b.add_output<decl::Vector>(N_("Tangent")).field_on_all();
-  b.add_output<decl::Vector>(N_("Normal")).field_on_all();
-  b.add_output<decl::Vector>(N_("Rotation")).field_on_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
+  b.add_output<decl::Vector>("Tangent").field_on_all();
+  b.add_output<decl::Vector>("Normal").field_on_all();
+  b.add_output<decl::Vector>("Rotation").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -63,8 +65,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *count_socket = static_cast<bNodeSocket *>(node->inputs.first)->next;
   bNodeSocket *length_socket = count_socket->next;
 
-  nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
-  nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
+  bke::nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
+  bke::nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
 }
 
 static void fill_rotation_attribute(const Span<float3> tangents,
@@ -135,13 +137,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
 
-  AutoAnonymousAttributeID rotation_anonymous_id =
+  AnonymousAttributeIDPtr rotation_anonymous_id =
       params.get_output_anonymous_attribute_id_if_needed("Rotation");
   const bool need_tangent_and_normal = bool(rotation_anonymous_id);
-  AutoAnonymousAttributeID tangent_anonymous_id =
+  AnonymousAttributeIDPtr tangent_anonymous_id =
       params.get_output_anonymous_attribute_id_if_needed("Tangent", need_tangent_and_normal);
-  AutoAnonymousAttributeID normal_anonymous_id =
-      params.get_output_anonymous_attribute_id_if_needed("Normal", need_tangent_and_normal);
+  AnonymousAttributeIDPtr normal_anonymous_id = params.get_output_anonymous_attribute_id_if_needed(
+      "Normal", need_tangent_and_normal);
 
   geometry::ResampleCurvesOutputAttributeIDs resample_attributes;
   resample_attributes.tangent_id = tangent_anonymous_id.get();
@@ -200,21 +202,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   params.set_output("Points", std::move(geometry_set));
-  if (tangent_anonymous_id) {
-    params.set_output("Tangent",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(tangent_anonymous_id), params.attribute_producer_name()));
-  }
-  if (normal_anonymous_id) {
-    params.set_output("Normal",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(normal_anonymous_id), params.attribute_producer_name()));
-  }
-  if (rotation_anonymous_id) {
-    params.set_output("Rotation",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(rotation_anonymous_id), params.attribute_producer_name()));
-  }
 }
 
 }  // namespace blender::nodes::node_geo_curve_to_points_cc

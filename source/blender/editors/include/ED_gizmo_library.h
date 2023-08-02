@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -39,22 +41,17 @@ struct wmGizmo;
  * Intended to be called by custom draw functions.
  */
 
-/* gizmo_library_presets.c */
+/* `gizmo_library_presets.cc` */
 
-void ED_gizmo_draw_preset_box(const struct wmGizmo *gz, float mat[4][4], int select_id);
+void ED_gizmo_draw_preset_box(const struct wmGizmo *gz, const float mat[4][4], int select_id);
 void ED_gizmo_draw_preset_arrow(const struct wmGizmo *gz,
-                                float mat[4][4],
+                                const float mat[4][4],
                                 int axis,
                                 int select_id);
 void ED_gizmo_draw_preset_circle(const struct wmGizmo *gz,
-                                 float mat[4][4],
+                                 const float mat[4][4],
                                  int axis,
                                  int select_id);
-void ED_gizmo_draw_preset_facemap(const struct bContext *C,
-                                  const struct wmGizmo *gz,
-                                  struct Object *ob,
-                                  int facemap,
-                                  int select_id);
 
 /* -------------------------------------------------------------------- */
 /* 3D Arrow Gizmo */
@@ -242,16 +239,13 @@ enum {
 /* -------------------------------------------------------------------- */
 /* Specific gizmos utils */
 
-/* snap3d_gizmo.c */
+/* `snap3d_gizmo.cc` */
 
 struct SnapObjectContext *ED_gizmotypes_snap_3d_context_ensure(struct Scene *scene,
                                                                struct wmGizmo *gz);
 
 void ED_gizmotypes_snap_3d_flag_set(struct wmGizmo *gz, int flag);
-void ED_gizmotypes_snap_3d_flag_clear(struct wmGizmo *gz, int flag);
-bool ED_gizmotypes_snap_3d_flag_test(struct wmGizmo *gz, int flag);
 
-bool ED_gizmotypes_snap_3d_invert_snap_get(struct wmGizmo *gz);
 bool ED_gizmotypes_snap_3d_is_enabled(const struct wmGizmo *gz);
 
 void ED_gizmotypes_snap_3d_data_get(const struct bContext *C,

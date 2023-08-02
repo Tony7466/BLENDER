@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -23,7 +24,7 @@
 #include "BKE_context.h"
 #include "BKE_modifier.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -34,7 +35,7 @@
 #include "ED_util.h"
 #include "ED_view3d.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -205,7 +206,8 @@ void SCULPT_filter_cache_init(bContext *C,
     nodes = blender::bke::pbvh::search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2);
 
     if (BKE_paint_brush(&sd->paint) &&
-        SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->filter_cache->initial_normal)) {
+        SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->filter_cache->initial_normal))
+    {
       copy_v3_v3(ss->last_normal, ss->filter_cache->initial_normal);
     }
     else {
@@ -260,9 +262,10 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   MEM_SAFE_FREE(ss->filter_cache->limit_surface_co);
   MEM_SAFE_FREE(ss->filter_cache->pre_smoothed_color);
   MEM_delete<FilterCache>(ss->filter_cache);
+  ss->filter_cache = nullptr;
 }
 
-typedef enum eSculptMeshFilterType {
+enum eSculptMeshFilterType {
   MESH_FILTER_SMOOTH = 0,
   MESH_FILTER_SCALE = 1,
   MESH_FILTER_INFLATE = 2,
@@ -274,7 +277,7 @@ typedef enum eSculptMeshFilterType {
   MESH_FILTER_SHARPEN = 8,
   MESH_FILTER_ENHANCE_DETAILS = 9,
   MESH_FILTER_ERASE_DISPLACEMENT = 10,
-} eSculptMeshFilterType;
+};
 
 static EnumPropertyItem prop_mesh_filter_types[] = {
     {MESH_FILTER_SMOOTH, "SMOOTH", 0, "Smooth", "Smooth mesh"},
@@ -307,11 +310,11 @@ static EnumPropertyItem prop_mesh_filter_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-typedef enum eMeshFilterDeformAxis {
+enum eMeshFilterDeformAxis {
   MESH_FILTER_DEFORM_X = 1 << 0,
   MESH_FILTER_DEFORM_Y = 1 << 1,
   MESH_FILTER_DEFORM_Z = 1 << 2,
-} eMeshFilterDeformAxis;
+};
 
 static EnumPropertyItem prop_mesh_filter_deform_axis_items[] = {
     {MESH_FILTER_DEFORM_X, "X", 0, "X", "Deform in the X axis"},
@@ -352,11 +355,11 @@ static bool sculpt_mesh_filter_needs_pmap(eSculptMeshFilterType filter_type)
 
 static bool sculpt_mesh_filter_is_continuous(eSculptMeshFilterType type)
 {
-  return (ELEM(type,
-               MESH_FILTER_SHARPEN,
-               MESH_FILTER_SMOOTH,
-               MESH_FILTER_RELAX,
-               MESH_FILTER_RELAX_FACE_SETS));
+  return ELEM(type,
+              MESH_FILTER_SHARPEN,
+              MESH_FILTER_SMOOTH,
+              MESH_FILTER_RELAX,
+              MESH_FILTER_RELAX_FACE_SETS);
 }
 
 static void mesh_filter_task_cb(void *__restrict userdata,
@@ -401,7 +404,8 @@ static void mesh_filter_task_cb(void *__restrict userdata,
     }
 
     if (ELEM(filter_type, MESH_FILTER_RELAX, MESH_FILTER_RELAX_FACE_SETS) ||
-        ss->filter_cache->no_orig_co) {
+        ss->filter_cache->no_orig_co)
+    {
       copy_v3_v3(orig_co, vd.co);
     }
     else {
@@ -644,7 +648,8 @@ static void mesh_filter_sharpen_init(SculptSession *ss,
   /* Smooth the calculated factors and directions to remove high frequency detail. */
   for (int smooth_iterations = 0;
        smooth_iterations < filter_cache->sharpen_curvature_smooth_iterations;
-       smooth_iterations++) {
+       smooth_iterations++)
+  {
     for (int i = 0; i < totvert; i++) {
       PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
@@ -741,11 +746,10 @@ static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
   WM_modalkeymap_operator_items_to_string_buf( \
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
-  BLI_snprintf(header,
-               sizeof(header),
-               TIP_("%s: Confirm, %s: Cancel"),
-               WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
-               WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
+  SNPRINTF(header,
+           TIP_("%s: Confirm, %s: Cancel"),
+           WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
+           WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
 
 #undef WM_MODALKEY
 
@@ -1144,9 +1148,9 @@ static void sculpt_mesh_ui_exec(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
 
-  uiItemR(layout, op->ptr, "strength", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "iteration_count", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "orientation", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "iteration_count", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "orientation", UI_ITEM_NONE, nullptr, ICON_NONE);
   layout = uiLayoutRow(layout, true);
   uiItemR(layout, op->ptr, "deform_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }

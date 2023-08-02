@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -220,14 +221,11 @@ static bool panels_need_realign(const ScrArea *area, ARegion *region, Panel **r_
 /** \name Functions for Instanced Panels
  * \{ */
 
-static Panel *panel_add_instanced(ARegion *region,
-                                  ListBase *panels,
-                                  PanelType *panel_type,
-                                  PointerRNA *custom_data)
+static Panel *panel_add_instanced(ListBase *panels, PanelType *panel_type, PointerRNA *custom_data)
 {
   Panel *panel = MEM_cnew<Panel>(__func__);
   panel->type = panel_type;
-  BLI_strncpy(panel->panelname, panel_type->idname, sizeof(panel->panelname));
+  STRNCPY(panel->panelname, panel_type->idname);
 
   panel->runtime.custom_data_ptr = custom_data;
   panel->runtime_flag |= PANEL_NEW_ADDED;
@@ -236,7 +234,7 @@ static Panel *panel_add_instanced(ARegion *region,
    * function to create them, as UI_panel_begin does other things we don't need to do. */
   LISTBASE_FOREACH (LinkData *, child, &panel_type->children) {
     PanelType *child_type = static_cast<PanelType *>(child->data);
-    panel_add_instanced(region, &panel->children, child_type, custom_data);
+    panel_add_instanced(&panel->children, child_type, custom_data);
   }
 
   /* Make sure the panel is added to the end of the display-order as well. This is needed for
@@ -273,7 +271,7 @@ Panel *UI_panel_add_instanced(const bContext *C,
     return nullptr;
   }
 
-  Panel *new_panel = panel_add_instanced(region, panels, panel_type, custom_data);
+  Panel *new_panel = panel_add_instanced(panels, panel_type, custom_data);
 
   /* Do this after #panel_add_instatnced so all sub-panels are added. */
   panel_set_expansion_from_list_data(C, new_panel);
@@ -285,7 +283,7 @@ void UI_list_panel_unique_str(Panel *panel, char *r_name)
 {
   /* The panel sort-order will be unique for a specific panel type because the instanced
    * panel list is regenerated for every change in the data order / length. */
-  snprintf(r_name, INSTANCED_PANEL_UNIQUE_STR_LEN, "%d", panel->sortorder);
+  BLI_snprintf(r_name, INSTANCED_PANEL_UNIQUE_STR_SIZE, "%d", panel->sortorder);
 }
 
 /**
@@ -674,7 +672,7 @@ Panel *UI_panel_begin(
   if (newpanel) {
     panel = MEM_cnew<Panel>(__func__);
     panel->type = pt;
-    BLI_strncpy(panel->panelname, idname, sizeof(panel->panelname));
+    STRNCPY(panel->panelname, idname);
 
     if (pt->flag & PANEL_TYPE_DEFAULT_CLOSED) {
       panel->flag |= PNL_CLOSED;
@@ -698,7 +696,7 @@ Panel *UI_panel_begin(
 
   panel->runtime.block = block;
 
-  BLI_strncpy(panel->drawname, drawname, sizeof(panel->drawname));
+  STRNCPY(panel->drawname, drawname);
 
   /* If a new panel is added, we insert it right after the panel that was last added.
    * This way new panels are inserted in the right place between versions. */
@@ -991,14 +989,16 @@ void UI_panels_draw(const bContext *C, ARegion *region)
    * and we need child panels to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && !UI_panel_is_dragging(block->panel) &&
-        !UI_block_is_search_only(block)) {
+        !UI_block_is_search_only(block))
+    {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && UI_panel_is_dragging(block->panel) &&
-        !UI_block_is_search_only(block)) {
+        !UI_block_is_search_only(block))
+    {
       UI_block_draw(C, block);
     }
   }
@@ -2147,7 +2147,7 @@ static void ui_panel_category_active_set(ARegion *region, const char *idname, bo
   }
   else {
     pc_act = MEM_cnew<PanelCategoryStack>(__func__);
-    BLI_strncpy(pc_act->idname, idname, sizeof(pc_act->idname));
+    STRNCPY(pc_act->idname, idname);
   }
 
   if (fallback) {
@@ -2223,7 +2223,7 @@ void UI_panel_category_add(ARegion *region, const char *name)
   PanelCategoryDyn *pc_dyn = MEM_cnew<PanelCategoryDyn>(__func__);
   BLI_addtail(&region->panels_category, pc_dyn);
 
-  BLI_strncpy(pc_dyn->idname, name, sizeof(pc_dyn->idname));
+  STRNCPY(pc_dyn->idname, name);
 
   /* 'pc_dyn->rect' must be set on draw. */
 }
@@ -2323,7 +2323,8 @@ int ui_handler_panel_region(bContext *C,
       }
     }
     else if (((event->type == EVT_TABKEY) && (event->modifier & KM_CTRL)) ||
-             ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE)) {
+             ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE))
+    {
       /* Cycle tabs. */
       retval = ui_handle_panel_category_cycling(event, region, active_but);
     }
@@ -2426,19 +2427,20 @@ PointerRNA *UI_panel_custom_data_get(const Panel *panel)
 PointerRNA *UI_region_panel_custom_data_under_cursor(const bContext *C, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
+  if (region) {
+    LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+      Panel *panel = block->panel;
+      if (panel == nullptr) {
+        continue;
+      }
 
-  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    Panel *panel = block->panel;
-    if (panel == nullptr) {
-      continue;
-    }
-
-    int mx = event->xy[0];
-    int my = event->xy[1];
-    ui_window_to_block(region, block, &mx, &my);
-    const int mouse_state = ui_panel_mouse_state_get(block, panel, mx, my);
-    if (ELEM(mouse_state, PANEL_MOUSE_INSIDE_CONTENT, PANEL_MOUSE_INSIDE_HEADER)) {
-      return UI_panel_custom_data_get(panel);
+      int mx = event->xy[0];
+      int my = event->xy[1];
+      ui_window_to_block(region, block, &mx, &my);
+      const int mouse_state = ui_panel_mouse_state_get(block, panel, mx, my);
+      if (ELEM(mouse_state, PANEL_MOUSE_INSIDE_CONTENT, PANEL_MOUSE_INSIDE_HEADER)) {
+        return UI_panel_custom_data_get(panel);
+      }
     }
   }
 
@@ -2513,7 +2515,7 @@ static void panel_handle_data_ensure(const bContext *C,
 
   uiHandlePanelData *data = static_cast<uiHandlePanelData *>(panel->activedata);
 
-  data->animtimer = WM_event_add_timer(CTX_wm_manager(C), win, TIMER, ANIMATION_INTERVAL);
+  data->animtimer = WM_event_timer_add(CTX_wm_manager(C), win, TIMER, ANIMATION_INTERVAL);
 
   data->state = state;
   data->startx = win->eventstate->xy[0];
@@ -2563,7 +2565,7 @@ static void panel_activate_state(const bContext *C, Panel *panel, const uiHandle
     BLI_assert(data != nullptr);
 
     if (data->animtimer) {
-      WM_event_remove_timer(CTX_wm_manager(C), win, data->animtimer);
+      WM_event_timer_remove(CTX_wm_manager(C), win, data->animtimer);
       data->animtimer = nullptr;
     }
 

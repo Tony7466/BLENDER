@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editorui
@@ -122,8 +123,6 @@ struct wmKeyConfig;
 struct wmOperator;
 struct wmOperatorType;
 
-typedef struct View2DScrollers View2DScrollers;
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -167,14 +166,16 @@ void UI_view2d_sync(struct bScreen *screen, struct ScrArea *area, struct View2D 
 void UI_view2d_curRect_changed(const struct bContext *C, struct View2D *v2d);
 
 void UI_view2d_totRect_set(struct View2D *v2d, int width, int height);
-/**
- * Change the size of the maximum viewable area (i.e. 'tot' rect).
- */
-void UI_view2d_totRect_set_resize(struct View2D *v2d, int width, int height, bool resize);
 
 void UI_view2d_mask_from_win(const struct View2D *v2d, struct rcti *r_mask);
 
 void UI_view2d_zoom_cache_reset(void);
+
+/**
+ * Clamp view2d area to what's visible, preventing
+ * scrolling vertically to infinity.
+ */
+void UI_view2d_curRect_clamp_y(struct View2D *v2d);
 
 /** \} */
 
@@ -270,13 +271,6 @@ void UI_view2d_draw_scale_x__frames_or_seconds(const struct ARegion *region,
 /* -------------------------------------------------------------------- */
 /** \name Scroll-bar Drawing
  * \{ */
-
-/**
- * Calculate relevant scroller properties.
- */
-void UI_view2d_scrollers_calc(struct View2D *v2d,
-                              const struct rcti *mask_custom,
-                              struct View2DScrollers *r_scrollers);
 
 /**
  * Draw scroll-bars in the given 2D-region.
@@ -428,6 +422,11 @@ void UI_view2d_center_set(struct View2D *v2d, float x, float y);
 void UI_view2d_offset(struct View2D *v2d, float xfac, float yfac);
 
 /**
+ * Scrolls the view so that the upper edge is at a multiple of the page size.
+ */
+void UI_view2d_offset_y_snap_to_closest_page(struct View2D *v2d);
+
+/**
  * Check if mouse is within scrollers
  *
  * \param xy: Mouse coordinates in screen (not region) space.
@@ -499,7 +498,7 @@ void UI_view2d_smooth_view(const struct bContext *C,
 /** \name Gizmo Types
  * \{ */
 
-/* view2d_gizmo_navigate.c */
+/* `view2d_gizmo_navigate.cc` */
 
 /**
  * Caller defines the name for gizmo group.
@@ -543,9 +542,10 @@ typedef struct View2DEdgePanData {
   float max_speed;
   /** Delay in seconds before maximum speed is reached. */
   float delay;
-  /** Influence factor for view zoom:
-   *    0 = Constant speed in UI units
-   *    1 = Constant speed in view space, UI speed slows down when zooming out
+  /**
+   * Influence factor for view zoom:
+   * - 0 = Constant speed in UI units.
+   * - 1 = Constant speed in view space, UI speed slows down when zooming out.
    */
   float zoom_influence;
 
@@ -559,8 +559,6 @@ typedef struct View2DEdgePanData {
   double edge_pan_last_time;
   double edge_pan_start_time_x, edge_pan_start_time_y;
 } View2DEdgePanData;
-
-bool UI_view2d_edge_pan_poll(struct bContext *C);
 
 void UI_view2d_edge_pan_init(struct bContext *C,
                              struct View2DEdgePanData *vpd,

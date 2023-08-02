@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -98,7 +99,8 @@ static bool vertex_group_use_vert_sel(Object *ob)
     return true;
   }
   if ((ob->type == OB_MESH) &&
-      ((Mesh *)ob->data)->editflag & (ME_EDIT_PAINT_VERT_SEL | ME_EDIT_PAINT_FACE_SEL)) {
+      ((Mesh *)ob->data)->editflag & (ME_EDIT_PAINT_VERT_SEL | ME_EDIT_PAINT_FACE_SEL))
+  {
     return true;
   }
   return false;
@@ -274,7 +276,8 @@ void ED_vgroup_parray_mirror_sync(Object *ob,
 
   /* get an array of all verts, not only selected */
   if (ED_vgroup_parray_alloc(
-          static_cast<ID *>(ob->data), &dvert_array_all, &dvert_tot_all, false) == false) {
+          static_cast<ID *>(ob->data), &dvert_array_all, &dvert_tot_all, false) == false)
+  {
     BLI_assert(0);
     return;
   }
@@ -314,7 +317,8 @@ void ED_vgroup_parray_mirror_assign(Object *ob, MDeformVert **dvert_array, const
 
   /* get an array of all verts, not only selected */
   if (ED_vgroup_parray_alloc(
-          static_cast<ID *>(ob->data), &dvert_array_all, &dvert_tot_all, false) == false) {
+          static_cast<ID *>(ob->data), &dvert_array_all, &dvert_tot_all, false) == false)
+  {
     BLI_assert(0);
     return;
   }
@@ -399,13 +403,15 @@ bool ED_vgroup_array_copy(Object *ob, Object *ob_from)
     ED_vgroup_parray_alloc(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot, false);
 
     if ((dvert_array == nullptr) && (dvert_array_from != nullptr) &&
-        BKE_object_defgroup_data_create(static_cast<ID *>(ob->data))) {
+        BKE_object_defgroup_data_create(static_cast<ID *>(ob->data)))
+    {
       ED_vgroup_parray_alloc(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot, false);
       new_vgroup = true;
     }
 
     if (dvert_tot == 0 || (dvert_tot != dvert_tot_from) || dvert_array_from == nullptr ||
-        dvert_array == nullptr) {
+        dvert_array == nullptr)
+    {
       if (dvert_array) {
         MEM_freeN(dvert_array);
       }
@@ -717,7 +723,7 @@ static const EnumPropertyItem WT_vertex_group_select_item[] = {
 
 const EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(const bContext *C,
                                                                 PointerRNA * /*ptr*/,
-                                                                PropertyRNA *prop,
+                                                                PropertyRNA * /*prop*/,
                                                                 bool *r_free,
                                                                 const uint selection_mask)
 {
@@ -753,12 +759,6 @@ const EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(const bContext *
 
   if (selection_mask & (1 << WT_VGROUP_ALL)) {
     RNA_enum_items_add_value(&item, &totitem, WT_vertex_group_select_item, WT_VGROUP_ALL);
-  }
-
-  /* Set `Deform Bone` as default selection if armature is present. */
-  if (ob) {
-    RNA_def_property_enum_default(
-        prop, BKE_modifiers_is_deformed_by_armature(ob) ? WT_VGROUP_BONE_DEFORM : WT_VGROUP_ALL);
   }
 
   RNA_enum_item_end(&item, &totitem);
@@ -1126,14 +1126,14 @@ static void vgroup_duplicate(Object *ob)
   }
 
   if (!strstr(dg->name, "_copy")) {
-    BLI_snprintf(name, sizeof(name), "%s_copy", dg->name);
+    SNPRINTF(name, "%s_copy", dg->name);
   }
   else {
-    BLI_strncpy(name, dg->name, sizeof(name));
+    STRNCPY(name, dg->name);
   }
 
   cdg = BKE_defgroup_duplicate(dg);
-  BLI_strncpy(cdg->name, name, sizeof(cdg->name));
+  STRNCPY(cdg->name, name);
   BKE_object_defgroup_unique_name(cdg, ob);
 
   BLI_addtail(defbase, cdg);
@@ -1564,9 +1564,6 @@ static void vgroup_smooth_subset(Object *ob,
   BMesh *bm = em ? em->bm : nullptr;
   Mesh *me = em ? nullptr : static_cast<Mesh *>(ob->data);
 
-  MeshElemMap *emap;
-  int *emap_mem;
-
   float *weight_accum_prev;
   float *weight_accum_curr;
 
@@ -1580,15 +1577,16 @@ static void vgroup_smooth_subset(Object *ob,
   ED_vgroup_parray_alloc(static_cast<ID *>(ob->data), &dvert_array, &dvert_tot, false);
   vgroup_subset_weights.fill(0.0f);
 
+  blender::Array<int> vert_to_edge_offsets;
+  blender::Array<int> vert_to_edge_indices;
+  blender::GroupedSpan<int> emap;
   if (bm) {
     BM_mesh_elem_table_ensure(bm, BM_VERT);
     BM_mesh_elem_index_ensure(bm, BM_VERT);
-
-    emap = nullptr;
-    emap_mem = nullptr;
   }
   else {
-    BKE_mesh_vert_edge_map_create(&emap, &emap_mem, me->edges().data(), me->totvert, me->totedge);
+    emap = blender::bke::mesh::build_vert_to_edge_map(
+        me->edges(), me->totvert, vert_to_edge_offsets, vert_to_edge_indices);
   }
 
   weight_accum_prev = static_cast<float *>(
@@ -1603,7 +1601,7 @@ static void vgroup_smooth_subset(Object *ob,
 #define IS_BM_VERT_WRITE(v) (use_select ? (BM_elem_flag_test(v, BM_ELEM_SELECT) != 0) : true)
 
   const bool *hide_vert = me ? (const bool *)CustomData_get_layer_named(
-                                   &me->vdata, CD_PROP_BOOL, ".hide_vert") :
+                                   &me->vert_data, CD_PROP_BOOL, ".hide_vert") :
                                nullptr;
 
 #define IS_ME_VERT_READ(v) (use_hide ? !(hide_vert && hide_vert[v]) : true)
@@ -1634,8 +1632,8 @@ static void vgroup_smooth_subset(Object *ob,
     const blender::Span<int2> edges = me->edges();
     for (int i = 0; i < dvert_tot; i++) {
       if (IS_ME_VERT_WRITE(i)) {
-        for (int j = 0; j < emap[i].count; j++) {
-          const int2 &edge = edges[emap[i].indices[j]];
+        for (int j = 0; j < emap[i].size(); j++) {
+          const int2 &edge = edges[emap[i][j]];
           const int i_other = (edge[0] == i) ? edge[1] : edge[0];
           if (IS_ME_VERT_READ(i_other)) {
             STACK_PUSH(verts_used, i);
@@ -1713,8 +1711,8 @@ static void vgroup_smooth_subset(Object *ob,
           /* checked already */
           BLI_assert(IS_ME_VERT_WRITE(i));
 
-          for (j = 0; j < emap[i].count; j++) {
-            const int2 &edge = edges[emap[i].indices[j]];
+          for (j = 0; j < emap[i].size(); j++) {
+            const int2 &edge = edges[emap[i][j]];
             const int i_other = (edge[0] == i ? edge[1] : edge[0]);
             if (IS_ME_VERT_READ(i_other)) {
               WEIGHT_ACCUMULATE;
@@ -1748,14 +1746,6 @@ static void vgroup_smooth_subset(Object *ob,
   MEM_freeN(weight_accum_curr);
   MEM_freeN(weight_accum_prev);
   MEM_freeN(verts_used);
-
-  if (bm) {
-    /* pass */
-  }
-  else {
-    MEM_freeN(emap);
-    MEM_freeN(emap_mem);
-  }
 
   if (dvert_array) {
     MEM_freeN(dvert_array);
@@ -2030,7 +2020,8 @@ void ED_vgroup_mirror(Object *ob,
   const ListBase *defbase = BKE_object_defgroup_list(ob);
 
   if ((mirror_weights == false && flip_vgroups == false) ||
-      (BLI_findlink(defbase, def_nr) == nullptr)) {
+      (BLI_findlink(defbase, def_nr) == nullptr))
+  {
     return;
   }
 
@@ -2790,7 +2781,7 @@ static int vertex_group_copy_exec(bContext *C, wmOperator * /*op*/)
 void OBJECT_OT_vertex_group_copy(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Copy Vertex Group";
+  ot->name = "Duplicate Vertex Group";
   ot->idname = "OBJECT_OT_vertex_group_copy";
   ot->description = "Make a copy of the active vertex group";
 
@@ -2901,6 +2892,12 @@ void OBJECT_OT_vertex_group_normalize(wmOperatorType *ot)
 static int vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_context(C);
+
+  /* If armature is present, default to `Deform Bones` otherwise `All Groups`. */
+  RNA_enum_set(op->ptr,
+               "group_select_mode",
+               BKE_modifiers_is_deformed_by_armature(ob) ? WT_VGROUP_BONE_DEFORM : WT_VGROUP_ALL);
+
   bool lock_active = RNA_boolean_get(op->ptr, "lock_active");
   eVGroupSelect subset_type = static_cast<eVGroupSelect>(
       RNA_enum_get(op->ptr, "group_select_mode"));
@@ -3577,7 +3574,8 @@ static char *vgroup_init_remap(Object *ob)
 
   name = name_array;
   for (const bDeformGroup *def = static_cast<const bDeformGroup *>(defbase->first); def;
-       def = def->next) {
+       def = def->next)
+  {
     BLI_strncpy(name, def->name, MAX_VGROUP_NAME);
     name += MAX_VGROUP_NAME;
   }

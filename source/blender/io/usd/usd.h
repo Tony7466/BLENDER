@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -50,6 +51,7 @@ struct USDExportParams {
   bool export_textures;
   bool overwrite_textures;
   bool relative_paths;
+  char root_prim_path[1024]; /* FILE_MAX */
 };
 
 struct USDImportParams {
@@ -67,7 +69,7 @@ struct USDImportParams {
   bool import_meshes;
   bool import_volumes;
   bool import_shapes;
-  char prim_path_mask[1024];
+  char *prim_path_mask;
   bool import_subdiv;
   bool import_instance_proxies;
   bool create_collection;
@@ -147,7 +149,6 @@ struct CacheReader *CacheReader_open_usd_object(struct CacheArchiveHandle *handl
 
 void USD_CacheReader_incref(struct CacheReader *reader);
 void USD_CacheReader_free(struct CacheReader *reader);
-void USD_ensure_plugin_path_registered(void);
 #ifdef __cplusplus
 }
 #endif

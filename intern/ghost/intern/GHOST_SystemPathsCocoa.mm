@@ -1,6 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#import <AppKit/NSDocumentController.h>
 #import <Foundation/Foundation.h>
 
 #include "GHOST_Debug.hh"
@@ -24,7 +26,7 @@ static const char *GetApplicationSupportDir(const char *versionstr,
         NSApplicationSupportDirectory, mask, YES);
 
     if ([paths count] == 0) {
-      return NULL;
+      return nullptr;
     }
     const NSString *const basePath = [paths objectAtIndex:0];
 
@@ -81,13 +83,13 @@ const char *GHOST_SystemPathsCocoa::getUserSpecialDir(GHOST_TUserSpecialDirTypes
         GHOST_ASSERT(
             false,
             "GHOST_SystemPathsCocoa::getUserSpecialDir(): Invalid enum value for type parameter");
-        return NULL;
+        return nullptr;
     }
 
     const NSArray *const paths = NSSearchPathForDirectoriesInDomains(
         ns_directory, NSUserDomainMask, YES);
     if ([paths count] == 0) {
-      return NULL;
+      return nullptr;
     }
     const NSString *const basePath = [paths objectAtIndex:0];
 
@@ -104,7 +106,7 @@ const char *GHOST_SystemPathsCocoa::getBinaryDir() const
     const NSString *const basePath = [[NSBundle mainBundle] bundlePath];
 
     if (basePath == nil) {
-      return NULL;
+      return nullptr;
     }
 
     strcpy(tempPath, [basePath cStringUsingEncoding:NSASCIIStringEncoding]);
@@ -112,7 +114,10 @@ const char *GHOST_SystemPathsCocoa::getBinaryDir() const
   return tempPath;
 }
 
-void GHOST_SystemPathsCocoa::addToSystemRecentFiles(const char *filename) const
+void GHOST_SystemPathsCocoa::addToSystemRecentFiles(const char *filepath) const
 {
-  /* TODO: implement for macOS */
+  @autoreleasepool {
+    NSURL *const file_url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:filepath]];
+    [[NSDocumentController sharedDocumentController] noteNewRecentDocumentURL:file_url];
+  }
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -47,9 +48,9 @@ static void extract_lines_adjacency_init(const MeshRenderData *mr,
                                          void *tls_data)
 {
   /* Similar to poly_to_tri_count().
-   * There is always (loop + triangle - 1) edges inside a polygon.
-   * Accumulate for all polys and you get : */
-  uint tess_edge_len = mr->loop_len + mr->tri_len - mr->poly_len;
+   * There is always (loop + triangle - 1) edges inside a face.
+   * Accumulate for all faces and you get : */
+  uint tess_edge_len = mr->loop_len + mr->tri_len - mr->face_len;
 
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(tls_data);
   line_adjacency_data_init(data, mr->vert_len, mr->loop_len, tess_edge_len);
@@ -115,11 +116,12 @@ static void extract_lines_adjacency_iter_looptri_bm(const MeshRenderData * /*mr*
 
 static void extract_lines_adjacency_iter_looptri_mesh(const MeshRenderData *mr,
                                                       const MLoopTri *mlt,
-                                                      const int /*elt_index*/,
+                                                      const int elt_index,
                                                       void *_data)
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mlt->poly];
+  const int face_i = mr->looptri_faces[elt_index];
+  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[face_i];
   if (hidden) {
     return;
   }
@@ -173,7 +175,7 @@ static void extract_lines_adjacency_init_subdiv(const DRWSubdivCache *subdiv_cac
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
 
-  /* For each polygon there is (loop + triangle - 1) edges. Since we only have quads, and a quad
+  /* For each face there is (loop + triangle - 1) edges. Since we only have quads, and a quad
    * is split into 2 triangles, we have (loop + 2 - 1) = (loop + 1) edges for each quad, or in
    * total: (number_of_loops + number_of_quads). */
   const uint tess_len = subdiv_cache->num_subdiv_loops + subdiv_cache->num_subdiv_quads;

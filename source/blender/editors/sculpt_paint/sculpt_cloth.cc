@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -28,7 +29,7 @@
 #include "BKE_context.h"
 #include "BKE_modifier.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -356,7 +357,8 @@ static void do_cloth_brush_build_constraints_task_cb_ex(void *__restrict userdat
       for (int c_i = 0; c_i < tot_indices; c_i++) {
         for (int c_j = 0; c_j < tot_indices; c_j++) {
           if (c_i != c_j && !cloth_brush_sim_has_length_constraint(
-                                data->cloth_sim, build_indices[c_i], build_indices[c_j])) {
+                                data->cloth_sim, build_indices[c_i], build_indices[c_j]))
+          {
             cloth_brush_add_length_constraint(ss,
                                               data->cloth_sim,
                                               node_index,
@@ -670,7 +672,8 @@ static void cloth_brush_solve_collision(Object *object,
 
   for (collider_cache = static_cast<ColliderCache *>(cloth_sim->collider_list->first);
        collider_cache;
-       collider_cache = collider_cache->next) {
+       collider_cache = collider_cache->next)
+  {
     float ray_start[3], ray_normal[3];
     float pos_world_space[3], prev_pos_world_space[3];
 
@@ -974,7 +977,8 @@ static void cloth_brush_apply_brush_foces(Sculpt *sd, Object *ob, Span<PBVHNode 
   }
 
   if (brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR ||
-      brush->cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_PLANE) {
+      brush->cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_PLANE)
+  {
     SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
 
     /* Initialize stroke local space matrix. */
@@ -1314,13 +1318,13 @@ void SCULPT_cloth_plane_falloff_preview_draw(const uint gpuattr,
 
 /* Cloth Filter. */
 
-typedef enum eSculpClothFilterType {
+enum eSculptClothFilterType {
   CLOTH_FILTER_GRAVITY,
   CLOTH_FILTER_INFLATE,
   CLOTH_FILTER_EXPAND,
   CLOTH_FILTER_PINCH,
   CLOTH_FILTER_SCALE,
-} eSculptClothFilterType;
+};
 
 static EnumPropertyItem prop_cloth_filter_type[] = {
     {CLOTH_FILTER_GRAVITY, "GRAVITY", 0, "Gravity", "Applies gravity to the simulation"},
@@ -1354,11 +1358,11 @@ static EnumPropertyItem prop_cloth_filter_orientation_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-typedef enum eClothFilterForceAxis {
+enum eClothFilterForceAxis {
   CLOTH_FILTER_FORCE_X = 1 << 0,
   CLOTH_FILTER_FORCE_Y = 1 << 1,
   CLOTH_FILTER_FORCE_Z = 1 << 2,
-} eClothFilterForceAxis;
+};
 
 static EnumPropertyItem prop_cloth_filter_force_axis_items[] = {
     {CLOTH_FILTER_FORCE_X, "X", 0, "X", "Apply force in the X axis"},

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -23,8 +25,8 @@
 #include "RNA_access.h"
 
 /* local module include */
-#include "transform.h"
-#include "transform_gizmo.h"
+#include "transform.hh"
+#include "transform_gizmo.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Transform Shear Gizmo
@@ -74,7 +76,7 @@ static void WIDGETGROUP_xform_shear_setup(const bContext * /*C*/, wmGizmoGroup *
       interp_v3_v3v3(gz->color, axis_color[i_ortho_a], axis_color[i_ortho_b], 0.75f);
       gz->color[3] = 0.5f;
       PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_shear, nullptr);
-      RNA_boolean_set(ptr, "release_confirm", 1);
+      RNA_boolean_set(ptr, "release_confirm", true);
       xgzgroup->gizmo[i][j] = gz;
     }
   }
@@ -87,7 +89,7 @@ static void WIDGETGROUP_xform_shear_setup(const bContext * /*C*/, wmGizmoGroup *
     gz->color[3] = 0.5f;
     WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_OFFSET_SCALE, true);
     PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_shear, nullptr);
-    RNA_boolean_set(ptr, "release_confirm", 1);
+    RNA_boolean_set(ptr, "release_confirm", true);
     xgzgroup->gizmo_view[i] = gz;
 
     /* Unlike the other gizmos, this never changes so can be set on setup. */
@@ -120,7 +122,7 @@ static void WIDGETGROUP_xform_shear_refresh(const bContext *C, wmGizmoGroup *gzg
   TransformCalcParams calc_params{};
   calc_params.use_local_axis = false;
   calc_params.orientation_index = orient_index + 1;
-  if (ED_transform_calc_gizmo_stats(C, &calc_params, &tbounds) == 0) {
+  if (ED_transform_calc_gizmo_stats(C, &calc_params, &tbounds, rv3d) == 0) {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 2; j++) {
         wmGizmo *gz = xgzgroup->gizmo[i][j];

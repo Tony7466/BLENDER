@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -12,6 +13,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_ghash.h"
@@ -49,7 +51,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
@@ -68,7 +70,7 @@
 #include "ED_sculpt.h"
 #include "ED_view3d.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -319,7 +321,7 @@ float (*SCULPT_mesh_deformed_positions_get(SculptSession *ss))[3]
       if (ss->shapekey_active || ss->deform_modifiers_active) {
         return BKE_pbvh_get_vert_positions(ss->pbvh);
       }
-      return ss->vert_positions;
+      return reinterpret_cast<float(*)[3]>(ss->vert_positions.data());
     case PBVH_BMESH:
     case PBVH_GRIDS:
       return nullptr;
@@ -370,24 +372,6 @@ int SCULPT_active_face_set_get(SculptSession *ss)
   return SCULPT_FACE_SET_NONE;
 }
 
-void SCULPT_vertex_visible_set(SculptSession *ss, PBVHVertRef vertex, bool visible)
-{
-  switch (BKE_pbvh_type(ss->pbvh)) {
-    case PBVH_FACES: {
-      bool *hide_vert = BKE_pbvh_get_vert_hide_for_write(ss->pbvh);
-      hide_vert[vertex.i] = visible;
-      break;
-    }
-    case PBVH_BMESH: {
-      BMVert *v = (BMVert *)vertex.i;
-      BM_elem_flag_set(v, BM_ELEM_HIDDEN, !visible);
-      break;
-    }
-    case PBVH_GRIDS:
-      break;
-  }
-}
-
 bool SCULPT_vertex_visible_get(SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
@@ -432,15 +416,10 @@ void SCULPT_face_set_visibility_set(SculptSession *ss, int face_set, bool visibl
 void SCULPT_face_visibility_all_invert(SculptSession *ss)
 {
   SCULPT_topology_islands_invalidate(ss);
-
-  BLI_assert(ss->face_sets != nullptr);
-  BLI_assert(ss->hide_poly != nullptr);
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
     case PBVH_GRIDS:
-      for (int i = 0; i < ss->totfaces; i++) {
-        ss->hide_poly[i] = !ss->hide_poly[i];
-      }
+      blender::array_utils::invert_booleans({ss->hide_poly, ss->totfaces});
       break;
     case PBVH_BMESH: {
       BMIter iter;
@@ -461,8 +440,7 @@ void SCULPT_face_visibility_all_set(SculptSession *ss, bool visible)
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
     case PBVH_GRIDS:
-      BLI_assert(ss->hide_poly != nullptr);
-      memset(ss->hide_poly, !visible, sizeof(bool) * ss->totfaces);
+      blender::MutableSpan(ss->hide_poly, ss->totfaces).fill(!visible);
       break;
     case PBVH_BMESH: {
       BMIter iter;
@@ -483,9 +461,8 @@ bool SCULPT_vertex_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex)
       if (!ss->hide_poly) {
         return true;
       }
-      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
-      for (int j = 0; j < ss->pmap[vertex.i].count; j++) {
-        if (!ss->hide_poly[vert_map->indices[j]]) {
+      for (const int face : ss->pmap[vertex.i]) {
+        if (!ss->hide_poly[face]) {
           return true;
         }
       }
@@ -506,9 +483,8 @@ bool SCULPT_vertex_all_faces_visible_get(const SculptSession *ss, PBVHVertRef ve
       if (!ss->hide_poly) {
         return true;
       }
-      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
-      for (int j = 0; j < vert_map->count; j++) {
-        if (ss->hide_poly[vert_map->indices[j]]) {
+      for (const int face : ss->pmap[vertex.i]) {
+        if (ss->hide_poly[face]) {
           return false;
         }
       }
@@ -556,14 +532,12 @@ void SCULPT_vertex_face_set_set(SculptSession *ss, PBVHVertRef vertex, int face_
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
       BLI_assert(ss->face_sets != nullptr);
-      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
-      for (int j = 0; j < vert_map->count; j++) {
-        const int poly_index = vert_map->indices[j];
-        if (ss->hide_poly && ss->hide_poly[poly_index]) {
+      for (const int face_index : ss->pmap[vertex.i]) {
+        if (ss->hide_poly && ss->hide_poly[face_index]) {
           /* Skip hidden faces connected to the vertex. */
           continue;
         }
-        ss->face_sets[poly_index] = face_set;
+        ss->face_sets[face_index] = face_set;
       }
       break;
     }
@@ -591,11 +565,10 @@ int SCULPT_vertex_face_set_get(SculptSession *ss, PBVHVertRef vertex)
       if (!ss->face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
-      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
       int face_set = 0;
-      for (int i = 0; i < vert_map->count; i++) {
-        if (ss->face_sets[vert_map->indices[i]] > face_set) {
-          face_set = abs(ss->face_sets[vert_map->indices[i]]);
+      for (const int face_index : ss->pmap[vertex.i]) {
+        if (ss->face_sets[face_index] > face_set) {
+          face_set = ss->face_sets[face_index];
         }
       }
       return face_set;
@@ -622,9 +595,8 @@ bool SCULPT_vertex_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_
       if (!ss->face_sets) {
         return face_set == SCULPT_FACE_SET_NONE;
       }
-      const MeshElemMap *vert_map = &ss->pmap[vertex.i];
-      for (int i = 0; i < vert_map->count; i++) {
-        if (ss->face_sets[vert_map->indices[i]] == face_set) {
+      for (const int face_index : ss->pmap[vertex.i]) {
+        if (ss->face_sets[face_index] == face_set) {
           return true;
         }
       }
@@ -656,14 +628,14 @@ void SCULPT_visibility_sync_all_from_faces(Object *ob)
     case PBVH_FACES: {
       /* We may have adjusted the ".hide_poly" attribute, now make the hide status attributes for
        * vertices and edges consistent. */
-      BKE_mesh_flush_hidden_from_polys(mesh);
+      BKE_mesh_flush_hidden_from_faces(mesh);
       BKE_pbvh_update_hide_attributes_from_mesh(ss->pbvh);
       break;
     }
     case PBVH_GRIDS: {
       /* In addition to making the hide status of the base mesh consistent, we also have to
        * propagate the status to the Multires grids. */
-      BKE_mesh_flush_hidden_from_polys(mesh);
+      BKE_mesh_flush_hidden_from_faces(mesh);
       BKE_sculpt_sync_face_visibility_to_grids(mesh, ss->subdiv_ccg);
       break;
     }
@@ -702,14 +674,13 @@ static bool sculpt_check_unique_face_set_in_base_mesh(SculptSession *ss, int ind
   if (!ss->face_sets) {
     return true;
   }
-  const MeshElemMap *vert_map = &ss->pmap[index];
   int face_set = -1;
-  for (int i = 0; i < vert_map->count; i++) {
+  for (const int face_index : ss->pmap[index]) {
     if (face_set == -1) {
-      face_set = ss->face_sets[vert_map->indices[i]];
+      face_set = ss->face_sets[face_index];
     }
     else {
-      if (ss->face_sets[vert_map->indices[i]] != face_set) {
+      if (ss->face_sets[face_index] != face_set) {
         return false;
       }
     }
@@ -723,19 +694,19 @@ static bool sculpt_check_unique_face_set_in_base_mesh(SculptSession *ss, int ind
  */
 static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(SculptSession *ss, int v1, int v2)
 {
-  const MeshElemMap *vert_map = &ss->pmap[v1];
+  const Span<int> vert_map = ss->pmap[v1];
   int p1 = -1, p2 = -1;
-  for (int i = 0; i < vert_map->count; i++) {
-    const int poly_i = vert_map->indices[i];
-    for (const int corner : ss->polys[poly_i]) {
+  for (int i = 0; i < vert_map.size(); i++) {
+    const int face_i = vert_map[i];
+    for (const int corner : ss->faces[face_i]) {
       if (ss->corner_verts[corner] == v2) {
         if (p1 == -1) {
-          p1 = vert_map->indices[i];
+          p1 = vert_map[i];
           break;
         }
 
         if (p2 == -1) {
-          p2 = vert_map->indices[i];
+          p2 = vert_map[i];
           break;
         }
       }
@@ -743,7 +714,7 @@ static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(SculptSession *ss
   }
 
   if (p1 != -1 && p2 != -1) {
-    return abs(ss->face_sets[p1]) == (ss->face_sets[p2]);
+    return ss->face_sets[p1] == ss->face_sets[p2];
   }
   return true;
 }
@@ -769,7 +740,7 @@ bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex)
       coord.y = vertex_index / key->grid_size;
       int v1, v2;
       const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          ss->subdiv_ccg, &coord, ss->corner_verts, ss->polys, &v1, &v2);
+          ss->subdiv_ccg, &coord, ss->corner_verts, ss->faces, &v1, &v2);
       switch (adjacency) {
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return sculpt_check_unique_face_set_in_base_mesh(ss, v1);
@@ -876,21 +847,20 @@ static void sculpt_vertex_neighbors_get_faces(SculptSession *ss,
                                               PBVHVertRef vertex,
                                               SculptVertexNeighborIter *iter)
 {
-  const MeshElemMap *vert_map = &ss->pmap[vertex.i];
   iter->size = 0;
   iter->num_duplicates = 0;
   iter->capacity = SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY;
   iter->neighbors = iter->neighbors_fixed;
   iter->neighbor_indices = iter->neighbor_indices_fixed;
 
-  for (int i = 0; i < vert_map->count; i++) {
-    if (ss->hide_poly && ss->hide_poly[vert_map->indices[i]]) {
+  for (const int face_i : ss->pmap[vertex.i]) {
+    if (ss->hide_poly && ss->hide_poly[face_i]) {
       /* Skip connectivity from hidden faces. */
       continue;
     }
-    const blender::IndexRange poly = ss->polys[vert_map->indices[i]];
-    const blender::int2 f_adj_v = blender::bke::mesh::poly_find_adjecent_verts(
-        poly, ss->corner_verts, vertex.i);
+    const blender::IndexRange face = ss->faces[face_i];
+    const blender::int2 f_adj_v = blender::bke::mesh::face_find_adjecent_verts(
+        face, ss->corner_verts, vertex.i);
     for (int j = 0; j < 2; j++) {
       if (f_adj_v[j] != vertex.i) {
         sculpt_vertex_neighbor_add(iter, BKE_pbvh_make_vref(f_adj_v[j]), f_adj_v[j]);
@@ -1003,7 +973,7 @@ bool SCULPT_vertex_is_boundary(const SculptSession *ss, const PBVHVertRef vertex
       coord.y = vertex_index / key->grid_size;
       int v1, v2;
       const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          ss->subdiv_ccg, &coord, ss->corner_verts, ss->polys, &v1, &v2);
+          ss->subdiv_ccg, &coord, ss->corner_verts, ss->faces, &v1, &v2);
       switch (adjacency) {
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return sculpt_check_boundary_vertex_in_base_mesh(ss, v1);
@@ -1074,7 +1044,8 @@ static void do_nearest_vertex_get_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
     float distance_squared = len_squared_v3v3(vd.co, data->nearest_vertex_search_co);
     if (distance_squared < nvtd->nearest_vertex_distance_squared &&
-        distance_squared < data->max_distance_squared) {
+        distance_squared < data->max_distance_squared)
+    {
       nvtd->nearest_vertex = vd.vertex;
       nvtd->nearest_vertex_distance_squared = distance_squared;
     }
@@ -1814,7 +1785,8 @@ bool SCULPT_brush_test_circle_sq(SculptBrushTest *test, const float co[3])
 bool SCULPT_brush_test_cube(SculptBrushTest *test,
                             const float co[3],
                             const float local[4][4],
-                            const float roundness)
+                            const float roundness,
+                            const float /*tip_scale_x*/)
 {
   float side = 1.0f;
   float local_co[3];
@@ -2049,7 +2021,7 @@ static void calc_area_normal_and_center_task_cb(void *__restrict userdata,
   bool use_original = false;
   bool normal_test_r, area_test_r;
 
-  if (ss->cache && ss->cache->original) {
+  if (ss->cache && !ss->cache->accum) {
     unode = SCULPT_undo_push_node(data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
     use_original = (unode->co || unode->bm_entry);
   }
@@ -2075,7 +2047,8 @@ static void calc_area_normal_and_center_task_cb(void *__restrict userdata,
     /* Layer brush produces artifacts with normal and area radius */
     /* Enable area radius control only on Scrape for now */
     if (ELEM(data->brush->sculpt_tool, SCULPT_TOOL_SCRAPE, SCULPT_TOOL_FILL) &&
-        data->brush->area_radius_factor > 0.0f) {
+        data->brush->area_radius_factor > 0.0f)
+    {
       test_radius *= data->brush->area_radius_factor;
       if (ss->cache && data->brush->flag2 & BRUSH_AREA_RADIUS_PRESSURE) {
         test_radius *= ss->cache->pressure;
@@ -2707,7 +2680,7 @@ void SCULPT_brush_strength_color(SculptSession *ss,
 void SCULPT_calc_vertex_displacement(SculptSession *ss,
                                      const Brush *brush,
                                      float rgba[3],
-                                     float out_offset[3])
+                                     float r_offset[3])
 {
   mul_v3_fl(rgba, ss->cache->bstrength);
   /* Handle brush inversion */
@@ -2728,7 +2701,7 @@ void SCULPT_calc_vertex_displacement(SculptSession *ss,
   if (ss->cache->radial_symmetry_pass) {
     mul_m4_v3(ss->cache->symm_rot_mat, rgba);
   }
-  flip_v3_v3(out_offset, rgba, ss->cache->mirror_symmetry_pass);
+  flip_v3_v3(r_offset, rgba, ss->cache->mirror_symmetry_pass);
 }
 
 bool SCULPT_search_sphere_cb(PBVHNode *node, void *data_v)
@@ -2953,7 +2926,8 @@ static void update_sculpt_normal(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
       !(brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK && cache->normal_weight > 0.0f);
 
   if (cache->mirror_symmetry_pass == 0 && cache->radial_symmetry_pass == 0 &&
-      (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(cache) || update_normal)) {
+      (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(cache) || update_normal))
+  {
     calc_sculpt_normal(sd, ob, nodes, cache->sculpt_normal);
     if (brush->falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
       project_plane_v3_v3v3(cache->sculpt_normal, cache->sculpt_normal, cache->view_normal);
@@ -2987,7 +2961,9 @@ static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
 static void calc_brush_local_mat(const float rotation,
                                  Object *ob,
                                  float local_mat[4][4],
-                                 float local_mat_inv[4][4])
+                                 float local_mat_inv[4][4],
+                                 const float *co,
+                                 const float *no)
 {
   const StrokeCache *cache = ob->sculpt->cache;
   float tmat[4][4];
@@ -2995,6 +2971,13 @@ static void calc_brush_local_mat(const float rotation,
   float scale[4][4];
   float angle, v[3];
   float up[3];
+
+  if (!co) {
+    co = cache->location;
+  }
+  if (!no) {
+    no = cache->sculpt_normal;
+  }
 
   /* Ensure `ob->world_to_object` is up to date. */
   invert_m4_m4(ob->world_to_object, ob->object_to_world);
@@ -3006,27 +2989,30 @@ static void calc_brush_local_mat(const float rotation,
   mat[3][3] = 1.0f;
 
   /* Get view's up vector in object-space. */
-  calc_local_y(cache->vc, cache->location, up);
+  calc_local_y(cache->vc, co, up);
 
   /* Calculate the X axis of the local matrix. */
-  cross_v3_v3v3(v, up, cache->sculpt_normal);
+  cross_v3_v3v3(v, up, no);
   /* Apply rotation (user angle, rake, etc.) to X axis. */
   angle = rotation - cache->special_rotation;
-  rotate_v3_v3v3fl(mat[0], v, cache->sculpt_normal, angle);
+  rotate_v3_v3v3fl(mat[0], v, no, angle);
 
   /* Get other axes. */
-  cross_v3_v3v3(mat[1], cache->sculpt_normal, mat[0]);
-  copy_v3_v3(mat[2], cache->sculpt_normal);
+  cross_v3_v3v3(mat[1], no, mat[0]);
+  copy_v3_v3(mat[2], no);
 
   /* Set location. */
-  copy_v3_v3(mat[3], cache->location);
+  copy_v3_v3(mat[3], co);
 
   /* Scale by brush radius. */
   float radius = cache->radius;
 
   /* Square tips should scale by square root of 2. */
   if (BKE_brush_has_cube_tip(cache->brush, PAINT_MODE_SCULPT)) {
-    radius += (radius * M_SQRT2 - radius) * (1.0f - cache->brush->tip_roundness);
+    radius += (radius / M_SQRT2 - radius) * cache->brush->tip_roundness;
+  }
+  else {
+    radius /= M_SQRT2;
   }
 
   normalize_m4(mat);
@@ -3069,7 +3055,8 @@ static void update_brush_local_mat(Sculpt *sd, Object *ob)
   if (cache->mirror_symmetry_pass == 0 && cache->radial_symmetry_pass == 0) {
     const Brush *brush = BKE_paint_brush(&sd->paint);
     const MTex *mask_tex = BKE_brush_mask_texture_get(brush, OB_MODE_SCULPT);
-    calc_brush_local_mat(mask_tex->rot, ob, cache->brush_local_mat, cache->brush_local_mat_inv);
+    calc_brush_local_mat(
+        mask_tex->rot, ob, cache->brush_local_mat, cache->brush_local_mat_inv, nullptr, nullptr);
   }
 }
 
@@ -3203,7 +3190,8 @@ void SCULPT_calc_brush_plane(
 
   if (SCULPT_stroke_is_main_symmetry_pass(ss->cache) &&
       (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) ||
-       !(brush->flag & BRUSH_ORIGINAL_PLANE) || !(brush->flag & BRUSH_ORIGINAL_NORMAL))) {
+       !(brush->flag & BRUSH_ORIGINAL_PLANE) || !(brush->flag & BRUSH_ORIGINAL_NORMAL)))
+  {
     switch (brush->sculpt_plane) {
       case SCULPT_DISP_DIR_VIEW:
         copy_v3_v3(r_area_no, ss->cache->true_view_normal);
@@ -3241,7 +3229,8 @@ void SCULPT_calc_brush_plane(
 
     /* For area normal. */
     if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) &&
-        (brush->flag & BRUSH_ORIGINAL_NORMAL)) {
+        (brush->flag & BRUSH_ORIGINAL_NORMAL))
+    {
       copy_v3_v3(r_area_no, ss->cache->sculpt_normal);
     }
     else {
@@ -3250,7 +3239,8 @@ void SCULPT_calc_brush_plane(
 
     /* For flatten center. */
     if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) &&
-        (brush->flag & BRUSH_ORIGINAL_PLANE)) {
+        (brush->flag & BRUSH_ORIGINAL_PLANE))
+    {
       copy_v3_v3(r_area_co, ss->cache->last_center);
     }
     else {
@@ -3392,11 +3382,11 @@ void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const float (*vertCos)[3])
 {
   Mesh *me = (Mesh *)ob->data;
   float(*ofs)[3] = nullptr;
-  int a;
+  int a, currkey_i;
   const int kb_act_idx = ob->shapenr - 1;
 
   /* For relative keys editing of base should update other keys. */
-  if (BKE_keyblock_is_basis(me->key, kb_act_idx)) {
+  if (bool *dependent = BKE_keyblock_get_dependent_keys(me->key, kb_act_idx)) {
     ofs = BKE_keyblock_convert_to_vertcos(ob, kb);
 
     /* Calculate key coord offsets (from previous location). */
@@ -3405,13 +3395,14 @@ void SCULPT_vertcos_to_key(Object *ob, KeyBlock *kb, const float (*vertCos)[3])
     }
 
     /* Apply offsets on other keys. */
-    LISTBASE_FOREACH (KeyBlock *, currkey, &me->key->block) {
-      if ((currkey != kb) && (currkey->relative == kb_act_idx)) {
+    LISTBASE_FOREACH_INDEX (KeyBlock *, currkey, &me->key->block, currkey_i) {
+      if ((currkey != kb) && dependent[currkey_i]) {
         BKE_keyblock_update_from_offset(ob, currkey, ofs);
       }
     }
 
     MEM_freeN(ofs);
+    MEM_freeN(dependent);
   }
 
   /* Modifying of basis key should update mesh. */
@@ -3436,7 +3427,7 @@ static void sculpt_topology_update(Sculpt *sd,
 
   /* Build a list of all nodes that are potentially within the brush's area of influence. */
   const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true :
-                                                                             ss->cache->original;
+                                                                             !ss->cache->accum;
   const float radius_scale = 1.25f;
   Vector<PBVHNode *> nodes = sculpt_pbvh_gather_generic(ob, sd, brush, use_original, radius_scale);
 
@@ -3547,7 +3538,7 @@ static void do_brush_action(Sculpt *sd,
   }
 
   const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true :
-                                                                             ss->cache->original;
+                                                                             !ss->cache->accum;
   const bool use_pixels = sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob);
 
   if (sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob)) {
@@ -3590,7 +3581,8 @@ static void do_brush_action(Sculpt *sd,
   /* It also assigns the paint_face_set here as it needs to be done regardless of the stroke type
    * and the number of nodes under the brush influence. */
   if (brush->sculpt_tool == SCULPT_TOOL_DRAW_FACE_SETS &&
-      SCULPT_stroke_is_first_brush_step(ss->cache) && !ss->cache->alt_smooth) {
+      SCULPT_stroke_is_first_brush_step(ss->cache) && !ss->cache->alt_smooth)
+  {
     if (ss->cache->invert) {
       /* When inverting the brush, pick the paint face mask ID from the mesh. */
       ss->cache->paint_face_set = SCULPT_active_face_set_get(ss);
@@ -3604,7 +3596,8 @@ static void do_brush_action(Sculpt *sd,
   /* For anchored brushes with spherical falloff, we start off with zero radius, thus we have no
    * PBVH nodes on the first brush step. */
   if (!nodes.is_empty() ||
-      ((brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) && (brush->flag & BRUSH_ANCHORED))) {
+      ((brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) && (brush->flag & BRUSH_ANCHORED)))
+  {
     if (SCULPT_stroke_is_first_brush_step(ss->cache)) {
       /* Initialize auto-masking cache. */
       if (SCULPT_is_automasking_enabled(sd, ss, brush)) {
@@ -3614,7 +3607,8 @@ static void do_brush_action(Sculpt *sd,
       }
       /* Initialize surface smooth cache. */
       if ((brush->sculpt_tool == SCULPT_TOOL_SMOOTH) &&
-          (brush->smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE)) {
+          (brush->smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE))
+      {
         BLI_assert(ss->cache->surface_smooth_laplacian_disp == nullptr);
         ss->cache->surface_smooth_laplacian_disp = static_cast<float(*)[3]>(
             MEM_callocN(sizeof(float[3]) * SCULPT_vertex_count_get(ss), "HC smooth laplacian b"));
@@ -3661,7 +3655,10 @@ static void do_brush_action(Sculpt *sd,
         sd, ob, nodes, ss->cache->cloth_sim, ss->cache->location, FLT_MAX);
   }
 
-  bool invert = ss->cache->pen_flip || ss->cache->invert || brush->flag & BRUSH_DIR_IN;
+  bool invert = ss->cache->pen_flip || ss->cache->invert;
+  if (brush->flag & BRUSH_DIR_IN) {
+    invert = !invert;
+  }
 
   /* Apply one type of brush action. */
   switch (brush->sculpt_tool) {
@@ -3776,7 +3773,8 @@ static void do_brush_action(Sculpt *sd,
   }
 
   if (!ELEM(brush->sculpt_tool, SCULPT_TOOL_SMOOTH, SCULPT_TOOL_MASK) &&
-      brush->autosmooth_factor > 0) {
+      brush->autosmooth_factor > 0)
+  {
     if (brush->flag & BRUSH_INVERSE_SMOOTH_PRESSURE) {
       SCULPT_smooth(sd, ob, nodes, brush->autosmooth_factor * (1.0f - ss->cache->pressure), false);
     }
@@ -3790,16 +3788,17 @@ static void do_brush_action(Sculpt *sd,
   }
 
   if (!SCULPT_tool_can_reuse_automask(brush->sculpt_tool) ||
-      (ss->cache->supports_gravity && sd->gravity_factor > 0.0f)) {
+      (ss->cache->supports_gravity && sd->gravity_factor > 0.0f))
+  {
     /* Clear cavity mask cache. */
     ss->last_automasking_settings_hash = 0;
   }
 
   /* The cloth brush adds the gravity as a regular force and it is processed in the solver. */
-  if (ss->cache->supports_gravity && !ELEM(brush->sculpt_tool,
-                                           SCULPT_TOOL_CLOTH,
-                                           SCULPT_TOOL_DRAW_FACE_SETS,
-                                           SCULPT_TOOL_BOUNDARY)) {
+  if (ss->cache->supports_gravity &&
+      !ELEM(
+          brush->sculpt_tool, SCULPT_TOOL_CLOTH, SCULPT_TOOL_DRAW_FACE_SETS, SCULPT_TOOL_BOUNDARY))
+  {
     do_gravity(sd, ob, nodes, sd->gravity_factor);
   }
 
@@ -4312,7 +4311,6 @@ void SCULPT_cache_free(StrokeCache *cache)
   MEM_SAFE_FREE(cache->detail_directions);
   MEM_SAFE_FREE(cache->prev_displacement);
   MEM_SAFE_FREE(cache->limit_surface_co);
-  MEM_SAFE_FREE(cache->prev_colors_vpaint);
 
   if (cache->pose_ik_chain) {
     SCULPT_pose_ik_chain_free(cache->pose_ik_chain);
@@ -4328,7 +4326,7 @@ void SCULPT_cache_free(StrokeCache *cache)
     SCULPT_cloth_simulation_free(cache->cloth_sim);
   }
 
-  MEM_freeN(cache);
+  MEM_delete(cache);
 }
 
 /* Initialize mirror modifier clipping. */
@@ -4381,15 +4379,14 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
                 SCULPT_TOOL_SLIDE_RELAX,
                 SCULPT_TOOL_DRAW_FACE_SETS,
                 SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR)) {
+                SCULPT_TOOL_SMEAR))
+  {
     /* Do nothing, this tool has its own smooth mode. */
   }
   else {
     int cur_brush_size = BKE_brush_size_get(scene, brush);
 
-    BLI_strncpy(cache->saved_active_brush_name,
-                brush->id.name + 2,
-                sizeof(cache->saved_active_brush_name));
+    STRNCPY(cache->saved_active_brush_name, brush->id.name + 2);
 
     /* Switch to the smooth brush. */
     brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);
@@ -4415,7 +4412,8 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
                 SCULPT_TOOL_SLIDE_RELAX,
                 SCULPT_TOOL_DRAW_FACE_SETS,
                 SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR)) {
+                SCULPT_TOOL_SMEAR))
+  {
     /* Do nothing. */
   }
   else {
@@ -4432,8 +4430,7 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
 static void sculpt_update_cache_invariants(
     bContext *C, Sculpt *sd, SculptSession *ss, wmOperator *op, const float mval[2])
 {
-  StrokeCache *cache = static_cast<StrokeCache *>(
-      MEM_callocN(sizeof(StrokeCache), "stroke cache"));
+  StrokeCache *cache = MEM_new<StrokeCache>(__func__);
   ToolSettings *tool_settings = CTX_data_tool_settings(C);
   UnifiedPaintSettings *ups = &tool_settings->unified_paint_settings;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -4546,26 +4543,24 @@ static void sculpt_update_cache_invariants(
     normalize_v3(cache->true_gravity_direction);
   }
 
+  cache->accum = true;
+
   /* Make copies of the mesh vertex locations and normals for some tools. */
   if (brush->flag & BRUSH_ANCHORED) {
-    cache->original = true;
-  }
-
-  if (SCULPT_automasking_needs_original(sd, brush)) {
-    cache->original = true;
+    cache->accum = false;
   }
 
   /* Draw sharp does not need the original coordinates to produce the accumulate effect, so it
    * should work the opposite way. */
   if (brush->sculpt_tool == SCULPT_TOOL_DRAW_SHARP) {
-    cache->original = true;
+    cache->accum = false;
   }
 
   if (SCULPT_TOOL_HAS_ACCUMULATE(brush->sculpt_tool)) {
     if (!(brush->flag & BRUSH_ACCUMULATE)) {
-      cache->original = true;
+      cache->accum = false;
       if (brush->sculpt_tool == SCULPT_TOOL_DRAW_SHARP) {
-        cache->original = false;
+        cache->accum = true;
       }
     }
   }
@@ -4573,8 +4568,9 @@ static void sculpt_update_cache_invariants(
   /* Original coordinates require the sculpt undo system, which isn't used
    * for image brushes. It's also not necessary, just disable it. */
   if (brush && brush->sculpt_tool == SCULPT_TOOL_PAINT &&
-      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob)) {
-    cache->original = false;
+      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob))
+  {
+    cache->accum = true;
   }
 
   cache->first_time = true;
@@ -4616,7 +4612,8 @@ static bool sculpt_needs_delta_from_anchored_origin(Brush *brush)
            SCULPT_TOOL_POSE,
            SCULPT_TOOL_BOUNDARY,
            SCULPT_TOOL_THUMB,
-           SCULPT_TOOL_ELASTIC_DEFORM)) {
+           SCULPT_TOOL_ELASTIC_DEFORM))
+  {
     return true;
   }
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH &&
@@ -4667,7 +4664,8 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
             SCULPT_TOOL_BOUNDARY,
             SCULPT_TOOL_SMEAR,
             SCULPT_TOOL_THUMB) &&
-      !sculpt_brush_use_topology_rake(ss, brush)) {
+      !sculpt_brush_use_topology_rake(ss, brush))
+  {
     return;
   }
   float grab_location[3], imat[4][4], delta[3], loc[3];
@@ -4683,7 +4681,8 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
   }
   else if (tool == SCULPT_TOOL_SNAKE_HOOK ||
            (tool == SCULPT_TOOL_CLOTH &&
-            brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_SNAKE_HOOK)) {
+            brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_SNAKE_HOOK))
+  {
     add_v3_v3(cache->true_location, cache->grab_delta);
   }
 
@@ -4855,7 +4854,8 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
 
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) ||
       !((brush->flag & BRUSH_ANCHORED) || (brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) ||
-        (brush->sculpt_tool == SCULPT_TOOL_ROTATE) || SCULPT_is_cloth_deform_brush(brush))) {
+        (brush->sculpt_tool == SCULPT_TOOL_ROTATE) || SCULPT_is_cloth_deform_brush(brush)))
+  {
     RNA_float_get_array(ptr, "location", cache->true_location);
   }
 
@@ -4900,8 +4900,8 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
     }
   }
 
-  if (BKE_brush_use_size_pressure(brush) &&
-      paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT)) {
+  if (BKE_brush_use_size_pressure(brush) && paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT))
+  {
     cache->radius = sculpt_brush_dynamic_size_get(brush, cache, cache->initial_radius);
     cache->dyntopo_pixel_radius = sculpt_brush_dynamic_size_get(
         brush, cache, ups->initial_pixel_radius);
@@ -4980,7 +4980,8 @@ void SCULPT_stroke_modifiers_check(const bContext *C, Object *ob, const Brush *b
 
   bool need_pmap = sculpt_needs_connectivity_info(sd, brush, ss, 0);
   if (ss->shapekey_active || ss->deform_modifiers_active ||
-      (!BKE_sculptsession_use_pbvh_draw(ob, rv3d) && need_pmap)) {
+      (!BKE_sculptsession_use_pbvh_draw(ob, rv3d) && need_pmap))
+  {
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
     BKE_sculpt_update_object_for_edit(
         depsgraph, ob, need_pmap, false, SCULPT_tool_is_paint(brush->sculpt_tool));
@@ -5018,7 +5019,8 @@ static void sculpt_raycast_cb(PBVHNode *node, void *data_v, float *tmin)
                             &srd->depth,
                             &srd->active_vertex,
                             &srd->active_face_grid_index,
-                            srd->face_normal)) {
+                            srd->face_normal))
+  {
     srd->hit = true;
     *tmin = srd->depth;
   }
@@ -5052,7 +5054,8 @@ static void sculpt_find_nearest_to_ray_cb(PBVHNode *node, void *data_v, float *t
                                         srd->ray_start,
                                         srd->ray_normal,
                                         &srd->depth,
-                                        &srd->dist_sq_to_ray)) {
+                                        &srd->dist_sq_to_ray))
+  {
     srd->hit = true;
     *tmin = srd->dist_sq_to_ray;
   }
@@ -5068,7 +5071,7 @@ float SCULPT_raycast_init(ViewContext *vc,
   float obimat[4][4];
   float dist;
   Object *ob = vc->obact;
-  RegionView3D *rv3d = static_cast<RegionView3D *>(vc->region->regiondata);
+  RegionView3D *rv3d = vc->rv3d;
   View3D *v3d = vc->v3d;
 
   /* TODO: what if the segment is totally clipped? (return == 0). */
@@ -5082,14 +5085,19 @@ float SCULPT_raycast_init(ViewContext *vc,
   sub_v3_v3v3(ray_normal, ray_end, ray_start);
   dist = normalize_v3(ray_normal);
 
-  if ((rv3d->is_persp == false) &&
-      /* If the ray is clipped, don't adjust its start/end. */
-      !RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
-    BKE_pbvh_raycast_project_ray_root(ob->sculpt->pbvh, original, ray_start, ray_end, ray_normal);
+  /* If the ray is clipped, don't adjust its start/end. */
+  if ((rv3d->is_persp == false) && !RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
+    /* Get the view origin without the addition
+     * of -ray_normal * clip_start that
+     * ED_view3d_win_to_segment_clipped gave us.
+     * This is necessary to avoid floating point overflow.
+     */
+    ED_view3d_win_to_origin(vc->region, mval, ray_start);
+    mul_m4_v3(obimat, ray_start);
 
-    /* rRecalculate the normal. */
-    sub_v3_v3v3(ray_normal, ray_end, ray_start);
-    dist = normalize_v3(ray_normal);
+    BKE_pbvh_clip_ray_ortho(ob->sculpt->pbvh, original, ray_start, ray_end, ray_normal);
+
+    dist = len_v3v3(ray_start, ray_end);
   }
 
   return dist;
@@ -5117,7 +5125,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   ob = vc.obact;
   ss = ob->sculpt;
 
-  if (!ss->pbvh) {
+  if (!ss->pbvh || !vc.rv3d) {
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
@@ -5253,7 +5261,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
 
   ss = ob->sculpt;
   cache = ss->cache;
-  original = force_original || ((cache) ? cache->original : false);
+  original = force_original || ((cache) ? !cache->accum : false);
 
   const Brush *brush = BKE_paint_brush(BKE_paint_get_active_from_context(C));
 
@@ -5350,7 +5358,8 @@ static void sculpt_brush_stroke_init(bContext *C, wmOperator *op)
   }
 
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH ||
-      brush->deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM) {
+      brush->deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM)
+  {
     need_mask = true;
   }
 
@@ -5389,7 +5398,8 @@ static void sculpt_restore_mesh(Sculpt *sd, Object *ob)
   if ((brush->flag & BRUSH_ANCHORED) ||
       (ELEM(brush->sculpt_tool, SCULPT_TOOL_GRAB, SCULPT_TOOL_ELASTIC_DEFORM) &&
        BKE_brush_use_size_pressure(brush)) ||
-      (brush->flag & BRUSH_DRAG_DOT)) {
+      (brush->flag & BRUSH_DRAG_DOT))
+  {
 
     paint_mesh_restore_co(sd, ob);
 
@@ -5599,7 +5609,8 @@ static void sculpt_stroke_undo_begin(const bContext *C, wmOperator *op)
   /* Setup the correct undo system. Image painting and sculpting are mutual exclusive.
    * Color attributes are part of the sculpting undo system. */
   if (brush && brush->sculpt_tool == SCULPT_TOOL_PAINT &&
-      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob)) {
+      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob))
+  {
     ED_image_undo_push_begin(op->type->name, PAINT_MODE_SCULPT);
   }
   else {
@@ -5613,7 +5624,8 @@ static void sculpt_stroke_undo_end(const bContext *C, Brush *brush)
   ToolSettings *tool_settings = CTX_data_tool_settings(C);
 
   if (brush && brush->sculpt_tool == SCULPT_TOOL_PAINT &&
-      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob)) {
+      SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob))
+  {
     ED_image_undo_push_end();
   }
   else {
@@ -5655,7 +5667,8 @@ static bool sculpt_stroke_test_start(bContext *C, wmOperator *op, const float mv
     /* NOTE: This should be removed when paint mode is available. Paint mode can force based on the
      * canvas it is painting on. (ref. use_sculpt_texture_paint). */
     if (brush && SCULPT_tool_is_paint(brush->sculpt_tool) &&
-        !SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob)) {
+        !SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob))
+    {
       View3D *v3d = CTX_wm_view3d(C);
       if (v3d->shading.type == OB_SOLID) {
         v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
@@ -5851,7 +5864,8 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
   SculptSession *ss = ob->sculpt;
 
   if (SCULPT_tool_is_paint(brush->sculpt_tool) &&
-      !SCULPT_handles_colors_report(ob->sculpt, op->reports)) {
+      !SCULPT_handles_colors_report(ob->sculpt, op->reports))
+  {
     return OPERATOR_CANCELLED;
   }
   if (SCULPT_tool_is_mask(brush->sculpt_tool)) {
@@ -5859,8 +5873,7 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
     BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), ob, mmd);
   }
   if (SCULPT_tool_is_face_sets(brush->sculpt_tool)) {
-    Mesh *mesh = BKE_object_get_original_mesh(ob);
-    ss->face_sets = BKE_sculpt_face_sets_ensure(mesh);
+    ss->face_sets = BKE_sculpt_face_sets_ensure(ob);
   }
 
   stroke = paint_stroke_new(C,
@@ -5969,7 +5982,7 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "ignore_background_click",
-                  0,
+                  false,
                   "Ignore Background Click",
                   "Clicks on the background do not start the stroke");
 }
@@ -6048,10 +6061,12 @@ static void do_fake_neighbor_search_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
     int vd_topology_id = SCULPT_vertex_island_get(ss, vd.vertex);
     if (vd_topology_id != nvtd->current_topology_id &&
-        ss->fake_neighbors.fake_neighbor_index[vd.index] == FAKE_NEIGHBOR_NONE) {
+        ss->fake_neighbors.fake_neighbor_index[vd.index] == FAKE_NEIGHBOR_NONE)
+    {
       float distance_squared = len_squared_v3v3(vd.co, data->nearest_vertex_search_co);
       if (distance_squared < nvtd->nearest_vertex_distance_squared &&
-          distance_squared < data->max_distance_squared) {
+          distance_squared < data->max_distance_squared)
+      {
         nvtd->nearest_vertex = vd.vertex;
         nvtd->nearest_vertex_distance_squared = distance_squared;
       }
@@ -6134,20 +6149,12 @@ void SCULPT_boundary_info_ensure(Object *object)
   }
 
   Mesh *base_mesh = BKE_mesh_from_object(object);
-  const blender::Span<int2> edges = base_mesh->edges();
-  const OffsetIndices polys = base_mesh->polys();
-  const Span<int> corner_edges = base_mesh->corner_edges();
 
   ss->vertex_info.boundary = BLI_BITMAP_NEW(base_mesh->totvert, "Boundary info");
-  int *adjacent_faces_edge_count = static_cast<int *>(
-      MEM_calloc_arrayN(base_mesh->totedge, sizeof(int), "Adjacent face edge count"));
+  Array<int> adjacent_faces_edge_count(base_mesh->totedge, 0);
+  array_utils::count_indices(base_mesh->corner_edges(), adjacent_faces_edge_count);
 
-  for (const int i : polys.index_range()) {
-    for (const int edge : corner_edges.slice(polys[i])) {
-      adjacent_faces_edge_count[edge]++;
-    }
-  }
-
+  const blender::Span<int2> edges = base_mesh->edges();
   for (const int e : edges.index_range()) {
     if (adjacent_faces_edge_count[e] < 2) {
       const int2 &edge = edges[e];
@@ -6155,8 +6162,6 @@ void SCULPT_boundary_info_ensure(Object *object)
       BLI_BITMAP_SET(ss->vertex_info.boundary, edge[1], true);
     }
   }
-
-  MEM_freeN(adjacent_faces_edge_count);
 }
 
 void SCULPT_fake_neighbors_ensure(Sculpt *sd, Object *ob, const float max_dist)
@@ -6343,8 +6348,8 @@ void SCULPT_topology_islands_ensure(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
-  if (ss->attrs.topology_island_key && ss->islands_valid &&
-      BKE_pbvh_type(ss->pbvh) != PBVH_BMESH) {
+  if (ss->attrs.topology_island_key && ss->islands_valid && BKE_pbvh_type(ss->pbvh) != PBVH_BMESH)
+  {
     return;
   }
 
@@ -6378,7 +6383,7 @@ void SCULPT_topology_islands_ensure(Object *ob)
       *static_cast<uint8_t *>(
           SCULPT_vertex_attr_get(vertex2, ss->attrs.topology_island_key)) = island_nr;
 
-      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex2, ni) {
+      SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (ss, vertex2, ni) {
         if (visit.add(ni.vertex) && SCULPT_vertex_any_face_visible_get(ss, ni.vertex)) {
           stack.append(ni.vertex);
         }
@@ -6392,7 +6397,8 @@ void SCULPT_topology_islands_ensure(Object *ob)
   ss->islands_valid = true;
 }
 
-void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4])
+void SCULPT_cube_tip_init(
+    Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4], const float *co, const float *no)
 {
   SculptSession *ss = ob->sculpt;
   float scale[4][4];
@@ -6400,7 +6406,7 @@ void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4
   float unused[4][4];
 
   zero_m4(mat);
-  calc_brush_local_mat(0.0, ob, unused, mat);
+  calc_brush_local_mat(0.0, ob, unused, mat, co, no);
 
   /* Note: we ignore the radius scaling done inside of calc_brush_local_mat to
    * duplicate prior behavior.

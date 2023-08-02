@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -43,8 +45,7 @@ bool AnimationExporter::open_animation_container(bool has_container, Object *ob)
 {
   if (!has_container) {
     char anim_id[200];
-    BLI_snprintf(
-        anim_id, sizeof(anim_id), "action_container-%s", translate_id(id_name(ob)).c_str());
+    SNPRINTF(anim_id, "action_container-%s", translate_id(id_name(ob)).c_str());
     openAnimation(anim_id, encode_xml(id_name(ob)));
   }
   return true;
@@ -304,7 +305,7 @@ void AnimationExporter::export_curve_animation(Object *ob, BCAnimationCurve &cur
   /*
    * Some curves can not be exported as is and need some conversion
    * For more information see implementation of get_modified_export_curve()
-   * NOTE: if mcurve is not NULL then it must be deleted at end of this method;
+   * NOTE: if mcurve is not null then it must be deleted at end of this method;
    */
 
   int channel_index = curve.get_channel_index();
@@ -392,8 +393,8 @@ void AnimationExporter::export_collada_curve_animation(
   fprintf(
       stdout, "Export animation curve %s (%d control points)\n", id.c_str(), int(frames.size()));
   openAnimation(id, name);
-  BC_animation_source_type source_type = (curve.is_rotation_curve()) ? BC_SOURCE_TYPE_ANGLE :
-                                                                       BC_SOURCE_TYPE_VALUE;
+  BC_animation_source_type source_type = curve.is_rotation_curve() ? BC_SOURCE_TYPE_ANGLE :
+                                                                     BC_SOURCE_TYPE_VALUE;
 
   std::string input_id = collada_source_from_values(
       BC_SOURCE_TYPE_TIMEFRAME, COLLADASW::InputSemantic::INPUT, frames, id, axis);
@@ -646,7 +647,7 @@ std::string AnimationExporter::collada_source_from_values(
 
   BCMatrixSampleMap::iterator it;
   /* could be made configurable */
-  int precision = (this->export_settings.get_limit_precision()) ? 6 : -1;
+  int precision = this->export_settings.get_limit_precision() ? 6 : -1;
   for (it = samples.begin(); it != samples.end(); it++) {
     BCMatrix sample = BCMatrix(*it->second);
     BCMatrix global_transform = this->export_settings.get_global_transform();

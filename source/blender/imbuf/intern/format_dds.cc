@@ -1,8 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause
- * Copyright 2009 Google Inc. All rights reserved. (BSD-3-Clause)
- * Copyright 2023 Blender Foundation (GPL-2.0-or-later). */
+/* SPDX-FileCopyrightText: 2009 Google Inc. All rights reserved. (BSD-3-Clause)
+ * SPDX-FileCopyrightText: 2023 Blender Foundation (GPL-2.0-or-later).
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause */
 
-/**
+/** \file
+ * \ingroup imbuf
+ *
  * Some portions of this file are from the Chromium project and have been adapted
  * for Blender use when flipping DDS images to the OpenGL convention.
  */
@@ -14,6 +17,9 @@
 
 #include "IMB_filetype.h"
 #include "IMB_imbuf_types.h"
+
+#include "BLI_path_util.h"
+#include "BLI_string.h"
 
 #ifdef __BIG_ENDIAN__
 #  include "BLI_endian_switch.h"
@@ -27,6 +33,19 @@ using std::unique_ptr;
 extern "C" {
 
 static void LoadDXTCImage(ImBuf *ibuf, Filesystem::IOMemReader &mem_reader);
+
+void imb_init_dds()
+{
+  /* To match historical behavior for DDS file loading, tell OpenImageIO
+   * to process BC5 compressed textures as normal maps. But only do so
+   * if the environment does not already contain a directive that might
+   * say otherwise. */
+  const char *bc5normal = "dds:bc5normal";
+  const char *oiio_env = BLI_getenv("OPENIMAGEIO_OPTIONS");
+  if (!oiio_env || !BLI_strcasestr(oiio_env, bc5normal)) {
+    OIIO::attribute(bc5normal, 1);
+  }
+}
 
 bool imb_is_a_dds(const uchar *buf, size_t size)
 {
@@ -230,7 +249,7 @@ static void FlipDXTCImage(ImBuf *ibuf)
 
   const uint8_t *data_end = data + data_size;
 
-  for (uint i = 0; i < levels; i++) {
+  for (uint level = 0; level < levels; level++) {
     uint blocks_per_row = (mip_width + 3) / 4;
     uint blocks_per_col = (mip_height + 3) / 4;
     uint blocks = blocks_per_row * blocks_per_col;
@@ -238,7 +257,7 @@ static void FlipDXTCImage(ImBuf *ibuf)
     if (data + block_bytes * blocks > data_end) {
       /* Stop flipping when running out of data to be modified, avoiding possible buffer overrun
        * on a malformed files. */
-      *num_valid_levels = i;
+      *num_valid_levels = level;
       break;
     }
 

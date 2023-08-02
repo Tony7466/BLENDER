@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -26,16 +27,9 @@ struct Scene;
 /** Return the number of derived triangles (looptris). */
 int BKE_mesh_runtime_looptri_len(const struct Mesh *mesh);
 
-/**
- * Return mesh triangulation data, calculated lazily when necessary.
- * See #MLoopTri for further description of mesh triangulation.
- *
- * \note Prefer #Mesh::looptris() in C++ code.
- */
-const struct MLoopTri *BKE_mesh_runtime_looptri_ensure(const struct Mesh *mesh);
+const int *BKE_mesh_runtime_looptri_faces_ensure(const struct Mesh *mesh);
 
 bool BKE_mesh_runtime_ensure_edit_data(struct Mesh *mesh);
-void BKE_mesh_runtime_reset_edit_data(struct Mesh *mesh);
 
 /**
  * Clear and free any derived caches associated with the mesh geometry data. Examples include BVH
@@ -75,11 +69,6 @@ eMeshWrapperType BKE_mesh_wrapper_type(const struct Mesh *mesh);
  * to a more suitable location when that file is removed.
  * They should also be renamed to use conventions from BKE, not old DerivedMesh.cc.
  * For now keep the names similar to avoid confusion. */
-
-struct Mesh *mesh_get_eval_final(struct Depsgraph *depsgraph,
-                                 const struct Scene *scene,
-                                 struct Object *ob,
-                                 const struct CustomData_MeshMasks *dataMask);
 
 struct Mesh *mesh_get_eval_deform(struct Depsgraph *depsgraph,
                                   const struct Scene *scene,

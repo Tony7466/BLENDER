@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -121,7 +122,7 @@ typedef struct wmEventHandler_Dropbox {
   ListBase *dropboxes;
 } wmEventHandler_Dropbox;
 
-/* wm_event_system.c */
+/* `wm_event_system.cc` */
 
 void wm_event_free_all(wmWindow *win);
 void wm_event_free(wmEvent *event);
@@ -159,7 +160,7 @@ void wm_event_handler_ui_cancel_ex(bContext *C,
                                    ARegion *region,
                                    bool reactivate_button);
 
-/* wm_event_query.c */
+/* `wm_event_query.cc` */
 
 /**
  * Applies the global tablet pressure correction curve.

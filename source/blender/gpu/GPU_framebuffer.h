@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -140,7 +141,8 @@ typedef struct GPULoadStore {
     GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE \
   }
 
-/* Load store config array (load_store_actions) matches attachment structure of
+/**
+ * Load store config array (load_store_actions) matches attachment structure of
  * GPU_framebuffer_config_array. This allows us to explicitly specify whether attachment data needs
  * to be loaded and stored on a per-attachment basis. This enables a number of bandwidth
  * optimizations:
@@ -157,7 +159,7 @@ typedef struct GPULoadStore {
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE}, // Color attachment 1
  *         {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE} // Color attachment 2
  * })
- * \encode
+ * \endcode
  */
 void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
                                     const GPULoadStore *load_store_actions,
@@ -185,7 +187,7 @@ void GPU_framebuffer_bind_loadstore(GPUFrameBuffer *framebuffer,
  *         GPU_ATTACHMENT_TEXTURE_CUBEFACE(tex2, 0),
  *         GPU_ATTACHMENT_TEXTURE_LAYER_MIP(tex2, 0, 0)
  * })
- * \encode
+ * \endcode
  *
  * \note Unspecified attachments (i.e: those beyond the last
  * GPU_ATTACHMENT_* in GPU_framebuffer_ensure_config list) are left unchanged.
@@ -567,8 +569,8 @@ void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
  */
 void GPU_framebuffer_recursive_downsample(GPUFrameBuffer *framebuffer,
                                           int max_level,
-                                          void (*per_level_callback)(void *userData, int level),
-                                          void *userData);
+                                          void (*per_level_callback)(void *user_data, int level),
+                                          void *user_data);
 
 /** \} */
 

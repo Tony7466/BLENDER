@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -80,7 +81,7 @@ static void drw_volume_globals_init()
   memset(g_data.dummy_grid_mat, 0, sizeof(g_data.dummy_grid_mat));
 }
 
-void DRW_volume_free(void)
+void DRW_volume_free()
 {
   GPU_TEXTURE_FREE_SAFE(g_data.dummy_zero);
   GPU_TEXTURE_FREE_SAFE(g_data.dummy_one);
@@ -184,7 +185,8 @@ static DRWShadingGroup *drw_volume_object_mesh_init(Scene *scene,
   /* Smoke Simulation */
   if ((md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
       BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime) &&
-      ((FluidModifierData *)md)->domain != nullptr) {
+      ((FluidModifierData *)md)->domain != nullptr)
+  {
     FluidModifierData *fmd = (FluidModifierData *)md;
     FluidDomainSettings *fds = fmd->domain;
 

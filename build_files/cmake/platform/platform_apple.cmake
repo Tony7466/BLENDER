@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation
 
 # Libraries configuration for Apple.
 
@@ -152,9 +153,12 @@ if(WITH_CODEC_FFMPEG)
     avcodec avdevice avformat avutil
     mp3lame ogg opus swresample swscale
     theora theoradec theoraenc vorbis vorbisenc
-    vorbisfile vpx x264 xvidcore)
+    vorbisfile vpx x264)
   if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
     list(APPEND FFMPEG_FIND_COMPONENTS aom)
+  endif()
+  if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+    list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
   endif()
   find_package(FFmpeg)
 endif()
@@ -174,7 +178,7 @@ if(SYSTEMSTUBS_LIBRARY)
   list(APPEND PLATFORM_LINKLIBS SystemStubs)
 endif()
 
-string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing")
+string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 set(PLATFORM_LINKFLAGS
   "-fexceptions -framework CoreServices -framework Foundation -framework IOKit -framework AppKit -framework Cocoa -framework Carbon -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework Metal -framework QuartzCore"
 )
@@ -440,10 +444,15 @@ endif()
 if(WITH_COMPILER_CCACHE)
   if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
     find_program(CCACHE_PROGRAM ccache)
+    mark_as_advanced(CCACHE_PROGRAM)
     if(CCACHE_PROGRAM)
       # Makefiles and ninja
       set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
       set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
+      mark_as_advanced(
+        CMAKE_C_COMPILER_LAUNCHER
+        CMAKE_CXX_COMPILER_LAUNCHER
+      )
     else()
       message(WARNING "Ccache NOT found, disabling WITH_COMPILER_CCACHE")
       set(WITH_COMPILER_CCACHE OFF)

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -133,8 +134,8 @@ class FrameBuffer {
   void attachment_remove(GPUAttachmentType type);
 
   void recursive_downsample(int max_lvl,
-                            void (*callback)(void *userData, int level),
-                            void *userData);
+                            void (*callback)(void *user_data, int level),
+                            void *user_data);
   uint get_bits_per_pixel();
 
   /* Sets the size after creation. */

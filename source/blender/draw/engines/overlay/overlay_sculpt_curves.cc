@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -99,8 +100,8 @@ void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
 {
   populate_selection_overlay(vedata, object);
   const View3DOverlay &overlay = vedata->stl->pd->overlay;
-  if ((overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE) &&
-      overlay.sculpt_curves_cage_opacity > 0.0f) {
+  if ((overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE) && overlay.sculpt_curves_cage_opacity > 0.0f)
+  {
     populate_edit_overlay(vedata, object);
   }
 }

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -640,6 +641,15 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           break;
         case TH_NODE_GRID_LEVELS:
           cp = &ts->grid_levels;
+          break;
+        case TH_NODE_ZONE_SIMULATION:
+          cp = ts->node_zone_simulation;
+          break;
+        case TH_NODE_ZONE_REPEAT:
+          cp = ts->node_zone_repeat;
+          break;
+        case TH_SIMULATED_FRAMES:
+          cp = ts->simulated_frames;
           break;
 
         case TH_SEQ_MOVIE:
@@ -1404,8 +1414,8 @@ bool UI_GetIconThemeColor4ubv(int colorid, uchar col[4])
               g_theme_state.regionid == RGN_TYPE_WINDOW) ||
              (g_theme_state.spacetype == SPACE_PROPERTIES &&
               g_theme_state.regionid == RGN_TYPE_NAV_BAR) ||
-             (g_theme_state.spacetype == SPACE_FILE &&
-              g_theme_state.regionid == RGN_TYPE_WINDOW))) {
+             (g_theme_state.spacetype == SPACE_FILE && g_theme_state.regionid == RGN_TYPE_WINDOW)))
+  {
     /* Only colored icons in specific places, overall UI is intended
      * to stay monochrome and out of the way except a few places where it
      * is important to communicate different data types. */

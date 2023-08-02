@@ -1,7 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved.
- *           2009 Nokia Corporation and/or its subsidiary(-ies).
- *                Part of this code has been taken from Qt, under LGPL license. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2009 Nokia Corporation and/or its subsidiary(-ies).
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Part of this code from Nokia has been taken from Qt, under LGPL license. */
 
 /** \file
  * \ingroup GHOST
@@ -33,8 +35,10 @@
 
 #include "GHOST_Debug.hh"
 
-#include "GHOST_ContextEGL.hh"
-#include "GHOST_ContextGLX.hh"
+#ifdef WITH_OPENGL_BACKEND
+#  include "GHOST_ContextEGL.hh"
+#  include "GHOST_ContextGLX.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -85,7 +89,7 @@ static uchar bit_is_on(const uchar *ptr, int bit)
 
 static GHOST_TKey ghost_key_from_keysym(const KeySym key);
 static GHOST_TKey ghost_key_from_keycode(const XkbDescPtr xkb_descr, const KeyCode keycode);
-static GHOST_TKey ghost_key_from_keysym_or_keycode(const KeySym key,
+static GHOST_TKey ghost_key_from_keysym_or_keycode(const KeySym key_sym,
                                                    const XkbDescPtr xkb_descr,
                                                    const KeyCode keycode);
 
@@ -99,7 +103,12 @@ static bool use_xwayland_hack = false;
 
 using namespace std;
 
-GHOST_SystemX11::GHOST_SystemX11() : GHOST_System(), m_xkb_descr(nullptr), m_start_time(0)
+GHOST_SystemX11::GHOST_SystemX11()
+    : GHOST_System(),
+      m_xkb_descr(nullptr),
+      m_start_time(0),
+      m_keyboard_vector{0},
+      m_keycode_last_repeat_key(uint(-1))
 {
   XInitThreads();
   m_display = XOpenDisplay(nullptr);
@@ -299,7 +308,7 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
                                              uint32_t width,
                                              uint32_t height,
                                              GHOST_TWindowState state,
-                                             GHOST_GLSettings glSettings,
+                                             GHOST_GPUSettings gpuSettings,
                                              const bool exclusive,
                                              const bool is_dialog,
                                              const GHOST_IWindow *parentWindow)
@@ -319,11 +328,11 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
                                height,
                                state,
                                (GHOST_WindowX11 *)parentWindow,
-                               glSettings.context_type,
+                               gpuSettings.context_type,
                                is_dialog,
-                               ((glSettings.flags & GHOST_glStereoVisual) != 0),
+                               ((gpuSettings.flags & GHOST_gpuStereoVisual) != 0),
                                exclusive,
-                               (glSettings.flags & GHOST_glDebugContext) != 0);
+                               (gpuSettings.flags & GHOST_gpuDebugContext) != 0);
 
   if (window) {
     /* Both are now handle in GHOST_WindowX11.cc
@@ -343,112 +352,48 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
   return window;
 }
 
-#ifdef USE_EGL
-static GHOST_Context *create_egl_context(
-    GHOST_SystemX11 *system, Display *display, bool debug_context, int ver_major, int ver_minor)
+GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
-  GHOST_Context *context;
-  context = new GHOST_ContextEGL(system,
-                                 false,
-                                 EGLNativeWindowType(nullptr),
-                                 EGLNativeDisplayType(display),
-                                 EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                                 ver_major,
-                                 ver_minor,
-                                 GHOST_OPENGL_EGL_CONTEXT_FLAGS |
-                                     (debug_context ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
-                                 GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
-                                 EGL_OPENGL_API);
-
-  if (context->initializeDrawingContext()) {
-    return context;
-  }
-  delete context;
-
-  return nullptr;
-}
-#endif
-
-static GHOST_Context *create_glx_context(Display *display,
-                                         bool debug_context,
-                                         int ver_major,
-                                         int ver_minor)
-{
-  GHOST_Context *context;
-  context = new GHOST_ContextGLX(false,
-                                 (Window) nullptr,
-                                 display,
-                                 (GLXFBConfig) nullptr,
-                                 GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                 ver_major,
-                                 ver_minor,
-                                 GHOST_OPENGL_GLX_CONTEXT_FLAGS |
-                                     (debug_context ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
-                                 GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
-
-  if (context->initializeDrawingContext()) {
-    return context;
-  }
-  delete context;
-
-  return nullptr;
-}
-
-GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GLSettings glSettings)
-{
-  /* During development:
-   *   try 4.x compatibility profile
-   *   try 3.3 compatibility profile
-   *   fall back to 3.0 if needed
-   *
-   * Final Blender 2.8:
-   *   try 4.x core profile
-   *   try 3.3 core profile
-   *   no fall-backs. */
-
-  const bool debug_context = (glSettings.flags & GHOST_glDebugContext) != 0;
-  GHOST_Context *context = nullptr;
-
+  const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
+  switch (gpuSettings.context_type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (glSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
-    context = new GHOST_ContextVK(
-        false, GHOST_kVulkanPlatformX11, 0, m_display, NULL, NULL, 1, 0, debug_context);
-
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(
+          false, GHOST_kVulkanPlatformX11, 0, m_display, nullptr, nullptr, 1, 2, debug_context);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
       return nullptr;
     }
-    return context;
-  }
 #endif
 
-#ifdef USE_EGL
-  /* Try to initialize an EGL context. */
-  for (int minor = 5; minor >= 0; --minor) {
-    context = create_egl_context(this, m_display, debug_context, 4, minor);
-    if (context != nullptr) {
-      return context;
+#ifdef WITH_OPENGL_BACKEND
+    case GHOST_kDrawingContextTypeOpenGL: {
+      for (int minor = 6; minor >= 3; --minor) {
+        GHOST_Context *context = new GHOST_ContextGLX(
+            false,
+            (Window) nullptr,
+            m_display,
+            (GLXFBConfig) nullptr,
+            GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+            4,
+            minor,
+            GHOST_OPENGL_GLX_CONTEXT_FLAGS | (debug_context ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
+            GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
+        if (context->initializeDrawingContext()) {
+          return context;
+        }
+        delete context;
+      }
+      return nullptr;
     }
-  }
-  context = create_egl_context(this, m_display, debug_context, 3, 3);
-  if (context != nullptr) {
-    return context;
-  }
-
-  /* EGL initialization failed, try to fallback to a GLX context. */
 #endif
-  for (int minor = 5; minor >= 0; --minor) {
-    context = create_glx_context(m_display, debug_context, 4, minor);
-    if (context != nullptr) {
-      return context;
-    }
-  }
-  context = create_glx_context(m_display, debug_context, 3, 3);
-  if (context != nullptr) {
-    return context;
-  }
 
-  return nullptr;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 GHOST_TSuccess GHOST_SystemX11::disposeContext(GHOST_IContext *context)
@@ -847,11 +792,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
 
     if (xe->type == xi_presence) {
       XDevicePresenceNotifyEvent *notify_event = (XDevicePresenceNotifyEvent *)xe;
-      if (ELEM(notify_event->devchange,
-               DeviceEnabled,
-               DeviceDisabled,
-               DeviceAdded,
-               DeviceRemoved)) {
+      if (ELEM(notify_event->devchange, DeviceEnabled, DeviceDisabled, DeviceAdded, DeviceRemoved))
+      {
         refreshXInputDevices();
 
         /* update all window events */
@@ -897,7 +839,7 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
 #endif /* WITH_X11_XINPUT */
   switch (xe->type) {
     case Expose: {
-      XExposeEvent &xee = xe->xexpose;
+      const XExposeEvent &xee = xe->xexpose;
 
       if (xee.count == 0) {
         /* Only generate a single expose event
@@ -909,7 +851,7 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
     }
 
     case MotionNotify: {
-      XMotionEvent &xme = xe->xmotion;
+      const XMotionEvent &xme = xe->xmotion;
 
       bool is_tablet = window->GetTabletData().Active != GHOST_kTabletModeNone;
 
@@ -1053,7 +995,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
       const uint mode_switch_mask = XkbKeysymToModifiers(xke->display, XK_Mode_switch);
       const uint number_hack_forbidden_kmods_mask = mode_switch_mask | ShiftMask;
       if ((xke->keycode >= 10 && xke->keycode < 20) &&
-          ((xke->state & number_hack_forbidden_kmods_mask) == 0)) {
+          ((xke->state & number_hack_forbidden_kmods_mask) == 0))
+      {
         key_sym = XLookupKeysym(xke, ShiftMask);
         if (!((key_sym >= XK_0) && (key_sym <= XK_9))) {
           key_sym = XLookupKeysym(xke, 0);
@@ -1124,7 +1067,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
        * The modified key is sent in the 'ascii's variable anyway.
        */
       if ((xke->keycode >= 10 && xke->keycode < 20) &&
-          ((key_sym = XLookupKeysym(xke, ShiftMask)) >= XK_0) && (key_sym <= XK_9)) {
+          ((key_sym = XLookupKeysym(xke, ShiftMask)) >= XK_0) && (key_sym <= XK_9))
+      {
         /* Pass (keep shifted `key_sym`). */
       }
       else {
@@ -1235,7 +1179,7 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
 
     case ButtonPress:
     case ButtonRelease: {
-      XButtonEvent &xbe = xe->xbutton;
+      const XButtonEvent &xbe = xe->xbutton;
       GHOST_TButton gbmask = GHOST_kButtonMaskLeft;
       GHOST_TEventType type = (xbe.type == ButtonPress) ? GHOST_kEventButtonDown :
                                                           GHOST_kEventButtonUp;
@@ -1290,14 +1234,14 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
 
     /* change of size, border, layer etc. */
     case ConfigureNotify: {
-      // XConfigureEvent & xce = xe->xconfigure;
+      // const XConfigureEvent & xce = xe->xconfigure;
       g_event = new GHOST_Event(getMilliSeconds(), GHOST_kEventWindowSize, window);
       break;
     }
 
     case FocusIn:
     case FocusOut: {
-      XFocusChangeEvent &xfe = xe->xfocus;
+      const XFocusChangeEvent &xfe = xe->xfocus;
 
       /* TODO: make sure this is the correct place for activate/deactivate */
       // printf("X: focus %s for window %d\n",
@@ -1385,7 +1329,7 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
        * (really crossing between windows) since some window-managers
        * also send grab/un-grab crossings for mouse-wheel events.
        */
-      XCrossingEvent &xce = xe->xcrossing;
+      const XCrossingEvent &xce = xe->xcrossing;
       if (xce.mode == NotifyNormal) {
         g_event = new GHOST_EventCursor(getMilliSeconds(),
                                         GHOST_kEventCursorMove,
@@ -1635,7 +1579,8 @@ GHOST_TSuccess GHOST_SystemX11::getButtons(GHOST_Buttons &buttons) const
                     &ry,
                     &wx,
                     &wy,
-                    &mask_return) == True) {
+                    &mask_return) == True)
+  {
     buttons.set(GHOST_kButtonMaskLeft, (mask_return & Button1Mask) != 0);
     buttons.set(GHOST_kButtonMaskMiddle, (mask_return & Button2Mask) != 0);
     buttons.set(GHOST_kButtonMaskRight, (mask_return & Button3Mask) != 0);
@@ -1666,7 +1611,8 @@ static GHOST_TSuccess getCursorPosition_impl(Display *display,
                     &ry,
                     &wx,
                     &wy,
-                    &mask_return) == False) {
+                    &mask_return) == False)
+  {
     return GHOST_kFailure;
   }
 
@@ -1776,11 +1722,11 @@ bool GHOST_SystemX11::generateWindowExposeEvents()
   return anyProcessed;
 }
 
-static GHOST_TKey ghost_key_from_keysym_or_keycode(const KeySym keysym,
+static GHOST_TKey ghost_key_from_keysym_or_keycode(const KeySym key_sym,
                                                    XkbDescPtr xkb_descr,
                                                    const KeyCode keycode)
 {
-  GHOST_TKey type = ghost_key_from_keysym(keysym);
+  GHOST_TKey type = ghost_key_from_keysym(key_sym);
   if (type == GHOST_kKeyUnknown) {
     if (xkb_descr) {
       type = ghost_key_from_keycode(xkb_descr, keycode);
@@ -2182,12 +2128,14 @@ char *GHOST_SystemX11::getClipboard(bool selection) const
   owner = XGetSelectionOwner(m_display, sseln);
   if (owner == win) {
     if (sseln == m_atom.CLIPBOARD) {
-      sel_buf = (char *)malloc(strlen(txt_cut_buffer) + 1);
-      strcpy(sel_buf, txt_cut_buffer);
+      size_t sel_buf_size = strlen(txt_cut_buffer) + 1;
+      sel_buf = (char *)malloc(sel_buf_size);
+      memcpy(sel_buf, txt_cut_buffer, sel_buf_size);
       return sel_buf;
     }
-    sel_buf = (char *)malloc(strlen(txt_select_buffer) + 1);
-    strcpy(sel_buf, txt_select_buffer);
+    size_t sel_buf_size = strlen(txt_select_buffer) + 1;
+    sel_buf = (char *)malloc(sel_buf_size);
+    memcpy(sel_buf, txt_select_buffer, sel_buf_size);
     return sel_buf;
   }
   if (owner == None) {
@@ -2281,8 +2229,9 @@ void GHOST_SystemX11::putClipboard(const char *buffer, bool selection) const
         free((void *)txt_cut_buffer);
       }
 
-      txt_cut_buffer = (char *)malloc(strlen(buffer) + 1);
-      strcpy(txt_cut_buffer, buffer);
+      size_t buffer_size = strlen(buffer) + 1;
+      txt_cut_buffer = (char *)malloc(buffer_size);
+      memcpy(txt_cut_buffer, buffer, buffer_size);
     }
     else {
       XSetSelectionOwner(m_display, m_atom.PRIMARY, m_window, CurrentTime);
@@ -2291,8 +2240,9 @@ void GHOST_SystemX11::putClipboard(const char *buffer, bool selection) const
         free((void *)txt_select_buffer);
       }
 
-      txt_select_buffer = (char *)malloc(strlen(buffer) + 1);
-      strcpy(txt_select_buffer, buffer);
+      size_t buffer_size = strlen(buffer) + 1;
+      txt_select_buffer = (char *)malloc(buffer_size);
+      memcpy(txt_select_buffer, buffer, buffer_size);
     }
 
     if (owner != m_window) {
@@ -2376,7 +2326,7 @@ class DialogData {
   }
 
   /* Is the mouse inside the given button */
-  bool isInsideButton(XEvent &e, uint button_num)
+  bool isInsideButton(const XEvent &e, uint button_num)
   {
     return (
         (e.xmotion.y > int(height - padding_y - button_height)) &&

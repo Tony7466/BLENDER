@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -17,8 +18,8 @@
 
 #include "ED_sculpt.h"
 
-#include "transform.h"
-#include "transform_convert.h"
+#include "transform.hh"
+#include "transform_convert.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Sculpt Transform Creation
@@ -42,7 +43,7 @@ static void createTransSculpt(bContext *C, TransInfo *t)
     BLI_assert(t->data_container_len == 1);
     TransDataContainer *tc = t->data_container;
     tc->data_len = 1;
-    tc->is_active = 1;
+    tc->is_active = true;
     td = tc->data = MEM_cnew<TransData>(__func__);
     td->ext = tc->data_ext = MEM_cnew<TransDataExtension>(__func__);
   }
@@ -121,7 +122,7 @@ static void special_aftertrans_update__sculpt(bContext *C, TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_Sculpt = {
     /*flags*/ 0,
-    /*createTransData*/ createTransSculpt,
-    /*recalcData*/ recalcData_sculpt,
+    /*create_trans_data*/ createTransSculpt,
+    /*recalc_data*/ recalcData_sculpt,
     /*special_aftertrans_update*/ special_aftertrans_update__sculpt,
 };

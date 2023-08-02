@@ -1,17 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
  */
 
-#include <ctype.h>
-#include <float.h>
-#include <math.h>
-#include <stddef.h> /* For `offsetof`. */
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cctype>
+#include <cfloat>
+#include <cmath>
+#include <cstddef> /* For `offsetof`. */
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "MEM_guardedalloc.h"
 
@@ -171,7 +172,8 @@ Object **ED_object_array_in_mode_or_selected(bContext *C,
     ob = ob_active;
   }
   else if (ob_active && (ob_active->mode &
-                         (OB_MODE_ALL_PAINT | OB_MODE_ALL_SCULPT | OB_MODE_ALL_PAINT_GPENCIL))) {
+                         (OB_MODE_ALL_PAINT | OB_MODE_ALL_SCULPT | OB_MODE_ALL_PAINT_GPENCIL)))
+  {
     /* When painting, limit to active. */
     ob = ob_active;
   }
@@ -387,7 +389,7 @@ void OBJECT_OT_hide_view_set(wmOperatorType *ot)
 
   PropertyRNA *prop;
   prop = RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected objects");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected objects");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
@@ -522,9 +524,9 @@ void OBJECT_OT_hide_collection(wmOperatorType *ot)
                      0,
                      INT_MAX);
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
-  prop = RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "Toggle visibility");
+  prop = RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "Toggle visibility");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend visibility");
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend visibility");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
@@ -685,8 +687,8 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
       ED_mball_editmball_free(obedit);
     }
   }
-  else if (obedit->type == OB_CURVES) {
-    /* Curves don't have specific edit mode data, so pass. */
+  else if (ELEM(obedit->type, OB_CURVES, OB_GREASE_PENCIL, OB_POINTCLOUD)) {
+    /* Object doesn't have specific edit mode data, so pass. */
   }
   else {
     return false;
@@ -796,7 +798,8 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
   bool ok = false;
 
   if (ELEM(nullptr, ob, ob->data) || ID_IS_LINKED(ob) || ID_IS_OVERRIDE_LIBRARY(ob) ||
-      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+      ID_IS_OVERRIDE_LIBRARY(ob->data))
+  {
     return false;
   }
 
@@ -875,6 +878,14 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
   else if (ob->type == OB_CURVES) {
     ok = true;
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_CURVES, scene);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    ok = true;
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_GREASE_PENCIL, scene);
+  }
+  else if (ob->type == OB_POINTCLOUD) {
+    ok = true;
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_POINT_CLOUD, scene);
   }
 
   if (ok) {
@@ -958,7 +969,8 @@ static bool editmode_toggle_poll(bContext *C)
 
   /* Covers liboverrides too. */
   if (ELEM(nullptr, ob, ob->data) || ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob) ||
-      ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+      ID_IS_OVERRIDE_LIBRARY(ob->data))
+  {
     return false;
   }
 
@@ -1045,7 +1057,8 @@ static int posemode_exec(bContext *C, wmOperator *op)
       const View3D *v3d = CTX_wm_view3d(C);
       FOREACH_SELECTED_OBJECT_BEGIN (view_layer, v3d, ob) {
         if ((ob != obact) && (ob->type == OB_ARMATURE) && (ob->mode == OB_MODE_OBJECT) &&
-            BKE_id_is_editable(bmain, &ob->id)) {
+            BKE_id_is_editable(bmain, &ob->id))
+        {
           ED_object_posemode_enter_ex(bmain, ob);
         }
       }
@@ -1091,7 +1104,8 @@ void ED_object_check_force_modifiers(Main *bmain, Scene *scene, Object *object)
   /* add/remove modifier as needed */
   if (!md) {
     if (pd && (pd->shape == PFIELD_SHAPE_SURFACE) &&
-        !ELEM(pd->forcefield, 0, PFIELD_GUIDE, PFIELD_TEXTURE)) {
+        !ELEM(pd->forcefield, 0, PFIELD_GUIDE, PFIELD_TEXTURE))
+    {
       if (ELEM(object->type, OB_MESH, OB_SURF, OB_FONT, OB_CURVES_LEGACY)) {
         ED_object_modifier_add(nullptr, bmain, scene, object, nullptr, eModifierType_Surface);
       }
@@ -1099,7 +1113,8 @@ void ED_object_check_force_modifiers(Main *bmain, Scene *scene, Object *object)
   }
   else {
     if (!pd || (pd->shape != PFIELD_SHAPE_SURFACE) ||
-        ELEM(pd->forcefield, 0, PFIELD_GUIDE, PFIELD_TEXTURE)) {
+        ELEM(pd->forcefield, 0, PFIELD_GUIDE, PFIELD_TEXTURE))
+    {
       ED_object_modifier_remove(nullptr, bmain, scene, object, md);
     }
   }
@@ -1632,7 +1647,8 @@ static bool shade_poll(bContext *C)
   if (obact != nullptr) {
     /* Doesn't handle edit-data, sculpt dynamic-topology, or their undo systems. */
     if (obact->mode & (OB_MODE_EDIT | OB_MODE_SCULPT) || obact->data == nullptr ||
-        ID_IS_OVERRIDE_LIBRARY(obact) || ID_IS_OVERRIDE_LIBRARY(obact->data)) {
+        ID_IS_OVERRIDE_LIBRARY(obact) || ID_IS_OVERRIDE_LIBRARY(obact->data))
+    {
       return false;
     }
   }
@@ -1744,7 +1760,7 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
 
   /* by default the operator assume is a mesh, but if gp object change mode */
   if ((ob->type == OB_GPENCIL_LEGACY) && (mode == OB_MODE_EDIT)) {
-    mode = OB_MODE_EDIT_GPENCIL;
+    mode = OB_MODE_EDIT_GPENCIL_LEGACY;
   }
 
   if (!ED_object_mode_compat_test(ob, mode)) {
@@ -1849,7 +1865,7 @@ void OBJECT_OT_mode_set(wmOperatorType *ot)
   RNA_def_enum_funcs(ot->prop, object_mode_set_itemf);
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
-  prop = RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "");
+  prop = RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -1920,8 +1936,9 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (ID_IS_OVERRIDE_LIBRARY(collection)) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot add objects to a library override collection");
+  if (ID_IS_LINKED(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
+    BKE_report(
+        op->reports, RPT_ERROR, "Cannot add objects to a library override or linked collection");
     return OPERATOR_CANCELLED;
   }
 
@@ -2057,7 +2074,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
                   ICON_ADD,
                   static_cast<IDProperty *>(menu->ptr.data),
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   nullptr);
 
   uiItemS(layout);

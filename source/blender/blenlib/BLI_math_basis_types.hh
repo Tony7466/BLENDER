@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -218,7 +220,7 @@ constexpr static bool operator<=(const AxisSigned::Value a, const AxisSigned::Va
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Axes utilities.
+/** \name Axes Utilities
  * \{ */
 
 template<> inline AxisSigned abs(const AxisSigned &axis)
@@ -505,5 +507,3 @@ template<typename T>
 /** \} */
 
 }  // namespace blender::math
-
-/** \} */

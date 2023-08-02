@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -11,12 +12,14 @@
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.h"
 #include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -335,7 +338,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
-  PBVH *pbvh = ob->sculpt->pbvh;
   View3D *v3d = CTX_wm_view3d(C);
 
   int mval[2];
@@ -367,10 +369,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
-
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES && !ob->sculpt->pmap) {
-    return OPERATOR_CANCELLED;
-  }
 
   SCULPT_filter_cache_init(C,
                            ob,
@@ -441,10 +439,10 @@ static void sculpt_color_filter_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
 
-  uiItemR(layout, op->ptr, "strength", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_enum_get(op->ptr, "type") == COLOR_FILTER_FILL) {
-    uiItemR(layout, op->ptr, "fill_color", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "fill_color", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -480,5 +478,6 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
                                           "",
                                           0.0f,
                                           1.0f);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
 }

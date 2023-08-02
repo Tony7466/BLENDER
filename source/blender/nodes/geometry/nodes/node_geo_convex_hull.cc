@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -18,8 +20,8 @@ namespace blender::nodes::node_geo_convex_hull_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_output<decl::Geometry>(N_("Convex Hull"));
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_output<decl::Geometry>("Convex Hull");
 }
 
 #ifdef WITH_BULLET
@@ -37,10 +39,10 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   /* Create Mesh *result with proper capacity. */
   Mesh *result;
   if (mesh) {
-    result = BKE_mesh_new_nomain_from_template(mesh, verts_num, edges_num, loops_num, faces_num);
+    result = BKE_mesh_new_nomain_from_template(mesh, verts_num, edges_num, faces_num, loops_num);
   }
   else {
-    result = BKE_mesh_new_nomain(verts_num, edges_num, loops_num, faces_num);
+    result = BKE_mesh_new_nomain(verts_num, edges_num, faces_num, loops_num);
     BKE_id_material_eval_ensure_default_slot(&result->id);
   }
   BKE_mesh_smooth_flag_set(result, false);
@@ -55,7 +57,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
 #  if 0 /* Disabled because it only works for meshes, not predictable enough. */
       /* Copy custom data on vertices, like vertex groups etc. */
       if (mesh && original_index < mesh->totvert) {
-        CustomData_copy_data(&mesh->vdata, &result->vdata, int(original_index), int(i), 1);
+        CustomData_copy_data(&mesh->vert_data, &result->vert_data, int(original_index), int(i), 1);
       }
 #  endif
     }
@@ -101,7 +103,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   /* Copy faces. */
   Array<int> loops;
   int j = 0;
-  MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
+  MutableSpan<int> face_offsets = result->face_offsets_for_write();
   MutableSpan<int> mesh_corner_verts = result->corner_verts_for_write();
   MutableSpan<int> mesh_corner_edges = result->corner_edges_for_write();
   int dst_corner = 0;
@@ -115,7 +117,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
     loops.reinitialize(len);
     plConvexHullGetFaceLoops(hull, i, loops.data());
 
-    poly_offsets[i] = j;
+    face_offsets[i] = j;
     for (const int k : IndexRange(len)) {
       mesh_corner_verts[dst_corner] = corner_verts[loops[k]];
       mesh_corner_edges[dst_corner] = corner_edges[loops[k]];
@@ -214,7 +216,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     Mesh *mesh = compute_hull(geometry_set);
     geometry_set.replace_mesh(mesh);
-    geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
+    geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
   });
 
   params.set_output("Convex Hull", std::move(geometry_set));

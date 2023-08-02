@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -31,13 +32,13 @@ static CustomData *get_custom_data_for_domain(const MeshRenderData *mr, eAttrDom
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT:
-      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
+      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vert_data;
     case ATTR_DOMAIN_CORNER:
-      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
+      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->loop_data;
     case ATTR_DOMAIN_FACE:
-      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->pdata : &mr->me->pdata;
+      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->pdata : &mr->me->face_data;
     case ATTR_DOMAIN_EDGE:
-      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->edata : &mr->me->edata;
+      return (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->edata : &mr->me->edge_data;
     default:
       return nullptr;
   }
@@ -106,6 +107,7 @@ static uint gpu_component_size_for_attribute_type(eCustomDataType type)
       return 3;
     case CD_PROP_COLOR:
     case CD_PROP_BYTE_COLOR:
+    case CD_PROP_QUATERNION:
       return 4;
     default:
       return 0;
@@ -157,7 +159,7 @@ static void init_vbo_for_attribute(const MeshRenderData &mr,
   char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
   GPU_vertformat_safe_attr_name(request.attribute_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
   /* Attributes use auto-name. */
-  BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+  SNPRINTF(attr_name, "a%s", attr_safe_name);
 
   GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);
@@ -213,10 +215,10 @@ static void fill_vertbuf_with_attribute(const MeshRenderData *mr,
       }
       break;
     case ATTR_DOMAIN_FACE:
-      for (int poly_index = 0; poly_index < mr->poly_len; poly_index++) {
-        const IndexRange poly = mr->polys[poly_index];
-        const VBOType value = Converter::convert_value(attr_data[poly_index]);
-        for (int l = 0; l < poly.size(); l++) {
+      for (int face_index = 0; face_index < mr->face_len; face_index++) {
+        const IndexRange face = mr->faces[face_index];
+        const VBOType value = Converter::convert_value(attr_data[face_index]);
+        for (int l = 0; l < face.size(); l++) {
           *vbo_data++ = value;
         }
       }
@@ -314,6 +316,7 @@ static void extract_attr(const MeshRenderData *mr,
     case CD_PROP_FLOAT3:
       extract_attr_generic<float3>(mr, vbo, request);
       break;
+    case CD_PROP_QUATERNION:
     case CD_PROP_COLOR:
       extract_attr_generic<float4>(mr, vbo, request);
       break;

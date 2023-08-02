@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2016 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation
 
 # Libraries configuration for any *nix system including Linux and Unix (excluding APPLE).
 
@@ -20,14 +21,14 @@ else()
     # Choose the best suitable libraries.
     if(EXISTS ${LIBDIR_NATIVE_ABI})
       set(LIBDIR ${LIBDIR_NATIVE_ABI})
-      set(WITH_LIBC_MALLOC_HOOK_WORKAROUND True)
+      set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
     elseif(EXISTS ${LIBDIR_GLIBC228_ABI})
       set(LIBDIR ${LIBDIR_GLIBC228_ABI})
       if(WITH_MEM_JEMALLOC)
         # jemalloc provides malloc hooks.
-        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND False)
+        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND FALSE)
       else()
-        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND True)
+        set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
       endif()
     endif()
 
@@ -242,10 +243,14 @@ if(WITH_CODEC_FFMPEG)
       theora theoradec theoraenc
       vorbis vorbisenc vorbisfile ogg
       vpx
-      x264
-      xvidcore)
-    if((DEFINED LIBDIR) AND (EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a))
-      list(APPEND FFMPEG_FIND_COMPONENTS aom)
+      x264)
+    if(DEFINED LIBDIR)
+      if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
+        list(APPEND FFMPEG_FIND_COMPONENTS aom)
+      endif()
+      if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+        list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
+      endif()
     endif()
   elseif(FFMPEG)
     # Old cache variable used for root dir, convert to new standard.
@@ -314,15 +319,24 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
   endif()
 endif()
 
-if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_SYCL_SUPPORT)))
+if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
+  mark_as_advanced(CYCLES_LEVEL_ZERO)
   if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
     set(LEVEL_ZERO_ROOT_DIR ${CYCLES_LEVEL_ZERO})
   endif()
 
   set(CYCLES_SYCL ${LIBDIR}/dpcpp CACHE PATH "Path to oneAPI DPC++ compiler")
+  mark_as_advanced(CYCLES_SYCL)
   if(EXISTS ${CYCLES_SYCL} AND NOT SYCL_ROOT_DIR)
     set(SYCL_ROOT_DIR ${CYCLES_SYCL})
+  endif()
+endif()
+
+# add_bundled_libraries for SYCL, but custom since we need to filter the files.
+if(DEFINED LIBDIR)
+  if(NOT DEFINED SYCL_ROOT_DIR)
+    set(SYCL_ROOT_DIR ${LIBDIR}/dpcpp)
   endif()
   file(GLOB _sycl_runtime_libraries
     ${SYCL_ROOT_DIR}/lib/libsycl.so
@@ -692,10 +706,12 @@ if(WITH_GHOST_WAYLAND)
 
     if(WITH_GHOST_WAYLAND_LIBDECOR)
       if(_use_system_wayland)
-        pkg_check_modules(libdecor REQUIRED libdecor-0>=0.1)
+        pkg_check_modules(libdecor libdecor-0>=0.1)
       else()
         set(libdecor_INCLUDE_DIRS "${LIBDIR}/wayland_libdecor/include/libdecor-0")
+        set(libdecor_FOUND ON)
       endif()
+      set_and_warn_library_found("libdecor" libdecor_FOUND WITH_GHOST_WAYLAND_LIBDECOR)
     endif()
 
     if(WITH_GHOST_WAYLAND_DBUS)
@@ -803,8 +819,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
   # Automatically turned on when building with "-march=native". This is
   # explicitly turned off here as it will make floating point math give a bit
   # different results. This will lead to automated test failures. So disable
-  # this until we support it. Seems to default to off in clang and the intel
-  # compiler.
+  # this until we support it.
   set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 
   # `maybe-uninitialized` is unreliable in release builds, but fine in debug builds.
@@ -892,7 +907,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
 
 # CLang is the same as GCC for now.
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing")
+  set(PLATFORM_CFLAGS "-pipe -fPIC -funsigned-char -fno-strict-aliasing -ffp-contract=off")
 
   if(WITH_LINKER_MOLD AND _IS_LINKER_DEFAULT)
     find_program(MOLD_BIN "mold")
@@ -913,6 +928,27 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
       set(_IS_LINKER_DEFAULT OFF)
     endif()
     unset(MOLD_BIN)
+  endif()
+
+  if(WITH_LINKER_LLD AND _IS_LINKER_DEFAULT)
+    find_program(LLD_BIN "ld.lld")
+    mark_as_advanced(LLD_BIN)
+    if(NOT LLD_BIN)
+      message(STATUS "The \"ld.lld\" binary could not be found, using system linker.")
+      set(WITH_LINKER_LLD OFF)
+    else()
+      if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS    " --ld-path=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_SHARED_LINKER_FLAGS " --ld-path=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " --ld-path=\"${LLD_BIN}\"")
+      else()
+        string(APPEND CMAKE_EXE_LINKER_FLAGS    " -fuse-ld=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_SHARED_LINKER_FLAGS " -fuse-ld=\"${LLD_BIN}\"")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " -fuse-ld=\"${LLD_BIN}\"")
+      endif()
+      set(_IS_LINKER_DEFAULT OFF)
+    endif()
+    unset(LLD_BIN)
   endif()
 
 # Intel C++ Compiler
@@ -956,10 +992,15 @@ endif()
 
 if(WITH_COMPILER_CCACHE)
   find_program(CCACHE_PROGRAM ccache)
+  mark_as_advanced(CCACHE_PROGRAM)
   if(CCACHE_PROGRAM)
     # Makefiles and ninja
     set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "" FORCE)
+    mark_as_advanced(
+      CMAKE_C_COMPILER_LAUNCHER
+      CMAKE_CXX_COMPILER_LAUNCHER
+    )
   else()
     message(WARNING "Ccache NOT found, disabling WITH_COMPILER_CCACHE")
     set(WITH_COMPILER_CCACHE OFF)
@@ -1004,7 +1045,7 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths};${LD_LIBRARY_PATH}\"")
+  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:${LD_LIBRARY_PATH}\"")
   set(PLATFORM_ENV_INSTALL "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH")
   unset(_library_paths)
 endif()

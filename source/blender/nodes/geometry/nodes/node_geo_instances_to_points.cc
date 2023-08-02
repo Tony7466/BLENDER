@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 
@@ -14,15 +16,15 @@ namespace blender::nodes::node_geo_instances_to_points_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Instances")).only_instances();
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Vector>(N_("Position")).implicit_field_on_all(implicit_field_inputs::position);
-  b.add_input<decl::Float>(N_("Radius"))
+  b.add_input<decl::Geometry>("Instances").only_instances();
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Vector>("Position").implicit_field_on_all(implicit_field_inputs::position);
+  b.add_input<decl::Float>("Radius")
       .default_value(0.05f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
       .field_on_all();
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
 }
 
 static void convert_instances_to_points(GeometrySet &geometry_set,
@@ -58,8 +60,8 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
 
   const bke::AttributeAccessor src_attributes = instances.attributes();
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_INSTANCES},
-                                                 GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Instance},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  propagation_info,
                                                  attributes_to_propagate);
@@ -72,7 +74,12 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
     const eCustomDataType type = item.value.data_type;
 
     const GAttributeReader src = src_attributes.lookup(id);
+<<<<<<< HEAD
     if (selection.size() == instances.instances_num() && src.sharing_info) {
+=======
+    if (selection.size() == instances.instances_num() && src.sharing_info && src.varray.is_span())
+    {
+>>>>>>> main
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
       dst_attributes.add(id, ATTR_DOMAIN_POINT, type, init);
@@ -96,7 +103,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                 params.extract_input<Field<float>>("Radius"),
                                 params.extract_input<Field<bool>>("Selection"),
                                 params.get_output_propagation_info("Points"));
-    geometry_set.keep_only({GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_EDIT});
+    geometry_set.keep_only({GeometryComponent::Type::PointCloud, GeometryComponent::Type::Edit});
     params.set_output("Points", std::move(geometry_set));
   }
   else {

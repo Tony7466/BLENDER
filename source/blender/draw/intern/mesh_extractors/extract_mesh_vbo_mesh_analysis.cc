@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -12,7 +13,7 @@
 
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh_bvh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 
 #include "extract_mesh.hh"
 
@@ -96,10 +97,10 @@ static void statvis_calc_overhang(const MeshRenderData *mr, float *r_overhang)
     }
   }
   else {
-    for (const int poly_i : mr->polys.index_range()) {
-      float fac = angle_normalized_v3v3(mr->poly_normals[poly_i], dir) / float(M_PI);
+    for (const int face_i : mr->faces.index_range()) {
+      float fac = angle_normalized_v3v3(mr->face_normals[face_i], dir) / float(M_PI);
       fac = overhang_remap(fac, min, max, minmax_irange);
-      for (const int loop_i : mr->polys[poly_i]) {
+      for (const int loop_i : mr->faces[face_i]) {
         r_overhang[loop_i] = fac;
       }
     }
@@ -139,7 +140,7 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
 {
   const float eps_offset = 0.00002f; /* values <= 0.00001 give errors */
   /* cheating to avoid another allocation */
-  float *face_dists = r_thickness + (mr->loop_len - mr->poly_len);
+  float *face_dists = r_thickness + (mr->loop_len - mr->face_len);
   BMEditMesh *em = mr->edit_bmesh;
   const float scale = 1.0f / mat4_to_scale(mr->obmat);
   const MeshStatVis *statvis = &mr->toolsettings->statvis;
@@ -151,7 +152,7 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
   BLI_assert(samples <= 32);
   BLI_assert(min <= max);
 
-  copy_vn_fl(face_dists, mr->poly_len, max);
+  copy_vn_fl(face_dists, mr->face_len, max);
 
   BLI_jitter_init(jit_ofs, samples);
   for (int j = 0; j < samples; j++) {
@@ -162,8 +163,8 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
     BMesh *bm = em->bm;
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
-    struct BMLoop *(*looptris)[3] = em->looptris;
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMLoop *(*looptris)[3] = em->looptris;
     for (int i = 0; i < mr->tri_len; i++) {
       BMLoop **ltri = looptris[i];
       const int index = BM_elem_index_get(ltri[0]->f);
@@ -214,8 +215,9 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
 
     BVHTree *tree = BKE_bvhtree_from_mesh_get(&treeData, mr->me, BVHTREE_FROM_LOOPTRI, 4);
     const Span<MLoopTri> looptris = mr->looptris;
+    const Span<int> looptri_faces = mr->looptri_faces;
     for (const int i : looptris.index_range()) {
-      const int index = looptris[i].poly;
+      const int index = looptri_faces[i];
       const float *cos[3] = {mr->vert_positions[mr->corner_verts[looptris[i].tri[0]]],
                              mr->vert_positions[mr->corner_verts[looptris[i].tri[1]]],
                              mr->vert_positions[mr->corner_verts[looptris[i].tri[2]]]};
@@ -233,8 +235,9 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
         hit.dist = face_dists[index];
         if ((BLI_bvhtree_ray_cast(
                  tree, ray_co, ray_no, 0.0f, &hit, treeData.raycast_callback, &treeData) != -1) &&
-            hit.dist < face_dists[index]) {
-          float angle_fac = fabsf(dot_v3v3(mr->poly_normals[index], hit.no));
+            hit.dist < face_dists[index])
+        {
+          float angle_fac = fabsf(dot_v3v3(mr->face_normals[index], hit.no));
           angle_fac = 1.0f - angle_fac;
           angle_fac = angle_fac * angle_fac * angle_fac;
           angle_fac = 1.0f - angle_fac;
@@ -246,10 +249,10 @@ static void statvis_calc_thickness(const MeshRenderData *mr, float *r_thickness)
       }
     }
 
-    for (const int poly_i : mr->polys.index_range()) {
-      float fac = face_dists[poly_i];
+    for (const int face_i : mr->faces.index_range()) {
+      float fac = face_dists[face_i];
       fac = thickness_remap(fac, min, max, minmax_irange);
-      for (const int loop_i : mr->polys[poly_i]) {
+      for (const int loop_i : mr->faces[face_i]) {
         r_thickness[loop_i] = fac;
       }
     }
@@ -260,19 +263,20 @@ struct BVHTree_OverlapData {
   Span<float3> positions;
   Span<int> corner_verts;
   Span<MLoopTri> looptris;
+  Span<int> looptri_faces;
   float epsilon;
 };
 
 static bool bvh_overlap_cb(void *userdata, int index_a, int index_b, int /*thread*/)
 {
-  struct BVHTree_OverlapData *data = static_cast<struct BVHTree_OverlapData *>(userdata);
+  BVHTree_OverlapData *data = static_cast<BVHTree_OverlapData *>(userdata);
+
+  if (UNLIKELY(data->looptri_faces[index_a] == data->looptri_faces[index_b])) {
+    return false;
+  }
 
   const MLoopTri *tri_a = &data->looptris[index_a];
   const MLoopTri *tri_b = &data->looptris[index_b];
-
-  if (UNLIKELY(tri_a->poly == tri_b->poly)) {
-    return false;
-  }
 
   const float *tri_a_co[3] = {data->positions[data->corner_verts[tri_a->tri[0]]],
                               data->positions[data->corner_verts[tri_a->tri[1]]],
@@ -310,7 +314,7 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 
-    struct BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
+    BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
     BVHTreeOverlap *overlap = BKE_bmbvh_overlap_self(bmtree, &overlap_len);
 
     if (overlap) {
@@ -339,18 +343,20 @@ static void statvis_calc_intersect(const MeshRenderData *mr, float *r_intersect)
 
     BVHTree *tree = BKE_bvhtree_from_mesh_get(&treeData, mr->me, BVHTREE_FROM_LOOPTRI, 4);
 
-    struct BVHTree_OverlapData data = {};
+    BVHTree_OverlapData data = {};
     data.positions = mr->vert_positions;
     data.corner_verts = mr->corner_verts;
     data.looptris = mr->looptris;
+    data.looptri_faces = mr->looptri_faces;
     data.epsilon = BLI_bvhtree_get_epsilon(tree);
 
     BVHTreeOverlap *overlap = BLI_bvhtree_overlap_self(tree, &overlap_len, bvh_overlap_cb, &data);
     if (overlap) {
       for (int i = 0; i < overlap_len; i++) {
 
-        for (const IndexRange f_hit : {mr->polys[mr->looptris[overlap[i].indexA].poly],
-                                       mr->polys[mr->looptris[overlap[i].indexB].poly]}) {
+        for (const IndexRange f_hit : {mr->faces[mr->looptri_faces[overlap[i].indexA]],
+                                       mr->faces[mr->looptri_faces[overlap[i].indexB]]})
+        {
           int l_index = f_hit.start();
           for (int k = 0; k < f_hit.size(); k++, l_index++) {
             r_intersect[l_index] = 1.0f;
@@ -388,8 +394,8 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
     BMesh *bm = em->bm;
     BMFace *f;
 
-    if (mr->bm_vert_coords != nullptr) {
-      BKE_editmesh_cache_ensure_poly_normals(em, mr->edit_data);
+    if (!mr->bm_vert_coords.is_empty()) {
+      BKE_editmesh_cache_ensure_face_normals(em, mr->edit_data);
 
       /* Most likely this is already valid, ensure just in case.
        * Needed for #BM_loop_calc_face_normal_safe_vcos. */
@@ -409,9 +415,13 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
         do {
           const float *no_face;
           float no_corner[3];
-          if (mr->bm_vert_coords != nullptr) {
-            no_face = mr->bm_poly_normals[f_index];
-            BM_loop_calc_face_normal_safe_vcos(l_iter, no_face, mr->bm_vert_coords, no_corner);
+          if (!mr->bm_vert_coords.is_empty()) {
+            no_face = mr->bm_face_normals[f_index];
+            BM_loop_calc_face_normal_safe_vcos(
+                l_iter,
+                no_face,
+                reinterpret_cast<const float(*)[3]>(mr->bm_vert_coords.data()),
+                no_corner);
           }
           else {
             no_face = f->no;
@@ -435,18 +445,18 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
     }
   }
   else {
-    for (const int poly_index : mr->polys.index_range()) {
-      const IndexRange poly = mr->polys[poly_index];
+    for (const int face_index : mr->faces.index_range()) {
+      const IndexRange face = mr->faces[face_index];
       float fac = -1.0f;
 
-      if (poly.size() > 3) {
-        const float *f_no = mr->poly_normals[poly_index];
+      if (face.size() > 3) {
+        const float *f_no = mr->face_normals[face_index];
         fac = 0.0f;
 
-        for (int i = 1; i <= poly.size(); i++) {
-          const int corner_prev = poly.start() + (i - 1) % poly.size();
-          const int corner_curr = poly.start() + (i + 0) % poly.size();
-          const int corner_next = poly.start() + (i + 1) % poly.size();
+        for (int i = 1; i <= face.size(); i++) {
+          const int corner_prev = face.start() + (i - 1) % face.size();
+          const int corner_curr = face.start() + (i + 0) % face.size();
+          const int corner_next = face.start() + (i + 1) % face.size();
           float no_corner[3];
           normal_tri_v3(no_corner,
                         mr->vert_positions[mr->corner_verts[corner_prev]],
@@ -462,7 +472,7 @@ static void statvis_calc_distort(const MeshRenderData *mr, float *r_distort)
       }
 
       fac = distort_remap(fac, min, max, minmax_irange);
-      for (const int corner : poly) {
+      for (const int corner : face) {
         r_distort[corner] = fac;
       }
     }
@@ -524,21 +534,21 @@ static void statvis_calc_sharp(const MeshRenderData *mr, float *r_sharp)
 
     EdgeHash *eh = BLI_edgehash_new_ex(__func__, mr->edge_len);
 
-    for (int poly_index = 0; poly_index < mr->poly_len; poly_index++) {
-      const IndexRange poly = mr->polys[poly_index];
-      for (int i = 0; i < poly.size(); i++) {
-        const int vert_curr = mr->corner_verts[poly.start() + (i + 0) % poly.size()];
-        const int vert_next = mr->corner_verts[poly.start() + (i + 1) % poly.size()];
+    for (int face_index = 0; face_index < mr->face_len; face_index++) {
+      const IndexRange face = mr->faces[face_index];
+      for (int i = 0; i < face.size(); i++) {
+        const int vert_curr = mr->corner_verts[face.start() + (i + 0) % face.size()];
+        const int vert_next = mr->corner_verts[face.start() + (i + 1) % face.size()];
         float angle;
         void **pval;
         bool value_is_init = BLI_edgehash_ensure_p(eh, vert_curr, vert_next, &pval);
         if (!value_is_init) {
-          *pval = (void *)&mr->poly_normals[poly_index];
+          *pval = (void *)&mr->face_normals[face_index];
           /* non-manifold edge, yet... */
           continue;
         }
         if (*pval != nullptr) {
-          const float *f1_no = mr->poly_normals[poly_index];
+          const float *f1_no = mr->face_normals[face_index];
           const float *f2_no = static_cast<const float *>(*pval);
           angle = angle_normalized_v3v3(f1_no, f2_no);
           angle = is_edge_convex_v3(

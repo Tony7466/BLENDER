@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_task.hh"
 
@@ -17,23 +19,20 @@ namespace blender::nodes::node_geo_mesh_primitive_uv_sphere_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>(N_("Segments"))
+  b.add_input<decl::Int>("Segments")
       .default_value(32)
       .min(3)
       .max(1024)
-      .description(N_("Horizontal resolution of the sphere"));
-  b.add_input<decl::Int>(N_("Rings"))
-      .default_value(16)
-      .min(2)
-      .max(1024)
-      .description(N_("The number of horizontal rings"));
-  b.add_input<decl::Float>(N_("Radius"))
+      .description("Horizontal resolution of the sphere");
+  b.add_input<decl::Int>("Rings").default_value(16).min(2).max(1024).description(
+      "The number of horizontal rings");
+  b.add_input<decl::Float>("Radius")
       .default_value(1.0f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
-      .description(N_("Distance from the generated points to the origin"));
-  b.add_output<decl::Geometry>(N_("Mesh"));
-  b.add_output<decl::Vector>(N_("UV Map")).field_on_all();
+      .description("Distance from the generated points to the origin");
+  b.add_output<decl::Geometry>("Mesh");
+  b.add_output<decl::Vector>("UV Map").field_on_all();
 }
 
 static int sphere_vert_total(const int segments, const int rings)
@@ -151,17 +150,17 @@ BLI_NOINLINE static void calculate_sphere_edge_indices(MutableSpan<int2> edges,
   }
 }
 
-BLI_NOINLINE static void calculate_sphere_faces(MutableSpan<int> poly_offsets, const int segments)
+BLI_NOINLINE static void calculate_sphere_faces(MutableSpan<int> face_offsets, const int segments)
 {
-  MutableSpan<int> poly_sizes = poly_offsets.drop_back(1);
+  MutableSpan<int> face_sizes = face_offsets.drop_back(1);
   /* Add the triangles connected to the top vertex. */
-  poly_sizes.take_front(segments).fill(3);
+  face_sizes.take_front(segments).fill(3);
   /* Add the middle quads. */
-  poly_sizes.drop_front(segments).drop_back(segments).fill(4);
+  face_sizes.drop_front(segments).drop_back(segments).fill(4);
   /* Add the triangles connected to the bottom vertex. */
-  poly_sizes.take_back(segments).fill(3);
+  face_sizes.take_back(segments).fill(3);
 
-  offset_indices::accumulate_counts_to_offsets(poly_offsets);
+  offset_indices::accumulate_counts_to_offsets(face_offsets);
 }
 
 BLI_NOINLINE static void calculate_sphere_corners(MutableSpan<int> corner_verts,
@@ -306,12 +305,12 @@ static Mesh *create_uv_sphere_mesh(const float radius,
 {
   Mesh *mesh = BKE_mesh_new_nomain(sphere_vert_total(segments, rings),
                                    sphere_edge_total(segments, rings),
-                                   sphere_corner_total(segments, rings),
-                                   sphere_face_total(segments, rings));
+                                   sphere_face_total(segments, rings),
+                                   sphere_corner_total(segments, rings));
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int2> edges = mesh->edges_for_write();
-  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
   BKE_mesh_smooth_flag_set(mesh, false);
@@ -325,7 +324,7 @@ static Mesh *create_uv_sphere_mesh(const float radius,
         BKE_mesh_vert_normals_clear_dirty(mesh);
       },
       [&]() { calculate_sphere_edge_indices(edges, segments, rings); },
-      [&]() { calculate_sphere_faces(poly_offsets, segments); },
+      [&]() { calculate_sphere_faces(face_offsets, segments); },
       [&]() { calculate_sphere_corners(corner_verts, corner_edges, segments, rings); },
       [&]() {
         if (uv_map_id) {
@@ -333,7 +332,8 @@ static Mesh *create_uv_sphere_mesh(const float radius,
         }
       });
 
-  mesh->loose_edges_tag_none();
+  mesh->tag_loose_verts_none();
+  mesh->tag_loose_edges_none();
   mesh->bounds_set_eager(calculate_bounds_uv_sphere(radius, segments, rings));
 
   BLI_assert(BKE_mesh_is_valid(mesh));
@@ -358,16 +358,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const float radius = params.extract_input<float>("Radius");
 
-  AutoAnonymousAttributeID uv_map_id = params.get_output_anonymous_attribute_id_if_needed(
-      "UV Map");
+  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   Mesh *mesh = create_uv_sphere_mesh(radius, segments_num, rings_num, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::create_with_mesh(mesh));
-  if (uv_map_id) {
-    params.set_output("UV Map",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(uv_map_id), params.attribute_producer_name()));
-  }
 }
 
 }  // namespace blender::nodes::node_geo_mesh_primitive_uv_sphere_cc

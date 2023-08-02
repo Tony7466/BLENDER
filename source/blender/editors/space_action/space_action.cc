@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -67,11 +68,9 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
 
   saction->ads.filterflag |= ADS_FILTER_SUMMARY;
 
-  /* enable all cache display */
-  saction->cache_display |= TIME_CACHE_DISPLAY;
-  saction->cache_display |= (TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES);
-  saction->cache_display |= (TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT);
-  saction->cache_display |= TIME_CACHE_RIGIDBODY;
+  saction->cache_display = TIME_CACHE_DISPLAY | TIME_CACHE_SOFTBODY | TIME_CACHE_PARTICLES |
+                           TIME_CACHE_CLOTH | TIME_CACHE_SMOKE | TIME_CACHE_DYNAMICPAINT |
+                           TIME_CACHE_RIGIDBODY | TIME_CACHE_SIMULATION_NODES;
 
   /* header */
   region = MEM_cnew<ARegion>("header for action");
@@ -128,7 +127,7 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   return (SpaceLink *)saction;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void action_free(SpaceLink * /*sl*/)
 {
   //  SpaceAction *saction = (SpaceAction *) sl;
@@ -204,7 +203,7 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
   }
 
   /* markers */
-  UI_view2d_view_orthoSpecial(region, v2d, 1);
+  UI_view2d_view_orthoSpecial(region, v2d, true);
 
   marker_flag = ((ac.markers && (ac.markers != &ac.scene->markers)) ? DRAW_MARKERS_LOCAL : 0) |
                 DRAW_MARKERS_MARGIN;
@@ -242,7 +241,7 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   /* caches */
   if (saction->mode == SACTCONT_TIMELINE) {
     GPU_matrix_push_projection();
-    UI_view2d_view_orthoSpecial(region, v2d, 1);
+    UI_view2d_view_orthoSpecial(region, v2d, true);
     timeline_draw_cache(saction, obact, scene);
     GPU_matrix_pop_projection();
   }
@@ -406,21 +405,6 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
   }
 }
 
-static void action_clamp_scroll(ARegion *region)
-{
-  View2D *v2d = &region->v2d;
-  const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
-
-  if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
-    v2d->cur.ymin = -cur_height_y;
-    v2d->cur.ymax = 0;
-  }
-  else if (v2d->cur.ymin < v2d->tot.ymin) {
-    v2d->cur.ymin = v2d->tot.ymin;
-    v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
-  }
-}
-
 static void action_main_region_listener(const wmRegionListenerParams *params)
 {
   ARegion *region = params->region;
@@ -549,7 +533,8 @@ static void action_listener(const wmSpaceTypeListenerParams *params)
        * (assume for now that if just adding these works, that will be fine).
        */
       else if (((wmn->data == ND_KEYFRAME) && ELEM(wmn->action, NA_ADDED, NA_REMOVED)) ||
-               ((wmn->data == ND_ANIMCHAN) && (wmn->action != NA_SELECTED))) {
+               ((wmn->data == ND_ANIMCHAN) && (wmn->action != NA_SELECTED)))
+      {
         ED_area_tag_refresh(area);
       }
       /* for simple edits to the curve data though (or just plain selections),
@@ -795,7 +780,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
 
     /* Perform syncing of channel state incl. selection
      * Active action setting also occurs here
-     * (as part of anim channel filtering in anim_filter.c). */
+     * (as part of anim channel filtering in `anim_filter.cc`). */
     ANIM_sync_animchannels_to_data(C);
     saction->runtime.flag &= ~SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
@@ -854,38 +839,37 @@ static void action_space_subtype_item_extend(bContext * /*C*/,
   RNA_enum_items_add(item, totitem, rna_enum_space_action_mode_items);
 }
 
-static void action_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
+static void action_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceAction *saction = (SpaceAction *)sl;
   memset(&saction->runtime, 0x0, sizeof(saction->runtime));
 }
 
-static void action_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
+static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceAction *saction = (SpaceAction *)sl;
   bDopeSheet *ads = &saction->ads;
 
   if (ads) {
-    BLO_read_id_address(reader, parent_id->lib, &ads->source);
-    BLO_read_id_address(reader, parent_id->lib, &ads->filter_grp);
+    BLO_read_id_address(reader, parent_id, &ads->source);
+    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
   }
 
-  BLO_read_id_address(reader, parent_id->lib, &saction->action);
+  BLO_read_id_address(reader, parent_id, &saction->action);
 }
 
-static void action_blend_write(BlendWriter *writer, SpaceLink *sl)
+static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceAction, sl);
 }
 
 static void action_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
 {
-  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
-   * because it also clamps the x-axis to 0. */
-  action_clamp_scroll(region);
+  View2D *v2d = &region->v2d;
+  UI_view2d_curRect_clamp_y(v2d);
 }
 
-void ED_spacetype_action(void)
+void ED_spacetype_action()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype action");
   ARegionType *art;
@@ -905,9 +889,9 @@ void ED_spacetype_action(void)
   st->space_subtype_item_extend = action_space_subtype_item_extend;
   st->space_subtype_get = action_space_subtype_get;
   st->space_subtype_set = action_space_subtype_set;
-  st->blend_read_data = action_blend_read_data;
-  st->blend_read_lib = action_blend_read_lib;
-  st->blend_write = action_blend_write;
+  st->blend_read_data = action_space_blend_read_data;
+  st->blend_read_lib = action_space_blend_read_lib;
+  st->blend_write = action_space_blend_write;
 
   /* regions: main window */
   art = MEM_cnew<ARegionType>("spacetype action region");
