@@ -258,21 +258,12 @@ if(WITH_OPENVDB)
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
 endif()
 
-add_custom_command(
-  OUTPUT
-    ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
-  COMMAND
-    ${PYTHON_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/discover_nodes.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/nodes
-      ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
-      register_geometry_nodes
-  DEPENDS
-    ${SRC}
-    ${CMAKE_CURRENT_SOURCE_DIR}/discover_nodes.py
+add_node_discovery(
+  bf_nodes_geometry_generated
+  ${CMAKE_CURRENT_SOURCE_DIR}/nodes
+  ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
+  register_geometry_nodes
 )
-
-add_library(bf_nodes_geometry_generated ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc)
 
 list(APPEND LIB
   bf_nodes_geometry_generated
