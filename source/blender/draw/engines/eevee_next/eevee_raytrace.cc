@@ -226,10 +226,12 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   renderbuf_stencil_view_ = inst_.render_buffers.depth_tx.stencil_view();
   renderbuf_depth_view_ = inst_.render_buffers.depth_tx;
 
-  bool use_spatial_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_SPATIAL);
-  bool use_temporal_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_TEMPORAL) &&
+  bool use_denoise = (options.flag & RAYTRACE_EEVEE_USE_DENOISE);
+  bool use_spatial_denoise = (options.denoise_stages & RAYTRACE_EEVEE_DENOISE_SPATIAL) &&
+                             use_denoise;
+  bool use_temporal_denoise = (options.denoise_stages & RAYTRACE_EEVEE_DENOISE_TEMPORAL) &&
                               use_spatial_denoise;
-  bool use_bilateral_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_BILATERAL) &&
+  bool use_bilateral_denoise = (options.denoise_stages & RAYTRACE_EEVEE_DENOISE_BILATERAL) &&
                                use_temporal_denoise;
 
   DRW_stats_group_start("Raytracing");

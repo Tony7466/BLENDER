@@ -489,29 +489,61 @@ class EeveeRaytracingOptionsPanel(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
-    def draw_internal(self, props):
+    def draw_internal(self, context, props):
         layout = self.layout
         layout.use_property_split = True
+
+        scene = context.scene
+        eevee = scene.eevee
 
         layout.prop(props, "resolution_scale")
         layout.prop(props, "sample_clamp")
 
-        layout.separator()
 
-        layout.prop(props, "screen_trace_quality")
-        layout.prop(props, "screen_trace_thickness")
+class EeveeRaytracingScreenOption(RenderButtonsPanel, Panel):
+    bl_label = "Screen Tracing"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
-        layout.separator()
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES) and (context.scene.eevee.ray_tracing_method == 'SCREEN')
 
-        layout.prop(props, "raytrace_denoise_spatial")
+    def draw_internal(self, props):
+        layout = self.layout
+        layout.use_property_split = True
+
+        layout.prop(props, "screen_trace_quality", text="Precision")
+        layout.prop(props, "screen_trace_thickness", text="Thickness")
+
+
+class EeveeRaytracingDenoisePanel(RenderButtonsPanel, Panel):
+    bl_label = "Denoising"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw_header_internal(self, props):
+        self.layout.prop(props, "use_denoise", text="")
+
+    def draw_internal(self, props):
+        layout = self.layout
+        layout.use_property_split = True
 
         col = layout.column()
-        col.active = props.raytrace_denoise_spatial
-        col.prop(props, "raytrace_denoise_temporal")
+        col.active = props.use_denoise
+        col.prop(props, "denoise_spatial")
 
         col = layout.column()
-        col.active = props.raytrace_denoise_spatial and props.raytrace_denoise_temporal
-        col.prop(props, "raytrace_denoise_bilateral")
+        col.active = props.denoise_spatial
+        col.prop(props, "denoise_temporal")
+
+        col = layout.column()
+        col.active = props.denoise_spatial and props.denoise_temporal
+        col.prop(props, "denoise_bilateral")
 
 
 class RENDER_PT_eevee_next_raytracing_unified(EeveeRaytracingOptionsPanel):
@@ -525,12 +557,11 @@ class RENDER_PT_eevee_next_raytracing_unified(EeveeRaytracingOptionsPanel):
 
     def draw(self, context):
         # NOTE: Reuse reflection options for now.
-        self.draw_internal(context.scene.eevee.reflection_options)
+        self.draw_internal(context, context.scene.eevee.reflection_options)
 
 
 class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
     bl_label = "Reflection"
-    bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_next_raytracing"
 
     @classmethod
@@ -538,17 +569,70 @@ class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
         return (context.scene.eevee.ray_split_settings == "SPLIT")
 
     def draw(self, context):
-        self.draw_internal(context.scene.eevee.reflection_options)
+        self.draw_internal(context, context.scene.eevee.reflection_options)
 
 
 class RENDER_PT_eevee_next_raytracing_refraction(EeveeRaytracingOptionsPanel):
     bl_label = "Refraction"
-    bl_options = {'DEFAULT_CLOSED'}
     bl_parent_id = "RENDER_PT_eevee_next_raytracing"
 
     @classmethod
     def poll(cls, context):
         return (context.scene.eevee.ray_split_settings == "SPLIT")
+
+    def draw(self, context):
+        self.draw_internal(context, context.scene.eevee.refraction_options)
+
+
+class RENDER_PT_eevee_next_denoise_unified(EeveeRaytracingDenoisePanel):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_unified"
+
+    def draw_header(self, context):
+        # NOTE: Reuse reflection options for now.
+        self.draw_header_internal(context.scene.eevee.reflection_options)
+
+    def draw(self, context):
+        # NOTE: Reuse reflection options for now.
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_denoise_reflection(EeveeRaytracingDenoisePanel):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_reflection"
+
+    def draw_header(self, context):
+        self.draw_header_internal(context.scene.eevee.reflection_options)
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_denoise_refraction(EeveeRaytracingDenoisePanel):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_refraction"
+
+    def draw_header(self, context):
+        self.draw_header_internal(context.scene.eevee.refraction_options)
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.refraction_options)
+
+
+class RENDER_PT_eevee_next_screen_trace_unified(EeveeRaytracingScreenOption):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_unified"
+
+    def draw(self, context):
+        # NOTE: Reuse reflection options for now.
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_screen_trace_reflection(EeveeRaytracingScreenOption):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_reflection"
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_screen_trace_refraction(EeveeRaytracingScreenOption):
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing_refraction"
 
     def draw(self, context):
         self.draw_internal(context.scene.eevee.refraction_options)
@@ -1060,6 +1144,12 @@ classes = (
     RENDER_PT_eevee_next_raytracing_unified,
     RENDER_PT_eevee_next_raytracing_reflection,
     RENDER_PT_eevee_next_raytracing_refraction,
+    RENDER_PT_eevee_next_screen_trace_unified,
+    RENDER_PT_eevee_next_screen_trace_reflection,
+    RENDER_PT_eevee_next_screen_trace_refraction,
+    RENDER_PT_eevee_next_denoise_unified,
+    RENDER_PT_eevee_next_denoise_reflection,
+    RENDER_PT_eevee_next_denoise_refraction,
     RENDER_PT_eevee_motion_blur,
     RENDER_PT_eevee_next_motion_blur,
     RENDER_PT_motion_blur_curve,

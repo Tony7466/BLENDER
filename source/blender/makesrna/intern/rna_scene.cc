@@ -7398,24 +7398,30 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "raytrace_denoise_spatial", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_SPATIAL);
+  prop = RNA_def_property(srna, "use_denoise", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", RAYTRACE_EEVEE_USE_DENOISE);
   RNA_def_property_ui_text(
-      prop, "Denoise Spatial", "Enable noise reduction techniques for raytraced effects");
+      prop, "Denoise", "Enable noise reduction techniques for raytraced effects");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "raytrace_denoise_temporal", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_TEMPORAL);
-  RNA_def_property_ui_text(
-      prop, "Denoise Temporal", "Enable noise reduction techniques for raytraced effects");
+  prop = RNA_def_property(srna, "denoise_spatial", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_stages", RAYTRACE_EEVEE_DENOISE_SPATIAL);
+  RNA_def_property_ui_text(prop, "Spatial Reuse", "Reuse neighbor pixels' rays");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "raytrace_denoise_bilateral", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_BILATERAL);
+  prop = RNA_def_property(srna, "denoise_temporal", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_stages", RAYTRACE_EEVEE_DENOISE_TEMPORAL);
   RNA_def_property_ui_text(
-      prop, "Denoise Bilateral", "Enable noise reduction techniques for raytraced effects");
+      prop, "Temporal Accumulation", "Accumulate samples by reprojecting last tracing results");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "denoise_bilateral", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_stages", RAYTRACE_EEVEE_DENOISE_BILATERAL);
+  RNA_def_property_ui_text(
+      prop, "Bilateral Filter", "Blur the resolved radiance using a bilateral filter");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
@@ -7504,7 +7510,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem ray_tracing_method_items[] = {
-      {RAYTRACE_EEVEE_METHOD_NONE, "NONE", 0, "None", "No tracing"},
+      {RAYTRACE_EEVEE_METHOD_NONE, "NONE", 0, "None", "No intersection with scene geometry"},
       {RAYTRACE_EEVEE_METHOD_SCREEN,
        "SCREEN",
        0,

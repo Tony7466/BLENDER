@@ -158,7 +158,8 @@
 
 #define _DNA_DEFAULT_RaytraceEEVEE \
   { \
-    .denoise_flag = RAYTRACE_EEVEE_DENOISE_SPATIAL | \
+    .flag = RAYTRACE_EEVEE_USE_DENOISE, \
+    .denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL | \
                     RAYTRACE_EEVEE_DENOISE_TEMPORAL | \
                     RAYTRACE_EEVEE_DENOISE_BILATERAL, \
     .screen_trace_quality = 0.25f, \

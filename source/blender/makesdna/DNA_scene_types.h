@@ -1821,10 +1821,10 @@ typedef struct RaytraceEEVEE {
   int resolution_scale;
   /** Maximum intensity a ray can have. */
   float sample_clamp;
-  /** Denoising stages. #RaytraceEEVEE_DenoiseStages. */
-  int denoise_flag;
-
-  char _pad0[4];
+  /** #RaytraceEEVEE_Flag. */
+  int flag;
+  /** #RaytraceEEVEE_DenoiseStages. */
+  int denoise_stages;
 } RaytraceEEVEE;
 
 typedef struct SceneEEVEE {
@@ -2827,6 +2827,10 @@ enum {
   SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
   SCE_EEVEE_RAYTRACE_OPTIONS_SPLIT = (1 << 25),
 };
+
+typedef enum RaytraceEEVEE_Flag {
+  RAYTRACE_EEVEE_USE_DENOISE = (1 << 0),
+} RaytraceEEVEE_Flag;
 
 typedef enum RaytraceEEVEE_DenoiseStages {
   RAYTRACE_EEVEE_DENOISE_SPATIAL = (1 << 0),
