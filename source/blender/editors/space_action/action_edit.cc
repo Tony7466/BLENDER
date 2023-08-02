@@ -37,7 +37,6 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_nla.h"
