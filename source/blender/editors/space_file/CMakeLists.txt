@@ -35,7 +35,7 @@ set(SRC
   filelist.cc
   filesel.cc
   folder_history.cc
-  fsmenu.cc
+  fsmenu.c
   fsmenu_system.cc
   space_file.cc
 
