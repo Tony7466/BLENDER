@@ -233,6 +233,15 @@ Material &MaterialModule::material_sync(Object *ob,
                                         eMaterialGeometry geometry_type,
                                         bool has_motion)
 {
+  if (geometry_type == MAT_GEOM_VOLUME_OBJECT) {
+    MaterialKey material_key(blender_mat, geometry_type, MAT_PIPE_VOLUME);
+    return material_map_.lookup_or_add_cb(material_key, [&]() {
+      Material mat = {};
+      mat.volume = material_pass_get(ob, blender_mat, MAT_PIPE_VOLUME, geometry_type);
+      return mat;
+    });
+  }
+
   eMaterialPipeline surface_pipe = (blender_mat->blend_method == MA_BM_BLEND) ? MAT_PIPE_FORWARD :
                                                                                 MAT_PIPE_DEFERRED;
   eMaterialPipeline prepass_pipe = (blender_mat->blend_method == MA_BM_BLEND) ?
@@ -276,6 +285,9 @@ Material &MaterialModule::material_sync(Object *ob,
     else {
       mat.shadow = material_pass_get(ob, blender_mat, MAT_PIPE_SHADOW, geometry_type);
     }
+
+    mat.volume = MaterialPass();
+
     mat.is_alpha_blend_transparent = (blender_mat->blend_method == MA_BM_BLEND) &&
                                      GPU_material_flag_get(mat.shading.gpumat,
                                                            GPU_MATFLAG_TRANSPARENT);

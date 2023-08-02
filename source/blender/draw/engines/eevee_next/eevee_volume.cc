@@ -195,16 +195,6 @@ void VolumeModule::begin_sync()
 
 void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
 {
-  ::Material *material = BKE_object_material_get(ob, VOLUME_MATERIAL_NR);
-  if (material == nullptr) {
-    if (ob->type == OB_VOLUME) {
-      material = BKE_material_default_volume();
-    }
-    else {
-      return;
-    }
-  }
-
   float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
   const float epsilon = 1e-8f;
@@ -212,8 +202,9 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
     return;
   }
 
-  MaterialPass material_pass = inst_.materials.material_pass_get(
-      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
+  Material material = inst_.materials.material_get(
+      ob, false, VOLUME_MATERIAL_NR, MAT_GEOM_VOLUME_OBJECT);
+  MaterialPass &material_pass = material.volume;
 
   /* If shader failed to compile or is currently compiling. */
   if (material_pass.gpumat == nullptr) {

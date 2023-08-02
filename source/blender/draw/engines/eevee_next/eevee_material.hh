@@ -220,7 +220,7 @@ struct MaterialPass {
 
 struct Material {
   bool is_alpha_blend_transparent;
-  MaterialPass shadow, shading, prepass, capture, probe_prepass, probe_shading;
+  MaterialPass shadow, shading, prepass, capture, probe_prepass, probe_shading, volume;
 };
 
 struct MaterialArray {
@@ -263,6 +263,12 @@ class MaterialModule {
    */
   Material &material_get(Object *ob, bool has_motion, int mat_nr, eMaterialGeometry geometry_type);
 
+ private:
+  Material &material_sync(Object *ob,
+                          ::Material *blender_mat,
+                          eMaterialGeometry geometry_type,
+                          bool has_motion);
+
   /** Return correct material or empty default material if slot is empty. */
   ::Material *material_from_slot(Object *ob, int slot);
   MaterialPass material_pass_get(Object *ob,
@@ -270,12 +276,6 @@ class MaterialModule {
                                  eMaterialPipeline pipeline_type,
                                  eMaterialGeometry geometry_type,
                                  bool probe_capture = false);
-
- private:
-  Material &material_sync(Object *ob,
-                          ::Material *blender_mat,
-                          eMaterialGeometry geometry_type,
-                          bool has_motion);
 };
 
 /** \} */
