@@ -3649,13 +3649,13 @@ static int click_select_channel_gplayer(bContext *C,
   return (ND_ANIMCHAN | NA_EDITED); /* Animation Editors updates */
 }
 
-static int click_select_channel_grease_pencil_layer(
-    bContext *C,
-    bAnimContext *ac,
-    bAnimListElem *ale,
-    const short /* eEditKeyframes_Select or -1 */ selectmode,
-    const int filter)
+static int click_select_channel_grease_pencil_layer(bContext *C,
+                                                    bAnimContext *ac,
+                                                    bAnimListElem *ale,
+                                                    const short /* selectmode */,
+                                                    const int /* filter */)
 {
+  /* TODO: Implement other selection modes. */
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
