@@ -73,9 +73,10 @@ struct NodeIDEquality {
 namespace blender::bke {
 
 class DirtyState {
-private:
+ private:
   uint32_t counter = 0;
-public:
+
+ public:
   bool operator==(const DirtyState &other) const
   {
     return this->counter == other.counter;
@@ -301,7 +302,8 @@ class bNodeRuntime : NonCopyable, NonMovable {
 
   /**
    * The function behind this node has changed.
-   * This dirty state might not be changed if the whole nodetree is dirty, so a check of the dirty state of the nodetree should also be done.
+   * This dirty state might not be changed if the whole nodetree is dirty, so a check of the dirty
+   * state of the nodetree should also be done.
    */
   DirtyState dirtystate;
 

@@ -338,7 +338,7 @@ class NodeTreeMainUpdater {
         if (result.output_changed) {
           for (const TreeNodePair &pair : dependent_trees) {
             add_node_tag(pair.first, pair.second, NTREE_CHANGED_NODE_OUTPUT);
-            make_nodes_dirty(*pair.first, Span<bNode*>(&pair.second, 1));
+            make_nodes_dirty(*pair.first, Span<bNode *>(&pair.second, 1));
           }
         }
         if (result.interface_changed) {

@@ -283,9 +283,7 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
 }
 
 /* `ED_node_release_preview_ibuf` should be called after this. */
-ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
-                                    NestedTreePreviews *tree_previews,
-                                    const bNode *node)
+ImBuf *ED_node_preview_acquire_ibuf(NestedTreePreviews *tree_previews, const bNode *node)
 {
   if (tree_previews->previews_render == nullptr) {
     return nullptr;
@@ -572,22 +570,26 @@ static DirtyState get_treepath_dirty_state(const ListBase *treepath)
 static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tree_previews)
 {
   bNodeTree *nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
-  DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
-  if (treepath_dirty_state != tree_previews->treepath_dirty_state)
+  if (tree_previews->preview_size != U.node_preview_res ||
+      nodetree->runtime->whole_tree_dirtystate != tree_previews->whole_tree_dirtystate)
   {
-    /* If the path is dirty, then we need to redraw all the nodetree (excepted if we know which nodes are dirty). */
+    /* Force whole tree redraw. */
+    tree_previews->restart_needed = true;
+    tree_previews->partial_tree_refresh = false;
+    return;
+  }
+
+  DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
+  if (treepath_dirty_state != tree_previews->treepath_dirtystate) {
+    /* If the path is dirty, then we may need to redraw all the nodetree (excepted if we know which
+     * nodes are dirty). */
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = false;
   }
-  if (nodetree->runtime->any_node_dirtystate != tree_previews->nodes_dirty_state) {
+  if (nodetree->runtime->any_node_dirtystate != tree_previews->any_node_dirtystate) {
     /* If we know that only some node are dirty, then enable partial redraw. */
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = true;
-  }
-  if (tree_previews->preview_size != U.node_preview_res)
-  {
-    tree_previews->restart_needed = true;
-    tree_previews->partial_tree_refresh = false;
   }
 }
 
@@ -687,8 +689,9 @@ static void ensure_nodetree_previews(const bContext *C,
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
   DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
-  tree_previews->treepath_dirty_state = treepath_dirty_state;
-  tree_previews->nodes_dirty_state = displayed_nodetree->runtime->any_node_dirtystate;
+  tree_previews->treepath_dirtystate = treepath_dirty_state;
+  tree_previews->any_node_dirtystate = displayed_nodetree->runtime->any_node_dirtystate;
+  tree_previews->whole_tree_dirtystate = displayed_nodetree->runtime->whole_tree_dirtystate;
 
   ED_preview_ensure_dbase(false);
 

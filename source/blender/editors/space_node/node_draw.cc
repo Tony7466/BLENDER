@@ -2250,7 +2250,7 @@ static void node_draw_basis(const bContext &C,
       NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
 
       if (previews_shader) {
-        ImBuf *preview = ED_node_preview_acquire_ibuf(&ntree, previews_shader, &node);
+        ImBuf *preview = ED_node_preview_acquire_ibuf(previews_shader, &node);
         node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
         ED_node_release_preview_ibuf(tree_draw_ctx.nested_group_infos);
         drawn_with_previews = true;

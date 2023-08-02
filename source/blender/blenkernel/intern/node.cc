@@ -2581,7 +2581,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   if (node_src.prop) {
     node_dst->prop = IDP_CopyProperty_ex(node_src.prop, flag);
   }
-  
+
   node_dst->runtime->dirtystate = node_src.runtime->dirtystate;
 
   node_dst->runtime->internal_links = node_src.runtime->internal_links;
