@@ -1934,14 +1934,17 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "collection_index");
   const bool is_link = STREQ(op->idname, "OBJECT_OT_link_to_collection");
   const bool is_new = RNA_boolean_get(op->ptr, "is_new");
-  Collection *collection = move_to_collection_collection_from_enum(
-      C, RNA_enum_get(op->ptr, "collection"));
-  if (!collection) {
+
+  if (!RNA_property_is_set(op->ptr, prop)) {
     BKE_report(op->reports, RPT_ERROR, "No collection selected");
     return OPERATOR_CANCELLED;
   }
+
+  Collection *collection = move_to_collection_collection_from_enum(
+      C, RNA_property_enum_get(op->ptr, prop));
 
   if (collection == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Unexpected error, collection not found");
@@ -1967,7 +1970,8 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
                               nullptr;
 
   if ((single_object != nullptr) && is_link &&
-      BKE_collection_has_object(collection, single_object)) {
+      BKE_collection_has_object(collection, single_object))
+  {
     BKE_reportf(op->reports,
                 RPT_ERROR,
                 "%s already in %s",
