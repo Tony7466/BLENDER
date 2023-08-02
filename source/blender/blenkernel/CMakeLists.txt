@@ -73,6 +73,9 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
+  intern/bake_items.cc
+  intern/bake_items_serialize.cc
+  intern/bake_items_socket.cc
   intern/blender.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc
@@ -199,6 +202,7 @@ set(SRC
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
+  intern/mesh_flip_faces.cc
   intern/mesh_iterators.cc
   intern/mesh_legacy_convert.cc
   intern/mesh_mapping.cc
@@ -328,6 +332,9 @@ set(SRC
   BKE_attribute.hh
   BKE_attribute_math.hh
   BKE_autoexec.h
+  BKE_bake_items.hh
+  BKE_bake_items_serialize.hh
+  BKE_bake_items_socket.hh
   BKE_blender.h
   BKE_blender_copybuffer.h
   BKE_blender_undo.h

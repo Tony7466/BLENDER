@@ -56,7 +56,7 @@ static void update_depsgraph(ShaderFxData *fx, const ModifierUpdateDepsgraphCont
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Swirl ShaderFx");
 }
 
-static bool is_disabled(ShaderFxData *fx, int /*user_render_params*/)
+static bool is_disabled(ShaderFxData *fx, bool /*use_render_params*/)
 {
   SwirlShaderFxData *fxd = (SwirlShaderFxData *)fx;
 
@@ -78,9 +78,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "radius", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "angle", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "object", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "radius", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "angle", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   shaderfx_panel_end(layout, ptr);
 }
