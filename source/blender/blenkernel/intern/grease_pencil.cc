@@ -1470,7 +1470,8 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
       break;
     }
     case GP_DRAWING_REFERENCE:
-      /* TODO: Duplicate drawing references. */
+      /* TODO: Duplicate drawing references. For now, just remove the frame that we inserted. */
+      layer.remove_frame(duplicate_frame_number);
       return false;
   }
   return true;
