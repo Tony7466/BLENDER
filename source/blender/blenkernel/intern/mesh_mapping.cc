@@ -329,10 +329,10 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   Array<int> results(group_indices.size());
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
-      const int group = group_indices[i];
-      const int index = atomic_add_and_fetch_int32(&counts[group], 1);
-      const IndexRange range = offsets[group];
-      results[range[index]] = int(i);
+      const int group_index = group_indices[i];
+      const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
+      const IndexRange group = offsets[group_index];
+      results[group[index_in_group]] = int(i);
     }
   });
   sort_small_groups(offsets, 1024, results);
