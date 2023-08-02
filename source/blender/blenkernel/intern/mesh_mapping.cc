@@ -308,10 +308,10 @@ static Array<int> create_reverse_offsets(const Span<int> indices, const int item
 }
 
 static void sort_small_groups(const OffsetIndices<int> groups,
-                              MutableSpan<int> indices,
-                              const int grai_size = 1024)
+                              const int grain_size,
+                              MutableSpan<int> indices)
 {
-  threading::parallel_for(groups.index_range(), grai_size, [&](const IndexRange range) {
+  threading::parallel_for(groups.index_range(), grain_size, [&](const IndexRange range) {
     for (const int64_t index : range) {
       MutableSpan<int> group = indices.slice(groups[index]);
       std::sort(group.begin(), group.end());
@@ -335,7 +335,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
       results[range[index]] = int(i);
     }
   });
-  sort_small_groups(offsets, results);
+  sort_small_groups(offsets, 1024, results);
   return results;
 }
 
