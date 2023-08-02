@@ -44,7 +44,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Distance between intersections");
   b.add_input<decl::Float>("Offset")
       .subtype(PROP_DISTANCE)
-      .description("Offset intersections by this distance");
+      .description("Offset intersection points by this distance");
   b.add_output<decl::Geometry>("Points");
   b.add_output<decl::Int>("Curve Index").field_on_all();
   b.add_output<decl::Float>("Factor").field_on_all();
