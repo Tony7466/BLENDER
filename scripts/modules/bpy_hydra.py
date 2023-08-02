@@ -4,6 +4,7 @@ __all__ = (
     "export_mtlx",
 )
 
+
 def export_mtlx(material):
     """ Exports material to .mtlx file. It is called from Blender source code. """
     import materialx.utils as mx_utils

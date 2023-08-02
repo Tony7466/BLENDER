@@ -13,8 +13,9 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "Eigen/Core"
+
 #include "engine.h"
-#include "render_task_delegate.h"
 
 namespace blender::render::hydra {
 
@@ -107,6 +108,16 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
       aov_key);
 
   if (aov_desc.format == pxr::HdFormatInvalid) {
+    CLOG_ERROR(LOG_HYDRA_RENDER, "Invalid AOV: %s", aov_key.GetText());
+    return;
+  }
+  if (!ELEM(
+          pxr::HdGetComponentFormat(aov_desc.format), pxr::HdFormatFloat32, pxr::HdFormatFloat16))
+  {
+    CLOG_WARN(LOG_HYDRA_RENDER,
+              "Unsupported data format %s for AOV %s",
+              pxr::TfEnum::GetName(aov_desc.format).c_str(),
+              aov_key.GetText());
     return;
   }
 
@@ -120,7 +131,7 @@ void RenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
   binding.aovName = aov_key;
   binding.renderBufferId = buf_id;
   binding.aovSettings = aov_desc.aovSettings;
-  binding.clearValue = pxr::VtValue(pxr::GfVec4f(0));
+  binding.clearValue = aov_desc.clearValue;
   task_params_.aovBindings.push_back(binding);
   render_index.GetChangeTracker().MarkTaskDirty(task_id_, pxr::HdChangeTracker::DirtyParams);
 
@@ -134,11 +145,25 @@ void RenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, void *data)
   if (!buffer) {
     return;
   }
-  void *buf_data = buffer->Map();
-  memcpy(data,
-         buf_data,
-         buffer->GetWidth() * buffer->GetHeight() * pxr::HdDataSizeOfFormat(buffer->GetFormat()));
-  buffer->Unmap();
+
+  pxr::HdFormat format = buffer->GetFormat();
+  size_t len = buffer->GetWidth() * buffer->GetHeight() * pxr::HdGetComponentCount(format);
+  if (pxr::HdGetComponentFormat(format) == pxr::HdFormatFloat32) {
+    void *buf_data = buffer->Map();
+    memcpy(data, buf_data, len * sizeof(float));
+    buffer->Unmap();
+  }
+  else if (pxr::HdGetComponentFormat(format) == pxr::HdFormatFloat16) {
+    Eigen::half *buf_data = (Eigen::half *)buffer->Map();
+    float *fdata = (float *)data;
+    for (size_t i = 0; i < len; ++i) {
+      fdata[i] = buf_data[i];
+    }
+    buffer->Unmap();
+  }
+  else {
+    BLI_assert_unreachable();
+  }
 }
 
 void RenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, GPUTexture *texture)
@@ -210,6 +235,7 @@ void GPURenderTaskDelegate::add_aov(pxr::TfToken const &aov_key)
     tex = &tex_depth_;
   }
   else {
+    CLOG_ERROR(LOG_HYDRA_RENDER, "Invalid AOV: %s", aov_key.GetText());
     return;
   }
 
@@ -253,14 +279,11 @@ void GPURenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, void *data)
 void GPURenderTaskDelegate::read_aov(pxr::TfToken const &aov_key, GPUTexture *texture)
 {
   GPUTexture *tex = nullptr;
-  int c;
   if (aov_key == pxr::HdAovTokens->color) {
     tex = tex_color_;
-    c = 4;
   }
   else if (aov_key == pxr::HdAovTokens->depth) {
     tex = tex_depth_;
-    c = 1;
   }
   if (!tex) {
     return;

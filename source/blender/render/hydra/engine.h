@@ -64,7 +64,10 @@ class Engine {
 
  protected:
   float renderer_percent_done();
-  virtual void notify_status(float progress, const std::string &title, const std::string &info) = 0;
+  pxr::HdTaskSharedPtrVector tasks();
+  virtual void notify_status(float progress,
+                             const std::string &title,
+                             const std::string &info) = 0;
 };
 
 }  // namespace blender::render::hydra

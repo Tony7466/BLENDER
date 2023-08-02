@@ -66,18 +66,10 @@ void FinalEngine::render()
     render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
   }
 
-  pxr::HdTaskSharedPtrVector tasks;
-  if (light_tasks_delegate_) {
-    if (scene_->r.alphamode != R_ALPHAPREMUL) {
-      tasks.push_back(light_tasks_delegate_->skydome_task());
-    }
-    tasks.push_back(light_tasks_delegate_->simple_task());
-  }
-  tasks.push_back(render_task_delegate_->task());
-
   render_task_delegate_->bind();
 
-  engine_->Execute(render_index_.get(), &tasks);
+  auto t = tasks();
+  engine_->Execute(render_index_.get(), &t);
 
   char elapsed_time[32];
   double time_begin = PIL_check_seconds_timer();

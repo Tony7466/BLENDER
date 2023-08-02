@@ -232,19 +232,11 @@ void ViewportEngine::render()
   render_task_delegate_->add_aov(pxr::HdAovTokens->color);
   render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
 
-  pxr::HdTaskSharedPtrVector tasks;
-  if (light_tasks_delegate_) {
-    if (scene_->r.alphamode != R_ALPHAPREMUL) {
-      tasks.push_back(light_tasks_delegate_->skydome_task());
-    }
-    tasks.push_back(light_tasks_delegate_->simple_task());
-  }
-  tasks.push_back(render_task_delegate_->task());
-
   GPUFrameBuffer *view_framebuffer = GPU_framebuffer_active_get();
   render_task_delegate_->bind();
 
-  engine_->Execute(render_index_.get(), &tasks);
+  auto t = tasks();
+  engine_->Execute(render_index_.get(), &t);
 
   render_task_delegate_->unbind();
 
@@ -293,7 +285,8 @@ void ViewportEngine::render(bContext *context)
   render();
 }
 
-void ViewportEngine::notify_status(float /*progress*/, const std::string &info,
+void ViewportEngine::notify_status(float /*progress*/,
+                                   const std::string &info,
                                    const std::string &status)
 {
   RE_engine_update_stats(bl_engine_, status.c_str(), info.c_str());

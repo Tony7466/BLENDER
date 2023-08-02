@@ -7,6 +7,7 @@ USD Hydra Based Renderer
 
 import bpy
 
+
 class CustomHydraRenderEngine(bpy.types.HydraRenderEngine):
     # Identifier and name in the user interface.
     bl_idname = "CUSTOM_HYDRA_RENDERER"
@@ -53,8 +54,10 @@ class CustomHydraRenderEngine(bpy.types.HydraRenderEngine):
 def register():
     bpy.utils.register_class(CustomHydraRenderEngine)
 
+
 def unregister():
     bpy.utils.unregister_class(CustomHydraRenderEngine)
+
 
 if __name__ == "__main__":
     register()

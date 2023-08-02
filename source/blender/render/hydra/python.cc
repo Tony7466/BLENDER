@@ -37,6 +37,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 
   RenderEngine *bl_engine = pyrna_to_pointer<RenderEngine>(pyengine, &RNA_RenderEngine);
 
+  CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %s", engine_type);
   Engine *engine = nullptr;
   try {
     if (STREQ(engine_type, "VIEWPORT")) {
@@ -53,9 +54,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     CLOG_ERROR(LOG_HYDRA_RENDER, "%s", e.what());
   }
 
-  if (engine) {
-    CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p %s", engine, engine_type);
-  }
+  CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p", engine);
   return PyLong_FromVoidPtr(engine);
 }
 
@@ -67,9 +66,9 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
+  CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p", engine);
   delete engine;
 
-  CLOG_INFO(LOG_HYDRA_RENDER, 1, "Engine %p", engine);
   Py_RETURN_NONE;
 }
 

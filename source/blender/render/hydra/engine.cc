@@ -55,7 +55,7 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   free_camera_delegate_ = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
 
-  if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
+  if (bl_engine->type->flag & RE_USE_GPU_CONTEXT && GPU_backend_get_type() == GPU_BACKEND_OPENGL) {
     render_task_delegate_ = std::make_unique<GPURenderTaskDelegate>(
         render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
   }
@@ -131,6 +131,24 @@ float Engine::renderer_percent_done()
     return 0.0f;
   }
   return (float)it->second.UncheckedGet<double>();
+}
+
+pxr::HdTaskSharedPtrVector Engine::tasks()
+{
+  pxr::HdTaskSharedPtrVector res;
+  if (light_tasks_delegate_) {
+    if (scene_->r.alphamode != R_ALPHAPREMUL) {
+#ifndef __APPLE__
+      /* TODO: Temporary disable skydome task for MacOS due to crash with error:
+       * Failed to created pipeline state, error depthAttachmentPixelFormat is not valid
+       * and shader writes to depth */
+      res.push_back(light_tasks_delegate_->skydome_task());
+#endif
+    }
+    res.push_back(light_tasks_delegate_->simple_task());
+  }
+  res.push_back(render_task_delegate_->task());
+  return res;
 }
 
 }  // namespace blender::render::hydra
