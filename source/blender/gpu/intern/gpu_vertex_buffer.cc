@@ -115,14 +115,14 @@ void VertBuf::resize(uint vert_len)
   flag |= GPU_VERTBUF_DATA_DIRTY;
 }
 
-void VertBuf::set_data_shared(const blender::ImplicitSharingInfo &sharing_info,
+void VertBuf::set_data_shared(const ImplicitSharingInfo &sharing_info,
                               const void *data,
-                              uint v_len)
+                              uint vert_len)
 {
   if (this->sharing_info) {
     sharing_info.remove_user_and_delete_if_last();
   }
-  this->vertex_len = this->vertex_alloc = v_len;
+  this->vertex_len = this->vertex_alloc = vert_len;
 
   this->data = const_cast<uchar *>(static_cast<const uchar *>(data));
   this->sharing_info = &sharing_info;
