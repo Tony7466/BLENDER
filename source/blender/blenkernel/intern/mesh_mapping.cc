@@ -11,6 +11,10 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_timeit.hh"
+
+#include "atomic_ops.h"
+
 #include "DNA_meshdata_types.h"
 #include "DNA_vec_types.h"
 
@@ -367,17 +371,16 @@ GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
-static Array<int> gather_reverse(const Span<int> indices)
+static void sort_groups(const OffsetIndices<int> groups, MutableSpan<int> indices)
 {
-  Array<int> results(indices.size());
-  std::iota(results.begin(), results.end(), 0);
-  parallel_sort(results.begin(), results.end(), [indices](const int a, const int b) -> bool {
-    if (UNLIKELY(indices[a] == indices[b])) {
-      return a < b;
+  const auto comparator = [&](const int index_a, const int index_b) { return index_a < index_b; };
+
+  threading::parallel_for(groups.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      MutableSpan<int> group = indices.slice(groups[index]);
+      parallel_sort(group.begin(), group.end(), comparator);
     }
-    return indices[a] < indices[b];
   });
-  return results;
 }
 
 GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
@@ -385,10 +388,22 @@ GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  threading::parallel_invoke(
-      [&]() { r_offsets = create_reverse_offsets(corner_edges, edges_num); },
-      [&]() { r_indices = gather_reverse(corner_edges); });
+  SCOPED_TIMER_AVERAGED(__func__);
+  r_offsets = create_reverse_offsets(corner_edges, edges_num);
+  const OffsetIndices offsets(r_offsets.as_span());
 
+  Array<int> counts(edges_num, -1);
+
+  r_indices.reinitialize(corner_edges.size());
+  threading::parallel_for(corner_edges.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t corner : range) {
+      const int edge = corner_edges[corner];
+      const IndexRange range = offsets[edge];
+      const int index = atomic_add_and_fetch_int32(&counts[edge], 1);
+      r_indices[range[index]] = int(corner);
+    }
+  });
+  sort_groups(offsets, r_indices);
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
