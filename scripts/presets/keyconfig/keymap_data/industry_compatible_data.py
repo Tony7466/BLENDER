@@ -2552,9 +2552,9 @@ def km_grease_pencil_stroke_sculpt_mode(params):
          {"properties": [("data_path", 'tool_settings.use_gpencil_select_mask_segment')]}),
         # Normal Selection
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True},
-         {"properties": [("deselect_all", True)]}),
+         {"properties": [("deselect_all", True), ("toggle", True), ("use_shift_extend", False)]}),
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True, "ctrl": True},
-         {"properties": [("extend", True), ("toggle", True)]}),
+         {"properties": [("use_shift_extend", True), ("toggle", True)]}),
         # Selection
         *_grease_pencil_selection(params),
         # Brush properties
@@ -2886,9 +2886,9 @@ def km_grease_pencil_stroke_vertex_mode(params):
          {"properties": [("data_path", 'tool_settings.use_gpencil_vertex_select_mask_segment')]}),
         # Normal Selection
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True},
-         {"properties": [("deselect_all", True)]}),
+         {"properties": [("deselect_all", True), ("toggle", True), ("use_shift_extend", False)]}),
         ("gpencil.select", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "alt": True, "ctrl": True},
-         {"properties": [("extend", True), ("toggle", True)]}),
+         {"properties": [("use_shift_extend", True), ("toggle", True)]}),
         # Selection
         *_grease_pencil_selection(params),
         # Brush strength
