@@ -25,14 +25,17 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
+static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
+
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
+  bke::greasepencil::StrokeCache *stroke_cache_;
+
   Vector<float3> sampled_positions_;
   Vector<float> sampled_radii_;
 
   Vector<float3> smoothed_positions_;
   Vector<float> smoothed_radii_;
-  bke::greasepencil::StrokeCache *stroke_cache_;
 
   friend struct PaintOperationExecutor;
 
@@ -186,6 +189,8 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);
   stroke_cache_->set_material_index(BKE_grease_pencil_object_material_index_get(object, material));
+
+  stroke_cache_->reserve(STOKE_CACHE_ALLOCATION_CHUNK_SIZE);
 }
 
 void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)

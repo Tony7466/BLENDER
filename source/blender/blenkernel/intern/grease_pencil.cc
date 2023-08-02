@@ -269,6 +269,14 @@ void StrokeCache::clear()
   size_ = 0;
 }
 
+void StrokeCache::reserve(const int64_t new_capacity)
+{
+  positions_.reserve(new_capacity);
+  radii_.reserve(new_capacity);
+  opacities_.reserve(new_capacity);
+  vertex_colors_.reserve(new_capacity);
+}
+
 void StrokeCache::resize(const int64_t new_size)
 {
   positions_.resize(new_size);

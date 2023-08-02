@@ -40,6 +40,7 @@ namespace greasepencil {
 class StrokeCache {
  public:
   void clear();
+  void reserve(int64_t new_capacity);
   void resize(int64_t new_size);
 
   int64_t size() const;
@@ -334,6 +335,9 @@ class LayerRuntime {
  * timeline.
  */
 class Layer : public ::GreasePencilLayer {
+ public:
+  using FrameKey = int;
+
  public:
   Layer();
   explicit Layer(StringRefNull name);
