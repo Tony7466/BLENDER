@@ -48,21 +48,26 @@ class World {
  private:
   Instance &inst_;
 
+  DefaultWorldNodeTree default_tree;
+  bool has_volume_ = false;
+
   /* Used to detect if world change. */
   ::World *prev_original_world = nullptr;
 
   /* Used when the scene doesn't have a world. */
   ::World *default_world_ = nullptr;
 
- public:
-  DefaultWorldNodeTree default_tree;
+  ::World *default_world_get();
 
+  void world_and_ntree_get(::World *&world, bNodeTree *&ntree);
+
+ public:
   World(Instance &inst) : inst_(inst){};
   ~World();
 
-  ::World *default_world_get();
-
   void sync();
+
+  bool has_volume();
 };
 
 /** \} */
