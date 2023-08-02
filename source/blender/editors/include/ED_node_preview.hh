@@ -16,17 +16,24 @@ struct Render;
 struct NestedTreePreviews {
   Render *previews_render;
   /* Use this map to keep track of the latest ImBuf used (after freeing the renderresult). */
-  blender::Map<const bNode *, ImBuf *> previews_map;
+  blender::Map<const int32_t, std::pair<ImBuf *, uint32_t>> previews_map;
   int preview_size;
   bool rendering;
   bool restart_needed;
-  uint32_t previews_refresh_state;
+  bool partial_tree_refresh;
+  /* Dirty state of the bNodeTreePath vector. It is the sum of the tree_dirty_state of all the
+   * nodetrees plus the sum of all the dirty_state of the group nodes.*/
+  uint32_t treepath_dirty_state;
+  /* Dirty state of the nodetree viewed, it is used to know if any node needs to be re-rendered. */
+  uint32_t nodes_dirty_state;
   NestedTreePreviews(const int size)
       : previews_render(nullptr),
         preview_size(size),
         rendering(false),
         restart_needed(false),
-        previews_refresh_state(0)
+        partial_tree_refresh(false),
+        treepath_dirty_state(-1),
+        nodes_dirty_state(-1)
   {
   }
   ~NestedTreePreviews()
@@ -34,7 +41,9 @@ struct NestedTreePreviews {
     if (this->previews_render) {
       RE_FreeRender(this->previews_render);
     }
-    this->previews_map.foreach_item([&](const bNode *, ImBuf *ibuf) { IMB_freeImBuf(ibuf); });
+    this->previews_map.foreach_item([&](const int32_t, const std::pair<ImBuf *, uint32_t> &cache) {
+      IMB_freeImBuf(cache.first);
+    });
   }
 };
 

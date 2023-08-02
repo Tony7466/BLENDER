@@ -309,12 +309,10 @@ static void nodetree_mark_previews_dirty_reccursive(bNodeTree *tree)
   if (tree == nullptr) {
     return;
   }
-  tree->runtime->previews_refresh_state++;
-  for (bNode *node : tree->all_nodes()) {
-    if (node->type == NODE_GROUP) {
-      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
-      nodetree_mark_previews_dirty_reccursive(nested_tree);
-    }
+  tree->tree_dirty_state++;
+  for (bNode *node : tree->group_nodes()) {
+    bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
+    nodetree_mark_previews_dirty_reccursive(nested_tree);
   }
 }
 

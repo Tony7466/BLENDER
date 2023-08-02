@@ -292,7 +292,8 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
   }
 
   RenderResult *rr = RE_AcquireResultRead(tree_previews->previews_render);
-  ImBuf *&image_cached = tree_previews->previews_map.lookup_or_add(node, nullptr);
+  ImBuf *&image_cached =
+      tree_previews->previews_map.lookup_or_add(node->identifier, {nullptr, 0}).first;
   if (rr == nullptr) {
     return image_cached;
   }
@@ -304,13 +305,10 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
     image_latest = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
   }
   if (image_latest == nullptr) {
-    ntree->runtime->previews_refresh_state++;
     return image_cached;
   }
   if (image_cached != image_latest) {
-    if (image_cached != nullptr) {
-      IMB_freeImBuf(image_cached);
-    }
+    IMB_freeImBuf(image_cached);
     IMB_refImBuf(image_latest);
     image_cached = image_latest;
   }
@@ -557,12 +555,33 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 /** \name Preview job management
  * \{ */
 
-static void update_needed_flag(const bNodeTree *nt, NestedTreePreviews *tree_previews)
+static uint32_t get_treepath_dirty_state(const ListBase *treepath)
 {
-  if (nt->runtime->previews_refresh_state != tree_previews->previews_refresh_state ||
+  uint32_t tree_dirty_state_path =
+      static_cast<bNodeTreePath *>(treepath->first)->nodetree->tree_dirty_state;
+  for (bNodeTreePath *path_iter = static_cast<bNodeTreePath *>(treepath->first)->next; path_iter;
+       path_iter = path_iter->next)
+  {
+    tree_dirty_state_path += path_iter->nodetree->tree_dirty_state;
+    tree_dirty_state_path +=
+        nodeFindNodebyName(path_iter->prev->nodetree, path_iter->node_name)->dirty_state;
+  }
+  return tree_dirty_state_path;
+}
+
+static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tree_previews)
+{
+  bNodeTree *nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
+  if (nodetree->nodes_dirty_state != tree_previews->nodes_dirty_state) {
+    tree_previews->restart_needed = true;
+    tree_previews->partial_tree_refresh = true;
+  }
+  uint32_t treepath_dirty_state = get_treepath_dirty_state(treepath);
+  if (treepath_dirty_state != tree_previews->treepath_dirty_state ||
       tree_previews->preview_size != U.node_preview_res)
   {
     tree_previews->restart_needed = true;
+    tree_previews->partial_tree_refresh = false;
   }
 }
 
@@ -579,6 +598,7 @@ static void shader_preview_startjob(void *customdata,
   bool size_changed = job_data->tree_previews->preview_size != U.node_preview_res;
   if (size_changed) {
     job_data->tree_previews->preview_size = U.node_preview_res;
+    job_data->tree_previews->partial_tree_refresh = false;
   }
 
   /* Find the shader output node. */
@@ -598,6 +618,15 @@ static void shader_preview_startjob(void *customdata,
     if (!(node->flag & NODE_PREVIEW)) {
       continue;
     }
+
+    std::pair<ImBuf *, uint32_t> &cache = job_data->tree_previews->previews_map.lookup_or_add(
+        node->identifier, {nullptr, 0});
+    if (job_data->tree_previews->partial_tree_refresh) {
+      if (node->dirty_state == cache.second && cache.first != nullptr) {
+        continue;
+      }
+    }
+    cache.second = node->dirty_state;
     if (node_use_aov(node)) {
       job_data->AOV_nodes.append(node);
     }
@@ -638,7 +667,7 @@ static void ensure_nodetree_previews(const bContext *C,
   }
 
   bNodeTree *displayed_nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
-  update_needed_flag(displayed_nodetree, tree_previews);
+  update_needed_flag(treepath, tree_previews);
   if (!(tree_previews->restart_needed)) {
     return;
   }
@@ -650,7 +679,9 @@ static void ensure_nodetree_previews(const bContext *C,
   }
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
-  tree_previews->previews_refresh_state = displayed_nodetree->runtime->previews_refresh_state;
+  uint32_t treepath_dirty_state = get_treepath_dirty_state(treepath);
+  tree_previews->treepath_dirty_state = treepath_dirty_state;
+  tree_previews->nodes_dirty_state = displayed_nodetree->nodes_dirty_state;
 
   ED_preview_ensure_dbase(false);
 

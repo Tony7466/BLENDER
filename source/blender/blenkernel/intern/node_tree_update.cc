@@ -338,6 +338,7 @@ class NodeTreeMainUpdater {
         if (result.output_changed) {
           for (const TreeNodePair &pair : dependent_trees) {
             add_node_tag(pair.first, pair.second, NTREE_CHANGED_NODE_OUTPUT);
+            make_node_dirty(*pair.first, *pair.second);
           }
         }
         if (result.interface_changed) {
@@ -473,7 +474,6 @@ class NodeTreeMainUpdater {
     this->update_internal_links(ntree);
     this->update_generic_callback(ntree);
     this->remove_unused_previews_when_necessary(ntree);
-    this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
@@ -503,6 +503,7 @@ class NodeTreeMainUpdater {
     {
       result.interface_changed = true;
     }
+    this->update_nodetree_dirty_state(ntree);
 
 #ifdef DEBUG
     /* Check the uniqueness of node identifiers. */
@@ -719,16 +720,22 @@ class NodeTreeMainUpdater {
     blender::bke::node_preview_remove_unused(&ntree);
   }
 
-  void make_node_previews_dirty(bNodeTree &ntree)
+  void make_node_dirty(bNodeTree &ntree, bNode &node)
   {
-    ntree.runtime->previews_refresh_state++;
-    for (bNode *node : ntree.all_nodes()) {
-      if (node->type != NODE_GROUP) {
-        continue;
+    node.dirty_state++;
+    ntree.nodes_dirty_state++;
+    LISTBASE_FOREACH (bNodeSocket *, socket_iter, &node.outputs) {
+      for (bNodeSocket *propagation_socket : socket_iter->runtime->directly_linked_sockets) {
+        make_node_dirty(ntree, *propagation_socket->runtime->owner_node);
       }
-      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
-      if (nested_tree) {
-        this->make_node_previews_dirty(*nested_tree);
+    }
+  }
+
+  void update_nodetree_dirty_state(bNodeTree &ntree)
+  {
+    LISTBASE_FOREACH (bNode *, node_iter, &ntree.nodes) {
+      if (node_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
+        make_node_dirty(ntree, *node_iter);
       }
     }
   }
@@ -1071,6 +1078,7 @@ class NodeTreeMainUpdater {
       const bNodeSocket &socket = *sockets_to_check.pop();
       const bNode &node = socket.owner_node();
       if (socket.runtime->changed_flag != NTREE_CHANGED_NOTHING) {
+        node.runtime->changed_flag |= NTREE_CHANGED_SOCKET_PROPERTY;
         return true;
       }
       if (node.runtime->changed_flag != NTREE_CHANGED_NOTHING) {

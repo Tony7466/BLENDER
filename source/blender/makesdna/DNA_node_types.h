@@ -336,6 +336,10 @@ typedef struct bNode {
   /** Type information retrieved from the #idname. TODO: Move to runtime data. */
   struct bNodeType *typeinfo;
 
+  uint32_t dirty_state;
+
+  char _pad[4];
+
   /**
    * Integer type used for builtin nodes, allowing cheaper lookup and changing ID names with
    * versioning code. Avoid using directly if possible, since may not match runtime node type if it
@@ -617,6 +621,9 @@ typedef struct bNodeTree {
   float view_center[2];
 
   ListBase nodes, links;
+
+  uint32_t tree_dirty_state;
+  uint32_t nodes_dirty_state;
 
   int type;
 
