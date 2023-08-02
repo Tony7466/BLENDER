@@ -32,7 +32,7 @@
 #include "RNA_prototypes.h"
 
 #include "NOD_node_declaration.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 
 #include "../interface/interface_intern.hh" /* XXX bad level */
@@ -390,6 +390,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       }
       else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
         item.socket_type = SOCK_RGBA;
+      }
+      else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
+        item.socket_type = SOCK_ROTATION;
       }
       else if (dynamic_cast<const decl::String *>(&socket_decl)) {
         item.socket_type = SOCK_STRING;
@@ -873,9 +876,10 @@ static void ui_node_draw_input(
           ATTR_FALLTHROUGH;
         case SOCK_FLOAT:
         case SOCK_INT:
+        case SOCK_ROTATION:
         case SOCK_BOOLEAN:
         case SOCK_RGBA:
-          uiItemR(sub, &inputptr, "default_value", 0, "", ICON_NONE);
+          uiItemR(sub, &inputptr, "default_value", UI_ITEM_NONE, "", ICON_NONE);
           uiItemDecoratorR(
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
@@ -888,12 +892,15 @@ static void ui_node_draw_input(
             node_geometry_add_attribute_search_button(C, node, inputptr, *sub);
           }
           else {
-            uiItemR(sub, &inputptr, "default_value", 0, "", ICON_NONE);
+            uiItemR(sub, &inputptr, "default_value", UI_ITEM_NONE, "", ICON_NONE);
           }
           uiItemDecoratorR(
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
         }
+        case SOCK_CUSTOM:
+          input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
+          break;
         default:
           add_dummy_decorator = true;
       }

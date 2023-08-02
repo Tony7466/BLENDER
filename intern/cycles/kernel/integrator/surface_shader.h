@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Functions to evaluate shaders. */
 
@@ -145,11 +146,11 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
       sd->closure_emission_background = zero_spectrum();
     }
 
-    if (filter_closures & FILTER_CLOSURE_DIRECT_LIGHT) {
-      sd->flag &= ~SD_BSDF_HAS_EVAL;
-    }
-
     if (path_flag & PATH_RAY_CAMERA) {
+      if (filter_closures & FILTER_CLOSURE_DIRECT_LIGHT) {
+        sd->flag &= ~SD_BSDF_HAS_EVAL;
+      }
+
       for (int i = 0; i < sd->num_closure; i++) {
         ccl_private ShaderClosure *sc = &sd->closure[i];
 
@@ -222,6 +223,12 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
         if (CLOSURE_IS_BSDF(sc->type)) {
           bsdf_blur(kg, sc, blur_roughness);
         }
+      }
+
+      /* NOTE: this is a sufficient condition. If `blur_roughness < THRESH < original_roughness`
+       * then the flag was already set. */
+      if (sqr(blur_roughness) > BSDF_ROUGHNESS_SQ_THRESH) {
+        sd->flag |= SD_BSDF_HAS_EVAL;
       }
     }
   }

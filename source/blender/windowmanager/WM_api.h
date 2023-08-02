@@ -14,7 +14,6 @@
  * \todo document
  */
 
-/* dna-savable wmStructs here */
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 #include "DNA_windowmanager_types.h"
@@ -67,6 +66,12 @@ typedef struct wmGizmo wmGizmo;
 typedef struct wmGizmoMap wmGizmoMap;
 typedef struct wmGizmoMapType wmGizmoMapType;
 typedef struct wmJob wmJob;
+
+#ifdef __cplusplus
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+#endif
 
 /* General API. */
 
@@ -153,7 +158,7 @@ void WM_init_gpu(void);
 const char *WM_ghost_backend(void);
 
 typedef enum eWM_CapabilitiesFlag {
-  /** Ability to warp the cursor (set it's location). */
+  /** Ability to warp the cursor (set its location). */
   WM_CAPABILITY_CURSOR_WARP = (1 << 0),
   /** Ability to access window positions & move them. */
   WM_CAPABILITY_WINDOW_POSITION = (1 << 1),
@@ -168,7 +173,10 @@ typedef enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_GPU_FRONT_BUFFER_READ = (1 << 3),
   /** Ability to copy/paste system clipboard images. */
   WM_CAPABILITY_CLIPBOARD_IMAGES = (1 << 4),
+  /** The initial value, indicates the value needs to be set by inspecting GHOST. */
+  WM_CAPABILITY_INITIALIZED = (1 << 31),
 } eWM_CapabilitiesFlag;
+ENUM_OPERATORS(eWM_CapabilitiesFlag, WM_CAPABILITY_CLIPBOARD_IMAGES)
 
 eWM_CapabilitiesFlag WM_capabilities_flag(void);
 
@@ -184,7 +192,7 @@ void WM_script_tag_reload(void);
 wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mval[2]);
 
 /**
- * Knowing the area, return it's screen.
+ * Knowing the area, return its screen.
  * \note This should typically be avoided, only use when the context is not available.
  */
 wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area);
@@ -325,24 +333,30 @@ typedef enum eWindowAlignment {
 } eWindowAlignment;
 
 /**
- * \param space_type: SPACE_VIEW3D, SPACE_INFO, ... (eSpace_Type)
+ * \param rect: Position & size of the window.
+ * \param space_type: #SPACE_VIEW3D, #SPACE_INFO, ... (#eSpace_Type).
  * \param toplevel: Not a child owned by other windows. A peer of main window.
  * \param dialog: whether this should be made as a dialog-style window
  * \param temp: whether this is considered a short-lived window
  * \param alignment: how this window is positioned relative to its parent
+ * \param area_setup_fn: An optional callback which can be used to initialize the area
+ * before it's initialized. When set, `space_type` should be #SPACE_EMTPY,
+ * so the setup function can take a blank area and initialize it.
+ * \param area_setup_user_data: User data argument passed to `area_setup_fn`.
  * \return the window or NULL in case of failure.
  */
 struct wmWindow *WM_window_open(struct bContext *C,
                                 const char *title,
-                                int x,
-                                int y,
-                                int sizex,
-                                int sizey,
+                                const struct rcti *rect_unscaled,
                                 int space_type,
                                 bool toplevel,
                                 bool dialog,
                                 bool temp,
-                                eWindowAlignment alignment);
+                                eWindowAlignment alignment,
+                                void (*area_setup_fn)(bScreen *screen,
+                                                      ScrArea *area,
+                                                      void *user_data),
+                                void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
 
@@ -592,8 +606,9 @@ void WM_main_remap_editor_id_reference(const struct IDRemapper *mappings);
 /* reports */
 /**
  * Show the report in the info header.
+ * \param win: When NULL, a best-guess is used.
  */
-void WM_report_banner_show(void);
+void WM_report_banner_show(struct wmWindowManager *wm, struct wmWindow *win) ATTR_NONNULL(1);
 /**
  * Hide all currently displayed banners and abort their timer.
  */
@@ -610,20 +625,30 @@ struct wmEvent *wm_event_add(struct wmWindow *win, const struct wmEvent *event_t
 void wm_event_init_from_window(struct wmWindow *win, struct wmEvent *event);
 
 /* at maximum, every timestep seconds it triggers event_type events */
-struct wmTimer *WM_event_add_timer(struct wmWindowManager *wm,
+struct wmTimer *WM_event_timer_add(struct wmWindowManager *wm,
                                    struct wmWindow *win,
                                    int event_type,
                                    double timestep);
-struct wmTimer *WM_event_add_timer_notifier(struct wmWindowManager *wm,
+struct wmTimer *WM_event_timer_add_notifier(struct wmWindowManager *wm,
                                             struct wmWindow *win,
                                             unsigned int type,
                                             double timestep);
+
+void WM_event_timer_free_data(struct wmTimer *timer);
+/**
+ * Free all timers immediately.
+ *
+ * \note This should only be used on-exit,
+ * in all other cases timers should be tagged for removal by #WM_event_timer_remove.
+ */
+void WM_event_timers_free_all(wmWindowManager *wm);
+
 /** Mark the given `timer` to be removed, actual removal and deletion is deferred and handled
  * internally by the window manager code. */
-void WM_event_remove_timer(struct wmWindowManager *wm,
+void WM_event_timer_remove(struct wmWindowManager *wm,
                            struct wmWindow *win,
                            struct wmTimer *timer);
-void WM_event_remove_timer_notifier(struct wmWindowManager *wm,
+void WM_event_timer_remove_notifier(struct wmWindowManager *wm,
                                     struct wmWindow *win,
                                     struct wmTimer *timer);
 /**
@@ -786,7 +811,7 @@ bool WM_operator_name_poll(struct bContext *C, const char *opstring);
  * \param event: Optionally pass in an event to use when context uses one of the
  * `WM_OP_INVOKE_*` values. When left unset the #wmWindow.eventstate will be used,
  * this can cause problems for operators that read the events type - for example,
- * storing the key that was pressed so as to be able to detect it's release.
+ * storing the key that was pressed so as to be able to detect its release.
  * In these cases it's necessary to forward the current event being handled.
  */
 int WM_operator_name_call_ptr(struct bContext *C,
@@ -874,7 +899,7 @@ ID *WM_operator_drop_load_path(struct bContext *C, struct wmOperator *op, short 
 bool WM_operator_last_properties_init(struct wmOperator *op);
 bool WM_operator_last_properties_store(struct wmOperator *op);
 
-/* wm_operator_props.c */
+/* `wm_operator_props.cc` */
 
 void WM_operator_properties_confirm_or_exec(struct wmOperatorType *ot);
 
@@ -1090,7 +1115,7 @@ char *WM_context_path_resolve_property_full(const struct bContext *C,
                                             int index);
 char *WM_context_path_resolve_full(struct bContext *C, const PointerRNA *ptr);
 
-/* wm_operator_type.c */
+/* `wm_operator_type.cc` */
 
 struct wmOperatorType *WM_operatortype_find(const char *idname, bool quiet);
 /**
@@ -1169,7 +1194,7 @@ char *WM_operatortype_description_or_name(struct bContext *C,
                                           struct wmOperatorType *ot,
                                           struct PointerRNA *properties);
 
-/* wm_operator_utils.c */
+/* `wm_operator_utils.cc` */
 
 /**
  * Allow an operator with only and execute function to run modally,
@@ -1177,7 +1202,7 @@ char *WM_operatortype_description_or_name(struct bContext *C,
  */
 void WM_operator_type_modal_from_exec_for_object_edit_coords(struct wmOperatorType *ot);
 
-/* wm_uilist_type.c */
+/* `wm_uilist_type.cc` */
 
 /**
  * Called on initialize #WM_init()
@@ -1208,7 +1233,7 @@ void WM_uilisttype_to_full_list_id(const struct uiListType *ult,
  */
 const char *WM_uilisttype_list_id_get(const struct uiListType *ult, struct uiList *list);
 
-/* wm_menu_type.c */
+/* `wm_menu_type.cc` */
 
 /**
  * \note Called on initialize #WM_init().
@@ -1228,7 +1253,7 @@ void WM_menutype_idname_visit_for_search(const struct bContext *C,
                                          StringPropertySearchVisitFunc visit_fn,
                                          void *visit_user_data);
 
-/* wm_panel_type.c */
+/* `wm_panel_type.cc` */
 
 /**
  * Called on initialize #WM_init().
@@ -1246,7 +1271,7 @@ void WM_paneltype_idname_visit_for_search(const struct bContext *C,
                                           StringPropertySearchVisitFunc visit_fn,
                                           void *visit_user_data);
 
-/* wm_gesture_ops.c */
+/* `wm_gesture_ops.cc` */
 
 int WM_gesture_box_invoke(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
 int WM_gesture_box_modal(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
@@ -1401,7 +1426,7 @@ wmDrag *WM_drag_data_create(struct bContext *C,
  * Invoke dragging using the given \a drag data.
  */
 void WM_event_start_prepared_drag(struct bContext *C, wmDrag *drag);
-void WM_event_drag_image(struct wmDrag *, struct ImBuf *, float scale);
+void WM_event_drag_image(struct wmDrag *, const struct ImBuf *, float scale);
 void WM_drag_free(struct wmDrag *drag);
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin);
 void WM_drag_free_list(struct ListBase *lb);
@@ -1430,7 +1455,7 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid);
 /**
  * \param flag_extra: Additional linking flags (from #eFileSel_Params_Flag).
  */
-ID *WM_drag_asset_id_import(wmDragAsset *asset_drag, int flag_extra);
+ID *WM_drag_asset_id_import(const struct bContext *C, wmDragAsset *asset_drag, int flag_extra);
 bool WM_drag_asset_will_import_linked(const wmDrag *drag);
 void WM_drag_add_local_ID(struct wmDrag *drag, struct ID *id, struct ID *from_parent);
 struct ID *WM_drag_get_local_ID(const struct wmDrag *drag, short idcode);
@@ -1440,11 +1465,14 @@ struct ID *WM_drag_get_local_ID_from_event(const struct wmEvent *event, short id
  */
 bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
 
+#ifdef __cplusplus
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-wmDragAsset *WM_drag_create_asset_data(const struct AssetRepresentation *asset,
+wmDragAsset *WM_drag_create_asset_data(const blender::asset_system::AssetRepresentation *asset,
                                        int /* #eAssetImportMethod */ import_type);
+#endif
+
 struct wmDragAsset *WM_drag_get_asset_data(const struct wmDrag *drag, int idcode);
 struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int idcode);
 /**
@@ -1454,7 +1482,9 @@ struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int
  * Use #WM_drag_free_imported_drag_ID() as cancel callback of the drop-box, so that the asset
  * import is rolled back if the drop operator fails.
  */
-struct ID *WM_drag_get_local_ID_or_import_from_asset(const struct wmDrag *drag, int idcode);
+struct ID *WM_drag_get_local_ID_or_import_from_asset(const struct bContext *C,
+                                                     const struct wmDrag *drag,
+                                                     int idcode);
 
 /**
  * \brief Free asset ID imported for canceled drop.
@@ -1470,10 +1500,14 @@ void WM_drag_free_imported_drag_ID(struct Main *bmain,
 
 struct wmDragAssetCatalog *WM_drag_get_asset_catalog_data(const struct wmDrag *drag);
 
+#ifdef __cplusplus
 /**
  * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
-void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetRepresentation *asset);
+void WM_drag_add_asset_list_item(wmDrag *drag,
+                                 const blender::asset_system::AssetRepresentation *asset);
+#endif
+
 const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);
@@ -1731,7 +1765,7 @@ bool WM_window_modal_keymap_status_draw(struct bContext *C,
                                         struct wmWindow *win,
                                         struct uiLayout *layout);
 
-/* wm_event_query.c */
+/* `wm_event_query.cc` */
 
 /**
  * For debugging only, getting inspecting events manually is tedious.
@@ -1821,7 +1855,7 @@ int WM_event_absolute_delta_y(const struct wmEvent *event);
 bool WM_event_is_ime_switch(const struct wmEvent *event);
 #endif
 
-/* wm_tooltip.c */
+/* `wm_tooltip.cc` */
 
 typedef struct ARegion *(*wmTooltipInitFn)(struct bContext *C,
                                            struct ARegion *region,
@@ -1851,7 +1885,7 @@ void WM_tooltip_init(struct bContext *C, struct wmWindow *win);
 void WM_tooltip_refresh(struct bContext *C, struct wmWindow *win);
 double WM_tooltip_time_closed(void);
 
-/* wm_utils.c */
+/* `wm_utils.cc` */
 
 struct wmGenericCallback *WM_generic_callback_steal(struct wmGenericCallback *callback);
 void WM_generic_callback_free(struct wmGenericCallback *callback);
@@ -1861,7 +1895,7 @@ void WM_generic_user_data_free(struct wmGenericUserData *wm_userdata);
 bool WM_region_use_viewport(struct ScrArea *area, struct ARegion *region);
 
 #ifdef WITH_XR_OPENXR
-/* wm_xr_session.c */
+/* `wm_xr_session.cc` */
 
 /**
  * Check if the XR-Session was triggered.
@@ -1968,7 +2002,7 @@ void WM_xr_haptic_action_stop(wmXrData *xr,
                               const char *action_name,
                               const char *subaction_path);
 
-/* wm_xr_actionmap.c */
+/* `wm_xr_actionmap.cc` */
 
 XrActionMap *WM_xr_actionmap_new(struct wmXrRuntimeData *runtime,
                                  const char *name,

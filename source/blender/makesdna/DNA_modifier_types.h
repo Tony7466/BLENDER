@@ -8,17 +8,22 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 
 #ifdef __cplusplus
 namespace blender::bke::sim {
-class ModifierSimulationCache;
+struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCacheHandle = blender::bke::sim::ModifierSimulationCache;
+namespace blender {
+struct NodesModifierRuntime;
+}
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCacheHandle ModifierSimulationCacheHandle;
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 #ifdef __cplusplus
@@ -111,6 +116,7 @@ typedef enum ModifierMode {
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
 } ModifierMode;
+ENUM_OPERATORS(ModifierMode, eModifierMode_DisableTemporary);
 
 typedef struct ModifierData {
   struct ModifierData *next, *prev;
@@ -2331,15 +2337,7 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
-  void *_pad;
-
-  /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
-   */
-  void *runtime_eval_log;
-
-  ModifierSimulationCacheHandle *simulation_cache;
+  NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {

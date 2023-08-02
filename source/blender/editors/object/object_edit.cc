@@ -6,13 +6,13 @@
  * \ingroup edobj
  */
 
-#include <ctype.h>
-#include <float.h>
-#include <math.h>
-#include <stddef.h> /* For `offsetof`. */
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cctype>
+#include <cfloat>
+#include <cmath>
+#include <cstddef> /* For `offsetof`. */
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "MEM_guardedalloc.h"
 
@@ -389,7 +389,7 @@ void OBJECT_OT_hide_view_set(wmOperatorType *ot)
 
   PropertyRNA *prop;
   prop = RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected objects");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected objects");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
@@ -524,9 +524,9 @@ void OBJECT_OT_hide_collection(wmOperatorType *ot)
                      0,
                      INT_MAX);
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
-  prop = RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "Toggle visibility");
+  prop = RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "Toggle visibility");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend visibility");
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend visibility");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
@@ -687,7 +687,7 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
       ED_mball_editmball_free(obedit);
     }
   }
-  else if (ELEM(obedit->type, OB_CURVES, OB_GREASE_PENCIL)) {
+  else if (ELEM(obedit->type, OB_CURVES, OB_GREASE_PENCIL, OB_POINTCLOUD)) {
     /* Object doesn't have specific edit mode data, so pass. */
   }
   else {
@@ -882,6 +882,10 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
   else if (ob->type == OB_GREASE_PENCIL) {
     ok = true;
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_GREASE_PENCIL, scene);
+  }
+  else if (ob->type == OB_POINTCLOUD) {
+    ok = true;
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_POINT_CLOUD, scene);
   }
 
   if (ok) {
@@ -1756,7 +1760,7 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
 
   /* by default the operator assume is a mesh, but if gp object change mode */
   if ((ob->type == OB_GPENCIL_LEGACY) && (mode == OB_MODE_EDIT)) {
-    mode = OB_MODE_EDIT_GPENCIL;
+    mode = OB_MODE_EDIT_GPENCIL_LEGACY;
   }
 
   if (!ED_object_mode_compat_test(ob, mode)) {
@@ -1861,7 +1865,7 @@ void OBJECT_OT_mode_set(wmOperatorType *ot)
   RNA_def_enum_funcs(ot->prop, object_mode_set_itemf);
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
-  prop = RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "");
+  prop = RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -1932,8 +1936,9 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (ID_IS_OVERRIDE_LIBRARY(collection)) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot add objects to a library override collection");
+  if (ID_IS_LINKED(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
+    BKE_report(
+        op->reports, RPT_ERROR, "Cannot add objects to a library override or linked collection");
     return OPERATOR_CANCELLED;
   }
 
@@ -2069,7 +2074,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
                   ICON_ADD,
                   static_cast<IDProperty *>(menu->ptr.data),
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   nullptr);
 
   uiItemS(layout);

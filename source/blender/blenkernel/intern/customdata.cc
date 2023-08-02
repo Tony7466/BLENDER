@@ -18,6 +18,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BLI_bit_vector.hh"
 #include "BLI_bitmap.h"
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
@@ -61,6 +62,7 @@
 /* only for customdata_data_transfer_interp_normal_normals */
 #include "data_transfer_intern.h"
 
+using blender::BitVector;
 using blender::float2;
 using blender::ImplicitSharingInfo;
 using blender::IndexRange;
@@ -105,7 +107,7 @@ bool CustomData_MeshMasks_are_matching(const CustomData_MeshMasks *mask_ref,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Layer Type Information
+/** \name Layer Type Information Struct
  * \{ */
 
 struct LayerTypeInfo {
@@ -1557,6 +1559,10 @@ static void layerDefault_propquaternion(void *data, const int count)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Layer Type Information (#LAYERTYPEINFO)
+ * \{ */
+
 static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
     /* 0: CD_MVERT */ /* DEPRECATED */
     {sizeof(MVert), "MVert", 1, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
@@ -1766,10 +1772,10 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
     {sizeof(int), "", 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     /* 28: CD_SHAPEKEY */
     {sizeof(float[3]), "", 0, N_("ShapeKey"), nullptr, nullptr, layerInterp_shapekey},
-    /* 29: CD_BWEIGHT */ /* DEPRECATED*/
+    /* 29: CD_BWEIGHT */ /* DEPRECATED */
     {sizeof(MFloatProperty), "MFloatProperty", 1},
-    /* 30: CD_CREASE */
-    {sizeof(float), "", 0, nullptr, nullptr, nullptr, layerInterp_propFloat},
+    /* 30: CD_CREASE */ /* DEPRECATED */
+    {sizeof(float), ""},
     /* 31: CD_ORIGSPACE_MLOOP */
     {sizeof(OrigSpaceLoop),
      "OrigSpaceLoop",
@@ -1946,7 +1952,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr,
      nullptr},
-    /* 51: CD_HAIRLENGTH */
+    /* 51: CD_HAIRLENGTH */ /* DEPRECATED */ /* UNUSED */
     {sizeof(float), "float", 1, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
     /* 52: CD_PROP_QUATERNION */
     {sizeof(float[4]),
@@ -2034,9 +2040,9 @@ const CustomData_MeshMasks CD_MASK_BAREMESH_ORIGINDEX = {
 };
 const CustomData_MeshMasks CD_MASK_MESH = {
     /*vmask*/ (CD_MASK_PROP_FLOAT3 | CD_MASK_MDEFORMVERT | CD_MASK_MVERT_SKIN |
-               CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL | CD_MASK_CREASE),
+               CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL),
     /*emask*/
-    (CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL | CD_MASK_CREASE),
+    (CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL),
     /*fmask*/ 0,
     /*pmask*/
     (CD_MASK_FREESTYLE_FACE | CD_MASK_PROP_ALL),
@@ -2045,10 +2051,9 @@ const CustomData_MeshMasks CD_MASK_MESH = {
 };
 const CustomData_MeshMasks CD_MASK_DERIVEDMESH = {
     /*vmask*/ (CD_MASK_ORIGINDEX | CD_MASK_MDEFORMVERT | CD_MASK_SHAPEKEY | CD_MASK_MVERT_SKIN |
-               CD_MASK_PAINT_MASK | CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_PROP_ALL |
-               CD_MASK_CREASE),
+               CD_MASK_PAINT_MASK | CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_PROP_ALL),
     /*emask*/
-    (CD_MASK_ORIGINDEX | CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL | CD_MASK_CREASE),
+    (CD_MASK_ORIGINDEX | CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL),
     /*fmask*/ (CD_MASK_ORIGINDEX | CD_MASK_ORIGSPACE | CD_MASK_PREVIEW_MCOL | CD_MASK_TANGENT),
     /*pmask*/
     (CD_MASK_ORIGINDEX | CD_MASK_FREESTYLE_FACE | CD_MASK_PROP_ALL),
@@ -2058,8 +2063,8 @@ const CustomData_MeshMasks CD_MASK_DERIVEDMESH = {
 };
 const CustomData_MeshMasks CD_MASK_BMESH = {
     /*vmask*/ (CD_MASK_MDEFORMVERT | CD_MASK_MVERT_SKIN | CD_MASK_SHAPEKEY |
-               CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL | CD_MASK_CREASE),
-    /*emask*/ (CD_MASK_CREASE | CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL),
+               CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL),
+    /*emask*/ (CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL),
     /*fmask*/ 0,
     /*pmask*/
     (CD_MASK_FREESTYLE_FACE | CD_MASK_PROP_ALL),
@@ -2069,10 +2074,9 @@ const CustomData_MeshMasks CD_MASK_BMESH = {
 const CustomData_MeshMasks CD_MASK_EVERYTHING = {
     /*vmask*/ (CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_MDEFORMVERT |
                CD_MASK_MVERT_SKIN | CD_MASK_ORCO | CD_MASK_CLOTH_ORCO | CD_MASK_SHAPEKEY |
-               CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL | CD_MASK_CREASE),
+               CD_MASK_SHAPE_KEYINDEX | CD_MASK_PAINT_MASK | CD_MASK_PROP_ALL),
     /*emask*/
-    (CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_CREASE | CD_MASK_FREESTYLE_EDGE |
-     CD_MASK_PROP_ALL),
+    (CD_MASK_BM_ELEM_PYPTR | CD_MASK_ORIGINDEX | CD_MASK_FREESTYLE_EDGE | CD_MASK_PROP_ALL),
     /*fmask*/
     (CD_MASK_MFACE | CD_MASK_ORIGINDEX | CD_MASK_NORMAL | CD_MASK_MTFACE | CD_MASK_MCOL |
      CD_MASK_ORIGSPACE | CD_MASK_TANGENT | CD_MASK_TESSLOOPNORMAL | CD_MASK_PREVIEW_MCOL |
@@ -3501,33 +3505,6 @@ void CustomData_swap_corners(CustomData *data, const int index, const int *corne
   }
 }
 
-void CustomData_swap(CustomData *data, const int index_a, const int index_b)
-{
-  char buff_static[256];
-
-  if (index_a == index_b) {
-    return;
-  }
-
-  for (int i = 0; i < data->totlayer; i++) {
-    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(data->layers[i].type));
-    const size_t size = typeInfo->size;
-    const size_t offset_a = size * index_a;
-    const size_t offset_b = size * index_b;
-
-    void *buff = size <= sizeof(buff_static) ? buff_static : MEM_mallocN(size, __func__);
-    memcpy(buff, POINTER_OFFSET(data->layers[i].data, offset_a), size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_a),
-           POINTER_OFFSET(data->layers[i].data, offset_b),
-           size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_b), buff, size);
-
-    if (buff != buff_static) {
-      MEM_freeN(buff);
-    }
-  }
-}
-
 void *CustomData_get_for_write(CustomData *data,
                                const int index,
                                const eCustomDataType type,
@@ -3907,16 +3884,17 @@ void CustomData_bmesh_set_default(CustomData *data, void **block)
   }
 }
 
+static bool customdata_layer_copy_check(const CustomDataLayer &source, const CustomDataLayer &dest)
+{
+  return source.type == dest.type && STREQ(source.name, dest.name);
+}
+
 void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
                                                 CustomData *dest,
                                                 void *src_block,
                                                 void **dest_block,
                                                 const eCustomDataMask mask_exclude)
 {
-  /* Note that having a version of this function without a 'mask_exclude'
-   * would cause too much duplicate code, so add a check instead. */
-  const bool no_mask = (mask_exclude == 0);
-
   if (*dest_block == nullptr) {
     CustomData_bmesh_alloc_block(dest, dest_block);
     if (*dest_block) {
@@ -3924,51 +3902,41 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
     }
   }
 
-  /* copies a layer at a time */
-  int dest_i = 0;
-  for (int src_i = 0; src_i < source->totlayer; src_i++) {
+  BitVector<> copied_layers(dest->totlayer);
 
-    /* find the first dest layer with type >= the source type
-     * (this should work because layers are ordered by type)
-     */
-    while (dest_i < dest->totlayer && dest->layers[dest_i].type < source->layers[src_i].type) {
-      CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
-      dest_i++;
+  for (int layer_src_i : IndexRange(source->totlayer)) {
+    const CustomDataLayer &layer_src = source->layers[layer_src_i];
+
+    if (CD_TYPE_AS_MASK(layer_src.type) & mask_exclude) {
+      continue;
     }
 
-    /* if there are no more dest layers, we're done */
-    if (dest_i >= dest->totlayer) {
-      return;
-    }
+    for (int layer_dst_i : IndexRange(dest->totlayer)) {
+      CustomDataLayer &layer_dst = dest->layers[layer_dst_i];
 
-    /* if we found a matching layer, copy the data */
-    if (dest->layers[dest_i].type == source->layers[src_i].type &&
-        STREQ(dest->layers[dest_i].name, source->layers[src_i].name))
-    {
-      if (no_mask || ((CD_TYPE_AS_MASK(dest->layers[dest_i].type) & mask_exclude) == 0)) {
-        const void *src_data = POINTER_OFFSET(src_block, source->layers[src_i].offset);
-        void *dest_data = POINTER_OFFSET(*dest_block, dest->layers[dest_i].offset);
-        const LayerTypeInfo *typeInfo = layerType_getInfo(
-            eCustomDataType(source->layers[src_i].type));
-        if (typeInfo->copy) {
-          typeInfo->copy(src_data, dest_data, 1);
-        }
-        else {
-          memcpy(dest_data, src_data, typeInfo->size);
-        }
+      if (!customdata_layer_copy_check(layer_src, layer_dst)) {
+        continue;
       }
 
-      /* if there are multiple source & dest layers of the same type,
-       * we don't want to copy all source layers to the same dest, so
-       * increment dest_i
-       */
-      dest_i++;
+      copied_layers[layer_dst_i].set(true);
+
+      const void *src_data = POINTER_OFFSET(src_block, layer_src.offset);
+      void *dest_data = POINTER_OFFSET(*dest_block, layer_dst.offset);
+      const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(layer_src.type));
+      if (typeInfo->copy) {
+        typeInfo->copy(src_data, dest_data, 1);
+      }
+      else {
+        memcpy(dest_data, src_data, typeInfo->size);
+      }
     }
   }
 
-  while (dest_i < dest->totlayer) {
-    CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
-    dest_i++;
+  /* Initialize dest layers that weren't in source. */
+  for (int layer_dst_i : IndexRange(dest->totlayer)) {
+    if (!copied_layers[layer_dst_i]) {
+      CustomData_bmesh_set_default_n(dest, dest_block, layer_dst_i);
+    }
   }
 }
 
@@ -4290,11 +4258,10 @@ void CustomData_blend_write_prepare(CustomData &data,
   data.totlayer = layers_to_write.size();
   data.maxlayer = data.totlayer;
 
-  /* Note: data->layers may be null, this happens when adding
-   * a legacy MPoly struct to a mesh with no other face attributes.
+  /* NOTE: `data->layers` may be null, this happens when adding
+   * a legacy #MPoly struct to a mesh with no other face attributes.
    * This leaves us with no unique ID for DNA to identify the old
-   * data with when loading the file.
-   */
+   * data with when loading the file. */
   if (!data.layers && layers_to_write.size() > 0) {
     /* We just need an address that's unique. */
     data.layers = reinterpret_cast<CustomDataLayer *>(&data.layers);
@@ -5182,9 +5149,6 @@ void CustomData_blend_write(BlendWriter *writer,
       case CD_PROP_BOOL:
         BLO_write_raw(writer, sizeof(bool) * count, static_cast<const bool *>(layer.data));
         break;
-      case CD_CREASE:
-        BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
-        break;
       default: {
         const char *structname;
         int structnum;
@@ -5222,14 +5186,14 @@ static void blend_read_mdisps(BlendDataReader *reader,
         /* this calculation is only correct for loop mdisps;
          * if loading pre-BMesh face mdisps this will be
          * overwritten with the correct value in
-         * bm_corners_to_loops() */
+         * #bm_corners_to_loops() */
         float gridsize = sqrtf(mdisps[i].totdisp);
         mdisps[i].level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
       }
 
       if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* DNA_struct_switch_endian doesn't do endian swap for (*disps)[] */
-        /* this does swap for data written at write_mdisps() - readfile.c */
+        /* #DNA_struct_switch_endian doesn't do endian swap for `(*disps)[]` */
+        /* this does swap for data written at #write_mdisps() - `readfile.cc`. */
         BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
       }
       if (!external && !mdisps[i].disps) {

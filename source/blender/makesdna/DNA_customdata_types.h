@@ -149,9 +149,8 @@ typedef enum eCustomDataType {
   CD_SHAPEKEY = 28,
 #ifdef DNA_DEPRECATED_ALLOW
   CD_BWEIGHT = 29,
-#endif
-  /** Subdivision sharpness data per edge or per vertex. */
   CD_CREASE = 30,
+#endif
   CD_ORIGSPACE_MLOOP = 31,
   CD_PREVIEW_MLOOPCOL = 32,
   CD_BM_ELEM_PYPTR = 33,
@@ -179,7 +178,8 @@ typedef enum eCustomDataType {
   CD_PROP_FLOAT2 = 49,
   CD_PROP_BOOL = 50,
 
-  CD_HAIRLENGTH = 51,
+  /* CD_HAIRLENGTH = 51, */ /* UNUSED */
+
   CD_PROP_QUATERNION = 52,
 
   CD_NUMTYPES = 53,
@@ -205,7 +205,6 @@ typedef enum eCustomDataType {
 
 #define CD_MASK_SHAPE_KEYINDEX (1 << CD_SHAPE_KEYINDEX)
 #define CD_MASK_SHAPEKEY (1 << CD_SHAPEKEY)
-#define CD_MASK_CREASE (1 << CD_CREASE)
 #define CD_MASK_ORIGSPACE_MLOOP (1LL << CD_ORIGSPACE_MLOOP)
 #define CD_MASK_PREVIEW_MLOOPCOL (1LL << CD_PREVIEW_MLOOPCOL)
 #define CD_MASK_BM_ELEM_PYPTR (1LL << CD_BM_ELEM_PYPTR)
@@ -225,8 +224,6 @@ typedef enum eCustomDataType {
 #define CD_MASK_PROP_INT8 (1ULL << CD_PROP_INT8)
 #define CD_MASK_PROP_INT32_2D (1ULL << CD_PROP_INT32_2D)
 #define CD_MASK_PROP_QUATERNION (1ULL << CD_PROP_QUATERNION)
-
-#define CD_MASK_HAIRLENGTH (1ULL << CD_HAIRLENGTH)
 
 /** Multi-resolution loop data. */
 #define CD_MASK_MULTIRES_GRIDS (CD_MASK_MDISPS | CD_GRID_PAINT_MASK)

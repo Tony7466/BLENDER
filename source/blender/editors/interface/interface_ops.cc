@@ -29,7 +29,7 @@
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_remap.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -1026,8 +1026,8 @@ static void override_idtemplate_menu()
   MenuType *mt;
 
   mt = MEM_cnew<MenuType>(__func__);
-  strcpy(mt->idname, "UI_MT_idtemplate_liboverride");
-  strcpy(mt->label, N_("Library Override"));
+  STRNCPY(mt->idname, "UI_MT_idtemplate_liboverride");
+  STRNCPY(mt->label, N_("Library Override"));
   mt->poll = override_idtemplate_menu_poll;
   mt->draw = override_idtemplate_menu_draw;
   WM_menutype_add(mt);
@@ -1658,7 +1658,7 @@ struct uiEditSourceButStore {
 /* should only ever be set while the edit source operator is running */
 static uiEditSourceStore *ui_editsource_info = nullptr;
 
-bool UI_editsource_enable_check(void)
+bool UI_editsource_enable_check()
 {
   return (ui_editsource_info != nullptr);
 }
@@ -1853,7 +1853,7 @@ static void edittranslation_find_po_file(const char *root,
     return;
   }
 
-  /* Now try without the second iso code part (_ES in es_ES). */
+  /* Now try without the second ISO code part (`_ES` in `es_ES`). */
   {
     const char *tc = nullptr;
     size_t szt = 0;
@@ -2404,15 +2404,17 @@ static int ui_view_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
-  const ARegion *region = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   std::unique_ptr<DropTargetInterface> drop_target = region_views_find_drop_target_at(region,
                                                                                       event->xy);
 
-  if (!drop_target_apply_drop(*C, *drop_target, *static_cast<const ListBase *>(event->customdata)))
+  if (!drop_target_apply_drop(
+          *C, *region, *event, *drop_target, *static_cast<const ListBase *>(event->customdata)))
   {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
+  ED_region_tag_redraw(region);
   return OPERATOR_FINISHED;
 }
 
@@ -2548,7 +2550,7 @@ static void UI_OT_drop_material(wmOperatorType *ot)
 /** \name Operator & Keymap Registration
  * \{ */
 
-void ED_operatortypes_ui(void)
+void ED_operatortypes_ui()
 {
   WM_operatortype_append(UI_OT_copy_data_path_button);
   WM_operatortype_append(UI_OT_copy_as_driver_button);

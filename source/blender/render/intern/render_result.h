@@ -21,6 +21,7 @@ struct Render;
 struct RenderData;
 struct RenderLayer;
 struct RenderResult;
+struct ReportList;
 struct rcti;
 
 #ifdef __cplusplus
@@ -95,9 +96,10 @@ struct RenderPass *render_layer_add_pass(struct RenderResult *rr,
 /**
  * Called for reading temp files, and for external engines.
  */
-int render_result_exr_file_read_path(struct RenderResult *rr,
-                                     struct RenderLayer *rl_single,
-                                     const char *filepath);
+bool render_result_exr_file_read_path(struct RenderResult *rr,
+                                      struct RenderLayer *rl_single,
+                                      struct ReportList *reports,
+                                      const char *filepath);
 
 /* EXR cache */
 
@@ -121,14 +123,6 @@ void render_result_rect_get_pixels(struct RenderResult *rr,
                                    const struct ColorManagedViewSettings *view_settings,
                                    const struct ColorManagedDisplaySettings *display_settings,
                                    int view_id);
-void render_result_rect_get_pixels_float(
-    struct RenderResult *rr,
-    float *rect,
-    int rectx,
-    int recty,
-    const struct ColorManagedViewSettings *view_settings,
-    const struct ColorManagedDisplaySettings *display_settings,
-    int view_id);
 
 /**
  * Create a new views #ListBase in rr without duplicating the memory pointers.

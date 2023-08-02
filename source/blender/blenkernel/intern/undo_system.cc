@@ -8,8 +8,8 @@
  * Used by ED_undo.h, internal implementation.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -25,7 +25,7 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_undo_system.h"
 
@@ -249,7 +249,7 @@ static void undosys_stack_validate(UndoStack *ustack, bool expect_non_empty)
 static void undosys_stack_validate(UndoStack * /*ustack*/, bool /*expect_non_empty*/) {}
 #endif
 
-UndoStack *BKE_undosys_stack_create(void)
+UndoStack *BKE_undosys_stack_create()
 {
   UndoStack *ustack = MEM_cnew<UndoStack>(__func__);
   return ustack;
@@ -893,7 +893,7 @@ UndoType *BKE_undosys_type_append(void (*undosys_fn)(UndoType *))
   return ut;
 }
 
-void BKE_undosys_type_free_all(void)
+void BKE_undosys_type_free_all()
 {
   UndoType *ut;
   while ((ut = static_cast<UndoType *>(BLI_pophead(&g_undo_types)))) {

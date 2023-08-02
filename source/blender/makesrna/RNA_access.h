@@ -817,6 +817,7 @@ typedef enum eRNAOverrideMatch {
   /** Tag for restoration of property's value(s) to reference ones, if needed and possible. */
   RNA_OVERRIDE_COMPARE_TAG_FOR_RESTORE = 1 << 18,
 } eRNAOverrideMatch;
+ENUM_OPERATORS(eRNAOverrideMatch, RNA_OVERRIDE_COMPARE_TAG_FOR_RESTORE)
 
 typedef enum eRNAOverrideMatchResult {
   RNA_OVERRIDE_MATCH_RESULT_INIT = 0,
@@ -834,6 +835,7 @@ typedef enum eRNAOverrideMatchResult {
   /** Some properties were reset to reference values. */
   RNA_OVERRIDE_MATCH_RESULT_RESTORED = 1 << 2,
 } eRNAOverrideMatchResult;
+ENUM_OPERATORS(eRNAOverrideMatchResult, RNA_OVERRIDE_MATCH_RESULT_RESTORED)
 
 typedef enum eRNAOverrideStatus {
   /** The property is overridable. */
@@ -845,6 +847,7 @@ typedef enum eRNAOverrideStatus {
   /** The override status of this property is locked. */
   RNA_OVERRIDE_STATUS_LOCKED = 1 << 3,
 } eRNAOverrideStatus;
+ENUM_OPERATORS(eRNAOverrideStatus, RNA_OVERRIDE_STATUS_LOCKED)
 
 /**
  * Check whether reference and local overridden data match (are the same),
@@ -891,14 +894,18 @@ typedef enum eRNAOverrideApplyFlag {
 } eRNAOverrideApplyFlag;
 
 /**
- * Apply given \a override operations on \a ptr_dst, using \a ptr_src
- * (and \a ptr_storage for differential ops) as source.
+ * Apply given \a override operations on \a id_ptr_dst, using \a id_ptr_src
+ * (and \a id_ptr_storage for differential ops) as source.
+ *
+ * \note Although in theory `id_ptr_dst` etc. could be any type of RNA structure, currently they
+ * are always ID ones. In any case, they are the roots of the `rna_path` of all override properties
+ * in the given `liboverride` data.
  */
 void RNA_struct_override_apply(struct Main *bmain,
-                               struct PointerRNA *ptr_dst,
-                               struct PointerRNA *ptr_src,
-                               struct PointerRNA *ptr_storage,
-                               struct IDOverrideLibrary *override,
+                               struct PointerRNA *id_ptr_dst,
+                               struct PointerRNA *id_ptr_src,
+                               struct PointerRNA *id_ptr_storage,
+                               struct IDOverrideLibrary *liboverride,
                                eRNAOverrideApplyFlag flag);
 
 struct IDOverrideLibraryProperty *RNA_property_override_property_find(struct Main *bmain,

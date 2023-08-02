@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mem
@@ -260,14 +261,17 @@ void *MEM_guarded_dupallocN(const void *vmemh)
 #else
     {
       MemHead *nmemh;
-      char *name = malloc(strlen(memh->name) + 24);
+      const char name_prefix[] = "dupli_alloc ";
+      const size_t name_prefix_len = sizeof(name_prefix) - 1;
+      const size_t name_size = strlen(memh->name) + 1;
+      char *name = malloc(name_prefix_len + name_size);
+      memcpy(name, name_prefix, sizeof(name_prefix));
+      memcpy(name + name_prefix_len, memh->name, name_size);
 
       if (LIKELY(memh->alignment == 0)) {
-        sprintf(name, "%s %s", "dupli_alloc", memh->name);
         newp = MEM_guarded_mallocN(memh->len, name);
       }
       else {
-        sprintf(name, "%s %s", "dupli_alloc", memh->name);
         newp = MEM_guarded_mallocN_aligned(memh->len, (size_t)memh->alignment, name);
       }
 

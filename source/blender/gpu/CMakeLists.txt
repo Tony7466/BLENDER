@@ -2,14 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# WITH_OPENGL limits the visibility of the opengl headers to just GPU and bg_gpu,
-# to more easily highlight code-paths in other libraries that need to be refactored,
-# bf_gpu is allowed to have opengl regardless of this option.
-
-if(NOT WITH_OPENGL AND NOT WITH_METAL_BACKEND AND NOT WITH_HEADLESS)
-  add_definitions(-DWITH_OPENGL)
-endif()
-
 set(INC
   .
   intern
@@ -17,11 +9,9 @@ set(INC
   opengl
   vulkan
   ../blenkernel
-  ../blenlib
   ../bmesh
   ../draw
   ../imbuf
-  ../makesdna
   ../makesrna
 
   # For theme color access.
@@ -38,10 +28,8 @@ set(INC
   # For node muting stuff.
   ../nodes
 
-  ../../../intern/atomic
   ../../../intern/clog
   ../../../intern/ghost
-  ../../../intern/guardedalloc
   ../../../intern/mantaflow/extern
 )
 
@@ -59,8 +47,8 @@ set(INC_SYS
 
 set(SRC
   intern/gpu_batch.cc
-  intern/gpu_batch_presets.c
-  intern/gpu_batch_utils.c
+  intern/gpu_batch_presets.cc
+  intern/gpu_batch_utils.cc
   intern/gpu_capabilities.cc
   intern/gpu_codegen.cc
   intern/gpu_compute.cc
@@ -69,17 +57,17 @@ set(SRC
   intern/gpu_drawlist.cc
   intern/gpu_framebuffer.cc
   intern/gpu_immediate.cc
-  intern/gpu_immediate_util.c
+  intern/gpu_immediate_util.cc
   intern/gpu_index_buffer.cc
-  intern/gpu_init_exit.c
-  intern/gpu_material.c
+  intern/gpu_init_exit.cc
+  intern/gpu_material.cc
   intern/gpu_matrix.cc
   intern/gpu_node_graph.cc
   intern/gpu_platform.cc
   intern/gpu_query.cc
-  intern/gpu_select.c
+  intern/gpu_select.cc
   intern/gpu_select_next.cc
-  intern/gpu_select_pick.c
+  intern/gpu_select_pick.cc
   intern/gpu_select_sample_query.cc
   intern/gpu_shader.cc
   intern/gpu_shader_builtin.cc
@@ -93,7 +81,7 @@ set(SRC
   intern/gpu_uniform_buffer.cc
   intern/gpu_vertex_buffer.cc
   intern/gpu_vertex_format.cc
-  intern/gpu_viewport.c
+  intern/gpu_viewport.cc
 
   GPU_batch.h
   GPU_batch_presets.h
@@ -203,6 +191,7 @@ set(OPENGL_SRC
 set(VULKAN_SRC
   vulkan/vk_backend.cc
   vulkan/vk_batch.cc
+  vulkan/vk_bindable_resource.cc
   vulkan/vk_buffer.cc
   vulkan/vk_command_buffer.cc
   vulkan/vk_common.cc
@@ -239,6 +228,7 @@ set(VULKAN_SRC
 
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh
+  vulkan/vk_bindable_resource.hh
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
   vulkan/vk_common.hh
@@ -325,12 +315,18 @@ set(METAL_SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
   ${Epoxy_LIBRARIES}
+  PRIVATE bf::intern::guardedalloc
 )
 
 # Select Backend source based on availability
-if(WITH_OPENGL)
+if(WITH_OPENGL_BACKEND)
   list(APPEND SRC ${OPENGL_SRC})
+
+  add_definitions(-DWITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_METAL_BACKEND)
@@ -518,6 +514,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_separate_xyz.glsl
   shaders/material/gpu_shader_material_set.glsl
   shaders/material/gpu_shader_material_shader_to_rgba.glsl
+  shaders/material/gpu_shader_material_sheen.glsl
   shaders/material/gpu_shader_material_squeeze.glsl
   shaders/material/gpu_shader_material_subsurface_scattering.glsl
   shaders/material/gpu_shader_material_tangent.glsl
@@ -542,7 +539,6 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_vector_displacement.glsl
   shaders/material/gpu_shader_material_vector_math.glsl
   shaders/material/gpu_shader_material_vector_rotate.glsl
-  shaders/material/gpu_shader_material_velvet.glsl
   shaders/material/gpu_shader_material_vertex_color.glsl
   shaders/material/gpu_shader_material_volume_absorption.glsl
   shaders/material/gpu_shader_material_volume_principled.glsl
@@ -641,6 +637,7 @@ list(APPEND INC ${CMAKE_CURRENT_BINARY_DIR})
 
 set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/basic/shaders/infos/basic_depth_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_ambient_occlusion_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_deferred_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
@@ -649,7 +646,9 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_subsurface_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_velocity_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_vfx_info.hh
@@ -674,6 +673,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/workbench/shaders/infos/workbench_effect_dof_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_effect_outline_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_merge_infront_info.hh
+  ../draw/engines/workbench/shaders/infos/workbench_overlay_depth_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_prepass_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_shadow_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_transparent_resolve_info.hh
@@ -818,6 +818,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
+    PRIVATE bf::intern::guardedalloc
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -826,8 +827,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   add_custom_command(
     OUTPUT
     ${SRC_BAKED_CREATE_INFOS_FILE}
-    COMMAND
-      "$<TARGET_FILE:shader_builder>" ${SRC_BAKED_CREATE_INFOS_FILE}
+    COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD} $<TARGET_FILE:shader_builder> ${SRC_BAKED_CREATE_INFOS_FILE}
     DEPENDS shader_builder
   )
   set(GPU_SHADER_INFO_SRC

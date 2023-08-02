@@ -44,7 +44,7 @@ static CLG_LogRef LOG = {"ed.undo.curve"};
 /** \name Undo Conversion
  * \{ */
 
-typedef struct {
+struct UndoCurve {
   ListBase nubase;
   int actvert;
   GHash *undoIndex;
@@ -58,7 +58,7 @@ typedef struct {
   } obedit;
 
   size_t undo_size;
-} UndoCurve;
+};
 
 static void undocurve_to_editcurve(Main *bmain, UndoCurve *ucu, Curve *cu, short *r_shapenr)
 {
@@ -183,16 +183,16 @@ static Object *editcurve_object_from_context(bContext *C)
  * \note This is similar for all edit-mode types.
  * \{ */
 
-typedef struct CurveUndoStep_Elem {
+struct CurveUndoStep_Elem {
   UndoRefID_Object obedit_ref;
   UndoCurve data;
-} CurveUndoStep_Elem;
+};
 
-typedef struct CurveUndoStep {
+struct CurveUndoStep {
   UndoStep step;
   CurveUndoStep_Elem *elems;
   uint elems_len;
-} CurveUndoStep;
+};
 
 static bool curve_undosys_poll(bContext *C)
 {

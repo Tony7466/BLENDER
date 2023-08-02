@@ -166,12 +166,16 @@ class AssetLibrary {
    */
   AssetIdentifier asset_identifier_from_library(StringRef relative_asset_path);
 
+  std::string resolve_asset_weak_reference_to_full_path(const AssetWeakReference &asset_reference);
+
   eAssetLibraryType library_type() const;
   StringRefNull name() const;
   StringRefNull root_path() const;
 };
 
 Vector<AssetLibraryReference> all_valid_asset_library_refs();
+
+AssetLibraryReference all_library_reference();
 
 }  // namespace blender::asset_system
 

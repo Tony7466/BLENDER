@@ -37,9 +37,9 @@
 #include "BKE_collection.h"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
-#include "BKE_geometry_set.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
@@ -67,12 +67,15 @@
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 
+#include "MOD_nodes.hh"
+
 using blender::Array;
 using blender::float2;
 using blender::float3;
 using blender::float4x4;
 using blender::Span;
 using blender::Vector;
+using blender::bke::GeometrySet;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
 namespace geo_log = blender::nodes::geo_eval_log;
@@ -469,17 +472,17 @@ static const Mesh *mesh_data_from_duplicator_object(Object *ob,
      * We could change this but it matches 2.7x behavior. */
     me_eval = BKE_object_get_editmesh_eval_cage(ob);
     if ((me_eval == nullptr) || (me_eval->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH)) {
-      EditMeshData *emd = me_eval ? me_eval->runtime->edit_data : nullptr;
+      blender::bke::EditMeshData *emd = me_eval ? me_eval->runtime->edit_data : nullptr;
 
       /* Only assign edit-mesh in the case we can't use `me_eval`. */
       *r_em = em;
       me_eval = nullptr;
 
-      if ((emd != nullptr) && (emd->vertexCos != nullptr)) {
-        *r_vert_coords = emd->vertexCos;
+      if ((emd != nullptr) && !emd->vertexCos.is_empty()) {
+        *r_vert_coords = reinterpret_cast<const float(*)[3]>(emd->vertexCos.data());
         if (r_vert_normals != nullptr) {
           BKE_editmesh_cache_ensure_vert_normals(em, emd);
-          *r_vert_normals = emd->vertexNos;
+          *r_vert_normals = reinterpret_cast<const float(*)[3]>(emd->vertexNos.data());
         }
       }
     }
@@ -738,7 +741,7 @@ static void make_duplis_verts(const DupliContext *ctx)
     vdd.totvert = me_eval->totvert;
     vdd.vert_positions = me_eval->vert_positions();
     vdd.vert_normals = me_eval->vert_normals();
-    vdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vdata, CD_ORCO);
+    vdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vert_data, CD_ORCO);
 
     make_child_duplis(ctx, &vdd, make_child_duplis_verts_from_mesh);
   }
@@ -900,7 +903,9 @@ static void make_duplis_geometry_set_impl(const DupliContext *ctx,
     }
   }
   if (!ELEM(ctx->object->type, OB_CURVES_LEGACY, OB_FONT, OB_CURVES) || geometry_set_is_instance) {
-    if (const CurveComponent *component = geometry_set.get_component_for_read<CurveComponent>()) {
+    if (const blender::bke::CurveComponent *component =
+            geometry_set.get_component_for_read<blender::bke::CurveComponent>())
+    {
       if (use_new_curves_type) {
         if (const Curves *curves = component->get_for_read()) {
           make_dupli(ctx, ctx->object, &curves->id, parent_transform, component_index++);
@@ -1060,7 +1065,7 @@ struct FaceDupliData_Mesh {
   FaceDupliData_Params params;
 
   int totface;
-  blender::OffsetIndices<int> polys;
+  blender::OffsetIndices<int> faces;
   Span<int> corner_verts;
   Span<float3> vert_positions;
   const float (*orco)[3];
@@ -1159,13 +1164,13 @@ static DupliObject *face_dupli_from_mesh(const DupliContext *ctx,
                                          const float scale_fac,
 
                                          /* Mesh variables. */
-                                         const Span<int> poly_verts,
+                                         const Span<int> face_verts,
                                          const Span<float3> vert_positions)
 {
-  Array<float3, 64> coords(poly_verts.size());
+  Array<float3, 64> coords(face_verts.size());
 
-  for (int i = 0; i < poly_verts.size(); i++) {
-    coords[i] = vert_positions[poly_verts[i]];
+  for (int i = 0; i < face_verts.size(); i++) {
+    coords[i] = vert_positions[face_verts[i]];
   }
 
   return face_dupli(ctx, inst_ob, child_imat, index, use_scale, scale_fac, coords);
@@ -1220,26 +1225,26 @@ static void make_child_duplis_faces_from_mesh(const DupliContext *ctx,
   const float scale_fac = ctx->object->instance_faces_scale;
 
   for (const int a : blender::IndexRange(totface)) {
-    const blender::IndexRange poly = fdd->polys[a];
-    const Span<int> poly_verts = fdd->corner_verts.slice(poly);
+    const blender::IndexRange face = fdd->faces[a];
+    const Span<int> face_verts = fdd->corner_verts.slice(face);
     DupliObject *dob = face_dupli_from_mesh(fdd->params.ctx,
                                             inst_ob,
                                             child_imat,
                                             a,
                                             use_scale,
                                             scale_fac,
-                                            poly_verts,
+                                            face_verts,
                                             fdd->vert_positions);
 
-    const float w = 1.0f / float(poly.size());
+    const float w = 1.0f / float(face.size());
     if (orco) {
-      for (int j = 0; j < poly.size(); j++) {
-        madd_v3_v3fl(dob->orco, orco[poly_verts[j]], w);
+      for (int j = 0; j < face.size(); j++) {
+        madd_v3_v3fl(dob->orco, orco[face_verts[j]], w);
       }
     }
     if (mloopuv) {
-      for (int j = 0; j < poly.size(); j++) {
-        madd_v2_v2fl(dob->uv, mloopuv[poly[j]], w);
+      for (int j = 0; j < face.size(); j++) {
+        madd_v2_v2fl(dob->uv, mloopuv[face[j]], w);
       }
     }
   }
@@ -1313,17 +1318,17 @@ static void make_duplis_faces(const DupliContext *ctx)
     make_child_duplis(ctx, &fdd, make_child_duplis_faces_from_editmesh);
   }
   else {
-    const int uv_idx = CustomData_get_render_layer(&me_eval->ldata, CD_PROP_FLOAT2);
+    const int uv_idx = CustomData_get_render_layer(&me_eval->loop_data, CD_PROP_FLOAT2);
     FaceDupliData_Mesh fdd{};
     fdd.params = fdd_params;
-    fdd.totface = me_eval->totpoly;
-    fdd.polys = me_eval->polys();
+    fdd.totface = me_eval->faces_num;
+    fdd.faces = me_eval->faces();
     fdd.corner_verts = me_eval->corner_verts();
     fdd.vert_positions = me_eval->vert_positions();
     fdd.mloopuv = (uv_idx != -1) ? (const float2 *)CustomData_get_layer_n(
-                                       &me_eval->ldata, CD_PROP_FLOAT2, uv_idx) :
+                                       &me_eval->loop_data, CD_PROP_FLOAT2, uv_idx) :
                                    nullptr;
-    fdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vdata, CD_ORCO);
+    fdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vert_data, CD_ORCO);
 
     make_child_duplis(ctx, &fdd, make_child_duplis_faces_from_mesh);
   }
@@ -1724,7 +1729,7 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   }
 
   if (ctx->object->runtime.geometry_set_eval != nullptr) {
-    if (BKE_object_has_geometry_set_instances(ctx->object)) {
+    if (blender::bke::object_has_geometry_set_instances(*ctx->object)) {
       return &gen_dupli_geometry_set;
     }
   }
@@ -1791,7 +1796,7 @@ ListBase *object_duplilist_preview(Depsgraph *depsgraph,
       continue;
     }
     NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(md_orig);
-    if (nmd_orig->runtime_eval_log == nullptr) {
+    if (!nmd_orig->runtime->eval_log) {
       continue;
     }
     if (const geo_log::ViewerNodeLog *viewer_log =
@@ -1823,6 +1828,7 @@ static bool find_geonode_attribute_rgba(const DupliObject *dupli,
                                         float r_value[4])
 {
   using namespace blender;
+  using namespace blender::bke;
 
   /* Loop over layers from innermost to outermost. */
   for (const int i : IndexRange(ARRAY_SIZE(dupli->instance_data))) {

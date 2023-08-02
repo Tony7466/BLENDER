@@ -35,7 +35,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     node.custom1 = GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON;
   };
 
-  b.add_input<decl::Geometry>("Mesh").supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Float>("Distance Min")
       .min(0.0f)
@@ -63,12 +63,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribute_method", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "distribute_method", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "use_legacy_normal", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_legacy_normal", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode *node)
@@ -275,7 +275,7 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_polys(),
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_faces(),
                                                       looptri_indices,
                                                       source_data,
                                                       IndexMask(output_data.size()),
@@ -305,6 +305,9 @@ BLI_NOINLINE static void propagate_existing_attributes(
 
     GAttributeReader src = mesh_attributes.lookup(attribute_id);
     if (!src) {
+      continue;
+    }
+    if (src.domain == ATTR_DOMAIN_EDGE) {
       continue;
     }
 
@@ -537,8 +540,8 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   geometry_set.replace_pointcloud(pointcloud);
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_MESH},
-                                                 GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  params.get_output_propagation_info("Points"),
                                                  attributes);
@@ -575,7 +578,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry_set, selection_field, method, seed, attribute_outputs, params);
     /* Keep instances because the original geometry set may contain instances that are processed as
      * well. */
-    geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
+    geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
   });
 
   params.set_output("Points", std::move(geometry_set));

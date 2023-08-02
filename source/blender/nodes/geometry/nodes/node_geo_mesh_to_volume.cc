@@ -26,7 +26,7 @@ NODE_STORAGE_FUNCS(NodeGeometryMeshToVolume)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Mesh").supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Float>("Density").default_value(1.0f).min(0.01f).max(FLT_MAX);
   b.add_input<decl::Float>("Voxel Size")
       .default_value(0.3f)
@@ -47,7 +47,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "resolution_mode", 0, IFACE_("Resolution"), ICON_NONE);
+  uiItemR(layout, ptr, "resolution_mode", UI_ITEM_NONE, IFACE_("Resolution"), ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -96,7 +96,7 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
     }
   }
 
-  if (mesh.totvert == 0 || mesh.totpoly == 0) {
+  if (mesh.totvert == 0 || mesh.faces_num == 0) {
     return nullptr;
   }
 
@@ -137,7 +137,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (geometry_set.has_mesh()) {
       Volume *volume = create_volume_from_mesh(*geometry_set.get_mesh_for_read(), params);
       geometry_set.replace_volume(volume);
-      geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_VOLUME});
+      geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
     }
   });
   params.set_output("Volume", std::move(geometry_set));

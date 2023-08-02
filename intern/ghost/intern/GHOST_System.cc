@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -402,7 +403,15 @@ GHOST_TSuccess GHOST_System::createFullScreenWindow(GHOST_Window **window,
   if (stereoVisual) {
     gpuSettings.flags |= GHOST_gpuStereoVisual;
   }
+#if defined(WITH_OPENGL_BACKEND)
   gpuSettings.context_type = GHOST_kDrawingContextTypeOpenGL;
+#elif defined(WITH_METAL_BACKEND)
+  gpuSettings.context_type = GHOST_kDrawingContextTypeMetal;
+#elif defined(WITH_VULKAN_BACKEND)
+  gpuSettings.context_type = GHOST_kDrawingContextTypeVulkan;
+#else
+#  error
+#endif
   /* NOTE: don't use #getCurrentDisplaySetting() because on X11 we may
    * be zoomed in and the desktop may be bigger than the viewport. */
   GHOST_ASSERT(m_displayManager,
