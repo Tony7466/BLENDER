@@ -19,6 +19,7 @@ void register_function_nodes()
   register_node_type_fn_input_special_characters();
   register_node_type_fn_input_string();
   register_node_type_fn_input_vector();
+  register_node_type_fn_integer_math();
   register_node_type_fn_random_value();
   register_node_type_fn_replace_string();
   register_node_type_fn_rotate_euler();

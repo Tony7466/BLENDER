@@ -274,6 +274,7 @@ DefNode(FunctionNode, FN_NODE_INPUT_INT, def_fn_input_int, "INPUT_INT", InputInt
 DefNode(FunctionNode, FN_NODE_INPUT_SPECIAL_CHARACTERS, 0, "INPUT_SPECIAL_CHARACTERS", InputSpecialCharacters, "Special Characters", "")
 DefNode(FunctionNode, FN_NODE_INPUT_STRING, def_fn_input_string, "INPUT_STRING", InputString, "String", "")
 DefNode(FunctionNode, FN_NODE_INPUT_VECTOR, def_fn_input_vector, "INPUT_VECTOR", InputVector, "Vector", "")
+DefNode(FunctionNode, FN_NODE_INTEGER_MATH, def_fn_integer_math, "INTEGER_MATH", IntegerMath, "Integer Math", "")
 DefNode(FunctionNode, FN_NODE_RANDOM_VALUE, def_fn_random_value, "RANDOM_VALUE", RandomValue, "Random Value", "")
 DefNode(FunctionNode, FN_NODE_REPLACE_STRING, 0, "REPLACE_STRING", ReplaceString, "Replace String", "")
 DefNode(FunctionNode, FN_NODE_ROTATE_EULER, def_fn_rotate_euler, "ROTATE_EULER", RotateEuler, "Rotate Euler", "")
