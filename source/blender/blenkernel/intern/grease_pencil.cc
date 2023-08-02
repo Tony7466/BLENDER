@@ -1432,7 +1432,9 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
 {
   using namespace blender::bke::greasepencil;
 
-  BLI_assert(layer.frames().contains(frame_number));
+  if (!layer.frames().contains(frame_number)) {
+    return false;
+  }
   const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
 
   /* Create the new frame structure, with the same duration.
