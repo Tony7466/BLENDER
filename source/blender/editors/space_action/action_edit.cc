@@ -784,7 +784,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
 
   bool changed = false;
   if (hold_previous) {
-    const int active_frame_number = layer->frame_index_at(current_frame_number);
+    const FramesMapKey active_frame_number = layer->frame_key_at(current_frame_number);
     if ((active_frame_number == -1) || (layer->frames().lookup(active_frame_number).is_null())) {
       /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
        * frame. */
