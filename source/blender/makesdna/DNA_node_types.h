@@ -2482,6 +2482,16 @@ typedef enum NodeCompareOperation {
   NODE_COMPARE_COLOR_DARKER = 7,
 } NodeCompareOperation;
 
+typedef enum NodeBitMathOperation {
+  NODE_BIT_MATH_AND = 0,
+  NODE_BIT_MATH_OR = 1,
+  NODE_BIT_MATH_XOR = 2,
+  NODE_BIT_MATH_NOT = 3,
+  NODE_BIT_MATH_AND_NOT = 4,
+  NODE_BIT_MATH_LEFT_SHIFT = 5,
+  NODE_BIT_MATH_RIGHT_SHIFT = 6,
+} NodeBitMathOperation;
+
 typedef enum FloatToIntRoundingMode {
   FN_NODE_FLOAT_TO_INT_ROUND = 0,
   FN_NODE_FLOAT_TO_INT_FLOOR = 1,
