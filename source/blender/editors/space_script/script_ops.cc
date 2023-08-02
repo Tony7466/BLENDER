@@ -6,8 +6,8 @@
  * \ingroup spscript
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "WM_api.h"
 
@@ -15,7 +15,7 @@
 
 /* ************************** registration **********************************/
 
-void script_operatortypes(void)
+void script_operatortypes()
 {
   WM_operatortype_append(SCRIPT_OT_python_file_run);
   WM_operatortype_append(SCRIPT_OT_reload);

@@ -2647,17 +2647,24 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
   switch (val) {
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
-      ScrArea *area;
+      const int window_center[2] = {
+          WM_window_pixels_x(win) / 2,
+          WM_window_pixels_y(win) / 2,
+      };
 
-      if ((area = ED_screen_temp_space_open(C,
-                                            IFACE_("Blender File View"),
-                                            WM_window_pixels_x(win) / 2,
-                                            WM_window_pixels_y(win) / 2,
-                                            U.file_space_data.temp_win_sizex * UI_SCALE_FAC,
-                                            U.file_space_data.temp_win_sizey * UI_SCALE_FAC,
-                                            SPACE_FILE,
-                                            U.filebrowser_display_type,
-                                            true)))
+      const rcti window_rect = {
+          /*xmin*/ window_center[0],
+          /*xmax*/ window_center[0] + int(U.file_space_data.temp_win_sizex * UI_SCALE_FAC),
+          /*ymin*/ window_center[1],
+          /*ymax*/ window_center[1] + int(U.file_space_data.temp_win_sizey * UI_SCALE_FAC),
+      };
+
+      if (ScrArea *area = ED_screen_temp_space_open(C,
+                                                    IFACE_("Blender File View"),
+                                                    &window_rect,
+                                                    SPACE_FILE,
+                                                    U.filebrowser_display_type,
+                                                    true))
       {
         ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
@@ -4082,7 +4089,7 @@ void wm_event_do_handlers(bContext *C)
          * after modal handlers have been done. */
         if (event->type == MOUSEMOVE) {
           /* State variables in screen, cursors.
-           * Also used in `wm_draw.c`, fails for modal handlers though. */
+           * Also used in `wm_draw.cc`, fails for modal handlers though. */
           ED_screen_set_active_region(C, win, event->xy);
           /* For regions having custom cursors. */
           wm_paintcursor_test(C, event);

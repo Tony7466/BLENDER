@@ -6,8 +6,8 @@
  * \ingroup spgraph
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
@@ -101,8 +101,8 @@ static SpaceLink *graph_create(const ScrArea * /*area*/, const Scene *scene)
   region->regiontype = RGN_TYPE_WINDOW;
 
   region->v2d.tot.xmin = 0.0f;
-  region->v2d.tot.ymin = (float)scene->r.sfra - 10.0f;
-  region->v2d.tot.xmax = (float)scene->r.efra;
+  region->v2d.tot.ymin = float(scene->r.sfra) - 10.0f;
+  region->v2d.tot.xmax = float(scene->r.efra);
   region->v2d.tot.ymax = 10.0f;
 
   region->v2d.cur = region->v2d.tot;
@@ -295,7 +295,7 @@ static void graph_main_region_draw(const bContext *C, ARegion *region)
 
   /* markers */
   if (sipo->mode != SIPO_MODE_DRIVERS) {
-    UI_view2d_view_orthoSpecial(region, v2d, 1);
+    UI_view2d_view_orthoSpecial(region, v2d, true);
     int marker_draw_flag = DRAW_MARKERS_MARGIN;
     if (sipo->flag & SIPO_SHOW_MARKERS) {
       ED_markers_draw(C, marker_draw_flag);
@@ -488,7 +488,7 @@ static void graph_region_listener(const wmRegionListenerParams *params)
 
 static void graph_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   Scene *scene = params->scene;
   bScreen *screen = params->screen;
   ScrArea *area = params->area;
@@ -803,7 +803,7 @@ static void graph_refresh(const bContext *C, ScrArea *area)
   graph_refresh_fcurve_colors(C);
 }
 
-static void graph_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct IDRemapper *mappings)
+static void graph_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceGraph *sgraph = (SpaceGraph *)slink;
   if (!sgraph->ads) {
@@ -869,7 +869,7 @@ static void graph_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   sipo->runtime.ghost_curves = tmpGhosts;
 }
 
-void ED_spacetype_ipo(void)
+void ED_spacetype_ipo()
 {
   SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype ipo"));
   ARegionType *art;

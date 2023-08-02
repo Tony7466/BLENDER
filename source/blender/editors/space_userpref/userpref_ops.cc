@@ -6,7 +6,7 @@
  * \ingroup spuserpref
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -349,7 +349,7 @@ static void PREFERENCES_OT_unassociate_blend(wmOperatorType *ot)
 
 /** \} */
 
-void ED_operatortypes_userpref(void)
+void ED_operatortypes_userpref()
 {
   WM_operatortype_append(PREFERENCES_OT_reset_default_theme);
 

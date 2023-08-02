@@ -6,9 +6,9 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_utildefines.h"
 
@@ -27,7 +27,7 @@
 #  include "RE_pipeline.h"
 #  include "RE_texture.h"
 
-static void texture_evaluate(Tex *tex, float value[3], float r_color[4])
+static void texture_evaluate(Tex *tex, const float value[3], float r_color[4])
 {
   TexResult texres = {0.0f};
 

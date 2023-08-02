@@ -6,7 +6,7 @@
  * \ingroup edanimation
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "MEM_guardedalloc.h"
 
@@ -338,13 +338,13 @@ static short acf_generic_group_offset(bAnimContext *ac, bAnimListElem *ale)
     }
     /* materials and particles animdata */
     else if (ELEM(GS(ale->id->name), ID_MA, ID_PA)) {
-      offset += (short)(0.7f * U.widget_unit);
+      offset += short(0.7f * U.widget_unit);
 
       /* If not in Action Editor mode, action-groups (and their children)
        * must carry some offset too. */
     }
     else if (ac->datatype != ANIMCONT_ACTION) {
-      offset += (short)(0.7f * U.widget_unit);
+      offset += short(0.7f * U.widget_unit);
     }
 
     /* nodetree animdata */
@@ -3499,7 +3499,9 @@ static bool acf_gpl_setting_valid(bAnimContext * /*ac*/,
 }
 
 /* Get the appropriate flag(s) for the setting when it is valid. */
-static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
+static int acf_gpl_setting_flag_legacy(bAnimContext * /*ac*/,
+                                       eAnimChannel_Settings setting,
+                                       bool *r_neg)
 {
   /* Clear extra return data first. */
   *r_neg = false;
@@ -3549,7 +3551,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*icon*/ nullptr,
 
     /*has_setting*/ acf_gpl_setting_valid,
-    /*setting_flag*/ acf_gpl_setting_flag,
+    /*setting_flag*/ acf_gpl_setting_flag_legacy,
     /*setting_ptr*/ acf_gpl_setting_ptr_legacy,
 };
 
@@ -3578,6 +3580,17 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   return (*r_prop != nullptr);
 }
 
+static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
+{
+  *r_neg = false;
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT: /* selected */
+      return GP_LAYER_TREE_NODE_SELECT;
+
+    default: /* unsupported */
+      return 0;
+  }
+}
 /* Get pointer to the setting */
 static void *acf_gpl_setting_ptr(bAnimListElem *ale,
                                  eAnimChannel_Settings /*setting*/,
@@ -3601,7 +3614,7 @@ static bAnimChannelType ACF_GPL = {
 
     /*name*/ acf_gpl_name,
     /*name_prop*/ acf_gpl_name_prop,
-    /*icon*/ NULL,
+    /*icon*/ nullptr,
 
     /*has_setting*/ acf_gpl_setting_valid,
     /*setting_flag*/ acf_gpl_setting_flag,
@@ -3994,7 +4007,7 @@ static void acf_nlaaction_backdrop(bAnimContext *ac, bAnimListElem *ale, float y
    */
   rctf box;
   box.xmin = offset;
-  box.xmax = (float)v2d->cur.xmax;
+  box.xmax = float(v2d->cur.xmax);
   box.ymin = yminc + NLACHANNEL_SKIP;
   box.ymax = ymaxc + NLACHANNEL_SKIP - 1;
   UI_draw_roundbox_4fv(&box, true, 8, color);
@@ -4501,9 +4514,9 @@ void ANIM_channel_draw(
     /* just skip - drawn as widget now */
     offset += ICON_WIDTH;
   }
-  else {
+  else if (!ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
     /* A bit of padding when there is no expand widget. */
-    offset += (short)(0.2f * U.widget_unit);
+    offset += short(0.2f * U.widget_unit);
   }
 
   /* step 3) draw icon ............................................... */
@@ -4598,7 +4611,7 @@ void ANIM_channel_draw(
 
       immBegin(GPU_PRIM_LINES, 2);
       immVertex2f(pos, float(offset), yminc);
-      immVertex2f(pos, (float)v2d->cur.xmax, yminc);
+      immVertex2f(pos, float(v2d->cur.xmax), yminc);
       immEnd();
 
       immUnbindProgram();
@@ -4654,7 +4667,7 @@ void ANIM_channel_draw(
       /* solo... */
       if ((ac->spacetype == SPACE_NLA) && acf->has_setting(ac, ale, ACHANNEL_SETTING_SOLO)) {
         /* A touch of padding because the star icon is so wide. */
-        offset += (short)(1.2f * ICON_WIDTH);
+        offset += short(1.2f * ICON_WIDTH);
       }
 
       /* protect... */
@@ -4743,6 +4756,9 @@ static void achannel_setting_flush_widget_cb(bContext *C, void *ale_npoin, void 
   /* verify that we have a channel to operate on. */
   if (!ale_setting) {
     return;
+  }
+  if (ale_setting->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
 
   if (ale_setting->type == ANIMTYPE_GPLAYER) {
@@ -4836,12 +4852,12 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, (float)scene->r.cfra);
+      depsgraph, float(scene->r.cfra));
   NlaKeyframingContext *nla_context = BKE_animsys_get_nla_keyframing_context(
       &nla_cache, &id_ptr, adt, &anim_eval_context);
 
   /* get current frame and apply NLA-mapping to it (if applicable) */
-  cfra = BKE_nla_tweakedit_remap(adt, (float)scene->r.cfra, NLATIME_CONVERT_UNMAP);
+  cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
 
   /* Get flags for keyframing. */
   flag = ANIM_get_keyframing_flags(scene, true);
@@ -4898,7 +4914,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, (float)scene->r.cfra);
+      depsgraph, float(scene->r.cfra));
   NlaKeyframingContext *nla_context = BKE_animsys_get_nla_keyframing_context(
       &nla_cache, &id_ptr, key->adt, &anim_eval_context);
 
@@ -4964,7 +4980,7 @@ static void achannel_setting_slider_nla_curve_cb(bContext *C, void * /*id_poin*/
   float cfra;
 
   /* get current frame - *no* NLA mapping should be done */
-  cfra = (float)scene->r.cfra;
+  cfra = float(scene->r.cfra);
 
   /* get flags for keyframing */
   flag = ANIM_get_keyframing_flags(scene, true);
@@ -5360,7 +5376,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
 
   /* step 5) draw mute+protection toggles + (sliders) ....................... */
   /* reset offset - now goes from RHS of panel */
-  offset = (int)rect->xmax;
+  offset = int(rect->xmax);
 
   /* TODO: when drawing sliders, make those draw instead of these toggles if not enough space. */
   if (v2d && !is_being_renamed) {
@@ -5390,7 +5406,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         offset -= ICON_WIDTH;
         draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_SOLO);
         /* A touch of padding because the star icon is so wide. */
-        offset -= (short)(0.2f * ICON_WIDTH);
+        offset -= short(0.2f * ICON_WIDTH);
       }
       /* protect... */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_PROTECT)) {

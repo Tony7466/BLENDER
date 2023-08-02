@@ -48,7 +48,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -1811,7 +1811,7 @@ static void refreshdrivers_animdata_fn(int /*event*/,
   IdAdtTemplate *iat = (IdAdtTemplate *)tselem->id;
 
   /* Loop over drivers, performing refresh
-   * (i.e. check graph_buttons.c and rna_fcurve.cc for details). */
+   * (i.e. check `graph_buttons.cc` and `rna_fcurve.cc` for details). */
   LISTBASE_FOREACH (FCurve *, fcu, &iat->adt->drivers) {
     fcu->flag &= ~FCURVE_DISABLED;
 
@@ -2613,7 +2613,7 @@ static TreeTraversalAction outliner_collect_objects_to_delete(TreeElement *te, v
     ID *id_parent = tselem_parent->id;
     /* It's not possible to remove an object from an overridden collection (and potentially scene,
      * through the master collection). */
-    if ((ELEM(GS(id_parent->name), ID_GR, ID_SCE))) {
+    if (ELEM(GS(id_parent->name), ID_GR, ID_SCE)) {
       if (ID_IS_OVERRIDE_LIBRARY_REAL(id_parent)) {
         return TRAVERSE_SKIP_CHILDS;
       }

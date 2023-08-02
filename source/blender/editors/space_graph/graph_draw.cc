@@ -6,10 +6,10 @@
  * \ingroup spgraph
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -868,7 +868,7 @@ static int calculate_bezt_draw_resolution(BezTriple *bezt,
     return max_bez_resolution;
   }
 
-  const int resolution = (int)(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
+  const int resolution = int(5.0f * len_v2v2(bezt->vec[1], prevbezt->vec[1]));
 
   /* NOTE: higher values will crash */
   /* TODO: view scale should factor into this someday too... */
@@ -1070,9 +1070,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
   /* map keyframes for drawing if scaled F-Curve */
-  if (adt) {
-    ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
-  }
+  ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
 
   /* draw curve:
    * - curve line may be result of one or more destructive modifiers or just the raw data,
@@ -1140,7 +1138,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
        * by sampling it at various small-intervals over the visible region
        */
       if (adt) {
-        /** We have to do this mapping dance since the keyframes were remapped but the Fmodifier
+        /* We have to do this mapping dance since the keyframes were remapped but the F-modifier
          * evaluations are not.
          *
          * So we undo the keyframe remapping and instead remap the evaluation time when drawing the
@@ -1235,7 +1233,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
 
   /* undo mapping of keyframes for drawing if scaled F-Curve */
   if (adt) {
-    ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
+    ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
   }
 }
 

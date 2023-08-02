@@ -8,10 +8,10 @@
  * 3D View checks and manipulation (no operators).
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_camera_types.h"
 #include "DNA_curve_types.h"
@@ -311,7 +311,7 @@ struct PointsInPlanesMinMax_UserData {
 static void points_in_planes_minmax_fn(
     const float co[3], int /*i*/, int /*j*/, int /*k*/, void *user_data_p)
 {
-  struct PointsInPlanesMinMax_UserData *user_data = static_cast<PointsInPlanesMinMax_UserData *>(
+  PointsInPlanesMinMax_UserData *user_data = static_cast<PointsInPlanesMinMax_UserData *>(
       user_data_p);
   minmax_v3v3_v3(user_data->min, user_data->max, co);
 }
@@ -342,7 +342,7 @@ bool ED_view3d_clipping_clamp_minmax(const RegionView3D *rv3d, float min[3], flo
   }
 
   /* Calculate points intersecting all planes (effectively intersecting two bounding boxes). */
-  struct PointsInPlanesMinMax_UserData user_data;
+  PointsInPlanesMinMax_UserData user_data;
   INIT_MINMAX(user_data.min, user_data.max);
 
   const float eps_coplanar = 1e-4f;
@@ -493,7 +493,7 @@ bool ED_view3d_persp_ensure(const Depsgraph *depsgraph, View3D *v3d, ARegion *re
     if (rv3d->persp == RV3D_CAMOB) {
       /* If autopersp and previous view was an axis one,
        * switch back to PERSP mode, else reuse previous mode. */
-      char persp = (autopersp && RV3D_VIEW_IS_AXIS(rv3d->lview)) ? RV3D_PERSP : rv3d->lpersp;
+      char persp = (autopersp && RV3D_VIEW_IS_AXIS(rv3d->lview)) ? char(RV3D_PERSP) : rv3d->lpersp;
       ED_view3d_persp_switch_from_camera(depsgraph, v3d, rv3d, persp);
     }
     else if (autopersp && RV3D_VIEW_IS_AXIS(rv3d->view)) {
@@ -636,7 +636,7 @@ bool ED_view3d_camera_autokey(
     const Scene *scene, ID *id_key, bContext *C, const bool do_rotate, const bool do_translate)
 {
   if (autokeyframe_cfra_can_key(scene, id_key)) {
-    const float cfra = (float)scene->r.cfra;
+    const float cfra = float(scene->r.cfra);
     ListBase dsources = {nullptr, nullptr};
 
     /* add data-source override for the camera object */
@@ -1126,8 +1126,8 @@ bool ED_view3d_autodist(Depsgraph *depsgraph,
   } while ((depth_ok == false) && (i < ARRAY_SIZE(margin_arr)));
 
   if (depth_ok) {
-    float centx = (float)mval[0] + 0.5f;
-    float centy = (float)mval[1] + 0.5f;
+    float centx = float(mval[0]) + 0.5f;
+    float centy = float(mval[1]) + 0.5f;
 
     if (ED_view3d_unproject_v3(region, centx, centy, depth_close, mouse_worldloc)) {
       return true;
@@ -1160,18 +1160,18 @@ bool ED_view3d_autodist_simple(ARegion *region,
     return false;
   }
 
-  float centx = (float)mval[0] + 0.5f;
-  float centy = (float)mval[1] + 0.5f;
+  float centx = float(mval[0]) + 0.5f;
+  float centy = float(mval[1]) + 0.5f;
   return ED_view3d_unproject_v3(region, centx, centy, depth, mouse_worldloc);
 }
 
-static bool depth_segment_cb(int x, int y, void *userData)
+static bool depth_segment_cb(int x, int y, void *user_data)
 {
   struct UserData {
     const ViewDepths *vd;
     int margin;
     float depth;
-  } *data = static_cast<UserData *>(userData);
+  } *data = static_cast<UserData *>(user_data);
   int mval[2];
   float depth;
 
@@ -1605,7 +1605,7 @@ void ED_view3d_to_object(const Depsgraph *depsgraph,
   BKE_object_apply_mat4_ex(ob, mat, ob_eval->parent, ob_eval->parentinv, true);
 }
 
-static bool view3d_camera_to_view_selected_impl(struct Main *bmain,
+static bool view3d_camera_to_view_selected_impl(Main *bmain,
                                                 Depsgraph *depsgraph,
                                                 const Scene *scene,
                                                 Object *camera_ob,
@@ -1649,7 +1649,7 @@ static bool view3d_camera_to_view_selected_impl(struct Main *bmain,
   return false;
 }
 
-bool ED_view3d_camera_to_view_selected(struct Main *bmain,
+bool ED_view3d_camera_to_view_selected(Main *bmain,
                                        Depsgraph *depsgraph,
                                        const Scene *scene,
                                        Object *camera_ob)
@@ -1657,7 +1657,7 @@ bool ED_view3d_camera_to_view_selected(struct Main *bmain,
   return view3d_camera_to_view_selected_impl(bmain, depsgraph, scene, camera_ob, nullptr, nullptr);
 }
 
-bool ED_view3d_camera_to_view_selected_with_set_clipping(struct Main *bmain,
+bool ED_view3d_camera_to_view_selected_with_set_clipping(Main *bmain,
                                                          Depsgraph *depsgraph,
                                                          const Scene *scene,
                                                          Object *camera_ob)
@@ -1696,7 +1696,7 @@ struct ReadData {
 
 static bool depth_read_test_fn(const void *value, void *userdata)
 {
-  struct ReadData *data = static_cast<ReadData *>(userdata);
+  ReadData *data = static_cast<ReadData *>(userdata);
   float depth = *(float *)value;
   if (depth < data->r_depth) {
     data->r_depth = depth;
@@ -1733,7 +1733,7 @@ bool ED_view3d_depth_read_cached(const ViewDepths *vd,
     int pixel_count = (min_ii(x + margin + 1, shape[1]) - max_ii(x - margin, 0)) *
                       (min_ii(y + margin + 1, shape[0]) - max_ii(y - margin, 0));
 
-    struct ReadData data;
+    ReadData data;
     data.count = 0;
     data.count_max = pixel_count;
     data.r_depth = 1.0f;
@@ -1772,7 +1772,7 @@ bool ED_view3d_depth_read_cached_normal(const ARegion *region,
 
       float depth_fl = 1.0f;
       ED_view3d_depth_read_cached(depths, mval_ofs, 0, &depth_fl);
-      const double depth = (double)depth_fl;
+      const double depth = double(depth_fl);
       if ((depth > depths->depth_range[0]) && (depth < depths->depth_range[1])) {
         if (ED_view3d_depth_unproject_v3(region, mval_ofs, depth, coords[i])) {
           depths_valid[i] = true;
@@ -1813,8 +1813,8 @@ bool ED_view3d_depth_unproject_v3(const ARegion *region,
                                   const double depth,
                                   float r_location_world[3])
 {
-  float centx = (float)mval[0] + 0.5f;
-  float centy = (float)mval[1] + 0.5f;
+  float centx = float(mval[0]) + 0.5f;
+  float centy = float(mval[1]) + 0.5f;
   return ED_view3d_unproject_v3(region, centx, centy, depth, r_location_world);
 }
 

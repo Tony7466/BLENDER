@@ -57,6 +57,7 @@ endif()
 set(INC
   .
   ../common
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../bmesh
@@ -176,7 +177,7 @@ if(WITH_HYDRA)
 endif()
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_imbuf

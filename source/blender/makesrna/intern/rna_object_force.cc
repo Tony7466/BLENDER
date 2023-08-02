@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLT_translation.h"
 
@@ -247,20 +247,14 @@ static void rna_Cache_toggle_disk_cache(Main * /*bmain*/, Scene * /*scene*/, Poi
 }
 
 bool rna_Cache_use_disk_cache_override_apply(Main * /*bmain*/,
-                                             PointerRNA *ptr_dst,
-                                             PointerRNA *ptr_src,
-                                             PointerRNA * /*ptr_storage*/,
-                                             PropertyRNA *prop_dst,
-                                             PropertyRNA *prop_src,
-                                             PropertyRNA * /*prop_storage*/,
-                                             const int /*len_dst*/,
-                                             const int /*len_src*/,
-                                             const int /*len_storage*/,
-                                             PointerRNA * /*ptr_item_dst*/,
-                                             PointerRNA * /*ptr_item_src*/,
-                                             PointerRNA * /*ptr_item_storage*/,
-                                             IDOverrideLibraryPropertyOperation *opop)
+                                             RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PointerRNA *ptr_src = &rnaapply_ctx.ptr_src;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  PropertyRNA *prop_src = rnaapply_ctx.prop_src;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(RNA_property_type(prop_dst) == PROP_BOOLEAN);
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE);
   UNUSED_VARS_NDEBUG(opop);
@@ -445,7 +439,7 @@ int rna_Cache_info_length(PointerRNA *ptr)
     BKE_ptcache_update_info(&pid);
   }
 
-  return (int)strlen(cache->info);
+  return int(strlen(cache->info));
 }
 
 static char *rna_CollisionSettings_path(const PointerRNA * /*ptr*/)
