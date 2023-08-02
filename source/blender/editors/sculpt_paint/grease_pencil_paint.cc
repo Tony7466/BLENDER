@@ -83,7 +83,7 @@ struct PaintOperationExecutor {
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
   }
 
-  void process_new_sample(PaintOperation &self, const InputSample &extension_sample)
+  void process_extension_sample(PaintOperation &self, const InputSample &extension_sample)
   {
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
     float3 proj_pos;
@@ -162,7 +162,7 @@ struct PaintOperationExecutor {
     Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
     GreasePencil *grease_pencil = static_cast<GreasePencil *>(object_eval->data);
 
-    this->process_new_sample(self, extension_sample);
+    this->process_extension_sample(self, extension_sample);
 
     BKE_grease_pencil_batch_cache_dirty_tag(grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
