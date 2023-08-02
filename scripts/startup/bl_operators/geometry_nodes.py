@@ -271,7 +271,7 @@ class NewGeometryNodeGroupOperator(Operator):
     def execute(self, context):
         group = geometry_node_group_empty_new()
         group.asset_mark()
-        group.asset_traits.is_operator = True
+        group.is_operator = True
         context.space_data.node_tree = group
         return {'FINISHED'}
 
