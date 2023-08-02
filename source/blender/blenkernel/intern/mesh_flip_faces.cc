@@ -13,7 +13,7 @@
 namespace blender::bke {
 
 template<typename T>
-inline void flip_corner_data(const OffsetIndices<int> faces,
+static void flip_corner_data(const OffsetIndices<int> faces,
                              const IndexMask &face_selection,
                              MutableSpan<T> data)
 {
@@ -22,7 +22,7 @@ inline void flip_corner_data(const OffsetIndices<int> faces,
 }
 
 template<typename T>
-inline void flip_custom_data_type(const OffsetIndices<int> faces,
+static void flip_custom_data_type(const OffsetIndices<int> faces,
                                   CustomData &loop_data,
                                   const IndexMask &face_selection,
                                   const eCustomDataType data_type)
