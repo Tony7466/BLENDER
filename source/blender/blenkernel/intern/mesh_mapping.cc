@@ -331,8 +331,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
     for (const int64_t i : range) {
       const int group_index = group_indices[i];
       const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
-      const IndexRange group = offsets[group_index];
-      results[group[index_in_group]] = int(i);
+      results[offsets[group_index][index_in_group]] = int(i);
     }
   });
   sort_small_groups(offsets, 1024, results);
