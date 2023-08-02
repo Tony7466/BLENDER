@@ -342,15 +342,15 @@ static BitVector<> calc_no_split_selected_edges(const int orig_verts_num,
  * result in a single output edge, regardless of how many faces used the edge originally. Those
  * edges are marked by this bit map.
  */
-static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
-                                  const Span<int> orig_corner_edges,
-                                  const BitSpan selection,
-                                  const Span<int> new_corner_verts,
-                                  const BitSpan output_single_edge,
-                                  MutableSpan<int2> edges,
-                                  MutableSpan<int> corner_edges,
-                                  Vector<int2> &new_edges,
-                                  Vector<int> &new_edge_orig_indices)
+static void add_new_edges(const OffsetIndices<int> faces,
+                          const Span<int> orig_corner_edges,
+                          const BitSpan selection,
+                          const Span<int> new_corner_verts,
+                          const BitSpan output_single_edge,
+                          MutableSpan<int2> edges,
+                          MutableSpan<int> corner_edges,
+                          Vector<int2> &r_new_edges,
+                          Vector<int> &r_new_edge_orig_indices)
 {
   BitVector<> edge_used(edges.size());
   for (const int i : faces.index_range()) {
@@ -366,9 +366,9 @@ static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
         continue;
       }
       if (edge_used[edge]) {
-        corner_edges[corner] = edges.size() + new_edges.size();
-        new_edges.append(new_edge);
-        new_edge_orig_indices.append(edge);
+        corner_edges[corner] = edges.size() + r_new_edges.size();
+        r_new_edges.append(new_edge);
+        r_new_edge_orig_indices.append(edge);
       }
       else {
         edges[edge] = new_edge;
@@ -376,7 +376,6 @@ static Vector<int2> add_new_edges(const OffsetIndices<int> faces,
       }
     }
   }
-  return new_edges;
 }
 
 static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
