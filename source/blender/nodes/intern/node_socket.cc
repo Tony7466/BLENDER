@@ -657,10 +657,7 @@ static void standard_node_socket_interface_from_socket(ID * /*id*/,
                                                        const bNodeSocket *sock)
 {
   /* initialize settings */
-  iosock->socket_type = BLI_strdup(sock->idname);
-  node_socket_init_default_value_data(
-      eNodeSocketDatatype(sock->type), sock->typeinfo->subtype, &iosock->socket_data);
-  node_socket_copy_default_value_data(eNodeSocketDatatype(sock->type), iosock->socket_data, sock);
+  iosock->init_from_socket_instance(sock);
 }
 
 extern "C" void ED_init_standard_node_socket_type(bNodeSocketType *);

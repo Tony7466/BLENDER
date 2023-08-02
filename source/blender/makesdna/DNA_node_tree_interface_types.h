@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 struct bContext;
+struct bNodeSocket;
 struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
@@ -84,6 +85,8 @@ typedef struct bNodeTreeInterfaceSocket {
   blender::ColorGeometry4f socket_color() const;
 
   bool set_socket_type(const char *new_socket_type);
+
+  void init_from_socket_instance(const bNodeSocket *socket);
 #endif
 } bNodeTreeInterfaceSocket;
 

@@ -5,10 +5,11 @@
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_interface.hh"
 
 #include "BLI_math.h"
+#include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
@@ -26,6 +27,26 @@
 namespace blender::bke::node_interface {
 
 namespace socket_types {
+
+/* Try to get a supported socket type from some final type.
+ * Built-in socket can have multiple registered RNA types for the base type, e.g.
+ * `NodeSocketFloatUnsigned`, `NodeSocketFloatFactor`. Only the "base type" (`NodeSocketFloat`)
+ * is considered valid for interface sockets.
+ */
+static const char *try_get_supported_socket_type(StringRef socket_type)
+{
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_type.data());
+  if (typeinfo == nullptr) {
+    return nullptr;
+  }
+  /* For builtin socket types only the base type is supported. */
+  if (blender::bke::nodeIsStaticSocketType(typeinfo)) {
+    return nodeStaticSocketType(typeinfo->type, PROP_NONE);
+  }
+  else {
+    return typeinfo->idname;
+  }
+}
 
 /* -------------------------------------------------------------------- */
 /** \name ID user increment in socket data
@@ -179,6 +200,22 @@ static void socket_data_copy(bNodeTreeInterfaceSocket &dst,
     dst.socket_data = MEM_dupallocN(src.socket_data);
     socket_data_copy_impl(get_socket_data_as<SocketDataType>(dst),
                           get_socket_data_as<SocketDataType>(src));
+    if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+      socket_data_id_user_increment(get_socket_data_as<SocketDataType>(dst));
+    }
+  });
+}
+
+/* Copy socket data from a raw pointer, e.g. from a #bNodeSocket. */
+static void socket_data_copy_ptr(bNodeTreeInterfaceSocket &dst,
+                                 const void *src_socket_data,
+                                 int flag)
+{
+  socket_data_to_static_type_tag(dst.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    dst.socket_data = MEM_dupallocN(src_socket_data);
+    socket_data_copy_impl(get_socket_data_as<SocketDataType>(dst),
+                          *static_cast<const SocketDataType *>(src_socket_data));
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
       socket_data_id_user_increment(get_socket_data_as<SocketDataType>(dst));
     }
@@ -716,16 +753,37 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
 
 bool bNodeTreeInterfaceSocket::set_socket_type(const char *new_socket_type)
 {
-  if (socket_data != nullptr) {
-    socket_types::socket_data_free(*this, true);
-    MEM_SAFE_FREE(socket_data);
+  const char *idname = socket_types::try_get_supported_socket_type(new_socket_type);
+  if (idname == nullptr) {
+    return false;
   }
-  MEM_SAFE_FREE(socket_type);
 
-  socket_type = BLI_strdup(new_socket_type);
-  socket_data = socket_types::make_socket_data(new_socket_type);
+  if (this->socket_data != nullptr) {
+    socket_types::socket_data_free(*this, true);
+    MEM_SAFE_FREE(this->socket_data);
+  }
+  MEM_SAFE_FREE(this->socket_type);
+
+  this->socket_type = BLI_strdup(new_socket_type);
+  this->socket_data = socket_types::make_socket_data(new_socket_type);
 
   return true;
+}
+
+void bNodeTreeInterfaceSocket::init_from_socket_instance(const bNodeSocket *socket)
+{
+  const char *idname = socket_types::try_get_supported_socket_type(socket->idname);
+  BLI_assert(idname != nullptr);
+
+  if (this->socket_data != nullptr) {
+    socket_types::socket_data_free(*this, true);
+    MEM_SAFE_FREE(this->socket_data);
+  }
+  MEM_SAFE_FREE(this->socket_type);
+
+  this->socket_type = BLI_strdup(idname);
+  this->socket_data = socket_types::make_socket_data(idname);
+  socket_types::socket_data_copy_ptr(*this, socket->default_value, 0);
 }
 
 blender::IndexRange bNodeTreeInterfacePanel::items_range() const
@@ -1007,6 +1065,11 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   BLI_assert(name.data() != nullptr);
   BLI_assert(socket_type.data() != nullptr);
 
+  const char *idname = socket_types::try_get_supported_socket_type(socket_type.data());
+  if (idname == nullptr) {
+    return nullptr;
+  }
+
   bNodeTreeInterfaceSocket *new_socket = MEM_cnew<bNodeTreeInterfaceSocket>(__func__);
   BLI_assert(new_socket);
 
@@ -1072,7 +1135,9 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name
 
   bNodeTreeInterfaceSocket *new_socket = make_socket(
       next_uid++, name, description, socket_type, flag);
-  parent->add_item(new_socket->item);
+  if (new_socket) {
+    parent->add_item(new_socket->item);
+  }
   return new_socket;
 }
 
@@ -1091,7 +1156,9 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
 
   bNodeTreeInterfaceSocket *new_socket = make_socket(
       next_uid++, name, description, socket_type, flag);
-  parent->insert_item(new_socket->item, index);
+  if (new_socket) {
+    parent->insert_item(new_socket->item, index);
+  }
   return new_socket;
 }
 
@@ -1104,7 +1171,9 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name,
   BLI_assert(find_item(parent->item));
 
   bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
-  parent->add_item(new_panel->item);
+  if (new_panel) {
+    parent->add_item(new_panel->item);
+  }
   return new_panel;
 }
 
@@ -1118,7 +1187,9 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef nam
   BLI_assert(find_item(parent->item));
 
   bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
-  parent->insert_item(new_panel->item, index);
+  if (new_panel) {
+    parent->insert_item(new_panel->item, index);
+  }
   return new_panel;
 }
 

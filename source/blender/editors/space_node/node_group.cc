@@ -1043,6 +1043,9 @@ static void node_group_make_insert_selected(const bContext &C,
         if (!info.interface_socket) {
           info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
+        else {
+          links_to_remove.add(link);
+        }
       }
     }
     for (bNodeSocket *output_socket : node->output_sockets()) {
@@ -1059,7 +1062,14 @@ static void node_group_make_insert_selected(const bContext &C,
           internal_links_to_move.add(link);
           continue;
         }
-        output_links.append({link, add_interface_from_socket(ntree, group, *link->fromsock)});
+        bNodeTreeInterfaceSocket *io_socket = add_interface_from_socket(
+            ntree, group, *link->fromsock);
+        if (io_socket) {
+          output_links.append({link, io_socket});
+        }
+        else {
+          links_to_remove.add(link);
+        }
       }
     }
   }
@@ -1084,7 +1094,9 @@ static void node_group_make_insert_selected(const bContext &C,
           }
           const bNodeTreeInterfaceSocket *io_socket =
               bke::node_interface::add_interface_socket_from_node(group, *node, *socket);
-          new_internal_links.append({node, socket, io_socket});
+          if (io_socket) {
+            new_internal_links.append({node, socket, io_socket});
+          }
         }
       };
       expose_sockets(node->input_sockets());

@@ -573,7 +573,6 @@ struct GHashIterator *nodeSocketTypeGetIterator(void);
 const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 const char *nodeStaticSocketType(int type, int subtype);
-const char *nodeStaticSocketInterfaceType(int type, int subtype);
 const char *nodeStaticSocketInterfaceTypeNew(int type, int subtype);
 const char *nodeStaticSocketLabel(int type, int subtype);
 
