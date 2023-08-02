@@ -553,13 +553,14 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             eMaterialPipeline pipeline_type)
 {
   bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  bool defer_compilation = is_volume;
 
   eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME_WORLD : MAT_GEOM_WORLD;
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
   return DRW_shader_from_world(
-      blender_world, nodetree, shader_uuid, is_volume, false, codegen_callback, this);
+      blender_world, nodetree, shader_uuid, is_volume, defer_compilation, codegen_callback, this);
 }
 
 /* Variation to compile a material only with a nodetree. Caller needs to maintain the list of
