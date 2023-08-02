@@ -5,8 +5,6 @@ directory = Path(__file__).parent / "nodes"
 output_cc_file = Path(sys.argv[1])
 
 include_lines = []
-include_lines.append("#include \"NOD_register.hh\"")
-include_lines.append("#include \"node_geometry_register.hh\"")
 
 decl_lines = []
 
@@ -27,4 +25,4 @@ for path in directory.glob("*.cc"):
 func_lines.append("}")
 
 with open(output_cc_file, "w") as f:
-    f.write("\n".join(include_lines + decl_lines + func_lines))
+    f.write("\n".join(include_lines + decl_lines + [""] + func_lines))
