@@ -262,7 +262,10 @@ add_custom_command(
   OUTPUT
     ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
   COMMAND
-    ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
+    ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py
+      ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
+      NOD_REGISTER_NODE
   DEPENDS
     ${SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py

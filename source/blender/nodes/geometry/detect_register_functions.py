@@ -4,6 +4,7 @@ import re
 
 directory = Path(__file__).parent / "nodes"
 output_cc_file = Path(sys.argv[1])
+macro_name = sys.argv[2]
 
 include_lines = []
 
@@ -14,13 +15,16 @@ func_lines.append("void register_geometry_nodes();")
 func_lines.append("void register_geometry_nodes()")
 func_lines.append("{")
 
+expression = r"(^namespace ([\w:]+) \{)|(^\}  // namespace ([\w:]+))|(MACRO\((\w+)\))"
+expression = expression.replace("MACRO", macro_name)
+
 for path in directory.glob("*.cc"):
     with open(path) as f:
         code = f.read()
 
     namespace_parts = []
 
-    for match in re.finditer(r"(^namespace ([\w:]+) \{)|(^\}  // namespace ([\w:]+))|(NOD_REGISTER_NODE\((\w+)\))", code, flags=re.MULTILINE):
+    for match in re.finditer(expression, code, flags=re.MULTILINE):
         if entered_namespace := match.group(2):
             namespace_parts += entered_namespace.split("::")
         elif exited_namespace := match.group(4):
