@@ -182,7 +182,6 @@ get_init_socket_fn(const bNodeTreeInterface &interface, const bNodeTreeInterface
         node_interface::get_item_as<bNodeTreeInterfaceSocket>(*io_item);
     bNodeSocketType *typeinfo = io_socket.socket_typeinfo();
     if (typeinfo && typeinfo->interface_init_socket) {
-      //    return *static_cast<ID **>(io_socket.socket_data);
       typeinfo->interface_init_socket(&ntree.id, &io_socket, &node, &socket, data_path);
     }
   };
