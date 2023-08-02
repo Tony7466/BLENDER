@@ -6,11 +6,7 @@ __all__ = (
 
 def export_mtlx(material):
     """ Exports material to .mtlx file. It is called from Blender source code. """
-    try:
-        import materialx.utils as mx_utils
-    except ImportError:
-        print("ERROR: no MaterialX addon available")
-        return ""
+    import materialx.utils as mx_utils
 
     doc = mx_utils.export(material, None)
     if not doc:

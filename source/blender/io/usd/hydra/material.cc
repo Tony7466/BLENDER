@@ -113,9 +113,34 @@ pxr::HdCullStyle MaterialData::cull_style() const
 
 void MaterialData::export_mtlx()
 {
-  /* Call of python function hydra.export_mtlx() */
-
   PyGILState_STATE gstate;
+
+  /* Checking materialx addon */
+  static bool matx_addon_checked = false;
+  static bool has_matx_addon = false;
+
+  if (!matx_addon_checked) {
+    gstate = PyGILState_Ensure();
+    /* Adding second check into the lock, good practice to make this fully correct */
+    if (!matx_addon_checked) {
+      PyObject *mx_module = PyImport_ImportModule("materialx");
+      has_matx_addon = mx_module != nullptr;
+      Py_XDECREF(mx_module);
+
+      if (!has_matx_addon) {
+        PyErr_Print();
+        CLOG_WARN(LOG_HYDRA_SCENE, "No MaterialX addon, materials won't be exported.");
+      }
+      matx_addon_checked = true;
+    }
+    PyGILState_Release(gstate);
+  }
+
+  if (!has_matx_addon) {
+    return;
+  }
+
+  /* Call of python function bpy_hydra.export_mtlx() */
   gstate = PyGILState_Ensure();
 
   PyObject *module, *dict, *func, *result;
