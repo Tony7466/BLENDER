@@ -245,8 +245,9 @@ static VertLooseEdges calc_vert_loose_edges(const GroupedSpan<int> vert_to_edge_
 
 /**
  * Every affected vertex maps to potentially multiple output vertices. Create a mapping from
- * affected vertex index to the of output vertex (indices are to those sets, not indices in arrays
- * of _all_ vertices). For every original vertex, reuse the original vertex for the first of:
+ * affected vertex index to the group of output vertex indices (indices are within those groups,
+ * not indices in arrays of _all_ vertices). For every original vertex, reuse the original vertex
+ * for the first of:
  *  1. The last face corner fan
  *  2. The last split loose edge
  *  3. The group of non-selected loose edges
