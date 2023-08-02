@@ -1916,18 +1916,18 @@ static bool move_to_collection_poll(bContext *C)
   return ED_operator_objectmode(C);
 }
 
-Collection *move_to_collection_collection_from_enum(bContext *C, int collection_enum)
+Collection *move_to_collection_collection_from_enum(bContext *C, int enum_index)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  if (collection_enum == 0) {
+  if (enum_index == 0) {
     return scene->master_collection;
   }
   else if (!bmain->collections.first) {
     return nullptr;
   }
-  return static_cast<Collection *>(BLI_findlink(&bmain->collections, collection_enum - 1));
+  return static_cast<Collection *>(BLI_findlink(&bmain->collections, enum_index - 1));
 }
 
 static int move_to_collection_exec(bContext *C, wmOperator *op)
