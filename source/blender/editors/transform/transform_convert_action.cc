@@ -323,13 +323,7 @@ static int GreasePencilLayerToTransData(TransData *td,
       continue;
     }
 
-    /* Add this frame to the map of transformed frame offset in the layer.
-     * We initialize it to being the identity transformation, and set the destination in the
-     * transformation data as a pointer to the value of this frame in the offset map.
-     */
-    trans_frame_data.add(frame_number, frame_number);
     td2d->loc[0] = float(frame_number);
-    td2d->loc2d = trans_frame_data.lookup_ptr(frame_number);
 
     td->val = td->loc = &td2d->loc[0];
     td->ival = td->iloc[0] = td2d->loc[0];
