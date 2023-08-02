@@ -266,7 +266,7 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(
   MutableSpan<int> new_verts_nums = offset_data;
   threading::parallel_for(affected_verts.index_range(), 2048, [&](const IndexRange range) {
     /* Start with -1 for the reused vertex. None of the final sizes should be negative. */
-    new_verts_nums.as_mutable_span().slice(range).fill(-1);
+    new_verts_nums.slice(range).fill(-1);
     for (const int i : range) {
       new_verts_nums[i] += corner_groups[i].size();
     }
