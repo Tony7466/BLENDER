@@ -3617,7 +3617,7 @@ def km_sculpt(params):
          {"properties": [("action", 'SHOW'), ("area", 'ALL')]}),
         # Subdivision levels
         *_template_items_object_subdivision_set(),
-        ("object.subdivision_set", {"type": 'D', "value": 'PRESS', "shift": True, "alt": True, "repeat": True},
+        ("object.subdivision_set", {"type": 'D', "value": 'PRESS', "repeat": True},
          {"properties": [("level", 1), ("relative", True)]}),
         ("object.subdivision_set", {"type": 'D', "value": 'PRESS', "shift": True, "repeat": True},
          {"properties": [("level", -1), ("relative", True)]}),
@@ -3632,11 +3632,11 @@ def km_sculpt(params):
         ("sculpt.face_set_edit", {"type": 'PAGE_DOWN', "value": 'PRESS'},
          {"properties": [("mode", 'SHRINK')]}),
         # Dynamic topology
-        ("sculpt.dyntopo_detail_size_edit", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
-        ("sculpt.detail_flood_fill", {"type": 'D', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+        ("sculpt.detail_flood_fill", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
+        ("sculpt.dyntopo_detail_size_edit", {"type": 'D', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Remesh
-        ("object.voxel_remesh", {"type": 'D', "value": 'PRESS', "shift": True, "ctrl": True}, None),
-        ("object.voxel_size_edit", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
+        ("object.voxel_remesh", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
+        ("object.voxel_size_edit", {"type": 'D', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Color
         ("sculpt.sample_color", {"type": 'I', "value": 'PRESS'}, None),
         ("paint.brush_colors_flip", {"type": 'X', "value": 'PRESS'}, None),
@@ -3663,12 +3663,12 @@ def km_sculpt(params):
         ("wm.context_toggle", {"type": 'L', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.sculpt.brush.use_smooth_stroke')]}),
         # Tools
+        # This is the only mode without an Annotate shortcut. The multires shortcuts took precedence instead.
         op_tool_cycle("builtin.box_mask", {"type": 'Q', "value": 'PRESS'}),
         op_tool_cycle("builtin.move", {"type": 'W', "value": 'PRESS'}),
         op_tool_cycle("builtin.rotate", {"type": 'E', "value": 'PRESS'}),
         op_tool_cycle("builtin.scale", {"type": 'R', "value": 'PRESS'}),
         op_tool_cycle("builtin.transform", {"type": 'T', "value": 'PRESS'}),
-        op_tool_cycle("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
         # Menus
         op_menu_pie("VIEW3D_MT_sculpt_mask_edit_pie", {"type": 'A', "ctrl": True, "value": 'PRESS'}),
         op_menu_pie("VIEW3D_MT_sculpt_automasking_pie", {"type": 'A', "alt": True, "value": 'PRESS'}),
