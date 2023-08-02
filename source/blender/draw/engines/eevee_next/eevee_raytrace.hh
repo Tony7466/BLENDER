@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "DNA_scene_types.h"
+
 #include "DRW_render.h"
 
 #include "eevee_shader_shared.hh"
@@ -152,10 +154,9 @@ class RayTraceModule {
   /** Pointer to inst_.render_buffers.depth_tx updated before submission. */
   GPUTexture *renderbuf_depth_view_ = nullptr;
 
-  bool enabled_ = false;
-  bool use_spatial_denoise_ = true;
-  bool use_temporal_denoise_ = true;
-  bool use_bilateral_denoise_ = true;
+  /** Copy of the scene options to avoid changing parameters during motion blur. */
+  RaytraceEEVEE reflection_options_;
+  RaytraceEEVEE refraction_options_;
 
   RayTraceDataBuf data_;
 

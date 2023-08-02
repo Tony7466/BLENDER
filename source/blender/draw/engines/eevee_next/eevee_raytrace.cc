@@ -26,25 +26,14 @@ namespace blender::eevee {
 
 void RayTraceModule::init()
 {
-  enabled_ = true;
-
   const SceneEEVEE &sce_eevee = inst_.scene->eevee;
-  const int flag = sce_eevee.flag;
 
-  use_spatial_denoise_ = (flag & SCE_EEVEE_RAYTRACE_DENOISE);
-  use_temporal_denoise_ = use_spatial_denoise_ && (flag & SCE_EEVEE_RAYTRACE_DENOISE_TEMPORAL);
-  use_bilateral_denoise_ = use_temporal_denoise_ && (flag & SCE_EEVEE_RAYTRACE_DENOISE_BILATERAL);
+  reflection_options_ = sce_eevee.reflection_options;
+  refraction_options_ = sce_eevee.refraction_options;
 
-  if (!U.experimental.use_eevee_debug) {
-    /* These cannot be turned off separately when not in debug mode. */
-    use_temporal_denoise_ = use_bilateral_denoise_ = use_spatial_denoise_;
+  if (sce_eevee.ray_split_settings == 0) {
+    refraction_options_ = reflection_options_;
   }
-
-  data_.thickness = sce_eevee.ssr_thickness;
-  data_.quality = 1.0f - 0.95f * sce_eevee.ssr_quality;
-  /* TODO(fclem): Per ray type clamp. */
-  data_.brightness_clamp = (sce_eevee.ssr_firefly_fac > 0.0) ? sce_eevee.ssr_firefly_fac : 1e20;
-  data_.max_trace_roughness = 1.0f;
 }
 
 void RayTraceModule::sync()
@@ -187,28 +176,28 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
                      (raytrace_closure & (CLOSURE_REFLECTION | CLOSURE_REFRACTION)),
                  "Only reflection and refraction are implemented.");
 
+  RaytraceEEVEE options;
   PassSimple *generate_ray_ps = nullptr;
   PassSimple *trace_ray_ps = nullptr;
   PassSimple *denoise_spatial_ps = nullptr;
   PassSimple *denoise_bilateral_ps = nullptr;
   RayTraceBuffer::DenoiseBuffer *denoise_buf = nullptr;
-  int pixel_rate = 1;
 
   if (raytrace_closure == CLOSURE_REFLECTION) {
+    options = reflection_options_;
     generate_ray_ps = &generate_reflect_ps_;
     trace_ray_ps = &trace_reflect_ps_;
     denoise_spatial_ps = &denoise_spatial_reflect_ps_;
     denoise_bilateral_ps = &denoise_bilateral_reflect_ps_;
     denoise_buf = &rt_buffer.reflection;
-    pixel_rate = inst_.scene->eevee.ray_pixel_rate_reflection;
   }
   else if (raytrace_closure == CLOSURE_REFRACTION) {
+    options = refraction_options_;
     generate_ray_ps = &generate_refract_ps_;
     trace_ray_ps = &trace_refract_ps_;
     denoise_spatial_ps = &denoise_spatial_refract_ps_;
     denoise_bilateral_ps = &denoise_bilateral_refract_ps_;
     denoise_buf = &rt_buffer.refraction;
-    pixel_rate = inst_.scene->eevee.ray_pixel_rate_refraction;
   }
 
   if ((active_closures & raytrace_closure) == 0) {
@@ -220,7 +209,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
     return {denoise_buf->denoised_spatial_tx};
   }
 
-  const int resolution_scale = max_ii(1, power_of_2_max_i(pixel_rate));
+  const int resolution_scale = max_ii(1, power_of_2_max_i(options.resolution_scale));
 
   const int2 extent = inst_.film.render_extent_get();
   const int2 tracing_res = math::divide_ceil(extent, int2(resolution_scale));
@@ -237,7 +226,18 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   renderbuf_stencil_view_ = inst_.render_buffers.depth_tx.stencil_view();
   renderbuf_depth_view_ = inst_.render_buffers.depth_tx;
 
+  bool use_spatial_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_SPATIAL);
+  bool use_temporal_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_TEMPORAL) &&
+                              use_spatial_denoise;
+  bool use_bilateral_denoise = (options.denoise_flag & RAYTRACE_EEVEE_DENOISE_BILATERAL) &&
+                               use_temporal_denoise;
+
   DRW_stats_group_start("Raytracing");
+
+  data_.thickness = options.screen_trace_thickness;
+  data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
+  data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
+  data_.max_trace_roughness = 1.0f;
 
   data_.resolution_scale = resolution_scale;
   data_.closure_active = raytrace_closure;
@@ -245,7 +245,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   data_.history_persmat = denoise_buf->history_persmat;
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
-  data_.skip_denoise = !use_spatial_denoise_;
+  data_.skip_denoise = !use_spatial_denoise;
   data_.push_update();
 
   tile_mask_tx_.acquire(tile_mask_extent, RAYTRACE_TILEMASK_FORMAT);
@@ -271,9 +271,9 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   /* Spatial denoise pass is required to resolve at least one ray per pixel. */
   {
     denoise_buf->denoised_spatial_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
-    hit_variance_tx_.acquire(use_temporal_denoise_ ? extent : dummy_extent,
+    hit_variance_tx_.acquire(use_temporal_denoise ? extent : dummy_extent,
                              RAYTRACE_VARIANCE_FORMAT);
-    hit_depth_tx_.acquire(use_temporal_denoise_ ? extent : dummy_extent, GPU_R32F);
+    hit_depth_tx_.acquire(use_temporal_denoise ? extent : dummy_extent, GPU_R32F);
     denoised_spatial_tx_ = denoise_buf->denoised_spatial_tx;
 
     inst_.manager->submit(*denoise_spatial_ps, render_view);
@@ -285,12 +285,12 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   ray_time_tx_.release();
   ray_radiance_tx_.release();
 
-  if (use_temporal_denoise_) {
+  if (use_temporal_denoise) {
     denoise_buf->denoised_temporal_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
-    denoise_variance_tx_.acquire(use_bilateral_denoise_ ? extent : dummy_extent,
+    denoise_variance_tx_.acquire(use_bilateral_denoise ? extent : dummy_extent,
                                  RAYTRACE_VARIANCE_FORMAT);
     denoise_buf->variance_history_tx.ensure_2d(RAYTRACE_VARIANCE_FORMAT,
-                                               use_bilateral_denoise_ ? extent : dummy_extent);
+                                               use_bilateral_denoise ? extent : dummy_extent);
     denoise_buf->tilemask_history_tx.ensure_2d(RAYTRACE_TILEMASK_FORMAT, tile_mask_extent);
     if (denoise_buf->radiance_history_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, extent) ||
         denoise_buf->valid_history == false)
@@ -319,12 +319,12 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   }
 
   /* Only use history buffer for the next frame if temporal denoise was used by the current one. */
-  denoise_buf->valid_history = use_temporal_denoise_;
+  denoise_buf->valid_history = use_temporal_denoise;
 
   hit_variance_tx_.release();
   hit_depth_tx_.release();
 
-  if (use_bilateral_denoise_) {
+  if (use_bilateral_denoise) {
     denoise_buf->denoised_bilateral_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT);
     denoised_bilateral_tx_ = denoise_buf->denoised_bilateral_tx;
 

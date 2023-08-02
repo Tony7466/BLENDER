@@ -7378,6 +7378,71 @@ static void rna_def_scene_display(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shading Settings", "Shading settings for OpenGL render engine");
 }
 
+static void rna_def_raytrace_eevee(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem pixel_rate_items[] = {
+      {1, "1", 0, "1 rpp", "1 ray per pixel"},
+      {2, "2", 0, "1/4 rpp", "1 ray for every 4 pixels"},
+      {4, "4", 0, "1/16 rpp", "1 ray for every 16 pixels"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "RaytraceEEVEE", nullptr);
+
+  prop = RNA_def_property(srna, "resolution_scale", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, pixel_rate_items);
+  RNA_def_property_ui_text(prop, "Resolution", "Number of ray per pixel");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "raytrace_denoise_spatial", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_SPATIAL);
+  RNA_def_property_ui_text(
+      prop, "Denoise Spatial", "Enable noise reduction techniques for raytraced effects");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "raytrace_denoise_temporal", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_TEMPORAL);
+  RNA_def_property_ui_text(
+      prop, "Denoise Temporal", "Enable noise reduction techniques for raytraced effects");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "raytrace_denoise_bilateral", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "denoise_flag", RAYTRACE_EEVEE_DENOISE_BILATERAL);
+  RNA_def_property_ui_text(
+      prop, "Denoise Bilateral", "Enable noise reduction techniques for raytraced effects");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "sample_clamp", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Clamp", "Clamp ray intensity to reduce noise (0 to disable)");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "screen_trace_thickness", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_ui_text(
+      prop,
+      "Screen-Trace Thickness",
+      "Surface thickness used to detect intersection when using screen-tracing");
+  RNA_def_property_range(prop, 1e-6f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 5, 3);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "screen_trace_quality", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_ui_text(
+      prop, "Screen-Trace Precision", "Precision of the screen space ray-tracing");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+}
+
 static void rna_def_scene_eevee(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7421,13 +7486,6 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem eevee_pixel_rate_items[] = {
-      {1, "1", 0, "1 rpp", "1 ray per pixel"},
-      {2, "2", 0, "1/4 rpp", "1 ray for every 4 pixels"},
-      {4, "4", 0, "1/16 rpp", "1 ray for every 16 pixels"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   static const EnumPropertyItem eevee_motion_blur_position_items[] = {
       {SCE_EEVEE_MB_START, "START", 0, "Start on Frame", "The shutter opens at the current frame"},
       {SCE_EEVEE_MB_CENTER,
@@ -7436,6 +7494,12 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
        "Center on Frame",
        "The shutter is open during the current frame"},
       {SCE_EEVEE_MB_END, "END", 0, "End on Frame", "The shutter closes at the current frame"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem ray_split_settings_items[] = {
+      {0, "UNIFIED", 0, "Unified", "All ray types use the same settings"},
+      {1, "SPLIT", 0, "Split", "Settings are individual to each ray type"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7618,40 +7682,9 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  /* Raytracing */
-  prop = RNA_def_property(srna, "ray_pixel_rate_reflection", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, eevee_pixel_rate_items);
-  RNA_def_property_ui_text(
-      prop, "Reflection Ray Pixel Rate", "Number of ray per pixel for reflections");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
-  prop = RNA_def_property(srna, "ray_pixel_rate_refraction", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, eevee_pixel_rate_items);
-  RNA_def_property_ui_text(
-      prop, "Refraction Ray Pixel Rate", "Number of ray per pixel for refractions");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
-  prop = RNA_def_property(srna, "raytrace_denoise", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_RAYTRACE_DENOISE);
-  RNA_def_property_ui_text(
-      prop, "Denoise Raytracing", "Enable noise reduction techniques for raytraced effects");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
-  prop = RNA_def_property(srna, "raytrace_denoise_temporal", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_RAYTRACE_DENOISE_TEMPORAL);
-  RNA_def_property_ui_text(
-      prop, "Denoise Temporal", "Enable noise reduction techniques for raytraced effects");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
-  prop = RNA_def_property(srna, "raytrace_denoise_bilateral", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_RAYTRACE_DENOISE_BILATERAL);
-  RNA_def_property_ui_text(
-      prop, "Denoise Bilateral", "Enable noise reduction techniques for raytraced effects");
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  prop = RNA_def_property(srna, "ray_split_settings", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, ray_split_settings_items);
+  RNA_def_property_ui_text(prop, "Options Split", "Split settings per ray type");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Volumetrics */
@@ -7993,6 +8026,16 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 50.0f);
   RNA_def_property_ui_range(prop, 0.0f, 10.0f, 1, 2);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  prop = RNA_def_property(srna, "reflection_options", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "RaytraceEEVEE");
+  RNA_def_property_ui_text(
+      prop, "Reflection Trace Options", "Eevee settings for the tracing reflections");
+
+  prop = RNA_def_property(srna, "refraction_options", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "RaytraceEEVEE");
+  RNA_def_property_ui_text(
+      prop, "Reflection Trace Options", "Eevee settings for the tracing reflections");
 }
 
 static void rna_def_scene_gpencil(BlenderRNA *brna)
@@ -8527,6 +8570,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_selected_uv_element(brna);
   rna_def_display_safe_areas(brna);
   rna_def_scene_display(brna);
+  rna_def_raytrace_eevee(brna);
   rna_def_scene_eevee(brna);
   rna_def_view_layer_aov(brna);
   rna_def_view_layer_lightgroup(brna);

@@ -474,28 +474,84 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
 
         scene = context.scene
         props = scene.eevee
-        prefs = context.preferences
 
-        layout.prop(props, "ray_pixel_rate_reflection", text="Reflection Resolution")
-        layout.prop(props, "ray_pixel_rate_refraction", text="Refraction Resolution")
-        layout.prop(props, "ssr_firefly_fac")
-        layout.prop(props, "ssr_quality")
-        layout.prop(props, "ssr_thickness")
+        layout.label(text="Raytracing Method (TODO)")
+        layout.prop(props, "ray_split_settings", text="Settings", expand=True)
 
-        if prefs.experimental.use_eevee_debug:
-            # Debug option shows separate stages.
-            layout.prop(props, "raytrace_denoise", text="Denoise Spatial")
 
-            col = layout.column()
-            col.active = props.raytrace_denoise
-            col.prop(props, "raytrace_denoise_temporal")
+class EeveeRaytracingOptionsPanel(RenderButtonsPanel, Panel):
+    bl_label = "Reflection"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
-            col = layout.column()
-            col.active = props.raytrace_denoise and props.raytrace_denoise_temporal
-            col.prop(props, "raytrace_denoise_bilateral")
-        else:
-            # User option is global.
-            layout.prop(props, "raytrace_denoise", text="Denoise")
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw_internal(self, props):
+        layout = self.layout
+        layout.use_property_split = True
+
+        layout.prop(props, "resolution_scale")
+        layout.prop(props, "sample_clamp")
+
+        layout.separator()
+
+        layout.prop(props, "screen_trace_quality")
+        layout.prop(props, "screen_trace_thickness")
+
+        layout.separator()
+
+        layout.prop(props, "raytrace_denoise_spatial")
+
+        col = layout.column()
+        col.active = props.raytrace_denoise_spatial
+        col.prop(props, "raytrace_denoise_temporal")
+
+        col = layout.column()
+        col.active = props.raytrace_denoise_spatial and props.raytrace_denoise_temporal
+        col.prop(props, "raytrace_denoise_bilateral")
+
+
+class RENDER_PT_eevee_next_raytracing_unified(EeveeRaytracingOptionsPanel):
+    bl_label = "Reflection & Refraction"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+
+    @classmethod
+    def poll(cls, context):
+        return (context.scene.eevee.ray_split_settings == "UNIFIED")
+
+    def draw(self, context):
+        # NOTE: Reuse reflection options for now.
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
+    bl_label = "Reflection"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+
+    @classmethod
+    def poll(cls, context):
+        return (context.scene.eevee.ray_split_settings == "SPLIT")
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.reflection_options)
+
+
+class RENDER_PT_eevee_next_raytracing_refraction(EeveeRaytracingOptionsPanel):
+    bl_label = "Refraction"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+
+    @classmethod
+    def poll(cls, context):
+        return (context.scene.eevee.ray_split_settings == "SPLIT")
+
+    def draw(self, context):
+        self.draw_internal(context.scene.eevee.refraction_options)
 
 
 class RENDER_PT_eevee_shadows(RenderButtonsPanel, Panel):
@@ -1001,6 +1057,9 @@ classes = (
     RENDER_PT_eevee_subsurface_scattering,
     RENDER_PT_eevee_screen_space_reflections,
     RENDER_PT_eevee_next_raytracing,
+    RENDER_PT_eevee_next_raytracing_unified,
+    RENDER_PT_eevee_next_raytracing_reflection,
+    RENDER_PT_eevee_next_raytracing_refraction,
     RENDER_PT_eevee_motion_blur,
     RENDER_PT_eevee_next_motion_blur,
     RENDER_PT_motion_blur_curve,

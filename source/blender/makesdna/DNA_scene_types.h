@@ -1809,6 +1809,24 @@ typedef struct SceneDisplay {
   View3DShading shading;
 } SceneDisplay;
 
+/**
+ * Raytracing parameters.
+ */
+typedef struct RaytraceEEVEE {
+  /** Higher values will take lower strides and have less blurry intersections. */
+  float screen_trace_quality;
+  /** Thickness in world space each surface will have during screen space tracing. */
+  float screen_trace_thickness;
+  /** Resolution downscale factor. */
+  int resolution_scale;
+  /** Maximum intensity a ray can have. */
+  float sample_clamp;
+  /** Denoising stages. #RaytraceEEVEE_DenoiseStages. */
+  int denoise_flag;
+
+  char _pad0[4];
+} RaytraceEEVEE;
+
 typedef struct SceneEEVEE {
   int flag;
   int gi_diffuse_bounces;
@@ -1817,7 +1835,6 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
-  char _pad0[4];
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
@@ -1832,9 +1849,6 @@ typedef struct SceneEEVEE {
   float ssr_thickness;
   float ssr_border_fade;
   float ssr_firefly_fac;
-
-  int ray_pixel_rate_reflection;
-  int ray_pixel_rate_refraction;
 
   float volumetric_start;
   float volumetric_end;
@@ -1872,6 +1886,11 @@ typedef struct SceneEEVEE {
   int shadow_cube_size;
   int shadow_cascade_size;
   int shadow_pool_size;
+
+  int ray_split_settings;
+
+  struct RaytraceEEVEE reflection_options;
+  struct RaytraceEEVEE refraction_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -2804,10 +2823,14 @@ enum {
   SCE_EEVEE_DOF_HQ_SLIGHT_FOCUS = (1 << 22),
   SCE_EEVEE_DOF_JITTER = (1 << 23),
   SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
-  SCE_EEVEE_RAYTRACE_DENOISE = (1 << 25),
-  SCE_EEVEE_RAYTRACE_DENOISE_TEMPORAL = (1 << 26),
-  SCE_EEVEE_RAYTRACE_DENOISE_BILATERAL = (1 << 27),
+  SCE_EEVEE_RAYTRACE_OPTIONS_SPLIT = (1 << 25),
 };
+
+typedef enum RaytraceEEVEE_DenoiseStages {
+  RAYTRACE_EEVEE_DENOISE_SPATIAL = (1 << 0),
+  RAYTRACE_EEVEE_DENOISE_TEMPORAL = (1 << 1),
+  RAYTRACE_EEVEE_DENOISE_BILATERAL = (1 << 2),
+} RaytraceEEVEE_DenoiseStages;
 
 /** #SceneEEVEE::shadow_method */
 enum {
