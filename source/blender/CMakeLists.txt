@@ -15,7 +15,6 @@ set(SRC_DNA_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_cachefile_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_camera_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_cloth_types.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_collection_enums.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_collection_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_color_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_constraint_types.h
