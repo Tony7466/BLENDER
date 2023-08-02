@@ -7503,6 +7503,16 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem ray_tracing_method_items[] = {
+      {RAYTRACE_EEVEE_METHOD_NONE, "NONE", 0, "None", "No tracing"},
+      {RAYTRACE_EEVEE_METHOD_SCREEN,
+       "SCREEN",
+       0,
+       "Screen-Trace",
+       "Raytrace against the depth buffer"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "SceneEEVEE", nullptr);
   RNA_def_struct_path_func(srna, "rna_SceneEEVEE_path");
   RNA_def_struct_ui_text(srna, "Scene Display", "Scene display settings for 3D viewport");
@@ -7685,6 +7695,12 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "ray_split_settings", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, ray_split_settings_items);
   RNA_def_property_ui_text(prop, "Options Split", "Split settings per ray type");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "ray_tracing_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, ray_tracing_method_items);
+  RNA_def_property_ui_text(
+      prop, "Tracing Method", "Select the tracing method used to find scene-ray intersections");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Volumetrics */

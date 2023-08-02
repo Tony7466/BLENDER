@@ -1888,6 +1888,8 @@ typedef struct SceneEEVEE {
   int shadow_pool_size;
 
   int ray_split_settings;
+  int ray_tracing_method;
+  char _pad0[4];
 
   struct RaytraceEEVEE reflection_options;
   struct RaytraceEEVEE refraction_options;
@@ -2831,6 +2833,13 @@ typedef enum RaytraceEEVEE_DenoiseStages {
   RAYTRACE_EEVEE_DENOISE_TEMPORAL = (1 << 1),
   RAYTRACE_EEVEE_DENOISE_BILATERAL = (1 << 2),
 } RaytraceEEVEE_DenoiseStages;
+
+typedef enum RaytraceEEVEE_Method {
+  RAYTRACE_EEVEE_METHOD_NONE = 0,
+  RAYTRACE_EEVEE_METHOD_SCREEN = 1,
+  /* TODO(fclem): Hardware raytracing. */
+  // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
+} RaytraceEEVEE_Method;
 
 /** #SceneEEVEE::shadow_method */
 enum {

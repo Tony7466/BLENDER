@@ -545,6 +545,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.reflection_options.resolution_scale = 2;
 
         scene->eevee.refraction_options = scene->eevee.reflection_options;
+
+        scene->eevee.ray_split_settings = 0;
+        scene->eevee.ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN;
       }
     }
   }

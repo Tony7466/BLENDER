@@ -229,6 +229,7 @@
     .shadow_cascade_size = 1024, \
  \
     .ray_split_settings = 0, \
+    .ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN, \
  \
     .reflection_options = _DNA_DEFAULT_RaytraceEEVEE, \
     .refraction_options = _DNA_DEFAULT_RaytraceEEVEE, \

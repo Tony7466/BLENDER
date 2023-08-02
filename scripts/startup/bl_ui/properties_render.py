@@ -475,7 +475,7 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
         scene = context.scene
         props = scene.eevee
 
-        layout.label(text="Raytracing Method (TODO)")
+        layout.prop(props, "ray_tracing_method", text="Method")
         layout.prop(props, "ray_split_settings", text="Settings", expand=True)
 
 
