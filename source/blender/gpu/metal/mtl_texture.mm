@@ -2240,7 +2240,7 @@ MTLPixelBuffer::~MTLPixelBuffer()
 
 void *MTLPixelBuffer::map()
 {
-  /* Release existing buffer and create a new buffer to ensure we do not directly modify data
+  /* Duplicate the existing buffer and release original to ensure we do not directly modify data
    * in-flight on the GPU. */
   MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
