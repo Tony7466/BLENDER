@@ -704,6 +704,19 @@ bool Layer::remove_frame(const FramesMapKey key)
   return true;
 }
 
+static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
+                              const int frame_number)
+{
+  Span<int> sorted_keys = layer.sorted_keys();
+  const int *frame_number_it = std::lower_bound(
+      sorted_keys.begin(), sorted_keys.end(), frame_number);
+  if (std::next(frame_number_it) == sorted_keys.end()) {
+    return 0;
+  }
+  const int next_frame_number = *(std::next(frame_number_it));
+  return next_frame_number - frame_number;
+}
+
 Span<FramesMapKey> Layer::sorted_keys() const
 {
   this->runtime->sorted_keys_cache_.ensure([&](Vector<FramesMapKey> &r_data) {
@@ -1413,19 +1426,6 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   frame->type = int8_t(keytype);
   this->add_empty_drawings(1);
   return true;
-}
-
-static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
-                              const int frame_number)
-{
-  Span<int> sorted_keys = layer.sorted_keys();
-  const int *frame_number_it = std::lower_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (std::next(frame_number_it) == sorted_keys.end()) {
-    return 0;
-  }
-  const int next_frame_number = *(std::next(frame_number_it));
-  return next_frame_number - frame_number;
 }
 
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
