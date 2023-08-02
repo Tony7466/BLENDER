@@ -20,12 +20,12 @@ TEST(math_base, SafePowf)
 
 TEST(math_base, SafeModf)
 {
-  EXPECT_FLOAT_EQ(safe_modf(3.4, 2.2f), 1.2f);
-  EXPECT_FLOAT_EQ(safe_modf(3.4, -2.2f), 1.2f);
-  EXPECT_FLOAT_EQ(safe_modf(-3.4, -2.2f), -1.2f);
-  EXPECT_FLOAT_EQ(safe_modf(-3.4, 0.0f), 0.0f);
-  EXPECT_FLOAT_EQ(safe_modf(0.0f, 3.0f), 0.0f);
-  EXPECT_FLOAT_EQ(safe_modf(55.0f, 10.0f), 5.0f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(3.4, 2.2f), 1.2f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(3.4, -2.2f), 1.2f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(-3.4, -2.2f), -1.2f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(-3.4, 0.0f), 0.0f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(0.0f, 3.0f), 0.0f);
+  EXPECT_FLOAT_EQ(safe_truncated_modulof(55.0f, 10.0f), 5.0f);
 }
 
 TEST(math_base, SafeLogf)

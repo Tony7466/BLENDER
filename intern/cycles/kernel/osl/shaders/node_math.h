@@ -14,9 +14,14 @@ vector safe_divide(vector a, vector b)
                 (b[2] != 0.0) ? a[2] / b[2] : 0.0);
 }
 
-float safe_modulo(float a, float b)
+float safe_truncated_modulo(float a, float b)
 {
   return (b != 0.0) ? fmod(a, b) : 0.0;
+}
+
+float safe_floored_modulo(float a, float b)
+{
+  return (b != 0.0) ? a - floor(a / b) * b : 0.0;
 }
 
 float fract(float a)

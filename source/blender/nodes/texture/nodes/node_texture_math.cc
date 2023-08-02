@@ -165,12 +165,22 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
       break;
     }
 
-    case NODE_MATH_MODULO: {
+    case NODE_MATH_TRUNCATED_MODULO: {
       if (in1 == 0.0f) {
         *out = 0.0f;
       }
       else {
         *out = fmod(in0, in1);
+      }
+      break;
+    }
+
+    case NODE_MATH_FLOORED_MODULO: {
+      if (in1 == 0.0f) {
+        *out = 0.0f;
+      }
+      else {
+        *out = in0 - floorf(in0 / in1) * in1;
       }
       break;
     }

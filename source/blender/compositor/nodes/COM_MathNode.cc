@@ -73,8 +73,11 @@ void MathNode::convert_to_operations(NodeConverter &converter,
     case NODE_MATH_GREATER_THAN:
       operation = new MathGreaterThanOperation();
       break;
-    case NODE_MATH_MODULO:
-      operation = new MathModuloOperation();
+    case NODE_MATH_TRUNCATED_MODULO:
+      operation = new MathTruncatedModuloOperation();
+      break;
+    case NODE_MATH_FLOORED_MODULO:
+      operation = new MathFlooredModuloOperation();
       break;
     case NODE_MATH_ABSOLUTE:
       operation = new MathAbsoluteOperation();

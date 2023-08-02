@@ -559,10 +559,10 @@ void MathGreaterThanOperation::execute_pixel_sampled(float output[4],
   clamp_if_needed(output);
 }
 
-void MathModuloOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler sampler)
+void MathTruncatedModuloOperation::execute_pixel_sampled(float output[4],
+                                                         float x,
+                                                         float y,
+                                                         PixelSampler sampler)
 {
   float input_value1[4];
   float input_value2[4];
@@ -580,11 +580,41 @@ void MathModuloOperation::execute_pixel_sampled(float output[4],
   clamp_if_needed(output);
 }
 
-void MathModuloOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
+void MathTruncatedModuloOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
 {
   for (; !it.is_end(); ++it) {
     const float value2 = *it.in(1);
     *it.out = (value2 == 0) ? 0 : fmod(*it.in(0), value2);
+    clamp_when_enabled(it.out);
+  }
+}
+
+void MathFlooredModuloOperation::execute_pixel_sampled(float output[4],
+                                                       float x,
+                                                       float y,
+                                                       PixelSampler sampler)
+{
+  float input_value1[4];
+  float input_value2[4];
+
+  input_value1_operation_->read_sampled(input_value1, x, y, sampler);
+  input_value2_operation_->read_sampled(input_value2, x, y, sampler);
+
+  if (input_value2[0] == 0) {
+    output[0] = 0.0;
+  }
+  else {
+    output[0] = input_value1[0] - floorf(input_value1[0] / input_value2[0]) * input_value2[0];
+  }
+
+  clamp_if_needed(output);
+}
+
+void MathFlooredModuloOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
+{
+  for (; !it.is_end(); ++it) {
+    const float value2 = *it.in(1);
+    *it.out = (value2 == 0) ? 0 : *it.in(0) - floorf(*it.in(0) / value2) * value2;
     clamp_when_enabled(it.out);
   }
 }
