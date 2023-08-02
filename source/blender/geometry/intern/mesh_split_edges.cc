@@ -219,7 +219,7 @@ static Array<Vector<CornerFan>> calc_all_corner_fans(const OffsetIndices<int> fa
 
 /** Selected and unselected loose edges attached to a vertex. */
 struct VertLooseEdges {
-  Vector<int> split;
+  Vector<int> selected;
   Vector<int> unselected;
 };
 
@@ -233,7 +233,7 @@ static VertLooseEdges calc_vert_loose_edges(const GroupedSpan<int> vert_to_edge_
   for (const int edge : vert_to_edge_map[vert]) {
     if (loose_edges[edge]) {
       if (split_edges[edge]) {
-        info.split.append(edge);
+        info.selected.append(edge);
       }
       else {
         info.unselected.append(edge);
@@ -249,7 +249,7 @@ static VertLooseEdges calc_vert_loose_edges(const GroupedSpan<int> vert_to_edge_
  * not indices in arrays of _all_ vertices). For every original vertex, reuse the original vertex
  * for the first of:
  *  1. The last face corner fan
- *  2. The last split loose edge
+ *  2. The last selected loose edge
  *  3. The group of non-selected loose edges
  * Using this order prioritizes the simplicity of the no-loose-edge case, which we assume is
  * more common.
@@ -272,7 +272,7 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(const IndexMask &affecte
     affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
       const VertLooseEdges info = calc_vert_loose_edges(
           vert_to_edge_map, loose_edges, split_edges, vert);
-      offset_data[mask] += info.split.size();
+      offset_data[mask] += info.selected.size();
       if (corner_fans[mask].is_empty()) {
         /* Loose edges share their vertex with a corner fan if possible. */
         offset_data[mask] += info.unselected.size() > 0;
@@ -412,7 +412,7 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
     }
     const VertLooseEdges vert_info = calc_vert_loose_edges(
         vert_to_edge_map, loose_edges, split_edges, vert);
-    for (const int edge : vert_info.split) {
+    for (const int edge : vert_info.selected) {
       const int new_vert = orig_verts_num + new_verts[new_vert_i];
       swap_edge_vert(edges[edge], vert, new_vert);
       new_vert_i++;
