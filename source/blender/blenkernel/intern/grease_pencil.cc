@@ -1450,7 +1450,7 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
     case GP_DRAWING: {
       const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
       if (do_instance) {
-        /* TODO : add user to the drawing. */
+        drawing.add_user();
       }
       else {
         this->add_duplicate_drawings(1, drawing);
