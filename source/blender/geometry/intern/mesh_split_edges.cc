@@ -263,21 +263,22 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(const IndexMask &affecte
                                                         Array<int> &offset_data)
 {
   offset_data.reinitialize(affected_verts.size() + 1);
+  MutableSpan<int> new_verts_nums = offset_data;
   threading::parallel_for(affected_verts.index_range(), 2048, [&](const IndexRange range) {
     /* Start with -1 for the reused vertex. None of the final sizes should be negative. */
-    offset_data.as_mutable_span().slice(range).fill(-1);
+    new_verts_nums.as_mutable_span().slice(range).fill(-1);
     for (const int i : range) {
-      offset_data[i] += corner_fans[i].size();
+      new_verts_nums[i] += corner_fans[i].size();
     }
   });
   if (!loose_edges.is_empty()) {
     affected_verts.foreach_index(GrainSize(512), [&](const int vert, const int mask) {
       const VertLooseEdges info = calc_vert_loose_edges(
           vert_to_edge_map, loose_edges, split_edges, vert);
-      offset_data[mask] += info.selected.size();
+      new_verts_nums[mask] += info.selected.size();
       if (corner_fans[mask].is_empty()) {
         /* Loose edges share their vertex with a corner fan if possible. */
-        offset_data[mask] += info.unselected.size() > 0;
+        new_verts_nums[mask] += info.unselected.size() > 0;
       }
     });
   }
