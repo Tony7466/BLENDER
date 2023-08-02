@@ -1113,6 +1113,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
             layer->runtime->frames_.add_overwrite(dst_frame_number, frame);
           }
         }
+        layer->tag_frames_map_keys_changed();
 
         /* Clear the frames copy. */
         layer->runtime->trans_frames_copy_.clear();
