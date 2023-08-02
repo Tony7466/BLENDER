@@ -670,7 +670,7 @@ static float particle_key_weight(const ParticleData *particle, int strand, float
   }
 
   float interp = t / edit_key_seg_t;
-  int index = (int)interp;
+  int index = int(interp);
   interp -= floorf(interp); /* Time between 2 edit key */
   float s1 = hkeys[index].weight;
   float s2 = hkeys[index + 1].weight;
@@ -695,7 +695,7 @@ static int particle_batch_cache_fill_segments_edit(
     for (int j = 0; j <= path->segments; j++) {
       EditStrandData *seg_data = (EditStrandData *)GPU_vertbuf_raw_step(attr_step);
       copy_v3_v3(seg_data->pos, path[j].co);
-      float strand_t = (float)(j) / path->segments;
+      float strand_t = float(j) / path->segments;
       if (particle) {
         float weight = particle_key_weight(particle, i, strand_t);
         /* NaN or unclamped become 1.0f */
@@ -1404,7 +1404,7 @@ static void particle_batch_cache_ensure_pos(Object *object,
 
   for (curr_point = 0, i = 0, pa = psys->particles; i < psys->totpart; i++, pa++) {
     state.time = DEG_get_ctime(draw_ctx->depsgraph);
-    if (!psys_get_particle_state(&sim, i, &state, 0)) {
+    if (!psys_get_particle_state(&sim, i, &state, false)) {
       continue;
     }
 

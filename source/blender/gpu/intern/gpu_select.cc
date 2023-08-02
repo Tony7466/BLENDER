@@ -8,8 +8,8 @@
  * Interface for accessing GPU-related methods for selection. The semantics are
  * similar to `glRenderMode(GL_SELECT)` from older OpenGL versions.
  */
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "DNA_userdef_types.h"
 
@@ -27,11 +27,15 @@
 
 /* Internal algorithm used */
 enum eGPUSelectAlgo {
-  /** glBegin/EndQuery(GL_SAMPLES_PASSED... ), `gpu_select_query.c`
-   * Only sets 4th component (ID) correctly. */
+  /**
+   * `glBegin/EndQuery(GL_SAMPLES_PASSED... )`, `gpu_select_query.c`
+   * Only sets 4th component (ID) correctly.
+   */
   ALGO_GL_QUERY = 1,
-  /** Read depth buffer for every drawing pass and extract depths, `gpu_select_pick.c`
-   * Only sets 4th component (ID) correctly. */
+  /**
+   * Read depth buffer for every drawing pass and extract depths, `gpu_select_pick.cc`
+   * Only sets 4th component (ID) correctly.
+   */
   ALGO_GL_PICK = 2,
   /** Use Select-Next draw engine. */
   ALGO_SELECT_NEXT = 3,
@@ -57,7 +61,7 @@ struct GPUSelectState {
   bool use_cache_needs_init;
 };
 
-static GPUSelectState g_select_state = {0};
+static GPUSelectState g_select_state = {false};
 
 /** \} */
 
@@ -158,7 +162,7 @@ bool GPU_select_load_id(uint id)
     case ALGO_SELECT_NEXT:
       /* This shouldn't use this pipeline. */
       BLI_assert_unreachable();
-      return 0;
+      return false;
 
     case ALGO_GL_QUERY: {
       return gpu_select_query_load_id(id);
@@ -170,7 +174,7 @@ bool GPU_select_load_id(uint id)
   }
 }
 
-uint GPU_select_end(void)
+uint GPU_select_end()
 {
   uint hits = 0;
 
@@ -204,7 +208,7 @@ uint GPU_select_end(void)
  * Currently only used by #ALGO_GL_PICK.
  * \{ */
 
-void GPU_select_cache_begin(void)
+void GPU_select_cache_begin()
 {
   BLI_assert(g_select_state.select_is_active == false);
   /* Ensure #GPU_select_cache_end is always called. */
@@ -215,7 +219,7 @@ void GPU_select_cache_begin(void)
   g_select_state.use_cache_needs_init = true;
 }
 
-void GPU_select_cache_load_id(void)
+void GPU_select_cache_load_id()
 {
   BLI_assert(g_select_state.use_cache == true);
   if (g_select_state.algorithm == ALGO_GL_PICK) {
@@ -223,7 +227,7 @@ void GPU_select_cache_load_id(void)
   }
 }
 
-void GPU_select_cache_end(void)
+void GPU_select_cache_end()
 {
   if (g_select_state.algorithm == ALGO_GL_PICK) {
     BLI_assert(g_select_state.use_cache == true);
@@ -234,7 +238,7 @@ void GPU_select_cache_end(void)
   g_select_state.use_cache_needs_init = false;
 }
 
-bool GPU_select_is_cached(void)
+bool GPU_select_is_cached()
 {
   return g_select_state.use_cache && gpu_select_pick_is_cached();
 }
@@ -248,7 +252,7 @@ bool GPU_select_is_cached(void)
 const GPUSelectResult *GPU_select_buffer_near(const GPUSelectResult *buffer, int hits)
 {
   const GPUSelectResult *buffer_near = nullptr;
-  uint depth_min = (uint)-1;
+  uint depth_min = uint(-1);
   for (int i = 0; i < hits; i++) {
     if (buffer->depth < depth_min) {
       BLI_assert(buffer->id != -1);

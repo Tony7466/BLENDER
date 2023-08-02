@@ -8,8 +8,8 @@
  * This is external code. Converts between AVI and MPEG/JPEG.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "AVI_avi.h"
 
@@ -35,7 +35,7 @@ static void add_huff_table(j_decompress_ptr dinfo,
                            const UINT8 *val,
                            const size_t val_size)
 {
-  if (*htblptr == NULL) {
+  if (*htblptr == nullptr) {
     *htblptr = jpeg_alloc_huff_table((j_common_ptr)dinfo);
   }
 
@@ -216,8 +216,8 @@ static void std_huff_tables(j_decompress_ptr dinfo)
 
 static int Decode_JPEG(uchar *inBuffer, uchar *outBuffer, uint width, uint height, size_t bufsize)
 {
-  struct jpeg_decompress_struct dinfo;
-  struct jpeg_error_mgr jerr;
+  jpeg_decompress_struct dinfo;
+  jpeg_error_mgr jerr;
 
   (void)width; /* unused */
 
@@ -227,7 +227,7 @@ static int Decode_JPEG(uchar *inBuffer, uchar *outBuffer, uint width, uint heigh
   jpeg_create_decompress(&dinfo);
   jpegmemsrcmgr_build(&dinfo, inBuffer, bufsize);
   jpeg_read_header(&dinfo, true);
-  if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+  if (dinfo.dc_huff_tbl_ptrs[0] == nullptr) {
     std_huff_tables(&dinfo);
   }
   dinfo.out_color_space = JCS_RGB;
@@ -251,7 +251,7 @@ static int Decode_JPEG(uchar *inBuffer, uchar *outBuffer, uint width, uint heigh
 
   numbytes = 0;
   jpeg_read_header(&dinfo, true);
-  if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+  if (dinfo.dc_huff_tbl_ptrs[0] == nullptr) {
     std_huff_tables(&dinfo);
   }
 
@@ -270,8 +270,8 @@ static int Decode_JPEG(uchar *inBuffer, uchar *outBuffer, uint width, uint heigh
 static void Compress_JPEG(
     int quality, uchar *outbuffer, const uchar *inBuffer, int width, int height, size_t bufsize)
 {
-  struct jpeg_compress_struct cinfo;
-  struct jpeg_error_mgr jerr;
+  jpeg_compress_struct cinfo;
+  jpeg_error_mgr jerr;
   uchar marker[60];
 
   cinfo.err = jpeg_std_error(&jerr);
@@ -365,13 +365,13 @@ void *avi_converter_from_mjpeg(AviMovie *movie, int stream, uchar *buffer, const
 
   (void)stream; /* unused */
 
-  buf = imb_alloc_pixels(movie->header->Height,
-                         movie->header->Width,
-                         3,
-                         sizeof(uchar),
-                         "avi.avi_converter_from_mjpeg 1");
+  buf = static_cast<uchar *>(imb_alloc_pixels(movie->header->Height,
+                                              movie->header->Width,
+                                              3,
+                                              sizeof(uchar),
+                                              "avi.avi_converter_from_mjpeg 1"));
   if (!buf) {
-    return NULL;
+    return nullptr;
   }
 
   deint = Decode_JPEG(buffer, buf, movie->header->Width, movie->header->Height, *size);
@@ -379,11 +379,11 @@ void *avi_converter_from_mjpeg(AviMovie *movie, int stream, uchar *buffer, const
   MEM_freeN(buffer);
 
   if (deint) {
-    buffer = imb_alloc_pixels(movie->header->Height,
-                              movie->header->Width,
-                              3,
-                              sizeof(uchar),
-                              "avi.avi_converter_from_mjpeg 2");
+    buffer = static_cast<uchar *>(imb_alloc_pixels(movie->header->Height,
+                                                   movie->header->Width,
+                                                   3,
+                                                   sizeof(uchar),
+                                                   "avi.avi_converter_from_mjpeg 2"));
     if (buffer) {
       interlace(buffer, buf, movie->header->Width, movie->header->Height);
     }
@@ -403,13 +403,13 @@ void *avi_converter_to_mjpeg(AviMovie *movie, int stream, uchar *buffer, size_t 
   numbytes = 0;
   *size = 0;
 
-  buf = imb_alloc_pixels(movie->header->Height,
-                         movie->header->Width,
-                         3,
-                         sizeof(uchar),
-                         "avi.avi_converter_to_mjpeg 1");
+  buf = static_cast<uchar *>(imb_alloc_pixels(movie->header->Height,
+                                              movie->header->Width,
+                                              3,
+                                              sizeof(uchar),
+                                              "avi.avi_converter_to_mjpeg 1"));
   if (!buf) {
-    return NULL;
+    return nullptr;
   }
 
   if (!movie->interlace) {
@@ -426,11 +426,11 @@ void *avi_converter_to_mjpeg(AviMovie *movie, int stream, uchar *buffer, size_t 
     MEM_freeN(buffer);
 
     buffer = buf;
-    buf = imb_alloc_pixels(movie->header->Height,
-                           movie->header->Width,
-                           3,
-                           sizeof(uchar),
-                           "avi.avi_converter_to_mjpeg 1");
+    buf = static_cast<uchar *>(imb_alloc_pixels(movie->header->Height,
+                                                movie->header->Width,
+                                                3,
+                                                sizeof(uchar),
+                                                "avi.avi_converter_to_mjpeg 1"));
 
     if (buf) {
       Compress_JPEG(movie->streams[stream].sh.Quality / 100,
@@ -443,8 +443,7 @@ void *avi_converter_to_mjpeg(AviMovie *movie, int stream, uchar *buffer, size_t 
       numbytes = 0;
       Compress_JPEG(movie->streams[stream].sh.Quality / 100,
                     buf + *size,
-                    buffer +
-                        (size_t)(movie->header->Height / 2) * (size_t)movie->header->Width * 3,
+                    buffer + size_t(movie->header->Height / 2) * size_t(movie->header->Width) * 3,
                     movie->header->Width,
                     movie->header->Height / 2,
                     bufsize / 2);
@@ -478,7 +477,8 @@ static void jpegmemdestmgr_term_destination(j_compress_ptr cinfo)
 
 static void jpegmemdestmgr_build(j_compress_ptr cinfo, uchar *buffer, size_t bufsize)
 {
-  cinfo->dest = MEM_mallocN(sizeof(*(cinfo->dest)), "avi.jpegmemdestmgr_build");
+  cinfo->dest = static_cast<jpeg_destination_mgr *>(
+      MEM_mallocN(sizeof(*(cinfo->dest)), "avi.jpegmemdestmgr_build"));
 
   cinfo->dest->init_destination = jpegmemdestmgr_init_destination;
   cinfo->dest->empty_output_buffer = jpegmemdestmgr_empty_output_buffer;
@@ -532,7 +532,8 @@ static void jpegmemsrcmgr_term_source(j_decompress_ptr dinfo)
 
 static void jpegmemsrcmgr_build(j_decompress_ptr dinfo, const uchar *buffer, size_t bufsize)
 {
-  dinfo->src = MEM_mallocN(sizeof(*(dinfo->src)), "avi.jpegmemsrcmgr_build");
+  dinfo->src = static_cast<jpeg_source_mgr *>(
+      MEM_mallocN(sizeof(*(dinfo->src)), "avi.jpegmemsrcmgr_build"));
 
   dinfo->src->init_source = jpegmemsrcmgr_init_source;
   dinfo->src->fill_input_buffer = jpegmemsrcmgr_fill_input_buffer;

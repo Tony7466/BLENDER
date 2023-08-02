@@ -6,11 +6,11 @@
  * \ingroup render
  */
 
-#include <fcntl.h>
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <fcntl.h>
 #ifndef WIN32
 #  include <unistd.h>
 #else
@@ -270,8 +270,8 @@ int imagewrap(Tex *tex,
     texres->trgba[3] = 1.0f - texres->trgba[3];
   }
 
-  /* de-premul, this is being pre-multiplied in shade_input_do_shade()
-   * do not de-premul for generated alpha, it is already in straight */
+  /* De-pre-multiply, this is being pre-multiplied in #shade_input_do_shade()
+   * do not de-pre-multiply for generated alpha, it is already in straight. */
   if (texres->trgba[3] != 1.0f && texres->trgba[3] > 1e-4f && !(tex->imaflag & TEX_CALCALPHA)) {
     fx = 1.0f / texres->trgba[3];
     texres->trgba[0] *= fx;
@@ -1234,7 +1234,7 @@ static int imagewraposa_aniso(Tex *tex,
       b *= ff;
     }
     maxd = max_ff(b, 1e-8f);
-    levf = (float(M_LOG2E)) * logf(maxd);
+    levf = float(M_LOG2E) * logf(maxd);
 
     curmap = 0;
     maxlev = 1;
