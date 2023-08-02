@@ -172,6 +172,7 @@ DEF_ENUM(rna_enum_shading_type_items)
 DEF_ENUM(rna_enum_navigation_mode_items)
 
 DEF_ENUM(rna_enum_node_socket_in_out_items)
+DEF_ENUM(rna_enum_node_socket_type_items)
 
 DEF_ENUM(rna_enum_node_math_items)
 DEF_ENUM(rna_enum_mapping_type_items)
@@ -256,6 +257,8 @@ DEF_ENUM(rna_enum_transform_mode_types)
 DEF_ENUM(rna_enum_nla_mode_extend_items)
 DEF_ENUM(rna_enum_nla_mode_blend_items)
 DEF_ENUM(rna_enum_keyblock_type_items)
+
+DEF_ENUM(rna_enum_aset_library_type_items)
 
 #endif
 

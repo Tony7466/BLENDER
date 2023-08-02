@@ -126,13 +126,13 @@ int BIF_countTransformOrientation(const struct bContext *C);
 #define P_CURSOR_EDIT (1 << 16)
 #define P_CLNOR_INVALIDATE (1 << 17)
 #define P_VIEW2D_EDGE_PAN (1 << 18)
-#define P_VIEW3D_NAVIGATION (1 << 19)
+#define P_VIEW3D_ALT_NAVIGATION (1 << 19)
 /* For properties performed when confirming the transformation. */
 #define P_POST_TRANSFORM (1 << 20)
 
 void Transform_Properties(struct wmOperatorType *ot, int flags);
 
-/* *** transform_orientations.c *** */
+/* `transform_orientations.cc` */
 void ED_transform_calc_orientation_from_type(const struct bContext *C, float r_mat[3][3]);
 /**
  * \note The resulting matrix may not be orthogonal,
@@ -167,7 +167,7 @@ void VIEW3D_GGT_xform_gizmo_context(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_xform_cage(struct wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_xform_shear(struct wmGizmoGroupType *gzgt);
 
-/* *** transform_gizmo_extrude_3d.c *** */
+/* `transform_gizmo_extrude_3d.cc` */
 void VIEW3D_GGT_xform_extrude(struct wmGizmoGroupType *gzgt);
 
 /* Generic 2D transform gizmo callback assignment. */

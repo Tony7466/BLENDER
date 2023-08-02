@@ -650,8 +650,12 @@ mark_as_advanced(
 )
 
 # OpenGL
-option(WITH_OPENGL_BACKEND "Enable OpenGL support as graphic backend" ON)
-mark_as_advanced(WITH_OPENGL_BACKEND)
+if(NOT APPLE)
+  option(WITH_OPENGL_BACKEND "Enable OpenGL support as graphic backend" ON)
+  mark_as_advanced(WITH_OPENGL_BACKEND)
+else()
+  set(WITH_OPENGL_BACKEND OFF)
+endif()
 
 # Vulkan
 option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (only for development)" OFF)
@@ -689,7 +693,7 @@ if(UNIX)
   if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
     mark_as_advanced(WITH_LINKER_LLD)
-    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld. Needs \"sold\" subscription on macOS." OFF)
+    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld" OFF)
     mark_as_advanced(WITH_LINKER_MOLD)
   endif()
 endif()
@@ -1751,6 +1755,8 @@ endif()
 
 if(WITH_COMPILER_SHORT_FILE_MACRO)
   # Use '-fmacro-prefix-map' for Clang and GCC (MSVC doesn't support this).
+  set(C_PREFIX_MAP_FLAGS "")
+  set(CXX_PREFIX_MAP_FLAGS "")
   add_check_c_compiler_flag(C_PREFIX_MAP_FLAGS C_MACRO_PREFIX_MAP -fmacro-prefix-map=foo=bar)
   add_check_cxx_compiler_flag(CXX_PREFIX_MAP_FLAGS CXX_MACRO_PREFIX_MAP -fmacro-prefix-map=foo=bar)
   if(C_MACRO_PREFIX_MAP AND CXX_MACRO_PREFIX_MAP)
@@ -1785,6 +1791,8 @@ if(WITH_COMPILER_SHORT_FILE_MACRO)
     )
     set(WITH_COMPILER_SHORT_FILE_MACRO OFF)
   endif()
+  unset(C_PREFIX_MAP_FLAGS)
+  unset(CXX_PREFIX_MAP_FLAGS)
 endif()
 
 # Include warnings first, so its possible to disable them with user defined flags

@@ -126,6 +126,7 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bsdf_microfacet.h
   closure/bsdf_oren_nayar.h
   closure/bsdf_phong_ramp.h
+  closure/bsdf_sheen.h
   closure/bsdf_toon.h
   closure/bsdf_transparent.h
   closure/bsdf_util.h
@@ -135,7 +136,6 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/emissive.h
   closure/volume.h
   closure/bsdf_principled_diffuse.h
-  closure/bsdf_principled_sheen.h
   closure/bsdf_hair_principled.h
 )
 
@@ -666,7 +666,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${SRC_UTIL_HEADERS})
   set(bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
   set(hiprt_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.hipfb)
-  set(kernel_sources ${sources})
+  set(kernel_sources ${hiprt_sources})
   set(hiprt_kernel_src "/device/hiprt/kernel.cpp")
   if(WIN32)
     set(hiprt_compile_command ${CMAKE_COMMAND})

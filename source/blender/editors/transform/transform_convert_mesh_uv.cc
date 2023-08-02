@@ -132,7 +132,7 @@ static void uv_set_connectivity_distance(const ToolSettings *ts,
   float *dists_prev = static_cast<float *>(MEM_dupallocN(dists));
 
   do {
-    while ((l = static_cast<BMLoop *>(BLI_LINKSTACK_POP(queue)))) {
+    while ((l = BLI_LINKSTACK_POP(queue))) {
       BLI_assert(dists[BM_elem_index_get(l)] != FLT_MAX);
 
       BMLoop *l_other, *l_connected;
@@ -476,7 +476,7 @@ static void recalcData_uv(TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_MeshUV = {
     /*flags*/ (T_EDIT | T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransUVs,
-    /*recalcData*/ recalcData_uv,
+    /*create_trans_data*/ createTransUVs,
+    /*recalc_data*/ recalcData_uv,
     /*special_aftertrans_update*/ nullptr,
 };

@@ -7,6 +7,7 @@ set(INC
   ../include
   ../../asset_system
   ../../blenfont
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../gpu
@@ -25,6 +26,7 @@ set(INC_SYS
 
 set(SRC
   asset_catalog_tree_view.cc
+  file_context.cc
   file_draw.cc
   file_indexer.cc
   file_ops.cc
@@ -36,14 +38,14 @@ set(SRC
   fsmenu.c
   space_file.cc
 
-  file_indexer.h
-  file_intern.h
-  filelist.h
+  file_indexer.hh
+  file_intern.hh
+  filelist.hh
   fsmenu.h
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

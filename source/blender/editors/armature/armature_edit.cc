@@ -41,6 +41,8 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "DEG_depsgraph.h"
 
 #include "armature_intern.h"
@@ -458,10 +460,10 @@ void ARMATURE_OT_calculate_roll(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", prop_calc_roll_types, CALC_ROLL_TAN_POS_X, "Type", "");
-  RNA_def_boolean(ot->srna, "axis_flip", 0, "Flip Axis", "Negate the alignment axis");
+  RNA_def_boolean(ot->srna, "axis_flip", false, "Flip Axis", "Negate the alignment axis");
   RNA_def_boolean(ot->srna,
                   "axis_only",
-                  0,
+                  false,
                   "Shortest Rotation",
                   "Ignore the axis direction, use the shortest rotation to align");
 }
@@ -545,7 +547,7 @@ void ARMATURE_OT_roll_clear(wmOperatorType *ot)
 
 /* temporary data-structure for merge/fill bones */
 struct EditBonePoint {
-  struct EditBonePoint *next, *prev;
+  EditBonePoint *next, *prev;
 
   EditBone *head_owner; /* EditBone which uses this point as a 'head' point */
   EditBone *tail_owner; /* EditBone which uses this point as a 'tail' point */
@@ -1221,7 +1223,7 @@ static bool armature_delete_ebone_cb(const char *bone_name, void *arm_p)
   EditBone *ebone;
 
   ebone = ED_armature_ebone_find_name(arm->edbo, bone_name);
-  return (ebone && (ebone->flag & BONE_SELECTED) && (arm->layer & ebone->layer));
+  return (ebone && (ebone->flag & BONE_SELECTED) && ANIM_bonecoll_is_visible_editbone(arm, ebone));
 }
 
 /* previously delete_armature */
@@ -1252,7 +1254,7 @@ static int armature_delete_selected_exec(bContext *C, wmOperator * /*op*/)
 
     for (curBone = static_cast<EditBone *>(arm->edbo->first); curBone; curBone = ebone_next) {
       ebone_next = curBone->next;
-      if (arm->layer & curBone->layer) {
+      if (ANIM_bonecoll_is_visible_editbone(arm, curBone)) {
         if (curBone->flag & BONE_SELECTED) {
           if (curBone == arm->act_edbone) {
             arm->act_edbone = nullptr;
@@ -1384,13 +1386,13 @@ static int armature_dissolve_selected_exec(bContext *C, wmOperator * /*op*/)
 
     for (ebone = static_cast<EditBone *>(arm->edbo->first); ebone; ebone = ebone->next) {
       /* break connections for unseen bones */
-      if (((arm->layer & ebone->layer) &&
+      if ((ANIM_bonecoll_is_visible_editbone(arm, ebone) &&
            (ED_armature_ebone_selectflag_get(ebone) & (BONE_TIPSEL | BONE_SELECTED))) == 0)
       {
         ebone->temp.ebone = nullptr;
       }
 
-      if (((arm->layer & ebone->layer) &&
+      if ((ANIM_bonecoll_is_visible_editbone(arm, ebone) &&
            (ED_armature_ebone_selectflag_get(ebone) & (BONE_ROOTSEL | BONE_SELECTED))) == 0)
       {
         if (ebone->parent && (ebone->flag & BONE_CONNECTED)) {
@@ -1541,7 +1543,8 @@ void ARMATURE_OT_hide(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_boolean(ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected");
+  RNA_def_boolean(
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected");
 }
 
 /** \} */
@@ -1564,7 +1567,7 @@ static int armature_reveal_exec(bContext *C, wmOperator *op)
     bool changed = false;
 
     LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
-      if (arm->layer & ebone->layer) {
+      if (ANIM_bonecoll_is_visible_editbone(arm, ebone)) {
         if (ebone->flag & BONE_HIDDEN_A) {
           if (!(ebone->flag & BONE_UNSELECTABLE)) {
             SET_FLAG_FROM_TEST(ebone->flag, select, (BONE_TIPSEL | BONE_SELECTED | BONE_ROOTSEL));

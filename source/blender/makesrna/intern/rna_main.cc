@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
@@ -154,7 +154,7 @@ static PointerRNA rna_Test_test_get(PointerRNA *ptr)
 #else
 
 /* local convenience types */
-typedef void(CollectionDefFunc)(BlenderRNA *brna, PropertyRNA *cprop);
+using CollectionDefFunc = void(BlenderRNA *brna, PropertyRNA *cprop);
 
 struct MainCollectionDef {
   const char *identifier;
@@ -170,7 +170,7 @@ void RNA_def_main(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /* plural must match idtypes in readblenentry.c */
+  /* Plural must match ID-types in `readblenentry.cc`. */
   MainCollectionDef lists[] = {
       {"cameras",
        "Camera",
@@ -419,7 +419,7 @@ void RNA_def_main(BlenderRNA *brna)
   prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_maxlength(prop, FILE_MAX);
   RNA_def_property_string_funcs(
-      prop, "rna_Main_filepath_get", "rna_Main_filepath_length", "rna_Main_filepath_set");
+      prop, "rna_Main_filepath_get", "rna_Main_filepath_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Filename", "Path to the .blend file");
 
