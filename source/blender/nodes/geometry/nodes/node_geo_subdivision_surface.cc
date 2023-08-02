@@ -190,20 +190,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_subdivision_surface_cc
-
-static void register_node_type_geo_subdivision_surface()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_subdivision_surface_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SUBDIVISION_SURFACE, "Subdivision Surface", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.initfunc = file_ns::node_init;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.initfunc = node_init;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   node_type_storage(&ntype,
                     "NodeGeometrySubdivisionSurface",
@@ -211,4 +207,6 @@ static void register_node_type_geo_subdivision_surface()
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
-NOD_REGISTER_NODE(register_node_type_geo_subdivision_surface)
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_subdivision_surface_cc
