@@ -1934,7 +1934,7 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "collection_index");
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "collection");
   const bool is_link = STREQ(op->idname, "OBJECT_OT_link_to_collection");
   const bool is_new = RNA_boolean_get(op->ptr, "is_new");
 
