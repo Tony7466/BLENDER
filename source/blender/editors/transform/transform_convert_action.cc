@@ -1089,11 +1089,11 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           continue;
         }
 
-        if (canceled) {
-          /* The operation was cancelled, reset the frames to their initial state. */
-          layer->runtime->frames_ = std::move(layer->runtime->trans_frames_copy_);
-        }
-        else {
+        /* First, reset the frames to their initial state. */
+        layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
+        layer->tag_frames_map_keys_changed();
+
+        if (!canceled) {
           /* Apply the frame transformation. */
           Map<int, float> &trans_data = layer->runtime->trans_frame_data_;
           for (const auto [src_frame_number, dst_frame_number_f] : trans_data.items()) {
