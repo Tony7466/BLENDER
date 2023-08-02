@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  PUBLIC .
+  .
   ../asset_system
   ../blenfont
   ../blenloader
@@ -73,6 +73,9 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
+  intern/bake_items.cc
+  intern/bake_items_serialize.cc
+  intern/bake_items_socket.cc
   intern/blender.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc
@@ -133,6 +136,7 @@ set(SRC
   intern/freestyle.cc
   intern/geometry_component_curves.cc
   intern/geometry_component_edit_data.cc
+  intern/geometry_component_grease_pencil.cc
   intern/geometry_component_instances.cc
   intern/geometry_component_mesh.cc
   intern/geometry_component_pointcloud.cc
@@ -198,6 +202,7 @@ set(SRC
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
+  intern/mesh_flip_faces.cc
   intern/mesh_iterators.cc
   intern/mesh_legacy_convert.cc
   intern/mesh_mapping.cc
@@ -327,6 +332,9 @@ set(SRC
   BKE_attribute.hh
   BKE_attribute_math.hh
   BKE_autoexec.h
+  BKE_bake_items.hh
+  BKE_bake_items_serialize.hh
+  BKE_bake_items_socket.hh
   BKE_blender.h
   BKE_blender_copybuffer.h
   BKE_blender_undo.h
@@ -408,7 +416,7 @@ set(SRC
   BKE_lattice.h
   BKE_layer.h
   BKE_lib_id.h
-  BKE_lib_override.h
+  BKE_lib_override.hh
   BKE_lib_query.h
   BKE_lib_remap.h
   BKE_library.h
@@ -812,7 +820,6 @@ endif()
 # endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_library(bf::blenkernel ALIAS bf_blenkernel)
 
 # RNA_prototypes.h
 add_dependencies(bf_blenkernel bf_rna)

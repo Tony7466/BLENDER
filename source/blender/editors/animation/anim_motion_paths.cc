@@ -8,7 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
@@ -32,6 +32,8 @@
 
 #include "ED_anim_api.h"
 #include "ED_keyframes_keylist.h"
+
+#include "ANIM_bone_collections.h"
 
 #include "CLG_log.h"
 
@@ -112,7 +114,7 @@ void animviz_get_object_motionpaths(Object *ob, ListBase *targets)
 
     for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next)
     {
-      if ((pchan->bone) && (arm->layer & pchan->bone->layer) && (pchan->mpath)) {
+      if ((pchan->bone) && ANIM_bonecoll_is_visible_pchan(arm, pchan) && (pchan->mpath)) {
         /* new target for bone */
         mpt = static_cast<MPathTarget *>(MEM_callocN(sizeof(MPathTarget), "MPathTarget PoseBone"));
         BLI_addtail(targets, mpt);

@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <math.h>
+#include <cmath>
 
 #include "MEM_guardedalloc.h"
 
@@ -54,6 +54,8 @@
 #include "transform_mode.hh"
 #include "transform_orientations.hh"
 #include "transform_snap.hh"
+
+using namespace blender;
 
 /* ************************** GENERICS **************************** */
 
@@ -171,20 +173,20 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   t->redraw = TREDRAW_HARD; /* redraw first time */
 
-  int mval[2];
+  float2 mval;
   if (event) {
     if (t->flag & T_EVENT_DRAG_START) {
-      WM_event_drag_start_mval(event, region, mval);
+      WM_event_drag_start_mval_fl(event, region, mval);
     }
     else {
-      copy_v2_v2_int(mval, event->mval);
+      mval = float2(event->mval);
     }
   }
   else {
-    zero_v2_int(mval);
+    mval = float2(0, 0);
   }
-  copy_v2_v2_int(t->mval, mval);
-  copy_v2_v2_int(t->mouse.imval, mval);
+
+  t->mouse.imval = mval;
 
   t->mode_info = nullptr;
 
@@ -659,10 +661,17 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   }
 
   if (op && (t->flag & T_MODAL) &&
-      (prop = RNA_struct_find_property(op->ptr, "allow_navigation")) &&
-      RNA_property_boolean_get(op->ptr, prop))
+      ELEM(t->mode,
+           TFM_TRANSLATION,
+           TFM_RESIZE,
+           TFM_ROTATION,
+           TFM_SHRINKFATTEN,
+           TFM_EDGE_SLIDE,
+           TFM_VERT_SLIDE))
   {
-    t->vod = ED_view3d_navigation_init(C);
+    const bool use_alt_navigation = (prop = RNA_struct_find_property(op->ptr, "alt_navigation")) &&
+                                    RNA_property_boolean_get(op->ptr, prop);
+    t->vod = ED_view3d_navigation_init(C, use_alt_navigation);
   }
 
   setTransformViewMatrices(t);
@@ -798,7 +807,7 @@ void applyTransObjects(TransInfo *t)
       copy_v3_v3(td->ext->isize, td->ext->size);
     }
   }
-  recalcData(t);
+  recalc_data(t);
 }
 
 static void transdata_restore_basic(TransDataBasic *td_basic)
@@ -874,7 +883,7 @@ void restoreTransObjects(TransInfo *t)
     unit_m3(t->mat);
   }
 
-  recalcData(t);
+  recalc_data(t);
 }
 
 void calculateCenter2D(TransInfo *t)

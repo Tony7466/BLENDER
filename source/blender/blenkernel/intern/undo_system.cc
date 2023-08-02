@@ -8,8 +8,8 @@
  * Used by ED_undo.h, internal implementation.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -25,7 +25,7 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_undo_system.h"
 

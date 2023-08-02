@@ -6,7 +6,7 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math.h"
 #include "BLI_task.h"
@@ -375,7 +375,7 @@ static void applyRotation(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   char str[UI_MAX_DRAW_STR];
   headerRotation(t, str, sizeof(str), t->values_final[0]);

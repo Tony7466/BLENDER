@@ -6,8 +6,8 @@
  * \ingroup edscr
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
@@ -458,7 +458,7 @@ static void workspace_append_button(uiLayout *layout,
                   ICON_NONE,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &opptr);
   RNA_string_set(&opptr, "idname", id->name + 2);
   RNA_string_set(&opptr, "filepath", filepath);

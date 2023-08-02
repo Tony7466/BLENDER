@@ -6,8 +6,8 @@
  * \ingroup edscr
  */
 
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -212,7 +212,7 @@ bScreen *screen_add(Main *bmain, const char *name, const rcti *rect)
 
 void screen_data_copy(bScreen *to, bScreen *from)
 {
-  /* free contents of 'to', is from blenkernel screen.c */
+  /* Free contents of 'to', is from blenkernel `screen.cc`. */
   BKE_screen_free_data(to);
 
   to->flag = from->flag;
@@ -593,7 +593,7 @@ bool screen_area_close(bContext *C, bScreen *screen, ScrArea *area)
   return screen_area_join_ex(C, screen, sa2, area, true);
 }
 
-void screen_area_spacelink_add(Scene *scene, ScrArea *area, eSpace_Type space_type)
+void screen_area_spacelink_add(const Scene *scene, ScrArea *area, eSpace_Type space_type)
 {
   SpaceType *stype = BKE_spacetype_from_id(space_type);
   SpaceLink *slink = stype->create(area, scene);
