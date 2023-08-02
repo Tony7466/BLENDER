@@ -174,7 +174,7 @@ get_init_socket_fn(const bNodeTreeInterface &interface, const bNodeTreeInterface
       return;
     }
     bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(node.id);
-    const bNodeTreeInterfaceItem *io_item = ntree.interface.get_item_at_index(item_index);
+    const bNodeTreeInterfaceItem *io_item = ntree.tree_interface.get_item_at_index(item_index);
     if (io_item == nullptr || io_item->item_type != NODE_INTERFACE_SOCKET) {
       return;
     }
@@ -303,7 +303,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     }
     case SOCK_CUSTOM:
       auto value = std::make_unique<decl::Custom>();
-      value->init_socket_fn = get_init_socket_fn(ntree.interface, io_socket);
+      value->init_socket_fn = get_init_socket_fn(ntree.tree_interface, io_socket);
       dst = std::move(value);
       break;
   }
@@ -540,8 +540,7 @@ bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNo
     for (const bNodeSocket *socket : next_node->output_sockets()) {
       for (const bNodeLink *link : socket->directly_linked_links()) {
         if (link->tonode->typeinfo->nclass == NODE_CLASS_OUTPUT &&
-            link->tonode->flag & NODE_DO_OUTPUT)
-        {
+            link->tonode->flag & NODE_DO_OUTPUT) {
           return true;
         }
         nodes_to_check.push(link->tonode);

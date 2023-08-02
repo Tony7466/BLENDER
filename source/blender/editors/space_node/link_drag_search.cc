@@ -92,7 +92,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
 
-  bNodeTreeInterfaceSocket *socket_iface = params.node_tree.interface.add_socket(
+  bNodeTreeInterfaceSocket *socket_iface = params.node_tree.tree_interface.add_socket(
       params.socket.name,
       params.socket.description,
       params.socket.typeinfo->idname,
@@ -323,7 +323,7 @@ static void gather_socket_link_operations(const bContext &C,
     search_link_ops.append({IFACE_("Group Input"), add_group_input_node_fn});
 
     int weight = -1;
-    node_tree.interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
+    node_tree.tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
       if (item.item_type != NODE_INTERFACE_SOCKET) {
         return true;
       }

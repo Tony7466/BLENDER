@@ -240,7 +240,7 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
   SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
 
-  bNodeTreeInterfaceSocket *iosock = ntree.interface.add_socket(
+  bNodeTreeInterfaceSocket *iosock = ntree.tree_interface.add_socket(
       name.data(), from_sock.description, socket_type, flag, nullptr);
   if (iosock == nullptr) {
     return nullptr;
