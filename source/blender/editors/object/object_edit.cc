@@ -1916,37 +1916,32 @@ static bool move_to_collection_poll(bContext *C)
   return ED_operator_objectmode(C);
 }
 
-Collection *find_colection_by_ui_name(Collection *collection, const char *name)
+Collection *move_to_collection_collection_from_enum(bContext *C, int collection_enum)
 {
-  if (STREQ(name, BKE_collection_ui_name_get(collection))) {
-    return collection;
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+
+  if (collection_enum == 0) {
+    return scene->master_collection;
   }
-  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
-    Collection *result = find_colection_by_ui_name(child->collection, name);
-    if (result) {
-      return result;
-    }
+  else if (!bmain->collections.first) {
+    return nullptr;
   }
-  return nullptr;
-};
+  return static_cast<Collection *>(BLI_findlink(&bmain->collections, collection_enum - 1));
+}
 
 static int move_to_collection_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "collection_name");
   const bool is_link = STREQ(op->idname, "OBJECT_OT_link_to_collection");
   const bool is_new = RNA_boolean_get(op->ptr, "is_new");
-
-  if (!RNA_property_is_set(op->ptr, prop)) {
+  Collection *collection = move_to_collection_collection_from_enum(
+      C, RNA_enum_get(op->ptr, "collection"));
+  if (!collection) {
     BKE_report(op->reports, RPT_ERROR, "No collection selected");
     return OPERATOR_CANCELLED;
   }
-
-  char collection_name[MAX_NAME];
-  RNA_property_string_get(op->ptr, prop, collection_name);
-
-  Collection *collection = find_colection_by_ui_name(scene->master_collection, collection_name);
 
   if (collection == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Unexpected error, collection not found");
@@ -2031,7 +2026,7 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent, const char *opname)
+void move_to_collection_menu_new_item(uiLayout *layout, const char *opname, const int enum_index)
 {
   wmOperatorType *ot = WM_operatortype_find(opname, false);
 
@@ -2040,8 +2035,7 @@ void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent, cons
 
   RNA_boolean_set(&ptr, "is_new", true);
 
-  const char *name = BKE_collection_ui_name_get(parent);
-  RNA_string_set(&ptr, "collection_name", name);
+  RNA_enum_set(&ptr, "collection", enum_index);
 
   uiItemFullO_ptr(layout,
                   ot,
@@ -2056,12 +2050,13 @@ void move_to_collection_menu_new_item(uiLayout *layout, Collection *parent, cons
 void move_to_collection_menu_item(uiLayout *layout,
                                   Collection *collection,
                                   const char *opname,
-                                  const bool master_collection)
+                                  const int enum_index)
 {
-  const int icon = master_collection ? ICON_SCENE_DATA : UI_icon_color_from_collection(collection);
+  const int icon = enum_index == 0 ? ICON_SCENE_DATA : UI_icon_color_from_collection(collection);
   const char *name = BKE_collection_ui_name_get(collection);
-  uiItemStringO(layout, name, icon, opname, "collection_name", name);
+  uiItemEnumO(layout, opname, name, icon, "collection", enum_index);
 }
+
 /**
  * Enum used to specify the move operator that calls the recursive function
  * #move_to_collection_menu_items which builds the menu and submenus with #uiItemMenuF,
@@ -2078,12 +2073,16 @@ void move_to_collection_menu_items(bContext *C, uiLayout *layout, void *arg)
 {
   const char *opname = move_type == MTC_MOVE ? "OBJECT_OT_move_to_collection" :
                                                "OBJECT_OT_link_to_collection";
-
+  Main *bmain = CTX_data_main(C);
   Collection *collection = static_cast<Collection *>(arg);
   const Scene *scene = CTX_data_scene(C);
-  bool master_collection = scene->master_collection == collection;
 
-  move_to_collection_menu_item(layout, collection, opname, master_collection);
+  int enum_index = 0;
+  if (scene->master_collection != collection) {
+    enum_index = BLI_findindex(&bmain->collections, collection) + 1;
+  };
+
+  move_to_collection_menu_item(layout, collection, opname, enum_index);
 
   uiItemS(layout);
 
@@ -2096,7 +2095,7 @@ void move_to_collection_menu_items(bContext *C, uiLayout *layout, void *arg)
   if (collection->children.first) {
     uiItemS(layout);
   }
-  move_to_collection_menu_new_item(layout, collection, opname);
+  move_to_collection_menu_new_item(layout, opname, enum_index);
 }
 
 static int move_to_collection_menu(bContext *C, wmOperator *op)
@@ -2111,6 +2110,9 @@ static int move_to_collection_menu(bContext *C, wmOperator *op)
   pup = UI_popup_menu_begin(C, title, ICON_NONE);
 
   layout = UI_popup_menu_layout(pup);
+
+  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+
   uiItemS(layout);
 
   if (STREQ(op->idname, "OBJECT_OT_move_to_collection")) {
@@ -2126,7 +2128,6 @@ static int move_to_collection_menu(bContext *C, wmOperator *op)
 
 static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  Scene *scene = CTX_data_scene(C);
 
   ListBase objects = selected_objects_get(C);
   if (BLI_listbase_is_empty(&objects)) {
@@ -2136,18 +2137,16 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
   BLI_freelistN(&objects);
 
   PropertyRNA *prop;
-  prop = RNA_struct_find_property(op->ptr, "collection_name");
+  prop = RNA_struct_find_property(op->ptr, "collection");
+
   if (RNA_property_is_set(op->ptr, prop)) {
-    char collection_name[MAX_NAME];
-    RNA_property_string_get(op->ptr, prop, collection_name);
 
     if (RNA_boolean_get(op->ptr, "is_new")) {
       prop = RNA_struct_find_property(op->ptr, "new_collection_name");
       if (!RNA_property_is_set(op->ptr, prop)) {
         char name[MAX_NAME];
-        Collection *collection;
-
-        collection = find_colection_by_ui_name(scene->master_collection, collection_name);
+        Collection *collection = move_to_collection_collection_from_enum(
+            C, RNA_enum_get(op->ptr, "collection"));
         BKE_collection_new_name_get(collection, name);
 
         RNA_property_string_set(op->ptr, prop, name);
@@ -2157,6 +2156,43 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
     return move_to_collection_exec(C, op);
   }
   return move_to_collection_menu(C, op);
+}
+
+/**
+ * Enum Items that list all collections and the master collection of the active scene.
+ * This allow to be able to move selected objects to any collection or to the current active
+ * master_collection. The menu from #OBJECT_OT_move_to_collection only shows collections from the
+ * active scene, but the apy allows to move objects to any collection in the current file (except
+ * for other master_collections).
+ */
+static const EnumPropertyItem *move_to_collection_enum_items(bContext *C,
+                                                             PointerRNA * /*ptr*/,
+                                                             PropertyRNA * /*prop*/,
+                                                             bool *r_free)
+{
+
+  Scene *scene = CTX_data_scene(C);
+  EnumPropertyItem item_tmp = {0}, *item = nullptr;
+  int totitem = 0;
+  int i = 0;
+
+  item_tmp.icon = ICON_SCENE_DATA;
+  item_tmp.identifier = BKE_collection_ui_name_get(scene->master_collection);
+  item_tmp.value = i++;
+  RNA_enum_item_add(&item, &totitem, &item_tmp);
+
+  Main *bmain = CTX_data_main(C);
+  LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+    item_tmp.icon = UI_icon_color_from_collection(collection);
+    item_tmp.identifier = BKE_collection_ui_name_get(collection);
+    item_tmp.value = i++;
+    RNA_enum_item_add(&item, &totitem, &item_tmp);
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 void OBJECT_OT_move_to_collection(wmOperatorType *ot)
@@ -2176,12 +2212,10 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_string(ot->srna,
-                        "collection_name",
-                        nullptr,
-                        MAX_NAME,
-                        "Collection name",
-                        "Name of the collection to move to");
+  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  RNA_def_enum_funcs(prop, move_to_collection_enum_items);
+  RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
+
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
   prop = RNA_def_boolean(ot->srna, "is_new", false, "New", "Move objects to a new collection");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
