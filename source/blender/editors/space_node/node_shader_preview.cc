@@ -293,7 +293,7 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree *ntree,
 
   RenderResult *rr = RE_AcquireResultRead(tree_previews->previews_render);
   ImBuf *&image_cached =
-      tree_previews->previews_map.lookup_or_add(node->identifier, {nullptr, 0}).first;
+      tree_previews->previews_map.lookup_or_add(node->identifier, {nullptr, DirtyState()}).first;
   if (rr == nullptr) {
     return image_cached;
   }
@@ -555,30 +555,36 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 /** \name Preview job management
  * \{ */
 
-static uint32_t get_treepath_dirty_state(const ListBase *treepath)
+static DirtyState get_treepath_dirty_state(const ListBase *treepath)
 {
-  uint32_t tree_dirty_state_path =
-      static_cast<bNodeTreePath *>(treepath->first)->nodetree->tree_dirty_state;
+  DirtyState treepath_dirty_state =
+      static_cast<bNodeTreePath *>(treepath->first)->nodetree->runtime->whole_tree_dirtystate;
   for (bNodeTreePath *path_iter = static_cast<bNodeTreePath *>(treepath->first)->next; path_iter;
        path_iter = path_iter->next)
   {
-    tree_dirty_state_path += path_iter->nodetree->tree_dirty_state;
-    tree_dirty_state_path +=
-        nodeFindNodebyName(path_iter->prev->nodetree, path_iter->node_name)->dirty_state;
+    treepath_dirty_state.merge(path_iter->nodetree->runtime->whole_tree_dirtystate);
+    bNode *group_node = nodeFindNodebyName(path_iter->prev->nodetree, path_iter->node_name);
+    treepath_dirty_state.merge(group_node->runtime->dirtystate);
   }
-  return tree_dirty_state_path;
+  return treepath_dirty_state;
 }
 
 static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tree_previews)
 {
   bNodeTree *nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
-  if (nodetree->nodes_dirty_state != tree_previews->nodes_dirty_state) {
+  DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
+  if (treepath_dirty_state != tree_previews->treepath_dirty_state)
+  {
+    /* If the path is dirty, then we need to redraw all the nodetree (excepted if we know which nodes are dirty). */
+    tree_previews->restart_needed = true;
+    tree_previews->partial_tree_refresh = false;
+  }
+  if (nodetree->runtime->any_node_dirtystate != tree_previews->nodes_dirty_state) {
+    /* If we know that only some node are dirty, then enable partial redraw. */
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = true;
   }
-  uint32_t treepath_dirty_state = get_treepath_dirty_state(treepath);
-  if (treepath_dirty_state != tree_previews->treepath_dirty_state ||
-      tree_previews->preview_size != U.node_preview_res)
+  if (tree_previews->preview_size != U.node_preview_res)
   {
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = false;
@@ -619,14 +625,15 @@ static void shader_preview_startjob(void *customdata,
       continue;
     }
 
-    std::pair<ImBuf *, uint32_t> &cache = job_data->tree_previews->previews_map.lookup_or_add(
-        node->identifier, {nullptr, 0});
+    std::pair<ImBuf *, DirtyState> &cache = job_data->tree_previews->previews_map.lookup_or_add(
+        node->identifier, {nullptr, DirtyState()});
     if (job_data->tree_previews->partial_tree_refresh) {
-      if (node->dirty_state == cache.second && cache.first != nullptr) {
+      /* Check if the node preview is outdated or inexistent. */
+      if (node->runtime->dirtystate == cache.second && cache.first != nullptr) {
         continue;
       }
     }
-    cache.second = node->dirty_state;
+    cache.second = node->runtime->dirtystate;
     if (node_use_aov(node)) {
       job_data->AOV_nodes.append(node);
     }
@@ -679,9 +686,9 @@ static void ensure_nodetree_previews(const bContext *C,
   }
   tree_previews->rendering = true;
   tree_previews->restart_needed = false;
-  uint32_t treepath_dirty_state = get_treepath_dirty_state(treepath);
+  DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
   tree_previews->treepath_dirty_state = treepath_dirty_state;
-  tree_previews->nodes_dirty_state = displayed_nodetree->nodes_dirty_state;
+  tree_previews->nodes_dirty_state = displayed_nodetree->runtime->any_node_dirtystate;
 
   ED_preview_ensure_dbase(false);
 

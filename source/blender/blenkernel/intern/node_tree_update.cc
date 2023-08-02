@@ -338,7 +338,7 @@ class NodeTreeMainUpdater {
         if (result.output_changed) {
           for (const TreeNodePair &pair : dependent_trees) {
             add_node_tag(pair.first, pair.second, NTREE_CHANGED_NODE_OUTPUT);
-            make_node_dirty(*pair.first, *pair.second);
+            make_nodes_dirty(*pair.first, Span<bNode*>(&pair.second, 1));
           }
         }
         if (result.interface_changed) {
@@ -720,24 +720,37 @@ class NodeTreeMainUpdater {
     blender::bke::node_preview_remove_unused(&ntree);
   }
 
-  void make_node_dirty(bNodeTree &ntree, bNode &node)
+  void make_nodes_dirty(bNodeTree &ntree, Stack<bNode *> nodes_to_visit)
   {
-    node.dirty_state++;
-    ntree.nodes_dirty_state++;
-    LISTBASE_FOREACH (bNodeSocket *, socket_iter, &node.outputs) {
-      for (bNodeSocket *propagation_socket : socket_iter->runtime->directly_linked_sockets) {
-        make_node_dirty(ntree, *propagation_socket->runtime->owner_node);
+    ntree.runtime->any_node_dirtystate.make_dirty();
+
+    /* Avoid visiting the same socket twice when multiple links point to the same socket. */
+    Array<bool> nodes_visited(ntree.all_nodes().size(), false);
+
+    while (!nodes_to_visit.is_empty()) {
+      bNode *node_iter = nodes_to_visit.pop();
+      nodes_visited[node_iter->runtime->index_in_tree] = true;
+      node_iter->runtime->dirtystate.make_dirty();
+      LISTBASE_FOREACH (bNodeSocket *, socket_iter, &node_iter->outputs) {
+        for (bNodeSocket *propagation_socket : socket_iter->runtime->directly_linked_sockets) {
+          bNode *child_node = propagation_socket->runtime->owner_node;
+          if (!nodes_visited[child_node->runtime->index_in_tree]) {
+            nodes_to_visit.push(child_node);
+          }
+        }
       }
     }
   }
 
   void update_nodetree_dirty_state(bNodeTree &ntree)
   {
+    Stack<bNode *> nodes_to_visit;
     LISTBASE_FOREACH (bNode *, node_iter, &ntree.nodes) {
       if (node_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
-        make_node_dirty(ntree, *node_iter);
+        nodes_to_visit.push(node_iter);
       }
     }
+    make_nodes_dirty(ntree, nodes_to_visit);
   }
 
   void propagate_runtime_flags(const bNodeTree &ntree)

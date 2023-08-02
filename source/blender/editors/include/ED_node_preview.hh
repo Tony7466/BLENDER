@@ -5,6 +5,7 @@
 #pragma once
 
 #include "RE_pipeline.h"
+#include "BKE_node_runtime.hh"
 
 #include "IMB_imbuf.h"
 
@@ -13,27 +14,27 @@ struct bNodeTree;
 struct ImBuf;
 struct Render;
 
+using blender::bke::DirtyState;
+
 struct NestedTreePreviews {
   Render *previews_render;
   /* Use this map to keep track of the latest ImBuf used (after freeing the renderresult). */
-  blender::Map<const int32_t, std::pair<ImBuf *, uint32_t>> previews_map;
+  blender::Map<const int32_t, std::pair<ImBuf *, DirtyState>> previews_map;
   int preview_size;
   bool rendering;
   bool restart_needed;
   bool partial_tree_refresh;
   /* Dirty state of the bNodeTreePath vector. It is the sum of the tree_dirty_state of all the
    * nodetrees plus the sum of all the dirty_state of the group nodes.*/
-  uint32_t treepath_dirty_state;
+  DirtyState treepath_dirty_state;
   /* Dirty state of the nodetree viewed, it is used to know if any node needs to be re-rendered. */
-  uint32_t nodes_dirty_state;
+  DirtyState nodes_dirty_state;
   NestedTreePreviews(const int size)
       : previews_render(nullptr),
         preview_size(size),
         rendering(false),
         restart_needed(false),
-        partial_tree_refresh(false),
-        treepath_dirty_state(-1),
-        nodes_dirty_state(-1)
+        partial_tree_refresh(false)
   {
   }
   ~NestedTreePreviews()
@@ -41,7 +42,7 @@ struct NestedTreePreviews {
     if (this->previews_render) {
       RE_FreeRender(this->previews_render);
     }
-    this->previews_map.foreach_item([&](const int32_t, const std::pair<ImBuf *, uint32_t> &cache) {
+    this->previews_map.foreach_item([&](const int32_t, const std::pair<ImBuf *, DirtyState> &cache) {
       IMB_freeImBuf(cache.first);
     });
   }

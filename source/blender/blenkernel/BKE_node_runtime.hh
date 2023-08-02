@@ -72,6 +72,36 @@ struct NodeIDEquality {
 
 namespace blender::bke {
 
+class DirtyState {
+private:
+  uint32_t counter = 0;
+public:
+  bool operator==(const DirtyState &other) const
+  {
+    return this->counter == other.counter;
+  }
+
+  bool operator!=(const DirtyState &other) const
+  {
+    return !(*this == other);
+  }
+
+  void operator=(const DirtyState &other)
+  {
+    this->counter = other.counter;
+  }
+
+  void merge(const DirtyState &other)
+  {
+    this->counter += other.counter;
+  }
+
+  void make_dirty()
+  {
+    counter++;
+  }
+};
+
 using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
 
 class bNodeTreeRuntime : NonCopyable, NonMovable {
@@ -93,6 +123,15 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * #eNodeTreeRuntimeFlag.
    */
   uint8_t runtime_flag = 0;
+
+  /**
+   * The result at each point of the node tree might have changed.
+   * No need to check `any_node_dirtystate` if this one has changed.
+   */
+  DirtyState whole_tree_dirtystate;
+
+  /** A node has changed. It can be topology/socket/preview modification. */
+  DirtyState any_node_dirtystate;
 
   /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
@@ -259,6 +298,12 @@ class bNodeRuntime : NonCopyable, NonMovable {
   short preview_xsize, preview_ysize = 0;
   /** Entire bound-box (world-space). */
   rctf totr{};
+
+  /**
+   * The function behind this node has changed.
+   * This dirty state might not be changed if the whole nodetree is dirty, so a check of the dirty state of the nodetree should also be done.
+   */
+  DirtyState dirtystate;
 
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag = 0;
