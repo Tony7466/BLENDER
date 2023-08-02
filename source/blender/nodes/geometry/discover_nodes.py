@@ -1,11 +1,30 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+'''
+Usage:
+    python discover_nodes.py
+        <path/to/sources>
+        <path/to/output.cc>
+        <generated_function_name>
+
+The goal is to make it easy for nodes to register themselves without having to have
+a central place that registers all nodes manually. A node can use this mechanism by
+invoking `NOD_REGISTER_NODE(register_function_name)`.
+
+This scripts finds all those macro invocations generates code that calls the functions.
+'''
+
 import re
 import sys
 from pathlib import Path
 
 source_files_dir = Path(sys.argv[1])
+macro_name = "NOD_REGISTER_NODE"
+discover_suffix = "_discover"
 output_cc_file = Path(sys.argv[2])
-macro_name = sys.argv[3]
-function_to_generate = sys.argv[4]
+function_to_generate = sys.argv[3]
 
 include_lines = []
 decl_lines = []
@@ -42,7 +61,7 @@ for path in source_files_dir.glob("*.cc"):
             # Macro invocation in the current namespace.
             namespace_str = "::".join(namespace_parts)
             # Add suffix so that this refers to the function created by the macro.
-            auto_run_name = function_name + "_auto_run"
+            auto_run_name = function_name + discover_suffix
 
             # Declare either outside of any named namespace or in a (nested) namespace.
             # Can't declare it in an anonymous namespace because that would make the

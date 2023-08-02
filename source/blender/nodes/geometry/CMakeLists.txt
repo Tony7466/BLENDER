@@ -263,14 +263,13 @@ add_custom_command(
     ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
   COMMAND
     ${PYTHON_EXECUTABLE}
-      ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/discover_nodes.py
       ${CMAKE_CURRENT_SOURCE_DIR}/nodes
       ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
-      NOD_REGISTER_NODE
       register_geometry_nodes
   DEPENDS
     ${SRC}
-    ${CMAKE_CURRENT_SOURCE_DIR}/detect_register_functions.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/discover_nodes.py
 )
 
 add_library(bf_nodes_geometry_generated ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc)
