@@ -3652,8 +3652,8 @@ static int click_select_channel_gplayer(bContext *C,
 static int click_select_channel_grease_pencil_layer(bContext *C,
                                                     bAnimContext *ac,
                                                     bAnimListElem *ale,
-                                                    const short /* selectmode */,
-                                                    const int /* filter */)
+                                                    const short /*selectmode*/,
+                                                    const int /*filter*/)
 {
   /* TODO: Implement other selection modes. */
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
