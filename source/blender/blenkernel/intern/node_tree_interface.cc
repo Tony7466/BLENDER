@@ -185,6 +185,26 @@ static void *make_socket_data(const char *socket_type)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Free allocated socket data
+ * \{ */
+
+/* Default implementation */
+template<typename T> static void socket_data_free_impl(T & /*data*/, const bool /*do_id_user*/) {}
+
+static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_user)
+{
+  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+    using SocketDataType = typename decltype(type_tag)::type;
+    if (do_id_user) {
+      socket_data_id_user_decrement(get_socket_data_as<SocketDataType>(socket));
+    }
+    socket_data_free_impl(get_socket_data_as<SocketDataType>(socket), do_id_user);
+  });
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Copy allocated socket data
  * \{ */
 
@@ -213,32 +233,18 @@ static void socket_data_copy_ptr(bNodeTreeInterfaceSocket &dst,
 {
   socket_data_to_static_type_tag(dst.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
+
+    if (dst.socket_data != nullptr) {
+      socket_data_free(dst, true);
+      MEM_SAFE_FREE(dst.socket_data);
+    }
+
     dst.socket_data = MEM_dupallocN(src_socket_data);
     socket_data_copy_impl(get_socket_data_as<SocketDataType>(dst),
                           *static_cast<const SocketDataType *>(src_socket_data));
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
       socket_data_id_user_increment(get_socket_data_as<SocketDataType>(dst));
     }
-  });
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Copy allocated socket data
- * \{ */
-
-/* Default implementation */
-template<typename T> static void socket_data_free_impl(T & /*data*/, const bool /*do_id_user*/) {}
-
-static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_user)
-{
-  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
-    using SocketDataType = typename decltype(type_tag)::type;
-    if (do_id_user) {
-      socket_data_id_user_decrement(get_socket_data_as<SocketDataType>(socket));
-    }
-    socket_data_free_impl(get_socket_data_as<SocketDataType>(socket), do_id_user);
   });
 }
 
