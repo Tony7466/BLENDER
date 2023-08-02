@@ -488,8 +488,8 @@ typedef struct GreasePencil {
                           int duration,
                           eBezTriple_KeyframeType keytype);
   bool insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
-                              const int frame_number,
-                              const int duplicate_frame_number,
+                              const int src_frame_number,
+                              const int dst_frame_number,
                               const bool do_instance);
 
   void remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number);

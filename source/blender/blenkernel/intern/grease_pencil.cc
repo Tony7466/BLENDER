@@ -1426,52 +1426,54 @@ static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
 }
 
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
-                                          const int frame_number,
-                                          const int duplicate_frame_number,
+                                          const int src_frame_number,
+                                          const int dst_frame_number,
                                           const bool do_instance)
 {
   using namespace blender::bke::greasepencil;
 
-  if (!layer.frames().contains(frame_number)) {
+  if (!layer.frames().contains(src_frame_number)) {
     return false;
   }
-  const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
+  const GreasePencilFrame &src_frame = layer.frames().lookup(src_frame_number);
 
   /* Create the new frame structure, with the same duration.
-   * If we want to make an instance of the frame, the drawing index gets copied from the original
-   * frame. Otherwise, we set the drawing index to the size of the drawings array, since we are
-   * going to add a new drawing copied from the original one. */
-  const int duration = frame.is_implicit_hold() ? 0 : get_frame_duration(layer, frame_number);
-  const int drawing_index = do_instance ? frame.drawing_index : int(this->drawings().size());
-  GreasePencilFrame *duplicate_frame = layer.add_frame(
-      duplicate_frame_number, drawing_index, duration);
+   * If we want to make an instance of the source frame, the drawing index gets copied from the
+   * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
+   * are going to add a new drawing copied from the source drawing. */
+  const int duration = src_frame.is_implicit_hold() ? 0 :
+                                                      get_frame_duration(layer, src_frame_number);
+  const int drawing_index = do_instance ? src_frame.drawing_index : int(this->drawings().size());
+  GreasePencilFrame *dst_frame = layer.add_frame(dst_frame_number, drawing_index, duration);
 
-  if (duplicate_frame == nullptr) {
+  if (dst_frame == nullptr) {
     return false;
   }
 
-  duplicate_frame->type = frame.type;
+  dst_frame->type = src_frame.type;
 
-  const GreasePencilDrawingBase *drawing_base = this->drawings(frame.drawing_index);
-  switch (drawing_base->type) {
+  const GreasePencilDrawingBase *src_drawing_base = this->drawings(src_frame.drawing_index);
+  switch (src_drawing_base->type) {
     case GP_DRAWING: {
-      const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+      const Drawing &src_drawing =
+          reinterpret_cast<const GreasePencilDrawing *>(src_drawing_base)->wrap();
       if (do_instance) {
-        /* Adds the duplicated frame as a new instance of the same drawing. We thus increase the
+        /* Adds the duplicate frame as a new instance of the same drawing. We thus increase the
          * user count of the corresponding drawing. */
-        drawing.add_user();
+        src_drawing.add_user();
       }
       else {
         /* Create a copy of the drawing, and add it at the end of the drawings array.
          * Note that the frame already points to this new drawing, as the drawing index was set to
          * `int(this->drawings().size())`. */
-        this->add_duplicate_drawings(1, drawing);
+        this->add_duplicate_drawings(1, src_drawing);
       }
       break;
     }
     case GP_DRAWING_REFERENCE:
-      /* TODO: Duplicate drawing references. For now, just remove the frame that we inserted. */
-      layer.remove_frame(duplicate_frame_number);
+      /* TODO: Duplicate drawing references is not yet implemented.
+       * For now, just remove the frame that we inserted. */
+      layer.remove_frame(dst_frame_number);
       return false;
   }
   return true;
