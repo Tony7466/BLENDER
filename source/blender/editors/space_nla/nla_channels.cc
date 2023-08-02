@@ -86,7 +86,7 @@ static int mouse_nla_channels(bContext *C, bAnimContext *ac, int channel_index, 
   }
 
   /* action to take depends on what channel we've got */
-  /* WARNING: must keep this in sync with the equivalent function in anim_channels_edit.c */
+  /* WARNING: must keep this in sync with the equivalent function in `anim_channels_edit.cc`. */
   switch (ale->type) {
     case ANIMTYPE_SCENE: {
       Scene *sce = static_cast<Scene *>(ale->data);
@@ -177,8 +177,7 @@ static int mouse_nla_channels(bContext *C, bAnimContext *ac, int channel_index, 
     case ANIMTYPE_PALETTE:
     case ANIMTYPE_DSHAIR:
     case ANIMTYPE_DSPOINTCLOUD:
-    case ANIMTYPE_DSVOLUME:
-    case ANIMTYPE_DSSIMULATION: {
+    case ANIMTYPE_DSVOLUME: {
       /* sanity checking... */
       if (ale->adt) {
         /* select/deselect */
@@ -351,7 +350,7 @@ void NLA_OT_channels_click(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* props */
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend Select", ""); /* SHIFTKEY */
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend Select", ""); /* SHIFTKEY */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -520,7 +519,7 @@ static int nla_action_unlink_exec(bContext *C, wmOperator *op)
 static int nla_action_unlink_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* NOTE: this is hardcoded to match the behavior for the unlink button
-   * (in interface_templates.c) */
+   * (in `interface_templates.cc`). */
   RNA_boolean_set(op->ptr, "force_delete", event->modifier & KM_SHIFT);
   return nla_action_unlink_exec(C, op);
 }
@@ -690,7 +689,7 @@ void NLA_OT_tracks_add(wmOperatorType *ot)
   /* properties */
   RNA_def_boolean(ot->srna,
                   "above_selected",
-                  0,
+                  false,
                   "Above Selected",
                   "Add a new NLA Track above every existing selected one");
 }

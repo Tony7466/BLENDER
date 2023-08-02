@@ -9,8 +9,8 @@
 #include "IMB_colormanagement.h"
 #include "IMB_colormanagement_intern.h"
 
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #include "DNA_color_types.h"
 #include "DNA_image_types.h"
@@ -3034,6 +3034,30 @@ const char *IMB_colormanagement_view_get_default_name(const char *display_name)
   }
 
   return nullptr;
+}
+
+const char *IMB_colormanagement_view_get_raw_or_default_name(const char *display_name)
+{
+  ColorManagedDisplay *display = colormanage_display_get_named(display_name);
+  if (!display) {
+    return nullptr;
+  }
+
+  ColorManagedView *view = nullptr;
+
+  if (!view) {
+    view = colormanage_view_get_named_for_display(display_name, "Raw");
+  }
+
+  if (!view) {
+    view = colormanage_view_get_default(display);
+  }
+
+  if (!view) {
+    return nullptr;
+  }
+
+  return view->name;
 }
 
 /** \} */

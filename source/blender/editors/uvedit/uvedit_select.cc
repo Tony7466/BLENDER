@@ -1088,7 +1088,7 @@ bool ED_uvedit_nearest_uv_multi(const View2D *v2d,
                                 const Scene *scene,
                                 Object **objects,
                                 const uint objects_len,
-                                const int mval[2],
+                                const float mval_fl[2],
                                 const bool ignore_selected,
                                 float *dist_sq,
                                 float r_uv[2])
@@ -1100,8 +1100,6 @@ bool ED_uvedit_nearest_uv_multi(const View2D *v2d,
   UI_view2d_view_to_region_fl(v2d, 0.0f, 0.0f, &offset[0], &offset[1]);
 
   float co[2];
-
-  const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   sub_v2_v2v2(co, mval_fl, offset);
 
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
@@ -1910,7 +1908,7 @@ static void uv_select_linked_multi(Scene *scene,
           if (iterv->separate) {
             startv = iterv;
           }
-          if (iterv->poly_index == a) {
+          if (iterv->face_index == a) {
             break;
           }
         }
@@ -1919,9 +1917,9 @@ static void uv_select_linked_multi(Scene *scene,
           if ((startv != iterv) && (iterv->separate)) {
             break;
           }
-          if (!flag[iterv->poly_index]) {
-            flag[iterv->poly_index] = 1;
-            stack[stacksize] = iterv->poly_index;
+          if (!flag[iterv->face_index]) {
+            flag[iterv->face_index] = 1;
+            stack[stacksize] = iterv->face_index;
             stacksize++;
           }
         }
@@ -3257,7 +3255,7 @@ static void uv_select_flush_from_tag_sticky_loc_internal(const Scene *scene,
       start_vlist = vlist_iter;
     }
 
-    if (efa_index == vlist_iter->poly_index) {
+    if (efa_index == vlist_iter->face_index) {
       break;
     }
 
@@ -3270,13 +3268,13 @@ static void uv_select_flush_from_tag_sticky_loc_internal(const Scene *scene,
       break;
     }
 
-    if (efa_index != vlist_iter->poly_index) {
+    if (efa_index != vlist_iter->face_index) {
       BMLoop *l_other;
-      efa_vlist = BM_face_at_index(em->bm, vlist_iter->poly_index);
+      efa_vlist = BM_face_at_index(em->bm, vlist_iter->face_index);
       /* tf_vlist = BM_ELEM_CD_GET_VOID_P(efa_vlist, cd_poly_tex_offset); */ /* UNUSED */
 
       l_other = static_cast<BMLoop *>(
-          BM_iter_at_index(em->bm, BM_LOOPS_OF_FACE, efa_vlist, vlist_iter->loop_of_poly_index));
+          BM_iter_at_index(em->bm, BM_LOOPS_OF_FACE, efa_vlist, vlist_iter->loop_of_face_index));
 
       uvedit_uv_select_set(scene, em->bm, l_other, select, false, offsets);
     }
@@ -4542,7 +4540,7 @@ void UV_OT_select_overlap(wmOperatorType *ot)
   /* properties */
   RNA_def_boolean(ot->srna,
                   "extend",
-                  0,
+                  false,
                   "Extend",
                   "Extend selection rather than clearing the existing selection");
 }

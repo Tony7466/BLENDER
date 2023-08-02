@@ -29,7 +29,7 @@
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_remap.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -1853,7 +1853,7 @@ static void edittranslation_find_po_file(const char *root,
     return;
   }
 
-  /* Now try without the second iso code part (_ES in es_ES). */
+  /* Now try without the second ISO code part (`_ES` in `es_ES`). */
   {
     const char *tc = nullptr;
     size_t szt = 0;

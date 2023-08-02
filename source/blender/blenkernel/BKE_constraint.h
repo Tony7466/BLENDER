@@ -82,7 +82,7 @@ typedef struct bConstraintTypeInfo {
   /** name of constraint in interface */
   char name[32];
   /** name of struct for SDNA */
-  char structName[32];
+  char struct_name[32];
 
   /* data management function pointers - special handling */
   /** free any data that is allocated separately (optional) */
@@ -116,7 +116,10 @@ typedef struct bConstraintTypeInfo {
                             struct bConstraintOb *cob,
                             struct bConstraintTarget *ct,
                             float ctime);
-  /** evaluate the constraint for the given time */
+  /**
+   * Evaluate the constraint for the given time.
+   * solved as separate loop.
+   */
   void (*evaluate_constraint)(struct bConstraint *con,
                               struct bConstraintOb *cob,
                               struct ListBase *targets);

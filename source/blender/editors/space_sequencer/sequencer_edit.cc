@@ -197,8 +197,7 @@ bool sequencer_editing_initialized_and_active(bContext *C)
 bool sequencer_strip_poll(bContext *C)
 {
   Editing *ed;
-  return (((ed = SEQ_editing_get(CTX_data_scene(C))) != nullptr) &&
-          (ed->act_seq != nullptr));
+  return (((ed = SEQ_editing_get(CTX_data_scene(C))) != nullptr) && (ed->act_seq != nullptr));
 }
 #endif
 
@@ -305,7 +304,7 @@ void SEQUENCER_OT_gap_remove(wmOperatorType *ot)
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "all", 0, "All Gaps", "Do all gaps to right of current frame");
+  RNA_def_boolean(ot->srna, "all", false, "All Gaps", "Do all gaps to right of current frame");
 }
 
 /** \} */
@@ -914,7 +913,7 @@ void SEQUENCER_OT_mute(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Mute unselected rather than selected strips");
+      ot->srna, "unselected", false, "Unselected", "Mute unselected rather than selected strips");
 }
 
 /** \} */
@@ -969,8 +968,11 @@ void SEQUENCER_OT_unmute(wmOperatorType *ot)
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Unmute unselected rather than selected strips");
+  RNA_def_boolean(ot->srna,
+                  "unselected",
+                  false,
+                  "Unselected",
+                  "Unmute unselected rather than selected strips");
 }
 
 /** \} */
@@ -1095,7 +1097,7 @@ void SEQUENCER_OT_reload(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna,
                          "adjust_length",
-                         0,
+                         false,
                          "Adjust Length",
                          "Adjust length of strips to their data length");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -1110,7 +1112,7 @@ void SEQUENCER_OT_reload(wmOperatorType *ot)
 static bool sequencer_refresh_all_poll(bContext *C)
 {
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
   return sequencer_edit_poll(C);
 }
@@ -1296,11 +1298,11 @@ static bool sequencer_effect_poll(bContext *C)
   if (ed) {
     Sequence *last_seq = SEQ_select_active_get(scene);
     if (last_seq && (last_seq->type & SEQ_TYPE_EFFECT)) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
 void SEQUENCER_OT_reassign_inputs(wmOperatorType *ot)
@@ -1517,14 +1519,14 @@ static void sequencer_split_ui(bContext * /*C*/, wmOperator *op)
 
   uiLayout *row = uiLayoutRow(layout, false);
   uiItemR(row, op->ptr, "type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "frame", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "side", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "frame", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "side", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, op->ptr, "use_cursor_position", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "use_cursor_position", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_boolean_get(op->ptr, "use_cursor_position")) {
-    uiItemR(layout, op->ptr, "channel", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "channel", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -1572,7 +1574,7 @@ void SEQUENCER_OT_split(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "use_cursor_position",
-                  0,
+                  false,
                   "Use Cursor Position",
                   "Split at position of the cursor instead of current frame");
 
@@ -1590,7 +1592,7 @@ void SEQUENCER_OT_split(wmOperatorType *ot)
       "ignore_selection",
       false,
       "Ignore Selection",
-      "Make cut event if strip is not selected preserving selection state after cut");
+      "Make cut even if strip is not selected preserving selection state after cut");
 
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
@@ -1851,9 +1853,6 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
     if ((seq->flag & SELECT) && (seq->type == SEQ_TYPE_IMAGE) && (seq->len > 1)) {
       Sequence *seq_next;
 
-      /* Remove seq so overlap tests don't conflict,
-       * see seq_free_sequence below for the real freeing. */
-      BLI_remlink(seqbase, seq);
       /* TODO: remove f-curve and assign to split image strips.
        * The old animation system would remove the user of `seq->ipo`. */
 
@@ -2137,7 +2136,7 @@ static bool sequencer_strip_jump_poll(bContext *C)
 {
   /* Prevent changes during render. */
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
 
   return sequencer_edit_poll(C);

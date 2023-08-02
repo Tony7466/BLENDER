@@ -6,7 +6,7 @@
  * \ingroup edanimation
  */
 
-#include <math.h>
+#include <cmath>
 
 #include "MEM_guardedalloc.h"
 
@@ -46,6 +46,7 @@
 #include "UI_view2d.h"
 
 #include "ED_anim_api.h"
+#include "ED_keyframes_edit.h"
 #include "ED_markers.h"
 #include "ED_numinput.h"
 #include "ED_object.h"
@@ -55,6 +56,7 @@
 #include "ED_util.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Marker API
@@ -104,7 +106,7 @@ int ED_markers_post_apply_transform(
     ListBase *markers, Scene *scene, int mode, float value, char side)
 {
   TimeMarker *marker;
-  float cfra = (float)scene->r.cfra;
+  float cfra = float(scene->r.cfra);
   int changed_tot = 0;
 
   /* sanity check - no markers, or locked markers */
@@ -129,7 +131,7 @@ int ED_markers_post_apply_transform(
         }
         case TFM_TIME_SCALE: {
           /* rescale the distance between the marker and the current frame */
-          marker->frame = cfra + round_fl_to_int((float)(marker->frame - cfra) * value);
+          marker->frame = cfra + round_fl_to_int(float(marker->frame - cfra) * value);
           changed_tot++;
           break;
         }
@@ -149,7 +151,7 @@ TimeMarker *ED_markers_find_nearest_marker(ListBase *markers, float x)
 
   if (markers) {
     for (marker = static_cast<TimeMarker *>(markers->first); marker; marker = marker->next) {
-      dist = fabsf((float)marker->frame - x);
+      dist = fabsf(float(marker->frame) - x);
 
       if (dist < min_dist) {
         min_dist = dist;
@@ -185,10 +187,10 @@ void ED_markers_get_minmax(ListBase *markers, short sel, float *r_first, float *
   for (marker = static_cast<TimeMarker *>(markers->first); marker; marker = marker->next) {
     if (!sel || (marker->flag & SELECT)) {
       if (marker->frame < min) {
-        min = (float)marker->frame;
+        min = float(marker->frame);
       }
       if (marker->frame > max) {
-        max = (float)marker->frame;
+        max = float(marker->frame);
       }
     }
   }
@@ -709,7 +711,7 @@ static bool ed_markers_poll_markers_exist(bContext *C)
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   if (ts->lock_markers || !ED_operator_markers_region_active(C)) {
-    return 0;
+    return false;
   }
 
   /* list of markers must exist, as well as some markers in it! */
@@ -1021,7 +1023,7 @@ static int ed_marker_move_modal(bContext *C, wmOperator *op, const wmEvent *even
 
   /* Modal numinput active, try to handle numeric inputs first... */
   if (event->val == KM_PRESS && has_numinput && handleNumInput(C, &mm->num, event)) {
-    float value = (float)RNA_int_get(op->ptr, "frames");
+    float value = float(RNA_int_get(op->ptr, "frames"));
 
     applyNumInput(&mm->num, &value);
     if (use_time) {
@@ -1068,7 +1070,7 @@ static int ed_marker_move_modal(bContext *C, wmOperator *op, const wmEvent *even
             float fac;
 
             mm->evtx = event->xy[0];
-            fac = ((float)(event->xy[0] - mm->firstx) * dx);
+            fac = (float(event->xy[0] - mm->firstx) * dx);
 
             apply_keyb_grid((event->modifier & KM_SHIFT) != 0,
                             (event->modifier & KM_CTRL) != 0,
@@ -1087,7 +1089,7 @@ static int ed_marker_move_modal(bContext *C, wmOperator *op, const wmEvent *even
     }
 
     if (!handled && event->val == KM_PRESS && handleNumInput(C, &mm->num, event)) {
-      float value = (float)RNA_int_get(op->ptr, "frames");
+      float value = float(RNA_int_get(op->ptr, "frames"));
 
       applyNumInput(&mm->num, &value);
       if (use_time) {
@@ -1133,7 +1135,7 @@ static void MARKER_OT_move(wmOperatorType *ot)
   /* rna storage */
   RNA_def_int(ot->srna, "frames", 0, INT_MIN, INT_MAX, "Frames", "", INT_MIN, INT_MAX);
   PropertyRNA *prop = RNA_def_boolean(
-      ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
+      ot->srna, "tweak", false, "Tweak", "Operator has been activated using a click-drag event");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 }
 
@@ -1407,10 +1409,10 @@ static void MARKER_OT_select(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   WM_operator_properties_generic_select(ot);
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 #ifdef DURIAN_CAMERA_SWITCH
-  prop = RNA_def_boolean(ot->srna, "camera", 0, "Camera", "Select the camera");
+  prop = RNA_def_boolean(ot->srna, "camera", false, "Camera", "Select the camera");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 #endif
 }
@@ -1511,7 +1513,7 @@ static void MARKER_OT_select_box(wmOperatorType *ot)
   WM_operator_properties_select_operation_simple(ot);
 
   PropertyRNA *prop = RNA_def_boolean(
-      ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
+      ot->srna, "tweak", false, "Tweak", "Operator has been activated using a click-drag event");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -1748,7 +1750,11 @@ static void MARKER_OT_rename(wmOperatorType *ot)
                             "Name",
                             "New name for marker");
 #if 0
-RNA_def_boolean(ot->srna, "ensure_unique", 0, "Ensure Unique", "Ensure that new name is unique within collection of markers");
+  RNA_def_boolean(ot->srna,
+                  "ensure_unique",
+                  0,
+                  "Ensure Unique",
+                  "Ensure that new name is unique within collection of markers");
 #endif
 }
 
@@ -1799,7 +1805,7 @@ static void MARKER_OT_make_links_scene(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Make Links to Scene";
+  ot->name = "Copy Markers to Scene";
   ot->description = "Copy selected markers to another scene";
   ot->idname = "MARKER_OT_make_links_scene";
 
@@ -1866,6 +1872,7 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
   /* camera may have changes */
   BKE_scene_camera_switch_update(scene);
   BKE_screen_view3d_scene_sync(screen, scene);
+  DEG_relations_tag_update(CTX_data_main(C));
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, nullptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, nullptr);

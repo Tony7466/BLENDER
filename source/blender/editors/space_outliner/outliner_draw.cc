@@ -35,7 +35,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
@@ -2499,9 +2499,6 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_SEQUENCE;
     case ID_PC:
       return ICON_CURVE_BEZCURVE;
-    case ID_SIM:
-      /* TODO: Use correct icon. */
-      return ICON_PHYSICS;
     default:
       return ICON_NONE;
   }
@@ -2905,7 +2902,7 @@ static bool tselem_draw_icon(uiBlock *block,
 
   /* Collection colors and icons covered by restrict buttons. */
   if (!is_clickable || x >= xmax || is_collection) {
-    /* Placement of icons, copied from interface_widgets.c */
+    /* Placement of icons, copied from `interface_widgets.cc`. */
     float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
     x += 2.0f * aspect;
     y += 2.0f * aspect;
