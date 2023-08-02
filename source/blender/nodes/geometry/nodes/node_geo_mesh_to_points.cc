@@ -64,11 +64,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
     return;
   }
   const AttributeAccessor src_attributes = mesh->attributes();
-<<<<<<< HEAD
-  bke::MeshFieldContext field_context{*mesh, domain};
-=======
   const bke::MeshFieldContext field_context{*mesh, domain};
->>>>>>> main
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   /* Evaluating directly into the point cloud doesn't work because we are not using the full
@@ -116,11 +112,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   attributes.remove("radius");
   attributes.remove("position");
 
-<<<<<<< HEAD
-  for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
-=======
   for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
->>>>>>> main
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType data_type = entry.value.data_type;
     const bke::GAttributeReader src = src_attributes.lookup(attribute_id, domain, data_type);
@@ -129,11 +121,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
       continue;
     }
 
-<<<<<<< HEAD
-    if (share_arrays && src.domain == domain && src.sharing_info) {
-=======
     if (share_arrays && src.domain == domain && src.sharing_info && src.varray.is_span()) {
->>>>>>> main
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
       dst_attributes.add(attribute_id, ATTR_DOMAIN_POINT, data_type, init);
@@ -147,11 +135,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   }
 
   geometry_set.replace_pointcloud(pointcloud);
-<<<<<<< HEAD
-  geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
-=======
   geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
->>>>>>> main
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

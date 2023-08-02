@@ -338,12 +338,8 @@ static void mesh_merge_transform(Mesh *result,
 
   const bke::AttributeAccessor cap_attributes = cap_mesh->attributes();
   if (const VArray cap_material_indices = *cap_attributes.lookup<int>("material_index",
-<<<<<<< HEAD
-                                                                      ATTR_DOMAIN_FACE)) {
-=======
                                                                       ATTR_DOMAIN_FACE))
   {
->>>>>>> main
     bke::MutableAttributeAccessor result_attributes = result->attributes_for_write();
     bke::SpanAttributeWriter<int> result_material_indices =
         result_attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);

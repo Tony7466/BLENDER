@@ -121,31 +121,7 @@ namespace blender::ed::sculpt_paint::vwpaint {
 /** \name Shared vertex/weight paint code.
  * \{ */
 
-<<<<<<< HEAD
-/* Returns number of elements. */
-static int get_vcol_elements(Mesh *me, size_t *r_elem_size)
-{
-  const std::optional<bke::AttributeMetaData> meta_data = *me->attributes().lookup_meta_data(
-      me->active_color_attribute);
-
-  if (r_elem_size) {
-    *r_elem_size = meta_data->data_type == CD_PROP_COLOR ? sizeof(float[4]) : 4ULL;
-  }
-
-  switch (meta_data->domain) {
-    case ATTR_DOMAIN_POINT:
-      return me->totvert;
-    case ATTR_DOMAIN_CORNER:
-      return me->totloop;
-    default:
-      return 0;
-  }
-}
-
-static void view_angle_limits_init(NormalAnglePrecalc *a, float angle, bool do_mask_normal)
-=======
 void view_angle_limits_init(NormalAnglePrecalc *a, float angle, bool do_mask_normal)
->>>>>>> main
 {
   angle = RAD2DEGF(angle);
   a->do_mask_normal = do_mask_normal;
@@ -607,406 +583,8 @@ void last_stroke_update(Scene *scene, const float location[3])
   ups->last_stroke_valid = true;
 }
 
-<<<<<<< HEAD
-static void do_wpaint_precompute_weight_cb_ex(void *__restrict userdata,
-                                              const int n,
-                                              const TaskParallelTLS *__restrict /*tls*/)
-{
-  SculptThreadedTaskData *data = (SculptThreadedTaskData *)userdata;
-  const MDeformVert *dv = &data->wpi->dvert[n];
-
-  data->wpd->precomputed_weight[n] = wpaint_get_active_weight(dv, data->wpi);
-}
-
-static void precompute_weight_values(
-    bContext *C, Object *ob, Brush *brush, WPaintData *wpd, WeightPaintInfo *wpi, Mesh *me)
-{
-  if (wpd->precomputed_weight_ready && !brush_use_accumulate_ex(brush, ob->mode)) {
-    return;
-  }
-
-  /* threaded loop over vertices */
-  SculptThreadedTaskData data;
-  data.C = C;
-  data.ob = ob;
-  data.wpd = wpd;
-  data.wpi = wpi;
-  data.me = me;
-
-  TaskParallelSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  BLI_task_parallel_range(0, me->totvert, &data, do_wpaint_precompute_weight_cb_ex, &settings);
-
-  wpd->precomputed_weight_ready = true;
-}
-
-static void do_wpaint_brush_blur_task_cb_ex(void *__restrict userdata,
-                                            const int n,
-                                            const TaskParallelTLS *__restrict /*tls*/)
-{
-  SculptThreadedTaskData *data = (SculptThreadedTaskData *)userdata;
-  SculptSession *ss = data->ob->sculpt;
-  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-  const bool has_grids = (pbvh_type == PBVH_GRIDS);
-  const SculptVertexPaintGeomMap *gmap = &ss->mode.wpaint.gmap;
-
-  const Brush *brush = data->brush;
-  const StrokeCache *cache = ss->cache;
-  Scene *scene = CTX_data_scene(data->C);
-
-  float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
-  get_brush_alpha_data(
-      scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
-  const bool use_normal = vwpaint_use_normal(data->vp);
-  const bool use_face_sel = (data->me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-  const bool use_vert_sel = (data->me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-      ss, data->brush->falloff_shape);
-
-  const blender::bke::AttributeAccessor attributes = data->me->attributes();
-  const blender::VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-
-  /* For each vertex */
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-    /* Test to see if the vertex coordinates are within the spherical brush region. */
-    if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      /* For grid based pbvh, take the vert whose loop corresponds to the current grid.
-       * Otherwise, take the current vert. */
-      const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
-                                      vd.vert_indices[vd.i];
-      const float grid_alpha = has_grids ? 1.0f / vd.gridsize : 1.0f;
-      /* If the vertex is selected */
-      if (!(use_face_sel || use_vert_sel) || select_vert[v_index]) {
-        /* Get the average poly weight */
-        int total_hit_loops = 0;
-        float weight_final = 0.0f;
-        for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-          const int p_index = gmap->vert_to_poly[v_index].indices[j];
-          const blender::IndexRange poly = ss->polys[p_index];
-
-          total_hit_loops += poly.size();
-          for (const int vert : ss->corner_verts.slice(poly)) {
-            weight_final += data->wpd->precomputed_weight[vert];
-          }
-        }
-
-        /* Apply the weight to the vertex. */
-        if (total_hit_loops != 0) {
-          float brush_strength = cache->bstrength;
-          const float angle_cos = (use_normal && vd.no) ?
-                                      dot_v3v3(sculpt_normal_frontface, vd.no) :
-                                      1.0f;
-          if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
-              ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
-               view_angle_limits_apply_falloff(
-                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
-            const float brush_fade = BKE_brush_curve_strength(
-                brush, sqrtf(test.dist), cache->radius);
-            const float final_alpha = brush_fade * brush_strength * grid_alpha *
-                                      brush_alpha_pressure;
-
-            if ((brush->flag & BRUSH_ACCUMULATE) == 0) {
-              if (ss->mode.wpaint.alpha_weight[v_index] < final_alpha) {
-                ss->mode.wpaint.alpha_weight[v_index] = final_alpha;
-              }
-              else {
-                continue;
-              }
-            }
-
-            weight_final /= total_hit_loops;
-            /* Only paint visible verts */
-            do_weight_paint_vertex(
-                data->vp, data->ob, data->wpi, v_index, final_alpha, weight_final);
-          }
-        }
-      }
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-static void do_wpaint_brush_smear_task_cb_ex(void *__restrict userdata,
-                                             const int n,
-                                             const TaskParallelTLS *__restrict /*tls*/)
-{
-  SculptThreadedTaskData *data = (SculptThreadedTaskData *)userdata;
-  SculptSession *ss = data->ob->sculpt;
-  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-  const bool has_grids = (pbvh_type == PBVH_GRIDS);
-  const SculptVertexPaintGeomMap *gmap = &ss->mode.wpaint.gmap;
-
-  const Brush *brush = data->brush;
-  const Scene *scene = CTX_data_scene(data->C);
-  const StrokeCache *cache = ss->cache;
-  float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
-  get_brush_alpha_data(
-      scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
-  const bool use_normal = vwpaint_use_normal(data->vp);
-  const bool use_face_sel = (data->me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-  const bool use_vert_sel = (data->me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
-  float brush_dir[3];
-
-  sub_v3_v3v3(brush_dir, cache->location, cache->last_location);
-  project_plane_v3_v3v3(brush_dir, brush_dir, cache->view_normal);
-
-  const blender::bke::AttributeAccessor attributes = data->me->attributes();
-  const blender::VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-
-  if (cache->is_last_valid && (normalize_v3(brush_dir) != 0.0f)) {
-
-    SculptBrushTest test;
-    SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-        ss, &test, data->brush->falloff_shape);
-    const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-        ss, data->brush->falloff_shape);
-
-    /* For each vertex */
-    PBVHVertexIter vd;
-    BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-      /* Test to see if the vertex coordinates are within the spherical brush region. */
-      if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-        /* For grid based pbvh, take the vert whose loop corresponds to the current grid.
-         * Otherwise, take the current vert. */
-        const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
-                                        vd.vert_indices[vd.i];
-        const float grid_alpha = has_grids ? 1.0f / vd.gridsize : 1.0f;
-        const float3 &mv_curr = ss->vert_positions[v_index];
-
-        /* If the vertex is selected */
-        if (!(use_face_sel || use_vert_sel) || select_vert[v_index]) {
-          float brush_strength = cache->bstrength;
-          const float angle_cos = (use_normal && vd.no) ?
-                                      dot_v3v3(sculpt_normal_frontface, vd.no) :
-                                      1.0f;
-          if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
-              ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
-               view_angle_limits_apply_falloff(
-                   &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
-            bool do_color = false;
-            /* Minimum dot product between brush direction and current
-             * to neighbor direction is 0.0, meaning orthogonal. */
-            float stroke_dot_max = 0.0f;
-
-            /* Get the color of the loop in the opposite direction of the brush movement
-             * (this callback is specifically for smear.) */
-            float weight_final = 0.0;
-            for (int j = 0; j < gmap->vert_to_poly[v_index].count; j++) {
-              const int p_index = gmap->vert_to_poly[v_index].indices[j];
-              for (const int v_other_index : ss->corner_verts.slice(ss->polys[p_index])) {
-                if (v_other_index != v_index) {
-                  const float3 &mv_other = ss->vert_positions[v_other_index];
-
-                  /* Get the direction from the selected vert to the neighbor. */
-                  float other_dir[3];
-                  sub_v3_v3v3(other_dir, mv_curr, mv_other);
-                  project_plane_v3_v3v3(other_dir, other_dir, cache->view_normal);
-
-                  normalize_v3(other_dir);
-
-                  const float stroke_dot = dot_v3v3(other_dir, brush_dir);
-
-                  if (stroke_dot > stroke_dot_max) {
-                    stroke_dot_max = stroke_dot;
-                    weight_final = data->wpd->precomputed_weight[v_other_index];
-                    do_color = true;
-                  }
-                }
-              }
-            }
-            /* Apply weight to vertex */
-            if (do_color) {
-              const float brush_fade = BKE_brush_curve_strength(
-                  brush, sqrtf(test.dist), cache->radius);
-              const float final_alpha = brush_fade * brush_strength * grid_alpha *
-                                        brush_alpha_pressure;
-
-              if (final_alpha <= 0.0f) {
-                continue;
-              }
-
-              do_weight_paint_vertex(
-                  data->vp, data->ob, data->wpi, v_index, final_alpha, float(weight_final));
-            }
-          }
-        }
-      }
-    }
-    BKE_pbvh_vertex_iter_end;
-  }
-}
-
-static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
-                                            const int n,
-                                            const TaskParallelTLS *__restrict /*tls*/)
-{
-  SculptThreadedTaskData *data = (SculptThreadedTaskData *)userdata;
-  SculptSession *ss = data->ob->sculpt;
-  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-  const bool has_grids = (pbvh_type == PBVH_GRIDS);
-  const Scene *scene = CTX_data_scene(data->C);
-
-  const Brush *brush = data->brush;
-  const StrokeCache *cache = ss->cache;
-  /* NOTE: normally `BKE_brush_weight_get(scene, brush)` is used,
-   * however in this case we calculate a new weight each time. */
-  const float paintweight = data->strength;
-  float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
-  get_brush_alpha_data(
-      scene, ss, brush, &brush_size_pressure, &brush_alpha_value, &brush_alpha_pressure);
-  const bool use_normal = vwpaint_use_normal(data->vp);
-  const bool use_face_sel = (data->me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-  const bool use_vert_sel = (data->me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-      ss, data->brush->falloff_shape);
-
-  const blender::bke::AttributeAccessor attributes = data->me->attributes();
-  const blender::VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-
-  /* For each vertex */
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-    /* Test to see if the vertex coordinates are within the spherical brush region. */
-    if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      /* NOTE: grids are 1:1 with corners (aka loops).
-       * For multires, take the vert whose loop corresponds to the current grid.
-       * Otherwise, take the current vert. */
-      const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
-                                      vd.vert_indices[vd.i];
-      const float grid_alpha = has_grids ? 1.0f / vd.gridsize : 1.0f;
-
-      /* If the vertex is selected */
-      if (!(use_face_sel || use_vert_sel) || select_vert[v_index]) {
-        float brush_strength = cache->bstrength;
-        const float angle_cos = (use_normal && vd.no) ? dot_v3v3(sculpt_normal_frontface, vd.no) :
-                                                        1.0f;
-        if (((brush->flag & BRUSH_FRONTFACE) == 0 || (angle_cos > 0.0f)) &&
-            ((brush->flag & BRUSH_FRONTFACE_FALLOFF) == 0 ||
-             view_angle_limits_apply_falloff(
-                 &data->wpd->normal_angle_precalc, angle_cos, &brush_strength))) {
-          const float brush_fade = BKE_brush_curve_strength(
-              brush, sqrtf(test.dist), cache->radius);
-          const float final_alpha = brush_fade * brush_strength * grid_alpha *
-                                    brush_alpha_pressure;
-
-          if ((brush->flag & BRUSH_ACCUMULATE) == 0) {
-            if (ss->mode.wpaint.alpha_weight[v_index] < final_alpha) {
-              ss->mode.wpaint.alpha_weight[v_index] = final_alpha;
-            }
-            else {
-              continue;
-            }
-          }
-
-          do_weight_paint_vertex(data->vp, data->ob, data->wpi, v_index, final_alpha, paintweight);
-        }
-      }
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-static void do_wpaint_brush_calc_average_weight_cb_ex(void *__restrict userdata,
-                                                      const int n,
-                                                      const TaskParallelTLS *__restrict /*tls*/)
-{
-  SculptThreadedTaskData *data = (SculptThreadedTaskData *)userdata;
-  SculptSession *ss = data->ob->sculpt;
-  StrokeCache *cache = ss->cache;
-  const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-  const bool has_grids = (pbvh_type == PBVH_GRIDS);
-
-  const bool use_normal = vwpaint_use_normal(data->vp);
-  const bool use_face_sel = (data->me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
-  const bool use_vert_sel = (data->me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
-
-  WPaintAverageAccum *accum = (WPaintAverageAccum *)data->custom_data + n;
-  accum->len = 0;
-  accum->value = 0.0;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
-      ss, data->brush->falloff_shape);
-
-  const blender::bke::AttributeAccessor attributes = data->me->attributes();
-  const blender::VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-
-  /* For each vertex */
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-    /* Test to see if the vertex coordinates are within the spherical brush region. */
-    if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      const float angle_cos = (use_normal && vd.no) ? dot_v3v3(sculpt_normal_frontface, vd.no) :
-                                                      1.0f;
-      if (angle_cos > 0.0 &&
-          BKE_brush_curve_strength(data->brush, sqrtf(test.dist), cache->radius) > 0.0) {
-        const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
-                                        vd.vert_indices[vd.i];
-
-        /* If the vertex is selected. */
-        if (!(use_face_sel || use_vert_sel) || select_vert[v_index]) {
-          const MDeformVert *dv = &data->wpi->dvert[v_index];
-          accum->len += 1;
-          accum->value += wpaint_get_active_weight(dv, data->wpi);
-        }
-      }
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-static void calculate_average_weight(SculptThreadedTaskData *data, Span<PBVHNode *> nodes)
-{
-  WPaintAverageAccum *accum = (WPaintAverageAccum *)MEM_mallocN(sizeof(*accum) * nodes.size(),
-                                                                __func__);
-  data->custom_data = accum;
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
-  BLI_task_parallel_range(
-      0, nodes.size(), data, do_wpaint_brush_calc_average_weight_cb_ex, &settings);
-
-  uint accum_len = 0;
-  double accum_weight = 0.0;
-  for (int i = 0; i < nodes.size(); i++) {
-    accum_len += accum[i].len;
-    accum_weight += accum[i].value;
-  }
-  if (accum_len != 0) {
-    accum_weight /= accum_len;
-    data->strength = float(accum_weight);
-  }
-
-  MEM_SAFE_FREE(data->custom_data); /* 'accum' */
-}
-
-static void wpaint_paint_leaves(bContext *C,
-                                Object *ob,
-                                Sculpt *sd,
-                                VPaint *vp,
-                                WPaintData *wpd,
-                                WeightPaintInfo *wpi,
-                                Mesh *me,
-                                Span<PBVHNode *> nodes)
-=======
 /* -------------------------------------------------------------------- */
 void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
->>>>>>> main
 {
   Scene *scene = CTX_data_scene(C);
   Brush *brush = paint->brush;
@@ -1383,13 +961,8 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
 
   if (brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
     const GVArray attribute = *me->attributes().lookup(me->active_color_attribute, domain);
-<<<<<<< HEAD
-    vpd->smear.color_prev = MEM_malloc_arrayN(attribute.size(), attribute.type().size(), __func__);
-    attribute.materialize(vpd->smear.color_prev);
-=======
     vpd->smear.color_prev = GArray(attribute.type(), attribute.size());
     attribute.materialize(vpd->smear.color_prev.data());
->>>>>>> main
 
     vpd->smear.color_curr = vpd->smear.color_prev;
   }
@@ -1460,8 +1033,6 @@ static void do_vpaint_brush_blur_loops(bContext *C,
   const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
 
-<<<<<<< HEAD
-=======
   const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
   const StrokeCache *cache = ss->cache;
   float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
@@ -1480,7 +1051,6 @@ static void do_vpaint_brush_blur_loops(bContext *C,
 
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
->>>>>>> main
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
   const blender::VArray<bool> select_poly = *me->attributes().lookup_or_default<bool>(
@@ -1614,8 +1184,6 @@ static void do_vpaint_brush_blur_verts(bContext *C,
   const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
 
-<<<<<<< HEAD
-=======
   const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
   const StrokeCache *cache = ss->cache;
   float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
@@ -1634,7 +1202,6 @@ static void do_vpaint_brush_blur_verts(bContext *C,
 
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
->>>>>>> main
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
   const blender::VArray<bool> select_poly = *me->attributes().lookup_or_default<bool>(
@@ -1762,8 +1329,6 @@ static void do_vpaint_brush_smear(bContext *C,
   GMutableSpan g_color_prev_smear = vpd->smear.color_prev;
   GMutableSpan g_color_prev = ss->cache->prev_colors_vpaint;
 
-<<<<<<< HEAD
-=======
   float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
 
   vwpaint::get_brush_alpha_data(
@@ -1786,7 +1351,6 @@ static void do_vpaint_brush_smear(bContext *C,
   const float *sculpt_normal_frontface = SCULPT_brush_frontface_normal_from_falloff_shape(
       ss, brush->falloff_shape);
 
->>>>>>> main
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
   const blender::VArray<bool> select_poly = *me->attributes().lookup_or_default<bool>(
@@ -2039,102 +1603,7 @@ static void calculate_average_color(VPaintData *vpd,
   });
 }
 
-<<<<<<< HEAD
-template<typename Color, typename Traits, eAttrDomain domain>
-static void calculate_average_color(VPaintData<Color, Traits, domain> *vpd,
-                                    Object *ob,
-                                    Mesh *me,
-                                    const Brush *brush,
-                                    Color *lcol,
-                                    Span<PBVHNode *> nodes)
-{
-  using Blend = typename Traits::BlendType;
-
-  const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-
-  VPaintAverageAccum<Blend> *accum = (VPaintAverageAccum<Blend> *)MEM_mallocN(
-      sizeof(*accum) * nodes.size(), __func__);
-  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
-    for (int n : range) {
-      SculptSession *ss = ob->sculpt;
-      const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
-      const bool has_grids = (pbvh_type == PBVH_GRIDS);
-      const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
-
-      StrokeCache *cache = ss->cache;
-      const bool use_vert_sel = (me->editflag &
-                                 (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
-
-      VPaintAverageAccum<Blend> *accum2 = accum + n;
-      accum2->len = 0;
-      memset(accum2->value, 0, sizeof(accum2->value));
-
-      SculptBrushTest test;
-      SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-          ss, &test, brush->falloff_shape);
-
-      /* For each vertex */
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (ss->pbvh, nodes[n], vd, PBVH_ITER_UNIQUE) {
-        /* Test to see if the vertex coordinates are within the spherical brush region. */
-        if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-          const int v_index = has_grids ? ss->corner_verts[vd.grid_indices[vd.g]] :
-                                          vd.vert_indices[vd.i];
-          if (BKE_brush_curve_strength(brush, 0.0, cache->radius) > 0.0) {
-            /* If the vertex is selected for painting. */
-            if (!use_vert_sel || select_vert[v_index]) {
-              accum2->len += gmap->vert_to_loop[v_index].count;
-              /* if a vertex is within the brush region, then add its color to the blend. */
-              for (int j = 0; j < gmap->vert_to_loop[v_index].count; j++) {
-                int elem_index;
-
-                if constexpr (domain == ATTR_DOMAIN_CORNER) {
-                  elem_index = gmap->vert_to_loop[v_index].indices[j];
-                }
-                else {
-                  elem_index = v_index;
-                }
-
-                Color *col = lcol + elem_index;
-
-                /* Color is squared to compensate the `sqrt` color encoding. */
-                accum2->value[0] += col->r * col->r;
-                accum2->value[1] += col->g * col->g;
-                accum2->value[2] += col->b * col->b;
-              }
-            }
-          }
-        }
-      }
-      BKE_pbvh_vertex_iter_end;
-    }
-  });
-
-  Blend accum_len = 0;
-  Blend accum_value[3] = {0};
-  Color blend(0, 0, 0, 0);
-
-  for (int i = 0; i < nodes.size(); i++) {
-    accum_len += accum[i].len;
-    accum_value[0] += accum[i].value[0];
-    accum_value[1] += accum[i].value[1];
-    accum_value[2] += accum[i].value[2];
-  }
-  if (accum_len != 0) {
-    blend.r = Traits::round(sqrtf(Traits::divide_round(accum_value[0], accum_len)));
-    blend.g = Traits::round(sqrtf(Traits::divide_round(accum_value[1], accum_len)));
-    blend.b = Traits::round(sqrtf(Traits::divide_round(accum_value[2], accum_len)));
-    blend.a = Traits::range;
-
-    vpd->paintcol = blend;
-  }
-}
-
-template<typename Color, typename Traits, eAttrDomain domain>
-=======
 template<typename Color>
->>>>>>> main
 static float paint_and_tex_color_alpha(VPaint *vp,
                                        VPaintData *vpd,
                                        const float v_co[3],
@@ -2170,8 +1639,6 @@ static void vpaint_do_draw(bContext *C,
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
   const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
 
-<<<<<<< HEAD
-=======
   const StrokeCache *cache = ss->cache;
   float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
   vwpaint::get_brush_alpha_data(
@@ -2189,7 +1656,6 @@ static void vpaint_do_draw(bContext *C,
 
   GMutableSpan g_previous_color = ss->cache->prev_colors_vpaint;
 
->>>>>>> main
   const blender::VArray<bool> select_vert = *me->attributes().lookup_or_default<bool>(
       ".select_vert", ATTR_DOMAIN_POINT, false);
   const blender::VArray<bool> select_poly = *me->attributes().lookup_or_default<bool>(

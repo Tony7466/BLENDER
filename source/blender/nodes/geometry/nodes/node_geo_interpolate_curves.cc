@@ -466,11 +466,7 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
       if (!dst_generic) {
         return true;
       }
-<<<<<<< HEAD
-      attribute_math::convert_to_static_type(type, [&](auto dummy) {
-=======
       bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
->>>>>>> main
         using T = decltype(dummy);
         const Span<T> src = src_generic.typed<T>();
         MutableSpan<T> dst = dst_generic.span.typed<T>();
@@ -504,11 +500,7 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
         return true;
       }
 
-<<<<<<< HEAD
-      attribute_math::convert_to_static_type(type, [&](auto dummy) {
-=======
       bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
->>>>>>> main
         using T = decltype(dummy);
         const Span<T> src = src_generic.typed<T>();
         MutableSpan<T> dst = dst_generic.span.typed<T>();
@@ -590,10 +582,6 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     }
 
     const GAttributeReader src = point_attributes.lookup(id);
-<<<<<<< HEAD
-    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
-    children_attributes.add(id, ATTR_DOMAIN_CURVE, meta_data.data_type, init);
-=======
     if (src.sharing_info && src.varray.is_span()) {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
@@ -603,7 +591,6 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
       children_attributes.add(
           id, ATTR_DOMAIN_CURVE, meta_data.data_type, bke::AttributeInitVArray(src.varray));
     }
->>>>>>> main
     return true;
   });
 }

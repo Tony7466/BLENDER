@@ -58,42 +58,12 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     curves.cyclic_for_write().slice(cyclic_curves).fill(true);
   }
 
-<<<<<<< HEAD
-  Set<bke::AttributeIDRef> source_attribute_ids = mesh_attributes.all_ids();
-
-  for (const bke::AttributeIDRef &attribute_id : source_attribute_ids) {
-    if (mesh_attributes.is_builtin(attribute_id) && !curves_attributes.is_builtin(attribute_id)) {
-      /* Don't copy attributes that are built-in on meshes but not on curves. */
-      continue;
-    }
-
-    if (attribute_id.is_anonymous() && !propagation_info.propagate(attribute_id.anonymous_id())) {
-      continue;
-    }
-
-    const GVArray mesh_attribute = *mesh_attributes.lookup(attribute_id, ATTR_DOMAIN_POINT);
-    /* Some attributes might not exist if they were builtin attribute on domains that don't
-     * have any elements, i.e. a face attribute on the output of the line primitive node. */
-    if (!mesh_attribute) {
-      continue;
-    }
-
-    /* Copy attribute based on the map for this curve. */
-    attribute_math::convert_to_static_type(mesh_attribute.type(), [&](auto dummy) {
-      using T = decltype(dummy);
-      bke::SpanAttributeWriter<T> attribute =
-          curves_attributes.lookup_or_add_for_write_only_span<T>(attribute_id, ATTR_DOMAIN_POINT);
-      array_utils::gather<T>(mesh_attribute.typed<T>(), vert_indices, attribute.span);
-      attribute.finish();
-    });
-=======
   const int src_total_points = mesh_attributes.domain_size(ATTR_DOMAIN_POINT);
   const bool share_vert_data = vert_indices.size() == src_total_points &&
                                indices_are_full_ordered_copy(vert_indices);
   if (share_vert_data) {
     bke::copy_attributes(
         mesh_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves_attributes);
->>>>>>> main
   }
 
   mesh_attributes.for_all(

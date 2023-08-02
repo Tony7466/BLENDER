@@ -950,13 +950,8 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
         mesh_info.stored_vertex_ids = ids_attribute.varray.get_internal_span().typed<int>();
       }
     }
-<<<<<<< HEAD
-    mesh_info.material_indices =*
-        attributes.lookup_or_default<int>("material_index", ATTR_DOMAIN_FACE, 0);
-=======
     mesh_info.material_indices = *attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_FACE, 0);
->>>>>>> main
   }
 
   info.no_loose_edges_hint = std::all_of(

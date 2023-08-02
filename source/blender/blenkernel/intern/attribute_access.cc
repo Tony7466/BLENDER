@@ -984,12 +984,7 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
           return true;
         }
 
-<<<<<<< HEAD
-        GVArray src = *src_attributes.lookup(id, meta_data.domain);
-        BLI_assert(src);
-=======
         const GVArray src = *src_attributes.lookup(id, meta_data.domain);
->>>>>>> main
         bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
             id, meta_data.domain, meta_data.data_type);
         attributes.append({std::move(src), meta_data, std::move(dst)});

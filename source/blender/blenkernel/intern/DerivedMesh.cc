@@ -679,18 +679,7 @@ static void mesh_calc_modifiers(Depsgraph *depsgraph,
       mesh_final = BKE_mesh_copy_for_eval(mesh_input);
       ASSERT_IS_VALID_MESH(mesh_final);
     }
-<<<<<<< HEAD
-    MutableAttributeAccessor attributes = mesh_final->attributes_for_write();
-    const AttributeReader positions = attributes.lookup<float3>("position");
-    if (positions) {
-      attributes.add<float3>(
-          "rest_position",
-          ATTR_DOMAIN_POINT,
-          AttributeInitShared(positions.varray.common_info().data, *positions.sharing_info));
-    }
-=======
     set_rest_position(*mesh_final);
->>>>>>> main
   }
 
   /* Apply all leading deform modifiers. */

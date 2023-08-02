@@ -280,12 +280,8 @@ inline GAttributeReader lookup(const void *owner, const AttributeIDRef &attribut
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-<<<<<<< HEAD
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
-=======
             providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
     {
->>>>>>> main
       return provider->try_get_for_read(owner);
     }
   }

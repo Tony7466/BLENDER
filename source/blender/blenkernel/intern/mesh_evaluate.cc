@@ -633,17 +633,10 @@ void BKE_mesh_flush_select_from_faces(Mesh *me)
 
   /* Use generic domain interpolation to read the face attribute on the other domains.
    * Assume selected faces are not hidden and none of their vertices/edges are hidden. */
-<<<<<<< HEAD
-  attributes.lookup_or_default<bool>(".select_poly", ATTR_DOMAIN_POINT, false)
-      .varray.materialize(select_vert.span);
-  attributes.lookup_or_default<bool>(".select_poly", ATTR_DOMAIN_EDGE, false)
-      .varray.materialize(select_edge.span);
-=======
   array_utils::copy(*attributes.lookup_or_default<bool>(".select_poly", ATTR_DOMAIN_POINT, false),
                     select_vert.span);
   array_utils::copy(*attributes.lookup_or_default<bool>(".select_poly", ATTR_DOMAIN_EDGE, false),
                     select_edge.span);
->>>>>>> main
 
   select_vert.finish();
   select_edge.finish();
@@ -665,17 +658,6 @@ void BKE_mesh_flush_select_from_verts(Mesh *me)
       ".select_edge", ATTR_DOMAIN_EDGE);
   SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_only_span<bool>(
       ".select_poly", ATTR_DOMAIN_FACE);
-<<<<<<< HEAD
-  mesh_flush_select_from_verts(
-      me->edges(),
-      me->polys(),
-      me->corner_verts(),
-      *attributes.lookup_or_default<bool>(".hide_edge", ATTR_DOMAIN_EDGE, false),
-      *attributes.lookup_or_default<bool>(".hide_poly", ATTR_DOMAIN_FACE, false),
-      select_vert,
-      select_edge.span,
-      select_poly.span);
-=======
   {
     IndexMaskMemory memory;
     const VArray<bool> hide_edge = *attributes.lookup_or_default<bool>(
@@ -694,7 +676,6 @@ void BKE_mesh_flush_select_from_verts(Mesh *me)
         IndexMask::from_bools(hide_poly, memory).complement(hide_poly.index_range(), memory),
         select_poly.span);
   }
->>>>>>> main
   select_edge.finish();
   select_poly.finish();
 }

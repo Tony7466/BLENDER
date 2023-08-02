@@ -63,16 +63,8 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
 
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory)
 {
-<<<<<<< HEAD
-  return index_mask_ops::find_indices_from_virtual_array(
-      curves.points_range(),
-      *curves.attributes().lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true),
-      2048,
-      r_indices);
-=======
   return IndexMask::from_bools(
       *curves.attributes().lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true), memory);
->>>>>>> main
 }
 
 IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory)

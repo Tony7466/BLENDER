@@ -1557,43 +1557,6 @@ void BKE_mesh_legacy_uv_seam_from_flags(Mesh *mesh)
 /** \name Hide Attribute and Legacy Flag Conversion
  * \{ */
 
-<<<<<<< HEAD
-void BKE_mesh_legacy_convert_hide_layers_to_flags(Mesh *mesh,
-                                                  blender::MutableSpan<MPoly> legacy_polys)
-{
-  using namespace blender;
-  using namespace blender::bke;
-  const AttributeAccessor attributes = mesh->attributes();
-
-  MutableSpan<MVert> verts(mesh->mvert, mesh->totvert);
-  const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(
-      ".hide_vert", ATTR_DOMAIN_POINT, false);
-  threading::parallel_for(verts.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(verts[i].flag_legacy, hide_vert[i], ME_HIDE);
-    }
-  });
-
-  MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
-  const VArray<bool> hide_edge = *attributes.lookup_or_default<bool>(
-      ".hide_edge", ATTR_DOMAIN_EDGE, false);
-  threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(edges[i].flag_legacy, hide_edge[i], ME_HIDE);
-    }
-  });
-
-  const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
-      ".hide_poly", ATTR_DOMAIN_FACE, false);
-  threading::parallel_for(legacy_polys.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(legacy_polys[i].flag_legacy, hide_poly[i], ME_HIDE);
-    }
-  });
-}
-
-=======
->>>>>>> main
 void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
 {
   using namespace blender;
@@ -1660,24 +1623,6 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
 /** \name Material Index Conversion
  * \{ */
 
-<<<<<<< HEAD
-void BKE_mesh_legacy_convert_material_indices_to_mpoly(Mesh *mesh,
-                                                       blender::MutableSpan<MPoly> legacy_polys)
-{
-  using namespace blender;
-  using namespace blender::bke;
-  const AttributeAccessor attributes = mesh->attributes();
-  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
-  threading::parallel_for(legacy_polys.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      legacy_polys[i].mat_nr_legacy = material_indices[i];
-    }
-  });
-}
-
-=======
->>>>>>> main
 void BKE_mesh_legacy_convert_mpoly_to_material_indices(Mesh *mesh)
 {
   using namespace blender;
@@ -1838,43 +1783,6 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 /** \name Selection Attribute and Legacy Flag Conversion
  * \{ */
 
-<<<<<<< HEAD
-void BKE_mesh_legacy_convert_selection_layers_to_flags(Mesh *mesh,
-                                                       blender::MutableSpan<MPoly> legacy_polys)
-{
-  using namespace blender;
-  using namespace blender::bke;
-  const AttributeAccessor attributes = mesh->attributes();
-
-  MutableSpan<MVert> verts(mesh->mvert, mesh->totvert);
-  const VArray<bool> select_vert = *attributes.lookup_or_default<bool>(
-      ".select_vert", ATTR_DOMAIN_POINT, false);
-  threading::parallel_for(verts.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(verts[i].flag_legacy, select_vert[i], SELECT);
-    }
-  });
-
-  MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
-  const VArray<bool> select_edge = *attributes.lookup_or_default<bool>(
-      ".select_edge", ATTR_DOMAIN_EDGE, false);
-  threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(edges[i].flag_legacy, select_edge[i], SELECT);
-    }
-  });
-
-  const VArray<bool> select_poly = *attributes.lookup_or_default<bool>(
-      ".select_poly", ATTR_DOMAIN_FACE, false);
-  threading::parallel_for(legacy_polys.index_range(), 4096, [&](IndexRange range) {
-    for (const int i : range) {
-      SET_FLAG_FROM_TEST(legacy_polys[i].flag_legacy, select_poly[i], ME_FACE_SEL);
-    }
-  });
-}
-
-=======
->>>>>>> main
 void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
 {
   using namespace blender;

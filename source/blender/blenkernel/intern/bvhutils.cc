@@ -1203,14 +1203,9 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
     }
     case BVHTREE_FROM_LOOPTRI_NO_HIDDEN: {
       blender::bke::AttributeAccessor attributes = mesh->attributes();
-<<<<<<< HEAD
-      mask = looptri_no_hidden_map_get(
-          mesh->polys(),
-=======
       int mask_bits_act_len = -1;
       const BitVector<> mask = looptri_no_hidden_map_get(
           mesh->faces(),
->>>>>>> main
           *attributes.lookup_or_default(".hide_poly", ATTR_DOMAIN_FACE, false),
           looptris.size(),
           &mask_bits_act_len);

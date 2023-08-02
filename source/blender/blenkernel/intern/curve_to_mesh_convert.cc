@@ -840,32 +840,6 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
   build_mesh_positions(curves_info, offsets, eval_buffer, *mesh);
 
-<<<<<<< HEAD
-  Span<float> radii = {};
-  if (main_attributes.contains("radius")) {
-    radii = evaluated_attribute_if_necessary(
-                *main_attributes.lookup_or_default<float>("radius", ATTR_DOMAIN_POINT, 1.0f),
-                main,
-                main.curve_type_counts(),
-                eval_buffer)
-                .typed<float>();
-  }
-
-  foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
-    fill_mesh_positions(info.main_points.size(),
-                        info.profile_points.size(),
-                        main_positions.slice(info.main_points),
-                        profile_positions.slice(info.profile_points),
-                        tangents.slice(info.main_points),
-                        normals.slice(info.main_points),
-                        radii.is_empty() ? radii : radii.slice(info.main_points),
-                        positions.slice(info.vert_range));
-  });
-
-  if (!offsets.any_single_point_curve) {
-    /* If there are no single point curves, every curve combination will always have faces. */
-    mesh->loose_edges_tag_none();
-=======
   if (!offsets.any_single_point_main) {
     /* If there are no single point curves, every combination will have at least loose edges. */
     mesh->tag_loose_verts_none();
@@ -873,7 +847,6 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
       /* If there are no single point profiles, every combination will have faces. */
       mesh->tag_loose_edges_none();
     }
->>>>>>> main
   }
 
   SpanAttributeWriter<bool> sharp_edges;
@@ -910,12 +883,7 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
     const eAttrDomain src_domain = meta_data.domain;
     const eCustomDataType type = meta_data.data_type;
-<<<<<<< HEAD
-    const GVArray src = *main_attributes.lookup(id, src_domain, type);
-
-=======
     const GAttributeReader src = main_attributes.lookup(id, src_domain, type);
->>>>>>> main
     const eAttrDomain dst_domain = get_attribute_domain_for_mesh(mesh_attributes, id);
 
     if (src_domain == ATTR_DOMAIN_POINT) {
