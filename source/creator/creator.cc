@@ -155,7 +155,7 @@ struct CreatorAtExitData {
 #endif
 
 #ifdef USE_WIN32_UNICODE_ARGS
-  const char **argv;
+  char **argv;
   int argv_num;
 #endif
 
@@ -328,7 +328,7 @@ int main(int argc,
     LocalFree(argv_16);
 
     /* free on early-exit */
-    app_init_data.argv = reinterpret_cast<const char **>(argv);
+    app_init_data.argv = argv;
     app_init_data.argv_num = argv_num;
   }
 #  endif /* USE_WIN32_UNICODE_ARGS */
