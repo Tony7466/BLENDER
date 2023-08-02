@@ -709,14 +709,15 @@ static void flushTransIntFrameActionData(TransInfo *t)
 }
 
 /* Update the layer frame map to temporarily account for transformed frames. */
-static void transform_convert_greasepencil_data(TransData2D *td2d,
+static void transform_convert_greasepencil_data(TransData *td,
+                                                TransData2D *td2d,
                                                 blender::bke::greasepencil::Layer *layer)
 {
   if (layer == nullptr) {
     return;
   }
 
-  const int src_frame_nb = int(*td2d->loc2d);
+  const int src_frame_nb = round_fl_to_int(td->ival);
   const int dst_frame_nb = round_fl_to_int(td2d->loc[0]);
 
   if (src_frame_nb == dst_frame_nb) {
@@ -732,6 +733,7 @@ static void transform_convert_greasepencil_data(TransData2D *td2d,
     layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
     layer_trans_status = LayerRuntime::FrameTransformationOngoing;
   }
+  layer->runtime->trans_frame_data_.add_overwrite(src_frame_nb, dst_frame_nb);
 
   /* Apply the transformation directly in the frame map, so that we display the transformed frame
    * numbers. We don't want to edit the frames or remove any drawing here. This will be done at
@@ -789,7 +791,7 @@ static void recalcData_actedit(TransInfo *t)
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
       transform_convert_greasepencil_data(
-          td2d, reinterpret_cast<blender::bke::greasepencil::Layer *>(td->extra));
+          td, td2d, reinterpret_cast<blender::bke::greasepencil::Layer *>(td->extra));
     }
   }
 
