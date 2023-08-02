@@ -239,7 +239,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
-  data_.resolution_scale = max_ii(1, power_of_2_max_i(pixel_rate));
+  data_.resolution_scale = resolution_scale;
   data_.closure_active = raytrace_closure;
   data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
