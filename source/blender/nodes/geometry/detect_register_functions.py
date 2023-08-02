@@ -2,23 +2,24 @@ import sys
 from pathlib import Path
 import re
 
-directory = Path(__file__).parent / "nodes"
-output_cc_file = Path(sys.argv[1])
-macro_name = sys.argv[2]
+source_files_dir = Path(sys.argv[1])
+output_cc_file = Path(sys.argv[2])
+macro_name = sys.argv[3]
+function_to_generate = sys.argv[4]
 
 include_lines = []
 
 decl_lines = []
 
 func_lines = []
-func_lines.append("void register_geometry_nodes();")
-func_lines.append("void register_geometry_nodes()")
+func_lines.append(f"void {function_to_generate}();")
+func_lines.append(f"void {function_to_generate}()")
 func_lines.append("{")
 
 expression = r"(^namespace ([\w:]+) \{)|(^\}  // namespace ([\w:]+))|(MACRO\((\w+)\))"
 expression = expression.replace("MACRO", macro_name)
 
-for path in directory.glob("*.cc"):
+for path in source_files_dir.glob("*.cc"):
     with open(path) as f:
         code = f.read()
 
