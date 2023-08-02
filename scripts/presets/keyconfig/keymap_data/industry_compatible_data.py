@@ -2300,6 +2300,7 @@ def km_grease_pencil(_params):
 def _grease_pencil_selection(params):
     return [
         # Select all
+        ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("gpencil.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
          "shift": True}, {"properties": [("action", 'DESELECT')]}),
         ("gpencil.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
