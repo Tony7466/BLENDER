@@ -1430,7 +1430,7 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
                                           const int duplicate_frame_number,
                                           const bool do_instance)
 {
-  using namespace blender;
+  using namespace blender::bke::greasepencil;
 
   BLI_assert(layer.frames().contains(frame_number));
   const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
@@ -1448,13 +1448,12 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
   const GreasePencilDrawingBase *drawing_base = this->drawings(frame.drawing_index);
   switch (drawing_base->type) {
     case GP_DRAWING: {
-      const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
-          drawing_base);
+      const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
       if (do_instance) {
         /* TODO : add user to the drawing. */
       }
       else {
-        this->add_duplicate_drawings(1, drawing->wrap());
+        this->add_duplicate_drawings(1, drawing);
       }
       break;
     }
