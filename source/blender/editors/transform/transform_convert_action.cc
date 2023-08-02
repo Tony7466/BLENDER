@@ -544,7 +544,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
       i = GreasePencilLayerToTransData(td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos);
       td += i;
-      tfd += i;
+      td2d += i;
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       MaskLayer *masklay = (MaskLayer *)ale->data;
