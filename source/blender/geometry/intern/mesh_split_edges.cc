@@ -104,9 +104,9 @@ static IndexMask vert_selection_from_edge(const Span<int2> edges,
   return IndexMask::from_bools(array, memory);
 }
 
-static BitVector<> selection_to_bit_vector(const IndexMask &selection, const int universe_size)
+static BitVector<> selection_to_bit_vector(const IndexMask &selection, const int total_size)
 {
-  BitVector<> bits(universe_size);
+  BitVector<> bits(total_size);
   selection.to_bits(bits);
   return bits;
 }
