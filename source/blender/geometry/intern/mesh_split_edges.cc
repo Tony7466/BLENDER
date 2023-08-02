@@ -192,7 +192,7 @@ static Vector<CornerFan> calc_corner_fans_for_vertex(const OffsetIndices<int> fa
   return fans;
 }
 
-/* Calculate groups of edges that are contiguously connected to each input vertex. */
+/* Calculate groups of corners that are contiguously connected to each input vertex. */
 static Array<Vector<CornerFan>> calc_all_corner_fans(const OffsetIndices<int> faces,
                                                      const Span<int> corner_verts,
                                                      const Span<int> corner_edges,
@@ -282,9 +282,9 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(const IndexMask &affecte
 }
 
 /**
- * Update corner verts so that each fan of edges gets its own vertex. For the last "new vertex" we
- * can reuse the original vertex, which would otherwise become unused by any faces. The loose edge
- * case will have to deal with this later.
+ * Update corner verts so that each fan of corners gets its own vertex. For the last "new vertex"
+ * we can reuse the original vertex, which would otherwise become unused by any faces. The loose
+ * edge case will have to deal with this later.
  */
 static void calc_updated_corner_verts(const int orig_verts_num,
                                       const Span<Vector<CornerFan>> corner_fans,
