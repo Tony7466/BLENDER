@@ -2064,7 +2064,7 @@ void move_to_collection_menu_item(uiLayout *layout,
 }
 /**
  * Enum used to specify the move operator that calls the recursive function
- * #move_to_collection_menu_items which builds the menu and submenbus with #uiItemMenuF,
+ * #move_to_collection_menu_items which builds the menu and submenus with #uiItemMenuF,
  * used as template argument since we can't have additional parameters in
  * #move_to_collection_menu_items
  **/
