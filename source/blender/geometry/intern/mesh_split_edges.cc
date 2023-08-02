@@ -69,6 +69,7 @@ static void propagate_edge_attributes(Mesh &mesh, const Span<int> new_to_old_edg
       continue;
     }
     if (id.name() == ".edge_verts") {
+      /* Edge vertices are updated and combined with new edges separately. */
       continue;
     }
     bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
