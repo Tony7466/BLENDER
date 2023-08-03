@@ -6,7 +6,7 @@ set(DISCOVER_NODES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/intern/discover_nodes.py)
 
 function(add_node_discovery
   lib_name
-  source_directory
+  sources
   output_file
   output_function
   )
@@ -17,12 +17,11 @@ function(add_node_discovery
     COMMAND
       ${PYTHON_EXECUTABLE}
         ${DISCOVER_NODES_PATH}
-        ${source_directory}
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${output_file}
         ${output_function}
+        ${sources}
     DEPENDS
-      # TODO: pass this in as parameter and figure out how to pass these
-      # files to discover_nodes.py instead of the root directory
       ${SRC}
       ${DISCOVER_NODES_PATH}
   )

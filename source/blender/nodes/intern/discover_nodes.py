@@ -5,9 +5,10 @@
 '''
 Usage:
     python discover_nodes.py
-        <path/to/sources>
+        <sources/root>
         <path/to/output.cc>
         <generated_function_name>
+        <source>...
 
 The goal is to make it easy for nodes to register themselves without having to have
 a central place that registers all nodes manually. A node can use this mechanism by
@@ -20,11 +21,12 @@ import re
 import sys
 from pathlib import Path
 
-source_files_dir = Path(sys.argv[1])
+source_root = Path(sys.argv[1])
 macro_name = "NOD_REGISTER_NODE"
 discover_suffix = "_discover"
 output_cc_file = Path(sys.argv[2])
 function_to_generate = sys.argv[3]
+relative_source_files = sys.argv[4:]
 
 include_lines = []
 decl_lines = []
@@ -42,7 +44,11 @@ re_namespace_end = r"^\}  // namespace ([\w:]+)"
 re_macro = r"MACRO\((\w+)\)".replace("MACRO", macro_name)
 re_all = f"({re_namespace_begin})|({re_namespace_end})|({re_macro})"
 
-for path in source_files_dir.glob("*.cc"):
+for relative_source_file in relative_source_files:
+    if not relative_source_file.endswith(".cc"):
+        continue
+    path = source_root / relative_source_file
+
     # Read the source code.
     with open(path) as f:
         code = f.read()

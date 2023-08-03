@@ -260,7 +260,7 @@ endif()
 
 add_node_discovery(
   bf_nodes_geometry_generated
-  ${CMAKE_CURRENT_SOURCE_DIR}/nodes
+  "${SRC}"
   ${CMAKE_CURRENT_BINARY_DIR}/register_geometry_nodes.cc
   register_geometry_nodes
 )
