@@ -34,7 +34,7 @@
 #include "BKE_armature.h"
 #include "BKE_editmesh.h"
 #include "BKE_idtype.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_volume.h"
 
 #include "ED_gpencil_legacy.h"
@@ -714,7 +714,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_animsys.h"
-#  include "BKE_brush.h"
+#  include "BKE_brush.hh"
 #  include "BKE_collection.h"
 #  include "BKE_colortools.h"
 #  include "BKE_context.h"
@@ -726,7 +726,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_image_format.h"
 #  include "BKE_layer.h"
 #  include "BKE_main.h"
-#  include "BKE_mesh.h"
+#  include "BKE_mesh.hh"
 #  include "BKE_node.h"
 #  include "BKE_pointcache.h"
 #  include "BKE_scene.h"
@@ -8161,10 +8161,8 @@ void RNA_def_scene(BlenderRNA *brna)
   /* Timeline / Time Navigation settings */
   prop = RNA_def_property(srna, "show_keys_from_selected_only", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", SCE_KEYS_NO_SELONLY);
-  RNA_def_property_ui_text(prop,
-                           "Only Keyframes from Selected Channels",
-                           "Consider keyframes for active object and/or its selected bones only "
-                           "(in timeline and when jumping between keyframes)");
+  RNA_def_property_ui_text(
+      prop, "Only Show Selected", "Only include channels relating to selected objects and data");
   RNA_def_property_update(prop, NC_SCENE | ND_FRAME, nullptr);
 
   /* Stamp */
