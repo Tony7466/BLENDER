@@ -958,7 +958,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
-  KeyframeEdit_LassoData data_lasso = {0};
+  KeyframeEdit_LassoData data_lasso = {nullptr};
   rcti rect;
   rctf rect_fl;
 
@@ -1048,7 +1048,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
   bAnimContext ac;
   bool incl_handles = false;
 
-  KeyframeEdit_CircleData data = {0};
+  KeyframeEdit_CircleData data = {nullptr};
   rctf rect_fl;
 
   float x = RNA_int_get(op->ptr, "x");
@@ -1165,7 +1165,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
 
 /* Selects all visible keyframes between the specified markers */
 /* TODO(@ideasman42): this is almost an _exact_ duplicate of a function of the same name in
- * action_select.c should de-duplicate. */
+ * `action_select.cc` should de-duplicate. */
 static void markers_selectkeys_between(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};

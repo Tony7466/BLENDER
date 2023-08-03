@@ -34,7 +34,7 @@
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_global.h"
@@ -47,7 +47,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -3311,7 +3311,7 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
             continue;
           }
 
-          bool before = bool(gps->flag & GP_STROKE_CYCLIC);
+          eGPDstroke_Flag before = eGPDstroke_Flag(gps->flag & GP_STROKE_CYCLIC);
           switch (type) {
             case GP_STROKE_CYCLIC_CLOSE:
               /* Close all (enable) */
@@ -3330,7 +3330,7 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
               break;
           }
 
-          if (before != (gps->flag & GP_STROKE_CYCLIC)) {
+          if (before != eGPDstroke_Flag(gps->flag & GP_STROKE_CYCLIC)) {
             /* Create new geometry. */
             if (is_curve_edit) {
               BKE_gpencil_editcurve_recalculate_handles(gps);
@@ -4036,14 +4036,14 @@ static void gpencil_strokes_reproject_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "type", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (type == GP_REPROJECT_SURFACE) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "offset", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "offset", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "keep_original", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "keep_original", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void GPENCIL_OT_reproject(wmOperatorType *ot)
@@ -5085,7 +5085,7 @@ static int gpencil_stroke_separate_exec(bContext *C, wmOperator *op)
 
   /* Create a new object. */
   /* Take into account user preferences for duplicating actions. */
-  const eDupli_ID_Flags dupflag = eDupli_ID_Flags((U.dupflag & USER_DUP_ACT));
+  const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
 
   base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
   ob_dst = base_new->object;
@@ -5938,15 +5938,15 @@ static void gpencil_stroke_normalize_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (mode == GP_NORMALIZE_THICKNESS) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "value", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "value", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_NORMALIZE_OPACITY) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "factor", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

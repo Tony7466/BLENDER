@@ -10,7 +10,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
 
 #include "UI_interface.h"
@@ -43,8 +43,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "uv_smooth", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "boundary_smooth", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "uv_smooth", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "boundary_smooth", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

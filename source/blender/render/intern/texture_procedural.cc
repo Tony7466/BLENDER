@@ -589,7 +589,7 @@ static int texnoise(const Tex *tex, TexResult *texres, int thread)
     div *= 3.0f;
   }
 
-  texres->tin = (float(val)) / div;
+  texres->tin = float(val) / div;
 
   BRICONT;
   return TEX_INT;
@@ -1166,7 +1166,7 @@ int multitex_nodes(Tex *tex,
 }
 
 int multitex_ext(Tex *tex,
-                 float texvec[3],
+                 const float texvec[3],
                  float dxt[3],
                  float dyt[3],
                  int osatex,

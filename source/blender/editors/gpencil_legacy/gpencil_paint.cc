@@ -33,7 +33,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -45,7 +45,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_tracking.h"
@@ -3045,7 +3045,7 @@ static void gpencil_draw_apply_event(bContext *C,
     /* get stroke angle for grids */
     if (ELEM(guide->type, GP_GUIDE_ISO)) {
       p->guide.stroke_angle = atan2f(pt[1], pt[0]);
-      /* determine iso angle, less weight is given for vertical strokes */
+      /* Determine ISO angle, less weight is given for vertical strokes. */
       if (((p->guide.stroke_angle >= 0.0f) && (p->guide.stroke_angle < DEG2RAD(75))) ||
           (p->guide.stroke_angle < DEG2RAD(-105)))
       {

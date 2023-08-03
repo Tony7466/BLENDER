@@ -5,7 +5,7 @@
 /** \file
  * \ingroup eduv
  *
- * \note The logic in this file closely follows editmesh_path.c
+ * \note The logic in this file closely follows `editmesh_path.cc`.
  */
 
 #include <cmath>
@@ -34,7 +34,7 @@
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"

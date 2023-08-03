@@ -62,6 +62,8 @@
  * and being able to set it to zero is handy. */
 /* #define USE_NUM_NO_ZERO */
 
+using namespace blender;
+
 bool transdata_check_local_islands(TransInfo *t, short around)
 {
   if (t->options & (CTX_CURSOR | CTX_TEXTURE_SPACE)) {
@@ -965,7 +967,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     handled = true;
   }
   else if (!is_navigating && event->type == MOUSEMOVE) {
-    copy_v2_v2_int(t->mval, event->mval);
+    t->mval = float2(event->mval);
 
     /* Use this for soft redraw. Might cause flicker in object mode */
     // t->redraw |= TREDRAW_SOFT;
@@ -1682,7 +1684,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
           /* Type is #eSnapFlag, but type must match various snap attributes in #ToolSettings. */
           short *snap_flag_ptr;
 
-          wmMsgParams_RNA msg_key_params = {{0}};
+          wmMsgParams_RNA msg_key_params = {{nullptr}};
           RNA_pointer_create(&t->scene->id, &RNA_ToolSettings, ts, &msg_key_params.ptr);
 
           if (t->spacetype == SPACE_NODE) {
@@ -2021,14 +2023,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
       }
     }
 
-    int mval[2];
-    if (t->flag & T_EVENT_DRAG_START) {
-      WM_event_drag_start_mval(event, t->region, mval);
-    }
-    else {
-      copy_v2_v2_int(mval, event->mval);
-    }
-    initMouseInput(t, &t->mouse, t->center2d, mval, use_accurate);
+    initMouseInput(t, &t->mouse, t->center2d, t->mval, use_accurate);
   }
 
   transform_mode_init(t, op, mode);
@@ -2109,7 +2104,7 @@ void transformApply(bContext *C, TransInfo *t)
   if (t->redraw == TREDRAW_HARD) {
     selectConstraint(t);
     if (t->mode_info) {
-      t->mode_info->transform_fn(t, t->mval); /* calls recalc_data() */
+      t->mode_info->transform_fn(t); /* calls recalc_data() */
     }
   }
 

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
@@ -114,6 +116,7 @@ typedef enum ModifierMode {
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
 } ModifierMode;
+ENUM_OPERATORS(ModifierMode, eModifierMode_DisableTemporary);
 
 typedef struct ModifierData {
   struct ModifierData *next, *prev;
@@ -2128,7 +2131,7 @@ typedef struct DataTransferModifierData {
   /** See DT_TYPE_ enum in ED_object.h. */
   int data_types;
 
-  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.h */
+  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.hh */
   int vmap_mode;
   int emap_mode;
   int lmap_mode;

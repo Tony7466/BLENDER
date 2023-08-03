@@ -44,7 +44,7 @@
 #include "BKE_animsys.h"
 #include "BKE_appdir.h"
 #include "BKE_armature.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -1071,7 +1071,6 @@ static void shader_preview_texture(ShaderPreview *sp, Tex *tex, Scene *sce, Rend
   /* Fill in image buffer. */
   float *rect_float = rv_ibuf->float_buffer.data;
   float tex_coord[3] = {0.0f, 0.0f, 0.0f};
-  bool color_manage = BKE_scene_check_color_management_enabled(sce);
 
   for (int y = 0; y < height; y++) {
     /* Tex coords between -1.0f and 1.0f. */
@@ -1082,7 +1081,7 @@ static void shader_preview_texture(ShaderPreview *sp, Tex *tex, Scene *sce, Rend
 
       /* Evaluate texture at tex_coord. */
       TexResult texres = {0};
-      BKE_texture_get_value_ex(tex, tex_coord, &texres, img_pool, color_manage);
+      BKE_texture_get_value_ex(tex, tex_coord, &texres, img_pool, true);
       copy_v4_fl4(rect_float,
                   texres.trgba[0],
                   texres.trgba[1],

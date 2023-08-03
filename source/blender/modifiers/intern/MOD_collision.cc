@@ -27,7 +27,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
@@ -197,7 +197,7 @@ static void deform_verts(ModifierData *md,
         }
       }
 
-      /* Happens on file load (ONLY when I un-comment changes in readfile.c) */
+      /* Happens on file load (ONLY when I un-comment changes in `readfile.cc`). */
       if (!collmd->bvhtree) {
         collmd->bvhtree = bvhtree_build_from_mvert(
             collmd->current_x, collmd->tri, collmd->tri_num, ob->pd->pdef_sboft);

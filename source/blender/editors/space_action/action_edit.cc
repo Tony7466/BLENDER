@@ -12,10 +12,13 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "DEG_depsgraph.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -34,6 +37,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_nla.h"
 #include "BKE_report.h"
@@ -42,6 +46,7 @@
 
 #include "ED_anim_api.h"
 #include "ED_gpencil_legacy.h"
+#include "ED_grease_pencil.h"
 #include "ED_keyframes_edit.h"
 #include "ED_keyframing.h"
 #include "ED_markers.h"
@@ -708,7 +713,7 @@ void ACTION_OT_paste(wmOperatorType *ot)
       "frame";
 
   /* api callbacks */
-  //  ot->invoke = WM_operator_props_popup; // better wait for action redo panel
+  //  ot->invoke = WM_operator_props_popup; /* Better wait for action redo panel. */
   ot->get_description = actkeys_paste_description;
   ot->exec = actkeys_paste_exec;
   ot->poll = ED_operator_action_active;
@@ -762,6 +767,45 @@ static void insert_gpencil_key(bAnimContext *ac,
   if (gpd != *gpd_old) {
     BKE_gpencil_tag(gpd);
     *gpd_old = gpd;
+  }
+}
+
+static void insert_grease_pencil_key(bAnimContext *ac,
+                                     bAnimListElem *ale,
+                                     const bool hold_previous)
+{
+  using namespace blender::bke::greasepencil;
+  Layer *layer = static_cast<Layer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+  const int current_frame_number = ac->scene->r.cfra;
+
+  if (layer->frames().contains(current_frame_number)) {
+    return;
+  }
+
+  bool changed = false;
+  if (hold_previous) {
+    const FramesMapKey active_frame_number = layer->frame_key_at(current_frame_number);
+    if ((active_frame_number == -1) || (layer->frames().lookup(active_frame_number).is_null())) {
+      /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
+       * frame. */
+      changed = grease_pencil->insert_blank_frame(
+          *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
+    else {
+      /* Duplicate the active frame. */
+      changed = grease_pencil->insert_duplicate_frame(
+          *layer, active_frame_number, current_frame_number, false);
+    }
+  }
+  else {
+    /* Insert a blank frame. */
+    changed = grease_pencil->insert_blank_frame(
+        *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
   }
 }
 
@@ -853,6 +897,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   else {
     add_frame_mode = GP_GETFRAME_ADD_NEW;
   }
+  const bool grease_pencil_hold_previous = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
 
   /* insert keyframes */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -864,7 +909,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
         break;
 
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        /* GPv3: To be implemented. */
+        insert_grease_pencil_key(ac, ale, grease_pencil_hold_previous);
         break;
 
       case ANIMTYPE_FCURVE:
@@ -1042,7 +1087,9 @@ static bool delete_action_keys(bAnimContext *ac)
       changed = ED_gpencil_layer_frames_delete((bGPDlayer *)ale->data);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      changed = blender::ed::greasepencil::remove_all_selected_frames(
+          *reinterpret_cast<GreasePencil *>(ale->id),
+          static_cast<GreasePencilLayer *>(ale->data)->wrap());
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       changed = ED_masklayer_frames_delete((MaskLayer *)ale->data);

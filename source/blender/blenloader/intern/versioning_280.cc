@@ -56,7 +56,7 @@
 
 #include "BKE_animsys.h"
 #include "BKE_blender.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_cloth.h"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
@@ -75,11 +75,11 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_legacy_convert.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.h"
 #include "BKE_node_tree_update.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
@@ -108,7 +108,7 @@
 
 #include "MEM_guardedalloc.h"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 static bScreen *screen_parent_find(const bScreen *screen)
@@ -1245,7 +1245,7 @@ static void square_roughness_node_insert(bNodeTree *ntree)
                                    bNodeSocket *fromsock,
                                    bNode *tonode,
                                    bNodeSocket *tosock) {
-    /* Add sqrt node. */
+    /* Add `sqrt` node. */
     bNode *node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
     node->custom1 = NODE_MATH_POWER;
     node->locx = 0.5f * (fromnode->locx + tonode->locx);
@@ -1890,7 +1890,7 @@ static void update_mapping_node_fcurve_rna_path_callback(ID * /* id */,
  * in the node. To correct this, a Vector Minimum and/or a Vector Maximum
  * nodes are added if needed.
  *
- * Finally, the TexMapping struct is freed and node->storage is set to NULL.
+ * Finally, the #TexMapping struct is freed and `node->storage` is set to null.
  *
  * Since the RNA paths of the properties changed, we also have to update the
  * rna_path of the FCurves if they exist. To do that, we loop over FCurves
@@ -1903,7 +1903,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
   bool need_update = false;
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    /* If node->storage is NULL, then conversion has already taken place.
+    /* If `node->storage` is null, then conversion has already taken place.
      * This can happen if a file with the new mapping node [saved from (2, 81, 8) or newer]
      * is opened in a blender version prior to (2, 81, 8) and saved from there again. */
     if (node->type == SH_NODE_MAPPING && node->storage) {
@@ -2435,7 +2435,7 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
               }
 
               /* Create a tree store element for the collection. This is normally
-               * done in check_persistent (outliner_tree.c), but we need to access
+               * done in check_persistent `outliner_tree.cc`, but we need to access
                * it here :/ (expand element if it's the only one) */
               TreeStoreElem *tselem = static_cast<TreeStoreElem *>(
                   BLI_mempool_calloc(space_outliner->treestore));
@@ -3098,8 +3098,8 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_280 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -6527,8 +6527,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_280 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

@@ -60,7 +60,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
@@ -2074,7 +2074,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
                   ICON_ADD,
                   static_cast<IDProperty *>(menu->ptr.data),
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   nullptr);
 
   uiItemS(layout);

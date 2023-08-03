@@ -15,7 +15,6 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh_types.h"
 
 struct BMesh;
 struct BMeshCreateParams;
@@ -42,6 +41,16 @@ struct Scene;
 extern "C" {
 #endif
 
+/* TODO: Move to `BKE_mesh_types.hh` when possible. */
+typedef enum eMeshBatchDirtyMode {
+  BKE_MESH_BATCH_DIRTY_ALL = 0,
+  BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
+  BKE_MESH_BATCH_DIRTY_SHADING,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT,
+} eMeshBatchDirtyMode;
+
 /*  mesh_runtime.cc  */
 
 /**
@@ -66,7 +75,7 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh);
  */
 void BKE_mesh_tag_face_winding_changed(struct Mesh *mesh);
 
-/* *** mesh.c *** */
+/* `mesh.cc` */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(const struct Mesh *me,
                                    const struct BMeshCreateParams *create_params,
@@ -538,40 +547,6 @@ void BKE_mesh_calc_volume(const float (*vert_positions)[3],
 void BKE_mesh_mdisp_flip(struct MDisps *md, bool use_loop_mdisp_flip);
 
 /**
- * Flip (invert winding of) the given \a face, i.e. reverse order of its loops
- * (keeping the same vertex as 'start point').
- *
- * \param face: the face to flip.
- * \param mloop: the full loops array.
- * \param loop_data: the loops custom data.
- */
-void BKE_mesh_face_flip_ex(int face_offset,
-                           int face_size,
-                           int *corner_verts,
-                           int *corner_edges,
-                           struct CustomData *loop_data,
-                           float (*lnors)[3],
-                           struct MDisps *mdisp,
-                           bool use_loop_mdisp_flip);
-void BKE_mesh_face_flip(int face_offset,
-                        int face_size,
-                        int *corner_verts,
-                        int *corner_edges,
-                        struct CustomData *loop_data,
-                        int totloop);
-
-/**
- * Flip (invert winding of) all faces (used to inverse their normals).
- *
- * \note Invalidates tessellation, caller must handle that.
- */
-void BKE_mesh_faces_flip(const int *face_offsets,
-                         int *corner_verts,
-                         int *corner_edges,
-                         struct CustomData *loop_data,
-                         int faces_num);
-
-/**
  * Account for custom-data such as UVs becoming detached because of imprecision
  * in custom-data interpolation.
  * Without running this operation subdivision surface can cause UVs to be disconnected,
@@ -712,7 +687,7 @@ void BKE_mesh_batch_cache_free(void *batch_cache);
 extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, eMeshBatchDirtyMode mode);
 extern void (*BKE_mesh_batch_cache_free_cb)(void *batch_cache);
 
-/* mesh_debug.c */
+/* `mesh_debug.cc` */
 
 #ifndef NDEBUG
 char *BKE_mesh_debug_info(const struct Mesh *me)
