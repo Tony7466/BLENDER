@@ -121,6 +121,11 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   inst_.volume.bind_properties_buffers(world_ps_);
   inst_.sampling.bind_resources(&world_ps_);
 
+  if (GPU_material_status(gpumat) != GPU_MAT_SUCCESS) {
+    /* Skip if the material has not compiled yet. */
+    return;
+  }
+
   world_ps_.material_set(*inst_.manager, gpumat);
   volume_sub_pass(world_ps_, nullptr, nullptr, gpumat);
 
