@@ -27,8 +27,8 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
-struct StrokePoint {
-  float3 position;
+struct ScreenSpacePoint {
+  float2 position;
   float radius;
   float opacity;
   float4 vertex_color;
@@ -36,6 +36,8 @@ struct StrokePoint {
 
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
+  Vector<float2> screen_space_coordinates_;
+
   bke::greasepencil::StrokeCache *stroke_cache_;
   int64_t active_index_ = 0;
 
@@ -91,12 +93,21 @@ struct PaintOperationExecutor {
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
   }
 
-  StrokePoint stroke_point_from_input_sample(const InputSample &sample)
+  float3 screen_space_to_object_space(float2 co)
   {
-    StrokePoint point;
     /* TODO: Use correct plane/projection. */
     float4 plane{0.0f, -1.0f, 0.0f, 0.0f};
-    ED_view3d_win_to_3d_on_plane(region_, plane, sample.mouse_position, false, point.position);
+    /* TODO: Use object transform. */
+    float3 proj_point;
+    ED_view3d_win_to_3d_on_plane(region_, plane, co, false, proj_point);
+    return proj_point;
+  }
+
+  ScreenSpacePoint point_from_input_sample(const InputSample &sample)
+  {
+    ScreenSpacePoint point;
+
+    point.position = sample.mouse_position;
 
     point.radius = brush_size_ / 2.0f;
     if (BKE_brush_use_size_pressure(brush_)) {
@@ -115,12 +126,36 @@ struct PaintOperationExecutor {
     return point;
   }
 
+  void update_stroke_cache(PaintOperation &self,
+                           const int64_t new_points_num,
+                           Span<float2> new_coordinates,
+                           Span<float> new_radii,
+                           Span<float> new_opacities,
+                           Span<ColorGeometry4f> new_vertex_colors)
+  {
+    const int64_t old_size = self.stroke_cache_->size();
+    self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
+
+    IndexRange new_range(old_size, new_points_num);
+    MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
+        new_range);
+    for (const int64_t i : new_coordinates.index_range()) {
+      positions_slice[i] = screen_space_to_object_space(new_coordinates[i]);
+    }
+    self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
+    self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
+    self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
+  }
+
   void process_start_sample(PaintOperation &self, const InputSample &start_sample)
   {
-    StrokePoint start_point = this->stroke_point_from_input_sample(start_sample);
+    ScreenSpacePoint start_point = this->point_from_input_sample(start_sample);
+
+    self.screen_space_coordinates_.append(start_point.position);
 
     self.stroke_cache_->resize(1);
-    self.stroke_cache_->positions_for_write().last() = start_point.position;
+    self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
+        start_point.position);
     self.stroke_cache_->radii_for_write().last() = start_point.radius;
     self.stroke_cache_->opacities_for_write().last() = start_point.opacity;
     self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(
@@ -129,45 +164,43 @@ struct PaintOperationExecutor {
 
   void process_extension_sample(PaintOperation &self, const InputSample &extension_sample)
   {
-    StrokePoint point = this->stroke_point_from_input_sample(extension_sample);
+    ScreenSpacePoint point = this->point_from_input_sample(extension_sample);
 
-    float3 prev_position = self.stroke_cache_->positions().last();
+    float2 prev_co = self.screen_space_coordinates_.last();
     float prev_radius = self.stroke_cache_->radii().last();
     float prev_opacity = self.stroke_cache_->opacities().last();
     ColorGeometry4f prev_vertex_color = self.stroke_cache_->vertex_colors().last();
 
     int new_points_num = 1;
-    /* Calculate if we need to add more than one point based on distance. */
-    const float min_distance = 0.05f;
-    if (self.stroke_cache_->size() > 1) {
-      const float distance = math::distance(point.position, prev_position);
-      if (distance > min_distance) {
-        new_points_num += static_cast<int>(math::floor(distance / min_distance)) - 1;
+    const float min_distance_px = 10.0f;
+    if (self.screen_space_coordinates_.size() > 1) {
+      const float distance_px = math::distance(point.position, prev_co);
+      if (distance_px > min_distance_px) {
+        new_points_num += static_cast<int>(math::floor(distance_px / min_distance_px)) - 1;
       }
     }
 
-    Array<float3> new_positions(new_points_num);
+    Array<float2> new_coordinates(new_points_num);
     Array<float> new_radii(new_points_num);
     Array<float> new_opacities(new_points_num);
     Array<ColorGeometry4f> new_vertex_colors(new_points_num);
     const float step = 1.0f / static_cast<float>(new_points_num);
     float factor = step;
     for (const int i : IndexRange(new_points_num)) {
-      new_positions[i] = bke::attribute_math::mix2<float3>(factor, prev_position, point.position);
+      new_coordinates[i] = bke::attribute_math::mix2<float2>(factor, prev_co, point.position);
       new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, point.radius);
       new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, point.opacity);
       new_vertex_colors[i] = bke::attribute_math::mix2<ColorGeometry4f>(
           factor, prev_vertex_color, ColorGeometry4f(point.vertex_color));
       factor += step;
     }
-    const int64_t old_size = self.stroke_cache_->size();
-    self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
 
-    IndexRange new_range(old_size, new_points_num);
-    self.stroke_cache_->positions_for_write().slice(new_range).copy_from(new_positions);
-    self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
-    self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
-    self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
+    for (float2 co : new_coordinates) {
+      self.screen_space_coordinates_.append(co);
+    }
+
+    this->update_stroke_cache(
+        self, new_points_num, new_coordinates, new_radii, new_opacities, new_vertex_colors);
 
     // const float active_smooth_factor = settings_->active_smooth;
 
@@ -426,7 +459,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
     return;
   }
 
-  this->simplify_stroke_cache(0.0005f);
+  // this->simplify_stroke_cache(0.0005f);
 
   /* The object should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
