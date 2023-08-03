@@ -189,7 +189,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes::node_fn_align_euler_to_vector_cc
 
-void register_node_type_fn_align_euler_to_vector()
+static void register_node_type_fn_align_euler_to_vector()
 {
   namespace file_ns = blender::nodes::node_fn_align_euler_to_vector_cc;
 
@@ -202,3 +202,4 @@ void register_node_type_fn_align_euler_to_vector()
   ntype.build_multi_function = file_ns::node_build_multi_function;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_align_euler_to_vector)

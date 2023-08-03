@@ -198,7 +198,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes::node_fn_random_value_cc
 
-void register_node_type_fn_random_value()
+static void register_node_type_fn_random_value()
 {
   namespace file_ns = blender::nodes::node_fn_random_value_cc;
 
@@ -215,3 +215,4 @@ void register_node_type_fn_random_value()
       &ntype, "NodeRandomValue", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_random_value)

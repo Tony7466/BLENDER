@@ -19,6 +19,7 @@
 
 #include "NOD_geometry.hh"
 #include "NOD_geometry_exec.hh"
+#include "NOD_register.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
@@ -163,10 +164,3 @@ void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
                                           NodeDeclaration &r_declaration);
 
 }  // namespace blender::nodes
-
-#define NOD_REGISTER_NODE(REGISTER_FUNC) \
-  void REGISTER_FUNC##_discover(); \
-  void REGISTER_FUNC##_discover() \
-  { \
-    REGISTER_FUNC(); \
-  }

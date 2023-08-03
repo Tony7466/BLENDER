@@ -17,3 +17,10 @@ void register_function_nodes();
 void register_geometry_nodes();
 void register_shader_nodes();
 void register_texture_nodes();
+
+#define NOD_REGISTER_NODE(REGISTER_FUNC) \
+  void REGISTER_FUNC##_discover(); \
+  void REGISTER_FUNC##_discover() \
+  { \
+    REGISTER_FUNC(); \
+  }

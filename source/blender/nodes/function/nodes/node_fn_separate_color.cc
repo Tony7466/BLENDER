@@ -199,7 +199,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes
 
-void register_node_type_fn_separate_color()
+static void register_node_type_fn_separate_color()
 {
   static bNodeType ntype;
 
@@ -214,3 +214,4 @@ void register_node_type_fn_separate_color()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_separate_color)

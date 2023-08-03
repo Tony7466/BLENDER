@@ -37,7 +37,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 }  // namespace blender::nodes::node_fn_input_bool_cc
 
-void register_node_type_fn_input_bool()
+static void register_node_type_fn_input_bool()
 {
   namespace file_ns = blender::nodes::node_fn_input_bool_cc;
 
@@ -52,3 +52,4 @@ void register_node_type_fn_input_bool()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_input_bool)

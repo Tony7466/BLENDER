@@ -46,7 +46,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes::node_fn_input_special_characters_cc
 
-void register_node_type_fn_input_special_characters()
+static void register_node_type_fn_input_special_characters()
 {
   namespace file_ns = blender::nodes::node_fn_input_special_characters_cc;
 
@@ -58,3 +58,4 @@ void register_node_type_fn_input_special_characters()
   ntype.build_multi_function = file_ns::node_build_multi_function;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_input_special_characters)

@@ -37,7 +37,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 }  // namespace blender::nodes::node_fn_input_int_cc
 
-void register_node_type_fn_input_int()
+static void register_node_type_fn_input_int()
 {
   namespace file_ns = blender::nodes::node_fn_input_int_cc;
 
@@ -52,3 +52,4 @@ void register_node_type_fn_input_int()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_input_int)

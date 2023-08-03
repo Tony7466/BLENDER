@@ -59,7 +59,7 @@ static void node_storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const
 
 }  // namespace blender::nodes::node_fn_input_string_cc
 
-void register_node_type_fn_input_string()
+static void register_node_type_fn_input_string()
 {
   namespace file_ns = blender::nodes::node_fn_input_string_cc;
 
@@ -74,3 +74,4 @@ void register_node_type_fn_input_string()
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_input_string)

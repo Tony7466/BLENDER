@@ -37,10 +37,8 @@ set(SRC
   nodes/node_fn_string_length.cc
   nodes/node_fn_value_to_string.cc
 
-  node_function_register.cc
   node_function_util.cc
 
-  node_function_register.hh
   node_function_util.hh
 )
 
@@ -50,6 +48,18 @@ set(LIB
   bf_functions
   PRIVATE bf::intern::guardedalloc
 )
+
+add_node_discovery(
+  bf_nodes_functions_generated
+  "${SRC}"
+  ${CMAKE_CURRENT_BINARY_DIR}/register_function_nodes.cc
+  register_function_nodes
+)
+
+list(APPEND LIB
+  bf_nodes_functions_generated
+)
+
 
 blender_add_lib(bf_nodes_function "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 

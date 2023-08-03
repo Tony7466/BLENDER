@@ -81,7 +81,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 }  // namespace blender::nodes::node_fn_combine_color_cc
 
-void register_node_type_fn_combine_color()
+static void register_node_type_fn_combine_color()
 {
   namespace file_ns = blender::nodes::node_fn_combine_color_cc;
 
@@ -98,3 +98,4 @@ void register_node_type_fn_combine_color()
 
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node_type_fn_combine_color)
