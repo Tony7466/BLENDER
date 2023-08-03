@@ -29,7 +29,9 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                                  color Tint = 1.0,
                                  color AbsorptionCoefficient = color(0.245531, 0.52, 1.365),
                                  normal Normal = Ng,
-                                 string parametrization = "Absorption coefficient",
+                                 string model = "Far-field Model",
+                                 string parametrization = "Direct Coloring",
+                                 string distribution_type = "GGX",
                                  float Offset = radians(2),
                                  float Roughness = 0.3,
                                  float RadialRoughness = 0.3,
@@ -38,6 +40,10 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                                  float IOR = 1.55,
                                  string AttrRandom = "geom:curve_random",
                                  float Random = 0.0,
+                                 float AspectRatio = 0.85,
+                                 float Rlobe = 1.0,
+                                 float TTlobe = 1.0,
+                                 float TRTlobe = 1.0,
 
                                  output closure color BSDF = 0)
 {
@@ -88,5 +94,27 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
     sigma = sigma_from_concentration(0.0, 0.8054375);
   }
 
-  BSDF = principled_hair(Normal, sigma, roughness, radial_roughness, m0_roughness, Offset, IOR);
+  int distribution_type_enum = (distribution_type == "GGX") ? 0 : 1;
+
+  normal major_axis = Normal;
+  if (model == "Far-field Model" && AspectRatio != 1.0) {
+    getattribute("geom:N", major_axis);
+  }
+
+  if (model == "Far-field Model") {
+
+    BSDF = microfacet_hair(major_axis,
+                           sigma,
+                           roughness,
+                           Offset,
+                           IOR,
+                           distribution_type_enum,
+                           AspectRatio,
+                           Rlobe,
+                           TTlobe,
+                           TRTlobe);
+  }
+  else {
+    BSDF = principled_hair(Normal, sigma, roughness, radial_roughness, m0_roughness, Offset, IOR);
+  }
 }

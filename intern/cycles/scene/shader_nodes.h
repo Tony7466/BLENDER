@@ -855,40 +855,6 @@ class PrincipledHairBsdfNode : public BsdfBaseNode {
   /* Absorption coefficient (unfiltered). */
   NODE_SOCKET_API(float3, absorption_coefficient)
 
-  NODE_SOCKET_API(float3, normal)
-  NODE_SOCKET_API(float, surface_mix_weight)
-  /* If linked, here will be the given random number. */
-  NODE_SOCKET_API(float, random)
-  /* Selected coloring parametrization. */
-  NODE_SOCKET_API(NodeHairParametrization, parametrization)
-};
-
-/* Interface between the I/O sockets and the SVM/OSL backend. */
-class MicrofacetHairBsdfNode : public BsdfBaseNode {
- public:
-  SHADER_NODE_CLASS(MicrofacetHairBsdfNode)
-  void attributes(Shader *shader, AttributeRequestSet *attributes);
-
-  /* Roughness. */
-  NODE_SOCKET_API(float, roughness)
-  /* Randomization factor for roughnesses. */
-  NODE_SOCKET_API(float, random_roughness)
-  /* Index of reflection. */
-  NODE_SOCKET_API(float, ior)
-  /* Cuticle tilt angle. */
-  NODE_SOCKET_API(float, offset)
-  /* Direct coloring's color. */
-  NODE_SOCKET_API(float3, color)
-  /* Melanin concentration. */
-  NODE_SOCKET_API(float, melanin)
-  /* Melanin redness ratio. */
-  NODE_SOCKET_API(float, melanin_redness)
-  /* Dye color. */
-  NODE_SOCKET_API(float3, tint)
-  /* Randomization factor for melanin quantities. */
-  NODE_SOCKET_API(float, random_color)
-  /* Absorption coefficient (unfiltered). */
-  NODE_SOCKET_API(float3, absorption_coefficient)
   /* Aspect Ratio. */
   NODE_SOCKET_API(float, aspect_ratio)
 
@@ -897,12 +863,16 @@ class MicrofacetHairBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, TT)
   NODE_SOCKET_API(float, TRT)
 
+  /* Weight for mix shader. */
+  NODE_SOCKET_API(float, surface_mix_weight)
   /* If linked, here will be the given random number. */
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */
-  NODE_SOCKET_API(NodeHairParametrization, parametrization)
+  NODE_SOCKET_API(NodePrincipledHairParametrization, parametrization)
   /* Selected microfacet distribution type. */
-  NODE_SOCKET_API(NodeMicrofacetHairDistributionType, distribution_type)
+  NODE_SOCKET_API(NodePrincipledHairDistributionType, distribution_type)
+  /* Selected scattering model (near-/far-field). */
+  NODE_SOCKET_API(NodePrincipledHairModel, model)
 };
 
 class HairBsdfNode : public BsdfNode {

@@ -914,12 +914,13 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 
   /* Evaluate. */
   Spectrum eval;
-  if (bsdf->distribution_type == NODE_MICROFACET_HAIR_BECKMANN) {
+  if (bsdf->distribution_type == NODE_PRINCIPLED_HAIR_BECKMANN) {
     eval = bsdf_microfacet_hair_eval_r<MicrofacetType::BECKMANN>(kg, sc, local_I, local_O) +
            bsdf_microfacet_hair_eval_residual<MicrofacetType::BECKMANN>(
                kg, sc, local_I, local_O, sd->lcg_state);
   }
   else {
+    kernel_assert(bsdf->distribution_type == NODE_PRINCIPLED_HAIR_GGX);
     eval = bsdf_microfacet_hair_eval_r<MicrofacetType::GGX>(kg, sc, local_I, local_O) +
            bsdf_microfacet_hair_eval_residual<MicrofacetType::GGX>(
                kg, sc, local_I, local_O, sd->lcg_state);
@@ -943,10 +944,11 @@ ccl_device int bsdf_microfacet_hair_sample(KernelGlobals kg,
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
-  if (bsdf->distribution_type == NODE_MICROFACET_HAIR_BECKMANN) {
+  if (bsdf->distribution_type == NODE_PRINCIPLED_HAIR_BECKMANN) {
     return bsdf_microfacet_hair_sample<MicrofacetType::BECKMANN>(
         kg, sc, sd, rand, eval, wo, pdf, sampled_roughness, eta);
   }
+  kernel_assert(bsdf->distribution_type == NODE_PRINCIPLED_HAIR_GGX);
   return bsdf_microfacet_hair_sample<MicrofacetType::GGX>(
       kg, sc, sd, rand, eval, wo, pdf, sampled_roughness, eta);
 }

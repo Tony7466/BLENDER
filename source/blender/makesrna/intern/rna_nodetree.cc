@@ -4542,7 +4542,24 @@ static const EnumPropertyItem node_hair_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_principled_hair_items[] = {
+static const EnumPropertyItem node_principled_hair_model_items[] = {
+    {SHD_PRINCIPLED_HAIR_CHIANG,
+     "HAIR_PRINCIPLED_CHIANG",
+     0,
+     "Near-field Model",
+     "Hair scattering model by Chiang et. al 2016, suitable for close-up looks, but is in general "
+     "more noisy."},
+    {SHD_PRINCIPLED_HAIR_HUANG,
+     "HAIR_PRINCIPLED_HUANG",
+     0,
+     "Far-field Model",
+     "Microfacet-based hair scattering model by Huang et. al 2022, suitable for viewing from a "
+     "distance, supports elliptical cross-sections and has preciser highlight in forward "
+     "scattering direction."},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem node_principled_hair_parametrization_items[] = {
     {SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION,
      "ABSORPTION",
      0,
@@ -4553,8 +4570,8 @@ static const EnumPropertyItem node_principled_hair_items[] = {
      "MELANIN",
      0,
      "Melanin Concentration",
-     "Define the melanin concentrations below to get the most realistic-looking hair "
-     "(you can get the concentrations for different types of hair online)"},
+     "Define the melanin concentrations below to get the most realistic-looking hair (you can get "
+     "the concentrations for different types of hair online)"},
     {SHD_PRINCIPLED_HAIR_REFLECTANCE,
      "COLOR",
      0,
@@ -4564,40 +4581,18 @@ static const EnumPropertyItem node_principled_hair_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_microfacet_hair_parametrization_items[] = {
-    {SHD_MICROFACET_HAIR_DIRECT_ABSORPTION,
-     "ABSORPTION",
-     0,
-     "Absorption Coefficient",
-     "Directly set the absorption coefficient \"sigma_a\" (this is not the most intuitive way to "
-     "color hair)"},
-    {SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION,
-     "MELANIN",
-     0,
-     "Melanin Concentration",
-     "Define the melanin concentrations below to get the most realistic-looking hair "
-     "(you can get the concentrations for different types of hair online)"},
-    {SHD_MICROFACET_HAIR_REFLECTANCE,
-     "COLOR",
-     0,
-     "Direct Coloring",
-     "Choose the color of your preference, and the shader will approximate the absorption "
-     "coefficient to render lookalike hair"},
-    {0, NULL, 0, NULL, NULL},
-};
-
-static const EnumPropertyItem node_microfacet_hair_distribution_items[] = {
-    {SHD_MICROFACET_HAIR_GGX,
-     "HAIR_MICROFACET_GGX",
+static const EnumPropertyItem node_principled_hair_distribution_items[] = {
+    {SHD_PRINCIPLED_HAIR_GGX,
+     "HAIR_PRINCIPLED_GGX",
      0,
      "GGX",
      "Microfacet-based hair scattering model with GGX distribution"},
-    {SHD_MICROFACET_HAIR_BECKMANN,
-     "HAIR_MICROFACET_BECKMANN",
+    {SHD_PRINCIPLED_HAIR_BECKMANN,
+     "HAIR_PRINCIPLED_BECKMANN",
      0,
      "Beckmann",
      "Microfacet-based hair scattering model with Beckmann distribution"},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem node_script_mode_items[] = {
@@ -6104,41 +6099,36 @@ static void def_hair(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-/* RNA initialization for the custom property. */
+/* RNA initialization for the custom properties. */
 static void def_hair_principled(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  prop = RNA_def_property(srna, "parametrization", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_ui_text(
-      prop, "Color Parametrization", "Select the shader's color parametrization");
-  RNA_def_property_enum_items(prop, node_principled_hair_items);
-  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_REFLECTANCE);
+  RNA_def_struct_sdna_from(srna, "NodeShaderHairPrincipled", "storage");
+
+  prop = RNA_def_property(srna, "model", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "model");
+  RNA_def_property_ui_text(prop, "Scattering model", "Select from near- or far-field model");
+  RNA_def_property_enum_items(prop, node_principled_hair_model_items);
+  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_HUANG);
   /* Upon editing, update both the node data AND the UI representation */
   /* (This effectively shows/hides the relevant sockets) */
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
-}
-
-/* RNA initialization for the custom property. */
-static void def_hair_microfacet(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeShaderHairMicrofacet", "storage");
 
   prop = RNA_def_property(srna, "parametrization", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "parametrization");
+  RNA_def_property_enum_sdna(prop, nullptr, "parametrization");
   RNA_def_property_ui_text(
       prop, "Color Parametrization", "Select the shader's color parametrization");
-  RNA_def_property_enum_items(prop, node_microfacet_hair_parametrization_items);
+  RNA_def_property_enum_items(prop, node_principled_hair_parametrization_items);
+  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_REFLECTANCE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "distribution_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "distribution");
+  RNA_def_property_enum_sdna(prop, nullptr, "distribution");
   RNA_def_property_ui_text(
       prop, "Microfacet Distribution", "Select the microfacet distribution of the hair surface");
-  RNA_def_property_enum_items(prop, node_microfacet_hair_distribution_items);
+  RNA_def_property_enum_items(prop, node_principled_hair_distribution_items);
+  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_GGX);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 

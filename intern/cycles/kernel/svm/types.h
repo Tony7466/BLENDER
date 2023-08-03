@@ -389,18 +389,24 @@ typedef enum ShaderType {
   SHADER_TYPE_BUMP,
 } ShaderType;
 
-typedef enum NodeHairParametrization {
-  NODE_HAIR_REFLECTANCE = 0,
-  NODE_HAIR_PIGMENT_CONCENTRATION = 1,
-  NODE_HAIR_DIRECT_ABSORPTION = 2,
-  NODE_HAIR_NUM,
-} NodeHairParametrization;
+typedef enum NodePrincipledHairModel {
+  NODE_PRINCIPLED_HAIR_CHIANG = 0,
+  NODE_PRINCIPLED_HAIR_HUANG = 1,
+  NODE_PRINCIPLED_HAIR_MODEL_NUM,
+} NodePrincipledHairModel;
 
-typedef enum NodeMicrofacetHairDistributionType {
-  NODE_MICROFACET_HAIR_GGX = 0,
-  NODE_MICROFACET_HAIR_BECKMANN = 1,
-  NODE_MICROFACET_HAIR_DISTRIBUTION_TYPE_NUM,
-} NodeMicrofacetHairDistributionType;
+typedef enum NodePrincipledHairParametrization {
+  NODE_PRINCIPLED_HAIR_REFLECTANCE = 0,
+  NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
+  NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION = 2,
+  NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
+} NodePrincipledHairParametrization;
+
+typedef enum NodePrincipledHairDistributionType {
+  NODE_PRINCIPLED_HAIR_GGX = 0,
+  NODE_PRINCIPLED_HAIR_BECKMANN = 1,
+  NODE_PRINCIPLED_HAIR_DISTRIBUTION_TYPE_NUM,
+} NodePrincipledHairDistributionType;
 
 typedef enum NodeCombSepColorType {
   NODE_COMBSEP_COLOR_RGB,

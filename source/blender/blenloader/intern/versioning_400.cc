@@ -340,6 +340,22 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
   }
 }
 
+/* Replace old Principled Hair BSDF as a variant in the new Principled Hair BSDF. */
+static void version_replace_principled_hair_model(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_HAIR_PRINCIPLED) {
+      continue;
+    }
+    NodeShaderHairPrincipled *data = MEM_cnew<NodeShaderHairPrincipled>(__func__);
+    data->model = SHD_PRINCIPLED_HAIR_CHIANG;
+    data->parametrization = node->custom1;
+    data->distribution = SHD_PRINCIPLED_HAIR_GGX;
+
+    node->storage = data;
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -532,6 +548,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
+    if (!DNA_struct_find(fd->filesdna, "NodeShaderHairPrincipled")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          version_replace_principled_hair_model(ntree);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
     /* Keep this block, even when empty. */
   }
 }

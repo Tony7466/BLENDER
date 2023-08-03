@@ -624,22 +624,21 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfHairPrincipled)) {
     BL::ShaderNodeBsdfHairPrincipled b_principled_hair_node(b_node);
     PrincipledHairBsdfNode *principled_hair = graph->create_node<PrincipledHairBsdfNode>();
-    principled_hair->set_parametrization((NodeHairParametrization)get_enum(
-        b_principled_hair_node.ptr, "parametrization", NODE_HAIR_NUM, NODE_HAIR_REFLECTANCE));
-    node = principled_hair;
-  }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfHairMicrofacet)) {
-    BL::ShaderNodeBsdfHairMicrofacet b_microfacet_hair_node(b_node);
-    MicrofacetHairBsdfNode *microfacet_hair = graph->create_node<MicrofacetHairBsdfNode>();
-    microfacet_hair->set_parametrization((NodeHairParametrization)get_enum(
-        b_microfacet_hair_node.ptr, "parametrization", NODE_HAIR_NUM, NODE_HAIR_REFLECTANCE));
-
-    microfacet_hair->set_distribution_type(
-        (NodeMicrofacetHairDistributionType)get_enum(b_microfacet_hair_node.ptr,
+    principled_hair->set_model((NodePrincipledHairModel)get_enum(b_principled_hair_node.ptr,
+                                                                 "model",
+                                                                 NODE_PRINCIPLED_HAIR_MODEL_NUM,
+                                                                 NODE_PRINCIPLED_HAIR_HUANG));
+    principled_hair->set_parametrization(
+        (NodePrincipledHairParametrization)get_enum(b_principled_hair_node.ptr,
+                                                    "parametrization",
+                                                    NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
+                                                    NODE_PRINCIPLED_HAIR_REFLECTANCE));
+    principled_hair->set_distribution_type(
+        (NodePrincipledHairDistributionType)get_enum(b_principled_hair_node.ptr,
                                                      "distribution_type",
-                                                     NODE_MICROFACET_HAIR_DISTRIBUTION_TYPE_NUM,
-                                                     NODE_MICROFACET_HAIR_GGX));
-    node = microfacet_hair;
+                                                     NODE_PRINCIPLED_HAIR_DISTRIBUTION_TYPE_NUM,
+                                                     NODE_PRINCIPLED_HAIR_GGX));
+    node = principled_hair;
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfPrincipled)) {
     BL::ShaderNodeBsdfPrincipled b_principled_node(b_node);

@@ -1279,12 +1279,12 @@ typedef struct NodeShaderPrincipled {
   char _pad[3];
 } NodeShaderPrincipled;
 
-typedef struct NodeShaderHairMicrofacet {
+typedef struct NodeShaderHairPrincipled {
+  short model;
   short parametrization;
   short cross_section;
   short distribution;
-  char _pad[2];
-} NodeShaderHairMicrofacet;
+} NodeShaderHairPrincipled;
 
 /** TEX_output. */
 typedef struct TexNodeOutput {
@@ -1917,21 +1917,24 @@ enum {
   SHD_HAIR_TRANSMISSION = 1,
 };
 
-/* principled hair parametrization */
+/* principled hair models */
+enum {
+  SHD_PRINCIPLED_HAIR_CHIANG = 0,
+  SHD_PRINCIPLED_HAIR_HUANG = 1,
+};
+
+/* principled hair color parametrization */
 enum {
   SHD_PRINCIPLED_HAIR_REFLECTANCE = 0,
   SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
   SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION = 2,
 };
 
-/* microfacet hair parametrization */
-#define SHD_MICROFACET_HAIR_REFLECTANCE 0
-#define SHD_MICROFACET_HAIR_PIGMENT_CONCENTRATION 1
-#define SHD_MICROFACET_HAIR_DIRECT_ABSORPTION 2
-
-/* microfacet hair distribution */
-#define SHD_MICROFACET_HAIR_GGX 0
-#define SHD_MICROFACET_HAIR_BECKMANN 1
+/* principled hair microfacet distribution */
+enum {
+  SHD_PRINCIPLED_HAIR_GGX = 0,
+  SHD_PRINCIPLED_HAIR_BECKMANN = 1,
+};
 
 /* blend texture */
 enum {

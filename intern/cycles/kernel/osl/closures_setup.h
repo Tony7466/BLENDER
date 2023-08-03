@@ -913,9 +913,9 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
   bsdf->aspect_ratio = closure->aspect_ratio;
 
   bsdf->extra = extra;
-  bsdf->extra->R = closure->reflection;
-  bsdf->extra->TT = closure->transmission;
-  bsdf->extra->TRT = closure->secondary_reflection;
+  bsdf->extra->R = closure->r_lobe;
+  bsdf->extra->TT = closure->tt_lobe;
+  bsdf->extra->TRT = closure->trt_lobe;
 
   sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
 #endif

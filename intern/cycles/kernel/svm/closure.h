@@ -617,12 +617,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       Spectrum sigma;
       switch (parametrization) {
-        case NODE_HAIR_DIRECT_ABSORPTION: {
+        case NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION: {
           float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
           sigma = rgb_to_spectrum(absorption_coefficient);
           break;
         }
-        case NODE_HAIR_PIGMENT_CONCENTRATION: {
+        case NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION: {
           float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
           float melanin_redness = stack_load_float_default(
               stack, melanin_redness_ofs, data_node2.w);
@@ -649,7 +649,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sigma = melanin_sigma + tint_sigma;
           break;
         }
-        case NODE_HAIR_REFLECTANCE: {
+        case NODE_PRINCIPLED_HAIR_REFLECTANCE: {
           float3 color = stack_load_float3(stack, color_ofs);
           sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(color), radial_roughness);
           break;
@@ -690,6 +690,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
       else {
+        kernel_assert(type == CLOSURE_BSDF_HAIR_MICROFACET_ID);
         ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
             sd, sizeof(MicrofacetHairBSDF), weight);
         if (bsdf) {
