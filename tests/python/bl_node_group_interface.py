@@ -114,6 +114,66 @@ class NodeGroupInterfaceTests:
         if compare_value:
             compare_value(self, in0.default_value, group_node.inputs[0].default_value)
 
+    # Classic outputs..inputs socket layout
+    def do_test_items_order_classic(self, socket_type):
+        tree, group_node = self.make_group_and_instance()
+
+        tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
+        tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+
+        self.assertSequenceEqual([(s.name, s.item_type) for s in tree.interface.ui_items], [
+            ("Output 0", 'SOCKET'),
+            ("Input 0", 'SOCKET'),
+            ])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], [
+            "Input 0",
+            ])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], [
+            "Output 0",
+            ])
+        # XXX currently no panel state access on node instances.
+        # self.assertFalse(group_node.panels)
+
+    # Mixed sockets and panels
+    def do_test_items_order_mixed_with_panels(self, socket_type):
+        tree, group_node = self.make_group_and_instance()
+
+        tree.interface.new_panel("Panel 0")
+        tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+        tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
+        tree.interface.new_panel("Panel 1")
+        tree.interface.new_socket("Input 1", socket_type=socket_type, is_input=True)
+        tree.interface.new_panel("Panel 2")
+        tree.interface.new_socket("Output 1", socket_type=socket_type, is_output=True)
+        tree.interface.new_panel("Panel 3")
+
+        self.assertSequenceEqual([(s.name, s.item_type) for s in tree.interface.ui_items], [
+            ("Panel 0", 'PANEL'),
+            ("Input 0", 'SOCKET'),
+            ("Output 0", 'SOCKET'),
+            ("Panel 1", 'PANEL'),
+            ("Input 1", 'SOCKET'),
+            ("Panel 2", 'PANEL'),
+            ("Output 1", 'SOCKET'),
+            ("Panel 3", 'PANEL'),
+            ])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], [
+            "Input 0",
+            "Input 1",
+            ])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], [
+            "Output 0",
+            "Output 1",
+            ])
+        # XXX currently no panel state access on node instances.
+        # self.assertSequenceEqual([p.name for p in group_node.panels], [
+        #     "Panel 0",
+        #     "Panel 1",
+        #     "Panel 2",
+        #     "Panel 3",
+        #     ])
+
+
 
 class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
     tree_type = "GeometryNodeTree"
@@ -143,6 +203,12 @@ class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupIn
         self.do_test_socket_type("NodeSocketTexture", compare_value=cmp_default)
         self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
         self.do_test_invalid_socket_type("NodeSocketVirtual")
+
+    def test_items_order_classic(self):
+        self.do_test_items_order_classic("NodeSocketFloat")
+
+    def test_items_order_mixed_with_panels(self):
+        self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
 
 class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
     tree_type = "ShaderNodeTree"
@@ -177,6 +243,12 @@ class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInte
         self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
         self.do_test_invalid_socket_type("NodeSocketVirtual")
 
+    def test_items_order_classic(self):
+        self.do_test_items_order_classic("NodeSocketFloat")
+
+    def test_items_order_mixed_with_panels(self):
+        self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
+
 
 class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
     tree_type = "CompositorNodeTree"
@@ -210,6 +282,12 @@ class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroup
         self.do_test_invalid_socket_type("NodeSocketTexture")
         self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
         self.do_test_invalid_socket_type("NodeSocketVirtual")
+
+    def test_items_order_classic(self):
+        self.do_test_items_order_classic("NodeSocketFloat")
+
+    def test_items_order_mixed_with_panels(self):
+        self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
 
 
 def main():
