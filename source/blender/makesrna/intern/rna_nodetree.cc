@@ -2141,13 +2141,13 @@ static void geometry_node_asset_trait_flag_set(PointerRNA *ptr,
   SET_FLAG_FROM_TEST(ntree->geometry_node_asset_traits->flag, value, flag);
 }
 
-static bool rna_GeometryNodeTree_is_operator_get(PointerRNA *ptr)
+static bool rna_GeometryNodeTree_is_tool_get(PointerRNA *ptr)
 {
-  return geometry_node_asset_trait_flag_get(ptr, GEO_NODE_ASSET_OPERATOR);
+  return geometry_node_asset_trait_flag_get(ptr, GEO_NODE_ASSET_TOOL);
 }
-static void rna_GeometryNodeTree_is_operator_set(PointerRNA *ptr, bool value)
+static void rna_GeometryNodeTree_is_tool_set(PointerRNA *ptr, bool value)
 {
-  geometry_node_asset_trait_flag_set(ptr, GEO_NODE_ASSET_OPERATOR, value);
+  geometry_node_asset_trait_flag_set(ptr, GEO_NODE_ASSET_TOOL, value);
 }
 
 static bool rna_GeometryNodeTree_is_mode_edit_get(PointerRNA *ptr)
@@ -12399,12 +12399,12 @@ static void rna_def_geometry_nodetree(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "bNodeTree");
   RNA_def_struct_ui_icon(srna, ICON_NODETREE);
 
-  prop = RNA_def_property(srna, "is_operator", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_ASSET_OPERATOR);
+  prop = RNA_def_property(srna, "is_tool", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_ASSET_TOOL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Operator", "The node group is used as an operator");
+  RNA_def_property_ui_text(prop, "Tool", "The node group is used as a tool");
   RNA_def_property_boolean_funcs(
-      prop, "rna_GeometryNodeTree_is_operator_get", "rna_GeometryNodeTree_is_operator_set");
+      prop, "rna_GeometryNodeTree_is_tool_get", "rna_GeometryNodeTree_is_tool_set");
 
   prop = RNA_def_property(srna, "is_mode_edit", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_ASSET_EDIT);

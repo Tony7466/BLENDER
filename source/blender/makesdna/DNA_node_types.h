@@ -874,7 +874,7 @@ typedef struct GeometryNodeAssetTraits {
 } GeometryNodeAssetTraits;
 
 typedef enum GeometryNodeAssetTraitFlag {
-  GEO_NODE_ASSET_OPERATOR = (1 << 0),
+  GEO_NODE_ASSET_TOOL = (1 << 0),
   GEO_NODE_ASSET_EDIT = (1 << 1),
   GEO_NODE_ASSET_SCULPT = (1 << 2),
   GEO_NODE_ASSET_MESH = (1 << 3),

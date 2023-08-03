@@ -163,7 +163,7 @@ class NODE_HT_header(Header):
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
             else:
-                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_operator")
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -446,13 +446,13 @@ class NODE_PT_geometry_node_asset_traits(Panel):
         group = snode.node_tree
 
         col = layout.column(heading="Type")
-        col.prop(group, "is_operator")
+        col.prop(group, "is_tool")
         col = layout.column(heading="Mode")
-        col.active = group.is_operator
+        col.active = group.is_tool
         col.prop(group, "is_mode_edit")
         col.prop(group, "is_mode_sculpt")
         col = layout.column(heading="Geometry")
-        col.active = group.is_operator
+        col.active = group.is_tool
         col.prop(group, "is_type_mesh")
         col.prop(group, "is_type_curve")
         if context.preferences.experimental.use_new_point_cloud_type:

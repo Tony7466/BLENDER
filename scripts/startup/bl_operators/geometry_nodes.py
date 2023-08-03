@@ -258,15 +258,15 @@ class NewGeometryNodeTreeAssign(Operator):
         return {'FINISHED'}
 
 
-class NewGeometryNodeGroupOperator(Operator):
-    """Create a new geometry node group for an operator"""
-    bl_idname = "node.new_geometry_node_group_operator"
-    bl_label = "New Geometry Node Operator Group"
+class NewGeometryNodeGroupTool(Operator):
+    """Create a new geometry node group for an tool"""
+    bl_idname = "node.new_geometry_node_group_tool"
+    bl_label = "New Geometry Node Tool Group"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'NODE_EDITOR' and context.space_data.geometry_nodes_type == 'OPERATOR'
+        return context.space_data.type == 'NODE_EDITOR' and context.space_data.geometry_nodes_type == 'TOOL'
 
     def execute(self, context):
         group = geometry_node_group_empty_new()
@@ -476,7 +476,7 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, Operator):
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
-    NewGeometryNodeGroupOperator,
+    NewGeometryNodeGroupTool,
     MoveModifierToNodes,
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,
