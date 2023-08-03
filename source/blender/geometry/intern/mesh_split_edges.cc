@@ -317,18 +317,27 @@ static OrderedEdge edge_from_corner(const OffsetIndices<int> faces,
   return OrderedEdge(corner_verts[corner], corner_verts[corner_next]);
 }
 
+static int add_edge_or_find_index(Vector<OrderedEdge> &vector, const OrderedEdge value)
+{
+  const int index = vector.first_index_of_try(value);
+  if (UNLIKELY(index != -1)) {
+    return index;
+  }
+  return vector.append_and_get_index(value);
+}
+
 /**
  * Based on updated corner vertex indices, update the edges in each face. This includes updating
  * corner edge indices, adding new edges, and reusing original edges for the first "split" edge.
  */
-static Array<OrderedEdge> calc_new_edges(const OffsetIndices<int> faces,
-                                         const Span<int> corner_verts,
-                                         const GroupedSpan<int> edge_to_corner_map,
-                                         const Span<int> corner_to_face_map,
-                                         const IndexMask &selected_edges,
-                                         MutableSpan<int2> edges,
-                                         MutableSpan<int> corner_edges,
-                                         MutableSpan<int> r_new_edge_offsets)
+static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
+                                  const Span<int> corner_verts,
+                                  const GroupedSpan<int> edge_to_corner_map,
+                                  const Span<int> corner_to_face_map,
+                                  const IndexMask &selected_edges,
+                                  MutableSpan<int2> edges,
+                                  MutableSpan<int> corner_edges,
+                                  MutableSpan<int> r_new_edge_offsets)
 {
   int no_merge_count = 0;
   Array<int> offset_no_merge(selected_edges.size() + 1);
@@ -346,35 +355,31 @@ static Array<OrderedEdge> calc_new_edges(const OffsetIndices<int> faces,
       return;
     }
 
-    /* Reuse the existing edge to contain the first "new" edge. */
-    edges[edge] = edge_from_corner(faces, corner_verts, corner_to_face_map, edge_corners.first());
-    corner_edges[edge_corners.first()] *= -1;
-
-    int new_count = 0;
-    for (const int corner : edge_to_corner_map[edge].drop_front(1)) {
+    Vector<OrderedEdge> deduplication;
+    for (const int corner : edge_corners) {
       const OrderedEdge new_edge = edge_from_corner(
           faces, corner_verts, corner_to_face_map, corner);
-      if (UNLIKELY(new_edge == edges[edge])) {
+      const int index = add_edge_or_find_index(deduplication, new_edge);
+      if (index == 0) {
         corner_edges[corner] *= -1;
-        continue;
       }
-      const Span<int2> prev_edges = no_merge_new_edges.as_span().slice(offset_no_merge[mask],
-                                                                       new_count);
-      if (UNLIKELY(prev_edges.contains(new_edge))) {
-        corner_edges[corner] = prev_edges.first_index(new_edge);
-        continue;
+      else {
+        corner_edges[corner] = index - 1;
       }
-      no_merge_new_edges[offset_no_merge[mask] + new_count] = new_edge;
-      corner_edges[corner] = new_count;
-      new_count++;
     }
 
-    r_new_edge_offsets[mask] = new_count;
+    // TODO: Need to update neighboring unselected edges too.
+    edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
+
+    const Span<int2> new_edges = deduplication.as_span().drop_front(1).cast<int2>();
+    const int dst_offset = offset_no_merge[mask];
+    uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
+    r_new_edge_offsets[mask] = new_edges.size();
   });
 
   const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(r_new_edge_offsets);
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
-    const int new_edge_offset = offsets[mask].start();
+    const int new_edge_offset = offsets[mask].start() + edges.size();
     const Span<int> edge_corners = edge_to_corner_map[edge];
     for (const int i : edge_corners.index_range()) {
       const int corner = edge_corners[i];
@@ -386,6 +391,7 @@ static Array<OrderedEdge> calc_new_edges(const OffsetIndices<int> faces,
         corner_edges[corner] += new_edge_offset;
       }
     }
+    std::cout << ' ';
   });
 
   if (offsets.total_size() == no_merge_new_edges.size()) {
