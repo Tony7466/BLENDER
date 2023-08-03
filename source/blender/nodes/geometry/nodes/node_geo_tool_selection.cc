@@ -6,7 +6,7 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_operator_selection_cc {
+namespace blender::nodes::node_geo_tool_selection_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -50,22 +50,22 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  if (!check_operator_context_and_error(params)) {
+  if (!check_tool_context_and_error(params)) {
     return;
   }
   params.set_output("Selection", Field<bool>(std::make_shared<ToolSelectionFieldInput>()));
 }
 
-}  // namespace blender::nodes::node_geo_operator_selection_cc
+}  // namespace blender::nodes::node_geo_tool_selection_cc
 
-void register_node_type_geo_operator_selection()
+void register_node_type_geo_tool_selection()
 {
-  namespace file_ns = blender::nodes::node_geo_operator_selection_cc;
+  namespace file_ns = blender::nodes::node_geo_tool_selection_cc;
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_TOOL_SELECTION, "Selection", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_operator_node;
-  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_operator_node;
+  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_tool_node;
+  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_tool_node;
   nodeRegisterType(&ntype);
 }

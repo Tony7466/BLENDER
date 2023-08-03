@@ -127,11 +127,6 @@ void register_geometry_nodes()
   register_node_type_geo_object_info();
   register_node_type_geo_offset_point_in_curve();
   register_node_type_geo_offset_sdf_volume();
-  register_node_type_geo_operator_3d_cursor();
-  register_node_type_geo_operator_face_set();
-  register_node_type_geo_operator_selection();
-  register_node_type_geo_operator_set_face_set();
-  register_node_type_geo_operator_set_selection();
   register_node_type_geo_points_to_vertices();
   register_node_type_geo_points_to_sdf_volume();
   register_node_type_geo_points_to_volume();
@@ -173,6 +168,11 @@ void register_geometry_nodes()
   register_node_type_geo_string_to_curves();
   register_node_type_geo_subdivision_surface();
   register_node_type_geo_switch();
+  register_node_type_geo_tool_3d_cursor();
+  register_node_type_geo_tool_face_set();
+  register_node_type_geo_tool_selection();
+  register_node_type_geo_tool_set_face_set();
+  register_node_type_geo_tool_set_selection();
   register_node_type_geo_transform_geometry();
   register_node_type_geo_translate_instances();
   register_node_type_geo_triangulate();

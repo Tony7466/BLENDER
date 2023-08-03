@@ -8,7 +8,7 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_operator_3d_cursor_cc {
+namespace blender::nodes::node_geo_tool_3d_cursor_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -24,7 +24,7 @@ static void node_update(bNodeTree *tree, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  if (!check_operator_context_and_error(params)) {
+  if (!check_tool_context_and_error(params)) {
     return;
   }
   const float4x4 world_to_object(params.user_data()->operator_data->self_object->world_to_object);
@@ -35,17 +35,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Rotation", math::to_quaternion(world_to_object) * rotation_global);
 }
 
-}  // namespace blender::nodes::node_geo_operator_3d_cursor_cc
+}  // namespace blender::nodes::node_geo_tool_3d_cursor_cc
 
-void register_node_type_geo_operator_3d_cursor()
+void register_node_type_geo_tool_3d_cursor()
 {
-  namespace file_ns = blender::nodes::node_geo_operator_3d_cursor_cc;
+  namespace file_ns = blender::nodes::node_geo_tool_3d_cursor_cc;
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_TOOL_3D_CURSOR, "3D Cursor", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.updatefunc = file_ns::node_update;
-  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_operator_node;
-  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_operator_node;
+  ntype.gather_add_node_search_ops = blender::nodes::search_link_ops_for_for_tool_node;
+  ntype.gather_link_search_ops = blender::nodes::search_link_ops_for_tool_node;
   nodeRegisterType(&ntype);
 }
