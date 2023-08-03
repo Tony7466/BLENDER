@@ -58,7 +58,7 @@
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_movieclip.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -2894,7 +2894,7 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
       Object workob;
-      bPose pose = {{0}};
+      bPose pose = {{nullptr}};
       bPoseChannel *pchan, *tchan;
 
       /* make a copy of the bone of interest in the temp pose before evaluating action,
