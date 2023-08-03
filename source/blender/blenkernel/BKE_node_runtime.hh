@@ -128,10 +128,16 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   /**
    * The result at each point of the node tree might have changed.
    * No need to check `any_node_dirtystate` if this one has changed.
+   * This DirtyState is only used for shader node previews, and some modifications might be needed
+   * to adapt for other cases.
    */
   DirtyState whole_tree_dirtystate;
 
-  /** A node has changed. It can be topology/socket/preview modification. */
+  /**
+   * A node has changed. It can be topology/socket/preview modification.
+   * This DirtyState is only used for shader node previews, and some modifications might be needed
+   * to adapt for other cases.
+   */
   DirtyState any_node_dirtystate;
 
   /**
@@ -304,6 +310,8 @@ class bNodeRuntime : NonCopyable, NonMovable {
    * The function behind this node has changed.
    * This dirty state might not be changed if the whole nodetree is dirty, so a check of the dirty
    * state of the nodetree should also be done.
+   * This DirtyState is only used for shader node previews, and some modifications might be needed
+   * to adapt for other cases.
    */
   DirtyState dirtystate;
 

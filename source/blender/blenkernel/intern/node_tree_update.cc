@@ -50,8 +50,9 @@ enum eNodeTreeChangedFlag {
   NTREE_CHANGED_REMOVED_NODE = (1 << 6),
   NTREE_CHANGED_REMOVED_SOCKET = (1 << 7),
   NTREE_CHANGED_SOCKET_PROPERTY = (1 << 8),
-  NTREE_CHANGED_INTERNAL_LINK = (1 << 9),
-  NTREE_CHANGED_PARENT = (1 << 10),
+  NTREE_CHANGED_SOCKET_LINK = (1 << 9),
+  NTREE_CHANGED_INTERNAL_LINK = (1 << 10),
+  NTREE_CHANGED_PARENT = (1 << 11),
   NTREE_CHANGED_ALL = -1,
 };
 
@@ -338,7 +339,7 @@ class NodeTreeMainUpdater {
         if (result.output_changed) {
           for (const TreeNodePair &pair : dependent_trees) {
             add_node_tag(pair.first, pair.second, NTREE_CHANGED_NODE_OUTPUT);
-            make_nodes_dirty(*pair.first, Span<bNode *>(&pair.second, 1));
+            nodes_preview_mark_dirty(*pair.first, Span<bNode *>(&pair.second, 1));
           }
         }
         if (result.interface_changed) {
@@ -503,7 +504,7 @@ class NodeTreeMainUpdater {
     {
       result.interface_changed = true;
     }
-    this->update_nodetree_dirty_state(ntree);
+    this->update_nodetree_previews_dirty_state(ntree);
 
 #ifdef DEBUG
     /* Check the uniqueness of node identifiers. */
@@ -720,44 +721,73 @@ class NodeTreeMainUpdater {
     blender::bke::node_preview_remove_unused(&ntree);
   }
 
-  void make_nodes_dirty(bNodeTree &ntree, Stack<bNode *> nodes_to_visit)
+  void shader_node_previews_mark_dirty()
   {
+    for (const bNodeTree *ntree : update_result_by_tree_.keys()) {
+      ntree->runtime->any_node_dirtystate.make_dirty();
+      LISTBASE_FOREACH (bNode *, node_iter, &ntree->nodes) {
+        if (node_iter->runtime->outputs.size() > 0 &&
+            node_iter->runtime->outputs[0]->type == SOCK_SHADER) {
+          node_iter->runtime->dirtystate.make_dirty();
+        }
+      }
+    }
+  }
+
+  void nodes_preview_mark_dirty(bNodeTree &ntree, Stack<bNode *> nodes_to_visit)
+  {
+    if (ntree.type != NTREE_SHADER) {
+      /* Those preview dirty states are only used for shader previews. */
+      return;
+    }
     ntree.runtime->any_node_dirtystate.make_dirty();
 
-    /* Avoid visiting the same socket twice when multiple links point to the same socket. */
+    /* Avoid visiting the same node twice. */
     Array<bool> nodes_visited(ntree.all_nodes().size(), false);
 
     while (!nodes_to_visit.is_empty()) {
       bNode *node_iter = nodes_to_visit.pop();
       nodes_visited[node_iter->runtime->index_in_tree] = true;
       node_iter->runtime->dirtystate.make_dirty();
+
       LISTBASE_FOREACH (bNodeSocket *, socket_iter, &node_iter->outputs) {
         for (bNodeSocket *propagation_socket : socket_iter->runtime->directly_linked_sockets) {
           bNode *child_node = propagation_socket->runtime->owner_node;
           if (!nodes_visited[child_node->runtime->index_in_tree]) {
             nodes_to_visit.push(child_node);
           }
+
+          if (child_node->type == SH_NODE_OUTPUT_MATERIAL &&
+              STREQ(propagation_socket->name, "Displacement")) {
+            /* If the displacement changed in the output, then all shader nodes needs to be
+             * redrawn. */
+            shader_node_previews_mark_dirty();
+          }
         }
       }
     }
   }
 
-  void update_nodetree_dirty_state(bNodeTree &ntree)
+  void update_nodetree_previews_dirty_state(bNodeTree &ntree)
   {
+    if (ntree.type != NTREE_SHADER) {
+      /* Those preview dirty states are only used for shader previews. */
+      return;
+    }
     Stack<bNode *> nodes_to_visit;
     LISTBASE_FOREACH (bNode *, node_iter, &ntree.nodes) {
       if (node_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
         nodes_to_visit.push(node_iter);
         continue;
       }
-      LISTBASE_FOREACH(bNodeSocket *, socket_iter, &node_iter->inputs) {
+      LISTBASE_FOREACH (bNodeSocket *, socket_iter, &node_iter->inputs) {
         if (socket_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
           nodes_to_visit.push(node_iter);
           continue;
         }
       }
     }
-    make_nodes_dirty(ntree, nodes_to_visit);
+    nodes_preview_mark_dirty(ntree, nodes_to_visit);
   }
 
   void propagate_runtime_flags(const bNodeTree &ntree)
@@ -1347,12 +1377,14 @@ void BKE_ntree_update_tag_link_removed(bNodeTree *ntree)
 
 void BKE_ntree_update_tag_link_added(bNodeTree *ntree, bNodeLink *link)
 {
-  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_LINK);
+  add_tree_tag(ntree, NTREE_CHANGED_LINK);
+  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_SOCKET_LINK);
 }
 
 void BKE_ntree_update_tag_link_mute(bNodeTree *ntree, bNodeLink *link)
 {
-  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_LINK);
+  add_tree_tag(ntree, NTREE_CHANGED_LINK);
+  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_SOCKET_LINK);
 }
 
 void BKE_ntree_update_tag_active_output_changed(bNodeTree *ntree)
