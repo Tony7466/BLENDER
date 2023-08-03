@@ -96,17 +96,6 @@ static Array<int> reverse_indices_in_small_groups(const OffsetIndices<int> offse
   return results;
 }
 
-static Array<int> gather_reverse(const Span<int> group_indices)
-{
-  SCOPED_TIMER_AVERAGED(__func__);
-
-  Array<int> results(group_indices.size());
-  std::iota(results.begin(), results.end(), 0);
-  const auto comparator = [&](const int a, const int b) { return group_indices[a] < group_indices[b]; };
-  parallel_sort(results.begin(), results.end(), comparator);
-  return results;
-}
-
 static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets, MutableSpan<int> group_indices)
 {
   SCOPED_TIMER_AVERAGED(__func__);
@@ -125,6 +114,24 @@ static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets, Mu
       results[group_indices[index]] = index;
     }
   });
+
+  threading::parallel_for(offsets.index_range(), 256, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      MutableSpan<int> group = results.as_mutable_span().slice(offsets[index]);
+      std::sort(group.begin(), group.end());
+    }
+  });
+  return results;
+}
+
+static Array<int> gather_reverse(const Span<int> group_indices)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  Array<int> results(group_indices.size());
+  std::iota(results.begin(), results.end(), 0);
+  const auto comparator = [&](const int a, const int b) { return group_indices[a] < group_indices[b]; };
+  parallel_sort(results.begin(), results.end(), comparator);
   return results;
 }
 
@@ -246,23 +253,28 @@ static Curves *curves_from_points(const PointCloud *points,
 
   Array<int> src_indices_of_curve_points(group_ids.size());
 
-std::cout << std::endl;
 
   switch (type) {
     case 0:
+      std::cout << 1 << ". ";
       src_indices_of_curve_points = reverse_indices_in_small_groups(curves_offsets, group_ids);
       break;
     case 1:
-      src_indices_of_curve_points = gather_reverse(group_ids);
-      break;
-    case 2:
+      std::cout << 2 << ". ";
       src_indices_of_curve_points = reverse_indices_in_groups(curves_offsets, group_ids);
       break;
+    case 2:
+      std::cout << 3 << ". ";
+      src_indices_of_curve_points = gather_reverse(group_ids);
+      break;
     case 3:
+      std::cout << 4 << ". ";
       src_indices_of_curve_points = reverse_indices_in_groups_simple_sort(curves_offsets, group_ids);
       break;
     case 4:
+      std::cout << 5 << ". ";
       src_indices_of_curve_points = reverse_indices_in_groups_complex_sort(curves_offsets, group_ids);
+      std::cout << std::endl;
       break;
     default:
       std::cout << "WTF?" << std::endl;
