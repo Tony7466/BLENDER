@@ -77,16 +77,16 @@ def main():
 
     from modules import render_report
 
-    name = "Storm Hydra" if export_method == 'HYDRA' else 'Storm USD'
-
-    report = render_report.Report(name, output_dir, idiff)
-    report.set_pixelated(True)
-    report.set_reference_dir("storm_renders")
-
     if export_method == 'HYDRA':
+        report = render_report.Report("Storm Hydra", output_dir, idiff)
+        report.set_reference_dir("storm_hydra_renders")
         report.set_compare_engine('cycles', 'CPU')
     else:
+        report = render_report.Report("Storm USD", output_dir, idiff)
+        report.set_reference_dir("storm_usd_renders")
         report.set_compare_engine('hydra_storm')
+
+    report.set_pixelated(True)
 
     test_dir_name = Path(test_dir).name
 
