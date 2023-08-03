@@ -445,6 +445,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         lightprobe->grid_normal_bias = 0.3f;
         lightprobe->grid_view_bias = 0.0f;
         lightprobe->grid_facing_bias = 0.5f;
+        lightprobe->grid_dilation_threshold = 0.5f;
+        lightprobe->grid_dilation_radius = 1.0f;
       }
     }
 
@@ -458,6 +460,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "World", "int", "probe_resolution")) {
       LISTBASE_FOREACH (World *, world, &bmain->worlds) {
         world->probe_resolution = LIGHT_PROBE_RESOLUTION_1024;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_surface_bias")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        lightprobe->grid_surface_bias = 0.05f;
+        lightprobe->grid_escape_bias = 0.1f;
       }
     }
 
@@ -533,5 +542,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "RaytraceEEVEE", "reflection_options")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.reflection_options.flag = RAYTRACE_EEVEE_USE_DENOISE;
+        scene->eevee.reflection_options.denoise_stages = RAYTRACE_EEVEE_DENOISE_SPATIAL |
+                                                         RAYTRACE_EEVEE_DENOISE_TEMPORAL |
+                                                         RAYTRACE_EEVEE_DENOISE_BILATERAL;
+        scene->eevee.reflection_options.screen_trace_quality = 0.25f;
+        scene->eevee.reflection_options.screen_trace_thickness = 0.2f;
+        scene->eevee.reflection_options.sample_clamp = 10.0f;
+        scene->eevee.reflection_options.resolution_scale = 2;
+
+        scene->eevee.refraction_options = scene->eevee.reflection_options;
+
+        scene->eevee.ray_split_settings = 0;
+        scene->eevee.ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN;
+      }
+    }
   }
 }
