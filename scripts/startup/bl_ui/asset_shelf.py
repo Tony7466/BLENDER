@@ -27,6 +27,19 @@ class ASSETSHELF_PT_display(Panel):
         return context.asset_shelf is not None
 
 
+class Utils:
+    """Class with public utilities."""
+    @staticmethod
+    def has_active_asset_shelf(context):
+        for region in context.area.regions:
+            if region.type != 'ASSET_SHELF':
+                continue
+
+            with context.temp_override(region=region):
+                return hasattr(context, "asset_shelf") and context.asset_shelf is not None
+        return False
+
+
 classes = (
     ASSETSHELF_PT_display,
 )

@@ -1268,6 +1268,8 @@ class VIEW3D_MT_view(Menu):
     bl_label = "View"
 
     def draw(self, context):
+        import bl_ui.asset_shelf as asset_shelf
+
         layout = self.layout
         view = context.space_data
         prefs = context.preferences
@@ -1276,7 +1278,9 @@ class VIEW3D_MT_view(Menu):
         layout.prop(view, "show_region_ui")
         layout.prop(view, "show_region_tool_header")
         if prefs.experimental.use_asset_shelf:
-            layout.prop(view, "show_region_asset_shelf")
+            sub = layout.row()
+            sub.active = asset_shelf.Utils.has_active_asset_shelf(context)
+            sub.prop(view, "show_region_asset_shelf")
         layout.prop(view, "show_region_hud")
 
         layout.separator()

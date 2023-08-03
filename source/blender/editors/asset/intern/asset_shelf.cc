@@ -519,6 +519,10 @@ int ED_asset_shelf_context(const bContext *C, const char *member, bContextDataRe
       BLI_assert_unreachable();
       return CTX_RESULT_NO_DATA;
     }
+    if (shelf_region->flag & RGN_FLAG_POLL_FAILED) {
+      /* Don't return data when the region "doesn't exist" (poll failed). */
+      return CTX_RESULT_NO_DATA;
+    }
 
     const RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(
         *shelf_region);
