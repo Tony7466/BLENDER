@@ -25,6 +25,9 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
+static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
+static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
+
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
 struct ScreenSpacePoint {
@@ -172,18 +175,21 @@ struct PaintOperationExecutor {
     ColorGeometry4f prev_vertex_color = self.stroke_cache_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
-    if (math::distance(point.co, prev_co) < 3.0f) {
+    if (math::distance(point.co, prev_co) < POINT_OVERRIDE_THRESHOLD_PX) {
       self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(point.co);
       self.stroke_cache_->radii_for_write().last() = math::max(point.radius, prev_radius);
       self.stroke_cache_->opacities_for_write().last() = math::max(point.opacity, prev_opacity);
       return;
     }
 
+    /* If the next sample is far away, we subdivide the segment to add more points. */
     int new_points_num = 1;
-    const float min_distance_px = 10.0f;
     const float distance_px = math::distance(point.co, prev_co);
-    if (distance_px > min_distance_px) {
-      new_points_num += static_cast<int>(math::floor(distance_px / min_distance_px)) - 1;
+    if (distance_px > POINT_RESAMPLE_MIN_DISTANCE_PX) {
+      const int subdivisions = static_cast<int>(
+                                   math::floor(distance_px / POINT_RESAMPLE_MIN_DISTANCE_PX)) -
+                               1;
+      new_points_num += subdivisions;
     }
 
     Array<float2> new_coordinates(new_points_num);
