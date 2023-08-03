@@ -13,23 +13,23 @@
 int find_closest_surfel(ivec3 grid_coord, vec3 P)
 {
   int surfel_first = imageLoad(cluster_list_img, grid_coord).r;
-  float search_radius = capture_info_buf.max_virtual_offset +
-                        capture_info_buf.min_distance_to_surface;
+  float search_radius_sqr = square_f(capture_info_buf.max_virtual_offset +
+                                     capture_info_buf.min_distance_to_surface);
 
   int closest_surfel = -1;
-  float closest_distance = 1e10;
+  float closest_distance_sqr = 1e10;
   for (int surfel_id = surfel_first; surfel_id > -1; surfel_id = surfel_buf[surfel_id].next) {
     Surfel surfel = surfel_buf[surfel_id];
 
     vec3 probe_to_surfel = surfel.position - P;
-    float surfel_dist = length(probe_to_surfel);
+    float surfel_dist_sqr = length_squared(probe_to_surfel);
     /* Do not consider surfels that are outside of search radius. */
-    if (surfel_dist > search_radius) {
+    if (surfel_dist_sqr > search_radius_sqr) {
       continue;
     }
 
-    if (closest_distance > surfel_dist) {
-      closest_distance = surfel_dist;
+    if (closest_distance_sqr > surfel_dist_sqr) {
+      closest_distance_sqr = surfel_dist_sqr;
       closest_surfel = surfel_id;
     }
   }
@@ -73,26 +73,26 @@ float compute_offset_length(ivec3 grid_coord, vec3 P, vec3 offset_direction)
     Surfel surfel = surfel_buf[surfel_id];
 
     vec3 probe_to_surfel = surfel.position - P;
-    float surf_dist = dot(offset_direction, probe_to_surfel);
+    float surf_dist_signed = dot(offset_direction, probe_to_surfel);
     /* Do not consider surfels that are outside of search radius. */
-    if (surf_dist > search_radius) {
+    if (abs(surf_dist_signed) > search_radius) {
       continue;
     }
     /* Emulate ray cast with any hit shader by discarding surfels outside of the ray radius. */
-    float ray_dist = distance(surf_dist * offset_direction, probe_to_surfel);
+    float ray_dist = distance(surf_dist_signed * offset_direction, probe_to_surfel);
     if (ray_dist > ray_radius) {
       continue;
     }
 
-    if (surf_dist > 0.0) {
-      if (surfel_distance_pos > surf_dist) {
-        surfel_distance_pos = surf_dist;
+    if (surf_dist_signed > 0.0) {
+      if (surfel_distance_pos > surf_dist_signed) {
+        surfel_distance_pos = surf_dist_signed;
         surfel_pos = surfel_id;
       }
     }
     else {
-      if (surfel_distance_neg < surf_dist) {
-        surfel_distance_neg = surf_dist;
+      if (surfel_distance_neg < surf_dist_signed) {
+        surfel_distance_neg = surf_dist_signed;
         surfel_neg = surfel_id;
       }
     }

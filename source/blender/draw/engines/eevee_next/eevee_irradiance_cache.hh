@@ -113,7 +113,7 @@ class IrradianceBake {
    */
   float min_distance_to_surface_ = 0.05f;
   /**
-   * Maximum distance from the grid sample point a recording location.
+   * Maximum distance from the grid sample point to the baking location.
    * In minimum grid sample spacing.
    * Avoids samples to be too far from their actual origin.
    */
