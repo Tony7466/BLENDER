@@ -684,7 +684,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_TEXTURE")
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
-        if snode.geometry_nodes_type == 'OPERATOR':
+        if snode.geometry_nodes_type == 'TOOL':
             layout.menu("NODE_MT_category_tool")
             layout.separator()
         layout.menu("NODE_MT_category_GEO_GROUP")
