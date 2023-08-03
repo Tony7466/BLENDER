@@ -73,10 +73,11 @@ void Camera::init()
     data.type = CAMERA_PERSP;
   }
 
-  overscan_ = 0.0f;
+  float overscan = 0.0f;
   if ((inst_.scene->eevee.flag & SCE_EEVEE_OVERSCAN) && (inst_.drw_view || inst_.render)) {
-    overscan_ = inst_.scene->eevee.overscan / 100.0f;
+    overscan = inst_.scene->eevee.overscan / 100.0f;
   }
+  overscan_changed_ = assign_if_different(overscan_, overscan);
 }
 
 void Camera::sync()
