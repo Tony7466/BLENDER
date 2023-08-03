@@ -84,6 +84,15 @@ for relative_source_file in relative_source_files:
 
 func_lines.append("}")
 
-# Write the generated code.
-with open(output_cc_file, "w") as f:
-    f.write("\n".join(include_lines + decl_lines + [""] + func_lines))
+# Write the generated code if it changed. If the newly generated code is the same as before,
+# don't overwrite the existing file to avoid unnecessary rebuilds.
+try:
+    with open(output_cc_file) as f:
+        old_generated_code = f.read()
+except:
+    old_generated_code = ""
+new_generated_code = "\n".join(include_lines + decl_lines + [""] + func_lines)
+
+if old_generated_code != new_generated_code:
+    with open(output_cc_file, "w") as f:
+        f.write(new_generated_code)
