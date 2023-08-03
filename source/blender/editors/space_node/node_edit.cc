@@ -1657,7 +1657,7 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
   }
 
   node_flag_toggle_exec(snode, NODE_PREVIEW);
-  snode->edittree->runtime->whole_tree_dirtystate.make_dirty();
+  snode->edittree->runtime->any_node_dirtystate.make_dirty();
 
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
 
