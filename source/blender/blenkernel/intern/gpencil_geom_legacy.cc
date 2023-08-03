@@ -397,7 +397,7 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
     for (j = 0; j < dv->totweight; j++) {
       bool found = false;
       dw = &dv->dw[j];
-      for (ld = (LinkData *)result->first; ld; ld = ld->next) {
+      LISTBASE_FOREACH (LinkData *, ld, result) {
         if (ld->data == POINTER_FROM_INT(dw->def_nr)) {
           found = true;
           break;
@@ -418,7 +418,6 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
 static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr_list)
 {
   int i, j;
-  LinkData *ld;
   MDeformVert *dst = (MDeformVert *)MEM_mallocN(count * sizeof(MDeformVert), "new_deformVert");
 
   for (i = 0; i < count; i++) {
@@ -427,7 +426,7 @@ static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase 
     dst[i].totweight = totweight;
     j = 0;
     /* re-assign deform groups */
-    for (ld = (LinkData *)def_nr_list->first; ld; ld = ld->next) {
+    LISTBASE_FOREACH (LinkData *, ld, def_nr_list) {
       dst[i].dw[j].def_nr = POINTER_AS_INT(ld->data);
       j++;
     }
@@ -458,7 +457,6 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
   bGPDspoint *pt = gps->points;
   bGPDspoint *pt1 = nullptr;
   bGPDspoint *pt2 = nullptr;
-  LinkData *ld;
   ListBase def_nr_list = {nullptr};
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
@@ -563,7 +561,7 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
     /* Free original weight data. */
     BKE_gpencil_free_stroke_weights(gps);
     MEM_freeN(gps->dvert);
-    while ((ld = (LinkData *)BLI_pophead(&def_nr_list))) {
+    while (LinkData *ld = (LinkData *)BLI_pophead(&def_nr_list)) {
       MEM_freeN(ld);
     }
 
