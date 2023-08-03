@@ -49,7 +49,7 @@ std::optional<eCustomDataType> node_socket_to_custom_data_type(const bNodeSocket
 bool check_operator_context_and_error(GeoNodeExecParams &params)
 {
   if (!params.user_data()->operator_data) {
-    params.error_message_add(NodeWarningType::Error, "Node must be run as operator");
+    params.error_message_add(NodeWarningType::Error, "Node must be run as tool");
     params.set_default_remaining_outputs();
     return false;
   }
@@ -59,13 +59,13 @@ bool check_operator_context_and_error(GeoNodeExecParams &params)
 void search_link_ops_for_for_operator_node(GatherAddNodeSearchParams &params)
 {
   const SpaceNode &snode = *CTX_wm_space_node(&params.context());
-  if (snode.geometry_nodes_type == SNODE_GEOMETRY_OPERATOR) {
+  if (snode.geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
     search_node_add_ops_for_basic_node(params);
   }
 }
 void search_link_ops_for_operator_node(GatherLinkSearchOpParams &params)
 {
-  if (params.space_node().geometry_nodes_type == SNODE_GEOMETRY_OPERATOR) {
+  if (params.space_node().geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
     search_link_ops_for_basic_node(params);
   }
 }
