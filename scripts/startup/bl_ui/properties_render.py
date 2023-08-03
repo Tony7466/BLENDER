@@ -81,8 +81,11 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         col.prop(view, "exposure")
         col.prop(view, "gamma")
 
+        # Only display HDR toggle for non-Filmic display transforms.
         if gpu.capabilities.hdr_support_get():
-            col.prop(view, "use_hdr_view")
+            sub = col.row()
+            sub.active = (view.view_transform != "Filmic" and view.view_transform != "Filmic Log")
+            sub.prop(view, "use_hdr_view")
 
         col.separator()
 

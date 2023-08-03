@@ -1275,10 +1275,11 @@ static void rna_def_colormanage(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_hdr_view", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", COLORMANAGE_VIEW_USE_HDR);
-  RNA_def_property_ui_text(prop,
-                           "High Dynamic Range",
-                           "Enable high dynamic range with extended colorspace in viewport, "
-                           "uncapping display brightness for rendered content");
+  RNA_def_property_ui_text(
+      prop,
+      "High Dynamic Range",
+      "Enable high dynamic range display in rendered viewport, uncapping display brightness. This "
+      "requires a monitor with HDR support and a view transform designed for HDR.");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagedColorspaceSettings_reload_update");
 
   /* ** Color-space ** */
