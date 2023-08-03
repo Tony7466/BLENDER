@@ -212,7 +212,7 @@ bScreen *screen_add(Main *bmain, const char *name, const rcti *rect)
 
 void screen_data_copy(bScreen *to, bScreen *from)
 {
-  /* free contents of 'to', is from blenkernel screen.c */
+  /* Free contents of 'to', is from blenkernel `screen.cc`. */
   BKE_screen_free_data(to);
 
   to->flag = from->flag;
@@ -728,7 +728,7 @@ static bool region_poll(const bContext *C,
     return true;
   }
 
-  RegionPollParams params = {0};
+  RegionPollParams params = {nullptr};
   params.screen = screen;
   params.area = area;
   params.region = region;

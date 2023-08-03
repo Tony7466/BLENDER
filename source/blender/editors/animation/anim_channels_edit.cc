@@ -32,6 +32,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_mask.h"
@@ -296,7 +297,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
         gpl->flag |= GP_LAYER_ACTIVE;
         break;
       }
-
       /* unhandled currently, but may be interesting */
       case ANIMTYPE_MASKLAYER:
       case ANIMTYPE_SHAPEKEY:
@@ -591,6 +591,12 @@ static void anim_channels_select_set(bAnimContext *ac,
             ale->adt->flag &= ~ADT_UI_ACTIVE;
           }
         }
+        break;
+      }
+      case ANIMTYPE_GREASE_PENCIL_LAYER: {
+        using namespace blender::bke::greasepencil;
+        Layer *layer = static_cast<Layer *>(ale->data);
+        ACHANNEL_SET_FLAG(&(layer->base), sel, GP_LAYER_TREE_NODE_SELECT);
         break;
       }
       case ANIMTYPE_GPLAYER: {
@@ -974,12 +980,12 @@ static bool animedit_poll_channels_nla_tweakmode_off(bContext *C)
 
 /* constants for channel rearranging */
 /* WARNING: don't change existing ones without modifying rearrange func accordingly */
-typedef enum eRearrangeAnimChan_Mode {
+enum eRearrangeAnimChan_Mode {
   REARRANGE_ANIMCHAN_TOP = -2,
   REARRANGE_ANIMCHAN_UP = -1,
   REARRANGE_ANIMCHAN_DOWN = 1,
   REARRANGE_ANIMCHAN_BOTTOM = 2,
-} eRearrangeAnimChan_Mode;
+};
 
 /* defines for rearranging channels */
 static const EnumPropertyItem prop_animchannel_rearrange_types[] = {
@@ -1001,12 +1007,12 @@ struct tReorderChannelIsland {
 };
 
 /* flags for channel reordering islands */
-typedef enum eReorderIslandFlag {
+enum eReorderIslandFlag {
   REORDER_ISLAND_SELECTED = (1 << 0),    /* island is selected */
   REORDER_ISLAND_UNTOUCHABLE = (1 << 1), /* island should be ignored */
   REORDER_ISLAND_MOVED = (1 << 2),       /* island has already been moved */
   REORDER_ISLAND_HIDDEN = (1 << 3),      /* island is not visible */
-} eReorderIslandFlag;
+};
 
 /* Rearrange Methods --------------------------------------------- */
 
@@ -1125,7 +1131,7 @@ static bool rearrange_island_bottom(ListBase *list, tReorderChannelIsland *islan
  * \param island: Island to be moved
  * \return Whether operation was a success
  */
-typedef bool (*AnimChanRearrangeFp)(ListBase *list, tReorderChannelIsland *island);
+using AnimChanRearrangeFp = bool (*)(ListBase *list, tReorderChannelIsland *island);
 
 /* get rearranging function, given 'rearrange' mode */
 static AnimChanRearrangeFp rearrange_get_mode_func(eRearrangeAnimChan_Mode mode)
@@ -1977,7 +1983,7 @@ static void ANIM_OT_channels_group(wmOperatorType *ot)
   ot->prop = RNA_def_string(ot->srna,
                             "name",
                             "New Group",
-                            sizeof(((bActionGroup *)nullptr)->name),
+                            sizeof(bActionGroup::name),
                             "Name",
                             "Name of newly created group");
   /* XXX: still not too sure about this - keeping same text is confusing... */
@@ -3219,7 +3225,7 @@ static int animchannels_rename_invoke(bContext *C, wmOperator * /*op*/, const wm
 static void ANIM_OT_channels_rename(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Rename Channels";
+  ot->name = "Rename Channel";
   ot->idname = "ANIM_OT_channels_rename";
   ot->description = "Rename animation channel under mouse";
 
@@ -3643,6 +3649,26 @@ static int click_select_channel_gplayer(bContext *C,
   return (ND_ANIMCHAN | NA_EDITED); /* Animation Editors updates */
 }
 
+static int click_select_channel_grease_pencil_layer(bContext *C,
+                                                    bAnimContext *ac,
+                                                    bAnimListElem *ale,
+                                                    const short /*selectmode*/,
+                                                    const int /*filter*/)
+{
+  /* TODO: Implement other selection modes. */
+  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+
+  /* Clear previous channel selection and set active flag on current selection */
+  ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
+
+  layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
+  grease_pencil->active_layer = layer;
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+  return (ND_ANIMCHAN | NA_EDITED);
+}
+
 static int click_select_channel_maskdatablock(bAnimListElem *ale)
 {
   Mask *mask = (Mask *)ale->data;
@@ -3726,7 +3752,7 @@ static int mouse_anim_channels(bContext *C,
   }
 
   /* action to take depends on what channel we've got */
-  /* WARNING: must keep this in sync with the equivalent function in nla_channels.c */
+  /* WARNING: must keep this in sync with the equivalent function in `nla_channels.cc`. */
   switch (ale->type) {
     case ANIMTYPE_SCENE:
       notifierFlags |= click_select_channel_scene(ale, selectmode);
@@ -3776,6 +3802,13 @@ static int mouse_anim_channels(bContext *C,
       break;
     case ANIMTYPE_GPLAYER:
       notifierFlags |= click_select_channel_gplayer(C, ac, ale, selectmode, filter);
+      break;
+    case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+      /*todo*/
+      break;
+    case ANIMTYPE_GREASE_PENCIL_LAYER:
+      notifierFlags |= click_select_channel_grease_pencil_layer(
+          C, ac, ale, SELECT_REPLACE, filter);
       break;
     case ANIMTYPE_MASKDATABLOCK:
       notifierFlags |= click_select_channel_maskdatablock(ale);

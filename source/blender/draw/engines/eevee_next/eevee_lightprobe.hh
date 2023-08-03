@@ -44,6 +44,9 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   int grid_index;
   /** Copy of surfel density for debugging purpose. */
   float surfel_density;
+  /** Copy of DNA members. */
+  float dilation_threshold;
+  float dilation_radius;
 };
 
 struct ReflectionCube : public LightProbe {

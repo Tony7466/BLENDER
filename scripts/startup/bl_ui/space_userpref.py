@@ -2154,7 +2154,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                                 addon_preferences_class.layout = box_prefs
                                 try:
                                     draw(context)
-                                except:
+                                except BaseException:
                                     import traceback
                                     traceback.print_exc()
                                     box_prefs.label(text="Error (see console)", icon='ERROR')
@@ -2454,6 +2454,7 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),
                 ({"property": "use_viewport_debug"}, None),
+                ({"property": "use_eevee_debug"}, None),
             ),
         )
 

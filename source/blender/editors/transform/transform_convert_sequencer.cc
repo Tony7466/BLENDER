@@ -558,8 +558,8 @@ static void view2d_edge_pan_loc_compensate(TransInfo *t, float loc_in[2], float 
     else {
       /* Edge panning functions expect window coordinates, mval is relative to region */
       const int xy[2] = {
-          t->region->winrct.xmin + t->mval[0],
-          t->region->winrct.ymin + t->mval[1],
+          t->region->winrct.xmin + int(t->mval[0]),
+          t->region->winrct.ymin + int(t->mval[1]),
       };
       UI_view2d_edge_pan_apply(t->context, &ts->edge_pan, xy);
     }
@@ -739,7 +739,7 @@ void transform_convert_sequencer_channel_clamp(TransInfo *t, float r_val[2])
 
 TransConvertTypeInfo TransConvertType_Sequencer = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransSeqData,
-    /*recalcData*/ recalcData_sequencer,
+    /*create_trans_data*/ createTransSeqData,
+    /*recalc_data*/ recalcData_sequencer,
     /*special_aftertrans_update*/ special_aftertrans_update__sequencer,
 };

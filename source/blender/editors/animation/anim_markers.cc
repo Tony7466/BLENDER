@@ -46,6 +46,7 @@
 #include "UI_view2d.h"
 
 #include "ED_anim_api.h"
+#include "ED_keyframes_edit.h"
 #include "ED_markers.h"
 #include "ED_numinput.h"
 #include "ED_object.h"
@@ -55,6 +56,7 @@
 #include "ED_util.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Marker API
@@ -542,7 +544,7 @@ static void get_marker_region_rect(View2D *v2d, rctf *rect)
 static void get_marker_clip_frame_range(View2D *v2d, float xscale, int r_range[2])
 {
   float font_width_max = (10 * UI_SCALE_FAC) / xscale;
-  r_range[0] = v2d->cur.xmin - sizeof(((TimeMarker *)nullptr)->name) * font_width_max;
+  r_range[0] = v2d->cur.xmin - sizeof(TimeMarker::name) * font_width_max;
   r_range[1] = v2d->cur.xmax + font_width_max;
 }
 
@@ -1741,12 +1743,8 @@ static void MARKER_OT_rename(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  ot->prop = RNA_def_string(ot->srna,
-                            "name",
-                            "RenamedMarker",
-                            sizeof(((TimeMarker *)nullptr)->name),
-                            "Name",
-                            "New name for marker");
+  ot->prop = RNA_def_string(
+      ot->srna, "name", "RenamedMarker", sizeof(TimeMarker::name), "Name", "New name for marker");
 #if 0
   RNA_def_boolean(ot->srna,
                   "ensure_unique",
@@ -1803,7 +1801,7 @@ static void MARKER_OT_make_links_scene(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Make Links to Scene";
+  ot->name = "Copy Markers to Scene";
   ot->description = "Copy selected markers to another scene";
   ot->idname = "MARKER_OT_make_links_scene";
 
@@ -1870,6 +1868,7 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
   /* camera may have changes */
   BKE_scene_camera_switch_update(scene);
   BKE_screen_view3d_scene_sync(screen, scene);
+  DEG_relations_tag_update(CTX_data_main(C));
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, nullptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, nullptr);

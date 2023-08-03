@@ -3,23 +3,24 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../../intern/clog
+  ../blender/blenkernel
+  ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
   ../blender/io/usd
+  ../blender/bmesh
   ../blender/makesrna
   ../blender/render
+  ../blender/windowmanager
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 if(HAVE_FEENABLEEXCEPT)
@@ -78,6 +79,11 @@ if(WITH_TBB)
     # For `pragma` that links `tbbmalloc_proxy.lib`.
     link_directories(${LIBDIR}/tbb/lib)
   endif()
+endif()
+
+if(WIN32)
+  # Windows.h will define min/max macros that will collide with the stl versions.
+  add_definitions(-DNOMINMAX)
 endif()
 
 if(WITH_USD)
@@ -139,9 +145,9 @@ endif()
 
 # Setup the EXE sources and `buildinfo`.
 set(SRC
-  creator.c
-  creator_args.c
-  creator_signals.c
+  creator.cc
+  creator_args.cc
+  creator_signals.cc
 
   creator_intern.h
 )

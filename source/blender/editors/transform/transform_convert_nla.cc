@@ -111,7 +111,7 @@ static float transdata_get_time_shuffle_offset_side(ListBase *trans_datas, const
         }
 
         /* Allow overlap with transitions. */
-        if (non_xformed_strip->type & NLASTRIP_TYPE_TRANSITION) {
+        if (non_xformed_strip->type == NLASTRIP_TYPE_TRANSITION) {
           continue;
         }
 
@@ -1000,7 +1000,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_NLA = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransNlaData,
-    /*recalcData*/ recalcData_nla,
+    /*create_trans_data*/ createTransNlaData,
+    /*recalc_data*/ recalcData_nla,
     /*special_aftertrans_update*/ special_aftertrans_update__nla,
 };

@@ -26,13 +26,15 @@
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_lattice.h"
-#include "BKE_mesh_iterators.h"
+#include "BKE_mesh_iterators.hh"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
 
 #include "ED_armature.h"
 #include "ED_curves.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "ED_transverts.h" /* own include */
 
@@ -327,7 +329,7 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
         MEM_callocN(totmalloc * sizeof(TransVert), __func__));
 
     for (ebo = static_cast<EditBone *>(arm->edbo->first); ebo; ebo = ebo->next) {
-      if (ebo->layer & arm->layer) {
+      if (ANIM_bonecoll_is_visible_editbone(arm, ebo)) {
         const bool tipsel = (ebo->flag & BONE_TIPSEL) != 0;
         const bool rootsel = (ebo->flag & BONE_ROOTSEL) != 0;
         const bool rootok = !(ebo->parent && (ebo->flag & BONE_CONNECTED) &&

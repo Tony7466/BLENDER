@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edmesh
  *
- * Tools to implement polygon building tool,
+ * Tools to implement face building tool,
  * an experimental tool for quickly constructing/manipulating faces.
  */
 
@@ -18,7 +18,7 @@
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_report.h"
 
 #include "WM_types.h"

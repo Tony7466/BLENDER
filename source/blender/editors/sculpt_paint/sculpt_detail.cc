@@ -16,7 +16,7 @@
 #include "DNA_mesh_types.h"
 
 #include "BKE_context.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.h"
 
@@ -146,10 +146,10 @@ void SCULPT_OT_detail_flood_fill(wmOperatorType *ot)
 /** \name Sample Detail Size
  * \{ */
 
-typedef enum eSculptSampleDetailModeTypes {
+enum eSculptSampleDetailModeTypes {
   SAMPLE_DETAIL_DYNTOPO = 0,
   SAMPLE_DETAIL_VOXEL = 1,
-} eSculptSampleDetailModeTypes;
+};
 
 static EnumPropertyItem prop_sculpt_sample_detail_mode_types[] = {
     {SAMPLE_DETAIL_DYNTOPO, "DYNTOPO", 0, "Dyntopo", "Sample dyntopo detail"},

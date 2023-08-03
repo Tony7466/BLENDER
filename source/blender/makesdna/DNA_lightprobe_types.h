@@ -65,6 +65,9 @@ typedef struct LightProbe {
   float grid_view_bias;
   float grid_facing_bias;
   float _pad0;
+  /** Irradiance grid: Dilation. */
+  float grid_dilation_threshold;
+  float grid_dilation_radius;
 
   /** Surface element density for scene surface cache. In surfel per unit distance. */
   float surfel_density;
@@ -244,6 +247,7 @@ typedef struct LightProbeBakingData {
   float (*L1_a)[4];
   float (*L1_b)[4];
   float (*L1_c)[4];
+  float *validity;
   /* Capture offset. Only for debugging. */
   float (*virtual_offset)[4];
 } LightProbeBakingData;
@@ -272,8 +276,8 @@ typedef struct LightProbeVisibilityData {
  * Used to avoid light leaks. Validate visibility between each grid sample.
  */
 typedef struct LightProbeConnectivityData {
-  /** Stores a bitmask of valid connections within a cell. */
-  uint8_t *bitmask;
+  /** Stores validity of the lighting for each grid sample. */
+  uint8_t *validity;
 } LightProbeConnectivityData;
 
 /**

@@ -88,7 +88,7 @@ static eRedrawFlag shrinkfatten_handleEvent(TransInfo *t, const wmEvent *event)
   return TREDRAW_NOTHING;
 }
 
-static void applyShrinkFatten(TransInfo *t, const int[2] /*mval*/)
+static void applyShrinkFatten(TransInfo *t)
 {
   float distance;
   int i;
@@ -164,7 +164,7 @@ static void applyShrinkFatten(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }
