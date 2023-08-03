@@ -139,7 +139,7 @@ void Instances::remove(const IndexMask &mask,
           return true;
         }
 
-        GSpan src = *src_attributes.get_for_read(id);
+        GSpan src = *src_attributes.get(id);
         dst_attributes.create(id, meta_data.data_type);
         GMutableSpan dst = *dst_attributes.get_for_write(id);
         array_utils::gather(src, mask, dst);
@@ -314,7 +314,7 @@ static Array<int> generate_unique_instance_ids(Span<int> original_ids)
 Span<int> Instances::almost_unique_ids() const
 {
   std::lock_guard lock(almost_unique_ids_mutex_);
-  std::optional<GSpan> instance_ids_gspan = attributes_.get_for_read("id");
+  std::optional<GSpan> instance_ids_gspan = attributes_.get("id");
   if (instance_ids_gspan) {
     Span<int> instance_ids = instance_ids_gspan->typed<int>();
     if (almost_unique_ids_.size() != instance_ids.size()) {
