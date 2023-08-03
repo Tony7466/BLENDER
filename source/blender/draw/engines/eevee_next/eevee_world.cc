@@ -83,19 +83,23 @@ void World::world_and_ntree_get(::World *&world, bNodeTree *&ntree)
     world = default_world_get();
   }
 
-  ntree = (world->nodetree && world->use_nodes) ? world->nodetree :
-                                                  default_tree.nodetree_get(world);
+  ntree = (world->nodetree && world->use_nodes && !inst_.use_studio_light()) ?
+              world->nodetree :
+              default_tree.nodetree_get(world);
 }
 
 void World::sync()
 {
-  if (inst_.lookdev.sync_world()) {
-    return;
-  }
-
   ::World *bl_world;
   bNodeTree *ntree;
   world_and_ntree_get(bl_world, ntree);
+
+  GPUMaterial *volume_gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_VOLUME);
+  inst_.pipelines.world_volume.sync(volume_gpumat);
+
+  if (inst_.lookdev.sync_world()) {
+    return;
+  }
 
   WorldHandle &wo_handle = inst_.sync.sync_world(bl_world);
   inst_.reflection_probes.sync_world(bl_world, wo_handle);
@@ -116,9 +120,6 @@ void World::sync()
 
   inst_.pipelines.background.sync(gpumat, inst_.film.background_opacity_get());
   inst_.pipelines.world.sync(gpumat);
-
-  GPUMaterial *volume_gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_VOLUME);
-  inst_.pipelines.world_volume.sync(volume_gpumat);
 }
 
 bool World::has_volume()
