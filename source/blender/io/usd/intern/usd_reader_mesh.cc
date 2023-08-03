@@ -7,6 +7,7 @@
 
 #include "usd_reader_mesh.h"
 #include "usd_reader_material.h"
+#include "usd_skel_convert.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
@@ -41,6 +42,7 @@
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
+#include <pxr/usd/usdSkel/bindingAPI.h>
 
 #include <iostream>
 
@@ -226,6 +228,14 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
     if (subdivScheme == pxr::UsdGeomTokens->catmullClark) {
       add_subdiv_modifier();
     }
+  }
+
+  if (import_params_.import_blendshapes) {
+    import_blendshapes(bmain, object_, prim_);
+  }
+
+  if (import_params_.import_skeletons) {
+    import_skel_bindings(bmain, object_, prim_);
   }
 
   USDXformReader::read_object_data(bmain, motionSampleTime);
@@ -980,6 +990,28 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
   }
 
   return active_mesh;
+}
+
+std::string USDMeshReader::get_skeleton_path() const
+{
+  /* Make sure we can apply UsdSkelBindingAPI to the prim.
+   * Attempting to apply the API to instance proxies or
+   * prototypes generates an error. */
+  if (!prim_ || prim_.IsInstanceProxy() || prim_.IsInPrototype()) {
+    return "";
+  }
+
+  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim_);
+
+  if (!skel_api) {
+    return "";
+  }
+
+  if (pxr::UsdSkelSkeleton skel = skel_api.GetInheritedSkeleton()) {
+    return skel.GetPath().GetAsString();
+  }
+
+  return "";
 }
 
 }  // namespace blender::io::usd

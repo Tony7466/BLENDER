@@ -45,6 +45,8 @@ class USDStageReader {
 
   void collect_readers(struct Main *bmain);
 
+  void process_armature_modifiers() const;
+
   /* Convert every material prim on the stage to a Blender
    * material, including materials not used by any geometry.
    * Note that collect_readers() must be called before calling
