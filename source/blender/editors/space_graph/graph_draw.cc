@@ -1086,8 +1086,8 @@ static void draw_fcurve_curve_keys(
         /* In case there is no other way to get curve points, evaluate the FCurve. */
         const int window_width = BLI_rcti_size_x(&v2d->mask);
         const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
-        /* Implies 1px per sample. */
-        const float samples_per_frame = window_width / v2d_frame_range;
+        const float samples_per_pixel = 0.75f;
+        const float samples_per_frame = (window_width * samples_per_pixel) / v2d_frame_range;
         const float evaluation_step = (bezt->vec[1][0] - prevbezt->vec[1][0]) / samples_per_frame;
 
         float current_frame = prevbezt->vec[1][0];
