@@ -37,7 +37,7 @@ bool remove_all_selected_frames(GreasePencil *grease_pencil, bke::greasepencil::
     if (!frame.is_selected()) {
       continue;
     }
-    changed = changed || grease_pencil->remove_frame_at(*layer, frame_number);
+    changed |= grease_pencil->remove_frame_at(*layer, frame_number);
   }
 
   return changed;
