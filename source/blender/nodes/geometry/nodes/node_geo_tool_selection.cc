@@ -37,7 +37,7 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
             return *attributes.lookup_or_default<bool>(".select_edge", domain, false);
           case ATTR_DOMAIN_FACE:
           case ATTR_DOMAIN_CORNER:
-            return *attributes.lookup_or_default<bool>(".select_face", domain, false);
+            return *attributes.lookup_or_default<bool>(".select_poly", domain, false);
           default:
             BLI_assert_unreachable();
             return {};
