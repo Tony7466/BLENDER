@@ -130,7 +130,7 @@ namespace socket_types {
 
 constexpr const char *node_socket_data_float = "NodeSocketFloat";
 constexpr const char *node_socket_data_int = "NodeSocketInt";
-constexpr const char *node_socket_data_bool = "NodeSocketBoolean";
+constexpr const char *node_socket_data_bool = "NodeSocketBool";
 constexpr const char *node_socket_data_rotation = "NodeSocketRotation";
 constexpr const char *node_socket_data_vector = "NodeSocketVector";
 constexpr const char *node_socket_data_color = "NodeSocketColor";
