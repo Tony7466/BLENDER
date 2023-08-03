@@ -1,7 +1,6 @@
 #include <cmath>
 
 #include "BLI_hash.h"
-#include "BLI_hash.hh"
 #include "BLI_noise.hh"
 
 #include "UI_interface.h"
@@ -32,25 +31,19 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  const NodeHashValue &data = node_storage(*static_cast<const bNode *>(ptr->data));
   uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
-  if (!ELEM(data.mode, NODE_HASH_TO_FLOAT, NODE_HASH_STRING)) {
-    uiItemR(layout, ptr, "hash_method", UI_ITEM_NONE, "", ICON_NONE);
-  }
 }
 
 static void node_init(const bNodeTree * /*tree*/, bNode *node)
 {
   NodeHashValue *data = MEM_cnew<NodeHashValue>(__func__);
   data->mode = NODE_HASH_FLOAT;
-  data->hash_method = NODE_HASH_MODE_JENKINS;
   node->storage = data;
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   const NodeHashValue &storage = node_storage(*node);
-  const NodeHashMethod hash_method = static_cast<NodeHashMethod>(storage.hash_method);
   const NodeHashMode mode = static_cast<NodeHashMode>(storage.mode);
 
   const bool to_hash = mode != NODE_HASH_TO_FLOAT;
@@ -83,75 +76,35 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
   const NodeHashValue &storage = node_storage(bnode);
   const NodeHashMode mode = static_cast<NodeHashMode>(storage.mode);
-  const NodeHashMethod hash_method = static_cast<NodeHashMethod>(storage.hash_method);
 
   static auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
 
   static auto fn_hash_float = mf::build::SI1_SO<float, int>(
-      "Hash Float", [](float a) { return get_default_hash(a); }, exec_preset);
+      "Hash Float", [](float a) { return noise::hash_float(a); }, exec_preset);
   static auto fn_hash_vector = mf::build::SI1_SO<float3, int>(
-      "Hash Vector", [](float3 a) { return get_default_hash(a); }, exec_preset);
+      "Hash Vector", [](float3 a) { return noise::hash_float(a); }, exec_preset);
   static auto fn_hash_color = mf::build::SI1_SO<ColorGeometry4f, int>(
-      "Hash Color", [](ColorGeometry4f a) { return get_default_hash(a); }, exec_preset);
+      "Hash Color", [](ColorGeometry4f a) { return noise::hash_float(float4(a)); }, exec_preset);
   static auto fn_hash_int_i3 = mf::build::SI3_SO<int, int, int, int>(
-      "Hash Int 3", [](int a, int b, int c) { return get_default_hash_3(a, b, c); }, exec_preset);
-
-  static auto fn_hash_float_n = mf::build::SI1_SO<float, int>(
-      "Hash Float Jenkins", [](float a) { return noise::hash_float(a); }, exec_preset);
-  static auto fn_hash_vector_n = mf::build::SI1_SO<float3, int>(
-      "Hash Vector Jenkins", [](float3 a) { return noise::hash_float(a); }, exec_preset);
-  static auto fn_hash_color_n = mf::build::SI1_SO<ColorGeometry4f, int>(
-      "Hash Color Jenkins",
-      [](ColorGeometry4f a) { return noise::hash_float(float4(a)); },
-      exec_preset);
-  static auto fn_hash_int_i3_n = mf::build::SI3_SO<int, int, int, int>(
-      "Hash Int 3 Jenkins", [](int a, int b, int c) { return noise::hash(a, b, c); }, exec_preset);
-
-  static auto fn_hash_string_n = mf::build::SI1_SO<std::string, int>(
-      "Hash String BLI", [](std::string a) { return BLI_hash_string(a.c_str()); }, exec_preset);
+      "Hash Integer", [](int a, int b, int c) { return noise::hash(a, b, c); }, exec_preset);
+  static auto fn_hash_string = mf::build::SI1_SO<std::string, int>(
+      "Hash String", [](std::string a) { return BLI_hash_string(a.c_str()); }, exec_preset);
   static auto fn_hash_to_float = mf::build::SI1_SO<int, float>(
       "Hash to Float", [](int a) { return noise::hash_to_float(a); }, exec_preset);
 
-  /* Single modes */
-  if (mode == NODE_HASH_STRING) {
-    return &fn_hash_string_n;
-  }
-  else if (mode == NODE_HASH_TO_FLOAT) {
-    return &fn_hash_to_float;
-  }
-
-  /* Multiple modes */
-  switch (hash_method) {
-    case NODE_HASH_MODE_DEFAULT:
-      switch (mode) {
-        case NODE_HASH_FLOAT:
-          return &fn_hash_float;
-        case NODE_HASH_VECTOR:
-          return &fn_hash_vector;
-        case NODE_HASH_COLOR:
-          return &fn_hash_color;
-        case NODE_HASH_INTEGER:
-          return &fn_hash_int_i3;
-        default:
-          BLI_assert_unreachable();
-          return nullptr;
-      }
-    case NODE_HASH_MODE_JENKINS:
-      switch (mode) {
-        case NODE_HASH_FLOAT:
-          return &fn_hash_float_n;
-        case NODE_HASH_VECTOR:
-          return &fn_hash_vector_n;
-        case NODE_HASH_COLOR:
-          return &fn_hash_color_n;
-        case NODE_HASH_INTEGER:
-          return &fn_hash_int_i3_n;
-        case NODE_HASH_STRING:
-          return &fn_hash_string_n;
-        default:
-          BLI_assert_unreachable();
-          return nullptr;
-      }
+  switch (mode) {
+    case NODE_HASH_STRING:
+      return &fn_hash_string;
+    case NODE_HASH_TO_FLOAT:
+      return &fn_hash_to_float;
+    case NODE_HASH_FLOAT:
+      return &fn_hash_float;
+    case NODE_HASH_VECTOR:
+      return &fn_hash_vector;
+    case NODE_HASH_COLOR:
+      return &fn_hash_color;
+    case NODE_HASH_INTEGER:
+      return &fn_hash_int_i3;
     default:
       BLI_assert_unreachable();
       return nullptr;
@@ -187,7 +140,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       params.add_item(IFACE_("Value"), [mode](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = *mode;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "Value");
       });
     }
@@ -195,7 +147,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       params.add_item(IFACE_("Value"), [mode](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = *mode;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "Vector");
       });
     }
@@ -203,7 +154,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       params.add_item(IFACE_("Value"), [mode](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = *mode;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "Color");
       });
     }
@@ -211,13 +161,11 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       params.add_item(IFACE_("Value"), [mode](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = *mode;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "Integer");
       });
       params.add_item(IFACE_("Hash"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = NODE_HASH_TO_FLOAT;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "Integer");
       });
     }
@@ -225,7 +173,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       params.add_item(IFACE_("Value"), [mode](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeHashValue");
         node_storage(node).mode = *mode;
-        node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
         params.update_and_connect_available_socket(node, "String");
       });
     }
@@ -234,13 +181,11 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     params.add_item(IFACE_("Hash"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("FunctionNodeHashValue");
       node_storage(node).mode = NODE_HASH_FLOAT;
-      node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
       params.update_and_connect_available_socket(node, "Hash");
     });
     params.add_item(IFACE_("Value"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("FunctionNodeHashValue");
       node_storage(node).mode = NODE_HASH_TO_FLOAT;
-      node_storage(node).hash_method = NODE_HASH_MODE_DEFAULT;
       params.update_and_connect_available_socket(node, "Value");
     });
   }

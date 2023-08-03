@@ -4886,20 +4886,6 @@ static void def_float_to_int(StructRNA *srna)
 
 static void def_hash_value(StructRNA *srna)
 {
-  static const EnumPropertyItem rna_enum_hash_method_items[] = {
-      {NODE_HASH_MODE_DEFAULT,
-       "DEFAULT",
-       0,
-       "Default Hash",
-       "Hash values using default hash functions, faster but less random"},
-      {NODE_HASH_MODE_JENKINS,
-       "JENKINS",
-       0,
-       "Jenkins Hash",
-       "Hash values using Jenkins based hash functions, slower but more random"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   static const EnumPropertyItem rna_enum_hash_mode_items[] = {
       {NODE_HASH_FLOAT, "FLOAT", 0, "Float", ""},
       {NODE_HASH_VECTOR, "VECTOR", 0, "Vector", ""},
@@ -4923,13 +4909,6 @@ static void def_hash_value(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_enum_hash_mode_items);
   RNA_def_property_enum_default(prop, NODE_HASH_FLOAT);
   RNA_def_property_ui_text(prop, "Mode", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-
-  prop = RNA_def_property(srna, "hash_method", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "hash_method");
-  RNA_def_property_enum_items(prop, rna_enum_hash_method_items);
-  RNA_def_property_enum_default(prop, NODE_HASH_MODE_JENKINS);
-  RNA_def_property_ui_text(prop, "Hash Method", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 

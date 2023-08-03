@@ -1435,8 +1435,6 @@ typedef struct NodeRandomValue {
 typedef struct NodeHashValue {
   /* #NodeHashMode. */
   uint8_t mode;
-  /* #NodeHashMethod. */
-  uint8_t hash_method;
 } NodeHashValue;
 
 typedef struct NodeAccumulateField {
@@ -2192,11 +2190,6 @@ typedef enum NodeHashMode {
   NODE_HASH_INTEGER = 4,
   NODE_HASH_TO_FLOAT = 5,
 } NodeHashMode;
-
-typedef enum NodeHashMethod {
-  NODE_HASH_MODE_DEFAULT = 0,
-  NODE_HASH_MODE_JENKINS = 1,
-} NodeHashMethod;
 
 typedef enum NodeCompareMode {
   NODE_COMPARE_MODE_ELEMENT = 0,
