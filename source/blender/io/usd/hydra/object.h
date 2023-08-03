@@ -21,6 +21,10 @@ namespace blender::io::hydra {
 
 class ObjectData : public IdData {
  public:
+  pxr::GfMatrix4d transform;
+  bool visible = true;
+
+ public:
   ObjectData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   static std::unique_ptr<ObjectData> create(HydraSceneDelegate *scene_delegate,
@@ -37,9 +41,6 @@ class ObjectData : public IdData {
   virtual pxr::SdfPath material_id() const;
   virtual pxr::SdfPath material_id(pxr::SdfPath const &id) const;
   virtual void available_materials(Set<pxr::SdfPath> &paths) const;
-
-  pxr::GfMatrix4d transform;
-  bool visible = true;
 
  protected:
   virtual void write_transform();

@@ -20,8 +20,6 @@ namespace blender::io::hydra {
 
 class WorldData : public LightData {
  public:
-  pxr::GfMatrix4d transform;
-
   WorldData(HydraSceneDelegate *scene_delegate, pxr::SdfPath const &prim_id);
 
   void init() override;

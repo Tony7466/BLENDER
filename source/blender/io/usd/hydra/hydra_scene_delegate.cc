@@ -60,9 +60,6 @@ pxr::GfMatrix4d HydraSceneDelegate::GetTransform(pxr::SdfPath const &id)
   if (obj_data) {
     return obj_data->transform;
   }
-  if (id == world_prim_id()) {
-    return world_data_->transform;
-  }
   return pxr::GfMatrix4d();
 }
 
