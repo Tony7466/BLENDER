@@ -466,11 +466,10 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
     GPU_batch_program_set_imm_shader(batch);
   }
   else {
-
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE);
     GPU_batch_uniform_1i(batch, "overlay", do_overlay_merge);
     GPU_batch_uniform_1i(batch, "display_transform", display_colorspace);
-    GPU_batch_uniform_1i(batch, "use_extended", use_hdr);
+    GPU_batch_uniform_1i(batch, "use_hdr", use_hdr);
   }
 
   GPU_texture_bind(color, 0);

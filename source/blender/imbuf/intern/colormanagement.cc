@@ -4107,8 +4107,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   const float gamma = applied_view_settings->gamma;
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
   const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
-  const bool use_extended = GPU_hdr_support() &&
-                            (applied_view_settings->flag & COLORMANAGE_VIEW_USE_HDR) != 0;
+  const bool use_hdr = GPU_hdr_support() &&
+                       (applied_view_settings->flag & COLORMANAGE_VIEW_USE_HDR) != 0;
 
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
 
@@ -4124,7 +4124,7 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
                                                                 dither,
                                                                 predivide,
                                                                 do_overlay_merge,
-                                                                use_extended);
+                                                                use_hdr);
 
   OCIO_configRelease(config);
 

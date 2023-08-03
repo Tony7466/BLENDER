@@ -114,7 +114,7 @@ class IOCIOImpl {
                                     const float /*dither*/,
                                     const bool /*use_predivide*/,
                                     const bool /*use_overlay*/,
-                                    const bool /*use_extended*/)
+                                    const bool /*use_hdr*/)
   {
     return false;
   }
@@ -312,7 +312,7 @@ class OCIOImpl : public IOCIOImpl {
                             const float dither,
                             const bool use_predivide,
                             const bool use_overlay,
-                            const bool use_extended);
+                            const bool use_hdr);
   void gpuDisplayShaderUnbind(void);
   void gpuCacheFree(void);
 

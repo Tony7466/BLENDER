@@ -198,7 +198,7 @@ bool OCIO_gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
                                const float dither,
                                const bool use_predivide,
                                const bool use_overlay,
-                               const bool use_extended);
+                               const bool use_hdr);
 void OCIO_gpuDisplayShaderUnbind(void);
 void OCIO_gpuCacheFree(void);
 

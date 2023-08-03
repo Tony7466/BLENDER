@@ -36,8 +36,8 @@ void main()
   vec4 overlay_col = texture(overlays_texture, texCoord_interp.xy);
 
   if (overlay) {
-    if (!use_extended) {
-      /* if we're not using an extended colour space, clamp the color 0..1 */
+    if (!use_hdr) {
+      /* If we're not using an extended colour space, clamp the color 0..1. */
       fragColor = clamp(fragColor, 0.0, 1.0);
     }
     else {

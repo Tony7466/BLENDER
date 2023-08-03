@@ -429,7 +429,7 @@ void ED_screen_preview_render(const bScreen *screen, int size_x, int size_y, uin
   GPUOffScreen *offscreen = GPU_offscreen_create(size_x,
                                                  size_y,
                                                  true,
-                                                 GPU_RGBA16F,
+                                                 GPU_RGBA8,
                                                  GPU_TEXTURE_USAGE_SHADER_READ |
                                                      GPU_TEXTURE_USAGE_HOST_READ,
                                                  err_out);
