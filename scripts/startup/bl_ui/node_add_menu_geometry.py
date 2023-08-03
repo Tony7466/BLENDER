@@ -575,9 +575,9 @@ class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-class NODE_MT_category_operator(Menu):
-    bl_idname = "NODE_MT_category_operator"
-    bl_label = "Operator"
+class NODE_MT_category_tool(Menu):
+    bl_idname = "NODE_MT_category_tool"
+    bl_label = "Tool"
 
     def draw(self, _context):
         layout = self.layout
@@ -685,7 +685,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
         if snode.geometry_nodes_type == 'OPERATOR':
-            layout.menu("NODE_MT_category_operator")
+            layout.menu("NODE_MT_category_tool")
             layout.separator()
         layout.menu("NODE_MT_category_GEO_GROUP")
         layout.menu("NODE_MT_category_GEO_LAYOUT")
@@ -722,7 +722,7 @@ classes = (
     NODE_MT_category_PRIMITIVES_MESH,
     NODE_MT_geometry_node_mesh_topology,
     NODE_MT_category_GEO_POINT,
-    NODE_MT_category_operator,
+    NODE_MT_category_tool,
     NODE_MT_category_simulation,
     NODE_MT_category_GEO_VOLUME,
     NODE_MT_geometry_node_GEO_MATERIAL,
