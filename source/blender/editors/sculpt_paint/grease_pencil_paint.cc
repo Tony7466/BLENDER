@@ -28,7 +28,7 @@ namespace blender::ed::sculpt_paint::greasepencil {
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
 struct ScreenSpacePoint {
-  float2 position;
+  float2 co;
   float radius;
   float opacity;
   float4 vertex_color;
@@ -107,7 +107,7 @@ struct PaintOperationExecutor {
   {
     ScreenSpacePoint point;
 
-    point.position = sample.mouse_position;
+    point.co = sample.mouse_position;
 
     point.radius = brush_size_ / 2.0f;
     if (BKE_brush_use_size_pressure(brush_)) {
@@ -151,11 +151,11 @@ struct PaintOperationExecutor {
   {
     ScreenSpacePoint start_point = this->point_from_input_sample(start_sample);
 
-    self.screen_space_coordinates_.append(start_point.position);
+    self.screen_space_coordinates_.append(start_point.co);
 
     self.stroke_cache_->resize(1);
     self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
-        start_point.position);
+        start_point.co);
     self.stroke_cache_->radii_for_write().last() = start_point.radius;
     self.stroke_cache_->opacities_for_write().last() = start_point.opacity;
     self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(
@@ -172,9 +172,8 @@ struct PaintOperationExecutor {
     ColorGeometry4f prev_vertex_color = self.stroke_cache_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
-    if (math::distance(point.position, prev_co) < 3.0f) {
-      self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
-          point.position);
+    if (math::distance(point.co, prev_co) < 3.0f) {
+      self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(point.co);
       self.stroke_cache_->radii_for_write().last() = math::max(point.radius, prev_radius);
       self.stroke_cache_->opacities_for_write().last() = math::max(point.opacity, prev_opacity);
       return;
@@ -182,7 +181,7 @@ struct PaintOperationExecutor {
 
     int new_points_num = 1;
     const float min_distance_px = 10.0f;
-    const float distance_px = math::distance(point.position, prev_co);
+    const float distance_px = math::distance(point.co, prev_co);
     if (distance_px > min_distance_px) {
       new_points_num += static_cast<int>(math::floor(distance_px / min_distance_px)) - 1;
     }
@@ -194,7 +193,7 @@ struct PaintOperationExecutor {
     const float step = 1.0f / static_cast<float>(new_points_num);
     float factor = step;
     for (const int i : IndexRange(new_points_num)) {
-      new_coordinates[i] = bke::attribute_math::mix2<float2>(factor, prev_co, point.position);
+      new_coordinates[i] = bke::attribute_math::mix2<float2>(factor, prev_co, point.co);
       new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, point.radius);
       new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, point.opacity);
       new_vertex_colors[i] = bke::attribute_math::mix2<ColorGeometry4f>(
