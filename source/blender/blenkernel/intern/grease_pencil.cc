@@ -1628,6 +1628,21 @@ void GreasePencil::remove_drawings_with_no_users()
   remove_drawings_unchecked(*this, drawings_to_be_removed.as_span());
 }
 
+bool GreasePencil::move_frame_at(blender::bke::greasepencil::Layer &layer,
+                                 const int src_frame_number,
+                                 const int dst_frame_number)
+{
+  if ((src_frame_number == dst_frame_number) || (!layer.frames().contains(src_frame_number))) {
+    return false;
+  }
+
+  if (layer.frames().contains(dst_frame_number)) {
+    this->remove_frame_at(layer, dst_frame_number);
+  }
+
+  return layer.move_frame(src_frame_number, dst_frame_number);
+}
+
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
     const blender::bke::greasepencil::Layer *layer, const int frame_number) const
 {
