@@ -208,6 +208,14 @@ void TreeElementIDObject::expand_modifiers(SpaceOutliner &space_outliner) const
       outliner_add_element(
           &space_outliner, &ten->subtree, &psys_data, &legacy_te_, TSE_LINKED_PSYS, 0);
     }
+    else if (md->type == eModifierType_Nodes) {
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      for (const int i : IndexRange(nmd->bakes_num)) {
+        TreeElement *other_ten = outliner_add_element(
+            &space_outliner, &ten->subtree, &object_, ten, TSE_GEOMETRY_BAKE, i);
+        other_ten->name = IFACE_("Bake");
+      }
+    }
   }
 }
 
