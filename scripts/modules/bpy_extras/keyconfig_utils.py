@@ -328,16 +328,16 @@ class PyKeyMapItem:
 
         # Warn or raise error about conflicts.
         if conflicts and (warn_on_conflict or error_on_conflict):
-            message = f"Failed to register KeyMapItem. See conflicting hotkeys below.\n"
+            message = f"See conflicting hotkeys below.\n"
             conflict_info = "\n".join(
                 [str(PyKeyMapItem.new_from_keymap_item(kmi)) for kmi in conflicts]
             )
             message += conflict_info
 
             if error_on_conflict:
-                raise KeyMapException(message)
+                raise KeyMapException("Failed to register KeyMapItem." + message)
             if warn_on_conflict:
-                print(message)
+                print("Warning: Conflicting KeyMapItems. " + message)
 
         return keymap, kmi
 
