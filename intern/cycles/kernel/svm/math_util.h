@@ -70,7 +70,7 @@ ccl_device void svm_vector_math(ccl_private float *value,
       *vector = ceil(a);
       break;
     case NODE_VECTOR_MATH_MODULO:
-      *vector = make_float3(safe_modulo(a.x, b.x), safe_modulo(a.y, b.y), safe_modulo(a.z, b.z));
+      *vector = make_float3(safe_modulof(a.x, b.x), safe_modulof(a.y, b.y), safe_modulof(a.z, b.z));
       break;
     case NODE_VECTOR_MATH_WRAP:
       *vector = make_float3(wrapf(a.x, b.x, c.x), wrapf(a.y, b.y, c.y), wrapf(a.z, b.z, c.z));
