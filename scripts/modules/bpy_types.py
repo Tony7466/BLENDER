@@ -1269,14 +1269,6 @@ class HydraRenderEngine(RenderEngine):
                 import _bpy_hydra
                 _bpy_hydra.engine_free(self.engine_ptr)
 
-    def get_sync_settings(self, engine_type: str):
-        """
-        Provide settings for Blender scene export. Available settings:
-            `MaterialXFilenameKey` - if provided then MaterialX file will be provided directly to render delegate
-                                     without converting to HdMaterialNetwork
-        """
-        return {}
-
     def get_render_settings(self, engine_type: str):
         """
         Provide render settings for `HdRenderDelegate`.
@@ -1292,9 +1284,6 @@ class HydraRenderEngine(RenderEngine):
             self.engine_ptr = _bpy_hydra.engine_create(self, engine_type, self.bl_delegate_id)
         if not self.engine_ptr:
             return
-
-        for key, val in self.get_sync_settings(engine_type).items():
-            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
         _bpy_hydra.engine_update(self.engine_ptr, depsgraph, None)
 
@@ -1315,9 +1304,6 @@ class HydraRenderEngine(RenderEngine):
             self.engine_ptr = _bpy_hydra.engine_create(self, 'VIEWPORT', self.bl_delegate_id)
         if not self.engine_ptr:
             return
-
-        for key, val in self.get_sync_settings('VIEWPORT').items():
-            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
 
         _bpy_hydra.engine_update(self.engine_ptr, depsgraph, context)
 

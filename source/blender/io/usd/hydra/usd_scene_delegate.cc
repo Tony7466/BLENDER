@@ -17,9 +17,8 @@
 namespace blender::io::hydra {
 
 USDSceneDelegate::USDSceneDelegate(pxr::HdRenderIndex *render_index,
-                                   pxr::SdfPath const &delegate_id,
-                                   const HydraDelegateSettings &settings)
-    : render_index_(render_index), delegate_id_(delegate_id), settings_(settings)
+                                   pxr::SdfPath const &delegate_id)
+    : render_index_(render_index), delegate_id_(delegate_id)
 {
   /* Temporary directory to write any additional files to, like image or VDB files. */
   char unique_name[FILE_MAXFILE];
@@ -44,10 +43,6 @@ USDSceneDelegate::~USDSceneDelegate()
 
 void USDSceneDelegate::populate(Depsgraph *depsgraph)
 {
-  /* TODO: implement MaterialX support in USD exporter. */
-  const bool use_materialx = !settings_.mx_filename_key.IsEmpty();
-  (void)use_materialx;
-
   USDExportParams params = {};
   params.export_hair = true;
   params.export_uvmaps = true;

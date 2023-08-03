@@ -8,8 +8,6 @@
 #include <pxr/imaging/hd/renderIndex.h>
 #include <pxr/usdImaging/usdImaging/delegate.h>
 
-#include "settings.h"
-
 struct Depsgraph;
 
 namespace blender::io::hydra {
@@ -21,15 +19,12 @@ class USDSceneDelegate {
   pxr::SdfPath const delegate_id_;
   pxr::UsdStageRefPtr stage_;
   std::unique_ptr<pxr::UsdImagingDelegate> delegate_;
-  const HydraDelegateSettings &settings_;
 
   std::string temp_dir_;
   std::string temp_file_;
 
  public:
-  USDSceneDelegate(pxr::HdRenderIndex *render_index,
-                   pxr::SdfPath const &delegate_id,
-                   const HydraDelegateSettings &settings_);
+  USDSceneDelegate(pxr::HdRenderIndex *render_index, pxr::SdfPath const &delegate_id);
   ~USDSceneDelegate();
 
   void populate(Depsgraph *depsgraph);

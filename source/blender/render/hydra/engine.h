@@ -43,7 +43,6 @@ class Engine {
   pxr::HdPluginRenderDelegateUniqueHandle render_delegate_;
   std::unique_ptr<pxr::HdRenderIndex> render_index_;
 
-  io::hydra::HydraDelegateSettings scene_delegate_settings_;
   std::unique_ptr<io::hydra::HydraSceneDelegate> hydra_scene_delegate_;
   std::unique_ptr<io::hydra::USDSceneDelegate> usd_scene_delegate_;
 
@@ -59,7 +58,6 @@ class Engine {
   void sync(Depsgraph *depsgraph, bContext *context);
   virtual void render() = 0;
 
-  void set_sync_setting(const std::string &key, const pxr::VtValue &val);
   virtual void set_render_setting(const std::string &key, const pxr::VtValue &val);
 
  protected:

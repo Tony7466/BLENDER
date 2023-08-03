@@ -146,22 +146,6 @@ static pxr::VtValue get_setting_val(PyObject *pyval)
   return val;
 }
 
-static PyObject *engine_set_sync_setting_func(PyObject * /*self*/, PyObject *args)
-{
-  PyObject *pyengine, *pyval;
-  char *key;
-  if (!PyArg_ParseTuple(args, "OsO", &pyengine, &key, &pyval)) {
-    Py_RETURN_NONE;
-  }
-
-  Engine *engine = static_cast<Engine *>(PyLong_AsVoidPtr(pyengine));
-
-  CLOG_INFO(LOG_HYDRA_RENDER, 3, "Engine %p: %s", engine, key);
-  engine->set_sync_setting(key, get_setting_val(pyval));
-
-  Py_RETURN_NONE;
-}
-
 static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyengine, *pyval;
@@ -199,7 +183,6 @@ static PyMethodDef methods[] = {
     {"engine_update", engine_update_func, METH_VARARGS, ""},
     {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
-    {"engine_set_sync_setting", engine_set_sync_setting_func, METH_VARARGS, ""},
     {"engine_set_render_setting", engine_set_render_setting_func, METH_VARARGS, ""},
 
     {"cache_or_get_image_file", cache_or_get_image_file_func, METH_VARARGS, ""},

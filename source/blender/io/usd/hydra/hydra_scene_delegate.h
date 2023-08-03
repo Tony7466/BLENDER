@@ -17,7 +17,6 @@
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
-#include "settings.h"
 #include "volume.h"
 #include "volume_modifier.h"
 #include "world.h"
@@ -52,7 +51,6 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   View3D *view3d = nullptr;
   Main *bmain = nullptr;
   Scene *scene = nullptr;
-  const HydraDelegateSettings &settings;
   ShadingSettings shading_settings;
 
  private:
@@ -62,9 +60,7 @@ class HydraSceneDelegate : public pxr::HdSceneDelegate {
   std::unique_ptr<WorldData> world_data_;
 
  public:
-  HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
-                     pxr::SdfPath const &delegate_id,
-                     const HydraDelegateSettings &settings);
+  HydraSceneDelegate(pxr::HdRenderIndex *parent_index, pxr::SdfPath const &delegate_id);
   ~HydraSceneDelegate() override = default;
 
   /* Delegate methods */

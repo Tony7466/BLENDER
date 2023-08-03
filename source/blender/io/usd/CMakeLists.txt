@@ -168,7 +168,6 @@ if(WITH_HYDRA)
     hydra/material.h
     hydra/mesh.h
     hydra/object.h
-    hydra/settings.h
     hydra/usd_scene_delegate.h
     hydra/volume.h
     hydra/volume_modifier.h
@@ -201,11 +200,6 @@ if(WITH_OPENVDB)
   list(APPEND LIB
     ${OPENVDB_LIBRARIES}
   )
-endif()
-
-if(WITH_MATERIALX)
-  add_definitions(-DWITH_MATERIALX)
-  list(APPEND LIB MaterialXCore)
 endif()
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

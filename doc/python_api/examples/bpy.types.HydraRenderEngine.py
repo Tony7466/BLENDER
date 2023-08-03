@@ -32,12 +32,6 @@ class CustomHydraRenderEngine(bpy.types.HydraRenderEngine):
             'aovToken:Depth': "depth",
         }
 
-    # Settings used by the synchronization process.
-    def get_sync_settings(self, engine_type):
-        return {
-            'MaterialXFilenameKey': "MaterialXFilename",
-        }
-
     # RenderEngine methods for update, render and draw are implemented in
     # HydraRenderEngine. Optionally extra work can be done before or after
     # by implementing the methods like this.

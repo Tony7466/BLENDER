@@ -86,8 +86,8 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
 
     if (!hydra_scene_delegate_) {
       pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene");
-      hydra_scene_delegate_ = std::make_unique<io::hydra::HydraSceneDelegate>(
-          render_index_.get(), scene_path, scene_delegate_settings_);
+      hydra_scene_delegate_ = std::make_unique<io::hydra::HydraSceneDelegate>(render_index_.get(),
+                                                                              scene_path);
     }
     hydra_scene_delegate_->populate(depsgraph, context ? CTX_wm_view3d(context) : nullptr);
   }
@@ -101,20 +101,10 @@ void Engine::sync(Depsgraph *depsgraph, bContext *context)
 
     if (!usd_scene_delegate_) {
       pxr::SdfPath scene_path = pxr::SdfPath::AbsoluteRootPath().AppendElementString("usd_scene");
-      usd_scene_delegate_ = std::make_unique<io::hydra::USDSceneDelegate>(
-          render_index_.get(), scene_path, scene_delegate_settings_);
+      usd_scene_delegate_ = std::make_unique<io::hydra::USDSceneDelegate>(render_index_.get(),
+                                                                          scene_path);
     }
     usd_scene_delegate_->populate(depsgraph);
-  }
-}
-
-void Engine::set_sync_setting(const std::string &key, const pxr::VtValue &val)
-{
-  if (key == "MaterialXFilenameKey") {
-    scene_delegate_settings_.mx_filename_key = pxr::TfToken(val.Get<std::string>());
-  }
-  else {
-    scene_delegate_settings_.render_tokens.add_overwrite(pxr::TfToken(key), val);
   }
 }
 
