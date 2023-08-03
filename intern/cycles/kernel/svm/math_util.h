@@ -70,7 +70,7 @@ ccl_device void svm_vector_math(ccl_private float *value,
       *vector = ceil(a);
       break;
     case NODE_VECTOR_MATH_MODULO:
-      *vector = make_float3(safe_modulof(a.x, b.x), safe_modulof(a.y, b.y), safe_modulof(a.z, b.z));
+      *vector = make_float3(safe_modulo(a.x, b.x), safe_modulo(a.y, b.y), safe_modulo(a.z, b.z));
       break;
     case NODE_VECTOR_MATH_WRAP:
       *vector = make_float3(wrapf(a.x, b.x, c.x), wrapf(a.y, b.y, c.y), wrapf(a.z, b.z, c.z));
@@ -144,9 +144,9 @@ ccl_device float svm_math(NodeMathType type, float a, float b, float c)
     case NODE_MATH_FRACTION:
       return a - floorf(a);
     case NODE_MATH_MODULO:
-      return safe_modulof(a, b);
+      return safe_modulo(a, b);
     case NODE_MATH_FLOORED_MODULO:
-      return safe_floored_modulof(a, b);
+      return safe_floored_modulo(a, b);
     case NODE_MATH_TRUNC:
       return a >= 0.0f ? floorf(a) : ceilf(a);
     case NODE_MATH_SNAP:

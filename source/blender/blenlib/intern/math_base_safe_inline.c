@@ -22,7 +22,7 @@ MINLINE float safe_modf(float a, float b)
   return (b != 0.0f) ? fmodf(a, b) : 0.0f;
 }
 
-MINLINE float safe_floored_modulof(float a, float b)
+MINLINE float safe_floored_modf(float a, float b)
 {
   return (b != 0.0f) ? a - floorf(a / b) * b : 0.0f;
 }
