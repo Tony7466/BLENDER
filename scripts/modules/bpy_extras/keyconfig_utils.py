@@ -133,7 +133,7 @@ from bpy.types import KeyConfig, KeyMap, KeyMapItem, Operator
 
 
 def addon_hotkey_register(
-    keymap_name='WINDOW',
+    keymap_name='Window',
     op_idname='',
     key_id='A',
     event_type='PRESS',
@@ -146,6 +146,10 @@ def addon_hotkey_register(
     direction='ANY',
     repeat=False,
     op_kwargs={},
+
+    add_on_conflict=True,
+    warn_on_conflict=True,
+    error_on_conflict=False,
 ):
     """Top-level function for registering a hotkey as conveniently as possible.
     If you want to better manage the registered hotkey (for example, to be able
@@ -184,8 +188,13 @@ def addon_hotkey_register(
         op_kwargs=op_kwargs,
     )
 
-    py_kmi.register(keymap_name=keymap_name)
-    return py_kmi
+    keymap, kmi = py_kmi.register(
+        keymap_name=keymap_name,
+        add_on_conflict=add_on_conflict,
+        warn_on_conflict=warn_on_conflict,
+        error_on_conflict=error_on_conflict,
+    )
+    return keymap, kmi
 
 
 class PyKeyMapItem:
@@ -223,7 +232,6 @@ class PyKeyMapItem:
         self.repeat = repeat
 
         self.op_kwargs = op_kwargs
-
 
     @staticmethod
     def new_from_keymap_item(kmi: KeyMapItem, context=None) -> "PyKeyMapItem":
@@ -279,8 +287,14 @@ class PyKeyMapItem:
         return final_string
 
     def register(
-        self, context=None, keymap_name='Window', *, cancel_on_key_conflict=False
-    ) -> Optional[KeyMapItem]:
+        self,
+        context=None,
+        keymap_name='Window',
+        *,
+        add_on_conflict=True,
+        warn_on_conflict=True,
+        error_on_conflict=False,
+    ) -> Optional[Tuple[KeyMap, KeyMapItem]]:
         """Higher-level function for addon dev convenience.
         The caller doesn't have to worry about the KeyConfig or the KeyMap.
         The `addon` KeyConfig will be used.
@@ -296,50 +310,64 @@ class PyKeyMapItem:
             return
 
         check_keymap_name(keymap_name)
-        is_conflict = self.check_conflicts(keymap_name, context, raise_error=(not cancel_on_key_conflict))
-        if is_conflict and cancel_on_key_conflict:
-            return
+        conflicts = self.get_conflict_info(keymap_name, context)
+        kmi = None
+        keymap = None
+        if not conflicts or add_on_conflict:
+            # Add the keymap if there is no conflict, or if we are allowed
+            # to add it in spite of a conflict.
 
-        # If this KeyMap already exists, new() will return the existing one,
-        # which is confusing, but ideal.
-        space_type, region_type = get_ui_types_of_keymap(keymap_name)
-        addon_km = kconf.keymaps.new(
-            name=keymap_name, space_type=space_type, region_type=region_type
-        )
+            # If this KeyMap already exists, new() will return the existing one,
+            # which is confusing, but ideal.
+            space_type, region_type = get_ui_types_of_keymap(keymap_name)
+            keymap = kconf.keymaps.new(
+                name=keymap_name, space_type=space_type, region_type=region_type
+            )
 
-        self.register_in_keymap(addon_km, cancel_on_key_conflict=cancel_on_key_conflict)
+            kmi = self.register_in_keymap(keymap)
 
-    def check_conflicts(self, keymap_name: str, context=None, *, raise_error=True) -> bool:
+        # Warn or raise error about conflicts.
+        if conflicts and (warn_on_conflict or error_on_conflict):
+            message = f"Failed to register KeyMapItem. See conflicting hotkeys below.\n"
+            conflict_info = "\n".join(
+                [str(PyKeyMapItem.new_from_keymap_item(kmi)) for kmi in conflicts]
+            )
+            message += conflict_info
+
+            if error_on_conflict:
+                raise KeyMapException(message)
+            if warn_on_conflict:
+                print(message)
+
+        return keymap, kmi
+
+    def get_conflict_info(
+        self,
+        keymap_name: str,
+        context=None,
+    ) -> List[bpy.types.KeyMapItem]:
         """Return whether there are existing conflicting keymaps, or raise an error."""
         if not context:
             context = bpy.context
+
         wm = context.window_manager
         space_type, region_type = get_ui_types_of_keymap(keymap_name)
-        for kconf in (wm.keyconfigs.addon, wm.keyconfigs.user):
-            keymap = kconf.keymaps.find(keymap_name, space_type=space_type, region_type=region_type)
+
+        conflicts = []
+
+        kconfs = {('ADDON', wm.keyconfigs.addon), ('USER', wm.keyconfigs.user)}
+        for identifier, kconf in kconfs:
+            keymap = kconf.keymaps.find(
+                keymap_name, space_type=space_type, region_type=region_type
+            )
             if not keymap:
                 continue
 
-            kmi_conflicting = self.find_in_keymap_conflicts(keymap)
-            if kmi_conflicting:
-                if not raise_error:
-                    return True
-                else:
-                    conflict_info = "\n".join([
-                        str(PyKeyMapItem.new_from_keymap_item(kmi))
-                        for kmi in kmi_conflicting
-                    ])
-                    raise KeyMapException(
-                        "Failed to register KeyMapItem: There is a key conflict:\n"
-                        + keymap.name
-                        + ": "
-                        + conflict_info
-                    )
-        return False
+            conflicts.extend(self.find_in_keymap_conflicts(keymap))
 
-    def register_in_keymap(
-        self, keymap: KeyMap, *, cancel_on_key_conflict=False
-    ) -> Optional[KeyMapItem]:
+        return conflicts
+
+    def register_in_keymap(self, keymap: KeyMap) -> Optional[KeyMapItem]:
         """Lower-level function, for registering in a specific KeyMap."""
 
         kmi = keymap.keymap_items.new(
