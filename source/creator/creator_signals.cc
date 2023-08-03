@@ -9,8 +9,10 @@
 #ifndef WITH_PYTHON_MODULE
 
 #  if defined(__linux__) && defined(__GNUC__)
-#    define _GNU_SOURCE
-#    include <fenv.h>
+#    ifndef _GNU_SOURCE
+#      define _GNU_SOURCE
+#    endif
+#    include <cfenv>
 #  endif
 
 #  if (defined(__APPLE__) && (defined(__i386__) || defined(__x86_64__)))
@@ -23,9 +25,9 @@
 #    include <windows.h>
 #  endif
 
-#  include <errno.h>
-#  include <stdlib.h>
-#  include <string.h>
+#  include <cerrno>
+#  include <cstdlib>
+#  include <cstring>
 
 #  include "BLI_sys_types.h"
 
@@ -45,7 +47,7 @@
 #  include "BKE_main.h"
 #  include "BKE_report.h"
 
-#  include <signal.h>
+#  include <csignal>
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern_python.h" /* BPY_python_backtrace */
@@ -61,7 +63,7 @@
 
 /* set breakpoints here when running in debug mode, useful to catch floating point errors */
 #  if defined(__linux__) || defined(_WIN32) || defined(OSX_SSE_FPE)
-static void sig_handle_fpe(int UNUSED(sig))
+static void sig_handle_fpe(int /*sig*/)
 {
   fprintf(stderr, "debug: SIGFPE trapped\n");
 }
@@ -91,10 +93,10 @@ static void sig_handle_crash_backtrace(FILE *fp)
 
 static void sig_handle_crash(int signum)
 {
-  /* Might be called after WM/Main exit, so needs to be careful about NULL-checking before
+  /* Might be called after WM/Main exit, so needs to be careful about nullptr-checking before
    * de-referencing. */
 
-  wmWindowManager *wm = G_MAIN ? G_MAIN->wm.first : NULL;
+  wmWindowManager *wm = G_MAIN ? static_cast<wmWindowManager *>(G_MAIN->wm.first) : nullptr;
 
 #  ifdef USE_WRITE_CRASH_BLEND
   if (wm && wm->undo_stack) {
@@ -149,7 +151,7 @@ static void sig_handle_crash(int signum)
   /* open the crash log */
   errno = 0;
   fp = BLI_fopen(filepath, "wb");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     fprintf(stderr,
             "Unable to save '%s': %s\n",
             filepath,
@@ -193,7 +195,7 @@ extern LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS *ExceptionInfo)
     LPVOID address = ExceptionInfo->ExceptionRecord->ExceptionAddress;
     fprintf(stderr, "Error   : EXCEPTION_STACK_OVERFLOW\n");
     fprintf(stderr, "Address : 0x%p\n", address);
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, address, &mod)) {
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, LPCSTR(address), &mod)) {
       if (GetModuleFileName(mod, modulename, MAX_PATH)) {
         fprintf(stderr, "Module  : %s\n", modulename);
       }
@@ -208,13 +210,13 @@ extern LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS *ExceptionInfo)
 }
 #  endif
 
-static void sig_handle_abort(int UNUSED(signum))
+static void sig_handle_abort(int /*signum*/)
 {
   /* Delete content of temp dir! */
   BKE_tempdir_session_purge();
 }
 
-void main_signal_setup(void)
+void main_signal_setup()
 {
   if (app_state.signal.use_crash_handler) {
 #  ifdef WIN32
@@ -236,7 +238,7 @@ void main_signal_setup(void)
   }
 }
 
-void main_signal_setup_background(void)
+void main_signal_setup_background()
 {
   /* for all platforms, even windows has it! */
   BLI_assert(G.background);
@@ -246,7 +248,7 @@ void main_signal_setup_background(void)
   signal(SIGINT, sig_handle_blender_esc);
 }
 
-void main_signal_setup_fpe(void)
+void main_signal_setup_fpe()
 {
 #  if defined(__linux__) || defined(_WIN32) || defined(OSX_SSE_FPE)
   /* zealous but makes float issues a heck of a lot easier to find!
@@ -264,9 +266,9 @@ void main_signal_setup_fpe(void)
 #    endif /* OSX_SSE_FPE */
 #    if defined(_WIN32) && defined(_MSC_VER)
   /* enables all fp exceptions */
-  _controlfp_s(NULL, 0, _MCW_EM);
+  _controlfp_s(nullptr, 0, _MCW_EM);
   /* hide the ones we don't care about */
-  _controlfp_s(NULL, _EM_DENORMAL | _EM_UNDERFLOW | _EM_INEXACT, _MCW_EM);
+  _controlfp_s(nullptr, _EM_DENORMAL | _EM_UNDERFLOW | _EM_INEXACT, _MCW_EM);
 #    endif /* _WIN32 && _MSC_VER */
 #  endif
 }
