@@ -7,8 +7,9 @@
  *
  * Abstractions to manage runtime asset lists with a global cache for multiple UI elements to
  * access.
- * Internally this uses the #FileList API and structures from `filelist.c`. This is just because it
- * contains most necessary logic already and there's not much time for a more long-term solution.
+ * Internally this uses the #FileList API and structures from `filelist.cc`.
+ * This is just because it contains most necessary logic already and
+ * there's not much time for a more long-term solution.
  */
 
 #include <optional>
@@ -29,8 +30,8 @@
 #include "WM_api.h"
 
 /* XXX uses private header of file-space. */
-#include "../space_file/file_indexer.h"
-#include "../space_file/filelist.h"
+#include "../space_file/file_indexer.hh"
+#include "../space_file/filelist.hh"
 
 #include "ED_asset_indexer.h"
 #include "ED_asset_list.h"
@@ -85,7 +86,7 @@ class PreviewTimer {
   void ensureRunning(const bContext *C)
   {
     if (!timer_) {
-      timer_ = WM_event_add_timer_notifier(
+      timer_ = WM_event_timer_add_notifier(
           CTX_wm_manager(C), CTX_wm_window(C), NC_ASSET | ND_ASSET_LIST_PREVIEW, 0.01);
     }
   }
@@ -93,7 +94,7 @@ class PreviewTimer {
   void stop(const bContext *C)
   {
     if (timer_) {
-      WM_event_remove_timer_notifier(CTX_wm_manager(C), CTX_wm_window(C), timer_);
+      WM_event_timer_remove_notifier(CTX_wm_manager(C), CTX_wm_window(C), timer_);
       timer_ = nullptr;
     }
   }

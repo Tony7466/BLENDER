@@ -8,6 +8,8 @@
  * Contains everything about light baking.
  */
 
+#include <mutex>
+
 #include "DRW_render.h"
 
 #include "BKE_global.h"
@@ -177,7 +179,7 @@ class LightBake {
             }
           });
 
-      if ((G.is_break == true) || ((stop != nullptr && *stop == true))) {
+      if ((G.is_break == true) || (stop != nullptr && *stop == true)) {
         break;
       }
     }

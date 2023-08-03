@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "DNA_brush_types.h"
 #include "DNA_curve_types.h"
@@ -166,10 +166,9 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 #  include "BKE_idprop.h"
 #  include "BKE_image.h"
 #  include "BKE_main.h"
-#  include "BKE_mesh_runtime.h"
+#  include "BKE_mesh_runtime.hh"
 #  include "BKE_object.h"
-#  include "BKE_paint.h"
-#  include "BKE_pbvh.h"
+#  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
 #  include "BKE_screen.h"
 
@@ -594,7 +593,8 @@ static void rna_UserDef_subdivision_update(Main *bmain, Scene *scene, PointerRNA
   Object *ob;
 
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (BKE_object_get_last_subsurf_modifier(ob) != nullptr) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
@@ -611,7 +611,7 @@ static void rna_UserDef_audio_update(Main *bmain, Scene * /*scene*/, PointerRNA 
 
 static void rna_Userdef_memcache_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
-  MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
+  MEM_CacheLimiter_set_maximum(size_t(U.memcachelimit) * 1024 * 1024);
   USERDEF_TAG_DIRTY;
 }
 
@@ -633,7 +633,8 @@ static void rna_UserDef_weight_color_update(Main *bmain, Scene *scene, PointerRN
   Object *ob;
 
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (ob->mode & OB_MODE_WEIGHT_PAINT) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
@@ -884,7 +885,7 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
                 "%s '%s' is too long, maximum length is %d",
                 error_prefix,
                 identifier,
-                (int)sizeof(dummy_apt.idname));
+                int(sizeof(dummy_apt.idname)));
     return nullptr;
   }
 
@@ -1114,6 +1115,11 @@ static const EnumPropertyItem *rna_preference_gpu_backend_itemf(bContext * /*C*/
   EnumPropertyItem *result = nullptr;
   for (int i = 0; rna_enum_preference_gpu_backend_items[i].identifier != nullptr; i++) {
     const EnumPropertyItem *item = &rna_enum_preference_gpu_backend_items[i];
+#  ifndef WITH_OPENGL_BACKEND
+    if (item->value == GPU_BACKEND_OPENGL) {
+      continue;
+    }
+#  endif
 #  ifndef WITH_METAL_BACKEND
     if (item->value == GPU_BACKEND_METAL) {
       continue;
@@ -3059,6 +3065,12 @@ static void rna_def_userdef_theme_space_node(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Simulation Zone", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "repeat_zone", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "node_zone_repeat");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Repeat Zone", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
 static void rna_def_userdef_theme_space_buts(BlenderRNA *brna)
@@ -4357,11 +4369,11 @@ static void rna_def_userdef_addon_pref(BlenderRNA *brna)
   USERDEF_TAG_DIRTY_PROPERTY_UPDATE_DISABLE;
 
   /* registration */
-  RNA_define_verify_sdna(0);
+  RNA_define_verify_sdna(false);
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "module");
   RNA_def_property_flag(prop, PROP_REGISTER);
-  RNA_define_verify_sdna(1);
+  RNA_define_verify_sdna(true);
 
   USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE;
 }
@@ -6660,6 +6672,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Cycles Debug", "Enable Cycles debugging options for developers");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "use_eevee_debug", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_eevee_debug", 1);
+  RNA_def_property_ui_text(prop, "EEVEE Debug", "Enable EEVEE debugging options for developers");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
   prop = RNA_def_property(srna, "use_sculpt_tools_tilt", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_sculpt_tools_tilt", 1);
   RNA_def_property_ui_text(
@@ -6740,6 +6757,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_rotation_socket", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Rotation Socket", "Enable the new rotation node socket type");
+
+  prop = RNA_def_property(srna, "use_node_group_operators", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Node Group Operators", "Enable using geometry nodes as edit operators");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

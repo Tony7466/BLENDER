@@ -24,14 +24,14 @@
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_image.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "NOD_texture.h"
 
@@ -1870,7 +1870,7 @@ static void paint_cursor_update_rake_rotation(PaintCursorContext *pcontext)
    * For line strokes, such interference is visible. */
   if (!pcontext->ups->stroke_active) {
     paint_calculate_rake_rotation(
-        pcontext->ups, pcontext->brush, pcontext->translation, pcontext->mode);
+        pcontext->ups, pcontext->brush, pcontext->translation, pcontext->mode, true);
   }
 }
 

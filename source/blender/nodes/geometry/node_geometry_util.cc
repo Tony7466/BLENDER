@@ -11,7 +11,7 @@
 
 #include "BKE_context.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_pointcloud.h"
 
 #include "NOD_add_node_search.hh"

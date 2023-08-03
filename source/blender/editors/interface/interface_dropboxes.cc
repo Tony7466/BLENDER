@@ -50,10 +50,11 @@ static bool ui_view_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 
 static char *ui_view_drop_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropBox * /*drop*/)
 {
+  const wmWindow *win = CTX_wm_window(C);
   const ARegion *region = CTX_wm_region(C);
   std::unique_ptr<DropTargetInterface> drop_target = region_views_find_drop_target_at(region, xy);
 
-  return drop_target_tooltip(*drop_target, *drag);
+  return drop_target_tooltip(*region, *drop_target, *drag, *win->eventstate);
 }
 
 /** \} */
@@ -85,9 +86,9 @@ static bool ui_drop_material_poll(bContext *C, wmDrag *drag, const wmEvent * /*e
   return WM_drag_is_ID_type(drag, ID_MA) && !RNA_pointer_is_null(&mat_slot);
 }
 
-static void ui_drop_material_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+static void ui_drop_material_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
-  const ID *id = WM_drag_get_local_ID_or_import_from_asset(drag, ID_MA);
+  const ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, ID_MA);
   RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
 }
 

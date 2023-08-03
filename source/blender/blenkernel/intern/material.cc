@@ -46,7 +46,7 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_attribute.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
@@ -160,7 +160,7 @@ static void material_free_data(ID *id)
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Material *material = (Material *)id;
-  /* Nodetrees **are owned by IDs**, treat them as mere sub-data and not real ID! */
+  /* Node-trees **are owned by IDs**, treat them as mere sub-data and not real ID! */
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
       data, BKE_library_foreach_ID_embedded(data, (ID **)&material->nodetree));
   if (material->texpaintslot != nullptr) {

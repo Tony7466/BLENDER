@@ -90,6 +90,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_film_cryptomatte_post";
     case DEFERRED_LIGHT:
       return "eevee_deferred_light";
+    case DEFERRED_LIGHT_DIFFUSE_ONLY:
+      return "eevee_deferred_light_diffuse";
     case HIZ_DEBUG:
       return "eevee_hiz_debug";
     case HIZ_UPDATE:
@@ -98,12 +100,14 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_motion_blur_gather";
     case MOTION_BLUR_TILE_DILATE:
       return "eevee_motion_blur_tiles_dilate";
-    case MOTION_BLUR_TILE_FLATTEN_RENDER:
-      return "eevee_motion_blur_tiles_flatten_render";
-    case MOTION_BLUR_TILE_FLATTEN_VIEWPORT:
-      return "eevee_motion_blur_tiles_flatten_viewport";
+    case MOTION_BLUR_TILE_FLATTEN_RGBA:
+      return "eevee_motion_blur_tiles_flatten_rgba";
+    case MOTION_BLUR_TILE_FLATTEN_RG:
+      return "eevee_motion_blur_tiles_flatten_rg";
     case DEBUG_SURFELS:
       return "eevee_debug_surfels";
+    case DEBUG_IRRADIANCE_GRID:
+      return "eevee_debug_irradiance_grid";
     case DISPLAY_PROBE_GRID:
       return "eevee_display_probe_grid";
     case DOF_BOKEH_LUT:
@@ -150,12 +154,40 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case RAY_DENOISE_SPATIAL_REFLECT:
+      return "eevee_ray_denoise_spatial_reflect";
+    case RAY_DENOISE_SPATIAL_REFRACT:
+      return "eevee_ray_denoise_spatial_refract";
+    case RAY_DENOISE_TEMPORAL:
+      return "eevee_ray_denoise_temporal";
+    case RAY_DENOISE_BILATERAL_REFLECT:
+      return "eevee_ray_denoise_bilateral_reflect";
+    case RAY_DENOISE_BILATERAL_REFRACT:
+      return "eevee_ray_denoise_bilateral_refract";
+    case RAY_GENERATE_REFLECT:
+      return "eevee_ray_generate_reflect";
+    case RAY_GENERATE_REFRACT:
+      return "eevee_ray_generate_refract";
+    case RAY_TRACE_SCREEN_REFLECT:
+      return "eevee_ray_trace_screen_reflect";
+    case RAY_TRACE_SCREEN_REFRACT:
+      return "eevee_ray_trace_screen_refract";
+    case RAY_TILE_CLASSIFY:
+      return "eevee_ray_tile_classify";
+    case RAY_TILE_COMPACT:
+      return "eevee_ray_tile_compact";
     case LIGHTPROBE_IRRADIANCE_BOUNDS:
       return "eevee_lightprobe_irradiance_bounds";
+    case LIGHTPROBE_IRRADIANCE_OFFSET:
+      return "eevee_lightprobe_irradiance_offset";
     case LIGHTPROBE_IRRADIANCE_RAY:
       return "eevee_lightprobe_irradiance_ray";
     case LIGHTPROBE_IRRADIANCE_LOAD:
       return "eevee_lightprobe_irradiance_load";
+    case REFLECTION_PROBE_REMAP:
+      return "eevee_reflection_probe_remap";
+    case REFLECTION_PROBE_UPDATE_IRRADIANCE:
+      return "eevee_reflection_probe_update_irradiance";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
@@ -186,6 +218,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_transparent";
     case SUBSURFACE_EVAL:
       return "eevee_subsurface_eval";
+    case SURFEL_CLUSTER_BUILD:
+      return "eevee_surfel_cluster_build";
     case SURFEL_LIGHT:
       return "eevee_surfel_light";
     case SURFEL_LIST_BUILD:
@@ -245,6 +279,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   /* WORKAROUND: Add new ob attr buffer. */
   if (GPU_material_uniform_attributes(gpumat) != nullptr) {
     info.additional_info("draw_object_attribute_new");
+
+    /* Search and remove the old object attribute UBO which would creating bind point collision. */
+    for (auto &resource_info : info.batch_resources_) {
+      if (resource_info.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER &&
+          resource_info.uniformbuf.name == GPU_ATTRIBUTE_UBO_BLOCK_NAME "[512]")
+      {
+        info.batch_resources_.remove_first_occurrence_and_reorder(resource_info);
+        break;
+      }
+    }
+    /* Remove references to the UBO. */
+    info.define("UNI_ATTR(a)", "vec4(0.0)");
   }
 
   /* First indices are reserved by the engine.
@@ -310,6 +356,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     case MAT_GEOM_MESH:
       /** Noop. */
       break;
+    case MAT_GEOM_POINT_CLOUD:
     case MAT_GEOM_CURVES:
       /** Hair attributes come from sampler buffer. Transfer attributes to sampler. */
       for (auto &input : info.vertex_inputs_) {
@@ -378,8 +425,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   {
-    /* Only mesh and curves support vertex displacement for now. */
-    if (ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES, MAT_GEOM_GPENCIL)) {
+    if (!ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME)) {
       vert_gen << "vec3 nodetree_displacement()\n";
       vert_gen << "{\n";
       vert_gen << ((codegen.displacement) ? codegen.displacement : "return vec3(0);\n");
@@ -439,6 +485,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
     case MAT_GEOM_MESH:
       info.additional_info("eevee_geom_mesh");
+      break;
+    case MAT_GEOM_POINT_CLOUD:
+      info.additional_info("eevee_geom_point_cloud");
       break;
   }
 

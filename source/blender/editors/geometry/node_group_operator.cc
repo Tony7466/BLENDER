@@ -1,10 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
  */
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
@@ -23,7 +25,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
@@ -37,6 +39,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
+#include "RNA_define.h"
 #include "RNA_enum_types.h"
 
 #include "UI_interface.h"
@@ -67,23 +70,105 @@ namespace blender::ed::geometry {
 /** \name Operator
  * \{ */
 
-static const asset_system::AssetRepresentation *get_context_asset(const bContext &C)
+/**
+ * #AssetLibrary::resolve_asset_weak_reference_to_full_path() currently does not support local
+ * assets.
+ */
+static const asset_system::AssetRepresentation *get_local_asset_from_relative_identifier(
+    const bContext &C, const StringRefNull relative_identifier, ReportList *reports)
 {
-  return reinterpret_cast<const asset_system::AssetRepresentation *>(CTX_wm_asset(&C));
+  AssetLibraryReference library_ref{};
+  library_ref.type = ASSET_LIBRARY_LOCAL;
+  ED_assetlist_storage_fetch(&library_ref, &C);
+  ED_assetlist_ensure_previews_job(&library_ref, &C);
+
+  const asset_system::AssetRepresentation *matching_asset = nullptr;
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (asset.get_identifier().library_relative_identifier() == relative_identifier) {
+      matching_asset = &asset;
+      return false;
+    }
+    return true;
+  });
+
+  if (reports && !matching_asset) {
+    if (ED_assetlist_is_loaded(&library_ref)) {
+      BKE_reportf(
+          reports, RPT_ERROR, "No asset found at path \"%s\"", relative_identifier.c_str());
+    }
+    else {
+      BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+    }
+  }
+  return matching_asset;
 }
 
-static const bNodeTree *get_node_group(const bContext &C)
+static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
+    const bContext &C, const AssetWeakReference &weak_ref, ReportList *reports)
 {
-  const asset_system::AssetRepresentation *asset = get_context_asset(C);
+  if (weak_ref.asset_library_type == ASSET_LIBRARY_LOCAL) {
+    return get_local_asset_from_relative_identifier(
+        C, weak_ref.relative_asset_identifier, reports);
+  }
+
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  ED_assetlist_storage_fetch(&library_ref, &C);
+  ED_assetlist_ensure_previews_job(&library_ref, &C);
+  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+      asset_system::all_library_reference());
+  if (!all_library) {
+    BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+  }
+
+  const std::string full_path = all_library->resolve_asset_weak_reference_to_full_path(weak_ref);
+
+  const asset_system::AssetRepresentation *matching_asset = nullptr;
+  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (asset.get_identifier().full_path() == full_path) {
+      matching_asset = &asset;
+      return false;
+    }
+    return true;
+  });
+
+  if (reports && !matching_asset) {
+    if (ED_assetlist_is_loaded(&library_ref)) {
+      BKE_reportf(reports, RPT_ERROR, "No asset found at path \"%s\"", full_path.c_str());
+    }
+  }
+  return matching_asset;
+}
+
+/** \note Does not check asset type or meta data. */
+static const asset_system::AssetRepresentation *get_asset(const bContext &C,
+                                                          PointerRNA &ptr,
+                                                          ReportList *reports)
+{
+  AssetWeakReference weak_ref{};
+  weak_ref.asset_library_type = RNA_enum_get(&ptr, "asset_library_type");
+  weak_ref.asset_library_identifier = RNA_string_get_alloc(
+      &ptr, "asset_library_identifier", nullptr, 0, nullptr);
+  weak_ref.relative_asset_identifier = RNA_string_get_alloc(
+      &ptr, "relative_asset_identifier", nullptr, 0, nullptr);
+  return find_asset_from_weak_ref(C, weak_ref, reports);
+}
+
+static const bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
+{
+  const asset_system::AssetRepresentation *asset = get_asset(C, ptr, reports);
   if (!asset) {
     return nullptr;
   }
+  Main &bmain = *CTX_data_main(&C);
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      ED_asset_get_local_id_from_asset_or_append_and_reuse(CTX_data_main(&C), *asset, ID_NT));
+      asset::asset_local_id_ensure_imported(bmain, *asset));
   if (!node_group) {
     return nullptr;
   }
   if (node_group->type != NTREE_GEOMETRY) {
+    if (reports) {
+      BKE_report(reports, RPT_ERROR, "Asset is not a geometry node group");
+    }
     return nullptr;
   }
   return node_group;
@@ -219,7 +304,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   }
   const eObjectMode mode = eObjectMode(active_object->mode);
 
-  const bNodeTree *node_tree = get_node_group(*C);
+  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, op->reports);
   if (!node_tree) {
     return OPERATOR_CANCELLED;
   }
@@ -271,7 +356,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
 static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  const bNodeTree *node_tree = get_node_group(*C);
+  const bNodeTree *node_tree = get_node_group(*C, *op->ptr, op->reports);
   if (!node_tree) {
     return OPERATOR_CANCELLED;
   }
@@ -282,11 +367,9 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   return run_node_group_exec(C, op);
 }
 
-static char *run_node_group_get_description(bContext *C,
-                                            wmOperatorType * /*ot*/,
-                                            PointerRNA * /*ptr*/)
+static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/, PointerRNA *ptr)
 {
-  const asset_system::AssetRepresentation *asset = get_context_asset(*C);
+  const asset_system::AssetRepresentation *asset = get_asset(*C, *ptr, nullptr);
   if (!asset) {
     return nullptr;
   }
@@ -297,34 +380,33 @@ static char *run_node_group_get_description(bContext *C,
   return BLI_strdup(description);
 }
 
-static bool run_node_group_poll(bContext *C)
-{
-  const asset_system::AssetRepresentation *asset = get_context_asset(*C);
-  if (!asset) {
-    return false;
-  }
-  const Object *object = CTX_data_active_object(C);
-  if (object->type != OB_CURVES) {
-    return false;
-  }
-  if (object->mode != OB_MODE_SCULPT_CURVES) {
-    return false;
-  }
-  return true;
-}
-
 void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
 {
   ot->name = "Run Node Group";
   ot->idname = __func__;
   ot->description = "Execute a node group on geometry";
 
-  ot->poll = run_node_group_poll;
+  /* A proper poll is not possible, since it doesn't have access to the operator's properties. */
   ot->invoke = run_node_group_invoke;
   ot->exec = run_node_group_exec;
   ot->get_description = run_node_group_get_description;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  PropertyRNA *prop;
+  prop = RNA_def_enum(ot->srna,
+                      "asset_library_type",
+                      rna_enum_aset_library_type_items,
+                      ASSET_LIBRARY_LOCAL,
+                      "Asset Library Type",
+                      "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_string(
+      ot->srna, "asset_library_identifier", nullptr, 0, "Asset Library Identifier", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_string(
+      ot->srna, "relative_asset_identifier", nullptr, 0, "Relative Asset Identifier", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -342,12 +424,6 @@ static asset::AssetItemTree &get_static_item_tree()
 {
   static asset::AssetItemTree tree;
   return tree;
-}
-
-static bool all_loading_finished()
-{
-  AssetLibraryReference all_library_ref = asset_system::all_library_reference();
-  return ED_assetlist_is_loaded(&all_library_ref);
 }
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
@@ -439,9 +515,20 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
 
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
-    PointerRNA asset_ptr = asset::create_asset_rna_ptr(asset);
-    uiLayoutSetContextPointer(col, "asset", &asset_ptr);
-    uiItemO(col, IFACE_(asset->get_name().c_str()), ICON_NONE, "GEOMETRY_OT_execute_node_group");
+    wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
+    const std::unique_ptr<AssetWeakReference> weak_ref = asset->make_weak_reference();
+    PointerRNA props_ptr;
+    uiItemFullO_ptr(col,
+                    ot,
+                    IFACE_(asset->get_name().c_str()),
+                    ICON_NONE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    eUI_Item_Flag(0),
+                    &props_ptr);
+    RNA_enum_set(&props_ptr, "asset_library_type", weak_ref->asset_library_type);
+    RNA_string_set(&props_ptr, "asset_library_identifier", weak_ref->asset_library_identifier);
+    RNA_string_set(&props_ptr, "relative_asset_identifier", weak_ref->relative_asset_identifier);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
@@ -509,13 +596,8 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   }
   asset::AssetItemTree &tree = get_static_item_tree();
   tree = build_catalog_tree(C);
-
-  const bool loading_finished = all_loading_finished();
-  if (tree.catalogs.is_empty() && loading_finished) {
+  if (tree.catalogs.is_empty()) {
     return;
-  }
-  if (!loading_finished) {
-    uiItemL(&layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(

@@ -11,7 +11,7 @@ StructMetaPropGroup = bpy_types.bpy_struct_meta_idprop
 # Private dummy object use for comparison only.
 _sentinel = object()
 
-# Note that methods extended in C are defined in: 'bpy_rna_types_capi.c'
+# Note that methods extended in C are defined in: `bpy_rna_types_capi.cc`.
 
 
 class Context(StructRNA):
@@ -106,7 +106,7 @@ class Library(bpy_types.ID):
         """ID data blocks which use this library"""
         import bpy
 
-        # See: readblenentry.c, IDTYPE_FLAGS_ISLINKABLE,
+        # See: `readblenentry.cc`, IDTYPE_FLAGS_ISLINKABLE,
         # we could make this an attribute in rna.
         attr_links = (
             "actions", "armatures", "brushes", "cameras",
@@ -178,7 +178,8 @@ class Object(bpy_types.ID):
 
     @property
     def children(self):
-        """All the children of this object.
+        """
+        All the children of this object.
 
         :type: tuple of :class:`Object`
 
@@ -189,7 +190,8 @@ class Object(bpy_types.ID):
 
     @property
     def children_recursive(self):
-        """A list of all children from this object.
+        """
+        A list of all children from this object.
 
         :type: tuple of :class:`Object`
 
@@ -231,7 +233,8 @@ class Object(bpy_types.ID):
 
     @property
     def users_scene(self):
-        """The scenes this object is in.
+        """
+        The scenes this object is in.
 
         :type: tuple of :class:`Scene`
 

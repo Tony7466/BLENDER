@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -17,9 +17,18 @@
 
 #include "rna_internal.h"
 
+const EnumPropertyItem rna_enum_aset_library_type_items[] = {
+    {ASSET_LIBRARY_LOCAL, "LOCAL", 0, "Local", ""},
+    {ASSET_LIBRARY_ALL, "ALL", 0, "All", ""},
+    {ASSET_LIBRARY_ESSENTIALS, "ESSENTIALS", 0, "Essentials", ""},
+    {ASSET_LIBRARY_CUSTOM, "CUSTOM", 0, "Custom", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include "AS_asset_library.h"
+#  include "AS_asset_representation.hh"
 
 #  include "BKE_asset.h"
 #  include "BKE_context.h"
@@ -367,7 +376,7 @@ static void rna_AssetHandle_get_full_library_path(
 static PointerRNA rna_AssetHandle_local_id_get(PointerRNA *ptr)
 {
   const AssetHandle *asset = static_cast<const AssetHandle *>(ptr->data);
-  ID *id = ED_asset_handle_get_local_id(asset);
+  ID *id = ED_asset_handle_get_representation(asset)->local_id();
   return rna_pointer_inherit_refine(ptr, &RNA_ID, id);
 }
 

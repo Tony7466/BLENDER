@@ -6,9 +6,9 @@
  * \ingroup RNA
  */
 
-#include <float.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cfloat>
+#include <cstdio>
+#include <cstdlib>
 
 #include "DNA_brush_types.h"
 #include "DNA_light_types.h"
@@ -24,7 +24,7 @@
 
 #include "BKE_node.h"
 #include "BKE_node_tree_update.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "BLT_translation.h"
 

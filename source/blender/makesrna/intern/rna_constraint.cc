@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math.h"
 
@@ -29,7 +29,7 @@
 
 #include "ED_object.h"
 
-/* please keep the names in sync with constraint.c */
+/* Please keep the names in sync with `constraint.cc`. */
 const EnumPropertyItem rna_enum_constraint_type_items[] = {
     RNA_ENUM_ITEM_HEADING(N_("Motion Tracking"), nullptr),
     {CONSTRAINT_TYPE_CAMERASOLVER, "CAMERA_SOLVER", ICON_CON_CAMERASOLVER, "Camera Solver", ""},
@@ -658,7 +658,7 @@ static void rna_ArmatureConstraint_target_remove(
   bArmatureConstraint *acon = static_cast<bArmatureConstraint *>(con->data);
   bConstraintTarget *tgt = static_cast<bConstraintTarget *>(target_ptr->data);
 
-  if (BLI_findindex(&acon->targets, tgt) < 0) {
+  if (BLI_findindex(&acon->targets, tgt) == -1) {
     BKE_report(reports, RPT_ERROR, "Target is not in the constraint target list");
     return;
   }

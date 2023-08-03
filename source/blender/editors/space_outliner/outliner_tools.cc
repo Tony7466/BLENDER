@@ -26,7 +26,6 @@
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_simulation_types.h"
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
@@ -49,7 +48,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -165,7 +164,6 @@ static void get_element_operation_type(
       case ID_CV:
       case ID_PT:
       case ID_VO:
-      case ID_SIM:
       case ID_GP:
         is_standard_id = true;
         break;
@@ -687,20 +685,22 @@ static const EnumPropertyItem prop_scene_op_types[] = {
 
 static bool outliner_do_scene_operation(
     bContext *C,
+    SpaceOutliner *space_outliner,
     eOutliner_PropSceneOps event,
-    ListBase *lb,
     bool (*operation_fn)(bContext *, eOutliner_PropSceneOps, TreeElement *, TreeStoreElem *))
 {
   bool success = false;
 
-  LISTBASE_FOREACH (TreeElement *, te, lb) {
+  tree_iterator::all_open(*space_outliner, [&](TreeElement *te) {
     TreeStoreElem *tselem = TREESTORE(te);
     if (tselem->flag & TSE_SELECTED) {
-      if (operation_fn(C, event, te, tselem)) {
-        success = true;
+      if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) {
+        if (operation_fn(C, event, te, tselem)) {
+          success = true;
+        }
       }
     }
-  }
+  });
 
   return success;
 }
@@ -729,7 +729,7 @@ static int outliner_scene_operation_exec(bContext *C, wmOperator *op)
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   const eOutliner_PropSceneOps event = (eOutliner_PropSceneOps)RNA_enum_get(op->ptr, "type");
 
-  if (outliner_do_scene_operation(C, event, &space_outliner->tree, scene_fn) == false) {
+  if (outliner_do_scene_operation(C, space_outliner, event, scene_fn) == false) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1102,6 +1102,18 @@ static void id_override_library_create_hierarchy_pre_process_fn(bContext *C,
     return;
   }
 
+  /* Only process a given ID once. Otherwise, all kind of weird things can happen if e.g. a
+   * selected sub-collection is part of more than one override hierarchies. */
+  if (data->selected_id_uid.contains(id_root_reference->session_uuid)) {
+    return;
+  }
+  data->selected_id_uid.add(id_root_reference->session_uuid);
+
+  if (ID_IS_OVERRIDE_LIBRARY_REAL(id_root_reference) && !ID_IS_LINKED(id_root_reference)) {
+    id_root_reference->override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
+    return;
+  }
+
   if (!ID_IS_OVERRIDABLE_LIBRARY_HIERARCHY(id_root_reference)) {
     if (ID_IS_LINKED(id_root_reference)) {
       BKE_reportf(
@@ -1117,18 +1129,6 @@ static void id_override_library_create_hierarchy_pre_process_fn(bContext *C,
 
   BLI_assert(do_hierarchy);
   UNUSED_VARS_NDEBUG(do_hierarchy);
-
-  /* Only process a given ID once. Otherwise, all kind of weird things can happen if e.g. a
-   * selected sub-collection is part of more than one override hierarchies. */
-  if (data->selected_id_uid.contains(id_root_reference->session_uuid)) {
-    return;
-  }
-  data->selected_id_uid.add(id_root_reference->session_uuid);
-
-  if (ID_IS_OVERRIDE_LIBRARY_REAL(id_root_reference) && !ID_IS_LINKED(id_root_reference)) {
-    id_root_reference->override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
-    return;
-  }
 
   if (GS(id_root_reference->name) == ID_GR && (tselem->flag & TSE_CLOSED) != 0) {
     /* If selected element is a (closed) collection, check all of its objects recursively, and also
@@ -1400,8 +1400,10 @@ static void id_override_library_create_hierarchy_process(bContext *C,
     if (ID_IS_LINKED(id_iter) || !ID_IS_OVERRIDE_LIBRARY_REAL(id_iter)) {
       continue;
     }
-    if (!data.id_hierarchy_roots_uid.contains(
-            id_iter->override_library->hierarchy_root->session_uuid)) {
+    if (id_iter->override_library->hierarchy_root != nullptr &&
+        !data.id_hierarchy_roots_uid.contains(
+            id_iter->override_library->hierarchy_root->session_uuid))
+    {
       continue;
     }
     if (data.selected_id_uid.contains(id_iter->override_library->reference->session_uuid) ||
@@ -1473,6 +1475,7 @@ static void id_override_library_clear_single_process(bContext *C,
           BKE_libblock_remap(
               bmain, id, id->override_library->reference, ID_REMAP_SKIP_INDIRECT_USAGE);
           if (do_remap_active) {
+            BKE_view_layer_synced_ensure(scene, view_layer);
             Object *ref_object = reinterpret_cast<Object *>(id->override_library->reference);
             Base *basact = BKE_view_layer_base_find(view_layer, ref_object);
             if (basact != nullptr) {
@@ -1808,7 +1811,7 @@ static void refreshdrivers_animdata_fn(int /*event*/,
   IdAdtTemplate *iat = (IdAdtTemplate *)tselem->id;
 
   /* Loop over drivers, performing refresh
-   * (i.e. check graph_buttons.c and rna_fcurve.cc for details). */
+   * (i.e. check `graph_buttons.cc` and `rna_fcurve.cc` for details). */
   LISTBASE_FOREACH (FCurve *, fcu, &iat->adt->drivers) {
     fcu->flag &= ~FCURVE_DISABLED;
 
@@ -2608,9 +2611,12 @@ static TreeTraversalAction outliner_collect_objects_to_delete(TreeElement *te, v
   if (te_parent != nullptr && outliner_is_collection_tree_element(te_parent)) {
     TreeStoreElem *tselem_parent = TREESTORE(te_parent);
     ID *id_parent = tselem_parent->id;
-    BLI_assert(GS(id_parent->name) == ID_GR);
-    if (ID_IS_OVERRIDE_LIBRARY_REAL(id_parent)) {
-      return TRAVERSE_SKIP_CHILDS;
+    /* It's not possible to remove an object from an overridden collection (and potentially scene,
+     * through the master collection). */
+    if (ELEM(GS(id_parent->name), ID_GR, ID_SCE)) {
+      if (ID_IS_OVERRIDE_LIBRARY_REAL(id_parent)) {
+        return TRAVERSE_SKIP_CHILDS;
+      }
     }
   }
 

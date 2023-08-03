@@ -31,7 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "target_element", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "target_element", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void geo_proximity_init(bNodeTree * /*tree*/, bNode *node)
@@ -95,8 +95,8 @@ static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
                                            MutableSpan<float3> r_locations)
 {
   BVHTreeFromPointCloud bvh_data;
-  BKE_bvhtree_from_pointcloud_get(&bvh_data, &pointcloud, 2);
-  if (bvh_data.tree == nullptr) {
+  const BVHTree *tree = BKE_bvhtree_from_pointcloud_get(&bvh_data, &pointcloud, 2);
+  if (tree == nullptr) {
     return false;
   }
 

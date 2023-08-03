@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "BLI_task.hh"
 
@@ -50,10 +50,7 @@ class CornerNextEdgeFieldInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (dynamic_cast<const CornerNextEdgeFieldInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const CornerNextEdgeFieldInput *>(&other) != nullptr;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
@@ -76,13 +73,13 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
     }
-    const OffsetIndices polys = mesh.polys();
+    const OffsetIndices faces = mesh.faces();
     const Span<int> corner_edges = mesh.corner_edges();
-    Array<int> loop_to_poly_map = bke::mesh::build_loop_to_poly_map(polys);
+    Array<int> loop_to_face_map = bke::mesh::build_loop_to_face_map(faces);
     return VArray<int>::ForFunc(
         mesh.totloop,
-        [polys, corner_edges, loop_to_poly_map = std::move(loop_to_poly_map)](const int corner_i) {
-          return corner_edges[bke::mesh::poly_corner_prev(polys[loop_to_poly_map[corner_i]],
+        [faces, corner_edges, loop_to_face_map = std::move(loop_to_face_map)](const int corner_i) {
+          return corner_edges[bke::mesh::face_corner_prev(faces[loop_to_face_map[corner_i]],
                                                           corner_i)];
         });
   }
@@ -94,10 +91,7 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (dynamic_cast<const CornerPreviousEdgeFieldInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const CornerPreviousEdgeFieldInput *>(&other) != nullptr;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final

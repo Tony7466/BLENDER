@@ -111,6 +111,29 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.prop(probe, "grid_bake_samples")
             col.prop(probe, "surfel_density")
 
+            col.separator()
+
+            col.prop(probe, "grid_normal_bias")
+            col.prop(probe, "grid_view_bias")
+            col.prop(probe, "grid_irradiance_smoothing")
+
+            col.separator()
+
+            col.prop(probe, "grid_surface_bias")
+            col.prop(probe, "grid_escape_bias")
+
+            col.separator()
+
+            col.prop(probe, "grid_dilation_threshold")
+            col.prop(probe, "grid_dilation_radius")
+
+        elif probe.type == 'CUBEMAP':
+            col = layout.column()
+            col.prop(probe, "resolution")
+            sub = layout.column(align=True)
+            sub.prop(probe, "clip_start", text="Clipping Start")
+            sub.prop(probe, "clip_end", text="End")
+
         elif probe.type == 'PLANAR':
             # Currently unsupported
             pass

@@ -25,11 +25,8 @@ struct Volume;
 struct bGPdata;
 struct GreasePencil;
 
-#include "BKE_mesh_types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BKE_mesh.h" /* For #eMeshBatchDirtyMode. */
+#include "BKE_mesh_types.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Expose via BKE callbacks
@@ -151,6 +148,8 @@ void DRW_curves_batch_cache_create_requested(struct Object *ob);
  * \{ */
 
 int DRW_pointcloud_material_count_get(struct PointCloud *pointcloud);
+
+struct GPUVertBuf *DRW_pointcloud_position_and_radius_buffer_get(struct Object *ob);
 
 struct GPUVertBuf **DRW_pointcloud_evaluated_attribute(struct PointCloud *pointcloud,
                                                        const char *name);
@@ -333,7 +332,3 @@ struct GPUBatch *DRW_particles_batch_cache_get_edit_tip_points(struct Object *ob
                                                                struct PTCacheEdit *edit);
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

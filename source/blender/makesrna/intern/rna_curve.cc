@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
@@ -840,13 +840,49 @@ static bool rna_Curve_is_editmode_get(PointerRNA *ptr)
   }
 }
 
+static bool rna_TextCurve_is_select_bold_get(PointerRNA *ptr)
+{
+  Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
+  if (cu->editfont != nullptr) {
+    return (cu->editfont->select_char_info_flag & CU_CHINFO_BOLD);
+  }
+  return false;
+}
+
+static bool rna_TextCurve_is_select_italic_get(PointerRNA *ptr)
+{
+  Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
+  if (cu->editfont != nullptr) {
+    return (cu->editfont->select_char_info_flag & CU_CHINFO_ITALIC);
+  }
+  return false;
+}
+
+static bool rna_TextCurve_is_select_underline_get(PointerRNA *ptr)
+{
+  Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
+  if (cu->editfont != nullptr) {
+    return (cu->editfont->select_char_info_flag & CU_CHINFO_UNDERLINE);
+  }
+  return false;
+}
+
+static bool rna_TextCurve_is_select_smallcaps_get(PointerRNA *ptr)
+{
+  Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
+  if (cu->editfont != nullptr) {
+    return (cu->editfont->select_char_info_flag & CU_CHINFO_SMALLCAPS);
+  }
+  return false;
+}
+
 static bool rna_TextCurve_has_selection_get(PointerRNA *ptr)
 {
   Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
-  if (cu->editfont != nullptr)
+  if (cu->editfont != nullptr) {
     return (cu->editfont->selboxes != nullptr);
-  else
-    return false;
+  }
+  return false;
 }
 
 #else
@@ -1286,26 +1322,23 @@ static void rna_def_font(BlenderRNA * /*brna*/, StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
   prop = RNA_def_property(srna, "is_select_bold", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "editfont->select_char_info_flag", CU_CHINFO_BOLD);
+  RNA_def_property_boolean_funcs(prop, "rna_TextCurve_is_select_bold_get", nullptr);
   RNA_def_property_ui_text(prop, "Selected Bold", "Whether the selected text is bold");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_select_italic", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "editfont->select_char_info_flag", CU_CHINFO_ITALIC);
+  RNA_def_property_boolean_funcs(prop, "rna_TextCurve_is_select_italic_get", nullptr);
   RNA_def_property_ui_text(prop, "Selected Italic", "Whether the selected text is italics");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_select_underline", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "editfont->select_char_info_flag", CU_CHINFO_UNDERLINE);
+  RNA_def_property_boolean_funcs(prop, "rna_TextCurve_is_select_underline_get", nullptr);
   RNA_def_property_ui_text(prop, "Selected Underline", "Whether the selected text is underlined");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_select_smallcaps", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "editfont->select_char_info_flag", CU_CHINFO_SMALLCAPS);
-  RNA_def_property_ui_text(prop, "Selected Smallcaps", "Whether the selected text is small caps");
+  RNA_def_property_boolean_funcs(prop, "rna_TextCurve_is_select_smallcaps_get", nullptr);
+  RNA_def_property_ui_text(prop, "Selected Small Caps", "Whether the selected text is small caps");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "has_selection", PROP_BOOLEAN, PROP_NONE);
@@ -1874,7 +1907,7 @@ static void rna_def_curve(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
-  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
+  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.cc */
   RNA_def_property_collection_funcs(prop,
                                     nullptr,
                                     nullptr,

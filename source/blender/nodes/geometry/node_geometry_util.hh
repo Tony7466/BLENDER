@@ -37,9 +37,9 @@ class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
 }  // namespace blender::nodes
 
-void geo_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass);
-bool geo_node_poll_default(const struct bNodeType *ntype,
-                           const struct bNodeTree *ntree,
+void geo_node_type_base(bNodeType *ntype, int type, const char *name, short nclass);
+bool geo_node_poll_default(const bNodeType *ntype,
+                           const bNodeTree *ntree,
                            const char **r_disabled_hint);
 
 namespace blender::nodes {
@@ -147,19 +147,28 @@ void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
-void values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
-                                const Span<void *> input_values,
-                                bke::sim::SimulationZoneState &r_zone_state);
-void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
-                                const bke::sim::SimulationZoneState &zone_state,
-                                const Object &self_object,
-                                const ComputeContext &compute_context,
-                                const bNode &sim_output_node,
-                                Span<void *> r_output_values);
+void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
+                                     const Span<void *> input_values,
+                                     bke::sim::SimulationZoneState &r_zone_state);
+void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
+                                     bke::sim::SimulationZoneState &zone_state,
+                                     const Object &self_object,
+                                     const ComputeContext &compute_context,
+                                     const bNode &sim_output_node,
+                                     Span<void *> r_output_values);
+void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
+                                     const bke::sim::SimulationZoneState &zone_state,
+                                     const Object &self_object,
+                                     const ComputeContext &compute_context,
+                                     const bNode &sim_output_node,
+                                     Span<void *> r_output_values);
 
 void copy_with_checked_indices(const GVArray &src,
                                const VArray<int> &indices,
                                const IndexMask &mask,
                                GMutableSpan dst);
+
+void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
+                                          NodeDeclaration &r_declaration);
 
 }  // namespace blender::nodes

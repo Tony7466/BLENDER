@@ -789,7 +789,6 @@ bool BKE_node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey ke
 void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
                                             bNodeInstanceValueFP valfreefp);
 
-void BKE_node_preview_clear_tree(struct bNodeTree *ntree);
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -818,7 +817,9 @@ void node_type_storage(struct bNodeType *ntype,
 
 /** \} */
 
-/* ************** COMMON NODES *************** */
+/* -------------------------------------------------------------------- */
+/** \name Common Node Types
+ * \{ */
 
 #define NODE_UNDEFINED -2 /* node type is not registered */
 #define NODE_CUSTOM -1    /* for dynamically registered custom types */
@@ -845,7 +846,7 @@ void node_type_storage(struct bNodeType *ntype,
  *
  * - nodetree:
  *   The actual bNodeTree data block.
- *   Check nodetree->idname or nodetree->typeinfo to use only specific types.
+ *   Check `nodetree->idname` or `nodetree->typeinfo` to use only specific types.
  *
  * - id:
  *   The owner of the bNodeTree data block.
@@ -878,7 +879,6 @@ struct NodeTreeIterStore {
   struct Light *light;
   struct World *world;
   struct FreestyleLineStyle *linestyle;
-  struct Simulation *simulation;
 };
 
 void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
@@ -952,7 +952,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_BSDF_GLASS 134
 #define SH_NODE_BSDF_TRANSLUCENT 137
 #define SH_NODE_BSDF_TRANSPARENT 138
-#define SH_NODE_BSDF_VELVET 139
+#define SH_NODE_BSDF_SHEEN 139
 #define SH_NODE_EMISSION 140
 #define SH_NODE_NEW_GEOMETRY 141
 #define SH_NODE_LIGHT_PATH 142
@@ -1360,11 +1360,15 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
 #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
-#define GEO_NODE_OPERATOR_SELECTION 2105
-#define GEO_NODE_OPERATOR_SET_SELECTION 2106
-#define GEO_NODE_OPERATOR_3D_CURSOR 2107
-#define GEO_NODE_OPERATOR_FACE_SET 2108
-#define GEO_NODE_OPERATOR_SET_FACE_SET 2109
+/* Leaving out two indices to avoid crashes with files that were created during the development of
+ * the repeat zone. */
+#define GEO_NODE_REPEAT_INPUT 2107
+#define GEO_NODE_REPEAT_OUTPUT 2108
+#define GEO_NODE_OPERATOR_SELECTION 2109
+#define GEO_NODE_OPERATOR_SET_SELECTION 2110
+#define GEO_NODE_OPERATOR_3D_CURSOR 2111
+#define GEO_NODE_OPERATOR_FACE_SET 2112
+#define GEO_NODE_OPERATOR_SET_FACE_SET 2113
 
 /** \} */
 

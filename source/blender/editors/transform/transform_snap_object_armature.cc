@@ -16,13 +16,15 @@
 
 #include "ED_transform_snap_object_context.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "transform_snap_object.hh"
 
 using blender::float4x4;
 
 eSnapMode snapArmature(SnapObjectContext *sctx,
                        Object *ob_eval,
-                       const float obmat[4][4],
+                       const float4x4 &obmat,
                        bool is_object_active)
 {
   eSnapMode retval = SCE_SNAP_TO_NONE;
@@ -34,7 +36,7 @@ eSnapMode snapArmature(SnapObjectContext *sctx,
 
   bArmature *arm = static_cast<bArmature *>(ob_eval->data);
 
-  SnapData nearest2d(sctx, float4x4(obmat));
+  SnapData nearest2d(sctx, obmat);
 
   const bool is_editmode = arm->edbo != nullptr;
 
@@ -56,7 +58,7 @@ eSnapMode snapArmature(SnapObjectContext *sctx,
 
   if (arm->edbo) {
     LISTBASE_FOREACH (EditBone *, eBone, arm->edbo) {
-      if (eBone->layer & arm->layer) {
+      if (ANIM_bonecoll_is_visible_editbone(arm, eBone)) {
         if (eBone->flag & BONE_HIDDEN_A) {
           /* Skip hidden bones. */
           continue;

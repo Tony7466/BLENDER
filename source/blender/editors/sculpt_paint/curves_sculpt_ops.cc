@@ -8,19 +8,19 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "WM_api.h"
 #include "WM_message.h"
 #include "WM_toolsystem.h"
 
-#include "ED_curves.h"
+#include "ED_curves.hh"
 #include "ED_curves_sculpt.h"
 #include "ED_image.h"
 #include "ED_object.h"
@@ -464,9 +464,9 @@ static void select_random_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
 
-  uiItemR(layout, op->ptr, "seed", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "constant_per_curve", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "partial", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "constant_per_curve", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "partial", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_boolean_get(op->ptr, "partial")) {
     uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, "Min", ICON_NONE);

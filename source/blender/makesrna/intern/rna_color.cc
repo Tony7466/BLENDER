@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "DNA_color_types.h"
 #include "DNA_texture_types.h"
@@ -366,7 +366,7 @@ static void rna_ColorRampElement_remove(ColorBand *coba,
                                         PointerRNA *element_ptr)
 {
   CBData *element = static_cast<CBData *>(element_ptr->data);
-  int index = (int)(element - coba->data);
+  int index = int(element - coba->data);
   if (!BKE_colorband_element_remove(coba, index)) {
     BKE_report(reports, RPT_ERROR, "Element not found in element collection or last element");
     return;
@@ -978,7 +978,7 @@ static void rna_def_color_ramp_element_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_path_func(srna, "rna_ColorRampElement_path");
   RNA_def_struct_ui_text(srna, "Color Ramp Elements", "Collection of Color Ramp Elements");
 
-  /* TODO: make these functions generic in `texture.c`. */
+  /* TODO: make these functions generic in `texture.cc`. */
   func = RNA_def_function(srna, "new", "rna_ColorRampElement_new");
   RNA_def_function_ui_description(func, "Add element to Color Ramp");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);

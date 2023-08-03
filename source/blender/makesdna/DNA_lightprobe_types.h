@@ -57,11 +57,25 @@ typedef struct LightProbe {
   int grid_resolution_z;
   /** Irradiance grid: number of directions to evaluate light transfer in. */
   int grid_bake_samples;
+  /** Irradiance grid: Virtual offset parameters. */
+  float grid_surface_bias;
+  float grid_escape_bias;
+  /** Irradiance grid: Sampling biases. */
+  float grid_normal_bias;
+  float grid_view_bias;
+  float grid_facing_bias;
+  float _pad0;
+  /** Irradiance grid: Dilation. */
+  float grid_dilation_threshold;
+  float grid_dilation_radius;
 
   /** Surface element density for scene surface cache. In surfel per unit distance. */
   float surfel_density;
 
-  char _pad1[4];
+  /**
+   * Resolution of the light probe when baked to a texture. Contains `eLightProbeResolution`.
+   */
+  int resolution;
 
   /** Object to use as a parallax origin. */
   struct Object *parallax_ob;
@@ -70,6 +84,16 @@ typedef struct LightProbe {
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
 } LightProbe;
+
+/* LightProbe->resolution, World->probe_resolution. */
+typedef enum eLightProbeResolution {
+  LIGHT_PROBE_RESOLUTION_64 = 6,
+  LIGHT_PROBE_RESOLUTION_128 = 7,
+  LIGHT_PROBE_RESOLUTION_256 = 8,
+  LIGHT_PROBE_RESOLUTION_512 = 9,
+  LIGHT_PROBE_RESOLUTION_1024 = 10,
+  LIGHT_PROBE_RESOLUTION_2048 = 11,
+} eLightProbeResolution;
 
 /* Probe->type */
 enum {
@@ -223,6 +247,9 @@ typedef struct LightProbeBakingData {
   float (*L1_a)[4];
   float (*L1_b)[4];
   float (*L1_c)[4];
+  float *validity;
+  /* Capture offset. Only for debugging. */
+  float (*virtual_offset)[4];
 } LightProbeBakingData;
 
 /**
@@ -249,8 +276,8 @@ typedef struct LightProbeVisibilityData {
  * Used to avoid light leaks. Validate visibility between each grid sample.
  */
 typedef struct LightProbeConnectivityData {
-  /** Stores a bitmask of valid connections within a cell. */
-  uint8_t *bitmask;
+  /** Stores validity of the lighting for each grid sample. */
+  uint8_t *validity;
 } LightProbeConnectivityData;
 
 /**

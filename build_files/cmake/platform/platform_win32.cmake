@@ -154,8 +154,11 @@ if(NOT WITH_PYTHON_MODULE)
 endif()
 configure_file(${CMAKE_SOURCE_DIR}/release/windows/manifest/blender.exe.manifest.in ${CMAKE_CURRENT_BINARY_DIR}/blender.exe.manifest @ONLY)
 
-
-remove_cc_flag("/MDd" "/MD" "/Zi")
+remove_cc_flag(
+  "/MDd"
+  "/MD"
+  "/Zi"
+)
 
 if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
   string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
@@ -183,8 +186,6 @@ endif()
 # C++ standards conformace (/permissive-) is available on msvc 15.5 (1912) and up
 if(NOT MSVC_CLANG)
   string(APPEND CMAKE_CXX_FLAGS " /permissive-")
-  # Two-phase name lookup does not place nicely with OpenMP yet, so disable for now
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:twoPhase-")
 endif()
 
 if(WITH_WINDOWS_SCCACHE AND CMAKE_VS_MSBUILD_COMMAND)
@@ -1100,6 +1101,7 @@ set(ZSTD_LIBRARIES ${LIBDIR}/zstd/lib/zstd_static.lib)
 if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_SYCL_SUPPORT)))
   set(LEVEL_ZERO_ROOT_DIR ${LIBDIR}/level_zero)
   set(CYCLES_SYCL ${LIBDIR}/dpcpp CACHE PATH "Path to oneAPI DPC++ compiler")
+  mark_as_advanced(CYCLES_SYCL)
   if(EXISTS ${CYCLES_SYCL} AND NOT SYCL_ROOT_DIR)
     set(SYCL_ROOT_DIR ${CYCLES_SYCL})
   endif()

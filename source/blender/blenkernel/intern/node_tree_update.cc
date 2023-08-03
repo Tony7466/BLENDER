@@ -25,10 +25,10 @@
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "NOD_node_declaration.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph_query.h"
@@ -588,6 +588,15 @@ class NodeTreeMainUpdater {
         }
       }
     }
+    if (node.type == GEO_NODE_REPEAT_INPUT) {
+      const NodeGeometryRepeatInput *data = static_cast<const NodeGeometryRepeatInput *>(
+          node.storage);
+      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
+        if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
+          return true;
+        }
+      }
+    }
     return false;
   }
 
@@ -1139,7 +1148,7 @@ class NodeTreeMainUpdater {
     }
 
     /* Used to generate new unique IDs if necessary. */
-    RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+    RandomNumberGenerator rng(PIL_check_seconds_timer_i() & UINT_MAX);
 
     Map<int32_t, bNestedNodePath> new_path_by_id;
     for (const bNestedNodePath &path : nested_node_paths) {

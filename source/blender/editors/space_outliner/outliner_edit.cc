@@ -32,7 +32,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -328,7 +328,8 @@ static void do_item_rename(ARegion *region,
                 TSE_R_LAYER_BASE,
                 TSE_SCENE_COLLECTION_BASE,
                 TSE_VIEW_COLLECTION_BASE,
-                TSE_LIBRARY_OVERRIDE_BASE))
+                TSE_LIBRARY_OVERRIDE_BASE,
+                TSE_GENERIC_LABEL))
   {
     BKE_report(reports, RPT_WARNING, "Cannot edit builtin name");
   }

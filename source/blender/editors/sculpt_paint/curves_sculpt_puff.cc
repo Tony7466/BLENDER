@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute_math.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_crazyspace.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 
 #include "ED_screen.h"
 #include "ED_view3d.h"
@@ -116,11 +116,11 @@ struct PuffOperationExecutor {
 
     transforms_ = CurvesSurfaceTransforms(*object_, surface_ob_);
 
-    if (!CustomData_has_layer(&surface_->ldata, CD_NORMAL)) {
+    if (!CustomData_has_layer(&surface_->loop_data, CD_NORMAL)) {
       BKE_mesh_calc_normals_split(surface_);
     }
     corner_normals_su_ = {
-        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_->ldata, CD_NORMAL)),
+        reinterpret_cast<const float3 *>(CustomData_get_layer(&surface_->loop_data, CD_NORMAL)),
         surface_->totloop};
 
     surface_positions_ = surface_->vert_positions();

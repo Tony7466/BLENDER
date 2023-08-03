@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -24,10 +24,10 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_layer.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "ED_image.h"
 
@@ -113,7 +113,6 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_object.h"
 #  include "BKE_particle.h"
-#  include "BKE_pbvh.h"
 #  include "BKE_pointcache.h"
 
 #  include "DEG_depsgraph.h"
@@ -296,7 +295,7 @@ static bool rna_Brush_mode_poll(PointerRNA *ptr, PointerRNA value)
 static bool paint_contains_brush_slot(const Paint *paint, const PaintToolSlot *tslot, int *r_index)
 {
   if ((tslot >= paint->tool_slots) && (tslot < (paint->tool_slots + paint->tool_slots_len))) {
-    *r_index = (int)(tslot - paint->tool_slots);
+    *r_index = int(tslot - paint->tool_slots);
     return true;
   }
   return false;
@@ -345,25 +344,30 @@ static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
     if (slot_index != brush->gpencil_tool) {
       return false;
     }
-    mode = OB_MODE_PAINT_GPENCIL;
+    if (U.experimental.use_grease_pencil_version3) {
+      mode = OB_MODE_PAINT_GREASE_PENCIL;
+    }
+    else {
+      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+    }
   }
   else if (paint_contains_brush_slot(&ts->gp_vertexpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_vertex_tool) {
       return false;
     }
-    mode = OB_MODE_VERTEX_GPENCIL;
+    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_sculptpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_sculpt_tool) {
       return false;
     }
-    mode = OB_MODE_SCULPT_GPENCIL;
+    mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_weightpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_weight_tool) {
       return false;
     }
-    mode = OB_MODE_WEIGHT_GPENCIL;
+    mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->curves_sculpt->paint, tslot, &slot_index)) {
     if (slot_index != brush->curves_sculpt_tool) {
@@ -385,11 +389,6 @@ static void rna_Sculpt_update(bContext *C, PointerRNA * /*ptr*/)
   if (ob) {
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ob);
-
-    if (ob->sculpt) {
-      BKE_object_sculpt_dyntopo_smooth_shading_set(
-          ob, ((scene->toolsettings->sculpt->flags & SCULPT_DYNTOPO_SMOOTH_SHADING) != 0));
-    }
   }
 }
 
@@ -860,15 +859,6 @@ static void rna_def_sculpt(BlenderRNA *brna)
                            "of Blender unit - higher value means smaller edge length)");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
-  prop = RNA_def_property(srna, "use_smooth_shading", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flags", SCULPT_DYNTOPO_SMOOTH_SHADING);
-  RNA_def_property_ui_text(prop,
-                           "Smooth Shading",
-                           "Show faces in dynamic-topology mode with smooth "
-                           "shading rather than flat shaded");
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Sculpt_update");
-
   const EnumPropertyItem *entry = rna_enum_brush_automasking_flag_items;
   do {
     prop = RNA_def_property(srna, entry->identifier, PROP_BOOLEAN, PROP_NONE);
@@ -1147,7 +1137,7 @@ static void rna_def_image_paint(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Check if required texpaint data exist");
 
   /* return type */
-  RNA_def_function_return(func, RNA_def_boolean(func, "ok", 1, "", ""));
+  RNA_def_function_return(func, RNA_def_boolean(func, "ok", true, "", ""));
 
   /* booleans */
   prop = RNA_def_property(srna, "use_occlude", PROP_BOOLEAN, PROP_NONE);
