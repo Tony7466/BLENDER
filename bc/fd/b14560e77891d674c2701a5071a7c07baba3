@@ -7,3 +7,4 @@ Referenced by issue #100261, Crash at startup on Linux - all recent Blender vers
 Referenced by issue #100220, Crash on playing cached fluid simulation in layout
 Referenced by issue #100596, Line Art doesn't render from Sequencer Perspective
 Referenced by issue #100596, Line Art doesn't render from Sequencer Perspective
+Referenced by issue #110751, Blender segfault if Bake Line Art
