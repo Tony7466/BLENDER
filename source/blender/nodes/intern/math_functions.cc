@@ -51,8 +51,8 @@ const FloatMathOperationInfo *get_float_math_operation_info(const int operation)
       RETURN_OPERATION_INFO("Less Than", "math_less_than");
     case NODE_MATH_GREATER_THAN:
       RETURN_OPERATION_INFO("Greater Than", "math_greater_than");
-    case NODE_MATH_TRUNCATED_MODULO:
-      RETURN_OPERATION_INFO("Truncated Modulo", "math_truncated_modulo");
+    case NODE_MATH_MODULO:
+      RETURN_OPERATION_INFO("Modulo", "math_modulo");
     case NODE_MATH_FLOORED_MODULO:
       RETURN_OPERATION_INFO("Floored Modulo", "math_floored_modulo");
     case NODE_MATH_ABSOLUTE:

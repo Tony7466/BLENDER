@@ -165,7 +165,7 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
       break;
     }
 
-    case NODE_MATH_TRUNCATED_MODULO: {
+    case NODE_MATH_MODULO: {
       if (in1 == 0.0f) {
         *out = 0.0f;
       }

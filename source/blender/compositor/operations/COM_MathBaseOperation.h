@@ -216,7 +216,7 @@ class MathGreaterThanOperation : public MathFunctor2Operation<std::greater> {
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 };
 
-class MathTruncatedModuloOperation : public MathBaseOperation {
+class MathModuloOperation : public MathBaseOperation {
  public:
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 

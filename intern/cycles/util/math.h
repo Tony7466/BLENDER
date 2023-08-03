@@ -727,7 +727,7 @@ ccl_device float safe_logf(float a, float b)
   return safe_divide(logf(a), logf(b));
 }
 
-ccl_device float safe_truncated_modulof(float a, float b)
+ccl_device float safe_modulof(float a, float b)
 {
   return (b != 0.0f) ? fmodf(a, b) : 0.0f;
 }

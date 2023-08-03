@@ -559,10 +559,10 @@ void MathGreaterThanOperation::execute_pixel_sampled(float output[4],
   clamp_if_needed(output);
 }
 
-void MathTruncatedModuloOperation::execute_pixel_sampled(float output[4],
-                                                         float x,
-                                                         float y,
-                                                         PixelSampler sampler)
+void MathModuloOperation::execute_pixel_sampled(float output[4],
+                                                float x,
+                                                float y,
+                                                PixelSampler sampler)
 {
   float input_value1[4];
   float input_value2[4];
@@ -580,7 +580,7 @@ void MathTruncatedModuloOperation::execute_pixel_sampled(float output[4],
   clamp_if_needed(output);
 }
 
-void MathTruncatedModuloOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
+void MathModuloOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
 {
   for (; !it.is_end(); ++it) {
     const float value2 = *it.in(1);
