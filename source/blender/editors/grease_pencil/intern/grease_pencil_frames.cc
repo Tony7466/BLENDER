@@ -26,18 +26,14 @@
 
 namespace blender::ed::greasepencil {
 
-bool remove_all_selected_frames(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer)
+bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
 {
-  if ((grease_pencil == nullptr) || (layer == nullptr)) {
-    return false;
-  }
-
   bool changed = false;
-  for (auto [frame_number, frame] : layer->frames().items()) {
+  for (auto [frame_number, frame] : layer.frames().items()) {
     if (!frame.is_selected()) {
       continue;
     }
-    changed |= grease_pencil->remove_frame_at(*layer, frame_number);
+    changed |= grease_pencil.remove_frame_at(layer, frame_number);
   }
 
   return changed;

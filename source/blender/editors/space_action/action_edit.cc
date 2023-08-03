@@ -1088,8 +1088,8 @@ static bool delete_action_keys(bAnimContext *ac)
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
       changed = blender::ed::greasepencil::remove_all_selected_frames(
-          reinterpret_cast<GreasePencil *>(ale->id),
-          static_cast<blender::bke::greasepencil::Layer *>(ale->data));
+          *reinterpret_cast<GreasePencil *>(ale->id),
+          static_cast<GreasePencilLayer *>(ale->data)->wrap());
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       changed = ED_masklayer_frames_delete((MaskLayer *)ale->data);
