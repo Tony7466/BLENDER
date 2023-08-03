@@ -9,6 +9,7 @@ void register_node_type_fn_boolean_math();
 void register_node_type_fn_combine_color();
 void register_node_type_fn_compare();
 void register_node_type_fn_float_to_int();
+void register_node_type_fn_hash_value();
 void register_node_type_fn_input_bool();
 void register_node_type_fn_input_color();
 void register_node_type_fn_input_int();

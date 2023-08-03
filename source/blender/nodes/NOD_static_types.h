@@ -268,6 +268,7 @@ DefNode(FunctionNode, FN_NODE_BOOLEAN_MATH, def_boolean_math,  "BOOLEAN_MATH", B
 DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, def_fn_combsep_color, "COMBINE_COLOR", CombineColor, "Combine Color", "")
 DefNode(FunctionNode, FN_NODE_COMPARE, def_compare, "COMPARE", Compare, "Compare", "")
 DefNode(FunctionNode, FN_NODE_FLOAT_TO_INT, def_float_to_int, "FLOAT_TO_INT", FloatToInt, "Float to Integer", "")
+DefNode(FunctionNode, FN_NODE_HASH_VALUE, def_hash_value, "HASH_VALUE", HashValue, "Hash Value", "")
 DefNode(FunctionNode, FN_NODE_INPUT_BOOL, def_fn_input_bool, "INPUT_BOOL", InputBool, "Boolean", "")
 DefNode(FunctionNode, FN_NODE_INPUT_COLOR, def_fn_input_color, "INPUT_COLOR", InputColor, "Color", "")
 DefNode(FunctionNode, FN_NODE_INPUT_INT, def_fn_input_int, "INPUT_INT", InputInt, "Integer", "")

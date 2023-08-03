@@ -23,6 +23,7 @@ set(SRC
   nodes/node_fn_combine_color.cc
   nodes/node_fn_compare.cc
   nodes/node_fn_float_to_int.cc
+  nodes/node_fn_hash_value.cc
   nodes/node_fn_input_bool.cc
   nodes/node_fn_input_color.cc
   nodes/node_fn_input_int.cc

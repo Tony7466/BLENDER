@@ -13,6 +13,7 @@ void register_function_nodes()
   register_node_type_fn_combine_color();
   register_node_type_fn_compare();
   register_node_type_fn_float_to_int();
+  register_node_type_fn_hash_value();
   register_node_type_fn_input_bool();
   register_node_type_fn_input_color();
   register_node_type_fn_input_int();
