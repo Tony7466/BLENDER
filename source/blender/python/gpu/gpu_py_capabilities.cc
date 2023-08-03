@@ -238,7 +238,7 @@ PyDoc_STRVAR(pygpu_hdr_support_get_doc,
              "   :rtype: bool\n");
 static PyObject *pygpu_hdr_support_get(PyObject * /*self*/)
 {
-  return PyBool_FromLong(GPU_HDR_support());
+  return PyBool_FromLong(GPU_hdr_support());
 }
 
 /** \} */

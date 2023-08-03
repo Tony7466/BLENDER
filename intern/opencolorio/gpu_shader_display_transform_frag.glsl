@@ -169,17 +169,15 @@ vec4 OCIO_ProcessColor(vec4 col, vec4 col_overlay)
    * merge UI using alpha blending in the correct color space. */
   if (parameters.use_overlay) {
     col.rgb = pow(col.rgb, vec3(parameters.exponent * 2.2));
-    col = max(col, 0.0);
-    vec4 clamped_col = min(col, 1.0);
 
     if (!parameters.use_extended) {
       /* if we're not using an extended colour space, clamp the color 0..1 */
-      col = clamped_col;
+      col = clamp(col, 0.0, 1.0);
     }
     else {
       /* When using extended colorspace, interpolate towards clamped color to improve display of
        * alpha-blended overlays. */
-      col = mix(col, clamped_col, col_overlay.a);
+      col = mix(max(col, 0.0), clamp(col, 0.0, 1.0), col_overlay.a);
     }
     col *= 1.0 - col_overlay.a;
     col += col_overlay; /* Assumed unassociated alpha. */

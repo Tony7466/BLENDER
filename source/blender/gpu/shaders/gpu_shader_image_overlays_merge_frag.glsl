@@ -36,16 +36,14 @@ void main()
   vec4 overlay_col = texture(overlays_texture, texCoord_interp.xy);
 
   if (overlay) {
-    fragColor = max(fragColor, 0.0);
-    vec4 clamped_col = min(fragColor, 1.0);
     if (!use_extended) {
-      /* Only clamp color if we are not using an extended display colorspace. */
-      fragColor = clamped_col;
+      /* if we're not using an extended colour space, clamp the color 0..1 */
+      fragColor = clamp(fragColor, 0.0, 1.0);
     }
     else {
-      /* When using extended colorspace, interpolate towards clamped color to avoid over-brightened
-       * overlays. */
-      fragColor = mix(fragColor, clamped_col, overlay_col.a);
+      /* When using extended colorspace, interpolate towards clamped color to improve display of
+       * alpha-blended overlays. */
+      fragColor = mix(max(fragColor, 0.0), clamp(fragColor, 0.0, 1.0), overlay_col.a);
     }
     fragColor *= 1.0 - overlay_col.a;
     fragColor += overlay_col;

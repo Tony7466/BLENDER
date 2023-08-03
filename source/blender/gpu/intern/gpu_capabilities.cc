@@ -182,7 +182,7 @@ bool GPU_shader_draw_parameters_support()
   return GCaps.shader_draw_parameters_support;
 }
 
-bool GPU_HDR_support()
+bool GPU_hdr_support()
 {
   return GCaps.hdr_viewport_support;
 }

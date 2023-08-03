@@ -441,7 +441,7 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
   GPUTexture *color_overlay = viewport->color_overlay_tx[view];
 
   bool use_ocio = false;
-  bool use_hdr = GPU_HDR_support() &&
+  bool use_hdr = GPU_hdr_support() &&
                  ((viewport->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0);
 
   if (viewport->do_color_management && display_colorspace) {

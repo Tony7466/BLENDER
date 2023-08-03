@@ -663,18 +663,24 @@ static void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
   GPU_texture_mipmap_mode(texture, false, false);
 }
 
+static eGPUTextureFormat get_hdr_framebuffer_format(const Scene *scene)
+{
+  bool use_hdr = false;
+  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+    use_hdr = GPU_hdr_support();
+  }
+  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+  return desired_format;
+}
+
 static void wm_draw_region_buffer_create(Scene *scene,
                                          ARegion *region,
                                          bool stereo,
                                          bool use_viewport)
 {
 
-  /* Determine desired offscreen format. */
-  bool use_hdr = false;
-  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-    use_hdr = GPU_HDR_support();
-  }
-  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+  /* Determine desired offscreen format depending on HDR availability. */
+  eGPUTextureFormat desired_format = get_hdr_framebuffer_format(scene);
 
   if (region->draw_buffer) {
     if (region->draw_buffer->stereo != stereo) {
@@ -1177,13 +1183,8 @@ static void wm_draw_window(bContext *C, wmWindow *win)
     wm_draw_window_onscreen(C, win, -1);
   }
   else {
-    /* Determine desired offscreen format. */
-    bool use_hdr = false;
-    Scene *scene = WM_window_get_active_scene(win);
-    if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-      use_hdr = GPU_HDR_support();
-    }
-    eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+    /* Determine desired offscreen format depending on HDR availability. */
+    eGPUTextureFormat desired_format = get_hdr_framebuffer_format(WM_window_get_active_scene(win));
 
     /* For side-by-side and top-bottom, we need to render each view to an
      * an off-screen texture and then draw it. This used to happen for all
@@ -1343,12 +1344,7 @@ uint8_t *WM_window_pixels_read_from_offscreen(bContext *C, wmWindow *win, int r_
   r_size[1] = WM_window_pixels_y(win);
 
   /* Determine desired offscreen format depending on HDR availability. */
-  bool use_hdr = false;
-  Scene *scene = WM_window_get_active_scene(win);
-  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-    use_hdr = GPU_HDR_support();
-  }
-  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+  eGPUTextureFormat desired_format = get_hdr_framebuffer_format(WM_window_get_active_scene(win));
 
   GPUOffScreen *offscreen = GPU_offscreen_create(
       r_size[0], r_size[1], false, desired_format, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);

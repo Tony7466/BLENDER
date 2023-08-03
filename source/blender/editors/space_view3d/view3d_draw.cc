@@ -1906,7 +1906,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
   /* Determine desired offscreen format depending on HDR availability. */
   bool use_hdr = false;
   if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
-    use_hdr = GPU_HDR_support();
+    use_hdr = GPU_hdr_support();
   }
   eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
 
