@@ -291,10 +291,10 @@ static OffsetIndices<int> calc_vert_ranges_per_old_vert(
  * we can reuse the original vertex, which would otherwise become unused by any faces. The loose
  * edge case will have to deal with this later.
  */
-static void calc_updated_corner_verts(const int orig_verts_num,
-                                      const Span<Vector<CornerGroup>> corner_groups,
-                                      const OffsetIndices<int> new_verts_by_affected_vert,
-                                      MutableSpan<int> new_corner_verts)
+static void update_corner_verts(const int orig_verts_num,
+                                const Span<Vector<CornerGroup>> corner_groups,
+                                const OffsetIndices<int> new_verts_by_affected_vert,
+                                MutableSpan<int> new_corner_verts)
 {
   threading::parallel_for(corner_groups.index_range(), 512, [&](const IndexRange range) {
     for (const int new_vert : range) {
@@ -451,8 +451,7 @@ void split_edges(Mesh &mesh,
       vert_new_vert_offset_data);
 
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
-  calc_updated_corner_verts(
-      orig_verts_num, corner_groups, new_verts_by_affected_vert, corner_verts);
+  update_corner_verts(orig_verts_num, corner_groups, new_verts_by_affected_vert, corner_verts);
 
   Array<Vector<int2>> all_new_edges = add_new_edges(faces,
                                                     edge_to_corner_map,
