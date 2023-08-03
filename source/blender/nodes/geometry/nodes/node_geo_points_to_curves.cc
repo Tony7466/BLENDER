@@ -34,6 +34,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Weight").field_on_all().hide_value().description(
       "Weight to sort points of curve");
 
+  b.add_input<decl::Int>("Type").min(0).max(4);
+
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
@@ -59,7 +61,7 @@ static void grouped_sort(const OffsetIndices<int> groups,
 
 static int groups_to_indices(MutableSpan<int> groups)
 {
-  VectorSet<int> deduplicated_groups(groups);
+  const VectorSet<int> deduplicated_groups(groups);
   threading::parallel_for(groups.index_range(), 2048, [&](const IndexRange range) {
     for (int &value : groups.slice(range)) {
       value = deduplicated_groups.index_of(value);
@@ -68,12 +70,47 @@ static int groups_to_indices(MutableSpan<int> groups)
   return deduplicated_groups.size();
 }
 
-static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets,
-                                            MutableSpan<int> group_indices)
+
+
+
+static Array<int> reverse_indices_in_small_groups(const OffsetIndices<int> offsets, const Span<int> group_indices)
 {
-  BLI_assert(!group_indices.is_empty());
-  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
-  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  Array<int> counts(offsets.size(), -1);
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int group_index = group_indices[i];
+      const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
+      results[offsets[group_index][index_in_group]] = int(i);
+    }
+  });
+
+  threading::parallel_for(offsets.index_range(), 256, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      MutableSpan<int> group = results.as_mutable_span().slice(offsets[index]);
+      std::sort(group.begin(), group.end());
+    }
+  });
+  return results;
+}
+
+static Array<int> gather_reverse(const Span<int> group_indices)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  Array<int> results(group_indices.size());
+  std::iota(results.begin(), results.end(), 0);
+  const auto comparator = [&](const int a, const int b) { return group_indices[a] < group_indices[b]; };
+  parallel_sort(results.begin(), results.end(), comparator);
+  return results;
+}
+
+static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets, MutableSpan<int> group_indices)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+
   Array<int> counts(offsets.size(), -1);
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (int &group_index : group_indices.slice(range)) {
@@ -91,9 +128,44 @@ static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets,
   return results;
 }
 
-static Array<int> reverse_indices_in_groups_complex(const OffsetIndices<int> offsets,
-                                                    const Span<int> group_indices)
+static Array<int> reverse_indices_in_groups_simple_sort(const OffsetIndices<int> offsets, const Span<int> group_indices)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  Array<int> indices(group_indices.size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  Array<int> results(group_indices.size());
+
+  Array<int> counts(offsets.size(), -1);
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    MutableSpan<int> r_indices = indices.as_mutable_span().slice(range);
+    parallel_sort(r_indices.begin(), r_indices.end(), [&](const int a, const int b) {
+      return group_indices[a] < group_indices[b];
+    });
+    Array<int> thread_counts(offsets.size(), 0);
+    for (const int i : r_indices) {
+      thread_counts[group_indices[i]]++;
+    }
+    for (const int i : thread_counts.index_range()) {
+      const int size = thread_counts[i];
+      thread_counts[i] = atomic_add_and_fetch_int32(&counts[i], size) - size;
+    }
+    for (const int i : r_indices) {
+      const int group_index = group_indices[i];
+      const int index = thread_counts[group_index];
+      thread_counts[group_index]++;
+      results[offsets[group_index][index]] = i;
+    }
+  });
+
+  return results;
+}
+
+static Array<int> reverse_indices_in_groups_complex_sort(const OffsetIndices<int> offsets, const Span<int> group_indices)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+
   Array<int> indices(group_indices.size());
   std::iota(indices.begin(), indices.end(), 0);
 
@@ -131,12 +203,14 @@ static Array<int> reverse_indices_in_groups_complex(const OffsetIndices<int> off
   return results;
 }
 
+
+
 static Curves *curves_from_points(const PointCloud *points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
-                                  const Map<AttributeIDRef, AttributeKind> &attributes)
+                                  const Map<AttributeIDRef, AttributeKind> &attributes, const int type)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
+  // SCOPED_TIMER_AVERAGED(__func__);
   if (points == nullptr) {
     return nullptr;
   }
@@ -153,7 +227,7 @@ static Curves *curves_from_points(const PointCloud *points,
 
   int total_curves;
   {
-    SCOPED_TIMER_AVERAGED("groups_to_indices");
+    // SCOPED_TIMER_AVERAGED("groups_to_indices");
     total_curves = groups_to_indices(group_ids);
   }
   const Span<int> indices_of_curves(group_ids);
@@ -165,23 +239,42 @@ static Curves *curves_from_points(const PointCloud *points,
   MutableSpan<int> accumulated_curves = curves.offsets_for_write();
   accumulated_curves.fill(0);
   {
-    SCOPED_TIMER_AVERAGED("build_reverse_offsets");
+    // SCOPED_TIMER_AVERAGED("build_reverse_offsets");
     offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
   }
   const OffsetIndices<int> curves_offsets(accumulated_curves);
 
   Array<int> src_indices_of_curve_points(group_ids.size());
-  {
-    SCOPED_TIMER_AVERAGED("reverse_indices_in_groups_complex");
-    src_indices_of_curve_points = reverse_indices_in_groups_complex(curves_offsets, group_ids);
+
+std::cout << std::endl;
+
+  switch (type) {
+    case 0:
+      src_indices_of_curve_points = reverse_indices_in_small_groups(curves_offsets, group_ids);
+      break;
+    case 1:
+      src_indices_of_curve_points = gather_reverse(group_ids);
+      break;
+    case 2:
+      src_indices_of_curve_points = reverse_indices_in_groups(curves_offsets, group_ids);
+      break;
+    case 3:
+      src_indices_of_curve_points = reverse_indices_in_groups_simple_sort(curves_offsets, group_ids);
+      break;
+    case 4:
+      src_indices_of_curve_points = reverse_indices_in_groups_complex_sort(curves_offsets, group_ids);
+      break;
+    default:
+      std::cout << "WTF?" << std::endl;
   }
+
   {
-    SCOPED_TIMER_AVERAGED("grouped_sort");
+    // SCOPED_TIMER_AVERAGED("grouped_sort");
     grouped_sort(curves_offsets, weights, src_indices_of_curve_points);
   }
 
   {
-    SCOPED_TIMER_AVERAGED("attributes");
+    // SCOPED_TIMER_AVERAGED("attributes");
 
     const AttributeAccessor src_attributes = points->attributes();
     MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
@@ -219,6 +312,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   const Field<int> group_id_field = params.extract_input<Field<int>>("Curve Group ID");
   const Field<float> weight_field = params.extract_input<Field<float>>("Weight");
+  const int type = params.extract_input<int>("Type");
 
   Map<AttributeIDRef, AttributeKind> attributes;
   geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::PointCloud},
@@ -228,8 +322,8 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                  attributes);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    const PointCloud *points = geometry_set.get_pointcloud_for_read();
-    Curves *curves_id = curves_from_points(points, group_id_field, weight_field, attributes);
+    const PointCloud *points = geometry_set.get_pointcloud();
+    Curves *curves_id = curves_from_points(points, group_id_field, weight_field, attributes, type);
     geometry_set.replace_curves(curves_id);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
   });
