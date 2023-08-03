@@ -44,18 +44,16 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(special_characters_fn);
 }
 
-}  // namespace blender::nodes::node_fn_input_special_characters_cc
-
-static void register_node_type_fn_input_special_characters()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_fn_input_special_characters_cc;
-
   static bNodeType ntype;
 
   fn_node_type_base(
       &ntype, FN_NODE_INPUT_SPECIAL_CHARACTERS, "Special Characters", NODE_CLASS_INPUT);
-  ntype.declare = file_ns::node_declare;
-  ntype.build_multi_function = file_ns::node_build_multi_function;
+  ntype.declare = node_declare;
+  ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }
-NOD_REGISTER_NODE(register_node_type_fn_input_special_characters)
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_fn_input_special_characters_cc
