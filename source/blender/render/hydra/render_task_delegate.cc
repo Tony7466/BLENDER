@@ -312,7 +312,7 @@ void GPURenderTaskDelegate::bind()
     glGenVertexArrays(1, &VAO_);
     glBindVertexArray(VAO_);
   }
-  CLOG_INFO(LOG_HYDRA_RENDER, 3, "");
+  CLOG_INFO(LOG_HYDRA_RENDER, 3, "bind");
 }
 
 void GPURenderTaskDelegate::unbind()
@@ -325,7 +325,7 @@ void GPURenderTaskDelegate::unbind()
     GPU_framebuffer_free(framebuffer_);
     framebuffer_ = nullptr;
   }
-  CLOG_INFO(LOG_HYDRA_RENDER, 3, "");
+  CLOG_INFO(LOG_HYDRA_RENDER, 3, "unbind");
 }
 
 GPUTexture *GPURenderTaskDelegate::aov_texture(pxr::TfToken const &aov_key)

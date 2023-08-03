@@ -37,7 +37,6 @@ endif()
 
 set(INC
   ../../../../intern/clog
-  ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
   ../../makesdna
   ../../makesrna
