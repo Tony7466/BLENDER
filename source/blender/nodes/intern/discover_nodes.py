@@ -22,11 +22,12 @@ import sys
 from pathlib import Path
 
 source_root = Path(sys.argv[1])
-macro_name = "NOD_REGISTER_NODE"
-discover_suffix = "_discover"
 output_cc_file = Path(sys.argv[2])
 function_to_generate = sys.argv[3]
 relative_source_files = sys.argv[4:]
+
+macro_name = "NOD_REGISTER_NODE"
+discover_suffix = "_discover"
 
 include_lines = []
 decl_lines = []

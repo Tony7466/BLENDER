@@ -52,6 +52,7 @@ void register_nodes()
   register_undefined_types();
 
   register_standard_node_socket_types();
+
   register_node_tree_type_geo();
 
   register_node_type_frame();

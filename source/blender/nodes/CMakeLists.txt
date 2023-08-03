@@ -4,6 +4,8 @@
 
 set(DISCOVER_NODES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/intern/discover_nodes.py)
 
+# Creates a library with the given name that exposes one function which calls
+# the register functions of all nodes in the provided source files.
 function(add_node_discovery
   lib_name
   sources
