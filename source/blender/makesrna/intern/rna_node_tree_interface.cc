@@ -968,7 +968,7 @@ static void rna_def_node_tree_interface(BlenderRNA *brna)
                                     "rna_NodeTreeInterface_items_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
-                                    "rna_iterator_array_get",
+                                    "rna_iterator_array_dereference_get",
                                     "rna_NodeTreeInterface_items_length",
                                     "rna_NodeTreeInterface_items_lookup_int",
                                     "rna_NodeTreeInterface_items_lookup_string",
