@@ -92,33 +92,40 @@ static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets,
 }
 
 static Array<int> reverse_indices_in_groups_complex(const OffsetIndices<int> offsets,
-                                                    Span<int> group_indices)
+                                                    const Span<int> group_indices)
 {
   Array<int> indices(group_indices.size());
   std::iota(indices.begin(), indices.end(), 0);
 
   Array<int> results(group_indices.size());
 
-  Array<int> counts(offsets.size(), -1);
+  Array<int> counts(offsets.size(), 0);
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     MutableSpan<int> r_indices = indices.as_mutable_span().slice(range);
     parallel_sort(r_indices.begin(), r_indices.end(), [&](const int a, const int b) {
       return group_indices[a] < group_indices[b];
     });
-    Array<int> thread_counts(offsets.size(), 0);
-    for (const int i : r_indices) {
-      thread_counts[group_indices[i]]++;
+
+    int start = 0;
+    while (true) {
+      const Span<int> local = r_indices.drop_front(start);
+      if (local.is_empty()) {
+        break;
+      }
+      const int group = group_indices[local.first()];
+      const int *first_other = std::find_if(local.begin(), local.end(), [&](const int index) {
+        return group_indices[index] != group;
+      });
+      const int current_size = int(std::distance(local.begin(), first_other));
+      start += current_size;
+      const int current_start = atomic_add_and_fetch_int32(&counts[group], current_size) -
+                                current_size;
+      const IndexRange finall = offsets[group].slice(current_start, current_size);
+      MutableSpan<int> dst = results.as_mutable_span().slice(finall);
+      const Span<int> src = local.take_front(current_size);
+      std::copy(src.begin(), src.end(), dst.begin());
     }
-    for (const int i : thread_counts.index_range()) {
-      const int size = thread_counts[i];
-      thread_counts[i] = atomic_add_and_fetch_int32(&counts[i], size) - size;
-    }
-    for (const int i : r_indices) {
-      const int group_index = group_indices[i];
-      const int index = thread_counts[group_index];
-      thread_counts[group_index]++;
-      results[offsets[group_index][index]] = i;
-    }
+    return;
   });
 
   return results;
