@@ -41,7 +41,7 @@ void register_node_type_geo_operator_3d_cursor()
 {
   namespace file_ns = blender::nodes::node_geo_operator_3d_cursor_cc;
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_OPERATOR_3D_CURSOR, "3D Cursor", NODE_CLASS_INPUT);
+  geo_node_type_base(&ntype, GEO_NODE_TOOL_3D_CURSOR, "3D Cursor", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.updatefunc = file_ns::node_update;

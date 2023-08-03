@@ -81,8 +81,7 @@ void register_node_type_geo_operator_set_selection()
 {
   namespace file_ns = blender::nodes::node_geo_operator_set_selection_cc;
   static bNodeType ntype;
-  geo_node_type_base(
-      &ntype, GEO_NODE_OPERATOR_SET_SELECTION, "Set Selection", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_TOOL_SET_SELECTION, "Set Selection", NODE_CLASS_GEOMETRY);
   ntype.declare = file_ns::node_declare;
   ntype.initfunc = file_ns::node_init;
   ntype.geometry_node_execute = file_ns::node_geo_exec;

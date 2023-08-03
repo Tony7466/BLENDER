@@ -581,11 +581,11 @@ class NODE_MT_category_tool(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "GeometryNodeOperator3DCursor")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorFaceSet")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSelection")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSetFaceSet")
-        node_add_menu.add_node_type(layout, "GeometryNodeOperatorSetSelection")
+        node_add_menu.add_node_type(layout, "GeometryNodeTool3DCursor")
+        node_add_menu.add_node_type(layout, "GeometryNodeToolFaceSet")
+        node_add_menu.add_node_type(layout, "GeometryNodeToolSelection")
+        node_add_menu.add_node_type(layout, "GeometryNodeToolSetFaceSet")
+        node_add_menu.add_node_type(layout, "GeometryNodeToolSetSelection")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
