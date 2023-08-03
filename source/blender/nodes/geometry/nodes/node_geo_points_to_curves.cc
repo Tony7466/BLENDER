@@ -91,12 +91,36 @@ static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets,
   return results;
 }
 
-static Array<int> gather_reverse(const Span<int> indices)
+static Array<int> reverse_indices_in_groups_complex(const OffsetIndices<int> offsets,
+                                                    Span<int> group_indices)
 {
-  Array<int> results(indices.size());
-  std::iota(results.begin(), results.end(), 0);
-  const auto comparator = [&](const int a, const int b) { return indices[a] < indices[b]; };
-  parallel_sort(results.begin(), results.end(), comparator);
+  Array<int> indices(group_indices.size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  Array<int> results(group_indices.size());
+
+  Array<int> counts(offsets.size(), -1);
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    MutableSpan<int> r_indices = indices.as_mutable_span().slice(range);
+    parallel_sort(r_indices.begin(), r_indices.end(), [&](const int a, const int b) {
+      return group_indices[a] < group_indices[b];
+    });
+    Array<int> thread_counts(offsets.size(), 0);
+    for (const int i : r_indices) {
+      thread_counts[group_indices[i]]++;
+    }
+    for (const int i : thread_counts.index_range()) {
+      const int size = thread_counts[i];
+      thread_counts[i] = atomic_add_and_fetch_int32(&counts[i], size) - size;
+    }
+    for (const int i : r_indices) {
+      const int group_index = group_indices[i];
+      const int index = thread_counts[group_index];
+      thread_counts[group_index]++;
+      results[offsets[group_index][index]] = i;
+    }
+  });
+
   return results;
 }
 
@@ -141,8 +165,8 @@ static Curves *curves_from_points(const PointCloud *points,
 
   Array<int> src_indices_of_curve_points(group_ids.size());
   {
-    SCOPED_TIMER_AVERAGED("reverse_indices_in_groups");
-    src_indices_of_curve_points = reverse_indices_in_groups(curves_offsets, group_ids);
+    SCOPED_TIMER_AVERAGED("reverse_indices_in_groups_complex");
+    src_indices_of_curve_points = reverse_indices_in_groups_complex(curves_offsets, group_ids);
   }
   {
     SCOPED_TIMER_AVERAGED("grouped_sort");
