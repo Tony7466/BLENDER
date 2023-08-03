@@ -209,6 +209,7 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   bf_nodes
   extern_fmtlib
+  PRIVATE bf::intern::atomic
 )
 
 if(WITH_BULLET)

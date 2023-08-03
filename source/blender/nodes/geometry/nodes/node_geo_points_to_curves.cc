@@ -4,11 +4,16 @@
 
 #include "node_geometry_util.hh"
 
+#include "atomic_ops.h"
+
 #include "BKE_attribute_math.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_vector.hh"
+
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
+
 #include "BLI_timeit.hh"
 
 #include "BKE_geometry_set.hh"
@@ -63,6 +68,29 @@ static int groups_to_indices(MutableSpan<int> groups)
   return deduplicated_groups.size();
 }
 
+static Array<int> reverse_indices_in_groups(const OffsetIndices<int> offsets,
+                                            MutableSpan<int> group_indices)
+{
+  BLI_assert(!group_indices.is_empty());
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+  Array<int> counts(offsets.size(), -1);
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (int &group_index : group_indices.slice(range)) {
+      const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
+      group_index = offsets[group_index][index_in_group];
+    }
+  });
+
+  Array<int> results(group_indices.size());
+  threading::parallel_for(results.index_range(), 2048, [&](const IndexRange range) {
+    for (const int index : range) {
+      results[group_indices[index]] = index;
+    }
+  });
+  return results;
+}
+
 static Array<int> gather_reverse(const Span<int> indices)
 {
   Array<int> results(indices.size());
@@ -77,6 +105,7 @@ static Curves *curves_from_points(const PointCloud *points,
                                   const Field<float> &weight_field,
                                   const Map<AttributeIDRef, AttributeKind> &attributes)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   if (points == nullptr) {
     return nullptr;
   }
@@ -91,7 +120,11 @@ static Curves *curves_from_points(const PointCloud *points,
   evaluator.add_with_destination(weight_field, weights.as_mutable_span());
   evaluator.evaluate();
 
-  int total_curves = groups_to_indices(group_ids);
+  int total_curves;
+  {
+    SCOPED_TIMER_AVERAGED("groups_to_indices");
+    total_curves = groups_to_indices(group_ids);
+  }
   const Span<int> indices_of_curves(group_ids);
 
   Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
@@ -100,38 +133,51 @@ static Curves *curves_from_points(const PointCloud *points,
   curves.cyclic_for_write().fill(false);
   MutableSpan<int> accumulated_curves = curves.offsets_for_write();
   accumulated_curves.fill(0);
-  offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
-
-  Array<int> src_indices_of_curve_points = gather_reverse(indices_of_curves);
-
+  {
+    SCOPED_TIMER_AVERAGED("build_reverse_offsets");
+    offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
+  }
   const OffsetIndices<int> curves_offsets(accumulated_curves);
-  grouped_sort(curves_offsets, weights, src_indices_of_curve_points);
 
-  const AttributeAccessor src_attributes = points->attributes();
-  MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
-  for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
-    const AttributeIDRef attribute_id = entry.key;
-    const eCustomDataType output_data_type = entry.value.data_type;
+  Array<int> src_indices_of_curve_points(group_ids.size());
+  {
+    SCOPED_TIMER_AVERAGED("reverse_indices_in_groups");
+    src_indices_of_curve_points = reverse_indices_in_groups(curves_offsets, group_ids);
+  }
+  {
+    SCOPED_TIMER_AVERAGED("grouped_sort");
+    grouped_sort(curves_offsets, weights, src_indices_of_curve_points);
+  }
 
-    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        attribute_id, ATTR_DOMAIN_POINT, output_data_type);
-    if (!dst) {
-      continue;
+  {
+    SCOPED_TIMER_AVERAGED("attributes");
+
+    const AttributeAccessor src_attributes = points->attributes();
+    MutableAttributeAccessor dst_attributes = curves.attributes_for_write();
+    for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
+      const AttributeIDRef attribute_id = entry.key;
+      const eCustomDataType output_data_type = entry.value.data_type;
+
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          attribute_id, ATTR_DOMAIN_POINT, output_data_type);
+      if (!dst) {
+        continue;
+      }
+
+      const GAttributeReader src = src_attributes.lookup(
+          attribute_id, ATTR_DOMAIN_POINT, output_data_type);
+      if (!src) {
+        continue;
+      }
+
+      bke::attribute_math::convert_to_static_type(output_data_type, [&](auto dummy) {
+        using T = decltype(dummy);
+        array_utils::gather<T, int>(
+            src.varray.typed<T>(), src_indices_of_curve_points, dst.span.typed<T>());
+      });
+
+      dst.finish();
     }
-
-    const GAttributeReader src = src_attributes.lookup(
-        attribute_id, ATTR_DOMAIN_POINT, output_data_type);
-    if (!src) {
-      continue;
-    }
-
-    bke::attribute_math::convert_to_static_type(output_data_type, [&](auto dummy) {
-      using T = decltype(dummy);
-      array_utils::gather<T, int>(
-          src.varray.typed<T>(), src_indices_of_curve_points, dst.span.typed<T>());
-    });
-
-    dst.finish();
   }
 
   return curves_id;
