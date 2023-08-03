@@ -11,10 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
-#include "BLI_bitmap.h"
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math.h"
-#include "BLI_task.h"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
