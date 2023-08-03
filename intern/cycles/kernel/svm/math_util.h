@@ -144,7 +144,7 @@ ccl_device float svm_math(NodeMathType type, float a, float b, float c)
     case NODE_MATH_FRACTION:
       return a - floorf(a);
     case NODE_MATH_MODULO:
-      return safe_modulo(a, b);
+      return safe_modulof(a, b);
     case NODE_MATH_FLOORED_MODULO:
       return safe_floored_modulof(a, b);
     case NODE_MATH_TRUNC:
