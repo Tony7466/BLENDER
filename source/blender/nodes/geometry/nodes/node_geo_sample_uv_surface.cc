@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute_math.hh"
 #include "BKE_mesh.hh"
@@ -20,36 +22,38 @@ using geometry::ReverseUVSampler;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GEO_COMPONENT_TYPE_MESH);
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
 
-  b.add_input<decl::Float>(N_("Value"), "Value_Float").hide_value().field_on_all();
-  b.add_input<decl::Int>(N_("Value"), "Value_Int").hide_value().field_on_all();
-  b.add_input<decl::Vector>(N_("Value"), "Value_Vector").hide_value().field_on_all();
-  b.add_input<decl::Color>(N_("Value"), "Value_Color").hide_value().field_on_all();
-  b.add_input<decl::Bool>(N_("Value"), "Value_Bool").hide_value().field_on_all();
+  b.add_input<decl::Float>("Value", "Value_Float").hide_value().field_on_all();
+  b.add_input<decl::Int>("Value", "Value_Int").hide_value().field_on_all();
+  b.add_input<decl::Vector>("Value", "Value_Vector").hide_value().field_on_all();
+  b.add_input<decl::Color>("Value", "Value_Color").hide_value().field_on_all();
+  b.add_input<decl::Bool>("Value", "Value_Bool").hide_value().field_on_all();
+  b.add_input<decl::Rotation>("Value", "Value_Rotation").hide_value().field_on_all();
 
-  b.add_input<decl::Vector>(N_("Source UV Map"))
+  b.add_input<decl::Vector>("Source UV Map")
       .hide_value()
       .field_on_all()
-      .description(N_("The mesh UV map to sample. Should not have overlapping faces"));
-  b.add_input<decl::Vector>(N_("Sample UV"))
+      .description("The mesh UV map to sample. Should not have overlapping faces");
+  b.add_input<decl::Vector>("Sample UV")
       .supports_field()
-      .description(N_("The coordinates to sample within the UV map"));
+      .description("The coordinates to sample within the UV map");
 
-  b.add_output<decl::Float>(N_("Value"), "Value_Float").dependent_field({7});
-  b.add_output<decl::Int>(N_("Value"), "Value_Int").dependent_field({7});
-  b.add_output<decl::Vector>(N_("Value"), "Value_Vector").dependent_field({7});
-  b.add_output<decl::Color>(N_("Value"), "Value_Color").dependent_field({7});
-  b.add_output<decl::Bool>(N_("Value"), "Value_Bool").dependent_field({7});
+  b.add_output<decl::Float>("Value", "Value_Float").dependent_field({8});
+  b.add_output<decl::Int>("Value", "Value_Int").dependent_field({8});
+  b.add_output<decl::Vector>("Value", "Value_Vector").dependent_field({8});
+  b.add_output<decl::Color>("Value", "Value_Color").dependent_field({8});
+  b.add_output<decl::Bool>("Value", "Value_Bool").dependent_field({8});
+  b.add_output<decl::Rotation>("Value", "Value_Rotation").dependent_field({8});
 
-  b.add_output<decl::Bool>(N_("Is Valid"))
-      .dependent_field({7})
-      .description(N_("Whether the node could find a single face to sample at the UV coordinate"));
+  b.add_output<decl::Bool>("Is Valid")
+      .dependent_field({8})
+      .description("Whether the node could find a single face to sample at the UV coordinate");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -67,24 +71,28 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *in_socket_vector = in_socket_int32->next;
   bNodeSocket *in_socket_color4f = in_socket_vector->next;
   bNodeSocket *in_socket_bool = in_socket_color4f->next;
+  bNodeSocket *in_socket_quat = in_socket_bool->next;
 
-  nodeSetSocketAvailability(ntree, in_socket_vector, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, in_socket_float, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, in_socket_color4f, data_type == CD_PROP_COLOR);
-  nodeSetSocketAvailability(ntree, in_socket_bool, data_type == CD_PROP_BOOL);
-  nodeSetSocketAvailability(ntree, in_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, in_socket_vector, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, in_socket_float, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, in_socket_color4f, data_type == CD_PROP_COLOR);
+  bke::nodeSetSocketAvailability(ntree, in_socket_bool, data_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, in_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, in_socket_quat, data_type == CD_PROP_QUATERNION);
 
   bNodeSocket *out_socket_float = static_cast<bNodeSocket *>(node->outputs.first);
   bNodeSocket *out_socket_int32 = out_socket_float->next;
   bNodeSocket *out_socket_vector = out_socket_int32->next;
   bNodeSocket *out_socket_color4f = out_socket_vector->next;
   bNodeSocket *out_socket_bool = out_socket_color4f->next;
+  bNodeSocket *out_socket_quat = out_socket_bool->next;
 
-  nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, out_socket_color4f, data_type == CD_PROP_COLOR);
-  nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
-  nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, out_socket_vector, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, out_socket_float, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, out_socket_color4f, data_type == CD_PROP_COLOR);
+  bke::nodeSetSocketAvailability(ntree, out_socket_bool, data_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, out_socket_int32, data_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, out_socket_quat, data_type == CD_PROP_QUATERNION);
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -135,7 +143,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArraySpan<float2> sample_uvs = params.readonly_single_input<float2>(0, "Sample UV");
     MutableSpan<bool> is_valid = params.uninitialized_single_output_if_required<bool>(1,
@@ -145,7 +153,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
     MutableSpan<float3> bary_weights = params.uninitialized_single_output_if_required<float3>(
         3, "Barycentric Weights");
 
-    for (const int i : mask) {
+    mask.foreach_index([&](const int i) {
       const ReverseUVSampler::Result result = reverse_uv_sampler_->sample(sample_uvs[i]);
       if (!is_valid.is_empty()) {
         is_valid[i] = result.type == ReverseUVSampler::ResultType::Ok;
@@ -156,7 +164,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
       if (!bary_weights.is_empty()) {
         bary_weights[i] = result.bary_weights;
       }
-    }
+    });
   }
 
  private:
@@ -186,6 +194,8 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
       return params.extract_input<Field<bool>>("Value_Bool");
     case CD_PROP_INT32:
       return params.extract_input<Field<int>>("Value_Int");
+    case CD_PROP_QUATERNION:
+      return params.extract_input<Field<math::Quaternion>>("Value_Rotation");
     default:
       BLI_assert_unreachable();
   }
@@ -215,6 +225,10 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
       params.set_output("Value_Int", Field<int>(field));
       break;
     }
+    case CD_PROP_QUATERNION: {
+      params.set_output("Value_Rotation", Field<math::Quaternion>(field));
+      break;
+    }
     default:
       break;
   }
@@ -229,7 +243,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
-  if (mesh->totpoly == 0 && mesh->totvert != 0) {
+  if (mesh->faces_num == 0 && mesh->totvert != 0) {
     params.error_message_add(NodeWarningType::Error, TIP_("The source mesh must have faces"));
     params.set_default_remaining_outputs();
     return;

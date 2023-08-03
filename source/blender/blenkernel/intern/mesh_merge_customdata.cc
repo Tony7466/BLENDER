@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -16,7 +18,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BLI_memarena.h"
 
 #include "BLI_strict_flags.h"
@@ -108,21 +110,21 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
   if (me->totloop == 0) {
     return;
   }
-  const int mloopuv_layers_num = CustomData_number_of_layers(&me->ldata, CD_PROP_FLOAT2);
+  const int mloopuv_layers_num = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
   if (mloopuv_layers_num == 0) {
     return;
   }
 
-  int *vert_map_mem;
-  struct MeshElemMap *vert_to_loop;
-  BKE_mesh_vert_loop_map_create(
-      &vert_to_loop, &vert_map_mem, me->polys(), me->corner_verts().data(), me->totvert);
+  Array<int> vert_to_loop_offsets;
+  Array<int> vert_to_loop_indices;
+  const GroupedSpan<int> vert_to_loop = bke::mesh::build_vert_to_loop_map(
+      me->corner_verts(), me->totvert, vert_to_loop_offsets, vert_to_loop_indices);
 
   Vector<float2 *> mloopuv_layers;
   mloopuv_layers.reserve(mloopuv_layers_num);
   for (int a = 0; a < mloopuv_layers_num; a++) {
     float2 *mloopuv = static_cast<float2 *>(
-        CustomData_get_layer_n_for_write(&me->ldata, CD_PROP_FLOAT2, a, me->totloop));
+        CustomData_get_layer_n_for_write(&me->loop_data, CD_PROP_FLOAT2, a, me->totloop));
     mloopuv_layers.append_unchecked(mloopuv);
   }
 
@@ -130,12 +132,7 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
 
   threading::parallel_for(IndexRange(me->totvert), 1024, [&](IndexRange range) {
     for (const int64_t v_index : range) {
-      MeshElemMap &loops_for_vert = vert_to_loop[v_index];
-      Span<int> loops_for_vert_span(loops_for_vert.indices, loops_for_vert.count);
-      merge_uvs_for_vertex(loops_for_vert_span, mloopuv_layers_as_span);
+      merge_uvs_for_vertex(vert_to_loop[v_index], mloopuv_layers_as_span);
     }
   });
-
-  MEM_freeN(vert_to_loop);
-  MEM_freeN(vert_map_mem);
 }

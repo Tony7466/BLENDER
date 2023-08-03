@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
@@ -66,7 +67,7 @@ static void lightprobe_blend_read_data(BlendDataReader *reader, ID *id)
 static void lightprobe_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   LightProbe *prb = (LightProbe *)id;
-  BLO_read_id_address(reader, prb->id.lib, &prb->visibility_grp);
+  BLO_read_id_address(reader, &prb->id, &prb->visibility_grp);
 }
 
 IDTypeInfo IDType_ID_LP = {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -35,7 +36,7 @@ void ED_keymap_sculpt(wmKeyConfig *keyconf);
 void ED_sculpt_update_modal_transform(struct bContext *C, struct Object *ob);
 void ED_sculpt_init_transform(struct bContext *C,
                               struct Object *ob,
-                              const int mval[2],
+                              const float mval_fl[2],
                               const char *undo_name);
 void ED_sculpt_end_transform(struct bContext *C, struct Object *ob);
 

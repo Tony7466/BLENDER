@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -16,6 +18,7 @@
 #include "BLI_array.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
 #include "BLT_translation.h"
@@ -29,7 +32,7 @@
 #include "RNA_prototypes.h"
 
 #include "NOD_node_declaration.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 
 #include "../interface/interface_intern.hh" /* XXX bad level */
@@ -235,7 +238,7 @@ static void node_socket_add_replace(const bContext *C,
     }
     else {
       sock_from_tmp = (bNodeSocket *)BLI_findlink(&node_from->outputs, item->socket_index);
-      nodePositionRelative(node_from, node_to, sock_from_tmp, sock_to);
+      bke::nodePositionRelative(node_from, node_to, sock_from_tmp, sock_to);
     }
 
     node_link_item_apply(ntree, node_from, item);
@@ -388,6 +391,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
         item.socket_type = SOCK_RGBA;
       }
+      else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
+        item.socket_type = SOCK_ROTATION;
+      }
       else if (dynamic_cast<const decl::String *>(&socket_decl)) {
         item.socket_type = SOCK_STRING;
       }
@@ -467,21 +473,21 @@ static void ui_node_sock_name(const bNodeTree *ntree,
     bNode *node = sock->link->fromnode;
     char node_name[UI_MAX_NAME_STR];
 
-    nodeLabel(ntree, node, node_name, sizeof(node_name));
+    bke::nodeLabel(ntree, node, node_name, sizeof(node_name));
 
     if (BLI_listbase_is_empty(&node->inputs) && node->outputs.first != node->outputs.last) {
       BLI_snprintf(
           name, UI_MAX_NAME_STR, "%s | %s", IFACE_(node_name), IFACE_(sock->link->fromsock->name));
     }
     else {
-      BLI_strncpy(name, IFACE_(node_name), UI_MAX_NAME_STR);
+      BLI_strncpy_utf8(name, IFACE_(node_name), UI_MAX_NAME_STR);
     }
   }
   else if (sock->type == SOCK_SHADER) {
-    BLI_strncpy(name, IFACE_("None"), UI_MAX_NAME_STR);
+    BLI_strncpy_utf8(name, IFACE_("None"), UI_MAX_NAME_STR);
   }
   else {
-    BLI_strncpy(name, IFACE_("Default"), UI_MAX_NAME_STR);
+    BLI_strncpy_utf8(name, IFACE_("Default"), UI_MAX_NAME_STR);
   }
 }
 
@@ -604,7 +610,7 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
         icon = ICON_BLANK1;
       }
       else {
-        STRNCPY(name, IFACE_(item.node_name));
+        STRNCPY_UTF8(name, IFACE_(item.node_name));
         icon = ICON_NONE;
       }
 
@@ -833,7 +839,7 @@ static void ui_node_draw_input(
 
     sub = uiLayoutRow(sub, true);
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
-    uiItemL(sub, IFACE_(nodeSocketLabel(&input)), ICON_NONE);
+    uiItemL(sub, IFACE_(bke::nodeSocketLabel(&input)), ICON_NONE);
   }
 
   if (dependency_loop) {
@@ -870,9 +876,10 @@ static void ui_node_draw_input(
           ATTR_FALLTHROUGH;
         case SOCK_FLOAT:
         case SOCK_INT:
+        case SOCK_ROTATION:
         case SOCK_BOOLEAN:
         case SOCK_RGBA:
-          uiItemR(sub, &inputptr, "default_value", 0, "", ICON_NONE);
+          uiItemR(sub, &inputptr, "default_value", UI_ITEM_NONE, "", ICON_NONE);
           uiItemDecoratorR(
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
@@ -885,12 +892,15 @@ static void ui_node_draw_input(
             node_geometry_add_attribute_search_button(C, node, inputptr, *sub);
           }
           else {
-            uiItemR(sub, &inputptr, "default_value", 0, "", ICON_NONE);
+            uiItemR(sub, &inputptr, "default_value", UI_ITEM_NONE, "", ICON_NONE);
           }
           uiItemDecoratorR(
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
         }
+        case SOCK_CUSTOM:
+          input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
+          break;
         default:
           add_dummy_decorator = true;
       }

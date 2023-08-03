@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -17,10 +18,10 @@
 #include "BKE_global.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
-#include "BKE_subdiv_ccg.h"
+#include "BKE_node.hh"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "DNA_userdef_types.h"
 
@@ -117,9 +118,9 @@ eAttrDomain BKE_id_attribute_domain(const struct ID * /*id*/,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of BKE_paint.h
+/** \name Stubs of BKE_paint.hh
  * \{ */
-bool paint_is_face_hidden(const int * /*looptri_polys*/,
+bool paint_is_face_hidden(const int * /*looptri_faces*/,
                           const bool * /*hide_poly*/,
                           int /*tri_index*/)
 {
@@ -197,23 +198,7 @@ bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Stubs of BKE_pbvh.h
- * \{ */
-
-int BKE_pbvh_count_grid_quads(BLI_bitmap ** /*grid_hidden*/,
-                              const int * /*grid_indices*/,
-                              int /*totgrid*/,
-                              int /*gridsize*/,
-                              int /*display_gridsize*/)
-{
-  BLI_assert_unreachable();
-  return 0;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Stubs of BKE_subdiv_ccg.h
+/** \name Stubs of BKE_subdiv_ccg.hh
  * \{ */
 int BKE_subdiv_ccg_grid_to_face_index(const SubdivCCG * /*subdiv_ccg*/, const int /*grid_index*/)
 {
@@ -271,4 +256,51 @@ void DRW_cdlayer_attr_aliases_add(struct GPUVertFormat * /*format*/,
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Stubs of IMB_imbuf.h
+ * \{ */
+struct ImBuf *IMB_ibImageFromMemory(const unsigned char * /*mem*/,
+                                    size_t /*size*/,
+                                    int /*flags*/,
+                                    char /*colorspace*/[IM_MAX_SPACE],
+                                    const char * /*descr*/)
+{
+  BLI_assert_unreachable();
+  return nullptr;
 }
+
+struct ImBuf *IMB_allocFromBuffer(const uint8_t * /*rect*/,
+                                  const float * /*rectf*/,
+                                  unsigned int /*w*/,
+                                  unsigned int /*h*/,
+                                  unsigned int /*channels*/)
+{
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+bool IMB_saveiff(struct ImBuf * /*ibuf*/, const char * /*filepath*/, int /*flags*/)
+{
+  BLI_assert_unreachable();
+  return false;
+}
+
+/** \} */
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Stubs of BKE_pbvh.hh
+ * \{ */
+
+int BKE_pbvh_count_grid_quads(BLI_bitmap ** /*grid_hidden*/,
+                              const int * /*grid_indices*/,
+                              int /*totgrid*/,
+                              int /*gridsize*/,
+                              int /*display_gridsize*/)
+{
+  BLI_assert_unreachable();
+  return 0;
+}
+
+/** \} */

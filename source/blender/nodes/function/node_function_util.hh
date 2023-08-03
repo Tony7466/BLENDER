@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,9 +13,7 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
-
-#include "BLT_translation.h"
+#include "BKE_node.hh"
 
 #include "NOD_multi_function.hh"
 #include "NOD_socket_declarations.hh"
@@ -25,4 +25,4 @@
 
 #include "RNA_access.h"
 
-void fn_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass);
+void fn_node_type_base(bNodeType *ntype, int type, const char *name, short nclass);

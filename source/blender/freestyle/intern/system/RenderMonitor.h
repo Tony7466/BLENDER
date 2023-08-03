@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -29,7 +31,7 @@ class RenderMonitor {
     if (_re && !info.empty()) {
       _re->i.infostr = info.c_str();
       _re->stats_draw(_re->sdh, &_re->i);
-      _re->i.infostr = NULL;
+      _re->i.infostr = nullptr;
     }
   }
 

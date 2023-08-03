@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Menu
 from bl_ui import node_add_menu
@@ -424,6 +427,7 @@ class NODE_MT_geometry_node_mesh_topology(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeCornersOfEdge")
         node_add_menu.add_node_type(layout, "GeometryNodeCornersOfFace")
         node_add_menu.add_node_type(layout, "GeometryNodeCornersOfVertex")
         node_add_menu.add_node_type(layout, "GeometryNodeEdgesOfCorner")
@@ -526,6 +530,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
+        node_add_menu.add_repeat_zone(layout, label="Repeat Zone")
         node_add_menu.add_node_type(layout, "GeometryNodeSwitch")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -613,6 +618,7 @@ class NODE_MT_category_GEO_VOLUME(Menu):
             layout.separator()
             node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSDFVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeOffsetSDFVolume")
+            node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeSDFVolumeSphere")
             node_add_menu.add_node_type(layout, "GeometryNodeInputSignedDistance")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)

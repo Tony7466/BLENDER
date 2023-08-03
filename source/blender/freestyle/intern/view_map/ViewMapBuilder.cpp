@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -549,7 +551,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
         findOccludee<G, I>(fe, grid, epsilon, *ve, &wFace);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (wFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (wFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif
@@ -748,7 +750,7 @@ static void computeDetailedVisibility(ViewMap *ioViewMap,
         findOccludee<G, I>(fe, grid, epsilon, *ve, &wFace);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (wFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (wFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif
@@ -1629,7 +1631,7 @@ void ViewMapBuilder::ComputeRayCastingVisibility(ViewMap *ioViewMap, real epsilo
         FindOccludee(fe, _Grid, epsilon, &aFace, timestamp++);
 #if LOGGING
         if (_global.debug & G_DEBUG_FREESTYLE) {
-          cout << "\tFEdge: occludee only (" << (aFace != NULL ? "found" : "not found") << ")"
+          cout << "\tFEdge: occludee only (" << (aFace != nullptr ? "found" : "not found") << ")"
                << endl;
         }
 #endif

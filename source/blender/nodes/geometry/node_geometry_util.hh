@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -13,11 +15,9 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
-#include "BLT_translation.h"
-
-#include "NOD_geometry.h"
+#include "NOD_geometry.hh"
 #include "NOD_geometry_exec.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
@@ -33,9 +33,9 @@
 
 struct BVHTreeFromMesh;
 
-void geo_node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass);
-bool geo_node_poll_default(const struct bNodeType *ntype,
-                           const struct bNodeTree *ntree,
+void geo_node_type_base(bNodeType *ntype, int type, const char *name, short nclass);
+bool geo_node_poll_default(const bNodeType *ntype,
+                           const bNodeTree *ntree,
                            const char **r_disabled_hint);
 
 namespace blender::nodes {
@@ -94,7 +94,7 @@ void separate_geometry(GeometrySet &geometry_set,
 
 void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             const VArray<float3> &positions,
-                            const IndexMask mask,
+                            const IndexMask &mask,
                             const MutableSpan<int> r_indices,
                             const MutableSpan<float> r_distances_sq,
                             const MutableSpan<float3> r_positions);
@@ -125,7 +125,7 @@ class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
   EvaluateAtIndexInput(Field<int> index_field, GField value_field, eAttrDomain value_field_domain);
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask mask) const final;
+                                 const IndexMask &mask) const final;
 
   std::optional<eAttrDomain> preferred_domain(const GeometryComponent & /*component*/) const final
   {
@@ -139,19 +139,28 @@ void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
-void values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
-                                const Span<void *> input_values,
-                                bke::sim::SimulationZoneState &r_zone_state);
-void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
-                                const bke::sim::SimulationZoneState &zone_state,
-                                const Object &self_object,
-                                const ComputeContext &compute_context,
-                                const bNode &sim_output_node,
-                                Span<void *> r_output_values);
+void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
+                                     const Span<void *> input_values,
+                                     bke::sim::SimulationZoneState &r_zone_state);
+void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
+                                     bke::sim::SimulationZoneState &zone_state,
+                                     const Object &self_object,
+                                     const ComputeContext &compute_context,
+                                     const bNode &sim_output_node,
+                                     Span<void *> r_output_values);
+void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
+                                     const bke::sim::SimulationZoneState &zone_state,
+                                     const Object &self_object,
+                                     const ComputeContext &compute_context,
+                                     const bNode &sim_output_node,
+                                     Span<void *> r_output_values);
 
 void copy_with_checked_indices(const GVArray &src,
                                const VArray<int> &indices,
-                               IndexMask mask,
+                               const IndexMask &mask,
                                GMutableSpan dst);
+
+void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
+                                          NodeDeclaration &r_declaration);
 
 }  // namespace blender::nodes

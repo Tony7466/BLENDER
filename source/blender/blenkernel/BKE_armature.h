@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -379,7 +380,7 @@ void BKE_pchan_to_mat4(const struct bPoseChannel *pchan, float r_chanmat[4][4]);
 
 /**
  * Convert the loc/rot/size to mat4 (`pchan.chan_mat`),
- * used in `constraint.c` too.
+ * used in `constraint.cc` too.
  */
 void BKE_pchan_calc_mat(struct bPoseChannel *pchan);
 
@@ -558,7 +559,9 @@ void BKE_pchan_bbone_deform_segment_index(const struct bPoseChannel *pchan,
 
 /* context.selected_pose_bones */
 #define FOREACH_PCHAN_SELECTED_IN_OBJECT_BEGIN(_ob, _pchan) \
-  for (bPoseChannel *_pchan = (_ob)->pose->chanbase.first; _pchan; _pchan = _pchan->next) { \
+  for (bPoseChannel *_pchan = (bPoseChannel *)(_ob)->pose->chanbase.first; _pchan; \
+       _pchan = _pchan->next) \
+  { \
     if (PBONE_VISIBLE(((bArmature *)(_ob)->data), (_pchan)->bone) && \
         ((_pchan)->bone->flag & BONE_SELECTED)) \
     {
@@ -568,7 +571,9 @@ void BKE_pchan_bbone_deform_segment_index(const struct bPoseChannel *pchan,
   ((void)0)
 /* context.visible_pose_bones */
 #define FOREACH_PCHAN_VISIBLE_IN_OBJECT_BEGIN(_ob, _pchan) \
-  for (bPoseChannel *_pchan = (_ob)->pose->chanbase.first; _pchan; _pchan = _pchan->next) { \
+  for (bPoseChannel *_pchan = (bPoseChannel *)(_ob)->pose->chanbase.first; _pchan; \
+       _pchan = _pchan->next) \
+  { \
     if (PBONE_VISIBLE(((bArmature *)(_ob)->data), (_pchan)->bone)) {
 #define FOREACH_PCHAN_VISIBLE_IN_OBJECT_END \
   } \
@@ -633,7 +638,7 @@ void BKE_pose_eval_cleanup(struct Depsgraph *depsgraph,
                            struct Object *object);
 
 /* -------------------------------------------------------------------- */
-/** \name Deform 3D Coordinates by Armature (armature_deform.c)
+/** \name Deform 3D Coordinates by Armature (`armature_deform.cc`)
  * \{ */
 
 /* Note that we could have a 'BKE_armature_deform_coords' that doesn't take object data

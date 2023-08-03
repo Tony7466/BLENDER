@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'ae1c52b3f2e0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-08 10:27:51\n"
+"POT-Creation-Date: 2023-07-24 15:42:18\n"
 "PO-Revision-Date: 2012-10-31 17:00-0800\n"
 "Last-Translator: Amin Babaeipanah <translate@leomoon.com>\n"
 "Language-Team: LeoMoon Studios <blender@leomoon.com>\n"
@@ -428,6 +428,10 @@ msgid "Weight"
 msgstr "ﻥﺯﻭ"
 
 
+msgid "Grease Pencil"
+msgstr "ﯽﻨﻏﻭﺭ ﺩﺍﺪﻣ"
+
+
 msgid "Particles"
 msgstr "ﺕﺍﺭﺫ"
 
@@ -604,10 +608,6 @@ msgid "Marker"
 msgstr "ﺮﮕﻧﺎﺸﻧ"
 
 
-msgid "Smooth"
-msgstr "ﻑﺎﺻ"
-
-
 msgid "Draw"
 msgstr "ﺩﺍﺯﺁ ﯽﺷﺎﻘﻧ"
 
@@ -616,16 +616,16 @@ msgid "Blur"
 msgstr "ﯽﮔﺮﯿﺗ"
 
 
+msgid "Smooth"
+msgstr "ﻑﺎﺻ"
+
+
 msgid "Hue"
 msgstr "ﮓﻧﺭ"
 
 
 msgid "Saturation"
 msgstr "ﻉﺎﺒﺷﺍ"
-
-
-msgid "Path"
-msgstr "ﺮﯿﺴﻣ"
 
 
 msgid "Background Image"
@@ -1324,10 +1324,6 @@ msgid "Rotational Difference"
 msgstr "ﯽﺸﺧﺮﭼ ﺕﻭﺎﻔﺗ"
 
 
-msgid "Force"
-msgstr "ﺭﻭﺯ‌ﻪﺑ"
-
-
 msgid "Max Displace"
 msgstr "ﯽﯾﺎﺠﺑﺎﺟ ﻪﻨﯿﺸﯿﺑ"
 
@@ -1388,6 +1384,10 @@ msgid "Bone rotation around head-tail axis"
 msgstr "ﻡﺩ ﻪﺑ ﺮﺳ ﺭﻮﺤﻣ ﻑﺍﺮﻃﺍ ﻥﺍﻮﺨﺘﺳﺍ ﺶﺧﺮﭼ"
 
 
+msgid "Force"
+msgstr "ﺭﻭﺯ‌ﻪﺑ"
+
+
 msgid "Wind"
 msgstr "ﺩﺎﺑ"
 
@@ -1398,6 +1398,10 @@ msgstr "ﻩﻭﺮﮔ"
 
 msgid "Modifiers"
 msgstr "ﺎﻫ‌ﺮﮕﺣﻼ﻿ﺻﺍ"
+
+
+msgid "Sample Rate"
+msgstr "ﻪﻧﻮﻤﻧ ﺖﻋﺮﺳ"
 
 
 msgid "MPEG-2"
@@ -1474,10 +1478,6 @@ msgstr "ﻪﻧﺍﺩ"
 
 msgid "Size"
 msgstr "ﻩﺯﺍﺪﻧﺍ"
-
-
-msgid "Grease Pencil"
-msgstr "ﯽﻨﻏﻭﺭ ﺩﺍﺪﻣ"
 
 
 msgid "Save"
@@ -1648,10 +1648,6 @@ msgid "Subtract Color"
 msgstr "ﮓﻧﺭ ﻖﯾﺮﻔﺗ"
 
 
-msgid "Erase"
-msgstr "ﻥﺩﺮﮐ‌ﮎﺎﭘ"
-
-
 msgid "Brush"
 msgstr "ﻮﻣ ﻢﻠﻗ"
 
@@ -1662,14 +1658,6 @@ msgstr "ﮓﻧﺭ ﯽﻨﺤﻨﻣ"
 
 msgid "Sculpt Tool"
 msgstr "ﯼﺭﺎﺠﺣ ﺭﺍﺰﺑﺍ"
-
-
-msgid "Pose"
-msgstr "ﺖﺳﮊ"
-
-
-msgid "Rotate"
-msgstr "ﻥﺍﺭﻭﺩ"
 
 
 msgid "Relax"
@@ -1686,6 +1674,10 @@ msgstr "ﻦﯿﺑﺭﻭﺩ ﻉﺍﻮﻧﺍ"
 
 msgid "Dimensions"
 msgstr "ﺩﺎﻌﺑﺍ"
+
+
+msgid "Path"
+msgstr "ﺮﯿﺴﻣ"
 
 
 msgid "Text on Curve"
@@ -1732,10 +1724,6 @@ msgid "Cube"
 msgstr "ﺐﻌﮑﻣ"
 
 
-msgid "Wire Size"
-msgstr "ﻢﯿﺳ ﻩﺯﺍﺪﻧﺍ"
-
-
 msgid "Nodes"
 msgstr "ﺎﻫ ﻩﺮﮔ"
 
@@ -1770,10 +1758,6 @@ msgstr "ﻪﺤﻔﺻ ﯼﺎﻫ ﺭﻮﺤﻣ"
 
 msgid "Circle"
 msgstr "ﻩﺮﯾﺍﺩ"
-
-
-msgid "Both"
-msgstr "ﻭﺩ ﺮﻫ"
 
 
 msgid "Lock Location"
@@ -1838,6 +1822,10 @@ msgstr "ﺖﮐﺮﺣ ﺮﯿﺴﻣ"
 
 msgid "Parent Vertices"
 msgstr "ﺪﻟﺍﻭ ﺱﻮﺋﺭ"
+
+
+msgid "Pose"
+msgstr "ﺖﺳﮊ"
 
 
 msgid "Euler Rotation"
@@ -2336,6 +2324,10 @@ msgid "Scene Size"
 msgstr "ﻪﻨﺤﺻ ﻩﺯﺍﺪﻧﺍ"
 
 
+msgid "Rotate"
+msgstr "ﻥﺍﺭﻭﺩ"
+
+
 msgid "Separate HSVA"
 msgstr "HSVA ﻥﺩﺮﮐ‌ﺍﺪﺟ"
 
@@ -2801,6 +2793,10 @@ msgstr "ﻥﺩﺮﮐ ﺩﻭﺪﺤﻣ"
 
 msgid "Mouse location"
 msgstr "ﺱﻭﺎﻣ ﻥﺎﮑﻣ"
+
+
+msgid "Both"
+msgstr "ﻭﺩ ﺮﻫ"
 
 
 msgid "Join"
@@ -3705,10 +3701,6 @@ msgid "Pivot Offset"
 msgstr "ﺭﻮﺤﻣ ﺖﺴﻓﺍ"
 
 
-msgid "Out"
-msgstr "ﯽﺟﻭﺮﺧ"
-
-
 msgid "Not Set"
 msgstr "ﻩﺪﺸﻧ ﺺﺨﺸﻣ"
 
@@ -3731,10 +3723,6 @@ msgstr "ﻞﯾﺪﺒﺗ:"
 
 msgid "Date"
 msgstr "ﺦﯾﺭﺎﺗ"
-
-
-msgid "Sample Rate"
-msgstr "ﻪﻧﻮﻤﻧ ﺖﻋﺮﺳ"
 
 
 msgid "Roughness End"
@@ -3868,6 +3856,10 @@ msgstr "ﺶﯾﺍﺮﯾﻭ ﻥﺩﺮﮐ‌ﻝﺎﻌﻓ ﯼﺍﺮﺑ ﻪﻈﻓﺎ
 
 msgid "IK"
 msgstr "(IK) ﺱﻮﮑﻌﻣ ﺖﮐﺮﺣ"
+
+
+msgid "Out"
+msgstr "ﯽﺟﻭﺮﺧ"
 
 
 msgid "Nothing selected"
@@ -4140,10 +4132,6 @@ msgid " RGB byte"
 msgstr "RGB ﺖﯾﺎﺑ"
 
 
-msgid " + Z"
-msgstr " + Z"
-
-
 msgid "No images have been changed"
 msgstr "ﺩﺮﮑﻧ ﺮﯿﯿﻐﺗ ﯽﺴﮑﻋ ﭻﯿﻫ"
 
@@ -4210,10 +4198,6 @@ msgstr "(English) ﯽﺴﯿﻠﮕﻧﺍ"
 
 msgid "Japanese (日本語)"
 msgstr "(日本語) ﯽﻨﭘﺍﮊ"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "(Nederlandse taal) ﯼﺪﻨﻠﻫ"
 
 
 msgid "Italian (Italiano)"

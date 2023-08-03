@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -15,7 +17,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_tangent.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_tangent.h" /* for utility functions */
+#include "BKE_mesh_tangent.hh" /* for utility functions */
 
 #include "MEM_guardedalloc.h"
 
@@ -153,7 +155,7 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
                                     bool calc_active_tangent,
                                     const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                     int tangent_names_len,
-                                    const float (*poly_normals)[3],
+                                    const float (*face_normals)[3],
                                     const float (*loop_normals)[3],
                                     const float (*vert_orco)[3],
                                     /* result */
@@ -251,7 +253,7 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
         mesh2tangent->face_as_quad_map = face_as_quad_map;
         mesh2tangent->num_face_as_quad_map = num_face_as_quad_map;
 #endif
-        mesh2tangent->precomputedFaceNormals = poly_normals;
+        mesh2tangent->precomputedFaceNormals = face_normals;
         /* NOTE: we assume we do have tessellated loop normals at this point
          * (in case it is object-enabled), have to check this is valid. */
         mesh2tangent->precomputedLoopNormals = loop_normals;

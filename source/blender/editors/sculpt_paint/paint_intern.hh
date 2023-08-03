@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "BLI_compiler_compat.h"
 #include "BLI_math.h"
@@ -106,11 +107,12 @@ bool PAINT_brush_tool_poll(bContext *C);
  */
 void paint_cursor_delete_textures(void);
 
-/* paint_vertex.c */
+/* `paint_vertex.cc` */
 
 bool weight_paint_poll(bContext *C);
 bool weight_paint_poll_ignore_tool(bContext *C);
 bool weight_paint_mode_poll(bContext *C);
+bool weight_paint_mode_region_view3d_poll(bContext *C);
 bool vertex_paint_poll(bContext *C);
 bool vertex_paint_poll_ignore_tool(bContext *C);
 /**
@@ -135,14 +137,12 @@ void PAINT_OT_weight_gradient(wmOperatorType *ot);
 void PAINT_OT_vertex_paint_toggle(wmOperatorType *ot);
 void PAINT_OT_vertex_paint(wmOperatorType *ot);
 
-unsigned int vpaint_get_current_color(Scene *scene, VPaint *vp, bool secondary);
-
 /**
  * \note weight-paint has an equivalent function: #ED_wpaint_blend_tool
  */
 unsigned int ED_vpaint_blend_tool(int tool, uint col, uint paintcol, int alpha_i);
 
-/* paint_vertex_weight_utils.c */
+/* `paint_vertex_weight_utils.cc` */
 
 /**
  * \param weight: Typically the current weight: #MDeformWeight.weight
@@ -171,7 +171,7 @@ bool ED_wpaint_ensure_data(bContext *C,
 /** Return -1 when invalid. */
 int ED_wpaint_mirror_vgroup_ensure(Object *ob, int vgroup_active);
 
-/* paint_vertex_color_ops.c */
+/* `paint_vertex_color_ops.cc` */
 
 void PAINT_OT_vertex_color_set(wmOperatorType *ot);
 void PAINT_OT_vertex_color_from_weight(wmOperatorType *ot);
@@ -181,13 +181,13 @@ void PAINT_OT_vertex_color_hsv(wmOperatorType *ot);
 void PAINT_OT_vertex_color_invert(wmOperatorType *ot);
 void PAINT_OT_vertex_color_levels(wmOperatorType *ot);
 
-/* paint_vertex_weight_ops.c */
+/* `paint_vertex_weight_ops.cc` */
 
 void PAINT_OT_weight_from_bones(wmOperatorType *ot);
 void PAINT_OT_weight_sample(wmOperatorType *ot);
 void PAINT_OT_weight_sample_group(wmOperatorType *ot);
 
-/* paint_vertex_proj.c */
+/* `paint_vertex_proj.cc` */
 
 VertProjHandle *ED_vpaint_proj_handle_create(Depsgraph *depsgraph,
                                              Scene *scene,
@@ -200,7 +200,7 @@ void ED_vpaint_proj_handle_update(Depsgraph *depsgraph,
                                   const float mval_fl[2]);
 void ED_vpaint_proj_handle_free(VertProjHandle *vp_handle);
 
-/* paint_image.c */
+/* `paint_image.cc` */
 
 struct ImagePaintPartialRedraw {
   rcti dirty_region;
@@ -310,7 +310,7 @@ void paint_curve_mask_cache_update(CurveMaskCache *curve_mask_cache,
                                    float radius,
                                    const float cursor_position[2]);
 
-/* sculpt_uv.c */
+/* `sculpt_uv.cc` */
 
 void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot);
 
@@ -368,6 +368,7 @@ void PAINT_OT_face_select_all(wmOperatorType *ot);
 void PAINT_OT_face_select_more(wmOperatorType *ot);
 void PAINT_OT_face_select_less(wmOperatorType *ot);
 void PAINT_OT_face_select_hide(wmOperatorType *ot);
+void PAINT_OT_face_select_loop(wmOperatorType *ot);
 
 void PAINT_OT_face_vert_reveal(wmOperatorType *ot);
 
@@ -466,7 +467,7 @@ typedef enum {
 
 void PAINT_OT_hide_show(wmOperatorType *ot);
 
-/* paint_mask.c */
+/* `paint_mask.cc` */
 
 /* The gesture API doesn't write to this enum type,
  * it writes to eSelectOp from ED_select_utils.h.
@@ -486,7 +487,7 @@ void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_box_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_line_gesture(wmOperatorType *ot);
 
-/* paint_curve.c */
+/* `paint_curve.cc` */
 
 void PAINTCURVE_OT_new(wmOperatorType *ot);
 void PAINTCURVE_OT_add_point(wmOperatorType *ot);
@@ -517,3 +518,54 @@ void paint_init_pivot(Object *ob, Scene *scene);
 
 /* paint curve defines */
 #define PAINT_CURVE_NUM_SEGMENTS 40
+
+namespace blender::ed::sculpt_paint::vwpaint {
+struct NormalAnglePrecalc {
+  bool do_mask_normal;
+  /* what angle to mask at */
+  float angle;
+  /* cos(angle), faster to compare */
+  float angle__cos;
+  float angle_inner;
+  float angle_inner__cos;
+  /* difference between angle and angle_inner, for easy access */
+  float angle_range;
+};
+
+void view_angle_limits_init(NormalAnglePrecalc *a, float angle, bool do_mask_normal);
+float view_angle_limits_apply_falloff(const NormalAnglePrecalc *a, float angle_cos, float *mask_p);
+bool test_brush_angle_falloff(const Brush &brush,
+                              const NormalAnglePrecalc &normal_angle_precalc,
+                              const float angle_cos,
+                              float *brush_strength);
+bool use_normal(const VPaint *vp);
+
+bool brush_use_accumulate_ex(const Brush *brush, const int ob_mode);
+bool brush_use_accumulate(const VPaint *vp);
+
+void get_brush_alpha_data(const Scene *scene,
+                          const SculptSession *ss,
+                          const Brush *brush,
+                          float *r_brush_size_pressure,
+                          float *r_brush_alpha_value,
+                          float *r_brush_alpha_pressure);
+
+void init_stroke(Depsgraph *depsgraph, Object *ob);
+void init_session_data(const ToolSettings *ts, Object *ob);
+void init_session(Depsgraph *depsgraph, Scene *scene, Object *ob, eObjectMode object_mode);
+
+Vector<PBVHNode *> pbvh_gather_generic(Object *ob, VPaint *wp, Sculpt *sd, Brush *brush);
+
+void mode_enter_generic(
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, const eObjectMode mode_flag);
+void mode_exit_generic(Object *ob, const eObjectMode mode_flag);
+bool mode_toggle_poll_test(bContext *C);
+
+void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache);
+void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache);
+
+void update_cache_variants(bContext *C, VPaint *vp, Object *ob, PointerRNA *ptr);
+void update_cache_invariants(
+    bContext *C, VPaint *vp, SculptSession *ss, wmOperator *op, const float mval[2]);
+void last_stroke_update(Scene *scene, const float location[3]);
+}  // namespace blender::ed::sculpt_paint::vwpaint

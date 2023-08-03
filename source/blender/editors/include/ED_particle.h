@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 by Janne Karhu. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 by Janne Karhu. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -68,7 +69,7 @@ int PE_lasso_select(struct bContext *C, const int mcoords[][2], int mcoords_len,
 bool PE_deselect_all_visible_ex(struct PTCacheEdit *edit);
 bool PE_deselect_all_visible(struct bContext *C);
 
-/* particle_edit_undo.c */
+/* `particle_edit_undo.cc` */
 
 /** Export for ED_undo_sys. */
 void ED_particle_undosys_type(struct UndoType *ut);

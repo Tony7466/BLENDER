@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -22,7 +23,7 @@
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
 #include "BKE_main.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 
 #include "BLO_readfile.h" /* for UserDef version patching. */
 
@@ -643,6 +644,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           break;
         case TH_NODE_ZONE_SIMULATION:
           cp = ts->node_zone_simulation;
+          break;
+        case TH_NODE_ZONE_REPEAT:
+          cp = ts->node_zone_repeat;
           break;
         case TH_SIMULATED_FRAMES:
           cp = ts->simulated_frames;

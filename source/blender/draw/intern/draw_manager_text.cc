@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -13,9 +14,11 @@
 #include "BLI_string.h"
 
 #include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.h"
+#include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_wrapper.hh"
+#include "BKE_object.h"
 #include "BKE_unit.h"
 
 #include "DNA_mesh_types.h"
@@ -58,7 +61,7 @@ struct DRWTextStore {
   BLI_memiter *cache_strings;
 };
 
-DRWTextStore *DRW_text_cache_create(void)
+DRWTextStore *DRW_text_cache_create()
 {
   DRWTextStore *dt = MEM_cnew<DRWTextStore>(__func__);
   dt->cache_strings = BLI_memiter_create(1 << 14); /* 16kb */
@@ -221,7 +224,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
    */
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
-  Mesh *me = static_cast<Mesh *>(ob->data);
+  Mesh *me = BKE_object_get_editmesh_eval_cage(ob);
   BMEditMesh *em = me->edit_mesh;
   float v1[3], v2[3], v3[3], vmid[3], fvec[3];
   char numstr[32]; /* Stores the measurement display text here */
@@ -235,8 +238,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
   float clip_planes[4][4];
   /* allow for displaying shape keys and deform mods */
   BMIter iter;
-  const float(*vert_coords)[3] = (me->runtime->edit_data ? me->runtime->edit_data->vertexCos :
-                                                           nullptr);
+  const float(*vert_coords)[3] = BKE_mesh_wrapper_vert_coords(me);
   const bool use_coords = (vert_coords != nullptr);
 
   /* when 2 or more edge-info options are enabled, space apart */
@@ -340,11 +342,10 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
 
     UI_GetThemeColor3ubv(TH_DRAWEXTRA_EDGEANG, col);
 
-    const float(*poly_normals)[3] = nullptr;
+    const float(*face_normals)[3] = nullptr;
     if (use_coords) {
       BM_mesh_elem_index_ensure(em->bm, BM_VERT | BM_FACE);
-      BKE_editmesh_cache_ensure_poly_normals(em, me->runtime->edit_data);
-      poly_normals = me->runtime->edit_data->polyNos;
+      face_normals = BKE_mesh_wrapper_face_normals(me);
     }
 
     BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
@@ -380,8 +381,8 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             mul_m4_v3(ob->object_to_world, vmid);
 
             if (use_coords) {
-              copy_v3_v3(no_a, poly_normals[BM_elem_index_get(l_a->f)]);
-              copy_v3_v3(no_b, poly_normals[BM_elem_index_get(l_b->f)]);
+              copy_v3_v3(no_a, face_normals[BM_elem_index_get(l_a->f)]);
+              copy_v3_v3(no_b, face_normals[BM_elem_index_get(l_b->f)]);
             }
             else {
               copy_v3_v3(no_a, l_a->f->no);
@@ -397,8 +398,10 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
 
             angle = angle_normalized_v3v3(no_a, no_b);
 
-            numstr_len = SNPRINTF_RLEN(
-                numstr, "%.3f%s", (is_rad) ? angle : RAD2DEGF(angle), (is_rad) ? "r" : "°");
+            numstr_len = SNPRINTF_RLEN(numstr,
+                                       "%.3f%s",
+                                       (is_rad) ? angle : RAD2DEGF(angle),
+                                       (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
 
             DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, -edge_tex_sep, txt_flag, col);
           }
@@ -531,8 +534,10 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
 
             float angle = angle_v3v3v3(v1, v2, v3);
 
-            numstr_len = SNPRINTF_RLEN(
-                numstr, "%.3f%s", (is_rad) ? angle : RAD2DEGF(angle), (is_rad) ? "r" : "°");
+            numstr_len = SNPRINTF_RLEN(numstr,
+                                       "%.3f%s",
+                                       (is_rad) ? angle : RAD2DEGF(angle),
+                                       (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
             interp_v3_v3v3(fvec, vmid, v2_local, 0.8f);
             mul_m4_v3(ob->object_to_world, fvec);
             DRW_text_cache_add(dt, fvec, numstr, numstr_len, 0, 0, txt_flag, col);

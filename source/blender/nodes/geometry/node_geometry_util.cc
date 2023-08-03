@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
 #include "node_util.hh"
@@ -7,7 +9,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_pointcloud.h"
 
 #include "NOD_add_node_search.hh"
@@ -26,6 +28,8 @@ std::optional<eCustomDataType> node_data_type_to_custom_data_type(const eNodeSoc
       return CD_PROP_COLOR;
     case SOCK_BOOLEAN:
       return CD_PROP_BOOL;
+    case SOCK_ROTATION:
+      return CD_PROP_QUATERNION;
     case SOCK_INT:
       return CD_PROP_INT32;
     case SOCK_STRING:
@@ -55,7 +59,7 @@ bool geo_node_poll_default(const bNodeType * /*ntype*/,
 
 void geo_node_type_base(bNodeType *ntype, int type, const char *name, short nclass)
 {
-  node_type_base(ntype, type, name, nclass);
+  blender::bke::node_type_base(ntype, type, name, nclass);
   ntype->poll = geo_node_poll_default;
   ntype->insert_link = node_insert_link_default;
   ntype->gather_link_search_ops = blender::nodes::search_link_ops_for_basic_node;

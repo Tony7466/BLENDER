@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_mesh.h"
 #include "usd_hierarchy_iterator.h"
 
@@ -18,7 +19,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
@@ -181,7 +182,7 @@ void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_
 
   pxr::UsdGeomPrimvarsAPI primvarsAPI(usd_mesh.GetPrim());
 
-  const CustomData *ldata = &mesh->ldata;
+  const CustomData *ldata = &mesh->loop_data;
   for (int layer_idx = 0; layer_idx < ldata->totlayer; layer_idx++) {
     const CustomDataLayer *layer = &ldata->layers[layer_idx];
     if (layer->type != CD_PROP_FLOAT2) {
@@ -322,13 +323,12 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   }
 
   /* Blender grows its bounds cache to cover animated meshes, so only author once. */
-  float bound_min[3];
-  float bound_max[3];
-  INIT_MINMAX(bound_min, bound_max);
-  BKE_mesh_minmax(mesh, bound_min, bound_max);
-  pxr::VtArray<pxr::GfVec3f> extent{pxr::GfVec3f{bound_min[0], bound_min[1], bound_min[2]},
-                                    pxr::GfVec3f{bound_max[0], bound_max[1], bound_max[2]}};
-  usd_mesh.CreateExtentAttr().Set(extent);
+  if (const std::optional<Bounds<float3>> bounds = mesh->bounds_min_max()) {
+    pxr::VtArray<pxr::GfVec3f> extent{
+        pxr::GfVec3f{bounds->min[0], bounds->min[1], bounds->min[2]},
+        pxr::GfVec3f{bounds->max[0], bounds->max[1], bounds->max[2]}};
+    usd_mesh.CreateExtentAttr().Set(extent);
+  }
 }
 
 static void get_vertices(const Mesh *mesh, USDMeshData &usd_mesh_data)
@@ -356,16 +356,16 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
     }
   }
 
-  usd_mesh_data.face_vertex_counts.reserve(mesh->totpoly);
+  usd_mesh_data.face_vertex_counts.reserve(mesh->faces_num);
   usd_mesh_data.face_indices.reserve(mesh->totloop);
 
-  const OffsetIndices polys = mesh->polys();
+  const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
-  for (const int i : polys.index_range()) {
-    const IndexRange poly = polys[i];
-    usd_mesh_data.face_vertex_counts.push_back(poly.size());
-    for (const int vert : corner_verts.slice(poly)) {
+  for (const int i : faces.index_range()) {
+    const IndexRange face = faces[i];
+    usd_mesh_data.face_vertex_counts.push_back(face.size());
+    for (const int vert : corner_verts.slice(face)) {
       usd_mesh_data.face_indices.push_back(vert);
     }
   }
@@ -373,11 +373,12 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
 
 static void get_edge_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
-  const float *creases = static_cast<const float *>(CustomData_get_layer(&mesh->edata, CD_CREASE));
-  if (!creases) {
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const bke::AttributeReader attribute = attributes.lookup<float>("crease_edge", ATTR_DOMAIN_EDGE);
+  if (!attribute) {
     return;
   }
-
+  const VArraySpan creases(*attribute);
   const Span<int2> edges = mesh->edges();
   for (const int i : edges.index_range()) {
     const float crease = creases[i];
@@ -396,13 +397,14 @@ static void get_edge_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 
 static void get_vert_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
-  const float *creases = static_cast<const float *>(CustomData_get_layer(&mesh->vdata, CD_CREASE));
-
-  if (!creases) {
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const bke::AttributeReader attribute = attributes.lookup<float>("crease_vert",
+                                                                  ATTR_DOMAIN_POINT);
+  if (!attribute) {
     return;
   }
-
-  for (int i = 0, v = mesh->totvert; i < v; i++) {
+  const VArraySpan creases(*attribute);
+  for (const int i : creases.index_range()) {
     const float sharpness = creases[i];
 
     if (sharpness != 0.0f) {
@@ -497,8 +499,8 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
   const float(*lnors)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&mesh->ldata, CD_NORMAL));
-  const OffsetIndices polys = mesh->polys();
+      CustomData_get_layer(&mesh->loop_data, CD_NORMAL));
+  const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
   pxr::VtVec3fArray loop_normals;
@@ -514,21 +516,21 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
     /* Compute the loop normals based on the 'smooth' flag. */
     bke::AttributeAccessor attributes = mesh->attributes();
     const Span<float3> vert_normals = mesh->vert_normals();
-    const Span<float3> poly_normals = mesh->poly_normals();
+    const Span<float3> face_normals = mesh->face_normals();
     const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
-    for (const int i : polys.index_range()) {
-      const IndexRange poly = polys[i];
+    for (const int i : faces.index_range()) {
+      const IndexRange face = faces[i];
       if (sharp_faces[i]) {
         /* Flat shaded, use common normal for all verts. */
-        pxr::GfVec3f pxr_normal(&poly_normals[i].x);
-        for (int loop_idx = 0; loop_idx < poly.size(); ++loop_idx) {
+        pxr::GfVec3f pxr_normal(&face_normals[i].x);
+        for (int loop_idx = 0; loop_idx < face.size(); ++loop_idx) {
           loop_normals.push_back(pxr_normal);
         }
       }
       else {
         /* Smooth shaded, use individual vert normals. */
-        for (const int vert : corner_verts.slice(poly)) {
+        for (const int vert : corner_verts.slice(face)) {
           loop_normals.push_back(pxr::GfVec3f(&vert_normals[vert].x));
         }
       }

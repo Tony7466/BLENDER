@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from bpy.types import Menu, Panel, UIList, WindowManager
+from bpy.app.translations import contexts as i18n_contexts
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilSculptAdvancedPanel,
     GreasePencilDisplayPanel,
@@ -155,6 +159,17 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     bl_ui_units_x = 12
 
+    def draw(self, _context):
+        # layout = self.layout
+        pass
+
+
+class VIEW3D_PT_tools_meshedit_options_transform(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Transform"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+
     @classmethod
     def poll(cls, context):
         return context.active_object
@@ -169,56 +184,47 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         ob = context.active_object
         mesh = ob.data
 
-        row = layout.row(align=True, heading="Transform")
-        row.prop(tool_settings, "use_transform_correct_face_attributes")
+        col = layout.column(align=True)
+        col.prop(tool_settings, "use_transform_correct_face_attributes")
+        sub = col.column(align=True)
+        sub.active = tool_settings.use_transform_correct_face_attributes
+        sub.prop(tool_settings, "use_transform_correct_keep_connected")
+        col.separator()
 
-        row = layout.row(align=True)
-        row.active = tool_settings.use_transform_correct_face_attributes
-        row.prop(tool_settings, "use_transform_correct_keep_connected")
-
-        row = layout.row(align=True, heading="UVs")
-        row.prop(tool_settings, "use_edge_path_live_unwrap")
-
-        row = layout.row(heading="Mirror")
-        sub = row.row(align=True)
+        col = layout.column(heading="Mirror")
+        sub = col.row(align=True)
         sub.prop(mesh, "use_mirror_x", text="X", toggle=True)
         sub.prop(mesh, "use_mirror_y", text="Y", toggle=True)
         sub.prop(mesh, "use_mirror_z", text="Z", toggle=True)
 
-        row = layout.row(align=True)
-        row.active = ob.data.use_mirror_x or ob.data.use_mirror_y or ob.data.use_mirror_z
-        row.prop(mesh, "use_mirror_topology")
+        col = layout.column(align=True)
+        col.active = mesh.use_mirror_x or mesh.use_mirror_y or mesh.use_mirror_z
+        col.prop(mesh, "use_mirror_topology")
+        col.separator()
+
+        col = layout.column(align=True)
+        col.prop(tool_settings, "use_mesh_automerge", text="Auto Merge", toggle=False)
+        sub = col.column(align=True)
+        sub.active = tool_settings.use_mesh_automerge
+        sub.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
+        sub.prop(tool_settings, "double_threshold", text="Threshold")
 
 
-class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
+class VIEW3D_PT_tools_meshedit_options_uvs(View3DPanel, Panel):
     bl_category = "Tool"
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
-    bl_label = "Auto Merge"
+    bl_label = "UVs"
     bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.active_object
-
-    def draw_header(self, context):
-        tool_settings = context.tool_settings
-        self.layout.use_property_split = False
-        self.layout.prop(tool_settings, "use_mesh_automerge",
-                         text=self.bl_label if self.is_popover else "", toggle=False)
 
     def draw(self, context):
         layout = self.layout
 
+        layout.use_property_decorate = False
+        layout.use_property_split = True
+
         tool_settings = context.tool_settings
 
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        col = layout.column(align=True)
-        col.active = tool_settings.use_mesh_automerge
-        col.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
-        col.prop(tool_settings, "double_threshold", text="Threshold")
+        layout.prop(tool_settings, "use_edge_path_live_unwrap")
 
 
 # ********** default tools for editmode_armature ****************
@@ -893,8 +899,6 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
 
         if sculpt.detail_type_method in {'CONSTANT', 'MANUAL'}:
             col.operator("sculpt.detail_flood_fill")
-
-        col.prop(sculpt, "use_smooth_shading")
 
 
 class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
@@ -1577,7 +1581,8 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
 
             elif brush.gpencil_tool == 'FILL':
                 row = col.row(align=True)
-                row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+                row.prop(gp_settings, "fill_draw_mode", text="Boundary",
+                         text_ctxt=i18n_contexts.id_gpencil)
                 row.prop(
                     gp_settings,
                     "show_fill_boundary",
@@ -2368,7 +2373,8 @@ classes = (
     VIEW3D_PT_tools_object_options,
     VIEW3D_PT_tools_object_options_transform,
     VIEW3D_PT_tools_meshedit_options,
-    VIEW3D_PT_tools_meshedit_options_automerge,
+    VIEW3D_PT_tools_meshedit_options_transform,
+    VIEW3D_PT_tools_meshedit_options_uvs,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
 

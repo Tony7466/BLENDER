@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -28,7 +29,7 @@ struct Paint;
 struct wmOperator;
 struct wmWindowManager;
 
-/* image_draw.c */
+/* `image_draw.cc` */
 
 float ED_space_image_zoom_level(const struct View2D *v2d, int grid_dimension);
 void ED_space_image_grid_steps(struct SpaceImage *sima,
@@ -44,7 +45,7 @@ float ED_space_image_increment_snap_value(int grid_dimensions,
                                           const float grid_steps[SI_GRID_STEPS_LEN],
                                           float zoom_factor);
 
-/* image_edit.c, exported for transform. */
+/* `image_edit.cc`, exported for transform. */
 
 struct Image *ED_space_image(const struct SpaceImage *sima);
 void ED_space_image_set(struct Main *bmain,
@@ -186,9 +187,7 @@ void ED_image_draw_info(struct Scene *scene,
                         int y,
                         const unsigned char cp[4],
                         const float fp[4],
-                        const float linearcol[4],
-                        const int *zp,
-                        const float *zpf);
+                        const float linearcol[4]);
 
 bool ED_space_image_show_cache(const struct SpaceImage *sima);
 bool ED_space_image_show_cache_and_mval_over(const struct SpaceImage *sima,
@@ -199,7 +198,7 @@ bool ED_image_should_save_modified(const struct Main *bmain);
 int ED_image_save_all_modified_info(const struct Main *bmain, struct ReportList *reports);
 bool ED_image_save_all_modified(const struct bContext *C, struct ReportList *reports);
 
-/* image_sequence.c */
+/* `image_sequence.cc` */
 
 typedef struct ImageFrameRange {
   struct ImageFrameRange *next, *prev;

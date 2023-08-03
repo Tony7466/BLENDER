@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spbuttons
@@ -33,9 +34,9 @@
 #include "BKE_layer.h"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 
 #include "RNA_access.h"
@@ -200,12 +201,12 @@ static void buttons_texture_modifier_geonodes_users_add(
   }
 }
 
-static void buttons_texture_modifier_foreach(void *userData,
+static void buttons_texture_modifier_foreach(void *user_data,
                                              Object *ob,
                                              ModifierData *md,
                                              const char *propname)
 {
-  ListBase *users = static_cast<ListBase *>(userData);
+  ListBase *users = static_cast<ListBase *>(user_data);
 
   if (md->type == eModifierType_Nodes) {
     NodesModifierData *nmd = (NodesModifierData *)md;
@@ -226,14 +227,14 @@ static void buttons_texture_modifier_foreach(void *userData,
   }
 }
 
-static void buttons_texture_modifier_gpencil_foreach(void *userData,
+static void buttons_texture_modifier_gpencil_foreach(void *user_data,
                                                      Object *ob,
                                                      GpencilModifierData *md,
                                                      const char *propname)
 {
   PointerRNA ptr;
   PropertyRNA *prop;
-  ListBase *users = static_cast<ListBase *>(userData);
+  ListBase *users = static_cast<ListBase *>(user_data);
 
   RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, &ptr);
   prop = RNA_struct_find_property(&ptr, propname);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 #include <numeric>
@@ -6,6 +8,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_base_safe.h"
 
 #include "NOD_socket_search_link.hh"
@@ -16,34 +19,34 @@ namespace blender::nodes::node_geo_attribute_statistic_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).field_on_all().hide_value();
-  b.add_input<decl::Float>(N_("Attribute")).hide_value().field_on_all();
-  b.add_input<decl::Vector>(N_("Attribute"), "Attribute_001").hide_value().field_on_all();
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
+  b.add_input<decl::Float>("Attribute").hide_value().field_on_all();
+  b.add_input<decl::Vector>("Attribute", "Attribute_001").hide_value().field_on_all();
 
-  b.add_output<decl::Float>(N_("Mean"));
-  b.add_output<decl::Float>(N_("Median"));
-  b.add_output<decl::Float>(N_("Sum"));
-  b.add_output<decl::Float>(N_("Min"));
-  b.add_output<decl::Float>(N_("Max"));
-  b.add_output<decl::Float>(N_("Range"));
-  b.add_output<decl::Float>(N_("Standard Deviation"));
-  b.add_output<decl::Float>(N_("Variance"));
+  b.add_output<decl::Float>("Mean");
+  b.add_output<decl::Float>("Median");
+  b.add_output<decl::Float>("Sum");
+  b.add_output<decl::Float>("Min");
+  b.add_output<decl::Float>("Max");
+  b.add_output<decl::Float>("Range");
+  b.add_output<decl::Float>("Standard Deviation");
+  b.add_output<decl::Float>("Variance");
 
-  b.add_output<decl::Vector>(N_("Mean"), "Mean_001");
-  b.add_output<decl::Vector>(N_("Median"), "Median_001");
-  b.add_output<decl::Vector>(N_("Sum"), "Sum_001");
-  b.add_output<decl::Vector>(N_("Min"), "Min_001");
-  b.add_output<decl::Vector>(N_("Max"), "Max_001");
-  b.add_output<decl::Vector>(N_("Range"), "Range_001");
-  b.add_output<decl::Vector>(N_("Standard Deviation"), "Standard Deviation_001");
-  b.add_output<decl::Vector>(N_("Variance"), "Variance_001");
+  b.add_output<decl::Vector>("Mean", "Mean_001");
+  b.add_output<decl::Vector>("Median", "Median_001");
+  b.add_output<decl::Vector>("Sum", "Sum_001");
+  b.add_output<decl::Vector>("Min", "Min_001");
+  b.add_output<decl::Vector>("Max", "Max_001");
+  b.add_output<decl::Vector>("Range", "Range_001");
+  b.add_output<decl::Vector>("Standard Deviation", "Standard Deviation_001");
+  b.add_output<decl::Vector>("Variance", "Variance_001");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "domain", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -79,25 +82,25 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   const eCustomDataType data_type = eCustomDataType(node->custom1);
 
-  nodeSetSocketAvailability(ntree, socket_float_attr, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_mean, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_median, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_sum, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_min, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_max, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_range, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_std, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_float_variance, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_attr, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_mean, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_median, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_sum, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_min, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_max, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_range, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_std, data_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_float_variance, data_type == CD_PROP_FLOAT);
 
-  nodeSetSocketAvailability(ntree, socket_float3_attr, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_mean, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_median, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_sum, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_min, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_max, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_range, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_std, data_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_vector_variance, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_float3_attr, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_mean, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_median, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_sum, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_min, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_max, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_range, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_std, data_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_vector_variance, data_type == CD_PROP_FLOAT3);
 }
 
 static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSocket &socket)
@@ -163,7 +166,7 @@ static float compute_variance(const Span<float> data, const float mean)
         return accumulator + difference * difference;
       });
 
-  return sum_of_squared_differences / (data.size() - 1);
+  return sum_of_squared_differences / data.size();
 }
 
 static float median_of_sorted_span(const Span<float> data)
@@ -213,9 +216,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(next_data_index + selection.size());
           MutableSpan<float> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                           selection.size());
-          for (const int i : selection.index_range()) {
-            selected_data[i] = component_data[selection[i]];
-          }
+          array_utils::gather(component_data, selection, selected_data);
         }
       }
 
@@ -293,9 +294,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           data.resize(data.size() + selection.size());
           MutableSpan<float3> selected_data = data.as_mutable_span().slice(next_data_index,
                                                                            selection.size());
-          for (const int i : selection.index_range()) {
-            selected_data[i] = component_data[selection[i]];
-          }
+          array_utils::gather(component_data, selection, selected_data);
         }
       }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,7 +8,6 @@
  * \ingroup wm
  */
 
-/* dna-savable wmStructs here */
 #include "BLI_utildefines.h"
 #include "DNA_windowmanager_types.h"
 #include "WM_types.h"

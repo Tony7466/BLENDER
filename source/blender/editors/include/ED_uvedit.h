@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -33,7 +34,7 @@ struct bNode;
 struct bNodeTree;
 struct wmKeyConfig;
 
-/* uvedit_ops.c */
+/* `uvedit_ops.cc` */
 
 void ED_operatortypes_uvedit(void);
 void ED_operatormacros_uvedit(void);
@@ -270,7 +271,7 @@ bool ED_uvedit_nearest_uv_multi(const struct View2D *v2d,
                                 const struct Scene *scene,
                                 struct Object **objects,
                                 uint objects_len,
-                                const int mval[2],
+                                const float mval_fl[2],
                                 const bool ignore_selected,
                                 float *dist_sq,
                                 float r_uv[2]);
@@ -316,7 +317,7 @@ void ED_uvedit_select_sync_flush(const struct ToolSettings *ts,
                                  struct BMEditMesh *em,
                                  bool select);
 
-/* uvedit_unwrap_ops.c */
+/* `uvedit_unwrap_ops.cc` */
 
 void ED_uvedit_live_unwrap_begin(struct Scene *scene, struct Object *obedit);
 void ED_uvedit_live_unwrap_re_solve(void);
@@ -325,15 +326,15 @@ void ED_uvedit_live_unwrap_end(short cancel);
 void ED_uvedit_live_unwrap(const struct Scene *scene, struct Object **objects, int objects_len);
 void ED_uvedit_add_simple_uvs(struct Main *bmain, const struct Scene *scene, struct Object *ob);
 
-/* uvedit_draw.c */
+/* `uvedit_draw.cc` */
 
 void ED_image_draw_cursor(struct ARegion *region, const float cursor[2]);
 
-/* uvedit_buttons.c */
+/* `uvedit_buttons.cc` */
 
 void ED_uvedit_buttons_register(struct ARegionType *art);
 
-/* uvedit_islands.c */
+/* `uvedit_islands.cc` */
 
 struct FaceIsland {
   struct FaceIsland *next;

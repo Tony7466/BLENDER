@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -10,8 +11,6 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
-
-#include "BLT_translation.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -34,10 +33,10 @@ namespace blender::nodes::node_composite_stabilize2d_cc {
 
 static void cmp_node_stabilize2d_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Image"))
+  b.add_input<decl::Color>("Image")
       .default_value({0.8f, 0.8f, 0.8f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_output<decl::Color>(N_("Image"));
+  b.add_output<decl::Color>("Image");
 }
 
 static void init(const bContext *C, PointerRNA *ptr)
@@ -48,7 +47,7 @@ static void init(const bContext *C, PointerRNA *ptr)
   node->id = (ID *)scene->clip;
   id_us_plus(node->id);
 
-  /* default to bilinear, see node_sampler_type_items in rna_nodetree.c */
+  /* Default to bi-linear, see node_sampler_type_items in `rna_nodetree.cc`. */
   node->custom1 = 1;
 }
 

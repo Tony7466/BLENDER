@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_WindowCocoa.hh"
 #include "GHOST_ContextNone.hh"
@@ -12,7 +13,9 @@
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "GHOST_ContextCGL.hh"
+#ifdef WITH_METAL_BACKEND
+#  include "GHOST_ContextCGL.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -455,7 +458,7 @@ GHOST_WindowCocoa::~GHOST_WindowCocoa()
 bool GHOST_WindowCocoa::getValid() const
 {
   NSView *view = (m_openGLView) ? m_openGLView : m_metalView;
-  return GHOST_Window::getValid() && m_window != NULL && view != NULL;
+  return GHOST_Window::getValid() && m_window != nullptr && view != nullptr;
 }
 
 void *GHOST_WindowCocoa::getOSWindow() const
@@ -815,31 +818,34 @@ GHOST_TSuccess GHOST_WindowCocoa::setOrder(GHOST_TWindowOrder order)
 
 GHOST_Context *GHOST_WindowCocoa::newDrawingContext(GHOST_TDrawingContextType type)
 {
+  switch (type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (type == GHOST_kDrawingContextTypeVulkan) {
-    GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 2, true);
-
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 2, true);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-      return NULL;
+      return nullptr;
     }
-
-    return context;
-  }
 #endif
 
-  if (type == GHOST_kDrawingContextTypeOpenGL || type == GHOST_kDrawingContextTypeMetal) {
-
-    GHOST_Context *context = new GHOST_ContextCGL(
-        m_wantStereoVisual, m_metalView, m_metalLayer, m_openGLView, type);
-
-    if (context->initializeDrawingContext())
-      return context;
-    else
+#ifdef WITH_METAL_BACKEND
+    case GHOST_kDrawingContextTypeMetal: {
+      GHOST_Context *context = new GHOST_ContextCGL(
+          m_wantStereoVisual, m_metalView, m_metalLayer, false);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-  }
+      return nullptr;
+    }
+#endif
 
-  return NULL;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 #pragma mark invalidate
@@ -934,7 +940,7 @@ static NSCursor *getImageCursor(GHOST_TStandardCursor shape, NSString *name, NSP
     @autoreleasepool {
       /* clang-format on */
       NSImage *image = [NSImage imageNamed:name];
-      if (image != NULL) {
+      if (image != nullptr) {
         cursors[index] = [[NSCursor alloc] initWithImage:image hotSpot:hotspot];
       }
     }
@@ -953,7 +959,7 @@ NSCursor *GHOST_WindowCocoa::getStandardCursor(GHOST_TStandardCursor shape) cons
         return m_customCursor;
       }
       else {
-        return NULL;
+        return nullptr;
       }
     case GHOST_kStandardCursorDestroy:
       return [NSCursor disappearingItemCursor];
@@ -1018,7 +1024,7 @@ NSCursor *GHOST_WindowCocoa::getStandardCursor(GHOST_TStandardCursor shape) cons
     case GHOST_kStandardCursorCrosshairC:
       return getImageCursor(shape, @"crossc.pdf", NSMakePoint(16, 16));
     default:
-      return NULL;
+      return nullptr;
   }
 }
 
@@ -1037,7 +1043,7 @@ void GHOST_WindowCocoa::loadCursor(bool visible, GHOST_TStandardCursor shape) co
   }
 
   NSCursor *cursor = getStandardCursor(shape);
-  if (cursor == NULL) {
+  if (cursor == nullptr) {
     cursor = getStandardCursor(GHOST_kStandardCursorDefault);
   }
 

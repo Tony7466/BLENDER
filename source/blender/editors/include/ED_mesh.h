@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -42,7 +43,7 @@ struct bDeformGroup;
 struct wmKeyConfig;
 struct wmOperator;
 
-/* editmesh_utils.c */
+/* editmesh_utils.cc */
 
 /**
  * \param em: Edit-mesh used for generating mirror data.
@@ -142,8 +143,15 @@ struct UvElementMap *BM_uv_element_map_create(struct BMesh *bm,
                                               bool use_seams,
                                               bool do_islands);
 void BM_uv_element_map_free(struct UvElementMap *element_map);
+
+/**
+ * Return the #UvElement associated with a given #BMLoop, or NULL if no association exists.
+ *
+ * \param element_map: The #UvElementMap to look in.
+ * \param l: The loop to search for.
+ * \return The #UvElement associated with #l, or NULL if not found. (e.g. the vertex is hidden.)
+ */
 struct UvElement *BM_uv_element_get(const struct UvElementMap *element_map,
-                                    const struct BMFace *efa,
                                     const struct BMLoop *l);
 struct UvElement *BM_uv_element_get_head(struct UvElementMap *element_map,
                                          struct UvElement *child);
@@ -185,7 +193,7 @@ void EDBM_project_snap_verts(struct bContext *C,
                              struct Object *obedit,
                              struct BMEditMesh *em);
 
-/* editmesh_automerge.c */
+/* `editmesh_automerge.cc` */
 
 void EDBM_automerge(struct Object *obedit, bool update, char hflag, float dist);
 void EDBM_automerge_and_split(struct Object *obedit,
@@ -344,7 +352,7 @@ bool EDBM_selectmode_disable_multi(struct bContext *C,
                                    short selectmode_disable,
                                    short selectmode_fallback);
 
-/* editmesh_preselect_edgering.c */
+/* `editmesh_preselect_edgering.cc` */
 
 struct EditMesh_PreSelEdgeRing;
 struct EditMesh_PreSelEdgeRing *EDBM_preselect_edgering_create(void);
@@ -357,7 +365,7 @@ void EDBM_preselect_edgering_update_from_edge(struct EditMesh_PreSelEdgeRing *ps
                                               int previewlines,
                                               const float (*coords)[3]);
 
-/* editmesh_preselect_elem.c */
+/* `editmesh_preselect_elem.cc` */
 
 struct EditMesh_PreSelElem;
 typedef enum eEditMesh_PreSelPreviewAction {
@@ -385,7 +393,7 @@ void EDBM_preselect_action_set(struct EditMesh_PreSelElem *psel,
                                eEditMesh_PreSelPreviewAction action);
 eEditMesh_PreSelPreviewAction EDBM_preselect_action_get(struct EditMesh_PreSelElem *psel);
 
-/* mesh_ops.c */
+/* `mesh_ops.cc` */
 
 void ED_operatortypes_mesh(void);
 void ED_operatormacros_mesh(void);
@@ -419,8 +427,11 @@ void paintface_select_linked(struct bContext *C,
                              struct Object *ob,
                              const int mval[2],
                              bool select);
-/** Grow the selection of faces.
- * \param face_step If true will also select faces that only touch on the corner.
+
+void paintface_select_loop(struct bContext *C, struct Object *ob, const int mval[2], bool select);
+/**
+ * Grow the selection of faces.
+ * \param face_step: If true will also select faces that only touch on the corner.
  */
 void paintface_select_more(struct Mesh *mesh, bool face_step);
 void paintface_select_less(struct Mesh *mesh, bool face_step);
@@ -554,16 +565,14 @@ void ED_vgroup_vert_active_mirror(struct Object *ob, int def_nr);
 void ED_mesh_verts_add(struct Mesh *mesh, struct ReportList *reports, int count);
 void ED_mesh_edges_add(struct Mesh *mesh, struct ReportList *reports, int count);
 void ED_mesh_loops_add(struct Mesh *mesh, struct ReportList *reports, int count);
-void ED_mesh_polys_add(struct Mesh *mesh, struct ReportList *reports, int count);
+void ED_mesh_faces_add(struct Mesh *mesh, struct ReportList *reports, int count);
 
 void ED_mesh_verts_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 void ED_mesh_edges_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 void ED_mesh_loops_remove(struct Mesh *mesh, struct ReportList *reports, int count);
-void ED_mesh_polys_remove(struct Mesh *mesh, struct ReportList *reports, int count);
+void ED_mesh_faces_remove(struct Mesh *mesh, struct ReportList *reports, int count);
 
 void ED_mesh_geometry_clear(struct Mesh *mesh);
-
-void ED_mesh_update(struct Mesh *mesh, struct bContext *C, bool calc_edges, bool calc_edges_loose);
 
 bool *ED_mesh_uv_map_vert_select_layer_ensure(struct Mesh *mesh, int uv_map_index);
 bool *ED_mesh_uv_map_edge_select_layer_ensure(struct Mesh *mesh, int uv_map_index);
@@ -571,8 +580,6 @@ bool *ED_mesh_uv_map_pin_layer_ensure(struct Mesh *mesh, int uv_map_index);
 const bool *ED_mesh_uv_map_vert_select_layer_get(const struct Mesh *mesh, int uv_map_index);
 const bool *ED_mesh_uv_map_edge_select_layer_get(const struct Mesh *mesh, int uv_map_index);
 const bool *ED_mesh_uv_map_pin_layer_get(const struct Mesh *mesh, int uv_map_index);
-
-bool ED_mesh_edge_is_loose(const struct Mesh *mesh, int index);
 
 void ED_mesh_uv_ensure(struct Mesh *me, const char *name);
 int ED_mesh_uv_add(
@@ -586,10 +593,6 @@ void ED_mesh_uv_loop_reset_ex(struct Mesh *me, int layernum);
 bool ED_mesh_color_ensure(struct Mesh *me, const char *name);
 int ED_mesh_color_add(
     struct Mesh *me, const char *name, bool active_set, bool do_init, struct ReportList *reports);
-int ED_mesh_sculpt_color_add(struct Mesh *me,
-                             const char *name,
-                             bool do_init,
-                             struct ReportList *reports);
 
 void ED_mesh_report_mirror(struct wmOperator *op, int totmirr, int totfail);
 void ED_mesh_report_mirror_ex(struct wmOperator *op, int totmirr, int totfail, char selectmode);

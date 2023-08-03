@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -31,13 +32,13 @@
 
 #include "clip_intern.h" /* own include */
 
-typedef struct TrackMotionCurveUserData {
+struct TrackMotionCurveUserData {
   SpaceClip *sc;
   MovieTrackingTrack *act_track;
   bool sel;
   float xscale, yscale, hsize;
   uint pos;
-} TrackMotionCurveUserData;
+};
 
 static void tracking_segment_point_cb(void *userdata,
                                       MovieTrackingTrack * /*track*/,

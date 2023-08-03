@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
@@ -27,7 +28,7 @@ extern "C" {
 /** \name #wmGizmo
  * \{ */
 
-/* wm_gizmo_type.c, for init/exit */
+/* `wm_gizmo_type.cc`, for init/exit */
 
 void wm_gizmotype_free(void);
 /**

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation */
+/* SPDX-FileCopyrightText: Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -567,10 +568,10 @@ static void ccd_update_deflector_hash(Depsgraph *depsgraph,
 static int count_mesh_quads(Mesh *me)
 {
   int result = 0;
-  const int *poly_offsets = BKE_mesh_poly_offsets(me);
-  if (poly_offsets) {
-    for (int i = 0; i < me->totpoly; i++) {
-      const int poly_size = poly_offsets[i + 1] - poly_offsets[i];
+  const int *face_offsets = BKE_mesh_face_offsets(me);
+  if (face_offsets) {
+    for (int i = 0; i < me->faces_num; i++) {
+      const int poly_size = face_offsets[i + 1] - face_offsets[i];
       if (poly_size == 4) {
         result++;
       }
@@ -590,7 +591,7 @@ static void add_mesh_quad_diag_springs(Object *ob)
     nofquads = count_mesh_quads(me);
     if (nofquads) {
       const int *corner_verts = BKE_mesh_corner_verts(me);
-      const int *poly_offsets = BKE_mesh_poly_offsets(me);
+      const int *face_offsets = BKE_mesh_face_offsets(me);
       BodySpring *bs;
 
       /* resize spring-array to hold additional quad springs */
@@ -600,15 +601,15 @@ static void add_mesh_quad_diag_springs(Object *ob)
       /* fill the tail */
       bs = &ob->soft->bspring[ob->soft->totspring];
       // bp = ob->soft->bpoint; /* UNUSED */
-      for (int a = 0; a < me->totpoly; a++) {
-        const int poly_size = poly_offsets[a + 1] - poly_offsets[a];
+      for (int a = 0; a < me->faces_num; a++) {
+        const int poly_size = face_offsets[a + 1] - face_offsets[a];
         if (poly_size == 4) {
-          bs->v1 = corner_verts[poly_offsets[a] + 0];
-          bs->v2 = corner_verts[poly_offsets[a] + 2];
+          bs->v1 = corner_verts[face_offsets[a] + 0];
+          bs->v2 = corner_verts[face_offsets[a] + 2];
           bs->springtype = SB_STIFFQUAD;
           bs++;
-          bs->v1 = corner_verts[poly_offsets[a] + 1];
-          bs->v2 = corner_verts[poly_offsets[a] + 3];
+          bs->v1 = corner_verts[face_offsets[a] + 1];
+          bs->v2 = corner_verts[face_offsets[a] + 3];
           bs->springtype = SB_STIFFQUAD;
           bs++;
         }
@@ -972,7 +973,7 @@ static int query_external_colliders(Depsgraph *depsgraph, Collection *collection
 
 /* +++ the aabb "force" section. */
 static int sb_detect_aabb_collisionCached(float UNUSED(force[3]),
-                                          struct Object *vertexowner,
+                                          Object *vertexowner,
                                           float UNUSED(time))
 {
   Object *ob;
@@ -1035,7 +1036,7 @@ static int sb_detect_face_pointCached(const float face_v1[3],
                                       const float face_v3[3],
                                       float *damp,
                                       float force[3],
-                                      struct Object *vertexowner,
+                                      Object *vertexowner,
                                       float time)
 {
   Object *ob;
@@ -1134,7 +1135,7 @@ static int sb_detect_face_collisionCached(const float face_v1[3],
                                           const float face_v3[3],
                                           float *damp,
                                           float force[3],
-                                          struct Object *vertexowner,
+                                          Object *vertexowner,
                                           float time)
 {
   Object *ob;
@@ -1317,7 +1318,7 @@ static int sb_detect_edge_collisionCached(const float edge_v1[3],
                                           const float edge_v2[3],
                                           float *damp,
                                           float force[3],
-                                          struct Object *vertexowner,
+                                          Object *vertexowner,
                                           float time)
 {
   Object *ob;
@@ -1429,7 +1430,7 @@ static int sb_detect_edge_collisionCached(const float edge_v1[3],
 }
 
 static void _scan_for_ext_spring_forces(
-    Scene *scene, Object *ob, float timenow, int ifirst, int ilast, struct ListBase *effectors)
+    Scene *scene, Object *ob, float timenow, int ifirst, int ilast, ListBase *effectors)
 {
   SoftBody *sb = ob->soft;
   int a;
@@ -1511,9 +1512,9 @@ static void *exec_scan_for_ext_spring_forces(void *data)
   return NULL;
 }
 
-static void sb_sfesf_threads_run(struct Depsgraph *depsgraph,
+static void sb_sfesf_threads_run(Depsgraph *depsgraph,
                                  Scene *scene,
-                                 struct Object *ob,
+                                 Object *ob,
                                  float timenow,
                                  int totsprings,
                                  int *UNUSED(ptr_to_break_func(void)))
@@ -1614,7 +1615,7 @@ static int sb_detect_vertex_collisionCached(float opco[3],
                                             float facenormal[3],
                                             float *damp,
                                             float force[3],
-                                            struct Object *vertexowner,
+                                            Object *vertexowner,
                                             float time,
                                             float vel[3],
                                             float *intrusion)
@@ -2194,7 +2195,7 @@ static void sb_cf_threads_run(Scene *scene,
                               float timenow,
                               int totpoint,
                               int *UNUSED(ptr_to_break_func(void)),
-                              struct ListBase *effectors,
+                              ListBase *effectors,
                               int do_deflector,
                               float fieldfactor,
                               float windfactor)
@@ -2257,7 +2258,7 @@ static void sb_cf_threads_run(Scene *scene,
 }
 
 static void softbody_calc_forces(
-    struct Depsgraph *depsgraph, Scene *scene, Object *ob, float forcetime, float timenow)
+    Depsgraph *depsgraph, Scene *scene, Object *ob, float forcetime, float timenow)
 {
   /* rule we never alter free variables :bp->vec bp->pos in here !
    * this will ruin adaptive stepsize AKA heun! (BM)
@@ -2673,7 +2674,7 @@ static void mesh_to_softbody(Object *ob)
 {
   SoftBody *sb;
   Mesh *me = ob->data;
-  const vec2i *edge = CustomData_get_layer_named(&me->edata, CD_PROP_INT32_2D, ".edge_verts");
+  const vec2i *edge = CustomData_get_layer_named(&me->edge_data, CD_PROP_INT32_2D, ".edge_verts");
   BodyPoint *bp;
   BodySpring *bs;
   int a, totedge;
@@ -2765,15 +2766,20 @@ static void mesh_faces_to_scratch(Object *ob)
   BodyFace *bodyface;
   int a;
   const float(*vert_positions)[3] = BKE_mesh_vert_positions(me);
-  const int *poly_offsets = BKE_mesh_poly_offsets(me);
+  const int *face_offsets = BKE_mesh_face_offsets(me);
   const int *corner_verts = BKE_mesh_corner_verts(me);
 
   /* Allocate and copy faces. */
 
-  sb->scratch->totface = poly_to_tri_count(me->totpoly, me->totloop);
+  sb->scratch->totface = poly_to_tri_count(me->faces_num, me->totloop);
   looptri = lt = MEM_mallocN(sizeof(*looptri) * sb->scratch->totface, __func__);
-  BKE_mesh_recalc_looptri(
-      corner_verts, poly_offsets, vert_positions, me->totvert, me->totloop, me->totpoly, looptri);
+  BKE_mesh_recalc_looptri(corner_verts,
+                          face_offsets,
+                          vert_positions,
+                          me->totvert,
+                          me->totloop,
+                          me->faces_num,
+                          looptri);
 
   bodyface = sb->scratch->bodyface = MEM_mallocN(sizeof(BodyFace) * sb->scratch->totface,
                                                  "SB_body_Faces");
@@ -3346,7 +3352,7 @@ static void softbody_reset(Object *ob, SoftBody *sb, float (*vertexCos)[3], int 
 }
 
 static void softbody_step(
-    struct Depsgraph *depsgraph, Scene *scene, Object *ob, SoftBody *sb, float dtime)
+    Depsgraph *depsgraph, Scene *scene, Object *ob, SoftBody *sb, float dtime)
 {
   /* the simulator */
   float forcetime;
@@ -3496,7 +3502,7 @@ static void softbody_step(
   }
 }
 
-static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float framenr)
+static void sbStoreLastFrame(Depsgraph *depsgraph, Object *object, float framenr)
 {
   if (!DEG_is_active(depsgraph)) {
     return;
@@ -3506,7 +3512,7 @@ static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float 
   object_orig->soft->last_frame = framenr;
 }
 
-void sbObjectStep(struct Depsgraph *depsgraph,
+void sbObjectStep(Depsgraph *depsgraph,
                   Scene *scene,
                   Object *ob,
                   float cfra,

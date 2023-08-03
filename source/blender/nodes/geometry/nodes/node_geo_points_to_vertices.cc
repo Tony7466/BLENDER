@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 
@@ -15,9 +17,9 @@ using blender::Array;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Points")).supported_type(GEO_COMPONENT_TYPE_POINT_CLOUD);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).field_on_all().hide_value();
-  b.add_output<decl::Geometry>(N_("Mesh")).propagate_all();
+  b.add_input<decl::Geometry>("Points").supported_type(GeometryComponent::Type::PointCloud);
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
+  b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
 /* One improvement would be to move the attribute arrays directly to the mesh when possible. */
@@ -43,8 +45,8 @@ static void geometry_set_points_to_vertices(
   const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_POINT_CLOUD},
-                                                 GEO_COMPONENT_TYPE_MESH,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::PointCloud},
+                                                 GeometryComponent::Type::Mesh,
                                                  false,
                                                  propagation_info,
                                                  attributes);
@@ -53,7 +55,7 @@ static void geometry_set_points_to_vertices(
   if (selection.size() == points->totpoint) {
     /* Create a mesh without positions so the attribute can be shared. */
     mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
-    CustomData_free_layer_named(&mesh->vdata, "position", mesh->totvert);
+    CustomData_free_layer_named(&mesh->vert_data, "position", mesh->totvert);
     mesh->totvert = selection.size();
   }
   else {
@@ -80,10 +82,10 @@ static void geometry_set_points_to_vertices(
     }
   }
 
-  mesh->loose_edges_tag_none();
+  mesh->tag_loose_edges_none();
 
   geometry_set.replace_mesh(mesh);
-  geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

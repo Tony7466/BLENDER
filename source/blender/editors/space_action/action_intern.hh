@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spaction
@@ -19,12 +20,12 @@ struct wmOperatorType;
 /* internal exports only */
 
 /* **************************************** */
-/* space_action.c / action_buttons.c */
+/* `space_action.cc` / `action_buttons.cc` */
 
 void action_buttons_register(ARegionType *art);
 
 /* ***************************************** */
-/* action_draw.c */
+/* `action_draw.cc` */
 
 /**
  * Left hand part.
@@ -38,7 +39,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
 void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Scene *scene);
 
 /* ***************************************** */
-/* action_select.c */
+/* `action_select.cc` */
 
 void ACTION_OT_select_all(wmOperatorType *ot);
 void ACTION_OT_select_box(wmOperatorType *ot);
@@ -67,7 +68,7 @@ enum eActKeys_ColumnSelect_Mode {
 };
 
 /* ***************************************** */
-/* action_edit.c */
+/* `action_edit.cc` */
 
 void ACTION_OT_previewrange_set(wmOperatorType *ot);
 void ACTION_OT_view_all(wmOperatorType *ot);
@@ -127,7 +128,7 @@ enum eActKeys_Mirror_Mode {
 };
 
 /* ***************************************** */
-/* action_ops.c */
+/* `action_ops.cc` */
 
 void action_operatortypes(void);
 void action_keymap(wmKeyConfig *keyconf);

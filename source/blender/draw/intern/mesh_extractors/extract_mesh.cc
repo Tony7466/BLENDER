@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -31,7 +32,7 @@ eMRIterType mesh_extract_iter_type(const MeshExtract *ext)
 {
   eMRIterType type = (eMRIterType)0;
   SET_FLAG_FROM_TEST(type, (ext->iter_looptri_bm || ext->iter_looptri_mesh), MR_ITER_LOOPTRI);
-  SET_FLAG_FROM_TEST(type, (ext->iter_poly_bm || ext->iter_poly_mesh), MR_ITER_POLY);
+  SET_FLAG_FROM_TEST(type, (ext->iter_face_bm || ext->iter_face_mesh), MR_ITER_POLY);
   SET_FLAG_FROM_TEST(
       type, (ext->iter_loose_edge_bm || ext->iter_loose_edge_mesh), MR_ITER_LOOSE_EDGE);
   SET_FLAG_FROM_TEST(

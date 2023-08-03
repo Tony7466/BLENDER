@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -53,9 +54,9 @@ static bool clip_graph_knots_poll(bContext *C)
   return false;
 }
 
-typedef struct {
+struct SelectUserData {
   int action;
-} SelectUserData;
+};
 
 static void toggle_selection_cb(void *userdata, MovieTrackingMarker *marker)
 {
@@ -76,7 +77,7 @@ static void toggle_selection_cb(void *userdata, MovieTrackingMarker *marker)
 
 /******************** mouse select operator ********************/
 
-typedef struct {
+struct MouseSelectUserData {
   SpaceClip *sc;
   eClipCurveValueSource value_source;
   bool has_prev; /* if there's valid coordinate of previous point of curve segment */
@@ -88,7 +89,7 @@ typedef struct {
 
   MovieTrackingTrack *track;   /* nearest found track */
   MovieTrackingMarker *marker; /* nearest found marker */
-} MouseSelectUserData;
+};
 
 static void find_nearest_tracking_segment_cb(void *userdata,
                                              MovieTrackingTrack *track,
@@ -338,7 +339,7 @@ void CLIP_OT_graph_select(wmOperatorType *ot)
                        100.0f);
   prop = RNA_def_boolean(ot->srna,
                          "extend",
-                         0,
+                         false,
                          "Extend",
                          "Extend selection rather than clearing the existing selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -346,10 +347,10 @@ void CLIP_OT_graph_select(wmOperatorType *ot)
 
 /********************** box select operator *********************/
 
-typedef struct BoxSelectuserData {
+struct BoxSelectuserData {
   rctf rect;
   bool select, extend, changed;
-} BoxSelectuserData;
+};
 
 static void box_select_cb(void *userdata,
                           MovieTrackingTrack * /*track*/,
@@ -532,12 +533,13 @@ void CLIP_OT_graph_delete_curve(wmOperatorType *ot)
   ot->idname = "CLIP_OT_graph_delete_curve";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = delete_curve_exec;
   ot->poll = clip_graph_knots_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /******************** delete knot operator ********************/
@@ -584,9 +586,9 @@ void CLIP_OT_graph_delete_knot(wmOperatorType *ot)
 
 /******************** view all operator ********************/
 
-typedef struct {
+struct ViewAllUserData {
   float min, max;
-} ViewAllUserData;
+};
 
 static void view_all_cb(void *userdata,
                         MovieTrackingTrack * /*track*/,

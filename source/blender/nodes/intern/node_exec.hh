@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -11,7 +12,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "node_util.hh"
 
@@ -52,7 +53,7 @@ struct bNodeThreadStack {
 };
 
 /** For a given socket, find the actual stack entry. */
-bNodeStack *node_get_socket_stack(struct bNodeStack *stack, struct bNodeSocket *sock);
+bNodeStack *node_get_socket_stack(bNodeStack *stack, bNodeSocket *sock);
 void node_get_stack(bNode *node, bNodeStack *stack, bNodeStack **in, bNodeStack **out);
 
 bNodeTreeExec *ntree_exec_begin(bNodeExecContext *context,

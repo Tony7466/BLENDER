@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -26,7 +28,7 @@ static const char J2K_HEAD[] = {0xFF, 0x4F, 0xFF, 0x51, 0x00};
 
 /* We only need this because of how the presets are set */
 /* this typedef is copied from 'openjpeg-1.5.0/applications/codec/image_to_j2k.c' */
-typedef struct img_folder {
+struct img_fol_t {
   /** The directory path of the folder containing input images. */
   char *imgdirpath;
   /** Output format. */
@@ -37,14 +39,14 @@ typedef struct img_folder {
   char set_out_format;
   /** User specified rate stored in case of cinema option. */
   float *rates;
-} img_fol_t;
+};
 
 static bool check_jp2(const uchar *mem, const size_t size) /* J2K_CFMT */
 {
   if (size < sizeof(JP2_HEAD)) {
     return false;
   }
-  return memcmp(JP2_HEAD, mem, sizeof(JP2_HEAD)) ? 0 : 1;
+  return memcmp(JP2_HEAD, mem, sizeof(JP2_HEAD)) ? false : true;
 }
 
 static bool check_j2k(const uchar *mem, const size_t size) /* J2K_CFMT */
@@ -52,7 +54,7 @@ static bool check_j2k(const uchar *mem, const size_t size) /* J2K_CFMT */
   if (size < sizeof(J2K_HEAD)) {
     return false;
   }
-  return memcmp(J2K_HEAD, mem, sizeof(J2K_HEAD)) ? 0 : 1;
+  return memcmp(J2K_HEAD, mem, sizeof(J2K_HEAD)) ? false : true;
 }
 
 static OPJ_CODEC_FORMAT format_from_header(const uchar mem[JP2_FILEHEADER_SIZE], const size_t size)
@@ -130,7 +132,7 @@ static void opj_read_from_buffer_free(void * /*p_user_data*/)
 
 static OPJ_SIZE_T opj_read_from_buffer(void *p_buffer, OPJ_SIZE_T p_nb_bytes, void *p_user_data)
 {
-  struct BufInfo *p_file = static_cast<struct BufInfo *>(p_user_data);
+  BufInfo *p_file = static_cast<BufInfo *>(p_user_data);
   OPJ_UINT32 l_nb_read;
 
   if (p_file->cur + p_nb_bytes < p_file->buf + p_file->len) {
@@ -158,7 +160,7 @@ static OPJ_SIZE_T opj_write_from_buffer(void *p_buffer, OPJ_SIZE_T p_nb_bytes, v
 
 static OPJ_OFF_T opj_skip_from_buffer(OPJ_OFF_T p_nb_bytes, void *p_user_data)
 {
-  struct BufInfo *p_file = static_cast<struct BufInfo *>(p_user_data);
+  BufInfo *p_file = static_cast<BufInfo *>(p_user_data);
   if (p_file->cur + p_nb_bytes < p_file->buf + p_file->len) {
     p_file->cur += p_nb_bytes;
     return p_nb_bytes;
@@ -169,7 +171,7 @@ static OPJ_OFF_T opj_skip_from_buffer(OPJ_OFF_T p_nb_bytes, void *p_user_data)
 
 static OPJ_BOOL opj_seek_from_buffer(OPJ_OFF_T p_nb_bytes, void *p_user_data)
 {
-  struct BufInfo *p_file = static_cast<struct BufInfo *>(p_user_data);
+  BufInfo *p_file = static_cast<BufInfo *>(p_user_data);
   if (p_nb_bytes < p_file->len) {
     p_file->cur = p_file->buf + p_nb_bytes;
     return OPJ_TRUE;
@@ -182,7 +184,7 @@ static OPJ_BOOL opj_seek_from_buffer(OPJ_OFF_T p_nb_bytes, void *p_user_data)
  * Stream wrapper for memory buffer
  * (would be nice if this was supported by the API).
  */
-static opj_stream_t *opj_stream_create_from_buffer(struct BufInfo *p_file,
+static opj_stream_t *opj_stream_create_from_buffer(BufInfo *p_file,
                                                    OPJ_UINT32 p_size,
                                                    OPJ_BOOL p_is_read_stream)
 {
@@ -302,7 +304,7 @@ ImBuf *imb_load_jp2(const uchar *mem, size_t size, int flags, char colorspace[IM
 {
   const OPJ_CODEC_FORMAT format = (size > JP2_FILEHEADER_SIZE) ? format_from_header(mem, size) :
                                                                  OPJ_CODEC_UNKNOWN;
-  struct BufInfo buf_wrapper = {};
+  BufInfo buf_wrapper = {};
   buf_wrapper.buf = mem;
   buf_wrapper.cur = mem;
   buf_wrapper.len = OPJ_OFF_T(size);
@@ -345,7 +347,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
     return nullptr;
   }
 
-  struct ImBuf *ibuf = nullptr;
+  ImBuf *ibuf = nullptr;
   bool use_float = false; /* for precision higher than 8 use float */
   bool use_alpha = false;
 
@@ -442,7 +444,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
   }
 
   ibuf->ftype = IMB_FTYPE_JP2;
-  if (1 /* is_jp2 */) {
+  if (true /* is_jp2 */) {
     ibuf->foptions.flag |= JP2_JP2;
   }
   else {
@@ -450,7 +452,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
   }
 
   if (use_float) {
-    float *rect_float = ibuf->rect_float;
+    float *rect_float = ibuf->float_buffer.data;
 
     if (image->numcomps < 3) {
       r = image->comps[0].data;
@@ -503,7 +505,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
     }
   }
   else {
-    uchar *rect_uchar = (uchar *)ibuf->rect;
+    uchar *rect_uchar = ibuf->byte_buffer.data;
 
     if (image->numcomps < 3) {
       r = image->comps[0].data;
@@ -823,7 +825,7 @@ static opj_image_t *ibuftoimage(ImBuf *ibuf, opj_cparameters_t *parameters)
   img_fol_t img_fol; /* only needed for cinema presets */
   memset(&img_fol, 0, sizeof(img_fol_t));
 
-  if (ibuf->float_colorspace || (ibuf->colormanage_flag & IMB_COLORMANAGE_IS_DATA)) {
+  if (ibuf->float_buffer.colorspace || (ibuf->colormanage_flag & IMB_COLORMANAGE_IS_DATA)) {
     /* float buffer was managed already, no need in color space conversion */
     chanel_colormanage_cb = channel_colormanage_noop;
   }
@@ -907,8 +909,8 @@ static opj_image_t *ibuftoimage(ImBuf *ibuf, opj_cparameters_t *parameters)
   image->y1 = image->y0 + (h - 1) * subsampling_dy + 1 + image->y0;
 
   /* set image data */
-  rect_uchar = (uchar *)ibuf->rect;
-  rect_float = ibuf->rect_float;
+  rect_uchar = ibuf->byte_buffer.data;
+  rect_float = ibuf->float_buffer.data;
 
   /* set the destination channels */
   r = image->comps[0].data;
@@ -1179,14 +1181,14 @@ static opj_image_t *ibuftoimage(ImBuf *ibuf, opj_cparameters_t *parameters)
   return image;
 }
 
-bool imb_save_jp2_stream(struct ImBuf *ibuf, opj_stream_t *stream, int flags);
+bool imb_save_jp2_stream(ImBuf *ibuf, opj_stream_t *stream, int flags);
 
-bool imb_save_jp2(struct ImBuf *ibuf, const char *filepath, int flags)
+bool imb_save_jp2(ImBuf *ibuf, const char *filepath, int flags)
 {
   opj_stream_t *stream = opj_stream_create_from_file(
       filepath, OPJ_J2K_STREAM_CHUNK_SIZE, false, nullptr);
   if (stream == nullptr) {
-    return 0;
+    return false;
   }
   const bool ok = imb_save_jp2_stream(ibuf, stream, flags);
   opj_stream_destroy(stream);
@@ -1194,7 +1196,7 @@ bool imb_save_jp2(struct ImBuf *ibuf, const char *filepath, int flags)
 }
 
 /* Found write info at http://users.ece.gatech.edu/~slabaugh/personal/c/bitmapUnix.c */
-bool imb_save_jp2_stream(struct ImBuf *ibuf, opj_stream_t *stream, int /*flags*/)
+bool imb_save_jp2_stream(ImBuf *ibuf, opj_stream_t *stream, int /*flags*/)
 {
   int quality = ibuf->foptions.quality;
 
@@ -1206,7 +1208,7 @@ bool imb_save_jp2_stream(struct ImBuf *ibuf, opj_stream_t *stream, int /*flags*/
 
   /* compression ratio */
   /* invert range, from 10-100, 100-1
-   * Where jpeg see's 1 and highest quality (lossless) and 100 is very low quality. */
+   * Where JPEG see's 1 and highest quality (lossless) and 100 is very low quality. */
   parameters.tcp_rates[0] = ((100 - quality) / 90.0f * 99.0f) + 1;
 
   parameters.tcp_numlayers = 1; /* only one resolution */

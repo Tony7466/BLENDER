@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -44,7 +45,7 @@
 #include "BKE_main.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -319,8 +320,8 @@ static int object_clear_transform_generic_exec(bContext *C,
                                             SCE_XFORM_SKIP_CHILDREN);
   const bool use_transform_data_origin = (scene->toolsettings->transform_flag &
                                           SCE_XFORM_DATA_ORIGIN);
-  struct XFormObjectSkipChild_Container *xcs = nullptr;
-  struct XFormObjectData_Container *xds = nullptr;
+  XFormObjectSkipChild_Container *xcs = nullptr;
+  XFormObjectData_Container *xds = nullptr;
 
   if (use_transform_skip_children) {
     BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
@@ -1443,7 +1444,9 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
           BKE_mesh_center_of_volume(me, cent);
         }
         else if (around == V3D_AROUND_CENTER_BOUNDS) {
-          BKE_mesh_center_bounds(me, cent);
+          if (const std::optional<Bounds<float3>> bounds = me->bounds_min_max()) {
+            cent = math::midpoint(bounds->min, bounds->max);
+          }
         }
         else { /* #V3D_AROUND_CENTER_MEDIAN. */
           BKE_mesh_center_median(me, cent);
@@ -1522,8 +1525,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
       if (ID_REAL_USERS(arm) > 1) {
 #if 0
-          BKE_report(op->reports, RPT_ERROR, "Cannot apply to a multi user armature");
-          return;
+        BKE_report(op->reports, RPT_ERROR, "Cannot apply to a multi user armature");
+        return;
 #endif
         tot_multiuser_arm_error++;
       }
@@ -1695,11 +1698,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* done */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        float3 min(std::numeric_limits<float>::max());
-        float3 max(-std::numeric_limits<float>::max());
-        if (curves.bounds_min_max(min, max)) {
-          cent = math::midpoint(min, max);
-        }
+        const Bounds<float3> bounds = *curves.bounds_min_max();
+        cent = math::midpoint(bounds.min, bounds.max);
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {
         cent = calculate_mean(curves.positions());
@@ -1728,10 +1728,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         /* Done. */
       }
       else if (around == V3D_AROUND_CENTER_BOUNDS) {
-        float3 min(std::numeric_limits<float>::max());
-        float3 max(-std::numeric_limits<float>::max());
-        if (pointcloud.bounds_min_max(min, max)) {
-          cent = math::midpoint(min, max);
+        if (const std::optional<Bounds<float3>> bounds = pointcloud.bounds_min_max()) {
+          cent = math::midpoint(bounds->min, bounds->max);
         }
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {

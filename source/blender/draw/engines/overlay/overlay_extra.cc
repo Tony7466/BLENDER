@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -670,8 +671,8 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
      * `y = (1/sqrt(1 + x^2) - a)/((1 - a) b)`
      * x being the tangent of the angle between the light direction and the generatrix of the cone.
      * We solve the case where spot attenuation y = 1 and y = 0
-     * root for y = 1 is sqrt(1/c^2 - 1)
-     * root for y = 0 is sqrt(1/a^2 - 1)
+     * root for y = 1 is `sqrt(1/c^2 - 1)`.
+     * root for y = 0 is `sqrt(1/a^2 - 1)`
      * and use that to position the blend circle. */
     float a = cosf(la->spotsize * 0.5f);
     float b = la->spotblend;
@@ -884,7 +885,7 @@ static void camera_view3d_reconstruction(
   /* Index must start in 1, to mimic BKE_tracking_track_get_for_selection_index. */
   int track_index = 1;
 
-  float bundle_color_custom[3];
+  float bundle_color_custom[4];
   float *bundle_color_solid = G_draw.block.color_bundle_solid;
   float *bundle_color_unselected = G_draw.block.color_wire;
   uchar text_color_selected[4], text_color_unselected[4];
@@ -930,6 +931,8 @@ static void camera_view3d_reconstruction(
         /* Meh, hardcoded srgb transform here. */
         /* TODO: change the actual DNA color to be linear. */
         srgb_to_linearrgb_v3_v3(bundle_color_custom, track->color);
+        bundle_color_custom[3] = 1.0;
+
         bundle_color = bundle_color_custom;
       }
       else if (is_solid_bundle) {

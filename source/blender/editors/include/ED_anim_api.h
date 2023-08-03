@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -45,7 +46,7 @@ struct PropertyRNA;
 
 /* ************************************************ */
 /* ANIMATION CHANNEL FILTERING */
-/* anim_filter.c */
+/* `anim_filter.cc` */
 
 /* -------------------------------------------------------------------- */
 /** \name Context
@@ -223,12 +224,14 @@ typedef enum eAnim_ChannelType {
   ANIMTYPE_DSHAIR,
   ANIMTYPE_DSPOINTCLOUD,
   ANIMTYPE_DSVOLUME,
-  ANIMTYPE_DSSIMULATION,
 
   ANIMTYPE_SHAPEKEY,
 
   ANIMTYPE_GPDATABLOCK,
   ANIMTYPE_GPLAYER,
+
+  ANIMTYPE_GREASE_PENCIL_DATABLOCK,
+  ANIMTYPE_GREASE_PENCIL_LAYER,
 
   ANIMTYPE_MASKDATABLOCK,
   ANIMTYPE_MASKLAYER,
@@ -244,11 +247,12 @@ typedef enum eAnim_ChannelType {
 
 /* types of keyframe data in bAnimListElem */
 typedef enum eAnim_KeyType {
-  ALE_NONE = 0, /* no keyframe data */
-  ALE_FCURVE,   /* F-Curve */
-  ALE_GPFRAME,  /* Grease Pencil Frames */
-  ALE_MASKLAY,  /* Mask */
-  ALE_NLASTRIP, /* NLA Strips */
+  ALE_NONE = 0,           /* no keyframe data */
+  ALE_FCURVE,             /* F-Curve */
+  ALE_GPFRAME,            /* Grease Pencil Frames (Legacy) */
+  ALE_GREASE_PENCIL_CELS, /* Grease Pencil Cels */
+  ALE_MASKLAY,            /* Mask */
+  ALE_NLASTRIP,           /* NLA Strips */
 
   ALE_ALL,   /* All channels summary */
   ALE_SCE,   /* Scene summary */
@@ -371,8 +375,6 @@ ENUM_OPERATORS(eAnimFilter_Flags, ANIMFILTER_TMP_IGNORE_ONLYSEL);
 #define FILTER_CURVES_OBJD(ha) (CHECK_TYPE_INLINE(ha, Curves *), ((ha->flag & HA_DS_EXPAND)))
 #define FILTER_POINTS_OBJD(pt) (CHECK_TYPE_INLINE(pt, PointCloud *), ((pt->flag & PT_DS_EXPAND)))
 #define FILTER_VOLUME_OBJD(vo) (CHECK_TYPE_INLINE(vo, Volume *), ((vo->flag & VO_DS_EXPAND)))
-#define FILTER_SIMULATION_OBJD(sim) \
-  (CHECK_TYPE_INLINE(sim, Simulation *), ((sim->flag & SIM_DS_EXPAND)))
 /* Variable use expanders */
 #define FILTER_NTREE_DATA(ntree) \
   (CHECK_TYPE_INLINE(ntree, bNodeTree *), (((ntree)->flag & NTREE_DS_EXPAND)))
@@ -573,7 +575,7 @@ typedef struct bAnimChannelType {
   /** Get name (for channel lists). */
   void (*name)(bAnimListElem *ale, char *name);
   /** Get RNA property+pointer for editing the name. */
-  bool (*name_prop)(bAnimListElem *ale, struct PointerRNA *ptr, struct PropertyRNA **prop);
+  bool (*name_prop)(bAnimListElem *ale, struct PointerRNA *r_ptr, struct PropertyRNA **r_prop);
   /** Get icon (for channel lists). */
   int (*icon)(bAnimListElem *ale);
 
@@ -581,13 +583,13 @@ typedef struct bAnimChannelType {
   /** Check if the given setting is valid in the current context. */
   bool (*has_setting)(bAnimContext *ac, bAnimListElem *ale, eAnimChannel_Settings setting);
   /** Get the flag used for this setting. */
-  int (*setting_flag)(bAnimContext *ac, eAnimChannel_Settings setting, bool *neg);
+  int (*setting_flag)(bAnimContext *ac, eAnimChannel_Settings setting, bool *r_neg);
   /**
    * Get the pointer to int/short where data is stored,
    * with type being `sizeof(ptr_data)` which should be fine for runtime use.
    * - assume that setting has been checked to be valid for current context.
    */
-  void *(*setting_ptr)(bAnimListElem *ale, eAnimChannel_Settings setting, short *type);
+  void *(*setting_ptr)(bAnimListElem *ale, eAnimChannel_Settings setting, short *r_type);
 } bAnimChannelType;
 
 /** \} */
@@ -721,7 +723,7 @@ bool ANIM_remove_empty_action_from_animdata(struct AnimData *adt);
 
 /* ************************************************ */
 /* DRAWING API */
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /** \} */
 
@@ -850,7 +852,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, struct FC
 /** \name Animation F-Curves <-> Icons/Names Mapping
  * \{ */
 
-/* anim_ipo_utils.c */
+/* `anim_ipo_utils.cc` */
 
 /**
  * Get icon + name for channel-list displays for F-Curve.
@@ -860,7 +862,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, struct FC
  * and return the icon used for the struct that this property refers to
  *
  * \warning name buffer we're writing to cannot exceed 256 chars
- * (check anim_channels_defines.c for details).
+ * (check anim_channels_defines.cc for details).
  */
 int getname_anim_fcurve(char *name, struct ID *id, struct FCurve *fcu);
 
@@ -890,7 +892,7 @@ void nla_action_get_color(struct AnimData *adt, struct bAction *act, float color
 /** \name NLA-Mapping
  * \{ */
 
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /**
  * Obtain the AnimData block providing NLA-mapping for the given channel (if applicable).
@@ -913,7 +915,7 @@ void ANIM_nla_mapping_apply_fcurve(struct AnimData *adt,
 
 /**
  * Perform validation & auto-blending/extend refreshes after some operations
- * \note defined in space_nla/nla_edit.c, not in animation/
+ * \note defined in `space_nla/nla_edit.cc`, not in `animation/`.
  */
 void ED_nla_postop_refresh(bAnimContext *ac);
 
@@ -923,7 +925,7 @@ void ED_nla_postop_refresh(bAnimContext *ac);
 /** \name Unit Conversion Mappings
  * \{ */
 
-/* anim_draw.c */
+/* `anim_draw.cc` */
 
 /** Flags for conversion mapping. */
 typedef enum eAnimUnitConv_Flags {
@@ -1009,7 +1011,7 @@ float ANIM_unit_mapping_get_factor(
 
 /** \} */
 
-/* anim_deps.c */
+/* `anim_deps.cc` */
 
 /* -------------------------------------------------------------------- */
 /** \name Animation Updates

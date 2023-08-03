@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
@@ -8,6 +10,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "MEM_guardedalloc.h"
 
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -30,7 +34,7 @@ TEST(string, StrCopyUTF8_ASCII)
     const char src[] = {__VA_ARGS__, 0}; \
     char dst[sizeof(src)]; \
     memset(dst, 0xff, sizeof(dst)); \
-    BLI_strncpy_utf8(dst, src, sizeof(dst)); \
+    STRNCPY_UTF8(dst, src); \
     EXPECT_EQ(strlen(dst), sizeof(dst) - 1); \
     EXPECT_STREQ(dst, src); \
   }
@@ -70,7 +74,7 @@ TEST(string, StrCopyUTF8_TruncateEncoding)
     EXPECT_EQ(BLI_str_utf8_size(src), byte_size); \
     char dst[sizeof(src)]; \
     memset(dst, 0xff, sizeof(dst)); \
-    BLI_strncpy_utf8(dst, src, sizeof(dst)); \
+    STRNCPY_UTF8(dst, src); \
     EXPECT_EQ(strlen(dst), sizeof(dst) - 1); \
     EXPECT_STREQ(dst, src); \
     BLI_strncpy_utf8(dst, src, sizeof(dst) - 1); \
@@ -90,20 +94,20 @@ TEST(string, StrCopyUTF8_TruncateEncoding)
 TEST(string, StrCopyUTF8_TerminateEncodingEarly)
 {
   /* A UTF8 sequence that has a null byte before the sequence ends.
-   * Ensure the the UTF8 sequence does not step over the null byte. */
+   * Ensure the UTF8 sequence does not step over the null byte. */
 #define STRNCPY_UTF8_TERMINATE_EARLY(byte_size, ...) \
   { \
     char src[] = {__VA_ARGS__, 0}; \
     EXPECT_EQ(BLI_str_utf8_size(src), byte_size); \
     char dst[sizeof(src)]; \
     memset(dst, 0xff, sizeof(dst)); \
-    BLI_strncpy_utf8(dst, src, sizeof(dst)); \
+    STRNCPY_UTF8(dst, src); \
     EXPECT_EQ(strlen(dst), sizeof(dst) - 1); \
     EXPECT_STREQ(dst, src); \
     for (int i = sizeof(dst) - 1; i > 1; i--) { \
       src[i] = '\0'; \
       memset(dst, 0xff, sizeof(dst)); \
-      const int dst_copied = BLI_strncpy_utf8_rlen(dst, src, sizeof(dst)); \
+      const int dst_copied = STRNCPY_UTF8_RLEN(dst, src); \
       EXPECT_STREQ(dst, src); \
       EXPECT_EQ(strlen(dst), i); \
       EXPECT_EQ(dst_copied, i); \
@@ -118,6 +122,74 @@ TEST(string, StrCopyUTF8_TerminateEncodingEarly)
   STRNCPY_UTF8_TERMINATE_EARLY(1, 96);
 
 #undef STRNCPY_UTF8_TERMINATE_EARLY
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name String Concatenate
+ * \{ */
+
+TEST(string, StrCat)
+{
+#define STR_N_CAT(dst_init, dst_size, src, result_expect) \
+  { \
+    char dst[dst_size + 1] = dst_init; \
+    dst[dst_size] = 0xff; \
+    BLI_strncat(dst, src, dst_size); \
+    EXPECT_STREQ(dst, result_expect); \
+    EXPECT_EQ(dst[dst_size], 0xff); \
+  }
+
+  STR_N_CAT("", 1, "", "");
+  STR_N_CAT("", 1, "Y", "");
+  STR_N_CAT("", 2, "Y", "Y");
+  STR_N_CAT("", 2, "YZ", "Y");
+  STR_N_CAT("X", 2, "YZ", "X");
+  STR_N_CAT("ABC", 4, "XYZ", "ABC");
+  STR_N_CAT("ABC", 7, "XYZ", "ABCXYZ");
+#undef STR_N_CAT
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name String Replace
+ * \{ */
+
+TEST(string, StrReplaceRange)
+{
+#define STR_REPLACE_RANGE(src, size, beg, end, dst, result_expect) \
+  { \
+    char string[size] = src; \
+    BLI_string_replace_range(string, sizeof(string), beg, end, dst); \
+    EXPECT_STREQ(string, result_expect); \
+  }
+
+  STR_REPLACE_RANGE("a ", 5, 2, 2, "b!", "a b!");
+  STR_REPLACE_RANGE("a ", 4, 2, 2, "b!", "a b");
+  STR_REPLACE_RANGE("a ", 5, 1, 2, "b!", "ab!");
+  STR_REPLACE_RANGE("XYZ", 5, 1, 1, "A", "XAYZ");
+  STR_REPLACE_RANGE("XYZ", 5, 1, 1, "AB", "XABY");
+  STR_REPLACE_RANGE("XYZ", 5, 1, 1, "ABC", "XABC");
+
+  /* Add at the end when there is no room (no-op). */
+  STR_REPLACE_RANGE("XYZA", 5, 4, 4, "?", "XYZA");
+  /* Add at the start, replace all contents. */
+  STR_REPLACE_RANGE("XYZ", 4, 0, 0, "ABC", "ABC");
+  STR_REPLACE_RANGE("XYZ", 7, 0, 0, "ABC", "ABCXYZ");
+  /* Only remove. */
+  STR_REPLACE_RANGE("XYZ", 4, 1, 3, "", "X");
+  STR_REPLACE_RANGE("XYZ", 4, 0, 2, "", "Z");
+  STR_REPLACE_RANGE("XYZ", 4, 0, 3, "", "");
+  /* Only Add. */
+  STR_REPLACE_RANGE("", 4, 0, 0, "XYZ", "XYZ");
+  STR_REPLACE_RANGE("", 4, 0, 0, "XYZ?", "XYZ");
+  /* Do nothing. */
+  STR_REPLACE_RANGE("", 1, 0, 0, "?", "");
+  STR_REPLACE_RANGE("", 1, 0, 0, "", "");
+
+#undef STR_REPLACE_RANGE
 }
 
 /** \} */
@@ -167,7 +239,7 @@ TEST(string, StrPartition)
   {
     const char *str = "";
 
-    /* "" -> "", NULL, NULL, 0 */
+    /* "" -> "", nullptr, nullptr, 0 */
     pre_len = BLI_str_partition(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 0);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -177,7 +249,7 @@ TEST(string, StrPartition)
   {
     const char *str = "material";
 
-    /* "material" -> "material", NULL, NULL, 8 */
+    /* "material" -> "material", nullptr, nullptr, 8 */
     pre_len = BLI_str_partition(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 8);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -226,7 +298,7 @@ TEST(string, StrRPartition)
   {
     const char *str = "";
 
-    /* "" -> "", NULL, NULL, 0 */
+    /* "" -> "", nullptr, nullptr, 0 */
     pre_len = BLI_str_rpartition(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 0);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -236,7 +308,7 @@ TEST(string, StrRPartition)
   {
     const char *str = "material";
 
-    /* "material" -> "material", NULL, NULL, 8 */
+    /* "material" -> "material", nullptr, nullptr, 8 */
     pre_len = BLI_str_rpartition(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 8);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -267,7 +339,7 @@ TEST(string, StrPartitionEx)
   {
     const char *str = "mate.rial";
 
-    /* "mate.rial" over "mate" -> "mate.rial", NULL, NULL, 4 */
+    /* "mate.rial" over "mate" -> "mate.rial", nullptr, nullptr, 4 */
     pre_len = BLI_str_partition_ex(str, str + 4, delim, &sep, &suf, true);
     EXPECT_EQ(pre_len, 4);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -316,7 +388,7 @@ TEST(string, StrPartitionUtf8)
   {
     const char *str = "";
 
-    /* "" -> "", NULL, NULL, 0 */
+    /* "" -> "", nullptr, nullptr, 0 */
     pre_len = BLI_str_partition_utf8(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 0);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -326,7 +398,7 @@ TEST(string, StrPartitionUtf8)
   {
     const char *str = "material";
 
-    /* "material" -> "material", NULL, NULL, 8 */
+    /* "material" -> "material", nullptr, nullptr, 8 */
     pre_len = BLI_str_partition_utf8(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 8);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -375,7 +447,7 @@ TEST(string, StrRPartitionUtf8)
   {
     const char *str = "";
 
-    /* "" -> "", NULL, NULL, 0 */
+    /* "" -> "", nullptr, nullptr, 0 */
     pre_len = BLI_str_rpartition_utf8(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 0);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -385,7 +457,7 @@ TEST(string, StrRPartitionUtf8)
   {
     const char *str = "material";
 
-    /* "material" -> "material", NULL, NULL, 8 */
+    /* "material" -> "material", nullptr, nullptr, 8 */
     pre_len = BLI_str_rpartition_utf8(str, delim, &sep, &suf);
     EXPECT_EQ(pre_len, 8);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -417,7 +489,7 @@ TEST(string, StrPartitionExUtf8)
   {
     const char *str = "mate\xe2\x98\xafrial";
 
-    /* "mate\xe2\x98\xafrial" over "mate" -> "mate\xe2\x98\xafrial", NULL, NULL, 4 */
+    /* "mate\xe2\x98\xafrial" over "mate" -> "mate\xe2\x98\xafrial", nullptr, nullptr, 4 */
     pre_len = BLI_str_partition_ex_utf8(str, str + 4, delim, &sep, &suf, true);
     EXPECT_EQ(pre_len, 4);
     EXPECT_EQ(sep, (void *)nullptr);
@@ -778,7 +850,7 @@ TEST(string, StringNLen)
   EXPECT_EQ(1, BLI_strnlen("x", 1));
   EXPECT_EQ(1, BLI_strnlen("x", 100));
 
-  // ü is \xc3\xbc
+  /* `ü` is `\xc3\xbc`. */
   EXPECT_EQ(2, BLI_strnlen("ü", 100));
 
   EXPECT_EQ(0, BLI_strnlen("this is a longer string", 0));
@@ -786,6 +858,104 @@ TEST(string, StringNLen)
   EXPECT_EQ(5, BLI_strnlen("this is a longer string", 5));
   EXPECT_EQ(47, BLI_strnlen("This string writes about an agent without name.", 100));
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name String Join
+ * \{ */
+
+#define BUFFER_SIZE 128
+
+static void string_join_array_test_truncate(const char *strings[],
+                                            int strings_num,
+                                            char buffer[BUFFER_SIZE])
+{
+  const int buffer_len = BLI_string_join_array(buffer, BUFFER_SIZE, strings, strings_num);
+
+  { /* Ensure the allocated version is the same. */
+    char *buffer_alloc = BLI_string_join_arrayN(strings, strings_num);
+    EXPECT_STREQ(buffer_alloc, buffer);
+    MEM_freeN(buffer_alloc);
+  }
+
+  for (int dst_size = buffer_len + 1; dst_size > 0; dst_size--) {
+    char dst_tmp[BUFFER_SIZE];
+    int dst_tmp_len = BLI_string_join_array(dst_tmp, dst_size, strings, strings_num);
+    EXPECT_EQ(dst_tmp_len + 1, dst_size);
+    EXPECT_EQ(strncmp(dst_tmp, buffer, dst_tmp_len), 0);
+  }
+}
+
+static void string_join_array_with_sep_char_test_truncate(const char *strings[],
+                                                          int strings_num,
+                                                          char buffer[BUFFER_SIZE])
+{
+  const int buffer_len = BLI_string_join_array_by_sep_char(
+      buffer, BUFFER_SIZE, '|', strings, strings_num);
+
+  { /* Ensure the allocated version is the same. */
+    char *buffer_alloc = BLI_string_join_array_by_sep_charN('|', strings, strings_num);
+    EXPECT_STREQ(buffer_alloc, buffer);
+    MEM_freeN(buffer_alloc);
+  }
+
+  for (int dst_size = buffer_len + 1; dst_size > 0; dst_size--) {
+    char dst_tmp[BUFFER_SIZE];
+    int dst_tmp_len = BLI_string_join_array_by_sep_char(
+        dst_tmp, dst_size, '|', strings, strings_num);
+    EXPECT_EQ(dst_tmp_len + 1, dst_size);
+    EXPECT_EQ(strncmp(dst_tmp, buffer, dst_tmp_len), 0);
+  }
+}
+
+TEST(string, StrJoin_Truncate)
+{
+  char buffer[BUFFER_SIZE];
+  { /* Multiple single char words. */
+    const char *strings[] = {"a", "b", "c", "d", "e", "f"};
+    string_join_array_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "abcdef");
+    string_join_array_with_sep_char_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "a|b|c|d|e|f");
+  }
+  { /* Multiple char pair words. */
+    const char *strings[] = {"aa", "bb", "cc", "dd", "ee", "ff"};
+    string_join_array_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "aabbccddeeff");
+    string_join_array_with_sep_char_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "aa|bb|cc|dd|ee|ff");
+  }
+  { /* Multiple empty words. */
+    const char *strings[] = {"", "", "", "", "", ""};
+    string_join_array_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "");
+    string_join_array_with_sep_char_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "|||||");
+  }
+  { /* Single word. */
+    const char *strings[] = {"test"};
+    string_join_array_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "test");
+    string_join_array_with_sep_char_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "test");
+  }
+  { /* Empty item. */
+    const char *strings[] = {""};
+    string_join_array_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "");
+    string_join_array_with_sep_char_test_truncate(strings, ARRAY_SIZE(strings), buffer);
+    EXPECT_STREQ(buffer, "");
+  }
+  { /* Empty array. */
+    string_join_array_test_truncate(nullptr, 0, buffer);
+    EXPECT_STREQ(buffer, "");
+    string_join_array_with_sep_char_test_truncate(nullptr, 0, buffer);
+    EXPECT_STREQ(buffer, "");
+  }
+}
+
+#undef BUFFER_SIZE
 
 /** \} */
 
@@ -1291,3 +1461,18 @@ TEST_F(StringEscape, Control)
 }
 
 /** \} */
+
+TEST(BLI_string, bounded_strcpy)
+{
+  {
+    char str[8];
+    STRNCPY(str, "Hello");
+    EXPECT_STREQ(str, "Hello");
+  }
+
+  {
+    char str[8];
+    STRNCPY(str, "Hello, World!");
+    EXPECT_STREQ(str, "Hello, ");
+  }
+}
