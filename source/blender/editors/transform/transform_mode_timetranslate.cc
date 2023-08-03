@@ -50,7 +50,7 @@ static void headerTimeTranslate(TransInfo *t, char str[UI_MAX_DRAW_STR])
     snapFrameTransform(t, snap_mode, ival, val, &val);
     float delta_x = val - ival;
 
-    if (ELEM(snap_mode, SCE_SNAP_TO_SECOND)) {
+    if (snap_mode == SCE_SNAP_TO_SECOND) {
       /* Convert to seconds. */
       const Scene *scene = t->scene;
       delta_x /= FPS;
