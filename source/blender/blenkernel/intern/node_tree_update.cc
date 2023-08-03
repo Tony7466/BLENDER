@@ -748,6 +748,13 @@ class NodeTreeMainUpdater {
     LISTBASE_FOREACH (bNode *, node_iter, &ntree.nodes) {
       if (node_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
         nodes_to_visit.push(node_iter);
+        continue;
+      }
+      LISTBASE_FOREACH(bNodeSocket *, socket_iter, &node_iter->inputs) {
+        if (socket_iter->runtime->changed_flag != NTREE_CHANGED_NOTHING) {
+          nodes_to_visit.push(node_iter);
+          continue;
+        }
       }
     }
     make_nodes_dirty(ntree, nodes_to_visit);
@@ -1091,7 +1098,6 @@ class NodeTreeMainUpdater {
       const bNodeSocket &socket = *sockets_to_check.pop();
       const bNode &node = socket.owner_node();
       if (socket.runtime->changed_flag != NTREE_CHANGED_NOTHING) {
-        node.runtime->changed_flag |= NTREE_CHANGED_SOCKET_PROPERTY;
         return true;
       }
       if (node.runtime->changed_flag != NTREE_CHANGED_NOTHING) {
@@ -1339,14 +1345,14 @@ void BKE_ntree_update_tag_link_removed(bNodeTree *ntree)
   add_tree_tag(ntree, NTREE_CHANGED_LINK);
 }
 
-void BKE_ntree_update_tag_link_added(bNodeTree *ntree, bNodeLink * /*link*/)
+void BKE_ntree_update_tag_link_added(bNodeTree *ntree, bNodeLink *link)
 {
-  add_tree_tag(ntree, NTREE_CHANGED_LINK);
+  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_LINK);
 }
 
-void BKE_ntree_update_tag_link_mute(bNodeTree *ntree, bNodeLink * /*link*/)
+void BKE_ntree_update_tag_link_mute(bNodeTree *ntree, bNodeLink *link)
 {
-  add_tree_tag(ntree, NTREE_CHANGED_LINK);
+  add_socket_tag(ntree, link->tosock, NTREE_CHANGED_LINK);
 }
 
 void BKE_ntree_update_tag_active_output_changed(bNodeTree *ntree)
