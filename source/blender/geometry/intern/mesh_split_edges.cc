@@ -312,12 +312,12 @@ static void update_corner_verts(const int orig_verts_num,
  * Based on updated corner vertex indices, update the edges in each face. This includes updating
  * corner edge indices, adding new edges, and reusing original edges for the first "split" edge.
  */
-static Array<Vector<int2>> add_new_edges(const OffsetIndices<int> faces,
-                                         const GroupedSpan<int> edge_to_corner_map,
-                                         const Span<int> corner_to_face_map,
-                                         const IndexMask &selected_edges,
-                                         const Span<int> corner_verts,
-                                         MutableSpan<int2> edges)
+static Array<Vector<int2>> calc_new_edges(const OffsetIndices<int> faces,
+                                          const GroupedSpan<int> edge_to_corner_map,
+                                          const Span<int> corner_to_face_map,
+                                          const IndexMask &selected_edges,
+                                          const Span<int> corner_verts,
+                                          MutableSpan<int2> edges)
 {
   Array<Vector<int2>> all_new_edges(selected_edges.size(), NoInitialization());
   selected_edges.foreach_index([&](const int edge) {
@@ -330,6 +330,26 @@ static Array<Vector<int2>> add_new_edges(const OffsetIndices<int> faces,
     }
     edges[edge] = new_edges.first();
     new (&all_new_edges) Vector<int2>(new_edges.as_span().drop_front(1));
+  });
+}
+
+static OffsetIndices<int> calc_edge_ranges_per_old_edge(const int orig_edges_num,
+                                                        const Span<Vector<int2>> all_new_edges,
+                                                        Array<int> &offset_data)
+{
+  offset_data.reinitialize(all_new_edges.size() + 1);
+  MutableSpan<int> new_verts_nums = offset_data;
+}
+
+static void update_corner_edges(const int orig_edges_num,
+                                const GroupedSpan<int> edge_to_corner_map,
+                                const IndexMask &selected_edges,
+                                const Span<Vector<int2>> all_new_edges,
+                                MutableSpan<int> corner_edges)
+{
+  int new_edge_index = orig_edges_num;
+  selected_edges.foreach_index(GrainSize(512), [&](const int edge, const int mask) {
+    const Span<int> connected_corners = edge_to_corner_map[edge];
   });
 }
 
@@ -453,13 +473,18 @@ void split_edges(Mesh &mesh,
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
   update_corner_verts(orig_verts_num, corner_groups, new_verts_by_affected_vert, corner_verts);
 
-  Array<Vector<int2>> all_new_edges = add_new_edges(faces,
-                                                    edge_to_corner_map,
-                                                    corner_to_face_map,
-                                                    selected_edges,
-                                                    corner_verts,
-                                                    mesh.edges_for_write(),
-                                                    mesh.corner_edges_for_write());
+  Array<Vector<int2>> all_new_edges = calc_new_edges(faces,
+                                                     edge_to_corner_map,
+                                                     corner_to_face_map,
+                                                     selected_edges,
+                                                     corner_verts,
+                                                     mesh.edges_for_write());
+
+  Array<int> edge_new_edge_offset_data;
+  const OffsetIndices new_edges_by_selected_edge = calc_edge_ranges_per_old_edge(
+      orig_edges.size(), all_new_edges, edge_new_edge_offset_data);
+
+  update_corner_edges(edge_to_corner_map, selected_edges, mesh.corner_edges_for_write());
 
   if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
