@@ -1065,6 +1065,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     ANIM_animdata_filter(
         &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
+    blender::Vector<int> drawings_to_remove;
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       if (ale->datatype == ALE_GPFRAME) {
         /* Grease Pencil legacy. */
@@ -1088,19 +1089,14 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
         layer->tag_frames_map_keys_changed();
 
         if (!canceled) {
+          GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+
           /* Apply the frame transformation. */
           for (const auto [src_frame_number, dst_frame_number] :
                layer->runtime->trans_frame_data_.items()) {
-            if (src_frame_number == dst_frame_number) {
-              /* The transformation does not change this frame number, so continue. */
-              continue;
-            }
-
-            /* Move the frame in the layer. */
-            layer->move_frame(src_frame_number, dst_frame_number);
+            grease_pencil->move_frame_at(layer, src_frame_number, dst_frame_number);
           }
         }
-        layer->tag_frames_map_keys_changed();
 
         /* Clear the frames copy. */
         layer->runtime->trans_frames_copy_.clear();
