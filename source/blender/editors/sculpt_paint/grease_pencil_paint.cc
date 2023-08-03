@@ -171,13 +171,20 @@ struct PaintOperationExecutor {
     float prev_opacity = self.stroke_cache_->opacities().last();
     ColorGeometry4f prev_vertex_color = self.stroke_cache_->vertex_colors().last();
 
+    /* Overwrite last point if it's very close. */
+    if (math::distance(point.position, prev_co) < 3.0f) {
+      self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
+          point.position);
+      self.stroke_cache_->radii_for_write().last() = math::max(point.radius, prev_radius);
+      self.stroke_cache_->opacities_for_write().last() = math::max(point.opacity, prev_opacity);
+      return;
+    }
+
     int new_points_num = 1;
     const float min_distance_px = 10.0f;
-    if (self.screen_space_coordinates_.size() > 1) {
-      const float distance_px = math::distance(point.position, prev_co);
-      if (distance_px > min_distance_px) {
-        new_points_num += static_cast<int>(math::floor(distance_px / min_distance_px)) - 1;
-      }
+    const float distance_px = math::distance(point.position, prev_co);
+    if (distance_px > min_distance_px) {
+      new_points_num += static_cast<int>(math::floor(distance_px / min_distance_px)) - 1;
     }
 
     Array<float2> new_coordinates(new_points_num);
