@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include "kernel/util/lookup_table.h"
-
 CCL_NAMESPACE_BEGIN
 
 /* Compute fresnel reflectance. Also return the dot product of the refracted ray and the normal as

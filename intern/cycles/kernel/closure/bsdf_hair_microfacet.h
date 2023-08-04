@@ -606,7 +606,6 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float roughness = bsdf->roughness;
   *sampled_roughness = make_float2(roughness, roughness);
   *eta = bsdf->eta;
-  *eval = zero_spectrum();
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   if (fabsf(bsdf->h) > bsdf->extra->radius) {
@@ -619,7 +618,6 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   if (bsdf->extra->R <= 0.0f && bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
     /* Early out for inactive lobe. */
-    *pdf = 0.0f;
     return LABEL_NONE;
   }
 
@@ -843,7 +841,6 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   if (fabsf(bsdf->h) > bsdf->extra->radius) {
-    *pdf = 0.0f;
     return zero_spectrum();
   }
 
