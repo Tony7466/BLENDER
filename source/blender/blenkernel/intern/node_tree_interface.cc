@@ -807,7 +807,7 @@ blender::MutableSpan<bNodeTreeInterfaceItem *> bNodeTreeInterfacePanel::items()
   return blender::MutableSpan(items_array, items_num);
 }
 
-int bNodeTreeInterfacePanel::item_index(const bNodeTreeInterfaceItem &item) const
+int bNodeTreeInterfacePanel::item_position(const bNodeTreeInterfaceItem &item) const
 {
   return items().first_index_try(&item);
 }
@@ -912,16 +912,16 @@ void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
   }
 }
 
-void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int index)
+void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int position)
 {
-  index = std::min(std::max(index, 0), items_num);
+  position = std::min(std::max(position, 0), items_num);
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = items();
   items_num++;
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-  items().take_front(index).copy_from(old_items.take_front(index));
-  items().drop_front(index + 1).copy_from(old_items.drop_front(index));
-  items()[index] = &item;
+  items().take_front(position).copy_from(old_items.take_front(position));
+  items().drop_front(position + 1).copy_from(old_items.drop_front(position));
+  items()[position] = &item;
 
   if (old_items.data()) {
     MEM_freeN(old_items.data());
@@ -930,16 +930,16 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int inde
 
 bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool free)
 {
-  const int index = item_index(item);
-  if (!items().index_range().contains(index)) {
+  const int position = item_position(item);
+  if (!items().index_range().contains(position)) {
     return false;
   }
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = items();
   items_num--;
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-  items().take_front(index).copy_from(old_items.take_front(index));
-  items().drop_front(index).copy_from(old_items.drop_front(index + 1));
+  items().take_front(position).copy_from(old_items.take_front(position));
+  items().drop_front(position).copy_from(old_items.drop_front(position + 1));
 
   /* Guaranteed not empty, contains at least the removed item */
   MEM_freeN(old_items.data());
@@ -961,31 +961,32 @@ void bNodeTreeInterfacePanel::clear_items(bool do_id_user)
   items_num = 0;
 }
 
-bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int new_index)
+bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int new_position)
 {
-  const int old_index = item_index(item);
-  if (!items().index_range().contains(old_index) || !items().index_range().contains(new_index)) {
+  const int old_position = item_position(item);
+  if (!items().index_range().contains(old_position) ||
+      !items().index_range().contains(new_position)) {
     return false;
   }
 
-  if (old_index == new_index) {
+  if (old_position == new_position) {
     /* Nothing changes. */
     return true;
   }
-  else if (old_index < new_index) {
+  else if (old_position < new_position) {
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = items().slice(
-        old_index + 1, new_index - old_index);
-    bNodeTreeInterfaceItem *tmp = items()[old_index];
-    std::copy(moved_items.begin(), moved_items.end(), items().drop_front(old_index).data());
-    items()[new_index] = tmp;
+        old_position + 1, new_position - old_position);
+    bNodeTreeInterfaceItem *tmp = items()[old_position];
+    std::copy(moved_items.begin(), moved_items.end(), items().drop_front(old_position).data());
+    items()[new_position] = tmp;
   }
-  else /* old_index > new_index */ {
+  else /* old_position > new_position */ {
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = items().slice(
-        new_index, old_index - new_index);
-    bNodeTreeInterfaceItem *tmp = items()[old_index];
+        new_position, old_position - new_position);
+    bNodeTreeInterfaceItem *tmp = items()[old_position];
     std::copy_backward(
-        moved_items.begin(), moved_items.end(), items().drop_front(old_index + 1).data());
-    items()[new_index] = tmp;
+        moved_items.begin(), moved_items.end(), items().drop_front(old_position + 1).data());
+    items()[new_position] = tmp;
   }
 
   return true;
@@ -1154,7 +1155,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
     blender::StringRef socket_type,
     const eNodeTreeInterfaceSocketFlag flag,
     bNodeTreeInterfacePanel *parent,
-    const int index)
+    const int position)
 {
   if (parent == nullptr) {
     parent = &root_panel;
@@ -1164,7 +1165,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   bNodeTreeInterfaceSocket *new_socket = make_socket(
       next_uid++, name, description, socket_type, flag);
   if (new_socket) {
-    parent->insert_item(new_socket->item, index);
+    parent->insert_item(new_socket->item, position);
   }
   return new_socket;
 }
@@ -1186,7 +1187,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name,
 
 bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef name,
                                                           bNodeTreeInterfacePanel *parent,
-                                                          const int index)
+                                                          const int position)
 {
   if (parent == nullptr) {
     parent = &root_panel;
@@ -1195,7 +1196,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef nam
 
   bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name);
   if (new_panel) {
-    parent->insert_item(new_panel->item, index);
+    parent->insert_item(new_panel->item, position);
   }
   return new_panel;
 }
@@ -1222,7 +1223,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
 
 bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInterfaceItem &item,
                                                              bNodeTreeInterfacePanel *parent,
-                                                             int index)
+                                                             int position)
 {
   if (parent == nullptr) {
     parent = &root_panel;
@@ -1232,7 +1233,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
   item_types::item_copy(*citem, item, 0);
-  parent->insert_item(*citem, index);
+  parent->insert_item(*citem, position);
 
   return citem;
 }
@@ -1254,25 +1255,25 @@ void bNodeTreeInterface::clear_items()
   root_panel.clear_items(true);
 }
 
-bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_index)
+bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_position)
 {
   bNodeTreeInterfacePanel *parent;
   if (!find_item_parent(item, parent)) {
     return false;
   }
-  return parent->move_item(item, new_index);
+  return parent->move_item(item, new_position);
 }
 
 bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
                                              bNodeTreeInterfacePanel *new_parent,
-                                             int new_index)
+                                             int new_position)
 {
   bNodeTreeInterfacePanel *parent;
   if (!find_item_parent(item, parent)) {
     return false;
   }
   if (parent->remove_item(item, false)) {
-    new_parent->insert_item(item, new_index);
+    new_parent->insert_item(item, new_position);
     return true;
   }
   return false;

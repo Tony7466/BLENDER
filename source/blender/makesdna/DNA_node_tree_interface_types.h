@@ -106,7 +106,15 @@ typedef struct bNodeTreeInterfacePanel {
   blender::Span<const bNodeTreeInterfaceItem *> items() const;
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
 
-  int item_index(const bNodeTreeInterfaceItem &item) const;
+  /**
+   * Get the position of an item in this panel.
+   * \return Position relative to the start of the panel items or -1 if the item is not in the
+   * panel.
+   */
+  int item_position(const bNodeTreeInterfaceItem &item) const;
+  /**
+   * Check if the item is a direct child of the panel.
+   */
   bool contains_item(const bNodeTreeInterfaceItem &item) const;
 
   /**
@@ -115,7 +123,7 @@ typedef struct bNodeTreeInterfacePanel {
    */
   bool find_item(const bNodeTreeInterfaceItem &item) const;
   /**
-   * Get the index of the item in the interface draw list.
+   * Get the index of the item in the interface.
    * \return Index if the item was found or -1 otherwise.
    */
   int find_item_index(const bNodeTreeInterfaceItem &item) const;
@@ -134,9 +142,9 @@ typedef struct bNodeTreeInterfacePanel {
   void clear_items(bool do_id_user);
 
   void add_item(bNodeTreeInterfaceItem &item);
-  void insert_item(bNodeTreeInterfaceItem &item, int index);
+  void insert_item(bNodeTreeInterfaceItem &item, int position);
   bool remove_item(bNodeTreeInterfaceItem &item, bool free);
-  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
+  bool move_item(bNodeTreeInterfaceItem &item, int new_position);
 
   /**
    * Apply a function to every item in the panel, including child panels.
@@ -174,7 +182,7 @@ typedef struct bNodeTreeInterface {
   void active_item_set(bNodeTreeInterfaceItem *item);
 
   /**
-   * Get the index of the item in the interface draw list.
+   * Get the index of the item in the interface.
    * \return Index if the item was found or -1 otherwise.
    */
   int find_item_index(const bNodeTreeInterfaceItem &item) const
@@ -220,14 +228,14 @@ typedef struct bNodeTreeInterface {
    * Insert a new socket.
    * \param parent: Panel in which to add the socket. If parent is null the socket is added in the
    * root panel.
-   * \param index: Position of the socket within the parent panel.
+   * \param position: Position of the socket within the parent panel.
    */
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
                                           blender::StringRef description,
                                           blender::StringRef socket_type,
                                           eNodeTreeInterfaceSocketFlag flag,
                                           bNodeTreeInterfacePanel *parent,
-                                          int index);
+                                          int position);
 
   /**
    * Add a new panel at the end of the items list.
@@ -239,11 +247,11 @@ typedef struct bNodeTreeInterface {
    * Insert a new panel.
    * \param parent: Panel in which the new panel is aded as a child. If parent is null the new
    * panel is made a child of the root panel.
-   * \param index: Position of the child panel within the parent panel.
+   * \param position: Position of the child panel within the parent panel.
    */
   bNodeTreeInterfacePanel *insert_panel(blender::StringRef name,
                                         bNodeTreeInterfacePanel *parent,
-                                        int index);
+                                        int position);
 
   /**
    * Add a copy of an item at the end of the items list.
@@ -256,29 +264,29 @@ typedef struct bNodeTreeInterface {
    * Insert a copy of an item.
    * \param parent: Add the item inside the parent panel. If parent is null the item is made a
    * child of the root panel.
-   * \param index: Position of the item within the parent panel.
+   * \param position: Position of the item within the parent panel.
    */
   bNodeTreeInterfaceItem *insert_item_copy(const bNodeTreeInterfaceItem &item,
                                            bNodeTreeInterfacePanel *parent,
-                                           int index);
+                                           int position);
 
   bool remove_item(bNodeTreeInterfaceItem &item);
   void clear_items();
 
   /**
    * Move an item to a new position.
-   * \param new_index: New index of the item in the parent panel.
+   * \param new_position: New position of the item in the parent panel.
    */
-  bool move_item(bNodeTreeInterfaceItem &item, int new_index);
+  bool move_item(bNodeTreeInterfaceItem &item, int new_position);
   /**
    * Move an item to a new panel and/or position.
    * \param new_parent: Panel that the item is moved to. If null the item is added to the root
    * panel.
-   * \param new_index: New index of the item in the parent panel.
+   * \param new_position: New position of the item in the parent panel.
    */
   bool move_item_to_parent(bNodeTreeInterfaceItem &item,
                            bNodeTreeInterfacePanel *new_parent,
-                           int new_index);
+                           int new_position);
 
   /**
    * Apply a function to every item in the interface.
