@@ -32,7 +32,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const float3 location_global(cursor.location);
   const math::Quaternion rotation_global(float4(cursor.rotation_quaternion));
   params.set_output("Location", math::transform_point(world_to_object, location_global));
-  params.set_output("Rotation", math::to_quaternion(world_to_object) * rotation_global);
+  if (U.experimental.use_rotation_socket) {
+    params.set_output("Rotation", math::to_quaternion(world_to_object) * rotation_global);
+  }
 }
 
 }  // namespace blender::nodes::node_geo_tool_3d_cursor_cc
