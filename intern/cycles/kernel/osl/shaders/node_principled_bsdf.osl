@@ -97,14 +97,14 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
   }
 
-  if (Sheen > 1e-5) {
-    closure color SheenBSDF = sheen(Normal, SheenRoughness);
-    BSDF = layer(SheenTint * Sheen * SheenBSDF, BSDF);
-  }
-
   if (Clearcoat > 1e-5) {
     float clearcoat_r2 = ClearcoatRoughness * ClearcoatRoughness;
     closure color ClearcoatBSDF = microfacet("clearcoat", ClearcoatNormal, clearcoat_r2, 1.5, 0);
     BSDF = layer(0.25 * Clearcoat * ClearcoatBSDF, BSDF);
+  }
+
+  if (Sheen > 1e-5) {
+    closure color SheenBSDF = sheen(Normal, SheenRoughness);
+    BSDF = layer(SheenTint * Sheen * SheenBSDF, BSDF);
   }
 }

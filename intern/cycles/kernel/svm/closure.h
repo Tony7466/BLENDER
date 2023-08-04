@@ -161,7 +161,25 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       const bool glass_caustics = true;
 #endif
 
-      /* First layer: Clearcoat */
+      /* First layer: Sheen */
+      if (sheen > CLOSURE_WEIGHT_CUTOFF) {
+        ccl_private SheenBsdf *bsdf = (ccl_private SheenBsdf *)bsdf_alloc(
+            sd, sizeof(SheenBsdf), sheen * rgb_to_spectrum(sheen_tint) * weight);
+
+        if (bsdf) {
+          bsdf->N = N;
+          bsdf->roughness = sheen_roughness;
+
+          /* setup bsdf */
+          sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
+
+          /* Attenuate lower layers */
+          Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+          weight *= 1.0f - reduce_max(albedo / weight);
+        }
+      }
+
+      /* Second layer: Clearcoat */
       if (reflective_caustics && clearcoat > CLOSURE_WEIGHT_CUTOFF) {
         ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
             sd, sizeof(MicrofacetBsdf), 0.25f * clearcoat * weight);
@@ -175,24 +193,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
-
-          /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
-        }
-      }
-
-      /* Second layer: Sheen */
-      if (sheen > CLOSURE_WEIGHT_CUTOFF) {
-        ccl_private SheenBsdf *bsdf = (ccl_private SheenBsdf *)bsdf_alloc(
-            sd, sizeof(SheenBsdf), sheen * rgb_to_spectrum(sheen_tint) * weight);
-
-        if (bsdf) {
-          bsdf->N = N;
-          bsdf->roughness = sheen_roughness;
-
-          /* setup bsdf */
-          sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
