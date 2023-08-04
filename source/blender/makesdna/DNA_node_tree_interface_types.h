@@ -270,7 +270,13 @@ typedef struct bNodeTreeInterface {
                                            bNodeTreeInterfacePanel *parent,
                                            int position);
 
-  bool remove_item(bNodeTreeInterfaceItem &item);
+  /**
+   * Remove an item from the interface.
+   * \param move_content_to_parent: If the item is a panel, move the contents to the parent instead
+   * of deleting it.
+   * \return True if the item was found and successfully removed.
+   */
+  bool remove_item(bNodeTreeInterfaceItem &item, bool move_content_to_parent = true);
   void clear_items();
 
   /**

@@ -520,9 +520,10 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
 static void rna_NodeTreeInterfaceItems_remove(ID *id,
                                               bNodeTreeInterface *interface,
                                               Main *bmain,
-                                              bNodeTreeInterfaceItem *item)
+                                              bNodeTreeInterfaceItem *item,
+                                              bool move_content_to_parent)
 {
-  interface->remove_item(*item);
+  interface->remove_item(*item, move_content_to_parent);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_interface(ntree);
@@ -953,6 +954,12 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_boolean(
+      func,
+      "move_content_to_parent",
+      true,
+      "Move Content",
+      "If the item is a panel, move the contents to the parent instead of deleting it");
 
   func = RNA_def_function(srna, "clear", "rna_NodeTreeInterfaceItems_clear");
   RNA_def_function_ui_description(func, "Remove all items from the interface");

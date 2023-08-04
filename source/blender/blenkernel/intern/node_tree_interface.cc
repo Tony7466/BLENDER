@@ -711,6 +711,21 @@ static void item_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfaceItem &
   }
 }
 
+/* Move all child items to the new parent. */
+static Span<bNodeTreeInterfaceItem *> item_children(bNodeTreeInterfaceItem &item)
+{
+  switch (item.item_type) {
+    case NODE_INTERFACE_SOCKET: {
+      return {};
+    }
+    case NODE_INTERFACE_PANEL: {
+      bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
+      return panel.items();
+    }
+  }
+  return {};
+}
+
 }  // namespace item_types
 
 }  // namespace blender::bke::node_interface
@@ -1238,11 +1253,19 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   return citem;
 }
 
-bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item)
+bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_content_to_parent)
 {
   bNodeTreeInterfacePanel *parent;
   if (!find_item_parent(item, parent)) {
     return false;
+  }
+  if (move_content_to_parent) {
+    int position = parent->item_position(item);
+    /* Cache children to avoid invalidating the iterator. */
+    blender::Array<bNodeTreeInterfaceItem *> children(item_types::item_children(item));
+    for (bNodeTreeInterfaceItem *child : children) {
+      move_item_to_parent(*child, parent, position++);
+    }
   }
   if (parent->remove_item(item, true)) {
     return true;
