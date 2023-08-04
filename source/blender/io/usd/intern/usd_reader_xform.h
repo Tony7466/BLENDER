@@ -50,6 +50,10 @@ class USDXformReader : public USDPrimReader {
  protected:
   /* Returns true if the contained USD prim is the root of a transform hierarchy. */
   bool is_root_xform_prim() const;
+
+  virtual bool get_local_usd_xform(const float time,
+                                   pxr::GfMatrix4d *r_xform,
+                                   bool *r_is_constant) const;
 };
 
 }  // namespace blender::io::usd

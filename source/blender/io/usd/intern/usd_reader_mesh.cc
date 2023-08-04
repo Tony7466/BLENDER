@@ -1014,4 +1014,40 @@ std::string USDMeshReader::get_skeleton_path() const
   return "";
 }
 
+bool USDMeshReader::get_local_usd_xform(const float time,
+                                        pxr::GfMatrix4d *r_xform,
+                                        bool *r_is_constant) const
+{
+  if (!r_xform) {
+    return false;
+  }
+
+  if (!import_params_.import_skeletons || prim_.IsInstanceProxy() || prim_.IsInPrototype()) {
+    /* Use the standard transform computation, since we are ignoring
+     * skinning data. */
+    return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
+  }
+
+  if (pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim_)) {
+    if (skel_api.GetGeomBindTransformAttr().HasAuthoredValue()) {
+      pxr::GfMatrix4d bind_xf;
+      if (skel_api.GetGeomBindTransformAttr().Get(&bind_xf)) {
+        /* Assume that if a bind transform is defined, then the
+         * transform is constant. */
+        if (r_is_constant) {
+          *r_is_constant = true;
+        }
+        *r_xform = bind_xf;
+        return true;
+      }
+      else {
+        std::cout << "WARNING: couldn't compute geom bind transform for " << prim_.GetPath()
+                  << std::endl;
+      }
+    }
+  }
+
+  return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
+}
+
 }  // namespace blender::io::usd

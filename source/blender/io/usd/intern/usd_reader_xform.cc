@@ -72,27 +72,10 @@ void USDXformReader::read_matrix(float r_mat[4][4] /* local matrix */,
 
   unit_m4(r_mat);
 
-  pxr::UsdGeomXformable xformable;
-
-  if (use_parent_xform_) {
-    xformable = pxr::UsdGeomXformable(prim_.GetParent());
-  }
-  else {
-    xformable = pxr::UsdGeomXformable(prim_);
-  }
-
-  if (!xformable) {
-    /* This might happen if the prim is a Scope. */
+  pxr::GfMatrix4d usd_local_xf;
+  if (!get_local_usd_xform(time, &usd_local_xf, r_is_constant)) {
     return;
   }
-
-  if (r_is_constant) {
-    *r_is_constant = !xformable.TransformMightBeTimeVarying();
-  }
-
-  pxr::GfMatrix4d usd_local_xf;
-  bool reset_xform_stack;
-  xformable.GetLocalTransformation(&usd_local_xf, &reset_xform_stack, time);
 
   /* Convert the result to a float matrix. */
   pxr::GfMatrix4f mat4f = pxr::GfMatrix4f(usd_local_xf);
@@ -166,5 +149,36 @@ bool USDXformReader::is_root_xform_prim() const
 
   return false;
 }
+
+bool USDXformReader::get_local_usd_xform(const float time,
+                                         pxr::GfMatrix4d *r_xform,
+                                         bool *r_is_constant) const
+{
+  if (!r_xform) {
+    return false;
+  }
+
+  pxr::UsdGeomXformable xformable;
+
+  if (use_parent_xform_) {
+    xformable = pxr::UsdGeomXformable(prim_.GetParent());
+  }
+  else {
+    xformable = pxr::UsdGeomXformable(prim_);
+  }
+
+  if (!xformable) {
+    /* This might happen if the prim is a Scope. */
+    return false;
+  }
+
+  if (r_is_constant) {
+    *r_is_constant = !xformable.TransformMightBeTimeVarying();
+  }
+
+  bool reset_xform_stack;
+  return xformable.GetLocalTransformation(r_xform, &reset_xform_stack, time);
+}
+
 
 }  // namespace blender::io::usd

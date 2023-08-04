@@ -83,6 +83,12 @@ class USDMeshReader : public USDGeomReader {
   void read_color_data_primvar(Mesh *mesh,
                                const pxr::UsdGeomPrimvar &color_primvar,
                                const double motionSampleTime);
+
+  /* Override transform computation to account for the binding
+   * transformation for skinned meshes. */
+  bool get_local_usd_xform(const float time,
+                           pxr::GfMatrix4d *r_xform,
+                           bool *r_is_constant) const override;
 };
 
 }  // namespace blender::io::usd
