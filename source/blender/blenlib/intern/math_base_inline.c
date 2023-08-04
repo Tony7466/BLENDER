@@ -679,24 +679,13 @@ MINLINE uint ulp_diff_ff(float a, float b)
 
 MINLINE int compare_ff_relative(float a, float b, const float max_diff, const int max_ulps)
 {
-  union {
-    float f;
-    int i;
-  } ua, ub;
-
-  BLI_assert(sizeof(float) == sizeof(int));
-  BLI_assert(max_ulps < (1 << 22));
+  BLI_assert(max_ulps >= 0 && max_ulps < (1 << 22));
 
   if (fabsf(a - b) <= max_diff) {
     return 1;
   }
 
-  ua.f = a;
-  ub.f = b;
-
-  /* Important to compare sign from integers, since (-0.0f < 0) is false
-   * (though this shall not be an issue in common cases)... */
-  return ((ua.i < 0) != (ub.i < 0)) ? 0 : (abs(ua.i - ub.i) <= max_ulps) ? 1 : 0;
+  return (ulp_diff_ff(a, b) <= (uint)max_ulps) ? 1 : 0;
 }
 
 MINLINE bool compare_threshold_relative(const float value1, const float value2, const float thresh)
