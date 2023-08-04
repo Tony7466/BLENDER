@@ -6,6 +6,8 @@
  * \ingroup cmpnodes
  */
 
+#include "BLI_math_base.hh"
+
 #include "RNA_access.h"
 
 #include "UI_interface.h"
@@ -41,7 +43,7 @@ static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
   /* Set defaults. */
   data->size = 4;
   data->smoothing = 2;
-  data->eccentricity = 1.0;
+  data->eccentricity = 0.5;
   data->sharpness = 0.5;
 }
 
@@ -58,8 +60,8 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
     uiItemR(col, ptr, "smoothing", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "eccentricity", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "sharpness", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "eccentricity", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -166,7 +168,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
-    GPU_shader_uniform_1f(shader, "eccentricity", node_storage(bnode()).eccentricity);
+    GPU_shader_uniform_1f(shader, "eccentricity", get_eccentricity());
     GPU_shader_uniform_1f(shader, "sharpness", get_sharpness());
 
     Result &input = get_input("Image");
@@ -224,7 +226,25 @@ class ConvertKuwaharaOperation : public NodeOperation {
   float get_sharpness()
   {
     const float sharpness_factor = node_storage(bnode()).sharpness;
-    return sharpness_factor * sharpness_factor * 16.0;
+    return sharpness_factor * sharpness_factor * 16.0f;
+  }
+
+  /* The eccentricity controls how much the image anisotropy affects the eccentricity of the
+   * kuwahara sectors, which is controlled by the following factor that gets multiplied to the
+   * radius to get the ellipse width and divides the radius to get the ellipse height:
+   *
+   *   (eccentricity + anisotropy) / eccentricity
+   *
+   * Since the anisotropy is in the [0, 1] range, the factor tends to 1 as the eccentricity tends
+   * to infinity and tends to infinity when the eccentricity tends to zero. The stored eccentricity
+   * is in the range [0, 1], we map that to the range [infinity, 0.5] by multiply by 2 and taking
+   * the reciprocal, ratifying the aforementioned limits. The upper limit doubles the computed
+   * default eccentricity, which users can use to enhance the directionality of the filter. Instead
+   * of actual infinity, we just use an eccentricity of 1 / 0.01 since the result is very similar
+   * to that of infinity. */
+  float get_eccentricity()
+  {
+    return 1.0f / math::max(0.01f, node_storage(bnode()).eccentricity * 2.0f);
   }
 };
 

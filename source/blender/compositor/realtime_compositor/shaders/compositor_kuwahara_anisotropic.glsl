@@ -51,11 +51,13 @@ void main()
   /* Compute the width and height of an ellipse that is more width-elongated for high anisotropy
    * and more circular for low anisotropy, controlled using the eccentricity factor. Since the
    * anisotropy is in the [0, 1] range, the width factor tends to 1 as the eccentricity tends to
-   * infinity. This is based on the equations in section "3.2. Anisotropic Kuwahara Filtering" of
-   * the paper. */
+   * infinity and tends to infinity when the eccentricity tends to zero. This is based on the
+   * equations in section "3.2. Anisotropic Kuwahara Filtering" of the paper. We make sure the
+   * height is at least 1.5 such that the ellipse bounds doesn't get round to zero as will be seen
+   * later in the code. */
   float ellipse_width_factor = (eccentricity + anisotropy) / eccentricity;
   float ellipse_width = ellipse_width_factor * radius;
-  float ellipse_height = radius / ellipse_width_factor;
+  float ellipse_height = max(1.5, radius / ellipse_width_factor);
 
   /* Compute the cosine and sine of the angle that the eigenvector makes with the x axis. Since the
    * eigenvector is normalized, its x and y components are the cosine and sine of the angle it
