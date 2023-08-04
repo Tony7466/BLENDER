@@ -56,6 +56,9 @@ struct EraseOperationExecutor {
   float2 mouse_position{};
   float eraser_radius{};
 
+  int2 mouse_position_pixels{};
+  int eraser_radius_pixels{};
+
   EraseOperationExecutor(const bContext & /*C*/) {}
 
   /**
@@ -63,43 +66,46 @@ struct EraseOperationExecutor {
    */
   inline bool contains_point(const float2 &point) const
   {
-    const float eps = 0.01f;
     const float radius_2 = this->eraser_radius * this->eraser_radius;
     const float dist_2 = math::distance_squared(point, this->mouse_position);
     return (dist_2 < radius_2);
   }
 
-  static int intersection_segment_circle(const float2 &s0,
-                                         const float2 &s1,
-                                         const float2 &center,
-                                         const float radius,
-                                         float &mu0,
-                                         float &mu1)
+  static int intersection_segment_circle_integers(
+      const int2 &s0, const int2 &s1, const int2 &center, const int radius, int &mu0, int &mu1)
   {
-    const float d_s0_center = math::distance_squared(s0, center);
+    const int64_t d_s0_center = math::distance_squared(s0, center);
 
-    const float a = math::distance_squared(s0, s1);
+    const int64_t a = math::distance_squared(s0, s1);
 
-    const float b = 2.0f * math::dot(s0 - center, s1 - s0);
+    const int64_t b = 2 * math::dot(s0 - center, s1 - s0);
 
-    const float c = d_s0_center - radius * radius;
+    const int64_t c = d_s0_center - radius * radius;
 
-    const float i = b * b - 4.0f * a * c;
+    const int64_t i = b * b - 4 * a * c;
 
-    if (i < 0.0f) {
+    if (i < 0) {
       /* No intersections. */
       return 0;
     }
-    if (i == 0.0f) {
+
+    const int64_t segment_length = math::distance(s0, s1);
+
+    if (i == 0) {
       /* One intersection. */
-      float mu0 = -b / (2.0f * a);
+      const float mu0_f = -b / (2.0f * a);
+      mu0 = round_fl_to_int(mu0_f * segment_length);
       return 1;
     }
 
     /* Two intersections. */
     const float i_sqrt = sqrtf(i);
-    mu0 = (-b + i_sqrt) / (2.0f * a);
-    mu1 = (-b - i_sqrt) / (2.0f * a);
+    const float mu0_f = (-b + i_sqrt) / (2.0f * a);
+    const float mu1_f = (-b - i_sqrt) / (2.0f * a);
+
+    mu0 = round_fl_to_int(mu0_f * segment_length);
+    mu1 = round_fl_to_int(mu1_f * segment_length);
+
     return 2;
   }
 
@@ -117,35 +123,42 @@ struct EraseOperationExecutor {
    * Note that the eraser is represented as a circle, and thus there can be only 0, 1 or 2
    * intersections with a segment.
    */
-  int intersections_with_segment(const float2 &point,
-                                 const float2 &point_after,
+  int intersections_with_segment(const int2 &point,
+                                 const int2 &point_after,
                                  float &r_mu0,
                                  float &r_mu1,
                                  bool &point_inside,
-                                 bool &point_after_inside) const
+                                 bool &point_after_inside,
+                                 bool &point_cut,
+                                 bool &point_after_cut) const
   {
-    r_mu0 = -1.0f;
-    r_mu1 = -1.0f;
-    const int nb_intersections = intersection_segment_circle(
-        point, point_after, this->mouse_position, this->eraser_radius, r_mu0, r_mu1);
+    const int segment_length = math::distance(point, point_after);
+    int mu0 = -1;
+    int mu1 = -1;
+    const int nb_intersections = intersection_segment_circle_integers(
+        point, point_after, this->mouse_position_pixels, this->eraser_radius_pixels, mu0, mu1);
 
     if (nb_intersections != 2) {
       /* No intersection with the infinite line : nothing to erase.
-       * Don't erase anything if only one intersection was found, meaning the edge-case were the
-       * eraser is tangential to the line.
+       * Also don't erase anything if only one intersection was found, meaning the edge-case were
+       * the eraser is tangential to the line.
        */
       point_inside = false;
       point_after_inside = false;
+
       return 0;
     }
 
-    float eps = 1e-5;
-    const int side_mu0 = (r_mu0 < 0) ? (-1) : ((r_mu0 > 1) ? 1 : 0);
-    const int side_mu1 = (r_mu1 < 0) ? (-1) : ((r_mu1 > 1) ? 1 : 0);
+    const int side_mu0 = (mu0 <= 0) ? (-1) : ((mu0 >= segment_length) ? 1 : 0);
+    const int side_mu1 = (mu1 <= 0) ? (-1) : ((mu1 >= segment_length) ? 1 : 0);
     const bool is_mu0_inside = (side_mu0 == 0);
     const bool is_mu1_inside = (side_mu1 == 0);
 
-    int nb_valid_intersections = int(is_mu0_inside) + int(is_mu0_inside);
+    point_cut = (mu0 == 0) || (mu1 == 0);
+    point_after_cut = (mu0 == segment_length) || (mu1 == segment_length);
+
+    r_mu0 = mu0 / float(segment_length);
+    r_mu1 = mu1 / float(segment_length);
 
     if (!is_mu0_inside && !is_mu1_inside) {
       /* None of the intersection lie within the segment the infinite line. */
@@ -158,8 +171,8 @@ struct EraseOperationExecutor {
       }
 
       /* If they are on different sides of the line, then both points should be erased. */
-      point_inside = true;
-      point_after_inside = true;
+      point_inside = !point_cut;
+      point_after_inside = !point_after_cut;
       return 0;
     }
 
@@ -176,19 +189,11 @@ struct EraseOperationExecutor {
     /* Only one intersection lies within the segment. Only one point should be erased, depending on
      * the side of the other intersection. */
     const int side_outside_intersection = is_mu0_inside ? side_mu1 : side_mu0;
-    if (side_outside_intersection == -1) {
-      /* The other intersection lies before the first endpoint, so the first endpoint should be
-       * removed. */
-      point_inside = true;
-      point_after_inside = false;
-    }
-    else {
-      /* The other intersection lies after the last endpoint, so the last endpoint should be
-       * removed. */
-      point_inside = false;
-      point_after_inside = true;
-    }
 
+    /* If the other intersection lies before the first endpoint, the first endpoint should be
+     * removed. */
+    point_inside = (side_outside_intersection == -1) && !point_cut;
+    point_after_inside = !point_inside && !point_after_cut;
     if (is_mu1_inside) {
       std::swap(r_mu0, r_mu1);
     }
@@ -197,6 +202,7 @@ struct EraseOperationExecutor {
 
   /**
    * Compute intersections between the eraser and the input Curves Geometry.
+   * Also computes whether points of the geometry are inside the eraser or not.
    *
    * \param screen_space_positions: input parameter containing the 2D positions of the geometry in
    * screen space.
@@ -205,28 +211,37 @@ struct EraseOperationExecutor {
    * per-segment. Should be the size of the source point range.
    * \param r_intersections_factors: output parameter filled with the factors of the potential
    * intersections with each segment. Should be the size of the source point range.
+   * Note that for these two arrays the last element may contain intersections if the
+   * corresponding curve is cyclic.
+   *
    * \returns total number of intersections found.
    *
-   * Note that for the two output arrays the last element may contain intersections if the
-   * corresponding curve is cyclic.
    */
   int intersections_with_curves(const bke::CurvesGeometry &src,
                                 const Span<float2> screen_space_positions,
                                 MutableSpan<int> r_nb_intersections,
                                 MutableSpan<float2> r_intersections_factors,
-                                int &r_total_intersections,
                                 MutableSpan<bool> r_is_point_inside,
-                                int &r_total_points_inside) const
+                                MutableSpan<bool> r_is_point_cut) const
   {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
+
+    Array<int2> screen_space_positions_pixel(src.points_num());
+    threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
+      for (const int src_point : src_points) {
+        const float2 pos = screen_space_positions[src_point];
+        screen_space_positions_pixel[src_point] = int2(round_fl_to_int(pos[0]),
+                                                       round_fl_to_int(pos[1]));
+      }
+    });
 
     threading::parallel_for(src.curves_range(), 256, [&](const IndexRange src_curves) {
       for (const int src_curve : src_curves) {
         const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
         if (src_curve_points.size() == 1) {
-          /* One point curve : just check if the point is inside the eraser. */
+          /* One-point stroke : just check if the point is inside the eraser. */
           const int src_point = src_curve_points.first();
           const float2 pos = screen_space_positions[src_point];
           r_is_point_inside[src_point] = contains_point(pos);
@@ -236,57 +251,44 @@ struct EraseOperationExecutor {
         threading::parallel_for(
             src_curve_points.drop_back(1), 512, [&](const IndexRange src_points) {
               for (int src_point : src_points) {
-
-                float mu0;
-                float mu1;
                 r_nb_intersections[src_point] = intersections_with_segment(
-                    screen_space_positions[src_point],
-                    screen_space_positions[src_point + 1],
-                    mu0,
-                    mu1,
+                    screen_space_positions_pixel[src_point],
+                    screen_space_positions_pixel[src_point + 1],
+                    r_intersections_factors[src_point][0],
+                    r_intersections_factors[src_point][1],
                     r_is_point_inside[src_point],
-                    r_is_point_inside[src_point + 1]);
-
-                r_intersections_factors[src_point] = float2(mu0, mu1);
+                    r_is_point_inside[src_point + 1],
+                    r_is_point_cut[src_point],
+                    r_is_point_cut[src_point + 1]);
               }
             });
 
         if (src_cyclic[src_curve]) {
           /* If the curve is cyclic, we need to check for the closing segment. */
           const int src_last_point = src_curve_points.last();
+          const int src_first_point = src_curve_points.first();
+          int2 intersection{-1, -1};
 
-          float mu0;
-          float mu1;
           r_nb_intersections[src_last_point] = intersections_with_segment(
-              screen_space_positions[src_last_point],
-              screen_space_positions[src_curve_points.first()],
-              mu0,
-              mu1,
+              screen_space_positions_pixel[src_last_point],
+              screen_space_positions_pixel[src_first_point],
+              r_intersections_factors[src_last_point][0],
+              r_intersections_factors[src_last_point][1],
               r_is_point_inside[src_last_point],
-              r_is_point_inside[src_curve_points.first()]);
-
-          r_intersections_factors[src_last_point] = float2(mu0, mu1);
+              r_is_point_inside[src_first_point],
+              r_is_point_cut[src_last_point],
+              r_is_point_cut[src_first_point]);
         }
       }
     });
 
     /* Compute total number of intersections. */
-    r_total_intersections = 0;
+    int total_intersections = 0;
     for (const int src_point : src.points_range()) {
-      r_total_intersections += r_nb_intersections[src_point];
+      total_intersections += r_nb_intersections[src_point];
     }
 
-    /* Compute total points to remove. */
-    r_total_points_inside = 0;
-    for (const int src_point : src.points_range()) {
-      r_total_points_inside += int(r_is_point_inside[src_point]);
-    }
-
-    /* Total number of points in the destination :
-     *   - intersections with the eraser are added,
-     *   - points that are inside the erase are removed.
-     */
-    return src.points_num() + r_total_intersections - r_total_points_inside;
+    return total_intersections;
   }
 
   bool hard_eraser(const bke::CurvesGeometry &src,
@@ -301,20 +303,38 @@ struct EraseOperationExecutor {
 
     /* Compute intersections between the eraser and the curves in the source domain. */
     Array<bool> is_point_inside(src_points_num, false);
+    Array<bool> is_point_cut(src_points_num, false);
     Array<int> nb_intersections(src_points_num, 0);
     Array<float2> src_intersections_parameters(src_points_num);
-    int total_points_inside = 0;
-    int total_intersections = 0;
-    const int dst_points_num = intersections_with_curves(src,
-                                                         screen_space_positions,
-                                                         nb_intersections,
-                                                         src_intersections_parameters,
-                                                         total_intersections,
-                                                         is_point_inside,
-                                                         total_points_inside);
+    const int total_intersections = intersections_with_curves(src,
+                                                              screen_space_positions,
+                                                              nb_intersections,
+                                                              src_intersections_parameters,
+                                                              is_point_inside,
+                                                              is_point_cut);
 
-    if ((total_intersections == 0) && (total_points_inside == 0)) {
-      /* Return early if nothing to change. */
+    /* Compute total points inside. */
+    int total_points_inside = 0;
+    for (const int src_point : src.points_range()) {
+      total_points_inside += int(is_point_inside[src_point]);
+    }
+
+    /* Compute total points that are cuts, meaning points that lie in the boundary of the eraser.
+     * These points will be kept in the destination geometry, but change the topology of the curve.
+     */
+    int total_points_cut = 0;
+    for (const int src_point : src.points_range()) {
+      total_points_cut += int(is_point_cut[src_point]);
+    }
+
+    /* Total number of points in the destination :
+     *   - intersections with the eraser are added,
+     *   - points that are inside the erase are removed.
+     */
+    const int dst_points_num = src.points_num() + total_intersections - total_points_inside;
+
+    /* Return early if nothing to change. */
+    if ((total_intersections == 0) && (total_points_inside == 0) && (total_points_cut == 0)) {
       return false;
     }
 
@@ -340,6 +360,7 @@ struct EraseOperationExecutor {
         if (!is_point_inside[src_point]) {
           /* Add a point from the source : the factor is only the index in the source. */
           dst_points_parameters[++dst_point] = {src_point, 0.0};
+          is_cut[dst_point] = is_point_cut[src_point];
         }
 
         if (nb_intersections[src_point] > 0) {
@@ -585,6 +606,10 @@ struct EraseOperationExecutor {
       this->eraser_radius *= BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
     }
+
+    this->mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
+                                       round_fl_to_int(mouse_position[1]));
+    this->eraser_radius_pixels = round_fl_to_int(eraser_radius);
 
     /* Get the grease pencil drawing. */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
