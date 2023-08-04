@@ -148,18 +148,31 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob);
 /**
  * Get the intersections of a two point segment with all given 2D strokes.
  *
- * \param segment_start: Start coordinates of the segment.
- * \param segment_end: End coordinates of the segment.
+ * \param segment_a: Start coordinates of the segment.
+ * \param segment_b: End coordinates of the segment.
  * \param segment_curve_index: Index of the segment curve in the `curves_2d` struct.
  * Used to avoid a false-positive self-intersecting result.
+ * \param adj_a: Adjacent point of #segment_a, previous point on curve.
+ * \param adj_b: Adjacent point of #segment_b, next point on curve.
  * \param curves_2d: A struct with the 2D representation of all editable strokes.
  * Obtained by #editable_strokes_in_2d_space_get.
  * \return: Vector of all intersections.
  */
-Vector<IntersectingSegment2D> intersections_segment_strokes_2d(const float2 segment_start,
-                                                               const float2 segment_end,
-                                                               const int segment_curve_index,
-                                                               const Curves2DSpace *curves_2d);
+Vector<IntersectingSegment2D> intersections_segment_with_curves_get(
+    const float2 &segment_a,
+    const float2 &segment_b,
+    const int segment_curve_index,
+    const float2 &adj_a,
+    const float2 &adj_b,
+    const Curves2DSpace *curves_2d);
+
+/**
+ * Get the intersection distance on vector v1-v2, intersected by v3-v4.
+ */
+float intersection_distance_get(const float2 &v1,
+                                const float2 &v2,
+                                const float2 &v3,
+                                const float2 &v4);
 
 }  // namespace blender::ed::greasepencil
 #endif

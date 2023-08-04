@@ -23,7 +23,7 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob)
 {
   /* Get viewport projection matrix and evaluated GP object. */
   float4x4 projection;
-  ED_view3d_ob_project_mat_get(vc->rv3d, vc->obact, projection.ptr());
+  ED_view3d_ob_project_mat_get(vc->rv3d, ob, projection.ptr());
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, const_cast<Object *>(ob));
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
 
@@ -64,7 +64,7 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob)
       const VArray<bool> cyclic = curves.cyclic();
       const bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *vc->obedit, drawing_indices[drawing_i]);
+              ob_eval, *ob, drawing_indices[drawing_i]);
 
       /* Get the initial point index in the 2D point array for curves in this drawing. */
       int point_cont = curve_point_offset[drawing_i];
@@ -81,7 +81,7 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob)
         cv2d.drawing_index_2d[cv_cont] = drawing_i;
 
         /* Loop all stroke points. */
-        for (int point_i = points.first(); point_i <= points.last(); point_i++) {
+        for (const int point_i : points) {
           float2 pos;
 
           /* Convert point to 2D. */
@@ -103,10 +103,10 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob)
   return cv2d;
 }
 
-static float intersection_distance_get(const float2 &v1,
-                                       const float2 &v2,
-                                       const float2 &v3,
-                                       const float2 &v4)
+float intersection_distance_get(const float2 &v1,
+                                const float2 &v2,
+                                const float2 &v3,
+                                const float2 &v4)
 {
   /* Check for zero length vector. */
   const float vec_length = math::length(v2 - v1);
@@ -124,13 +124,15 @@ static float intersection_distance_get(const float2 &v1,
               (v1[1] - v2[1]) * (v3[0] * v4[1] - v3[1] * v4[0])) /
              div;
 
-  return math::length(isect - v1) / vec_length;
+  return math::max(0.0f, math::min(1.0f, math::length(isect - v1) / vec_length));
 }
 
-Vector<IntersectingSegment2D> intersections_segment_strokes_2d(const float2 segment_start,
-                                                               const float2 segment_end,
-                                                               const int segment_curve_index,
-                                                               const Curves2DSpace *curves_2d)
+Vector<IntersectingSegment2D> intersections_segment_with_curves_get(const float2 &segment_a,
+                                                                    const float2 &segment_b,
+                                                                    const int segment_curve_index,
+                                                                    const float2 &adj_a,
+                                                                    const float2 &adj_b,
+                                                                    const Curves2DSpace *curves_2d)
 {
   /* Init result vector. */
   Vector<IntersectingSegment2D> intersections;
@@ -139,8 +141,10 @@ Vector<IntersectingSegment2D> intersections_segment_strokes_2d(const float2 segm
   /* Create bounding box around the segment. */
   rctf bbox_sel;
   BLI_rctf_init_minmax(&bbox_sel);
-  BLI_rctf_do_minmax_v(&bbox_sel, segment_start);
-  BLI_rctf_do_minmax_v(&bbox_sel, segment_end);
+  BLI_rctf_do_minmax_v(&bbox_sel, segment_a);
+  BLI_rctf_do_minmax_v(&bbox_sel, segment_b);
+
+  const float2 segment_vec = segment_b - segment_a;
 
   /* Loop all strokes, looking for intersecting segments. */
   threading::parallel_for(curves_2d->point_offset.index_range(), 256, [&](const IndexRange range) {
@@ -160,32 +164,39 @@ Vector<IntersectingSegment2D> intersections_segment_strokes_2d(const float2 segm
       /* Test for intersecting stroke segments. */
       for (const int point_i : IndexRange(point_offset, point_size)) {
         const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
+        const float2 p0 = curves_2d->points_2d[point_i];
+        const float2 p1 = curves_2d->points_2d[point_i_next];
 
         /* Don't self check. */
         if (curve_i == segment_curve_index) {
-          if (segment_start == curves_2d->points_2d[point_i] ||
-              segment_start == curves_2d->points_2d[point_i_next] ||
-              segment_end == curves_2d->points_2d[point_i] ||
-              segment_end == curves_2d->points_2d[point_i_next])
-          {
+          if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
             continue;
           }
         }
 
-        auto isect = math::isect_seg_seg(curves_2d->points_2d[point_i],
-                                         curves_2d->points_2d[point_i_next],
-                                         segment_start,
-                                         segment_end);
+        /* Skip overlapping, adjacent segments. */
+        if ((adj_a == p0 && segment_a == p1) || (segment_a == p0 && segment_b == p1) ||
+            (segment_b == p0 && adj_b == p1) || (adj_b == p0 && segment_b == p1) ||
+            (segment_b == p0 && segment_a == p1) || (segment_a == p0 && adj_a == p1))
+        {
+          continue;
+        }
 
-        if (isect.kind == isect.LINE_LINE_CROSS) {
+        auto isect = math::isect_seg_seg(segment_a, segment_b, p0, p1);
+        if (ELEM(isect.kind, isect.LINE_LINE_CROSS, isect.LINE_LINE_EXACT)) {
+          /* Skip overlapping, parallel segments. */
+          if (isect.kind == isect.LINE_LINE_EXACT) {
+            const float2 p_vec = p1 - p0;
+            if (fabsf(cross_v2v2(p_vec, segment_vec) == 0.0f)) {
+              continue;
+            }
+          }
+
           IntersectingSegment2D intersection{};
           intersection.curve_index_2d = curve_i;
           intersection.point_start = point_i - point_offset;
           intersection.point_end = point_i_next - point_offset;
-          intersection.distance = intersection_distance_get(curves_2d->points_2d[point_i],
-                                                            curves_2d->points_2d[point_i_next],
-                                                            segment_start,
-                                                            segment_end);
+          intersection.distance = intersection_distance_get(segment_a, segment_b, p0, p1);
 
           std::lock_guard lock{mutex};
           intersections.append(intersection);

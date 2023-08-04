@@ -590,10 +590,11 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return False
         
-        row = layout.row(align=True)
-        row.template_ID_preview(paint, "brush", rows=3, cols=8, hide_buttons=True)
-
         grease_pencil_tool = brush.gpencil_tool
+        
+        if grease_pencil_tool != 'FILL':
+            row = layout.row(align=True)
+            row.template_ID_preview(paint, "brush", rows=3, cols=8, hide_buttons=True)
 
         if grease_pencil_tool in {'DRAW', 'FILL'}:
             from bl_ui.properties_paint_common import (
