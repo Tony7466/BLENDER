@@ -36,7 +36,7 @@ set(SRC
   filesel.cc
   folder_history.cc
   fsmenu.c
-  fsmenu_system.cc
+  fsmenu_system.c
   space_file.cc
 
   file_indexer.hh
