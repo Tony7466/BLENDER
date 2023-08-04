@@ -18,12 +18,12 @@ void main()
   float corner_weight = 0.182;
   float center_weight = 1.0 - 2.0 * corner_weight;
 
-  vec3 x_partial_derivative = texture_load(input_tx, texel + ivec2(-1, 1)).rgb * corner_weight +
-                              texture_load(input_tx, texel + ivec2(-1, 0)).rgb * center_weight +
-                              texture_load(input_tx, texel + ivec2(-1, -1)).rgb * corner_weight +
-                              texture_load(input_tx, texel + ivec2(1, 1)).rgb * -corner_weight +
-                              texture_load(input_tx, texel + ivec2(1, 0)).rgb * -center_weight +
-                              texture_load(input_tx, texel + ivec2(1, -1)).rgb * -corner_weight;
+  vec3 x_partial_derivative = texture_load(input_tx, texel + ivec2(-1, 1)).rgb * -corner_weight +
+                              texture_load(input_tx, texel + ivec2(-1, 0)).rgb * -center_weight +
+                              texture_load(input_tx, texel + ivec2(-1, -1)).rgb * -corner_weight +
+                              texture_load(input_tx, texel + ivec2(1, 1)).rgb * corner_weight +
+                              texture_load(input_tx, texel + ivec2(1, 0)).rgb * center_weight +
+                              texture_load(input_tx, texel + ivec2(1, -1)).rgb * corner_weight;
 
   vec3 y_partial_derivative = texture_load(input_tx, texel + ivec2(-1, 1)).rgb * corner_weight +
                               texture_load(input_tx, texel + ivec2(0, 1)).rgb * center_weight +
