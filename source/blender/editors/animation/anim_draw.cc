@@ -509,7 +509,7 @@ static float normalization_factor_get(Scene *scene, FCurve *fcu, short flag, flo
    * `min_coord` and `max_coord`, then after display normalization it
    * will certainly be a weird quantized experience for the user anyway.
    */
-  if (min_coord < max_coord && ulp_diff_ff(min_coord, max_coord) > 64) {
+  if (min_coord < max_coord && ulp_diff_ff(min_coord, max_coord) > 256) {
     /* Normalize. */
     const float range = max_coord - min_coord;
     factor = 2.0f / range;
