@@ -2188,6 +2188,26 @@ static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext *
   return itemf_function_check(rna_enum_attribute_type_items, random_value_type_supported);
 }
 
+static bool hash_value_type_supported(const EnumPropertyItem *item)
+{
+  return ELEM(item->value,
+              CD_PROP_FLOAT,
+              CD_PROP_FLOAT3,
+              CD_PROP_STRING,
+              CD_PROP_COLOR,
+              CD_PROP_INT32,
+              CD_PROP_QUATERNION);
+}
+
+static const EnumPropertyItem *rna_FunctionNodeHashValue_type_itemf(bContext * /*C*/,
+                                                                    PointerRNA * /*ptr*/,
+                                                                    PropertyRNA * /*prop*/,
+                                                                    bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(rna_enum_attribute_type_items, hash_value_type_supported);
+}
+
 static bool accumulate_field_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
@@ -4886,29 +4906,14 @@ static void def_float_to_int(StructRNA *srna)
 
 static void def_hash_value(StructRNA *srna)
 {
-  static const EnumPropertyItem rna_enum_hash_mode_items[] = {
-      {NODE_HASH_FLOAT, "FLOAT", 0, "Float", ""},
-      {NODE_HASH_VECTOR, "VECTOR", 0, "Vector", ""},
-      {NODE_HASH_COLOR, "COLOR", 0, "Color", ""},
-      {NODE_HASH_STRING, "STRING", 0, "String", ""},
-      {NODE_HASH_INTEGER, "INTEGER", 0, "Integer", ""},
-      {NODE_HASH_TO_FLOAT,
-       "HASH_TO_FLOAT",
-       0,
-       "Hash to Float",
-       "Convert Hash to Float in [0-1] range"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   PropertyRNA *prop;
 
-  RNA_def_struct_sdna_from(srna, "NodeHashValue", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "mode");
-  RNA_def_property_enum_items(prop, rna_enum_hash_mode_items);
-  RNA_def_property_enum_default(prop, NODE_HASH_FLOAT);
-  RNA_def_property_ui_text(prop, "Mode", "");
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeHashValue_type_itemf");
+  RNA_def_property_enum_default(prop, CD_PROP_INT32);
+  RNA_def_property_ui_text(prop, "Data Type", "Input data type");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
