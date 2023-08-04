@@ -259,7 +259,7 @@ static PyObject *CCL_initPython()
 
 #ifdef WITH_HYDRA
 /* defined in render_hydra module */
-extern "C" PyObject *BPyInit_hydra();
+PyObject *BPyInit_hydra();
 #endif
 
 static _inittab bpy_internal_modules[] = {
