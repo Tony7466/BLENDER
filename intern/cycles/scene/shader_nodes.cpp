@@ -2665,6 +2665,7 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_COLOR(sheen_tint, "Sheen Tint", one_float3());
   SOCKET_IN_FLOAT(clearcoat, "Clearcoat", 0.0f);
   SOCKET_IN_FLOAT(clearcoat_roughness, "Clearcoat Roughness", 0.03f);
+  SOCKET_IN_COLOR(clearcoat_tint, "Clearcoat Tint", one_float3());
   SOCKET_IN_FLOAT(ior, "IOR", 0.0f);
   SOCKET_IN_FLOAT(transmission, "Transmission", 0.0f);
   SOCKET_IN_FLOAT(anisotropic_rotation, "Anisotropic Rotation", 0.0f);
@@ -2776,6 +2777,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                                  ShaderInput *p_sheen_tint,
                                  ShaderInput *p_clearcoat,
                                  ShaderInput *p_clearcoat_roughness,
+                                 ShaderInput *p_clearcoat_tint,
                                  ShaderInput *p_ior,
                                  ShaderInput *p_transmission,
                                  ShaderInput *p_anisotropic_rotation)
@@ -2802,6 +2804,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int sheen_tint_offset = compiler.stack_assign(p_sheen_tint);
   int clearcoat_offset = compiler.stack_assign(p_clearcoat);
   int clearcoat_roughness_offset = compiler.stack_assign(p_clearcoat_roughness);
+  int clearcoat_tint_offset = compiler.stack_assign(p_clearcoat_tint);
   int ior_offset = compiler.stack_assign(p_ior);
   int transmission_offset = compiler.stack_assign(p_transmission);
   int anisotropic_rotation_offset = compiler.stack_assign(p_anisotropic_rotation);
@@ -2827,7 +2830,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
 
   compiler.add_node(
       compiler.encode_uchar4(
-          ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
+          ior_offset, transmission_offset, anisotropic_rotation_offset, clearcoat_tint_offset),
       distribution,
       subsurface_method,
       sheen_roughness_offset);
@@ -2871,6 +2874,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
           input("Sheen Tint"),
           input("Clearcoat"),
           input("Clearcoat Roughness"),
+          input("Clearcoat Tint"),
           input("IOR"),
           input("Transmission"),
           input("Anisotropic Rotation"));

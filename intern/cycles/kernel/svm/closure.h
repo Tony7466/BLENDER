@@ -70,7 +70,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1;
+          eta_offset, transmission_offset, anisotropic_rotation_offset, clearcoat_tint_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -85,7 +85,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &clearcoat_offset,
                              &clearcoat_roughness_offset);
       svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &pad1);
+          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &clearcoat_tint_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -99,6 +99,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float sheen_roughness = stack_load_float(stack, data_node2.w);
       float clearcoat = stack_load_float(stack, clearcoat_offset);
       float clearcoat_roughness = stack_load_float(stack, clearcoat_roughness_offset);
+      float3 clearcoat_tint = stack_load_float3(stack, clearcoat_tint_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float eta = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
@@ -198,6 +199,25 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
           weight *= 1.0f - reduce_max(albedo / weight);
         }
+      }
+
+      if (clearcoat_tint != one_float3()) {
+        /* Tint is normalized to perpendicular incidence.
+         * Therefore, if we define the coat thickness as length 1, the length along the ray is
+         * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
+         * From Beer's law, we have T = exp(-sigma_e * t).
+         * Therefore, tint = exp(-sigma_e * 1) (per def.), so -sigma_e = log(tint).
+         * From this, T = exp(log(tint) * t) = exp(log(tint)) ^ t = tint ^ t;
+         *
+         * Note that this is only an approximation - in particular, this assumes that the exit
+         * path follows the same angle, and that there aren't multiple internal bounces.
+         */
+        float cosNI = dot(sd->wi, clearcoat_normal);
+        /* Refract incoming direction into clearcoat material, which has a fixed IOR of 1.5.
+         * TIR is no concern here since we're always coming from the outside. */
+        float cosNT = sqrtf(1.0f - sqr(1.0f / 1.5f) * (1 - sqr(cosNI)));
+        float optical_depth = 1.0f / cosNT;
+        weight *= power(rgb_to_spectrum(clearcoat_tint), optical_depth);
       }
 
       /* Metallic component */
