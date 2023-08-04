@@ -861,18 +861,18 @@ static bool fcurve_can_use_simple_bezt_drawing(FCurve *fcu)
   return true;
 }
 
-static float calculate_bezt_draw_resolution(BezTriple *bezt,
-                                            BezTriple *prevbezt,
-                                            const blender::float2 resolution_scale)
+static int calculate_bezt_draw_resolution(BezTriple *bezt,
+                                          BezTriple *prevbezt,
+                                          const blender::float2 resolution_scale)
 {
-  const float resolution_x = (bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0];
+  const int resolution_x = int((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
   /* Include the handles in the resolution calculation to cover the case where keys have the same
    * y-value, but their handles are offset to create an arc. */
   const float min_y = min_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
   const float max_y = max_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
-  const float resolution_y = (max_y - min_y) * resolution_scale[1];
+  const int resolution_y = int((max_y - min_y) * resolution_scale[1]);
   /* Using a simple sum instead of calculating the diagonal. This gives a slightly higher
    * resolution but it does compensate for the fact that bezier curves can create long arcs between
    * keys. */
@@ -1111,7 +1111,7 @@ static void draw_fcurve_curve_bezts(
       curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
-      const int resolution = (int)calculate_bezt_draw_resolution(bezt, prevbezt, points_per_unit);
+      const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, points_per_unit);
       add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
     }
 
