@@ -104,6 +104,8 @@ struct wmEvent;
 struct wmOperator;
 struct wmWindowManager;
 
+#include <string>
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "DNA_listBase.h"
@@ -983,13 +985,13 @@ struct wmOperatorType {
    * Return a different name to use in the user interface, based on property values.
    * The returned string does not need to be freed.
    */
-  const char *(*get_name)(wmOperatorType *, PointerRNA *);
+  std::string (*get_name)(wmOperatorType *, PointerRNA *);
 
   /**
    * Return a different description to use in the user interface, based on property values.
    * The returned string must be freed by the caller, unless NULL.
    */
-  char *(*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
+  std::string (*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
 
   /** rna for properties */
   StructRNA *srna;
