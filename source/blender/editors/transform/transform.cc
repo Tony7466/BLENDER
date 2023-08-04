@@ -531,7 +531,8 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
                                          UVCALC_TRANSFORM_CORRECT;
 
     if ((t->data_type == &TransConvertType_Mesh) &&
-        (t->settings->uvcalc_flag & uvcalc_correct_flag)) {
+        (t->settings->uvcalc_flag & uvcalc_correct_flag))
+    {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
 
@@ -1498,14 +1499,29 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, ARegion *region)
   const char *printable = IFACE_("Auto Keying On");
   float printable_size[2];
   int xco, yco;
+  int offset = 0;
 
   const rcti *rect = ED_region_visible_rect(region);
 
-  const int font_id = BLF_default();
+  const int font_id = BLF_set_default();
   BLF_width_and_height(
       font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-  xco = (rect->xmax - U.widget_unit) - int(printable_size[0]);
+  switch ((eUserpref_MiniAxisType)U.mini_axis_type) {
+    case USER_MINI_AXIS_TYPE_GIZMO:
+      offset = U.gizmo_size_navigate_v3d;
+      break;
+    case USER_MINI_AXIS_TYPE_MINIMAL:
+      offset = U.rvisize * 1.2f;  // Scaled by 1.2 so it's not touching the gizmo
+      break;
+    case USER_MINI_AXIS_TYPE_NONE:
+      offset = 20;  // Just a number that works based on empirical testing
+      break;
+  }
+
+  offset *= U.scale_factor;
+
+  xco = (rect->xmax - U.widget_unit) - (int)printable_size[0] - offset;
   yco = (rect->ymax - U.widget_unit);
 
   /* warning text (to clarify meaning of overlays)
