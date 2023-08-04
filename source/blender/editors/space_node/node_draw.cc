@@ -3507,7 +3507,7 @@ static void draw_nodetree(const bContext &C,
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
   else if (ntree.type == NTREE_SHADER && BKE_scene_uses_shader_previews(CTX_data_scene(&C))) {
-    tree_draw_ctx.nested_group_infos = spacenode_get_nested_previews(C, *snode);
+    tree_draw_ctx.nested_group_infos = get_nested_previews(C, *snode);
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);

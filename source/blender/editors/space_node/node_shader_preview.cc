@@ -51,7 +51,6 @@
 #include "ED_screen.h"
 #include "node_intern.hh"
 
-using namespace blender;
 namespace blender::ed::space_node {
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
@@ -74,9 +73,9 @@ struct ShaderNodesPreviewJob {
   NodeSocketPair mat_displacement_copy;
   /* TreePath used to locate the nodetree.
    * bNodeTreePath elements have some listbase pointers which should not be used. */
-  blender::Vector<bNodeTreePath *> treepath_copy;
-  blender::Vector<bNode *> AOV_nodes;
-  blender::Vector<bNode *> shader_nodes;
+  Vector<bNodeTreePath *> treepath_copy;
+  Vector<bNode *> AOV_nodes;
+  Vector<bNode *> shader_nodes;
 
   Main *bmain;
 };
@@ -123,22 +122,22 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
  * This function returns the `NestedTreePreviews *` for the nodetree shown in the SpaceNode.
  * This is the first function in charge of the previews by calling `ensure_nodetree_previews`.
  */
-NestedTreePreviews *spacenode_get_nested_previews(const bContext &C, SpaceNode &sn)
+NestedTreePreviews *get_nested_previews(const bContext &C, SpaceNode &snode)
 {
-  if (sn.id == nullptr || GS(sn.id->name) != ID_MA) {
+  if (snode.id == nullptr || GS(snode.id->name) != ID_MA) {
     return nullptr;
   }
   NestedTreePreviews *tree_previews = nullptr;
-  if (auto hash = get_compute_context_hash_for_node_editor(sn)) {
-    tree_previews = sn.runtime->tree_previews_per_context
+  if (auto hash = get_compute_context_hash_for_node_editor(snode)) {
+    tree_previews = snode.runtime->tree_previews_per_context
                         .lookup_or_add_cb(*hash,
                                           [&]() {
                                             return std::make_unique<NestedTreePreviews>(
                                                 U.node_preview_res);
                                           })
                         .get();
-    Material *ma = reinterpret_cast<Material *>(sn.id);
-    ensure_nodetree_previews(C, *tree_previews, *ma, sn.treepath);
+    Material *ma = reinterpret_cast<Material *>(snode.id);
+    ensure_nodetree_previews(C, *tree_previews, *ma, snode.treepath);
   }
   return tree_previews;
 }
@@ -239,7 +238,7 @@ static Scene *preview_prepare_scene(const Main *bmain,
  * \{ */
 
 /* Return the socket used for previewing the node (should probably follow more precise rules). */
-static bNodeSocket *node_find_preview_socket(const bNode &node)
+static const bNodeSocket *node_find_preview_socket(const bNode &node)
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
     if (socket->is_visible()) {
@@ -251,7 +250,7 @@ static bNodeSocket *node_find_preview_socket(const bNode &node)
 
 static bool node_use_aov(const bNode &node)
 {
-  bNodeSocket *socket = node_find_preview_socket(node);
+  const bNodeSocket *socket = node_find_preview_socket(node);
   return socket != nullptr && socket->type != SOCK_SHADER;
 }
 
@@ -353,8 +352,7 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
 
     ntreeAddSocketInterface(nested_nt, SOCK_OUT, nested_socket_iter->idname, nested_node.name);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
-    bNodeSocket *out_socket = blender::bke::node_find_enabled_input_socket(*output_node,
-                                                                           nested_node.name);
+    bNodeSocket *out_socket = bke::node_find_enabled_input_socket(*output_node, nested_node.name);
 
     nodeAddLink(nested_nt, nested_node_iter, nested_socket_iter, output_node, out_socket);
     BKE_ntree_update_main_tree(G.pr_main, nested_nt, nullptr);
@@ -369,8 +367,7 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
 
     /* Now use the newly created socket of the nodegroup as previewing socket of the nodegroup
      * instance node. */
-    nested_socket_iter = blender::bke::node_find_enabled_output_socket(*nested_node_iter,
-                                                                       nested_node.name);
+    nested_socket_iter = bke::node_find_enabled_output_socket(*nested_node_iter, nested_node.name);
   }
 
   nodeAddLink(treepath.first()->nodetree,
@@ -388,7 +385,7 @@ static void connect_node_to_surface_output(const Span<bNodeTreePath *> treepath,
 {
   bNodeSocket *out_surface_socket = nullptr;
   bNodeTree *main_nt = treepath.first()->nodetree;
-  bNodeSocket *node_preview_socket = node_find_preview_socket(node);
+  bNodeSocket *node_preview_socket = const_cast<bNodeSocket *>(node_find_preview_socket(node));
   if (node_preview_socket == nullptr) {
     return;
   }
@@ -413,7 +410,7 @@ static void connect_nodes_to_aovs(const Span<bNodeTreePath *> treepath, const Sp
   }
   bNodeTree *main_nt = treepath.first()->nodetree;
   for (bNode *node : nodes) {
-    bNodeSocket *node_preview_socket = node_find_preview_socket(*node);
+    bNodeSocket *node_preview_socket = const_cast<bNodeSocket *>(node_find_preview_socket(*node));
 
     bNode *aov_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_AOV);
     strcpy(reinterpret_cast<NodeShaderOutputAOV *>(aov_node->storage)->name, node->name);
@@ -707,12 +704,12 @@ static void ensure_nodetree_previews(const bContext &C,
   WM_jobs_start(CTX_wm_manager(&C), wm_job);
 }
 
-void spacenode_stop_preview_job(wmWindowManager &wm)
+void stop_preview_job(wmWindowManager &wm)
 {
   WM_jobs_stop(&wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
 }
 
-void spacenode_free_previews(wmWindowManager &wm, SpaceNode &snode)
+void free_previews(wmWindowManager &wm, SpaceNode &snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
   WM_jobs_kill(&wm, &snode, shader_preview_startjob);

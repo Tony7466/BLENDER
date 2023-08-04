@@ -36,12 +36,12 @@ struct NestedTreePreviews {
   }
 };
 
-void spacenode_free_previews(wmWindowManager &wm, SpaceNode &snode);
+void free_previews(wmWindowManager &wm, SpaceNode &snode);
 ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree,
                                  NestedTreePreviews &tree_previews,
                                  const bNode &node);
 void node_release_preview_ibuf(NestedTreePreviews &tree_previews);
-NestedTreePreviews *spacenode_get_nested_previews(const bContext &C, SpaceNode &sn);
-void spacenode_stop_preview_job(wmWindowManager &wm);
+NestedTreePreviews *get_nested_previews(const bContext &C, SpaceNode &snode);
+void stop_preview_job(wmWindowManager &wm);
 
 }  // namespace blender::ed::space_node
