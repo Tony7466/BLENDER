@@ -350,7 +350,6 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
     NodeShaderHairPrincipled *data = MEM_cnew<NodeShaderHairPrincipled>(__func__);
     data->model = SHD_PRINCIPLED_HAIR_CHIANG;
     data->parametrization = node->custom1;
-    data->distribution = SHD_PRINCIPLED_HAIR_GGX;
 
     node->storage = data;
   }

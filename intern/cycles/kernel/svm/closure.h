@@ -701,8 +701,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
             break;
           }
 
-          uint R_ofs, TT_ofs, TRT_ofs, distribution_type;
-          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &distribution_type);
+          uint R_ofs, TT_ofs, TRT_ofs, temp;
+          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &temp);
           float R = stack_load_float_default(stack, R_ofs, data_node4.y);
           float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
           float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
@@ -719,7 +719,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
             bsdf->N = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
           }
 
-          bsdf->distribution_type = distribution_type;
           bsdf->roughness = roughness;
           bsdf->tilt = alpha;
           bsdf->eta = ior;

@@ -31,7 +31,6 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                                  normal Normal = Ng,
                                  string model = "Far-field Model",
                                  string parametrization = "Direct Coloring",
-                                 string distribution_type = "GGX",
                                  float Offset = radians(2),
                                  float Roughness = 0.3,
                                  float RadialRoughness = 0.3,
@@ -94,8 +93,6 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
     sigma = sigma_from_concentration(0.0, 0.8054375);
   }
 
-  int distribution_type_enum = (distribution_type == "GGX") ? 0 : 1;
-
   normal major_axis = Normal;
   if (model == "Far-field Model" && AspectRatio != 1.0) {
     getattribute("geom:N", major_axis);
@@ -108,7 +105,6 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                            roughness,
                            Offset,
                            IOR,
-                           distribution_type_enum,
                            AspectRatio,
                            Rlobe,
                            TTlobe,

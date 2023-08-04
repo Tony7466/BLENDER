@@ -402,12 +402,6 @@ typedef enum NodePrincipledHairParametrization {
   NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
 } NodePrincipledHairParametrization;
 
-typedef enum NodePrincipledHairDistributionType {
-  NODE_PRINCIPLED_HAIR_GGX = 0,
-  NODE_PRINCIPLED_HAIR_BECKMANN = 1,
-  NODE_PRINCIPLED_HAIR_DISTRIBUTION_TYPE_NUM,
-} NodePrincipledHairDistributionType;
-
 typedef enum NodeCombSepColorType {
   NODE_COMBSEP_COLOR_RGB,
   NODE_COMBSEP_COLOR_HSV,

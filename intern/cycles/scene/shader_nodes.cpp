@@ -3405,13 +3405,6 @@ NODE_DEFINE(PrincipledHairBsdfNode)
   SOCKET_ENUM(
       parametrization, "Parametrization", parametrization_enum, NODE_PRINCIPLED_HAIR_REFLECTANCE);
 
-  /* Hair microfacet normal distribution mode. */
-  static NodeEnum distribution_type_enum;
-  distribution_type_enum.insert("GGX", NODE_PRINCIPLED_HAIR_GGX);
-  distribution_type_enum.insert("Beckmann", NODE_PRINCIPLED_HAIR_BECKMANN);
-  SOCKET_ENUM(
-      distribution_type, "Distribution Type", distribution_type_enum, NODE_PRINCIPLED_HAIR_GGX);
-
   /* Initialize sockets to their default values. */
   SOCKET_IN_COLOR(color, "Color", make_float3(0.017513f, 0.005763f, 0.002059f));
   SOCKET_IN_FLOAT(melanin, "Melanin", 0.8f);
@@ -3551,7 +3544,7 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
   compiler.add_node(compiler.encode_uchar4(compiler.stack_assign_if_linked(R_in),
                                            compiler.stack_assign_if_linked(TT_in),
                                            compiler.stack_assign_if_linked(TRT_in),
-                                           distribution_type),
+                                           SVM_STACK_INVALID),
                     __float_as_uint(model == NODE_PRINCIPLED_HAIR_HUANG ? R : radial_roughness),
                     __float_as_uint(TT),
                     __float_as_uint(TRT));
@@ -3562,7 +3555,6 @@ void PrincipledHairBsdfNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "model");
   compiler.parameter(this, "parametrization");
-  compiler.parameter(this, "distribution_type");
   compiler.add(this, "node_principled_hair_bsdf");
 }
 

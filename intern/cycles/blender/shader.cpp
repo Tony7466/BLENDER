@@ -633,11 +633,6 @@ static ShaderNode *add_node(Scene *scene,
                                                     "parametrization",
                                                     NODE_PRINCIPLED_HAIR_PARAMETRIZATION_NUM,
                                                     NODE_PRINCIPLED_HAIR_REFLECTANCE));
-    principled_hair->set_distribution_type(
-        (NodePrincipledHairDistributionType)get_enum(b_principled_hair_node.ptr,
-                                                     "distribution_type",
-                                                     NODE_PRINCIPLED_HAIR_DISTRIBUTION_TYPE_NUM,
-                                                     NODE_PRINCIPLED_HAIR_GGX));
     node = principled_hair;
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfPrincipled)) {

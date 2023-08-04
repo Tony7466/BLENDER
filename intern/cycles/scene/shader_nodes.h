@@ -869,8 +869,6 @@ class PrincipledHairBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */
   NODE_SOCKET_API(NodePrincipledHairParametrization, parametrization)
-  /* Selected microfacet distribution type. */
-  NODE_SOCKET_API(NodePrincipledHairDistributionType, distribution_type)
   /* Selected scattering model (near-/far-field). */
   NODE_SOCKET_API(NodePrincipledHairModel, model)
 };

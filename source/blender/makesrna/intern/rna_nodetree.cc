@@ -4581,20 +4581,6 @@ static const EnumPropertyItem node_principled_hair_parametrization_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_principled_hair_distribution_items[] = {
-    {SHD_PRINCIPLED_HAIR_GGX,
-     "HAIR_PRINCIPLED_GGX",
-     0,
-     "GGX",
-     "Microfacet-based hair scattering model with GGX distribution"},
-    {SHD_PRINCIPLED_HAIR_BECKMANN,
-     "HAIR_PRINCIPLED_BECKMANN",
-     0,
-     "Beckmann",
-     "Microfacet-based hair scattering model with Beckmann distribution"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 static const EnumPropertyItem node_script_mode_items[] = {
     {NODE_SCRIPT_INTERNAL, "INTERNAL", 0, "Internal", "Use internal text data-block"},
     {NODE_SCRIPT_EXTERNAL, "EXTERNAL", 0, "External", "Use external .osl or .oso file"},
@@ -6121,14 +6107,6 @@ static void def_hair_principled(StructRNA *srna)
       prop, "Color Parametrization", "Select the shader's color parametrization");
   RNA_def_property_enum_items(prop, node_principled_hair_parametrization_items);
   RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_REFLECTANCE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
-
-  prop = RNA_def_property(srna, "distribution_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "distribution");
-  RNA_def_property_ui_text(
-      prop, "Microfacet Distribution", "Select the microfacet distribution of the hair surface");
-  RNA_def_property_enum_items(prop, node_principled_hair_distribution_items);
-  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_GGX);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 

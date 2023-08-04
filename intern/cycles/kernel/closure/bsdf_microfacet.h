@@ -16,8 +16,8 @@
 CCL_NAMESPACE_BEGIN
 
 enum MicrofacetType {
-  GGX = 0,
   BECKMANN,
+  GGX,
 };
 
 enum MicrofacetFresnel {

@@ -128,7 +128,6 @@ static void node_shader_buts_principled_hair(uiLayout *layout, bContext * /*C*/,
 {
   uiItemR(layout, ptr, "model", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "parametrization", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-  uiItemR(layout, ptr, "distribution_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 }
 
 /* Initialize custom properties. */
@@ -138,7 +137,6 @@ static void node_shader_init_hair_principled(bNodeTree * /*ntree*/, bNode *node)
 
   data->model = SHD_PRINCIPLED_HAIR_HUANG;
   data->parametrization = SHD_PRINCIPLED_HAIR_REFLECTANCE;
-  data->distribution = SHD_PRINCIPLED_HAIR_GGX;
 
   node->storage = data;
 }
