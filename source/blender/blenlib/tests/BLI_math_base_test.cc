@@ -90,6 +90,29 @@ TEST(math_base, CompareFFRelativeZero)
   EXPECT_FALSE(compare_ff_relative(f1, fn0, -1.0f, 1024));
 }
 
+TEST(math_base, UlpDiffFF)
+{
+  EXPECT_EQ(ulp_diff_ff(0.0, 0.0), 0);
+  EXPECT_EQ(ulp_diff_ff(0.0, -0.0), 0);
+  EXPECT_EQ(ulp_diff_ff(-0.0, -0.0), 0);
+  EXPECT_EQ(ulp_diff_ff(1.0, 1.0), 0);
+  EXPECT_EQ(ulp_diff_ff(1.0, 2.0), 1 << 23);
+  EXPECT_EQ(ulp_diff_ff(2.0, 4.0), 1 << 23);
+  EXPECT_EQ(ulp_diff_ff(-1.0, -2.0), 1 << 23);
+  EXPECT_EQ(ulp_diff_ff(-2.0, -4.0), 1 << 23);
+  EXPECT_EQ(ulp_diff_ff(-1.0, 1.0), 0x7f000000);
+  EXPECT_EQ(ulp_diff_ff(0.0, 1.0), 0x3f800000);
+  EXPECT_EQ(ulp_diff_ff(-0.0, 1.0), 0x3f800000);
+  EXPECT_EQ(ulp_diff_ff(0.0, -1.0), 0x3f800000);
+  EXPECT_EQ(ulp_diff_ff(-0.0, -1.0), 0x3f800000);
+  EXPECT_EQ(ulp_diff_ff(INFINITY, -INFINITY), 0xff000000);
+  EXPECT_EQ(ulp_diff_ff(NAN, NAN), 0xffffffff);
+  EXPECT_EQ(ulp_diff_ff(NAN, 1.0), 0xffffffff);
+  EXPECT_EQ(ulp_diff_ff(1.0, NAN), 0xffffffff);
+  EXPECT_EQ(ulp_diff_ff(-NAN, 1.0), 0xffffffff);
+  EXPECT_EQ(ulp_diff_ff(1.0, -NAN), 0xffffffff);
+}
+
 TEST(math_base, Log2FloorU)
 {
   EXPECT_EQ(log2_floor_u(0), 0);

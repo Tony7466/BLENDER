@@ -644,6 +644,39 @@ MINLINE int compare_ff(float a, float b, const float max_diff)
   return fabsf(a - b) <= max_diff;
 }
 
+MINLINE uint ulp_diff_ff(float a, float b)
+{
+  BLI_assert(sizeof(float) == sizeof(uint));
+
+  const uint sign_bit = 0x80000000;
+  const uint infinity = 0x7f800000;
+
+  union {
+    float f;
+    uint i;
+  } ua, ub;
+  ua.f = a;
+  ub.f = b;
+
+  const uint a_sign = ua.i & sign_bit;
+  const uint b_sign = ub.i & sign_bit;
+  const uint a_abs = ua.i & ~sign_bit;
+  const uint b_abs = ub.i & ~sign_bit;
+
+  if (a_abs > infinity || b_abs > infinity) {
+    /* NaNs always return maximum ulps apart. */
+    return 0xffffffff;
+  }
+  else if (a_sign == b_sign) {
+    const uint min_abs = a_abs < b_abs ? a_abs : b_abs;
+    const uint max_abs = a_abs > b_abs ? a_abs : b_abs;
+    return max_abs - min_abs;
+  }
+  else {
+    return a_abs + b_abs;
+  }
+}
+
 MINLINE int compare_ff_relative(float a, float b, const float max_diff, const int max_ulps)
 {
   union {
