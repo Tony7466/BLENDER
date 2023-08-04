@@ -142,6 +142,8 @@ struct Render : public BaseRender {
 
   bool (*prepare_viewlayer)(void *handle, struct ViewLayer *vl, struct Depsgraph *depsgraph);
   void *pvh;
+  void (*rendered_viewlayer)(void *handle, const struct ViewLayer *vl);
+  void *rvh;
 
   RenderStats i = {};
 

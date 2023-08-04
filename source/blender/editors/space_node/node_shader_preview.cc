@@ -467,6 +467,27 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
   return true;
 }
 
+static void rendered_viewlayer_update(void *pvl_data, const ViewLayer *vl)
+{
+  ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(pvl_data);
+  if (STREQ(vl->name, "View Layer")) {
+    for (bNode *node_iter : job_data->AOV_nodes) {
+      std::pair<ImBuf *, DirtyState> &cache = job_data->tree_previews->previews_map.lookup(
+          node_iter->identifier);
+      cache.second = node_iter->runtime->dirtystate;
+    }
+    return;
+  }
+  bNode *single_node_rendered = nodeFindNodebyName(job_data->treepath_copy.last()->nodetree,
+                                                   vl->name);
+  if (single_node_rendered == nullptr) {
+    return;
+  }
+  std::pair<ImBuf *, DirtyState> &cache = job_data->tree_previews->previews_map.lookup(
+      single_node_rendered->identifier);
+  cache.second = single_node_rendered->runtime->dirtystate;
+}
+
 /* Called by renderer, refresh the UI. */
 static void all_nodes_preview_update(void *npv, RenderResult * /*rr*/, struct rcti * /*rect*/)
 {
@@ -529,6 +550,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   RE_display_update_cb(re, &job_data, all_nodes_preview_update);
   RE_test_break_cb(re, &job_data, nodetree_previews_break);
   RE_prepare_viewlayer_cb(re, &job_data, prepare_viewlayer_update);
+  RE_rendered_viewlayer_cb(re, &job_data, rendered_viewlayer_update);
 
   /* Lens adjust. */
   float oldlens = reinterpret_cast<Camera *>(sce->camera->data)->lens;
@@ -637,7 +659,6 @@ static void shader_preview_startjob(void *customdata,
         continue;
       }
     }
-    cache.second = node->runtime->dirtystate;
     if (node_use_aov(node)) {
       job_data->AOV_nodes.append(node);
     }
