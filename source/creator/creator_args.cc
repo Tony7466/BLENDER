@@ -59,7 +59,7 @@
 #  include "RE_engine.h"
 #  include "RE_pipeline.h"
 
-#  include "ED_datafiles.h"
+#  include "ED_datafiles.hh"
 
 #  include "WM_api.hh"
 

@@ -47,7 +47,7 @@
 
 #include "BKE_image.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "GPU_context.h"
 #include "GPU_framebuffer.h"
@@ -59,7 +59,7 @@
 
 #include "BLF_api.h"
 #include "DNA_scene_types.h"
-#include "ED_datafiles.h" /* for fonts */
+#include "ED_datafiles.hh" /* for fonts */
 #include "GHOST_C-api.h"
 
 #include "DEG_depsgraph.h"
